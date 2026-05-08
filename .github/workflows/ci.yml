@@ -31,7 +31,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --dev
+        run: uv sync --all-packages --extra dev
 
       - name: Check architecture constraints
         run: uv run python scripts/check_architecture.py
@@ -51,7 +51,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --dev
+        run: uv sync --all-packages --extra dev
 
       - name: Ruff lint
         run: uv run ruff check apps/ packages/ scripts/ tests/
@@ -74,7 +74,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --dev
+        run: uv sync --all-packages --extra dev
 
       - name: Pyright
         run: uv run pyright
@@ -94,7 +94,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --dev
+        run: uv sync --all-packages --extra dev
 
       - name: Bandit
         run: |
@@ -120,7 +120,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --dev
+        run: uv sync --all-packages --extra dev
 
       - name: Run unit tests
         run: |
@@ -184,7 +184,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --dev
+        run: uv sync --all-packages --extra dev
 
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
@@ -194,34 +194,35 @@ jobs:
 
   # -------------------------------------------------------------------------
   # Frontend (< 3 min)
+  # NOTE: Re-enable when packages/web is added
   # -------------------------------------------------------------------------
-  frontend:
-    name: Frontend
-    runs-on: ubuntu-latest
-    if: |
-      contains(github.event.pull_request.changed_files, 'packages/web')
-      || github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "pnpm"
-          cache-dependency-path: packages/web/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: cd packages/web && pnpm install --frozen-lockfile
-
-      - name: Type check
-        run: cd packages/web && pnpm type-check
-
-      - name: Lint
-        run: cd packages/web && pnpm lint
-
-      - name: Build
-        run: cd packages/web && pnpm build
+  # frontend:
+  #   name: Frontend
+  #   runs-on: ubuntu-latest
+  #   if: |
+  #     contains(github.event.pull_request.changed_files, 'packages/web')
+  #     || github.event_name == 'push'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - uses: pnpm/action-setup@v4
+  #       with:
+  #         version: latest
+  #
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22"
+  #         cache: "pnpm"
+  #         cache-dependency-path: packages/web/pnpm-lock.yaml
+  #
+  #     - name: Install dependencies
+  #       run: cd packages/web && pnpm install --frozen-lockfile
+  #
+  #     - name: Type check
+  #       run: cd packages/web && pnpm type-check
+  #
+  #     - name: Lint
+  #       run: cd packages/web && pnpm lint
+  #
+  #     - name: Build
+  #       run: cd packages/web && pnpm build
