@@ -206,12 +206,7 @@ logs:
 
 # Open Python REPL with app context
 shell:
-    cd apps/api && uv run python -c "
-import asyncio
-from narrare._app.main import app
-from narrare._app.database import get_async_session
-print('Narrare shell ready. App:', app.title)
-" && uv run python -i -c ""
+    cd apps/api && uv run python -c "import asyncio; from narrare._app.main import app; from narrare._app.database import get_async_session; print('Narrare shell ready. App:', app.title)" && uv run python -i
 
 # Show dependency tree
 deps:

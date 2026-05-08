@@ -25,6 +25,7 @@ htmlcov/
 # Type checking
 .pyright/
 pyrightcache/
+.ruff_cache/
 
 # Environment
 .env
@@ -72,6 +73,4 @@ logs/
 
 # local stuff
 .devcontainer/post-create.local.sh
-# Added by code-review-graph
-.code-review-graph/
 scripts/local/

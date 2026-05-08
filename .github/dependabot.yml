@@ -65,9 +65,9 @@ updates:
       - "python"
       - "core"
 
-  # Frontend (pnpm)
-  - package-ecosystem: "npm"
-    directory: "/packages/web"
+  # Python — i18n package
+  - package-ecosystem: "pip"
+    directory: "/packages/i18n"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -75,23 +75,8 @@ updates:
       timezone: "Europe/Berlin"
     labels:
       - "dependencies"
-      - "frontend"
-    groups:
-      next:
-        patterns:
-          - "next"
-          - "react"
-          - "react-dom"
-          - "@types/react*"
-      tiptap:
-        patterns:
-          - "@tiptap/*"
-      tanstack:
-        patterns:
-          - "@tanstack/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+      - "python"
+      - "i18n"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
