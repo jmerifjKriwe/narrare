@@ -1,0 +1,228 @@
+# Narrare — Task Runner
+# Requires: just (https://just.systems)
+# Usage: just <command>
+
+set dotenv-load := true
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+# Default: list all commands
+default:
+    @just --list
+
+# ---------------------------------------------------------------------------
+# Setup
+# ---------------------------------------------------------------------------
+
+# First-time setup: install all dependencies, create .env, run migrations
+dev-setup:
+    @echo "🚀 Setting up Narrare..."
+    @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
+    uv sync --all-packages --dev
+    pre-commit install --install-hooks
+    @if [ -f packages/web/package.json ]; then cd packages/web && pnpm install; fi
+    @echo "⏳ Starting services..."
+    docker compose -f docker-compose.dev.yml up -d --wait
+    just db-migrate
+    uv run python scripts/seed_dev_user.py
+    @echo "✅ Ready! Run 'just dev' to start."
+
+# Generate a secure secret key
+generate-secret:
+    uv run python -c "import secrets; print(secrets.token_hex(32))"
+
+# ---------------------------------------------------------------------------
+# Development servers
+# ---------------------------------------------------------------------------
+
+# Start all services (API + frontend + worker)
+dev:
+    @echo "Starting all services..."
+    docker compose -f docker-compose.dev.yml up -d --wait
+    @trap 'kill %1 %2 %3 2>/dev/null' INT; \
+    just dev-api & \
+    just dev-frontend & \
+    just dev-worker & \
+    wait
+
+# Start API server only (port 8000)
+dev-api:
+    cd apps/api && uv run uvicorn narrare._app.main:app \
+        --reload \
+        --host 0.0.0.0 \
+        --port 8000 \
+        --log-level debug
+
+# Start frontend only (port 3000)
+dev-frontend:
+    cd packages/web && pnpm dev
+
+# Start TaskIQ worker only
+dev-worker:
+    cd apps/api && uv run taskiq worker narrare.core.tasks.broker:broker \
+        --fs-discover \
+        --log-level DEBUG
+
+# Start Docker services (postgres + redis)
+dev-services:
+    docker compose -f docker-compose.dev.yml up -d --wait
+
+# Stop Docker services
+dev-services-stop:
+    docker compose -f docker-compose.dev.yml down
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+
+# Run pending Alembic migrations
+db-migrate:
+    cd apps/api && uv run alembic upgrade head
+
+# Create a new migration
+# Usage: just db-revision "add user preferences table"
+db-revision msg:
+    cd apps/api && uv run alembic revision --autogenerate -m "{{msg}}"
+
+# Show current migration status
+db-status:
+    cd apps/api && uv run alembic current
+
+# Show migration history
+db-history:
+    cd apps/api && uv run alembic history --verbose
+
+# Reset dev database (DANGER: destroys all data)
+db-reset:
+    @echo "⚠️  This will destroy all data in narrare_dev. Press Ctrl+C to cancel."
+    @sleep 3
+    docker compose -f docker-compose.dev.yml exec postgres \
+        psql -U narrare -c "DROP DATABASE IF EXISTS narrare_dev; CREATE DATABASE narrare_dev;"
+    just db-migrate
+    uv run python scripts/seed_dev_user.py
+
+# Open psql shell
+db-shell:
+    docker compose -f docker-compose.dev.yml exec postgres \
+        psql -U narrare -d narrare_dev
+
+# ---------------------------------------------------------------------------
+# Testing
+# ---------------------------------------------------------------------------
+
+# Run all tests
+test:
+    uv run pytest tests/ -v
+
+# Run unit tests only (fast, no Docker needed)
+test-unit:
+    uv run pytest tests/unit/ -v
+
+# Run integration tests (requires Docker services)
+test-integration:
+    docker compose -f docker-compose.dev.yml up -d --wait
+    uv run pytest tests/integration/ -v
+
+# Run with coverage report
+test-cov:
+    uv run pytest tests/ --cov --cov-report=term-missing --cov-report=html
+    @echo "Coverage report: htmlcov/index.html"
+
+# Run a specific test file
+# Usage: just test-file tests/unit/core/llm/test_gateway.py
+test-file file:
+    uv run pytest {{file}} -v
+
+# Run tests matching a pattern
+# Usage: just test-match "test_gateway"
+test-match pattern:
+    uv run pytest tests/ -v -k "{{pattern}}"
+
+# ---------------------------------------------------------------------------
+# Code quality
+# ---------------------------------------------------------------------------
+
+# Run all checks (architecture + lint + typecheck + security)
+check:
+    @echo "🔍 Running all checks..."
+    just check-architecture
+    just lint
+    just typecheck
+    just security
+    @echo "✅ All checks passed"
+
+# Run architecture constraint checker
+check-architecture:
+    @echo "🏛️  Checking architecture constraints..."
+    uv run python scripts/check_architecture.py
+
+# Run ruff linter (with auto-fix)
+lint:
+    uv run ruff check --fix apps/ packages/ scripts/ tests/
+    uv run ruff format apps/ packages/ scripts/ tests/
+
+# Run ruff without fixing (for CI)
+lint-check:
+    uv run ruff check apps/ packages/ scripts/ tests/
+    uv run ruff format --check apps/ packages/ scripts/ tests/
+
+# Run pyright type checker
+typecheck:
+    uv run pyright
+
+# Run security checks
+security:
+    uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core
+    uv run pip-audit
+
+# ---------------------------------------------------------------------------
+# Release
+# ---------------------------------------------------------------------------
+
+# Show current version
+version:
+    @cat CHANGELOG.md | grep "## \[" | head -1
+
+# Preview changelog for unreleased changes
+changelog:
+    @cat CHANGELOG.md | awk '/## \[Unreleased\]/,/## \[/' | head -50
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
+
+# Remove build artifacts and caches
+clean:
+    find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+    find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+    find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+    find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
+    find . -type f -name ".coverage" -delete 2>/dev/null || true
+    @echo "✅ Cleaned"
+
+# Tail all service logs
+logs:
+    docker compose -f docker-compose.dev.yml logs -f
+
+# Open Python REPL with app context
+shell:
+    cd apps/api && uv run python -c "
+import asyncio
+from narrare._app.main import app
+from narrare._app.database import get_async_session
+print('Narrare shell ready. App:', app.title)
+" && uv run python -i -c ""
+
+# Show dependency tree
+deps:
+    uv tree
+
+# Update all dependencies to latest compatible versions
+deps-update:
+    uv sync --upgrade --all-packages --dev
+    @echo "⚠️  Run 'just check' and 'just test' after updating dependencies"
+
+# Install/update pre-commit hooks
+hooks-update:
+    pre-commit autoupdate
+    pre-commit install --install-hooks

@@ -1,0 +1,34 @@
+name: Architecture Constraints
+
+on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "scripts/**"
+      - "pyproject.toml"
+
+jobs:
+  check:
+    name: Check Architecture Rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-packages --dev
+
+      - name: Run architecture constraint check
+        run: uv run python scripts/check_architecture.py
+
+      - name: Annotate on failure
+        if: failure()
+        run: |
+          echo "::error::Architecture constraints violated."
+          echo "::notice::See docs/agents/_shared/CONSTRAINTS.md for rules."
+          echo "::notice::Allowed LLM imports: packages/core/narrare_core/llm/gateway.py"
+          echo "::notice::Prompt building: packages/core/narrare_core/prompts/ only"

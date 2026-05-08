@@ -1,0 +1,86 @@
+# Narrare
+
+> AI-assisted creative writing environment — local-first, fully customizable.
+
+## Requirements
+
+- [Docker](https://docs.docker.com/get-docker/) (for PostgreSQL + Redis)
+- [Python 3.14+](https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- [just](https://just.systems/man/en/chapter_4.html)
+- [Node.js 22+](https://nodejs.org/) + [pnpm](https://pnpm.io/installation)
+
+## Quick Start
+
+```bash
+git clone https://github.com/your-org/narrare.git
+cd narrare
+
+# First-time setup (installs deps, creates .env, runs migrations, seeds dev user)
+just dev-setup
+
+# Edit .env and add your AI provider API key, then:
+just dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) and complete the Setup Wizard.
+
+**Dev login** (created automatically):
+- Email: `dev@narrare.local`
+- Password: `narrare-dev`
+
+## Development Commands
+
+```bash
+just --list          # Show all available commands
+
+just dev             # Start all services
+just dev-api         # API only (port 8000)
+just dev-frontend    # Frontend only (port 3000)
+just dev-worker      # TaskIQ worker only
+
+just test            # Run all tests
+just test-unit       # Unit tests only (fast)
+just check           # All checks (architecture + lint + types + security)
+
+just db-migrate      # Run migrations
+just db-revision "description"  # Create new migration
+```
+
+## Project Structure
+
+```
+narrare/
+├── apps/
+│   ├── api/          ← FastAPI backend (Python 3.14)
+│   └── mcp/          ← MCP adapter (planned)
+├── packages/
+│   ├── core/         ← Shared domain logic
+│   ├── i18n/         ← Translations
+│   └── web/          ← Next.js frontend
+├── docs/
+│   ├── agents/       ← AI agent definitions + architectural docs
+│   └── features/     ← Feature specifications
+├── scripts/          ← Dev tooling
+└── tests/            ← Test suite
+```
+
+## Dev Container (VS Code)
+
+For a fully configured environment (recommended when using a remote VM):
+
+1. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Open the repository in VS Code
+3. When prompted, click "Reopen in Container"
+
+The container includes Python 3.14, Node.js, uv, just, and all VS Code extensions pre-configured.
+
+## Architecture
+
+See [`docs/agents/_shared/CONSTRAINTS.md`](docs/agents/_shared/CONSTRAINTS.md) for architectural rules.
+
+See [`docs/agents/_shared/TECH_STACK.md`](docs/agents/_shared/TECH_STACK.md) for technology decisions.
+
+## License
+
+MIT

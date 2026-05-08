@@ -1,0 +1,134 @@
+[project]
+name = "narrare"
+version = "0.1.0"
+description = "AI-assisted creative writing environment"
+requires-python = ">=3.14"
+readme = "README.md"
+license = { text = "MIT" }
+
+[tool.uv.workspace]
+members = ["apps/api", "packages/core", "packages/i18n"]
+
+# ---------------------------------------------------------------------------
+# Pyright
+# ---------------------------------------------------------------------------
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+include = ["apps/api", "packages/core", "packages/i18n"]
+exclude = ["**/migrations/**", "**/__pycache__/**", "**/node_modules/**"]
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["apps/api", "packages/core", "packages/i18n"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort
+  "N",   # pep8-naming
+  "W",   # pycodestyle warnings
+  "UP",  # pyupgrade
+  "B",   # flake8-bugbear
+  "C4",  # flake8-comprehensions
+  "SIM", # flake8-simplify
+  "TCH", # flake8-type-checking
+  "RUF", # ruff-specific
+  "S",   # flake8-bandit (security)
+]
+ignore = [
+  "S101",  # assert in tests is fine
+  "S105",  # hardcoded password false positives
+  "S106",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "N"]
+"**/migrations/**" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["narrare_core", "narrare_i18n", "narrare"]
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+filterwarnings = [
+  "error",
+  "ignore::DeprecationWarning:pydantic_ai",
+]
+
+[tool.coverage.run]
+source = ["apps/api/narrare", "packages/core/narrare_core"]
+omit = [
+  "*/migrations/*",
+  "*/tests/*",
+  "*/__pycache__/*",
+  "*/conftest.py",
+]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "@abstractmethod",
+]
+
+# ---------------------------------------------------------------------------
+# Architecture constraints (read by scripts/check_architecture.py)
+# ---------------------------------------------------------------------------
+[tool.narrare.architecture]
+llm_allowed_modules = [
+  "packages/core/narrare_core/llm/gateway.py",
+  "packages/core/narrare_core/llm/embeddings.py",
+]
+prompt_allowed_modules = [
+  "packages/core/narrare_core/prompts/",
+]
+forbidden_llm_imports = ["openai", "anthropic", "pydantic_ai"]
+forbidden_llm_urls = [
+  "api.openai.com",
+  "api.anthropic.com",
+  "generativelanguage.googleapis.com",
+]
+
+[tool.narrare.architecture.file_size_limits]
+router = 150
+service = 300
+repository = 250
+contracts = 200
+models = 200
+schemas = 200
+agent = 200
+gateway = 300
+composer = 250
+default = 400
+
+[tool.narrare.architecture.exceptions]
+# Format:
+# [[tool.narrare.architecture.exceptions.entries]]
+# rule = "RULE-01"
+# file = "packages/core/narrare_core/llm/embeddings.py"
+# reason = "Batch embedding API requires direct client access"
+# approved_by = "architecture-review"
+# date = "2026-01-01"
+entries = []

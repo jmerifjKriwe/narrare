@@ -1,0 +1,72 @@
+repos:
+  - repo: local
+    hooks:
+      # Architecture constraints — must pass before anything else
+      - id: architecture-constraints
+        name: Architecture Constraints
+        entry: uv run python scripts/check_architecture.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Ruff lint + fix
+      - id: ruff-lint
+        name: Ruff Lint
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+        require_serial: false
+
+      # Ruff format
+      - id: ruff-format
+        name: Ruff Format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+        require_serial: false
+
+      # Pyright — only on changed files for speed
+      - id: pyright
+        name: Pyright Type Check
+        entry: uv run pyright
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # Security
+      - id: bandit
+        name: Security (Bandit)
+        entry: uv run bandit -c pyproject.toml
+        language: system
+        types: [python]
+        require_serial: false
+
+  # Standard hooks for file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: no-commit-to-branch
+        args: ["--branch", "main"]
+
+  # Conventional commits
+  - repo: local
+    hooks:
+      - id: conventional-commits
+        name: Conventional Commits
+        entry: uv run python scripts/check_commit_message.py
+        language: system
+        stages: [commit-msg]
+        pass_filenames: false
+
+ci:
+  skip: [pyright]  # pyright runs as full check in CI, not per-file in CI

@@ -1,0 +1,106 @@
+version: 2
+updates:
+  # Python — root workspace
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      pydantic:
+        patterns:
+          - "pydantic*"
+      fastapi:
+        patterns:
+          - "fastapi"
+          - "uvicorn"
+          - "starlette"
+      sqlalchemy:
+        patterns:
+          - "sqlalchemy"
+          - "alembic"
+          - "asyncpg"
+          - "pgvector"
+      taskiq:
+        patterns:
+          - "taskiq*"
+      ai:
+        patterns:
+          - "pydantic-ai"
+          - "openai"
+          - "anthropic"
+    ignore:
+      # Never auto-update major versions — review manually
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Python — API package
+  - package-ecosystem: "pip"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "python"
+      - "api"
+
+  # Python — core package
+  - package-ecosystem: "pip"
+    directory: "/packages/core"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "python"
+      - "core"
+
+  # Frontend (pnpm)
+  - package-ecosystem: "npm"
+    directory: "/packages/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      next:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      tiptap:
+        patterns:
+          - "@tiptap/*"
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "github-actions"

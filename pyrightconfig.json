@@ -1,0 +1,28 @@
+{
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "strict",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownLambdaType": false,
+  "reportUnknownParameterType": false,
+  "reportMissingParameterType": false,
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "apps/api",
+    "packages/core",
+    "packages/i18n",
+    "scripts",
+    "tests"
+  ],
+  "exclude": [
+    "**/migrations/**",
+    "**/__pycache__/**",
+    "**/node_modules/**",
+    "**/.venv/**",
+    "**/dist/**"
+  ]
+}

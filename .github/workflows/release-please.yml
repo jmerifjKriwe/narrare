@@ -1,0 +1,50 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: python
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Trigger full build + publish on release
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.release_created
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-packages --dev
+
+      - name: Run full test suite
+        run: uv run pytest tests/unit/ tests/integration/ -v
+        env:
+          DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ci-secret-key
+
+      - name: Create GitHub Release summary
+        run: |
+          echo "## Release ${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "Release created successfully." >> $GITHUB_STEP_SUMMARY

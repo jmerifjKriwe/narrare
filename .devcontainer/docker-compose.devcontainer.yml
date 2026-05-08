@@ -1,0 +1,31 @@
+services:
+  devcontainer:
+    build:
+      context: /home/kiesow/projects/narrare
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - vscode-server:/home/vscode/.vscode-server
+      - uv-cache:/home/vscode/.cache/uv
+      - pnpm-global:/home/vscode/.local/share/pnpm
+      - claude-config:/home/vscode/.claude
+      - claude-data:/home/vscode/.local/share/claude
+    command: sleep infinity
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare_dev
+      - TEST_DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres_test:5433/narrare_test
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+
+volumes:
+  vscode-server:
+  uv-cache:
+  claude-config:
+  claude-data:
+  pnpm-global:

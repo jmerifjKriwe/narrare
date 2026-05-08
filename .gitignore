@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# uv
+uv.lock
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# Type checking
+.pyright/
+pyrightcache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node / Frontend
+node_modules/
+packages/web/.next/
+packages/web/out/
+packages/web/.turbo/
+*.tsbuildinfo
+
+# pnpm
+packages/web/pnpm-lock.yaml
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Alembic
+apps/api/alembic/versions/*.pyc
+
+# Project data (user projects live outside repo)
+.narrare/
+*.narrare
+
+# Secrets
+*.pem
+*.key
+*.cert
+
+# Logs
+*.log
+logs/
+
+# Coverage
+.coverage.*
+
+# local stuff
+.devcontainer/post-create.local.sh
+# Added by code-review-graph
+.code-review-graph/
+scripts/local/
