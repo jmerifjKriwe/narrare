@@ -1,5 +1,5 @@
 ---
-id: char-geist
+id: char-waldgeist
 name: "Der Waldgeist"
 type: character
 tags: [ghost, forest-spirit, ancient]
@@ -10,7 +10,7 @@ age: "Unbekannt (seit Jahrhunderten im Wald)"
 # Story role
 role: supporting
 arc: "Die Prüfung für Anna und Bestätigung für Johann - das Geheimnis des Waldes manifestiert"
-first_appearance: "ch-001"
+first_appearance: "ch-de-001"
 pov_character: false
 ---
 

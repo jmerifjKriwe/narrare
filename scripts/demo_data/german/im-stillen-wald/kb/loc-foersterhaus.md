@@ -6,7 +6,7 @@ tags: [house, forest-edge, isolated]
 
 # Location details
 location_type: building        # city | building | natural | room | vehicle | other
-first_appearance: "ch-001"
+first_appearance: "ch-de-001"
 parent_location: "loc-wald"
 ---
 
