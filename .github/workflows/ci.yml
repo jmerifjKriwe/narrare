@@ -99,8 +99,7 @@ jobs:
       - name: Bandit
         run: |
           uv run bandit -c pyproject.toml \
-            -r apps/api/narrare packages/core/narrare_core \
-            --exit-zero-on-skipped
+            -r apps/api/narrare packages/core/narrare_core
 
       - name: pip-audit
         run: uv run pip-audit
