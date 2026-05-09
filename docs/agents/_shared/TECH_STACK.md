@@ -25,10 +25,10 @@ and remove them aggressively.
 
 ## Backend Runtime
 
-### Python `3.12+`
-**Why:** Async performance improvements, better typing (`TypeVar`, `ParamSpec`),
-`tomllib` in stdlib. We use `3.12` as minimum.
-**Not:** `3.11` or lower — we depend on 3.12 typing features.
+### Python `3.14+`
+**Why:** Latest stable release with latest typing improvements and stdlib enhancements.
+We use `3.14` as minimum.
+**Not:** `3.13` or lower — we depend on 3.14 features.
 
 ### FastAPI `>=0.135`
 **Why:** Best-in-class async Python web framework. Pydantic-native.
@@ -61,7 +61,7 @@ We need transactions. We need pgvector. Postgres does both well.
 ### Redis
 **Why:** Fast ephemeral state. Session storage, task broker, provider model cache.
 **Role:** Three distinct uses:
-  - Celery broker for background tasks
+  - TaskIQ broker for background tasks
   - Writing session state (TTL-based)
   - Provider model list cache (24h TTL)
 **Location:** Only used via `core/cache/client.py`.
@@ -118,13 +118,14 @@ continues without memory features. Never a hard dependency at request time.
 
 ## Background Processing
 
-### Celery `[redis]` `>=5.6`
-**Why:** Mature, battle-tested async task queue. Redis broker is already in our stack.
+### TaskIQ `[redis]` `>=0.11.0`
+**Why:** Async-native task queue with FastAPI DI integration via TaskiqDepends.
+Redis broker is already in our stack. See ADR-007 for full rationale.
 **Role:** Long-running tasks: batch embedding, consistency checks, chapter summarization,
 fact extraction, timeline analysis.
-**Location:** Task definitions in `*/tasks.py`. Celery app in `core/tasks/worker.py`.
-**Not:** RQ (less features), Dramatiq (less ecosystem), asyncio background tasks
-(no persistence, no retry, no visibility).
+**Location:** Task definitions in `*/tasks.py`. Broker in `core/tasks/broker.py`.
+**Not:** Celery (async impedance mismatch, needs asyncio.run wrapper), arq (maintenance-only),
+asyncio background tasks (no persistence, no retry, no visibility).
 
 ---
 

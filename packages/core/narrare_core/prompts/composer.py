@@ -1,0 +1,170 @@
+"""
+Prompt Composer — assembles the final prompt for any LLM call.
+
+This is the ONLY place where prompts are assembled.
+Services pass a PromptContext; the composer handles everything else.
+
+See CONSTRAINTS.md RULE-02.
+See ADR-002 (unified prompt system).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import structlog
+
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.prompts.context import PromptContext
+from narrare_core.prompts.meta import MetaPromptLoader
+from narrare_core.prompts.registry import PromptRegistry
+from narrare_core.prompts.variable_engine import substitute, validate_variables
+
+logger = structlog.get_logger(__name__)
+
+# Category mapping: intent → prompt category
+_INTENT_TO_CATEGORY: dict[LLMIntent, str] = {
+    LLMIntent.WRITE: "writing",
+    LLMIntent.EXTEND: "writing",
+    LLMIntent.REWRITE: "writing",
+    LLMIntent.CO_AUTHOR: "writing",
+    LLMIntent.KB_CREATE: "kb",
+    LLMIntent.KB_IMPROVE: "kb",
+    LLMIntent.KB_EXTRACT: "kb",
+    LLMIntent.ANALYSE: "analysis",
+    LLMIntent.SENTIMENT: "analysis",
+    LLMIntent.CONSISTENCY: "analysis",
+    LLMIntent.BETA_READ: "analysis",
+    LLMIntent.VOICE: "analysis",
+    LLMIntent.PLAN: "planning",
+    LLMIntent.SUMMARIZE: "analysis",
+    LLMIntent.EXTRACT: "analysis",
+    LLMIntent.SUGGEST: "writing",
+    LLMIntent.CHAT: "writing",
+    LLMIntent.RESEARCH: "analysis",
+}
+
+# Mode mapping: intent → prompt mode directory name
+_INTENT_TO_MODE: dict[LLMIntent, str] = {
+    LLMIntent.WRITE: "new_chapter",
+    LLMIntent.EXTEND: "extend_chapter",
+    LLMIntent.REWRITE: "rewrite_selection",
+    LLMIntent.CO_AUTHOR: "co_author",
+    LLMIntent.KB_CREATE: "create",
+    LLMIntent.KB_IMPROVE: "improve",
+    LLMIntent.KB_EXTRACT: "extract",
+    LLMIntent.ANALYSE: "general",
+    LLMIntent.SENTIMENT: "sentiment",
+    LLMIntent.CONSISTENCY: "consistency",
+    LLMIntent.BETA_READ: "beta_reader",
+    LLMIntent.VOICE: "voice",
+    LLMIntent.PLAN: "scene_planning",
+    LLMIntent.SUMMARIZE: "summarize",
+    LLMIntent.EXTRACT: "extract",
+    LLMIntent.SUGGEST: "inline_suggest",
+    LLMIntent.CHAT: "chat",
+    LLMIntent.RESEARCH: "research",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ComposedPrompt:
+    """The final assembled prompt, ready to send to the LLM."""
+
+    system: str
+    user: str
+    first_message: str | None = None
+
+
+class PromptComposer:
+    """
+    Assembles complete prompts from a PromptContext.
+
+    Injected into every service that makes LLM calls.
+    Never instantiated locally inside a service method.
+    """
+
+    def __init__(
+        self,
+        registry: PromptRegistry,
+        meta_loader: MetaPromptLoader,
+        *,
+        include_meta: bool = True,
+    ) -> None:
+        self._registry = registry
+        self._meta_loader = meta_loader
+        self._include_meta = include_meta
+
+    async def build(
+        self,
+        intent: LLMIntent,
+        context: PromptContext,
+        *,
+        db_content: str | None = None,
+        user_prompt: str = "",
+    ) -> ComposedPrompt:
+        """
+        Build a complete prompt for the given intent and context.
+
+        Args:
+            intent: LLM operation intent — drives prompt category and mode.
+            context: All variables for this operation.
+            db_content: User's DB template override, if any.
+            user_prompt: The user-facing message. If empty, uses First Message
+                         from the prompt file.
+
+        Returns:
+            ComposedPrompt with system and user prompts ready for the gateway.
+
+        Raises:
+            PromptNotFoundError: If no prompt file exists for this intent.
+            PromptVariableError: If a required variable is missing from context.
+        """
+        category = _INTENT_TO_CATEGORY.get(intent, "writing")
+        mode = context.mode or _INTENT_TO_MODE.get(intent, intent.value)
+        variables = context.as_variables()
+
+        # Resolve prompt file via cascade
+        resolved = await self._registry.resolve(
+            category=category,
+            language=context.language,
+            mode=mode,
+            genre=context.genre or None,
+            db_content=db_content,
+        )
+
+        # Substitute variables in system prompt
+        system = substitute(resolved.system_prompt, variables, strict=False)
+
+        # Prepend meta-prompt if enabled
+        if self._include_meta:
+            meta = await self._meta_loader.load(
+                language=context.language,
+                variables=variables,
+            )
+            if meta:
+                system = f"{meta}\n\n{system}"
+
+        # Determine user message
+        if user_prompt:
+            final_user = substitute(user_prompt, variables, strict=False)
+        elif resolved.first_message:
+            final_user = substitute(resolved.first_message, variables, strict=False)
+        else:
+            final_user = context.author_instructions or ""
+
+        logger.debug(
+            "prompt_composed",
+            intent=intent.value,
+            category=category,
+            mode=mode,
+            language=context.language,
+            source=resolved.source,
+            system_length=len(system),
+        )
+
+        return ComposedPrompt(
+            system=system,
+            user=final_user,
+            first_message=resolved.first_message,
+        )

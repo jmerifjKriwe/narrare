@@ -1,0 +1,137 @@
+"""
+Narrare domain error hierarchy.
+
+All application errors derive from NarrareError.
+External exceptions are always wrapped at service boundaries.
+
+Usage:
+    raise WritingError("Chapter generation failed") from original_error
+    raise LLMGatewayError("Timeout", code="TIMEOUT")
+"""
+
+from __future__ import annotations
+
+
+class NarrareError(Exception):
+    """Base for all Narrare domain errors."""
+
+    def __init__(self, message: str, *, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+    def __repr__(self) -> str:
+        code = f", code={self.code!r}" if self.code else ""
+        return f"{self.__class__.__name__}({str(self)!r}{code})"
+
+
+# ---------------------------------------------------------------------------
+# LLM errors
+# ---------------------------------------------------------------------------
+
+
+class LLMGatewayError(NarrareError):
+    """Raised when the LLM Gateway fails to complete a request."""
+
+
+class LLMRateLimitError(LLMGatewayError):
+    """Provider rate limit exceeded. Retryable."""
+
+    def __init__(self, message: str = "Rate limit exceeded") -> None:
+        super().__init__(message, code="RATE_LIMIT")
+
+
+class LLMTimeoutError(LLMGatewayError):
+    """Request timed out. Retryable."""
+
+    def __init__(self, message: str = "Request timed out") -> None:
+        super().__init__(message, code="TIMEOUT")
+
+
+class LLMServiceUnavailableError(LLMGatewayError):
+    """Provider temporarily unavailable. Retryable."""
+
+    def __init__(self, message: str = "Service unavailable") -> None:
+        super().__init__(message, code="SERVICE_UNAVAILABLE")
+
+
+class LLMAuthError(LLMGatewayError):
+    """Invalid API key or authentication failed. Not retryable."""
+
+    def __init__(self, message: str = "Authentication failed") -> None:
+        super().__init__(message, code="AUTH_FAILED")
+
+
+class LLMContextTooLargeError(LLMGatewayError):
+    """Context exceeds model token limit. Not retryable."""
+
+    def __init__(self, message: str = "Context too large") -> None:
+        super().__init__(message, code="CONTEXT_TOO_LARGE")
+
+
+class LLMInvalidRequestError(LLMGatewayError):
+    """Invalid request parameters. Not retryable."""
+
+    def __init__(self, message: str = "Invalid request") -> None:
+        super().__init__(message, code="INVALID_REQUEST")
+
+
+# ---------------------------------------------------------------------------
+# Prompt errors
+# ---------------------------------------------------------------------------
+
+
+class PromptError(NarrareError):
+    """Base for prompt system errors."""
+
+
+class PromptNotFoundError(PromptError):
+    """No prompt found for the given category/language/mode."""
+
+    def __init__(self, category: str, language: str, mode: str = "") -> None:
+        detail = f"{category}/{language}"
+        if mode:
+            detail += f"/{mode}"
+        super().__init__(f"Prompt not found: {detail}", code="PROMPT_NOT_FOUND")
+        self.category = category
+        self.language = language
+        self.mode = mode
+
+
+class PromptVariableError(PromptError):
+    """Required prompt variable is missing or invalid."""
+
+    def __init__(self, variable: str, prompt_id: str = "") -> None:
+        detail = f"'{variable}'"
+        if prompt_id:
+            detail += f" in {prompt_id}"
+        super().__init__(f"Missing required prompt variable {detail}", code="MISSING_VARIABLE")
+        self.variable = variable
+
+
+# ---------------------------------------------------------------------------
+# Domain errors
+# ---------------------------------------------------------------------------
+
+
+class WritingError(NarrareError):
+    """Error in the writing service."""
+
+
+class KBError(NarrareError):
+    """Error in the Knowledge Base service."""
+
+
+class ContextAssemblyError(NarrareError):
+    """Error assembling prompt context."""
+
+
+class EmbeddingError(NarrareError):
+    """Error generating or storing embeddings."""
+
+
+class MemoryError(NarrareError):  # noqa: A001 (shadows builtin in this scope only)
+    """Error in the memory layer."""
+
+
+class ValidationError(NarrareError):
+    """Domain validation error (distinct from Pydantic's ValidationError)."""

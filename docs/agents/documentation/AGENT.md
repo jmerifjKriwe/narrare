@@ -59,18 +59,6 @@ DOCUMENTATION REVIEW: [FEATURE-ID]
 ⚠️ [any issues found]
 ```
 
-### Changelog (`CHANGELOG.md`)
-
-You maintain the CHANGELOG. Every release section contains:
-- **Added** — new features (link to feature file)
-- **Changed** — modifications to existing behavior
-- **Fixed** — bug fixes
-- **Deprecated** — features heading for removal
-- **Removed** — features that were removed
-
-Format: Keep a Changelog (keepachangelog.com) + Conventional Commits.
-release-please handles versioning; you write the human-readable descriptions.
-
 ### Developer Documentation (`docs/developer/`)
 
 ```

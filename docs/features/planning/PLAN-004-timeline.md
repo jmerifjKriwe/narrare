@@ -1,0 +1,184 @@
+---
+id: PLAN-004
+title: "Timeline Management"
+status: planned
+area: planning
+mvp: false
+
+ui_tooltip: "Track story time, character ages, and event chronology."
+ui_help_short: |
+  Keep your story's timeline straight. Timeline Management tracks when events
+  happen, character ages, and temporal relationships — catching
+  inconsistencies and impossible dates.
+ui_help_long: |
+  ## Timeline Management
+
+  Track when everything happens in your story world. Timeline Management
+  ensures temporal consistency and catches impossible dates.
+
+  **What gets tracked:**
+
+  **Story Timeline**
+  - When each chapter takes place
+  - Time gaps between scenes
+  - Overall story duration
+  - Flashback/forward tracking
+
+  **Character Timelines**
+  - Birth dates and ages
+  - Backstory events
+  - Age consistency checks
+  - Birthday tracking
+
+  **Event Timeline**
+  - Major story events in order
+  - Cause-and-effect relationships
+  - Simultaneous events
+  - Prequel/sequel connections
+
+  **Consistency Checking**
+  - Impossible age calculations
+  - Events before character birth
+  - Conflicting dates
+  - Duration impossibilities
+
+  **How it works:**
+  1. Open Planning panel
+  2. Click "Timeline"
+  3. Timeline view shows:
+     - **Chronological view**: Events in time order
+     - **Chapter view**: When each chapter happens
+     - **Character view**: Each character's timeline
+     - **Consistency**: Flagged issues
+  4. Add events manually:
+     - Date, time, description
+     - Involved characters
+     - Chapter reference
+  5. Auto-extract from chapters:
+     - Time expressions ("three days later")
+     - Character ages
+     - Explicit dates
+  6. See inconsistencies flagged in red
+  7. Click for explanation and fix suggestions
+
+  **Timeline features:**
+  - Multiple timelines (past, present, future)
+  - Relative time ("three years before Chapter 1")
+  - Duration calculation ("how long between X and Y?")
+  - Export timeline as report
+
+  **Best practices:**
+  - Set timeline in chapter frontmatter
+  - Add major events as you write
+  - Run consistency check before publishing
+  - Use relative time for flexibility
+
+  **Use cases:**
+  - Catch "character would be 150 years old"
+  - Ensure flashbacks make sense
+  - Track multiple storylines
+  - Plan prequels/sequels
+
+  Timeline data lives in Knowledge Base (KB-001, timeline entities) and chapter
+  frontmatter. Keep it updated to avoid temporal headaches.
+
+  Available in Planning panel, KB editor, or via CLI.
+ui_available_in: [planning, kb]
+
+service: timeline/service.py
+contract: planning/contracts.py#TimelineServiceProtocol
+router: timeline/router.py
+prompt: ~
+requires: [KB-001]
+---
+
+# PLAN-004 — Timeline Management
+
+## What it does
+
+Temporal tracking system for story events, character ages, and chapter timing.
+Auto-extracts time expressions from chapters, validates consistency, and flags
+impossible dates or age contradictions.
+
+## Why it exists
+
+Readers notice timeline errors. Characters age inconsistently, events happen
+in impossible orders, durations don't add up. Timeline management catches
+these inconsistencies before publication.
+
+## How it works (User perspective)
+
+1. Open Planning panel → Timeline
+2. Timeline shows multiple views:
+   - **Chronological**: All events in time order
+   - **By Chapter**: When each chapter happens
+   - **Per Character**: Each character's timeline
+   - **Consistency**: Flagged issues
+3. Add events:
+   - Click "Add Event"
+   - Enter date, time, description
+   - Select involved characters
+   - Link to chapter if applicable
+4. Auto-extract from chapters:
+   - Click "Extract Timeline"
+   - AI finds temporal expressions
+   - Review and accept/reject
+5. See inconsistencies flagged:
+   - Click for explanation and fix
+6. Export timeline as PDF
+
+Timeline data comes from chapter frontmatter (timeline_position) and KB
+timeline entries.
+
+## How it works (Technical)
+
+**Entry point:** `timeline/router.py` → CRUD endpoints
+**Service:** `TimelineService` in `timeline/service.py`
+**Contract:** `TimelineServiceProtocol` in `planning/contracts.py`
+**Storage:** KB timeline entries + chapter frontmatter
+
+**Timeline entry:**
+```python
+class TimelineEntry:
+    id: UUID
+    date: str  # ISO date or relative
+    time: str | None  # Time of day
+    description: str
+    characters: list[UUID]  # Involved characters
+    chapter_id: UUID | None  # Where it appears
+    type: "story" | "backstory" | "world"
+    position: str  # For relative times
+```
+
+**Consistency checks:**
+- Age calculations: `(event_date - birth_date) / 365`
+- Event ordering: A before B vs B before A
+- Duration constraints: "three days later" must be ≥3 days
+- Character aliveness: Events before birth or after death
+
+**Extraction:**
+- Regex: temporal patterns ("March 15", "three days later", "in 1990")
+- Context: surrounding text for meaning
+- Validation: dates parse correctly, durations make sense
+- Confidence scores for ambiguous expressions
+
+## Constraints & Edge Cases
+
+- Requires consistent date format in frontmatter
+- Relative times ("Chapter 1 + 3 days") need reference point
+- Flashbacks/forwards complicate ordering
+- Ambiguous expressions ("later that summer") = low confidence
+- Time zones and calendar systems not supported
+- Fantasy time systems not handled (use relative time)
+- Manual entry required for non-standard expressions
+
+## Related Features
+
+- [KB-001](../kb/KB-001-entity-management.md) — Timeline entities in KB
+- [KB-007](../kb/KB-007-extraction.md) — Fact extraction
+- [CONS-001](../consistency/CONS-001-checker.md) — Overall consistency
+- [PLAN-003](PLAN-003-structure.md) — Structure view
+
+## Status & History
+
+- `project-init` — Added to registry as planned feature

@@ -1,4 +1,10 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true
+  },
+  "theme": "dark",
+  "skipDangerousModePermissionPrompt": true,
   "hooks": {
     "PostToolUse": [
       {
@@ -8,6 +14,39 @@
             "type": "command",
             "command": "git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph update --skip-flows --repo \"/workspace\" || true",
             "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; [[ \"$f\" == *.py ]] && ruff format \"$f\" && ruff check --fix \"$f\" 2>/dev/null || true; }",
+            "timeout": 15,
+            "statusMessage": "Running ruff format + lint..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; [[ \"$f\" == *.(ts|tsx|js|jsx|css|json) ]] && command -v biome >/dev/null 2>&1 && biome check --write --unsafe \"$f\" 2>/dev/null || true; }",
+            "timeout": 15,
+            "statusMessage": "Running biome format + lint..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; [[ \"$f\" == *.py ]] || exit 0; case \"$f\" in */packages/core/*) td=\"tests/unit/core/$(echo \"$f\" | sed 's|.*/packages/core/narrare_core/||' | cut -d/ -f1)\";; */apps/api/*) td=\"tests/unit/api\";; */tests/*) td=\"$(dirname \"$f\")\";; *) exit 0;; esac; [[ -d \"$td\" ]] && pytest -q \"$td\" 2>/dev/null || true; }",
+            "timeout": 60,
+            "statusMessage": "Running affected tests..."
           }
         ]
       }

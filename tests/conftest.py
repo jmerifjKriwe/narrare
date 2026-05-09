@@ -1,10 +1,12 @@
 """
 Root test configuration and shared fixtures.
 """
-
 from __future__ import annotations
 
 import os
+
+import pytest
+
 
 # Ensure test environment is set before any imports
 os.environ.setdefault("ENVIRONMENT", "test")
@@ -20,21 +22,20 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 # Architecture constraint test
 # ---------------------------------------------------------------------------
 
-
 def test_architecture_constraints() -> None:
     """
     RULE-01, RULE-02, RULE-04, RULE-11:
     Verify all architecture constraints pass.
     This test ensures the CI and local pre-commit hooks are consistent.
     """
-    import subprocess  # nosec: B404
+    import subprocess
     import sys
 
-    result = subprocess.run(  # nosec: B603
+    result = subprocess.run(
         [sys.executable, "scripts/check_architecture.py"],
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, (  # nosec: B101
+    assert result.returncode == 0, (
         f"Architecture violations found:\n{result.stdout}\n{result.stderr}"
     )

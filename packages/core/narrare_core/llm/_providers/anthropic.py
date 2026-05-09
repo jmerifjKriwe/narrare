@@ -1,0 +1,20 @@
+"""
+Anthropic provider adapter.
+
+Registered as: "anthropic"
+Models: claude-* family
+"""
+
+from __future__ import annotations
+
+from pydantic_ai.models.anthropic import AnthropicModel
+
+from narrare_core.llm._providers.registry import register
+
+
+def _make_anthropic(model_id: str) -> AnthropicModel:
+    """Create an Anthropic model. API key from ANTHROPIC_API_KEY env var."""
+    return AnthropicModel(model_id)
+
+
+register("anthropic", _make_anthropic)
