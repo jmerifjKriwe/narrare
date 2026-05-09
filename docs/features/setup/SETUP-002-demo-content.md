@@ -58,16 +58,22 @@ evaluate it need real content to understand what the tool does. Demo projects
 let users explore the KB, run analysis, test the editor, and understand the
 structure without the barrier of creating content first.
 
----
+## How it works (User perspective)
 
-## The Three Demo Projects
+1. During Setup Wizard Step 3, choose "Load a demo project" instead of "Start blank"
+2. Select from three demo projects: Fantasy, Sci-Fi, or German Literary Fiction
+3. Preview shows what's included (chapters, characters, word count)
+4. Click "Load" — all content is copied into your new project
+5. The demo becomes your project — edit, extend, or delete anything
 
-### Im stillen Wald ✅ Content exists
+### The Three Demo Projects
+
+### Im stillen Wald ✅ Complete
 - **Genre:** Literarische Fiktion
 - **Language:** German (`de`)
-- **Chapters:** 2
+- **Chapters:** 2 complete (Das Flüstern im Wald, Grenze der Welten)
 - **Characters:** 3 (Anna Müller, Johann Bauer, Der Waldgeist)
-- **Locations:** 2 (Der stille Wald, Das Försterhaus)
+- **Locations:** 3 (Der stille Wald, Das Försterhaus, Das Dorf)
 - **Story:** Eine Lehrerin aus der Stadt besucht einen alten Förster am
   Waldrand. Sie sucht Erklärungen für die Geschichten, die ihre Schüler
   erzählen — über einen Waldgeist, über verschwundene Kinder, über Dinge,
@@ -76,7 +82,7 @@ structure without the barrier of creating content first.
 - **Good for testing:** German prompts, KB-Sessions auf Deutsch,
   Stimmungsanalyse, Voice-Analyse für literarischen Stil
 
-**Existing KB entries (confirmed):**
+**KB entries (all complete):**
 
 *Characters:*
 - **Anna Müller** — Lehrerin, Frau der Logik, sucht Beweise. POV-Charakter.
@@ -89,21 +95,27 @@ structure without the barrier of creating content first.
 - **Das Försterhaus** — Am Waldrand, zwei Räume unten (Wohnraum mit Kamin,
   Arbeitsraum), Schlafraum oben. Johanns Welt. Die Schwelle zwischen Dorf
   und Wald, zwischen Annas Welt und Johanns Welt.
-- **Der stille Wald** — (referenced, entry to be created)
+- **Der stille Wald** — Der Wald selbst, eine Entität mit Gedächtnis und Stimme.
+- **Das Dorf** — Das Dorf am Waldrand, Ausgangspunkt für Annas Reise.
 
 **Chapter 1:** "Das Flüstern im Wald" (~680 Wörter)
 Anna besucht zum ersten Mal das Försterhaus. Gespräch über Beweise, Realität,
 den Waldgeist. Endet mit Anna, die ein Lied aus dem Wald zu hören glaubt.
 POV: third-limited (Anna). Status: draft.
 
+**Chapter 2:** "Grenze der Welten" (~1,200 Wörter)
+Anna überschreitet die Schwelle zwischen Dorf und Wald. Die Grenze zwischen
+logischer und spiritueller Welt beginnt zu verschwimmen. Sie beginnt zu
+glauben — aber der Preis für diesen Glauben ist höher als sie dachte.
+
 ---
 
-### Echoes of the Thornwall 📋 Content to be created
+### Echoes of the Thornwall ✅ Complete
 - **Genre:** High Fantasy
 - **Language:** English (`en`)
-- **Chapters:** 4 (target: ~3,130 words total)
-- **Characters:** 5 (Lyra, Aldric, Mara, Thornwall Guardian, Elder Soren)
-- **Locations:** 2 (The Thornwall, Village of Ashford)
+- **Chapters:** 4 complete (Compass Points, Secrets in Stone, The Silent Keep, Archive of Truth)
+- **Characters:** 5 (Elara, Kaelen, Morven, Sera, Verrick)
+- **Locations:** 4 (Aethelgard, Silver Flame Fortress, Temple of Silent Flames, The Thornwall)
 - **Story:** A young mage discovers that the magical barrier protecting her
   village is slowly failing — and that someone inside the village may be
   responsible.
@@ -111,11 +123,11 @@ POV: third-limited (Anna). Status: draft.
 
 ---
 
-### Dead Signal 📋 Content to be created
+### Dead Signal ✅ Complete
 - **Genre:** Science Fiction / Thriller
 - **Language:** English (`en`)
-- **Chapters:** 3 (target: ~3,450 words total)
-- **Characters:** 3 (Commander Voss, Dr. Chen, ARIA)
+- **Chapters:** 3 complete (Ghost Machine, Door Worlds, Signal Lost)
+- **Characters:** 3 (ARIA, Kavic, Maya)
 - **Story:** A deep-space crew receives a signal from a ship that disappeared
   forty years ago — and the signal contains their own voices.
 - **Good for testing:** Plot analysis, timeline, beta reader, voice analysis
@@ -127,31 +139,43 @@ POV: third-limited (Anna). Status: draft.
 ```
 scripts/demo_data/
   german/
-    project.md                ← novel metadata (title, genre, language, tone)
+    project.md                ← novel metadata (title, genre, language, tone) ✅
     chapters/
-      ch-de-001-fluestern.md  ← "Das Flüstern im Wald" (exists ✅)
-      ch-de-002-[title].md    ← chapter 2 (to be written)
+      ch-de-001-fluestern.md  ← "Das Flüstern im Wald" ✅
+      ch-de-002-grenze-welten.md ← "Grenze der Welten" ✅
     kb/
-      char-anna.md            ← Anna Müller (to be created from notes)
-      char-johann.md          ← Johann Bauer (to be created from notes)
-      char-waldgeist.md       ← Der Waldgeist (exists as draft ✅)
-      loc-foersterhaus.md     ← Das Försterhaus (exists ✅)
-      loc-wald.md             ← Der stille Wald (to be created)
+      char-anna.md            ← Anna Müller ✅
+      char-johann.md          ← Johann Bauer ✅
+      char-waldgeist.md       ← Der Waldgeist ✅
+      loc-foersterhaus.md     ← Das Försterhaus ✅
+      loc-wald.md             ← Der stille Wald ✅
+      loc-dorf.md             ← Das Dorf ✅
 
-  fantasy/
-    project.md
+  english/echoes-of-the-thornwall/
+    project.md                ✅
     chapters/
-      ch-en-001.md ... ch-en-004.md
+      ch-en-001-compass-points.md ✅
+      ch-en-002-secrets-stone.md ✅
+      ch-en-003-silent-keep.md ✅
+      ch-en-004-archive-truth.md ✅
     kb/
-      char-lyra.md ... (5 characters)
-      loc-thornwall.md ... (2 locations)
+      char-elara.md, char-kaelen.md, char-morven.md, char-sera.md, char-verrick.md ✅
+      loc-aethelgard.md, loc-silver-flame-fortress.md, loc-temple-silent-flames.md, loc-thornwall.md ✅
+      obj-compass.md ✅
+      fact-ashen-covenant.md, fact-silver-flame.md ✅
+      sys-cataclysm.md, sys-political.md, sys-void-magic.md ✅
 
-  scifi/
-    project.md
+  english/dead-signal/
+    project.md                ✅
     chapters/
-      ch-en-001.md ... ch-en-003.md
+      ch-en-ds-001-ghost-machine.md ✅
+      ch-en-ds-002-door-worlds.md ✅
+      ch-en-ds-003-signal-lost.md ✅
     kb/
-      char-voss.md ... (3 characters)
+      char-aria.md, char-kavic.md, char-maya.md ✅
+      loc-earth-facility-7.md, loc-horizon.md ✅
+      obj-resonator.md ✅
+      sys-comm.md, sys-tech.md ✅
 ```
 
 ## Frontmatter Standards for Demo Files
@@ -218,7 +242,14 @@ status: draft
 ---
 ```
 
-## Loading Implementation
+## How it works (Technical)
+
+**Entry point:** `setup/router.py` → `POST /api/v1/setup/load-demo`
+**Service:** `SetupService.load_demo_content()` in `setup/service.py`
+**Contract:** `SetupServiceProtocol` in `setup/contracts.py`
+**Prompt:** ~ (no LLM calls)
+
+### Loading Implementation
 
 `SetupService.load_demo_content(starter: StarterContent, novel_id: UUID)`:
 
@@ -234,20 +265,44 @@ status: draft
 intentionally incomplete to invite the user to continue building them
 with KB session features.
 
-## What Still Needs to Be Created
+## Current Status
 
-Before Phase 3 can complete:
+All three demo projects are **complete** and ready for use:
 
-| Item | Status |
-|------|--------|
-| `german/chapters/ch-de-002-*.md` | 📋 To be written (~1,000 words) |
-| `german/kb/char-anna.md` | 📋 To be structured from existing notes |
-| `german/kb/char-johann.md` | 📋 To be structured from existing notes |
-| `german/kb/loc-wald.md` | 📋 To be written |
-| All fantasy/ content | 📋 To be written |
-| All scifi/ content | 📋 To be written |
+| Demo | Chapters | KB Entries | Status |
+|------|----------|------------|--------|
+| **Im stillen Wald** (German) | 2 | 6 | ✅ Complete |
+| **Echoes of the Thornwall** (Fantasy) | 4 | 13 | ✅ Complete |
+| **Dead Signal** (Sci-Fi) | 3 | 7 | ✅ Complete |
 
-The German demo has the strongest existing foundation and should be finalized first.
+### German Demo: Im stillen Wald ✅
+- **Chapters:** `ch-de-001-fluestern.md`, `ch-de-002-grenze-welten.md`
+- **KB Entries:**
+  - Characters: Anna Müller, Johann Bauer, Der Waldgeist
+  - Locations: Der stille Wald, Das Försterhaus, Das Dorf
+- **Genre:** Literarische Fiktion
+- **Good for:** German prompts, voice analysis, literary style testing
+
+### Fantasy Demo: Echoes of the Thornwall ✅
+- **Chapters:** `ch-en-001` through `ch-en-004`
+- **KB Entries:**
+  - Characters: Elara, Kaelen, Morven, Sera, Verrick
+  - Locations: Aethelgard, Silver Flame Fortress, Temple of Silent Flames, The Thornwall
+  - Objects: The Compass
+  - Factions: Ashen Covenant, Silver Flame
+  - Systems: Cataclysm, Political Structure, Void Magic
+- **Genre:** High Fantasy
+- **Good for:** KB sessions, consistency checking, plot analysis
+
+### Sci-Fi Demo: Dead Signal ✅
+- **Chapters:** `ch-en-ds-001` through `ch-en-ds-003`
+- **KB Entries:**
+  - Characters: ARIA, Kavic, Maya
+  - Locations: Earth Facility 7, Horizon
+  - Objects: Resonator
+  - Systems: Comm Systems, Tech Systems
+- **Genre:** Science Fiction / Thriller
+- **Good for:** Plot analysis, timeline tools, voice analysis
 
 ## Constraints & Edge Cases
 
@@ -265,4 +320,7 @@ The German demo has the strongest existing foundation and should be finalized fi
 ## Status & History
 
 - `project-init` — Specified for MVP
-- `project-init+1` — German demo content confirmed: chapter 1 + Waldgeist + Försterhaus exist
+- `2025-05-08` — All three demo projects completed:
+  - German: 2 chapters + 6 KB entries ✅
+  - Fantasy: 4 chapters + 13 KB entries ✅
+  - Sci-Fi: 3 chapters + 7 KB entries ✅

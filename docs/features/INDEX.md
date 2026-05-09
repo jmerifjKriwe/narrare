@@ -30,8 +30,8 @@
 ### Core Infrastructure
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [INFRA-001](infra/INFRA-001-llm-gateway.md) | LLM Gateway | 📋 | ✅ |
-| [INFRA-002](infra/INFRA-002-prompt-system.md) | Unified Prompt System | 📋 | ✅ |
+| [INFRA-001](infra/INFRA-001-llm-gateway.md) | LLM Gateway | ✅ | ✅ |
+| [INFRA-002](infra/INFRA-002-prompt-system.md) | Unified Prompt System | ✅ | ✅ |
 | [INFRA-003](infra/INFRA-003-context-assembly.md) | Context Assembly Pipeline | 📋 | ✅ |
 | [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | 📋 | ❌ |
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | 📋 | ❌ |

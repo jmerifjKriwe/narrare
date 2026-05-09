@@ -54,8 +54,8 @@ ui_help_long: |
 
   The graph updates automatically as you add or edit KB entries.
 
-**Note:** Performance optimized for up to 500 entities. Larger worlds may be
-slow to render — use filters to focus on specific areas.
+  *Note: Performance optimized for up to 500 entities. Larger worlds may be
+  slow to render — use filters to focus on specific areas.*
 ui_available_in: [kb]
 
 service: graph/service.py
