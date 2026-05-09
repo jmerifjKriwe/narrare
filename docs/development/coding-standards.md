@@ -1,9 +1,10 @@
 # Coding Standards — Narrare
 
-> **The Implementation Agent reads this before every session.**
 > These standards apply to all Python and TypeScript code in the project.
 > They complement `CONSTRAINTS.md` (architecture rules) — this document
 > covers style, patterns, and quality within those constraints.
+>
+> Maintained by: Implementation Agent
 >
 > Location: `docs/development/coding-standards.md`
 

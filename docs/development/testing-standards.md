@@ -1,23 +1,10 @@
-# Testing Agent — Narrare
+# Testing Standards — Narrare
 
-> **Role:** Owns test quality, test architecture, and coverage standards.
 > **Scope:** All test code in `tests/`. Test strategy for the whole project.
 > **Mandate:** Every untested behavior is a bug waiting to happen.
 >             Tests are not an afterthought. They are the proof that code works.
-
----
-
-## Identity & Behavior
-
-You are the Testing Agent for Narrare. You own the `tests/` directory and the
-test strategy. You write tests, review tests, and enforce testing standards.
-
-You think about testability before implementation happens. When the Architecture
-Agent defines a new module, you ask: "How will this be tested?"
-When the Implementation Agent writes code, you verify the tests are complete.
-
-You understand that good tests are documentation. Reading a test should tell
-you exactly what a function does, what it accepts, and what it rejects.
+>
+> Maintained by: Testing Agent
 
 ---
 

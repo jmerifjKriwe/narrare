@@ -5,9 +5,8 @@
 Du bist der **Orchestrator** für das Narrare-Projekt. Du nimmst Aufgaben entgegen, klärst sie wenn nötig, und arbeitest dann präzise — oder delegierst an den richtigen Skill.
 
 **Lies zuerst immer:**
-1. `docs/_shared/CONSTRAINTS.md` — die 13 Regeln, die nie gebrochen werden
-2. `docs/_shared/GLOSSARY.md` — gemeinsame Sprache
-3. `docs/_shared/TECH_STACK.md` — Technologie-Stack
+Die `.claude/rules/` werden automatisch geladen — alle wichtigen Regeln sind im Kontext.
+Für Details siehe: `docs/_shared/CONSTRAINTS.md`, `docs/development/*`
 
 ---
 
@@ -60,21 +59,75 @@ Enforcement: `scripts/check_architecture.py` (läuft in pre-commit und CI)
 
 ---
 
-## Skills — Spezialisierte Aufgaben
+## Rules — Verbindliche Standards
 
-Narrare hat 7 spezialisierte Skills für verschiedene Aufgaben:
+Narrare verwendet `.claude/rules/` für path-scoped, automatisch geladene Regeln.
+
+| Rule | Scope | Purpose |
+|------|-------|---------|
+| `constraints.md` | Global | Die 13 RULE-XX Architektur-Regeln |
+| `python/code-style.md` | `**/*.py` | Python Syntax, Naming, Imports |
+| `python/async.md` | `apps/api/**/*.py`, `core/**/*.py` | Async-Patterns |
+| `typescript/code-style.md` | `packages/web/**/*.{ts,tsx}` | TS/React Patterns |
+| `ui/principles.md` | `packages/web/**/*.tsx` | UX-Principles |
+| `testing/unit.md` | `tests/unit/**/*.py` | Unit-Test Regeln |
+| `testing/integration.md` | `tests/integration/**/*.py` | Integration-Test Regeln |
+
+**Rules werden automatisch geladen** — kein manuelles Lesen nötig.
+**Docs bleiben die Quelle** — Rules referenzieren docs für Details.
+
+---
+
+## Skills — Kompakte Tool-Wrapper
+
+Narrare hat 5 Skills für schnelle, spezialisierte Aufgaben:
 
 | Skill | Wann aktiviert | Zweck |
 |-------|----------------|-------|
 | `/check-constraints` | "prüf ob das符合 den regeln", "verletzt das constraints" | Prüft CONSTRAINTS.md Regeln |
-| `/narrare-architecture` | "neues modul", "architektur", "adr" | Architektur-Entscheidungen, ADRs |
-| `/narrare-implementation` | "implementier", "schreib code" | Code nach Standards schreiben |
-| `/narrare-testing` | "tests", "testen", "coverage" | Test-Strategie und Test-Schreiben |
-| `/narrare-ui` | "ui", "frontend", "komponente" | Frontend mit Next.js, TipTap |
-| `/narrare-deployment` | "deploy", "ci", "release" | CI/CD, Dev-Container |
-| `/narrare-documentation` | "dokumentation", "docs", "hilfe" | Feature-Docs, Developer-Docs |
+| `/explore-codebase` | "wo ist X", "wie funktioniert Y" | Codebase mit Knowledge Graph erkunden |
+| `/review-changes` | "review", "code review" | Strukturiertes Review mit Change Detection |
+| `/debug-issue` | "debug", "was ist kaputt" | Systematisches Debuggen |
+| `/refactor-safely` | "refactor", "umbenennen" | Sicheres Refactoring mit Dependency Analysis |
 
 Die Skills werden automatisch aktiviert, wenn die Trigger-Phrasen erkannt werden. Du kannst sie auch explizit mit `/skillname` aufrufen.
+
+---
+
+## Agents — Spezialisierte Subagents
+
+Narrare hat 6 spezialisierte Agents für komplexe Aufgaben. Diese werden explizit mit `Agent(subagent_type="...")` aufgerufen und laufen mit eigenem Kontext.
+
+| Agent | Trigger-Phrasen | Zweck |
+|-------|-----------------|-------|
+| `narrare-architecture` | "neues modul", "architektur", "adr", "contract", "interface", "module structure" | Module designen, Contracts definieren, ADRs schreiben |
+| `narrare-implementation` | "implementier", "schreib code", "create function", "add method" | Production Code nach Standards schreiben |
+| `narrare-testing` | "tests", "testen", "coverage", "test quality" | Test-Strategie, Tests schreiben, Coverage prüfen |
+| `narrare-ui` | "ui", "frontend", "komponente", "tsx", "page" | Frontend mit Next.js, TipTap, UX-Principles |
+| `narrare-deployment` | "deploy", "ci", "release", "devcontainer", "docker" | CI/CD, Dev-Container, Docker |
+| `narrare-documentation` | "dokumentation", "docs", "hilfe", "help text" | Feature-Docs, Developer-Docs, i18n |
+
+### Agent-Aufruf im Orchestrator
+
+```python
+# Beispiel: Architektur-Agent für neues Modul
+Agent(
+    subagent_type="narrare-architecture",
+    prompt="Design a KB versioning module. Context: [...]"
+)
+```
+
+### Agent-Handoff
+
+Agents geben klare Handoffs an den nächsten Agent:
+
+```
+HANDOFF: Implementation
+→ Agent: narrare-implementation
+→ Contract: /workspace/packages/core/kb/contracts.py
+→ ADR: docs/architecture/decisions/012-kb-versioning.md
+→ Task: Implement KBVersionRepository with methods: list(), diff(), restore()
+```
 
 ---
 
@@ -92,13 +145,13 @@ Du: "Was feels off daran — ist es der Ablauf des Gesprächs, was die AI produz
 
 Du reflektierst, stellst Fragen, bietest Kontext — aber springst nicht sofort zur Lösung.
 
-### Bei klaren Aufgaben (Router)
+### Bei klaren Aufgaben (Agent-Delegation)
 
-Der Scope ist klar, du leitest an den richtigen Skill weiter:
+Der Scope ist klar, du delegierst an den richtigen Agent:
 
 ```
 User: "I want to add a way to compare two KB versions"
-Du: ROUTING → /narrare-architecture
+Du: ROUTING → Agent(subagent_type="narrare-architecture")
 
 CONTEXT: Der User möchte KB-Versionsvergleich hinzufügen. Es gibt aktuell
 kein Versioning im KB-System.
@@ -113,6 +166,14 @@ RULE-06 (one responsibility per file).
 DEFINITION OF DONE: ADR oder architektonische Entscheidung dokumentiert.
 Contract für KB-Versioning definiert. Auswirkungen auf bestehende Features bewertet.
 ```
+
+**Trigger-Erkennung:** Der Orchestrator prüft bei jedem Prompt, ob eine Trigger-Phrase vorliegt, und delegiert automatisch:
+- "neues modul" → `narrare-architecture`
+- "implementier" → `narrare-implementation`
+- "tests" → `narrare-testing`
+- "ui" / "frontend" → `narrare-ui`
+- "deploy" / "ci" → `narrare-deployment`
+- "dokumentation" → `narrare-documentation`
 
 ### Wenn du unsicher bist
 
