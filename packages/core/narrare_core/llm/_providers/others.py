@@ -10,8 +10,8 @@ from pydantic_ai.models.openai import OpenAIModel
 
 from narrare_core.llm._providers.registry import register
 
-
 # --- Google ---
+
 
 def _make_google(model_id: str) -> GoogleModel:
     """Gemini models via Google AI. API key from GOOGLE_API_KEY."""
@@ -23,6 +23,7 @@ register("google", _make_google)
 
 # --- Groq ---
 
+
 def _make_groq(model_id: str) -> GroqModel:
     """Fast inference via Groq. API key from GROQ_API_KEY."""
     return GroqModel(model_id)
@@ -32,6 +33,7 @@ register("groq", _make_groq)
 
 
 # --- OpenRouter ---
+
 
 def _make_openrouter(model_id: str) -> OpenAIModel:
     """

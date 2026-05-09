@@ -8,7 +8,6 @@ Non-retryable: auth failure, context too large, invalid request.
 from __future__ import annotations
 
 import asyncio
-import logging
 import random
 from dataclasses import dataclass
 
@@ -46,13 +45,13 @@ class RetryConfig:
     """Configuration for retry behavior."""
 
     max_attempts: int
-    base_delay: float = 1.0      # seconds
-    max_delay: float = 60.0      # seconds
-    jitter: bool = True          # add random jitter to avoid thundering herd
+    base_delay: float = 1.0  # seconds
+    max_delay: float = 60.0  # seconds
+    jitter: bool = True  # add random jitter to avoid thundering herd
 
     def delay_for_attempt(self, attempt: int) -> float:
         """Calculate delay for a given attempt number (0-indexed)."""
-        delay = min(self.base_delay * (2 ** attempt), self.max_delay)
+        delay = min(self.base_delay * (2**attempt), self.max_delay)
         if self.jitter:
             delay *= 0.5 + random.random() * 0.5  # noqa: S311
         return delay

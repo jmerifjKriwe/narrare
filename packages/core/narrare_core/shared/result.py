@@ -78,4 +78,4 @@ type Result[T, E] = Ok[T] | Err[E]
 # Re-export Never for type stubs
 from typing import Never
 
-__all__ = ["Ok", "Err", "Result"]
+__all__ = ["Err", "Ok", "Result"]

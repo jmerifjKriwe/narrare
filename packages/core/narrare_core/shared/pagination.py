@@ -39,7 +39,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
         items: list[T],
         total: int,
         params: PaginationParams,
-    ) -> "PaginatedResponse[T]":
+    ) -> PaginatedResponse[T]:
         pages = max(1, (total + params.page_size - 1) // params.page_size)
         return cls(
             items=items,

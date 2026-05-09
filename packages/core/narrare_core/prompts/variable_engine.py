@@ -61,6 +61,7 @@ def substitute(
     Raises:
         PromptVariableError: If strict=True and a variable is missing.
     """
+
     def replacer(match: re.Match[str]) -> str:
         name = match.group(1)
         if name in variables:

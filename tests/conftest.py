@@ -1,12 +1,10 @@
 """
 Root test configuration and shared fixtures.
 """
+
 from __future__ import annotations
 
 import os
-
-import pytest
-
 
 # Ensure test environment is set before any imports
 os.environ.setdefault("ENVIRONMENT", "test")
@@ -21,6 +19,7 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 # ---------------------------------------------------------------------------
 # Architecture constraint test
 # ---------------------------------------------------------------------------
+
 
 def test_architecture_constraints() -> None:
     """

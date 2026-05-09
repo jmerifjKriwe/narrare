@@ -8,7 +8,7 @@ import pytest
 
 from narrare_core.llm.gateway import LLMGateway
 from narrare_core.llm.intents import LLMIntent
-from narrare_core.llm.result import LLMResult, StreamChunk
+from narrare_core.llm.result import LLMResult
 from narrare_core.llm.retry import NO_RETRY
 from narrare_core.shared.errors import (
     LLMAuthError,
@@ -68,9 +68,7 @@ class TestLLMGatewayRun:
 
     async def test_raises_domain_error_on_failure(self, gateway: LLMGateway) -> None:
         mock_agent = MagicMock()
-        mock_agent.run = AsyncMock(
-            side_effect=Exception("401 Unauthorized invalid api key")
-        )
+        mock_agent.run = AsyncMock(side_effect=Exception("401 Unauthorized invalid api key"))
 
         with patch.object(gateway, "_make_agent", return_value=mock_agent):
             with pytest.raises(LLMAuthError):

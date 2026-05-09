@@ -19,9 +19,9 @@ from pathlib import Path
 
 import structlog
 
+from narrare_core.prompts.variable_engine import substitute
 from narrare_core.shared.file_utils import read_text_or_none
 from narrare_core.shared.frontmatter import strip_frontmatter
-from narrare_core.prompts.variable_engine import substitute
 
 logger = structlog.get_logger(__name__)
 
@@ -94,9 +94,7 @@ class MetaPromptLoader:
                 self._project_root / ".narrare" / "prompts" / "meta" / language / filename
             )
 
-        search_paths.append(
-            self._user_config_dir / "prompts" / "meta" / language / filename
-        )
+        search_paths.append(self._user_config_dir / "prompts" / "meta" / language / filename)
         search_paths.append(self._bundled_root / "meta" / language / filename)
 
         if language != "en":

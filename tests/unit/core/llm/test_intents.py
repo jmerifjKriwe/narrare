@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from narrare_core.llm.intents import LLMIntent, get_model_config, MODEL_ROUTING
+from narrare_core.llm.intents import MODEL_ROUTING, LLMIntent, get_model_config
 
 
 class TestLLMIntent:
@@ -14,8 +14,7 @@ class TestLLMIntent:
             if intent == LLMIntent.EMBED:
                 continue
             assert intent in MODEL_ROUTING, (
-                f"LLMIntent.{intent.name} has no entry in MODEL_ROUTING. "
-                "Add one in llm/intents.py."
+                f"LLMIntent.{intent.name} has no entry in MODEL_ROUTING. Add one in llm/intents.py."
             )
 
     def test_get_model_config_returns_config(self) -> None:

@@ -6,7 +6,6 @@ import pytest
 
 from narrare_core.llm.retry import (
     DEFAULT_RETRY,
-    FAST_RETRY,
     RetryConfig,
     is_retryable,
     with_retry,

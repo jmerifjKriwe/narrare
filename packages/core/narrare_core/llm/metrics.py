@@ -9,10 +9,9 @@ Prometheus metrics are exposed at /metrics by the API.
 
 from __future__ import annotations
 
-from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import Counter, Histogram
 
 from narrare_core.llm.result import TokenUsage
-
 
 # ---------------------------------------------------------------------------
 # Prometheus metrics
@@ -54,6 +53,7 @@ llm_retry_attempts_total = Counter(
 # Recording functions — called by the gateway
 # ---------------------------------------------------------------------------
 
+
 def record_success(
     *,
     intent: str,
@@ -63,25 +63,19 @@ def record_success(
     duration_seconds: float,
 ) -> None:
     """Record a successful LLM call."""
-    llm_requests_total.labels(
-        intent=intent, model=model, provider=provider, status="success"
-    ).inc()
+    llm_requests_total.labels(intent=intent, model=model, provider=provider, status="success").inc()
 
-    llm_tokens_total.labels(
-        intent=intent, model=model, token_type="prompt"
-    ).inc(usage.prompt_tokens)
+    llm_tokens_total.labels(intent=intent, model=model, token_type="prompt").inc(
+        usage.prompt_tokens
+    )
 
-    llm_tokens_total.labels(
-        intent=intent, model=model, token_type="completion"
-    ).inc(usage.completion_tokens)
+    llm_tokens_total.labels(intent=intent, model=model, token_type="completion").inc(
+        usage.completion_tokens
+    )
 
-    llm_request_duration_seconds.labels(
-        intent=intent, model=model
-    ).observe(duration_seconds)
+    llm_request_duration_seconds.labels(intent=intent, model=model).observe(duration_seconds)
 
-    llm_cost_usd_total.labels(
-        intent=intent, model=model
-    ).inc(usage.cost_estimate_usd)
+    llm_cost_usd_total.labels(intent=intent, model=model).inc(usage.cost_estimate_usd)
 
 
 def record_failure(
@@ -93,17 +87,11 @@ def record_failure(
     duration_seconds: float,
 ) -> None:
     """Record a failed LLM call."""
-    llm_requests_total.labels(
-        intent=intent, model=model, provider=provider, status="error"
-    ).inc()
+    llm_requests_total.labels(intent=intent, model=model, provider=provider, status="error").inc()
 
-    llm_request_duration_seconds.labels(
-        intent=intent, model=model
-    ).observe(duration_seconds)
+    llm_request_duration_seconds.labels(intent=intent, model=model).observe(duration_seconds)
 
 
 def record_retry(*, intent: str, error_type: str) -> None:
     """Record a retry attempt."""
-    llm_retry_attempts_total.labels(
-        intent=intent, error_type=error_type
-    ).inc()
+    llm_retry_attempts_total.labels(intent=intent, error_type=error_type).inc()

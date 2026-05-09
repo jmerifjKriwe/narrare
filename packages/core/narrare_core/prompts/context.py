@@ -45,16 +45,16 @@ class PromptContext:
     style_profile: str = ""
 
     # --- Chapter context ---
-    mode: str = ""                     # writing mode: new_chapter, extend, etc.
+    mode: str = ""  # writing mode: new_chapter, extend, etc.
     chapter_title: str = ""
-    existing_content: str = ""        # for extend/rewrite operations
-    author_instructions: str = ""     # explicit instructions from the writer
+    existing_content: str = ""  # for extend/rewrite operations
+    author_instructions: str = ""  # explicit instructions from the writer
     previous_chapter_summary: str = ""
     next_chapter_hint: str = ""
 
     # --- KB context ---
     kb_context_entries: list[KBContextEntry] = field(default_factory=list)
-    kb_summary: str = ""              # compact list of all KB entities
+    kb_summary: str = ""  # compact list of all KB entities
 
     # --- Entity context (KB sessions) ---
     entity_type: str = ""
@@ -107,7 +107,5 @@ class PromptContext:
             return ""
         parts = []
         for entry in entries:
-            parts.append(
-                f"### {entry.entity_type.title()}: {entry.name}\n{entry.content}"
-            )
+            parts.append(f"### {entry.entity_type.title()}: {entry.name}\n{entry.content}")
         return "\n\n".join(parts)

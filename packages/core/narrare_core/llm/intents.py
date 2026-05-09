@@ -12,47 +12,47 @@ No service code changes needed.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum
-from dataclasses import dataclass, field
 
 
 class LLMIntent(StrEnum):
     """All possible LLM operation intents in Narrare."""
 
     # Writing operations
-    WRITE = "write"               # Generate new chapter content
-    EXTEND = "extend"             # Extend existing content
-    REWRITE = "rewrite"           # Rewrite a selection
-    CO_AUTHOR = "co_author"       # Collaborative writing turn
+    WRITE = "write"  # Generate new chapter content
+    EXTEND = "extend"  # Extend existing content
+    REWRITE = "rewrite"  # Rewrite a selection
+    CO_AUTHOR = "co_author"  # Collaborative writing turn
 
     # Analysis operations
-    ANALYSE = "analyse"           # General analysis (readability, POV, etc.)
-    SENTIMENT = "sentiment"       # Sentiment analysis
-    CONSISTENCY = "consistency"   # Consistency checking
-    BETA_READ = "beta_read"       # Beta reader simulation
-    VOICE = "voice"               # Voice/style analysis
+    ANALYSE = "analyse"  # General analysis (readability, POV, etc.)
+    SENTIMENT = "sentiment"  # Sentiment analysis
+    CONSISTENCY = "consistency"  # Consistency checking
+    BETA_READ = "beta_read"  # Beta reader simulation
+    VOICE = "voice"  # Voice/style analysis
 
     # Knowledge base operations
-    KB_CREATE = "kb_create"       # Interactive KB entity creation
-    KB_IMPROVE = "kb_improve"     # KB entry improvement
-    KB_EXTRACT = "kb_extract"     # Extract entities from text
+    KB_CREATE = "kb_create"  # Interactive KB entity creation
+    KB_IMPROVE = "kb_improve"  # KB entry improvement
+    KB_EXTRACT = "kb_extract"  # Extract entities from text
 
     # Planning operations
-    PLAN = "plan"                 # Scene/structure planning
-    SUMMARIZE = "summarize"       # Chapter/section summarization
+    PLAN = "plan"  # Scene/structure planning
+    SUMMARIZE = "summarize"  # Chapter/section summarization
 
     # Extraction operations
-    EXTRACT = "extract"           # General structured extraction
-    SUGGEST = "suggest"           # Quick suggestions (inline, KB, titles)
+    EXTRACT = "extract"  # General structured extraction
+    SUGGEST = "suggest"  # Quick suggestions (inline, KB, titles)
 
     # Chat
-    CHAT = "chat"                 # General story assistant chat
+    CHAT = "chat"  # General story assistant chat
 
     # Research
-    RESEARCH = "research"         # Web research synthesis
+    RESEARCH = "research"  # Web research synthesis
 
     # Embeddings (handled separately via embeddings.py)
-    EMBED = "embed"               # Text embedding (not routed via gateway)
+    EMBED = "embed"  # Text embedding (not routed via gateway)
 
 
 @dataclass(frozen=True, slots=True)

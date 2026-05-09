@@ -19,8 +19,6 @@ import time
 import openai
 import structlog
 
-from narrare_core.llm.metrics import record_success
-from narrare_core.llm.result import TokenUsage
 from narrare_core.shared.errors import EmbeddingError
 
 logger = structlog.get_logger(__name__)

@@ -129,7 +129,7 @@ class EmbeddingError(NarrareError):
     """Error generating or storing embeddings."""
 
 
-class MemoryError(NarrareError):  # noqa: A001 (shadows builtin in this scope only)
+class MemoryError(NarrareError):
     """Error in the memory layer."""
 
 

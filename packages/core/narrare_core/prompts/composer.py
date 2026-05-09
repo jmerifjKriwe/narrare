@@ -18,7 +18,7 @@ from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 from narrare_core.prompts.meta import MetaPromptLoader
 from narrare_core.prompts.registry import PromptRegistry
-from narrare_core.prompts.variable_engine import substitute, validate_variables
+from narrare_core.prompts.variable_engine import substitute
 
 logger = structlog.get_logger(__name__)
 

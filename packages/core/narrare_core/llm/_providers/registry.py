@@ -87,11 +87,11 @@ def infer_provider(model_id: str) -> str:
         return "zai"
     if lower.startswith("gemini"):
         return "google"
-    if lower.startswith("ollama/") or "/" not in lower and lower.startswith("llama"):
+    if lower.startswith("ollama/") or ("/" not in lower and lower.startswith("llama")):
         return "ollama"
     if lower.startswith("openrouter/"):
         return "openrouter"
-    if lower.startswith("mixtral") or lower.startswith("llama") and "/" not in lower:
+    if lower.startswith("mixtral") or (lower.startswith("llama") and "/" not in lower):
         return "groq"
 
     # Default fallback — try openai-compatible

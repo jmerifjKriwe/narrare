@@ -24,7 +24,7 @@ import structlog
 
 from narrare_core.shared.errors import PromptNotFoundError
 from narrare_core.shared.file_utils import read_text_or_none
-from narrare_core.shared.frontmatter import parse_frontmatter, extract_section
+from narrare_core.shared.frontmatter import extract_section, parse_frontmatter
 
 logger = structlog.get_logger(__name__)
 
@@ -67,7 +67,7 @@ class PromptRegistry:
         mode: str,
         genre: str | None = None,
         db_content: str | None = None,
-    ) -> "ResolvedPrompt":
+    ) -> ResolvedPrompt:
         """
         Resolve a prompt file for the given parameters via cascade.
 
@@ -172,7 +172,7 @@ class PromptRegistry:
         category: str,
         language: str,
         mode: str,
-    ) -> "ResolvedPrompt":
+    ) -> ResolvedPrompt:
         """Parse a prompt file into its components."""
         parsed = parse_frontmatter(content)
         body = parsed.content
@@ -195,13 +195,13 @@ class ResolvedPrompt:
     """A resolved and parsed prompt ready for variable substitution."""
 
     __slots__ = (
-        "system_prompt",
-        "first_message",
-        "source",
         "category",
+        "first_message",
         "language",
-        "mode",
         "metadata",
+        "mode",
+        "source",
+        "system_prompt",
     )
 
     def __init__(

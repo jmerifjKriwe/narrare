@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from narrare_core.llm.intents import LLMIntent
-from narrare_core.prompts.composer import PromptComposer, ComposedPrompt
+from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.prompts.context import PromptContext
 from narrare_core.prompts.registry import ResolvedPrompt
 
@@ -64,9 +63,7 @@ class TestPromptComposerBuild:
         assert result.system.startswith("You are a writing assistant.")
         assert "System." in result.system
 
-    async def test_user_prompt_overrides_first_message(
-        self, composer: PromptComposer
-    ) -> None:
+    async def test_user_prompt_overrides_first_message(self, composer: PromptComposer) -> None:
         ctx = PromptContext(language="en")
         result = await composer.build(LLMIntent.WRITE, ctx, user_prompt="Custom prompt.")
         assert result.user == "Custom prompt."
