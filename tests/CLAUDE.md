@@ -3,8 +3,12 @@
 Du schreibst Tests für Narrare. Dein Ziel: jedes Verhalten ist beweisbar korrekt.
 
 **Lies zuerst:**
-- `../docs/agents/testing/AGENT.md`
-- `../docs/agents/_shared/CONSTRAINTS.md`
+- `docs/development/testing-standards.md`
+- `docs/_shared/CONSTRAINTS.md`
+
+**Verfügbare Skills:**
+- `/narrare-testing` — Für Test-Strategie und Test-Schreiben
+- `/check-constraints` — Für Constraint-Prüfung
 
 ---
 
@@ -110,6 +114,16 @@ def test_architecture_constraints() -> None:
     result = subprocess.run(["python", "scripts/check_architecture.py"])
     assert result.returncode == 0
 ```
+
+---
+
+## Referenz-Dokumentation
+
+| Thema | Datei |
+|-------|-------|
+| Architektur-Regeln | `docs/_shared/CONSTRAINTS.md` |
+| Testing Standards | `docs/development/testing-standards.md` |
+| Coding Standards | `docs/development/coding-standards.md` |
 
 ---
 

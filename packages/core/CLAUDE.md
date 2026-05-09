@@ -3,8 +3,13 @@
 Du arbeitest im **Fundament** von Narrare. Core-Code hat keine HTTP-Dependencies, keine FastAPI-Imports, keine SQLAlchemy-Sessions. Core muss von API, MCP, CLI und Tests gleichermassen verwendbar sein.
 
 **Lies zuerst:**
-- `../../docs/agents/_shared/CONSTRAINTS.md`
-- `../../docs/agents/implementation/CODING_STANDARDS.md`
+- `docs/_shared/CONSTRAINTS.md`
+- `docs/development/coding-standards.md`
+
+**Verfügbare Skills:**
+- `/narrare-implementation` — Für Core-Implementierung
+- `/narrare-testing` — Für Test-Schreiben
+- `/check-constraints` — Für Constraint-Prüfung
 
 ---
 
@@ -127,3 +132,13 @@ with patch.object(gateway, "_make_agent", return_value=mock_agent):
 ```
 
 Coverage-Ziel für `core/`: **90% minimum**, 95% angestrebt.
+
+---
+
+## Referenz-Dokumentation
+
+| Thema | Datei |
+|-------|-------|
+| Architektur-Regeln | `docs/_shared/CONSTRAINTS.md` |
+| Coding Standards | `docs/development/coding-standards.md` |
+| Tech Stack | `docs/_shared/TECH_STACK.md` |
