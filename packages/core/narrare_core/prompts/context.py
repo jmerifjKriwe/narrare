@@ -53,7 +53,7 @@ class PromptContext:
     next_chapter_hint: str = ""
 
     # --- KB context ---
-    kb_context_entries: list[KBContextEntry] = field(default_factory=list)
+    kb_context_entries: list[KBContextEntry] = field(default_factory=list)  # type: ignore[reportUnknownVariableType]
     kb_summary: str = ""  # compact list of all KB entities
 
     # --- Entity context (KB sessions) ---
@@ -70,7 +70,7 @@ class PromptContext:
     # --- Extra variables ---
     # For feature-specific variables not covered above.
     # Keys must be valid Python identifiers.
-    extra: dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)  # type: ignore[reportUnknownVariableType]
 
     def as_variables(self) -> dict[str, str]:
         """
@@ -88,9 +88,9 @@ class PromptContext:
             if isinstance(value, list):
                 # Format KB entries as readable text block
                 if value and isinstance(value[0], KBContextEntry):
-                    variables[f_name] = self._format_kb_entries(value)
+                    variables[f_name] = self._format_kb_entries(value)  # type: ignore[reportUnknownArgumentType]
                 else:
-                    variables[f_name] = "\n".join(str(v) for v in value)
+                    variables[f_name] = "\n".join(str(v) for v in value)  # type: ignore[reportUnknownVariableType, reportUnknownArgumentType]
             else:
                 variables[f_name] = str(value) if value is not None else ""
 
@@ -105,7 +105,7 @@ class PromptContext:
         """Format KB entries as a readable text block for injection."""
         if not entries:
             return ""
-        parts = []
+        parts: list[str] = []
         for entry in entries:
-            parts.append(f"### {entry.entity_type.title()}: {entry.name}\n{entry.content}")
+            parts.append(f"### {entry.entity_type.title()}: {entry.name}\n{entry.content}")  # type: ignore[reportUnknownMemberType]
         return "\n\n".join(parts)

@@ -36,10 +36,19 @@ typeCheckingMode = "strict"
 reportMissingImports = true
 reportMissingTypeStubs = false
 
-# Strict-Mode-Abschwächungen (pragmatisch für Python-Projekte)
-reportUnknownMemberType = false
-reportUnknownVariableType = false
-reportUnknownArgumentType = false
+# PERFORMANCE: venv explizit setzen (verhindert Scannen der venv)
+venvPath = "."
+venv = ".venv"
+
+# PERFORMANCE: Kein Tiefen-Parsen von externen Bibliotheken
+useLibraryCodeForTypes = false
+
+# Strict-Regeln: Die wichtigsten 3 aktivieren
+reportUnknownMemberType = true
+reportUnknownVariableType = true
+reportUnknownArgumentType = true
+
+# Diese bleiben deaktiviert (zu noisy für Python)
 reportUnknownLambdaType = false
 reportUnknownParameterType = false
 reportMissingParameterType = false
@@ -57,6 +66,9 @@ include = [
 exclude = [
   # Versteckte Dateien/Verzeichnisse
   "**/.*",
+
+  # Virtual Environment (explizit, Performance)
+  ".venv",
 
   # Python/Caches
   "__pycache__",

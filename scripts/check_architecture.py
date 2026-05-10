@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 
 
-def load_config() -> dict:  # type: ignore[type-arg]
+def load_config() -> dict[str, object]:
     config_path = ROOT / "pyproject.toml"
     with config_path.open("rb") as f:
         data = tomllib.load(f)
@@ -50,8 +50,8 @@ class Violation:
 
 @dataclass
 class CheckResult:
-    violations: list[Violation] = field(default_factory=list)
-    approved_exceptions: list[Violation] = field(default_factory=list)
+    violations: list[Violation] = field(default_factory=list)  # type: ignore[reportUnknownVariableType]
+    approved_exceptions: list[Violation] = field(default_factory=list)  # type: ignore[reportUnknownVariableType]
     files_checked: int = 0
 
 
@@ -99,7 +99,7 @@ def check_llm_imports(
     if any(rel_path.startswith(m.rstrip("/")) for m in allowed_modules):
         return []
 
-    violations = []
+    violations: list[Violation] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import | ast.ImportFrom):
             if isinstance(node, ast.Import):
@@ -119,8 +119,8 @@ def check_llm_imports(
                         approved=approved,
                         approval_reason=reason,
                     )
-                    violations.append(v)
-    return violations
+                    violations.append(v)  # type: ignore[reportUnknownMemberType]
+    return violations  # type: ignore[reportUnknownVariableType]
 
 
 def check_llm_urls(
@@ -134,12 +134,12 @@ def check_llm_urls(
     if any(rel_path.startswith(m.rstrip("/")) for m in allowed_modules):
         return []
 
-    violations = []
+    violations: list[Violation] = []
     for i, line in enumerate(source_lines, 1):
         for url in forbidden_urls:
             if url in line:
                 approved, reason = is_approved_exception(source_lines, i)
-                violations.append(
+                violations.append(  # type: ignore[reportUnknownMemberType]
                     Violation(
                         file=Path(rel_path),
                         line=i,
@@ -149,7 +149,7 @@ def check_llm_urls(
                         approval_reason=reason,
                     )
                 )
-    return violations
+    return violations  # type: ignore[reportUnknownVariableType]
 
 
 def check_prompt_building(
@@ -170,7 +170,7 @@ def check_prompt_building(
         "user_message",
     }
 
-    violations = []
+    violations: list[Violation] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign):
             continue
@@ -181,7 +181,7 @@ def check_prompt_building(
                 continue
             if isinstance(node.value, ast.JoinedStr):  # f-string
                 approved, reason = is_approved_exception(source_lines, node.lineno)
-                violations.append(
+                violations.append(  # type: ignore[reportUnknownMemberType]
                     Violation(
                         file=Path(rel_path),
                         line=node.lineno,
@@ -191,7 +191,7 @@ def check_prompt_building(
                         approval_reason=reason,
                     )
                 )
-    return violations
+    return violations  # type: ignore[reportUnknownVariableType]
 
 
 def check_bare_except(
@@ -199,13 +199,13 @@ def check_bare_except(
     tree: ast.AST,
 ) -> list[Violation]:
     """RULE-11: No silent exception swallowing."""
-    violations = []
+    violations: list[Violation] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.ExceptHandler):
             continue
         # Bare except: (no type specified)
         if node.type is None:
-            violations.append(
+            violations.append(  # type: ignore[reportUnknownMemberType]
                 Violation(
                     file=Path(rel_path),
                     line=node.lineno,
@@ -221,7 +221,7 @@ def check_bare_except(
             and len(node.body) == 1
             and isinstance(node.body[0], ast.Pass)
         ):
-            violations.append(
+            violations.append(  # type: ignore[reportUnknownMemberType]
                 Violation(
                     file=Path(rel_path),
                     line=node.lineno,
@@ -229,7 +229,7 @@ def check_bare_except(
                     detail="'except Exception: pass' silently swallows all errors",
                 )
             )
-    return violations
+    return violations  # type: ignore[reportUnknownVariableType]
 
 
 def check_file_size(
@@ -311,18 +311,18 @@ def scan_file(
         )
         return
 
-    allowed_llm = config.get("llm_allowed_modules", [])
-    allowed_prompts = config.get("prompt_allowed_modules", [])
-    forbidden_imports = config.get("forbidden_llm_imports", [])
-    forbidden_urls = config.get("forbidden_llm_urls", [])
-    size_limits = config.get("file_size_limits", {})
+    allowed_llm: list[str] = config.get("llm_allowed_modules", []) or []  # type: ignore[reportUnknownVariableType, reportUnknownMemberType, reportUnknownArgumentType]
+    allowed_prompts: list[str] = config.get("prompt_allowed_modules", []) or []  # type: ignore[reportUnknownVariableType, reportUnknownMemberType, reportUnknownArgumentType]
+    forbidden_imports: list[str] = config.get("forbidden_llm_imports", []) or []  # type: ignore[reportUnknownVariableType, reportUnknownMemberType, reportUnknownArgumentType]
+    forbidden_urls: list[str] = config.get("forbidden_llm_urls", []) or []  # type: ignore[reportUnknownVariableType, reportUnknownMemberType, reportUnknownArgumentType]
+    size_limits: dict[str, int] = config.get("file_size_limits", {}) or {}  # type: ignore[reportUnknownVariableType, reportUnknownMemberType, reportUnknownArgumentType]
 
     all_violations = (
-        check_llm_imports(rel_path, tree, source_lines, allowed_llm, forbidden_imports)
-        + check_llm_urls(rel_path, source, source_lines, allowed_llm, forbidden_urls)
-        + check_prompt_building(rel_path, tree, source_lines, allowed_prompts)
+        check_llm_imports(rel_path, tree, source_lines, allowed_llm, forbidden_imports)  # type: ignore[reportUnknownArgumentType]
+        + check_llm_urls(rel_path, source, source_lines, allowed_llm, forbidden_urls)  # type: ignore[reportUnknownArgumentType]
+        + check_prompt_building(rel_path, tree, source_lines, allowed_prompts)  # type: ignore[reportUnknownArgumentType]
         + check_bare_except(rel_path, tree)
-        + check_file_size(rel_path, source_lines, size_limits)
+        + check_file_size(rel_path, source_lines, size_limits)  # type: ignore[reportUnknownArgumentType]
     )
 
     for v in all_violations:

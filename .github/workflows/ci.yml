@@ -122,6 +122,10 @@ jobs:
         run: uv sync --all-packages --group dev
 
       - name: Run unit tests
+        env:
+          # Dummy API keys for unit tests (tests mock all LLM calls)
+          ANTHROPIC_API_KEY: sk-test-dummy
+          OPENAI_API_KEY: sk-test-dummy
         run: |
           uv run pytest tests/unit/ \
             --cov \

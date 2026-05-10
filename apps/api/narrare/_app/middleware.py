@@ -34,11 +34,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             duration_ms = round((time.monotonic() - start) * 1000)
             logger.info(
                 "http_request",
-                status=response.status_code,
+                status=response.status_code,  # type: ignore[reportUnknownMemberType]
                 duration_ms=duration_ms,
             )
-            response.headers["X-Request-ID"] = request_id
-            return response
+            response.headers["X-Request-ID"] = request_id  # type: ignore[reportUnknownMemberType]
+            return response  # type: ignore[reportUnknownVariableType]
         except Exception as e:
             duration_ms = round((time.monotonic() - start) * 1000)
             logger.error("http_request_error", error=str(e), duration_ms=duration_ms)

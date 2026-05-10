@@ -208,14 +208,14 @@ class DemoLoader:
             raw = kb_file.read_text(encoding="utf-8")
             parsed = parse_frontmatter(raw)
 
-            entry = KBEntry(
+            entry: KBEntry = KBEntry(  # type: ignore[reportUnknownVariableType]
                 novel_id=novel_id,
                 entity_type=parsed.get("type", "character"),
                 name=parsed.get("name", kb_file.stem),
                 content=parsed.content,
                 status=parsed.get("status", "draft"),
             )
-            self._session.add(entry)
+            self._session.add(entry)  # type: ignore[reportUnknownArgumentType]
 
         await self._session.flush()
         logger.debug("demo_kb_loaded", count=len(kb_files))

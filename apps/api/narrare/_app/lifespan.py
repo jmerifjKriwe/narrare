@@ -31,8 +31,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     try:
         from narrare.tasks.broker import broker  # type: ignore[import]
 
-        if not broker.is_worker_process:
-            await broker.startup()
+        if not broker.is_worker_process:  # type: ignore[reportUnknownMemberType]
+            await broker.startup()  # type: ignore[reportUnknownMemberType]
             logger.info("taskiq_broker_started")
     except ImportError:
         pass  # Tasks not yet configured in Phase 2
@@ -47,8 +47,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     try:
         from narrare.tasks.broker import broker  # type: ignore[import]
 
-        if not broker.is_worker_process:
-            await broker.shutdown()
+        if not broker.is_worker_process:  # type: ignore[reportUnknownMemberType]
+            await broker.shutdown()  # type: ignore[reportUnknownMemberType]
     except ImportError:
         pass
 

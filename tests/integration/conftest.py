@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 import pytest
 import sqlalchemy
@@ -12,15 +13,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from narrare._app.database import Base, get_async_session
 from narrare._app.main import create_app
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_test",
 )
 
 
-def pytest_configure(config) -> None:
+def pytest_configure(config: object) -> None:
     """Register custom markers."""
-    config.addinivalue_line("markers", "requires_db: marks tests requiring database connection")
+    config.addinivalue_line("markers", "requires_db: marks tests requiring database connection")  # type: ignore[reportUnknownMemberType]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -47,14 +51,14 @@ async def test_engine():
 
 
 @pytest.fixture
-async def db_session(test_engine):
+async def db_session(test_engine: object) -> AsyncGenerator[AsyncSession]:  # type: ignore[reportUnknownParameterType]
     """Transaction-wrapped session — rolls back after each test."""
-    async with test_engine.connect() as conn:
-        await conn.begin()
-        session = AsyncSession(bind=conn, expire_on_commit=False)
+    async with test_engine.connect() as conn:  # type: ignore[reportUnknownMemberType]
+        await conn.begin()  # type: ignore[reportUnknownMemberType]
+        session = AsyncSession(bind=conn, expire_on_commit=False)  # type: ignore[reportUnknownArgumentType]
         yield session
         await session.close()
-        await conn.rollback()
+        await conn.rollback()  # type: ignore[reportUnknownMemberType]
 
 
 @pytest.fixture

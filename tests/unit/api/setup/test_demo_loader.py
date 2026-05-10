@@ -76,10 +76,10 @@ class TestLoadChapters:
 
         # One chapter should have been added to the session
         loader._session.add.assert_called_once()  # type: ignore[reportPrivateUsage, reportAttributeAccessIssue]
-        chapter = loader._session.add.call_args[0][0]  # type: ignore[reportAttributeAccessIssue]
-        assert chapter.title == "Test Chapter"
-        assert chapter.content == "Once upon a time."
-        assert chapter.word_count == 4
+        chapter = loader._session.add.call_args[0][0]  # type: ignore[reportPrivateUsage, reportAttributeAccessIssue]
+        assert chapter.title == "Test Chapter"  # type: ignore[reportUnknownMemberType]
+        assert chapter.content == "Once upon a time."  # type: ignore[reportUnknownMemberType]
+        assert chapter.word_count == 4  # type: ignore[reportUnknownMemberType]
 
     async def test_skips_missing_chapters_dir(self, loader: DemoLoader, tmp_path: Path) -> None:
         """Missing chapters directory is handled gracefully."""

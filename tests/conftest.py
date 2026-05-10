@@ -27,6 +27,12 @@ os.environ.setdefault(
 )
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
+# Set dummy API keys for LLM providers to prevent import errors in unit tests.
+# Unit tests mock the gateway's _make_agent method, so real API calls are never made.
+# These are only needed because pydantic-ai validates API keys at import time.
+os.environ.setdefault("ANTHROPIC_API_KEY", "sk-test-dummy-anthropic-key")
+os.environ.setdefault("OPENAI_API_KEY", "sk-test-dummy-openai-key")
+
 
 # ---------------------------------------------------------------------------
 # Architecture constraint test
