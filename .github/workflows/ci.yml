@@ -31,7 +31,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --extra dev
+        run: uv sync --all-packages --group dev
 
       - name: Check architecture constraints
         run: uv run python scripts/check_architecture.py
@@ -51,7 +51,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --extra dev
+        run: uv sync --all-packages --group dev
 
       - name: Ruff lint
         run: uv run ruff check apps/ packages/ scripts/ tests/
@@ -74,7 +74,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --extra dev
+        run: uv sync --all-packages --group dev
 
       - name: Pyright
         run: uv run pyright
@@ -94,7 +94,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --extra dev
+        run: uv sync --all-packages --group dev
 
       - name: Bandit
         run: |
@@ -119,7 +119,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --extra dev
+        run: uv sync --all-packages --group dev
 
       - name: Run unit tests
         run: |
@@ -183,7 +183,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --extra dev
+        run: uv sync --all-packages --group dev
 
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
