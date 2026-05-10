@@ -71,6 +71,30 @@ Automated versioning via **release-please**:
 
 **Breaking changes:** Add `!` after type: `feat!: redesign prompt API` or add `BREAKING CHANGE:` footer.
 
+### CI Pipeline Specification
+
+7-job pipeline with staged execution:
+
+| Job | Target | Commands |
+|-----|--------|----------|
+| `architecture-check` | <30s | `python scripts/check_architecture.py` |
+| `lint` | <60s | `ruff check` + `ruff format --check` + `eslint` |
+| `typecheck` | <2min | `pyright --strict` |
+| `test-unit` | <5min | `pytest tests/unit/` |
+| `test-integration` | <5min | `pytest tests/integration/` |
+| `frontend` | <3min | `pnpm build` + `pnpm lint` |
+| `security` | <60s | `bandit -r` + `pip-audit` |
+
+**Job ordering:**
+
+```
+architecture-check → lint + typecheck (parallel) → test-unit → test-integration → frontend + security
+```
+
+Tests run only if lint and typecheck pass (saves CI minutes).
+
+**PR merge requires ALL jobs green. No bypass.**
+
 ## Pre-commit Hooks
 
 Local quality checks before push:
@@ -83,12 +107,59 @@ just pre-commit-install
 just pre-commit-run
 ```
 
-Hooks include:
-- Trailing whitespace check
-- Line length check
-- Architecture constraint check
-- Python formatting (ruff)
-- Type checking (mypy)
+6 hooks configured in `.pre-commit-config.yaml`:
+
+| Hook | Stage | Command |
+|------|-------|---------|
+| `architecture-constraints` | pre-commit | `python scripts/check_architecture.py` |
+| `ruff-lint` | pre-commit | `ruff check --fix` |
+| `ruff-format` | pre-commit | `ruff format` |
+| `pyright` | pre-commit | `pyright` (changed files) |
+| `bandit` | pre-commit | `bandit -c pyproject.toml` |
+| `conventional-commits` | commit-msg | `python scripts/check_commit_message.py` |
+
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: architecture-constraints
+        name: Architecture Constraints
+        entry: python scripts/check_architecture.py
+        language: python
+        pass_filenames: false
+        always_run: true
+
+      - id: ruff-lint
+        name: Ruff Lint
+        entry: ruff check --fix
+        language: python
+        types: [python]
+
+      - id: ruff-format
+        name: Ruff Format
+        entry: ruff format
+        language: python
+        types: [python]
+
+      - id: pyright
+        name: Pyright (changed files)
+        entry: pyright
+        language: python
+        types: [python]
+        pass_filenames: true
+
+      - id: bandit
+        name: Security (Bandit)
+        entry: bandit -c pyproject.toml
+        language: python
+        types: [python]
+
+      - id: conventional-commits
+        name: Conventional Commits
+        entry: python scripts/check_commit_message.py
+        language: python
+        stages: [commit-msg]
+```
 
 ## Architecture Checker
 
@@ -98,6 +169,32 @@ Hooks include:
 - RULE-04: File size limits
 - RULE-06: Router purity
 - RULE-11: Silent failures
+
+## Justfile Command Catalog
+
+All developer commands via `just`:
+
+| Category | Command | Description |
+|----------|---------|-------------|
+| **Setup** | `dev-setup` | First-time setup: install deps, create .env, run migrations |
+| | `generate-secret` | Generate a secure `SECRET_KEY` |
+| **Development** | `dev` | Start all services (API + frontend + workers) |
+| | `dev-api` | Start API only |
+| | `dev-frontend` | Start frontend only |
+| | `dev-worker` | Start background worker |
+| **Database** | `db-migrate` | Run pending Alembic migrations |
+| | `db-downgrade` | Roll back last migration |
+| | `db-seed` | Seed development data |
+| | `db-reset` | Drop and recreate dev database (dangerous) |
+| **Testing** | `test` | Run all tests |
+| | `test-unit` | Run unit tests only (fast) |
+| | `test-integration` | Run integration tests (needs Docker) |
+| | `test-cov` | Run with coverage report |
+| **Quality** | `check` | Run all checks (architecture + lint + typecheck + security) |
+| | `lint` | Run ruff lint + fix |
+| | `format` | Run ruff format |
+| | `typecheck` | Run pyright |
+| **Release** | `release-dry-run` | Preview changelog for unreleased changes |
 
 ## Release Process
 
@@ -113,19 +210,67 @@ See `.env.example` for all required variables:
 
 ```bash
 # Database
-DATABASE_URL=postgresql+asyncpg://...
+DATABASE_URL=postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev
 
 # Redis
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://localhost:6379/0
 
-# LLM Providers
-OPENAI_API_KEY=...
-ANTHROPIC_API_KEY=...
-
-# Application
-SECRET_KEY=...
+# Auth
+SECRET_KEY=<generate with: just generate-secret>
 ENVIRONMENT=development
+
+# AI Providers (at least one required)
+ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
+GOOGLE_API_KEY=
+GROQ_API_KEY=
+OPENROUTER_API_KEY=
+ZAI_API_KEY=
+ZAI_BASE_URL=
+
+# Ollama (local models)
+OLLAMA_BASE_URL=http://localhost:11434
+
+# Default Model
+DEFAULT_LLM_MODEL=anthropic/claude-sonnet-4-5
 ```
+
+### Dev Login
+
+For local development, a pre-seeded dev user is available:
+
+| Variable | Default |
+|----------|---------|
+| `DEV_LOGIN_ENABLED` | `true` (dev only) |
+| `DEV_LOGIN_EMAIL` | `dev@narrare.local` |
+| `DEV_LOGIN_PASSWORD` | `narrare-dev` |
+
+Created by `just dev-setup`. Never present in production.
+
+## Docker Compose Dev Services
+
+```yaml
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: narrare
+      POSTGRES_PASSWORD: narrare
+      POSTGRES_DB: narrare_dev
+    ports: ["5432:5432"]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+
+  redis:
+    image: redis:8-alpine
+    ports: ["6379:6379"]
+```
+
+| Service | Image | Port | Database |
+|---------|-------|------|----------|
+| PostgreSQL | `pgvector/pgvector:pg17` | 5432 | `narrare_dev` |
+| Redis | `redis:8-alpine` | 6379 | — |
+
+The application runs locally (not in Docker) for hot reload.
 
 ## Monitoring
 

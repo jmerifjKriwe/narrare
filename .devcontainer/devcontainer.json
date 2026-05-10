@@ -55,6 +55,8 @@
     }
   },
 
+  "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.opencode",
+
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   "remoteUser": "vscode",

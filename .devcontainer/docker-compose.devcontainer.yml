@@ -10,6 +10,7 @@ services:
       - pnpm-global:/home/vscode/.local/share/pnpm
       - claude-config:/home/vscode/.claude
       - claude-data:/home/vscode/.config/claude-code
+      - opencode-persist:/home/vscode/.narrare-local
     command: sleep infinity
     environment:
       - DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare_dev
@@ -29,3 +30,4 @@ volumes:
   claude-config:
   claude-data:
   pnpm-global:
+  opencode-persist:

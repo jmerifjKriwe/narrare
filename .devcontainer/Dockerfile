@@ -4,6 +4,7 @@ FROM mcr.microsoft.com/devcontainers/python:3.14-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
+    jq \
     build-essential \
     libpq-dev \
     # just (task runner)
@@ -39,9 +40,11 @@ RUN mkdir -p /home/vscode/.vscode-server \
              /home/vscode/.cache \
              /home/vscode/.claude \
              /home/vscode/.config/claude-code \
+              /home/vscode/.narrare-local \
              /home/vscode/.local/share/pnpm \
     && chown -R vscode:vscode /home/vscode/.vscode-server \
                                /home/vscode/.cache \
                                /home/vscode/.claude \
                                /home/vscode/.config \
+                               /home/vscode/.narrare-local \
                                /home/vscode/.local

@@ -142,6 +142,53 @@ except LLMGatewayError as e:
 # Never use except Exception: pass
 ```
 
+### Result Type Pattern
+
+```python
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+E = TypeVar("E")
+
+@dataclass(frozen=True)
+class Ok(Generic[T]):
+    value: T
+
+@dataclass(frozen=True)
+class Err(Generic[E]):
+    error: E
+
+type Result[T, E] = Ok[T] | Err[E]
+```
+
+- Services return `Result[T, E]` instead of raising exceptions across boundaries
+- Callers must pattern-match: `match result: case Ok(value): ... case Err(error): ...`
+- Internal service errors can still use exceptions, but the PUBLIC API uses Result
+- Never return Err with a bare string — always use a typed error class
+- Example: a service method returns `Result[Chapter, WritingError]`
+
+### Service Dependency Injection
+
+```python
+class ChapterWritingService:
+    def __init__(
+        self,
+        gateway: LLMGateway,
+        composer: PromptComposer,
+        repo: ChapterRepository,
+    ) -> None:
+        self._gateway = gateway
+        self._composer = composer
+        self._repo = repo
+```
+
+- All dependencies injected via `__init__`, never instantiated inside methods
+- Never `import` a concrete dependency inside a method — receive it in constructor
+- Routers create services with injected dependencies (using FastAPI Depends)
+- This enables testing with MockLLMGateway, MockRepository, etc.
+- If a dependency is missing, flag it — do not create a default inline
+
 ### Logging
 
 ```python

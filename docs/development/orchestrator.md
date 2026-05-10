@@ -141,11 +141,12 @@ docs/_shared/
 ├── CONSTRAINTS.md
 ├── TECH_STACK.md
 ├── GLOSSARY.md
-├── PROJECT_VISION.md
 └── CURRENT_STATE.md
 
+docs/reference/
+└── PROJECT_VISION.md
+
 docs/architecture/
-├── CONTEXT.md
 ├── decisions/INDEX.md
 └── questions/INDEX.md
 
