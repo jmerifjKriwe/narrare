@@ -7,7 +7,7 @@ Usage:
             draft = await _generate(...)
             return Ok(draft)
         except LLMGatewayError as e:
-            return Err(WritingError("Generation failed") from e)  # type: ignore[misc]
+            return Err(WritingError("Generation failed") from e)
 
     # Caller:
     result = await service.write(request)
@@ -21,14 +21,14 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Never, TypeVar
 
 T = TypeVar("T")
 E = TypeVar("E", bound=Exception)
 
 
 @dataclass(frozen=True, slots=True)
-class Ok(Generic[T]):
+class Ok[T]:
     """Successful result containing a value."""
 
     value: T
@@ -50,7 +50,7 @@ class Ok(Generic[T]):
 
 
 @dataclass(frozen=True, slots=True)
-class Err(Generic[E]):
+class Err[E: Exception]:
     """Failed result containing an error."""
 
     error: E
@@ -72,10 +72,7 @@ class Err(Generic[E]):
 
 
 # Result[T, E] is either Ok[T] or Err[E]
-type Result[T, E] = Ok[T] | Err[E]
+type Result[T, E: Exception] = Ok[T] | Err[E]
 
-
-# Re-export Never for type stubs
-from typing import Never
 
 __all__ = ["Err", "Ok", "Result"]

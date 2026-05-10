@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 
 from narrare_core.llm._providers.registry import register
 
@@ -24,7 +24,7 @@ _ZAI_GENERAL_URL = "https://api.z.ai/api/paas/v4"
 _ZAI_CODING_URL = "https://api.z.ai/api/coding/paas/v4"
 
 
-def _make_zai(model_id: str) -> OpenAIModel:
+def _make_zai(model_id: str) -> OpenAIChatModel:
     """
     Create a Z.AI model using the General API endpoint.
 
@@ -33,14 +33,14 @@ def _make_zai(model_id: str) -> OpenAIModel:
     # narrare: allow-direct-llm  reason="Z.AI requires custom base_url — OpenAI-compatible"
     """
     api_key = os.environ.get("ZAI_API_KEY", "")
-    return OpenAIModel(
+    return OpenAIChatModel(  # type: ignore[call-arg]
         model_id,
         base_url=_ZAI_GENERAL_URL,
         api_key=api_key,
     )
 
 
-def make_zai_coding(model_id: str) -> OpenAIModel:
+def make_zai_coding(model_id: str) -> OpenAIChatModel:
     """
     Create a Z.AI model using the Coding API endpoint.
 
@@ -50,7 +50,7 @@ def make_zai_coding(model_id: str) -> OpenAIModel:
     # narrare: allow-direct-llm  reason="Z.AI coding endpoint requires custom base_url"
     """
     api_key = os.environ.get("ZAI_API_KEY", "")
-    return OpenAIModel(
+    return OpenAIChatModel(  # type: ignore[call-arg]
         model_id,
         base_url=_ZAI_CODING_URL,
         api_key=api_key,

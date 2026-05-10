@@ -25,30 +25,32 @@ def gateway() -> LLMGateway:
 class TestLLMGatewayClassifyError:
     def test_classifies_rate_limit(self, gateway: LLMGateway) -> None:
         err = Exception("429 Too Many Requests rate limit exceeded")
-        result = gateway._classify_error(err)
+        result = gateway._classify_error(err)  # type: ignore[reportPrivateUsage]
         assert isinstance(result, LLMRateLimitError)
 
     def test_classifies_auth_error(self, gateway: LLMGateway) -> None:
         err = Exception("401 Unauthorized invalid api key")
-        result = gateway._classify_error(err)
+        result = gateway._classify_error(err)  # type: ignore[reportPrivateUsage]
         assert isinstance(result, LLMAuthError)
 
     def test_classifies_timeout(self, gateway: LLMGateway) -> None:
         err = Exception("Request timed out after 30s")
-        result = gateway._classify_error(err)
+        result = gateway._classify_error(err)  # type: ignore[reportPrivateUsage]
         assert isinstance(result, LLMTimeoutError)
 
 
 class TestLLMGatewayRun:
     async def test_returns_llm_result_on_success(self, gateway: LLMGateway) -> None:
+        # Mock the usage object with actual int attributes
         mock_usage = MagicMock()
-        mock_usage.request_tokens = 10
-        mock_usage.response_tokens = 50
+        mock_usage.input_tokens = 10
+        mock_usage.output_tokens = 50
         mock_usage.total_tokens = 60
 
         mock_result = MagicMock()
         mock_result.data = "Generated text."
         mock_result.usage.return_value = mock_usage
+        mock_result.__str__ = lambda self: self.data  # type: ignore[misc]
 
         mock_agent = MagicMock()
         mock_agent.run = AsyncMock(return_value=mock_result)
@@ -70,14 +72,16 @@ class TestLLMGatewayRun:
         mock_agent = MagicMock()
         mock_agent.run = AsyncMock(side_effect=Exception("401 Unauthorized invalid api key"))
 
-        with patch.object(gateway, "_make_agent", return_value=mock_agent):
-            with pytest.raises(LLMAuthError):
-                await gateway.run(
-                    intent=LLMIntent.WRITE,
-                    system_prompt="System.",
-                    user_prompt="Write.",
-                    retry_config=NO_RETRY,
-                )
+        with (
+            patch.object(gateway, "_make_agent", return_value=mock_agent),
+            pytest.raises(LLMAuthError),
+        ):
+            await gateway.run(
+                intent=LLMIntent.WRITE,
+                system_prompt="System.",
+                user_prompt="Write.",
+                retry_config=NO_RETRY,
+            )
 
     async def test_uses_model_override(self, gateway: LLMGateway) -> None:
         captured_model_id: list[str] = []
@@ -86,9 +90,10 @@ class TestLLMGatewayRun:
             captured_model_id.append(model_id)
             return MagicMock()
 
+        # Mock the usage object with actual int attributes
         mock_usage = MagicMock()
-        mock_usage.request_tokens = 5
-        mock_usage.response_tokens = 10
+        mock_usage.input_tokens = 5
+        mock_usage.output_tokens = 10
         mock_usage.total_tokens = 15
 
         mock_result = MagicMock()

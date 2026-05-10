@@ -22,8 +22,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "api"))
 
 async def seed() -> None:
     # Import here so path is set up first
-    from sqlalchemy import text
+    import bcrypt
+    from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from narrare.auth.models import User
 
     database_url = os.environ.get(
         "DATABASE_URL",
@@ -36,29 +39,27 @@ async def seed() -> None:
     async with async_session_maker() as session:
         # Check if dev user already exists
         result = await session.execute(
-            text("SELECT id FROM users WHERE email = 'dev@narrare.local' LIMIT 1")
+            select(User.id).where(User.email == "dev@narrare.local").limit(1)
         )
-        existing = result.fetchone()
+        existing = result.scalar_one_or_none()
 
         if existing:
             print("✅ Dev user already exists (dev@narrare.local)")
             await engine.dispose()
             return
 
-        # Create dev user
-        # Note: In production code this uses auth/service.py
-        # Here we insert directly for bootstrap purposes
-        import bcrypt
-
+        # Create dev user using ORM (applies Python-level uuid.uuid4 default)
         hashed = bcrypt.hashpw(b"narrare-dev", bcrypt.gensalt()).decode()
 
-        await session.execute(
-            text("""
-                INSERT INTO users (email, hashed_password, is_active, is_verified, display_name)
-                VALUES ('dev@narrare.local', :pwd, true, true, 'Dev User')
-            """),
-            {"pwd": hashed},
+        user = User(
+            email="dev@narrare.local",
+            hashed_password=hashed,
+            is_active=True,
+            is_verified=True,
+            display_name="Dev User",
         )
+        session.add(user)
+        await session.flush()  # Generates the UUID via Python default
         await session.commit()
         print("✅ Dev user created: dev@narrare.local / narrare-dev")
 

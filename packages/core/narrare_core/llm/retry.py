@@ -53,7 +53,7 @@ class RetryConfig:
         """Calculate delay for a given attempt number (0-indexed)."""
         delay = min(self.base_delay * (2**attempt), self.max_delay)
         if self.jitter:
-            delay *= 0.5 + random.random() * 0.5  # noqa: S311
+            delay *= 0.5 + random.random() * 0.5  # nosec: B311
         return delay
 
 

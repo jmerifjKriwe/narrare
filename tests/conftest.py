@@ -5,6 +5,18 @@ Root test configuration and shared fixtures.
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
+
+# Add apps/api to Python path so tests can import `narrare.*`
+_api_path = Path(__file__).parent.parent / "apps" / "api"
+if str(_api_path) not in sys.path:
+    sys.path.insert(0, str(_api_path))
+
+# Add packages/core to Python path so tests can import `narrare_core.*`
+_core_path = Path(__file__).parent.parent / "packages" / "core"
+if str(_core_path) not in sys.path:
+    sys.path.insert(0, str(_core_path))
 
 # Ensure test environment is set before any imports
 os.environ.setdefault("ENVIRONMENT", "test")

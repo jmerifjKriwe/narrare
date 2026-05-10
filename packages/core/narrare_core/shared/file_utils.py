@@ -8,11 +8,14 @@ consistent encoding, error handling, and locking behavior.
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import aiofiles
 import aiofiles.os
 from filelock import FileLock
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 async def read_text(path: Path, *, encoding: str = "utf-8") -> str:

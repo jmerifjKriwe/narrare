@@ -11,9 +11,10 @@ To add a new provider:
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from pydantic_ai.models import Model
+if TYPE_CHECKING:
+    from pydantic_ai.models import Model
 
 
 @runtime_checkable

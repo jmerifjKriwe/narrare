@@ -11,14 +11,17 @@ See ADR-002 (unified prompt system).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import structlog
 
 from narrare_core.llm.intents import LLMIntent
-from narrare_core.prompts.context import PromptContext
-from narrare_core.prompts.meta import MetaPromptLoader
-from narrare_core.prompts.registry import PromptRegistry
 from narrare_core.prompts.variable_engine import substitute
+
+if TYPE_CHECKING:
+    from narrare_core.prompts.context import PromptContext
+    from narrare_core.prompts.meta import MetaPromptLoader
+    from narrare_core.prompts.registry import PromptRegistry
 
 logger = structlog.get_logger(__name__)
 

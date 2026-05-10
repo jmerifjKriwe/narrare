@@ -3,19 +3,15 @@
 Du arbeitest im **Service Layer** von Narrare. Hier lebt die Business-Logik.
 
 **Lies zuerst:**
-- `docs/_shared/CONSTRAINTS.md`
-- `docs/development/coding-standards.md`
-
-**Verfügbare Skills:**
-- `/narrare-implementation` — Für Code-Implementierung
-- `/narrare-testing` — Für Test-Schreiben
-- `/check-constraints` — Für Constraint-Prüfung
+- `../../docs/agents/_shared/CONSTRAINTS.md`
+- `../../docs/agents/implementation/CODING_STANDARDS.md`
+- `../../docs/agents/implementation/AGENT.md`
 
 ---
 
 ## Deine Rolle hier
 
-Du implementierst Features die vom Architecture Skill spezifiziert wurden.
+Du implementierst Features die der Architecture Agent spezifiziert hat.
 Du schreibst **keinen Code ohne vorhandenen Contract** (Protocol in `contracts.py`).
 Du schreibst **immer Tests** zur Implementation.
 
@@ -121,16 +117,6 @@ async def write_chapter(
     return ChapterDraftResponse.model_validate(result)
 # Keine Business-Logik hier. Fertig.
 ```
-
----
-
-## Referenz-Dokumentation
-
-| Thema | Datei |
-|-------|-------|
-| Architektur-Regeln | `docs/_shared/CONSTRAINTS.md` |
-| Coding Standards | `docs/development/coding-standards.md` |
-| Testing Standards | `docs/development/testing-standards.md` |
 
 ---
 

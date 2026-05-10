@@ -53,11 +53,23 @@ Fast feedback on architecture violations:
 
 ### Workflow: Release (`.github/workflows/release-please.yml`)
 
-Automated versioning:
+Automated versioning via **release-please**:
 - Parses conventional commits
 - Bumps version (major/minor/patch)
 - Generates CHANGELOG.md
 - Creates GitHub release
+
+**Supported commit types:**
+| Type | Section | Example |
+|------|---------|---------|
+| `feat:` | ✨ Features | `feat: add character arc editor` |
+| `fix:` | 🐛 Bug Fixes | `fix: resolve session timeout` |
+| `perf:` | ⚡ Performance | `perf: optimize prompt caching` |
+| `refactor:` | ♻️ Refactoring | `refactor: extract auth service` |
+| `docs:` | 📚 Documentation | `docs: update deployment guide` |
+| `chore:`, `test:`, `ci:` | *(hidden)* | Maintenance (not in CHANGELOG) |
+
+**Breaking changes:** Add `!` after type: `feat!: redesign prompt API` or add `BREAKING CHANGE:` footer.
 
 ## Pre-commit Hooks
 

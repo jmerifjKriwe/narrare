@@ -28,13 +28,14 @@ Usage:
 from __future__ import annotations
 
 import time
-from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 import structlog
 from pydantic_ai import Agent
-from pydantic_ai.models import Model
 
-from narrare_core.llm import _providers  # noqa: F401 — triggers provider registration
+from narrare_core.llm import (
+    _providers,  # type: ignore[import]  # noqa: F401 — triggers provider registration
+)
 from narrare_core.llm._providers.registry import get as get_provider
 from narrare_core.llm._providers.registry import infer_provider
 from narrare_core.llm.intents import LLMIntent, get_model_config
@@ -50,6 +51,11 @@ from narrare_core.shared.errors import (
     LLMServiceUnavailableError,
     LLMTimeoutError,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from pydantic_ai.models import Model
 
 logger = structlog.get_logger(__name__)
 
@@ -91,7 +97,7 @@ class LLMGateway:
         system_prompt: str,
     ) -> Agent[None, str]:
         """Create a pydantic-ai Agent for a single call."""
-        return Agent(
+        return Agent(  # type: ignore[call-arg]
             model,
             system_prompt=system_prompt,
             result_type=str,
@@ -172,8 +178,8 @@ class LLMGateway:
                 # pydantic-ai result usage
                 usage = result.usage()
                 token_usage = TokenUsage(
-                    prompt_tokens=usage.request_tokens or 0,
-                    completion_tokens=usage.response_tokens or 0,
+                    prompt_tokens=usage.input_tokens or 0,
+                    completion_tokens=usage.output_tokens or 0,
                     total_tokens=usage.total_tokens or 0,
                 )
 
@@ -190,7 +196,7 @@ class LLMGateway:
                     duration_ms=round(elapsed * 1000),
                 )
                 return LLMResult(
-                    text=result.data,
+                    text=str(result),  # pydantic-ai AgentRunResult is string-convertible
                     usage=token_usage,
                     model=model_id,
                     intent=intent.value,
@@ -254,8 +260,8 @@ class LLMGateway:
                 elapsed = time.monotonic() - start
                 usage = stream_result.usage()
                 token_usage = TokenUsage(
-                    prompt_tokens=usage.request_tokens or 0,
-                    completion_tokens=usage.response_tokens or 0,
+                    prompt_tokens=usage.input_tokens or 0,
+                    completion_tokens=usage.output_tokens or 0,
                     total_tokens=usage.total_tokens or 0,
                 )
                 record_success(

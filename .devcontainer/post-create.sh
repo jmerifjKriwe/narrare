@@ -5,7 +5,7 @@ echo "🚀 Setting up Narrare development environment..."
 
 # --- Python dependencies via uv ---
 echo "📦 Installing Python dependencies..."
-uv sync --all-packages --dev
+uv sync --all-packages --group dev
 
 # --- Pre-commit hooks ---
 echo "🔧 Installing pre-commit hooks..."
@@ -42,8 +42,8 @@ done
 echo "🗄️  Running database migrations..."
 (cd apps/api && uv run alembic upgrade head)
 
-# echo "🌱 Seeding dev user..."
-# uv run python scripts/seed_dev_user.py
+echo "🌱 Seeding dev user..."
+uv run python scripts/seed_dev_user.py
 
 echo ""
 echo "✅ Dev environment ready!"

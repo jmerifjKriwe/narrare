@@ -9,7 +9,7 @@ services:
       - uv-cache:/home/vscode/.cache/uv
       - pnpm-global:/home/vscode/.local/share/pnpm
       - claude-config:/home/vscode/.claude
-      - claude-data:/home/vscode/.local/share/claude
+      - claude-data:/home/vscode/.config/claude-code
     command: sleep infinity
     environment:
       - DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare_dev

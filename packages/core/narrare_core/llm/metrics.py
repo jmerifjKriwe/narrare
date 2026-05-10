@@ -9,9 +9,12 @@ Prometheus metrics are exposed at /metrics by the API.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from prometheus_client import Counter, Histogram
 
-from narrare_core.llm.result import TokenUsage
+if TYPE_CHECKING:
+    from narrare_core.llm.result import TokenUsage
 
 # ---------------------------------------------------------------------------
 # Prometheus metrics
@@ -65,11 +68,11 @@ def record_success(
     """Record a successful LLM call."""
     llm_requests_total.labels(intent=intent, model=model, provider=provider, status="success").inc()
 
-    llm_tokens_total.labels(intent=intent, model=model, token_type="prompt").inc(
+    llm_tokens_total.labels(intent=intent, model=model, token_type="prompt").inc(  # nosec: B106
         usage.prompt_tokens
     )
 
-    llm_tokens_total.labels(intent=intent, model=model, token_type="completion").inc(
+    llm_tokens_total.labels(intent=intent, model=model, token_type="completion").inc(  # nosec: B106
         usage.completion_tokens
     )
 

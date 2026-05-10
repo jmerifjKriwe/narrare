@@ -81,7 +81,7 @@ async def embed_texts(
                 all_embeddings.append(item.embedding)
 
         elapsed = time.monotonic() - start
-        total_tokens = sum(len(t.split()) for t in texts_to_embed)  # approximate
+        _ = sum(len(t.split()) for t in texts_to_embed)  # approximate, unused
 
         logger.info(
             "embeddings_generated",

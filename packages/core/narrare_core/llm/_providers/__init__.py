@@ -7,11 +7,11 @@ The gateway imports this package on startup.
 
 # Import all providers to trigger their register() calls
 from narrare_core.llm._providers import (  # noqa: F401
-    anthropic,
-    ollama,
-    openai,
-    others,
-    zai,
+    anthropic,  # type: ignore[import]
+    ollama,  # type: ignore[import]
+    openai,  # type: ignore[import]
+    others,  # type: ignore[import]
+    zai,  # type: ignore[import]
 )
 from narrare_core.llm._providers.registry import (
     available,

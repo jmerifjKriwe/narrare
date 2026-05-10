@@ -38,9 +38,10 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN mkdir -p /home/vscode/.vscode-server \
              /home/vscode/.cache \
              /home/vscode/.claude \
+             /home/vscode/.config/claude-code \
              /home/vscode/.local/share/pnpm \
-             /home/vscode/.local/share/claude \
     && chown -R vscode:vscode /home/vscode/.vscode-server \
                                /home/vscode/.cache \
                                /home/vscode/.claude \
+                               /home/vscode/.config \
                                /home/vscode/.local
