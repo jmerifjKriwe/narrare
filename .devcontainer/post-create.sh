@@ -3,6 +3,14 @@ set -euo pipefail
 
 echo "🚀 Setting up Narrare development environment..."
 
+sudo chown -R vscode:vscode /workspace/.venv
+
+sudo chown -R vscode:vscode /home/vscode/.opencode \
+                            /home/vscode/.config/opencode \
+                            /home/vscode/.local/state/opencode \
+                            /home/vscode/.local/share/opencode \
+                            /home/vscode/.cache/opencode
+
 # --- Python dependencies via uv ---
 echo "📦 Installing Python dependencies..."
 uv sync --all-packages --group dev

@@ -31,17 +31,17 @@ RUN pip install pre-commit --break-system-packages
 
 WORKDIR /workspace
 
-# Pnpm Pfade setzen
+# Set environment variables for pnpm
 ENV PNPM_HOME="/home/vscode/.local/share/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-# Berechtigungen für die benannten Volumes im Vorfeld setzen
+# Correct permissions for vscode user
 RUN mkdir -p /home/vscode/.vscode-server \
              /home/vscode/.cache \
-              /home/vscode/.narrare-local \
+             /home/vscode/.config/opencode \
              /home/vscode/.local/share/pnpm \
-    && chown -R vscode:vscode /home/vscode/.vscode-server \
-                               /home/vscode/.cache \
-                               /home/vscode/.config \
-                               /home/vscode/.narrare-local \
-                               /home/vscode/.local
+             /home/vscode/.opencode \
+             /home/vscode/.local/state/opencode \
+             /home/vscode/.local/share/opencode \
+             /home/vscode/.cache/opencode \
+    && chown -R vscode:vscode /home/vscode/

@@ -7,8 +7,14 @@ services:
       - ..:/workspace:cached
       - vscode-server:/home/vscode/.vscode-server
       - uv-cache:/home/vscode/.cache/uv
+      - venv-data:/workspace/.venv
       - pnpm-global:/home/vscode/.local/share/pnpm
-      - opencode-persist:/home/vscode/.narrare-local
+      # Bind Mounts for OpenCode
+      - ~/.opencode-data/config:/home/vscode/.config/opencode
+      - ~/.opencode-data/home:/home/vscode/.opencode
+      - ~/.opencode-data/state:/home/vscode/.local/state/opencode
+      - ~/.opencode-data/share:/home/vscode/.local/share/opencode
+      - ~/.opencode-data/cache:/home/vscode/.cache/opencode
     command: sleep infinity
     environment:
       - DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare_dev
@@ -26,4 +32,4 @@ volumes:
   vscode-server:
   uv-cache:
   pnpm-global:
-  opencode-persist:
+  venv-data:
