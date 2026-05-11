@@ -214,9 +214,9 @@ asyncio background tasks (no persistence, no retry, no visibility).
 **Why:** Fast Python linter + formatter. Replaces flake8 + isort + black.
 **Role:** Code style enforcement in pre-commit and CI.
 
-### mypy `--strict`
+### pyright
 **Why:** Static type checking. Catches entire classes of bugs before runtime.
-**Role:** CI gate. All new code must pass mypy strict.
+**Role:** CI gate. All new code must pass pyright strict.
 
 ### Bandit
 **Why:** Security linting for Python.
@@ -224,7 +224,7 @@ asyncio background tasks (no persistence, no retry, no visibility).
 
 ### pre-commit
 **Why:** Local enforcement before code reaches CI.
-**Role:** Runs: `check_architecture.py`, ruff, mypy, bandit, test subset.
+**Role:** Runs: `check_architecture.py`, ruff, pyright, bandit, test subset.
 
 ### pytest + pytest-asyncio + pytest-cov
 **Why:** Standard Python test stack with async support.

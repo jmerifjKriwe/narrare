@@ -76,6 +76,7 @@ logs/
 scripts/local/
 # Added by code-review-graph
 .code-review-graph/
+.mcp.json
 
 .claude/settings.local.json
 opencode.json

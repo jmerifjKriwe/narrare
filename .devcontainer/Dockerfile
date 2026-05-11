@@ -38,13 +38,10 @@ ENV PATH="$PNPM_HOME:$PATH"
 # Berechtigungen für die benannten Volumes im Vorfeld setzen
 RUN mkdir -p /home/vscode/.vscode-server \
              /home/vscode/.cache \
-             /home/vscode/.claude \
-             /home/vscode/.config/claude-code \
               /home/vscode/.narrare-local \
              /home/vscode/.local/share/pnpm \
     && chown -R vscode:vscode /home/vscode/.vscode-server \
                                /home/vscode/.cache \
-                               /home/vscode/.claude \
                                /home/vscode/.config \
                                /home/vscode/.narrare-local \
                                /home/vscode/.local
