@@ -16,6 +16,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   # -------------------------------------------------------------------------
   # Fast fail: architecture constraints (< 30s)
@@ -130,15 +134,21 @@ jobs:
           uv run pytest tests/unit/ \
             --cov \
             --cov-report=xml \
-            --cov-report=term-missing \
-            -v
+            --cov-report=term-missing:skip-covered \
+            --junitxml=pytest.xml \
+            -v | tee pytest-coverage.txt
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v6
-        if: always()
+      - name: Pytest coverage comment
+        if: github.event_name == 'pull_request'
+        uses: MishaKav/pytest-coverage-comment@v1
         with:
-          file: coverage.xml
-          fail_ci_if_error: false
+          pytest-coverage-path: ./pytest-coverage.txt
+          pytest-xml-coverage-path: ./coverage.xml
+          junitxml-path: ./pytest.xml
+          title: "Unit Test Coverage"
+          badge-title: "Coverage"
+          hide-emoji: true
+          report-only-changed-files: true
 
   # -------------------------------------------------------------------------
   # Integration tests (< 5 min, with Docker)
@@ -194,6 +204,58 @@ jobs:
 
       - name: Run integration tests
         run: uv run pytest tests/integration/ -v
+
+  # -------------------------------------------------------------------------
+  # Update coverage badge in README (main push only)
+  # -------------------------------------------------------------------------
+  update-coverage-badge:
+    name: Update Coverage Badge
+    runs-on: ubuntu-latest
+    needs: test-unit
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-packages --group dev
+
+      - name: Run unit tests
+        env:
+          ANTHROPIC_API_KEY: sk-test-dummy
+          OPENAI_API_KEY: sk-test-dummy
+        run: |
+          uv run pytest tests/unit/ \
+            --cov \
+            --cov-report=term-missing:skip-covered \
+            --junitxml=pytest.xml \
+            -v | tee pytest-coverage.txt
+
+      - name: Pytest coverage comment
+        id: coverage
+        uses: MishaKav/pytest-coverage-comment@v1
+        with:
+          pytest-coverage-path: ./pytest-coverage.txt
+          junitxml-path: ./pytest.xml
+          hide-comment: true
+
+      - name: Update README badge
+        run: |
+          sed -i '/<!-- Pytest Coverage Comment:Begin -->/,/<!-- Pytest Coverage Comment:End -->/c\<!-- Pytest Coverage Comment:Begin -->\n${{ steps.coverage.outputs.coverageHtml }}\n<!-- Pytest Coverage Comment:End -->' ./README.md
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: update coverage badge"
+          file_pattern: README.md
 
   # -------------------------------------------------------------------------
   # Frontend (< 3 min)

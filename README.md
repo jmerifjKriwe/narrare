@@ -1,5 +1,13 @@
 # Narrare
 
+[![CI](https://github.com/jmerifjKriwe/narrare/actions/workflows/ci.yml/badge.svg)](https://github.com/jmerifjKriwe/narrare/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-blue.svg)](https://www.python.org/downloads/)
+[![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
+<!-- Pytest Coverage Comment:Begin -->
+<!-- Pytest Coverage Comment:End -->
+
 > AI-assisted creative writing environment — local-first, fully customizable.
 
 ## Requirements
@@ -77,9 +85,9 @@ The container includes Python 3.14, Node.js, uv, just, and all VS Code extension
 
 ## Architecture
 
-See [`docs/agents/_shared/CONSTRAINTS.md`](docs/agents/_shared/CONSTRAINTS.md) for architectural rules.
+See [`docs/_shared/CONSTRAINTS.md`](docs/_shared/CONSTRAINTS.md) for architectural rules.
 
-See [`docs/agents/_shared/TECH_STACK.md`](docs/agents/_shared/TECH_STACK.md) for technology decisions.
+See [`docs/_shared/TECH_STACK.md`](docs/_shared/TECH_STACK.md) for technology decisions.
 
 ## License
 
