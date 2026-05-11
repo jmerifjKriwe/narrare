@@ -32,10 +32,14 @@ def fake_demo_loader() -> FakeDemoLoader:
 def service(
     fake_provider_service: FakeProviderService, fake_demo_loader: FakeDemoLoader
 ) -> SetupService:
-    svc = SetupService.__new__(SetupService)
-    svc._provider_service = fake_provider_service
-    svc._demo_loader = fake_demo_loader
-    return svc
+    return SetupService(
+        session=None,  # type: ignore[arg-type]
+        novel_repo=None,  # type: ignore[arg-type]
+        user_settings_repo=None,  # type: ignore[arg-type]
+        project_settings_repo=None,  # type: ignore[arg-type]
+        provider_service=fake_provider_service,
+        demo_loader=fake_demo_loader,
+    )
 
 
 class TestValidateStep1:
@@ -74,7 +78,9 @@ class TestValidateStep3:
         assert result.valid is True
         assert result.demo_info is None
 
-    async def test_demo_starter_returns_info(self, service: SetupService) -> None:
+    async def test_demo_starter_returns_info(
+        self, service: SetupService, fake_demo_loader: FakeDemoLoader
+    ) -> None:
         mock_info = DemoProjectInfo(
             id=StarterContent.DEMO_GERMAN,
             title="Im stillen Wald",
@@ -85,7 +91,7 @@ class TestValidateStep3:
             word_count=2660,
             description="Test description",
         )
-        service._demo_loader.set_info(mock_info)  # type: ignore[attr-defined]
+        fake_demo_loader.set_info(mock_info)
         req = Step3StarterRequest(starter=StarterContent.DEMO_GERMAN)
         result = await service.validate_step3(req)
         assert result.valid is True
@@ -109,8 +115,10 @@ class TestValidateStep3:
 
 
 class TestValidateStep4:
-    async def test_valid_provider_returns_response(self, service: SetupService) -> None:
-        service._provider_service.set_validation_result(True)  # type: ignore[attr-defined]
+    async def test_valid_provider_returns_response(
+        self, service: SetupService, fake_provider_service: FakeProviderService
+    ) -> None:
+        fake_provider_service.set_validation_result(True)
         req = Step4ProviderRequest(
             provider=AIProvider.ANTHROPIC,
             api_key="sk-ant-test",
@@ -119,8 +127,10 @@ class TestValidateStep4:
         result = await service.validate_step4(req)
         assert result.valid is True
 
-    async def test_failed_connection_raises_422(self, service: SetupService) -> None:
-        service._provider_service.set_validation_result(False)  # type: ignore[attr-defined]
+    async def test_failed_connection_raises_422(
+        self, service: SetupService, fake_provider_service: FakeProviderService
+    ) -> None:
+        fake_provider_service.set_validation_result(False)
         req = Step4ProviderRequest(
             provider=AIProvider.ANTHROPIC,
             api_key="bad-key",
@@ -140,8 +150,10 @@ class TestValidateStep4:
             await service.validate_step4(req)
         assert exc.value.status_code == 422
 
-    async def test_ollama_skips_api_key_check(self, service: SetupService) -> None:
-        service._provider_service.set_validation_result(True)  # type: ignore[attr-defined]
+    async def test_ollama_skips_api_key_check(
+        self, service: SetupService, fake_provider_service: FakeProviderService
+    ) -> None:
+        fake_provider_service.set_validation_result(True)
         req = Step4ProviderRequest(
             provider=AIProvider.OLLAMA,
             api_key="",  # Ollama has no key

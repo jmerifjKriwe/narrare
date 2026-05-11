@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import uuid
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     )
 
 
+@runtime_checkable
 class ChapterRepositoryProtocol(Protocol):
     async def get_by_id(self, chapter_id: uuid.UUID, novel_id: uuid.UUID) -> Chapter | None: ...
     async def list_by_novel(self, novel_id: uuid.UUID) -> list[Chapter]: ...
@@ -28,6 +29,7 @@ class ChapterRepositoryProtocol(Protocol):
     async def max_position(self, novel_id: uuid.UUID) -> int: ...
 
 
+@runtime_checkable
 class ChapterServiceProtocol(Protocol):
     async def get(
         self, chapter_id: uuid.UUID, novel_id: uuid.UUID, user_id: uuid.UUID

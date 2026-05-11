@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from narrare.novels.schemas import NovelResponse
+from narrare.volumes.schemas import VolumeResponse
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
@@ -19,7 +22,8 @@ async def novel_id(client: AsyncClient, auth_headers: dict[str, str]) -> str:
         headers=auth_headers,
     )
     assert response.status_code == 201
-    return response.json()["id"]
+    validated = NovelResponse.model_validate(response.json())
+    return str(validated.id)
 
 
 class TestListVolumes:
@@ -46,8 +50,9 @@ class TestCreateVolume:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["title"] == "Book One"
-        assert data["position"] == 0
+        validated = VolumeResponse.model_validate(data)
+        assert validated.title == "Book One"
+        assert validated.position == 0
         assert "id" in data
 
     async def test_create_without_title_returns_422(
@@ -74,7 +79,8 @@ class TestCreateVolume:
             headers=auth_headers,
         )
         assert response.status_code == 201
-        assert response.json()["position"] == 1
+        validated = VolumeResponse.model_validate(response.json())
+        assert validated.position == 1
 
 
 class TestUpdateVolume:
@@ -93,7 +99,8 @@ class TestUpdateVolume:
             headers=auth_headers,
         )
         assert response.status_code == 200
-        assert response.json()["title"] == "New Title"
+        validated = VolumeResponse.model_validate(response.json())
+        assert validated.title == "New Title"
 
     async def test_update_nonexistent_returns_404(
         self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str

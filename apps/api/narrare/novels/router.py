@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, status
 
 from narrare._app.database import get_async_session
+from narrare.novels.repository import NovelRepository
 from narrare.novels.schemas import (
     CreateNovelRequest,
     NovelResponse,
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/novels", tags=["novels"])
 
 
 def _get_service(session: AsyncSession = Depends(get_async_session)) -> NovelService:
-    return NovelService(session)
+    return NovelService(repo=NovelRepository(session))
 
 
 @router.get("", response_model=list[NovelSummaryResponse])

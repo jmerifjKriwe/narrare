@@ -15,6 +15,10 @@ dev = [
   "pytest-cov==7.1.0",
   "bandit==1.9.4",
   "pip-audit==2.10.0",
+  "pytest-xdist>=3.6",
+  "pytest-randomly==4.1.0",
+  "pytest-timeout>=2.3",
+  "hypothesis>=6.100",
 ]
 
 [build-system]
@@ -153,6 +157,8 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 filterwarnings = ["error", "ignore::DeprecationWarning:pydantic_ai", "ignore::DeprecationWarning:google.genai"]
+timeout = 10
+timeout_func_only = true
 
 [tool.coverage.run]
 source = ["apps/api/narrare", "packages/core/narrare_core"]

@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from narrare.chapters.schemas import ChapterResponse
+from narrare.novels.schemas import NovelResponse
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
@@ -18,7 +21,8 @@ async def novel_id(client: AsyncClient, auth_headers: dict[str, str]) -> str:
         json={"title": "Test Novel", "language": "en"},
         headers=auth_headers,
     )
-    return response.json()["id"]
+    validated = NovelResponse.model_validate(response.json())
+    return str(validated.id)
 
 
 class TestListChapters:
@@ -41,9 +45,10 @@ class TestCreateChapter:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["title"] == "Chapter One"
-        assert data["word_count"] == 8
-        assert data["position"] == 0
+        validated = ChapterResponse.model_validate(data)
+        assert validated.title == "Chapter One"
+        assert validated.word_count == 8
+        assert validated.position == 0
 
     async def test_second_chapter_gets_next_position(
         self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str
@@ -58,7 +63,8 @@ class TestCreateChapter:
             json={"title": "Chapter Two"},
             headers=auth_headers,
         )
-        assert response.json()["position"] == 1
+        validated = ChapterResponse.model_validate(response.json())
+        assert validated.position == 1
 
 
 class TestUpdateChapterContent:
@@ -79,8 +85,9 @@ class TestUpdateChapterContent:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["content"] == "Updated content with more words here."
-        assert data["word_count"] == 6
+        validated = ChapterResponse.model_validate(data)
+        assert validated.content == "Updated content with more words here."
+        assert validated.word_count == 6
 
     async def test_content_too_long_returns_413(
         self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str
@@ -125,8 +132,9 @@ class TestReorderChapters:
         )
         assert response.status_code == 200
         chapters = response.json()
-        assert chapters[0]["id"] == c2
-        assert chapters[1]["id"] == c1
+        validated_chapters = [ChapterResponse.model_validate(c) for c in chapters]
+        assert validated_chapters[0].id == c2
+        assert validated_chapters[1].id == c1
 
 
 class TestUpdateChapterMeta:
@@ -146,7 +154,8 @@ class TestUpdateChapterMeta:
             headers=auth_headers,
         )
         assert response.status_code == 200
-        assert response.json()["title"] == "New Title"
+        validated = ChapterResponse.model_validate(response.json())
+        assert validated.title == "New Title"
 
 
 class TestGetChapter:
@@ -165,7 +174,8 @@ class TestGetChapter:
             headers=auth_headers,
         )
         assert response.status_code == 200
-        assert response.json()["id"] == chapter_id
+        validated = ChapterResponse.model_validate(response.json())
+        assert str(validated.id) == chapter_id
 
     async def test_get_nonexistent_chapter_returns_404(
         self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str

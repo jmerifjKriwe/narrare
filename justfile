@@ -111,13 +111,17 @@ db-shell:
 # Testing
 # ---------------------------------------------------------------------------
 
-# Run all tests
+# Run all tests (parallel)
 test:
-    uv run pytest tests/ -v
+    uv run pytest tests/ -v -n auto
 
-# Run unit tests only (fast, no Docker needed)
+# Run unit tests only (fast, no Docker needed, parallel)
 test-unit:
-    uv run pytest tests/unit/ -v
+    uv run pytest tests/unit/ -v -n auto
+
+# Run tests single-threaded (for debugging)
+test-single file="tests/":
+    uv run pytest {{file}} -v -p no:randomly
 
 # Run integration tests (requires Docker services)
 test-integration:

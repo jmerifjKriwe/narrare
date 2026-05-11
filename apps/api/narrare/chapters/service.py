@@ -7,20 +7,19 @@ from typing import TYPE_CHECKING
 import structlog
 from fastapi import HTTPException, status
 
-from narrare.chapters.repository import ChapterRepository, count_words
-from narrare.novels.service import NovelService
+from narrare.chapters.repository import count_words
 
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
-
+    from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.chapters.models import Chapter
     from narrare.chapters.schemas import (
         CreateChapterRequest,
         UpdateChapterContentRequest,
         UpdateChapterMetaRequest,
     )
+    from narrare.novels.contracts import NovelServiceProtocol
 
 logger = structlog.get_logger(__name__)
 
@@ -28,9 +27,13 @@ _MAX_CONTENT_LENGTH = 100_000  # characters
 
 
 class ChapterService:
-    def __init__(self, session: AsyncSession) -> None:
-        self._repo = ChapterRepository(session)
-        self._novel_service = NovelService(session)
+    def __init__(
+        self,
+        repo: ChapterRepositoryProtocol,
+        novel_service: NovelServiceProtocol,
+    ) -> None:
+        self._repo = repo
+        self._novel_service = novel_service
 
     async def get(
         self,

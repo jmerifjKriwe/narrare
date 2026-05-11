@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare.novels.schemas import NovelResponse
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
@@ -32,8 +34,9 @@ class TestCreateNovel:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["title"] == "My Fantasy Novel"
-        assert data["genre"] == "fantasy"
+        validated = NovelResponse.model_validate(data)
+        assert validated.title == "My Fantasy Novel"
+        assert validated.genre == "fantasy"
         assert "id" in data
 
     async def test_create_without_title_returns_422(
@@ -63,7 +66,8 @@ class TestGetNovel:
         novel_id = create.json()["id"]
         response = await client.get(f"/api/v1/novels/{novel_id}", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json()["id"] == novel_id
+        validated = NovelResponse.model_validate(response.json())
+        assert str(validated.id) == novel_id
 
     async def test_get_nonexistent_novel_returns_404(
         self, client: AsyncClient, auth_headers: dict[str, str]
@@ -86,7 +90,8 @@ class TestUpdateNovel:
             headers=auth_headers,
         )
         assert response.status_code == 200
-        assert response.json()["title"] == "New Title"
+        validated = NovelResponse.model_validate(response.json())
+        assert validated.title == "New Title"
 
 
 class TestDeleteNovel:

@@ -24,6 +24,8 @@ tests/
 └── e2e/            ← Full stack. Real services including LLM (cheapest model).
                       Run only on main branch CI.
                       Run time target: < 5 minutes total.
+                      Tool: Playwright (planned for Phase 5).
+                      Status: Not yet implemented.
 ```
 
 **The rule:** A test lives at the lowest level where it can be meaningful.
@@ -42,6 +44,11 @@ Minimum cases per method:
 1. Happy path — correct input, expected output
 2. Domain error — invalid input, correct error raised
 3. Edge case — at least one boundary condition
+
+**Services use constructor-based dependency injection.** All dependencies
+(Repositories, other Services, LLM Gateway) are passed as Protocol-typed
+arguments to `__init__`. Tests inject Fakes through the constructor — never
+by bypassing `__init__` with `__new__`.
 
 **Repositories are NOT unit-tested.** Repository logic (SQL queries) is tested
 exclusively in integration tests with a real database. Mocking an AsyncSession
@@ -93,6 +100,19 @@ Integration tests cover TWO things:
 3. Not found — 404 for missing resources
 4. Validation error — 422 for invalid input
 
+Every 200/201 response must validate the response body against its Pydantic
+schema. This catches serialization bugs and schema drift:
+
+```python
+assert response.status_code == 201
+data = response.json()
+validated = ChapterResponse.model_validate(data)  # Schema validation
+assert validated.title == "Chapter One"
+```
+
+**Rule:** Every 200/201 response in integration tests must include
+`Schema.model_validate()`.
+
 ### Architecture Tests — Constraint Enforcement
 
 The constraint checker runs as a test:
@@ -102,6 +122,39 @@ def test_architecture_constraints() -> None:
     result = subprocess.run(["python", "scripts/check_architecture.py"])
     assert result.returncode == 0
 ```
+
+### Fake Conformance Tests — Protocol Verification
+
+Every Fake class is verified against its corresponding Protocol in a dedicated
+conformance test file. This is a safety net that catches missing methods when
+Protocols are updated.
+
+**Location:** `tests/unit/test_fake_conformance.py`
+
+All Protocols in `contracts.py` are marked `@runtime_checkable`, enabling
+`isinstance()` checks at test time:
+
+```python
+from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class ChapterRepositoryProtocol(Protocol):
+    async def get_by_id(self, chapter_id: UUID, novel_id: UUID) -> Chapter | None: ...
+    async def create(self, novel_id: UUID, request: CreateChapterRequest, position: int) -> Chapter: ...
+```
+
+```python
+# tests/unit/test_fake_conformance.py
+from tests.fakes import FakeChapterRepository
+from packages.core.chapters.contracts import ChapterRepositoryProtocol
+
+def test_fake_chapter_repo_conforms():
+    fake = FakeChapterRepository()
+    assert isinstance(fake, ChapterRepositoryProtocol)
+```
+
+**Rule:** When adding a new Fake, add a conformance test. If the Protocol
+changes, the conformance test fails immediately.
 
 ---
 
@@ -182,7 +235,9 @@ mock_agent.run = AsyncMock(return_value=mock_result)
 
 ### Fake Class Pattern
 
-Every Fake follows this structure:
+Every Fake follows this structure. All corresponding Protocols in `contracts.py`
+are `@runtime_checkable` — conformance tests use `isinstance()` to verify Fakes
+implement their Protocol correctly.
 
 ```python
 class FakeChapterRepository:
@@ -225,9 +280,24 @@ class FakeChapterRepository:
 
 ### Fake Fixtures
 
-```python
-# tests/conftest.py
+Services accept Protocol-typed dependencies through their constructor.
+Fixtures wire Fakes into services via normal constructor calls.
 
+**Rule: NEVER use `__new__()` to bypass `__init__`. Always pass dependencies
+through the constructor.**
+
+```python
+# Service accepts Protocol-typed dependencies in constructor
+class ChapterService:
+    def __init__(
+        self,
+        repo: ChapterRepositoryProtocol,
+        novel_service: NovelServiceProtocol,
+    ) -> None:
+        self._repo = repo
+        self._novel_service = novel_service
+
+# tests/conftest.py
 @pytest.fixture
 def fake_gateway() -> FakeLLMGateway:
     """Fake LLM gateway — configurable responses, call tracking."""
@@ -241,10 +311,10 @@ def fake_chapter_repo() -> FakeChapterRepository:
 # tests/unit/api/chapters/conftest.py
 @pytest.fixture
 def service(fake_chapter_repo, fake_novel_service) -> ChapterService:
-    svc = ChapterService.__new__(ChapterService)
-    svc._repo = fake_chapter_repo
-    svc._novel_service = fake_novel_service
-    return svc
+    return ChapterService(
+        repo=fake_chapter_repo,
+        novel_service=fake_novel_service,
+    )
 ```
 
 ### Database Fixtures (Integration Only)
@@ -278,6 +348,29 @@ def make_novel(**overrides) -> Novel:
     ...
 ```
 
+### Pytest Plugins
+
+| Plugin | Version | Purpose |
+|--------|---------|---------|
+| `pytest-xdist` | ≥3.6 | Parallel test execution (`-n auto`) |
+| `pytest-randomly` | 4.1.0 | Random test order — catches hidden state dependencies |
+| `pytest-timeout` | ≥2.3 | 10s timeout per test — prevents hanging tests |
+| `hypothesis` | ≥6.100 | Property-based testing for pure functions |
+
+### Running Tests
+
+```bash
+# justfile commands:
+just test          # Parallel execution (xdist -n auto, randomly enabled)
+just test-unit     # Parallel unit tests only
+just test-single   # Single-threaded for debugging (disables randomly)
+```
+
+Use `just test-single` when:
+- Debugging a test that fails only under random ordering
+- Stepping through tests with a debugger
+- Isolating a flaky test
+
 ---
 
 ## Coverage Standards
@@ -297,6 +390,62 @@ Coverage below minimum = CI failure. No exceptions.
 **What coverage does NOT mean:**
 High coverage does not mean good tests. A test that calls a function without
 asserting anything passes coverage. We check assertion quality in PR review.
+
+---
+
+## Frontend Tests — packages/web/
+
+**Runner:** Vitest 3.x
+**Environment:** jsdom
+**Component Testing:** `@testing-library/react` + `@testing-library/user-event`
+**API Mocking:** MSW v2.14.6 (Mock Service Worker)
+**State Testing:** Direct Zustand store testing
+
+**Test location:** `packages/web/**/*.test.{ts,tsx}`
+
+**Commands:**
+- `pnpm test` — run all frontend tests
+- `pnpm test:watch` — watch mode
+
+**MSW Handlers:** `packages/web/mocks/handlers.ts`
+**Test Data:** `packages/web/mocks/data.ts`
+**Setup:** `packages/web/setupTests.ts`
+
+---
+
+## Property-Based Testing — Hypothesis
+
+Pure functions in `core/` get property-based tests using Hypothesis.
+These test that functions handle arbitrary input correctly.
+
+**Location:** `tests/unit/core/**/*_hypothesis.py`
+**Library:** `hypothesis>=6.100`
+
+**Patterns:**
+- **No-crash:** any input → never raises
+- **Deterministic:** same input → same output
+- **Round-trip:** `parse(build(x)) == x`
+
+**When to use Hypothesis:**
+- Pure functions (no I/O, no state)
+- Parsing/serialization code
+- Data transformation functions
+
+**When NOT to use Hypothesis:**
+- Async functions (use regular tests)
+- File I/O functions
+- Pydantic models (built-in validation is sufficient)
+
+---
+
+## E2E Tests
+
+E2E tests will use **Playwright** (planned for Phase 5).
+
+**Location:** `tests/e2e/`
+**Status:** Not yet implemented.
+**CI:** Run only on main branch with full stack including LLM (cheapest model).
+**Run time target:** < 5 minutes total.
 
 ---
 

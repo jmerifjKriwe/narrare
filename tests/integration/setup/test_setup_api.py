@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare.setup.schemas import (
+    AvailableModelsResponse,
+    CompleteSetupResponse,
+    Step1LocationResponse,
+    Step2NovelResponse,
+    Step3StarterResponse,
+)
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
@@ -19,7 +27,8 @@ class TestValidateStep1:
             },
         )
         assert response.status_code == 200
-        assert response.json()["valid"] is True
+        validated = Step1LocationResponse.model_validate(response.json())
+        assert validated.valid is True
 
     async def test_unsupported_language_rejected(self, client: AsyncClient) -> None:
         response = await client.post(
@@ -50,7 +59,8 @@ class TestValidateStep1:
             },
         )
         assert response.status_code == 200
-        assert response.json()["valid"] is True
+        validated = Step1LocationResponse.model_validate(response.json())
+        assert validated.valid is True
 
 
 class TestValidateStep2:
@@ -65,7 +75,8 @@ class TestValidateStep2:
             },
         )
         assert response.status_code == 200
-        assert response.json()["valid"] is True
+        validated = Step2NovelResponse.model_validate(response.json())
+        assert validated.valid is True
 
     async def test_missing_title_rejected(self, client: AsyncClient) -> None:
         response = await client.post(
@@ -86,9 +97,9 @@ class TestValidateStep3:
             },
         )
         assert response.status_code == 200
-        data = response.json()
-        assert data["valid"] is True
-        assert data["demo_info"] is None
+        validated = Step3StarterResponse.model_validate(response.json())
+        assert validated.valid is True
+        assert validated.demo_info is None
 
     async def test_german_demo_returns_info(self, client: AsyncClient) -> None:
         response = await client.post(
@@ -98,10 +109,11 @@ class TestValidateStep3:
             },
         )
         assert response.status_code == 200
-        data = response.json()
-        assert data["valid"] is True
-        assert data["demo_info"]["title"] == "Im stillen Wald"
-        assert data["demo_info"]["language"] == "de"
+        validated = Step3StarterResponse.model_validate(response.json())
+        assert validated.valid is True
+        assert validated.demo_info is not None
+        assert validated.demo_info.title == "Im stillen Wald"
+        assert validated.demo_info.language == "de"
 
     async def test_fantasy_demo_returns_info(self, client: AsyncClient) -> None:
         response = await client.post(
@@ -111,7 +123,9 @@ class TestValidateStep3:
             },
         )
         assert response.status_code == 200
-        assert response.json()["demo_info"]["title"] == "Echoes of the Thornwall"
+        validated = Step3StarterResponse.model_validate(response.json())
+        assert validated.demo_info is not None
+        assert validated.demo_info.title == "Echoes of the Thornwall"
 
     async def test_import_without_path_rejected(self, client: AsyncClient) -> None:
         response = await client.post(
@@ -138,16 +152,17 @@ class TestListProviderModels:
         """Should return fallback model list even without a valid API key."""
         response = await client.get("/api/v1/setup/providers/anthropic/models")
         assert response.status_code == 200
-        data = response.json()
-        assert data["provider"] == "anthropic"
-        assert len(data["models"]) > 0
+        validated = AvailableModelsResponse.model_validate(response.json())
+        assert validated.provider == "anthropic"
+        assert len(validated.models) > 0
 
     async def test_all_providers_return_models(self, client: AsyncClient) -> None:
         providers = ["anthropic", "openai", "google", "groq", "openrouter", "zai"]
         for provider in providers:
             response = await client.get(f"/api/v1/setup/providers/{provider}/models")
             assert response.status_code == 200, f"Failed for provider: {provider}"
-            assert len(response.json()["models"]) > 0
+            validated = AvailableModelsResponse.model_validate(response.json())
+            assert len(validated.models) > 0
 
 
 class TestCompleteSetup:
@@ -179,8 +194,9 @@ class TestCompleteSetup:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "novel_id" in data
-        assert data["redirect_to"] == "/dashboard"
+        validated = CompleteSetupResponse.model_validate(data)
+        assert validated.novel_id
+        assert validated.redirect_to == "/dashboard"
 
     async def test_complete_without_auth_returns_401(self, client: AsyncClient) -> None:
         response = await client.post("/api/v1/setup/complete", json={"state": {}})
@@ -215,8 +231,9 @@ class TestCompleteSetup:
         )
         assert response.status_code == 200
         data = response.json()
+        validated = CompleteSetupResponse.model_validate(data)
         # If demo files exist → editor; if not → dashboard (graceful fallback)
-        assert data["redirect_to"] in (
-            f"/novel/{data['novel_id']}/editor",
+        assert validated.redirect_to in (
+            f"/novel/{validated.novel_id}/editor",
             "/dashboard",
         )

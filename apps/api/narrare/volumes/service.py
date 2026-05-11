@@ -6,22 +6,23 @@ from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, status
 
-from narrare.novels.service import NovelService
-from narrare.volumes.repository import VolumeRepository
-
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
-
+    from narrare.novels.contracts import NovelServiceProtocol
+    from narrare.volumes.contracts import VolumeRepositoryProtocol
     from narrare.volumes.models import Volume
     from narrare.volumes.schemas import CreateVolumeRequest, UpdateVolumeRequest
 
 
 class VolumeService:
-    def __init__(self, session: AsyncSession) -> None:
-        self._repo = VolumeRepository(session)
-        self._novel_service = NovelService(session)
+    def __init__(
+        self,
+        repo: VolumeRepositoryProtocol,
+        novel_service: NovelServiceProtocol,
+    ) -> None:
+        self._repo = repo
+        self._novel_service = novel_service
 
     async def get(self, volume_id: uuid.UUID, novel_id: uuid.UUID, user_id: uuid.UUID) -> Volume:
         await self._novel_service.get(novel_id, user_id)

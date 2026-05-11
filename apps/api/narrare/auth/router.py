@@ -30,7 +30,7 @@ def _get_auth_service(
     session: AsyncSession = Depends(get_async_session),
     settings: Settings = Depends(get_settings),
 ) -> AuthService:
-    return AuthService(session=session, settings=settings)
+    return AuthService(repo=AuthRepository(session), settings=settings)
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)

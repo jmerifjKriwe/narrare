@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends
 
 from narrare._app.database import get_async_session
+from narrare.novels.repository import NovelRepository
+from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
+from narrare.setup.demo_loader import DemoLoader
 from narrare.setup.provider_service import ProviderService
 from narrare.setup.schemas import (
     AIProvider,
@@ -35,7 +38,14 @@ router = APIRouter(prefix="/setup", tags=["setup"])
 def _get_service(
     session: AsyncSession = Depends(get_async_session),
 ) -> SetupService:
-    return SetupService(session)
+    return SetupService(
+        session=session,
+        novel_repo=NovelRepository(session),
+        user_settings_repo=UserSettingsRepository(session),
+        project_settings_repo=ProjectSettingsRepository(session),
+        provider_service=ProviderService(),
+        demo_loader=DemoLoader(session),
+    )
 
 
 # ---------------------------------------------------------------------------

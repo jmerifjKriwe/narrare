@@ -7,13 +7,10 @@ from typing import TYPE_CHECKING
 import structlog
 from fastapi import HTTPException, status
 
-from narrare.novels.repository import NovelRepository
-
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
-
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.novels.models import Novel
     from narrare.novels.schemas import CreateNovelRequest, UpdateNovelRequest
 
@@ -21,8 +18,8 @@ logger = structlog.get_logger(__name__)
 
 
 class NovelService:
-    def __init__(self, session: AsyncSession) -> None:
-        self._repo = NovelRepository(session)
+    def __init__(self, repo: NovelRepositoryProtocol) -> None:
+        self._repo = repo
 
     async def get(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel:
         """

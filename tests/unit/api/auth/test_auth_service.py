@@ -29,10 +29,7 @@ class _FakeSettings:
 
 @pytest.fixture
 def service(fake_repo: FakeAuthRepository) -> AuthService:
-    svc = AuthService.__new__(AuthService)
-    svc._repo = fake_repo
-    svc._settings = _FakeSettings()  # type: ignore[assignment]
-    return svc
+    return AuthService(repo=fake_repo, settings=_FakeSettings())  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -41,9 +38,11 @@ def service(fake_repo: FakeAuthRepository) -> AuthService:
 
 
 class TestAuthServiceRegister:
-    async def test_register_with_new_email_returns_tokens(self, service: AuthService) -> None:
+    async def test_register_with_new_email_returns_tokens(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         user = make_user()
-        service._repo.seed(user)  # type: ignore[attr-defined]
+        fake_repo.seed(user)
 
         with patch("narrare.auth.service.hash_password", return_value="hashed_pw"):
             result = await service.register(
@@ -55,24 +54,28 @@ class TestAuthServiceRegister:
         assert result.refresh_token
         assert result.token_type == "bearer"
 
-    async def test_register_with_existing_email_raises_409(self, service: AuthService) -> None:
+    async def test_register_with_existing_email_raises_409(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         existing = make_user(email="taken@example.com")
-        service._repo.seed(existing)  # type: ignore[attr-defined]
+        fake_repo.seed(existing)
 
         with pytest.raises(HTTPException) as exc:
             await service.register(RegisterRequest(email="taken@example.com", password="secret123"))
         assert exc.value.status_code == 409
         assert "already registered" in exc.value.detail
 
-    async def test_register_hashes_password_and_creates_user(self, service: AuthService) -> None:
+    async def test_register_hashes_password_and_creates_user(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         user = make_user()
-        service._repo.seed(user)  # type: ignore[attr-defined]
+        fake_repo.seed(user)
 
         with patch("narrare.auth.service.hash_password", return_value="hashed_pw") as mock_hash:
             await service.register(RegisterRequest(email="new@example.com", password="mypassword"))
             mock_hash.assert_called_once_with("mypassword")
 
-        service._repo.assert_called_once("create")  # type: ignore[attr-defined]
+        fake_repo.assert_called_once("create")
 
 
 # ---------------------------------------------------------------------------
@@ -81,9 +84,11 @@ class TestAuthServiceRegister:
 
 
 class TestAuthServiceLogin:
-    async def test_login_with_valid_credentials_returns_tokens(self, service: AuthService) -> None:
+    async def test_login_with_valid_credentials_returns_tokens(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         user = make_user()
-        service._repo.seed(user)  # type: ignore[attr-defined]
+        fake_repo.seed(user)
 
         with patch("narrare.auth.service.verify_password", return_value=True):
             result = await service.login(
@@ -93,9 +98,11 @@ class TestAuthServiceLogin:
         assert isinstance(result, TokenResponse)
         assert result.access_token
 
-    async def test_login_with_wrong_password_raises_401(self, service: AuthService) -> None:
+    async def test_login_with_wrong_password_raises_401(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         user = make_user()
-        service._repo.seed(user)  # type: ignore[attr-defined]
+        fake_repo.seed(user)
 
         with (
             patch("narrare.auth.service.verify_password", return_value=False),
@@ -109,9 +116,11 @@ class TestAuthServiceLogin:
             await service.login(LoginRequest(email="nobody@example.com", password="secret"))
         assert exc.value.status_code == 401
 
-    async def test_login_with_inactive_user_raises_401(self, service: AuthService) -> None:
+    async def test_login_with_inactive_user_raises_401(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         user = make_user(is_active=False)
-        service._repo.seed(user)  # type: ignore[attr-defined]
+        fake_repo.seed(user)
 
         with (
             patch("narrare.auth.service.verify_password", return_value=True),
@@ -128,9 +137,11 @@ class TestAuthServiceLogin:
 
 
 class TestAuthServiceRefresh:
-    async def test_refresh_with_valid_token_returns_new_tokens(self, service: AuthService) -> None:
+    async def test_refresh_with_valid_token_returns_new_tokens(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         user = make_user()
-        service._repo.seed(user)  # type: ignore[attr-defined]
+        fake_repo.seed(user)
         payload = {"sub": str(user.id), "type": "refresh"}
 
         with patch("narrare.auth.service.verify_refresh_token", return_value=payload):
@@ -167,9 +178,11 @@ class TestAuthServiceRefresh:
             await service.refresh("valid-token")
         assert exc.value.status_code == 401
 
-    async def test_refresh_for_inactive_user_raises_401(self, service: AuthService) -> None:
+    async def test_refresh_for_inactive_user_raises_401(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         user = make_user(is_active=False)
-        service._repo.seed(user)  # type: ignore[attr-defined]
+        fake_repo.seed(user)
         payload = {"sub": str(user.id), "type": "refresh"}
 
         with (
@@ -186,9 +199,11 @@ class TestAuthServiceRefresh:
 
 
 class TestAuthServiceCreateTokens:
-    async def test_tokens_have_correct_expires_in(self, service: AuthService) -> None:
+    async def test_tokens_have_correct_expires_in(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
         user = make_user()
-        service._repo.seed(user)  # type: ignore[attr-defined]
+        fake_repo.seed(user)
 
         with patch("narrare.auth.service.hash_password", return_value="hashed_pw"):
             result = await service.register(

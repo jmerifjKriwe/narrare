@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, status
 
 from narrare._app.database import get_async_session
+from narrare.chapters.repository import ChapterRepository
 from narrare.chapters.schemas import (
     ChapterResponse,
     ChapterSummaryResponse,
@@ -17,6 +18,8 @@ from narrare.chapters.schemas import (
     UpdateChapterMetaRequest,
 )
 from narrare.chapters.service import ChapterService
+from narrare.novels.repository import NovelRepository
+from narrare.novels.service import NovelService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +32,10 @@ router = APIRouter(prefix="/novels/{novel_id}/chapters", tags=["chapters"])
 def _get_service(
     session: AsyncSession = Depends(get_async_session),
 ) -> ChapterService:
-    return ChapterService(session)
+    return ChapterService(
+        repo=ChapterRepository(session),
+        novel_service=NovelService(repo=NovelRepository(session)),
+    )
 
 
 @router.get("", response_model=list[ChapterSummaryResponse])

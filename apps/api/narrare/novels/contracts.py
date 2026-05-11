@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import uuid
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from narrare.novels.schemas import CreateNovelRequest, UpdateNovelRequest
 
 
+@runtime_checkable
 class NovelRepositoryProtocol(Protocol):
     async def get_by_id(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel | None: ...
     async def list_by_user(self, user_id: uuid.UUID) -> list[Novel]: ...
@@ -19,6 +20,7 @@ class NovelRepositoryProtocol(Protocol):
     async def delete(self, novel: Novel) -> None: ...
 
 
+@runtime_checkable
 class NovelServiceProtocol(Protocol):
     async def get(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel: ...
     async def list_novels(self, user_id: uuid.UUID) -> list[Novel]: ...

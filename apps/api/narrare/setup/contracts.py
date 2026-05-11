@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    import uuid
+
     from narrare.setup.schemas import (
         AIProvider,
         AvailableModelsResponse,
@@ -23,6 +25,7 @@ if TYPE_CHECKING:
     )
 
 
+@runtime_checkable
 class SetupServiceProtocol(Protocol):
     async def validate_step1(self, request: Step1LocationRequest) -> Step1LocationResponse: ...
     async def validate_step2(self, request: Step2NovelRequest) -> Step2NovelResponse: ...
@@ -31,6 +34,7 @@ class SetupServiceProtocol(Protocol):
     async def complete(self, user_id: str, state: WizardState) -> CompleteSetupResponse: ...
 
 
+@runtime_checkable
 class ProviderServiceProtocol(Protocol):
     async def list_models(
         self, provider: AIProvider, api_key: str, ollama_url: str
@@ -40,6 +44,9 @@ class ProviderServiceProtocol(Protocol):
     ) -> bool: ...
 
 
+@runtime_checkable
 class DemoLoaderProtocol(Protocol):
-    async def get_info(self, starter: StarterContent) -> DemoProjectInfo: ...
-    async def load(self, starter: StarterContent, novel_id: str) -> None: ...
+    def get_info(self, starter: StarterContent) -> DemoProjectInfo: ...
+    async def load(
+        self, starter: StarterContent, novel_id: uuid.UUID, user_id: uuid.UUID
+    ) -> None: ...

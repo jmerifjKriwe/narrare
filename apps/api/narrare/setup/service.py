@@ -15,11 +15,7 @@ import structlog
 from fastapi import HTTPException, status
 
 from narrare.novels.models import Novel
-from narrare.novels.repository import NovelRepository
 from narrare.settings.models import ProjectSettings
-from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
-from narrare.setup.demo_loader import DemoLoader
-from narrare.setup.provider_service import ProviderService
 from narrare.setup.schemas import (
     AIProvider,
     CompleteSetupResponse,
@@ -39,6 +35,10 @@ from narrare.setup.schemas import (
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare.novels.contracts import NovelRepositoryProtocol
+    from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
+    from narrare.setup.contracts import DemoLoaderProtocol, ProviderServiceProtocol
+
 logger = structlog.get_logger(__name__)
 
 _SUPPORTED_LANGUAGES = {"en", "de", "fr"}
@@ -47,17 +47,23 @@ _SUPPORTED_LANGUAGES = {"en", "de", "fr"}
 class SetupService:
     """Orchestrates the 5-step setup wizard."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        novel_repo: NovelRepositoryProtocol,
+        user_settings_repo: UserSettingsRepository,
+        project_settings_repo: ProjectSettingsRepository,
+        provider_service: ProviderServiceProtocol,
+        demo_loader: DemoLoaderProtocol,
+    ) -> None:
         self._session = session
-        self._novel_repo = NovelRepository(session)
-        self._user_settings_repo = UserSettingsRepository(session)
-        self._project_settings_repo = ProjectSettingsRepository(session)
-        self._provider_service = ProviderService()
-        self._demo_loader = DemoLoader(session)
+        self._novel_repo = novel_repo
+        self._user_settings_repo = user_settings_repo
+        self._project_settings_repo = project_settings_repo
+        self._provider_service = provider_service
+        self._demo_loader = demo_loader
 
-    # -----------------------------------------------------------------------
-    # Step 1: Location
-    # -----------------------------------------------------------------------
+    # --- Step 1: Location --------------------------------------------------
 
     async def validate_step1(self, request: Step1LocationRequest) -> Step1LocationResponse:
         """
@@ -88,9 +94,7 @@ class SetupService:
             autosave_interval=request.autosave_interval,
         )
 
-    # -----------------------------------------------------------------------
-    # Step 2: Novel
-    # -----------------------------------------------------------------------
+    # --- Step 2: Novel -----------------------------------------------------
 
     async def validate_step2(self, request: Step2NovelRequest) -> Step2NovelResponse:
         """
@@ -106,9 +110,7 @@ class SetupService:
         """
         return Step2NovelResponse(valid=True, title=request.title)
 
-    # -----------------------------------------------------------------------
-    # Step 3: Starter content
-    # -----------------------------------------------------------------------
+    # --- Step 3: Starter content -------------------------------------------
 
     async def validate_step3(self, request: Step3StarterRequest) -> Step3StarterResponse:
         """
@@ -154,9 +156,7 @@ class SetupService:
             demo_info=demo_info,
         )
 
-    # -----------------------------------------------------------------------
-    # Step 4: AI Provider
-    # -----------------------------------------------------------------------
+    # --- Step 4: AI Provider -----------------------------------------------
 
     async def validate_step4(self, request: Step4ProviderRequest) -> Step4ProviderResponse:
         """
@@ -200,9 +200,7 @@ class SetupService:
             validation_message="Connection verified successfully",
         )
 
-    # -----------------------------------------------------------------------
-    # Complete: create all DB records
-    # -----------------------------------------------------------------------
+    # --- Complete: create all DB records -----------------------------------
 
     async def complete(self, user_id: str, state: WizardState) -> CompleteSetupResponse:
         """

@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 import structlog
 from fastapi import HTTPException, status
 
-from narrare.auth.repository import AuthRepository
 from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 from narrare.auth.security import (
     create_access_token,
@@ -18,9 +17,8 @@ from narrare.auth.security import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from narrare._app.config import Settings
+    from narrare.auth.contracts import AuthRepositoryProtocol
 
 logger = structlog.get_logger(__name__)
 
@@ -28,8 +26,8 @@ logger = structlog.get_logger(__name__)
 class AuthService:
     """Handles user registration, login, and token refresh."""
 
-    def __init__(self, session: AsyncSession, settings: Settings) -> None:
-        self._repo = AuthRepository(session)
+    def __init__(self, repo: AuthRepositoryProtocol, settings: Settings) -> None:
+        self._repo = repo
         self._settings = settings
 
     async def register(self, request: RegisterRequest) -> TokenResponse:

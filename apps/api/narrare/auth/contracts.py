@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import uuid
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 
 
+@runtime_checkable
 class AuthRepositoryProtocol(Protocol):
     async def get_by_email(self, email: str) -> User | None: ...
     async def get_by_id(self, user_id: uuid.UUID) -> User | None: ...
@@ -18,6 +19,7 @@ class AuthRepositoryProtocol(Protocol):
     async def set_verified(self, user_id: uuid.UUID) -> None: ...
 
 
+@runtime_checkable
 class AuthServiceProtocol(Protocol):
     async def register(self, request: RegisterRequest) -> TokenResponse: ...
     async def login(self, request: LoginRequest) -> TokenResponse: ...
