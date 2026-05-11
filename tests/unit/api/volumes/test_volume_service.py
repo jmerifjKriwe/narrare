@@ -1,130 +1,127 @@
-"""Unit tests for volumes/service.py — business logic."""
+"""Unit tests for volumes/service.py — business logic with Fake classes."""
 
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
+from tests.factories import make_novel, make_volume
+from tests.fakes import FakeNovelService, FakeVolumeRepository
 
-from narrare.volumes.models import Volume
 from narrare.volumes.schemas import CreateVolumeRequest, UpdateVolumeRequest
 from narrare.volumes.service import VolumeService
 
 
-def _make_volume(**kwargs: object) -> Volume:
-    from sqlalchemy.orm.attributes import set_attribute
-
-    volume = Volume()
-    set_attribute(volume, "id", kwargs.get("id", uuid.uuid4()))
-    set_attribute(volume, "novel_id", kwargs.get("novel_id", uuid.uuid4()))
-    set_attribute(volume, "title", kwargs.get("title", "Test Volume"))
-    set_attribute(volume, "position", kwargs.get("position", 0))
-    return volume
+@pytest.fixture
+def fake_repo() -> FakeVolumeRepository:
+    return FakeVolumeRepository()
 
 
 @pytest.fixture
-def mock_session() -> MagicMock:
-    return MagicMock()
+def fake_novel_service() -> FakeNovelService:
+    return FakeNovelService()
 
 
 @pytest.fixture
-def service(mock_session: MagicMock) -> VolumeService:
-    svc = VolumeService(mock_session)
-    # Mock the novel service ownership check
-    svc._novel_service.get = AsyncMock(return_value=MagicMock())  # type: ignore[reportPrivateUsage]
+def service(fake_repo: FakeVolumeRepository, fake_novel_service: FakeNovelService) -> VolumeService:
+    svc = VolumeService.__new__(VolumeService)
+    svc._repo = fake_repo
+    svc._novel_service = fake_novel_service
     return svc
+
+
+def _seed_ownership(
+    service: VolumeService,
+    novel_id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+) -> tuple[uuid.UUID, uuid.UUID]:
+    """Seed a novel into the fake novel service for ownership checks."""
+    novel_id = novel_id or uuid.uuid4()
+    user_id = user_id or uuid.uuid4()
+    novel = make_novel(id=novel_id, user_id=user_id)
+    service._novel_service.seed(novel)  # type: ignore[attr-defined]
+    return novel_id, user_id
 
 
 class TestVolumeServiceGet:
     async def test_returns_volume_when_found(self, service: VolumeService) -> None:
-        novel_id = uuid.uuid4()
-        volume = _make_volume(novel_id=novel_id)
-        service._repo.get_by_id = AsyncMock(return_value=volume)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        volume = make_volume(novel_id=novel_id)
+        service._repo.seed(volume)  # type: ignore[attr-defined]
 
-        result = await service.get(volume.id, novel_id, uuid.uuid4())
-
+        result = await service.get(volume.id, novel_id, user_id)
         assert result == volume
 
     async def test_raises_404_when_not_found(self, service: VolumeService) -> None:
-        service._repo.get_by_id = AsyncMock(return_value=None)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
 
         with pytest.raises(HTTPException) as exc:
-            await service.get(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+            await service.get(uuid.uuid4(), novel_id, user_id)
         assert exc.value.status_code == 404
 
 
 class TestVolumeServiceList:
     async def test_returns_volumes_for_novel(self, service: VolumeService) -> None:
-        novel_id = uuid.uuid4()
-        volumes = [_make_volume(novel_id=novel_id), _make_volume(novel_id=novel_id)]
-        service._repo.list_by_novel = AsyncMock(return_value=volumes)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        volumes = [make_volume(novel_id=novel_id), make_volume(novel_id=novel_id)]
+        service._repo.seed(*volumes)  # type: ignore[attr-defined]
 
-        result = await service.list_volumes(novel_id, uuid.uuid4())
-
+        result = await service.list_volumes(novel_id, user_id)
         assert len(result) == 2
 
 
 class TestVolumeServiceCreate:
     async def test_creates_volume_at_next_position(self, service: VolumeService) -> None:
-        novel_id = uuid.uuid4()
-        volume = _make_volume(novel_id=novel_id, position=2)
-        service._repo.max_position = AsyncMock(return_value=1)  # type: ignore[reportPrivateUsage]
-        service._repo.create = AsyncMock(return_value=volume)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        existing = make_volume(novel_id=novel_id, position=1)
+        service._repo.seed(existing)  # type: ignore[attr-defined]
 
-        result = await service.create(novel_id, uuid.uuid4(), CreateVolumeRequest(title="Book 2"))
+        result = await service.create(novel_id, user_id, CreateVolumeRequest(title="Book 2"))
 
-        assert result == volume
-        service._repo.create.assert_called_once_with(novel_id, "Book 2", 2)  # type: ignore[reportPrivateUsage]
+        assert result.title == "Book 2"
+        assert result.position == 2
 
     async def test_creates_first_volume_at_position_0(self, service: VolumeService) -> None:
-        novel_id = uuid.uuid4()
-        volume = _make_volume(novel_id=novel_id, position=0)
-        service._repo.max_position = AsyncMock(return_value=-1)  # type: ignore[reportPrivateUsage]
-        service._repo.create = AsyncMock(return_value=volume)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
 
-        await service.create(novel_id, uuid.uuid4(), CreateVolumeRequest(title="Book 1"))
+        result = await service.create(novel_id, user_id, CreateVolumeRequest(title="Book 1"))
 
-        service._repo.create.assert_called_once_with(novel_id, "Book 1", 0)  # type: ignore[reportPrivateUsage]
+        assert result.position == 0
+        assert result.title == "Book 1"
 
 
 class TestVolumeServiceUpdate:
     async def test_updates_volume_title(self, service: VolumeService) -> None:
-        novel_id = uuid.uuid4()
-        volume = _make_volume(novel_id=novel_id, title="Old Title")
-        updated = _make_volume(id=volume.id, novel_id=novel_id, title="New Title")
-        service._repo.get_by_id = AsyncMock(return_value=volume)  # type: ignore[reportPrivateUsage]
-        service._repo.update = AsyncMock(return_value=updated)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        volume = make_volume(novel_id=novel_id, title="Old Title")
+        service._repo.seed(volume)  # type: ignore[attr-defined]
 
         result = await service.update(
-            volume.id, novel_id, uuid.uuid4(), UpdateVolumeRequest(title="New Title")
+            volume.id, novel_id, user_id, UpdateVolumeRequest(title="New Title")
         )
-
         assert result.title == "New Title"
 
     async def test_update_raises_404_when_not_found(self, service: VolumeService) -> None:
-        service._repo.get_by_id = AsyncMock(return_value=None)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
 
         with pytest.raises(HTTPException) as exc:
-            await service.update(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), UpdateVolumeRequest())
+            await service.update(uuid.uuid4(), novel_id, user_id, UpdateVolumeRequest())
         assert exc.value.status_code == 404
 
 
 class TestVolumeServiceDelete:
     async def test_deletes_existing_volume(self, service: VolumeService) -> None:
-        novel_id = uuid.uuid4()
-        volume = _make_volume(novel_id=novel_id)
-        service._repo.get_by_id = AsyncMock(return_value=volume)  # type: ignore[reportPrivateUsage]
-        service._repo.delete = AsyncMock()  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        volume = make_volume(novel_id=novel_id)
+        service._repo.seed(volume)  # type: ignore[attr-defined]
 
-        await service.delete(volume.id, novel_id, uuid.uuid4())
-
-        service._repo.delete.assert_called_once_with(volume)  # type: ignore[reportPrivateUsage]
+        await service.delete(volume.id, novel_id, user_id)
+        service._repo.assert_called_once("delete")  # type: ignore[attr-defined]
 
     async def test_delete_raises_404_when_not_found(self, service: VolumeService) -> None:
-        service._repo.get_by_id = AsyncMock(return_value=None)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
 
         with pytest.raises(HTTPException) as exc:
-            await service.delete(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+            await service.delete(uuid.uuid4(), novel_id, user_id)
         assert exc.value.status_code == 404

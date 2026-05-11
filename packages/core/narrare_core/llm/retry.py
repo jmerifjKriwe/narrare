@@ -10,6 +10,10 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 import structlog
 
@@ -69,12 +73,12 @@ def is_retryable(error: LLMGatewayError) -> bool:
     return isinstance(error, RETRYABLE_ERRORS)
 
 
-async def with_retry(
-    operation: object,
+async def with_retry[T](
+    operation: Callable[[], Awaitable[T]],
     config: RetryConfig,
     *,
     intent: str = "",
-) -> object:
+) -> T:
     """
     Execute an async operation with retry logic.
 
@@ -94,9 +98,7 @@ async def with_retry(
 
     for attempt in range(config.max_attempts):
         try:
-            if callable(operation):
-                return await operation()  # type: ignore[operator]
-            raise TypeError("operation must be callable")
+            return await operation()
         except FATAL_ERRORS as e:
             # Non-retryable — fail immediately
             logger.error(

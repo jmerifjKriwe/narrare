@@ -16,7 +16,9 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def mock_session() -> MagicMock:
+    # narrare: allow  reason="Mocking SQLAlchemy AsyncSession infrastructure for DemoLoader"
     session = MagicMock()
+    # narrare: allow  reason="Mocking SQLAlchemy AsyncSession infrastructure for DemoLoader"
     session.add = MagicMock()
     session.flush = AsyncMock()
     return session
@@ -72,21 +74,21 @@ class TestLoadChapters:
         import uuid
 
         novel_id = uuid.uuid4()
-        await loader._load_chapters(chapters_dir, novel_id)  # type: ignore[reportPrivateUsage]
+        await loader._load_chapters(chapters_dir, novel_id)
 
         # One chapter should have been added to the session
-        loader._session.add.assert_called_once()  # type: ignore[reportPrivateUsage, reportAttributeAccessIssue]
-        chapter = loader._session.add.call_args[0][0]  # type: ignore[reportPrivateUsage, reportAttributeAccessIssue]
-        assert chapter.title == "Test Chapter"  # type: ignore[reportUnknownMemberType]
-        assert chapter.content == "Once upon a time."  # type: ignore[reportUnknownMemberType]
-        assert chapter.word_count == 4  # type: ignore[reportUnknownMemberType]
+        loader._session.add.assert_called_once()  # pyright: ignore[reportAttributeAccessIssue]
+        chapter = loader._session.add.call_args[0][0]  # pyright: ignore[reportAttributeAccessIssue]
+        assert chapter.title == "Test Chapter"
+        assert chapter.content == "Once upon a time."
+        assert chapter.word_count == 4
 
     async def test_skips_missing_chapters_dir(self, loader: DemoLoader, tmp_path: Path) -> None:
         """Missing chapters directory is handled gracefully."""
         import uuid
 
-        await loader._load_chapters(tmp_path / "nonexistent", uuid.uuid4())  # type: ignore[reportPrivateUsage]
-        loader._session.add.assert_not_called()  # type: ignore[reportPrivateUsage, reportAttributeAccessIssue]
+        await loader._load_chapters(tmp_path / "nonexistent", uuid.uuid4())
+        loader._session.add.assert_not_called()  # pyright: ignore[reportAttributeAccessIssue]
 
     async def test_raises_for_non_demo_starter(self, loader: DemoLoader) -> None:
         import uuid

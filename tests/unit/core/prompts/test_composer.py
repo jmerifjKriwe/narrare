@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 
 from narrare_core.llm.intents import LLMIntent
@@ -24,23 +22,53 @@ def _make_resolved(system: str = "System.", first: str | None = "Hello!") -> Res
     )
 
 
-@pytest.fixture
-def mock_registry() -> MagicMock:
-    registry = MagicMock()
-    registry.resolve = AsyncMock(return_value=_make_resolved())
-    return registry
+class FakePromptRegistry:
+    """Minimal fake for PromptRegistry — returns programmable resolved prompts."""
+
+    def __init__(self, resolved: ResolvedPrompt | None = None) -> None:
+        self._resolved = resolved or _make_resolved()
+
+    async def resolve(
+        self,
+        *,
+        category: str,
+        language: str,
+        mode: str,
+        genre: str | None = None,
+        db_content: str | None = None,
+    ) -> ResolvedPrompt:
+        return self._resolved
+
+
+class FakeMetaLoader:
+    """Minimal fake for MetaPromptLoader."""
+
+    def __init__(self, content: str = "") -> None:
+        self._content = content
+
+    async def load(
+        self,
+        language: str = "en",
+        *,
+        variables: dict[str, str] | None = None,
+        use_lite: bool = False,
+    ) -> str:
+        return self._content
 
 
 @pytest.fixture
-def mock_meta_loader() -> MagicMock:
-    loader = MagicMock()
-    loader.load = AsyncMock(return_value="")
-    return loader
+def fake_registry() -> FakePromptRegistry:
+    return FakePromptRegistry()
 
 
 @pytest.fixture
-def composer(mock_registry: MagicMock, mock_meta_loader: MagicMock) -> PromptComposer:
-    return PromptComposer(mock_registry, mock_meta_loader)
+def fake_meta_loader() -> FakeMetaLoader:
+    return FakeMetaLoader()
+
+
+@pytest.fixture
+def composer(fake_registry: FakePromptRegistry, fake_meta_loader: FakeMetaLoader) -> PromptComposer:
+    return PromptComposer(fake_registry, fake_meta_loader)  # type: ignore[arg-type]
 
 
 class TestPromptComposerBuild:
@@ -53,11 +81,10 @@ class TestPromptComposerBuild:
 
     async def test_meta_prepended_when_present(
         self,
-        mock_registry: MagicMock,
-        mock_meta_loader: MagicMock,
+        fake_registry: FakePromptRegistry,
     ) -> None:
-        mock_meta_loader.load = AsyncMock(return_value="You are a writing assistant.")
-        composer = PromptComposer(mock_registry, mock_meta_loader)
+        fake_meta = FakeMetaLoader(content="You are a writing assistant.")
+        composer = PromptComposer(fake_registry, fake_meta)  # type: ignore[arg-type]
         ctx = PromptContext(language="en")
         result = await composer.build(LLMIntent.WRITE, ctx)
         assert result.system.startswith("You are a writing assistant.")
@@ -70,24 +97,20 @@ class TestPromptComposerBuild:
 
     async def test_variables_substituted_in_system(
         self,
-        mock_registry: MagicMock,
-        mock_meta_loader: MagicMock,
+        fake_meta_loader: FakeMetaLoader,
     ) -> None:
-        mock_registry.resolve = AsyncMock(
-            return_value=_make_resolved(system="Write for {{project_title}}.")
-        )
-        composer = PromptComposer(mock_registry, mock_meta_loader)
+        fake_registry = FakePromptRegistry(_make_resolved(system="Write for {{project_title}}."))
+        composer = PromptComposer(fake_registry, fake_meta_loader)  # type: ignore[arg-type]
         ctx = PromptContext(language="en", project_title="Echoes of the Thornwall")
         result = await composer.build(LLMIntent.WRITE, ctx)
         assert "Echoes of the Thornwall" in result.system
 
     async def test_no_meta_when_disabled(
         self,
-        mock_registry: MagicMock,
-        mock_meta_loader: MagicMock,
+        fake_registry: FakePromptRegistry,
     ) -> None:
-        mock_meta_loader.load = AsyncMock(return_value="Meta prompt text.")
-        composer = PromptComposer(mock_registry, mock_meta_loader, include_meta=False)
+        fake_meta = FakeMetaLoader(content="Meta prompt text.")
+        composer = PromptComposer(fake_registry, fake_meta, include_meta=False)  # type: ignore[arg-type]
         ctx = PromptContext(language="en")
         result = await composer.build(LLMIntent.WRITE, ctx)
         assert "Meta prompt text." not in result.system

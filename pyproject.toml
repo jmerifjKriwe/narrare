@@ -67,9 +67,6 @@ exclude = [
   # Versteckte Dateien/Verzeichnisse
   "**/.*",
 
-  # Test-Dateien: viele MagicMock-Typen, pytest-Auto-Fix
-  "tests/",
-
   # Virtual Environment (explizit, Performance)
   ".venv",
 
@@ -93,6 +90,17 @@ exclude = [
   "**/migrations/**",  # Alembic-Migrationen
   "narrare",            # Leeres Namespace-Paket
 ]
+
+# Tests: basic mode statt strict (MagicMock/AsyncMock erzeugen zu viel Noise in strict)
+[[tool.pyright.executionEnvironments]]
+root = "tests"
+# typeCheckingMode removed — not supported in executionEnvironments since pyright ~1.1.400
+reportPrivateUsage = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+# Tests import from tests.fakes / tests.factories — resolved at runtime by pytest pythonpath
+reportMissingImports = false
 
 # ---------------------------------------------------------------------------
 # Ruff

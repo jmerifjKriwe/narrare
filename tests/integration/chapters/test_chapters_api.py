@@ -129,6 +129,56 @@ class TestReorderChapters:
         assert chapters[1]["id"] == c1
 
 
+class TestUpdateChapterMeta:
+    async def test_update_title(
+        self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str
+    ) -> None:
+        create = await client.post(
+            f"/api/v1/novels/{novel_id}/chapters",
+            json={"title": "Old Title"},
+            headers=auth_headers,
+        )
+        chapter_id = create.json()["id"]
+
+        response = await client.patch(
+            f"/api/v1/novels/{novel_id}/chapters/{chapter_id}",
+            json={"title": "New Title"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["title"] == "New Title"
+
+
+class TestGetChapter:
+    async def test_get_existing_chapter(
+        self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str
+    ) -> None:
+        create = await client.post(
+            f"/api/v1/novels/{novel_id}/chapters",
+            json={"title": "Fetchable"},
+            headers=auth_headers,
+        )
+        chapter_id = create.json()["id"]
+
+        response = await client.get(
+            f"/api/v1/novels/{novel_id}/chapters/{chapter_id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] == chapter_id
+
+    async def test_get_nonexistent_chapter_returns_404(
+        self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str
+    ) -> None:
+        import uuid
+
+        response = await client.get(
+            f"/api/v1/novels/{novel_id}/chapters/{uuid.uuid4()}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
+
+
 class TestDeleteChapter:
     async def test_delete_removes_chapter(
         self, client: AsyncClient, auth_headers: dict[str, str], novel_id: str

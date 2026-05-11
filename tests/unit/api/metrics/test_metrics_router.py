@@ -16,13 +16,16 @@ from narrare._app.main import app
 
 @pytest.fixture
 def mock_engine() -> MagicMock:
+    # narrare: allow-direct-llm  reason="Mocking SQLAlchemy Engine — no domain contract"
     engine = MagicMock()
     conn = AsyncMock()
     conn.execute = AsyncMock(return_value=None)
     ctx_manager = AsyncMock()
     ctx_manager.__aenter__ = AsyncMock(return_value=conn)
     ctx_manager.__aexit__ = AsyncMock(return_value=False)
-    engine.connect = MagicMock(return_value=ctx_manager)
+    engine.connect = MagicMock(  # narrare: allow  reason="Mocking SQLAlchemy Engine connect method"
+        return_value=ctx_manager
+    )
     return engine
 
 

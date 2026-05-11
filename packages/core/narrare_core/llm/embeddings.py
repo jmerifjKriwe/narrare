@@ -50,7 +50,6 @@ async def embed_texts(
         return []
 
     model_name = model or os.environ.get("DEFAULT_EMBEDDING_MODEL", _DEFAULT_EMBEDDING_MODEL)
-    client = openai.AsyncOpenAI()
 
     # Separate empty strings (return zero vectors) from real texts
     indices_to_embed: list[int] = []
@@ -65,6 +64,8 @@ async def embed_texts(
         # We don't know dimension without an API call; use 1536 (text-embedding-3-small)
         dim = 1536
         return [[0.0] * dim for _ in texts]
+
+    client = openai.AsyncOpenAI()
 
     all_embeddings: list[list[float]] = []
     start = time.monotonic()

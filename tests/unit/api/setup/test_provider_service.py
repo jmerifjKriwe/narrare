@@ -101,7 +101,9 @@ class TestProviderServiceValidateConnection:
 
 class TestProviderServiceFetchModels:
     async def test_fetch_anthropic_models(self, service: ProviderService) -> None:
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response = MagicMock()
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
             "data": [
@@ -109,20 +111,23 @@ class TestProviderServiceFetchModels:
                 {"id": "some-other-model"},
             ]
         }
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
         with patch("narrare.setup.provider_service.httpx.AsyncClient", return_value=mock_client):
-            result = await service._fetch_models(AIProvider.ANTHROPIC, "sk-test", "")  # type: ignore[reportPrivateUsage]
+            result = await service._fetch_models(AIProvider.ANTHROPIC, "sk-test", "")
 
         # Only claude models should pass the filter
         assert len(result) == 1
         assert result[0].id == "claude-3-opus"
 
     async def test_fetch_openai_models(self, service: ProviderService) -> None:
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response = MagicMock()
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
             "data": [
@@ -132,19 +137,22 @@ class TestProviderServiceFetchModels:
                 {"id": "dall-e-3"},
             ]
         }
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
         with patch("narrare.setup.provider_service.httpx.AsyncClient", return_value=mock_client):
-            result = await service._fetch_models(AIProvider.OPENAI, "sk-test", "")  # type: ignore[reportPrivateUsage]
+            result = await service._fetch_models(AIProvider.OPENAI, "sk-test", "")
 
         # Only chat models should pass the filter
         assert len(result) == 3
 
     async def test_fetch_ollama_models(self, service: ProviderService) -> None:
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response = MagicMock()
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
             "models": [
@@ -152,35 +160,41 @@ class TestProviderServiceFetchModels:
                 {"name": "mistral", "details": {}},
             ]
         }
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
         with patch("narrare.setup.provider_service.httpx.AsyncClient", return_value=mock_client):
-            result = await service._fetch_models(AIProvider.OLLAMA, "", "http://localhost:11434")  # type: ignore[reportPrivateUsage]
+            result = await service._fetch_models(AIProvider.OLLAMA, "", "http://localhost:11434")
 
         assert len(result) == 2
         assert result[0].id == "llama3.2"
 
     async def test_fetch_openrouter_models(self, service: ProviderService) -> None:
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response = MagicMock()
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response.raise_for_status = MagicMock()
         models_data = [{"id": f"model-{i}", "name": f"Model {i}"} for i in range(50)]
         mock_response.json.return_value = {"data": models_data}
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
         with patch("narrare.setup.provider_service.httpx.AsyncClient", return_value=mock_client):
-            result = await service._fetch_models(AIProvider.OPENROUTER, "sk-test", "")  # type: ignore[reportPrivateUsage]
+            result = await service._fetch_models(AIProvider.OPENROUTER, "sk-test", "")
 
         # Should be limited to 30
         assert len(result) == 30
 
     async def test_fetch_zai_models(self, service: ProviderService) -> None:
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response = MagicMock()
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
             "data": [
@@ -188,25 +202,27 @@ class TestProviderServiceFetchModels:
                 {"id": "glm-z1"},
             ]
         }
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
         with patch("narrare.setup.provider_service.httpx.AsyncClient", return_value=mock_client):
-            result = await service._fetch_models(AIProvider.ZAI, "sk-test", "")  # type: ignore[reportPrivateUsage]
+            result = await service._fetch_models(AIProvider.ZAI, "sk-test", "")
 
         assert len(result) == 2
 
     async def test_fetch_returns_fallback_for_unsupported_provider(
         self, service: ProviderService
     ) -> None:
+        # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
         mock_client = MagicMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
         with patch("narrare.setup.provider_service.httpx.AsyncClient", return_value=mock_client):
             # GROQ has fallback but no dedicated fetch method
-            result = await service._fetch_models(AIProvider.GROQ, "sk-test", "")  # type: ignore[reportPrivateUsage]
+            result = await service._fetch_models(AIProvider.GROQ, "sk-test", "")
 
         assert len(result) > 0  # Falls back to _FALLBACK_MODELS

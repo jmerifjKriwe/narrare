@@ -1,0 +1,41 @@
+"""Narrare Architecture Constraint Checker — shared helpers."""
+
+from __future__ import annotations
+
+import tomllib
+from pathlib import Path
+
+ROOT = Path(__file__).parent.parent.parent
+
+# Approval markers — if present in a comment near a violation line, it's an approved exception.
+APPROVAL_MARKER = "# narrare: allow"
+LEGACY_MARKER = "# narrare: allow-direct-llm"
+
+
+def load_config() -> dict[str, object]:
+    """Load architecture config from pyproject.toml."""
+    config_path = ROOT / "pyproject.toml"
+    with config_path.open("rb") as f:
+        data = tomllib.load(f)
+    return data.get("tool", {}).get("narrare", {}).get("architecture", {})
+
+
+def is_approved_exception(source_lines: list[str], lineno: int) -> tuple[bool, str]:
+    """Check if the line or its preceding comment has an approval marker."""
+    for check_line in range(max(0, lineno - 2), min(len(source_lines), lineno + 1)):
+        line = source_lines[check_line]
+        if APPROVAL_MARKER in line or LEGACY_MARKER in line:
+            reason_start = line.find("reason=")
+            reason = ""
+            if reason_start != -1:
+                reason = line[reason_start + 8 :].strip().strip('"').strip("'")
+            return True, reason
+    return False, ""
+
+
+def relative_to_root(path: Path) -> str:
+    """Return a path string relative to the project root."""
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)

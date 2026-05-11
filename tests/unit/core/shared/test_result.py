@@ -31,7 +31,7 @@ class TestOk:
     def test_frozen(self) -> None:
         result = Ok(42)
         with pytest.raises(AttributeError):
-            result.value = 99  # type: ignore[misc]
+            result.value = 99  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_equality(self) -> None:
         assert Ok(42) == Ok(42)
@@ -64,7 +64,7 @@ class TestErr:
     def test_frozen(self) -> None:
         result = Err(ValueError("oops"))
         with pytest.raises(AttributeError):
-            result.error = RuntimeError("new")  # type: ignore[misc]
+            result.error = RuntimeError("new")  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_same_error_type_and_message(self) -> None:
         # Two Err with same error type/message — they are equal as dataclasses

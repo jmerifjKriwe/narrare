@@ -7,7 +7,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import structlog
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 if TYPE_CHECKING:
     from fastapi import Request, Response
@@ -18,7 +18,7 @@ logger = structlog.get_logger(__name__)
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Log every request with duration and status code."""
 
-    async def dispatch(self, request: Request, call_next: object) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = str(uuid.uuid4())[:8]
         start = time.monotonic()
 
@@ -30,15 +30,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         )
 
         try:
-            response: Response = await call_next(request)  # type: ignore[operator]
+            response = await call_next(request)
             duration_ms = round((time.monotonic() - start) * 1000)
             logger.info(
                 "http_request",
-                status=response.status_code,  # type: ignore[reportUnknownMemberType]
+                status=response.status_code,
                 duration_ms=duration_ms,
             )
-            response.headers["X-Request-ID"] = request_id  # type: ignore[reportUnknownMemberType]
-            return response  # type: ignore[reportUnknownVariableType]
+            response.headers["X-Request-ID"] = request_id
+            return response
         except Exception as e:
             duration_ms = round((time.monotonic() - start) * 1000)
             logger.error("http_request_error", error=str(e), duration_ms=duration_ms)

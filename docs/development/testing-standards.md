@@ -35,43 +35,59 @@ Never use a real DB in a unit test. Never mock the DB in an integration test.
 
 ## What Gets Tested
 
-### Unit Tests — Every Public Method
+### Unit Tests — Services and Core Logic
 
-Every public method on every service class gets a unit test.
+Every public method on every **service** class gets a unit test.
 Minimum cases per method:
 1. Happy path — correct input, expected output
 2. Domain error — invalid input, correct error raised
 3. Edge case — at least one boundary condition
 
-```python
-# Example: tests/unit/api/writing/test_draft_service.py
+**Repositories are NOT unit-tested.** Repository logic (SQL queries) is tested
+exclusively in integration tests with a real database. Mocking an AsyncSession
+to verify that `.execute()` was called tests nothing meaningful — a wrong
+WHERE clause or missing JOIN passes the unit test but fails in production.
 
-class TestDraftServiceWrite:
+```python
+# Example: tests/unit/api/chapters/test_chapter_service.py
+
+class TestChapterServiceUpdateContent:
     async def test_returns_draft_on_success(
-        self, service: DraftService, mock_gateway: MockLLMGateway
+        self, service: ChapterService, fake_repo: FakeChapterRepository
     ) -> None:
-        mock_gateway.returns("Once upon a time...")
-        result = await service.write(request=valid_write_request())
-        assert result.content == "Once upon a time..."
+        chapter = make_chapter()
+        fake_repo.seed(chapter)
+
+        result = await service.update_content(
+            chapter.id, chapter.novel_id, user_id, request
+        )
+
+        assert result.content == "new content"
 
     async def test_raises_on_llm_failure(
-        self, service: DraftService, mock_gateway: MockLLMGateway
+        self, service: DraftService, fake_gateway: FakeLLMGateway
     ) -> None:
-        mock_gateway.raises(LLMGatewayError("timeout"))
+        fake_gateway.raises(LLMGatewayError("timeout"))
         with pytest.raises(WritingError, match="Generation failed"):
             await service.write(request=valid_write_request())
 
     async def test_uses_correct_intent(
-        self, service: DraftService, mock_gateway: MockLLMGateway
+        self, service: DraftService, fake_gateway: FakeLLMGateway
     ) -> None:
         await service.write(request=valid_write_request())
-        mock_gateway.assert_called_with_intent(LLMIntent.WRITE)
+        fake_gateway.assert_called_with_intent(LLMIntent.WRITE)
 ```
 
-### Integration Tests — Every Router Endpoint
+### Integration Tests — Repositories and Router Endpoints
 
-Every HTTP endpoint gets an integration test via `httpx.AsyncClient`.
-Minimum cases per endpoint:
+Integration tests cover TWO things:
+
+**Repository tests** — every repository method with a real database:
+1. Happy path — correct data returned
+2. Not found — None or empty list for missing resources
+3. Edge cases — pagination boundaries, ordering, constraints
+
+**Router tests** — every HTTP endpoint via `httpx.AsyncClient`:
 1. Success — 200/201 with correct response schema
 2. Unauthorized — 401 when auth missing
 3. Not found — 404 for missing resources
@@ -81,36 +97,154 @@ Minimum cases per endpoint:
 
 The constraint checker runs as a test:
 ```python
-# tests/unit/test_architecture_constraints.py
-def test_no_llm_imports_outside_gateway() -> None:
+# tests/conftest.py (embedded)
+def test_architecture_constraints() -> None:
     result = subprocess.run(["python", "scripts/check_architecture.py"])
     assert result.returncode == 0
 ```
 
 ---
 
+## Mocking Standards — RULE-TEST-01
+
+> **Enforced by:** `scripts/check_architecture.py` — bare MagicMock scan.
+> **No exceptions without documented decision in CONSTRAINTS.md.**
+
+### The Rule: Fake Classes instead of MagicMock
+
+Every domain dependency (Repository, Service, LLM Gateway) gets a **Fake class**
+that implements the corresponding Protocol from `contracts.py`.
+
+```
+tests/fakes/
+├── __init__.py
+├── fake_llm_gateway.py       ← FakeLLMGateway
+├── fake_repositories.py      ← FakeChapterRepo, FakeNovelRepo, etc.
+├── fake_services.py          ← FakeNovelService, FakeAuthService, etc.
+└── fake_setup.py             ← FakeProviderService, FakeDemoLoader
+```
+
+### What IS allowed
+
+```python
+# ✅ Fake classes for domain dependencies
+from tests.fakes import FakeChapterRepository, FakeLLMGateway
+
+fake_repo = FakeChapterRepository()
+fake_repo.seed(make_chapter(id=uuid4()))
+
+fake_gateway = FakeLLMGateway()
+fake_gateway.returns("Generated text")
+
+# ✅ patch() for external functions that are not dependencies
+with patch("narrare.auth.service.hash_password", return_value="hashed"):
+    await service.register(request)
+
+# ✅ patch.object() for private methods in core tests
+with patch.object(gateway, "_make_agent", return_value=fake_agent):
+    await gateway.run(...)
+
+# ✅ AsyncMock() on Fake objects for individual method overrides
+fake_repo.get_by_id = AsyncMock(return_value=None)
+```
+
+### What is FORBIDDEN
+
+```python
+# ❌ Bare MagicMock() without spec=
+session = MagicMock()
+repo = MagicMock()
+gateway = MagicMock()
+
+# ❌ MagicMock as replacement for a domain dependency
+service._repo = MagicMock()  # Use FakeChapterRepository instead
+service._gateway = MagicMock()  # Use FakeLLMGateway instead
+
+# ❌ Nested mock chains
+mock_result = MagicMock()
+mock_result.data = "text"
+mock_agent = MagicMock()
+mock_agent.run = AsyncMock(return_value=mock_result)
+
+# ❌ MagicMock(spec=...) as a shortcut when a Fake exists
+# If tests/fakes/ has a Fake for it, use the Fake.
+```
+
+### Why Fakes are better
+
+| Aspect | Fake Class | MagicMock |
+|--------|-----------|-----------|
+| **Contract safety** | Breaks at compile time when Protocol changes | Silently accepts any attribute |
+| **Refactor safety** | Must update Fake → immediate feedback | Tests pass with stale interface |
+| **Readability** | `fake_repo.seed(chapter)` — clear intent | `mock.get_by_id = AsyncMock(...)` — scattered setup |
+| **Reusability** | Shared across all tests | Setup repeated per test file |
+| **Documentation** | Fake IS the contract documentation | Mock hides the contract |
+
+### Fake Class Pattern
+
+Every Fake follows this structure:
+
+```python
+class FakeChapterRepository:
+    """Fake that implements ChapterRepositoryProtocol."""
+
+    def __init__(self) -> None:
+        self._store: dict[UUID, Chapter] = {}
+        self.calls: list[CallRecord] = []
+
+    # --- Seeding (test setup) ---
+    def seed(self, *chapters: Chapter) -> None:
+        for ch in chapters:
+            self._store[ch.id] = ch
+
+    # --- Protocol implementation ---
+    async def get_by_id(self, chapter_id: UUID, novel_id: UUID) -> Chapter | None:
+        self.calls.append(CallRecord("get_by_id", chapter_id=chapter_id, novel_id=novel_id))
+        return self._store.get(chapter_id)
+
+    async def create(self, novel_id: UUID, request: CreateChapterRequest, position: int) -> Chapter:
+        chapter = _build_from_request(novel_id, request, position)
+        self._store[chapter.id] = chapter
+        self.calls.append(CallRecord("create", novel_id=novel_id))
+        return chapter
+
+    # --- Call tracking ---
+    def call_count(self, method: str) -> int:
+        return sum(1 for c in self.calls if c.method == method)
+
+    def assert_called(self, method: str, **kwargs: object) -> None:
+        for call in self.calls:
+            if call.method == method and call.matches(kwargs):
+                return
+        raise AssertionError(f"No call to {method} with {kwargs}")
+```
+
+---
+
 ## Fixtures and Test Infrastructure
 
-### The Mock LLM Gateway
-
-The most important test fixture in the project.
-All unit tests use it. It is never optional.
+### Fake Fixtures
 
 ```python
 # tests/conftest.py
 
 @pytest.fixture
-def mock_gateway() -> MockLLMGateway:
-    """Controllable LLM gateway for unit tests."""
-    return MockLLMGateway()
+def fake_gateway() -> FakeLLMGateway:
+    """Fake LLM gateway — configurable responses, call tracking."""
+    return FakeLLMGateway()
 
-class MockLLMGateway:
-    def returns(self, text: str) -> None: ...
-    def returns_stream(self, chunks: list[str]) -> None: ...
-    def raises(self, error: Exception) -> None: ...
-    def assert_called_with_intent(self, intent: LLMIntent) -> None: ...
-    def assert_called_with_context(self, **kwargs) -> None: ...
-    def call_count(self) -> int: ...
+@pytest.fixture
+def fake_chapter_repo() -> FakeChapterRepository:
+    return FakeChapterRepository()
+
+# Per-domain fixtures in test subdirectories:
+# tests/unit/api/chapters/conftest.py
+@pytest.fixture
+def service(fake_chapter_repo, fake_novel_service) -> ChapterService:
+    svc = ChapterService.__new__(ChapterService)
+    svc._repo = fake_chapter_repo
+    svc._novel_service = fake_novel_service
+    return svc
 ```
 
 ### Database Fixtures (Integration Only)
@@ -134,29 +268,29 @@ async def db_session(db_engine) -> AsyncSession:
 ### Factory Helpers (not fixtures)
 
 ```python
-# tests/factories.py — not pytest fixtures, plain functions
-def valid_write_request(**overrides) -> WriteChapterRequest:
-    return WriteChapterRequest(
-        chapter_id=uuid4(),
-        mode="new_chapter",
-        language="en",
-        **overrides,
-    )
+# tests/factories.py — plain functions, not pytest fixtures
+def make_chapter(**overrides) -> Chapter:
+    """Create a Chapter with sensible defaults for testing."""
+    ...
+
+def make_novel(**overrides) -> Novel:
+    """Create a Novel with sensible defaults for testing."""
+    ...
 ```
 
 ---
 
 ## Coverage Standards
 
-| Module | Minimum | Target |
-|--------|---------|--------|
-| `core/llm/` | 95% | 100% |
-| `core/prompts/` | 95% | 100% |
-| `core/context/` | 90% | 95% |
-| All other `core/` | 90% | 95% |
-| `apps/api/*/service.py` | 85% | 90% |
-| `apps/api/*/repository.py` | 80% | 90% |
-| `apps/api/*/router*.py` | 80% | 85% |
+| Module | Level | Minimum | Target |
+|--------|-------|---------|--------|
+| `core/llm/` | Unit | 95% | 100% |
+| `core/prompts/` | Unit | 95% | 100% |
+| `core/context/` | Unit | 90% | 95% |
+| All other `core/` | Unit | 90% | 95% |
+| `apps/api/*/service.py` | Unit | 85% | 90% |
+| `apps/api/*/repository.py` | **Integration** | 80% | 90% |
+| `apps/api/*/router*.py` | Integration | 80% | 85% |
 
 Coverage below minimum = CI failure. No exceptions.
 

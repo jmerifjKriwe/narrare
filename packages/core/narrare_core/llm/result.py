@@ -34,7 +34,7 @@ class LLMResult:
     model: str
     intent: str
     # Raw provider response metadata (for debugging)
-    metadata: dict[str, object] = field(default_factory=dict)  # type: ignore[reportUnknownVariableType]
+    metadata: dict[str, object] = field(default_factory=dict[str, object])
 
     @property
     def ok(self) -> bool:

@@ -23,8 +23,8 @@ def tmp_prompt_dir(tmp_path: Path) -> Path:
 def registry(tmp_path: Path) -> PromptRegistry:
     """Registry pointing at a temp directory (no real bundled prompts)."""
     r = PromptRegistry()
-    bundled = tmp_path / "bundled"  # type: ignore[reportPrivateUsage]
-    r._bundled_root = bundled  # type: ignore[reportPrivateUsage]
+    bundled = tmp_path / "bundled"
+    r._bundled_root = bundled
     bundled.mkdir()
     return r
 
@@ -38,7 +38,7 @@ def _write_prompt(root: Path, category: str, lang: str, mode: str, content: str)
 class TestPromptRegistryResolve:
     async def test_resolves_bundled_prompt(self, registry: PromptRegistry) -> None:
         _write_prompt(
-            registry._bundled_root,  # type: ignore[reportPrivateUsage]
+            registry._bundled_root,
             "writing",
             "en",
             "new_chapter",
@@ -51,7 +51,7 @@ class TestPromptRegistryResolve:
 
     async def test_falls_back_to_english(self, registry: PromptRegistry) -> None:
         _write_prompt(
-            registry._bundled_root,  # type: ignore[reportPrivateUsage]
+            registry._bundled_root,
             "writing",
             "en",
             "new_chapter",
@@ -67,7 +67,7 @@ class TestPromptRegistryResolve:
 
     async def test_db_content_highest_priority(self, registry: PromptRegistry) -> None:
         _write_prompt(
-            registry._bundled_root,  # type: ignore[reportPrivateUsage]
+            registry._bundled_root,
             "writing",
             "en",
             "new_chapter",
@@ -86,11 +86,11 @@ class TestPromptRegistryResolve:
         self, registry: PromptRegistry, tmp_path: Path
     ) -> None:
         project_root = tmp_path / "project"
-        registry._project_root = project_root  # type: ignore[reportPrivateUsage]
+        registry._project_root = project_root
 
         # Write bundled
         _write_prompt(
-            registry._bundled_root,  # type: ignore[reportPrivateUsage]
+            registry._bundled_root,
             "writing",
             "en",
             "new_chapter",
@@ -107,14 +107,14 @@ class TestPromptRegistryResolve:
 
     async def test_genre_specific_prompt_preferred(self, registry: PromptRegistry) -> None:
         _write_prompt(
-            registry._bundled_root,  # type: ignore[reportPrivateUsage]
+            registry._bundled_root,
             "writing",
             "en",
             "new_chapter",
             "## System Prompt\n\nGeneric.",
         )
         # Write genre-specific
-        bundled_root = registry._bundled_root  # type: ignore[reportPrivateUsage]
+        bundled_root = registry._bundled_root
         p = bundled_root / "writing" / "en" / "new_chapter"
         (p / "system_fantasy.md").write_text("## System Prompt\n\nFantasy specific.")
 

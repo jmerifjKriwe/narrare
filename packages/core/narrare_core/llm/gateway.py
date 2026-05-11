@@ -34,7 +34,7 @@ import structlog
 from pydantic_ai import Agent
 
 from narrare_core.llm import (
-    _providers,  # type: ignore[import]  # noqa: F401 — triggers provider registration
+    _providers,  # noqa: F401  # pyright: ignore[reportUnusedImport] — triggers provider registration
 )
 from narrare_core.llm._providers.registry import get as get_provider
 from narrare_core.llm._providers.registry import infer_provider
@@ -214,7 +214,7 @@ class LLMGateway:
                 raise domain_error from e
 
         result = await with_retry(_call, retry_config, intent=intent.value)
-        return result  # type: ignore[return-value]
+        return result
 
     async def stream(
         self,

@@ -41,6 +41,7 @@ packages/web/.turbo/
 
 # pnpm
 packages/web/pnpm-lock.yaml
+.pnpm-store/
 
 # IDE
 .vscode/settings.json

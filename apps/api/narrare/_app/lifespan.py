@@ -29,10 +29,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     # TaskIQ broker startup (skip in worker process — it handles its own)
     try:
-        from narrare.tasks.broker import broker  # type: ignore[import]
+        from narrare.tasks.broker import broker  # type: ignore[import]  # Phase 4+ module
 
-        if not broker.is_worker_process:  # type: ignore[reportUnknownMemberType]
-            await broker.startup()  # type: ignore[reportUnknownMemberType]
+        if not broker.is_worker_process:  # type: ignore[attr-defined]  # untyped TaskIQ
+            await broker.startup()  # type: ignore[attr-defined]  # untyped TaskIQ
             logger.info("taskiq_broker_started")
     except ImportError:
         pass  # Tasks not yet configured in Phase 2
@@ -45,10 +45,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     logger.info("narrare_api_stopping")
 
     try:
-        from narrare.tasks.broker import broker  # type: ignore[import]
+        from narrare.tasks.broker import broker  # type: ignore[import]  # Phase 4+ module
 
-        if not broker.is_worker_process:  # type: ignore[reportUnknownMemberType]
-            await broker.shutdown()  # type: ignore[reportUnknownMemberType]
+        if not broker.is_worker_process:  # type: ignore[attr-defined]  # untyped TaskIQ
+            await broker.shutdown()  # type: ignore[attr-defined]  # untyped TaskIQ
     except ImportError:
         pass
 

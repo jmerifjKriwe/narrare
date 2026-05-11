@@ -17,7 +17,7 @@ class TestRegisterAndGet:
         def my_factory(model_id: str) -> object:
             return f"model:{model_id}"
 
-        register("__test_provider", my_factory)  # type: ignore[arg-type]
+        register("__test_provider", my_factory)  # pyright: ignore[reportArgumentType]
 
         result = get("__test_provider")
         assert result("gpt-4o") == "model:gpt-4o"

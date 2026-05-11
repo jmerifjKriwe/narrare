@@ -1,0 +1,153 @@
+{
+  "common": {
+    "loading": "Chargement…",
+    "error": "Une erreur s'est produite",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "back": "Retour",
+    "next": "Suivant",
+    "finish": "Terminer",
+    "confirm": "Confirmer",
+    "yes": "Oui",
+    "no": "Non",
+    "words": "mots",
+    "characters": "caractères",
+    "readingTime": "temps de lecture"
+  },
+  "auth": {
+    "login": "Se connecter",
+    "register": "Créer un compte",
+    "logout": "Se déconnecter",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "displayName": "Nom d'affichage",
+    "displayNamePlaceholder": "Comment devons-nous vous appeler ?",
+    "loginButton": "Se connecter",
+    "registerButton": "Créer un compte",
+    "noAccount": "Pas encore de compte ?",
+    "hasAccount": "Déjà un compte ?",
+    "invalidCredentials": "E-mail ou mot de passe invalide",
+    "emailTaken": "Cet e-mail est déjà enregistré"
+  },
+  "wizard": {
+    "title": "Configurer Narrare",
+    "step1": {
+      "title": "Votre projet",
+      "description": "Choisissez un nom et une langue pour votre projet d'écriture.",
+      "projectName": "Nom du projet",
+      "projectNamePlaceholder": "ex. Mon roman fantastique",
+      "language": "Langue d'écriture",
+      "autosave": "Intervalle de sauvegarde auto",
+      "autosaveOff": "Désactivé",
+      "autosaveSeconds": "{seconds}s"
+    },
+    "step2": {
+      "title": "Votre roman",
+      "description": "Parlez-nous de l'histoire que vous écrivez.",
+      "novelTitle": "Titre",
+      "novelTitlePlaceholder": "Comment s'appelle votre roman ?",
+      "author": "Nom de l'auteur",
+      "authorPlaceholder": "Votre nom (optionnel)",
+      "genre": "Genre",
+      "genrePlaceholder": "ex. Fantaisie, Thriller, Romance",
+      "logline": "Accroche",
+      "loglinePlaceholder": "Une phrase qui capture votre histoire.",
+      "structure": "Structure narrative",
+      "tone": "Ton"
+    },
+    "step3": {
+      "title": "Contenu de départ",
+      "description": "Commencez à zéro ou explorez avec du contenu prêt à l'emploi.",
+      "blank": "Projet vide",
+      "blankDescription": "Commencez avec un éditeur vide.",
+      "import": "Importer l'existant",
+      "importDescription": "Importer depuis un répertoire existant.",
+      "importPath": "Chemin du répertoire",
+      "demoChapters": "{n} chapitres",
+      "demoCharacters": "{n} personnages",
+      "demoWords": "{n} mots"
+    },
+    "step4": {
+      "title": "Fournisseur IA",
+      "description": "Connectez Narrare à votre modèle IA préféré.",
+      "provider": "Fournisseur",
+      "apiKey": "Clé API",
+      "apiKeyPlaceholder": "Votre clé API",
+      "model": "Modèle principal",
+      "modelLoading": "Chargement des modèles…",
+      "modelPlaceholder": "Sélectionner un modèle",
+      "ollamaUrl": "URL Ollama",
+      "validating": "Vérification de la connexion…",
+      "validationSuccess": "Connexion vérifiée",
+      "validationFailed": "Impossible de se connecter. Vérifiez votre clé API."
+    },
+    "step5": {
+      "title": "Confirmer",
+      "description": "Vérifiez votre configuration avant de créer votre projet.",
+      "project": "Projet",
+      "novel": "Roman",
+      "starter": "Contenu de départ",
+      "provider": "Fournisseur IA",
+      "creating": "Création de votre projet…",
+      "cliPreview": "Commande CLI équivalente"
+    },
+    "storyStructure": {
+      "three_act": "Structure en trois actes",
+      "five_act": "Structure en cinq actes",
+      "heros_journey": "Le voyage du héros",
+      "save_the_cat": "Save the Cat",
+      "seven_point": "Histoire en sept points"
+    },
+    "tone": {
+      "dramatic": "Dramatique",
+      "humorous": "Humoristique",
+      "suspenseful": "Suspense",
+      "contemplative": "Contemplatif",
+      "romantic": "Romantique",
+      "dark": "Sombre",
+      "adventurous": "Aventureux"
+    }
+  },
+  "dashboard": {
+    "title": "Vos romans",
+    "newNovel": "Nouveau roman",
+    "noNovels": "Aucun roman pour l'instant.",
+    "noNovelsHint": "Créez votre premier roman pour commencer.",
+    "lastEdited": "Dernière modification {time}",
+    "demo": "Démo"
+  },
+  "editor": {
+    "untitled": "Chapitre sans titre",
+    "placeholder": "Commencez à écrire…",
+    "saveStatus": {
+      "idle": "",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "error": "Échec de l'enregistrement — réessayer ?"
+    },
+    "wordCount": "{count} mots",
+    "readingTime": "~{time}",
+    "addChapter": "Ajouter un chapitre",
+    "focusMode": "Mode concentration",
+    "exitFocusMode": "Quitter le mode concentration",
+    "sidebar": "Chapitres",
+    "contextPanel": "Contexte"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue de l'interface",
+    "theme": "Thème",
+    "themes": {
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système"
+    },
+    "autosave": "Sauvegarde automatique",
+    "aiProvider": "Fournisseur IA",
+    "aiModel": "Modèle IA"
+  }
+}

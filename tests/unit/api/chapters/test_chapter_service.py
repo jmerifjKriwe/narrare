@@ -1,63 +1,69 @@
-"""Unit tests for chapters/service.py"""
+"""Unit tests for chapters/service.py — business logic with Fake classes."""
 
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
 
-from narrare.chapters.models import Chapter
 from narrare.chapters.schemas import (
     CreateChapterRequest,
     UpdateChapterContentRequest,
     UpdateChapterMetaRequest,
 )
 from narrare.chapters.service import ChapterService
-
-
-def _make_chapter(**kwargs: object) -> Chapter:
-    from sqlalchemy.orm.attributes import set_attribute
-
-    chapter = Chapter()
-    set_attribute(chapter, "id", kwargs.get("id", uuid.uuid4()))
-    set_attribute(chapter, "novel_id", kwargs.get("novel_id", uuid.uuid4()))
-    set_attribute(chapter, "title", kwargs.get("title", "Test Chapter"))
-    set_attribute(chapter, "content", kwargs.get("content", ""))
-    set_attribute(chapter, "position", kwargs.get("position", 0))
-    set_attribute(chapter, "word_count", kwargs.get("word_count", 0))
-    set_attribute(chapter, "status", "draft")
-    set_attribute(chapter, "pov_character_id", "")
-    set_attribute(chapter, "timeline_position", "")
-    set_attribute(chapter, "embeddings_dirty", True)
-    return chapter
+from tests.factories import make_chapter, make_novel
+from tests.fakes import FakeChapterRepository, FakeNovelService
 
 
 @pytest.fixture
-def mock_session() -> MagicMock:
-    return MagicMock()
+def fake_repo() -> FakeChapterRepository:
+    return FakeChapterRepository()
 
 
 @pytest.fixture
-def service(mock_session: MagicMock) -> ChapterService:
-    svc = ChapterService(mock_session)
-    # Mock the novel service ownership check
-    svc._novel_service.get = AsyncMock(return_value=MagicMock())  # type: ignore[reportPrivateUsage]
+def fake_novel_service() -> FakeNovelService:
+    return FakeNovelService()
+
+
+@pytest.fixture
+def service(
+    fake_repo: FakeChapterRepository, fake_novel_service: FakeNovelService
+) -> ChapterService:
+    svc = ChapterService.__new__(ChapterService)
+    svc._repo = fake_repo
+    svc._novel_service = fake_novel_service
     return svc
+
+
+def _seed_ownership(
+    service: ChapterService,
+    novel_id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+) -> tuple[uuid.UUID, uuid.UUID]:
+    """Seed a novel into the fake novel service for ownership checks."""
+    novel_id = novel_id or uuid.uuid4()
+    user_id = user_id or uuid.uuid4()
+    novel = make_novel(id=novel_id, user_id=user_id)
+    service._novel_service.seed(novel)  # type: ignore[attr-defined]
+    return novel_id, user_id
+
+
+# ---------------------------------------------------------------------------
+# update_content
+# ---------------------------------------------------------------------------
 
 
 class TestChapterServiceUpdateContent:
     async def test_raises_413_for_oversized_content(self, service: ChapterService) -> None:
-        novel_id = uuid.uuid4()
-        chapter_id = uuid.uuid4()
-        user_id = uuid.uuid4()
-
-        service._repo.get_by_id = AsyncMock(return_value=_make_chapter())  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        chapter = make_chapter(novel_id=novel_id)
+        service._repo.seed(chapter)  # type: ignore[attr-defined]
 
         with pytest.raises(HTTPException) as exc:
             await service.update_content(
-                chapter_id,
+                chapter.id,
                 novel_id,
                 user_id,
                 UpdateChapterContentRequest(content="x" * 100_001),
@@ -65,133 +71,152 @@ class TestChapterServiceUpdateContent:
         assert exc.value.status_code == 413
 
     async def test_computes_word_count_when_not_provided(self, service: ChapterService) -> None:
-        novel_id = uuid.uuid4()
-        chapter_id = uuid.uuid4()
-        user_id = uuid.uuid4()
-        chapter = _make_chapter()
+        novel_id, user_id = _seed_ownership(service)
+        chapter = make_chapter(novel_id=novel_id)
+        service._repo.seed(chapter)  # type: ignore[attr-defined]
 
-        service._repo.get_by_id = AsyncMock(return_value=chapter)  # type: ignore[reportPrivateUsage]
-        service._repo.update_content = AsyncMock(return_value=chapter)  # type: ignore[reportPrivateUsage]
-
-        await service.update_content(
-            chapter_id,
+        result = await service.update_content(
+            chapter.id,
             novel_id,
             user_id,
             UpdateChapterContentRequest(content="five words are in here"),
         )
-
-        service._repo.update_content.assert_called_once()  # type: ignore[reportPrivateUsage, reportAttributeAccessIssue]
-        _, _, word_count_arg = service._repo.update_content.call_args.args  # type: ignore[reportAttributeAccessIssue]
-        assert word_count_arg == 5
+        assert result.word_count == 5
 
     async def test_raises_404_when_chapter_not_found(self, service: ChapterService) -> None:
-        service._repo.get_by_id = AsyncMock(return_value=None)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
 
         with pytest.raises(HTTPException) as exc:
             await service.update_content(
                 uuid.uuid4(),
-                uuid.uuid4(),
-                uuid.uuid4(),
+                novel_id,
+                user_id,
                 UpdateChapterContentRequest(content="content"),
             )
         assert exc.value.status_code == 404
 
 
+# ---------------------------------------------------------------------------
+# get
+# ---------------------------------------------------------------------------
+
+
 class TestChapterServiceGet:
     async def test_get_returns_chapter_when_found(self, service: ChapterService) -> None:
-        chapter = _make_chapter()
-        service._repo.get_by_id = AsyncMock(return_value=chapter)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        chapter = make_chapter(novel_id=novel_id)
+        service._repo.seed(chapter)  # type: ignore[attr-defined]
 
-        result = await service.get(chapter.id, chapter.novel_id, uuid.uuid4())
-
+        result = await service.get(chapter.id, novel_id, user_id)
         assert result == chapter
 
     async def test_get_raises_404_when_not_found(self, service: ChapterService) -> None:
-        service._repo.get_by_id = AsyncMock(return_value=None)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
 
         with pytest.raises(HTTPException) as exc:
-            await service.get(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+            await service.get(uuid.uuid4(), novel_id, user_id)
         assert exc.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# list_chapters
+# ---------------------------------------------------------------------------
 
 
 class TestChapterServiceList:
     async def test_list_returns_chapters_for_novel(self, service: ChapterService) -> None:
-        chapters = [_make_chapter(), _make_chapter()]
-        service._repo.list_by_novel = AsyncMock(return_value=chapters)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        chapters = [make_chapter(novel_id=novel_id), make_chapter(novel_id=novel_id)]
+        service._repo.seed(*chapters)  # type: ignore[attr-defined]
 
-        result = await service.list_chapters(uuid.uuid4(), uuid.uuid4())
-
+        result = await service.list_chapters(novel_id, user_id)
         assert len(result) == 2
+
+
+# ---------------------------------------------------------------------------
+# create
+# ---------------------------------------------------------------------------
 
 
 class TestChapterServiceCreate:
     async def test_create_with_explicit_position(self, service: ChapterService) -> None:
-        chapter = _make_chapter(position=5)
-        service._repo.create = AsyncMock(return_value=chapter)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
 
         request = CreateChapterRequest(title="New Chapter", content="hello", position=5)
-        result = await service.create(uuid.uuid4(), uuid.uuid4(), request)
+        result = await service.create(novel_id, user_id, request)
 
-        assert result == chapter
-        service._repo.create.assert_called_once()  # type: ignore[reportPrivateUsage]
+        assert result.title == "New Chapter"
+        assert result.position == 5
+        service._repo.assert_called_once("create")  # type: ignore[attr-defined]
 
     async def test_create_appends_at_end_when_no_position(self, service: ChapterService) -> None:
-        chapter = _make_chapter(position=3)
-        service._repo.max_position = AsyncMock(return_value=2)  # type: ignore[reportPrivateUsage]
-        service._repo.create = AsyncMock(return_value=chapter)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        existing = make_chapter(novel_id=novel_id, position=2)
+        service._repo.seed(existing)  # type: ignore[attr-defined]
 
         request = CreateChapterRequest(title="Appended", content="text")
-        result = await service.create(uuid.uuid4(), uuid.uuid4(), request)
+        result = await service.create(novel_id, user_id, request)
 
-        assert result == chapter
+        assert result.position == 3  # max_position(2) + 1
+
+
+# ---------------------------------------------------------------------------
+# update_meta
+# ---------------------------------------------------------------------------
 
 
 class TestChapterServiceUpdateMeta:
     async def test_update_meta_modifies_chapter(self, service: ChapterService) -> None:
-        chapter = _make_chapter(title="Old Title")
-        updated = _make_chapter(id=chapter.id, title="New Title")
-        service._repo.get_by_id = AsyncMock(return_value=chapter)  # type: ignore[reportPrivateUsage]
-        service._repo.update_meta = AsyncMock(return_value=updated)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        chapter = make_chapter(novel_id=novel_id, title="Old Title")
+        service._repo.seed(chapter)  # type: ignore[attr-defined]
 
-        # Rebuild model to resolve forward reference
         import uuid as _uuid
 
         UpdateChapterMetaRequest.model_rebuild(_types_namespace={"uuid": _uuid})
 
         result = await service.update_meta(
             chapter.id,
-            chapter.novel_id,
-            uuid.uuid4(),
+            novel_id,
+            user_id,
             UpdateChapterMetaRequest(title="New Title"),
         )
-
         assert result.title == "New Title"
+
+
+# ---------------------------------------------------------------------------
+# reorder
+# ---------------------------------------------------------------------------
 
 
 class TestChapterServiceReorder:
     async def test_reorder_calls_repo(self, service: ChapterService) -> None:
-        chapter_ids = [uuid.uuid4(), uuid.uuid4()]
-        reordered = [_make_chapter(), _make_chapter()]
-        service._repo.reorder = AsyncMock(return_value=reordered)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        ch1 = make_chapter(novel_id=novel_id)
+        ch2 = make_chapter(novel_id=novel_id)
+        service._repo.seed(ch1, ch2)  # type: ignore[attr-defined]
 
-        result = await service.reorder(uuid.uuid4(), uuid.uuid4(), chapter_ids)
-
+        result = await service.reorder(novel_id, user_id, [ch1.id, ch2.id])
         assert len(result) == 2
+
+
+# ---------------------------------------------------------------------------
+# delete
+# ---------------------------------------------------------------------------
 
 
 class TestChapterServiceDelete:
     async def test_delete_removes_chapter(self, service: ChapterService) -> None:
-        chapter = _make_chapter()
-        service._repo.get_by_id = AsyncMock(return_value=chapter)  # type: ignore[reportPrivateUsage]
-        service._repo.delete = AsyncMock()  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
+        chapter = make_chapter(novel_id=novel_id)
+        service._repo.seed(chapter)  # type: ignore[attr-defined]
 
-        await service.delete(chapter.id, chapter.novel_id, uuid.uuid4())
-
-        service._repo.delete.assert_called_once_with(chapter)  # type: ignore[reportPrivateUsage]
+        await service.delete(chapter.id, novel_id, user_id)
+        service._repo.assert_called_once("delete")  # type: ignore[attr-defined]
 
     async def test_delete_raises_404_when_not_found(self, service: ChapterService) -> None:
-        service._repo.get_by_id = AsyncMock(return_value=None)  # type: ignore[reportPrivateUsage]
+        novel_id, user_id = _seed_ownership(service)
 
         with pytest.raises(HTTPException) as exc:
-            await service.delete(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+            await service.delete(uuid.uuid4(), novel_id, user_id)
         assert exc.value.status_code == 404

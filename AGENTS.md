@@ -200,13 +200,13 @@ Niemals bei Unsicherheit über Scope oder Interface einfach weitermachen.
 
 ## Spezifische Kontexte
 
-Für spezifische Arbeiten — lies die passende CLAUDE.md:
+Für spezifische Arbeiten — lies die passende AGENTS.md:
 
-| Arbeit | CLAUDE.md |
+| Arbeit | AGENTS.md |
 |--------|-----------|
-| Backend Python Code | `apps/api/CLAUDE.md` |
-| Core-Logik (LLM, Prompts) | `packages/core/CLAUDE.md` |
-| Tests schreiben | `tests/CLAUDE.md` |
+| Backend Python Code | `apps/api/AGENTS.md` |
+| Core-Logik (LLM, Prompts) | `packages/core/AGENTS.md` |
+| Tests schreiben | `tests/AGENTS.md` |
 
 ---
 

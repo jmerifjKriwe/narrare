@@ -9,7 +9,7 @@ See CONSTRAINTS.md RULE-02.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any
 
 
@@ -53,7 +53,7 @@ class PromptContext:
     next_chapter_hint: str = ""
 
     # --- KB context ---
-    kb_context_entries: list[KBContextEntry] = field(default_factory=list)  # type: ignore[reportUnknownVariableType]
+    kb_context_entries: list[KBContextEntry] = field(default_factory=list[KBContextEntry])
     kb_summary: str = ""  # compact list of all KB entities
 
     # --- Entity context (KB sessions) ---
@@ -70,7 +70,7 @@ class PromptContext:
     # --- Extra variables ---
     # For feature-specific variables not covered above.
     # Keys must be valid Python identifiers.
-    extra: dict[str, Any] = field(default_factory=dict)  # type: ignore[reportUnknownVariableType]
+    extra: dict[str, Any] = field(default_factory=dict[str, Any])
 
     def as_variables(self) -> dict[str, str]:
         """
@@ -81,18 +81,18 @@ class PromptContext:
         """
         variables: dict[str, str] = {}
 
-        for f_name in self.__dataclass_fields__:  # type: ignore[attr-defined]
-            if f_name == "extra":
+        for f in fields(self):
+            if f.name == "extra":
                 continue
-            value = getattr(self, f_name)
+            value = getattr(self, f.name)
             if isinstance(value, list):
                 # Format KB entries as readable text block
                 if value and isinstance(value[0], KBContextEntry):
-                    variables[f_name] = self._format_kb_entries(value)  # type: ignore[reportUnknownArgumentType]
+                    variables[f.name] = self._format_kb_entries(value)  # pyright: ignore[reportUnknownArgumentType]
                 else:
-                    variables[f_name] = "\n".join(str(v) for v in value)  # type: ignore[reportUnknownVariableType, reportUnknownArgumentType]
+                    variables[f.name] = "\n".join(str(v) for v in value)  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]
             else:
-                variables[f_name] = str(value) if value is not None else ""
+                variables[f.name] = str(value) if value is not None else ""
 
         # Extra variables override dataclass fields
         for key, value in self.extra.items():
@@ -107,5 +107,5 @@ class PromptContext:
             return ""
         parts: list[str] = []
         for entry in entries:
-            parts.append(f"### {entry.entity_type.title()}: {entry.name}\n{entry.content}")  # type: ignore[reportUnknownMemberType]
+            parts.append(f"### {entry.entity_type.title()}: {entry.name}\n{entry.content}")
         return "\n\n".join(parts)

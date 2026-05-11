@@ -66,7 +66,7 @@ def parse_frontmatter(text: str) -> ParsedFrontmatter:
 
     try:
         raw = yaml.safe_load(match.group("yaml"))
-        metadata: dict[str, Any] = raw if isinstance(raw, dict) else {}  # type: ignore[reportUnknownVariableType]
+        metadata: dict[str, Any] = raw if isinstance(raw, dict) else {}  # pyright: ignore[reportUnknownVariableType]
     except yaml.YAMLError:
         metadata = {}
 

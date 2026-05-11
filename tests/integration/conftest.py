@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 import sqlalchemy
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from narrare._app.database import Base, get_async_session
 from narrare._app.main import create_app
@@ -22,9 +22,9 @@ TEST_DATABASE_URL = os.environ.get(
 )
 
 
-def pytest_configure(config: object) -> None:
+def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers."""
-    config.addinivalue_line("markers", "requires_db: marks tests requiring database connection")  # type: ignore[reportUnknownMemberType]
+    config.addinivalue_line("markers", "requires_db: marks tests requiring database connection")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -40,7 +40,7 @@ async def check_db_available() -> None:
 
 
 @pytest.fixture(scope="session")
-async def test_engine():
+async def test_engine() -> AsyncGenerator[AsyncEngine]:
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -51,14 +51,14 @@ async def test_engine():
 
 
 @pytest.fixture
-async def db_session(test_engine: object) -> AsyncGenerator[AsyncSession]:  # type: ignore[reportUnknownParameterType]
+async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
     """Transaction-wrapped session — rolls back after each test."""
-    async with test_engine.connect() as conn:  # type: ignore[reportUnknownMemberType]
-        await conn.begin()  # type: ignore[reportUnknownMemberType]
-        session = AsyncSession(bind=conn, expire_on_commit=False)  # type: ignore[reportUnknownArgumentType]
+    async with test_engine.connect() as conn:
+        await conn.begin()
+        session = AsyncSession(bind=conn, expire_on_commit=False)
         yield session
         await session.close()
-        await conn.rollback()  # type: ignore[reportUnknownMemberType]
+        await conn.rollback()
 
 
 @pytest.fixture

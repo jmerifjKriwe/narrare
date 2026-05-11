@@ -68,13 +68,13 @@ def record_success(
     """Record a successful LLM call."""
     llm_requests_total.labels(intent=intent, model=model, provider=provider, status="success").inc()
 
-    llm_tokens_total.labels(intent=intent, model=model, token_type="prompt").inc(  # nosec: B106
-        usage.prompt_tokens
-    )
+    llm_tokens_total.labels(  # nosec B105 B106
+        intent=intent, model=model, token_type="prompt"
+    ).inc(usage.prompt_tokens)
 
-    llm_tokens_total.labels(intent=intent, model=model, token_type="completion").inc(  # nosec: B106
-        usage.completion_tokens
-    )
+    llm_tokens_total.labels(  # nosec B105 B106
+        intent=intent, model=model, token_type="completion"
+    ).inc(usage.completion_tokens)
 
     llm_request_duration_seconds.labels(intent=intent, model=model).observe(duration_seconds)
 

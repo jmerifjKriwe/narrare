@@ -150,16 +150,13 @@ test-all: test test-frontend
 # Code quality
 # ---------------------------------------------------------------------------
 
-# Run all checks (architecture + lint + typecheck + security + frontend)
+# Run all checks with compact summary (architecture + lint + typecheck + security + frontend)
 check:
-    @echo "🔍 Running all checks..."
-    just check-architecture
-    just lint
-    just typecheck
-    just security
-    just lint-frontend
-    just typecheck-frontend
-    @echo "✅ All checks passed"
+    uv run python scripts/run_checks.py
+
+# Run all checks with full tool output
+check-verbose:
+    uv run python scripts/run_checks.py --verbose
 
 # Run architecture constraint checker
 check-architecture:
