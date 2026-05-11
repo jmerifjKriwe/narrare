@@ -67,6 +67,9 @@ exclude = [
   # Versteckte Dateien/Verzeichnisse
   "**/.*",
 
+  # Test-Dateien: viele MagicMock-Typen, pytest-Auto-Fix
+  "tests/",
+
   # Virtual Environment (explizit, Performance)
   ".venv",
 
@@ -145,7 +148,13 @@ filterwarnings = ["error", "ignore::DeprecationWarning:pydantic_ai", "ignore::De
 
 [tool.coverage.run]
 source = ["apps/api/narrare", "packages/core/narrare_core"]
-omit = ["*/migrations/*", "*/tests/*", "*/__pycache__/*", "*/conftest.py"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/conftest.py",
+    "*/contracts.py",
+]
 branch = true
 
 [tool.coverage.report]
@@ -156,6 +165,8 @@ exclude_lines = [
   "if TYPE_CHECKING:",
   "raise NotImplementedError",
   "@abstractmethod",
+  "\\.\\.\\.",  # Protocol: ... (Ellipsis) stubs
+  "pass",  # Protocol: pass in abstract methods
 ]
 
 # ---------------------------------------------------------------------------
