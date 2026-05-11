@@ -34,10 +34,9 @@ updates:
           - "pydantic-ai"
           - "openai"
           - "anthropic"
-    ignore:
-      # Never auto-update major versions — review manually
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+      major-updates:
+        update-types:
+          - "version-update:semver-major"
 
   # Python — API package
   - package-ecosystem: "pip"
@@ -77,6 +76,36 @@ updates:
       - "dependencies"
       - "python"
       - "i18n"
+
+  # TypeScript — Frontend
+  - package-ecosystem: "npm"
+    directory: "/packages/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "frontend"
+    groups:
+      nextjs:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      tiptap:
+        patterns:
+          - "@tiptap*"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss*"
+      major-updates:
+        update-types:
+          - "version-update:semver-major"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
