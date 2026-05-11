@@ -141,7 +141,14 @@ class TestEmbedTexts:
 
         # Create more texts than the batch size
         texts = [f"text {i}" for i in range(_BATCH_SIZE + 10)]
+
+        # Create mock items with proper index and embedding
         all_items: list[MagicMock] = []
+        for i in range(len(texts)):
+            mock_item = MagicMock()
+            mock_item.index = i
+            mock_item.embedding = [0.0] * 4
+            all_items.append(mock_item)
 
         mock_response = MagicMock()
         mock_response.data = all_items[:_BATCH_SIZE]
