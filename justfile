@@ -54,6 +54,8 @@ dev-api:
 
 # Start frontend only (port 3000)
 dev-frontend:
+    #!/usr/bin/env bash
+    [ ! -f packages/web/.env.local ] && cp packages/web/.env.local.example packages/web/.env.local
     cd packages/web && pnpm dev
 
 # Start TaskIQ worker only
@@ -137,17 +139,26 @@ test-file file:
 test-match pattern:
     uv run pytest tests/ -v -k "{{pattern}}"
 
+# Run frontend tests (Vitest)
+test-frontend:
+    cd packages/web && pnpm test
+
+# Run all tests (backend + frontend)
+test-all: test test-frontend
+
 # ---------------------------------------------------------------------------
 # Code quality
 # ---------------------------------------------------------------------------
 
-# Run all checks (architecture + lint + typecheck + security)
+# Run all checks (architecture + lint + typecheck + security + frontend)
 check:
     @echo "🔍 Running all checks..."
     just check-architecture
     just lint
     just typecheck
     just security
+    just lint-frontend
+    just typecheck-frontend
     @echo "✅ All checks passed"
 
 # Run architecture constraint checker
@@ -173,6 +184,26 @@ typecheck:
 security:
     uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core
     uv run pip-audit
+
+# Run ESLint on frontend
+lint-frontend:
+    cd packages/web && pnpm lint
+
+# Run TypeScript type checking on frontend
+typecheck-frontend:
+    cd packages/web && pnpm type-check
+
+# Build frontend (catches additional type/bundle errors)
+build-frontend:
+    cd packages/web && pnpm build
+
+# Run all frontend checks (lint + typecheck + test)
+check-frontend:
+    @echo "🔍 Running frontend checks..."
+    just lint-frontend
+    just typecheck-frontend
+    just test-frontend
+    @echo "✅ Frontend checks passed"
 
 # ---------------------------------------------------------------------------
 # Release
@@ -206,7 +237,13 @@ logs:
 
 # Open Python REPL with app context
 shell:
-    cd apps/api && uv run python -c "import asyncio; from narrare._app.main import app; from narrare._app.database import get_async_session; print('Narrare shell ready. App:', app.title)" && uv run python -i
+    #!/usr/bin/env bash
+    cd apps/api && uv run python -c "
+    import asyncio
+    from narrare._app.main import app
+    from narrare._app.database import get_async_session
+    print('Narrare shell ready. App:', app.title)
+    " && uv run python -i -c ""
 
 # Show dependency tree
 deps:
