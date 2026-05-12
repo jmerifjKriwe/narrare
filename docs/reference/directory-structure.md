@@ -520,6 +520,19 @@ apps/api/narrare/
 │   ├── contracts.py
 │   ├── schemas.py
 │   ├── service.py
+│   ├── demo_loader.py
+│   ├── demo_data/               ← Bundled demo project files
+│   │   ├── en/
+│   │   │   ├── echoes-of-the-thornwall/
+│   │   │   │   ├── chapters/
+│   │   │   │   └── kb/
+│   │   │   └── dead-signal/
+│   │   │       ├── chapters/
+│   │   │       └── kb/
+│   │   └── de/
+│   │       └── im-stillen-wald/
+│   │           ├── chapters/
+│   │           └── kb/
 │   └── router.py
 │
 ├── storyboard/

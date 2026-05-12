@@ -27,7 +27,7 @@ def loader(mock_session: MagicMock) -> DemoLoader:
 
 # Root path to real demo data in the repository
 _REPO_ROOT = Path(__file__).parent.parent.parent.parent.parent
-_DEMO_DATA_ROOT = _REPO_ROOT / "scripts" / "demo_data"
+_DEMO_DATA_ROOT = _REPO_ROOT / "apps" / "api" / "narrare" / "setup" / "demo_data"
 
 
 class TestGetInfo:
@@ -100,7 +100,7 @@ class TestLoadChapters:
 class TestLoadChaptersFantasy:
     """Load Fantasy (Echoes of the Thornwall) chapters from real demo data."""
 
-    FANTASY_CHAPTERS = _DEMO_DATA_ROOT / "english" / "echoes-of-the-thornwall" / "chapters"
+    FANTASY_CHAPTERS = _DEMO_DATA_ROOT / "en" / "echoes-of-the-thornwall" / "chapters"
 
     @pytest.mark.skipif(
         not FANTASY_CHAPTERS.exists(),
@@ -148,7 +148,7 @@ class TestLoadChaptersFantasy:
 class TestLoadChaptersSciFi:
     """Load SciFi (Dead Signal) chapters from real demo data."""
 
-    SCIFI_CHAPTERS = _DEMO_DATA_ROOT / "english" / "dead-signal" / "chapters"
+    SCIFI_CHAPTERS = _DEMO_DATA_ROOT / "en" / "dead-signal" / "chapters"
 
     @pytest.mark.skipif(
         not SCIFI_CHAPTERS.exists(),
@@ -182,7 +182,7 @@ class TestLoadChaptersSciFi:
 class TestLoadChaptersGerman:
     """Load German (Im stillen Wald) chapters from real demo data."""
 
-    GERMAN_CHAPTERS = _DEMO_DATA_ROOT / "german" / "im-stillen-wald" / "chapters"
+    GERMAN_CHAPTERS = _DEMO_DATA_ROOT / "de" / "im-stillen-wald" / "chapters"
 
     @pytest.mark.skipif(
         not GERMAN_CHAPTERS.exists(),
@@ -292,9 +292,9 @@ class TestLoadKBEntries:
 class TestLoadKBEntryCounts:
     """Verify KB file counts in the actual demo data directories."""
 
-    FANTASY_KB = _DEMO_DATA_ROOT / "english" / "echoes-of-the-thornwall" / "kb"
-    SCIFI_KB = _DEMO_DATA_ROOT / "english" / "dead-signal" / "kb"
-    GERMAN_KB = _DEMO_DATA_ROOT / "german" / "im-stillen-wald" / "kb"
+    FANTASY_KB = _DEMO_DATA_ROOT / "en" / "echoes-of-the-thornwall" / "kb"
+    SCIFI_KB = _DEMO_DATA_ROOT / "en" / "dead-signal" / "kb"
+    GERMAN_KB = _DEMO_DATA_ROOT / "de" / "im-stillen-wald" / "kb"
 
     @pytest.mark.skipif(
         not FANTASY_KB.exists(),

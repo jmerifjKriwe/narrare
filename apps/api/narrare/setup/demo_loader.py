@@ -1,7 +1,7 @@
 """
 Demo content loader.
 
-Reads bundled Markdown demo files from scripts/demo_data/ and creates
+Reads bundled Markdown demo files from demo_data/ and creates
 the corresponding DB records (novel, chapters, KB entries).
 
 All loading is atomic — if any step fails, the entire operation rolls back.
@@ -25,13 +25,13 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-# Root of demo data files — relative to project root
-_DEMO_ROOT = Path(__file__).parent.parent.parent.parent.parent / "scripts" / "demo_data"
+# Root of demo data files — colocated with this module
+_DEMO_ROOT = Path(__file__).parent / "demo_data"
 
 _DEMO_DIRS: dict[StarterContent, str] = {
-    StarterContent.DEMO_FANTASY: "fantasy",
-    StarterContent.DEMO_SCIFI: "scifi",
-    StarterContent.DEMO_GERMAN: "german",
+    StarterContent.DEMO_FANTASY: "en/echoes-of-the-thornwall",
+    StarterContent.DEMO_SCIFI: "en/dead-signal",
+    StarterContent.DEMO_GERMAN: "de/im-stillen-wald",
 }
 
 # Metadata for display in the wizard Step 3 cards
@@ -114,7 +114,7 @@ class DemoLoader:
         """
         Load demo content into the database for the given novel.
 
-        Reads files from scripts/demo_data/{starter_dir}/ and creates
+        Reads files from demo_data/{starter_dir}/ and creates
         Chapter and KB records. All within the caller's transaction —
         rollback is handled by the session context.
 
