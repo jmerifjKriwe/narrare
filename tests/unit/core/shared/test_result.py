@@ -79,3 +79,29 @@ class TestErr:
         err = ValueError("a")
         result = Err(err)
         assert result == Err(err)  # same error instance
+
+
+class TestResultUsagePattern:
+    """Test that Result works correctly in typical service patterns."""
+
+    async def test_pattern_ok_branch(self) -> None:
+        async def fake_service() -> Ok[str] | Err[ValueError]:
+            return Ok("generated text")
+
+        result = await fake_service()
+        match result:
+            case Ok(value):
+                assert value == "generated text"
+            case Err(_):
+                pytest.fail("Should not reach Err branch")
+
+    async def test_pattern_err_branch(self) -> None:
+        async def fake_service() -> Ok[str] | Err[ValueError]:
+            return Err(ValueError("LLM timeout"))
+
+        result = await fake_service()
+        match result:
+            case Ok(_):
+                pytest.fail("Should not reach Ok branch")
+            case Err(error):
+                assert "LLM timeout" in str(error)

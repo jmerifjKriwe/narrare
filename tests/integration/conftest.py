@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from typing import TYPE_CHECKING
 
 import pytest
@@ -98,3 +99,36 @@ async def auth_token(client: AsyncClient) -> str:
 @pytest.fixture
 def auth_headers(auth_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {auth_token}"}
+
+
+@pytest.fixture
+async def registered_user(client: AsyncClient) -> dict[str, str]:
+    """Register a unique test user, return credentials and token."""
+    email = f"test-{uuid.uuid4().hex[:8]}@example.com"
+    password = "testpassword123"
+    response = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": email,
+            "password": password,
+            "display_name": "Test User",
+        },
+    )
+    assert response.status_code == 201, response.text
+    return {
+        "email": email,
+        "password": password,
+        "access_token": response.json()["access_token"],
+    }
+
+
+@pytest.fixture
+async def novel_id(client: AsyncClient, auth_headers: dict[str, str]) -> str:
+    """Create a novel and return its ID."""
+    response = await client.post(
+        "/api/v1/novels",
+        json={"title": "Test Novel", "language": "en"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    return response.json()["id"]

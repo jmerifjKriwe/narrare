@@ -253,7 +253,8 @@ deps:
 # Update all dependencies to latest compatible versions
 deps-update:
     uv sync --upgrade --all-packages --dev
-    @echo "⚠️  Run 'just check' and 'just test' after updating dependencies"
+    cd packages/web && pnpm update
+    @echo "⚠️  Run 'just check', 'just test', and 'just check-frontend' after updating dependencies"
 
 # Install/update pre-commit hooks
 hooks-update:

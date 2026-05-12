@@ -110,7 +110,7 @@ Phase 5: Integration & Polish      · not started
 - `novels/` — CRUD: models → repository → service → router, contracts, schemas
 - `chapters/` — CRUD: models → repository → service → router, contracts, schemas
 - `volumes/` — CRUD: models → repository → service → router, contracts, schemas
-- `settings/` — models, repository, router, schemas
+- `settings/` — models, repository, router, schemas, contracts
 - `setup/` — Setup wizard: router, service, contracts, schemas, provider_service, provider_schemas, demo_loader
 - `metrics/` — Health/metrics router
 
@@ -171,19 +171,25 @@ Phase 5: Integration & Polish      · not started
 
 #### `tests/` — Test Suite
 
-**Unit tests (14 files):**
-- `core/llm/` — gateway, intents, retry (3 files)
-- `core/prompts/` — registry, composer, variable_engine (3 files)
-- `core/shared/` — frontmatter (1 file)
-- `api/setup/` — setup_service, setup_schemas, demo_loader (3 files)
-- `api/auth/` — security (1 file)
+**Unit tests (28 files):**
+- `core/llm/` — gateway, intents, retry, providers_registry, embeddings (5 files)
+- `core/prompts/` — registry, composer, variable_engine, meta, variable_engine_hypothesis (5 files)
+- `core/shared/` — frontmatter, result, errors, file_utils, result_hypothesis, frontmatter_hypothesis (6 files)
+- `api/setup/` — setup_service, setup_schemas, demo_loader, provider_service (4 files)
+- `api/auth/` — auth_service, security (2 files)
 - `api/chapters/` — chapter_service (1 file)
-- `api/novels/` — placeholder
+- `api/novels/` — novel_service (1 file)
+- `api/volumes/` — volume_service (1 file)
+- `api/metrics/` — metrics_router (1 file)
+- `api/` — test_contracts.py, test_fake_conformance.py (2 files)
+- Plus 3 hypothesis property-based tests (in core/shared and core/prompts)
 
-**Integration tests (4 files):**
+**Integration tests (7 files):**
 - `setup/test_setup_api.py`, `novels/test_novels_api.py`
 - `chapters/test_chapters_api.py`, `auth/test_auth_api.py`
-- `conftest.py` with shared fixtures
+- `settings/test_settings_api.py`, `volumes/test_volumes_api.py`
+- `health/test_health.py`
+- `conftest.py` with shared fixtures (registered_user, novel_id, auth helpers)
 
 **E2E:** Directory exists, no tests yet.
 

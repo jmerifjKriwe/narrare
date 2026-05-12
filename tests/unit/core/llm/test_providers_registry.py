@@ -31,6 +31,12 @@ class TestRegisterAndGet:
         assert isinstance(names, list)
         assert names == sorted(names)
 
+    def test_all_expected_providers_registered(self) -> None:
+        """All providers defined in _providers/__init__.py must be registered."""
+        providers = available()
+        for expected in ["anthropic", "openai", "zai", "ollama", "google", "groq", "openrouter"]:
+            assert expected in providers, f"Provider '{expected}' not registered"
+
 
 class TestInferProvider:
     @pytest.mark.parametrize(
