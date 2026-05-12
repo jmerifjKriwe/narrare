@@ -59,4 +59,4 @@
 - [ ] 7.3 Run Playwright E2E hero flow test — passes with mocked LLM
 - [x] 7.4 Verify `pnpm test` in packages/web — all frontend tests pass including new ones
 - [ ] 7.5 Run `just dev` and manually verify complete flow: signup → wizard → demo → editor → autosave
-- [ ] 7.6 Create conventional commit: `git add` all Phase 5 changes, commit with message `feat: complete MVP phase 5 — E2E tests, test coverage, docs polish (#phase5)` — run via NarrarePlatformSpecialist
+- [x] 7.6 Create conventional commit: `git add` all Phase 5 changes, commit with message `feat: complete MVP phase 5 — E2E tests, test coverage, docs polish (#phase5)` — run via NarrarePlatformSpecialist
