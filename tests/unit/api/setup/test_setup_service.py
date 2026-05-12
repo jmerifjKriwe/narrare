@@ -1,4 +1,4 @@
-"""Unit tests for setup/service.py — business logic with Fake classes."""
+"""Unit tests for setup/service.py — validation step business logic with Fake classes."""
 
 from __future__ import annotations
 

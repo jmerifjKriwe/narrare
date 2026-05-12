@@ -297,7 +297,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 |----|---------|--------|--------|
 | Q-001 | MCP auth strategy | 🟡 Open | apps/mcp/ (post-MVP) |
 | Q-002 | A2A streaming requirement | 🟡 Open | apps/a2a/ (post-MVP) |
-| Q-003 | Embedding provider abstraction | 🟡 Open | core/llm/embeddings.py (Phase 5) |
+| Q-003 | Embedding provider abstraction | 🟡 Open | core/llm/embeddings.py (post-MVP) |
 | Q-004 | Celery vs arq | ✅ Resolved → TaskIQ | — |
 | Q-005 | GLM/Z.AI compatibility | ✅ Resolved → OpenAI-compatible | — |
 | Q-006 | Configurable Model Routing | 🟡 Open | Advanced model preferences |
@@ -318,13 +318,18 @@ All demo content is complete — sufficient for testing through Phase 5.
 
 ## Next Session Should Start With
 
-**Phase 5: Integration & Polish** — tech stack audit is complete. Infrastructure is clean and modern.
+**Phase 5 (current):**
+1. E2E tests with Playwright (route mocking for LLM responses)
+2. Backend test coverage gaps (settings service, demo loader, gateway error classification, retry logic)
+3. Frontend test coverage gaps (editor, wizard, dashboard, shared components)
+4. Documentation polish (architecture questions, CURRENT_STATE, testing standards, CHANGELOG)
 
-Key steps:
+**Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)
 2. Build KB editor UI (interactive AI sessions)
 3. Add analysis panels to the ContextPanel
-4. E2E tests with Playwright
+4. Embedding provider abstraction (Q-003)
+5. Configurable model routing (Q-006)
 
 Infrastructure now includes: OpenTelemetry tracing, Langfuse LLM observability, event-driven
 architecture (Redis Pub/Sub → TaskIQ), content versioning, argon2id auth, async rate limiting.

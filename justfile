@@ -143,6 +143,10 @@ test-file file:
 test-match pattern:
     uv run pytest tests/ -v -k "{{pattern}}"
 
+# Run E2E tests (requires full stack: just dev + dev-services)
+test-e2e:
+    uv run pytest tests/e2e/ -v -m e2e --timeout=60
+
 # Run frontend tests (Vitest)
 test-frontend:
     cd packages/web && pnpm test

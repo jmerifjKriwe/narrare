@@ -21,11 +21,11 @@ tests/
 │                     Docker Compose provides services.
 │                     Run time target: < 60 seconds total.
 │
-└── e2e/            ← Full stack. Real services including LLM (cheapest model).
+└── e2e/            ← Full stack. LLM responses mocked via Playwright route interception.
                       Run only on main branch CI.
                       Run time target: < 5 minutes total.
-                      Tool: Playwright (planned for Phase 5).
-                      Status: Not yet implemented.
+                      Tool: Playwright (implemented in Phase 5).
+                      Status: Implemented in Phase 5.
 ```
 
 **The rule:** A test lives at the lowest level where it can be meaningful.
@@ -533,11 +533,11 @@ These test that functions handle arbitrary input correctly.
 
 ## E2E Tests
 
-E2E tests will use **Playwright** (planned for Phase 5).
+E2E tests use **Playwright** with route mocking for LLM responses.
 
 **Location:** `tests/e2e/`
-**Status:** Not yet implemented.
-**CI:** Run only on main branch with full stack including LLM (cheapest model).
+**Status:** Implemented in Phase 5. Uses Playwright with route mocking for LLM responses.
+**CI:** Run only on main branch with full stack. LLM provider responses are mocked via Playwright route interception — no real LLM API calls.
 **Run time target:** < 5 minutes total.
 
 ---
