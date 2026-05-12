@@ -8,7 +8,7 @@ from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from narrare_core.llm._providers.registry import register
+from narrare_core.llm._providers.registry import register, register_model
 
 # --- Google ---
 
@@ -20,6 +20,13 @@ def _make_google(model_id: str) -> GoogleModel:
 
 register("google", _make_google)
 
+for _mid in [
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+]:
+    register_model(_mid, "google")
+
 
 # --- Groq ---
 
@@ -30,6 +37,12 @@ def _make_groq(model_id: str) -> GroqModel:
 
 
 register("groq", _make_groq)
+
+for _mid in [
+    "mixtral-8x7b-32768",
+    "llama-3.3-70b-versatile",
+]:
+    register_model(_mid, "groq")
 
 
 # --- OpenRouter ---

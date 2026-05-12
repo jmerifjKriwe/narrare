@@ -126,6 +126,8 @@ fact extraction, timeline analysis.
 **Location:** Task definitions in `*/tasks.py`. Broker in `core/tasks/broker.py`.
 **Not:** Celery (async impedance mismatch, needs asyncio.run wrapper), arq (maintenance-only),
 asyncio background tasks (no persistence, no retry, no visibility).
+**Note:** TaskIQ tasks are triggered by the event system (ADR-012) — domain events
+are published via Redis Pub/Sub and routed to TaskIQ workers by `event_listener.py`.
 
 ---
 
@@ -150,13 +152,15 @@ asyncio background tasks (no persistence, no retry, no visibility).
 **Why:** Lightweight, well-maintained JWT library.
 **Role:** JWT creation and verification in `auth/security.py`.
 
-### bcrypt `>=4.0`
-**Why:** Secure password hashing. Current recommendation.
-**Future consideration:** argon2-cffi for new deployments (stronger against GPU attacks).
+### argon2-cffi `>=23.1.0`
+**Why:** Password hashing with argon2id — the Password Hashing Competition (PHC) winner.
+Stronger against GPU/ASIC attacks than bcrypt. Backward-compatible bcrypt verification
+for existing hashes during migration.
+**Role:** Password hashing and verification in `auth/security.py`.
 
-### slowapi `>=0.1.9`
-**Why:** Rate limiting middleware for FastAPI. Minimal overhead.
-**Role:** Per-endpoint and per-user rate limits.
+### fastapi-limiter `>=0.1.6`
+**Why:** Redis-based, async-native rate limiting for FastAPI. No sync bottlenecks.
+**Role:** Per-endpoint and per-user rate limits. Uses existing Redis infrastructure.
 
 ---
 
@@ -167,10 +171,17 @@ asyncio background tasks (no persistence, no retry, no visibility).
 **Role:** All logging throughout the codebase. Never `print()`, never stdlib `logging` directly.
 **Pattern:** Every log event is a dictionary, not a string.
 
-### prometheus-client `>=0.21`
-**Why:** Standard metrics format. Scraping endpoint at `/metrics`.
-**Role:** LLM cost metrics, request latency, task queue depth, error rates.
-**Future:** OpenTelemetry migration planned when we need distributed tracing.
+### OpenTelemetry (`opentelemetry-api >=1.30`, `opentelemetry-sdk >=1.30`, `opentelemetry-instrumentation-fastapi >=0.51`, `opentelemetry-exporter-otlp >=1.30`)
+**Why:** Vendor-neutral distributed tracing and metrics. Standard instrumentation
+for FastAPI, HTTP, and database calls. Exports to any OTLP-compatible backend.
+**Role:** Traces and metrics for all API requests, DB queries, and external calls.
+**Location:** Setup in `apps/api/narrare/_app/telemetry.py`. Auto-instrumentation only.
+
+### Langfuse `>=3.0`
+**Why:** LLM-specific observability — traces generations, tracks costs, captures prompts.
+**Role:** LLM call tracing, prompt versioning, cost attribution, quality metrics.
+**Location:** Only via `core/llm/observability.py` (inside the LLM layer).
+**Not:** General-purpose APM — OpenTelemetry handles infrastructure observability.
 
 ---
 
@@ -281,6 +292,9 @@ asyncio background tasks (no persistence, no retry, no visibility).
 | node_semver | Was in dependencies, purpose unclear, removed |
 | `axios` | Native `fetch` handles all HTTP + SSE streaming — no extra library needed |
 | `styled-jsx` | Tailwind CSS v4 is the sole styling system — no CSS-in-JS |
+| `slowapi` | Replaced by fastapi-limiter (async-native, Redis-based) |
+| `bcrypt` | Replaced by argon2-cffi (PHC winner, stronger against GPU/ASIC) |
+| `prometheus-client` | Replaced by OpenTelemetry SDK (vendor-neutral, distributed tracing) |
 
 ---
 
@@ -293,6 +307,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: frontend optimization (motion, TanStack Query, shadcn/ui, jose, fetch-only HTTP)
+> Last updated: 2026-05-12 — tech stack audit (argon2, fastapi-limiter, OpenTelemetry, Langfuse, event-driven architecture)
 > Maintained by: Architecture Agent
 > Changes require ADR

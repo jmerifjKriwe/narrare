@@ -9,6 +9,7 @@ from narrare_core.llm._providers.registry import (
     get,
     infer_provider,
     register,
+    register_model,
 )
 
 
@@ -38,6 +39,36 @@ class TestRegisterAndGet:
             assert expected in providers, f"Provider '{expected}' not registered"
 
 
+class TestRegisterModel:
+    def test_explicit_model_overrides_prefix_inference(self) -> None:
+        """Explicit model registration takes priority over prefix matching."""
+        register_model("__test-custom-model", "anthropic")
+        assert infer_provider("__test-custom-model") == "anthropic"
+
+    def test_explicit_model_is_case_insensitive(self) -> None:
+        """Model registration normalizes to lowercase."""
+        register_model("__Test-Model-UPPER", "zai")
+        # Exact match (lowercased)
+        assert infer_provider("__test-model-upper") == "zai"
+        # Original case also works (infer_provider lowercases the lookup)
+        assert infer_provider("__Test-Model-UPPER") == "zai"
+
+    def test_explicit_model_overrides_default_fallback(self) -> None:
+        """Explicit registration can route unknown-prefix models to a provider."""
+        register_model("__totally-unknown-model", "google")
+        assert infer_provider("__totally-unknown-model") == "google"
+
+    def test_prefix_matching_still_works_without_explicit(self) -> None:
+        """Models without explicit registration still use prefix matching."""
+        assert infer_provider("claude-some-new-future-model") == "anthropic"
+
+    def test_register_model_can_override_previous(self) -> None:
+        """Last registration wins for the same model ID."""
+        register_model("__override-test", "openai")
+        register_model("__override-test", "anthropic")
+        assert infer_provider("__override-test") == "anthropic"
+
+
 class TestInferProvider:
     @pytest.mark.parametrize(
         ("model_id", "expected"),
@@ -57,7 +88,7 @@ class TestInferProvider:
             ("gemini-1.5-pro", "google"),
             ("ollama/llama3.2", "ollama"),
             ("mixtral-8x7b", "groq"),
-            ("llama-3.3-70b", "ollama"),  # "llama" without "/" matches ollama rule first
+            ("llama-3.3-70b", "ollama"),  # "llama" without "/" matches ollama prefix
             ("openrouter/some-model", "openrouter"),
         ],
     )
@@ -68,9 +99,9 @@ class TestInferProvider:
         assert infer_provider("some-unknown-model-id") == "openai"
 
     def test_llama_without_prefix_is_ollama(self) -> None:
-        # "llama" without "/" prefix matches the ollama rule first (line 91)
+        # "llama" prefix routes to ollama
         assert infer_provider("llama3.2") == "ollama"
 
     def test_ollama_prefix_overrides_llama(self) -> None:
-        # "ollama/llama3" should be ollama, not groq
+        # "ollama/llama3" matches "ollama/" prefix before "llama" prefix
         assert infer_provider("ollama/llama3") == "ollama"

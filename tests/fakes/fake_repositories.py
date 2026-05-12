@@ -16,8 +16,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from narrare.auth.models import User
-from narrare.chapters.models import Chapter
+from narrare.chapters.models import Chapter, ChapterVersion
 from narrare.novels.models import Novel
 from narrare.volumes.models import Volume
 
@@ -59,14 +58,11 @@ def _apply_setattr(obj: Any, updates: dict[str, Any]) -> None:
 
 
 class FakeChapterRepository:
-    """
-    In-memory fake for ChapterRepositoryProtocol.
-
-    Stores chapters keyed by (chapter_id, novel_id).
-    """
+    """In-memory fake for ChapterRepositoryProtocol. Keyed by (chapter_id, novel_id)."""
 
     def __init__(self) -> None:
         self._store: dict[tuple[uuid.UUID, uuid.UUID], Chapter] = {}
+        self._versions: list[ChapterVersion] = []
         self.calls: list[CallRecord] = []
 
     def seed(self, *chapters: Chapter) -> None:
@@ -148,6 +144,86 @@ class FakeChapterRepository:
     async def delete(self, chapter: Chapter) -> None:
         self.calls.append(CallRecord("delete"))
         self._store.pop((chapter.id, chapter.novel_id), None)
+
+    # ------------------------------------------------------------------
+    # Version methods
+    # ------------------------------------------------------------------
+
+    async def save_version(
+        self, chapter: Chapter, version_number: int, source: str = "autosave"
+    ) -> ChapterVersion:
+        """Save a snapshot of the chapter's current content as a version."""
+        self.calls.append(
+            CallRecord(
+                "save_version",
+                kwargs={
+                    "chapter_id": chapter.id,
+                    "version_number": version_number,
+                    "source": source,
+                },
+            )
+        )
+        version = ChapterVersion()
+        _apply_setattr(
+            version,
+            {
+                "id": uuid.uuid4(),
+                "chapter_id": chapter.id,
+                "content": chapter.content,
+                "word_count": chapter.word_count,
+                "version_number": version_number,
+                "source": source,
+            },
+        )
+        self._versions.append(version)
+        return version
+
+    async def get_latest_version_number(self, chapter_id: uuid.UUID) -> int:
+        """Return the highest version number for a chapter, or 0 if none."""
+        self.calls.append(
+            CallRecord("get_latest_version_number", kwargs={"chapter_id": chapter_id})
+        )
+        chapter_versions = [v for v in self._versions if v.chapter_id == chapter_id]
+        if not chapter_versions:
+            return 0
+        return max(v.version_number for v in chapter_versions)
+
+    async def list_versions(self, chapter_id: uuid.UUID, limit: int = 50) -> list[ChapterVersion]:
+        """List versions for a chapter, newest first."""
+        self.calls.append(CallRecord("list_versions", kwargs={"chapter_id": chapter_id}))
+        chapter_versions = sorted(
+            [v for v in self._versions if v.chapter_id == chapter_id],
+            key=lambda v: v.version_number,
+            reverse=True,
+        )
+        return chapter_versions[:limit]
+
+    async def get_version(
+        self, version_id: uuid.UUID, chapter_id: uuid.UUID
+    ) -> ChapterVersion | None:
+        """Get a specific version by ID, scoped to a chapter."""
+        self.calls.append(
+            CallRecord("get_version", kwargs={"version_id": version_id, "chapter_id": chapter_id})
+        )
+        for v in self._versions:
+            if v.id == version_id and v.chapter_id == chapter_id:
+                return v
+        return None
+
+    async def prune_versions(self, chapter_id: uuid.UUID, keep: int = 50) -> int:
+        """Remove old versions beyond the keep count. Returns number pruned."""
+        self.calls.append(
+            CallRecord("prune_versions", kwargs={"chapter_id": chapter_id, "keep": keep})
+        )
+        chapter_versions = sorted(
+            [v for v in self._versions if v.chapter_id == chapter_id],
+            key=lambda v: v.version_number,
+            reverse=True,
+        )
+        to_remove = chapter_versions[keep:]
+        for v in to_remove:
+            self._versions.remove(v)
+        return len(to_remove)
 
     # ------------------------------------------------------------------
     # Assertion helpers
@@ -250,11 +326,7 @@ class FakeNovelRepository:
 
 
 class FakeVolumeRepository:
-    """
-    In-memory fake for VolumeRepositoryProtocol.
-
-    Stores volumes keyed by (volume_id, novel_id).
-    """
+    """In-memory fake for VolumeRepositoryProtocol."""
 
     def __init__(self) -> None:
         self._store: dict[tuple[uuid.UUID, uuid.UUID], Volume] = {}
@@ -323,68 +395,3 @@ class FakeVolumeRepository:
             if call.method == method and call.matches(kwargs):
                 return
         raise AssertionError(f"No call to {method} with {kwargs}")
-
-
-# ======================================================================
-# FakeAuthRepository
-# ======================================================================
-
-
-class FakeAuthRepository:
-    """
-    In-memory fake for AuthRepositoryProtocol.
-
-    Stores users keyed by email and by id.
-    """
-
-    def __init__(self) -> None:
-        self._by_email: dict[str, User] = {}
-        self._by_id: dict[uuid.UUID, User] = {}
-        self.calls: list[CallRecord] = []
-
-    def seed(self, *users: User) -> None:
-        for u in users:
-            self._by_email[u.email.lower()] = u
-            self._by_id[u.id] = u
-
-    async def get_by_email(self, email: str) -> User | None:
-        self.calls.append(CallRecord("get_by_email", kwargs={"email": email}))
-        return self._by_email.get(email.lower())
-
-    async def get_by_id(self, user_id: uuid.UUID) -> User | None:
-        self.calls.append(CallRecord("get_by_id", kwargs={"user_id": user_id}))
-        return self._by_id.get(user_id)
-
-    async def create(self, email: str, hashed_password: str, display_name: str = "") -> User:
-        self.calls.append(
-            CallRecord("create", kwargs={"email": email, "display_name": display_name})
-        )
-        user = User()
-        _apply_setattr(
-            user,
-            {
-                "id": uuid.uuid4(),
-                "email": email.lower(),
-                "hashed_password": hashed_password,
-                "display_name": display_name,
-                "is_active": True,
-                "is_verified": False,
-            },
-        )
-        self._by_email[user.email] = user
-        self._by_id[user.id] = user
-        return user
-
-    async def set_verified(self, user_id: uuid.UUID) -> None:
-        self.calls.append(CallRecord("set_verified", kwargs={"user_id": user_id}))
-        user = self._by_id.get(user_id)
-        if user:
-            user.is_verified = True
-
-    def assert_called_once(self, method: str) -> None:
-        count = sum(1 for c in self.calls if c.method == method)
-        if count != 1:
-            raise AssertionError(f"Expected 1 call to {method}, got {count}")
-
-    def call_count(self, method: str) -> int:
-        return sum(1 for c in self.calls if c.method == method)

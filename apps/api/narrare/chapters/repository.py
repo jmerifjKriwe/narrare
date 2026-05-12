@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 
-from narrare.chapters.models import Chapter
+from narrare.chapters.models import Chapter, ChapterVersion
 
 if TYPE_CHECKING:
     import uuid
@@ -88,6 +88,80 @@ class ChapterRepository:
     async def delete(self, chapter: Chapter) -> None:
         await self._session.delete(chapter)
         await self._session.flush()
+
+    # -- Version methods --
+
+    async def save_version(
+        self,
+        chapter: Chapter,
+        version_number: int,
+        source: str = "autosave",
+    ) -> ChapterVersion:
+        """Save current chapter content as a version before updating."""
+        version = ChapterVersion(
+            chapter_id=chapter.id,
+            content=chapter.content,
+            word_count=chapter.word_count,
+            version_number=version_number,
+            source=source,
+        )
+        self._session.add(version)
+        await self._session.flush()
+        return version
+
+    async def get_latest_version_number(self, chapter_id: uuid.UUID) -> int:
+        """Get the highest version number for a chapter."""
+        result = await self._session.execute(
+            select(func.max(ChapterVersion.version_number)).where(
+                ChapterVersion.chapter_id == chapter_id
+            )
+        )
+        return result.scalar_one_or_none() or 0
+
+    async def list_versions(
+        self,
+        chapter_id: uuid.UUID,
+        limit: int = 50,
+    ) -> list[ChapterVersion]:
+        """List versions for a chapter, newest first."""
+        result = await self._session.execute(
+            select(ChapterVersion)
+            .where(ChapterVersion.chapter_id == chapter_id)
+            .order_by(ChapterVersion.version_number.desc())
+            .limit(limit)
+        )
+        return list(result.scalars())
+
+    async def get_version(
+        self,
+        version_id: uuid.UUID,
+        chapter_id: uuid.UUID,
+    ) -> ChapterVersion | None:
+        """Get a specific version by ID, scoped to chapter."""
+        result = await self._session.execute(
+            select(ChapterVersion).where(
+                ChapterVersion.id == version_id,
+                ChapterVersion.chapter_id == chapter_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def prune_versions(self, chapter_id: uuid.UUID, keep: int = 50) -> int:
+        """Delete oldest versions beyond the keep limit. Returns count deleted."""
+        subq = (
+            select(ChapterVersion.version_number)
+            .where(ChapterVersion.chapter_id == chapter_id)
+            .order_by(ChapterVersion.version_number.desc())
+            .limit(keep)
+        )
+        result = await self._session.execute(
+            delete(ChapterVersion).where(
+                ChapterVersion.chapter_id == chapter_id,
+                ChapterVersion.version_number.not_in(subq),
+            )
+        )
+        await self._session.flush()
+        return result.rowcount  # type: ignore[union-attr]
 
 
 def count_words(text: str) -> int:

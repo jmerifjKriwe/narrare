@@ -1,11 +1,10 @@
-"""Health, readiness, and Prometheus metrics endpoints."""
+"""Health and readiness endpoints."""
 
 from __future__ import annotations
 
 import structlog
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse, Response
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from sqlalchemy import text
 
 from narrare._app.database import get_engine
@@ -13,12 +12,6 @@ from narrare._app.database import get_engine
 router = APIRouter(tags=["monitoring"])
 
 logger = structlog.get_logger(__name__)
-
-
-@router.get("/metrics")
-async def metrics() -> Response:
-    """Prometheus scraping endpoint."""
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @router.get("/health")
@@ -41,3 +34,11 @@ async def ready() -> Response:
             status_code=503,
             content={"status": "unhealthy", "error": str(e)},
         )
+
+
+@router.get("/metrics")
+async def metrics() -> PlainTextResponse:
+    """Prometheus metrics endpoint."""
+    from prometheus_client import generate_latest
+
+    return PlainTextResponse(content=generate_latest(), media_type="text/plain")

@@ -15,16 +15,36 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
+def _get_otel_trace_context() -> tuple[str, str]:
+    """Extract OpenTelemetry trace_id and span_id if available."""
+    try:
+        from opentelemetry import trace
+
+        span = trace.get_current_span()
+        if span.is_recording():
+            ctx = span.get_span_context()
+            return format(ctx.trace_id, "032x"), format(ctx.span_id, "016x")
+    except ImportError:
+        pass
+    return "", ""
+
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Log every request with duration and status code."""
+    """Log every request with duration, status, and correlation context."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        request_id = str(uuid.uuid4())[:8]
+        # Use full UUID, accept from upstream proxy via X-Request-ID header
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+
+        # OTel trace context (if available)
+        trace_id, span_id = _get_otel_trace_context()
+
         start = time.monotonic()
 
-        # Bind request context for all log calls in this request
         structlog.contextvars.bind_contextvars(
             request_id=request_id,
+            trace_id=trace_id,
+            span_id=span_id,
             method=request.method,
             path=request.url.path,
         )
@@ -38,10 +58,18 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 duration_ms=duration_ms,
             )
             response.headers["X-Request-ID"] = request_id
+            if trace_id:
+                response.headers["X-Trace-ID"] = trace_id
             return response
         except Exception as e:
             duration_ms = round((time.monotonic() - start) * 1000)
             logger.error("http_request_error", error=str(e), duration_ms=duration_ms)
             raise
         finally:
-            structlog.contextvars.unbind_contextvars("request_id", "method", "path")
+            structlog.contextvars.unbind_contextvars(
+                "request_id",
+                "trace_id",
+                "span_id",
+                "method",
+                "path",
+            )

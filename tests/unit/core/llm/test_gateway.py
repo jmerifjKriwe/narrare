@@ -206,3 +206,103 @@ class TestLLMGatewayStream:
                 pass
 
         assert captured_model_ids == ["gpt-4o"]
+
+
+class TestLLMGatewayClassifyErrorLayered:
+    """Verify the layered classification: L1 typed → L2 stdlib → L3 string heuristic."""
+
+    # --- Layer 1: pydantic-ai typed exceptions ---
+
+    def test_model_http_error_401_classifies_as_auth(self, gateway: LLMGateway) -> None:
+        from pydantic_ai.exceptions import (  # narrare: allow reason="gateway L1 test"
+            ModelHTTPError,
+        )
+
+        err = ModelHTTPError(status_code=401, model_name="claude-3")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMAuthError)
+
+    def test_model_http_error_429_classifies_as_rate_limit(self, gateway: LLMGateway) -> None:
+        from pydantic_ai.exceptions import (  # narrare: allow reason="gateway L1 test"
+            ModelHTTPError,
+        )
+
+        err = ModelHTTPError(status_code=429, model_name="claude-3")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMRateLimitError)
+
+    def test_model_http_error_400_classifies_as_invalid_request(self, gateway: LLMGateway) -> None:
+        from pydantic_ai.exceptions import (  # narrare: allow reason="gateway L1 test"
+            ModelHTTPError,
+        )
+
+        err = ModelHTTPError(status_code=400, model_name="claude-3")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMInvalidRequestError)
+
+    def test_model_http_error_503_classifies_as_service_unavailable(
+        self, gateway: LLMGateway
+    ) -> None:
+        from pydantic_ai.exceptions import (  # narrare: allow reason="gateway L1 test"
+            ModelHTTPError,
+        )
+
+        err = ModelHTTPError(status_code=503, model_name="claude-3")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMServiceUnavailableError)
+
+    def test_model_http_error_502_classifies_as_service_unavailable(
+        self, gateway: LLMGateway
+    ) -> None:
+        from pydantic_ai.exceptions import (  # narrare: allow reason="gateway L1 test"
+            ModelHTTPError,
+        )
+
+        err = ModelHTTPError(status_code=502, model_name="claude-3")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMServiceUnavailableError)
+
+    def test_model_http_error_500_classifies_as_generic(self, gateway: LLMGateway) -> None:
+        from pydantic_ai.exceptions import (  # narrare: allow reason="gateway L1 test"
+            ModelHTTPError,
+        )
+
+        err = ModelHTTPError(status_code=500, model_name="claude-3")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMGatewayError)
+        assert not isinstance(result, LLMAuthError)
+        assert "LLM HTTP error 500" in str(result)
+
+    def test_unexpected_model_behavior_classifies_as_generic(self, gateway: LLMGateway) -> None:
+        from pydantic_ai.exceptions import (  # narrare: allow reason="gateway L1 test"
+            UnexpectedModelBehavior,
+        )
+
+        err = UnexpectedModelBehavior("model returned empty")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMGatewayError)
+        assert "Unexpected model behavior" in str(result)
+
+    # --- Layer 2: Standard library exceptions ---
+
+    def test_asyncio_timeout_classifies_as_timeout(self, gateway: LLMGateway) -> None:
+        result = gateway._classify_error(TimeoutError())
+        assert isinstance(result, LLMTimeoutError)
+
+    def test_builtin_timeout_classifies_as_timeout(self, gateway: LLMGateway) -> None:
+        result = gateway._classify_error(TimeoutError("connection expired"))
+        assert isinstance(result, LLMTimeoutError)
+
+    # --- Layer 3: String-based fallback (verified via existing tests) ---
+
+    def test_plain_exception_with_auth_keywords_uses_fallback(self, gateway: LLMGateway) -> None:
+        """String fallback still works for non-typed exceptions."""
+        err = Exception("invalid api key provided")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMAuthError)
+
+    def test_plain_exception_unknown_uses_generic_fallback(self, gateway: LLMGateway) -> None:
+        err = Exception("something completely unforeseen")
+        result = gateway._classify_error(err)
+        assert isinstance(result, LLMGatewayError)
+        assert "Unexpected" in str(result)

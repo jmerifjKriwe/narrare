@@ -18,6 +18,7 @@ from narrare_core.llm._providers.registry import (
     get,
     infer_provider,
     register,
+    register_model,
 )
 
-__all__ = ["available", "get", "infer_provider", "register"]
+__all__ = ["available", "get", "infer_provider", "register", "register_model"]

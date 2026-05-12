@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
-    from narrare.chapters.models import Chapter
+    from narrare.chapters.models import Chapter, ChapterVersion
     from narrare.chapters.schemas import (
         CreateChapterRequest,
         UpdateChapterContentRequest,
@@ -83,8 +83,21 @@ class ChapterService:
             )
         chapter = await self.get(chapter_id, novel_id, user_id)
         word_count = request.word_count or count_words(request.content)
+
+        # Save current content as version BEFORE updating
+        latest = await self._repo.get_latest_version_number(chapter_id)
+        await self._repo.save_version(chapter, latest + 1, source="autosave")
+
         updated = await self._repo.update_content(chapter, request.content, word_count)
+
+        # Prune old versions (keep last 50)
+        await self._repo.prune_versions(chapter_id, keep=50)
+
         logger.debug("chapter_content_updated", chapter_id=str(chapter_id), words=word_count)
+
+        # Publish event — never blocks or fails the main operation
+        await self._publish_content_event(chapter_id, novel_id, user_id, word_count)
+
         return updated
 
     async def update_meta(
@@ -117,3 +130,77 @@ class ChapterService:
         chapter = await self.get(chapter_id, novel_id, user_id)
         await self._repo.delete(chapter)
         logger.info("chapter_deleted", chapter_id=str(chapter_id))
+
+    # -- Version methods --
+
+    async def list_versions(
+        self,
+        chapter_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> list[ChapterVersion]:
+        """List all versions of a chapter, newest first."""
+        await self.get(chapter_id, novel_id, user_id)  # ownership check
+        return await self._repo.list_versions(chapter_id)
+
+    async def restore_version(
+        self,
+        chapter_id: uuid.UUID,
+        version_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> Chapter:
+        """Restore a chapter to a previous version."""
+        chapter = await self.get(chapter_id, novel_id, user_id)
+        version = await self._repo.get_version(version_id, chapter_id)
+        if not version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Version not found",
+            )
+
+        # Save current content as version before restoring
+        latest = await self._repo.get_latest_version_number(chapter_id)
+        await self._repo.save_version(chapter, latest + 1, source="manual")
+
+        # Restore content from version
+        restored = await self._repo.update_content(chapter, version.content, version.word_count)
+        logger.info(
+            "chapter_version_restored",
+            chapter_id=str(chapter_id),
+            version_id=str(version_id),
+        )
+        return restored
+
+    # -- Event helpers --
+
+    async def _publish_content_event(
+        self,
+        chapter_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        word_count: int,
+    ) -> None:
+        """Publish a CHAPTER_CONTENT_UPDATED event.
+
+        Wrapped in try/except so event publishing never blocks or fails
+        the main operation (RULE-11: no silent failures — errors are logged).
+        """
+        try:
+            from narrare._app.events import get_event_bus
+            from narrare_core.events.types import DomainEvent, EventType
+
+            bus = get_event_bus()
+            await bus.publish(
+                DomainEvent(
+                    event_type=EventType.CHAPTER_CONTENT_UPDATED,
+                    aggregate_id=chapter_id,
+                    payload={"novel_id": str(novel_id), "word_count": word_count},
+                    user_id=user_id,
+                )
+            )
+        except RuntimeError:
+            # Bus not initialized — graceful degradation
+            logger.debug("event_bus_not_available", chapter_id=str(chapter_id))
+        except Exception:
+            logger.debug("event_publish_failed_chapter_update", exc_info=True)

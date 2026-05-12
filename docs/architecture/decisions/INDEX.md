@@ -32,6 +32,10 @@
 | [ADR-006](ADR-006-tech-stack.md) | Technology choices and explicit exclusions | ✅ | init | all |
 | [ADR-007](ADR-007-taskiq.md) | TaskIQ for background task processing | ✅ | init+2 | `core/tasks/` |
 | [ADR-008](ADR-008-frontend-stack.md) | Frontend architecture: fetch, Tailwind v4, TanStack Query, shadcn/ui | ✅ | 2026-05-12 | `packages/web/` |
+| [ADR-009](ADR-009-security-modernization.md) | Security Stack Modernization (argon2 + fastapi-limiter) | ✅ | 2026-05-12 | `auth/`, `_app/middleware.py` |
+| [ADR-010](ADR-010-observability.md) | Observability Strategy (OpenTelemetry + Langfuse) | ✅ | 2026-05-12 | `core/llm/`, `_app/middleware.py`, observability |
+| [ADR-011](ADR-011-content-versioning.md) | Content Versioning for Chapters | ✅ | 2026-05-12 | `chapters/`, DB schema |
+| [ADR-012](ADR-012-event-driven.md) | Event-Driven Architecture (Redis Pub/Sub) | ✅ | 2026-05-12 | `core/events/`, TaskIQ integration |
 
 ---
 

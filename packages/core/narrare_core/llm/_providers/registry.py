@@ -5,8 +5,9 @@ Maps provider names to pydantic-ai model factory functions.
 The gateway uses this registry — no provider-specific code anywhere else.
 
 To add a new provider:
-1. Create apps/api/narrare_core/llm/_providers/<name>.py
-2. Register it here
+1. Create packages/core/narrare_core/llm/_providers/<name>.py
+2. Register it with register("name", factory)
+3. Optionally register known model IDs with register_model()
 """
 
 from __future__ import annotations
@@ -28,10 +29,40 @@ class ProviderFactory(Protocol):
 
 _REGISTRY: dict[str, ProviderFactory] = {}
 
+# Explicit model → provider mapping. Checked before prefix matching.
+_MODEL_PROVIDER_MAP: dict[str, str] = {}
+
+# Ordered prefix → provider mapping. Most specific prefixes first.
+# Order matters: "chatglm" before "glm", "ollama/" before "llama", etc.
+_PROVIDER_PREFIXES: list[tuple[str, str]] = [
+    ("claude", "anthropic"),
+    ("gpt-", "openai"),
+    ("o1-", "openai"),
+    ("o3-", "openai"),
+    ("text-", "openai"),
+    ("chatglm", "zai"),
+    ("glm", "zai"),
+    ("gemini", "google"),
+    ("ollama/", "ollama"),
+    ("openrouter/", "openrouter"),
+    ("mixtral", "groq"),
+    ("llama", "ollama"),
+]
+
 
 def register(name: str, factory: ProviderFactory) -> None:
     """Register a provider factory by name."""
     _REGISTRY[name] = factory
+
+
+def register_model(model_id: str, provider_name: str) -> None:
+    """Register an explicit model → provider mapping.
+
+    Registered model IDs are matched exactly (case-insensitive) before
+    prefix-based inference. Use this for known model IDs to avoid
+    relying on heuristics.
+    """
+    _MODEL_PROVIDER_MAP[model_id.lower()] = provider_name
 
 
 def get(name: str) -> ProviderFactory:
@@ -65,6 +96,11 @@ def infer_provider(model_id: str) -> str:
     """
     Infer provider name from a model ID string.
 
+    Resolution order:
+    1. Explicit model → provider mapping (via register_model)
+    2. Prefix-based matching against _PROVIDER_PREFIXES
+    3. Default fallback to "openai" (openai-compatible)
+
     Args:
         model_id: Model identifier string.
 
@@ -80,20 +116,14 @@ def infer_provider(model_id: str) -> str:
     """
     lower = model_id.lower()
 
-    if lower.startswith("claude"):
-        return "anthropic"
-    if lower.startswith(("gpt-", "o1", "o3", "text-")):
-        return "openai"
-    if lower.startswith("glm") or lower.startswith("chatglm"):
-        return "zai"
-    if lower.startswith("gemini"):
-        return "google"
-    if lower.startswith("ollama/") or ("/" not in lower and lower.startswith("llama")):
-        return "ollama"
-    if lower.startswith("openrouter/"):
-        return "openrouter"
-    if lower.startswith("mixtral") or (lower.startswith("llama") and "/" not in lower):
-        return "groq"
+    # 1. Check explicit mapping first
+    if lower in _MODEL_PROVIDER_MAP:
+        return _MODEL_PROVIDER_MAP[lower]
 
-    # Default fallback — try openai-compatible
+    # 2. Fall back to prefix matching
+    for prefix, provider in _PROVIDER_PREFIXES:
+        if lower.startswith(prefix):
+            return provider
+
+    # 3. Default fallback — try openai-compatible
     return "openai"

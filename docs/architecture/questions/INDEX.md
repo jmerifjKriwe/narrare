@@ -24,6 +24,7 @@
 | [Q-001](Q-001-mcp-auth-strategy.md) | How does MCP authenticate against the API? | 🟡 | `apps/mcp/` | init |
 | [Q-002](Q-002-a2a-streaming.md) | Does A2A protocol require streaming support? | 🟡 | `apps/a2a/` | init |
 | [Q-003](Q-003-embedding-provider.md) | Should embeddings be provider-agnostic from day one? | 🟡 | `core/llm/embeddings.py` | init |
+| [Q-006](Q-006-configurable-model-routing.md) | Should Model Routing be configurable per user/project/intent? | 🟡 | Advanced model preferences, self-hosted LLM | 2026-05-12 |
 
 ---
 

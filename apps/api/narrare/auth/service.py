@@ -12,6 +12,7 @@ from narrare.auth.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
+    needs_rehash,
     verify_password,
     verify_refresh_token,
 )
@@ -88,6 +89,16 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is disabled",
             )
+
+        # Rehash password if it uses outdated parameters or legacy algorithm
+        if needs_rehash(user.hashed_password):
+            try:
+                new_hash = hash_password(request.password)
+                await self._repo.update_hashed_password(user.id, new_hash)
+                logger.info("password_rehashed", user_id=str(user.id))
+            except Exception:
+                # Log but don't block login (RULE-11: no silent failures)
+                logger.warning("password_rehash_failed", user_id=str(user.id), exc_info=True)
 
         logger.info("user_logged_in", user_id=str(user.id))
         return self._create_tokens(str(user.id))

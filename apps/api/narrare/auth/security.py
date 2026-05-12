@@ -1,22 +1,75 @@
-"""JWT creation/verification and password hashing."""
+"""JWT creation/verification and password hashing.
+
+Password hashing uses argon2id (winner of Password Hashing Competition).
+See ADR-009 for rationale.
+
+Backward compatibility: verify_password accepts both argon2 and bcrypt hashes
+so that any future migration scenario is handled gracefully.  bcrypt is imported
+lazily — it is NOT a declared dependency and can be fully removed once all
+existing hashes are argon2.
+"""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-import bcrypt
+import argon2
 import jwt
+
+# Argon2 hasher with sensible defaults (OWASP-recommended parameters)
+_hasher = argon2.PasswordHasher(
+    time_cost=3,  # iterations
+    memory_cost=65536,  # 64 MB
+    parallelism=4,  # threads
+    hash_len=32,
+    salt_len=16,
+)
 
 
 def hash_password(plain: str) -> str:
-    """Hash a plaintext password with bcrypt."""
-    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
+    """Hash a plaintext password with argon2id."""
+    return _hasher.hash(plain)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Verify a plaintext password against a bcrypt hash."""
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    """Verify a plaintext password against a hash.
+
+    Supports both argon2 and bcrypt hashes for backward compatibility.
+    argon2 hashes start with ``$argon2``, bcrypt hashes start with ``$2b$``.
+    """
+    if hashed.startswith("$argon2"):
+        try:
+            return _hasher.verify(hashed, plain)
+        except argon2.exceptions.VerifyMismatchError:
+            return False
+        except argon2.exceptions.VerificationError:
+            return False
+
+    # Legacy bcrypt support — lazy import since bcrypt is not a dependency.
+    if hashed.startswith("$2b$") or hashed.startswith("$2a$"):
+        try:
+            import bcrypt as _bcrypt  # type: ignore[import-untyped]
+
+            return bool(_bcrypt.checkpw(plain.encode(), hashed.encode()))  # type: ignore[no-redef]
+        except Exception:
+            return False
+
+    # Unknown hash format
+    return False
+
+
+def needs_rehash(hashed: str) -> bool:
+    """Check if a hash needs rehashing (parameters changed or was bcrypt)."""
+    if hashed.startswith("$argon2"):
+        return _hasher.check_needs_rehash(hashed)
+    # bcrypt hashes always need rehash
+    return True
+
+
+# ---------------------------------------------------------------------------
+# JWT helpers (unchanged)
+# ---------------------------------------------------------------------------
 
 
 def create_access_token(

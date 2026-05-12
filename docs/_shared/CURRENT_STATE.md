@@ -12,7 +12,7 @@
 
 Date: 2026-05-12
 Updated by: Orchestrator
-Session summary: Phase 4 Frontend Foundation complete — full stack optimization: axios→fetch, styled-jsx→Tailwind v4, editorStore dedup, error boundaries, shadcn/ui, motion, jose middleware auth, i18n linting.
+Session summary: Tech Stack Audit complete — 16 changes: argon2, fastapi-limiter, OpenTelemetry, Langfuse, content versioning, event-driven architecture, correlation IDs, provider registry fix, layered error classification, pgBouncer.
 
 ---
 
@@ -85,6 +85,7 @@ Phase 5: Integration & Polish      · not started
 **LLM Layer (`llm/`):**
 - `gateway.py` — Single LLM Gateway (ADR-001), ~290 lines
 - `_providers/` — OpenAI, Anthropic, Ollama, ZAI, Others, Registry (6 providers)
+- `observability.py` — Langfuse integration (LLM tracing, cost tracking)
 - `result.py`, `retry.py`, `metrics.py`, `intents.py`, `embeddings.py`
 
 **Prompt System (`prompts/`):**
@@ -100,15 +101,23 @@ Phase 5: Integration & Polish      · not started
 **Stub Modules (interfaces only):**
 - `context/`, `cache/`, `schemas/`, `memory/`, `embeddings/`
 
+**Event System (`events/`):**
+- Event types, bus protocol (Protocol-based), NullEventBus for testing
+
 #### `apps/api/narrare/` — FastAPI Backend (Phase 2 & 3)
 
 **App Infrastructure (`_app/`):**
 - `main.py`, `config.py`, `database.py`, `dependencies.py`, `lifespan.py`, `middleware.py`
+- `telemetry.py` — OpenTelemetry setup (traces, metrics, FastAPI instrumentation)
+- `events.py` — Redis Pub/Sub event bus implementation
+- `event_listener.py` — Event → TaskIQ task routing
 
 **Domain Modules (all contract-first per ADR-003):**
 - `auth/` — JWT auth: models, service, router, repository, contracts, schemas, security
+  - argon2id password hashing (bcrypt backward compatibility for existing hashes)
 - `novels/` — CRUD: models → repository → service → router, contracts, schemas
 - `chapters/` — CRUD: models → repository → service → router, contracts, schemas
+  - Content versioning: ChapterVersion model, version repository/service/router endpoints
 - `volumes/` — CRUD: models → repository → service → router, contracts, schemas
 - `settings/` — models, repository, router, schemas, contracts
 - `setup/` — Setup wizard: router, service, contracts, schemas, provider_service, provider_schemas, demo_loader
@@ -250,6 +259,17 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Error handling added | Route-level error.tsx + global-error.tsx + ErrorBoundary component |
 | Loading states added | Skeleton loading.tsx at all route levels |
 | debounce autosave bug fixed | useRef-based debounce pattern replaces broken useCallback |
+| Tech Stack Audit | Complete — 16 changes across Core, Backend, Platform, Docs |
+| bcrypt → argon2 | ADR-009, security.py rewritten |
+| slowapi → fastapi-limiter | ADR-009, async-native Redis rate limiting |
+| OpenTelemetry | ADR-010, replaces prometheus-client |
+| Langfuse LLM Observability | ADR-010, integrated in gateway via observability.py |
+| Content Versioning | ADR-011, chapter_versions table + API endpoints |
+| Event-Driven Architecture | ADR-012, core/events + Redis Pub/Sub + TaskIQ |
+| infer_provider heuristics | Fixed: explicit model registration + declarative prefix mapping |
+| Error Classification | Fixed: layered exceptions (pydantic-ai typed → stdlib → string fallback) |
+| Correlation IDs | Enhanced: full UUID + OTel trace context + response headers |
+| pgBouncer | Added to Docker Compose (production profile) |
 
 ---
 
@@ -264,6 +284,10 @@ All demo content is complete — sufficient for testing through Phase 5.
 | ADR-005 | Directory Structure & Module Ownership | ✅ Applied |
 | ADR-006 | Technology Stack | ✅ Applied |
 | ADR-007 | TaskIQ for Background Tasks | ✅ Decided, integration pending |
+| ADR-009 | Security Stack Modernization (argon2 + fastapi-limiter) | ✅ Implemented |
+| ADR-010 | Observability Strategy (OpenTelemetry + Langfuse) | ✅ Implemented |
+| ADR-011 | Content Versioning for Chapters | ✅ Implemented |
+| ADR-012 | Event-Driven Architecture (Redis Pub/Sub) | ✅ Implemented |
 
 ---
 
@@ -276,6 +300,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Q-003 | Embedding provider abstraction | 🟡 Open | core/llm/embeddings.py (Phase 5) |
 | Q-004 | Celery vs arq | ✅ Resolved → TaskIQ | — |
 | Q-005 | GLM/Z.AI compatibility | ✅ Resolved → OpenAI-compatible | — |
+| Q-006 | Configurable Model Routing | 🟡 Open | Advanced model preferences |
 
 ---
 
@@ -283,7 +308,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|-----------|
-| Python 3.14 missing type stubs for some deps | Low | Low | `reportMissingTypeStubs = false` in pyrightconfig |
+| Python 3.14 missing type stubs for some deps | Low | Low | Tried `reportMissingTypeStubs = true` — 261 false positives from inline-typed first-party code. Documented with TODO in pyproject.toml |
 | TipTap v3 extension API changes | Low | Medium | Pin exact version in package.json |
 | Feature spec files not yet individualized | Low | Low | INDEX.md has catalogue, can be expanded per-feature as needed |
 | Frontend Button tests use semantic token assertions (not class names) — may break if shadcn tokens change | Low | Low | Update test assertions when tokens change |
@@ -293,13 +318,16 @@ All demo content is complete — sufficient for testing through Phase 5.
 
 ## Next Session Should Start With
 
-**Phase 5: Integration & Polish** — see `docs/mvp/mvp-plan.md` for full checklist.
+**Phase 5: Integration & Polish** — tech stack audit is complete. Infrastructure is clean and modern.
 
 Key steps:
 1. Connect writing features to the editor (SSE streaming sessions)
 2. Build KB editor UI (interactive AI sessions)
 3. Add analysis panels to the ContextPanel
 4. E2E tests with Playwright
+
+Infrastructure now includes: OpenTelemetry tracing, Langfuse LLM observability, event-driven
+architecture (Redis Pub/Sub → TaskIQ), content versioning, argon2id auth, async rate limiting.
 
 ---
 

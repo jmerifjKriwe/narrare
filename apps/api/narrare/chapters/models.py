@@ -54,3 +54,30 @@ class Chapter(Base):
 
     def __repr__(self) -> str:
         return f"Chapter(id={self.id}, title={self.title!r}, position={self.position})"
+
+
+class ChapterVersion(Base):
+    """Historical version of chapter content."""
+
+    __tablename__ = "chapter_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    chapter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chapters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    word_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="autosave")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"ChapterVersion(id={self.id}, chapter_id={self.chapter_id}, "
+            f"version={self.version_number}, source={self.source!r})"
+        )

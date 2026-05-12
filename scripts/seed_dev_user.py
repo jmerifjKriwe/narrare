@@ -22,11 +22,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "api"))
 
 async def seed() -> None:
     # Import here so path is set up first
-    import bcrypt
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from narrare.auth.models import User
+    from narrare.auth.security import hash_password
 
     database_url = os.environ.get(
         "DATABASE_URL",
@@ -49,7 +49,7 @@ async def seed() -> None:
             return
 
         # Create dev user using ORM (applies Python-level uuid.uuid4 default)
-        hashed = bcrypt.hashpw(b"narrare-dev", bcrypt.gensalt()).decode()
+        hashed = hash_password("narrare-dev")
 
         user = User(
             email="dev@narrare.local",

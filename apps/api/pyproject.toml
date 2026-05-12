@@ -34,7 +34,7 @@ dependencies = [
 
   # Auth
   "PyJWT==2.12.1",
-  "bcrypt==5.0.0",
+  "argon2-cffi>=25.1.0",
 
   # HTTP client
   "httpx==0.28.1",
@@ -44,10 +44,13 @@ dependencies = [
 
   # Observability
   "structlog==25.5.0",
-  "prometheus-client==0.25.0",
+  "opentelemetry-api>=1.39.0,<1.41.0",
+  "opentelemetry-sdk>=1.39.0,<1.41.0",
+  "opentelemetry-instrumentation-fastapi>=0.60b0,<0.62b0",
+  "opentelemetry-exporter-otlp>=1.39.0,<1.41.0",
 
   # Rate limiting
-  "slowapi==0.1.9",
+  "fastapi-limiter>=0.2.0",
 
   # Email
   "aiosmtplib==5.1.0",

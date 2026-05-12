@@ -27,19 +27,20 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import TYPE_CHECKING
 
 import structlog
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior
 
-from narrare_core.llm import (
-    _providers,  # noqa: F401  # pyright: ignore[reportUnusedImport] — triggers provider registration
-)
+from narrare_core.llm import _providers  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from narrare_core.llm._providers.registry import get as get_provider
 from narrare_core.llm._providers.registry import infer_provider
 from narrare_core.llm.intents import LLMIntent, get_model_config
 from narrare_core.llm.metrics import record_failure, record_success
+from narrare_core.llm.observability import LLMObservability
 from narrare_core.llm.result import LLMResult, StreamChunk, TokenUsage
 from narrare_core.llm.retry import DEFAULT_RETRY, RetryConfig, with_retry
 from narrare_core.shared.errors import (
@@ -83,6 +84,7 @@ class LLMGateway:
             default_provider: Fallback provider when model cannot be inferred.
         """
         self._default_provider = default_provider
+        self._obs: LLMObservability = LLMObservability()
         logger.info("llm_gateway_initialized", default_provider=default_provider)
 
     def _get_model(self, model_id: str) -> Model:
@@ -91,11 +93,7 @@ class LLMGateway:
         factory = get_provider(provider_name)
         return factory(model_id)
 
-    def _make_agent(
-        self,
-        model: Model,
-        system_prompt: str,
-    ) -> Agent[None, str]:
+    def _make_agent(self, model: Model, system_prompt: str) -> Agent[None, str]:
         """Create a pydantic-ai Agent for a single call."""
         return Agent(  # type: ignore[call-arg]
             model,
@@ -104,34 +102,37 @@ class LLMGateway:
         )
 
     def _classify_error(self, error: Exception) -> LLMGatewayError:
-        """Convert provider-specific exceptions to domain errors."""
+        """Convert provider exceptions to domain errors.
+        L1: pydantic-ai typed → L2: stdlib → L3: string heuristic fallback.
+        """
+        if isinstance(error, ModelHTTPError):
+            status = error.status_code
+            if status == 401:
+                return LLMAuthError(str(error))
+            if status == 429:
+                return LLMRateLimitError(str(error))
+            if status == 400:
+                return LLMInvalidRequestError(str(error))
+            if status in (502, 503):
+                return LLMServiceUnavailableError(str(error))
+            return LLMGatewayError(f"LLM HTTP error {status}: {error}")
+        if isinstance(error, UnexpectedModelBehavior):
+            return LLMGatewayError(f"Unexpected model behavior: {error}")
+        if isinstance(error, (asyncio.TimeoutError, TimeoutError)):
+            return LLMTimeoutError(str(error))
         msg = str(error).lower()
-
-        # Auth errors
         if any(k in msg for k in ("api key", "authentication", "unauthorized", "401")):
             return LLMAuthError(str(error))
-
-        # Rate limits
         if any(k in msg for k in ("rate limit", "429", "too many requests", "quota")):
             return LLMRateLimitError(str(error))
-
-        # Context length
         if any(k in msg for k in ("context", "token", "length", "too long", "maximum")):
             return LLMContextTooLargeError(str(error))
-
-        # Timeouts
         if any(k in msg for k in ("timeout", "timed out", "deadline")):
             return LLMTimeoutError(str(error))
-
-        # Service unavailable
         if any(k in msg for k in ("503", "502", "overloaded", "unavailable", "capacity")):
             return LLMServiceUnavailableError(str(error))
-
-        # Invalid request
         if any(k in msg for k in ("invalid", "400", "bad request")):
             return LLMInvalidRequestError(str(error))
-
-        # Unknown — wrap generically
         return LLMGatewayError(f"Unexpected LLM error: {error}")
 
     async def run(
@@ -143,8 +144,7 @@ class LLMGateway:
         model_override: str | None = None,
         retry_config: RetryConfig = DEFAULT_RETRY,
     ) -> LLMResult:
-        """
-        Execute a non-streaming LLM call.
+        """Execute a non-streaming LLM call.
 
         Args:
             intent: The operation intent — drives model selection.
@@ -168,6 +168,7 @@ class LLMGateway:
         log.debug("llm_run_start")
 
         start = time.monotonic()
+        obs_trace = self._obs.start_trace(intent, model_id, provider, system_prompt, user_prompt)
 
         async def _call() -> LLMResult:
             try:
@@ -175,7 +176,6 @@ class LLMGateway:
                 result = await agent.run(user_prompt)
                 elapsed = time.monotonic() - start
 
-                # pydantic-ai result usage
                 usage = result.usage()
                 token_usage = TokenUsage(
                     prompt_tokens=usage.input_tokens or 0,
@@ -195,8 +195,9 @@ class LLMGateway:
                     tokens=token_usage.total_tokens,
                     duration_ms=round(elapsed * 1000),
                 )
+                self._obs.finish_trace(obs_trace, str(result), token_usage, round(elapsed * 1000))
                 return LLMResult(
-                    text=str(result),  # pydantic-ai AgentRunResult is string-convertible
+                    text=str(result),
                     usage=token_usage,
                     model=model_id,
                     intent=intent.value,
@@ -211,6 +212,7 @@ class LLMGateway:
                     error_type=type(domain_error).__name__,
                     duration_seconds=elapsed,
                 )
+                self._obs.record_error(obs_trace, str(domain_error), type(domain_error).__name__)
                 raise domain_error from e
 
         result = await with_retry(_call, retry_config, intent=intent.value)
@@ -224,8 +226,7 @@ class LLMGateway:
         user_prompt: str,
         model_override: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
-        """
-        Execute a streaming LLM call.
+        """Execute a streaming LLM call.
 
         Args:
             intent: The operation intent.
@@ -249,6 +250,7 @@ class LLMGateway:
         log.debug("llm_stream_start")
 
         start = time.monotonic()
+        obs_trace = self._obs.start_trace(intent, model_id, provider, system_prompt, user_prompt)
 
         try:
             agent = self._make_agent(model, system_prompt)
@@ -256,7 +258,6 @@ class LLMGateway:
                 async for text in stream_result.stream_text(delta=True):
                     yield StreamChunk(text=text)
 
-                # Final chunk with usage
                 elapsed = time.monotonic() - start
                 usage = stream_result.usage()
                 token_usage = TokenUsage(
@@ -276,6 +277,7 @@ class LLMGateway:
                     tokens=token_usage.total_tokens,
                     duration_ms=round(elapsed * 1000),
                 )
+                self._obs.finish_trace(obs_trace, "", token_usage, round(elapsed * 1000))
                 yield StreamChunk(text="", is_final=True, usage=token_usage)
 
         except Exception as e:
@@ -288,4 +290,5 @@ class LLMGateway:
                 error_type=type(domain_error).__name__,
                 duration_seconds=elapsed,
             )
+            self._obs.record_error(obs_trace, str(domain_error), type(domain_error).__name__)
             raise domain_error from e

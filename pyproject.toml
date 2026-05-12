@@ -38,6 +38,11 @@ members = ["apps/api", "packages/core", "packages/i18n"]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
 reportMissingImports = true
+# TODO: Enable reportMissingTypeStubs once pyright can distinguish inline-typed
+# first-party modules from truly untyped third-party packages. Currently setting
+# this to true produces ~260 false-positive errors (all for our own packages
+# narrare_core.* and narrare.* which use inline annotations, not .pyi stubs).
+# See: https://github.com/microsoft/pyright/issues/6717
 reportMissingTypeStubs = false
 
 # PERFORMANCE: venv explizit setzen (verhindert Scannen der venv)

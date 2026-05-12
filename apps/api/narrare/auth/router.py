@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
+from fastapi_limiter.depends import RateLimiter as _RateLimiterDep
+from pyrate_limiter import Duration, Limiter, Rate
 
 from narrare._app.config import Settings, get_settings
 from narrare._app.database import get_async_session
@@ -33,7 +35,22 @@ def _get_auth_service(
     return AuthService(repo=AuthRepository(session), settings=settings)
 
 
-@router.post("/register", response_model=TokenResponse, status_code=201)
+def _register_rate_limiter() -> _RateLimiterDep:
+    """Lazy rate limiter for registration — 3 requests/minute."""
+    return _RateLimiterDep(Limiter(Rate(3, Duration.MINUTE * 1)))
+
+
+def _login_rate_limiter() -> _RateLimiterDep:
+    """Lazy rate limiter for login — 5 requests/minute."""
+    return _RateLimiterDep(Limiter(Rate(5, Duration.MINUTE * 1)))
+
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=201,
+    dependencies=[Depends(_register_rate_limiter)],
+)
 async def register(
     request: RegisterRequest,
     service: AuthService = Depends(_get_auth_service),
@@ -42,7 +59,11 @@ async def register(
     return await service.register(request)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(_login_rate_limiter)],
+)
 async def login(
     request: LoginRequest,
     service: AuthService = Depends(_get_auth_service),

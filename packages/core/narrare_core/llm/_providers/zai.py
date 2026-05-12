@@ -18,7 +18,7 @@ import os
 
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from narrare_core.llm._providers.registry import register
+from narrare_core.llm._providers.registry import register, register_model
 
 _ZAI_GENERAL_URL = "https://api.z.ai/api/paas/v4"
 _ZAI_CODING_URL = "https://api.z.ai/api/coding/paas/v4"
@@ -58,3 +58,12 @@ def make_zai_coding(model_id: str) -> OpenAIChatModel:
 
 
 register("zai", _make_zai)
+
+# Register known Z.AI model IDs explicitly — avoids prefix-based inference
+for _mid in [
+    "glm-z1-32b",
+    "glm-4-flash",
+    "glm-4-plus",
+    "chatglm-4",
+]:
+    register_model(_mid, "zai")

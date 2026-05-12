@@ -212,7 +212,9 @@ No direct SDK calls to external services outside their dedicated adapter:
 | mem0 | `core/memory/client.py` only |
 | SMTP | `core/notifications/email.py` only |
 | Web search (Tavily/Serp) | `core/research/search_client.py` only |
-| Celery | `core/tasks/` only |
+| Langfuse | `core/llm/observability.py` only |
+| OpenTelemetry | `apps/api/narrare/_app/telemetry.py` only |
+| Event bus (Redis Pub/Sub) | `apps/api/narrare/_app/events.py` only |
 
 ---
 

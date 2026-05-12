@@ -4,6 +4,9 @@ Ollama provider adapter (local models).
 Registered as: "ollama"
 Models: any model served by Ollama (llama3, mistral, etc.)
 URL from OLLAMA_BASE_URL env var (default: http://localhost:11434)
+
+Note: No explicit model IDs registered here because Ollama model IDs
+are user-defined. Prefix-based inference ("ollama/" prefix) handles routing.
 """
 
 from __future__ import annotations

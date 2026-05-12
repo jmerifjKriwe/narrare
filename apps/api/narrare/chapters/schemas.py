@@ -67,3 +67,23 @@ class ChapterSummaryResponse(BaseModel):
     word_count: int
     status: str
     updated_at: datetime
+
+
+class ChapterVersionResponse(BaseModel):
+    """Single historical version of chapter content."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    chapter_id: uuid.UUID
+    word_count: int
+    version_number: int
+    source: str
+    created_at: datetime
+
+
+class ChapterVersionListResponse(BaseModel):
+    """Paginated list of chapter versions."""
+
+    versions: list[ChapterVersionResponse]
+    total: int

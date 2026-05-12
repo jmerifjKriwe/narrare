@@ -12,6 +12,8 @@ from narrare.chapters.repository import ChapterRepository
 from narrare.chapters.schemas import (
     ChapterResponse,
     ChapterSummaryResponse,
+    ChapterVersionListResponse,
+    ChapterVersionResponse,
     CreateChapterRequest,
     ReorderChaptersRequest,
     UpdateChapterContentRequest,
@@ -114,3 +116,31 @@ async def delete_chapter(
     service: ChapterService = Depends(_get_service),
 ) -> None:
     await service.delete(chapter_id, novel_id, uuid.UUID(user_id))
+
+
+@router.get("/{chapter_id}/versions", response_model=ChapterVersionListResponse)
+async def list_chapter_versions(
+    novel_id: uuid.UUID,
+    chapter_id: uuid.UUID,
+    user_id: CurrentUserIdDep,
+    service: ChapterService = Depends(_get_service),
+) -> ChapterVersionListResponse:
+    """List all versions of a chapter, newest first."""
+    versions = await service.list_versions(chapter_id, novel_id, uuid.UUID(user_id))
+    return ChapterVersionListResponse(
+        versions=[ChapterVersionResponse.model_validate(v) for v in versions],
+        total=len(versions),
+    )
+
+
+@router.post("/{chapter_id}/versions/{version_id}/restore", response_model=ChapterResponse)
+async def restore_chapter_version(
+    novel_id: uuid.UUID,
+    chapter_id: uuid.UUID,
+    version_id: uuid.UUID,
+    user_id: CurrentUserIdDep,
+    service: ChapterService = Depends(_get_service),
+) -> ChapterResponse:
+    """Restore a chapter to a previous version."""
+    chapter = await service.restore_version(chapter_id, version_id, novel_id, uuid.UUID(user_id))
+    return ChapterResponse.model_validate(chapter)

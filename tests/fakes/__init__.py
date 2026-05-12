@@ -14,9 +14,9 @@ Usage:
     fake_gateway.returns("Generated text")
 """
 
+from tests.fakes.fake_auth_repository import FakeAuthRepository
 from tests.fakes.fake_llm_gateway import FakeLLMGateway
 from tests.fakes.fake_repositories import (
-    FakeAuthRepository,
     FakeChapterRepository,
     FakeNovelRepository,
     FakeVolumeRepository,

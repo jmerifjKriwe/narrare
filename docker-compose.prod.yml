@@ -1,0 +1,17 @@
+# docker-compose.prod.yml — Production overrides
+# Usage: docker compose -f docker-compose.dev.yml -f docker-compose.prod.yml up
+#
+# This file activates pgBouncer (removes profile restriction) and reconfigures
+# the API to connect through pgBouncer instead of directly to Postgres.
+# Intended for single-user / small self-hosted deployments.
+
+services:
+  api:
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://narrare:narrare@pgbouncer:6432/narrare_dev"
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+
+  pgbouncer:
+    profiles: []  # Override: remove profile restriction in production

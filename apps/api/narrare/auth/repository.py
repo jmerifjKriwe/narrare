@@ -48,3 +48,10 @@ class AuthRepository:
         if user:
             user.is_verified = True
             await self._session.flush()
+
+    async def update_hashed_password(self, user_id: uuid.UUID, hashed_password: str) -> None:
+        """Update a user's password hash (used for argon2 rehashing on login)."""
+        user = await self.get_by_id(user_id)
+        if user:
+            user.hashed_password = hashed_password
+            await self._session.flush()
