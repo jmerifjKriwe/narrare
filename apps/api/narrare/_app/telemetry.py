@@ -36,8 +36,8 @@ def setup_telemetry(app: FastAPI) -> None:
         from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
             OTLPSpanExporter,
         )
-        from opentelemetry.instrumentation.fastapi import (
-            FastAPIInstrumentor,  # type: ignore[import-untyped]
+        from opentelemetry.instrumentation.fastapi import (  # type: ignore[import-untyped,reportMissingTypeStubs]
+            FastAPIInstrumentor,  # type: ignore[reportUnknownVariableType]
         )
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
