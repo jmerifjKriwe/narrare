@@ -4,6 +4,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./lib/i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  typedRoutes: true,
   async rewrites() {
     return [
       {
@@ -11,9 +12,6 @@ const nextConfig: NextConfig = {
         destination: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/:path*`,
       },
     ];
-  },
-  experimental: {
-    typedRoutes: true,
   },
 };
 
