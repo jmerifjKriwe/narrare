@@ -1,0 +1,79 @@
+{
+  "title": "Narrare einrichten",
+  "step1": {
+    "title": "Dein Projekt",
+    "description": "Wähle einen Namen und eine Sprache für dein Schreibprojekt.",
+    "projectName": "Projektname",
+    "projectNamePlaceholder": "z.B. Mein Fantasyroman",
+    "language": "Schreibsprache",
+    "autosave": "Autospeichern-Intervall",
+    "autosaveOff": "Aus",
+    "autosaveSeconds": "{seconds}s"
+  },
+  "step2": {
+    "title": "Dein Roman",
+    "description": "Erzähl uns von der Geschichte, die du schreibst.",
+    "novelTitle": "Titel",
+    "novelTitlePlaceholder": "Wie heißt dein Roman?",
+    "author": "Autorname",
+    "authorPlaceholder": "Dein Name (optional)",
+    "genre": "Genre",
+    "genrePlaceholder": "z.B. Fantasy, Thriller, Romanze",
+    "logline": "Logline",
+    "loglinePlaceholder": "Ein Satz, der deine Geschichte auf den Punkt bringt.",
+    "structure": "Erzählstruktur",
+    "tone": "Grundton"
+  },
+  "step3": {
+    "title": "Startinhalte",
+    "description": "Beginne neu oder entdecke fertige Inhalte.",
+    "blank": "Leeres Projekt",
+    "blankDescription": "Starte mit einem leeren Editor.",
+    "import": "Vorhandenes importieren",
+    "importDescription": "Aus einem bestehenden Verzeichnis importieren.",
+    "importPath": "Verzeichnispfad",
+    "demoChapters": "{n} Kapitel",
+    "demoCharacters": "{n} Charaktere",
+    "demoWords": "{n} Wörter"
+  },
+  "step4": {
+    "title": "KI-Anbieter",
+    "description": "Verbinde Narrare mit deinem bevorzugten KI-Modell.",
+    "provider": "Anbieter",
+    "apiKey": "API-Schlüssel",
+    "apiKeyPlaceholder": "Dein API-Schlüssel",
+    "model": "Primäres Modell",
+    "modelLoading": "Modelle werden geladen…",
+    "modelPlaceholder": "Modell auswählen",
+    "ollamaUrl": "Ollama-URL",
+    "validating": "Verbindung wird geprüft…",
+    "validationSuccess": "Verbindung bestätigt",
+    "validationFailed": "Keine Verbindung möglich. Überprüfe deinen API-Schlüssel."
+  },
+  "step5": {
+    "title": "Bestätigen",
+    "description": "Überprüfe deine Einrichtung, bevor wir dein Projekt erstellen.",
+    "project": "Projekt",
+    "novel": "Roman",
+    "starter": "Startinhalt",
+    "provider": "KI-Anbieter",
+    "creating": "Dein Projekt wird erstellt…",
+    "cliPreview": "CLI-Befehl"
+  },
+  "storyStructure": {
+    "three_act": "Drei-Akt-Struktur",
+    "five_act": "Fünf-Akt-Struktur",
+    "heros_journey": "Heldenreise",
+    "save_the_cat": "Save the Cat",
+    "seven_point": "Sieben-Punkte-Geschichte"
+  },
+  "tone": {
+    "dramatic": "Dramatisch",
+    "humorous": "Humorvoll",
+    "suspenseful": "Spannungsvoll",
+    "contemplative": "Kontemplativ",
+    "romantic": "Romantisch",
+    "dark": "Dunkel",
+    "adventurous": "Abenteuerlich"
+  }
+}

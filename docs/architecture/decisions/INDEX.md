@@ -36,6 +36,7 @@
 | [ADR-010](ADR-010-observability.md) | Observability Strategy (OpenTelemetry + Langfuse) | ✅ | 2026-05-12 | `core/llm/`, `_app/middleware.py`, observability |
 | [ADR-011](ADR-011-content-versioning.md) | Content Versioning for Chapters | ✅ | 2026-05-12 | `chapters/`, DB schema |
 | [ADR-012](ADR-012-event-driven.md) | Event-Driven Architecture (Redis Pub/Sub) | ✅ | 2026-05-12 | `core/events/`, TaskIQ integration |
+| [ADR-013](ADR-013-i18n.md) | Internationalization Architecture | ✅ | 2026-05-12 | `packages/i18n/`, `packages/web/lib/i18n/` |
 
 ---
 

@@ -1,0 +1,13 @@
+{
+  "title": "Einstellungen",
+  "language": "Oberflächensprache",
+  "theme": "Design",
+  "themes": {
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "autosave": "Automatisch speichern",
+  "aiProvider": "KI-Anbieter",
+  "aiModel": "KI-Modell"
+}

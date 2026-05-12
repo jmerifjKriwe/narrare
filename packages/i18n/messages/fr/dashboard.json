@@ -1,0 +1,8 @@
+{
+  "title": "Vos romans",
+  "newNovel": "Nouveau roman",
+  "noNovels": "Aucun roman pour l'instant.",
+  "noNovelsHint": "Créez votre premier roman pour commencer.",
+  "lastEdited": "Dernière modification {time}",
+  "demo": "Démo"
+}

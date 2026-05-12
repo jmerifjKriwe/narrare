@@ -434,9 +434,18 @@ import { connectSSE } from "@/lib/api/streaming"
 <p>Your chapter has been saved.</p>
 
 // Correct:
-const { t } = useTranslations("editor")
+const t = useTranslations("editor")
 <button>{t("saveChapter")}</button>
 <p>{t("chapterSaved")}</p>
+
+// Adding a new translation key:
+// 1. Add the key to packages/i18n/messages/en/<namespace>.json
+// 2. Add the same key to packages/i18n/messages/de/<namespace>.json
+// 3. Add the same key to packages/i18n/messages/fr/<namespace>.json
+// 4. The validate-i18n.ts script will catch missing keys in CI
+
+// Namespaces: common, auth, wizard, dashboard, editor, errors, settings
+// Use the namespace matching the feature area — e.g. editor keys go in editor.json
 ```
 
 ---

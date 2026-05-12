@@ -1,0 +1,79 @@
+{
+  "title": "Set up Narrare",
+  "step1": {
+    "title": "Your project",
+    "description": "Choose a name and language for your writing project.",
+    "projectName": "Project name",
+    "projectNamePlaceholder": "e.g. My Fantasy Novel",
+    "language": "Writing language",
+    "autosave": "Autosave interval",
+    "autosaveOff": "Off",
+    "autosaveSeconds": "{seconds}s"
+  },
+  "step2": {
+    "title": "Your novel",
+    "description": "Tell us about the story you're writing.",
+    "novelTitle": "Title",
+    "novelTitlePlaceholder": "What is your novel called?",
+    "author": "Author name",
+    "authorPlaceholder": "Your name (optional)",
+    "genre": "Genre",
+    "genrePlaceholder": "e.g. Fantasy, Thriller, Romance",
+    "logline": "Logline",
+    "loglinePlaceholder": "One sentence that captures your story.",
+    "structure": "Story structure",
+    "tone": "Tone"
+  },
+  "step3": {
+    "title": "Starter content",
+    "description": "Start fresh or explore with ready-made content.",
+    "blank": "Blank project",
+    "blankDescription": "Start with an empty editor.",
+    "import": "Import existing",
+    "importDescription": "Import from an existing directory.",
+    "importPath": "Directory path",
+    "demoChapters": "{n} chapters",
+    "demoCharacters": "{n} characters",
+    "demoWords": "{n} words"
+  },
+  "step4": {
+    "title": "AI provider",
+    "description": "Connect Narrare to your preferred AI model.",
+    "provider": "Provider",
+    "apiKey": "API key",
+    "apiKeyPlaceholder": "Your API key",
+    "model": "Primary model",
+    "modelLoading": "Loading models…",
+    "modelPlaceholder": "Select a model",
+    "ollamaUrl": "Ollama URL",
+    "validating": "Verifying connection…",
+    "validationSuccess": "Connection verified",
+    "validationFailed": "Could not connect. Check your API key and model."
+  },
+  "step5": {
+    "title": "Confirm",
+    "description": "Review your setup before we create your project.",
+    "project": "Project",
+    "novel": "Novel",
+    "starter": "Starter",
+    "provider": "AI provider",
+    "creating": "Creating your project…",
+    "cliPreview": "Equivalent CLI command"
+  },
+  "storyStructure": {
+    "three_act": "Three-Act Structure",
+    "five_act": "Five-Act Structure",
+    "heros_journey": "Hero's Journey",
+    "save_the_cat": "Save the Cat",
+    "seven_point": "Seven-Point Story"
+  },
+  "tone": {
+    "dramatic": "Dramatic",
+    "humorous": "Humorous",
+    "suspenseful": "Suspenseful",
+    "contemplative": "Contemplative",
+    "romantic": "Romantic",
+    "dark": "Dark",
+    "adventurous": "Adventurous"
+  }
+}

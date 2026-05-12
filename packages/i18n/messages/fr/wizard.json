@@ -1,0 +1,79 @@
+{
+  "title": "Configurer Narrare",
+  "step1": {
+    "title": "Votre projet",
+    "description": "Choisissez un nom et une langue pour votre projet d'écriture.",
+    "projectName": "Nom du projet",
+    "projectNamePlaceholder": "ex. Mon roman fantastique",
+    "language": "Langue d'écriture",
+    "autosave": "Intervalle de sauvegarde auto",
+    "autosaveOff": "Désactivé",
+    "autosaveSeconds": "{seconds}s"
+  },
+  "step2": {
+    "title": "Votre roman",
+    "description": "Parlez-nous de l'histoire que vous écrivez.",
+    "novelTitle": "Titre",
+    "novelTitlePlaceholder": "Comment s'appelle votre roman ?",
+    "author": "Nom de l'auteur",
+    "authorPlaceholder": "Votre nom (optionnel)",
+    "genre": "Genre",
+    "genrePlaceholder": "ex. Fantaisie, Thriller, Romance",
+    "logline": "Accroche",
+    "loglinePlaceholder": "Une phrase qui capture votre histoire.",
+    "structure": "Structure narrative",
+    "tone": "Ton"
+  },
+  "step3": {
+    "title": "Contenu de départ",
+    "description": "Commencez à zéro ou explorez avec du contenu prêt à l'emploi.",
+    "blank": "Projet vide",
+    "blankDescription": "Commencez avec un éditeur vide.",
+    "import": "Importer l'existant",
+    "importDescription": "Importer depuis un répertoire existant.",
+    "importPath": "Chemin du répertoire",
+    "demoChapters": "{n} chapitres",
+    "demoCharacters": "{n} personnages",
+    "demoWords": "{n} mots"
+  },
+  "step4": {
+    "title": "Fournisseur IA",
+    "description": "Connectez Narrare à votre modèle IA préféré.",
+    "provider": "Fournisseur",
+    "apiKey": "Clé API",
+    "apiKeyPlaceholder": "Votre clé API",
+    "model": "Modèle principal",
+    "modelLoading": "Chargement des modèles…",
+    "modelPlaceholder": "Sélectionner un modèle",
+    "ollamaUrl": "URL Ollama",
+    "validating": "Vérification de la connexion…",
+    "validationSuccess": "Connexion vérifiée",
+    "validationFailed": "Impossible de se connecter. Vérifiez votre clé API."
+  },
+  "step5": {
+    "title": "Confirmer",
+    "description": "Vérifiez votre configuration avant de créer votre projet.",
+    "project": "Projet",
+    "novel": "Roman",
+    "starter": "Contenu de départ",
+    "provider": "Fournisseur IA",
+    "creating": "Création de votre projet…",
+    "cliPreview": "Commande CLI équivalente"
+  },
+  "storyStructure": {
+    "three_act": "Structure en trois actes",
+    "five_act": "Structure en cinq actes",
+    "heros_journey": "Le voyage du héros",
+    "save_the_cat": "Save the Cat",
+    "seven_point": "Histoire en sept points"
+  },
+  "tone": {
+    "dramatic": "Dramatique",
+    "humorous": "Humoristique",
+    "suspenseful": "Suspense",
+    "contemplative": "Contemplatif",
+    "romantic": "Romantique",
+    "dark": "Sombre",
+    "adventurous": "Aventureux"
+  }
+}

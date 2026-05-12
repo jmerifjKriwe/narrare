@@ -1,6 +1,16 @@
 import { getRequestConfig } from "next-intl/server";
 import { routing } from "./routing";
 
+const namespaces = [
+  "common",
+  "auth",
+  "wizard",
+  "dashboard",
+  "editor",
+  "errors",
+  "settings",
+] as const;
+
 export default getRequestConfig(async ({ requestLocale }) => {
   let locale = await requestLocale;
 
@@ -8,8 +18,11 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale = routing.defaultLocale;
   }
 
-  return {
-    locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
-  };
+  const messages: Record<string, unknown> = {};
+  for (const ns of namespaces) {
+    const mod = await import(`../../../i18n/messages/${locale}/${ns}.json`);
+    messages[ns] = mod.default;
+  }
+
+  return { locale, messages };
 });

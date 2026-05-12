@@ -126,10 +126,13 @@ Phase 5: Integration & Polish      · not started
 **Database:**
 - Alembic migration `0001_initial.py` — initial schema
 
-#### `packages/i18n/` — Translations
+#### `packages/i18n/` — Translations (Source of Truth)
 
-- Package structure exists (`narrare_i18n/`, `pyproject.toml`)
-- Content not yet populated (Phase 4+)
+- Namespace-based file structure: `messages/{locale}/{namespace}.json` (7 namespaces × 3 locales)
+- Locales: en (reference), de, fr
+- Frontend loads via `next-intl` from `packages/web/lib/i18n/request.ts`
+- `narrare_i18n/` stub: will become Python loader for CLI/MCP/A2A
+- Validation: key completeness + placeholder consistency in pre-commit and CI
 
 #### `packages/web/` — Next.js 15 Frontend (Phase 4)
 
@@ -165,7 +168,8 @@ Phase 5: Integration & Polish      · not started
 
 **i18n:**
 - next-intl with 3 languages (en, de, fr)
-- Custom AST checker `validate-i18n.ts` catches hardcoded strings in pre-commit and CI
+- Translations at `packages/i18n/messages/` (namespace-based structure)
+- `validate-i18n.ts`: hardcoded string detection + key completeness + placeholder consistency
 
 **Auth & Security:**
 - In-memory access token (not localStorage)
@@ -288,6 +292,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | ADR-010 | Observability Strategy (OpenTelemetry + Langfuse) | ✅ Implemented |
 | ADR-011 | Content Versioning for Chapters | ✅ Implemented |
 | ADR-012 | Event-Driven Architecture (Redis Pub/Sub) | ✅ Implemented |
+| ADR-013 | Internationalization Architecture | ✅ Implemented |
 
 ---
 

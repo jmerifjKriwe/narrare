@@ -1,0 +1,18 @@
+{
+  "untitled": "Unbenanntes Kapitel",
+  "placeholder": "Beginne zu schreiben…",
+  "saveStatus": {
+    "idle": "",
+    "saving": "Speichert…",
+    "saved": "Gespeichert",
+    "error": "Fehler beim Speichern — nochmal versuchen?"
+  },
+  "wordCount": "{count} Wörter",
+  "readingTime": "~{time}",
+  "addChapter": "Kapitel hinzufügen",
+  "focusMode": "Fokusmodus",
+  "exitFocusMode": "Fokusmodus verlassen",
+  "sidebar": "Kapitel",
+  "contextPanel": "Kontext",
+  "contextPanelEmpty": "KI-Funktionen werden hier angezeigt"
+}

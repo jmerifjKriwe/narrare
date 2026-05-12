@@ -1,0 +1,18 @@
+{
+  "untitled": "Chapitre sans titre",
+  "placeholder": "Commencez à écrire…",
+  "saveStatus": {
+    "idle": "",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "error": "Échec de l'enregistrement — réessayer ?"
+  },
+  "wordCount": "{count} mots",
+  "readingTime": "~{time}",
+  "addChapter": "Ajouter un chapitre",
+  "focusMode": "Mode concentration",
+  "exitFocusMode": "Quitter le mode concentration",
+  "sidebar": "Chapitres",
+  "contextPanel": "Contexte",
+  "contextPanelEmpty": "Les fonctionnalités IA apparaîtront ici"
+}

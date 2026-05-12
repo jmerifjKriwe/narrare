@@ -50,6 +50,31 @@ narrare/
 
 ---
 
+## `packages/i18n/` — Translations (Source of Truth)
+
+Single source of truth for all translation files. Consumed by the frontend (next-intl) today,
+and by Python services (CLI, MCP, A2A) in the future.
+
+```
+packages/i18n/
+├── messages/                      ← Source of truth for all translations
+│   ├── en/                        ← English (reference locale)
+│   │   ├── common.json            ← Shared UI strings (loading, save, cancel, etc.)
+│   │   ├── auth.json              ← Login, register, logout
+│   │   ├── wizard.json            ← Setup wizard (steps 1-5, structures, tones)
+│   │   ├── dashboard.json         ← Novel list and dashboard
+│   │   ├── editor.json            ← Editor UI, chapters, save status
+│   │   ├── errors.json            ← Error messages and fallbacks
+│   │   └── settings.json          ← Settings page
+│   ├── de/                        ← German translations (mirrors en/)
+│   └── fr/                        ← French translations (mirrors en/)
+├── narrare_i18n/
+│   └── __init__.py                ← Future Python loader (CLI/MCP/A2A)
+└── pyproject.toml
+```
+
+---
+
 ## `packages/core/` — The Foundation
 
 The core package has **no knowledge of HTTP, users, authentication, or databases**.
@@ -218,11 +243,6 @@ packages/web/
 │
 ├── types/
 │   └── index.ts                   ← Shared TypeScript types (Novel, Chapter, User, etc.)
-│
-├── messages/
-│   ├── en.json                    ← English translations
-│   ├── de.json                    ← German translations
-│   └── fr.json                    ← French translations
 │
 ├── components.json                ← shadcn/ui configuration
 ├── biome.json                     ← Biome linter and formatter configuration

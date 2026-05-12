@@ -1,0 +1,13 @@
+{
+  "title": "Settings",
+  "language": "Interface language",
+  "theme": "Theme",
+  "themes": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "autosave": "Autosave",
+  "aiProvider": "AI provider",
+  "aiModel": "AI model"
+}

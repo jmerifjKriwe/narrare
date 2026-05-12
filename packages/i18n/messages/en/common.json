@@ -1,0 +1,19 @@
+{
+  "loading": "Loading…",
+  "error": "Something went wrong",
+  "retry": "Try again",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "create": "Create",
+  "back": "Back",
+  "next": "Next",
+  "finish": "Finish",
+  "confirm": "Confirm",
+  "yes": "Yes",
+  "no": "No",
+  "words": "words",
+  "characters": "characters",
+  "readingTime": "reading time"
+}

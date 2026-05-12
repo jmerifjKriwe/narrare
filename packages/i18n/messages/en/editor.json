@@ -1,0 +1,18 @@
+{
+  "untitled": "Untitled chapter",
+  "placeholder": "Start writing…",
+  "saveStatus": {
+    "idle": "",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "error": "Save failed — retry?"
+  },
+  "wordCount": "{count} words",
+  "readingTime": "~{time}",
+  "addChapter": "Add chapter",
+  "focusMode": "Focus mode",
+  "exitFocusMode": "Exit focus mode",
+  "sidebar": "Chapters",
+  "contextPanel": "Context",
+  "contextPanelEmpty": "AI features will appear here"
+}

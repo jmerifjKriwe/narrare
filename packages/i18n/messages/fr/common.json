@@ -1,0 +1,19 @@
+{
+  "loading": "Chargement…",
+  "error": "Une erreur s'est produite",
+  "retry": "Réessayer",
+  "cancel": "Annuler",
+  "save": "Enregistrer",
+  "delete": "Supprimer",
+  "edit": "Modifier",
+  "create": "Créer",
+  "back": "Retour",
+  "next": "Suivant",
+  "finish": "Terminer",
+  "confirm": "Confirmer",
+  "yes": "Oui",
+  "no": "Non",
+  "words": "mots",
+  "characters": "caractères",
+  "readingTime": "temps de lecture"
+}

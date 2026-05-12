@@ -1,0 +1,13 @@
+{
+  "title": "Paramètres",
+  "language": "Langue de l'interface",
+  "theme": "Thème",
+  "themes": {
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système"
+  },
+  "autosave": "Sauvegarde automatique",
+  "aiProvider": "Fournisseur IA",
+  "aiModel": "Modèle IA"
+}
