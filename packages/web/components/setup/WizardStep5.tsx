@@ -1,61 +1,49 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useTranslations } from "next-intl"
-import { useWizardStore } from "@/lib/stores/wizardStore"
-import { Button } from "@/components/ui/Button"
-import type { StoryStructure, StoryTone } from "@/types"
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { useWizardStore } from "@/lib/stores/wizardStore";
+import type { StoryStructure, StoryTone } from "@/types";
 
 interface SummaryRowProps {
-  label: string
-  value: string
+  label: string;
+  value: string;
 }
 
 function SummaryRow({ label, value }: SummaryRowProps) {
   return (
-    <div className="summary-row">
-      <span className="summary-label">{label}</span>
-      <span className="summary-value">{value || "—"}</span>
-      <style jsx>{`
-        .summary-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          padding: var(--space-2) 0;
-          border-bottom: 1px solid var(--color-border);
-          font-size: 0.9375rem;
-          gap: var(--space-4);
-        }
-        .summary-row:last-child { border-bottom: none; }
-        .summary-label { color: var(--color-text-secondary); flex-shrink: 0; }
-        .summary-value { color: var(--color-text-primary); font-weight: 500; text-align: right; word-break: break-word; }
-      `}</style>
+    <div className="flex justify-between items-baseline py-2 border-b border-[var(--color-border)] text-[0.9375rem] gap-4 last:border-b-0">
+      <span className="text-[var(--color-text-secondary)] shrink-0">{label}</span>
+      <span className="text-[var(--color-text-primary)] font-medium text-right break-words">
+        {value || "—"}
+      </span>
     </div>
-  )
+  );
 }
 
 export function WizardStep5({
   onComplete,
   onBack,
 }: {
-  onComplete: () => Promise<void>
-  onBack: () => void
+  onComplete: () => Promise<void>;
+  onBack: () => void;
 }) {
-  const t = useTranslations("wizard.step5")
-  const tCommon = useTranslations("common")
-  const tStructure = useTranslations("wizard.storyStructure")
-  const tTone = useTranslations("wizard.tone")
-  const { state } = useWizardStore()
-  const [isCreating, setIsCreating] = useState(false)
+  const t = useTranslations("wizard.step5");
+  const tCommon = useTranslations("common");
+  const tStructure = useTranslations("wizard.storyStructure");
+  const tTone = useTranslations("wizard.tone");
+  const { state } = useWizardStore();
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleComplete = async () => {
-    setIsCreating(true)
+    setIsCreating(true);
     try {
-      await onComplete()
+      await onComplete();
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
 
   const starterLabel: Record<string, string> = {
     blank: "Blank project",
@@ -63,18 +51,20 @@ export function WizardStep5({
     demo_scifi: "Demo: Dead Signal",
     demo_german: "Demo: Im stillen Wald",
     import: `Import from ${state.import_path || "—"}`,
-  }
+  };
 
   return (
-    <div className="step">
-      <div className="step-header">
-        <h2 className="step-title">{t("title")}</h2>
-        <p className="step-description">{t("description")}</p>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h2 className="text-xl font-semibold mb-1">{t("title")}</h2>
+        <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
       </div>
 
-      <div className="summary-sections">
-        <div className="summary-section">
-          <h3 className="summary-section-title">{t("project")}</h3>
+      <div className="flex flex-col gap-4">
+        <div className="bg-[var(--color-surface-raised)] rounded-[var(--radius-lg)] p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+            {t("project")}
+          </h3>
           <SummaryRow label="Name" value={state.project_name} />
           <SummaryRow label="Language" value={state.language.toUpperCase()} />
           <SummaryRow
@@ -83,32 +73,43 @@ export function WizardStep5({
           />
         </div>
 
-        <div className="summary-section">
-          <h3 className="summary-section-title">{t("novel")}</h3>
+        <div className="bg-[var(--color-surface-raised)] rounded-[var(--radius-lg)] p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+            {t("novel")}
+          </h3>
           <SummaryRow label="Title" value={state.title} />
           {state.author && <SummaryRow label="Author" value={state.author} />}
           {state.genre && <SummaryRow label="Genre" value={state.genre} />}
-          <SummaryRow label="Structure" value={tStructure(state.story_structure as StoryStructure)} />
+          <SummaryRow
+            label="Structure"
+            value={tStructure(state.story_structure as StoryStructure)}
+          />
           <SummaryRow label="Tone" value={tTone(state.tone as StoryTone)} />
         </div>
 
-        <div className="summary-section">
-          <h3 className="summary-section-title">{t("starter")}</h3>
+        <div className="bg-[var(--color-surface-raised)] rounded-[var(--radius-lg)] p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+            {t("starter")}
+          </h3>
           <SummaryRow label="Content" value={starterLabel[state.starter] || state.starter} />
         </div>
 
-        <div className="summary-section">
-          <h3 className="summary-section-title">{t("provider")}</h3>
+        <div className="bg-[var(--color-surface-raised)] rounded-[var(--radius-lg)] p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+            {t("provider")}
+          </h3>
           <SummaryRow label="Provider" value={state.provider} />
           <SummaryRow label="Model" value={state.model} />
         </div>
       </div>
 
       {isCreating && (
-        <p className="creating-status">{t("creating")}</p>
+        <p className="text-center text-[var(--color-text-secondary)] text-[0.9375rem] p-2">
+          {t("creating")}
+        </p>
       )}
 
-      <div className="step-actions">
+      <div className="flex justify-end gap-3 mt-2">
         <Button type="button" variant="secondary" onClick={onBack} disabled={isCreating}>
           ← {tCommon("back")}
         </Button>
@@ -116,33 +117,6 @@ export function WizardStep5({
           {tCommon("finish")} ✓
         </Button>
       </div>
-
-      <style jsx>{`
-        .summary-sections {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-4);
-        }
-        .summary-section {
-          background: var(--color-surface-raised);
-          border-radius: var(--radius-lg);
-          padding: var(--space-4);
-        }
-        .summary-section-title {
-          font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: var(--color-text-tertiary);
-          margin-bottom: var(--space-2);
-        }
-        .creating-status {
-          text-align: center;
-          color: var(--color-text-secondary);
-          font-size: 0.9375rem;
-          padding: var(--space-2);
-        }
-      `}</style>
     </div>
-  )
+  );
 }

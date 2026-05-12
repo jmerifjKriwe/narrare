@@ -1,22 +1,23 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useTranslations } from "next-intl"
-import { useWizardStore } from "@/lib/stores/wizardStore"
-import { setupApi } from "@/lib/api/client"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import type { StarterContent, DemoProjectInfo } from "@/types"
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { setupApi } from "@/lib/api/client";
+import { useWizardStore } from "@/lib/stores/wizardStore";
+import { cn } from "@/lib/utils";
+import type { DemoProjectInfo, StarterContent } from "@/types";
 
-const DEMO_OPTIONS: StarterContent[] = ["demo_fantasy", "demo_scifi", "demo_german"]
+const DEMO_OPTIONS: StarterContent[] = ["demo_fantasy", "demo_scifi", "demo_german"];
 
 interface StarterCardProps {
-  id: StarterContent
-  title: string
-  description: string
-  meta?: string
-  selected: boolean
-  onSelect: () => void
+  id: StarterContent;
+  title: string;
+  description: string;
+  meta?: string;
+  selected: boolean;
+  onSelect: () => void;
 }
 
 function StarterCard({ title, description, meta, selected, onSelect }: StarterCardProps) {
@@ -24,105 +25,79 @@ function StarterCard({ title, description, meta, selected, onSelect }: StarterCa
     <button
       type="button"
       onClick={onSelect}
-      className={`starter-card ${selected ? "starter-card--selected" : ""}`}
+      className={cn(
+        "text-left p-4 border-2 border-[var(--color-border)] rounded-[var(--radius-lg)] bg-[var(--color-surface)]",
+        "cursor-pointer transition-[border-color,background] duration-150 w-full",
+        "hover:border-[var(--color-accent-muted)]",
+        selected && "border-[var(--color-accent)] bg-[var(--color-accent-light)]",
+      )}
       aria-pressed={selected}
     >
-      <div className="starter-card-title">{title}</div>
-      <div className="starter-card-desc">{description}</div>
-      {meta && <div className="starter-card-meta">{meta}</div>}
-
-      <style jsx>{`
-        .starter-card {
-          text-align: left;
-          padding: var(--space-4);
-          border: 2px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          background: var(--color-surface);
-          cursor: pointer;
-          transition: border-color 0.15s, background 0.15s;
-          width: 100%;
-        }
-        .starter-card:hover { border-color: var(--color-accent-muted); }
-        .starter-card--selected {
-          border-color: var(--color-accent);
-          background: var(--color-accent-light);
-        }
-        .starter-card-title { font-weight: 600; margin-bottom: var(--space-1); }
-        .starter-card-desc { font-size: 0.875rem; color: var(--color-text-secondary); }
-        .starter-card-meta {
-          font-size: 0.75rem;
-          color: var(--color-text-tertiary);
-          margin-top: var(--space-2);
-        }
-      `}</style>
+      <div className="font-semibold mb-1">{title}</div>
+      <div className="text-sm text-[var(--color-text-secondary)]">{description}</div>
+      {meta && <div className="text-xs text-[var(--color-text-tertiary)] mt-2">{meta}</div>}
     </button>
-  )
+  );
 }
 
-export function WizardStep3({
-  onNext,
-  onBack,
-}: {
-  onNext: () => void
-  onBack: () => void
-}) {
-  const t = useTranslations("wizard.step3")
-  const tCommon = useTranslations("common")
-  const { updateStep3, state } = useWizardStore()
+export function WizardStep3({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  const t = useTranslations("wizard.step3");
+  const tCommon = useTranslations("common");
+  const { updateStep3, state } = useWizardStore();
 
-  const [selected, setSelected] = useState<StarterContent>(state.starter)
-  const [importPath, setImportPath] = useState(state.import_path || "")
-  const [demoInfo, setDemoInfo] = useState<Record<string, DemoProjectInfo>>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<StarterContent>(state.starter);
+  const [importPath, setImportPath] = useState(state.import_path || "");
+  const [demoInfo, setDemoInfo] = useState<Record<string, DemoProjectInfo>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSelectDemo = async (starter: StarterContent) => {
-    setSelected(starter)
-    setError(null)
+    setSelected(starter);
+    setError(null);
     if (DEMO_OPTIONS.includes(starter) && !demoInfo[starter]) {
       try {
-        const result = await setupApi.validateStep3({ starter })
+        const result = await setupApi.validateStep3({ starter });
         if (result.demo_info) {
-          setDemoInfo((prev) => ({ ...prev, [starter]: result.demo_info! }))
+          setDemoInfo((prev) => ({ ...prev, [starter]: result.demo_info! }));
         }
       } catch {
         // Non-critical — info is display-only
       }
     }
-  }
+  };
 
   const handleNext = async () => {
-    setIsSubmitting(true)
-    setError(null)
+    setIsSubmitting(true);
+    setError(null);
     try {
       await setupApi.validateStep3({
         starter: selected,
         import_path: selected === "import" ? importPath : null,
-      })
+      });
       updateStep3({
         starter: selected,
         import_path: selected === "import" ? importPath : null,
-      })
-      onNext()
+      });
+      onNext();
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg || "Validation failed")
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(msg || "Validation failed");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const formatMeta = (info: DemoProjectInfo) =>
-    `${info.chapter_count} chapters · ${info.character_count} characters · ${info.word_count.toLocaleString()} words`
+    `${info.chapter_count} chapters · ${info.character_count} characters · ${info.word_count.toLocaleString()} words`;
 
   return (
-    <div className="step">
-      <div className="step-header">
-        <h2 className="step-title">{t("title")}</h2>
-        <p className="step-description">{t("description")}</p>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h2 className="text-xl font-semibold mb-1">{t("title")}</h2>
+        <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
       </div>
 
-      <div className="starter-grid">
+      <div className="flex flex-col gap-3">
         <StarterCard
           id="blank"
           title={t("blank")}
@@ -132,7 +107,7 @@ export function WizardStep3({
         />
 
         {DEMO_OPTIONS.map((id) => {
-          const info = demoInfo[id]
+          const info = demoInfo[id];
           return (
             <StarterCard
               key={id}
@@ -143,7 +118,7 @@ export function WizardStep3({
               selected={selected === id}
               onSelect={() => handleSelectDemo(id)}
             />
-          )
+          );
         })}
 
         <StarterCard
@@ -165,9 +140,13 @@ export function WizardStep3({
         />
       )}
 
-      {error && <p className="step-error">{error}</p>}
+      {error && (
+        <p className="bg-[var(--color-error-light)] text-[var(--color-error)] rounded-[var(--radius-md)] p-3 text-sm">
+          {error}
+        </p>
+      )}
 
-      <div className="step-actions">
+      <div className="flex justify-end gap-3 mt-2">
         <Button type="button" variant="secondary" onClick={onBack}>
           ← {tCommon("back")}
         </Button>
@@ -175,21 +154,6 @@ export function WizardStep3({
           {tCommon("next")} →
         </Button>
       </div>
-
-      <style jsx>{`
-        .starter-grid {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-3);
-        }
-        .step-error {
-          background: var(--color-error-light);
-          color: var(--color-error);
-          border-radius: var(--radius-md);
-          padding: var(--space-3);
-          font-size: 0.875rem;
-        }
-      `}</style>
     </div>
-  )
+  );
 }

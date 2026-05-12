@@ -135,7 +135,14 @@
     "focusMode": "Focus mode",
     "exitFocusMode": "Exit focus mode",
     "sidebar": "Chapters",
-    "contextPanel": "Context"
+    "contextPanel": "Context",
+    "contextPanelEmpty": "AI features will appear here"
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "editor": "The editor could not be loaded",
+    "retry": "Try again",
+    "backToDashboard": "Back to Dashboard"
   },
   "settings": {
     "title": "Settings",

@@ -1,81 +1,61 @@
-"use client"
+"use client";
 
-import { forwardRef } from "react"
-import { cn } from "@/lib/utils"
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { cva, type VariantProps } from "class-variance-authority";
+import { forwardRef } from "react";
+import { cn } from "@/lib/utils";
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+        secondary: "bg-secondary text-secondary-foreground border-border hover:bg-secondary/80",
+        ghost: "hover:bg-muted hover:text-foreground",
+        danger: "bg-destructive text-white hover:bg-destructive/90",
+      },
+      size: {
+        sm: "h-7 gap-1 px-3 text-[0.8125rem]",
+        md: "h-9 gap-1.5 px-4 text-[0.9375rem]",
+        lg: "h-10 gap-1.5 px-6 text-base",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  },
+);
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "ghost" | "danger"
-  size?: "sm" | "md" | "lg"
-  loading?: boolean
+  variant?: VariantProps<typeof buttonVariants>["variant"];
+  size?: VariantProps<typeof buttonVariants>["size"];
+  loading?: boolean;
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", loading, children, disabled, ...props }, ref) => {
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, loading, children, disabled, ...props }, ref) => {
     return (
-      <button
+      <ButtonPrimitive
         ref={ref}
+        data-slot="button"
         disabled={disabled || loading}
-        className={cn("btn", `btn--${variant}`, `btn--${size}`, loading && "btn--loading", className)}
+        className={cn(buttonVariants({ variant, size, className }))}
         {...props}
       >
-        {loading ? (
-          <span className="btn-spinner" aria-hidden="true" />
-        ) : null}
-        <span className={loading ? "btn-label--loading" : undefined}>{children}</span>
+        {loading && (
+          <span
+            className="h-[1em] w-[1em] animate-spin rounded-full border-2 border-white/30 border-t-white"
+            aria-hidden="true"
+          />
+        )}
+        <span className={loading ? "opacity-70" : undefined}>{children}</span>
+      </ButtonPrimitive>
+    );
+  },
+);
+Button.displayName = "Button";
 
-        <style jsx>{`
-          .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            font-weight: 500;
-            border-radius: var(--radius-md);
-            border: 1px solid transparent;
-            cursor: pointer;
-            transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
-            font-family: var(--font-sans);
-            white-space: nowrap;
-          }
-          .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-          .btn--primary {
-            background: var(--color-accent);
-            color: white;
-            border-color: var(--color-accent);
-          }
-          .btn--primary:hover:not(:disabled) { background: var(--color-accent-hover); }
-          .btn--secondary {
-            background: var(--color-surface);
-            color: var(--color-text-primary);
-            border-color: var(--color-border);
-          }
-          .btn--secondary:hover:not(:disabled) { background: var(--color-bg-secondary); }
-          .btn--ghost {
-            background: transparent;
-            color: var(--color-text-secondary);
-          }
-          .btn--ghost:hover:not(:disabled) { background: var(--color-bg-tertiary); color: var(--color-text-primary); }
-          .btn--danger {
-            background: var(--color-error);
-            color: white;
-            border-color: var(--color-error);
-          }
-          .btn--sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
-          .btn--md { padding: 0.5rem 1rem; font-size: 0.9375rem; }
-          .btn--lg { padding: 0.75rem 1.5rem; font-size: 1rem; }
-          .btn-spinner {
-            width: 1em;
-            height: 1em;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-          }
-          @keyframes spin { to { transform: rotate(360deg); } }
-          .btn-label--loading { opacity: 0.7; }
-        `}</style>
-      </button>
-    )
-  }
-)
-Button.displayName = "Button"
+export type { ButtonProps };
+export { Button, buttonVariants };

@@ -5,7 +5,7 @@
  * Input rule: typing "---" on an empty line creates a scene break.
  */
 
-import { Node, mergeAttributes, InputRule } from "@tiptap/core"
+import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 
 export const SceneBreak = Node.create({
   name: "sceneBreak",
@@ -13,18 +13,11 @@ export const SceneBreak = Node.create({
   atom: true,
 
   parseHTML() {
-    return [
-      { tag: "hr.scene-break" },
-      { tag: "p.scene-break" },
-    ]
+    return [{ tag: "hr.scene-break" }, { tag: "p.scene-break" }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "p",
-      mergeAttributes(HTMLAttributes, { class: "scene-break" }),
-      "* * *",
-    ]
+    return ["p", mergeAttributes(HTMLAttributes, { class: "scene-break" }), "* * *"];
   },
 
   addInputRules() {
@@ -32,18 +25,17 @@ export const SceneBreak = Node.create({
       new InputRule({
         find: /^---$/,
         handler: ({ state, range }) => {
-          const { tr } = state
-          const node = this.type.create()
-          tr.replaceRangeWith(range.from, range.to, node)
+          const { tr } = state;
+          const node = this.type.create();
+          tr.replaceRangeWith(range.from, range.to, node);
         },
       }),
-    ]
+    ];
   },
 
   addKeyboardShortcuts() {
     return {
-      "Mod-Alt-s": () =>
-        this.editor.commands.insertContent({ type: this.name }),
-    }
+      "Mod-Alt-s": () => this.editor.commands.insertContent({ type: this.name }),
+    };
   },
-})
+});

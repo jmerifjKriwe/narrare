@@ -31,6 +31,7 @@
 | [ADR-005](ADR-005-directory-structure.md) | Module structure and ownership boundaries | ✅ | init | all modules |
 | [ADR-006](ADR-006-tech-stack.md) | Technology choices and explicit exclusions | ✅ | init | all |
 | [ADR-007](ADR-007-taskiq.md) | TaskIQ for background task processing | ✅ | init+2 | `core/tasks/` |
+| [ADR-008](ADR-008-frontend-stack.md) | Frontend architecture: fetch, Tailwind v4, TanStack Query, shadcn/ui | ✅ | 2026-05-12 | `packages/web/` |
 
 ---
 

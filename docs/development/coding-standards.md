@@ -357,6 +357,10 @@ const getChapter = async (id: string): Promise<Chapter> => { ... }
 ```typescript
 // Named exports for components (not default — easier to find with search)
 // Exception: Next.js page files require default export
+//
+// Styling: Tailwind CSS v4 utility classes only. No styled-jsx, no CSS modules.
+// Design tokens via CSS variables: bg-[var(--color-accent)], text-[var(--color-text-primary)]
+// cn() from @/lib/utils merges Tailwind classes safely
 
 interface ChapterItemProps {
   chapter: Chapter
@@ -366,7 +370,7 @@ interface ChapterItemProps {
 
 export function ChapterItem({ chapter, isActive, onSelect }: ChapterItemProps) {
   // hooks at top
-  const { t } = useTranslations("editor")
+  const t = useTranslations("editor")
 
   // derived values
   const formattedWordCount = chapter.wordCount.toLocaleString()
@@ -374,15 +378,23 @@ export function ChapterItem({ chapter, isActive, onSelect }: ChapterItemProps) {
   // handlers
   const handleClick = () => onSelect(chapter.id)
 
-  // render
+  // render — Tailwind classes with CSS variable tokens
   return (
     <button
       onClick={handleClick}
-      aria-selected={isActive}
-      className={cn("chapter-item", isActive && "chapter-item--active")}
+      className={cn(
+        "flex-1 flex flex-col items-start py-2 px-3 border-none bg-transparent",
+        "cursor-pointer rounded-[var(--radius-md)] text-left min-w-0",
+        "hover:bg-[var(--color-bg-secondary)]",
+        isActive && "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+      )}
     >
-      <span className="chapter-item__title">{chapter.title}</span>
-      <span className="chapter-item__meta">{formattedWordCount} {t("words")}</span>
+      <span className="text-sm font-medium text-[var(--color-text-primary)] overflow-hidden text-ellipsis whitespace-nowrap w-full">
+        {chapter.title}
+      </span>
+      <span className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
+        {formattedWordCount} {t("words")}
+      </span>
     </button>
   )
 }
@@ -391,19 +403,24 @@ export function ChapterItem({ chapter, isActive, onSelect }: ChapterItemProps) {
 ### API Client
 
 ```typescript
-// Typed API functions — never raw fetch in components
-// All in packages/web/lib/api/
+// Typed API functions using native fetch — never raw fetch in components
+// All in packages/web/lib/api/client.ts
 
-export async function updateChapterContent(
-  chapterId: string,
-  content: string,
-): Promise<Chapter> {
-  const response = await apiClient.put<Chapter>(
-    `/chapters/${chapterId}/content`,
-    { content },
-  )
-  return response.data
+// API calls use the central fetchApi<T>() wrapper with auto token refresh.
+// Components never call fetch directly — always use these typed functions.
+
+export const chaptersApi = {
+  updateContent: async (novelId: string, chapterId: string, content: string) => {
+    const { data } = await fetchApi<Chapter>(
+      `/novels/${novelId}/chapters/${chapterId}/content`,
+      { method: "PUT", body: JSON.stringify({ content }) },
+    )
+    return data
+  },
 }
+
+// For SSE streaming (AI responses), use the streaming client:
+import { connectSSE } from "@/lib/api/streaming"
 ```
 
 ### i18n — Non-Negotiable

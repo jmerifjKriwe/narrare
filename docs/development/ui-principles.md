@@ -93,8 +93,10 @@ function MyComponent() {
 ```
 
 ### SSE Streaming Pattern
-Every streaming operation uses the same hook:
+Every streaming operation uses the same utility and hook pattern:
 ```typescript
+import { connectSSE } from "@/lib/api/streaming"
+
 // hooks/useStreamingText.ts — the single SSE implementation
 const { text, isStreaming, error } = useSSE<WriteResponse>({
   url: "/api/writing/new-chapter",
@@ -121,6 +123,21 @@ No hardcoded color values in components. No `style={{ color: "#abc" }}`.
 - **UI state:** Zustand stores for cross-component state
 - **Local state:** `useState` for component-local ephemeral state
 - **Form state:** React Hook Form
+
+> **Rule:** Server data (chapters, novels, user, settings) is NEVER stored in Zustand.
+> Only UI toggles (sidebar, focus mode) and ephemeral state (save status) go in Zustand.
+> Components receive server data via props from parent `useQuery` calls or direct `useQuery`.
+
+### Styling
+Tailwind CSS v4 is the **sole** styling system. `styled-jsx` is not used.
+All styles use CSS variables from `globals.css` via Tailwind arbitrary values.
+No inline styles for theming. No CSS-in-JS libraries.
+
+### Error Handling
+- Route-level `error.tsx` files at app, `(app)`, and editor levels
+- `global-error.tsx` as last resort
+- Reusable `<ErrorBoundary>` component for wrapping specific components
+- All error messages use i18n (except `global-error.tsx` which bypasses providers)
 
 ---
 

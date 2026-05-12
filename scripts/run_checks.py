@@ -124,7 +124,13 @@ def _build_steps() -> list[Step]:
                 Step(
                     "Frontend Lint",
                     [
-                        (["pnpm", "lint"], web),
+                        (["pnpm", "lint:check"], web),
+                    ],
+                ),
+                Step(
+                    "i18n Validation",
+                    [
+                        (["npx", "tsx", "scripts/validate-i18n.ts"], None),
                     ],
                 ),
                 Step(
@@ -217,6 +223,8 @@ def _success_summary(label: str, output: str) -> str:
         return "clean"
     if "Frontend Lint" in label:
         return "clean"
+    if "i18n" in label:
+        return "clean"
     if "Frontend Types" in label:
         return "0 errors"
     return "OK"
@@ -238,6 +246,9 @@ def _failure_summary(label: str, output: str) -> str:
     if "Frontend Types" in label:
         m = re.search(r"Found (\d+) error", output)
         return f"{m.group(1)} error(s)" if m else "failed"
+    if "i18n" in label:
+        m = re.search(r"(\d+) issue", output)
+        return f"{m.group(1)} issue(s)" if m else "issues found"
     return "issues found"
 
 

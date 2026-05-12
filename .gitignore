@@ -81,3 +81,4 @@ scripts/local/
 
 .claude/settings.local.json
 opencode.json
+.tmp/

@@ -1,55 +1,61 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { useTranslations } from "next-intl"
-import { useAuthStore } from "@/lib/stores/authStore"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
+import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { useAuthStore } from "@/lib/stores/authStore";
 
 const schema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
   display_name: z.string().optional(),
-})
-type FormData = z.infer<typeof schema>
+});
+type FormData = z.infer<typeof schema>;
 
 export default function RegisterPage() {
-  const t = useTranslations("auth")
-  const router = useRouter()
-  const register_user = useAuthStore((s) => s.register)
-  const [error, setError] = useState<string | null>(null)
+  const t = useTranslations("auth");
+  const router = useRouter();
+  const register_user = useAuthStore((s) => s.register);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema) })
+  } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const onSubmit = async (data: FormData) => {
-    setError(null)
+    setError(null);
     try {
-      await register_user(data.email, data.password, data.display_name)
-      router.push("/wizard")
+      await register_user(data.email, data.password, data.display_name);
+      router.push("/wizard");
     } catch {
-      setError(t("emailTaken"))
+      setError(t("emailTaken"));
     }
-  }
+  };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1 className="auth-title">Narrare</h1>
-          <p className="auth-subtitle">{t("register")}</p>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-secondary)] p-4">
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-xl)] p-8 w-full max-w-[400px] shadow-[var(--shadow-md)]">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight font-[family-name:var(--font-serif)]">
+            Narrare
+          </h1>
+          <p className="text-[var(--color-text-secondary)] mt-1">{t("register")}</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
-          {error && <p className="auth-error">{error}</p>}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          {error && (
+            <p className="bg-[var(--color-error-light)] text-[var(--color-error)] rounded-[var(--radius-md)] p-3 text-sm">
+              {error}
+            </p>
+          )}
 
           <Input
             {...register("email")}
@@ -82,52 +88,16 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <p className="auth-footer">
+        <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
           {t("hasAccount")}{" "}
-          <Link href="/login" className="auth-link">
+          <Link
+            href="/login"
+            className="text-[var(--color-accent)] no-underline font-medium hover:underline"
+          >
             {t("login")}
           </Link>
         </p>
       </div>
-
-      <style jsx>{`
-        .auth-page {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background-color: var(--color-bg-secondary);
-          padding: var(--space-4);
-        }
-        .auth-card {
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-xl);
-          padding: var(--space-8);
-          width: 100%;
-          max-width: 400px;
-          box-shadow: var(--shadow-md);
-        }
-        .auth-header { text-align: center; margin-bottom: var(--space-6); }
-        .auth-title { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
-        .auth-subtitle { color: var(--color-text-secondary); margin-top: var(--space-1); }
-        .auth-form { display: flex; flex-direction: column; gap: var(--space-4); }
-        .auth-error {
-          background: var(--color-error-light);
-          color: var(--color-error);
-          border-radius: var(--radius-md);
-          padding: var(--space-3);
-          font-size: 0.875rem;
-        }
-        .auth-footer {
-          margin-top: var(--space-6);
-          text-align: center;
-          font-size: 0.875rem;
-          color: var(--color-text-secondary);
-        }
-        .auth-link { color: var(--color-accent); text-decoration: none; font-weight: 500; }
-        .auth-link:hover { text-decoration: underline; }
-      `}</style>
     </div>
-  )
+  );
 }

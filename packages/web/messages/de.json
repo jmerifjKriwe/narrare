@@ -135,7 +135,14 @@
     "focusMode": "Fokusmodus",
     "exitFocusMode": "Fokusmodus verlassen",
     "sidebar": "Kapitel",
-    "contextPanel": "Kontext"
+    "contextPanel": "Kontext",
+    "contextPanelEmpty": "KI-Funktionen werden hier angezeigt"
+  },
+  "errors": {
+    "title": "Etwas ist schiefgelaufen",
+    "editor": "Der Editor konnte nicht geladen werden",
+    "retry": "Erneut versuchen",
+    "backToDashboard": "Zurück zum Dashboard"
   },
   "settings": {
     "title": "Einstellungen",

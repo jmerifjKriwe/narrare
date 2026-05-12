@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useTranslations } from "next-intl"
-import { PanelLeft, PanelRight, Maximize2 } from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import { Maximize2, PanelLeft, PanelRight } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/Button";
 
 // ============================================================
 // AI ACTION SLOT REGISTRY
@@ -19,14 +19,14 @@ import { Button } from "@/components/ui/Button"
 //   feature: "WRITE-002",
 // })
 // ============================================================
-const AI_TOOLBAR_ACTIONS: never[] = []
+const AI_TOOLBAR_ACTIONS: never[] = [];
 
 interface EditorToolbarProps {
-  onToggleSidebar: () => void
-  onTogglePanel: () => void
-  onToggleFocus: () => void
-  sidebarOpen: boolean
-  panelOpen: boolean
+  onToggleSidebar: () => void;
+  onTogglePanel: () => void;
+  onToggleFocus: () => void;
+  sidebarOpen: boolean;
+  panelOpen: boolean;
 }
 
 export function EditorToolbar({
@@ -36,12 +36,16 @@ export function EditorToolbar({
   sidebarOpen,
   panelOpen,
 }: EditorToolbarProps) {
-  const t = useTranslations("editor")
+  const t = useTranslations("editor");
 
   return (
-    <div className="toolbar" role="toolbar" aria-label="Editor toolbar">
+    <div
+      className="h-11 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center px-3 gap-2 shrink-0"
+      role="toolbar"
+      aria-label="Editor toolbar"
+    >
       {/* Left: sidebar toggle */}
-      <div className="toolbar-group">
+      <div className="flex items-center gap-1">
         <Button
           variant="ghost"
           size="sm"
@@ -55,16 +59,16 @@ export function EditorToolbar({
       </div>
 
       {/* Center: AI action slots — populated by AI features */}
-      <div className="toolbar-center">
+      <div className="flex-1 flex items-center justify-center">
         {AI_TOOLBAR_ACTIONS.length > 0 && (
-          <div className="toolbar-group toolbar-group--ai">
+          <div className="flex items-center gap-2 px-3 border-l border-r border-[var(--color-border)]">
             {/* AI action buttons will appear here */}
           </div>
         )}
       </div>
 
       {/* Right: panel toggle + focus mode */}
-      <div className="toolbar-group toolbar-group--right">
+      <div className="flex items-center gap-1 ml-auto">
         <Button
           variant="ghost"
           size="sm"
@@ -84,37 +88,6 @@ export function EditorToolbar({
           <Maximize2 size={16} />
         </Button>
       </div>
-
-      <style jsx>{`
-        .toolbar {
-          height: 44px;
-          border-bottom: 1px solid var(--color-border);
-          background: var(--color-surface);
-          display: flex;
-          align-items: center;
-          padding: 0 var(--space-3);
-          gap: var(--space-2);
-          flex-shrink: 0;
-        }
-        .toolbar-group {
-          display: flex;
-          align-items: center;
-          gap: var(--space-1);
-        }
-        .toolbar-center {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .toolbar-group--right { margin-left: auto; }
-        .toolbar-group--ai {
-          gap: var(--space-2);
-          padding: 0 var(--space-3);
-          border-left: 1px solid var(--color-border);
-          border-right: 1px solid var(--color-border);
-        }
-      `}</style>
     </div>
-  )
+  );
 }

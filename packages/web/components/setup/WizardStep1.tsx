@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { useTranslations } from "next-intl"
-import { useWizardStore } from "@/lib/stores/wizardStore"
-import { setupApi } from "@/lib/api/client"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { Select } from "@/components/ui/Select"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { setupApi } from "@/lib/api/client";
+import { useWizardStore } from "@/lib/stores/wizardStore";
 
 const schema = z.object({
   project_name: z
@@ -16,13 +16,13 @@ const schema = z.object({
     .min(1, "Project name is required")
     .regex(/^[^/\\:*?"<>|]*$/, "Project name contains invalid characters"),
   language: z.enum(["en", "de", "fr"]),
-  autosave_interval: z.coerce.number().min(0).max(3600),
-})
-type FormData = z.infer<typeof schema>
+  autosave_interval: z.number().min(0).max(3600),
+});
+type FormData = z.infer<typeof schema>;
 
 export function WizardStep1({ onNext }: { onNext: () => void }) {
-  const t = useTranslations("wizard.step1")
-  const { updateStep1, state } = useWizardStore()
+  const t = useTranslations("wizard.step1");
+  const { updateStep1, state } = useWizardStore();
 
   const {
     register,
@@ -35,22 +35,22 @@ export function WizardStep1({ onNext }: { onNext: () => void }) {
       language: (state.language as "en" | "de" | "fr") || "en",
       autosave_interval: state.autosave_interval,
     },
-  })
+  });
 
   const onSubmit = async (data: FormData) => {
-    await setupApi.validateStep1(data)
-    updateStep1(data)
-    onNext()
-  }
+    await setupApi.validateStep1(data);
+    updateStep1(data);
+    onNext();
+  };
 
   return (
-    <div className="step">
-      <div className="step-header">
-        <h2 className="step-title">{t("title")}</h2>
-        <p className="step-description">{t("description")}</p>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h2 className="text-xl font-semibold mb-1">{t("title")}</h2>
+        <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="step-form">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <Input
           {...register("project_name")}
           label={t("projectName")}
@@ -70,7 +70,7 @@ export function WizardStep1({ onNext }: { onNext: () => void }) {
         />
 
         <Input
-          {...register("autosave_interval")}
+          {...register("autosave_interval", { valueAsNumber: true })}
           type="number"
           label={t("autosave")}
           min={0}
@@ -78,27 +78,12 @@ export function WizardStep1({ onNext }: { onNext: () => void }) {
           hint="0 = off, max 3600 seconds"
         />
 
-        <div className="step-actions">
+        <div className="flex justify-end gap-3 mt-2">
           <Button type="submit" loading={isSubmitting}>
             {useTranslations("common")("next")} →
           </Button>
         </div>
       </form>
-
-      <StepStyles />
     </div>
-  )
-}
-
-function StepStyles() {
-  return (
-    <style jsx global>{`
-      .step { display: flex; flex-direction: column; gap: var(--space-6); }
-      .step-header { }
-      .step-title { font-size: 1.25rem; font-weight: 600; margin-bottom: var(--space-1); }
-      .step-description { color: var(--color-text-secondary); font-size: 0.9375rem; }
-      .step-form { display: flex; flex-direction: column; gap: var(--space-4); }
-      .step-actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-2); }
-    `}</style>
-  )
+  );
 }

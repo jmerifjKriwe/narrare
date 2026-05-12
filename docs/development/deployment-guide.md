@@ -38,7 +38,7 @@ The `.devcontainer/` configuration provides:
 ### Workflow: CI (`.github/workflows/ci.yml`)
 
 Runs on every push:
-1. Linting (ruff, mypy, eslint)
+1. Linting (ruff, biome)
 2. Architecture checks (`check_architecture.py`)
 3. Unit tests
 4. Integration tests
@@ -78,11 +78,11 @@ Automated versioning via **release-please**:
 | Job | Target | Commands |
 |-----|--------|----------|
 | `architecture-check` | <30s | `python scripts/check_architecture.py` |
-| `lint` | <60s | `ruff check` + `ruff format --check` + `eslint` |
+| `lint` | <60s | `ruff check` + `ruff format --check` (Python) |
 | `typecheck` | <2min | `pyright --strict` |
 | `test-unit` | <5min | `pytest tests/unit/` |
 | `test-integration` | <5min | `pytest tests/integration/` |
-| `frontend` | <3min | `pnpm build` + `pnpm lint` |
+| `frontend` | <3min | `biome check` + `validate-i18n` + `pnpm type-check` + `pnpm test` + `pnpm build` |
 | `security` | <60s | `bandit -r` + `pip-audit` |
 
 **Job ordering:**
@@ -107,7 +107,7 @@ just pre-commit-install
 just pre-commit-run
 ```
 
-6 hooks configured in `.pre-commit-config.yaml`:
+9 hooks configured in `.pre-commit-config.yaml`:
 
 | Hook | Stage | Command |
 |------|-------|---------|
@@ -117,6 +117,9 @@ just pre-commit-run
 | `pyright` | pre-commit | `pyright` (changed files) |
 | `bandit` | pre-commit | `bandit -c pyproject.toml` |
 | `conventional-commits` | commit-msg | `python scripts/check_commit_message.py` |
+| `biome-frontend` | pre-commit | `npx biome check --write components/ app/ lib/` (from packages/web/) |
+| `validate-i18n` | pre-commit | `npx tsx scripts/validate-i18n.ts` (from workspace root) |
+| `typecheck-frontend` | pre-commit | `npx tsc --noEmit` (from packages/web/) |
 
 ```yaml
 repos:
@@ -159,6 +162,33 @@ repos:
         entry: python scripts/check_commit_message.py
         language: python
         stages: [commit-msg]
+
+      - id: biome-frontend
+        name: Biome (Frontend)
+        entry: bash -c 'cd packages/web && npx biome check --write components/ app/ lib/'
+        language: system
+        types: [tsx]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: validate-i18n
+        name: i18n Validation
+        entry: bash -c 'cd /workspace && npx tsx scripts/validate-i18n.ts'
+        language: system
+        types: [tsx]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: typecheck-frontend
+        name: TypeScript Check (Frontend)
+        entry: bash -c 'cd packages/web && npx tsc --noEmit'
+        language: system
+        types: [tsx]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
 ```
 
 ## Architecture Checker

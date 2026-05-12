@@ -1,106 +1,88 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { chaptersApi, settingsApi } from "@/lib/api/client"
-import { useEditorStore } from "@/lib/stores/editorStore"
-import { ChapterSidebar } from "./ChapterSidebar"
-import { EditorSurface } from "./EditorSurface"
-import { EditorToolbar } from "./EditorToolbar"
-import { ContextPanel } from "./ContextPanel"
-import { StatusBar } from "./StatusBar"
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { chaptersApi, settingsApi } from "@/lib/api/client";
+import { useEditorStore } from "@/lib/stores/editorStore";
+import type { ChapterSummary } from "@/types";
+import { ChapterSidebar } from "./ChapterSidebar";
+import { ContextPanel } from "./ContextPanel";
+import { EditorSurface } from "./EditorSurface";
+import { EditorToolbar } from "./EditorToolbar";
+import { StatusBar } from "./StatusBar";
 
 interface EditorLayoutProps {
-  novelId: string
+  novelId: string;
 }
 
 export function EditorLayout({ novelId }: EditorLayoutProps) {
   const {
-    setNovelId,
-    setChapters,
-    setActiveChapter,
     activeChapterId,
+    setActiveChapterId,
     sidebarOpen,
     contextPanelOpen,
     focusMode,
     toggleSidebar,
     toggleContextPanel,
     toggleFocusMode,
-  } = useEditorStore()
+  } = useEditorStore();
 
-  // Load project settings for autosave interval
-  const { data: settings } = useQuery({
-    queryKey: ["settings", "project", novelId],
-    queryFn: () => settingsApi.getProject(novelId),
-  })
+  const queryClient = useQueryClient();
 
-  // Load chapter list
+  // Server data — direct from TanStack Query, no store sync
   const { data: chapters = [] } = useQuery({
     queryKey: ["chapters", novelId],
     queryFn: () => chaptersApi.list(novelId),
-  })
+  });
 
-  // Load active chapter content
   const { data: activeChapter } = useQuery({
     queryKey: ["chapter", novelId, activeChapterId],
     queryFn: () =>
-      activeChapterId
-        ? chaptersApi.get(novelId, activeChapterId)
-        : Promise.resolve(null),
+      activeChapterId ? chaptersApi.get(novelId, activeChapterId) : Promise.resolve(null),
     enabled: !!activeChapterId,
-  })
+  });
 
-  // Sync store
-  useEffect(() => { setNovelId(novelId) }, [novelId, setNovelId])
-  useEffect(() => { setChapters(chapters) }, [chapters, setChapters])
-  useEffect(() => {
-    if (activeChapter) setActiveChapter(activeChapter)
-  }, [activeChapter, setActiveChapter])
+  const { data: settings } = useQuery({
+    queryKey: ["settings", "project", novelId],
+    queryFn: () => settingsApi.getProject(novelId),
+  });
 
-  // Auto-select first chapter on load
+  // Auto-select first chapter when chapters load and none is active
   useEffect(() => {
     if (chapters.length > 0 && !activeChapterId) {
-      useEditorStore.getState().setActiveChapter({
-        ...chapters[0],
-        content: "",
-        summary: "",
-        pov_character_id: "",
-        timeline_position: "",
-        created_at: "",
-        updated_at: "",
-      })
+      setActiveChapterId(chapters[0].id);
     }
-  }, [chapters, activeChapterId])
+  }, [chapters, activeChapterId, setActiveChapterId]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
-        e.preventDefault()
-        toggleSidebar()
+        e.preventDefault();
+        toggleSidebar();
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "F") {
-        e.preventDefault()
-        toggleFocusMode()
+        e.preventDefault();
+        toggleFocusMode();
       }
-    }
-    window.addEventListener("keydown", handler)
-    return () => window.removeEventListener("keydown", handler)
-  }, [toggleSidebar, toggleFocusMode])
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [toggleSidebar, toggleFocusMode]);
 
-  const autosaveInterval = settings?.autosave_interval ?? 30
+  const autosaveInterval = settings?.autosave_interval ?? 30;
+
+  // Callback for word count optimistic updates — syncs TanStack Query cache
+  const handleWordCountUpdate = (chapterId: string, wordCount: number) => {
+    const currentChapters = queryClient.getQueryData<ChapterSummary[]>(["chapters", novelId]) ?? [];
+    const updated = useEditorStore
+      .getState()
+      .updateChapterWordCount(chapterId, wordCount, currentChapters);
+    queryClient.setQueryData(["chapters", novelId], updated);
+  };
 
   return (
-    <div
-      className={[
-        "editor-root",
-        !sidebarOpen && "editor-root--sidebar-hidden",
-        contextPanelOpen && "editor-root--panel-open",
-        focusMode && "editor-root--focus",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
+    <div className="h-full flex flex-col bg-[var(--color-bg-primary)] overflow-hidden">
       {/* Toolbar — hidden in focus mode */}
       {!focusMode && (
         <EditorToolbar
@@ -112,52 +94,33 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
         />
       )}
 
-      <div className="editor-body">
+      <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar */}
         {sidebarOpen && !focusMode && (
-          <ChapterSidebar novelId={novelId} />
+          <ChapterSidebar
+            novelId={novelId}
+            chapters={chapters}
+            activeChapterId={activeChapterId}
+            onChapterSelect={setActiveChapterId}
+          />
         )}
 
         {/* Main writing surface */}
-        <main className="editor-main">
+        <main className="flex-1 overflow-y-auto bg-[var(--color-bg-primary)]">
           <EditorSurface
             novelId={novelId}
+            chapter={activeChapter ?? null}
             autosaveInterval={autosaveInterval}
+            onWordCountUpdate={handleWordCountUpdate}
           />
         </main>
 
         {/* Right context panel (empty slot at MVP) */}
-        {contextPanelOpen && !focusMode && (
-          <ContextPanel />
-        )}
+        {contextPanelOpen && !focusMode && <ContextPanel />}
       </div>
 
       {/* Status bar — hidden in focus mode */}
-      {!focusMode && <StatusBar />}
-
-      <style jsx>{`
-        .editor-root {
-          height: 100vh;
-          display: flex;
-          flex-direction: column;
-          background: var(--color-bg-primary);
-          overflow: hidden;
-        }
-        .editor-body {
-          flex: 1;
-          display: flex;
-          overflow: hidden;
-        }
-        .editor-main {
-          flex: 1;
-          overflow-y: auto;
-          background: var(--color-bg-primary);
-        }
-        /* Focus mode: clean full-screen */
-        .editor-root--focus .editor-main {
-          background: var(--color-bg-primary);
-        }
-      `}</style>
+      {!focusMode && <StatusBar chapter={activeChapter ?? null} />}
     </div>
-  )
+  );
 }

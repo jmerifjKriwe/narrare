@@ -406,10 +406,103 @@ asserting anything passes coverage. We check assertion quality in PR review.
 **Commands:**
 - `pnpm test` — run all frontend tests
 - `pnpm test:watch` — watch mode
+- `pnpm test -- --coverage` — run with coverage report
 
 **MSW Handlers:** `packages/web/mocks/handlers.ts`
 **Test Data:** `packages/web/mocks/data.ts`
 **Setup:** `packages/web/setupTests.ts`
+
+### What Gets Tested
+
+**Utility functions** (`lib/utils.ts`, `lib/api/client.ts`):
+- Every exported function gets a unit test
+- Happy path + edge cases (empty input, boundary values, error cases)
+- Time-dependent functions use `vi.useFakeTimers()`
+- Example: `debounce`, `cn`, `formatWordCount`, `formatRelativeTime`, `truncate`
+
+**Zustand stores** (`lib/stores/`):
+- Test state transitions directly via `useStore.getState()` and `useStore.setState()`
+- No need to render components — test the store as a plain object
+- Verify initial state, action results, edge cases
+- Example: `editorStore` — test `toggleFocusMode` restores sidebar
+
+**UI Components** (`components/`):
+- Render via Testing Library, assert on DOM structure and ARIA attributes
+- Test user interactions via `@testing-library/user-event`
+- Test variant rendering (different props → different classes/behavior)
+- Test accessibility: ARIA labels, roles, live regions
+- Example: Button — test variants, sizes, loading state, disabled state
+
+**API Client** (`lib/api/client.ts`):
+- Token management functions (`setAccessToken`, `getAccessToken`, `clearAccessToken`)
+- Token refresh logic (requires MSW for HTTP mocking)
+- Error handling (401 redirect, network errors)
+
+### Frontend Coverage Targets
+
+| Module | Minimum | Target |
+|--------|---------|--------|
+| `lib/utils.ts` | 90% | 95% |
+| `lib/stores/` | 85% | 90% |
+| `lib/api/` (token management) | 85% | 90% |
+| `components/ui/` | 80% | 85% |
+| `components/editor/` | 70% | 80% |
+| `components/dashboard/` | 70% | 80% |
+
+### Testing Patterns
+
+**Store testing (no rendering needed):**
+```typescript
+import { useEditorStore } from "@/lib/stores/editorStore"
+
+describe("editorStore", () => {
+  beforeEach(() => useEditorStore.setState({
+    activeChapterId: null, saveStatus: "idle", sidebarOpen: true,
+    contextPanelOpen: false, focusMode: false,
+  }))
+
+  it("toggles focus mode and restores sidebar on exit", () => {
+    const { toggleFocusMode } = useEditorStore.getState()
+    toggleFocusMode()
+    expect(useEditorStore.getState().focusMode).toBe(true)
+    expect(useEditorStore.getState().sidebarOpen).toBe(false)
+    toggleFocusMode()
+    expect(useEditorStore.getState().sidebarOpen).toBe(true) // restored
+  })
+})
+```
+
+**Component testing (render + interact):**
+```typescript
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+
+it("calls onClick when clicked", async () => {
+  const user = userEvent.setup()
+  const handleClick = vi.fn()
+  render(<Button onClick={handleClick}>Click</Button>)
+  await user.click(screen.getByRole("button", { name: "Click" }))
+  expect(handleClick).toHaveBeenCalledOnce()
+})
+```
+
+**Variant testing (assert on classes):**
+```typescript
+it("applies variant-specific Tailwind classes", () => {
+  const { rerender } = render(<Button variant="primary">P</Button>)
+  expect(screen.getByRole("button").className).toContain("bg-[var(--color-accent)]")
+
+  rerender(<Button variant="danger">D</Button>)
+  expect(screen.getByRole("button").className).toContain("bg-[var(--color-error)]")
+})
+```
+
+### What NOT to Test
+
+- **Next.js internals** — routing, layouts, middleware framework behavior
+- **Third-party library behavior** — TipTap editor internals, Radix primitives
+- **CSS styling** — visual appearance is verified manually or via E2E screenshots
+- **Server components** — they have no client-side logic (`loading.tsx`, `page.tsx` wrappers)
 
 ---
 

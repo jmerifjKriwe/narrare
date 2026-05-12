@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------------
    Design Tokens — all colors, spacing, typography as CSS variables.
@@ -78,6 +82,61 @@
   --editor-font-size: 1.0625rem;
   --sidebar-width: 240px;
   --panel-width: 320px;
+
+  /* ----- shadcn Semantic Tokens (mapped to Narrare) ----- */
+  /* Backgrounds & Surfaces */
+  --background: var(--color-bg-primary);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text-primary);
+  --popover: var(--color-surface-overlay);
+  --popover-foreground: var(--color-text-primary);
+
+  /* Brand / Primary — maps to Narrare accent (warm brown) */
+  --primary: var(--color-accent);
+  --primary-foreground: #ffffff;
+
+  /* Secondary — neutral surface actions */
+  --secondary: var(--color-surface);
+  --secondary-foreground: var(--color-text-primary);
+
+  /* Muted — subdued surfaces & helper text */
+  --muted: var(--color-bg-tertiary);
+  --muted-foreground: var(--color-text-tertiary);
+
+  /* Accent — interactive hover / active states */
+  --accent: var(--color-accent-light);
+  --accent-foreground: var(--color-accent);
+
+  /* Destructive — error states */
+  --destructive: var(--color-error);
+
+  /* Borders & Inputs */
+  --border: var(--color-border);
+  --input: var(--color-border);
+
+  /* Focus ring — matches brand accent */
+  --ring: var(--color-accent);
+
+  /* Base radius — used by shadcn's derived radius scale */
+  --radius: 0.5rem;
+
+  /* Charts — warm palette derived from brand */
+  --chart-1: #8b7355;
+  --chart-2: #c4ae90;
+  --chart-3: #6b6860;
+  --chart-4: #3d7a4a;
+  --chart-5: #b63b3b;
+
+  /* Sidebar — maps to surface tokens */
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-text-primary);
+  --sidebar-primary: var(--color-accent);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-accent-light);
+  --sidebar-accent-foreground: var(--color-accent);
+  --sidebar-border: var(--color-border);
+  --sidebar-ring: var(--color-accent);
 }
 
 /* Dark mode */
@@ -106,6 +165,34 @@
     --color-accent-hover: #d4bea0;
     --color-accent-light: #2c2820;
     --color-accent-muted: #8b7355;
+
+    /* shadcn dark tokens */
+    --background: var(--color-bg-primary);
+    --foreground: var(--color-text-primary);
+    --card: var(--color-surface);
+    --card-foreground: var(--color-text-primary);
+    --popover: var(--color-surface);
+    --popover-foreground: var(--color-text-primary);
+    --primary: var(--color-accent);
+    --primary-foreground: var(--color-bg-primary);
+    --secondary: var(--color-surface);
+    --secondary-foreground: var(--color-text-primary);
+    --muted: var(--color-bg-tertiary);
+    --muted-foreground: var(--color-text-tertiary);
+    --accent: var(--color-accent-light);
+    --accent-foreground: var(--color-accent);
+    --destructive: var(--color-error);
+    --border: var(--color-border);
+    --input: var(--color-border);
+    --ring: var(--color-accent);
+    --sidebar: var(--color-surface);
+    --sidebar-foreground: var(--color-text-primary);
+    --sidebar-primary: var(--color-accent);
+    --sidebar-primary-foreground: var(--color-bg-primary);
+    --sidebar-accent: var(--color-accent-light);
+    --sidebar-accent-foreground: var(--color-accent);
+    --sidebar-border: var(--color-border);
+    --sidebar-ring: var(--color-accent);
   }
 }
 
@@ -126,6 +213,39 @@
   --color-accent: #c4ae90;
   --color-accent-hover: #d4bea0;
   --color-accent-light: #2c2820;
+
+  /* shadcn dark tokens */
+  --background: var(--color-bg-primary);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text-primary);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text-primary);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-bg-primary);
+  --secondary: var(--color-surface);
+  --secondary-foreground: var(--color-text-primary);
+  --muted: var(--color-bg-tertiary);
+  --muted-foreground: var(--color-text-tertiary);
+  --accent: var(--color-accent-light);
+  --accent-foreground: var(--color-accent);
+  --destructive: var(--color-error);
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-accent);
+  --chart-1: #c4ae90;
+  --chart-2: #8b7355;
+  --chart-3: #9c9890;
+  --chart-4: #3d7a4a;
+  --chart-5: #b63b3b;
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-text-primary);
+  --sidebar-primary: var(--color-accent);
+  --sidebar-primary-foreground: var(--color-bg-primary);
+  --sidebar-accent: var(--color-accent-light);
+  --sidebar-accent-foreground: var(--color-accent);
+  --sidebar-border: var(--color-border);
+  --sidebar-ring: var(--color-accent);
 }
 
 /* Base styles */
@@ -205,4 +325,59 @@ body {
 /* Selection */
 .narrare-editor .ProseMirror ::selection {
   background-color: var(--color-accent-light);
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

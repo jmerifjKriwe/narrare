@@ -190,17 +190,50 @@ asyncio background tasks (no persistence, no retry, no visibility).
 
 ## Frontend
 
-### Next.js (App Router) + TypeScript
-**Why:** SSR + SSE support. Strong TypeScript ecosystem.
+### Next.js `15` (App Router) + TypeScript
+**Why:** SSR + SSE support. Strong TypeScript ecosystem. App Router for layouts and streaming.
 **Role:** WebUI — the primary client interface.
+**Not:** Pages Router — App Router exclusively.
 
 ### Zustand
 **Why:** Lightweight client state management. No boilerplate.
-**Role:** UI state (settings, session state, editor preferences).
+**Role:** UI state only — sidebar toggles, focus mode, save status. Server state is managed by TanStack Query.
+**Not:** Redux (too much ceremony), Jotai (Zustand is sufficient), server data storage.
 
-### Tailwind CSS
+### TanStack Query `v5`
+**Why:** Server state management — fetching, caching, background refetching, invalidation.
+**Role:** All server data (chapters, novels, user, settings, KB entries). Server data is NEVER stored in Zustand.
+**Pattern:** Components receive server data via props from parent `useQuery` calls or direct `useQuery`.
+
+### Tailwind CSS `v4`
 **Why:** Utility-first. Consistent design tokens via CSS variables.
-**Role:** All styling. Design tokens defined in `globals.css`.
+**Role:** **Sole** styling system. All styles use CSS variables from `globals.css` via Tailwind arbitrary values.
+**Not:** `styled-jsx` (removed), CSS modules, Emotion, styled-components.
+
+### `motion` (formerly Framer Motion)
+**Why:** Declarative animations and transitions with minimal code.
+**Role:** Component enter/exit animations, layout transitions, gesture-driven interactions.
+**Not:** CSS-only animations for complex sequences — `motion` provides layout animations and `AnimatePresence` that CSS cannot.
+
+### shadcn/ui
+**Why:** Copy-paste component primitives built on Radix UI, styled with Tailwind.
+**Role:** Base components (Button, Dialog, Dropdown, etc.). Not a runtime dependency — we own the code.
+**Not:** Material UI, Chakra (too opinionated, bundle size). Not a package — components live in `components/ui/`.
+
+### react-hook-form + zod
+**Why:** Performant form handling with schema-based validation.
+**Role:** All form inputs (settings, login, chapter metadata). Zod schemas shared with API validation.
+**Pattern:** `zod` schemas define types; `react-hook-form`'s `zodResolver` connects them.
+
+### `jose`
+**Why:** Edge-compatible JWT library. Works in Next.js middleware (Web Crypto API only).
+**Role:** JWT session validation in middleware. Token refresh logic.
+**Not:** `jsonwebtoken` (Node-only, not Edge-compatible).
+
+### HTTP Client
+**Why:** Native `fetch` for all HTTP requests and SSE streaming.
+**Role:** All API communication via `fetch` + `ReadableStream`. SSE via `connectSSE` utility in `lib/api/streaming.ts`.
+**Not:** `axios` (removed — native `fetch` is sufficient and lighter).
 
 ---
 
@@ -246,6 +279,8 @@ asyncio background tasks (no persistence, no retry, no visibility).
 | Separate vector database (Pinecone etc.) | pgvector is sufficient and simpler |
 | watchdog | Was in dependencies, purpose unclear, removed |
 | node_semver | Was in dependencies, purpose unclear, removed |
+| `axios` | Native `fetch` handles all HTTP + SSE streaming — no extra library needed |
+| `styled-jsx` | Tailwind CSS v4 is the sole styling system — no CSS-in-JS |
 
 ---
 
@@ -258,6 +293,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: project initialization
+> Last updated: frontend optimization (motion, TanStack Query, shadcn/ui, jose, fetch-only HTTP)
 > Maintained by: Architecture Agent
 > Changes require ADR

@@ -10,11 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-10
+Date: 2026-05-12
 Updated by: Orchestrator
-Session summary: Audited CURRENT_STATE.md against actual codebase.
-Found major drift — Phases 1–3 were implemented but not reflected here.
-Updated to match reality.
+Session summary: Phase 4 Frontend Foundation complete — full stack optimization: axios→fetch, styled-jsx→Tailwind v4, editorStore dedup, error boundaries, shadcn/ui, motion, jose middleware auth, i18n linting.
 
 ---
 
@@ -25,7 +23,7 @@ Phase 0: Repository Foundation     ✅ COMPLETE
 Phase 1: Core Infrastructure       ✅ COMPLETE
 Phase 2: API Foundation            ✅ COMPLETE
 Phase 3: Setup Wizard Backend      ✅ COMPLETE
-Phase 4: Frontend Foundation       · not started
+Phase 4: Frontend Foundation       ✅ COMPLETE
 Phase 5: Integration & Polish      · not started
 ```
 
@@ -124,9 +122,52 @@ Phase 5: Integration & Polish      · not started
 - Package structure exists (`narrare_i18n/`, `pyproject.toml`)
 - Content not yet populated (Phase 4+)
 
-#### `packages/web/` — Next.js Frontend
+#### `packages/web/` — Next.js 15 Frontend (Phase 4)
 
-- **Does not exist yet.** Planned for Phase 4.
+**App Structure (App Router):**
+- `app/(auth)/` — Login, Register pages with form validation (react-hook-form + zod)
+- `app/(app)/` — Authenticated pages with shared layout (auth shell + user info)
+  - `dashboard/` — Novel list with create/navigate
+  - `novel/[id]/editor/` — Full TipTap v3 editor with autosave, chapter sidebar (DnD), context panel
+- Route-level `loading.tsx` (skeleton boundaries) and `error.tsx` (error boundaries) at all levels
+- `global-error.tsx` as last resort
+
+**Components:**
+- `components/editor/` — EditorLayout, EditorSurface (TipTap), EditorToolbar, ChapterSidebar (DnD Kit), ContextPanel, StatusBar, SceneBreak extension
+- `components/dashboard/` — DashboardView with NovelCard grid
+- `components/setup/` — 5-step Wizard (WizardShell + WizardStep1-5)
+- `components/ui/` — Button (shadcn/cva-based), Input, Select
+- `components/shadcn/` — shadcn/ui generated primitives (future component source)
+- `components/shared/` — QueryProvider, ErrorBoundary
+
+**State Management (three-layer):**
+- **Server state:** TanStack Query v5 — all API data (novels, chapters, user, settings)
+- **UI state:** Zustand — sidebar toggles, focus mode, save status, active chapter ID only
+- **Local state:** useState for component-ephemeral state
+
+**API Client:**
+- `lib/api/client.ts` — Native fetch with token refresh, no axios
+- `lib/api/streaming.ts` — SSE streaming client for AI responses (fetch + ReadableStream)
+
+**Styling:**
+- Tailwind CSS v4 as sole styling system (styled-jsx removed)
+- CSS variables in `globals.css` for all design tokens (light + dark mode)
+- shadcn/ui for component primitives (Radix-based, not a runtime dep)
+
+**i18n:**
+- next-intl with 3 languages (en, de, fr)
+- Custom AST checker `validate-i18n.ts` catches hardcoded strings in pre-commit and CI
+
+**Auth & Security:**
+- In-memory access token (not localStorage)
+- httpOnly refresh token cookie
+- JWT expiration check in Next.js middleware via jose
+- Auto-redirect to /login on 401
+
+**Testing:**
+- Vitest 3.x + Testing Library + MSW
+- 101 tests across utils, stores, API client, UI components
+- `npm run test` / `vitest run`
 
 #### `tests/` — Test Suite
 
@@ -145,6 +186,15 @@ Phase 5: Integration & Polish      · not started
 - `conftest.py` with shared fixtures
 
 **E2E:** Directory exists, no tests yet.
+
+#### Frontend Tests (packages/web/)
+
+**101 tests across:**
+- `lib/utils.test.ts` — 32 tests (cn, debounce, formatWordCount, etc.)
+- `lib/stores/editorStore.test.ts` — 21 tests
+- `lib/api/client.test.ts` — 14 tests (token management)
+- `lib/stores/authStore.test.ts` — 15 tests
+- `components/ui/` — 19 tests (Button, Input)
 
 #### Infrastructure
 
@@ -166,13 +216,14 @@ Phase 5: Integration & Polish      · not started
 
 ## What Is In Progress
 
-Nothing. Ready for Phase 4.
+Phase 4 complete. Frontend is functional with editor, dashboard, auth, and wizard.
+Ready for Phase 5: Integration & Polish (writing sessions, AI features, analysis panels).
 
 ---
 
 ## What Is Blocked
 
-Nothing blocking Phase 4.
+Nothing blocking Phase 5.
 
 All demo content is complete — sufficient for testing through Phase 5.
 
@@ -188,6 +239,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Deployment guide gaps | CI pipeline specs, pre-commit config, justfile catalog, env vars added |
 | Coding standards gaps | Result type pattern, service DI pattern added |
 | CURRENT_STATE.md drift | Audited and corrected — Phases 1–3 were implemented but not reflected |
+| Frontend stack optimized | axios→fetch, styled-jsx→Tailwind v4, shadcn/ui, motion, jose middleware, i18n lint |
+| editorStore duplication removed | Server state now exclusively in TanStack Query, Zustand for UI state only |
+| Error handling added | Route-level error.tsx + global-error.tsx + ErrorBoundary component |
+| Loading states added | Skeleton loading.tsx at all route levels |
+| debounce autosave bug fixed | useRef-based debounce pattern replaces broken useCallback |
 
 ---
 
@@ -222,21 +278,22 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|-----------|
 | Python 3.14 missing type stubs for some deps | Low | Low | `reportMissingTypeStubs = false` in pyrightconfig |
-| TipTap v3 extension API changes during Phase 4 | Low | Medium | Pin exact version in package.json |
+| TipTap v3 extension API changes | Low | Medium | Pin exact version in package.json |
 | Feature spec files not yet individualized | Low | Low | INDEX.md has catalogue, can be expanded per-feature as needed |
-| No frontend code yet — Phase 4 is the largest phase | Medium | Medium | Start with scaffold, iterate incrementally |
+| Frontend Button tests use semantic token assertions (not class names) — may break if shadcn tokens change | Low | Low | Update test assertions when tokens change |
+| Editor uses h-full inside flex container — new pages must handle their own scroll | Low | Low | Follow DashboardView pattern: h-full overflow-y-auto wrapper |
 
 ---
 
 ## Next Session Should Start With
 
-**Phase 4: Frontend Foundation** — see `docs/mvp/mvp-plan.md` for full checklist.
+**Phase 5: Integration & Polish** — see `docs/mvp/mvp-plan.md` for full checklist.
 
 Key steps:
-1. Initialize `packages/web/` as Next.js 15 project
-2. Set up TipTap v3 editor scaffold
-3. Connect to existing API endpoints (auth, novels, chapters, volumes, setup)
-4. Build first navigable page structure
+1. Connect writing features to the editor (SSE streaming sessions)
+2. Build KB editor UI (interactive AI sessions)
+3. Add analysis panels to the ContextPanel
+4. E2E tests with Playwright
 
 ---
 

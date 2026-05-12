@@ -1,52 +1,41 @@
-import { create } from "zustand"
-import type { Chapter, ChapterSummary, SaveStatus } from "@/types"
+import { create } from "zustand";
+import type { ChapterSummary, SaveStatus } from "@/types";
 
 interface EditorState {
-  // Current novel context
-  novelId: string | null
-  chapters: ChapterSummary[]
-
-  // Active chapter
-  activeChapterId: string | null
-  activeChapter: Chapter | null
+  // Active chapter (UI state: which tab is selected — data fetched via TanStack Query)
+  activeChapterId: string | null;
 
   // Save state
-  saveStatus: SaveStatus
-  lastSavedAt: Date | null
+  saveStatus: SaveStatus;
+  lastSavedAt: Date | null;
 
-  // UI state
-  sidebarOpen: boolean
-  contextPanelOpen: boolean
-  focusMode: boolean
+  // UI toggles
+  sidebarOpen: boolean;
+  contextPanelOpen: boolean;
+  focusMode: boolean;
 
   // Actions
-  setNovelId: (id: string) => void
-  setChapters: (chapters: ChapterSummary[]) => void
-  setActiveChapter: (chapter: Chapter) => void
-  setSaveStatus: (status: SaveStatus) => void
-  toggleSidebar: () => void
-  toggleContextPanel: () => void
-  toggleFocusMode: () => void
-  updateChapterWordCount: (chapterId: string, wordCount: number) => void
+  setActiveChapterId: (id: string | null) => void;
+  setSaveStatus: (status: SaveStatus) => void;
+  toggleSidebar: () => void;
+  toggleContextPanel: () => void;
+  toggleFocusMode: () => void;
+  updateChapterWordCount: (
+    chapterId: string,
+    wordCount: number,
+    chapters: ChapterSummary[],
+  ) => ChapterSummary[];
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
-  novelId: null,
-  chapters: [],
   activeChapterId: null,
-  activeChapter: null,
   saveStatus: "idle",
   lastSavedAt: null,
   sidebarOpen: true,
   contextPanelOpen: false,
   focusMode: false,
 
-  setNovelId: (id) => set({ novelId: id }),
-
-  setChapters: (chapters) => set({ chapters }),
-
-  setActiveChapter: (chapter) =>
-    set({ activeChapter: chapter, activeChapterId: chapter.id }),
+  setActiveChapterId: (id) => set({ activeChapterId: id }),
 
   setSaveStatus: (saveStatus) =>
     set({
@@ -56,8 +45,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 
-  toggleContextPanel: () =>
-    set((s) => ({ contextPanelOpen: !s.contextPanelOpen })),
+  toggleContextPanel: () => set((s) => ({ contextPanelOpen: !s.contextPanelOpen })),
 
   toggleFocusMode: () =>
     set((s) => ({
@@ -65,10 +53,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       sidebarOpen: s.focusMode, // restore sidebar when exiting focus
     })),
 
-  updateChapterWordCount: (chapterId, wordCount) =>
-    set((s) => ({
-      chapters: s.chapters.map((c) =>
-        c.id === chapterId ? { ...c, word_count: wordCount } : c
-      ),
-    })),
-}))
+  /**
+   * Pure function: returns new chapters array with updated word count.
+   * Caller is responsible for syncing back to TanStack Query cache.
+   */
+  updateChapterWordCount: (chapterId, wordCount, chapters) =>
+    chapters.map((c) => (c.id === chapterId ? { ...c, word_count: wordCount } : c)),
+}));

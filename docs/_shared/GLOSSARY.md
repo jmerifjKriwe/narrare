@@ -79,6 +79,12 @@ An interactive writing mode where the AI acts as a collaborative writing partner
 taking turns with the user. Different from a Writing Session (which is AI-driven)
 and a KB Session (which is knowledge-editing).
 
+**cva (class-variance-authority)**
+A utility for composing variant-based Tailwind class names. Used in UI primitives
+(Button, etc.) to define variant maps (`primary`, `secondary`, `ghost`, `danger`)
+and size maps (`sm`, `md`, `lg`). Replaces BEM-style modifiers with Tailwind utilities.
+Located in `packages/web/components/ui/`.
+
 ---
 
 ## D
@@ -106,6 +112,13 @@ to other entities.
 A numerical vector representation of text, used for semantic similarity search.
 Generated via `core/llm/embeddings.py`, stored in PostgreSQL via pgvector.
 Used for KB search, chapter similarity, and style profiling.
+
+**Error Boundary**
+A React component that catches runtime errors in its child tree. In Narrare:
+- Route-level `error.tsx` files catch errors per route segment (Next.js built-in)
+- `global-error.tsx` catches catastrophic errors (replaces entire page)
+- `<ErrorBoundary>` component wraps specific components like the TipTap editor
+All error messages use i18n except `global-error.tsx` which runs before providers mount.
 
 ---
 
@@ -177,6 +190,15 @@ checking and context assembly.
 
 ---
 
+## L
+
+**Loading Skeleton**
+A visual placeholder shown during page navigation. Implemented as `loading.tsx` files
+in Next.js App Router — React Suspense boundaries that display skeleton shapes
+matching the target page layout. Never spinners — always shape-matching placeholders.
+
+---
+
 ## M
 
 **MCP (Model Context Protocol)**
@@ -201,6 +223,12 @@ The type of writing operation: `new_chapter`, `extend`, `rewrite`, `interactive`
 An optional prompt fragment appended to a base prompt to adjust behavior.
 Examples: `tone:formal`, `length:short`, `style:dialogue_heavy`.
 Applied by `core/prompts/composer.py`.
+
+**motion**
+Animation library (formerly Framer Motion) for React component transitions.
+Provides `AnimatePresence` for mount/unmount animations and `motion.div` for
+declarative motion. Used for AI streaming text appearance, panel transitions,
+and focus mode animations. Located in `packages/web/` dependencies.
 
 ---
 
@@ -254,6 +282,19 @@ Distinct from an analytics session (tracking writing time).
 **SSE (Server-Sent Events)**
 The streaming transport used for real-time AI output delivery over HTTP.
 Used for all streaming LLM responses in the WebUI.
+Client implementation: `packages/web/lib/api/streaming.ts` (`connectSSE`).
+
+**SSE Streaming Client**
+The utility in `packages/web/lib/api/streaming.ts` that handles Server-Sent Events.
+Uses native `fetch` + `ReadableStream` (axios cannot do SSE). Parses SSE `data:` lines,
+handles `[DONE]` sentinel, and supports `AbortSignal` for cancellation.
+Every streaming AI response in the frontend uses this client.
+
+**shadcn/ui**
+A collection of copy-paste React component primitives built on Radix UI.
+Not a runtime dependency — components are owned and customized locally.
+Styled with Tailwind CSS. Located in `packages/web/components/shadcn/`.
+Used as the foundation for UI primitives (Button, Dialog, Toast, etc.).
 
 **Style Profile**
 An AI-generated and embedding-based representation of an author's writing style.

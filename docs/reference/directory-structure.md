@@ -146,6 +146,104 @@ packages/core/narrare_core/
 
 ---
 
+## `packages/web/` — Next.js 15 Frontend
+
+The web frontend for Narrare. Next.js App Router with TypeScript.
+**Styling:** Tailwind CSS v4 only (no styled-jsx, no CSS modules).
+**State:** TanStack Query for server state, Zustand for UI state.
+
+```
+packages/web/
+├── app/                            ← Next.js App Router pages
+│   ├── layout.tsx                  ← Root layout (QueryProvider, NextIntlClientProvider)
+│   ├── page.tsx                    ← Root redirect
+│   ├── middleware.ts               ← Auth guard (JWT exp check via jose)
+│   ├── global-error.tsx            ← Last-resort error boundary
+│   ├── error.tsx                   ← General error fallback
+│   ├── (auth)/                     ← Public auth route group
+│   │   ├── login/page.tsx          ← Login form
+│   │   ├── register/page.tsx       ← Registration form
+│   │   └── loading.tsx             ← Auth page skeleton
+│   └── (app)/                      ← Authenticated route group
+│       ├── layout.tsx              ← Auth shell (user info, top bar)
+│       ├── loading.tsx             ← App-level skeleton
+│       ├── error.tsx               ← Authenticated error fallback
+│       ├── dashboard/
+│       │   ├── page.tsx            ← Novel list + create
+│       │   └── loading.tsx         ← Dashboard skeleton
+│       └── novel/[id]/editor/
+│           ├── page.tsx            ← Editor page (thin — delegates to EditorLayout)
+│           ├── loading.tsx         ← Editor skeleton
+│           └── error.tsx           ← Editor-specific error fallback
+│
+├── components/
+│   ├── editor/                     ← Writing editor components
+│   │   ├── EditorLayout.tsx        ← Orchestrator: toolbar + sidebar + surface + panel
+│   │   ├── EditorSurface.tsx       ← TipTap v3 editor with autosave + Cmd+S
+│   │   ├── EditorToolbar.tsx       ← Toolbar with sidebar/panel/focus toggles
+│   │   ├── ChapterSidebar.tsx      ← Chapter list with DnD reorder (@dnd-kit)
+│   │   ├── ContextPanel.tsx        ← Right panel (AI features slot)
+│   │   ├── StatusBar.tsx           ← Word count, reading time, save status
+│   │   └── extensions/
+│   │       └── SceneBreak.ts       ← Custom TipTap node (--- → * * *)
+│   ├── dashboard/
+│   │   └── DashboardView.tsx       ← Novel grid with NovelCard
+│   ├── setup/                      ← Setup wizard
+│   │   ├── WizardShell.tsx         ← Wizard layout + navigation
+│   │   └── WizardStep1-5.tsx       ← Individual wizard steps
+│   ├── ui/                         ← UI primitives
+│   │   ├── Button.tsx              ← shadcn/cva-based button (primary/secondary/ghost/danger + loading)
+│   │   ├── Input.tsx               ← Text input with label/error/hint
+│   │   └── Select.tsx              ← Select dropdown
+│   ├── shadcn/                     ← shadcn/ui generated components (future use)
+│   └── shared/
+│       ├── QueryProvider.tsx       ← TanStack Query client provider
+│       └── ErrorBoundary.tsx       ← Client-side React error boundary
+│
+├── lib/
+│   ├── api/
+│   │   ├── client.ts              ← fetch-based API client with token refresh (230 lines)
+│   │   └── streaming.ts           ← SSE streaming client for AI responses
+│   ├── stores/
+│   │   ├── editorStore.ts         ← UI state: activeChapterId, saveStatus, toggles
+│   │   ├── authStore.ts           ← Auth state + login/register actions
+│   │   └── wizardStore.ts         ← Wizard form state
+│   ├── i18n/
+│   │   ├── request.ts             ← next-intl request config
+│   │   └── routing.ts             ← i18n routing config
+│   └── utils.ts                   ← cn(), debounce, formatWordCount, formatRelativeTime, truncate
+│
+├── styles/
+│   └── globals.css                ← Design tokens (CSS variables), Tailwind v4 import, editor prose styles
+│
+├── types/
+│   └── index.ts                   ← Shared TypeScript types (Novel, Chapter, User, etc.)
+│
+├── messages/
+│   ├── en.json                    ← English translations
+│   ├── de.json                    ← German translations
+│   └── fr.json                    ← French translations
+│
+├── components.json                ← shadcn/ui configuration
+├── biome.json                     ← Biome linter and formatter configuration
+├── next.config.ts                 ← Next.js config with next-intl plugin + API rewrite
+├── tsconfig.json                  ← TypeScript strict config
+└── package.json                   ← Dependencies
+```
+
+### Frontend File Size Limits (from ui-principles.md)
+
+| Pattern | Hard limit |
+|---------|-----------|
+| Page component (`page.tsx`) | 100 lines |
+| Feature component | 200 lines |
+| Hook (`use*.ts`) | 150 lines |
+| Store (`*Store.ts`) | 150 lines |
+| API function file | 300 lines |
+| Type definition file | 200 lines |
+
+---
+
 ## `apps/api/` — The Service Layer
 
 Each domain module is self-contained. The structure inside every module is identical.

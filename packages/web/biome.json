@@ -1,0 +1,55 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "a11y": { "recommended": true },
+      "correctness": {
+        "recommended": true,
+        "noUnusedVariables": "error",
+        "useExhaustiveDependencies": "warn"
+      },
+      "style": {
+        "recommended": true,
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        "recommended": true,
+        "noExplicitAny": "warn"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    },
+    "linter": {
+      "enabled": false
+    },
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "files": {
+    "includes": ["**", "!**/node_modules", "!**/.next", "!**/components/shadcn"]
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  }
+}

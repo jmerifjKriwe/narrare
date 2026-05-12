@@ -8,10 +8,11 @@
  * Refresh token is in an httpOnly cookie (set by server).
  */
 
-import axios, { type AxiosError, type AxiosInstance } from "axios"
 import type {
+  AIProvider,
   Chapter,
   ChapterSummary,
+  DemoProjectInfo,
   Novel,
   NovelSummary,
   ProjectSettings,
@@ -19,269 +20,217 @@ import type {
   User,
   UserSettings,
   WizardState,
-  AIProvider,
-  DemoProjectInfo,
-} from "@/types"
+} from "@/types";
 
-// In-memory token storage (never localStorage — security)
-let _accessToken: string | null = null
+// --- In-memory token storage (never localStorage — security) ---
+
+let _accessToken: string | null = null;
 
 export function setAccessToken(token: string): void {
-  _accessToken = token
+  _accessToken = token;
 }
 
 export function clearAccessToken(): void {
-  _accessToken = null
+  _accessToken = null;
 }
 
 export function getAccessToken(): string | null {
-  return _accessToken
+  return _accessToken;
 }
 
-// Axios instance
-const api: AxiosInstance = axios.create({
-  baseURL: "/api/v1",
-  headers: { "Content-Type": "application/json" },
-  withCredentials: true, // send cookies for refresh token
-})
+// --- Core fetch wrapper with auth + auto-refresh on 401 ---
 
-// Attach access token to every request
-api.interceptors.request.use((config) => {
-  if (_accessToken) {
-    config.headers.Authorization = `Bearer ${_accessToken}`
-  }
-  return config
-})
+let _isRefreshing = false;
+let _refreshPromise: Promise<void> | null = null;
 
-// Auto-refresh on 401
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const original = error.config as typeof error.config & { _retry?: boolean }
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true
-      try {
-        const { data } = await axios.post<TokenResponse>(
-          "/api/v1/auth/refresh",
-          {},
-          { withCredentials: true }
-        )
-        setAccessToken(data.access_token)
-        original.headers!.Authorization = `Bearer ${data.access_token}`
-        return api(original)
-      } catch {
-        clearAccessToken()
-        window.location.href = "/login"
-      }
+async function refreshAccessToken(): Promise<void> {
+  if (_isRefreshing && _refreshPromise) return _refreshPromise;
+  _isRefreshing = true;
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch("/api/v1/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Refresh failed");
+      const data: TokenResponse = await res.json();
+      setAccessToken(data.access_token);
+    } finally {
+      _isRefreshing = false;
+      _refreshPromise = null;
     }
-    return Promise.reject(error)
-  }
-)
+  })();
+  return _refreshPromise;
+}
 
-// ---------------------------------------------------------------------------
-// Auth
-// ---------------------------------------------------------------------------
+async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `/api/v1${endpoint}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options.headers as Record<string, string>) ?? {}),
+  };
+  if (_accessToken) headers.Authorization = `Bearer ${_accessToken}`;
+
+  const response = await fetch(url, { ...options, headers, credentials: "include" });
+
+  if (response.status === 401) {
+    if (endpoint === "/auth/refresh") {
+      clearAccessToken();
+      window.location.href = "/login";
+      throw new Error("Session expired");
+    }
+    try {
+      await refreshAccessToken();
+      headers.Authorization = `Bearer ${_accessToken}`;
+      const retry = await fetch(url, { ...options, headers, credentials: "include" });
+      if (!retry.ok) throw new Error(`HTTP ${retry.status}`);
+      if (retry.status === 204) return undefined as T;
+      return retry.json() as Promise<T>;
+    } catch {
+      clearAccessToken();
+      window.location.href = "/login";
+      throw new Error("Session expired");
+    }
+  }
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(err.detail || `HTTP ${response.status}`);
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
+// --- Auth ---
 
 export const authApi = {
-  register: async (email: string, password: string, displayName = "") => {
-    const { data } = await api.post<TokenResponse>("/auth/register", {
-      email,
-      password,
-      display_name: displayName,
-    })
-    return data
-  },
+  register: (email: string, password: string, displayName = "") =>
+    fetchApi<TokenResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, display_name: displayName }),
+    }),
 
-  login: async (email: string, password: string) => {
-    const { data } = await api.post<TokenResponse>("/auth/login", { email, password })
-    return data
-  },
+  login: (email: string, password: string) =>
+    fetchApi<TokenResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
 
-  me: async () => {
-    const { data } = await api.get<User>("/auth/me")
-    return data
-  },
-}
+  me: () => fetchApi<User>("/auth/me"),
+};
 
-// ---------------------------------------------------------------------------
-// Novels
-// ---------------------------------------------------------------------------
+// --- Novels ---
 
 export const novelsApi = {
-  list: async () => {
-    const { data } = await api.get<NovelSummary[]>("/novels")
-    return data
-  },
+  list: () => fetchApi<NovelSummary[]>("/novels"),
+  get: (novelId: string) => fetchApi<Novel>(`/novels/${novelId}`),
+  create: (payload: Partial<Novel>) =>
+    fetchApi<Novel>("/novels", { method: "POST", body: JSON.stringify(payload) }),
+  update: (novelId: string, payload: Partial<Novel>) =>
+    fetchApi<Novel>(`/novels/${novelId}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  delete: (novelId: string) => fetchApi<void>(`/novels/${novelId}`, { method: "DELETE" }),
+};
 
-  get: async (novelId: string) => {
-    const { data } = await api.get<Novel>(`/novels/${novelId}`)
-    return data
-  },
-
-  create: async (payload: Partial<Novel>) => {
-    const { data } = await api.post<Novel>("/novels", payload)
-    return data
-  },
-
-  update: async (novelId: string, payload: Partial<Novel>) => {
-    const { data } = await api.patch<Novel>(`/novels/${novelId}`, payload)
-    return data
-  },
-
-  delete: async (novelId: string) => {
-    await api.delete(`/novels/${novelId}`)
-  },
-}
-
-// ---------------------------------------------------------------------------
-// Chapters
-// ---------------------------------------------------------------------------
+// --- Chapters ---
 
 export const chaptersApi = {
-  list: async (novelId: string) => {
-    const { data } = await api.get<ChapterSummary[]>(`/novels/${novelId}/chapters`)
-    return data
-  },
+  list: (novelId: string) => fetchApi<ChapterSummary[]>(`/novels/${novelId}/chapters`),
+  get: (novelId: string, chapterId: string) =>
+    fetchApi<Chapter>(`/novels/${novelId}/chapters/${chapterId}`),
+  create: (novelId: string, payload: { title?: string; content?: string }) =>
+    fetchApi<Chapter>(`/novels/${novelId}/chapters`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateContent: (novelId: string, chapterId: string, content: string) =>
+    fetchApi<Chapter>(`/novels/${novelId}/chapters/${chapterId}/content`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+  updateMeta: (novelId: string, chapterId: string, payload: Partial<Chapter>) =>
+    fetchApi<Chapter>(`/novels/${novelId}/chapters/${chapterId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  reorder: (novelId: string, chapterIds: string[]) =>
+    fetchApi<ChapterSummary[]>(`/novels/${novelId}/chapters/reorder`, {
+      method: "POST",
+      body: JSON.stringify({ chapter_ids: chapterIds }),
+    }),
+  delete: (novelId: string, chapterId: string) =>
+    fetchApi<void>(`/novels/${novelId}/chapters/${chapterId}`, { method: "DELETE" }),
+};
 
-  get: async (novelId: string, chapterId: string) => {
-    const { data } = await api.get<Chapter>(`/novels/${novelId}/chapters/${chapterId}`)
-    return data
-  },
-
-  create: async (novelId: string, payload: { title?: string; content?: string }) => {
-    const { data } = await api.post<Chapter>(`/novels/${novelId}/chapters`, payload)
-    return data
-  },
-
-  updateContent: async (novelId: string, chapterId: string, content: string) => {
-    const { data } = await api.put<Chapter>(
-      `/novels/${novelId}/chapters/${chapterId}/content`,
-      { content }
-    )
-    return data
-  },
-
-  updateMeta: async (novelId: string, chapterId: string, payload: Partial<Chapter>) => {
-    const { data } = await api.patch<Chapter>(
-      `/novels/${novelId}/chapters/${chapterId}`,
-      payload
-    )
-    return data
-  },
-
-  reorder: async (novelId: string, chapterIds: string[]) => {
-    const { data } = await api.post<ChapterSummary[]>(
-      `/novels/${novelId}/chapters/reorder`,
-      { chapter_ids: chapterIds }
-    )
-    return data
-  },
-
-  delete: async (novelId: string, chapterId: string) => {
-    await api.delete(`/novels/${novelId}/chapters/${chapterId}`)
-  },
-}
-
-// ---------------------------------------------------------------------------
-// Settings
-// ---------------------------------------------------------------------------
+// --- Settings ---
 
 export const settingsApi = {
-  getUser: async () => {
-    const { data } = await api.get<UserSettings>("/settings/user")
-    return data
-  },
+  getUser: () => fetchApi<UserSettings>("/settings/user"),
+  updateUser: (payload: Partial<UserSettings>) =>
+    fetchApi<UserSettings>("/settings/user", { method: "PATCH", body: JSON.stringify(payload) }),
+  getProject: (novelId: string) => fetchApi<ProjectSettings>(`/settings/novels/${novelId}`),
+  updateProject: (novelId: string, payload: Partial<ProjectSettings>) =>
+    fetchApi<ProjectSettings>(`/settings/novels/${novelId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+};
 
-  updateUser: async (payload: Partial<UserSettings>) => {
-    const { data } = await api.patch<UserSettings>("/settings/user", payload)
-    return data
-  },
-
-  getProject: async (novelId: string) => {
-    const { data } = await api.get<ProjectSettings>(`/settings/novels/${novelId}`)
-    return data
-  },
-
-  updateProject: async (novelId: string, payload: Partial<ProjectSettings>) => {
-    const { data } = await api.patch<ProjectSettings>(
-      `/settings/novels/${novelId}`,
-      payload
-    )
-    return data
-  },
-}
-
-// ---------------------------------------------------------------------------
-// Setup Wizard
-// ---------------------------------------------------------------------------
+// --- Setup Wizard ---
 
 export const setupApi = {
-  validateStep1: async (data: {
-    project_name: string
-    language: string
-    autosave_interval: number
-  }) => {
-    const { data: res } = await api.post("/setup/validate/step-1", data)
-    return res
+  validateStep1: (data: { project_name: string; language: string; autosave_interval: number }) =>
+    fetchApi<{ valid: boolean }>("/setup/validate/step-1", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  validateStep2: (data: {
+    title: string;
+    author?: string;
+    genre?: string;
+    logline?: string;
+    story_structure?: string;
+    tone?: string;
+  }) =>
+    fetchApi<{ valid: boolean }>("/setup/validate/step-2", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  validateStep3: (data: { starter: string; import_path?: string | null }) =>
+    fetchApi<{ valid: boolean; starter: string; demo_info: DemoProjectInfo | null }>(
+      "/setup/validate/step-3",
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+
+  validateStep4: (data: {
+    provider: AIProvider;
+    api_key: string;
+    model: string;
+    ollama_url?: string;
+  }) =>
+    fetchApi<{ valid: boolean }>("/setup/validate/step-4", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getProviderModels: (provider: AIProvider, apiKey = "", ollamaUrl = "http://localhost:11434") => {
+    const params = new URLSearchParams({ api_key: apiKey, ollama_url: ollamaUrl });
+    return fetchApi<{ provider: AIProvider; models: { id: string; name: string }[] }>(
+      `/setup/providers/${provider}/models?${params.toString()}`,
+    );
   },
 
-  validateStep2: async (data: {
-    title: string
-    author?: string
-    genre?: string
-    logline?: string
-    story_structure?: string
-    tone?: string
-  }) => {
-    const { data: res } = await api.post("/setup/validate/step-2", data)
-    return res
-  },
-
-  validateStep3: async (data: {
-    starter: string
-    import_path?: string | null
-  }) => {
-    const { data: res } = await api.post<{
-      valid: boolean
-      starter: string
-      demo_info: DemoProjectInfo | null
-    }>("/setup/validate/step-3", data)
-    return res
-  },
-
-  validateStep4: async (data: {
-    provider: AIProvider
-    api_key: string
-    model: string
-    ollama_url?: string
-  }) => {
-    const { data: res } = await api.post("/setup/validate/step-4", data)
-    return res
-  },
-
-  getProviderModels: async (
-    provider: AIProvider,
-    apiKey = "",
-    ollamaUrl = "http://localhost:11434"
-  ) => {
-    const { data } = await api.get<{ provider: AIProvider; models: { id: string; name: string }[] }>(
-      `/setup/providers/${provider}/models`,
-      { params: { api_key: apiKey, ollama_url: ollamaUrl } }
-    )
-    return data
-  },
-
-  complete: async (state: WizardState) => {
-    const { data } = await api.post<{ novel_id: string; redirect_to: string; message: string }>(
-      "/setup/complete",
-      { state }
-    )
-    return data
-  },
-}
+  complete: (state: WizardState) =>
+    fetchApi<{ novel_id: string; redirect_to: string; message: string }>("/setup/complete", {
+      method: "POST",
+      body: JSON.stringify({ state }),
+    }),
+};
 
 // Type exports for external use
 export interface AvailableModelsResponse {
-  provider: AIProvider
-  models: { id: string; name: string; context_window?: number }[]
+  provider: AIProvider;
+  models: { id: string; name: string; context_window?: number }[];
 }

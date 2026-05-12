@@ -1,52 +1,68 @@
-"use client"
+"use client";
 
-import { useEffect, useCallback, useRef } from "react"
-import { useEditor, EditorContent } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Placeholder from "@tiptap/extension-placeholder"
-import CharacterCount from "@tiptap/extension-character-count"
-import { useTranslations } from "next-intl"
-import { useMutation } from "@tanstack/react-query"
-import { chaptersApi } from "@/lib/api/client"
-import { useEditorStore } from "@/lib/stores/editorStore"
-import { SceneBreak } from "./extensions/SceneBreak"
-import { debounce } from "@/lib/utils"
+import { useMutation } from "@tanstack/react-query";
+import CharacterCount from "@tiptap/extension-character-count";
+import Placeholder from "@tiptap/extension-placeholder";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { useTranslations } from "next-intl";
+import { useEffect, useRef } from "react";
+import { chaptersApi } from "@/lib/api/client";
+import { useEditorStore } from "@/lib/stores/editorStore";
+import { debounce } from "@/lib/utils";
+import type { Chapter } from "@/types";
+import { SceneBreak } from "./extensions/SceneBreak";
 
 interface EditorSurfaceProps {
-  novelId: string
-  autosaveInterval: number // seconds, 0 = disabled
+  novelId: string;
+  chapter: Chapter | null;
+  autosaveInterval: number; // seconds, 0 = disabled
+  onWordCountUpdate: (chapterId: string, wordCount: number) => void;
 }
 
-export function EditorSurface({ novelId, autosaveInterval }: EditorSurfaceProps) {
-  const t = useTranslations("editor")
-  const { activeChapter, setSaveStatus, updateChapterWordCount } = useEditorStore()
-  const lastSavedContent = useRef<string>("")
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+export function EditorSurface({
+  novelId,
+  chapter,
+  autosaveInterval,
+  onWordCountUpdate,
+}: EditorSurfaceProps) {
+  const t = useTranslations("editor");
+  const { setSaveStatus } = useEditorStore();
+  const lastSavedContent = useRef<string>("");
 
   const saveMutation = useMutation({
     mutationFn: ({ chapterId, content }: { chapterId: string; content: string }) =>
       chaptersApi.updateContent(novelId, chapterId, content),
     onMutate: () => setSaveStatus("saving"),
-    onSuccess: (chapter) => {
-      setSaveStatus("saved")
-      lastSavedContent.current = chapter.content
-      updateChapterWordCount(chapter.id, chapter.word_count)
+    onSuccess: (updated) => {
+      setSaveStatus("saved");
+      lastSavedContent.current = updated.content;
+      onWordCountUpdate(updated.id, updated.word_count);
     },
     onError: () => setSaveStatus("error"),
-  })
+  });
 
-  // Debounced save function
-  const scheduleSave = useCallback(
-    (chapterId: string, content: string) => {
-      const doSave = debounce((cid: string, html: string) => {
-        if (html !== lastSavedContent.current) {
-          saveMutation.mutate({ chapterId: cid, content: html })
+  // Debounced autosave — stable ref, recreated when interval/mutation changes
+  const debouncedSave = useRef(
+    debounce(
+      (chapterId: string, content: string) => {
+        if (content !== lastSavedContent.current) {
+          saveMutation.mutate({ chapterId, content });
         }
-      }, autosaveInterval > 0 ? autosaveInterval * 1000 : 30_000)
-      doSave(chapterId, content)
-    },
-    [autosaveInterval, saveMutation]
-  )
+      },
+      autosaveInterval > 0 ? autosaveInterval * 1000 : 30_000,
+    ),
+  );
+  useEffect(() => {
+    debouncedSave.current = debounce(
+      (chapterId: string, content: string) => {
+        if (content !== lastSavedContent.current) {
+          saveMutation.mutate({ chapterId, content });
+        }
+      },
+      autosaveInterval > 0 ? autosaveInterval * 1000 : 30_000,
+    );
+  }, [autosaveInterval, saveMutation]);
 
   const editor = useEditor({
     extensions: [
@@ -60,7 +76,7 @@ export function EditorSurface({ novelId, autosaveInterval }: EditorSurfaceProps)
       CharacterCount,
       SceneBreak,
     ],
-    content: activeChapter?.content || "",
+    content: chapter?.content || "",
     editorProps: {
       attributes: {
         class: "narrare-editor",
@@ -70,95 +86,52 @@ export function EditorSurface({ novelId, autosaveInterval }: EditorSurfaceProps)
       },
     },
     onUpdate: ({ editor }) => {
-      const content = editor.getHTML()
-      setSaveStatus("idle")
-      if (activeChapter && autosaveInterval !== 0) {
-        scheduleSave(activeChapter.id, content)
+      const content = editor.getHTML();
+      setSaveStatus("idle");
+      if (chapter && autosaveInterval !== 0) {
+        debouncedSave.current(chapter.id, content);
       }
     },
-  })
+  });
 
   // Load chapter content when active chapter changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — run only on chapter ID change, not on content/setSaveStatus changes
   useEffect(() => {
-    if (!editor || !activeChapter) return
-    const current = editor.getHTML()
-    if (current !== activeChapter.content) {
-      // Clear any pending save for previous chapter
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      editor.commands.setContent(activeChapter.content || "", { emitUpdate: false })
-      lastSavedContent.current = activeChapter.content || ""
-      setSaveStatus("idle")
+    if (!editor || !chapter) return;
+    const current = editor.getHTML();
+    if (current !== chapter.content) {
+      editor.commands.setContent(chapter.content || "", { emitUpdate: false });
+      lastSavedContent.current = chapter.content || "";
+      setSaveStatus("idle");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run only on chapter ID change
-  }, [activeChapter?.id, editor])
+  }, [chapter?.id, editor]);
 
   // Manual save: Cmd/Ctrl+S
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault()
-        if (editor && activeChapter) {
-          const content = editor.getHTML()
-          saveMutation.mutate({ chapterId: activeChapter.id, content })
+        e.preventDefault();
+        if (editor && chapter) {
+          const content = editor.getHTML();
+          saveMutation.mutate({ chapterId: chapter.id, content });
         }
       }
-    }
-    window.addEventListener("keydown", handler)
-    return () => window.removeEventListener("keydown", handler)
-  }, [editor, activeChapter, saveMutation])
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [editor, chapter, saveMutation]);
 
-  if (!activeChapter) {
+  if (!chapter) {
     return (
-      <div className="editor-surface-empty">
+      <div className="flex items-center justify-center h-full text-[var(--color-text-tertiary)] text-[0.9375rem]">
         <p>{t("addChapter")}</p>
-        <style jsx>{`
-          .editor-surface-empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--color-text-tertiary);
-            font-size: 0.9375rem;
-          }
-        `}</style>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="editor-surface">
+    <div className="h-full">
       <EditorContent editor={editor} className="narrare-editor" />
-
-      <style jsx>{`
-        .editor-surface {
-          height: 100%;
-        }
-        /* Global TipTap styles — need global scope */
-        :global(.narrare-editor .ProseMirror) {
-          font-family: var(--font-serif);
-          font-size: var(--editor-font-size);
-          line-height: var(--editor-line-height);
-          color: var(--color-text-primary);
-          max-width: var(--editor-max-width);
-          margin: 0 auto;
-          padding: var(--space-12) var(--space-4);
-          outline: none;
-          min-height: calc(100vh - 100px);
-        }
-        :global(.narrare-editor .ProseMirror p) {
-          margin-bottom: 1em;
-        }
-        :global(.narrare-editor .ProseMirror p.is-editor-empty:first-child::before) {
-          content: attr(data-placeholder);
-          color: var(--color-text-placeholder);
-          pointer-events: none;
-          float: left;
-          height: 0;
-        }
-        :global(.narrare-editor .ProseMirror h1) { font-size: 1.75rem; font-weight: 700; margin: 2em 0 0.5em; font-family: var(--font-sans); }
-        :global(.narrare-editor .ProseMirror h2) { font-size: 1.375rem; font-weight: 600; margin: 1.5em 0 0.5em; font-family: var(--font-sans); }
-        :global(.narrare-editor .ProseMirror h3) { font-size: 1.125rem; font-weight: 600; margin: 1.25em 0 0.4em; font-family: var(--font-sans); }
-      `}</style>
     </div>
-  )
+  );
 }

@@ -135,7 +135,14 @@
     "focusMode": "Mode concentration",
     "exitFocusMode": "Quitter le mode concentration",
     "sidebar": "Chapitres",
-    "contextPanel": "Contexte"
+    "contextPanel": "Contexte",
+    "contextPanelEmpty": "Les fonctionnalités IA apparaîtront ici"
+  },
+  "errors": {
+    "title": "Une erreur est survenue",
+    "editor": "L'éditeur n'a pas pu être chargé",
+    "retry": "Réessayer",
+    "backToDashboard": "Retour au tableau de bord"
   },
   "settings": {
     "title": "Paramètres",
