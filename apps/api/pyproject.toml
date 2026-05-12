@@ -92,3 +92,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["narrare"]
+artifacts = ["narrare/py.typed"]
