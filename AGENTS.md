@@ -47,8 +47,8 @@ RULE-02: Prompts werden nur in core/prompts/ gebaut
 RULE-03: Contract (Protocol) vor Implementation
          → contracts.py existiert bevor service.py geschrieben wird
 
-RULE-04: Datei-Größenlimits sind hard limits
-         → router.py max 150 Zeilen, service.py max 300 Zeilen
+RULE-04: Modularisieren statt komprimieren — Hard Limits erzwingen Aufteilung
+         → Bei Annäherung ans Limit: neues Modul extrahieren, nicht Zeilen sparen
 
 RULE-06: Eine Verantwortlichkeit pro Datei
          → Router delegiert sofort an Service, kein Business Logic in Routern

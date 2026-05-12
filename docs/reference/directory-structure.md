@@ -671,7 +671,7 @@ tests/
 | `composer.py`, `registry.py` | 250 lines |
 | All others | 400 lines |
 
-When a file needs to grow beyond its limit, split before adding.
+When a file needs to grow beyond its limit, **split into a new module** — never compress to fit.
 
 ---
 

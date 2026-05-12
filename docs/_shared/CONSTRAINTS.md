@@ -97,7 +97,7 @@ client-switching (MCP, A2A, CLI) require rewriting calling code.
 
 ---
 
-### RULE-04 · File size limits are hard limits.
+### RULE-04 · Split before you squeeze — modularity over minification.
 
 | File type | Hard limit | Soft target |
 |-----------|-----------|-------------|
@@ -108,10 +108,23 @@ client-switching (MCP, A2A, CLI) require rewriting calling code.
 | Test file | 400 lines | 300 lines |
 | Config / schema file | 200 lines | 150 lines |
 
-A file approaching its soft target is a signal to split.
+A file approaching its soft target is a signal to **split**.
 A file at its hard limit is a build failure.
 
-**The split strategy** — when a file grows too large, split by:
+**When a file approaches its limit, the ONLY acceptable response is modularization:**
+
+1. Extract a new service, repository, or utility module with its own responsibility
+2. Move cohesive functionality to a dedicated file (e.g., `draft_service.py` split out of `service.py`)
+3. Add a new router file for additional resource endpoints (e.g., `router_drafts.py`)
+
+**Explicitly FORBIDDEN "solutions" — do NOT:**
+- Compress code to squeeze under the limit (removing whitespace, shortening names, collapsing multi-line expressions)
+- Combine related functions into dense one-liners
+- Sacrifice readability to stay within line count
+
+These tactics produce files that are technically under the limit but harder to read than the original — and the **next** change will push them over again. The limit exists to force **modularization**, not to encourage code golf.
+
+**Split strategy** — when a file grows too large, split by:
 1. **Routers:** one router file per resource sub-group (e.g., `writing/router_sessions.py`, `writing/router_drafts.py`)
 2. **Services:** extract into focused sub-services (e.g., `writing/draft_service.py`, `writing/session_service.py`)
 3. **Agents:** separate system prompt logic from tool definitions from run logic
@@ -119,6 +132,10 @@ A file at its hard limit is a build failure.
 **Why:** `writing/service.py` in the previous codebase reached 1200+ lines
 with 8 different responsibilities. It contained the worst violations of
 every other rule precisely because it was too large to review carefully.
+
+Additionally: AI coding agents waste significant reasoning tokens on
+"how do I save 5 lines" instead of simply extracting a focused module.
+This rule makes the correct path unambiguous: modularize, don't compress.
 
 ---
 

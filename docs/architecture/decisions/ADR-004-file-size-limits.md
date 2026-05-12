@@ -40,7 +40,15 @@ Warnings in IDE, not build failures.
 
 ### Option C — No limits, rely on code review
 **Rejected:** Code review catches logical errors; size creep is invisible until
-  it's too late. No reviewer says "this PR is fine except the file is now 310 lines."
+it's too late. No reviewer says "this PR is fine except the file is now 310 lines."
+
+### Option D — Compress to fit (anti-pattern, explicitly rejected)
+Shorten variable names, collapse multi-line expressions, remove blank lines
+to squeeze under the limit without splitting into new files.
+**Rejected:** This produces code that is technically compliant but actively worse —
+harder to read, harder to maintain, and guaranteed to exceed the limit on the next
+change. The limit exists to force modularization, not to encourage code golf.
+AI agents are especially prone to this misinterpretation.
 
 ## Decision
 
