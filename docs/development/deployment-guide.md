@@ -25,6 +25,19 @@ just dev-down
 just dev-logs
 ```
 
+### Dev Servers
+
+```bash
+# Start API + frontend (hot reload)
+just dev
+
+# Stop: Ctrl+C sends SIGINT to both processes cleanly
+```
+
+`just dev` starts both the API (port 8000) and the frontend (port 3000)
+in the background. Press **Ctrl+C** to stop — the trap handler ensures
+both processes are terminated cleanly.
+
 ### Dev Container
 
 The `.devcontainer/` configuration provides:
