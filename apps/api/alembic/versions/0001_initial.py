@@ -32,7 +32,7 @@ def upgrade() -> None:
         "users",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("email", sa.String(320), nullable=False),
-        sa.Column("hashed_password", sa.String(72), nullable=False),
+        sa.Column("hashed_password", sa.String(255), nullable=False),
         sa.Column("display_name", sa.String(100), nullable=False, server_default=""),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column("is_verified", sa.Boolean(), nullable=False, server_default="false"),
