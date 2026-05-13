@@ -78,14 +78,13 @@ generate-secret:
 # Development servers
 # ---------------------------------------------------------------------------
 
-# Start all services (API + frontend + worker)
+# Start all services (API + frontend)
 dev:
     @echo "Starting all services..."
     just _ensure-services
-    @trap 'kill %1 %2 %3 2>/dev/null' INT; \
+    @trap 'kill %1 %2 2>/dev/null' INT; \
     just dev-api & \
     just dev-frontend & \
-    just dev-worker & \
     wait
 
 # Start API server only (port 8000)
@@ -102,9 +101,9 @@ dev-frontend:
     [ ! -f packages/web/.env.local ] && cp packages/web/.env.local.example packages/web/.env.local
     cd packages/web && pnpm dev
 
-# Start TaskIQ worker only
+# Start TaskIQ worker only (requires broker module — Phase 5+)
 dev-worker:
-    cd apps/api && uv run taskiq worker narrare.core.tasks.broker:broker \
+    cd apps/api && uv run taskiq worker narrare.tasks.broker:broker \
         --fs-discover \
         --log-level DEBUG
 
