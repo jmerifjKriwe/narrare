@@ -31,13 +31,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Minimal loading state — wordmark only, no spinner
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <span
-          className="text-xl font-bold tracking-wide text-[var(--color-text-tertiary)]"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Narrare
-        </span>
+      <div className="flex h-screen items-center justify-center bg-[var(--color-bg-primary)]">
+        <div className="text-center">
+          <span
+            className="text-2xl font-bold text-[var(--color-text-tertiary)]/60"
+            style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
+          >
+            Narrare
+          </span>
+        </div>
         <span className="sr-only">{t("loading")}</span>
       </div>
     );
@@ -47,15 +49,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6">
+      <header className="h-14 shrink-0 flex items-center justify-between px-8 bg-[var(--color-surface)] border-b border-[var(--color-border)] relative">
+        {/* Subtle gradient accent line at bottom of header */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-[1px]"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, var(--color-accent-muted), transparent)",
+          }}
+        />
+
         <Link
           href="/dashboard"
-          className="text-xl font-bold tracking-wide text-[var(--color-text-primary)] no-underline transition-colors hover:text-[var(--color-accent)]"
-          style={{ fontFamily: "var(--font-display)" }}
+          className="text-[1.375rem] font-bold text-[var(--color-text-primary)] no-underline hover:text-[var(--color-accent)] transition-colors duration-300"
+          style={{ fontFamily: "var(--font-display)", letterSpacing: "0.04em" }}
         >
           Narrare
         </Link>
-        <span className="text-sm text-[var(--color-text-tertiary)]">{displayName}</span>
+
+        <div className="flex items-center gap-3">
+          <span className="text-[0.8125rem] text-[var(--color-text-tertiary)]">{displayName}</span>
+        </div>
       </header>
       <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
     </div>

@@ -105,10 +105,19 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
           />
         )}
 
-        {/* Main writing surface — "desk" with centered paper */}
-        <main className="flex-1 overflow-y-auto bg-[var(--color-bg-secondary)]">
-          <div className="flex justify-center">
-            <div className="w-full max-w-[820px] bg-[var(--color-surface)] min-h-full shadow-[var(--shadow-sm)]">
+        {/* Main writing surface — convincing paper on desk */}
+        <main
+          className="flex-1 overflow-y-auto"
+          style={{ background: "linear-gradient(180deg, #EDE9E1 0%, #E8E3DA 100%)" }}
+        >
+          <div className="flex justify-center py-6 px-4">
+            <div
+              className="w-full max-w-[780px] min-h-[calc(100vh-160px)] bg-[#FDFCFA] rounded-sm"
+              style={{
+                boxShadow:
+                  "inset 0 0 0 1px rgba(0,0,0,0.03), 0 1px 3px rgba(44,40,37,0.06), 0 8px 24px rgba(44,40,37,0.08), 0 24px 48px rgba(44,40,37,0.04)",
+              }}
+            >
               <EditorSurface
                 novelId={novelId}
                 chapter={activeChapter ?? null}

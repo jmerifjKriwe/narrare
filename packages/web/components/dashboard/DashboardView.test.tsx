@@ -15,6 +15,7 @@ vi.mock("next-intl", () => ({
         title: "Your novels",
         newNovel: "New novel",
         noNovels: "No novels yet.",
+        noNovelsQuote: "Every story begins with the first sentence.",
         noNovelsHint: "Create your first novel to get started.",
         lastEdited: "Last edited {time}",
         demo: "Demo",
@@ -134,14 +135,16 @@ describe("DashboardView", () => {
     });
   });
 
-  it("should render New Novel button in header", () => {
+  it("should render New Novel button in header", async () => {
     render(<DashboardView />, { wrapper });
 
-    // Header button shows "+ New novel"
-    const newButtons = screen
-      .getAllByRole("button")
-      .filter((btn) => btn.textContent?.includes("New novel"));
-    expect(newButtons.length).toBeGreaterThanOrEqual(1);
+    // Wait for novels to load, then the "+" card appears in the grid
+    await waitFor(() => {
+      const newButtons = screen
+        .getAllByRole("button")
+        .filter((btn) => btn.textContent?.includes("New novel"));
+      expect(newButtons.length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it("should render New Novel button in empty state", async () => {

@@ -335,9 +335,9 @@ body::after {
   color: var(--color-text-primary);
   max-width: var(--editor-max-width);
   margin: 0 auto;
-  padding: var(--space-16) var(--space-8);
+  padding: var(--space-16) var(--space-6);
   outline: none;
-  min-height: calc(100vh - 200px);
+  min-height: 60vh;
 }
 
 .narrare-editor .ProseMirror p {

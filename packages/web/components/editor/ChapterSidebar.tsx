@@ -153,22 +153,26 @@ function SortableChapterItem({ chapter, isActive, onSelect }: SortableChapterIte
       <button
         type="button"
         className={cn(
-          "flex-1 flex flex-col items-start py-2 px-3 border-none bg-transparent cursor-pointer rounded-[var(--radius-md)] text-left min-w-0 hover:bg-[var(--color-bg-secondary)]",
-          isActive && "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+          "flex-1 flex flex-col items-start py-2.5 px-3 border-none bg-transparent cursor-pointer rounded-lg text-left min-w-0 transition-all duration-200 relative",
+          "hover:bg-[var(--color-bg-secondary)]",
+          isActive && "bg-[var(--color-accent-light)]/60",
         )}
         onClick={() => onSelect(chapter.id)}
         aria-current={isActive ? "true" : undefined}
       >
+        {isActive && (
+          <div className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-[var(--color-accent)]" />
+        )}
         <span
           className={cn(
-            "text-sm font-medium text-[var(--color-text-primary)] overflow-hidden text-ellipsis whitespace-nowrap w-full",
+            "text-[0.8125rem] font-medium text-[var(--color-text-primary)] overflow-hidden text-ellipsis whitespace-nowrap w-full pl-2",
             isActive && "font-semibold",
           )}
           style={isActive ? { fontFamily: "var(--font-display)" } : undefined}
         >
           {chapter.title || t("untitled")}
         </span>
-        <span className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
+        <span className="text-[0.6875rem] text-[var(--color-text-tertiary)] mt-0.5 pl-2 font-[family-name:var(--font-mono)]">
           {chapter.word_count > 0
             ? t("wordCount", { count: chapter.word_count.toLocaleString() })
             : ""}

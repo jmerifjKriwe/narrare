@@ -75,7 +75,7 @@ describe("Button", () => {
     expect(screen.getByRole("button").className).toContain("px-3");
 
     rerender(<Button size="lg">Large</Button>);
-    expect(screen.getByRole("button").className).toContain("px-6");
+    expect(screen.getByRole("button").className).toContain("px-7");
   });
 
   it("should apply default variant as primary", () => {

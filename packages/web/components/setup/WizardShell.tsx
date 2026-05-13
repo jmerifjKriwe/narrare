@@ -31,50 +31,73 @@ export function WizardShell() {
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-start justify-center p-8 px-4">
-      <div className="w-full max-w-[640px]">
-        {/* Header with wordmark */}
-        <div className="text-center mb-10">
+    <div
+      className="min-h-screen flex items-center justify-center relative overflow-hidden"
+      style={{ background: "linear-gradient(160deg, #FAF8F3 0%, #F3EDE3 40%, #EDE4D8 100%)" }}
+    >
+      {/* Decorative background */}
+      <div
+        className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-[0.05] pointer-events-none"
+        style={{ background: "radial-gradient(circle, #B8621B, transparent 70%)" }}
+      />
+
+      <div className="relative z-10 w-full max-w-[640px] px-6">
+        {/* Header — dramatic wordmark */}
+        <div className="text-center mb-12">
+          <div className="text-[var(--color-accent-muted)] text-xs tracking-[0.3em] mb-4">✦</div>
           <h1
-            className="text-3xl font-bold tracking-[0.12em] text-[var(--color-text-primary)]"
+            className="text-4xl font-bold tracking-[0.08em] text-[var(--color-text-primary)] leading-none"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Narrare
           </h1>
-          <p className="text-[var(--color-text-tertiary)] mt-2 text-[0.9375rem]">{t("title")}</p>
+          <p
+            className="text-[var(--color-text-tertiary)] mt-4 text-[0.9375rem]"
+            style={{ fontFamily: "var(--font-serif)", fontStyle: "italic" }}
+          >
+            {t("title")}
+          </p>
         </div>
 
-        {/* Progress line */}
-        <div className="flex items-center gap-3 justify-center mb-8">
-          {steps.map((step, i) => (
-            <div key={step.label} className="flex items-center gap-3">
-              {i > 0 && (
+        {/* Progress — elegant connected line */}
+        <div className="flex items-center justify-center mb-10">
+          <div className="flex items-center">
+            {steps.map((step, i) => (
+              <div key={step.label} className="flex items-center">
+                {i > 0 && (
+                  <div
+                    className={cn(
+                      "w-10 h-[2px] rounded-full transition-all duration-500",
+                      i < currentStep ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]",
+                    )}
+                  />
+                )}
                 <div
                   className={cn(
-                    "w-8 h-[2px] rounded-full transition-colors duration-300",
-                    i + 1 <= currentStep ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]",
+                    "w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-500 border-2",
+                    i + 1 === currentStep
+                      ? "bg-[var(--color-accent)] text-white border-[var(--color-accent)]"
+                      : i + 1 < currentStep
+                        ? "bg-[var(--color-accent)] text-white border-[var(--color-accent)]"
+                        : "bg-transparent text-[var(--color-text-tertiary)] border-[var(--color-border)]",
                   )}
-                />
-              )}
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300",
-                  i + 1 === currentStep
-                    ? "bg-[var(--color-accent)] text-white scale-110"
-                    : i + 1 < currentStep
-                      ? "bg-[var(--color-accent)] text-white"
-                      : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
-                )}
-                aria-current={i + 1 === currentStep ? "step" : undefined}
-              >
-                {i + 1 < currentStep ? "✓" : step.label}
+                  aria-current={i + 1 === currentStep ? "step" : undefined}
+                >
+                  {i + 1 < currentStep ? "✓" : step.label}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        {/* Step content */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-10 shadow-[var(--shadow-md)]">
+        {/* Step content card */}
+        <div
+          className="bg-[var(--color-surface)]/90 backdrop-blur-sm rounded-2xl p-10 border border-[var(--color-border)]/60"
+          style={{
+            boxShadow:
+              "0 4px 6px rgba(44,40,37,0.04), 0 12px 24px rgba(44,40,37,0.08), 0 32px 64px rgba(44,40,37,0.06)",
+          }}
+        >
           {currentStep === 1 && <WizardStep1 onNext={nextStep} />}
           {currentStep === 2 && <WizardStep2 onNext={nextStep} onBack={prevStep} />}
           {currentStep === 3 && <WizardStep3 onNext={nextStep} onBack={prevStep} />}
