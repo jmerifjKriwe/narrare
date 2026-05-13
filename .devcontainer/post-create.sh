@@ -26,6 +26,16 @@ if [ ! -f .env ]; then
   echo "  ⚠️  Edit .env and add your API keys before starting the API."
 fi
 
+# --- Adjust hostnames for dev container network ---
+# Inside the dev container, services are reachable via docker service names
+# (postgres, redis) not localhost. Detect by checking if docker CLI is absent.
+if ! command -v docker >/dev/null 2>&1; then
+  echo "🔧 Adjusting .env for dev container network..."
+  sed -i 's|://narrare@localhost:5432|://narrare@postgres:5432|g' .env
+  sed -i 's|://narrare@localhost:5433|://narrare@postgres_test:5432|g' .env
+  sed -i 's|redis://localhost:6379|redis://redis:6379|g' .env
+fi
+
 # --- Frontend dependencies ---
 if [ -f packages/web/package.json ]; then
   echo "📦 Installing frontend dependencies..."

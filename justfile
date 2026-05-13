@@ -10,6 +10,50 @@ default:
     @just --list
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+# Check if docker is available (skip in dev container where services already run)
+[private]
+_ensure-services:
+    @if command -v docker >/dev/null 2>&1; then \
+        docker compose -f docker-compose.dev.yml up -d --wait 2>/dev/null; \
+    else \
+        echo "ℹ️  Docker not available — assuming services already running (dev container?)"; \
+    fi
+
+# Stop Docker services (no-op if docker unavailable)
+[private]
+_stop-services:
+    @if command -v docker >/dev/null 2>&1; then \
+        docker compose -f docker-compose.dev.yml down; \
+    else \
+        echo "ℹ️  Docker not available — nothing to stop"; \
+    fi
+
+# Run SQL via psql directly (dev container) or docker compose exec (host)
+[private]
+_psql-sql db sql *args:
+    @if command -v psql >/dev/null 2>&1; then \
+        psql -U narrare -d {{db}} -c "{{sql}}"; \
+    elif command -v docker >/dev/null 2>&1; then \
+        docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d {{db}} -c "{{sql}}"; \
+    else \
+        echo "❌ Neither psql nor docker available — cannot run SQL"; exit 1; \
+    fi
+
+# Open psql shell via psql directly (dev container) or docker compose exec (host)
+[private]
+_psql-shell db *args:
+    @if command -v psql >/dev/null 2>&1; then \
+        psql -U narrare -d {{db}}; \
+    elif command -v docker >/dev/null 2>&1; then \
+        docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d {{db}}; \
+    else \
+        echo "❌ Neither psql nor docker available — cannot open shell"; exit 1; \
+    fi
+
+# ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
 
@@ -21,7 +65,7 @@ dev-setup:
     pre-commit install --install-hooks
     @if [ -f packages/web/package.json ]; then cd packages/web && pnpm install; fi
     @echo "⏳ Starting services..."
-    docker compose -f docker-compose.dev.yml up -d --wait
+    just _ensure-services
     just db-migrate
     uv run python scripts/seed_dev_user.py
     @echo "✅ Ready! Run 'just dev' to start."
@@ -37,7 +81,7 @@ generate-secret:
 # Start all services (API + frontend + worker)
 dev:
     @echo "Starting all services..."
-    docker compose -f docker-compose.dev.yml up -d --wait
+    just _ensure-services
     @trap 'kill %1 %2 %3 2>/dev/null' INT; \
     just dev-api & \
     just dev-frontend & \
@@ -66,11 +110,11 @@ dev-worker:
 
 # Start Docker services (postgres + redis)
 dev-services:
-    docker compose -f docker-compose.dev.yml up -d --wait
+    just _ensure-services
 
 # Stop Docker services
 dev-services-stop:
-    docker compose -f docker-compose.dev.yml down
+    just _stop-services
 
 # ---------------------------------------------------------------------------
 # Database
@@ -97,15 +141,13 @@ db-history:
 db-reset:
     @echo "⚠️  This will destroy all data in narrare_dev. Press Ctrl+C to cancel."
     @sleep 3
-    docker compose -f docker-compose.dev.yml exec postgres \
-        psql -U narrare -c "DROP DATABASE IF EXISTS narrare_dev; CREATE DATABASE narrare_dev;"
+    just _psql-sql narrare_dev "DROP DATABASE IF EXISTS narrare_dev; CREATE DATABASE narrare_dev;"
     just db-migrate
     uv run python scripts/seed_dev_user.py
 
 # Open psql shell
 db-shell:
-    docker compose -f docker-compose.dev.yml exec postgres \
-        psql -U narrare -d narrare_dev
+    just _psql-shell narrare_dev
 
 # ---------------------------------------------------------------------------
 # Testing
@@ -125,7 +167,7 @@ test-single file="tests/":
 
 # Run integration tests (requires Docker services)
 test-integration:
-    docker compose -f docker-compose.dev.yml up -d --wait
+    just _ensure-services
     uv run pytest tests/integration/ -v
 
 # Run with coverage report
@@ -238,7 +280,11 @@ clean:
 
 # Tail all service logs
 logs:
-    docker compose -f docker-compose.dev.yml logs -f
+    @if command -v docker >/dev/null 2>&1; then \
+        docker compose -f docker-compose.dev.yml logs -f; \
+    else \
+        echo "ℹ️  Docker not available — cannot tail service logs (dev container?)"; \
+    fi
 
 # Open Python REPL with app context
 shell:
