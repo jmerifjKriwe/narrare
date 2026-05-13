@@ -43,4 +43,4 @@
 
 ## 7. Commit
 
-- [ ] 7.1 Stage all changed files and create conventional commit: `refactor(i18n): consolidate translations into packages/i18n with namespace structure and completeness validation`
+- [x] 7.1 Stage all changed files and create conventional commit: `refactor(i18n): consolidate translations into packages/i18n with namespace structure and completeness validation`
