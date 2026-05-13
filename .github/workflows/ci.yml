@@ -331,6 +331,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
+      TEST_DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
       REDIS_URL: redis://localhost:6379/0
       ENVIRONMENT: test
       SECRET_KEY: test-secret-key-not-for-production
@@ -375,21 +376,39 @@ jobs:
       - name: Start API server
         run: |
           cd apps/api && uv run uvicorn narrare._app.main:app \
-            --host 0.0.0.0 --port 8000 &
+            --host 0.0.0.0 --port 8000 > /tmp/api-server.log 2>&1 &
           echo "Waiting for API server..."
           for i in $(seq 1 30); do
-            curl -sf http://localhost:8000/health && break
+            if curl -sf http://localhost:8000/health; then
+              echo "API server is ready"
+              break
+            fi
             sleep 1
           done
+          # Verify the server actually started
+          if ! curl -sf http://localhost:8000/health > /dev/null; then
+            echo "ERROR: API server failed to start. Logs:"
+            cat /tmp/api-server.log || true
+            exit 1
+          fi
 
       - name: Start frontend server
         run: |
-          cd packages/web && pnpm start &
+          cd packages/web && pnpm start > /tmp/frontend-server.log 2>&1 &
           echo "Waiting for frontend server..."
           for i in $(seq 1 30); do
-            curl -sf http://localhost:3000 && break
+            if curl -sf http://localhost:3000 > /dev/null; then
+              echo "Frontend server is ready"
+              break
+            fi
             sleep 1
           done
+          # Verify the server actually started
+          if ! curl -sf http://localhost:3000 > /dev/null; then
+            echo "ERROR: Frontend server failed to start. Logs:"
+            cat /tmp/frontend-server.log || true
+            exit 1
+          fi
 
       - name: Run E2E tests
         run: uv run pytest tests/e2e/ -v -m e2e --timeout=60
@@ -397,3 +416,12 @@ jobs:
           E2E_BASE_URL: http://localhost:3000
           E2E_API_URL: http://localhost:8000
           CI: "true"
+
+      - name: Collect server logs on failure
+        if: failure()
+        run: |
+          echo "=== API Server Logs ==="
+          cat /tmp/api-server.log || echo "No API logs found"
+          echo ""
+          echo "=== Frontend Server Logs ==="
+          cat /tmp/frontend-server.log || echo "No frontend logs found"
