@@ -48,9 +48,9 @@ repos:
       # Biome lint + format — catches code issues and enforces style
       - id: biome-frontend
         name: Biome (Frontend)
-        entry: bash -c 'cd packages/web && npx biome check --write components/ app/ lib/'
+        entry: bash -c 'cd packages/web && npx biome check --write .'
         language: system
-        types: [tsx]
+        types_or: [ts, tsx]
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
