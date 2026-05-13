@@ -78,11 +78,13 @@ export function WizardStep2({ onNext, onBack }: { onNext: () => void; onBack: ()
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-semibold mb-1">{t("title")}</h2>
+        <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          {t("title")}
+        </h2>
         <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
         <Input
           {...register("title")}
           label={t("novelTitle")}
@@ -104,7 +106,7 @@ export function WizardStep2({ onNext, onBack }: { onNext: () => void; onBack: ()
         />
         <Select {...register("tone")} label={t("tone")} options={toneOptions} />
 
-        <div className="flex justify-end gap-3 mt-2">
+        <div className="flex justify-end gap-3 mt-4">
           <Button type="button" variant="secondary" onClick={onBack}>
             ← {tCommon("back")}
           </Button>

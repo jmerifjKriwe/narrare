@@ -26,7 +26,7 @@ function StarterCard({ title, description, meta, selected, onSelect }: StarterCa
       type="button"
       onClick={onSelect}
       className={cn(
-        "text-left p-4 border-2 border-[var(--color-border)] rounded-[var(--radius-lg)] bg-[var(--color-surface)]",
+        "text-left p-4 border-2 border-[var(--color-border)] rounded-lg bg-[var(--color-surface)]",
         "cursor-pointer transition-[border-color,background] duration-150 w-full",
         "hover:border-[var(--color-accent-muted)]",
         selected && "border-[var(--color-accent)] bg-[var(--color-accent-light)]",
@@ -93,7 +93,9 @@ export function WizardStep3({ onNext, onBack }: { onNext: () => void; onBack: ()
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-semibold mb-1">{t("title")}</h2>
+        <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          {t("title")}
+        </h2>
         <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
       </div>
 
@@ -141,12 +143,12 @@ export function WizardStep3({ onNext, onBack }: { onNext: () => void; onBack: ()
       )}
 
       {error && (
-        <p className="bg-[var(--color-error-light)] text-[var(--color-error)] rounded-[var(--radius-md)] p-3 text-sm">
+        <p className="bg-[var(--color-error-light)] text-[var(--color-error)] rounded-lg p-3 text-sm">
           {error}
         </p>
       )}
 
-      <div className="flex justify-end gap-3 mt-2">
+      <div className="flex justify-end gap-3 mt-4">
         <Button type="button" variant="secondary" onClick={onBack}>
           ← {tCommon("back")}
         </Button>

@@ -129,7 +129,7 @@ describe("DashboardView", () => {
     render(<DashboardView />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByText("No novels yet.")).toBeInTheDocument();
+      expect(screen.getByText(/Every story begins with the first sentence/)).toBeInTheDocument();
       expect(screen.getByText("Create your first novel to get started.")).toBeInTheDocument();
     });
   });
@@ -150,7 +150,7 @@ describe("DashboardView", () => {
     render(<DashboardView />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByText("No novels yet.")).toBeInTheDocument();
+      expect(screen.getByText(/Every story begins with the first sentence/)).toBeInTheDocument();
     });
 
     // There should be new novel buttons (header + empty state)
@@ -160,32 +160,35 @@ describe("DashboardView", () => {
     expect(newButtons.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("should navigate to editor after creating a new novel", async () => {
+  it("should show new novel after creating one", async () => {
     const user = userEvent.setup();
 
+    const newNovel = {
+      id: "new-novel-id",
+      title: "Untitled Novel",
+      author: "",
+      genre: "",
+      language: "en",
+      is_demo: false,
+      created_at: "2026-03-01T00:00:00Z",
+      updated_at: "2026-03-01T00:00:00Z",
+    };
+
+    let created = false;
     server.use(
-      http.get("*/api/v1/novels", () => HttpResponse.json([])),
-      http.post("*/api/v1/novels", async () =>
-        HttpResponse.json(
-          {
-            id: "new-novel-id",
-            title: "Untitled Novel",
-            author: "",
-            genre: "",
-            language: "en",
-            is_demo: false,
-            created_at: "2026-03-01T00:00:00Z",
-            updated_at: "2026-03-01T00:00:00Z",
-          },
-          { status: 201 },
-        ),
-      ),
+      http.get("*/api/v1/novels", () => {
+        return HttpResponse.json(created ? [newNovel] : []);
+      }),
+      http.post("*/api/v1/novels", async () => {
+        created = true;
+        return HttpResponse.json(newNovel, { status: 201 });
+      }),
     );
 
     render(<DashboardView />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByText("No novels yet.")).toBeInTheDocument();
+      expect(screen.getByText(/Every story begins with the first sentence/)).toBeInTheDocument();
     });
 
     const createButton = screen
@@ -195,7 +198,7 @@ describe("DashboardView", () => {
     await user.click(createButton!);
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/novel/new-novel-id/editor");
+      expect(screen.getByText("Untitled Novel")).toBeInTheDocument();
     });
   });
 });

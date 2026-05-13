@@ -132,21 +132,21 @@ describe("WizardShell", () => {
   it("should render step indicator with 5 steps", () => {
     render(<WizardShell />);
 
-    const stepLabels = ["Your project", "Your novel", "Starter content", "AI provider", "Confirm"];
-    for (const label of stepLabels) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+    const stepNumbers = ["1", "2", "3", "4", "5"];
+    for (const num of stepNumbers) {
+      expect(screen.getByText(num)).toBeInTheDocument();
     }
   });
 
   it("should show current step indicator (aria-current=step)", () => {
     render(<WizardShell />);
 
-    // Step 1 is active by default
-    const step1 = screen.getByText("Your project").closest("li");
+    // Step 1 is active by default — the div containing "1" has aria-current
+    const step1 = screen.getByText("1");
     expect(step1).toHaveAttribute("aria-current", "step");
 
     // Other steps should not have aria-current
-    const step2 = screen.getByText("Your novel").closest("li");
+    const step2 = screen.getByText("2");
     expect(step2).not.toHaveAttribute("aria-current");
   });
 
@@ -200,14 +200,14 @@ describe("WizardShell", () => {
     render(<WizardShell />);
 
     // Initially step 1 is current
-    expect(screen.getByText("Your project").closest("li")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText("1")).toHaveAttribute("aria-current", "step");
 
     // Advance to step 2
     await user.click(screen.getByText("Next Step"));
 
-    // Now step 2 should be current
-    expect(screen.getByText("Your novel").closest("li")).toHaveAttribute("aria-current", "step");
-    expect(screen.getByText("Your project").closest("li")).not.toHaveAttribute("aria-current");
+    // Now step 2 should be current, step 1 shows checkmark
+    expect(screen.getByText("2")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText("\u2713")).not.toHaveAttribute("aria-current");
   });
 
   it("should show Step 5 content on the last step", async () => {

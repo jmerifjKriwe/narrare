@@ -60,13 +60,13 @@ describe("Button", () => {
   it("should render with different variant classes", () => {
     const { rerender } = render(<Button variant="secondary">Secondary</Button>);
 
-    expect(screen.getByRole("button").className).toContain("bg-secondary");
+    expect(screen.getByRole("button").className).toContain("bg-[var(--color-surface)]");
 
     rerender(<Button variant="danger">Danger</Button>);
-    expect(screen.getByRole("button").className).toContain("bg-destructive");
+    expect(screen.getByRole("button").className).toContain("bg-[var(--color-error)]");
 
     rerender(<Button variant="ghost">Ghost</Button>);
-    expect(screen.getByRole("button").className).toContain("hover:bg-muted");
+    expect(screen.getByRole("button").className).toContain("hover:bg-[var(--color-accent-light)]");
   });
 
   it("should render with different size classes", () => {
@@ -81,6 +81,6 @@ describe("Button", () => {
   it("should apply default variant as primary", () => {
     render(<Button>Default</Button>);
 
-    expect(screen.getByRole("button").className).toContain("bg-primary");
+    expect(screen.getByRole("button").className).toContain("bg-[var(--color-accent)]");
   });
 });

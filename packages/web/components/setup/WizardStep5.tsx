@@ -56,12 +56,14 @@ export function WizardStep5({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-semibold mb-1">{t("title")}</h2>
+        <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          {t("title")}
+        </h2>
         <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="bg-[var(--color-surface-raised)] rounded-[var(--radius-lg)] p-4">
+      <div className="flex flex-col gap-5">
+        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
             {t("project")}
           </h3>
@@ -73,7 +75,7 @@ export function WizardStep5({
           />
         </div>
 
-        <div className="bg-[var(--color-surface-raised)] rounded-[var(--radius-lg)] p-4">
+        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
             {t("novel")}
           </h3>
@@ -87,14 +89,14 @@ export function WizardStep5({
           <SummaryRow label="Tone" value={tTone(state.tone as StoryTone)} />
         </div>
 
-        <div className="bg-[var(--color-surface-raised)] rounded-[var(--radius-lg)] p-4">
+        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
             {t("starter")}
           </h3>
           <SummaryRow label="Content" value={starterLabel[state.starter] || state.starter} />
         </div>
 
-        <div className="bg-[var(--color-surface-raised)] rounded-[var(--radius-lg)] p-4">
+        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
             {t("provider")}
           </h3>
@@ -109,7 +111,7 @@ export function WizardStep5({
         </p>
       )}
 
-      <div className="flex justify-end gap-3 mt-2">
+      <div className="flex justify-end gap-3 mt-4">
         <Button type="button" variant="secondary" onClick={onBack} disabled={isCreating}>
           ← {tCommon("back")}
         </Button>

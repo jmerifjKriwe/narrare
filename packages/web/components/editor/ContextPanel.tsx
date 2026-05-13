@@ -29,7 +29,7 @@ export function ContextPanel() {
 
       <div className="flex-1 overflow-y-auto p-4">
         {/* AI feature sections will appear here */}
-        <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8 px-4">
+        <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8 px-4 italic">
           {t("contextPanelEmpty")}
         </p>
       </div>

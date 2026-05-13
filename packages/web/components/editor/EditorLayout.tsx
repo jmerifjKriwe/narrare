@@ -105,14 +105,18 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
           />
         )}
 
-        {/* Main writing surface */}
-        <main className="flex-1 overflow-y-auto bg-[var(--color-bg-primary)]">
-          <EditorSurface
-            novelId={novelId}
-            chapter={activeChapter ?? null}
-            autosaveInterval={autosaveInterval}
-            onWordCountUpdate={handleWordCountUpdate}
-          />
+        {/* Main writing surface — "desk" with centered paper */}
+        <main className="flex-1 overflow-y-auto bg-[var(--color-bg-secondary)]">
+          <div className="flex justify-center">
+            <div className="w-full max-w-[820px] bg-[var(--color-surface)] min-h-full shadow-[var(--shadow-sm)]">
+              <EditorSurface
+                novelId={novelId}
+                chapter={activeChapter ?? null}
+                autosaveInterval={autosaveInterval}
+                onWordCountUpdate={handleWordCountUpdate}
+              />
+            </div>
+          </div>
         </main>
 
         {/* Right context panel (empty slot at MVP) */}

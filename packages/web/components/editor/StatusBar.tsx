@@ -11,7 +11,7 @@ interface StatusBarProps {
 
 const SAVE_STATUS_COLORS: Record<string, string> = {
   idle: "text-transparent",
-  saving: "text-[var(--color-text-secondary)]",
+  saving: "text-[var(--color-accent)]",
   saved: "text-[var(--color-success)]",
   error: "text-[var(--color-error)]",
 };
@@ -27,7 +27,7 @@ export function StatusBar({ chapter }: StatusBarProps) {
 
   return (
     <div
-      className="h-7 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between px-4 shrink-0"
+      className="h-8 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between px-4 shrink-0"
       role="status"
       aria-live="polite"
     >

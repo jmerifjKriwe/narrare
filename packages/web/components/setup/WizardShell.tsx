@@ -31,38 +31,50 @@ export function WizardShell() {
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-secondary)] flex items-start justify-center p-8 px-4">
+    <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-start justify-center p-8 px-4">
       <div className="w-full max-w-[640px]">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-center mb-6 tracking-tight">{t("title")}</h1>
-          <ul className="flex gap-2 justify-center flex-wrap" aria-label="Progress">
-            {steps.map((step, i) => (
-              <li
-                key={step.label}
+        {/* Header with wordmark */}
+        <div className="text-center mb-10">
+          <h1
+            className="text-3xl font-bold tracking-[0.12em] text-[var(--color-text-primary)]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Narrare
+          </h1>
+          <p className="text-[var(--color-text-tertiary)] mt-2 text-[0.9375rem]">{t("title")}</p>
+        </div>
+
+        {/* Progress line */}
+        <div className="flex items-center gap-3 justify-center mb-8">
+          {steps.map((step, i) => (
+            <div key={step.label} className="flex items-center gap-3">
+              {i > 0 && (
+                <div
+                  className={cn(
+                    "w-8 h-[2px] rounded-full transition-colors duration-300",
+                    i + 1 <= currentStep ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]",
+                  )}
+                />
+              )}
+              <div
                 className={cn(
-                  "flex items-center gap-2 text-[0.8125rem]",
+                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300",
                   i + 1 === currentStep
-                    ? "[&_.wizard-step-dot]:bg-[var(--color-accent)] [&_.wizard-step-dot]:text-white [&_.wizard-step-label]:text-[var(--color-text-primary)]"
+                    ? "bg-[var(--color-accent)] text-white scale-110"
                     : i + 1 < currentStep
-                      ? "[&_.wizard-step-dot]:bg-[var(--color-success)] [&_.wizard-step-dot]:text-white"
-                      : "[&_.wizard-step-dot]:bg-[var(--color-bg-tertiary)] [&_.wizard-step-dot]:text-[var(--color-text-tertiary)]",
+                      ? "bg-[var(--color-accent)] text-white"
+                      : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
                 )}
                 aria-current={i + 1 === currentStep ? "step" : undefined}
               >
-                <span className="wizard-step-dot w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs shrink-0">
-                  {i + 1 < currentStep ? "✓" : step.label}
-                </span>
-                <span className="wizard-step-label text-[var(--color-text-secondary)] font-medium">
-                  {step.title}
-                </span>
-              </li>
-            ))}
-          </ul>
+                {i + 1 < currentStep ? "✓" : step.label}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Step content */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-xl)] p-8 shadow-[var(--shadow-md)]">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-10 shadow-[var(--shadow-md)]">
           {currentStep === 1 && <WizardStep1 onNext={nextStep} />}
           {currentStep === 2 && <WizardStep2 onNext={nextStep} onBack={prevStep} />}
           {currentStep === 3 && <WizardStep3 onNext={nextStep} onBack={prevStep} />}

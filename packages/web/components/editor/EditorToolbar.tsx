@@ -40,7 +40,7 @@ export function EditorToolbar({
 
   return (
     <div
-      className="h-11 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center px-3 gap-2 shrink-0"
+      className="h-11 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center px-4 gap-2 shrink-0"
       role="toolbar"
       aria-label="Editor toolbar"
     >

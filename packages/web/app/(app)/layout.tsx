@@ -32,7 +32,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <span className="text-xl font-bold tracking-tight text-muted-foreground [font-family:var(--font-serif)]">
+        <span
+          className="text-xl font-bold tracking-wide text-[var(--color-text-tertiary)]"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
           Narrare
         </span>
         <span className="sr-only">{t("loading")}</span>
@@ -44,14 +47,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6">
         <Link
           href="/dashboard"
-          className="text-lg font-bold tracking-tight text-foreground no-underline transition-colors hover:text-foreground/80 [font-family:var(--font-serif)]"
+          className="text-xl font-bold tracking-wide text-[var(--color-text-primary)] no-underline transition-colors hover:text-[var(--color-accent)]"
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Narrare
         </Link>
-        <span className="text-sm text-muted-foreground">{displayName}</span>
+        <span className="text-sm text-[var(--color-text-tertiary)]">{displayName}</span>
       </header>
       <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
     </div>

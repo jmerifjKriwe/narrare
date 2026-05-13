@@ -75,7 +75,7 @@ export function ChapterSidebar({
   return (
     <aside className="w-[var(--sidebar-width)] border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col shrink-0 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] shrink-0">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
+        <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-[var(--color-text-tertiary)]">
           {t("sidebar")}
         </span>
         <button
@@ -159,7 +159,13 @@ function SortableChapterItem({ chapter, isActive, onSelect }: SortableChapterIte
         onClick={() => onSelect(chapter.id)}
         aria-current={isActive ? "true" : undefined}
       >
-        <span className="text-sm font-medium text-[var(--color-text-primary)] overflow-hidden text-ellipsis whitespace-nowrap w-full">
+        <span
+          className={cn(
+            "text-sm font-medium text-[var(--color-text-primary)] overflow-hidden text-ellipsis whitespace-nowrap w-full",
+            isActive && "font-semibold",
+          )}
+          style={isActive ? { fontFamily: "var(--font-display)" } : undefined}
+        >
           {chapter.title || t("untitled")}
         </span>
         <span className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
