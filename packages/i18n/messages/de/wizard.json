@@ -46,6 +46,7 @@
     "modelLoading": "Modelle werden geladen…",
     "modelPlaceholder": "Modell auswählen",
     "ollamaUrl": "Ollama-URL",
+    "zaiEndpoint": "Endpunkt",
     "validating": "Verbindung wird geprüft…",
     "validationSuccess": "Verbindung bestätigt",
     "validationFailed": "Keine Verbindung möglich. Überprüfe deinen API-Schlüssel."

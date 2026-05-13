@@ -46,6 +46,7 @@
     "modelLoading": "Chargement des modèles…",
     "modelPlaceholder": "Sélectionner un modèle",
     "ollamaUrl": "URL Ollama",
+    "zaiEndpoint": "Point de terminaison",
     "validating": "Vérification de la connexion…",
     "validationSuccess": "Connexion vérifiée",
     "validationFailed": "Impossible de se connecter. Vérifiez votre clé API."

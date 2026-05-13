@@ -27,6 +27,7 @@ interface WizardStoreState {
     api_key: string;
     model: string;
     ollama_url: string;
+    zai_endpoint?: string;
   }) => void;
   reset: () => void;
 }
@@ -47,6 +48,7 @@ const defaultState: WizardState = {
   api_key: "",
   model: "",
   ollama_url: "http://localhost:11434",
+  zai_endpoint: "general",
 };
 
 export const useWizardStore = create<WizardStoreState>((set) => ({

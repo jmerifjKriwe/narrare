@@ -65,6 +65,7 @@ export function EditorSurface({
   }, [autosaveInterval, saveMutation]);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         // Disable heading to use h1/h2/h3 only

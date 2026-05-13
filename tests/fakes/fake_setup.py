@@ -29,7 +29,7 @@ class FakeProviderService:
 
     def __init__(self) -> None:
         self._models_response: AvailableModelsResponse | None = None
-        self._validation_result: bool = True
+        self._validation_error: str | None = None
         self.calls: list[dict[str, Any]] = []
 
     def set_models_response(self, response: AvailableModelsResponse) -> None:
@@ -37,8 +37,12 @@ class FakeProviderService:
         self._models_response = response
 
     def set_validation_result(self, result: bool) -> None:
-        """Configure the result for validate_connection."""
-        self._validation_result = result
+        """Configure the result for validate_connection (legacy bool-based API)."""
+        self._validation_error = None if result else "Connection failed"
+
+    def set_validation_error(self, error: str | None) -> None:
+        """Configure the error message for validate_connection."""
+        self._validation_error = error
 
     async def list_models(
         self, provider: AIProvider, api_key: str, ollama_url: str = ""
@@ -57,8 +61,13 @@ class FakeProviderService:
         return AvailableModelsResponse(provider=provider, models=[])
 
     async def validate_connection(
-        self, provider: AIProvider, api_key: str, model: str, ollama_url: str = ""
-    ) -> bool:
+        self,
+        provider: AIProvider,
+        api_key: str,
+        model: str,
+        ollama_url: str = "",
+        zai_endpoint: str = "general",
+    ) -> str | None:
         self.calls.append(
             {
                 "method": "validate_connection",
@@ -66,9 +75,10 @@ class FakeProviderService:
                 "api_key": api_key,
                 "model": model,
                 "ollama_url": ollama_url,
+                "zai_endpoint": zai_endpoint,
             }
         )
-        return self._validation_result
+        return self._validation_error
 
 
 class FakeDemoLoader:

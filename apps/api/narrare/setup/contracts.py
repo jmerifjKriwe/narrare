@@ -40,8 +40,13 @@ class ProviderServiceProtocol(Protocol):
         self, provider: AIProvider, api_key: str, ollama_url: str
     ) -> AvailableModelsResponse: ...
     async def validate_connection(
-        self, provider: AIProvider, api_key: str, model: str, ollama_url: str
-    ) -> bool: ...
+        self,
+        provider: AIProvider,
+        api_key: str,
+        model: str,
+        ollama_url: str,
+        zai_endpoint: str = "general",
+    ) -> str | None: ...
 
 
 @runtime_checkable

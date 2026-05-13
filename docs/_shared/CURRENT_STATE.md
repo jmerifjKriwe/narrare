@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-12
+Date: 2026-05-13
 Updated by: Orchestrator
-Session summary: Tech Stack Audit complete — 16 changes: argon2, fastapi-limiter, OpenTelemetry, Langfuse, content versioning, event-driven architecture, correlation IDs, provider registry fix, layered error classification, pgBouncer.
+Session summary: Startup bugfix marathon: structlog PrintLogger, TaskIQ worker, dev email .local→.dev, Pydantic ForwardRef in all schemas/routers (TYPE_CHECKING), TipTap SSR hydration, pydantic-ai v1.93 API migration (OpenAIProvider, output_type), Z.AI dual endpoint selector in wizard, provider error pass-through, DashboardView "New Novel" → wizard flow.
 
 ---
 
@@ -121,6 +121,7 @@ Phase 5: Integration & Polish      · not started
 - `volumes/` — CRUD: models → repository → service → router, contracts, schemas
 - `settings/` — models, repository, router, schemas, contracts
 - `setup/` — Setup wizard: router, service, contracts, schemas, provider_service, provider_schemas, demo_loader
+  - Z.AI dual endpoint selector (General vs Coding API) in Step 4
 - `metrics/` — Health/metrics router
 
 **Database:**
@@ -274,6 +275,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Error Classification | Fixed: layered exceptions (pydantic-ai typed → stdlib → string fallback) |
 | Correlation IDs | Enhanced: full UUID + OTel trace context + response headers |
 | pgBouncer | Added to Docker Compose (production profile) |
+| pydantic-ai v1.93 migration | OpenAIProvider wrapper + output_type rename for API compat |
+| Z.AI endpoint selector | Wizard offers General vs Coding API for Z.AI users |
+| Provider error pass-through | Real provider errors surfaced to users, not generic messages |
+| TYPE_CHECKING ForwardRef fix | All schemas + routers: moved runtime types out of TYPE_CHECKING |
+| Dashboard New Novel → Wizard | "New Novel" now launches setup wizard instead of direct creation |
 
 ---
 

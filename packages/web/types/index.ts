@@ -160,6 +160,7 @@ export interface WizardState {
   api_key: string;
   model: string;
   ollama_url: string;
+  zai_endpoint?: string;
 }
 
 // API error shape

@@ -68,19 +68,19 @@ class TestProviderServiceListModels:
 
 
 class TestProviderServiceValidateConnection:
-    async def test_returns_true_on_success(self, service: ProviderService) -> None:
+    async def test_returns_none_on_success(self, service: ProviderService) -> None:
         with patch.object(service, "_test_call", new_callable=AsyncMock, return_value=None):
             result = await service.validate_connection(AIProvider.ANTHROPIC, "sk-test", "claude-3")
 
-        assert result is True
+        assert result is None
 
-    async def test_returns_false_on_failure(self, service: ProviderService) -> None:
+    async def test_returns_error_message_on_failure(self, service: ProviderService) -> None:
         with patch.object(
             service, "_test_call", new_callable=AsyncMock, side_effect=Exception("Auth failed")
         ):
             result = await service.validate_connection(AIProvider.OPENAI, "bad-key", "gpt-4o")
 
-        assert result is False
+        assert result == "Auth failed"
 
     async def test_passes_ollama_url(self, service: ProviderService) -> None:
         with patch.object(
@@ -90,7 +90,7 @@ class TestProviderServiceValidateConnection:
                 AIProvider.OLLAMA, "", "llama3", ollama_url="http://my-ollama:11434"
             )
             mock_call.assert_called_once_with(
-                AIProvider.OLLAMA, "", "llama3", "http://my-ollama:11434"
+                AIProvider.OLLAMA, "", "llama3", "http://my-ollama:11434", "general"
             )
 
 

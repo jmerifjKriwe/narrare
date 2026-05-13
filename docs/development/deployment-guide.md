@@ -31,12 +31,13 @@ just dev-logs
 # Start API + frontend (hot reload)
 just dev
 
-# Stop: Ctrl+C sends SIGINT to both processes cleanly
+# Stop: Ctrl+C — clean shutdown with confirmation
 ```
 
 `just dev` starts both the API (port 8000) and the frontend (port 3000)
-in the background. Press **Ctrl+C** to stop — the trap handler ensures
-both processes are terminated cleanly.
+in the background. Press **Ctrl+C** to stop — all processes (API, frontend,
+and their children) are terminated cleanly. You'll see "⏹ Shutting down…"
+followed by "⏹ Stopped." when complete.
 
 ### Dev Container
 

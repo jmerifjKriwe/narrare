@@ -82,3 +82,4 @@ scripts/local/
 .claude/settings.local.json
 opencode.json
 .tmp/
+packages/web/skills-lock.json

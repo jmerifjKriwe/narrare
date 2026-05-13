@@ -7,6 +7,7 @@ import os
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register, register_model
 
@@ -56,10 +57,9 @@ def _make_openrouter(model_id: str) -> OpenAIChatModel:
     # narrare: allow-direct-llm  reason="OpenRouter requires custom base_url"
     """
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
-    return OpenAIChatModel(  # type: ignore[call-arg]
+    return OpenAIChatModel(
         model_id.removeprefix("openrouter/"),
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
+        provider=OpenAIProvider(base_url="https://openrouter.ai/api/v1", api_key=api_key),
     )
 
 

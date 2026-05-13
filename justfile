@@ -80,11 +80,25 @@ generate-secret:
 
 # Start all services (API + frontend)
 dev:
-    @echo "Starting all services..."
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Starting all services..."
     just _ensure-services
-    @trap 'kill %1 %2 2>/dev/null' INT; \
-    just dev-api & \
-    just dev-frontend & \
+
+    cleanup() {
+        echo ""
+        echo "⏹  Shutting down..."
+        for pid in $(jobs -p); do
+            kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+        done
+        wait 2>/dev/null || true
+        echo "⏹  Stopped."
+        exit 0
+    }
+    trap cleanup INT TERM
+
+    just dev-api &
+    just dev-frontend &
     wait
 
 # Start API server only (port 8000)

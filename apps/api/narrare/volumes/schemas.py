@@ -3,13 +3,10 @@
 # ---- schemas.py content ----
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import uuid  # noqa: TC003 - needed at runtime for Pydantic model resolution
+from datetime import datetime  # noqa: TC003
 
 from pydantic import BaseModel, ConfigDict, Field
-
-if TYPE_CHECKING:
-    import uuid
-    from datetime import datetime
 
 
 class CreateVolumeRequest(BaseModel):

@@ -27,6 +27,7 @@ export function WizardStep4({ onNext, onBack }: { onNext: () => void; onBack: ()
   const [provider, setProvider] = useState<AIProvider>(state.provider);
   const [apiKey, setApiKey] = useState(state.api_key);
   const [ollamaUrl, setOllamaUrl] = useState(state.ollama_url);
+  const [zaiEndpoint, setZaiEndpoint] = useState<string>(state.zai_endpoint || "general");
   const [model, setModel] = useState(state.model);
   const [models, setModels] = useState<{ value: string; label: string }[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -67,11 +68,18 @@ export function WizardStep4({ onNext, onBack }: { onNext: () => void; onBack: ()
         api_key: apiKey,
         model,
         ollama_url: ollamaUrl,
+        zai_endpoint: zaiEndpoint,
       });
-      updateStep4({ provider, api_key: apiKey, model, ollama_url: ollamaUrl });
+      updateStep4({
+        provider,
+        api_key: apiKey,
+        model,
+        ollama_url: ollamaUrl,
+        zai_endpoint: zaiEndpoint,
+      });
       onNext();
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      const msg = e instanceof Error ? e.message : String(e);
       setError(msg || t("validationFailed"));
     } finally {
       setValidating(false);
@@ -108,6 +116,18 @@ export function WizardStep4({ onNext, onBack }: { onNext: () => void; onBack: ()
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={t("apiKeyPlaceholder")}
             autoComplete="off"
+          />
+        )}
+
+        {provider === "zai" && (
+          <Select
+            label={t("zaiEndpoint")}
+            value={zaiEndpoint}
+            onChange={(e) => setZaiEndpoint(e.target.value)}
+            options={[
+              { value: "general", label: "General API (api.z.ai/api/paas/v4)" },
+              { value: "coding", label: "Coding API (api.z.ai/api/coding/paas/v4)" },
+            ]}
           />
         )}
 

@@ -177,20 +177,18 @@ class SetupService:
                 detail="API key is required for this provider",
             )
 
-        valid = await self._provider_service.validate_connection(
+        error = await self._provider_service.validate_connection(
             provider=request.provider,
             api_key=request.api_key,
             model=request.model,
             ollama_url=request.ollama_url,
+            zai_endpoint=request.zai_endpoint,
         )
 
-        if not valid:
+        if error:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=(
-                    "Could not connect to the AI provider. "
-                    "Please check your API key and selected model."
-                ),
+                detail=error,
             )
 
         return Step4ProviderResponse(

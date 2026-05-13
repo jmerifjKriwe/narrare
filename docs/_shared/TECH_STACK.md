@@ -75,11 +75,13 @@ We need transactions. We need pgvector. Postgres does both well.
 
 ## LLM & AI
 
-### pydantic-ai `>=1.84`
+### pydantic-ai `>=1.93`
 **Why:** Type-safe LLM agent framework. Native Pydantic integration.
 Supports OpenAI, Anthropic, and other providers via a unified interface.
 **Role:** The underlying agent runtime inside `core/llm/`. Not used outside it.
 **Not:** LangChain (too heavy, too much magic), raw SDK calls (no type safety, no retry).
+**Migration note:** v1.93+ requires `OpenAIProvider` wrapper around `base_url`/`api_key`
+and `output_type` parameter (formerly `result_type`) on Agent construction.
 
 ### LLM Gateway (`core/llm/gateway.py`) — our own abstraction
 **Why:** pydantic-ai is the runtime, but the gateway is our policy layer.
@@ -92,7 +94,7 @@ No exceptions without a documented ADR and inline `# narrare: allow-direct-llm` 
 |----------|----------|-------|
 | OpenAI (GPT-4o, o3) | High-quality generation, complex analysis | Higher cost |
 | Anthropic (Claude Sonnet/Haiku) | Long-context, instruction following | Good cost/quality |
-| GLM-5.1 (z.ai) | Cost-efficient primary workhorse | Local/private via z.ai |
+| GLM-5.1 (z.ai) | Cost-efficient primary workhorse | General API and Coding API endpoints supported via wizard endpoint selector |
 | OpenAI-compatible (custom) | Future: self-hosted models | Via provider registry |
 
 **Intent → Model routing** is defined in `core/llm/intents.py`, not hardcoded in services.

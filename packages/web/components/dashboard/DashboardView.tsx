@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
@@ -12,19 +12,10 @@ export function DashboardView() {
   const t = useTranslations("dashboard");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const { data: novels = [], isLoading } = useQuery({
     queryKey: ["novels"],
     queryFn: novelsApi.list,
-  });
-
-  const createNovel = useMutation({
-    mutationFn: () => novelsApi.create({ title: "Untitled Novel", language: "en" }),
-    onSuccess: (novel) => {
-      queryClient.invalidateQueries({ queryKey: ["novels"] });
-      router.push(`/novel/${novel.id}/editor`);
-    },
   });
 
   return (
@@ -32,9 +23,7 @@ export function DashboardView() {
       <div className="max-w-[900px] mx-auto p-8 px-4">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-          <Button onClick={() => createNovel.mutate()} loading={createNovel.isPending}>
-            + {t("newNovel")}
-          </Button>
+          <Button onClick={() => router.push("/wizard")}>+ {t("newNovel")}</Button>
         </div>
 
         {isLoading ? (
@@ -47,9 +36,7 @@ export function DashboardView() {
               {t("noNovels")}
             </p>
             <p className="text-[var(--color-text-secondary)] mb-6">{t("noNovelsHint")}</p>
-            <Button onClick={() => createNovel.mutate()} loading={createNovel.isPending}>
-              + {t("newNovel")}
-            </Button>
+            <Button onClick={() => router.push("/wizard")}>+ {t("newNovel")}</Button>
           </div>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">

@@ -65,7 +65,7 @@ setup feel intentional and guided rather than confrontational.
 
 ## How it works (User perspective)
 
-1. User opens Narrare for the first time (or navigates to `/setup`)
+1. User opens Narrare for the first time (or navigates to `/wizard`)
 2. Progress indicator shows 5 steps, current step highlighted
 3. **Step 1 — Location:**
    - Project name (text field, required, validated as valid directory name)
@@ -87,6 +87,8 @@ setup feel intentional and guided rather than confrontational.
 6. **Step 4 — AI Provider:**
    - Provider cards (Anthropic / OpenAI / Google / Groq / Ollama / OpenRouter / Z.AI)
    - On provider select: API key field appears (except Ollama: URL field)
+   - For Z.AI: additional endpoint selector (General API or Coding API) to support
+     different subscription plans
    - "Load models" button: fetches available models for this provider + key
    - Primary model dropdown: populated dynamically from API response
    - Validation: test call made before allowing "Next"
@@ -108,6 +110,9 @@ cleared on completion.
   a real minimal API call to the provider to verify key + model access
 - Step 4 model loading: `GET /api/v1/setup/providers/{provider}/models` —
   calls provider API, returns model list, cached in Redis for 24h
+- Z.AI endpoint: Step 4 includes a `zai_endpoint` field ("general" or "coding")
+  that selects between `https://api.z.ai/api/paas/v4` and
+  `https://api.z.ai/api/coding/paas/v4`
 - Completion: `POST /api/v1/setup/complete` — creates novel, chapters (if demo),
   writes settings, returns `{novel_id, redirect_to}`
 
@@ -127,16 +132,16 @@ enums with a display name map. Adding a new value requires only a schema change
 and an i18n string — no wizard logic changes.
 
 **Routing:**
-- `/setup` → wizard (only accessible if setup not complete)
-- If setup complete and user navigates to `/setup` → redirect to `/dashboard`
-- After completion → `/dashboard` or `/novel/{id}/editor` depending on starter
+- `/wizard` → setup wizard (accessible for new novel creation from dashboard)
+- Dashboard "New Novel" button navigates to `/wizard`
+- After completion → `/dashboard` (blank starter) or `/novel/{id}/editor` (demo starter)
 
 ## Constraints & Edge Cases
 
 - Project name is validated as a valid filesystem directory name (no slashes,
   no reserved names, no existing directory conflict)
-- If AI provider validation fails: clear error message with specific reason
-  (invalid key / model not available / network error / rate limited)
+- If AI provider validation fails: the actual provider error message is surfaced
+  to the user (e.g., "Insufficient balance" from Z.AI), not a generic Narrare error
 - If demo content loading fails partway through: full rollback — no partial novel
 - Import option (Step 3): basic implementation at MVP — just accepts a path,
   validates it exists; full import analysis is SETUP-003 (not in MVP)

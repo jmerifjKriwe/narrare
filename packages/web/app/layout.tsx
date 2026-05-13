@@ -3,10 +3,26 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { QueryProvider } from "@/components/shared/QueryProvider";
 import "@/styles/globals.css";
-import { Geist } from "next/font/google";
+import { DM_Sans, Literata, Playfair_Display } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const display = Playfair_Display({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-display",
+});
+
+const ui = DM_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600"],
+  variable: "--font-ui",
+});
+
+const prose = Literata({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-prose",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -21,7 +37,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages();
 
   return (
-    <html lang={locale} suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={cn("font-ui", display.variable, ui.variable, prose.variable)}
+    >
       <body>
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>{children}</QueryProvider>

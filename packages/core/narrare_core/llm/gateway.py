@@ -95,10 +95,10 @@ class LLMGateway:
 
     def _make_agent(self, model: Model, system_prompt: str) -> Agent[None, str]:
         """Create a pydantic-ai Agent for a single call."""
-        return Agent(  # type: ignore[call-arg]
+        return Agent(
             model,
             system_prompt=system_prompt,
-            result_type=str,
+            output_type=str,
         )
 
     def _classify_error(self, error: Exception) -> LLMGatewayError:

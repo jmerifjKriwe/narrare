@@ -209,6 +209,7 @@ export const setupApi = {
     api_key: string;
     model: string;
     ollama_url?: string;
+    zai_endpoint?: string;
   }) =>
     fetchApi<{ valid: boolean }>("/setup/validate/step-4", {
       method: "POST",

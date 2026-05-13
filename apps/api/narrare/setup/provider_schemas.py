@@ -21,6 +21,7 @@ class Step4ProviderRequest(BaseModel):
     api_key: str = Field(default="", max_length=200)
     model: str = Field(min_length=1, max_length=200)
     ollama_url: str = Field(default="http://localhost:11434", max_length=200)
+    zai_endpoint: str = Field(default="general", max_length=50)
 
 
 class ProviderModel(BaseModel):
@@ -71,6 +72,7 @@ class WizardState(BaseModel):
     api_key: str
     model: str
     ollama_url: str
+    zai_endpoint: str = "general"  # "general" or "coding"
 
 
 class CompleteSetupRequest(BaseModel):

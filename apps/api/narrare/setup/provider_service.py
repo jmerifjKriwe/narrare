@@ -108,7 +108,8 @@ class ProviderService:
         api_key: str,
         model: str,
         ollama_url: str = "http://localhost:11434",
-    ) -> bool:
+        zai_endpoint: str = "general",
+    ) -> str | None:
         """
         Make a minimal real API call to verify the provider + key + model work.
 
@@ -117,22 +118,24 @@ class ProviderService:
             api_key: Provider API key.
             model: Model ID to test.
             ollama_url: Ollama base URL.
+            zai_endpoint: Z.AI endpoint variant — "general" or "coding".
 
         Returns:
-            True if the connection works, False otherwise.
+            None if the connection works, or the error message string if it fails.
         """
         try:
-            await self._test_call(provider, api_key, model, ollama_url)
+            await self._test_call(provider, api_key, model, ollama_url, zai_endpoint)
             logger.info("provider_validation_success", provider=provider.value, model=model)
-            return True
+            return None
         except Exception as e:
+            error_msg = str(e)
             logger.warning(
                 "provider_validation_failed",
                 provider=provider.value,
                 model=model,
-                error=str(e),
+                error=error_msg,
             )
-            return False
+            return error_msg
 
     async def _fetch_models(
         self,
@@ -245,9 +248,9 @@ class ProviderService:
         api_key: str,
         model: str,
         ollama_url: str,
+        zai_endpoint: str = "general",
     ) -> None:
         """Make a minimal API call to verify the connection."""
-        # Use pydantic-ai for the test call — goes through the gateway pattern
         import os
 
         from narrare_core.llm._providers.registry import get as get_provider
@@ -270,11 +273,16 @@ class ProviderService:
         # narrare: allow-direct-llm reason="Setup-phase provider validation and model listing"
         from pydantic_ai import Agent
 
-        provider_name = provider.value
-        factory = get_provider(provider_name)
-        pydantic_model = factory(model)
+        if provider == AIProvider.ZAI and zai_endpoint == "coding":
+            from narrare_core.llm._providers.zai import make_zai_coding
 
-        agent = Agent(pydantic_model, result_type=str)  # type: ignore[call-arg]
+            pydantic_model = make_zai_coding(model)
+        else:
+            provider_name = provider.value
+            factory = get_provider(provider_name)
+            pydantic_model = factory(model)
+
+        agent = Agent(pydantic_model, output_type=str)
         # Minimal prompt — just verify the connection works
         result = await agent.run("Reply with the single word: OK")
 
