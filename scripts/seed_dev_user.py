@@ -4,7 +4,7 @@ Seed the development database with a pre-configured dev user.
 Safe to run multiple times (idempotent).
 
 Dev credentials:
-  Email:    dev@narrare.local
+  Email:    dev@narrare.dev
   Password: narrare-dev
 """
 
@@ -39,12 +39,12 @@ async def seed() -> None:
     async with async_session_maker() as session:
         # Check if dev user already exists
         result = await session.execute(
-            select(User.id).where(User.email == "dev@narrare.local").limit(1)
+            select(User.id).where(User.email == "dev@narrare.dev").limit(1)
         )
         existing = result.scalar_one_or_none()
 
         if existing:
-            print("✅ Dev user already exists (dev@narrare.local)")
+            print("✅ Dev user already exists (dev@narrare.dev)")
             await engine.dispose()
             return
 
@@ -52,7 +52,7 @@ async def seed() -> None:
         hashed = hash_password("narrare-dev")
 
         user = User(
-            email="dev@narrare.local",
+            email="dev@narrare.dev",
             hashed_password=hashed,
             is_active=True,
             is_verified=True,
@@ -61,7 +61,7 @@ async def seed() -> None:
         session.add(user)
         await session.flush()  # Generates the UUID via Python default
         await session.commit()
-        print("✅ Dev user created: dev@narrare.local / narrare-dev")
+        print("✅ Dev user created: dev@narrare.dev / narrare-dev")
 
     await engine.dispose()
 

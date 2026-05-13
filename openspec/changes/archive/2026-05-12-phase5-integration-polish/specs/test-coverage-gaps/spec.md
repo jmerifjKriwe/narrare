@@ -16,7 +16,7 @@ The system SHALL have an integration test that verifies the `seed_dev_user.py` s
 
 #### Scenario: Seed script creates dev user
 - **WHEN** the seed script runs against a fresh database
-- **THEN** the user `dev@narrare.local` exists with the correct hashed password and can successfully log in
+- **THEN** the user `dev@narrare.dev` exists with the correct hashed password and can successfully log in
 
 ### Requirement: Demo loader integration tests
 The system SHALL have integration tests for the `DemoLoader` covering chapter loading, KB entry loading, and the complete setup flow for all three demo projects (Fantasy, SciFi, German).

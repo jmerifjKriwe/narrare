@@ -57,7 +57,7 @@ No stubs. No "TODO: implement this later." No hardcoded bypasses.
 | User Settings | User preferences, persisted |
 | Project Settings | Project configuration, persisted |
 | Login | JWT auth, dev user seeded |
-| Dev login | `dev@narrare.local` / `narrare-dev` |
+| Dev login | `dev@narrare.dev` / `narrare-dev` |
 
 ### What is explicitly NOT in MVP
 

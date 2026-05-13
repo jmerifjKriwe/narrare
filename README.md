@@ -35,7 +35,7 @@ just dev
 Open [http://localhost:3000](http://localhost:3000) and complete the Setup Wizard.
 
 **Dev login** (created automatically):
-- Email: `dev@narrare.local`
+- Email: `dev@narrare.dev`
 - Password: `narrare-dev`
 
 ## Development Commands

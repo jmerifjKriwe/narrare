@@ -272,7 +272,7 @@ For local development, a pre-seeded dev user is available:
 | Variable | Default |
 |----------|---------|
 | `DEV_LOGIN_ENABLED` | `true` (dev only) |
-| `DEV_LOGIN_EMAIL` | `dev@narrare.local` |
+| `DEV_LOGIN_EMAIL` | `dev@narrare.dev` |
 | `DEV_LOGIN_PASSWORD` | `narrare-dev` |
 
 Created by `just dev-setup`. Never present in production.

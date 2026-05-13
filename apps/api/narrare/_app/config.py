@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     # ---------------------------------------------------------------------------
     # Dev
     # ---------------------------------------------------------------------------
-    dev_user_email: str = "dev@narrare.local"
+    dev_user_email: str = "dev@narrare.dev"
     dev_user_password: str = "narrare-dev"
 
     @property

@@ -28,7 +28,7 @@ BASE_URL = os.environ.get("E2E_BASE_URL", "http://localhost:3000")
 API_URL = os.environ.get("E2E_API_URL", "http://localhost:8000")
 
 # Dev user credentials (seeded by scripts/seed_dev_user.py)
-DEV_EMAIL = "dev@narrare.local"
+DEV_EMAIL = "dev@narrare.dev"
 DEV_PASSWORD = "narrare-dev"
 
 
@@ -171,7 +171,7 @@ def register_unique_user(api_url: str):
     import requests as http_requests
 
     def _register() -> dict[str, str]:
-        email = f"e2e-{uuid.uuid4().hex[:8]}@narrare.test"
+        email = f"e2e-{uuid.uuid4().hex[:8]}@example.com"
         password = "E2eTest123!pass"
         resp = http_requests.post(
             f"{api_url}/api/v1/auth/register",

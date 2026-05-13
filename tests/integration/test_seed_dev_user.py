@@ -21,12 +21,12 @@ class TestSeedDevUser:
         await seed()
 
         result = await db_session.execute(
-            select(User).where(User.email == "dev@narrare.local").limit(1)
+            select(User).where(User.email == "dev@narrare.dev").limit(1)
         )
         user = result.scalar_one_or_none()
 
         assert user is not None, "Dev user should exist after seeding"
-        assert user.email == "dev@narrare.local"
+        assert user.email == "dev@narrare.dev"
         assert user.is_active is True
         assert user.is_verified is True
         assert user.display_name == "Dev User"
@@ -38,7 +38,7 @@ class TestSeedDevUser:
         await seed()
 
         result = await db_session.execute(
-            select(User).where(User.email == "dev@narrare.local").limit(1)
+            select(User).where(User.email == "dev@narrare.dev").limit(1)
         )
         user = result.scalar_one_or_none()
         assert user is not None
@@ -53,7 +53,7 @@ class TestSeedDevUser:
         await seed()
 
         result = await db_session.execute(
-            select(User).where(User.email == "dev@narrare.local").limit(1)
+            select(User).where(User.email == "dev@narrare.dev").limit(1)
         )
         user = result.scalar_one_or_none()
         assert user is not None
@@ -67,7 +67,7 @@ class TestSeedDevUser:
         await seed()
         await seed()  # Run again
 
-        result = await db_session.execute(select(User).where(User.email == "dev@narrare.local"))
+        result = await db_session.execute(select(User).where(User.email == "dev@narrare.dev"))
         users = result.scalars().all()
 
         assert len(users) == 1, "Seed should be idempotent — only one dev user"
