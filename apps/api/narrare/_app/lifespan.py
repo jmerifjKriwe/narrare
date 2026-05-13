@@ -15,50 +15,17 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
-async def _init_rate_limiter() -> None:
-    """Initialize fastapi-limiter with Redis backend.
-
-    Gracefully degrades if Redis is unavailable — requests proceed without limits.
-    """
-    try:
-        import redis.asyncio as aioredis  # type: ignore[import-untyped]
-        from fastapi_limiter import FastAPILimiter  # type: ignore[import-untyped]
-
-        from narrare._app.config import get_settings
-
-        settings = get_settings()
-        redis_connection = aioredis.from_url(settings.redis_url)
-        await FastAPILimiter.init(redis_connection)  # type: ignore[attr-defined]
-        logger.info("rate_limiter_initialized")
-    except Exception:
-        logger.warning("rate_limiter_init_failed", exc_info=True)
-
-
-async def _shutdown_rate_limiter() -> None:
-    """Shut down fastapi-limiter, closing the Redis connection."""
-    try:
-        from fastapi_limiter import FastAPILimiter  # type: ignore[import-untyped]
-
-        await FastAPILimiter.close()  # type: ignore[attr-defined]
-        logger.info("rate_limiter_closed")
-    except Exception:
-        logger.warning("rate_limiter_shutdown_failed", exc_info=True)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
     FastAPI lifespan context manager.
 
-    Startup: configure logging, warm up connections.
-    Shutdown: close connections gracefully.
+    Startup: configure logging, TaskIQ broker, event bus.
+    Shutdown: event bus, TaskIQ broker.
     """
     # --- Startup ---
     _configure_logging()
     logger.info("narrare_api_starting")
-
-    # Rate limiter (Redis-backed, graceful degradation)
-    await _init_rate_limiter()
 
     # TaskIQ broker startup (skip in worker process — it handles its own)
     try:
@@ -95,9 +62,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         await shutdown_event_bus()
     except Exception:
         logger.warning("event_bus_shutdown_failed", exc_info=True)
-
-    # Rate limiter shutdown
-    await _shutdown_rate_limiter()
 
     try:
         from narrare.tasks.broker import broker  # type: ignore[import]  # Phase 4+ module
