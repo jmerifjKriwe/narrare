@@ -28,10 +28,18 @@ let _accessToken: string | null = null;
 
 export function setAccessToken(token: string): void {
   _accessToken = token;
+  // Sync cookie for Next.js middleware (server-side route protection)
+  if (typeof document !== "undefined") {
+    document.cookie = `narrare_auth=${token}; path=/; max-age=3600; samesite=lax`;
+  }
 }
 
 export function clearAccessToken(): void {
   _accessToken = null;
+  // Clear auth cookie
+  if (typeof document !== "undefined") {
+    document.cookie = "narrare_auth=; path=/; max-age=0";
+  }
 }
 
 export function getAccessToken(): string | null {

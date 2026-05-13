@@ -141,6 +141,7 @@ Phase 5: Integration & Polish      · not started
 - `app/(auth)/` — Login, Register pages with form validation (react-hook-form + zod)
 - `app/(app)/` — Authenticated pages with shared layout (auth shell + user info)
   - `dashboard/` — Novel list with create/navigate
+  - `wizard/` — Setup wizard (5-step, inherits app layout with header/user info)
   - `novel/[id]/editor/` — Full TipTap v3 editor with autosave, chapter sidebar (DnD), context panel
 - Route-level `loading.tsx` (skeleton boundaries) and `error.tsx` (error boundaries) at all levels
 - `global-error.tsx` as last resort
@@ -159,7 +160,7 @@ Phase 5: Integration & Polish      · not started
 - **Local state:** useState for component-ephemeral state
 
 **API Client:**
-- `lib/api/client.ts` — Native fetch with token refresh, no axios
+- `lib/api/client.ts` — Native fetch with token refresh, no axios; `setAccessToken`/`clearAccessToken` sync `narrare_auth` cookie for proxy
 - `lib/api/streaming.ts` — SSE streaming client for AI responses (fetch + ReadableStream)
 
 **Styling:**
@@ -175,12 +176,13 @@ Phase 5: Integration & Polish      · not started
 **Auth & Security:**
 - In-memory access token (not localStorage)
 - httpOnly refresh token cookie
-- JWT expiration check in Next.js middleware via jose
+- `proxy.ts` — Next.js route-level proxy verifying JWT cookie (`narrare_auth`) via jose for server-side auth protection on `/dashboard`, `/wizard`, `/novel/*`; redirects to `/login` if invalid
+- Client syncs `narrare_auth` cookie alongside in-memory token (for proxy consumption)
 - Auto-redirect to /login on 401
 
 **Testing:**
 - Vitest 3.x + Testing Library + MSW
-- 101 tests across utils, stores, API client, UI components
+- 243 tests across proxy, utils, stores, API client, UI components, wizard steps
 - `npm run test` / `vitest run`
 
 #### `tests/` — Test Suite
@@ -209,12 +211,14 @@ Phase 5: Integration & Polish      · not started
 
 #### Frontend Tests (packages/web/)
 
-**101 tests across:**
+**243 tests across:**
+- `proxy.test.ts` — 10 tests (JWT verification, route protection, redirects)
 - `lib/utils.test.ts` — 32 tests (cn, debounce, formatWordCount, etc.)
 - `lib/stores/editorStore.test.ts` — 21 tests
-- `lib/api/client.test.ts` — 14 tests (token management)
+- `lib/api/client.test.ts` — 17 tests (token management + cookie sync)
 - `lib/stores/authStore.test.ts` — 15 tests
 - `components/ui/` — 19 tests (Button, Input)
+- `components/setup/` — WizardStep1-5 + WizardShell tests
 
 #### Infrastructure
 

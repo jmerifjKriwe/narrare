@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   authApi,
   chaptersApi,
@@ -135,6 +135,38 @@ describe("API Client", () => {
 
       expect(chapter).toHaveProperty("id");
       expect(chapter.title).toBe("New Chapter");
+    });
+  });
+
+  describe("cookie sync", () => {
+    it("should set narrare_auth cookie when setAccessToken is called", () => {
+      const cookieSpy = vi.spyOn(Document.prototype, "cookie", "set");
+
+      setAccessToken("token123");
+
+      expect(cookieSpy).toHaveBeenCalledWith(
+        "narrare_auth=token123; path=/; max-age=3600; samesite=lax",
+      );
+      cookieSpy.mockRestore();
+    });
+
+    it("should clear narrare_auth cookie when clearAccessToken is called", () => {
+      const cookieSpy = vi.spyOn(Document.prototype, "cookie", "set");
+
+      setAccessToken("token123");
+      clearAccessToken();
+
+      expect(cookieSpy).toHaveBeenCalledWith("narrare_auth=; path=/; max-age=0");
+      cookieSpy.mockRestore();
+    });
+
+    it("should handle SSR gracefully when document is undefined", () => {
+      vi.stubGlobal("document", undefined);
+
+      expect(() => setAccessToken("ssr-token")).not.toThrow();
+      expect(getAccessToken()).toBe("ssr-token");
+
+      vi.unstubAllGlobals();
     });
   });
 });

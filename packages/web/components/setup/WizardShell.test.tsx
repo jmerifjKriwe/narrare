@@ -123,10 +123,11 @@ beforeEach(() => {
 });
 
 describe("WizardShell", () => {
-  it("should render the wizard title", () => {
+  it("should render the wizard shell with step indicators", () => {
     render(<WizardShell />);
-
-    expect(screen.getByText("Set up Narrare")).toBeInTheDocument();
+    // Verify step indicators are rendered (no heading — that comes from app layout)
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByTestId("step-1")).toBeInTheDocument();
   });
 
   it("should render step indicator with 5 steps", () => {

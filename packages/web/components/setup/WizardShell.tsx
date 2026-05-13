@@ -31,36 +31,10 @@ export function WizardShell() {
   ];
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{ background: "linear-gradient(160deg, #FAF8F3 0%, #F3EDE3 40%, #EDE4D8 100%)" }}
-    >
-      {/* Decorative background */}
-      <div
-        className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-[0.05] pointer-events-none"
-        style={{ background: "radial-gradient(circle, #B8621B, transparent 70%)" }}
-      />
-
-      <div className="relative z-10 w-full max-w-[640px] px-6">
-        {/* Header — dramatic wordmark */}
-        <div className="text-center mb-12">
-          <div className="text-[var(--color-accent-muted)] text-xs tracking-[0.3em] mb-4">✦</div>
-          <h1
-            className="text-4xl font-bold tracking-[0.08em] text-[var(--color-text-primary)] leading-none"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Narrare
-          </h1>
-          <p
-            className="text-[var(--color-text-tertiary)] mt-4 text-[0.9375rem]"
-            style={{ fontFamily: "var(--font-serif)", fontStyle: "italic" }}
-          >
-            {t("title")}
-          </p>
-        </div>
-
-        {/* Progress — elegant connected line */}
-        <div className="flex items-center justify-center mb-10">
+    <div className="h-full overflow-y-auto bg-[var(--color-bg-primary)] flex items-start justify-center p-8 px-4">
+      <div className="w-full max-w-[640px]">
+        {/* Progress line */}
+        <div className="flex items-center gap-3 justify-center mb-8">
           <div className="flex items-center">
             {steps.map((step, i) => (
               <div key={step.label} className="flex items-center">
@@ -91,13 +65,7 @@ export function WizardShell() {
         </div>
 
         {/* Step content card */}
-        <div
-          className="bg-[var(--color-surface)]/90 backdrop-blur-sm rounded-2xl p-10 border border-[var(--color-border)]/60"
-          style={{
-            boxShadow:
-              "0 4px 6px rgba(44,40,37,0.04), 0 12px 24px rgba(44,40,37,0.08), 0 32px 64px rgba(44,40,37,0.06)",
-          }}
-        >
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-10 shadow-[var(--shadow-md)]">
           {currentStep === 1 && <WizardStep1 onNext={nextStep} />}
           {currentStep === 2 && <WizardStep2 onNext={nextStep} onBack={prevStep} />}
           {currentStep === 3 && <WizardStep3 onNext={nextStep} onBack={prevStep} />}
