@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends
 
 from narrare._app.database import get_async_session
+from narrare._app.dependencies import CurrentUserIdDep
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.settings.schemas import (
     ProjectSettingsResponse,
@@ -18,8 +19,6 @@ from narrare.settings.schemas import (
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-    from narrare._app.dependencies import CurrentUserIdDep
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

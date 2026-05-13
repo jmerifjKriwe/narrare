@@ -10,6 +10,7 @@ from pyrate_limiter import Duration, Limiter, Rate
 
 from narrare._app.config import Settings, get_settings
 from narrare._app.database import get_async_session
+from narrare._app.dependencies import CurrentUserIdDep
 from narrare.auth.repository import AuthRepository
 from narrare.auth.schemas import (
     LoginRequest,
@@ -22,8 +23,6 @@ from narrare.auth.service import AuthService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-    from narrare._app.dependencies import CurrentUserIdDep
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

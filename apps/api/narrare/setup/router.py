@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends
 
 from narrare._app.database import get_async_session
+from narrare._app.dependencies import CurrentUserIdDep
 from narrare.novels.repository import NovelRepository
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.setup.demo_loader import DemoLoader
@@ -29,8 +30,6 @@ from narrare.setup.service import SetupService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-    from narrare._app.dependencies import CurrentUserIdDep
 
 router = APIRouter(prefix="/setup", tags=["setup"])
 
