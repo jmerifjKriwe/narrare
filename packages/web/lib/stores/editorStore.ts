@@ -1,3 +1,4 @@
+import type { Editor } from "@tiptap/react";
 import { create } from "zustand";
 import type { ChapterSummary, SaveStatus } from "@/types";
 
@@ -14,9 +15,13 @@ interface EditorState {
   contextPanelOpen: boolean;
   focusMode: boolean;
 
+  // Editor reference — set by EditorSurface, read by CommandPalette
+  editor: Editor | null;
+
   // Actions
   setActiveChapterId: (id: string | null) => void;
   setSaveStatus: (status: SaveStatus) => void;
+  setEditor: (editor: Editor | null) => void;
   toggleSidebar: () => void;
   toggleContextPanel: () => void;
   toggleFocusMode: () => void;
@@ -34,6 +39,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   sidebarOpen: true,
   contextPanelOpen: false,
   focusMode: false,
+  editor: null,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
 
@@ -42,6 +48,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       saveStatus,
       lastSavedAt: saveStatus === "saved" ? new Date() : undefined,
     }),
+
+  setEditor: (editor) => set({ editor }),
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 

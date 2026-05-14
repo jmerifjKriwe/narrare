@@ -32,6 +32,11 @@ vi.mock("@tiptap/starter-kit", () => ({
 vi.mock("@tiptap/extension-character-count", () => ({ default: {} }));
 vi.mock("@tiptap/extension-placeholder", () => ({ default: { configure: () => ({}) } }));
 vi.mock("./extensions/SceneBreak", () => ({ SceneBreak: {} }));
+vi.mock("./extensions/DialogueMark", () => ({ DialogueMark: {} }));
+vi.mock("./extensions/NarrareDocument", () => ({ NarrareDocument: {} }));
+vi.mock("./extensions/Autosave", () => ({
+  Autosave: { configure: () => ({}) },
+}));
 
 // --- Helpers ---
 
@@ -77,6 +82,7 @@ beforeEach(() => {
     sidebarOpen: true,
     contextPanelOpen: false,
     focusMode: false,
+    editor: null,
   });
   mockGetHTML.mockReturnValue("<p>Hello world</p>");
   mockSetContent.mockReturnValue(undefined);

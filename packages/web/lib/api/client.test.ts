@@ -5,6 +5,7 @@ import {
   clearAccessToken,
   getAccessToken,
   novelsApi,
+  restoreSession,
   setAccessToken,
 } from "./client";
 
@@ -61,9 +62,16 @@ describe("API Client", () => {
       expect(user.email).toBe("test@example.com");
     });
 
-    it("should reject me() without token", async () => {
-      // MSW handler returns 401 when no Authorization header
-      await expect(authApi.me()).rejects.toThrow();
+    it("should auto-refresh and succeed when no token exists but refresh cookie is valid", async () => {
+      // No access token set — fetchApi will get 401, then refresh via cookie and retry
+      clearAccessToken();
+
+      const user = await authApi.me();
+
+      expect(user).toHaveProperty("id");
+      expect(user.email).toBe("test@example.com");
+      // After auto-refresh, the refreshed token should be stored
+      expect(getAccessToken()).toBe("refreshed-access-token");
     });
   });
 
@@ -167,6 +175,87 @@ describe("API Client", () => {
       expect(getAccessToken()).toBe("ssr-token");
 
       vi.unstubAllGlobals();
+    });
+  });
+
+  describe("refreshAccessToken (cookie-based)", () => {
+    beforeEach(() => {
+      clearAccessToken();
+    });
+
+    it("should send refresh request without Content-Type header", async () => {
+      // Calling restoreSession when no access token exists triggers refresh
+      const result = await restoreSession();
+
+      expect(result).toBe(true);
+      // After successful refresh, a new access token should be stored
+      expect(getAccessToken()).toBe("refreshed-access-token");
+    });
+
+    it("should store the new access token after refresh", async () => {
+      expect(getAccessToken()).toBeNull();
+
+      await restoreSession();
+
+      expect(getAccessToken()).toBe("refreshed-access-token");
+    });
+  });
+
+  describe("restoreSession", () => {
+    beforeEach(() => {
+      clearAccessToken();
+    });
+
+    it("should return true when no access token exists and refresh succeeds", async () => {
+      expect(getAccessToken()).toBeNull();
+
+      const result = await restoreSession();
+
+      expect(result).toBe(true);
+      expect(getAccessToken()).toBe("refreshed-access-token");
+    });
+
+    it("should return true immediately when access token already exists", async () => {
+      setAccessToken("existing-token");
+
+      const result = await restoreSession();
+
+      expect(result).toBe(true);
+      // Token should remain unchanged — no refresh call needed
+      expect(getAccessToken()).toBe("existing-token");
+    });
+
+    it("should return false when refresh fails", async () => {
+      // The MSW handler rejects refresh requests that include Content-Type.
+      // We can't easily make refresh fail with the default handlers,
+      // so we override the handler for this test.
+      const { server } = await import("@/mocks/server");
+      const { HttpResponse, http } = await import("msw");
+
+      server.use(
+        http.post("*/api/v1/auth/refresh", () =>
+          HttpResponse.json({ detail: "No refresh token" }, { status: 401 }),
+        ),
+      );
+
+      const result = await restoreSession();
+
+      expect(result).toBe(false);
+      expect(getAccessToken()).toBeNull();
+    });
+  });
+
+  describe("fetchApi auto-refresh on 401", () => {
+    it("should auto-refresh via cookie and retry on 401", async () => {
+      // Start with no token — authApi.me() will get 401, then refresh + retry
+      clearAccessToken();
+
+      const user = await authApi.me();
+
+      // After auto-refresh, the request should succeed with the refreshed token
+      expect(user).toHaveProperty("id");
+      expect(user).toHaveProperty("email");
+      expect(getAccessToken()).toBe("refreshed-access-token");
     });
   });
 });

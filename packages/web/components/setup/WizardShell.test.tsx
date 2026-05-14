@@ -165,7 +165,8 @@ describe("WizardShell", () => {
     // Click "Next Step" in Step 1 mock
     await user.click(screen.getByText("Next Step"));
 
-    expect(screen.getByTestId("step-2")).toBeInTheDocument();
+    // Steps 2 and 3 are swapped: step 2 now renders WizardStep3
+    expect(screen.getByTestId("step-3")).toBeInTheDocument();
     expect(screen.queryByTestId("step-1")).not.toBeInTheDocument();
   });
 
@@ -173,9 +174,9 @@ describe("WizardShell", () => {
     const user = userEvent.setup();
     render(<WizardShell />);
 
-    // Go to step 2
+    // Go to step 2 (now renders WizardStep3)
     await user.click(screen.getByText("Next Step"));
-    expect(screen.getByTestId("step-2")).toBeInTheDocument();
+    expect(screen.getByTestId("step-3")).toBeInTheDocument();
 
     // Go back to step 1
     await user.click(screen.getByText("Back"));
@@ -203,7 +204,7 @@ describe("WizardShell", () => {
     // Initially step 1 is current
     expect(screen.getByText("1")).toHaveAttribute("aria-current", "step");
 
-    // Advance to step 2
+    // Advance to step 2 (now renders WizardStep3)
     await user.click(screen.getByText("Next Step"));
 
     // Now step 2 should be current, step 1 shows checkmark

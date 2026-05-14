@@ -179,3 +179,15 @@ async def init_rate_limiter():
 - [ ] If argon2-cffi has a breaking security advisory
 - [ ] If fastapi-limiter stops being maintained
 - [ ] If we need distributed rate limiting beyond single-instance Redis
+
+---
+
+## Addendum: Token Storage (2026-05-14)
+
+Refresh tokens use **httpOnly cookies** (`narrare_refresh`), set by the backend on
+login/register and read by the refresh endpoint. This prevents XSS-based token theft
+(the cookie is not accessible to JavaScript). Access tokens remain in-memory only
+(not localStorage). The frontend `restoreSession()` function performs a silent refresh
+via the httpOnly cookie to re-establish sessions across page reloads.
+
+Implementation: `apps/api/narrare/auth/cookie_helpers.py`, `packages/web/lib/api/client.ts` (`restoreSession`).

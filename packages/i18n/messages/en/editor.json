@@ -14,5 +14,10 @@
   "exitFocusMode": "Exit focus mode",
   "sidebar": "Chapters",
   "contextPanel": "Context",
-  "contextPanelEmpty": "AI features will appear here"
+  "contextPanelEmpty": "AI features will appear here",
+  "commandPalette": "Command palette",
+  "commandPalettePlaceholder": "Type a command...",
+  "categoryFormat": "Formatting",
+  "categoryEditor": "Editor",
+  "noCommandsFound": "No commands found"
 }

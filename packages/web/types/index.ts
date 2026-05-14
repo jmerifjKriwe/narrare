@@ -139,6 +139,14 @@ export interface DemoProjectInfo {
   character_count: number;
   word_count: number;
   description: string;
+  /** Author name from demo metadata — used to prefill wizard Step 3 */
+  author: string;
+  /** One-sentence story summary from demo metadata */
+  logline: string;
+  /** Point of view from demo metadata */
+  pov: string;
+  /** Tags from demo metadata */
+  tags: string[];
 }
 
 export interface WizardState {

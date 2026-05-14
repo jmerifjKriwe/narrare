@@ -6,5 +6,7 @@
   "noNovelsQuote": "Jede Geschichte beginnt mit dem ersten Satz.",
   "lastEdited": "Zuletzt bearbeitet {time}",
   "demo": "Demo",
-  "settings": "KI-Einstellungen"
+  "settings": "KI-Einstellungen",
+  "deleteNovel": "Roman löschen",
+  "confirmDelete": "Möchtest du diesen Roman wirklich löschen? Dies kann nicht rückgängig gemacht werden."
 }

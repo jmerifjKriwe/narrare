@@ -112,7 +112,7 @@ class Step3StarterRequest(BaseModel):
 
 
 class DemoProjectInfo(BaseModel):
-    """Metadata about a bundled demo project."""
+    """Metadata about a bundled demo project — loaded from metadata.json."""
 
     id: StarterContent
     title: str
@@ -122,6 +122,11 @@ class DemoProjectInfo(BaseModel):
     character_count: int
     word_count: int
     description: str
+    # Fields for wizard prefill (from project_md in metadata.json)
+    author: str = ""
+    logline: str = ""
+    pov: str = ""
+    tags: list[str] = []
 
 
 class Step3StarterResponse(BaseModel):

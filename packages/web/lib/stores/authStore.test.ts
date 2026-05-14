@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { authApi, clearAccessToken, setAccessToken } from "@/lib/api/client";
+import {
+  authApi,
+  clearAccessToken,
+  getAccessToken,
+  restoreSession,
+  setAccessToken,
+} from "@/lib/api/client";
 import { createTokenResponse, createUser } from "@/mocks/data";
 import { useAuthStore } from "./authStore";
 
@@ -7,6 +13,8 @@ import { useAuthStore } from "./authStore";
 vi.mock("@/lib/api/client", () => ({
   setAccessToken: vi.fn(),
   clearAccessToken: vi.fn(),
+  getAccessToken: vi.fn(() => null),
+  restoreSession: vi.fn(),
   authApi: {
     login: vi.fn(),
     register: vi.fn(),
@@ -183,6 +191,7 @@ describe("useAuthStore", () => {
   describe("loadUser", () => {
     it("should load user and set authenticated on success", async () => {
       const user = createUser();
+      vi.mocked(getAccessToken).mockReturnValue("existing-token");
       vi.mocked(authApi.me).mockResolvedValue(user);
 
       await useAuthStore.getState().loadUser();
@@ -193,9 +202,44 @@ describe("useAuthStore", () => {
       expect(state.isLoading).toBe(false);
     });
 
+    it("should call restoreSession when no access token exists", async () => {
+      vi.mocked(getAccessToken).mockReturnValue(null);
+      vi.mocked(restoreSession).mockResolvedValue(true);
+      vi.mocked(authApi.me).mockResolvedValue(createUser());
+
+      await useAuthStore.getState().loadUser();
+
+      expect(restoreSession).toHaveBeenCalledOnce();
+      expect(authApi.me).toHaveBeenCalledOnce();
+    });
+
+    it("should skip restoreSession when access token exists", async () => {
+      vi.mocked(getAccessToken).mockReturnValue("existing-token");
+      vi.mocked(authApi.me).mockResolvedValue(createUser());
+
+      await useAuthStore.getState().loadUser();
+
+      expect(restoreSession).not.toHaveBeenCalled();
+    });
+
     it("should clear user and set unauthenticated on failure", async () => {
       useAuthStore.setState({ user: createUser(), isAuthenticated: true });
+      vi.mocked(getAccessToken).mockReturnValue("existing-token");
       vi.mocked(authApi.me).mockRejectedValue(new Error("Unauthorized"));
+
+      await useAuthStore.getState().loadUser();
+
+      const state = useAuthStore.getState();
+      expect(state.user).toBeNull();
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.isLoading).toBe(false);
+    });
+
+    it("should handle restoreSession failure gracefully", async () => {
+      vi.mocked(getAccessToken).mockReturnValue(null);
+      vi.mocked(restoreSession).mockResolvedValue(false);
+      // If restoreSession fails, authApi.me() will also fail (no valid token)
+      vi.mocked(authApi.me).mockRejectedValue(new Error("Not authenticated"));
 
       await useAuthStore.getState().loadUser();
 

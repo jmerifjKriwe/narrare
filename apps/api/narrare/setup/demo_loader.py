@@ -3,12 +3,14 @@ Demo content loader.
 
 Reads bundled Markdown demo files from demo_data/ and creates
 the corresponding DB records (novel, chapters, KB entries).
+Metadata is loaded from ``metadata.json`` files co-located with each demo.
 
 All loading is atomic — if any step fails, the entire operation rolls back.
 """
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,48 +36,70 @@ _DEMO_DIRS: dict[StarterContent, str] = {
     StarterContent.DEMO_GERMAN: "de/im-stillen-wald",
 }
 
-# Metadata for display in the wizard Step 3 cards
-_DEMO_INFO: dict[StarterContent, DemoProjectInfo] = {
-    StarterContent.DEMO_FANTASY: DemoProjectInfo(
-        id=StarterContent.DEMO_FANTASY,
-        title="Echoes of the Thornwall",
-        language="en",
-        genre="High Fantasy",
-        chapter_count=4,
-        character_count=5,
-        word_count=3130,
-        description=(
-            "A young mage discovers that the magical barrier protecting her village "
-            "is slowly failing — and that someone inside may be responsible."
-        ),
-    ),
-    StarterContent.DEMO_SCIFI: DemoProjectInfo(
-        id=StarterContent.DEMO_SCIFI,
-        title="Dead Signal",
-        language="en",
-        genre="Science Fiction",
-        chapter_count=3,
-        character_count=3,
-        word_count=3450,
-        description=(
-            "A deep-space crew receives a signal from a ship that disappeared "
-            "forty years ago — and the signal contains their own voices."
-        ),
-    ),
-    StarterContent.DEMO_GERMAN: DemoProjectInfo(
-        id=StarterContent.DEMO_GERMAN,
-        title="Im stillen Wald",
-        language="de",
-        genre="Literarische Fiktion",
-        chapter_count=2,
-        character_count=3,
-        word_count=2660,
-        description=(
-            "Eine Lehrerin sucht Beweise für das Übernatürliche und findet "
-            "stattdessen sich selbst — und einen Förster, der den Wald versteht."
-        ),
-    ),
-}
+# Module-level cache for loaded demo metadata
+_demo_info_cache: dict[StarterContent, DemoProjectInfo] = {}
+
+
+def _load_demo_info(starter: StarterContent) -> DemoProjectInfo:
+    """Load demo metadata from the metadata.json file in the demo directory.
+
+    Args:
+        starter: The demo project identifier.
+
+    Returns:
+        Populated DemoProjectInfo parsed from the metadata.json file.
+
+    Raises:
+        KeyError: If starter is not a known demo project.
+        FileNotFoundError: If the metadata.json file is missing.
+    """
+    if starter not in _DEMO_DIRS:
+        raise KeyError(f"No demo directory for starter: {starter}")
+
+    metadata_path = _DEMO_ROOT / _DEMO_DIRS[starter] / "metadata.json"
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"Demo metadata not found: {metadata_path}. "
+            "Ensure metadata.json is co-located with demo content."
+        )
+
+    raw = json.loads(metadata_path.read_text(encoding="utf-8"))
+    stats = raw.get("stats", {})
+    project_md = raw.get("project_md", {})
+
+    return DemoProjectInfo(
+        id=starter,
+        title=raw.get("title", ""),
+        language=raw.get("language", "en"),
+        genre=raw.get("genre", ""),
+        chapter_count=stats.get("chapters", 0),
+        character_count=stats.get("characters", 0),
+        word_count=stats.get("wordcount", 0),
+        description=raw.get("description", ""),
+        author=project_md.get("author", ""),
+        logline=project_md.get("logline", ""),
+        pov=project_md.get("pov", ""),
+        tags=project_md.get("tags", []),
+    )
+
+
+def _get_demo_info(starter: StarterContent) -> DemoProjectInfo:
+    """Return cached demo metadata, loading from file on first access.
+
+    Args:
+        starter: The demo project identifier.
+
+    Returns:
+        Cached DemoProjectInfo instance.
+    """
+    if starter not in _demo_info_cache:
+        _demo_info_cache[starter] = _load_demo_info(starter)
+    return _demo_info_cache[starter]
+
+
+def _clear_demo_info_cache() -> None:  # pyright: ignore[reportUnusedFunction]
+    """Clear the demo info cache (for testing)."""
+    _demo_info_cache.clear()
 
 
 class DemoLoader:
@@ -88,6 +112,9 @@ class DemoLoader:
         """
         Return display metadata for a demo project.
 
+        Metadata is loaded from the demo's ``metadata.json`` file and cached
+        for subsequent calls.
+
         Args:
             starter: The demo project identifier.
 
@@ -96,14 +123,15 @@ class DemoLoader:
 
         Raises:
             KeyError: If starter is not a demo project.
+            FileNotFoundError: If the metadata.json file is missing.
         """
-        if starter not in _DEMO_INFO:
+        if starter not in _DEMO_DIRS:
             raise KeyError(f"No demo info for starter: {starter}")
-        return _DEMO_INFO[starter]
+        return _get_demo_info(starter)
 
     def all_demo_info(self) -> list[DemoProjectInfo]:
         """Return info for all available demo projects."""
-        return list(_DEMO_INFO.values())
+        return [_get_demo_info(starter) for starter in _DEMO_DIRS]
 
     async def load(
         self,

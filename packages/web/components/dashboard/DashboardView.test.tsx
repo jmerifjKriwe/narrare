@@ -8,6 +8,9 @@ import { DashboardView } from "./DashboardView";
 
 // --- Mocks ---
 
+// Mock window.confirm
+const mockConfirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+
 vi.mock("next-intl", () => ({
   useTranslations: (ns: string) => {
     const translations: Record<string, Record<string, string>> = {
@@ -19,6 +22,8 @@ vi.mock("next-intl", () => ({
         noNovelsHint: "Create your first novel to get started.",
         lastEdited: "Last edited {time}",
         demo: "Demo",
+        deleteNovel: "Delete novel",
+        confirmDelete: "Are you sure you want to delete this novel? This cannot be undone.",
       },
       common: { loading: "Loading\u2026" },
     };
@@ -50,6 +55,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockConfirm.mockReturnValue(true);
 });
 
 describe("DashboardView", () => {
@@ -203,5 +209,115 @@ describe("DashboardView", () => {
     await waitFor(() => {
       expect(screen.getByText("Untitled Novel")).toBeInTheDocument();
     });
+  });
+
+  // --- Delete functionality ---
+
+  it("should render delete button on novel cards", async () => {
+    render(<DashboardView />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByText("Test Novel One")).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete novel" });
+    expect(deleteButtons.length).toBe(2); // one per novel
+  });
+
+  it("should call novelsApi.delete and invalidate queries after confirming delete", async () => {
+    const user = userEvent.setup();
+    const novelsDeleted: string[] = [];
+
+    const novelsData = [
+      {
+        id: "novel-1",
+        title: "Test Novel One",
+        author: "Author One",
+        genre: "fantasy",
+        language: "en",
+        is_demo: true,
+        created_at: "2026-03-01T00:00:00Z",
+        updated_at: "2026-03-10T12:00:00Z",
+      },
+      {
+        id: "novel-2",
+        title: "Test Novel Two",
+        author: "Author Two",
+        genre: "scifi",
+        language: "en",
+        is_demo: false,
+        created_at: "2026-03-01T00:00:00Z",
+        updated_at: "2026-03-05T12:00:00Z",
+      },
+    ];
+
+    server.use(
+      http.get("*/api/v1/novels", () => {
+        const remaining = novelsData.filter((n) => !novelsDeleted.includes(n.id));
+        return HttpResponse.json(remaining);
+      }),
+      http.delete("*/api/v1/novels/:novelId", ({ params }) => {
+        novelsDeleted.push(params.novelId as string);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    render(<DashboardView />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByText("Test Novel One")).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete novel" });
+    await user.click(deleteButtons[0]);
+
+    expect(mockConfirm).toHaveBeenCalledWith(
+      "Are you sure you want to delete this novel? This cannot be undone.",
+    );
+    expect(novelsDeleted).toContain("novel-1");
+
+    await waitFor(() => {
+      expect(screen.queryByText("Test Novel One")).not.toBeInTheDocument();
+    });
+  });
+
+  it("should not delete novel when user cancels confirmation", async () => {
+    const user = userEvent.setup();
+    mockConfirm.mockReturnValue(false);
+
+    let deleteCalled = false;
+    server.use(
+      http.delete("*/api/v1/novels/:novelId", () => {
+        deleteCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    render(<DashboardView />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByText("Test Novel One")).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete novel" });
+    await user.click(deleteButtons[0]);
+
+    expect(mockConfirm).toHaveBeenCalled();
+    expect(deleteCalled).toBe(false);
+  });
+
+  it("should not navigate to editor when delete button is clicked", async () => {
+    const user = userEvent.setup();
+
+    render(<DashboardView />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByText("Test Novel One")).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete novel" });
+    await user.click(deleteButtons[0]);
+
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

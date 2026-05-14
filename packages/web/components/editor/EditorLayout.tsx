@@ -1,11 +1,14 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { Minimize2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { chaptersApi, settingsApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import type { ChapterSummary } from "@/types";
 import { ChapterSidebar } from "./ChapterSidebar";
+import { CommandPalette } from "./CommandPalette";
 import { ContextPanel } from "./ContextPanel";
 import { EditorSurface } from "./EditorSurface";
 import { EditorToolbar } from "./EditorToolbar";
@@ -16,18 +19,22 @@ interface EditorLayoutProps {
 }
 
 export function EditorLayout({ novelId }: EditorLayoutProps) {
+  const t = useTranslations("editor");
+
   const {
     activeChapterId,
     setActiveChapterId,
     sidebarOpen,
     contextPanelOpen,
     focusMode,
+    editor,
     toggleSidebar,
     toggleContextPanel,
     toggleFocusMode,
   } = useEditorStore();
 
   const queryClient = useQueryClient();
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Server data — direct from TanStack Query, no store sync
   const { data: chapters = [] } = useQuery({
@@ -57,11 +64,20 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Toggle command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
         e.preventDefault();
         toggleSidebar();
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        toggleFocusMode();
+      }
+      if (e.key === "Escape" && useEditorStore.getState().focusMode) {
         e.preventDefault();
         toggleFocusMode();
       }
@@ -134,6 +150,45 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
 
       {/* Status bar — hidden in focus mode */}
       {!focusMode && <StatusBar chapter={activeChapter ?? null} />}
+
+      {/* Floating exit button — visible only in focus mode */}
+      {focusMode && (
+        <button
+          type="button"
+          onClick={toggleFocusMode}
+          className="fixed top-4 right-4 z-50 p-2 rounded-lg bg-[var(--color-surface)]/80 backdrop-blur-sm border border-[var(--color-border)]/50 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer"
+          aria-label={t("exitFocusMode")}
+          title={`${t("exitFocusMode")} (Esc)`}
+        >
+          <Minimize2 size={18} />
+        </button>
+      )}
+
+      {/* Command palette */}
+      <CommandPalette
+        editor={editor}
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        context={{
+          toggleSidebar,
+          toggleFocusMode,
+          toggleContextPanel,
+          saveChapter: () => {
+            if (editor && activeChapter) {
+              const autosave = editor.extensionManager.extensions.find(
+                (ext: { name: string }) => ext.name === "autosave",
+              );
+              if (autosave && "storage" in autosave) {
+                const storage = autosave.storage as { forceSave: () => Promise<void> };
+                storage.forceSave();
+              }
+            }
+          },
+          createChapter: () => {
+            // Placeholder — will be implemented with WRITE-002
+          },
+        }}
+      />
     </div>
   );
 }

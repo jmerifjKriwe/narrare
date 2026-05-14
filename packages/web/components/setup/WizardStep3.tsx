@@ -54,16 +54,35 @@ export function WizardStep3({ onNext, onBack }: { onNext: () => void; onBack: ()
   const handleSelectDemo = async (starter: StarterContent) => {
     setSelected(starter);
     setError(null);
+
+    // Prefill wizard store with demo metadata for the next step (Novel Details)
+    const prefillFromDemo = (info: DemoProjectInfo) => {
+      if (!info.title) return;
+      useWizardStore.getState().updateStep2({
+        title: info.title,
+        author: info.author || "",
+        genre: info.genre || "",
+        logline: info.logline || "",
+        story_structure: useWizardStore.getState().state.story_structure,
+        tone: useWizardStore.getState().state.tone,
+      });
+    };
+
     if (DEMO_OPTIONS.includes(starter) && !demoInfo[starter]) {
       try {
         const result = await setupApi.validateStep3({ starter });
         if (result.demo_info) {
           setDemoInfo((prev) => ({ ...prev, [starter]: result.demo_info! }));
+          prefillFromDemo(result.demo_info);
         }
       } catch {
         // Non-critical — info is display-only
       }
+    } else if (DEMO_OPTIONS.includes(starter) && demoInfo[starter]) {
+      // Demo already loaded — prefill from cache
+      prefillFromDemo(demoInfo[starter]);
     }
+    // "blank" and "import": don't overwrite existing store values
   };
 
   const handleNext = async () => {

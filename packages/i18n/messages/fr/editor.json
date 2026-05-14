@@ -14,5 +14,10 @@
   "exitFocusMode": "Quitter le mode concentration",
   "sidebar": "Chapitres",
   "contextPanel": "Contexte",
-  "contextPanelEmpty": "Les fonctionnalités IA apparaîtront ici"
+  "contextPanelEmpty": "Les fonctionnalités IA apparaîtront ici",
+  "commandPalette": "Palette de commandes",
+  "commandPalettePlaceholder": "Tapez une commande...",
+  "categoryFormat": "Mise en forme",
+  "categoryEditor": "Éditeur",
+  "noCommandsFound": "Aucune commande trouvée"
 }

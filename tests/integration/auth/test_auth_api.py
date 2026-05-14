@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare.auth.cookie_helpers import REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH
 from narrare.auth.schemas import TokenResponse, UserResponse
 
 if TYPE_CHECKING:
@@ -25,6 +26,21 @@ class TestRegister:
         assert validated.access_token
         assert validated.refresh_token
         assert validated.token_type == "bearer"
+
+    async def test_register_sets_refresh_cookie(self, client: AsyncClient) -> None:
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "cookie-reg@example.com",
+                "password": "password123",
+            },
+        )
+        assert response.status_code == 201
+        cookie_header = response.headers.get("set-cookie", "")
+        assert REFRESH_COOKIE_NAME in cookie_header
+        assert "httponly" in cookie_header.lower()
+        assert "samesite=lax" in cookie_header.lower()
+        assert f"path={REFRESH_COOKIE_PATH}" in cookie_header.lower()
 
     async def test_register_duplicate_email_returns_409(self, client: AsyncClient) -> None:
         payload = {"email": "dup@example.com", "password": "password123"}
@@ -72,6 +88,26 @@ class TestLogin:
         assert response.status_code == 200
         validated = TokenResponse.model_validate(response.json())
         assert validated.access_token
+
+    async def test_login_sets_refresh_cookie(self, client: AsyncClient) -> None:
+        await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "cookie-login@example.com",
+                "password": "password123",
+            },
+        )
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "email": "cookie-login@example.com",
+                "password": "password123",
+            },
+        )
+        assert response.status_code == 200
+        cookie_header = response.headers.get("set-cookie", "")
+        assert REFRESH_COOKIE_NAME in cookie_header
+        assert "httponly" in cookie_header.lower()
 
     async def test_login_wrong_password_returns_401(self, client: AsyncClient) -> None:
         await client.post(
@@ -121,6 +157,47 @@ class TestRefresh:
         validated = TokenResponse.model_validate(response.json())
         assert validated.access_token
 
+    async def test_refresh_via_cookie_returns_new_tokens(self, client: AsyncClient) -> None:
+        """Refresh token read from httpOnly cookie."""
+        reg = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "refresh-cookie@example.com",
+                "password": "password123",
+            },
+        )
+        refresh_token = reg.json()["refresh_token"]
+
+        # Send refresh token via cookie (not body)
+        response = await client.post(
+            "/api/v1/auth/refresh",
+            cookies={REFRESH_COOKIE_NAME: refresh_token},
+        )
+        assert response.status_code == 200
+        validated = TokenResponse.model_validate(response.json())
+        assert validated.access_token
+        # Response should set a new refresh cookie
+        cookie_header = response.headers.get("set-cookie", "")
+        assert REFRESH_COOKIE_NAME in cookie_header
+
+    async def test_refresh_sets_new_cookie_on_success(self, client: AsyncClient) -> None:
+        """Successful refresh rotates the cookie."""
+        reg = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "refresh-rotate@example.com",
+                "password": "password123",
+            },
+        )
+        refresh_token = reg.json()["refresh_token"]
+        response = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert response.status_code == 200
+        cookie_header = response.headers.get("set-cookie", "")
+        assert REFRESH_COOKIE_NAME in cookie_header
+
     async def test_refresh_invalid_token_returns_401(self, client: AsyncClient) -> None:
         response = await client.post(
             "/api/v1/auth/refresh",
@@ -129,6 +206,42 @@ class TestRefresh:
             },
         )
         assert response.status_code == 401
+
+    async def test_refresh_invalid_token_clears_cookie(self, client: AsyncClient) -> None:
+        """Invalid refresh token should clear the cookie."""
+        response = await client.post(
+            "/api/v1/auth/refresh",
+            cookies={REFRESH_COOKIE_NAME: "invalid.jwt.token"},
+        )
+        assert response.status_code == 401
+        # The cookie should be cleared (set-cookie with empty/max-age=0)
+        cookie_header = response.headers.get("set-cookie", "")
+        assert REFRESH_COOKIE_NAME in cookie_header
+
+    async def test_refresh_without_cookie_or_body_returns_401(self, client: AsyncClient) -> None:
+        """No cookie and no body → 401."""
+        response = await client.post("/api/v1/auth/refresh")
+        assert response.status_code == 401
+        assert "No refresh token" in response.json()["detail"]
+
+    async def test_refresh_cookie_preferred_over_body(self, client: AsyncClient) -> None:
+        """When both cookie and body are present, cookie wins."""
+        reg = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "refresh-pref@example.com",
+                "password": "password123",
+            },
+        )
+        valid_token = reg.json()["refresh_token"]
+
+        # Send valid cookie + invalid body — cookie should be used
+        response = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": "invalid-body-token"},
+            cookies={REFRESH_COOKIE_NAME: valid_token},
+        )
+        assert response.status_code == 200
 
 
 class TestGetCurrentUser:

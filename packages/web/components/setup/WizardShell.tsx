@@ -24,8 +24,8 @@ export function WizardShell() {
 
   const steps = [
     { label: "1", title: t("step1.title") },
-    { label: "2", title: t("step2.title") },
-    { label: "3", title: t("step3.title") },
+    { label: "2", title: t("step3.title") },
+    { label: "3", title: t("step2.title") },
     { label: "4", title: t("step4.title") },
     { label: "5", title: t("step5.title") },
   ];
@@ -67,8 +67,8 @@ export function WizardShell() {
         {/* Step content card */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-10 shadow-[var(--shadow-md)]">
           {currentStep === 1 && <WizardStep1 onNext={nextStep} />}
-          {currentStep === 2 && <WizardStep2 onNext={nextStep} onBack={prevStep} />}
-          {currentStep === 3 && <WizardStep3 onNext={nextStep} onBack={prevStep} />}
+          {currentStep === 2 && <WizardStep3 onNext={nextStep} onBack={prevStep} />}
+          {currentStep === 3 && <WizardStep2 onNext={nextStep} onBack={prevStep} />}
           {currentStep === 4 && <WizardStep4 onNext={nextStep} onBack={prevStep} />}
           {currentStep === 5 && <WizardStep5 onComplete={handleComplete} onBack={prevStep} />}
         </div>

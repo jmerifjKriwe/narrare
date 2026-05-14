@@ -369,6 +369,12 @@ body::after {
   font-size: 0.875rem;
 }
 
+/* Dialogue mark */
+.narrare-editor .ProseMirror .dialogue {
+  color: var(--color-accent);
+  quotes: "«" "»" "‹" "›";
+}
+
 /* Placeholder */
 .narrare-editor .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);

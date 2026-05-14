@@ -211,16 +211,21 @@ packages/web/
 │
 ├── components/
 │   ├── editor/                     ← Writing editor components
-│   │   ├── EditorLayout.tsx        ← Orchestrator: toolbar + sidebar + surface + panel
-│   │   ├── EditorSurface.tsx       ← TipTap v3 editor with autosave + Cmd+S
+│   │   ├── EditorLayout.tsx        ← Orchestrator: toolbar + sidebar + surface + panel + focus mode (ESC/Minimize2)
+│   │   ├── EditorSurface.tsx       ← TipTap v3 editor with Autosave extension + Cmd+S
 │   │   ├── EditorToolbar.tsx       ← Toolbar with sidebar/panel/focus toggles
 │   │   ├── ChapterSidebar.tsx      ← Chapter list with DnD reorder (@dnd-kit)
 │   │   ├── ContextPanel.tsx        ← Right panel (AI features slot)
 │   │   ├── StatusBar.tsx           ← Word count, reading time, save status
+│   │   ├── CommandPalette.tsx      ← Cmd+K palette with format + editor commands
+│   │   ├── commands.ts             ← Command registry (extensible for AI features)
 │   │   └── extensions/
-│   │       └── SceneBreak.ts       ← Custom TipTap node (--- → * * *)
+│   │       ├── NarrareDocument.ts  ← Chapter-scoped document node
+│   │       ├── SceneBreak.ts       ← Custom TipTap node (--- → * * *)
+│   │       ├── DialogueMark.ts     ← Dialogue span mark (future: character attribution)
+│   │       └── Autosave.ts         ← Debounced save extension (configurable interval)
 │   ├── dashboard/
-│   │   └── DashboardView.tsx       ← Novel grid with NovelCard
+│   │   └── DashboardView.tsx       ← Novel grid with NovelCard (create + delete with confirm dialog)
 │   ├── setup/                      ← Setup wizard
 │   │   ├── WizardShell.tsx         ← Wizard layout + navigation
 │   │   └── WizardStep1-5.tsx       ← Individual wizard steps
@@ -243,8 +248,8 @@ packages/web/
 │   │   ├── client.ts              ← fetch-based API client with token refresh (230 lines)
 │   │   └── streaming.ts           ← SSE streaming client for AI responses
 │   ├── stores/
-│   │   ├── editorStore.ts         ← UI state: activeChapterId, saveStatus, toggles
-│   │   ├── authStore.ts           ← Auth state + login/register actions
+│   │   ├── editorStore.ts         ← UI state: activeChapterId, saveStatus, toggles, editor ref (for CommandPalette)
+│   │   ├── authStore.ts           ← Auth state + login/register/restoreSession actions
 │   │   └── wizardStore.ts         ← Wizard form state
 │   ├── i18n/
 │   │   ├── request.ts             ← next-intl request config
@@ -299,6 +304,7 @@ apps/api/narrare/
 │   ├── repository.py           ← DB queries (select, insert, update)
 │   ├── service.py              ← Business logic (uses repository)
 │   ├── security.py             ← JWT, password hashing
+│   ├── cookie_helpers.py       ← httpOnly refresh cookie set/clear (narrare_refresh)
 │   └── router.py               ← FastAPI routes (thin, delegates to service)
 │
 ├── novels/
@@ -565,13 +571,16 @@ apps/api/narrare/
 │   ├── demo_data/               ← Bundled demo project files
 │   │   ├── en/
 │   │   │   ├── echoes-of-the-thornwall/
+│   │   │   │   ├── metadata.json  ← Demo project metadata (author, logline, pov, tags)
 │   │   │   │   ├── chapters/
 │   │   │   │   └── kb/
 │   │   │   └── dead-signal/
+│   │   │       ├── metadata.json
 │   │   │       ├── chapters/
 │   │   │       └── kb/
 │   │   └── de/
 │   │       └── im-stillen-wald/
+│   │           ├── metadata.json
 │   │           ├── chapters/
 │   │           └── kb/
 │   └── router.py

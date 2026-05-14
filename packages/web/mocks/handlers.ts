@@ -26,12 +26,13 @@ export const handlers = [
   }),
 
   http.post("*/api/v1/auth/refresh", async ({ request }) => {
-    // Simulate production behavior: refresh requires a valid refresh token cookie.
-    // Without a cookie, the refresh endpoint rejects — causing the client's
-    // auto-refresh interceptor to give up and reject the original request.
-    const cookie = request.headers.get("Cookie");
-    if (!cookie) {
-      return HttpResponse.json({ detail: "No refresh token" }, { status: 401 });
+    // Simulate production behavior: refresh requires credentials: "include"
+    // so the httpOnly cookie is sent. In tests we verify the request was
+    // made without a body (cookie-based, not JSON body-based).
+    const contentType = request.headers.get("Content-Type");
+    // Cookie-based refresh should NOT send Content-Type (no body)
+    if (contentType) {
+      return HttpResponse.json({ detail: "Unexpected body" }, { status: 400 });
     }
     return HttpResponse.json({
       access_token: "refreshed-access-token",

@@ -11,6 +11,24 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## [Unreleased]
 
+### Added
+
+- httpOnly refresh token cookie (`narrare_refresh`) for secure session management
+- Frontend `restoreSession()` — silent refresh via httpOnly cookie on page reload
+- Editor TipTap extensions: NarrareDocument (chapter-scoped doc), DialogueMark (dialogue spans), Autosave (debounced save)
+- CommandPalette (Cmd+K) with format + editor action commands; extensible registry via `commands.ts`
+- Dashboard novel delete (Trash2 icon, hover-revealed, confirmation dialog)
+- Focus mode exit: ESC key handler + floating Minimize2 button (semi-transparent)
+- Demo project metadata.json files (author, logline, pov, tags) for all 3 starters
+
+### Changed
+
+- Setup wizard steps 2↔3 swapped: starter selection now comes before novel details
+- WizardStep3 prefills form from metadata.json when a demo starter is selected
+- Demo loader reads metadata from files instead of hardcoded data
+- EditorSurface refactored to use Autosave TipTap extension
+- editorStore now holds TipTap editor ref (set by EditorSurface, read by CommandPalette)
+
 ---
 
 ## [0.1.0] - 2026-05-12

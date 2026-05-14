@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Settings } from "lucide-react";
+import { Settings, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -25,6 +25,16 @@ export function DashboardView() {
     mutationFn: () => novelsApi.create({}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["novels"] }),
   });
+
+  const deleteNovel = useMutation({
+    mutationFn: (novelId: string) => novelsApi.delete(novelId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["novels"] }),
+  });
+
+  const handleDelete = (novelId: string) => {
+    if (!confirm(t("confirmDelete"))) return;
+    deleteNovel.mutate(novelId);
+  };
 
   return (
     <div
@@ -79,7 +89,7 @@ export function DashboardView() {
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6">
             {novels.map((novel) => (
-              <NovelCard key={novel.id} novel={novel} />
+              <NovelCard key={novel.id} novel={novel} onDelete={handleDelete} />
             ))}
 
             {/* New project card */}
@@ -101,7 +111,7 @@ export function DashboardView() {
   );
 }
 
-function NovelCard({ novel }: { novel: NovelSummary }) {
+function NovelCard({ novel, onDelete }: { novel: NovelSummary; onDelete: (id: string) => void }) {
   const t = useTranslations("dashboard");
   const router = useRouter();
 
@@ -127,6 +137,22 @@ function NovelCard({ novel }: { novel: NovelSummary }) {
       onClick={() => router.push(`/novel/${novel.id}/editor`)}
       aria-label={`Open ${novel.title}`}
     >
+      {/* Delete button — appears on hover */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(novel.id);
+        }}
+        className="absolute top-4 right-4 p-1.5 rounded-lg bg-[var(--color-surface)]/90
+                   border border-[var(--color-border)]/50 text-[var(--color-text-tertiary)]
+                   hover:text-[var(--color-error)] hover:border-[var(--color-error)]/30
+                   opacity-0 group-hover:opacity-100 transition-all duration-200
+                   cursor-pointer z-10"
+        aria-label={t("deleteNovel")}
+      >
+        <Trash2 size={14} />
+      </button>
       {/* Top accent bar — gradient amber */}
       <div
         className="h-1 w-full"

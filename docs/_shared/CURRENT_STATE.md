@@ -11,8 +11,8 @@
 ## Last Updated
 
 Date: 2026-05-14
-Updated by: Orchestrator
-Session summary: Bug fix — migration 0004 forgot token_limit_profile on project_settings. Added migration 0005 + regression test. Added RULE-14 (migration discipline) to CONSTRAINTS.md, coding-standards.md, python-standards.md.
+Updated by: NarrareDocsSpecialist
+Session summary: Phase 5 implementation sprint — 5 issues resolved. Auth now uses httpOnly refresh cookies. Editor has 4 TipTap extensions (NarrareDocument, DialogueMark, Autosave, SceneBreak) + CommandPalette with Cmd+K. Dashboard has novel delete. Wizard steps 2↔3 swapped with demo metadata prefill. Focus mode has ESC exit + Minimize2 button.
 
 ---
 
@@ -24,7 +24,7 @@ Phase 1: Core Infrastructure       ✅ COMPLETE
 Phase 2: API Foundation            ✅ COMPLETE
 Phase 3: Setup Wizard Backend      ✅ COMPLETE
 Phase 4: Frontend Foundation       ✅ COMPLETE
-Phase 5: Integration & Polish      · not started
+Phase 5: Integration & Polish      ⏳ IN PROGRESS
 ```
 
 ---
@@ -118,8 +118,9 @@ Phase 5: Integration & Polish      · not started
 - `event_listener.py` — Event → TaskIQ task routing
 
 **Domain Modules (all contract-first per ADR-003):**
-- `auth/` — JWT auth: models, service, router, repository, contracts, schemas, security
+- `auth/` — JWT auth: models, service, router, repository, contracts, schemas, security, cookie_helpers
   - argon2id password hashing (bcrypt backward compatibility for existing hashes)
+  - httpOnly refresh token cookie (`narrare_refresh`) — set on login/register, cleared on logout
 - `novels/` — CRUD: models → repository → service → router, contracts, schemas
 - `chapters/` — CRUD: models → repository → service → router, contracts, schemas
   - Content versioning: ChapterVersion model, version repository/service/router endpoints
@@ -135,6 +136,8 @@ Phase 5: Integration & Polish      · not started
   - `service.py` now writes to both `user_providers` + `user_ai_settings` AND legacy `project_settings`
   - Z.AI dual endpoint selector (General vs Coding API) in Step 4
   - After setup, AI Settings pages work immediately — no more "No key configured"
+  - Demo loader reads `metadata.json` from demo_data dirs (author, logline, pov, tags) — no more hardcoded data
+  - `demo_data/*/metadata.json` — demo project metadata for each starter template
 - `metrics/` — Health/metrics router
 
 **Database:**
@@ -166,9 +169,12 @@ Phase 5: Integration & Polish      · not started
 - `global-error.tsx` as last resort
 
 **Components:**
-- `components/editor/` — EditorLayout, EditorSurface (TipTap), EditorToolbar, ChapterSidebar (DnD Kit), ContextPanel, StatusBar, SceneBreak extension
-- `components/dashboard/` — DashboardView with NovelCard grid
-- `components/setup/` — 5-step Wizard (WizardShell + WizardStep1-5)
+- `components/editor/` — EditorLayout, EditorSurface (TipTap), EditorToolbar, ChapterSidebar (DnD Kit), ContextPanel, StatusBar, CommandPalette (Cmd+K)
+  - `extensions/` — 4 custom TipTap extensions: NarrareDocument, SceneBreak, DialogueMark, Autosave
+  - `commands.ts` — Command registry for palette (format + editor actions, extensible for AI features)
+- `components/editor/EditorLayout.tsx` — Focus mode: ESC handler + floating Minimize2 button (semi-transparent, focus-mode only)
+- `components/dashboard/` — DashboardView with NovelCard grid + delete functionality (Trash2 icon, confirm dialog via `novelsApi.delete()`)
+- `components/setup/` — 5-step Wizard (WizardShell + WizardStep1-5); steps 2↔3 swapped (starter selection first, then novel details); demo prefill from metadata.json
 - `components/settings/` — AI provider management, model routing, token limit profiles, project AI settings
 - `components/ui/` — Button (shadcn/cva-based), Input, Select
 - `components/shadcn/` — shadcn/ui generated primitives (future component source)
@@ -176,7 +182,7 @@ Phase 5: Integration & Polish      · not started
 
 **State Management (three-layer):**
 - **Server state:** TanStack Query v5 — all API data (novels, chapters, user, settings)
-- **UI state:** Zustand — sidebar toggles, focus mode, save status, active chapter ID only
+- **UI state:** Zustand — sidebar toggles, focus mode, save status, active chapter ID, editor ref (set by EditorSurface, read by CommandPalette)
 - **Local state:** useState for component-ephemeral state
 
 **API Client:**
@@ -195,7 +201,9 @@ Phase 5: Integration & Polish      · not started
 
 **Auth & Security:**
 - In-memory access token (not localStorage)
-- httpOnly refresh token cookie
+- httpOnly refresh token cookie (`narrare_refresh`) — backend sets on login/register, refresh endpoint reads from cookie
+- `cookie_helpers.py` — backend helper for setting/clearing refresh cookies (httpOnly, SameSite=Lax)
+- `restoreSession()` — frontend function to restore session from httpOnly cookie via silent refresh
 - `proxy.ts` — Next.js route-level proxy verifying JWT cookie (`narrare_auth`) via jose for server-side auth protection on `/dashboard`, `/wizard`, `/novel/*`; redirects to `/login` if invalid
 - Client syncs `narrare_auth` cookie alongside in-memory token (for proxy consumption)
 - Auto-redirect to /login on 401
@@ -262,17 +270,35 @@ Phase 5: Integration & Polish      · not started
 
 ## What Is In Progress
 
-Phase 5 (Integration & Polish) is underway. Infrastructure fixes completed:
-- Setup wizard writes to new tables (`user_providers`, `user_ai_settings`) in addition to legacy `project_settings`
-- Auto-migration on startup — `lifespan.py` runs `alembic upgrade head` before serving requests
-- Post-login redirect based on setup completion (`has_providers` flag)
-- Alembic `env.py` fixed — all 5 model modules imported, autogenerate works
-- Integration tests use real Alembic migrations instead of `create_all()`
-- RULE-04 split applied to `setup/` — validation extracted to `_validation.py`
-- 10 new tests covering provider creation, AI settings, has_providers flag, DB state verification
-- Frontend: toggle switches fixed, migration warning → subtle hint with i18n key change
+Phase 5 (Integration & Polish) is underway. Recent implementation progress:
 
-Next focus: writing sessions, AI features, analysis panels.
+**Editor foundation (Issue 5):**
+- 4 TipTap extensions implemented: NarrareDocument, SceneBreak, DialogueMark, Autosave
+- CommandPalette with Cmd+K — formatting + editor action commands registered via commands.ts
+- EditorSurface refactored to use Autosave extension
+- editorStore holds TipTap editor ref (set by EditorSurface, read by CommandPalette)
+
+**Auth session fix (Issue 4):**
+- Backend sets httpOnly `narrare_refresh` cookie on login/register
+- Refresh endpoint reads token from cookie (not request body)
+- Frontend `restoreSession()` restores session from cookie
+- `cookie_helpers.py` centralizes cookie settings
+
+**Editor UX improvements (Issue 1):**
+- Focus mode: ESC key exits focus mode
+- Floating Minimize2 button (semi-transparent, focus-mode only) as alternative exit
+
+**Dashboard improvements (Issue 2):**
+- Novel delete: Trash2 icon on NovelCards (hover-revealed)
+- Confirmation dialog before delete
+- Uses `novelsApi.delete()` mutation
+
+**Wizard flow improvements (Issue 3):**
+- Steps 2↔3 swapped: starter selection first, then novel details
+- DemoProjectInfo extended with author/logline/pov/tags from metadata.json
+- WizardStep3 prefills store when demo is selected
+
+Next focus: writing sessions (SSE streaming), AI features, analysis panels.
 
 ---
 
@@ -326,6 +352,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 | AI Providers migration warning | Changed to subtle hint, hidden for Ollama, i18n key `migrationWarning` → `addKeyHint` |
 | Migration 0004 schema gap | Fixed: migration 0005 adds `token_limit_profile` to `project_settings` — was only added to `user_ai_settings` |
 | RULE-14 Migration Discipline | New rule: every model column needs a migration, cross-table check required, regression test mandatory |
+| Issue 4: Auth session | httpOnly refresh token cookie (`narrare_refresh`) set on login/register; refresh endpoint reads from cookie; frontend `restoreSession()` via silent refresh |
+| Issue 1: Focus mode exit | ESC handler + floating Minimize2 button (semi-transparent, focus-mode only) in EditorLayout |
+| Issue 2: Dashboard delete | Trash2 icon on NovelCards (hover-revealed, confirm dialog); `novelsApi.delete()` mutation |
+| Issue 3: Wizard flow | Steps 2↔3 swapped (starter selection → novel details); demo metadata.json with author/logline/pov/tags; WizardStep3 prefills store |
+| Issue 5: Editor extensions | NarrareDocument, DialogueMark, Autosave extensions + CommandPalette (Cmd+K) + commands.ts registry; EditorSurface refactored for Autosave; editorStore holds editor ref |
 
 ---
 
@@ -377,11 +408,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 ## Next Session Should Start With
 
 **Phase 5 (current):**
-1. E2E tests with Playwright (route mocking for LLM responses)
-2. Backend test coverage gaps (settings service, demo loader, gateway error classification, retry logic)
-3. Frontend test coverage gaps (editor, wizard, dashboard, shared components)
-4. Documentation polish (architecture questions, CURRENT_STATE, testing standards, CHANGELOG)
-5. Writing sessions (SSE streaming) — connect core writing features to the editor
+1. Writing sessions (SSE streaming) — connect core writing features to the editor
+2. AI features in editor toolbar slots (using commands.ts registry pattern)
+3. E2E tests with Playwright (route mocking for LLM responses)
+4. Backend test coverage gaps (settings service, demo loader, gateway error classification, retry logic)
+5. Frontend test coverage gaps (editor extensions, CommandPalette, dashboard delete, focus mode)
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)

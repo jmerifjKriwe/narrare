@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import { authApi, clearAccessToken, setAccessToken } from "@/lib/api/client";
+import {
+  authApi,
+  clearAccessToken,
+  getAccessToken,
+  restoreSession,
+  setAccessToken,
+} from "@/lib/api/client";
 import type { User } from "@/types";
 
 interface AuthState {
@@ -55,6 +61,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   loadUser: async () => {
     set({ isLoading: true });
     try {
+      // Try to restore session via httpOnly refresh cookie (e.g. after F5)
+      if (!getAccessToken()) {
+        await restoreSession();
+      }
       const user = await authApi.me();
       set({ user, isAuthenticated: true, isLoading: false });
     } catch {

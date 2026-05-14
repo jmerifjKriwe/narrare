@@ -42,6 +42,16 @@ export function WizardStep2({ onNext, onBack }: { onNext: () => void; onBack: ()
       story_structure: state.story_structure,
       tone: state.tone,
     },
+    // Sync external store changes (e.g. demo metadata prefill from Step 2)
+    // into the form without requiring manual reset() calls.
+    values: {
+      title: state.title,
+      author: state.author,
+      genre: state.genre,
+      logline: state.logline,
+      story_structure: state.story_structure,
+      tone: state.tone,
+    },
   });
 
   const onSubmit = async (data: FormData) => {

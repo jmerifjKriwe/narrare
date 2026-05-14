@@ -14,5 +14,10 @@
   "exitFocusMode": "Fokusmodus verlassen",
   "sidebar": "Kapitel",
   "contextPanel": "Kontext",
-  "contextPanelEmpty": "KI-Funktionen werden hier angezeigt"
+  "contextPanelEmpty": "KI-Funktionen werden hier angezeigt",
+  "commandPalette": "Befehlspalette",
+  "commandPalettePlaceholder": "Befehl eingeben...",
+  "categoryFormat": "Formatierung",
+  "categoryEditor": "Editor",
+  "noCommandsFound": "Keine Befehle gefunden"
 }

@@ -9,8 +9,10 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 import { chaptersApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
-import { debounce } from "@/lib/utils";
 import type { Chapter } from "@/types";
+import { Autosave } from "./extensions/Autosave";
+import { DialogueMark } from "./extensions/DialogueMark";
+import { NarrareDocument } from "./extensions/NarrareDocument";
 import { SceneBreak } from "./extensions/SceneBreak";
 
 interface EditorSurfaceProps {
@@ -27,7 +29,7 @@ export function EditorSurface({
   onWordCountUpdate,
 }: EditorSurfaceProps) {
   const t = useTranslations("editor");
-  const { setSaveStatus } = useEditorStore();
+  const { setSaveStatus, setEditor } = useEditorStore();
   const lastSavedContent = useRef<string>("");
 
   const saveMutation = useMutation({
@@ -42,40 +44,29 @@ export function EditorSurface({
     onError: () => setSaveStatus("error"),
   });
 
-  // Debounced autosave — stable ref, recreated when interval/mutation changes
-  const debouncedSave = useRef(
-    debounce(
-      (chapterId: string, content: string) => {
-        if (content !== lastSavedContent.current) {
-          saveMutation.mutate({ chapterId, content });
-        }
-      },
-      autosaveInterval > 0 ? autosaveInterval * 1000 : 30_000,
-    ),
-  );
-  useEffect(() => {
-    debouncedSave.current = debounce(
-      (chapterId: string, content: string) => {
-        if (content !== lastSavedContent.current) {
-          saveMutation.mutate({ chapterId, content });
-        }
-      },
-      autosaveInterval > 0 ? autosaveInterval * 1000 : 30_000,
-    );
-  }, [autosaveInterval, saveMutation]);
-
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        // Disable heading to use h1/h2/h3 only
+        document: false,
         heading: { levels: [1, 2, 3] },
       }),
+      NarrareDocument,
       Placeholder.configure({
         placeholder: t("placeholder"),
       }),
       CharacterCount,
       SceneBreak,
+      DialogueMark,
+      Autosave.configure({
+        interval: autosaveInterval > 0 ? autosaveInterval * 1000 : 30_000,
+        enabled: autosaveInterval !== 0,
+        saveFn: async (content: string) => {
+          if (chapter && content !== lastSavedContent.current) {
+            await saveMutation.mutateAsync({ chapterId: chapter.id, content });
+          }
+        },
+      }),
     ],
     content: chapter?.content || "",
     editorProps: {
@@ -86,17 +77,18 @@ export function EditorSurface({
         "aria-multiline": "true",
       },
     },
-    onUpdate: ({ editor }) => {
-      const content = editor.getHTML();
-      setSaveStatus("idle");
-      if (chapter && autosaveInterval !== 0) {
-        debouncedSave.current(chapter.id, content);
-      }
-    },
   });
 
+  // Sync editor ref to store for CommandPalette access
+  useEffect(() => {
+    if (editor) {
+      setEditor(editor);
+    }
+    return () => setEditor(null);
+  }, [editor, setEditor]);
+
   // Load chapter content when active chapter changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — run only on chapter ID change, not on content/setSaveStatus changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — run only on chapter ID change
   useEffect(() => {
     if (!editor || !chapter) return;
     const current = editor.getHTML();

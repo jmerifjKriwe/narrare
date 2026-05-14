@@ -1,0 +1,31 @@
+{
+	"id": "demo-scifi",
+	"title": "Dead Signal",
+	"genre": "Science Fiction",
+	"language": "en",
+	"description": "An engineer on a remote space station receives a mysterious signal from Earth that shouldn't exist, forcing her to question everything she knows about the world she left behind.",
+	"stats": {
+		"characters": 3,
+		"locations": 2,
+		"factions": 0,
+		"objects": 1,
+		"systems": 2,
+		"chapters": 3,
+		"wordcount": 3450
+	},
+	"features": [
+		"Single POV (focused narrative)",
+		"Hard sci-fi elements",
+		"AI companion interaction",
+		"Mystery/thriller pacing",
+		"Minimal cast for clarity"
+	],
+	"project_md": {
+		"title": "Dead Signal",
+		"author": "Narrare Demo",
+		"genre": "Science Fiction",
+		"pov": "First Person",
+		"logline": "A signal from a dead world changes everything.",
+		"tags": ["sci-fi", "space-station", "ai", "mystery", "thriller"]
+	}
+}

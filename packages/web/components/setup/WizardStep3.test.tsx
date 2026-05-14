@@ -142,4 +142,65 @@ describe("WizardStep3", () => {
     const cards = screen.getAllByRole("button").filter((btn) => btn.hasAttribute("aria-pressed"));
     expect(cards).toHaveLength(5);
   });
+
+  it("should prefill wizard store with demo metadata when demo is selected", async () => {
+    const user = userEvent.setup();
+    const { setupApi } = await import("@/lib/api/client");
+
+    // Mock validateStep3 to return demo_info with metadata
+    vi.mocked(setupApi.validateStep3).mockResolvedValueOnce({
+      valid: true,
+      starter: "demo_fantasy",
+      demo_info: {
+        id: "demo_fantasy",
+        title: "The Dragon's Quest",
+        language: "en",
+        genre: "Fantasy",
+        chapter_count: 10,
+        character_count: 5,
+        word_count: 25000,
+        description: "An epic fantasy adventure.",
+        author: "Demo Author",
+        logline: "A hero's journey through magical lands.",
+        pov: "third_person",
+        tags: ["fantasy", "adventure"],
+      },
+    });
+
+    render(<WizardStep3 onNext={vi.fn()} onBack={vi.fn()} />);
+
+    await user.click(screen.getByText("Demo fantasy"));
+
+    await waitFor(() => {
+      const storeState = useWizardStore.getState().state;
+      expect(storeState.title).toBe("The Dragon's Quest");
+      expect(storeState.author).toBe("Demo Author");
+      expect(storeState.genre).toBe("Fantasy");
+      expect(storeState.logline).toBe("A hero's journey through magical lands.");
+    });
+  });
+
+  it("should not overwrite store values when blank is selected", async () => {
+    const user = userEvent.setup();
+
+    // Pre-set some store values
+    useWizardStore.getState().updateStep2({
+      title: "Existing Title",
+      author: "Existing Author",
+      genre: "Existing Genre",
+      logline: "Existing Logline",
+      story_structure: "three_act",
+      tone: "dramatic",
+    });
+
+    render(<WizardStep3 onNext={vi.fn()} onBack={vi.fn()} />);
+
+    // Click blank (already selected, but click again)
+    await user.click(screen.getByText("Blank project"));
+
+    // Store values should remain unchanged
+    const storeState = useWizardStore.getState().state;
+    expect(storeState.title).toBe("Existing Title");
+    expect(storeState.author).toBe("Existing Author");
+  });
 });

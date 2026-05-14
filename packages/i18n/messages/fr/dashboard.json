@@ -6,5 +6,7 @@
   "noNovelsQuote": "Toute histoire commence par la première phrase.",
   "lastEdited": "Dernière modification {time}",
   "demo": "Démo",
-  "settings": "Paramètres IA"
+  "settings": "Paramètres IA",
+  "deleteNovel": "Supprimer le roman",
+  "confirmDelete": "Voulez-vous vraiment supprimer ce roman ? Cette action est irréversible."
 }

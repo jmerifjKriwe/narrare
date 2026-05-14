@@ -37,6 +37,7 @@ export function setAccessToken(token: string): void {
   _accessToken = token;
   // Sync cookie for Next.js middleware (server-side route protection)
   if (typeof document !== "undefined") {
+    // biome-ignore lint/suspicious/noDocumentCookie: cookie needed for Next.js middleware server-side route protection
     document.cookie = `narrare_auth=${token}; path=/; max-age=3600; samesite=lax`;
   }
 }
@@ -45,6 +46,7 @@ export function clearAccessToken(): void {
   _accessToken = null;
   // Clear auth cookie
   if (typeof document !== "undefined") {
+    // biome-ignore lint/suspicious/noDocumentCookie: clearing auth cookie for Next.js middleware
     document.cookie = "narrare_auth=; path=/; max-age=0";
   }
 }
@@ -66,7 +68,8 @@ async function refreshAccessToken(): Promise<void> {
       const res = await fetch("/api/v1/auth/refresh", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        // No Content-Type header — no body. The httpOnly cookie is sent
+        // automatically via credentials: "include".
       });
       if (!res.ok) throw new Error("Refresh failed");
       const data: TokenResponse = await res.json();
@@ -77,6 +80,21 @@ async function refreshAccessToken(): Promise<void> {
     }
   })();
   return _refreshPromise;
+}
+
+/**
+ * Attempt to restore a session using the httpOnly refresh cookie.
+ * Called on app load (F5) when the in-memory access token is null.
+ * Returns true if a new access token was obtained, false otherwise.
+ */
+export async function restoreSession(): Promise<boolean> {
+  if (_accessToken) return true; // already have a valid token
+  try {
+    await refreshAccessToken();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
