@@ -35,9 +35,31 @@ _stop-services:
 [private]
 _psql-sql db sql *args:
     @if command -v psql >/dev/null 2>&1; then \
-        psql -U narrare -d {{db}} -c "{{sql}}"; \
+        if ! command -v docker >/dev/null 2>&1; then \
+            PGPASSWORD=narrare psql -U narrare -h postgres -d {{db}} -c "{{sql}}"; \
+        else \
+            psql -U narrare -d {{db}} -c "{{sql}}"; \
+        fi; \
     elif command -v docker >/dev/null 2>&1; then \
         docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d {{db}} -c "{{sql}}"; \
+    else \
+        echo "❌ Neither psql nor docker available — cannot run SQL"; exit 1; \
+    fi
+
+# Drop and recreate a database (connects to maintenance DB)
+[private]
+_psql-recreate-db db:
+    @if command -v psql >/dev/null 2>&1; then \
+        if ! command -v docker >/dev/null 2>&1; then \
+            PGPASSWORD=narrare psql -U narrare -h postgres -d postgres -c "DROP DATABASE IF EXISTS {{db}};" && \
+            PGPASSWORD=narrare psql -U narrare -h postgres -d postgres -c "CREATE DATABASE {{db}};"; \
+        else \
+            psql -U narrare -d postgres -c "DROP DATABASE IF EXISTS {{db}};" && \
+            psql -U narrare -d postgres -c "CREATE DATABASE {{db}};"; \
+        fi; \
+    elif command -v docker >/dev/null 2>&1; then \
+        docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d postgres -c "DROP DATABASE IF EXISTS {{db}};" && \
+        docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d postgres -c "CREATE DATABASE {{db}};"; \
     else \
         echo "❌ Neither psql nor docker available — cannot run SQL"; exit 1; \
     fi
@@ -46,7 +68,11 @@ _psql-sql db sql *args:
 [private]
 _psql-shell db *args:
     @if command -v psql >/dev/null 2>&1; then \
-        psql -U narrare -d {{db}}; \
+        if ! command -v docker >/dev/null 2>&1; then \
+            PGPASSWORD=narrare psql -U narrare -h postgres -d {{db}}; \
+        else \
+            psql -U narrare -d {{db}}; \
+        fi; \
     elif command -v docker >/dev/null 2>&1; then \
         docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d {{db}}; \
     else \
@@ -85,6 +111,10 @@ dev:
     echo "Starting all services..."
     just _ensure-services
 
+    # Ensure logs directory exists and truncate logfile
+    mkdir -p logs
+    > logs/dev.log
+
     cleanup() {
         echo ""
         echo "⏹  Shutting down..."
@@ -97,8 +127,8 @@ dev:
     }
     trap cleanup INT TERM
 
-    just dev-api &
-    just dev-frontend &
+    just dev-api > logs/dev.log 2>&1 &
+    just dev-frontend > logs/dev.log 2>&1 &
     wait
 
 # Start API server only (port 8000)
@@ -154,7 +184,7 @@ db-history:
 db-reset:
     @echo "⚠️  This will destroy all data in narrare_dev. Press Ctrl+C to cancel."
     @sleep 3
-    just _psql-sql narrare_dev "DROP DATABASE IF EXISTS narrare_dev; CREATE DATABASE narrare_dev;"
+    just _psql-recreate-db narrare_dev
     just db-migrate
     uv run python scripts/seed_dev_user.py
 
