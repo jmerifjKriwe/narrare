@@ -57,7 +57,9 @@
     "activate": "Activate",
     "edit": "Edit",
     "delete": "Delete",
-    "baseUrl": "Base URL: "
+    "baseUrl": "Base URL: ",
+    "addKeyHint": "Klicke auf 'Bearbeiten' um deinen API-Key hinzuzufügen.",
+    "defaultBaseUrl": "https://api.z.ai/api/paas/v4"
   },
   "providerForm": {
     "provider": "Provider",
@@ -101,7 +103,9 @@
     "saveSuccess": "AI settings saved successfully.",
     "loadFailed": "Failed to load settings",
     "saveFailed": "Failed to save settings",
-    "customUrl": "(custom URL)"
+    "customUrl": "(custom URL)",
+    "selectModelHint": "Wähle ein Modell für diesen Provider, um die Einrichtung abzuschließen.",
+    "noApiKeyHint": "Gib den API-Schlüssel in den Provider-Einstellungen ein, um verfügbare Modelle zu laden."
   },
   "categoryOverrides": {
     "title": "Category Overrides",

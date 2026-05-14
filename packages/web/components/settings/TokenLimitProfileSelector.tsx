@@ -50,7 +50,7 @@ export function TokenLimitProfileSelector({ value, onChange }: TokenLimitProfile
               className={cn(
                 "text-left border rounded-xl p-4 transition-all duration-200",
                 isSelected
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-light)]/20 shadow-[0_0_0_1px_var(--color-accent)]/30"
+                  ? "border-[var(--color-accent)] bg-[var(--color-accent-light)] shadow-sm"
                   : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-secondary)]",
               )}
               aria-pressed={isSelected}

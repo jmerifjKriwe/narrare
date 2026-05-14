@@ -50,6 +50,7 @@ class UserProvidersRepository:
         )
         self._session.add(provider)
         await self._session.flush()
+        await self._session.refresh(provider)
         return provider
 
     async def get(self, provider_id: uuid.UUID) -> UserProvider | None:
@@ -101,6 +102,7 @@ class UserProvidersRepository:
         for field, value in kwargs.items():
             setattr(provider, field, value)
         await self._session.flush()
+        await self._session.refresh(provider)
         return provider
 
     async def delete(self, provider_id: uuid.UUID) -> None:

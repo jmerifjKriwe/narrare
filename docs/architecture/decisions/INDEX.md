@@ -37,6 +37,7 @@
 | [ADR-011](ADR-011-content-versioning.md) | Content Versioning for Chapters | ✅ | 2026-05-12 | `chapters/`, DB schema |
 | [ADR-012](ADR-012-event-driven.md) | Event-Driven Architecture (Redis Pub/Sub) | ✅ | 2026-05-12 | `core/events/`, TaskIQ integration |
 | [ADR-013](ADR-013-i18n.md) | Internationalization Architecture | ✅ | 2026-05-12 | `packages/i18n/`, `packages/web/lib/i18n/` |
+| [ADR-014](ADR-014-tdd-agent-workflow.md) | TDD Agent Workflow & Regression-First Fixes | ✅ | 2026-05-14 | Agent System, Testing |
 
 ---
 

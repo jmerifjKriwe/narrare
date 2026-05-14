@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import pytest
 from fastapi import HTTPException
 
@@ -32,6 +34,9 @@ def fake_demo_loader() -> FakeDemoLoader:
 def service(
     fake_provider_service: FakeProviderService, fake_demo_loader: FakeDemoLoader
 ) -> SetupService:
+    # Minimal async fakes for the new deps (not used by validation tests)
+    mock_providers_repo = AsyncMock()
+    mock_ai_settings_repo = AsyncMock()
     return SetupService(
         session=None,  # type: ignore[arg-type]
         novel_repo=None,  # type: ignore[arg-type]
@@ -39,6 +44,8 @@ def service(
         project_settings_repo=None,  # type: ignore[arg-type]
         provider_service=fake_provider_service,
         demo_loader=fake_demo_loader,
+        providers_repo=mock_providers_repo,  # type: ignore[arg-type]
+        ai_settings_repo=mock_ai_settings_repo,  # type: ignore[arg-type]
     )
 
 

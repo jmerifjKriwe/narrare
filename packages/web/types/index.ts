@@ -6,6 +6,7 @@ export interface User {
   display_name: string;
   is_active: boolean;
   is_verified: boolean;
+  has_providers: boolean;
   created_at: string;
 }
 

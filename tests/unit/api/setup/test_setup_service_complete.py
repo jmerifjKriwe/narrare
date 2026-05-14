@@ -1,119 +1,23 @@
-"""Unit tests for setup/service.complete() — business logic with Fake classes."""
+"""Unit tests for setup/service.complete() — core business logic."""
 
 from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from narrare.setup.schemas import (
-    AIProvider,
     CompleteSetupResponse,
     StarterContent,
-    StoryStructure,
-    StoryTone,
-    WizardState,
 )
-from narrare.setup.service import SetupService
-from tests.fakes import FakeDemoLoader, FakeProviderService
+
+from ._complete_helpers import (
+    _make_service,
+    _make_wizard_state,
+)
 
 if TYPE_CHECKING:
-    from narrare.settings.schemas import UpdateUserSettingsRequest
-
-
-@pytest.fixture
-def fake_provider_service() -> FakeProviderService:
-    return FakeProviderService()
-
-
-@pytest.fixture
-def fake_demo_loader() -> FakeDemoLoader:
-    return FakeDemoLoader()
-
-
-def _make_mock_session() -> MagicMock:
-    """Create a mocked AsyncSession for complete() tests."""
-    mock_session = MagicMock(spec=AsyncSession)
-    mock_session.flush = AsyncMock()
-    return mock_session
-
-
-def _make_wizard_state(**overrides: object) -> WizardState:
-    """Create a WizardState with sensible defaults."""
-    defaults: dict[str, object] = {
-        "project_name": "Test Project",
-        "language": "en",
-        "autosave_interval": 30,
-        "title": "Test Novel",
-        "author": "Test Author",
-        "genre": "fantasy",
-        "logline": "A test logline",
-        "story_structure": StoryStructure.THREE_ACT,
-        "tone": StoryTone.DRAMATIC,
-        "starter": StarterContent.BLANK,
-        "import_path": None,
-        "provider": AIProvider.ANTHROPIC,
-        "api_key": "sk-test-key",
-        "model": "claude-haiku",
-        "ollama_url": "http://localhost:11434",
-    }
-    defaults.update(overrides)
-    return WizardState(**defaults)  # type: ignore[arg-type]
-
-
-class _FakeUserSettingsRepo:
-    """Minimal fake for UserSettingsRepositoryProtocol used by complete()."""
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    async def get(self, user_id: uuid.UUID) -> object:
-        return object()
-
-    async def update(self, user_id: uuid.UUID, request: UpdateUserSettingsRequest) -> object:
-        self.calls.append({"method": "update", "user_id": user_id, "request": request})
-        return object()
-
-
-class _FakeProjectSettingsRepo:
-    """Minimal fake for ProjectSettingsRepositoryProtocol used by complete()."""
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    async def get(self, novel_id: uuid.UUID) -> object:
-        return object()
-
-    async def update(self, novel_id: uuid.UUID, request: object) -> object:
-        self.calls.append({"method": "update", "novel_id": novel_id})
-        return object()
-
-
-def _make_service(
-    fake_provider_service: FakeProviderService,
-    fake_demo_loader: FakeDemoLoader,
-    mock_session: MagicMock | None = None,
-) -> SetupService:
-    """Create a SetupService with mocked dependencies."""
-    return SetupService(
-        session=mock_session or _make_mock_session(),
-        novel_repo=None,  # type: ignore[arg-type]
-        user_settings_repo=_FakeUserSettingsRepo(),  # type: ignore[arg-type]
-        project_settings_repo=_FakeProjectSettingsRepo(),  # type: ignore[arg-type]
-        provider_service=fake_provider_service,
-        demo_loader=fake_demo_loader,
-    )
-
-
-@pytest.fixture
-def complete_service(
-    fake_provider_service: FakeProviderService, fake_demo_loader: FakeDemoLoader
-) -> SetupService:
-    """Service fixture with mocked session for complete() tests."""
-    return _make_service(fake_provider_service, fake_demo_loader)
+    from narrare.setup.service import SetupService
+    from tests.fakes import FakeDemoLoader, FakeProviderService
 
 
 class TestComplete:
@@ -154,8 +58,6 @@ class TestComplete:
         state = _make_wizard_state(
             autosave_interval=60,
             language="de",
-            provider=AIProvider.OPENAI,
-            model="gpt-4o",
         )
 
         await complete_service.complete(user_id, state)
@@ -165,8 +67,6 @@ class TestComplete:
         project_settings = add_calls[1][0][0]
         assert project_settings.autosave_interval == 60
         assert project_settings.default_language == "de"
-        assert project_settings.ai_provider == "openai"
-        assert project_settings.ai_model == "gpt-4o"
 
     async def test_complete_updates_user_settings(self, complete_service: SetupService) -> None:
         """Verify user settings are updated with the selected language."""

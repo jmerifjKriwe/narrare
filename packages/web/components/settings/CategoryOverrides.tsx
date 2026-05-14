@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/Select";
+import { getProviderLabel } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 import type { IntentCategory, ModelOverride, UserProvider } from "@/types";
 
@@ -46,7 +47,7 @@ export function CategoryOverrides({
   const activeProviders = providers.filter((p) => p.is_active);
   const providerOptions = activeProviders.map((p) => ({
     value: p.id,
-    label: p.provider_name,
+    label: getProviderLabel(p.provider_name),
   }));
 
   const toggleOverride = (category: IntentCategory) => {
@@ -113,7 +114,7 @@ export function CategoryOverrides({
                   type="button"
                   onClick={() => toggleOverride(catValue)}
                   className={cn(
-                    "relative w-10 h-5 rounded-full transition-colors duration-200",
+                    "relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0",
                     isActive ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]",
                   )}
                   role="switch"
@@ -122,8 +123,8 @@ export function CategoryOverrides({
                 >
                   <span
                     className={cn(
-                      "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200",
-                      isActive ? "translate-x-5" : "translate-x-0.5",
+                      "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200",
+                      isActive ? "translate-x-5" : "translate-x-0",
                     )}
                   />
                 </button>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -28,6 +29,14 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "requires_db: marks tests requiring database connection")
 
 
+@pytest.fixture(autouse=True)
+def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]
+    """Ensure NARRARE_ENCRYPTION_KEY is set for all integration tests."""
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setenv("NARRARE_ENCRYPTION_KEY", Fernet.generate_key().decode())
+
+
 @pytest.fixture(scope="session", autouse=True)
 async def check_db_available() -> None:
     """Skip all integration tests if database is not available."""
@@ -43,12 +52,35 @@ async def check_db_available() -> None:
 @pytest.fixture(scope="session")
 async def test_engine() -> AsyncGenerator[AsyncEngine]:
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+
+    # Run actual Alembic migrations (not create_all) to test migration scripts
+    await _run_test_migrations(TEST_DATABASE_URL)
+
     yield engine
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
+
+
+async def _run_test_migrations(db_url: str) -> None:
+    """Run Alembic migrations against the test database.
+
+    Uses the real migration path so that integration tests validate
+    that ``alembic upgrade head`` works end-to-end.
+    """
+    import asyncio
+
+    from alembic.config import Config
+
+    from alembic import command
+
+    # Resolve alembic config relative to the API directory
+    api_dir = Path(__file__).resolve().parents[2] / "apps" / "api"
+    alembic_cfg = Config(str(api_dir / "alembic.ini"))
+    alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, lambda: command.upgrade(alembic_cfg, "head"))
 
 
 @pytest.fixture

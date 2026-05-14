@@ -32,8 +32,8 @@ export default function LoginPage() {
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      await login(data.email, data.password);
-      router.push("/dashboard");
+      const user = await login(data.email, data.password);
+      router.push(user.has_providers ? "/dashboard" : "/wizard");
     } catch {
       setError(t("invalidCredentials"));
     }

@@ -6,6 +6,7 @@ import { ApiKeyDisplay } from "@/components/settings/ApiKeyDisplay";
 import { ProviderForm } from "@/components/settings/ProviderForm";
 import { Button } from "@/components/ui/Button";
 import { aiSettingsApi } from "@/lib/api/client";
+import { getProviderLabel } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 import type { UserProvider } from "@/types";
 
@@ -148,8 +149,8 @@ export default function AiProvidersPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[0.9375rem] font-medium text-[var(--color-text-primary)] capitalize">
-                      {provider.provider_name}
+                    <span className="text-[0.9375rem] font-medium text-[var(--color-text-primary)]">
+                      {getProviderLabel(provider.provider_name)}
                     </span>
                     <span
                       className={cn(
@@ -169,12 +170,22 @@ export default function AiProvidersPage() {
                       hasKey={provider.has_api_key}
                       onChange={() => handleEdit(provider)}
                     />
-                    {provider.base_url && (
+                    {!provider.has_api_key && provider.provider_name !== "ollama" && (
+                      <p className="text-[0.8125rem] text-[var(--color-text-tertiary)] italic">
+                        {t("addKeyHint")}
+                      </p>
+                    )}
+                    {provider.base_url ? (
                       <p className="text-[0.75rem] text-[var(--color-text-tertiary)]">
                         {t("baseUrl")}
                         {provider.base_url}
                       </p>
-                    )}
+                    ) : provider.provider_name === "zai" ? (
+                      <p className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                        {t("baseUrl")}
+                        {t("defaultBaseUrl")}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 

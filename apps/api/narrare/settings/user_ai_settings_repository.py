@@ -42,6 +42,7 @@ class UserAiSettingsRepository:
             settings = UserAiSettings(user_id=user_id)
             self._session.add(settings)
             await self._session.flush()
+            await self._session.refresh(settings)
         return settings
 
     async def update(self, user_id: uuid.UUID, **kwargs: object) -> UserAiSettings:
@@ -59,4 +60,5 @@ class UserAiSettingsRepository:
         for field, value in kwargs.items():
             setattr(settings, field, value)
         await self._session.flush()
+        await self._session.refresh(settings)
         return settings

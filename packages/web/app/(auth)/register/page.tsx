@@ -33,8 +33,8 @@ export default function RegisterPage() {
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      await register_user(data.email, data.password, data.display_name);
-      router.push("/wizard");
+      const user = await register_user(data.email, data.password, data.display_name);
+      router.push(user.has_providers ? "/dashboard" : "/wizard");
     } catch {
       setError(t("emailTaken"));
     }

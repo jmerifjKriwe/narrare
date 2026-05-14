@@ -10,9 +10,14 @@ from typing import TYPE_CHECKING
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import narrare.auth.models
+import narrare.chapters.models
+import narrare.novels.models
+import narrare.settings.models
+import narrare.volumes.models  # noqa: F401
 from alembic import context
 
-# Import all models so Alembic can detect them
+# Import the declarative base and all ORM models so Alembic can detect tables.
 # pyright: reportUnusedImport=false
 from narrare._app.database import Base
 

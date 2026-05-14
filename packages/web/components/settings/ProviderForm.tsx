@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { aiSettingsApi, setupApi } from "@/lib/api/client";
+import { getProviderLabel, PROVIDERS } from "@/lib/providers";
 import type { AIProvider, UserProvider } from "@/types";
 
 interface ProviderFormProps {
@@ -16,18 +17,7 @@ interface ProviderFormProps {
 
 export function ProviderForm({ existingProvider, onSaved, onCancel }: ProviderFormProps) {
   const t = useTranslations("settings-ai.providerForm");
-  const tProviders = useTranslations("settings-ai.providers");
   const isEdit = !!existingProvider;
-
-  const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
-    { value: "anthropic", label: tProviders("anthropic") },
-    { value: "openai", label: tProviders("openai") },
-    { value: "google", label: tProviders("google") },
-    { value: "groq", label: tProviders("groq") },
-    { value: "ollama", label: tProviders("ollamaLocal") },
-    { value: "openrouter", label: tProviders("openrouter") },
-    { value: "zai", label: tProviders("zai") },
-  ];
 
   const [providerName, setProviderName] = useState<AIProvider>(
     (existingProvider?.provider_name as AIProvider) ?? "anthropic",
@@ -97,8 +87,8 @@ export function ProviderForm({ existingProvider, onSaved, onCancel }: ProviderFo
           <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
             {t("provider")}
           </span>
-          <span className="text-[0.9375rem] text-[var(--color-text-primary)] capitalize">
-            {existingProvider.provider_name}
+          <span className="text-[0.9375rem] text-[var(--color-text-primary)]">
+            {getProviderLabel(existingProvider.provider_name)}
           </span>
         </div>
       ) : (
@@ -106,7 +96,7 @@ export function ProviderForm({ existingProvider, onSaved, onCancel }: ProviderFo
           label={t("provider")}
           value={providerName}
           onChange={(e) => setProviderName(e.target.value as AIProvider)}
-          options={PROVIDER_OPTIONS}
+          options={PROVIDERS}
         />
       )}
 

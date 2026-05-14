@@ -10,6 +10,8 @@ from narrare._app.database import get_async_session
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.novels.repository import NovelRepository
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
+from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
+from narrare.settings.user_providers_repository import UserProvidersRepository
 from narrare.setup.demo_loader import DemoLoader
 from narrare.setup.provider_service import ProviderService
 from narrare.setup.schemas import (
@@ -44,6 +46,8 @@ def _get_service(
         project_settings_repo=ProjectSettingsRepository(session),
         provider_service=ProviderService(),
         demo_loader=DemoLoader(session),
+        providers_repo=UserProvidersRepository(session),
+        ai_settings_repo=UserAiSettingsRepository(session),
     )
 
 

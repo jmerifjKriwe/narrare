@@ -6,6 +6,12 @@ const withNextIntl = createNextIntlPlugin("./lib/i18n/request.ts");
 const nextConfig: NextConfig = {
   output: "standalone",
   typedRoutes: true,
+  logging: {
+    incomingRequests: {
+      ignore: [/_next\/static/, /_next\/image/, /favicon/],
+    },
+    browserToTerminal: "warn",
+  },
   async rewrites() {
     return [
       {

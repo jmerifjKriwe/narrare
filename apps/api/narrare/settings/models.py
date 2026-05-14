@@ -108,6 +108,9 @@ class UserAiSettings(Base):
     intent_overrides: Mapped[dict[str, object]] = mapped_column(
         JSONB, default=dict, server_default="{}", nullable=False
     )
+    token_limit_profile: Mapped[str] = mapped_column(
+        String(20), default="balanced", server_default="balanced", nullable=False
+    )
     token_limit_overrides: Mapped[dict[str, object]] = mapped_column(
         JSONB, default=dict, server_default="{}", nullable=False
     )

@@ -6,18 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { setupApi } from "@/lib/api/client";
+import { PROVIDERS } from "@/lib/providers";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import type { AIProvider } from "@/types";
-
-const PROVIDERS: { value: AIProvider; label: string }[] = [
-  { value: "anthropic", label: "Anthropic" },
-  { value: "openai", label: "OpenAI" },
-  { value: "google", label: "Google AI" },
-  { value: "groq", label: "Groq" },
-  { value: "ollama", label: "Ollama (local)" },
-  { value: "openrouter", label: "OpenRouter" },
-  { value: "zai", label: "Z.AI" },
-];
 
 export function WizardStep4({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const t = useTranslations("wizard.step4");

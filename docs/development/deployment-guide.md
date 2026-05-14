@@ -30,14 +30,17 @@ just dev-logs
 ```bash
 # Start API + frontend (hot reload)
 just dev
-
-# Stop: Ctrl+C — clean shutdown with confirmation
 ```
 
 `just dev` starts both the API (port 8000) and the frontend (port 3000)
 in the background. Press **Ctrl+C** to stop — all processes (API, frontend,
 and their children) are terminated cleanly. You'll see "⏹ Shutting down…"
 followed by "⏹ Stopped." when complete.
+
+**Auto-migration:** The API runs `alembic upgrade head` automatically on every
+startup (via `lifespan.py`). You do not need to run migrations manually for
+normal development. The current schema version is logged at startup. If
+migrations fail, the app fails to start — check the terminal output for details.
 
 ### Dev Container
 
@@ -226,7 +229,7 @@ All developer commands via `just`:
 | | `dev-api` | Start API only |
 | | `dev-frontend` | Start frontend only |
 | | `dev-worker` | Start background worker |
-| **Database** | `db-migrate` | Run pending Alembic migrations |
+| **Database** | `db-migrate` | Run pending Alembic migrations (optional — runs automatically on startup) |
 | | `db-downgrade` | Roll back last migration |
 | | `db-seed` | Seed development data |
 | | `db-reset` | Drop and recreate dev database (dangerous) |
@@ -298,6 +301,7 @@ docker compose up -d
 ```bash
 docker compose pull
 docker compose up -d
+# Migrations run automatically on startup — no manual step needed
 ```
 
 ### Architecture

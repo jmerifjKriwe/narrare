@@ -44,6 +44,7 @@ class ProjectAiSettingsRepository:
             settings = ProjectSettings(novel_id=novel_id)
             self._session.add(settings)
             await self._session.flush()
+            await self._session.refresh(settings)
         return settings
 
     async def update(self, novel_id: uuid.UUID, **kwargs: object) -> ProjectSettings:
@@ -61,4 +62,5 @@ class ProjectAiSettingsRepository:
         for field, value in kwargs.items():
             setattr(settings, field, value)
         await self._session.flush()
+        await self._session.refresh(settings)
         return settings

@@ -89,9 +89,22 @@ async def get_current_user(
     from uuid import UUID
 
     from fastapi import HTTPException, status
+    from sqlalchemy import func, select
+
+    from narrare.settings.models import UserProvider
 
     repo = AuthRepository(session)
-    user = await repo.get_by_id(UUID(user_id))
+    uid = UUID(user_id)
+    user = await repo.get_by_id(uid)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return UserResponse.model_validate(user)
+
+    # Check if user has any configured providers (determines setup completion)
+    result = await session.execute(
+        select(func.count()).select_from(UserProvider).where(UserProvider.user_id == uid)
+    )
+    provider_count = result.scalar() or 0
+
+    response = UserResponse.model_validate(user)
+    response.has_providers = provider_count > 0
+    return response

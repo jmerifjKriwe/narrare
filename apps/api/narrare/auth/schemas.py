@@ -39,3 +39,4 @@ class UserResponse(BaseModel):
     is_active: bool
     is_verified: bool
     created_at: datetime
+    has_providers: bool = False

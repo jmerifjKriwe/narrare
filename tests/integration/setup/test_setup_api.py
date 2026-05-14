@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sqlalchemy import text
+
 from narrare.setup.schemas import (
     AvailableModelsResponse,
     CompleteSetupResponse,
@@ -14,6 +16,7 @@ from narrare.setup.schemas import (
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestValidateStep1:
@@ -237,3 +240,86 @@ class TestCompleteSetup:
             f"/novel/{validated.novel_id}/editor",
             "/dashboard",
         )
+
+    async def test_complete_creates_user_provider_in_db(
+        self, client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
+    ) -> None:
+        """complete() creates a user_providers row with encrypted API key."""
+        response = await client.post(
+            "/api/v1/setup/complete",
+            json={
+                "state": {
+                    "project_name": "DB Test",
+                    "language": "en",
+                    "autosave_interval": 30,
+                    "title": "DB Test Novel",
+                    "author": "Test",
+                    "genre": "scifi",
+                    "logline": "A test.",
+                    "story_structure": "three_act",
+                    "tone": "dramatic",
+                    "starter": "blank",
+                    "import_path": None,
+                    "provider": "anthropic",
+                    "api_key": "sk-test-key-12345",
+                    "model": "claude-haiku",
+                    "ollama_url": "http://localhost:11434",
+                    "zai_endpoint": "general",
+                }
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+
+        # Verify user_providers row exists in DB
+        result = await db_session.execute(text("SELECT COUNT(*) FROM user_providers"))
+        count = result.scalar()
+        assert count is not None and count >= 1
+
+        result = await db_session.execute(
+            text("SELECT provider_name, api_key_encrypted, base_url FROM user_providers LIMIT 1")
+        )
+        row = result.fetchone()
+        assert row is not None
+        assert row[0] == "anthropic"
+        assert row[1] != ""  # Encrypted key should be non-empty
+        assert row[1] != "sk-test-key-12345"  # Should NOT be the plain key
+        assert row[2] is None  # No custom base_url for anthropic
+
+    async def test_complete_creates_user_ai_settings_in_db(
+        self, client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
+    ) -> None:
+        """complete() creates user_ai_settings with default model."""
+        response = await client.post(
+            "/api/v1/setup/complete",
+            json={
+                "state": {
+                    "project_name": "Settings Test",
+                    "language": "en",
+                    "autosave_interval": 30,
+                    "title": "Settings Test Novel",
+                    "author": "Test",
+                    "genre": "fantasy",
+                    "logline": "A test.",
+                    "story_structure": "three_act",
+                    "tone": "dramatic",
+                    "starter": "blank",
+                    "import_path": None,
+                    "provider": "openai",
+                    "api_key": "sk-openai-test",
+                    "model": "gpt-4o",
+                    "ollama_url": "http://localhost:11434",
+                    "zai_endpoint": "general",
+                }
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+
+        # Verify user_ai_settings row exists with correct values
+        result = await db_session.execute(
+            text("SELECT default_model FROM user_ai_settings LIMIT 1")
+        )
+        row = result.fetchone()
+        assert row is not None
+        assert row[0] == "gpt-4o"

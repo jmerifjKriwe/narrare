@@ -145,3 +145,51 @@ class TestGetCurrentUser:
     async def test_me_without_token_returns_401(self, client: AsyncClient) -> None:
         response = await client.get("/api/v1/auth/me")
         assert response.status_code == 401
+
+
+class TestHasProviders:
+    async def test_me_without_setup_has_providers_false(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """New user with no providers has has_providers=False."""
+        response = await client.get("/api/v1/auth/me", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["has_providers"] is False
+
+    async def test_me_after_setup_has_providers_true(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """After completing setup, has_providers becomes True."""
+        # Complete setup first
+        setup_response = await client.post(
+            "/api/v1/setup/complete",
+            json={
+                "state": {
+                    "project_name": "Provider Test",
+                    "language": "en",
+                    "autosave_interval": 30,
+                    "title": "Test Novel",
+                    "author": "Test",
+                    "genre": "fantasy",
+                    "logline": "Test",
+                    "story_structure": "three_act",
+                    "tone": "dramatic",
+                    "starter": "blank",
+                    "import_path": None,
+                    "provider": "anthropic",
+                    "api_key": "sk-test-key",
+                    "model": "claude-haiku",
+                    "ollama_url": "http://localhost:11434",
+                    "zai_endpoint": "general",
+                }
+            },
+            headers=auth_headers,
+        )
+        assert setup_response.status_code == 200
+
+        # Now check /auth/me
+        response = await client.get("/api/v1/auth/me", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["has_providers"] is True

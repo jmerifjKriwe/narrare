@@ -203,7 +203,7 @@ apps/api/narrare/
     ✓ database.py (async engine, get_db session factory)
     ✓ dependencies.py (get_settings, get_gateway, get_composer)
     ✓ middleware.py (CORS, rate limiting, request logging)
-    ✓ lifespan.py (startup: run migrations, seed dev user)
+    ✓ lifespan.py (startup: auto-migrate DB, seed dev user, log schema version)
 
   auth/
     ✓ models.py (User SQLAlchemy model)
@@ -251,7 +251,7 @@ Alembic:
 
 **Tests:** `tests/integration/` — all router endpoints, auth flow
 
-**Definition of done:** `just dev-api` starts. Auth works. CRUD works. `just db-migrate` runs clean.
+**Definition of done:** `just dev-api` starts. Auth works. CRUD works. Migrations run automatically on startup. `just db-migrate` also works for manual control.
 
 ---
 
@@ -268,7 +268,8 @@ apps/api/narrare/setup/
       - validate_step_3() (starter content selection)
       - load_demo_content() (Fantasy / SciFi / German)
       - validate_step_4() (provider + API key validation — real test call)
-      - complete_setup() (creates novel, chapters, settings, returns redirect)
+      - complete_setup() (creates novel, chapters, settings, writes to user_providers + user_ai_settings, returns redirect)
+  ✓ _validation.py (step validation pure functions — RULE-04 split)
   ✓ provider_service.py (fetch available models per provider — real API call)
   ✓ router.py
 
@@ -334,7 +335,10 @@ All UI text is i18n strings (no hardcoded English). Light + dark mode works.
 
 ```
 ✓ End-to-end flow: signup → wizard → demo content → editor
+✓ Post-login redirect: has_providers ? /dashboard : /wizard
 ✓ Dev user seeded automatically on first startup
+✓ Auto-migration: lifespan.py runs alembic upgrade head on startup
+✓ Integration tests use real Alembic migrations (not create_all)
 ✓ All settings persist correctly
 ✓ All tests pass (unit + integration)
 ✓ All checks pass (architecture + lint + typecheck + security)

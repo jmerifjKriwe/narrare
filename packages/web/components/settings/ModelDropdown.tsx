@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { setupApi } from "@/lib/api/client";
+import { getProviderLabel } from "@/lib/providers";
 import type { AIProvider } from "@/types";
 
 interface ModelDropdownProps {
@@ -16,16 +17,6 @@ interface ModelDropdownProps {
   readonly label?: string;
 }
 
-const PROVIDER_LABEL_KEYS: Record<AIProvider, string> = {
-  anthropic: "anthropic",
-  openai: "openai",
-  google: "google",
-  groq: "groq",
-  ollama: "ollama",
-  openrouter: "openrouter",
-  zai: "zai",
-};
-
 export function ModelDropdown({
   providerName,
   apiKey,
@@ -35,7 +26,6 @@ export function ModelDropdown({
   label,
 }: ModelDropdownProps) {
   const t = useTranslations("settings-ai.modelDropdown");
-  const tProviders = useTranslations("settings-ai.providers");
   const [models, setModels] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +56,10 @@ export function ModelDropdown({
       }
     }
 
-    loadModels();
+    // Only fetch from provider API when we have a key (or Ollama which needs no key)
+    if (providerName === "ollama" || apiKey.trim().length > 0) {
+      loadModels();
+    }
 
     return () => {
       cancelled = true;
@@ -80,7 +73,7 @@ export function ModelDropdown({
           {displayLabel}
         </span>
         <div className="w-full px-4 py-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[0.9375rem] text-[var(--color-text-tertiary)]">
-          {t("loadingFrom", { provider: tProviders(PROVIDER_LABEL_KEYS[providerName]) })}
+          {t("loadingFrom", { provider: getProviderLabel(providerName) })}
         </div>
       </div>
     );

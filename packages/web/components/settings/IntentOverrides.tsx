@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { getProviderLabel } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 import type { IntentCategory, ModelOverride, UserProvider } from "@/types";
 
@@ -82,7 +83,7 @@ export function IntentOverrides({
   const activeProviders = providers.filter((p) => p.is_active);
   const providerOptions = activeProviders.map((p) => ({
     value: p.id,
-    label: p.provider_name,
+    label: getProviderLabel(p.provider_name),
   }));
 
   const toggleCategory = (category: string) => {
@@ -199,7 +200,7 @@ export function IntentOverrides({
                             type="button"
                             onClick={() => toggleIntentOverride(intent.value)}
                             className={cn(
-                              "relative w-9 h-[18px] rounded-full transition-colors duration-200",
+                              "relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0",
                               isActive ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]",
                             )}
                             role="switch"
@@ -208,8 +209,8 @@ export function IntentOverrides({
                           >
                             <span
                               className={cn(
-                                "absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-200",
-                                isActive ? "translate-x-[18px]" : "translate-x-[2px]",
+                                "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200",
+                                isActive ? "translate-x-5" : "translate-x-0",
                               )}
                             />
                           </button>

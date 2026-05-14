@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { getProviderLabel } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 import type { IntentCategory, TokenLimitOverride } from "@/types";
 
@@ -96,7 +97,7 @@ export function EffectiveSettingsDisplay({
                 {defaultModel}
                 {defaultProvider && (
                   <span className="text-[var(--color-text-tertiary)] ml-2">
-                    {t("viaProvider", { provider: defaultProvider })}
+                    {t("viaProvider", { provider: getProviderLabel(defaultProvider) })}
                   </span>
                 )}
               </p>
@@ -145,7 +146,7 @@ export function EffectiveSettingsDisplay({
                       {setting.model}
                       {setting.provider && (
                         <span className="text-[var(--color-text-tertiary)] ml-1">
-                          {t("viaProvider", { provider: setting.provider })}
+                          {t("viaProvider", { provider: getProviderLabel(setting.provider) })}
                         </span>
                       )}
                     </p>

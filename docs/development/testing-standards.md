@@ -319,21 +319,63 @@ def service(fake_chapter_repo, fake_novel_service) -> ChapterService:
 
 ### Database Fixtures (Integration Only)
 
-```python
-@pytest.fixture(scope="session")
-async def db_engine() -> AsyncEngine:
-    """Real Postgres engine via Docker Compose."""
-    ...
+Integration tests run **real Alembic migrations** (not `Base.metadata.create_all()`)
+against the test database. This catches migration bugs that would otherwise be
+invisible to CI — a missing import in `env.py` or a broken upgrade script is
+detected at test time, not in production.
 
-@pytest.fixture
-async def db_session(db_engine) -> AsyncSession:
-    """Transaction-wrapped session — rolls back after each test."""
-    async with db_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        async with AsyncSession(conn) as session:
-            yield session
-            await conn.rollback()
+```python
+# tests/integration/conftest.py — session-scoped engine setup
+@pytest.fixture(scope="session")
+async def test_engine() -> AsyncEngine:
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    # Real migrations, not create_all — validates migration scripts
+    await _run_test_migrations(TEST_DATABASE_URL)
+    yield engine
+    ...
 ```
+
+**Rule:** Never use `Base.metadata.create_all()` in integration tests.
+Always use `alembic upgrade head`. If a migration is broken, the test must fail.
+
+### Post-Assertion Pattern — RULE-TEST-02
+
+After any state-changing test (create, update, delete), verify the database
+state directly in **all affected tables**. Do not rely solely on the API
+response — the response may be correct while the DB state is wrong.
+
+```python
+async def test_setup_complete_creates_provider(db_session):
+    """After setup, user_providers table must have a row."""
+    await client.post("/api/v1/setup/complete", json=setup_payload, ...)
+
+    # Verify DB state, not just API response
+    result = await db_session.execute(select(UserProvider))
+    providers = result.scalars().all()
+    assert len(providers) == 1
+    assert providers[0].provider_name == "openai"
+    assert providers[0].encrypted_api_key is not None
+```
+
+This pattern catches bugs like "the API returns success but silently skips
+writing to a secondary table."
+
+### Environment Variable Fixtures
+
+Integration tests that depend on environment variables (e.g., `NARRARE_ENCRYPTION_KEY`)
+use `autouse` fixtures to set them:
+
+```python
+@pytest.fixture(autouse=True)
+def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure NARRARE_ENCRYPTION_KEY is set for all integration tests."""
+    from cryptography.fernet import Fernet
+    monkeypatch.setenv("NARRARE_ENCRYPTION_KEY", Fernet.generate_key().decode())
+```
+
+**Scoping note:** Use function-scoped `autouse` fixtures (not session-scoped)
+for env vars that must be isolated per test. Add negative tests (missing env var
+→ expected error) where the behavior is security-relevant.
 
 ### Factory Helpers (not fixtures)
 

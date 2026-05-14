@@ -127,8 +127,8 @@ dev:
     }
     trap cleanup INT TERM
 
-    just dev-api > logs/dev.log 2>&1 &
-    just dev-frontend > logs/dev.log 2>&1 &
+    just dev-api &
+    just dev-frontend &
     wait
 
 # Start API server only (port 8000)

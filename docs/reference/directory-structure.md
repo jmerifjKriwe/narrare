@@ -559,7 +559,8 @@ apps/api/narrare/
 │   ├── __init__.py
 │   ├── contracts.py
 │   ├── schemas.py
-│   ├── service.py
+│   ├── service.py              ← Main service (delegates validation to _validation.py)
+│   ├── _validation.py          ← Step validation pure functions (RULE-04 split)
 │   ├── demo_loader.py
 │   ├── demo_data/               ← Bundled demo project files
 │   │   ├── en/
@@ -690,6 +691,14 @@ tests/
 │   │   │   └── test_variable_engine.py
 │   │   └── ...
 │   └── api/
+│       ├── setup/
+│       │   ├── test_setup_service.py
+│       │   ├── test_setup_schemas.py
+│       │   ├── test_demo_loader.py
+│       │   ├── test_provider_service.py
+│       │   ├── _complete_helpers.py     ← Shared helpers for setup completion tests
+│       │   ├── test_setup_complete_providers.py  ← Provider creation + AI settings after setup
+│       │   └── ...
 │       ├── writing/
 │       │   ├── test_draft_service.py
 │       │   ├── test_session_service.py
