@@ -1,6 +1,7 @@
-"""AI settings routes - provider management and AI configuration.
+"""AI settings routes — AI configuration and model listing.
 
 Split from router.py for RULE-04 compliance.
+Provider CRUD routes are in router_ai_providers.py.
 """
 
 from __future__ import annotations
@@ -12,36 +13,36 @@ from fastapi import APIRouter, Depends
 
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare.settings.router_ai_providers import router as providers_router
 from narrare.settings.schemas import (
-    CreateProviderRequest,
     ProjectAiSettingsResponse,
-    ProviderResponse,
     UpdateProjectAiSettingsRequest,
-    UpdateProviderRequest,
     UpdateUserAiSettingsRequest,
     UserAiSettingsResponse,
 )
+from narrare.setup.schemas import AvailableModelsResponse
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
     from narrare.settings.user_ai_settings_service import UserAiSettingsService
-    from narrare.settings.user_providers_service import UserProvidersService
+    from narrare.settings.user_provider_models_service import UserProviderModelsService
 
 router = APIRouter(tags=["settings"])
 
+# Include provider CRUD sub-router (no prefix — routes already have /ai/providers)
+router.include_router(providers_router)
 
-async def _get_providers_service(
+
+async def _get_provider_models_service(
     session: AsyncSession = Depends(get_async_session),
-) -> UserProvidersService:
-    from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
+) -> UserProviderModelsService:
+    from narrare.settings.user_provider_models_service import UserProviderModelsService
     from narrare.settings.user_providers_repository import UserProvidersRepository
-    from narrare.settings.user_providers_service import UserProvidersService
 
-    return UserProvidersService(
+    return UserProviderModelsService(
         providers_repo=UserProvidersRepository(session),
-        ai_settings_repo=UserAiSettingsRepository(session),
     )
 
 
@@ -71,40 +72,13 @@ async def _get_project_ai_service(
     )
 
 
-@router.get("/ai/providers", response_model=list[ProviderResponse])
-async def list_providers(
-    user_id: CurrentUserIdDep,
-    service: UserProvidersService = Depends(_get_providers_service),
-) -> list[ProviderResponse]:
-    return await service.list_providers(uuid.UUID(user_id))
-
-
-@router.post("/ai/providers", response_model=ProviderResponse, status_code=201)
-async def create_provider(
-    request: CreateProviderRequest,
-    user_id: CurrentUserIdDep,
-    service: UserProvidersService = Depends(_get_providers_service),
-) -> ProviderResponse:
-    return await service.create_provider(uuid.UUID(user_id), request)
-
-
-@router.patch("/ai/providers/{provider_id}", response_model=ProviderResponse)
-async def update_provider(
-    provider_id: uuid.UUID,
-    request: UpdateProviderRequest,
-    user_id: CurrentUserIdDep,
-    service: UserProvidersService = Depends(_get_providers_service),
-) -> ProviderResponse:
-    return await service.update_provider(uuid.UUID(user_id), provider_id, request)
-
-
-@router.delete("/ai/providers/{provider_id}", status_code=204)
-async def delete_provider(
+@router.get("/ai/providers/{provider_id}/models", response_model=AvailableModelsResponse)
+async def get_provider_models(
     provider_id: uuid.UUID,
     user_id: CurrentUserIdDep,
-    service: UserProvidersService = Depends(_get_providers_service),
-) -> None:
-    await service.delete_provider(uuid.UUID(user_id), provider_id)
+    service: UserProviderModelsService = Depends(_get_provider_models_service),
+) -> AvailableModelsResponse:
+    return await service.get_provider_models(uuid.UUID(user_id), provider_id)
 
 
 @router.get("/ai", response_model=UserAiSettingsResponse)

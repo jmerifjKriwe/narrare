@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     # ---------------------------------------------------------------------------
     environment: Literal["development", "test", "production"] = "development"
     log_level: str = "INFO"
+    log_file: str | None = None
     secret_key: str = Field(
         default="dev-secret-key-change-in-production-min-32-chars",
         min_length=32,

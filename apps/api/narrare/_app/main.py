@@ -13,9 +13,13 @@ from fastapi.responses import JSONResponse
 
 from narrare._app.config import get_settings
 from narrare._app.lifespan import lifespan
+from narrare._app.logging import configure_logging
 from narrare._app.middleware import RequestLoggingMiddleware
 from narrare._app.telemetry import setup_telemetry
 from narrare_core.shared.errors import NarrareError
+
+# Configure logging at module level so it's ready before uvicorn starts.
+configure_logging()
 
 
 def create_app() -> FastAPI:

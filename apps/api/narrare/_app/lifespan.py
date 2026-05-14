@@ -15,6 +15,72 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
+async def _get_db_version(db_url: str) -> str | None:
+    """Query the current Alembic revision from the database.
+
+    Returns ``None`` if the ``alembic_version`` table does not exist yet
+    (fresh database).
+    """
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    engine = create_async_engine(db_url, poolclass=NullPool)
+    try:
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT version_num FROM alembic_version"))
+            row = result.fetchone()
+            return row[0] if row else None
+    except Exception:
+        # Table doesn't exist yet — fresh database
+        return None
+    finally:
+        await engine.dispose()
+
+
+async def _run_pending_migrations() -> None:
+    """Run pending Alembic migrations at startup.
+
+    Ensures the database schema is always up to date before the app
+    starts serving requests.  Fails fast with a clear log if migrations
+    cannot be applied.
+    """
+    import asyncio
+    import os
+
+    from alembic.config import Config
+
+    from alembic import command
+
+    db_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev",
+    )
+
+    alembic_cfg = Config()
+    alembic_cfg.set_main_option("script_location", "alembic")
+    alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+
+    # Log current version before migration
+    current = await _get_db_version(db_url)
+    logger.info("db_schema_version", current_version=current or "(fresh database)")
+
+    # Alembic's command.upgrade is synchronous — offload to a thread
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, lambda: command.upgrade(alembic_cfg, "head"))
+
+    # Log version after migration
+    new = await _get_db_version(db_url)
+    if new != current:
+        logger.info(
+            "db_migrations_applied",
+            from_version=current or "(none)",
+            to_version=new,
+        )
+    else:
+        logger.info("db_schema_up_to_date", version=new)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
@@ -26,6 +92,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # --- Startup ---
     _configure_logging()
     logger.info("narrare_api_starting")
+
+    # Auto-migrate database on startup — fail fast if migrations break
+    try:
+        await _run_pending_migrations()
+    except Exception:
+        logger.exception("db_migration_failed")
+        raise
 
     # TaskIQ broker startup (skip in worker process — it handles its own)
     try:
@@ -76,38 +149,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 def _configure_logging() -> None:
     """Configure structlog for the application."""
-    import logging
+    from narrare._app.logging import configure_logging
 
-    import structlog
-
-    from narrare._app.config import get_settings
-
-    settings = get_settings()
-    log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
-
-    shared_processors = [
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-    ]
-
-    if settings.is_development:
-        processors = [
-            *shared_processors,
-            structlog.dev.ConsoleRenderer(),
-        ]
-    else:
-        processors = [
-            *shared_processors,
-            structlog.processors.dict_tracebacks,
-            structlog.processors.JSONRenderer(),
-        ]
-
-    structlog.configure(
-        processors=processors,  # type: ignore[arg-type]
-        wrapper_class=structlog.make_filtering_bound_logger(log_level),
-        context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
-        cache_logger_on_first_use=True,
-    )
+    configure_logging()

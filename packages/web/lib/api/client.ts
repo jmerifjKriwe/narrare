@@ -285,4 +285,8 @@ export const aiSettingsApi = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
+
+  // Live model retrieval (uses stored API key from DB)
+  getProviderModels: (providerId: string) =>
+    fetchApi<AvailableModelsResponse>(`/settings/ai/providers/${providerId}/models`),
 };

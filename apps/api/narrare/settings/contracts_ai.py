@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         UpdateUserAiSettingsRequest,
         UserAiSettingsResponse,
     )
+    from narrare.setup.schemas import AvailableModelsResponse
 
 
 # ---------------------------------------------------------------------------
@@ -138,6 +139,19 @@ class UserProvidersServiceProtocol(Protocol):
         provider_id: uuid.UUID,
     ) -> None:
         """Delete a provider. Clears references from settings."""
+        ...
+
+
+@runtime_checkable
+class UserProviderModelsServiceProtocol(Protocol):
+    """Service for fetching live model lists from user providers."""
+
+    async def get_provider_models(
+        self,
+        user_id: uuid.UUID,
+        provider_id: uuid.UUID,
+    ) -> AvailableModelsResponse:
+        """Fetch live models for a provider using its stored API key."""
         ...
 
 

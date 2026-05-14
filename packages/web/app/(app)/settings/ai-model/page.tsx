@@ -8,9 +8,9 @@ import { IntentOverrides } from "@/components/settings/IntentOverrides";
 import { TokenLimitProfileSelector } from "@/components/settings/TokenLimitProfileSelector";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
-import { aiSettingsApi, setupApi } from "@/lib/api/client";
+import { aiSettingsApi } from "@/lib/api/client";
+import { getProviderLabel } from "@/lib/providers";
 import type {
-  AIProvider,
   ModelOverride,
   TokenLimitOverride,
   TokenLimitProfile,
@@ -46,7 +46,7 @@ export default function AiModelPage() {
   const activeProviders = providers.filter((p) => p.is_active);
   const providerOptions = activeProviders.map((p) => ({
     value: p.id,
-    label: `${p.provider_name}${p.base_url ? ` ${t("customUrl")}` : ""}`,
+    label: getProviderLabel(p.provider_name),
   }));
 
   const loadModelsForProvider = useCallback(
@@ -58,8 +58,7 @@ export default function AiModelPage() {
 
       setLoadingModels((prev) => ({ ...prev, [providerId]: true }));
       try {
-        const providerName = provider.provider_name as AIProvider;
-        const result = await setupApi.getProviderModels(providerName, "");
+        const result = await aiSettingsApi.getProviderModels(providerId);
         const opts = result.models.map((m) => ({ value: m.id, label: m.name }));
         setModelOptions((prev) => ({ ...prev, [providerId]: opts }));
       } catch {
@@ -247,6 +246,11 @@ export default function AiModelPage() {
                   </div>
                 )}
               </div>
+              {!defaultModel && defaultProviderId && (
+                <p className="text-[0.8125rem] text-[var(--color-text-tertiary)] mt-2">
+                  {t("selectModelHint")}
+                </p>
+              )}
             </div>
           </div>
         )}
