@@ -37,10 +37,8 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 # --- Frontend dependencies ---
-if [ -f packages/web/package.json ]; then
-  echo "📦 Installing frontend dependencies..."
-  cd packages/web && pnpm install && cd ../..
-fi
+echo "📦 Installing frontend dependencies..."
+pnpm install
 
 # --- Wait for DB and run migrations ---
 echo "⏳ Waiting for database..."

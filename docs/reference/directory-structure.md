@@ -86,7 +86,9 @@ packages/core/narrare_core/
 ├── llm/                        ← Everything LLM. The only place LLM clients live.
 │   ├── __init__.py             ← Exports: LLMGateway, LLMIntent, LLMResult
 │   ├── gateway.py              ← THE gateway. All LLM calls go here. Max 300 lines.
-│   ├── intents.py              ← LLMIntent enum + intent → model/params mapping
+│   ├── intents.py              ← LLMIntent enum, IntentCategory, INTENT_CATEGORY_MAP, ResolvedModelConfig
+│   ├── model_routing.py        ← ModelRoutingResolver protocol, ResolvedModel result type
+│   ├── override_schemas.py     ← Pydantic schemas for category/intent/token limit overrides
 │   ├── result.py               ← LLMResult, StreamChunk, LLMError types
 │   ├── retry.py                ← Retry logic, backoff, error classification
 │   ├── metrics.py              ← Cost tracking, token counting, telemetry hooks
@@ -94,7 +96,7 @@ packages/core/narrare_core/
 │   └── _providers/             ← Provider-specific adapters (internal only)
 │       ├── openai.py
 │       ├── anthropic.py
-│       └── registry.py         ← Maps provider name → adapter
+│       └── registry.py         ← Maps provider name → adapter; infer_provider() (dev-only)
 │
 ├── prompts/                    ← Everything prompts. The only place prompts are built.
 │   ├── __init__.py             ← Exports: PromptComposer, PromptContext, PromptRegistry
@@ -155,7 +157,10 @@ packages/core/narrare_core/
 ├── shared/                     ← Pure utilities used across core
 │   ├── frontmatter.py          ← Frontmatter parsing (one implementation)
 │   ├── file_utils.py           ← File locking, path helpers
-│   └── pagination.py           ← Shared pagination types
+│   ├── pagination.py           ← Shared pagination types
+│   ├── crypto.py               ← Fernet encryption for API keys (NARRARE_ENCRYPTION_KEY)
+│   ├── result.py               ← Result type pattern (Ok/Err)
+│   └── errors.py               ← Shared error types
 │
 └── schemas/                    ← Shared Pydantic schemas (no business logic)
     ├── auth.py
@@ -196,6 +201,9 @@ packages/web/
 │       ├── dashboard/
 │       │   ├── page.tsx            ← Novel list + create
 │       │   └── loading.tsx         ← Dashboard skeleton
+│       ├── settings/               ← User settings pages
+│       │   ├── ai-providers/page.tsx ← Manage AI providers (add/edit/delete)
+│       │   └── ai-model/page.tsx   ← Model routing & token limit profiles
 │       └── novel/[id]/editor/
 │           ├── page.tsx            ← Editor page (thin — delegates to EditorLayout)
 │           ├── loading.tsx         ← Editor skeleton
@@ -216,6 +224,11 @@ packages/web/
 │   ├── setup/                      ← Setup wizard
 │   │   ├── WizardShell.tsx         ← Wizard layout + navigation
 │   │   └── WizardStep1-5.tsx       ← Individual wizard steps
+│   ├── settings/                   ← AI settings components
+│   │   ├── ProviderList.tsx        ← Provider management (add/edit/delete)
+│   │   ├── ProviderForm.tsx        ← Provider form with credential validation
+│   │   ├── ModelRoutingPanel.tsx   ← Category/intent model overrides
+│   │   └── TokenLimitPanel.tsx     ← Token limit profile selector + overrides
 │   ├── ui/                         ← UI primitives
 │   │   ├── Button.tsx              ← shadcn/cva-based button (primary/secondary/ghost/danger + loading)
 │   │   ├── Input.tsx               ← Text input with label/error/hint
@@ -479,12 +492,19 @@ apps/api/narrare/
 │
 ├── settings/
 │   ├── __init__.py
-│   ├── contracts.py
+│   ├── contracts.py            ← Repository + service protocols (RULE-03)
 │   ├── schemas.py
 │   ├── models.py
 │   ├── repository.py
+│   ├── user_providers_repository.py  ← CRUD for user_providers table
+│   ├── user_ai_settings_repository.py ← User AI settings DB queries
+│   ├── project_ai_settings_repository.py ← Project AI overrides DB queries
 │   ├── user_service.py
 │   ├── project_service.py
+│   ├── user_providers_service.py     ← Provider CRUD + credential validation + encryption
+│   ├── user_ai_settings_service.py   ← Default model, overrides, token limits
+│   ├── project_ai_settings_service.py ← Project overrides + source metadata
+│   ├── model_routing_resolver.py     ← Resolves ResolvedModelConfig via cascade
 │   ├── resolver.py             ← Effective settings resolution
 │   └── router.py
 │

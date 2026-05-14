@@ -135,9 +135,9 @@
 ### Settings & Configuration
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [SET-001](settings/SET-001-user-settings.md) | User Settings | 📋 | ✅ |
-| [SET-002](settings/SET-002-project-settings.md) | Project Settings | 📋 | ✅ |
-| [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | 📋 | ❌ |
+| [SET-001](settings/SET-001-user-settings.md) | User Settings | 🔨 | ✅ |
+| [SET-002](settings/SET-002-project-settings.md) | Project Settings | 🔨 | ✅ |
+| [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | 🔨 | ❌ |
 
 ### Analytics & Cost
 | ID | Feature | Status | MVP |

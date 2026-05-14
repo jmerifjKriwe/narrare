@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-13
-Updated by: Orchestrator
-Session summary: Startup bugfix marathon: structlog PrintLogger, TaskIQ worker, dev email .local→.dev, Pydantic ForwardRef in all schemas/routers (TYPE_CHECKING), TipTap SSR hydration, pydantic-ai v1.93 API migration (OpenAIProvider, output_type), Z.AI dual endpoint selector in wizard, provider error pass-through, DashboardView "New Novel" → wizard flow.
+Date: 2026-05-14
+Updated by: Documentation Specialist
+Session summary: Configurable model routing documentation — ADR-001 updated, Q-006 resolved, feature specs SET-001/002/003 completed, CURRENT_STATE and directory-structure updated, NARRARE_ENCRYPTION_KEY added to deployment docs.
 
 ---
 
@@ -84,9 +84,12 @@ Phase 5: Integration & Polish      · not started
 
 **LLM Layer (`llm/`):**
 - `gateway.py` — Single LLM Gateway (ADR-001), ~290 lines
-- `_providers/` — OpenAI, Anthropic, Ollama, ZAI, Others, Registry (6 providers)
+- `_providers/` — OpenAI, Anthropic, Ollama, ZAI, Others, Registry (6 providers); all accept explicit `api_key`/`base_url`
 - `observability.py` — Langfuse integration (LLM tracing, cost tracking)
-- `result.py`, `retry.py`, `metrics.py`, `intents.py`, `embeddings.py`
+- `result.py`, `retry.py`, `metrics.py`, `embeddings.py`
+- `intents.py` — `LLMIntent` enum, `IntentCategory` enum, `INTENT_CATEGORY_MAP`, `ResolvedModelConfig` (no more `MODEL_ROUTING` or `get_model_config()`)
+- `model_routing.py` — `ModelRoutingResolver` protocol and `ResolvedModel` result type
+- `override_schemas.py` — Pydantic schemas for category/intent/token limit overrides
 
 **Prompt System (`prompts/`):**
 - `composer.py` — Prompt composition (ADR-002)
@@ -96,6 +99,7 @@ Phase 5: Integration & Polish      · not started
 
 **Shared Utilities (`shared/`):**
 - `result.py` — Result type pattern (Ok/Err)
+- `crypto.py` — Fernet encryption for API keys (reads `NARRARE_ENCRYPTION_KEY`)
 - `pagination.py`, `frontmatter.py`, `file_utils.py`, `errors.py`
 
 **Stub Modules (interfaces only):**
@@ -119,13 +123,19 @@ Phase 5: Integration & Polish      · not started
 - `chapters/` — CRUD: models → repository → service → router, contracts, schemas
   - Content versioning: ChapterVersion model, version repository/service/router endpoints
 - `volumes/` — CRUD: models → repository → service → router, contracts, schemas
-- `settings/` — models, repository, router, schemas, contracts
+- `settings/` — Full AI settings: contracts, provider management, model routing, token limits
+  - `contracts.py`, `schemas.py`, `models.py`, `repository.py`, `router.py`
+  - `user_providers_repository.py`, `user_ai_settings_repository.py`, `project_ai_settings_repository.py`
+  - `user_providers_service.py`, `user_ai_settings_service.py`, `project_ai_settings_service.py`
+  - `model_routing_resolver.py`
+  - Migration: `0004_ai_settings.py`
 - `setup/` — Setup wizard: router, service, contracts, schemas, provider_service, provider_schemas, demo_loader
   - Z.AI dual endpoint selector (General vs Coding API) in Step 4
 - `metrics/` — Health/metrics router
 
 **Database:**
 - Alembic migration `0001_initial.py` — initial schema
+- Alembic migration `0004_ai_settings.py` — `user_providers`, `user_ai_settings`, project AI override columns
 
 #### `packages/i18n/` — Translations (Source of Truth)
 
@@ -150,6 +160,7 @@ Phase 5: Integration & Polish      · not started
 - `components/editor/` — EditorLayout, EditorSurface (TipTap), EditorToolbar, ChapterSidebar (DnD Kit), ContextPanel, StatusBar, SceneBreak extension
 - `components/dashboard/` — DashboardView with NovelCard grid
 - `components/setup/` — 5-step Wizard (WizardShell + WizardStep1-5)
+- `components/settings/` — AI provider management, model routing, token limit profiles, project AI settings
 - `components/ui/` — Button (shadcn/cva-based), Input, Select
 - `components/shadcn/` — shadcn/ui generated primitives (future component source)
 - `components/shared/` — QueryProvider, ErrorBoundary
@@ -240,8 +251,11 @@ Phase 5: Integration & Polish      · not started
 
 ## What Is In Progress
 
-Phase 4 complete. Frontend is functional with editor, dashboard, auth, and wizard.
-Ready for Phase 5: Integration & Polish (writing sessions, AI features, analysis panels).
+Configurable model routing is now implemented. Core infrastructure for runtime model selection,
+multi-provider support, and token limit profiles is in place. Frontend settings UI for
+provider management, model routing, and token limits is complete.
+
+Phase 5 (Integration & Polish) is underway. Next focus: writing sessions, AI features, analysis panels.
 
 ---
 
@@ -284,6 +298,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Provider error pass-through | Real provider errors surfaced to users, not generic messages |
 | TYPE_CHECKING ForwardRef fix | All schemas + routers: moved runtime types out of TYPE_CHECKING |
 | Dashboard New Novel → Wizard | "New Novel" now launches setup wizard instead of direct creation |
+| Q-006 Configurable Model Routing | → Runtime cascade with multi-provider, encrypted API keys, 7 intent categories |
 
 ---
 
@@ -315,7 +330,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Q-003 | Embedding provider abstraction | 🟡 Open | core/llm/embeddings.py (post-MVP) |
 | Q-004 | Celery vs arq | ✅ Resolved → TaskIQ | — |
 | Q-005 | GLM/Z.AI compatibility | ✅ Resolved → OpenAI-compatible | — |
-| Q-006 | Configurable Model Routing | 🟡 Open | Advanced model preferences |
+| Q-006 | Configurable Model Routing | ✅ Resolved → Runtime cascade | — |
 
 ---
 
@@ -344,7 +359,8 @@ All demo content is complete — sufficient for testing through Phase 5.
 2. Build KB editor UI (interactive AI sessions)
 3. Add analysis panels to the ContextPanel
 4. Embedding provider abstraction (Q-003)
-5. Configurable model routing (Q-006)
+5. Fallback chains for model routing (if primary fails, try secondary)
+6. Model recommendation and benchmarking
 
 Infrastructure now includes: OpenTelemetry tracing, Langfuse LLM observability, event-driven
 architecture (Redis Pub/Sub → TaskIQ), content versioning, argon2id auth, async rate limiting.

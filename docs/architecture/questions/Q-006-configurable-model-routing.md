@@ -1,8 +1,9 @@
 # Q-006 — Should Model Routing be configurable per user/project/intent?
 
-> **Status:** 🟡 Open
-> **Blocks:** Advanced model preferences, self-hosted LLM support, fallback chains
+> **Status:** ✅ Resolved
+> **Blocks:** ~~Advanced model preferences, self-hosted LLM support, fallback chains~~
 > **Raised:** 2026-05-12 (Tech Stack Audit)
+> **Resolved:** 2026-05-14
 
 ## Context
 
@@ -125,5 +126,28 @@ If primary model fails, try `fallback_model`. If both fail → `LLMGatewayError`
 
 ## Resolution
 
-*Not yet resolved. Planned for implementation after current tech stack audit
-changes are complete. Priority: high (next sprint).*
+**Implemented as runtime configuration cascade with multi-provider support.**
+
+### Decision Summary
+
+- **Configuration cascade implemented:** Project override → User override → User default → `ConfigurationError`. No hardcoded fallback — users must configure at least one provider.
+- **No hardcoded fallback:** The `MODEL_ROUTING` dict and `get_model_config()` have been removed from `intents.py`. There is no "safe fallback" — the only viable default is the user's own configured default model.
+- **Provider stored explicitly:** Every model selection stores `{provider_id, model_id}` as a pair. The provider is never inferred from the model name. This is critical for OpenRouter and Z.AI scenarios where model names are ambiguous.
+- **7 intent categories** group 20 intents for manageable UX. Users configure per-category defaults with optional per-intent overrides via an "Advanced" toggle.
+- **Multi-provider support:** Users can register multiple AI providers (OpenAI, Anthropic, OpenRouter, Ollama, Z.AI, etc.) with encrypted API keys. Each provider stores an API key (Fernet-encrypted at rest) and optional base URL.
+- **New tables:** `user_providers` (encrypted API keys), `user_ai_settings` (default model, overrides, token limits), JSONB columns on `project_settings` for project-level overrides.
+- **Frontend UI:** Settings → AI Providers (manage providers), Settings → AI Model & Routing (default model, category/intent overrides), Token Limit Profiles (quick/balanced/long_texts/custom).
+- **Token limit profiles:** Named profiles (quick, balanced, long_texts, custom) with per-category and per-intent overrides for `max_tokens` and `temperature`.
+
+### References
+
+- See ADR-001 update (runtime config resolution section)
+- OpenSpec change: `openspec/changes/configurable-model-routing/`
+- Design decisions: D1–D8 in the OpenSpec design doc
+- Migration: `alembic/versions/0004_ai_settings.py`
+
+### What was NOT implemented (future)
+
+- Fallback chains (if primary model fails, try another) — remains a future enhancement
+- Automatic model recommendation or benchmarking
+- Per-user rate limiting or quota management

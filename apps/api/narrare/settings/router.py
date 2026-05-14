@@ -1,4 +1,10 @@
-"""Settings routes."""
+"""Settings routes - user settings and project settings.
+
+Routes are grouped by prefix ``/settings``. The router delegates
+immediately to service classes - no business logic here (RULE-06).
+
+For AI provider and settings routes, see router_ai.py.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +16,7 @@ from fastapi import APIRouter, Depends
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
+from narrare.settings.router_ai import router as ai_router
 from narrare.settings.schemas import (
     ProjectSettingsResponse,
     UpdateProjectSettingsRequest,
@@ -21,6 +28,14 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/settings", tags=["settings"])
+
+# Include AI sub-router (no prefix - routes already have /ai/ prefix)
+router.include_router(ai_router)
+
+
+# ---------------------------------------------------------------------------
+# Existing routes: user settings, project settings
+# ---------------------------------------------------------------------------
 
 
 @router.get("/user", response_model=UserSettingsResponse)

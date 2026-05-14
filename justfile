@@ -63,7 +63,7 @@ dev-setup:
     @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
     uv sync --all-packages --group dev
     pre-commit install --install-hooks
-    @if [ -f packages/web/package.json ]; then cd packages/web && pnpm install; fi
+    pnpm install
     @echo "⏳ Starting services..."
     just _ensure-services
     just db-migrate

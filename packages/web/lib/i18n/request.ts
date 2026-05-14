@@ -9,6 +9,7 @@ const namespaces = [
   "editor",
   "errors",
   "settings",
+  "settings-ai",
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

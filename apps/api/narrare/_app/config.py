@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
 
     # ---------------------------------------------------------------------------
+    # Encryption
+    # ---------------------------------------------------------------------------
+    encryption_key: str = Field(default="", alias="NARRARE_ENCRYPTION_KEY")
+
+    # ---------------------------------------------------------------------------
     # Default models (override per-project in .narrare/config.yaml)
     # ---------------------------------------------------------------------------
     default_writing_model: str = "claude-sonnet-4-5-20251020"

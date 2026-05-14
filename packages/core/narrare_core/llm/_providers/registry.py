@@ -8,6 +8,10 @@ To add a new provider:
 1. Create packages/core/narrare_core/llm/_providers/<name>.py
 2. Register it with register("name", factory)
 3. Optionally register known model IDs with register_model()
+
+Factory functions accept optional ``api_key`` and ``base_url`` kwargs.
+When provided, these override environment variable defaults, enabling
+per-user credentials from the database.
 """
 
 from __future__ import annotations
@@ -20,10 +24,35 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class ProviderFactory(Protocol):
-    """Protocol for provider factory functions."""
+    """Protocol for provider factory functions.
 
-    def __call__(self, model_id: str) -> Model:
-        """Create a pydantic-ai Model instance for the given model ID."""
+    Factory functions create a ``pydantic-ai Model`` instance for a
+    given model ID. They accept optional credentials that override
+    environment variable defaults — this enables per-user API keys
+    stored in the database.
+
+    When ``api_key`` and ``base_url`` are both ``None``, the factory
+    falls back to environment variables for backward compatibility
+    with dev/test environments.
+    """
+
+    def __call__(
+        self,
+        model_id: str,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> Model:
+        """Create a pydantic-ai Model instance for the given model ID.
+
+        Args:
+            model_id: Model identifier (e.g. "claude-sonnet-4-5-20251020").
+            api_key: Optional API key — overrides env var when provided.
+            base_url: Optional base URL — overrides provider default.
+
+        Returns:
+            Configured pydantic-ai Model instance.
+        """
         ...
 
 
@@ -69,11 +98,16 @@ def get(name: str) -> ProviderFactory:
     """
     Get a provider factory by name.
 
+    The returned factory accepts optional ``api_key`` and ``base_url``
+    keyword arguments for per-request credential pass-through.
+
     Args:
         name: Provider name (e.g. "anthropic", "openai", "zai").
 
     Returns:
         Factory function that creates a pydantic-ai Model.
+        Call with ``(model_id, api_key=..., base_url=...)`` to pass
+        explicit credentials, or just ``(model_id)`` for env var fallback.
 
     Raises:
         KeyError: If provider is not registered.
@@ -95,6 +129,11 @@ def available() -> list[str]:
 def infer_provider(model_id: str) -> str:
     """
     Infer provider name from a model ID string.
+
+    .. deprecated::
+        ``infer_provider`` is retained as a dev/debugging utility only.
+        The runtime model routing path uses explicit ``provider_name``
+        from ``ResolvedModelConfig`` — never inference.
 
     Resolution order:
     1. Explicit model → provider mapping (via register_model)

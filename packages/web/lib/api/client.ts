@@ -12,12 +12,19 @@ import type {
   AIProvider,
   Chapter,
   ChapterSummary,
+  CreateProviderRequest,
   DemoProjectInfo,
   Novel,
   NovelSummary,
+  ProjectAiSettings,
   ProjectSettings,
   TokenResponse,
+  UpdateProjectAiSettingsRequest,
+  UpdateProviderRequest,
+  UpdateUserAiSettingsRequest,
   User,
+  UserAiSettings,
+  UserProvider,
   UserSettings,
   WizardState,
 } from "@/types";
@@ -243,3 +250,39 @@ export interface AvailableModelsResponse {
   provider: AIProvider;
   models: { id: string; name: string; context_window?: number }[];
 }
+
+// --- AI Settings ---
+
+export const aiSettingsApi = {
+  // Provider CRUD
+  listProviders: () => fetchApi<UserProvider[]>("/settings/ai/providers"),
+  createProvider: (data: CreateProviderRequest) =>
+    fetchApi<UserProvider>("/settings/ai/providers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateProvider: (id: string, data: UpdateProviderRequest) =>
+    fetchApi<UserProvider>(`/settings/ai/providers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteProvider: (id: string) =>
+    fetchApi<void>(`/settings/ai/providers/${id}`, { method: "DELETE" }),
+
+  // User AI Settings
+  getUserSettings: () => fetchApi<UserAiSettings>("/settings/ai"),
+  updateUserSettings: (data: UpdateUserAiSettingsRequest) =>
+    fetchApi<UserAiSettings>("/settings/ai", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  // Project AI Settings
+  getProjectSettings: (novelId: string) =>
+    fetchApi<ProjectAiSettings>(`/settings/ai/novels/${novelId}`),
+  updateProjectSettings: (novelId: string, data: UpdateProjectAiSettingsRequest) =>
+    fetchApi<ProjectAiSettings>(`/settings/ai/novels/${novelId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+};

@@ -15,32 +15,56 @@ ADR: ADR-006 (tech stack)
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register, register_model
 
+if TYPE_CHECKING:
+    from pydantic_ai.models import Model
+
 _ZAI_GENERAL_URL = "https://api.z.ai/api/paas/v4"
 _ZAI_CODING_URL = "https://api.z.ai/api/coding/paas/v4"
 
 
-def _make_zai(model_id: str) -> OpenAIChatModel:
+def _make_zai(
+    model_id: str,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> Model:
     """
     Create a Z.AI model using the General API endpoint.
 
-    API key from ZAI_API_KEY environment variable.
+    When ``api_key`` is provided, uses it directly. Otherwise falls back
+    to the ``ZAI_API_KEY`` environment variable.
 
     # narrare: allow-direct-llm  reason="Z.AI requires custom base_url — OpenAI-compatible"
+
+    Args:
+        model_id: Z.AI model identifier (e.g. "glm-z1-32b").
+        api_key: Optional API key — overrides env var when provided.
+        base_url: Optional base URL — defaults to Z.AI General API.
+
+    Returns:
+        Configured OpenAIChatModel via Z.AI endpoint.
     """
-    api_key = os.environ.get("ZAI_API_KEY", "")
+    resolved_key = api_key or os.environ.get("ZAI_API_KEY", "")
+    resolved_base = base_url or _ZAI_GENERAL_URL
     return OpenAIChatModel(
         model_id,
-        provider=OpenAIProvider(base_url=_ZAI_GENERAL_URL, api_key=api_key),
+        provider=OpenAIProvider(base_url=resolved_base, api_key=resolved_key),
     )
 
 
-def make_zai_coding(model_id: str) -> OpenAIChatModel:
+def make_zai_coding(
+    model_id: str,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+) -> Model:
     """
     Create a Z.AI model using the Coding API endpoint.
 
@@ -48,11 +72,20 @@ def make_zai_coding(model_id: str) -> OpenAIChatModel:
     call explicitly when needed.
 
     # narrare: allow-direct-llm  reason="Z.AI coding endpoint requires custom base_url"
+
+    Args:
+        model_id: Z.AI model identifier.
+        api_key: Optional API key — overrides env var when provided.
+        base_url: Optional base URL — defaults to Z.AI Coding API.
+
+    Returns:
+        Configured OpenAIChatModel via Z.AI Coding endpoint.
     """
-    api_key = os.environ.get("ZAI_API_KEY", "")
+    resolved_key = api_key or os.environ.get("ZAI_API_KEY", "")
+    resolved_base = base_url or _ZAI_CODING_URL
     return OpenAIChatModel(
         model_id,
-        provider=OpenAIProvider(base_url=_ZAI_CODING_URL, api_key=api_key),
+        provider=OpenAIProvider(base_url=resolved_base, api_key=resolved_key),
     )
 
 

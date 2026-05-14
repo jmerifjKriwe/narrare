@@ -1,0 +1,152 @@
+"""Tests for AI settings Pydantic schemas - overrides, token limits, user settings.
+
+Split from test_schemas.py for RULE-04 compliance.
+"""
+
+from __future__ import annotations
+
+import uuid
+
+import pytest
+from pydantic import ValidationError
+
+from narrare.settings.schemas import (
+    TOKEN_LIMIT_PROFILES,
+    VALID_TOKEN_LIMIT_PROFILES,
+    UpdateProjectAiSettingsRequest,
+    UpdateUserAiSettingsRequest,
+    UpdateUserSettingsRequest,
+)
+
+# ---------------------------------------------------------------------------
+# UpdateUserAiSettingsRequest
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateUserAiSettingsRequest:
+    def test_empty_request_is_valid(self) -> None:
+        req = UpdateUserAiSettingsRequest()
+        assert req.default_provider_id is None
+        assert req.default_model is None
+
+    def test_set_default_model(self) -> None:
+        pid = uuid.uuid4()
+        req = UpdateUserAiSettingsRequest(
+            default_provider_id=pid,
+            default_model="gpt-4o",
+        )
+        assert req.default_provider_id == pid
+
+    def test_set_category_overrides(self) -> None:
+        pid = uuid.uuid4()
+        req = UpdateUserAiSettingsRequest(
+            category_overrides={
+                "writing": {"provider_id": str(pid), "model_id": "gpt-4o"},
+            },
+        )
+        assert req.category_overrides is not None
+        assert "writing" in req.category_overrides
+
+    def test_token_limit_profile_valid(self) -> None:
+        for profile in ["quick", "balanced", "long_texts", "custom"]:
+            req = UpdateUserAiSettingsRequest(token_limit_profile=profile)
+            assert req.token_limit_profile == profile
+
+    def test_token_limit_profile_invalid_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            UpdateUserAiSettingsRequest(token_limit_profile="invalid")
+
+    def test_default_model_exceeds_max_length_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            UpdateUserAiSettingsRequest(default_model="x" * 201)
+
+
+# ---------------------------------------------------------------------------
+# UpdateProjectAiSettingsRequest
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateProjectAiSettingsRequest:
+    def test_empty_request_is_valid(self) -> None:
+        req = UpdateProjectAiSettingsRequest()
+        assert req.category_overrides is None
+        assert req.intent_overrides is None
+
+    def test_set_all_overrides(self) -> None:
+        req = UpdateProjectAiSettingsRequest(
+            category_overrides={"writing": {"model_id": "gpt-4o"}},
+            intent_overrides={"write": {"model_id": "claude-sonnet-4-5-20251020"}},
+            token_limit_overrides={"writing": {"max_tokens": 8000}},
+        )
+        assert req.category_overrides is not None
+        assert "writing" in req.category_overrides
+        assert req.intent_overrides is not None
+        assert "write" in req.intent_overrides
+
+
+# ---------------------------------------------------------------------------
+# Token Limit Profiles
+# ---------------------------------------------------------------------------
+
+
+class TestTokenLimitProfiles:
+    def test_all_expected_profiles_exist(self) -> None:
+        expected = {"quick", "balanced", "long_texts", "custom"}
+        assert expected == VALID_TOKEN_LIMIT_PROFILES
+
+    def test_quick_profile_has_defaults(self) -> None:
+        profile = TOKEN_LIMIT_PROFILES["quick"]
+        assert "default" in profile
+        assert profile["default"].max_tokens == 500
+
+    def test_balanced_profile_has_defaults(self) -> None:
+        profile = TOKEN_LIMIT_PROFILES["balanced"]
+        assert "default" in profile
+        assert profile["default"].max_tokens == 2000
+
+    def test_long_texts_profile_has_defaults(self) -> None:
+        profile = TOKEN_LIMIT_PROFILES["long_texts"]
+        assert "default" in profile
+        assert profile["default"].max_tokens == 8000
+
+    def test_custom_profile_starts_empty(self) -> None:
+        profile = TOKEN_LIMIT_PROFILES["custom"]
+        assert len(profile) == 0
+
+
+# ---------------------------------------------------------------------------
+# UpdateUserSettingsRequest
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateUserSettingsRequest:
+    def test_valid_theme_values(self) -> None:
+        for theme in ["light", "dark", "system"]:
+            req = UpdateUserSettingsRequest(theme=theme)
+            assert req.theme == theme
+
+    def test_invalid_theme_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            UpdateUserSettingsRequest(theme="blue")
+
+    def test_empty_strings_are_valid(self) -> None:
+        """display_name can be empty string."""
+        req = UpdateUserSettingsRequest(display_name="")
+        assert req.display_name == ""
+
+    def test_max_length_display_name(self) -> None:
+        req = UpdateUserSettingsRequest(display_name="x" * 100)
+        assert req.display_name is not None
+        assert len(req.display_name) == 100
+
+    def test_display_name_exceeds_max_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            UpdateUserSettingsRequest(display_name="x" * 101)
+
+    def test_ui_language_min_length(self) -> None:
+        with pytest.raises(ValidationError):
+            UpdateUserSettingsRequest(ui_language="x")
+
+    def test_ui_language_max_length(self) -> None:
+        with pytest.raises(ValidationError):
+            UpdateUserSettingsRequest(ui_language="x" * 11)

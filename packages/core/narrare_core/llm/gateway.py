@@ -1,62 +1,32 @@
 """
-Narrare LLM Gateway.
-
-THE single entry point for all LLM calls in the system.
+Narrare LLM Gateway — THE single entry point for all LLM calls.
 No other module may call an LLM provider directly.
-
 See CONSTRAINTS.md RULE-01 and ADR-001.
-
-Usage:
-    gateway = LLMGateway(settings)
-
-    # Non-streaming
-    result = await gateway.run(
-        intent=LLMIntent.WRITE,
-        system_prompt=prompt.system,
-        user_prompt=prompt.user,
-    )
-
-    # Streaming
-    async for chunk in gateway.stream(
-        intent=LLMIntent.WRITE,
-        system_prompt=prompt.system,
-        user_prompt=prompt.user,
-    ):
-        yield chunk.text
 """
 
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import TYPE_CHECKING
 
 import structlog
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior
 
 from narrare_core.llm import _providers  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from narrare_core.llm._providers.registry import get as get_provider
-from narrare_core.llm._providers.registry import infer_provider
-from narrare_core.llm.intents import LLMIntent, get_model_config
+from narrare_core.llm.gateway_errors import classify_error
 from narrare_core.llm.metrics import record_failure, record_success
 from narrare_core.llm.observability import LLMObservability
 from narrare_core.llm.result import LLMResult, StreamChunk, TokenUsage
 from narrare_core.llm.retry import DEFAULT_RETRY, RetryConfig, with_retry
-from narrare_core.shared.errors import (
-    LLMAuthError,
-    LLMContextTooLargeError,
-    LLMGatewayError,
-    LLMInvalidRequestError,
-    LLMRateLimitError,
-    LLMServiceUnavailableError,
-    LLMTimeoutError,
-)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from pydantic_ai.models import Model
+
+    from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+    from narrare_core.shared.errors import LLMGatewayError
 
 logger = structlog.get_logger(__name__)
 
@@ -66,8 +36,7 @@ class LLMGateway:
     Central gateway for all LLM calls.
 
     Handles:
-    - Provider selection based on model name
-    - Intent-based model routing
+    - Provider selection based on explicit provider_name (from ResolvedModelConfig)
     - Retry with exponential backoff
     - Cost tracking and telemetry
     - Error classification and wrapping
@@ -82,16 +51,36 @@ class LLMGateway:
 
         Args:
             default_provider: Fallback provider when model cannot be inferred.
+                Only used when no ``ResolvedModelConfig`` is provided.
         """
         self._default_provider = default_provider
         self._obs: LLMObservability = LLMObservability()
         logger.info("llm_gateway_initialized", default_provider=default_provider)
 
-    def _get_model(self, model_id: str) -> Model:
-        """Resolve a model ID to a pydantic-ai Model instance."""
-        provider_name = infer_provider(model_id)
+    def _get_model_with_credentials(
+        self,
+        provider_name: str,
+        model_id: str,
+        *,
+        api_key: str | None,
+        base_url: str | None,
+    ) -> Model:
+        """Resolve provider and create model instance with explicit credentials.
+
+        Uses the provider registry to get the factory, then passes credentials
+        through. No env-var inference - credentials come from the caller.
+
+        Args:
+            provider_name: Explicit provider name (e.g. "anthropic", "openrouter").
+            model_id: Model identifier as known to that provider.
+            api_key: Decrypted API key from user settings, or None.
+            base_url: Custom base URL, or None (use provider default).
+
+        Returns:
+            Configured pydantic-ai Model instance.
+        """
         factory = get_provider(provider_name)
-        return factory(model_id)
+        return factory(model_id, api_key=api_key, base_url=base_url)
 
     def _make_agent(self, model: Model, system_prompt: str) -> Agent[None, str]:
         """Create a pydantic-ai Agent for a single call."""
@@ -103,37 +92,11 @@ class LLMGateway:
 
     def _classify_error(self, error: Exception) -> LLMGatewayError:
         """Convert provider exceptions to domain errors.
-        L1: pydantic-ai typed → L2: stdlib → L3: string heuristic fallback.
+
+        Delegates to :func:`gateway_errors.classify_error`.
+        Kept as method for backward compatibility with existing tests.
         """
-        if isinstance(error, ModelHTTPError):
-            status = error.status_code
-            if status == 401:
-                return LLMAuthError(str(error))
-            if status == 429:
-                return LLMRateLimitError(str(error))
-            if status == 400:
-                return LLMInvalidRequestError(str(error))
-            if status in (502, 503):
-                return LLMServiceUnavailableError(str(error))
-            return LLMGatewayError(f"LLM HTTP error {status}: {error}")
-        if isinstance(error, UnexpectedModelBehavior):
-            return LLMGatewayError(f"Unexpected model behavior: {error}")
-        if isinstance(error, (asyncio.TimeoutError, TimeoutError)):
-            return LLMTimeoutError(str(error))
-        msg = str(error).lower()
-        if any(k in msg for k in ("api key", "authentication", "unauthorized", "401")):
-            return LLMAuthError(str(error))
-        if any(k in msg for k in ("rate limit", "429", "too many requests", "quota")):
-            return LLMRateLimitError(str(error))
-        if any(k in msg for k in ("context", "token", "length", "too long", "maximum")):
-            return LLMContextTooLargeError(str(error))
-        if any(k in msg for k in ("timeout", "timed out", "deadline")):
-            return LLMTimeoutError(str(error))
-        if any(k in msg for k in ("503", "502", "overloaded", "unavailable", "capacity")):
-            return LLMServiceUnavailableError(str(error))
-        if any(k in msg for k in ("invalid", "400", "bad request")):
-            return LLMInvalidRequestError(str(error))
-        return LLMGatewayError(f"Unexpected LLM error: {error}")
+        return classify_error(error)
 
     async def run(
         self,
@@ -141,16 +104,22 @@ class LLMGateway:
         intent: LLMIntent,
         system_prompt: str,
         user_prompt: str,
-        model_override: str | None = None,
+        config: ResolvedModelConfig,
+        api_key: str | None = None,
+        base_url: str | None = None,
         retry_config: RetryConfig = DEFAULT_RETRY,
     ) -> LLMResult:
         """Execute a non-streaming LLM call.
 
         Args:
-            intent: The operation intent — drives model selection.
+            intent: The operation intent - drives model selection.
             system_prompt: System role message.
             user_prompt: User role message.
-            model_override: Override the default model for this intent.
+            config: Resolved model configuration (provider + model + params).
+                Must be provided by the caller via ``ModelRoutingResolver``.
+            api_key: Decrypted API key from user settings. When ``None``,
+                the provider factory falls back to env vars (dev/test).
+            base_url: Custom base URL for OpenAI-compatible providers.
             retry_config: Retry behaviour configuration.
 
         Returns:
@@ -159,16 +128,22 @@ class LLMGateway:
         Raises:
             LLMGatewayError: On failure after all retries.
         """
-        config = get_model_config(intent)
-        model_id = model_override or config.model
-        model = self._get_model(model_id)
-        provider = infer_provider(model_id)
+        provider_name = config.provider_name
+        model_id = config.model_id
+        model = self._get_model_with_credentials(
+            provider_name,
+            model_id,
+            api_key=api_key,
+            base_url=base_url,
+        )
 
-        log = logger.bind(intent=intent.value, model=model_id, provider=provider)
+        log = logger.bind(intent=intent.value, model=model_id, provider=provider_name)
         log.debug("llm_run_start")
 
         start = time.monotonic()
-        obs_trace = self._obs.start_trace(intent, model_id, provider, system_prompt, user_prompt)
+        obs_trace = self._obs.start_trace(
+            intent, model_id, provider_name, system_prompt, user_prompt
+        )
 
         async def _call() -> LLMResult:
             try:
@@ -186,7 +161,7 @@ class LLMGateway:
                 record_success(
                     intent=intent.value,
                     model=model_id,
-                    provider=provider,
+                    provider=provider_name,
                     usage=token_usage,
                     duration_seconds=elapsed,
                 )
@@ -208,7 +183,7 @@ class LLMGateway:
                 record_failure(
                     intent=intent.value,
                     model=model_id,
-                    provider=provider,
+                    provider=provider_name,
                     error_type=type(domain_error).__name__,
                     duration_seconds=elapsed,
                 )
@@ -224,7 +199,9 @@ class LLMGateway:
         intent: LLMIntent,
         system_prompt: str,
         user_prompt: str,
-        model_override: str | None = None,
+        config: ResolvedModelConfig,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Execute a streaming LLM call.
 
@@ -232,7 +209,11 @@ class LLMGateway:
             intent: The operation intent.
             system_prompt: System role message.
             user_prompt: User role message.
-            model_override: Override the default model for this intent.
+            config: Resolved model configuration (provider + model + params).
+                Must be provided by the caller via ``ModelRoutingResolver``.
+            api_key: Decrypted API key from user settings. When ``None``,
+                the provider factory falls back to env vars (dev/test).
+            base_url: Custom base URL for OpenAI-compatible providers.
 
         Yields:
             StreamChunk instances with text fragments.
@@ -241,16 +222,22 @@ class LLMGateway:
         Raises:
             LLMGatewayError: If the stream cannot be started or fails mid-stream.
         """
-        config = get_model_config(intent)
-        model_id = model_override or config.model
-        model = self._get_model(model_id)
-        provider = infer_provider(model_id)
+        provider_name = config.provider_name
+        model_id = config.model_id
+        model = self._get_model_with_credentials(
+            provider_name,
+            model_id,
+            api_key=api_key,
+            base_url=base_url,
+        )
 
-        log = logger.bind(intent=intent.value, model=model_id, provider=provider)
+        log = logger.bind(intent=intent.value, model=model_id, provider=provider_name)
         log.debug("llm_stream_start")
 
         start = time.monotonic()
-        obs_trace = self._obs.start_trace(intent, model_id, provider, system_prompt, user_prompt)
+        obs_trace = self._obs.start_trace(
+            intent, model_id, provider_name, system_prompt, user_prompt
+        )
 
         try:
             agent = self._make_agent(model, system_prompt)
@@ -268,7 +255,7 @@ class LLMGateway:
                 record_success(
                     intent=intent.value,
                     model=model_id,
-                    provider=provider,
+                    provider=provider_name,
                     usage=token_usage,
                     duration_seconds=elapsed,
                 )
@@ -286,7 +273,7 @@ class LLMGateway:
             record_failure(
                 intent=intent.value,
                 model=model_id,
-                provider=provider,
+                provider=provider_name,
                 error_type=type(domain_error).__name__,
                 duration_seconds=elapsed,
             )

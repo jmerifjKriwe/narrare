@@ -275,9 +275,26 @@ ZAI_BASE_URL=
 # Ollama (local models)
 OLLAMA_BASE_URL=http://localhost:11434
 
+# API Key Encryption (required for AI provider features)
+NARRARE_ENCRYPTION_KEY=<generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
+
 # Default Model
 DEFAULT_LLM_MODEL=anthropic/claude-sonnet-4-5
 ```
+
+### NARRARE_ENCRYPTION_KEY
+
+Required for AI provider features (multi-provider support, user API key storage).
+
+| Property | Value |
+|----------|-------|
+| Required | Yes |
+| Description | Fernet encryption key for encrypting user API keys at rest |
+| Generate | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
+| Warning | **If this key is lost, all user API keys are unrecoverable.** Store securely and back up. |
+| Rotation | To rotate: generate new key, decrypt all keys with old key, re-encrypt with new key, update env var |
+
+The key is used by `core/shared/crypto.py` to encrypt API keys before storing them in the `user_providers` table and decrypt them only when constructing a provider instance for an LLM call. Keys are never logged or returned via API.
 
 ### Dev Login
 

@@ -105,3 +105,81 @@ class TestInferProvider:
     def test_ollama_prefix_overrides_llama(self) -> None:
         # "ollama/llama3" matches "ollama/" prefix before "llama" prefix
         assert infer_provider("ollama/llama3") == "ollama"
+
+
+class TestProviderFactoryCredentials:
+    """Test that provider factories accept api_key and base_url kwargs."""
+
+    def test_factory_accepts_api_key_kwarg(self) -> None:
+        """Registered factories accept api_key keyword argument."""
+        captured_kwargs: dict[str, object] = {}
+
+        def factory(
+            model_id: str, *, api_key: str | None = None, base_url: str | None = None
+        ) -> object:
+            captured_kwargs["api_key"] = api_key
+            captured_kwargs["base_url"] = base_url
+            return f"model:{model_id}"
+
+        register("__test_cred_factory", factory)  # pyright: ignore[reportArgumentType]
+        result = get("__test_cred_factory")
+        result("gpt-4o", api_key="sk-explicit-key")
+
+        assert captured_kwargs["api_key"] == "sk-explicit-key"
+        assert captured_kwargs["base_url"] is None
+
+    def test_factory_accepts_base_url_kwarg(self) -> None:
+        """Registered factories accept base_url keyword argument."""
+        captured_kwargs: dict[str, object] = {}
+
+        def factory(
+            model_id: str, *, api_key: str | None = None, base_url: str | None = None
+        ) -> object:
+            captured_kwargs["api_key"] = api_key
+            captured_kwargs["base_url"] = base_url
+            return f"model:{model_id}"
+
+        register("__test_url_factory", factory)  # pyright: ignore[reportArgumentType]
+        result = get("__test_url_factory")
+        result("gpt-4o", base_url="https://proxy.example.com/v1")
+
+        assert captured_kwargs["api_key"] is None
+        assert captured_kwargs["base_url"] == "https://proxy.example.com/v1"
+
+    def test_factory_without_credentials_uses_none(self) -> None:
+        """Factory called without credentials → api_key=None, base_url=None (env var fallback)."""
+        captured_kwargs: dict[str, object] = {}
+
+        def factory(
+            model_id: str, *, api_key: str | None = None, base_url: str | None = None
+        ) -> object:
+            captured_kwargs["api_key"] = api_key
+            captured_kwargs["base_url"] = base_url
+            return f"model:{model_id}"
+
+        register("__test_no_cred_factory", factory)  # pyright: ignore[reportArgumentType]
+        result = get("__test_no_cred_factory")
+        result("gpt-4o")
+
+        assert captured_kwargs["api_key"] is None
+        assert captured_kwargs["base_url"] is None
+
+    @pytest.mark.parametrize(
+        "provider_name",
+        ["anthropic", "openai", "google", "groq", "openrouter", "zai", "ollama"],
+    )
+    def test_all_registered_providers_accept_credentials(
+        self,
+        provider_name: str,
+    ) -> None:
+        """All registered providers accept api_key and base_url kwargs without error."""
+        factory = get(provider_name)
+        # This should not raise — the factory protocol requires these kwargs
+        # We don't call the factory (would need real credentials), just verify
+        # it accepts the kwargs by inspecting its signature
+        import inspect
+
+        sig = inspect.signature(factory)
+        params = sig.parameters
+        assert "api_key" in params, f"{provider_name} factory missing api_key param"
+        assert "base_url" in params, f"{provider_name} factory missing base_url param"

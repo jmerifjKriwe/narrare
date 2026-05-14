@@ -117,3 +117,60 @@ async def get_current_user_id(
 
 
 CurrentUserIdDep = Annotated[str, Depends(get_current_user_id)]
+
+# ---------------------------------------------------------------------------
+# AI Settings services (Task 10.5, Task 11.1)
+# ---------------------------------------------------------------------------
+
+
+def get_user_providers_service(session: SessionDep) -> object:
+    """Factory for UserProvidersService."""
+    from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
+    from narrare.settings.user_providers_repository import UserProvidersRepository
+    from narrare.settings.user_providers_service import UserProvidersService
+
+    return UserProvidersService(
+        providers_repo=UserProvidersRepository(session),
+        ai_settings_repo=UserAiSettingsRepository(session),
+    )
+
+
+def get_user_ai_settings_service(session: SessionDep) -> object:
+    """Factory for UserAiSettingsService."""
+    from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
+    from narrare.settings.user_ai_settings_service import UserAiSettingsService
+    from narrare.settings.user_providers_repository import UserProvidersRepository
+
+    return UserAiSettingsService(
+        ai_settings_repo=UserAiSettingsRepository(session),
+        providers_repo=UserProvidersRepository(session),
+    )
+
+
+def get_project_ai_settings_service(session: SessionDep) -> object:
+    """Factory for ProjectAiSettingsService."""
+    from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
+    from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
+    from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
+
+    return ProjectAiSettingsService(
+        project_ai_repo=ProjectAiSettingsRepository(session),
+        user_ai_repo=UserAiSettingsRepository(session),
+    )
+
+
+def get_model_routing_resolver(session: SessionDep) -> object:
+    """Factory for ModelRoutingResolverImpl (Task 11.1).
+
+    Creates a resolver with all required repositories injected.
+    """
+    from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
+    from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
+    from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
+    from narrare.settings.user_providers_repository import UserProvidersRepository
+
+    return ModelRoutingResolverImpl(
+        user_providers_repo=UserProvidersRepository(session),
+        user_ai_settings_repo=UserAiSettingsRepository(session),
+        project_ai_settings_repo=ProjectAiSettingsRepository(session),
+    )

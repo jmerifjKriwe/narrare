@@ -135,3 +135,17 @@ class MemoryError(NarrareError):
 
 class ValidationError(NarrareError):
     """Domain validation error (distinct from Pydantic's ValidationError)."""
+
+
+class ConfigurationError(NarrareError):
+    """Missing or invalid configuration.
+
+    Raised when a required configuration value (e.g. encryption key,
+    AI provider) is absent or invalid.
+
+    Services should catch this and return appropriate HTTP responses
+    (typically 422 or 500 depending on context).
+    """
+
+    def __init__(self, message: str = "Configuration error", *, code: str | None = None) -> None:
+        super().__init__(message, code=code)

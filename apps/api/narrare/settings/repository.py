@@ -1,4 +1,8 @@
-"""Settings repository and services."""
+"""Settings repository — user settings and project settings base operations.
+
+Updated for configurable model routing to handle JSONB override columns
+on project_settings.
+"""
 
 from __future__ import annotations
 

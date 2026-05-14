@@ -17,7 +17,7 @@ from narrare_core.llm.result import LLMResult, StreamChunk, TokenUsage
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from narrare_core.llm.intents import LLMIntent
+    from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 
 
 @dataclass
@@ -27,7 +27,9 @@ class GatewayCall:
     intent: LLMIntent
     system_prompt: str
     user_prompt: str
-    model_override: str | None
+    config: ResolvedModelConfig | None = None
+    api_key: str | None = None
+    base_url: str | None = None
     kwargs: dict[str, Any] = field(default_factory=dict)
 
 
@@ -41,7 +43,11 @@ class FakeLLMGateway:
     Usage:
         fake = FakeLLMGateway()
         fake.returns("Hello world")
-        result = await fake.run(intent=LLMIntent.WRITE, ...)
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+        )
+        result = await fake.run(intent=LLMIntent.WRITE, config=config, ...)
         assert result.text == "Hello world"
     """
 
@@ -88,7 +94,9 @@ class FakeLLMGateway:
         intent: LLMIntent,
         system_prompt: str,
         user_prompt: str,
-        model_override: str | None = None,
+        config: ResolvedModelConfig | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
         **kwargs: Any,
     ) -> LLMResult:
         """Execute a fake non-streaming LLM call."""
@@ -97,7 +105,9 @@ class FakeLLMGateway:
                 intent=intent,
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                model_override=model_override,
+                config=config,
+                api_key=api_key,
+                base_url=base_url,
                 kwargs=kwargs,
             )
         )
@@ -136,7 +146,9 @@ class FakeLLMGateway:
         intent: LLMIntent,
         system_prompt: str,
         user_prompt: str,
-        model_override: str | None = None,
+        config: ResolvedModelConfig | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
         """Execute a fake streaming LLM call."""
@@ -145,7 +157,9 @@ class FakeLLMGateway:
                 intent=intent,
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                model_override=model_override,
+                config=config,
+                api_key=api_key,
+                base_url=base_url,
                 kwargs=kwargs,
             )
         )
