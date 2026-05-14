@@ -22,29 +22,101 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Trigger full build + publish on release
   publish:
     needs: release-please
     if: needs.release-please.outputs.release_created
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v7
+      # ── Docker Build + Push to GHCR ──────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          enable-cache: true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: uv sync --all-packages --dev
+      - name: Extract version
+        id: meta
+        run: echo "VERSION=${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_OUTPUT
 
-      - name: Run full test suite
-        run: uv run pytest tests/unit/ tests/integration/ -v
-        env:
-          DATABASE_URL: postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_test
-          REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: ci-secret-key
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/narrare:${{ steps.meta.outputs.VERSION }}
+            ghcr.io/${{ github.repository }}/narrare:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Release Bundle ───────────────────────────────────────────
+      - name: Create release bundle
+        run: |
+          mkdir -p /tmp/bundle
+          cp docker-compose.release.yml /tmp/bundle/docker-compose.yml
+          cp .env.example /tmp/bundle/.env.example
+
+          # Create a minimal README for the bundle
+          cat > /tmp/bundle/README.md << 'READMEEOF'
+          # Narrare — Self-Hosted Setup
+
+          ## Quick Start
+
+          1. Copy `.env.example` to `.env` and configure your values
+          2. Start the services:
+             ```bash
+             docker compose up -d
+             ```
+          3. Open http://localhost:3000
+
+          ## Configuration
+
+          Edit `.env` and set at minimum:
+          - `SECRET_KEY` — generate with: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+          - `NARRARE_ENCRYPTION_KEY` — generate with: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+          - At least one AI provider API key (e.g. `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`)
+
+          **Important:** Change the DATABASE_URL and REDIS_URL to use Docker service names:
+          - `DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare`
+          - `REDIS_URL=redis://redis:6379/0`
+
+          ## Updates
+
+          ```bash
+          docker compose pull
+          docker compose up -d
+          ```
+
+          ## Stop
+
+          ```bash
+          docker compose down
+          ```
+          READMEEOF
+
+          cd /tmp && zip -r /tmp/narrare-${{ steps.meta.outputs.VERSION }}.zip bundle/
+
+      - name: Upload release bundle
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: /tmp/narrare-${{ steps.meta.outputs.VERSION }}.zip
 
       - name: Create GitHub Release summary
         run: |
           echo "## Release ${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker image:** \`ghcr.io/${{ github.repository }}/narrare:${{ steps.meta.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release bundle:** \`narrare-${{ steps.meta.outputs.VERSION }}.zip\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "Release created successfully." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,87 @@
+# =============================================================================
+# Narrare — Self-Hosted Deployment
+# =============================================================================
+#
+# This is the release compose file for running Narrare on your own server.
+# It starts the Narrare application, PostgreSQL (with pgvector), and Redis.
+#
+# Requirements:
+#   - Docker Engine 24+ with Docker Compose v2
+#
+# Quick start:
+#   1. Copy .env.example to .env and configure (see notes below)
+#   2. docker compose -f docker-compose.release.yml up -d
+#   3. Open http://localhost:3000
+#
+# Stop:
+#   docker compose -f docker-compose.release.yml down
+#
+# IMPORTANT — Docker networking:
+#   The .env.example defaults use "localhost" for DATABASE_URL and REDIS_URL,
+#   but inside Docker the services communicate via the Docker network. You MUST
+#   set these to use the service names instead:
+#
+#     DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare
+#     REDIS_URL=redis://redis:6379/0
+#
+#   The .env bundled with this release already has the correct hostnames.
+#
+# =============================================================================
+
+services:
+  # ── Narrare Application ─────────────────────────────────────────────────
+  # Combined FastAPI (backend) + Next.js (frontend) image.
+  # All configuration comes from the .env file.
+  narrare:
+    image: ghcr.io/${GHCR_OWNER:-narrare}/narrare:${NARRARE_VERSION:-latest}
+    ports:
+      - "3000:3000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ── PostgreSQL + pgvector ───────────────────────────────────────────────
+  # Primary database. The pgvector extension is required for AI features.
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${DB_USER:-narrare}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-narrare}
+      POSTGRES_DB: ${DB_NAME:-narrare}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-narrare} -d ${DB_NAME:-narrare}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── Redis Cache ─────────────────────────────────────────────────────────
+  # Used for session caching, rate limiting, and background task queues.
+  redis:
+    image: redis:8-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  postgres_data:
+  redis_data:

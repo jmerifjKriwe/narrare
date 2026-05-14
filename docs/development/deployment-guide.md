@@ -248,6 +248,100 @@ All developer commands via `just`:
 4. CHANGELOG.md generated
 5. GitHub release created
 
+## Self-Hosted Deployment
+
+Narrare ships as a single Docker image containing both the FastAPI backend and
+the Next.js frontend. PostgreSQL (with pgvector) and Redis run alongside it
+via Docker Compose.
+
+### Release Artifacts
+
+Each release produces:
+
+| Artifact | Location | Description |
+|----------|----------|-------------|
+| Docker image | `ghcr.io/<owner>/narrare:<version>` | Single image with API + frontend |
+| Release bundle | `narrare-<version>.zip` | docker-compose.yml + .env.example + README |
+
+The Docker image is **private** by default (inherits repository visibility).
+End users authenticate once via `docker login ghcr.io`.
+
+### Quick Start (End User)
+
+```bash
+# 1. Download and extract the release bundle
+unzip narrare-0.2.0.zip
+cd narrare-0.2.0/
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env — set SECRET_KEY, NARRARE_ENCRYPTION_KEY, and AI provider keys
+
+# 3. Start
+docker compose up -d
+
+# 4. Open http://localhost:3000
+```
+
+### Required Configuration
+
+| Variable | Required | How to generate |
+|----------|----------|-----------------|
+| `SECRET_KEY` | Yes | `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `NARRARE_ENCRYPTION_KEY` | Yes | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
+| `DATABASE_URL` | Yes | Must use `@postgres:5432/` (Docker service name, not localhost) |
+| `REDIS_URL` | Yes | Must use `redis://redis:6379/0` (Docker service name) |
+| AI API key | At least one | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. |
+
+### Updates
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+### Architecture
+
+The production image is a multi-stage Docker build:
+
+```
+┌──────────────────────────────────────┐
+│  ghcr.io/<owner>/narrare:<version>   │
+│                                      │
+│  Port 3000 → Next.js (external)     │
+│              ↓ /api/v1/* rewrite     │
+│  Port 8000 → FastAPI (internal)     │
+└──────────────────────────────────────┘
+         │                │
+    ┌────┘                └────┐
+    ▼                         ▼
+ PostgreSQL                Redis
+ (pgvector)               (cache)
+```
+
+- **FastAPI** listens on `127.0.0.1:8000` (internal only)
+- **Next.js** listens on `0.0.0.0:3000` (external) and proxies `/api/v1/*` to the backend
+- Health check: `GET /health` on port 8000
+
+### CI/CD: Release Pipeline
+
+The `release-please.yml` workflow automates the entire release:
+
+1. **Version detection** — release-please parses conventional commits
+2. **GitHub Release** — created with auto-generated changelog
+3. **Docker build** — multi-stage build, pushed to GHCR
+4. **Release bundle** — zip with docker-compose.yml + .env.example + README
+5. **Bundle upload** — attached to the GitHub Release
+
+```
+merge to main
+  → release-please detects version bump
+    → opens release PR
+      → on merge: GitHub Release created
+        → Docker image built + pushed to GHCR
+        → Release bundle created + attached
+```
+
 ## Environment Variables
 
 See `.env.example` for all required variables:
