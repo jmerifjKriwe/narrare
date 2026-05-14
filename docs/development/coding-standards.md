@@ -266,6 +266,97 @@ class Chapter(Base):
     )
 ```
 
+### Migration Discipline
+
+Every SQLAlchemy model change requires a matching Alembic migration.
+No exceptions. See `docs/_shared/CONSTRAINTS.md` RULE-14.
+
+**Migration checklist — follow in order:**
+
+1. **Model changed** — column added, renamed, type changed, or removed in `models.py`
+2. **Migration created** — `alembic/versions/NNNN_descriptive_name.py`
+3. **`upgrade()` written** — adds/modifies the column
+4. **`downgrade()` written** — reverses the change
+5. **Cross-table check** — does this column belong in related tables too?
+6. **Regression test written** — verifies schema matches model
+7. **Integration test passes** — real migration against real DB
+
+**Cross-table consistency check:**
+
+When adding a column to one table, check if the same column should be added
+to related tables. Tables that share a concern often need matching columns:
+
+| Concern | Tables to check |
+|---------|----------------|
+| AI configuration | `user_ai_settings`, `project_settings` |
+| User preferences | `user_settings`, `project_settings` |
+| Provider data | `user_providers`, `project_settings` (legacy) |
+
+**Forbidden patterns:**
+
+```python
+# ❌ Column in models.py without a migration
+class MyModel(Base):
+    new_column: Mapped[str] = mapped_column(String(50))
+    # No migration → runtime crash on INSERT
+
+# ❌ Modifying an already-applied migration
+# If 0004 has already run, create 0005 — never edit 0004
+
+# ❌ Migration without regression test
+# If the migration can silently miss a column, a test must catch it
+```
+
+**Migration file conventions:**
+
+```python
+# File naming: NNNN_descriptive_name.py
+# revision must match filename prefix
+# down_revision must chain to previous migration
+# Always include from __future__ import annotations
+
+"""Add token_limit_profile to project_settings.
+
+Explain WHY, not just WHAT. Reference the bug or feature
+that motivated this change.
+
+Revision ID: 0005_project_settings_token_limit_profile
+Revises: 0004_ai_settings
+"""
+revision: str = "0005_project_settings_token_limit_profile"
+down_revision: str | None = "0004_ai_settings"
+```
+
+**Regression test pattern:**
+
+```python
+# tests/integration/{domain}/test_{table}_schema.py
+
+class TestProjectSettingsTokenLimitProfile:
+    async def test_column_exists_in_information_schema(self, db_session):
+        """Most direct check — column must exist after migration."""
+        result = await db_session.execute(
+            text("SELECT column_name FROM information_schema.columns "
+                 "WHERE table_name = 'project_settings' "
+                 "AND column_name = 'token_limit_profile'")
+        )
+        assert result.scalar_one_or_none() == "token_limit_profile"
+
+    async def test_insert_with_column_succeeds(self, db_session):
+        """The exact failure pattern — INSERT must not crash."""
+        settings = ProjectSettings(novel_id=uuid.uuid4(), token_limit_profile="balanced")
+        db_session.add(settings)
+        await db_session.flush()
+        assert settings.token_limit_profile == "balanced"
+
+    async def test_default_value(self, db_session):
+        """Server default must match the model default."""
+        settings = ProjectSettings(novel_id=uuid.uuid4())
+        db_session.add(settings)
+        await db_session.flush()
+        assert settings.token_limit_profile == "balanced"
+```
+
 ### Repository Pattern
 
 ```python

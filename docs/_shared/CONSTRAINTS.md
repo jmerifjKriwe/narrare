@@ -218,6 +218,50 @@ No direct SDK calls to external services outside their dedicated adapter:
 
 ---
 
+### RULE-14 · Every model column needs a migration.
+
+When a SQLAlchemy model column is added, renamed, changed type, or removed,
+the corresponding Alembic migration **must** be created in the same task.
+A model change without a matching migration is a build failure.
+
+**When touching `models.py`:**
+
+1. Create the Alembic migration in the same task.
+2. Verify `upgrade()` and `downgrade()` both work.
+3. Cross-check: if the column exists in a related table, add it there too.
+4. Write a regression test that verifies the schema matches the model.
+
+**Forbidden:**
+
+```python
+# Adding a column to models.py without a migration
+class ProjectSettings(Base):
+    token_limit_profile: Mapped[str] = mapped_column(String(20))
+    # ↑ If no migration adds this column → build failure
+```
+
+**Required:**
+
+```
+# 1. models.py — add column
+# 2. alembic/versions/NNNN_add_token_limit_profile.py — add migration
+# 3. tests/integration/.../test_..._schema.py — regression test
+```
+
+**Cross-table check — the bug that motivated this rule:**
+
+Migration 0004 added `token_limit_profile` to `user_ai_settings` but forgot
+`project_settings`. Both tables store AI configuration. When adding a column
+to one table in a shared concern, check ALL tables in that concern.
+
+**Why:** The setup wizard crashed at runtime because the SQLAlchemy model
+included `token_limit_profile` but the database column never existed. The
+migration had been marked as "applied" — no automated check caught the mismatch.
+Integration tests using real Alembic migrations (not `create_all()`) are the
+safety net.
+
+---
+
 ## 3. Quality Rules
 
 ### RULE-09 · Every public function has a type signature.
@@ -332,6 +376,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-09 Type signatures | `mypy --strict` in CI |
 | RULE-10 Test coverage | `pytest --cov` with minimum thresholds |
 | RULE-11 Silent failures | `check_architecture.py` — bare except scan |
+| RULE-14 Model-migration consistency | Integration tests + PR review |
 | All rules | PR review by Architecture Agent |
 
 ---

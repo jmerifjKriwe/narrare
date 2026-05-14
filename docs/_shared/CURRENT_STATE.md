@@ -11,8 +11,8 @@
 ## Last Updated
 
 Date: 2026-05-14
-Updated by: Documentation Specialist
-Session summary: Configurable model routing documentation — ADR-001 updated, Q-006 resolved, feature specs SET-001/002/003 completed, CURRENT_STATE and directory-structure updated, NARRARE_ENCRYPTION_KEY added to deployment docs.
+Updated by: Orchestrator
+Session summary: Bug fix — migration 0004 forgot token_limit_profile on project_settings. Added migration 0005 + regression test. Added RULE-14 (migration discipline) to CONSTRAINTS.md, coding-standards.md, python-standards.md.
 
 ---
 
@@ -112,6 +112,7 @@ Phase 5: Integration & Polish      · not started
 
 **App Infrastructure (`_app/`):**
 - `main.py`, `config.py`, `database.py`, `dependencies.py`, `lifespan.py`, `middleware.py`
+- `lifespan.py` runs `alembic upgrade head` on startup (auto-migration), logs schema version, fails fast if migrations break
 - `telemetry.py` — OpenTelemetry setup (traces, metrics, FastAPI instrumentation)
 - `events.py` — Redis Pub/Sub event bus implementation
 - `event_listener.py` — Event → TaskIQ task routing
@@ -130,12 +131,18 @@ Phase 5: Integration & Polish      · not started
   - `model_routing_resolver.py`
   - Migration: `0004_ai_settings.py`
 - `setup/` — Setup wizard: router, service, contracts, schemas, provider_service, provider_schemas, demo_loader
+  - `_validation.py` — Step validation pure functions (extracted from service.py, RULE-04 split)
+  - `service.py` now writes to both `user_providers` + `user_ai_settings` AND legacy `project_settings`
   - Z.AI dual endpoint selector (General vs Coding API) in Step 4
+  - After setup, AI Settings pages work immediately — no more "No key configured"
 - `metrics/` — Health/metrics router
 
 **Database:**
 - Alembic migration `0001_initial.py` — initial schema
 - Alembic migration `0004_ai_settings.py` — `user_providers`, `user_ai_settings`, project AI override columns
+- Alembic migration `0005_project_settings.py` — adds missing `token_limit_profile` column to `project_settings` (forgotten in 0004)
+- `env.py` imports all 5 model modules (auth, chapters, novels, settings, volumes) — autogenerate works correctly
+- Auto-migration on startup via `lifespan.py` — no manual `alembic upgrade head` needed
 
 #### `packages/i18n/` — Translations (Source of Truth)
 
@@ -149,6 +156,8 @@ Phase 5: Integration & Polish      · not started
 
 **App Structure (App Router):**
 - `app/(auth)/` — Login, Register pages with form validation (react-hook-form + zod)
+- Login/Register redirect: `has_providers ? /dashboard : /wizard` (checks `user_providers` table)
+- `auth/me` endpoint returns `has_providers: bool`
 - `app/(app)/` — Authenticated pages with shared layout (auth shell + user info)
   - `dashboard/` — Novel list with create/navigate
   - `wizard/` — Setup wizard (5-step, inherits app layout with header/user info)
@@ -198,11 +207,11 @@ Phase 5: Integration & Polish      · not started
 
 #### `tests/` — Test Suite
 
-**Unit tests (28 files):**
+**Unit tests (31 files):**
 - `core/llm/` — gateway, intents, retry, providers_registry, embeddings (5 files)
 - `core/prompts/` — registry, composer, variable_engine, meta, variable_engine_hypothesis (5 files)
 - `core/shared/` — frontmatter, result, errors, file_utils, result_hypothesis, frontmatter_hypothesis (6 files)
-- `api/setup/` — setup_service, setup_schemas, demo_loader, provider_service (4 files)
+- `api/setup/` — setup_service, setup_schemas, demo_loader, provider_service, _complete_helpers, test_setup_complete_providers (6 files)
 - `api/auth/` — auth_service, security (2 files)
 - `api/chapters/` — chapter_service (1 file)
 - `api/novels/` — novel_service (1 file)
@@ -211,12 +220,14 @@ Phase 5: Integration & Polish      · not started
 - `api/` — test_contracts.py, test_fake_conformance.py (2 files)
 - Plus 3 hypothesis property-based tests (in core/shared and core/prompts)
 
-**Integration tests (7 files):**
+**Integration tests (7+ files):**
 - `setup/test_setup_api.py`, `novels/test_novels_api.py`
 - `chapters/test_chapters_api.py`, `auth/test_auth_api.py`
 - `settings/test_settings_api.py`, `volumes/test_volumes_api.py`
 - `health/test_health.py`
 - `conftest.py` with shared fixtures (registered_user, novel_id, auth helpers)
+- `conftest.py` runs `alembic upgrade head` (not `Base.metadata.create_all()`) to validate migrations
+- `conftest.py` provides `NARRARE_ENCRYPTION_KEY` via autouse fixture
 
 **E2E:** Directory exists, no tests yet.
 
@@ -251,11 +262,17 @@ Phase 5: Integration & Polish      · not started
 
 ## What Is In Progress
 
-Configurable model routing is now implemented. Core infrastructure for runtime model selection,
-multi-provider support, and token limit profiles is in place. Frontend settings UI for
-provider management, model routing, and token limits is complete.
+Phase 5 (Integration & Polish) is underway. Infrastructure fixes completed:
+- Setup wizard writes to new tables (`user_providers`, `user_ai_settings`) in addition to legacy `project_settings`
+- Auto-migration on startup — `lifespan.py` runs `alembic upgrade head` before serving requests
+- Post-login redirect based on setup completion (`has_providers` flag)
+- Alembic `env.py` fixed — all 5 model modules imported, autogenerate works
+- Integration tests use real Alembic migrations instead of `create_all()`
+- RULE-04 split applied to `setup/` — validation extracted to `_validation.py`
+- 10 new tests covering provider creation, AI settings, has_providers flag, DB state verification
+- Frontend: toggle switches fixed, migration warning → subtle hint with i18n key change
 
-Phase 5 (Integration & Polish) is underway. Next focus: writing sessions, AI features, analysis panels.
+Next focus: writing sessions, AI features, analysis panels.
 
 ---
 
@@ -299,6 +316,16 @@ All demo content is complete — sufficient for testing through Phase 5.
 | TYPE_CHECKING ForwardRef fix | All schemas + routers: moved runtime types out of TYPE_CHECKING |
 | Dashboard New Novel → Wizard | "New Novel" now launches setup wizard instead of direct creation |
 | Q-006 Configurable Model Routing | → Runtime cascade with multi-provider, encrypted API keys, 7 intent categories |
+| Setup wizard DB gap | Fixed: `complete()` now writes to `user_providers` + `user_ai_settings` — AI Settings pages work immediately after setup |
+| Auto-migration on startup | `lifespan.py` runs `alembic upgrade head` before serving — no manual migration step needed |
+| Post-login redirect | `/auth/me` returns `has_providers` flag; login/register redirects to `/wizard` if no providers |
+| Alembic env.py | All 5 model modules imported — `alembic revision --autogenerate` detects all schema changes |
+| Integration test migrations | Tests use real Alembic migrations (not `create_all()`) — catches migration bugs in CI |
+| Setup RULE-04 split | `_validation.py` extracted from `service.py` (325→190 lines) |
+| Frontend toggle switches | Fixed dimensions: `w-11 h-6` track, `w-5 h-5` knob in CategoryOverrides + IntentOverrides |
+| AI Providers migration warning | Changed to subtle hint, hidden for Ollama, i18n key `migrationWarning` → `addKeyHint` |
+| Migration 0004 schema gap | Fixed: migration 0005 adds `token_limit_profile` to `project_settings` — was only added to `user_ai_settings` |
+| RULE-14 Migration Discipline | New rule: every model column needs a migration, cross-table check required, regression test mandatory |
 
 ---
 
@@ -318,6 +345,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | ADR-011 | Content Versioning for Chapters | ✅ Implemented |
 | ADR-012 | Event-Driven Architecture (Redis Pub/Sub) | ✅ Implemented |
 | ADR-013 | Internationalization Architecture | ✅ Implemented |
+| ADR-014 | RULE-14: Model-Migration Consistency | ✅ Enforced |
 
 ---
 
@@ -353,6 +381,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 2. Backend test coverage gaps (settings service, demo loader, gateway error classification, retry logic)
 3. Frontend test coverage gaps (editor, wizard, dashboard, shared components)
 4. Documentation polish (architecture questions, CURRENT_STATE, testing standards, CHANGELOG)
+5. Writing sessions (SSE streaming) — connect core writing features to the editor
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)
