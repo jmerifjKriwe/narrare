@@ -19,5 +19,6 @@
   "commandPalettePlaceholder": "Type a command...",
   "categoryFormat": "Formatting",
   "categoryEditor": "Editor",
-  "noCommandsFound": "No commands found"
+  "noCommandsFound": "No commands found",
+  "commandPaletteHint": "⌘K"
 }

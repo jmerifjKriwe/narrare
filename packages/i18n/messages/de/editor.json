@@ -19,5 +19,6 @@
   "commandPalettePlaceholder": "Befehl eingeben...",
   "categoryFormat": "Formatierung",
   "categoryEditor": "Editor",
-  "noCommandsFound": "Keine Befehle gefunden"
+  "noCommandsFound": "Keine Befehle gefunden",
+  "commandPaletteHint": "⌘K"
 }

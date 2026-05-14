@@ -19,5 +19,6 @@
   "commandPalettePlaceholder": "Tapez une commande...",
   "categoryFormat": "Mise en forme",
   "categoryEditor": "Éditeur",
-  "noCommandsFound": "Aucune commande trouvée"
+  "noCommandsFound": "Aucune commande trouvée",
+  "commandPaletteHint": "⌘K"
 }

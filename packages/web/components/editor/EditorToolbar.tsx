@@ -87,6 +87,9 @@ export function EditorToolbar({
         >
           <Maximize2 size={16} />
         </Button>
+        <span className="text-[0.625rem] text-[var(--color-text-tertiary)]/60 hidden lg:inline">
+          {t("commandPaletteHint")}
+        </span>
       </div>
     </div>
   );

@@ -156,7 +156,13 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
         <button
           type="button"
           onClick={toggleFocusMode}
-          className="fixed top-4 right-4 z-50 p-2 rounded-lg bg-[var(--color-surface)]/80 backdrop-blur-sm border border-[var(--color-border)]/50 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer"
+          className="fixed bottom-6 right-6 z-50 p-2.5 rounded-lg
+                     bg-[var(--color-surface)]/90 backdrop-blur-sm
+                     border border-[var(--color-border)]/50
+                     text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]
+                     opacity-40 hover:opacity-100
+                     transition-opacity duration-300 cursor-pointer
+                     shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
           aria-label={t("exitFocusMode")}
           title={`${t("exitFocusMode")} (Esc)`}
         >

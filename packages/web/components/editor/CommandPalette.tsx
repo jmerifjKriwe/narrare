@@ -51,6 +51,7 @@ export function CommandPalette({ editor, isOpen, onClose, context }: CommandPale
   }, [filtered, t]);
 
   // Reset selection when filter changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally triggers on filtered list changes
   useEffect(() => {
     setSelectedIndex(0);
   }, [filtered]);

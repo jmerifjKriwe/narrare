@@ -15,15 +15,11 @@ export function DashboardView() {
   const tCommon = useTranslations("common");
 
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: novels = [], isLoading } = useQuery({
     queryKey: ["novels"],
     queryFn: novelsApi.list,
-  });
-
-  const createNovel = useMutation({
-    mutationFn: () => novelsApi.create({}),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["novels"] }),
   });
 
   const deleteNovel = useMutation({
@@ -82,7 +78,7 @@ export function DashboardView() {
             <p className="text-[var(--color-text-tertiary)] mb-10 text-[0.9375rem]">
               {t("noNovelsHint")}
             </p>
-            <Button onClick={() => createNovel.mutate()} loading={createNovel.isPending} size="lg">
+            <Button onClick={() => router.push("/wizard")} size="lg">
               + {t("newNovel")}
             </Button>
           </div>
@@ -96,7 +92,7 @@ export function DashboardView() {
             <button
               type="button"
               className="flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-transparent cursor-pointer text-[var(--color-text-tertiary)] hover:border-[var(--color-accent-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-light)]/50 transition-all duration-500 min-h-[220px] group"
-              onClick={() => createNovel.mutate()}
+              onClick={() => router.push("/wizard")}
               aria-label={t("newNovel")}
             >
               <div className="w-10 h-10 rounded-full border-2 border-current flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110">
@@ -116,79 +112,91 @@ function NovelCard({ novel, onDelete }: { novel: NovelSummary; onDelete: (id: st
   const router = useRouter();
 
   return (
-    <button
-      type="button"
-      className="group relative text-left rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ease-out w-full bg-[var(--color-surface)] border border-[var(--color-border)]/70"
-      style={{
-        boxShadow: "0 1px 3px rgba(44,40,37,0.04), 0 4px 12px rgba(44,40,37,0.03)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow =
-          "0 4px 12px rgba(44,40,37,0.06), 0 16px 40px rgba(44,40,37,0.1)";
-        e.currentTarget.style.transform = "translateY(-4px)";
-        e.currentTarget.style.borderColor = "var(--color-accent-muted)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow =
-          "0 1px 3px rgba(44,40,37,0.04), 0 4px 12px rgba(44,40,37,0.03)";
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.borderColor = "";
-      }}
-      onClick={() => router.push(`/novel/${novel.id}/editor`)}
-      aria-label={`Open ${novel.title}`}
-    >
-      {/* Delete button — appears on hover */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(novel.id);
+    <>
+      {/* biome-ignore lint/a11y/useSemanticElements: must use div, not button, to avoid nested <button> (HTML spec violation) */}
+      <div
+        role="button"
+        tabIndex={0}
+        className="group relative text-left rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ease-out w-full bg-[var(--color-surface)] border border-[var(--color-border)]/70"
+        style={{
+          boxShadow: "0 1px 3px rgba(44,40,37,0.04), 0 4px 12px rgba(44,40,37,0.03)",
         }}
-        className="absolute top-4 right-4 p-1.5 rounded-lg bg-[var(--color-surface)]/90
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow =
+            "0 4px 12px rgba(44,40,37,0.06), 0 16px 40px rgba(44,40,37,0.1)";
+          e.currentTarget.style.transform = "translateY(-4px)";
+          e.currentTarget.style.borderColor = "var(--color-accent-muted)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow =
+            "0 1px 3px rgba(44,40,37,0.04), 0 4px 12px rgba(44,40,37,0.03)";
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.borderColor = "";
+        }}
+        onClick={() => router.push(`/novel/${novel.id}/editor`)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            router.push(`/novel/${novel.id}/editor`);
+          }
+        }}
+        aria-label={`Open ${novel.title}`}
+      >
+        {/* Delete button — appears on hover */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(novel.id);
+          }}
+          className="absolute top-4 right-4 p-1.5 rounded-lg bg-[var(--color-surface)]/90
                    border border-[var(--color-border)]/50 text-[var(--color-text-tertiary)]
                    hover:text-[var(--color-error)] hover:border-[var(--color-error)]/30
                    opacity-0 group-hover:opacity-100 transition-all duration-200
                    cursor-pointer z-10"
-        aria-label={t("deleteNovel")}
-      >
-        <Trash2 size={14} />
-      </button>
-      {/* Top accent bar — gradient amber */}
-      <div
-        className="h-1 w-full"
-        style={{
-          background: "linear-gradient(90deg, var(--color-accent), var(--color-accent-muted))",
-        }}
-      />
+          aria-label={t("deleteNovel")}
+        >
+          <Trash2 size={14} />
+        </button>
+        {/* Top accent bar — gradient amber */}
+        <div
+          className="h-1 w-full"
+          style={{
+            background: "linear-gradient(90deg, var(--color-accent), var(--color-accent-muted))",
+          }}
+        />
 
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <h2
-            className="text-[1.125rem] font-semibold leading-snug text-[var(--color-text-primary)]"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {novel.title}
-          </h2>
-          {novel.is_demo && (
-            <span className="text-[0.625rem] font-bold py-1 px-2.5 rounded-md bg-[var(--color-accent-light)] text-[var(--color-accent)] uppercase tracking-[0.1em] shrink-0 border border-[var(--color-accent)]/15">
-              {t("demo")}
-            </span>
+        <div className="p-6">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <h2
+              className="text-[1.125rem] font-semibold leading-snug text-[var(--color-text-primary)]"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              {novel.title}
+            </h2>
+            {novel.is_demo && (
+              <span className="text-[0.625rem] font-bold py-1 px-2.5 rounded-md bg-[var(--color-accent-light)] text-[var(--color-accent)] uppercase tracking-[0.1em] shrink-0 border border-[var(--color-accent)]/15">
+                {t("demo")}
+              </span>
+            )}
+          </div>
+
+          {novel.author && (
+            <p className="text-[0.8125rem] text-[var(--color-text-secondary)] mb-1">
+              {novel.author}
+            </p>
           )}
-        </div>
+          {novel.genre && (
+            <p className="text-[0.75rem] text-[var(--color-text-tertiary)]">{novel.genre}</p>
+          )}
 
-        {novel.author && (
-          <p className="text-[0.8125rem] text-[var(--color-text-secondary)] mb-1">{novel.author}</p>
-        )}
-        {novel.genre && (
-          <p className="text-[0.75rem] text-[var(--color-text-tertiary)]">{novel.genre}</p>
-        )}
-
-        <div className="flex items-center gap-2 mt-5 pt-4 border-t border-[var(--color-border)]/60">
-          <span className="text-[0.75rem] text-[var(--color-text-tertiary)] font-[family-name:var(--font-mono)]">
-            {t("lastEdited", { time: formatRelativeTime(novel.updated_at, novel.language) })}
-          </span>
+          <div className="flex items-center gap-2 mt-5 pt-4 border-t border-[var(--color-border)]/60">
+            <span className="text-[0.75rem] text-[var(--color-text-tertiary)] font-[family-name:var(--font-mono)]">
+              {t("lastEdited", { time: formatRelativeTime(novel.updated_at, novel.language) })}
+            </span>
+          </div>
         </div>
       </div>
-    </button>
+    </>
   );
 }

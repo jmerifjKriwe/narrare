@@ -169,30 +169,10 @@ describe("DashboardView", () => {
     expect(newButtons.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("should show new novel after creating one", async () => {
+  it("should navigate to wizard when New Novel button is clicked in empty state", async () => {
     const user = userEvent.setup();
 
-    const newNovel = {
-      id: "new-novel-id",
-      title: "Untitled Novel",
-      author: "",
-      genre: "",
-      language: "en",
-      is_demo: false,
-      created_at: "2026-03-01T00:00:00Z",
-      updated_at: "2026-03-01T00:00:00Z",
-    };
-
-    let created = false;
-    server.use(
-      http.get("*/api/v1/novels", () => {
-        return HttpResponse.json(created ? [newNovel] : []);
-      }),
-      http.post("*/api/v1/novels", async () => {
-        created = true;
-        return HttpResponse.json(newNovel, { status: 201 });
-      }),
-    );
+    server.use(http.get("*/api/v1/novels", () => HttpResponse.json([])));
 
     render(<DashboardView />, { wrapper });
 
@@ -206,9 +186,23 @@ describe("DashboardView", () => {
     expect(createButton).toBeTruthy();
     await user.click(createButton!);
 
+    expect(mockPush).toHaveBeenCalledWith("/wizard");
+  });
+
+  it("should navigate to wizard when New Novel card is clicked in grid", async () => {
+    const user = userEvent.setup();
+
+    render(<DashboardView />, { wrapper });
+
     await waitFor(() => {
-      expect(screen.getByText("Untitled Novel")).toBeInTheDocument();
+      expect(screen.getByText("Test Novel One")).toBeInTheDocument();
     });
+
+    // Find the dashed "+" new novel card in the grid
+    const newNovelCard = screen.getByRole("button", { name: "New novel" });
+    await user.click(newNovelCard);
+
+    expect(mockPush).toHaveBeenCalledWith("/wizard");
   });
 
   // --- Delete functionality ---
@@ -319,5 +313,23 @@ describe("DashboardView", () => {
     await user.click(deleteButtons[0]);
 
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("should use div with role=button for novel cards (no nested buttons)", async () => {
+    render(<DashboardView />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByText("Test Novel One")).toBeInTheDocument();
+    });
+
+    // NovelCard outer element is a div[role="button"], not a <button>
+    const novelCard = screen.getByRole("button", { name: "Open Test Novel One" });
+    expect(novelCard.tagName).toBe("DIV");
+    expect(novelCard).toHaveAttribute("role", "button");
+    expect(novelCard).toHaveAttribute("tabindex", "0");
+
+    // Delete button inside is still a real <button>
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete novel" });
+    expect(deleteButtons[0].tagName).toBe("BUTTON");
   });
 });
