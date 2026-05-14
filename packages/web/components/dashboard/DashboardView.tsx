@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Settings } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
@@ -34,14 +36,23 @@ export function DashboardView() {
     >
       <div className="max-w-[1000px] mx-auto px-8 py-12">
         {/* Hero section — dramatic welcome */}
-        <div className="mb-14">
-          <h1
-            className="text-[2rem] font-bold leading-tight text-[var(--color-text-primary)]"
-            style={{ fontFamily: "var(--font-display)" }}
+        <div className="mb-14 flex items-end justify-between">
+          <div>
+            <h1
+              className="text-[2rem] font-bold leading-tight text-[var(--color-text-primary)]"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              {t("title")}
+            </h1>
+            <div className="w-12 h-[2px] bg-[var(--color-accent)] mt-4 rounded-full" />
+          </div>
+          <Link
+            href="/settings/ai-providers"
+            className="text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] transition-colors flex items-center gap-1.5"
           >
-            {t("title")}
-          </h1>
-          <div className="w-12 h-[2px] bg-[var(--color-accent)] mt-4 rounded-full" />
+            <Settings size={14} />
+            {t("settings")}
+          </Link>
         </div>
 
         {isLoading ? (

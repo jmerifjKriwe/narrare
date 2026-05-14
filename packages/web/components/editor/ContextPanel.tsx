@@ -1,23 +1,21 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { ProjectAiSettings } from "@/components/settings/ProjectAiSettings";
+import { aiSettingsApi } from "@/lib/api/client";
 
-// ============================================================
-// CONTEXT PANEL — AI feature sections register here.
-//
-// At MVP: empty shell. Pattern for future AI features:
-//
-// import { registerContextSection } from "./contextRegistry"
-// registerContextSection({
-//   id: "inline-suggestions",
-//   title: t("panel.suggestions"),
-//   component: InlineSuggestionsPanel,
-//   feature: "WRITE-007",
-// })
-// ============================================================
+interface ContextPanelProps {
+  readonly novelId: string;
+}
 
-export function ContextPanel() {
+export function ContextPanel({ novelId }: ContextPanelProps) {
   const t = useTranslations("editor");
+
+  const { data: providers = [] } = useQuery({
+    queryKey: ["ai-providers"],
+    queryFn: aiSettingsApi.listProviders,
+  });
 
   return (
     <aside className="w-[var(--panel-width)] border-l border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col shrink-0 overflow-hidden">
@@ -27,11 +25,8 @@ export function ContextPanel() {
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {/* AI feature sections will appear here */}
-        <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8 px-4 italic">
-          {t("contextPanelEmpty")}
-        </p>
+      <div className="flex-1 overflow-y-auto">
+        <ProjectAiSettings novelId={novelId} providers={providers} />
       </div>
     </aside>
   );

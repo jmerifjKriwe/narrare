@@ -128,8 +128,8 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
           </div>
         </main>
 
-        {/* Right context panel (empty slot at MVP) */}
-        {contextPanelOpen && !focusMode && <ContextPanel />}
+        {/* Right context panel — project AI settings */}
+        {contextPanelOpen && !focusMode && <ContextPanel novelId={novelId} />}
       </div>
 
       {/* Status bar — hidden in focus mode */}

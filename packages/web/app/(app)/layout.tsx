@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -68,6 +69,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Link>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/settings/ai-providers"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] transition-colors"
+            aria-label={t("settings")}
+            title={t("settings")}
+          >
+            <Settings size={18} />
+          </Link>
           <span className="text-[0.8125rem] text-[var(--color-text-tertiary)]">{displayName}</span>
         </div>
       </header>
