@@ -264,3 +264,79 @@ export interface UpdateProjectAiSettingsRequest {
   intent_overrides?: Record<string, ModelOverride>;
   token_limit_overrides?: Record<string, TokenLimitOverride>;
 }
+
+// ---------------------------------------------------------------------------
+// Prompt Override types
+// ---------------------------------------------------------------------------
+
+export interface PromptInfo {
+  prompt_id: string;
+  name: string;
+  category: string;
+  language: string;
+  source: string;
+  has_override: boolean;
+  prompt_version: string;
+  is_overridden: boolean;
+}
+
+export interface PromptDetail {
+  prompt_id: string;
+  content: string;
+  base_content: string;
+  source: string;
+  is_overridden: boolean;
+  variables: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface CascadePath {
+  level: string;
+  path: string;
+  exists: boolean;
+}
+
+export interface UpdateInfo {
+  prompt_id: string;
+  override_version: string;
+  current_bundled_version: string;
+}
+
+export interface DiffResponse {
+  prompt_id: string;
+  override_content: string;
+  bundled_content: string;
+}
+
+// ---------------------------------------------------------------------------
+// Name Generation types
+// ---------------------------------------------------------------------------
+
+export type NameType = "character" | "place" | "organization" | "item";
+export type Gender = "male" | "female" | "neutral" | "any";
+
+export interface NameGenerateRequest {
+  project_id: string;
+  name_type: NameType;
+  culture: string;
+  count: number;
+  gender: Gender;
+  language: string;
+}
+
+export interface GeneratedName {
+  name: string;
+  pronunciation: string | null;
+  meaning: string | null;
+  type: string;
+  culture: string;
+  is_duplicate: boolean;
+  confidence: number;
+}
+
+export interface NameGenerateResponse {
+  names: GeneratedName[];
+  count: number;
+  culture: string;
+  name_type: string;
+}

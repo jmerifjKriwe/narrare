@@ -234,4 +234,136 @@ export const handlers = [
       message: "Setup complete",
     });
   }),
+
+  // ---------------------------------------------------------------------------
+  // Prompts
+  // ---------------------------------------------------------------------------
+
+  http.get("*/api/v1/prompts", async ({ request }) => {
+    const url = new URL(request.url);
+    const category = url.searchParams.get("category");
+
+    const allPrompts = [
+      {
+        prompt_id: "write-extend-en",
+        name: "Write / Extend",
+        category: "writing",
+        language: "en",
+        source: "bundled",
+        has_override: false,
+        prompt_version: "1.0.0",
+        is_overridden: false,
+      },
+      {
+        prompt_id: "write-extend-de",
+        name: "Write / Extend (DE)",
+        category: "writing",
+        language: "de",
+        source: "bundled",
+        has_override: false,
+        prompt_version: "1.0.0",
+        is_overridden: false,
+      },
+      {
+        prompt_id: "analyse-sentiment-en",
+        name: "Analyse / Sentiment",
+        category: "analysis",
+        language: "en",
+        source: "override",
+        has_override: true,
+        prompt_version: "1.1.0",
+        is_overridden: true,
+      },
+      {
+        prompt_id: "kb-create-en",
+        name: "KB / Create",
+        category: "kb",
+        language: "en",
+        source: "bundled",
+        has_override: false,
+        prompt_version: "1.0.0",
+        is_overridden: false,
+      },
+      {
+        prompt_id: "generation-names-en",
+        name: "Generation / Names",
+        category: "generation",
+        language: "en",
+        source: "bundled",
+        has_override: false,
+        prompt_version: "1.0.0",
+        is_overridden: false,
+      },
+    ];
+
+    const filtered = category ? allPrompts.filter((p) => p.category === category) : allPrompts;
+    return HttpResponse.json(filtered);
+  }),
+
+  http.get("*/api/v1/prompts/updates", async () => {
+    return HttpResponse.json([
+      {
+        prompt_id: "analyse-sentiment-en",
+        override_version: "1.0.0",
+        current_bundled_version: "1.1.0",
+      },
+    ]);
+  }),
+
+  http.get("*/api/v1/prompts/:id", async ({ params }) => {
+    const { id } = params;
+    const isOverridden = (id as string).includes("sentiment");
+    return HttpResponse.json({
+      prompt_id: id,
+      content: isOverridden
+        ? "You are a sentiment analysis expert. Override content here."
+        : "You are a helpful writing assistant. Base content here.",
+      base_content: "You are a helpful writing assistant. Base content here.",
+      source: isOverridden ? "override" : "bundled",
+      is_overridden: isOverridden,
+      variables: ["text", "language", "context"],
+      metadata: { version: "1.0.0" },
+    });
+  }),
+
+  http.put("*/api/v1/prompts/:id", async () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete("*/api/v1/prompts/:id/override", async () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get("*/api/v1/prompts/:id/diff", async () => {
+    return HttpResponse.json({
+      prompt_id: "analyse-sentiment-en",
+      override_content: "You are a sentiment analysis expert. Override content here.",
+      bundled_content:
+        "You are a sentiment analysis expert. New bundled version with improvements.",
+    });
+  }),
+
+  // ---------------------------------------------------------------------------
+  // Generation — Names
+  // ---------------------------------------------------------------------------
+
+  http.post("*/api/v1/generation/names", async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const count = (body.count as number) || 5;
+    const names = Array.from({ length: count }, (_, i) => ({
+      name: `TestName${i + 1}`,
+      pronunciation: i % 2 === 0 ? "TEST-nam" : null,
+      meaning: i % 3 === 0 ? "Test meaning" : null,
+      type: body.name_type ?? "character",
+      culture: body.culture ?? "fantasy",
+      is_duplicate: i === 0,
+      confidence: 0.9 - i * 0.05,
+    }));
+    return HttpResponse.json({
+      names,
+      count: names.length,
+      culture: body.culture ?? "fantasy",
+      name_type: body.name_type ?? "character",
+    });
+  }),
 ];

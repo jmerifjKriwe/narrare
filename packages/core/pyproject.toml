@@ -13,7 +13,9 @@ dependencies = [
   "aiofiles==25.1.0",
   "httpx==0.28.1",
   "langfuse>=3.0.0",
+  "mem0ai>=1.0",
   "prometheus-client>=0.20.0",
+  "psycopg[binary]>=3.0",
   "narrare-i18n",
 ]
 

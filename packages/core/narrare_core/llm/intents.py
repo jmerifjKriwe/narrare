@@ -45,6 +45,11 @@ class LLMIntent(StrEnum):
     PLAN = "plan"  # Scene/structure planning
     SUMMARIZE = "summarize"  # Chapter/section summarization
 
+    # Generation operations
+    GENERATE = "generate"  # General structured generation
+    NAME_GENERATE = "name_generate"  # Name generation (characters, places)
+    TITLE_GENERATE = "title_generate"  # Title generation (chapters, novels)
+
     # Extraction operations
     EXTRACT = "extract"  # General structured extraction
     SUGGEST = "suggest"  # Quick suggestions (inline, KB, titles)
@@ -72,6 +77,7 @@ class IntentCategory(StrEnum):
     ANALYSIS = "analysis"
     KB = "kb"
     PLANNING = "planning"
+    GENERATION = "generation"
     EXTRACTION = "extraction"
     CHAT = "chat"
     RESEARCH = "research"
@@ -96,6 +102,10 @@ INTENT_CATEGORY_MAP: dict[LLMIntent, IntentCategory] = {
     # Planning
     LLMIntent.PLAN: IntentCategory.PLANNING,
     LLMIntent.SUMMARIZE: IntentCategory.PLANNING,
+    # Generation
+    LLMIntent.GENERATE: IntentCategory.GENERATION,
+    LLMIntent.NAME_GENERATE: IntentCategory.GENERATION,
+    LLMIntent.TITLE_GENERATE: IntentCategory.GENERATION,
     # Extraction
     LLMIntent.EXTRACT: IntentCategory.EXTRACTION,
     LLMIntent.SUGGEST: IntentCategory.EXTRACTION,

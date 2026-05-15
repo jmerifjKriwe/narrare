@@ -1,3 +1,16 @@
+/**
+ * ⚠️  DO NOT create a `middleware.ts` file in this directory!
+ *
+ * Next.js 16+ uses `proxy.ts` (this file) for route-level server logic.
+ * If both middleware.ts and proxy.ts exist, the build FAILS with:
+ *   "Both middleware file and proxy file are detected. Please use proxy.ts only."
+ *
+ * This has happened before. If you need to add route protection or
+ * server-side logic, edit THIS file (proxy.ts), not middleware.ts.
+ *
+ * See: https://nextjs.org/docs/messages/middleware-to-proxy
+ */
+
 import { jwtVerify } from "jose";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 import narrare.auth.models
 import narrare.chapters.models
+import narrare.memory.models
 import narrare.novels.models
 import narrare.settings.models
 import narrare.volumes.models  # noqa: F401

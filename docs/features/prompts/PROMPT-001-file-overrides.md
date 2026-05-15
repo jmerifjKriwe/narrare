@@ -1,56 +1,137 @@
 ---
 id: PROMPT-001
 title: "File-based Prompt Overrides"
-status: planned
+status: in-progress
 area: prompts
 mvp: false
 
-ui_tooltip: "TODO: Add tooltip (max 15 words)"
+ui_tooltip: "Customize AI prompts by editing files in your project directory."
 ui_help_short: |
-  TODO: Add 2-3 sentence user-facing description.
-  What does this feature do for the writer?
+  Override any AI prompt by creating a file in your project's `.narrare/prompts/`
+  directory. Changes take effect immediately and apply to all AI operations in
+  that project.
 ui_help_long: |
-  TODO: Add full help text for the help panel.
-  Can be multiple paragraphs. Markdown supported.
-ui_available_in: []
+  ## File-based Prompt Overrides
+
+  Create custom versions of any AI prompt by placing files in your project's
+  `.narrare/prompts/` directory. This is the second-highest priority in the
+  prompt cascade — only DB templates (saved via the UI) override file-based
+  overrides.
+
+  **How it works:**
+
+  1. Create `.narrare/prompts/{category}/{language}/{mode}/system.md`
+  2. The file must be valid Markdown with YAML frontmatter
+  3. Use `{{variables}}` from the variable registry (shown in UI sidebar)
+  4. Include `override_of_version` in frontmatter to track which bundled version you modified
+  5. Changes take effect on next AI call
+
+  **Override tracking:**
+  When you copy a bundled prompt to create an override, the system tracks which
+  version you started from. If a Narrare update changes the bundled prompt, the
+  UI shows an update badge so you can compare and merge changes.
+
+  **Diff comparison:**
+  Use Settings → AI Prompts to see a side-by-side comparison between your
+  override and the current bundled version. This helps you understand what
+  changed and whether to merge updates.
+
+  **When to use file overrides:**
+  - Project-specific genre conventions
+  - Language-specific style rules
+  - Culture definitions for name generation
+  - Custom system personas for specific workflows
+
+  File overrides are version-control friendly — commit your `.narrare/` directory
+  to share custom prompts with collaborators.
+ui_available_in: [settings]
 
 service: core/prompts/registry.py
 contract: ~
-router: ~
-prompt: ~
-requires: []
+router: apps/api/narrare/prompts/router.py
+prompt: core/prompts/_bundled
+requires: [INFRA-002]
 ---
 
 # PROMPT-001 — File-based Prompt Overrides
 
-> **Status:** 📋 Planned — not yet implemented
-> **Documentation:** This feature file needs to be completed before implementation begins.
-> See: `docs/features/_TEMPLATE.md` for the full format.
-
 ## What it does
 
-TODO: 1-3 sentences describing what this feature does for the writer.
+Allows writers to customize any AI prompt by creating override files in their
+project's `.narrare/prompts/` directory. These overrides sit in the prompt
+cascade between bundled defaults and DB templates.
 
 ## Why it exists
 
-TODO: Connect to the problem from PROJECT_VISION.md.
+Every writer has different preferences for how the AI should behave. Genre
+conventions, tone, language style, and worldbuilding rules vary by project.
+File-based overrides give writers direct, version-control-friendly control
+over AI behavior without needing the UI.
 
 ## How it works (User perspective)
 
-TODO: Step-by-step from the user's point of view.
+1. Create `.narrare/prompts/{category}/{language}/{mode}/system.md`
+2. Write your custom prompt (Markdown with YAML frontmatter)
+3. Optionally add `override_of_version` to track the source version
+4. The override is detected automatically on next prompt resolution
+5. Check Settings → AI Prompts to see your override with source indicator
+6. Use diff comparison to see differences from bundled version
+7. If Narrare updates the bundled prompt, an update badge appears
 
 ## How it works (Technical)
 
-TODO: Implementation details — services, contracts, LLM intent, prompt.
+**Resolution order in cascade:**
+1. DB templates (highest priority, saved via API)
+2. **Project file**: `{project}/.narrare/prompts/{category}/{lang}/{mode}/system.md` ← this feature
+3. Global user file: `{user}/.narrare/prompts/{category}/{lang}/{mode}/system.md`
+4. Bundled: `prompts/_bundled/{category}/{lang}/{mode}/system.md`
+
+**Override detection:**
+`PromptRegistry` scans for override files during resolution. If a file exists
+at the project or global path, it's loaded instead of the bundled version.
+
+**Version tracking:**
+Override files can include `override_of_version` in frontmatter:
+```yaml
+---
+prompt_type: generation
+prompt_language: en
+prompt_version: "1.0.0"
+override_of_version: "1.0.0"  # Which bundled version this was based on
+---
+```
+
+**Update detection:**
+`PromptManagementService` compares `override_of_version` with the current
+bundled version. If they differ, the override is flagged as having a pending
+update. The API endpoint `GET /prompts/{id}/updates` returns this status.
+
+**Diff comparison:**
+`GET /prompts/{id}/diff` returns a side-by-side comparison of the override
+content vs. the current bundled content, allowing users to review and merge
+changes from Narrare updates.
+
+**Frontend UI:**
+- `PromptSettings.tsx` — Shows all prompts with source indicators (bundled, file override, DB override)
+- `PromptEditor.tsx` — Edit mode with variables sidebar showing available `{{variables}}`
+- `PromptDiff.tsx` — Side-by-side diff comparison between override and bundled version
 
 ## Constraints & Edge Cases
 
-TODO: Known limitations, failure modes, edge cases.
+- Override files must be valid Markdown with YAML frontmatter
+- Variables that can't be substituted are left as-is with a warning
+- Malformed overrides cause fallback to bundled version with error log
+- Override detection requires file system access (works in local mode, may be limited in hosted mode)
+- Version tracking is informational — no automatic migration when bundled prompts change
+- File overrides are not visible in the DB template system — they're separate layers in the cascade
 
 ## Related Features
 
-TODO: Links to related feature files.
+- [INFRA-002](../infra/INFRA-002-prompt-system.md) — Parent prompt system
+- [PROMPT-002](PROMPT-002-db-templates.md) — DB templates (higher priority in cascade)
+- [SET-002](../settings/SET-002-project-settings.md) — Settings UI for prompts
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-15` — Prompt management API implemented with override detection, update badges, diff comparison, and frontend editor UI

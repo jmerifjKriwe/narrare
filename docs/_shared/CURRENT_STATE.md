@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-14
+Date: 2026-05-15
 Updated by: NarrareDocsSpecialist
-Session summary: Phase 5 implementation sprint — 5 issues resolved. Auth now uses httpOnly refresh cookies. Editor has 4 TipTap extensions (NarrareDocument, DialogueMark, Autosave, SceneBreak) + CommandPalette with Cmd+K. Dashboard has novel delete. Wizard steps 2↔3 swapped with demo metadata prefill. Focus mode has ESC exit + Minimize2 button.
+Session summary: Phase 5 generation-prompt-memory-foundation wave — documentation updated for memory layer, prompt management, culture injection, and name generation. New modules: memory/, prompts/, generation/ in API; memory/ and prompts/ management in core; bundled generation prompts; frontend prompt settings + name generator components.
 
 ---
 
@@ -87,15 +87,26 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `_providers/` — OpenAI, Anthropic, Ollama, ZAI, Others, Registry (6 providers); all accept explicit `api_key`/`base_url`
 - `observability.py` — Langfuse integration (LLM tracing, cost tracking)
 - `result.py`, `retry.py`, `metrics.py`, `embeddings.py`
-- `intents.py` — `LLMIntent` enum, `IntentCategory` enum, `INTENT_CATEGORY_MAP`, `ResolvedModelConfig` (no more `MODEL_ROUTING` or `get_model_config()`)
+- `intents.py` — `LLMIntent` enum (incl. `GENERATE`, `NAME_GENERATE`, `TITLE_GENERATE`), `IntentCategory` enum (incl. `GENERATION`), `INTENT_CATEGORY_MAP`, `ResolvedModelConfig`
 - `model_routing.py` — `ModelRoutingResolver` protocol and `ResolvedModel` result type
 - `override_schemas.py` — Pydantic schemas for category/intent/token limit overrides
 
 **Prompt System (`prompts/`):**
-- `composer.py` — Prompt composition (ADR-002)
-- `registry.py` — Prompt registry
+- `composer.py` — Prompt composition with preference auto-injection and culture injection (`{{culture_guidelines}}`)
+- `registry.py` — Prompt registry with `resolve_culture()` method (EN fallback)
+- `management.py` — `PromptManagementService` — list, get, save, reset, cascade, updates, diff
+- `variable_metadata.py` — Variable registry with descriptions for UI sidebar
 - `variable_engine.py` — Variable interpolation
-- `context.py`, `meta.py`
+- `context.py` — `PromptContext` with `user_preferences`, `avoidance_patterns`, `style_constraints` fields
+- `meta.py`
+- `_bundled/generation/` — 3 name generation prompts (en/de/fr) + 9 culture definitions (fantasy/modern/scifi × 3 langs)
+
+**Memory Layer (`memory/`):**
+- `protocols.py` — `MemoryClientProtocol`, `FeedbackServiceProtocol`, `PreferenceServiceProtocol`
+- `models.py` — `FeedbackEvent`, `Preference`, `FeedbackAction` enum
+- `mem0_client.py` — `Mem0Client` factory + `NullMemoryClient` graceful degradation (RULE-01 exception)
+- `feedback_service.py` — `FeedbackService` — records feedback to PostgreSQL + mem0
+- `preference_service.py` — `PreferenceService` — extracts preferences from mem0 for prompt injection
 
 **Shared Utilities (`shared/`):**
 - `result.py` — Result type pattern (Ok/Err)
@@ -103,7 +114,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `pagination.py`, `frontmatter.py`, `file_utils.py`, `errors.py`
 
 **Stub Modules (interfaces only):**
-- `context/`, `cache/`, `schemas/`, `memory/`, `embeddings/`
+- `context/`, `cache/`, `schemas/`, `embeddings/`
 
 **Event System (`events/`):**
 - Event types, bus protocol (Protocol-based), NullEventBus for testing
@@ -139,12 +150,27 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
   - Demo loader reads `metadata.json` from demo_data dirs (author, logline, pov, tags) — no more hardcoded data
   - `demo_data/*/metadata.json` — demo project metadata for each starter template
 - `metrics/` — Health/metrics router
+- `memory/` — Memory layer: contracts, schemas, models (feedback_events), repository, service, router
+  - POST /memory/feedback — Record AI suggestion feedback
+  - GET /memory/preferences — Get preference profile
+  - DELETE /memory/preferences — Reset preferences
+- `prompts/` — Prompt management: contracts, schemas, service, router
+  - GET /prompts — List all prompts with source indicators
+  - GET /prompts/{id} — Get prompt content + metadata
+  - PUT /prompts/{id} — Save/update prompt override
+  - DELETE /prompts/{id} — Reset to default
+  - GET /prompts/{id}/updates — Check for bundled updates
+  - GET /prompts/{id}/diff — Side-by-side diff comparison
+  - GET /prompts/variables — List available variables with descriptions
+- `generation/` — Generation features: contracts, schemas, name_service, router
+  - POST /generation/names — Generate names with culture/type/count options
 
 **Database:**
 - Alembic migration `0001_initial.py` — initial schema
 - Alembic migration `0004_ai_settings.py` — `user_providers`, `user_ai_settings`, project AI override columns
 - Alembic migration `0005_project_settings.py` — adds missing `token_limit_profile` column to `project_settings` (forgotten in 0004)
-- `env.py` imports all 5 model modules (auth, chapters, novels, settings, volumes) — autogenerate works correctly
+- Alembic migration `0006_feedback_events.py` — creates `feedback_events` table for memory layer
+- `env.py` imports all model modules (auth, chapters, novels, settings, volumes, memory) — autogenerate works correctly
 - Auto-migration on startup via `lifespan.py` — no manual `alembic upgrade head` needed
 
 #### `packages/i18n/` — Translations (Source of Truth)
@@ -176,6 +202,12 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `components/dashboard/` — DashboardView with NovelCard grid + delete functionality (Trash2 icon, confirm dialog via `novelsApi.delete()`)
 - `components/setup/` — 5-step Wizard (WizardShell + WizardStep1-5); steps 2↔3 swapped (starter selection first, then novel details); demo prefill from metadata.json
 - `components/settings/` — AI provider management, model routing, token limit profiles, project AI settings
+  - `PromptSettings.tsx` — AI Prompts tab with category grouping, source indicators, update badges
+  - `PromptEditor.tsx` — Prompt editor with edit mode, variables sidebar
+  - `PromptDiff.tsx` — Side-by-side diff comparison
+- `components/generation/` — Generation features
+  - `NameGenerator.tsx` — Name generator form (type, culture, count, gender selectors)
+  - `NameResults.tsx` — Results display with pronunciation, meaning, duplicate badges
 - `components/ui/` — Button (shadcn/cva-based), Input, Select
 - `components/shadcn/` — shadcn/ui generated primitives (future component source)
 - `components/shared/` — QueryProvider, ErrorBoundary
@@ -188,6 +220,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 **API Client:**
 - `lib/api/client.ts` — Native fetch with token refresh, no axios; `setAccessToken`/`clearAccessToken` sync `narrare_auth` cookie for proxy
 - `lib/api/streaming.ts` — SSE streaming client for AI responses (fetch + ReadableStream)
+- API clients: `promptsApi` (7 methods for prompt CRUD) + `generationApi` (1 method for name generation)
 
 **Styling:**
 - Tailwind CSS v4 as sole styling system (styled-jsx removed)
@@ -272,6 +305,18 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 Phase 5 (Integration & Polish) is underway. Recent implementation progress:
 
+**Generation-Prompt-Memory Foundation:**
+- Memory layer: mem0 AsyncMemory integration with pgvector, dual storage (PostgreSQL + mem0), FeedbackService, PreferenceService, NullMemoryClient graceful degradation
+- Prompt management: PromptManagementService with override CRUD, update detection, diff comparison, variable metadata registry
+- Culture injection: {{culture_guidelines}} placeholder, 3 cultures (fantasy/modern/scifi) × 3 languages (en/de/fr), EN fallback
+- Generation intents: GENERATE, NAME_GENERATE, TITLE_GENERATE in IntentCategory.GENERATION
+- Name generator: API endpoint (POST /generation/names), frontend components (NameGenerator, NameResults)
+- Prompt settings UI: PromptSettings (category grouping, source indicators), PromptEditor (variables sidebar), PromptDiff (side-by-side)
+- Memory API: 3 endpoints (POST /feedback, GET /preferences, DELETE /preferences)
+- Prompts API: 7 endpoints for full prompt CRUD
+- Migration 0006 for feedback_events table
+- RULE-01 exception documented for mem0 direct LLM client
+
 **Editor foundation (Issue 5):**
 - 4 TipTap extensions implemented: NarrareDocument, SceneBreak, DialogueMark, Autosave
 - CommandPalette with Cmd+K — formatting + editor action commands registered via commands.ts
@@ -298,7 +343,7 @@ Phase 5 (Integration & Polish) is underway. Recent implementation progress:
 - DemoProjectInfo extended with author/logline/pov/tags from metadata.json
 - WizardStep3 prefills store when demo is selected
 
-Next focus: writing sessions (SSE streaming), AI features, analysis panels.
+Next focus: writing sessions (SSE streaming), AI features in editor, KB dedup integration for name generator.
 
 ---
 
@@ -357,6 +402,13 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Issue 2: Dashboard delete | Trash2 icon on NovelCards (hover-revealed, confirm dialog); `novelsApi.delete()` mutation |
 | Issue 3: Wizard flow | Steps 2↔3 swapped (starter selection → novel details); demo metadata.json with author/logline/pov/tags; WizardStep3 prefills store |
 | Issue 5: Editor extensions | NarrareDocument, DialogueMark, Autosave extensions + CommandPalette (Cmd+K) + commands.ts registry; EditorSurface refactored for Autosave; editorStore holds editor ref |
+| Memory layer implementation | Core memory module: mem0 AsyncMemory with pgvector, FeedbackService, PreferenceService, NullMemoryClient, dual storage architecture, RULE-01 exception |
+| Prompt management implementation | PromptManagementService with 7 API endpoints for CRUD, update detection, diff comparison; variable metadata registry; frontend PromptSettings/PromptEditor/PromptDiff |
+| Culture injection | {{culture_guidelines}} placeholder, resolve_culture() with EN fallback, 9 culture definitions (fantasy/modern/scifi × en/de/fr) |
+| Generation intents | GENERATE, NAME_GENERATE, TITLE_GENERATE in IntentCategory.GENERATION |
+| Name generator implementation | API endpoint POST /generation/names, frontend NameGenerator + NameResults components, i18n for 3 locales |
+| Migration 0006 | feedback_events table for memory layer dual storage |
+| mem0 integration | mem0ai>=1.0 added to core dependencies, psycopg[binary]>=3.0 for pgvector |
 
 ---
 
@@ -409,10 +461,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 
 **Phase 5 (current):**
 1. Writing sessions (SSE streaming) — connect core writing features to the editor
-2. AI features in editor toolbar slots (using commands.ts registry pattern)
-3. E2E tests with Playwright (route mocking for LLM responses)
-4. Backend test coverage gaps (settings service, demo loader, gateway error classification, retry logic)
-5. Frontend test coverage gaps (editor extensions, CommandPalette, dashboard delete, focus mode)
+2. KB dedup integration for name generator (currently a placeholder)
+3. AI features in editor toolbar slots (using commands.ts registry pattern)
+4. E2E tests with Playwright (route mocking for LLM responses)
+5. Backend test coverage gaps (memory service, prompt management, generation, settings, gateway error classification, retry logic)
+6. Frontend test coverage gaps (prompt settings, name generator, editor extensions, CommandPalette, dashboard delete, focus mode)
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)
@@ -423,7 +476,8 @@ All demo content is complete — sufficient for testing through Phase 5.
 6. Model recommendation and benchmarking
 
 Infrastructure now includes: OpenTelemetry tracing, Langfuse LLM observability, event-driven
-architecture (Redis Pub/Sub → TaskIQ), content versioning, argon2id auth, async rate limiting.
+architecture (Redis Pub/Sub → TaskIQ), content versioning, argon2id auth, async rate limiting,
+memory layer (mem0 + pgvector), prompt management (override CRUD + diff), culture-aware generation.
 
 ---
 

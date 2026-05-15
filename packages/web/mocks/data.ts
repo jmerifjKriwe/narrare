@@ -1,10 +1,15 @@
 import type {
   Chapter,
   ChapterSummary,
+  GeneratedName,
+  NameGenerateResponse,
   Novel,
   NovelSummary,
   ProjectSettings,
+  PromptDetail,
+  PromptInfo,
   TokenResponse,
+  UpdateInfo,
   User,
   UserSettings,
   WizardState,
@@ -142,6 +147,75 @@ export function createWizardState(overrides: Partial<WizardState> = {}): WizardS
     api_key: "test-api-key",
     model: "gpt-4o",
     ollama_url: "http://localhost:11434",
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Prompt Override factories
+// ---------------------------------------------------------------------------
+
+export function createPromptInfo(overrides: Partial<PromptInfo> = {}): PromptInfo {
+  return {
+    prompt_id: "write-extend-en",
+    name: "Write / Extend",
+    category: "writing",
+    language: "en",
+    source: "bundled",
+    has_override: false,
+    prompt_version: "1.0.0",
+    is_overridden: false,
+    ...overrides,
+  };
+}
+
+export function createPromptDetail(overrides: Partial<PromptDetail> = {}): PromptDetail {
+  return {
+    prompt_id: "write-extend-en",
+    content: "You are a helpful writing assistant.",
+    base_content: "You are a helpful writing assistant.",
+    source: "bundled",
+    is_overridden: false,
+    variables: ["text", "language"],
+    metadata: { version: "1.0.0" },
+    ...overrides,
+  };
+}
+
+export function createUpdateInfo(overrides: Partial<UpdateInfo> = {}): UpdateInfo {
+  return {
+    prompt_id: "analyse-sentiment-en",
+    override_version: "1.0.0",
+    current_bundled_version: "1.1.0",
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Name Generation factories
+// ---------------------------------------------------------------------------
+
+export function createGeneratedName(overrides: Partial<GeneratedName> = {}): GeneratedName {
+  return {
+    name: "Aelindra",
+    pronunciation: "AY-lin-dra",
+    meaning: "Starlight wanderer",
+    type: "character",
+    culture: "fantasy",
+    is_duplicate: false,
+    confidence: 0.92,
+    ...overrides,
+  };
+}
+
+export function createNameGenerateResponse(
+  overrides: Partial<NameGenerateResponse> = {},
+): NameGenerateResponse {
+  return {
+    names: [createGeneratedName()],
+    count: 1,
+    culture: "fantasy",
+    name_type: "character",
     ...overrides,
   };
 }

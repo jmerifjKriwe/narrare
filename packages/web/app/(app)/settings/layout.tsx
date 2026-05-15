@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const SETTINGS_NAV = [
   { href: "/settings/ai-providers", labelKey: "aiProviders" },
   { href: "/settings/ai-model", labelKey: "aiModel" },
+  { href: "/settings/ai-prompts", labelKey: "aiPrompts" },
 ] as const;
 
 export default function SettingsLayout({ children }: { readonly children: React.ReactNode }) {

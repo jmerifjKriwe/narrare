@@ -104,7 +104,16 @@ Changing the model for an intent requires only one file change.
 **Why:** Persistent memory layer for writing preferences, style patterns,
 rejection feedback, and session history across conversations.
 **Role:** Powers the learning system — user and project-level preference accumulation.
-**Location:** Only used via `core/memory/client.py` (singleton factory).
+**Architecture:**
+  - Uses `AsyncMemory` with pgvector backend for semantic search over memories
+  - LLM provider is configurable — reuses user's settings (stored in `user_ai_settings`)
+  - Cost-efficient default model per provider:
+    - Anthropic → Claude Haiku (lightweight extraction)
+    - OpenAI → GPT-4.1-nano
+    - Ollama → Llama3.2
+  - Graceful degradation via `NullMemoryClient` — system works without memory
+**Flow:** Feedback collection (`FeedbackService`) → preference extraction (mem0 AsyncMemory) → prompt injection (`PreferenceService` → `PromptComposer`)
+**Location:** Only used via `core/memory/mem0_client.py` (singleton factory, approved RULE-01 exception).
 **Not:** Custom memory service — mem0 with pgvector backend gives us semantic search
 over memories for free.
 **Note:** Graceful degradation is mandatory. If mem0 is unavailable, the system
@@ -309,6 +318,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-05-12 — tech stack audit (argon2, fastapi-limiter, OpenTelemetry, Langfuse, event-driven architecture)
+> Last updated: 2026-05-15 — mem0 architecture details (AsyncMemory, pgvector backend, configurable provider, NullMemoryClient)
 > Maintained by: Architecture Agent
 > Changes require ADR

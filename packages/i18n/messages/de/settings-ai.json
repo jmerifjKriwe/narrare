@@ -16,7 +16,8 @@
     "planning": "Planning",
     "extraction": "Extraction",
     "chat": "Chat",
-    "research": "Research"
+    "research": "Research",
+    "generation": "Generierung"
   },
   "intents": {
     "write": "Write",
@@ -36,12 +37,16 @@
     "extract": "Extract",
     "suggest": "Suggest",
     "chat": "Chat",
-    "research": "Research"
+    "research": "Research",
+    "generate": "Generieren",
+    "nameGenerate": "Namensgenerator",
+    "titleGenerate": "Titelgenerator"
   },
   "layout": {
-    "title": "Settings",
-    "aiProviders": "AI Providers",
-    "aiModel": "AI Model & Routing"
+    "title": "Einstellungen",
+    "aiProviders": "KI-Anbieter",
+    "aiModel": "KI-Modell & Routing",
+    "aiPrompts": "KI-Prompts"
   },
   "providersPage": {
     "title": "AI Providers",

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
+    "prebuild": "test ! -f middleware.ts || (echo 'ERROR: middleware.ts exists — use proxy.ts instead. See proxy.ts header comment.' && exit 1)",
     "build": "next build",
     "start": "next start",
     "lint": "biome check --write .",

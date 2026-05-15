@@ -1,7 +1,7 @@
 ---
 id: GEN-001
 title: "Character/Place Name Generator"
-status: planned
+status: in-progress
 area: generation
 mvp: false
 
@@ -61,11 +61,11 @@ ui_help_long: |
   `narrare generation names --type character --culture elvish --count 10`
 ui_available_in: [kb, editor, cli]
 
-service: generation/name_service.py
-contract: generation/contracts.py#NameGeneratorProtocol
-router: generation/router.py
-prompt: core/prompts/_bundled/generation/en/names
-requires: [INFRA-001, KB-001]
+service: apps/api/narrare/generation/name_service.py
+contract: apps/api/narrare/generation/contracts.py
+router: apps/api/narrare/generation/router.py
+prompt: core/prompts/_bundled/generation/
+requires: [INFRA-001, INFRA-002, KB-001]
 ---
 
 # GEN-001 — Name Generator
@@ -109,12 +109,41 @@ Naming is hard. Generic names feel flat, invented names lack consistency, and du
 
 ## How it works (Technical)
 
-**Entry point:** `generation/router.py` → `POST /api/v1/generation/names`
-**Service:** `NameGeneratorService.generate()` in `generation/name_service.py`
-**Contract:** `NameGeneratorProtocol` in `generation/contracts.py`
-**LLM Intent:** `LLMIntent.GENERATE`
+**API module (`apps/api/narrare/generation/`):**
+- `contracts.py` — `NameGeneratorProtocol` definition
+- `schemas.py` — Request/response Pydantic models
+- `name_service.py` — `NameGeneratorService.generate()` — orchestrates name generation
+- `router.py` — REST endpoint
 
-**Name generation:**
+**Core dependencies:**
+- `LLMIntent.NAME_GENERATE` — Intent routed through LLM Gateway
+- `PromptComposer` — Builds generation prompt with culture injection
+- `PromptRegistry.resolve_culture()` — Resolves culture definition with EN fallback
+
+**API Endpoint:**
+- `POST /generation/names` — Generate names with type, culture, count, gender options
+
+**Generation pipeline:**
+1. Receive request with `name_type`, `culture`, `count`, `gender`, `length` options
+2. `PromptComposer` builds prompt using `NAME_GENERATE` intent
+3. Culture definition injected via `{{culture_guidelines}}` placeholder
+4. LLM Gateway generates names using the composed prompt
+5. Response parsed into `GeneratedName` objects
+
+**Cultural patterns:**
+Culture definitions are stored as prompt files in `core/prompts/_bundled/generation/`:
+- `fantasy/{en,de,fr}/` — Phonetics, syllable patterns, naming traditions
+- `modern/{en,de,fr}/` — Contemporary naming conventions
+- `scifi/{en,de,fr}/` — Technological/linguistic patterns
+
+Total: 3 name generation prompts (en/de/fr) + 9 culture definitions (3 cultures × 3 languages)
+
+**Culture resolution:**
+`PromptRegistry.resolve_culture()` follows the standard cascade with EN fallback:
+1. Requested language for the culture
+2. EN fallback if requested language unavailable
+
+**Generated name structure:**
 ```python
 class GeneratedName:
     name: str
@@ -126,19 +155,13 @@ class GeneratedName:
     confidence: float  # 0-1 quality score
 ```
 
-**Generation pipeline:**
-1. Template selection based on culture/type
-2. Pattern-based generation (syllables, roots)
-3. Cultural filtering (consistent with worldbuilding)
-4. KB deduplication check
-5. Pronunciation generation (for fantasy)
-6. Quality scoring and ranking
+**Frontend (`packages/web/`):**
+- `components/generation/NameGenerator.tsx` — Form with type, culture, count, gender selectors
+- `components/generation/NameResults.tsx` — Results grid with pronunciation, meaning, duplicate badges
+- `generationApi` — API client method for name generation
 
-**Cultural patterns:**
-- Fantasy: Phonetic rules for constructed languages
-- Historical: Actual name databases from periods
-- Sci-Fi: Technological/linguistic patterns
-- Custom: User-defined syllable rules
+**i18n:**
+- Generation-related UI strings extracted to all 3 locales (en, de, fr)
 
 ## Constraints & Edge Cases
 
@@ -160,3 +183,4 @@ class GeneratedName:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-15` — Core implementation: NAME_GENERATE intent, culture injection (fantasy/modern/scifi × 3 langs), API endpoint (POST /generation/names), frontend NameGenerator/NameResults components, i18n keys. KB dedup check is a placeholder.

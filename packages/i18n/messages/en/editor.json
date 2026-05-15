@@ -21,5 +21,6 @@
   "categoryEditor": "Editor",
   "noCommandsFound": "No commands found",
   "commandPaletteHint": "⌘K",
-  "escKey": "Esc"
+  "escKey": "Esc",
+  "nameGenerator": "Name Generator"
 }

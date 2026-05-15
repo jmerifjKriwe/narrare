@@ -10,15 +10,22 @@
 
 import type {
   AIProvider,
+  CascadePath,
   Chapter,
   ChapterSummary,
   CreateProviderRequest,
   DemoProjectInfo,
+  DiffResponse,
+  NameGenerateRequest,
+  NameGenerateResponse,
   Novel,
   NovelSummary,
   ProjectAiSettings,
   ProjectSettings,
+  PromptDetail,
+  PromptInfo,
   TokenResponse,
+  UpdateInfo,
   UpdateProjectAiSettingsRequest,
   UpdateProviderRequest,
   UpdateUserAiSettingsRequest,
@@ -307,4 +314,37 @@ export const aiSettingsApi = {
   // Live model retrieval (uses stored API key from DB)
   getProviderModels: (providerId: string) =>
     fetchApi<AvailableModelsResponse>(`/settings/ai/providers/${providerId}/models`),
+};
+
+// --- Prompts ---
+
+export const promptsApi = {
+  list: (category?: string) =>
+    fetchApi<PromptInfo[]>(`/prompts${category ? `?category=${category}` : ""}`),
+
+  get: (id: string) => fetchApi<PromptDetail>(`/prompts/${id}`),
+
+  save: (id: string, content: string) =>
+    fetchApi<void>(`/prompts/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+
+  reset: (id: string) => fetchApi<void>(`/prompts/${id}/override`, { method: "DELETE" }),
+
+  cascade: (id: string) => fetchApi<CascadePath[]>(`/prompts/${id}/cascade`),
+
+  updates: () => fetchApi<UpdateInfo[]>("/prompts/updates"),
+
+  diff: (id: string) => fetchApi<DiffResponse>(`/prompts/${id}/diff`),
+};
+
+// --- Generation ---
+
+export const generationApi = {
+  generateNames: (request: NameGenerateRequest) =>
+    fetchApi<NameGenerateResponse>("/generation/names", {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
 };

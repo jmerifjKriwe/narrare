@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize2, PanelLeft, PanelRight } from "lucide-react";
+import { Dices, Maximize2, PanelLeft, PanelRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 
@@ -25,6 +25,7 @@ interface EditorToolbarProps {
   onToggleSidebar: () => void;
   onTogglePanel: () => void;
   onToggleFocus: () => void;
+  onOpenNameGenerator: () => void;
   sidebarOpen: boolean;
   panelOpen: boolean;
 }
@@ -33,6 +34,7 @@ export function EditorToolbar({
   onToggleSidebar,
   onTogglePanel,
   onToggleFocus,
+  onOpenNameGenerator,
   sidebarOpen,
   panelOpen,
 }: EditorToolbarProps) {
@@ -59,13 +61,26 @@ export function EditorToolbar({
         </Button>
       </div>
 
-      {/* Center: AI action slots — populated by AI features */}
+      {/* Center: AI tools */}
       <div className="flex-1 flex items-center justify-center">
-        {AI_TOOLBAR_ACTIONS.length > 0 && (
-          <div className="flex items-center gap-2 px-3 border-l border-r border-[var(--color-border)]">
-            {/* AI action buttons will appear here */}
-          </div>
-        )}
+        <div className="flex items-center gap-2 px-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenNameGenerator}
+            aria-label={t("nameGenerator")}
+            title={t("nameGenerator")}
+            className="text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)] gap-1.5"
+          >
+            <Dices size={16} />
+            <span className="text-[0.8125rem] hidden sm:inline">{t("nameGenerator")}</span>
+          </Button>
+          {AI_TOOLBAR_ACTIONS.length > 0 && (
+            <div className="flex items-center gap-2 px-3 border-l border-[var(--color-border)]">
+              {/* AI action buttons will appear here */}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Right: panel toggle + focus mode — grouped in subtle pill */}

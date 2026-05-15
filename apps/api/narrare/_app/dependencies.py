@@ -56,6 +56,11 @@ def _get_registry_instance() -> PromptRegistry:
     return PromptRegistry()
 
 
+def get_registry() -> PromptRegistry:
+    """Provide the shared Prompt Registry instance."""
+    return _get_registry_instance()
+
+
 @lru_cache
 def _get_meta_loader_instance() -> MetaPromptLoader:
     return MetaPromptLoader()

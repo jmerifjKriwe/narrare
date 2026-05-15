@@ -19,6 +19,7 @@ from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.variable_engine import substitute
 
 if TYPE_CHECKING:
+    from narrare_core.memory.protocols import PreferenceProvider
     from narrare_core.prompts.context import PromptContext
     from narrare_core.prompts.meta import MetaPromptLoader
     from narrare_core.prompts.registry import PromptRegistry
@@ -41,6 +42,9 @@ _INTENT_TO_CATEGORY: dict[LLMIntent, str] = {
     LLMIntent.VOICE: "analysis",
     LLMIntent.PLAN: "planning",
     LLMIntent.SUMMARIZE: "analysis",
+    LLMIntent.GENERATE: "generation",
+    LLMIntent.NAME_GENERATE: "generation",
+    LLMIntent.TITLE_GENERATE: "generation",
     LLMIntent.EXTRACT: "analysis",
     LLMIntent.SUGGEST: "writing",
     LLMIntent.CHAT: "writing",
@@ -63,6 +67,9 @@ _INTENT_TO_MODE: dict[LLMIntent, str] = {
     LLMIntent.VOICE: "voice",
     LLMIntent.PLAN: "scene_planning",
     LLMIntent.SUMMARIZE: "summarize",
+    LLMIntent.GENERATE: "general",
+    LLMIntent.NAME_GENERATE: "names",
+    LLMIntent.TITLE_GENERATE: "titles",
     LLMIntent.EXTRACT: "extract",
     LLMIntent.SUGGEST: "inline_suggest",
     LLMIntent.CHAT: "chat",
@@ -93,10 +100,12 @@ class PromptComposer:
         meta_loader: MetaPromptLoader,
         *,
         include_meta: bool = True,
+        preference_service: PreferenceProvider | None = None,
     ) -> None:
         self._registry = registry
         self._meta_loader = meta_loader
         self._include_meta = include_meta
+        self._preference_service = preference_service
 
     async def build(
         self,
@@ -127,6 +136,28 @@ class PromptComposer:
         mode = context.mode or _INTENT_TO_MODE.get(intent, intent.value)
         variables = context.as_variables()
 
+        # Auto-resolve preferences if service configured and context has empty preferences
+        if (
+            self._preference_service is not None
+            and not context.user_preferences
+            and context.extra.get("user_id")
+            and context.extra.get("project_id")
+        ):
+            from uuid import UUID
+
+            try:
+                profile = await self._preference_service.get_preferences(
+                    UUID(str(context.extra["user_id"])),
+                    UUID(str(context.extra["project_id"])),
+                )
+                pref_text = profile.to_prompt_text()
+                if pref_text:
+                    context.user_preferences = pref_text
+                    # Refresh variables with updated context
+                    variables = context.as_variables()
+            except Exception:
+                logger.warning("preference_injection_failed", intent=intent.value)
+
         # Resolve prompt file via cascade
         resolved = await self._registry.resolve(
             category=category,
@@ -138,6 +169,18 @@ class PromptComposer:
 
         # Substitute variables in system prompt
         system = substitute(resolved.system_prompt, variables, strict=False)
+
+        # Inject culture guidelines if placeholder present
+        if "{{culture_guidelines}}" in system and context.extra.get("culture"):
+            culture_content = await self._registry.resolve_culture(
+                category=category,
+                language=context.language,
+                culture_id=str(context.extra["culture"]),
+            )
+            system = system.replace("{{culture_guidelines}}", culture_content)
+        elif "{{culture_guidelines}}" in system:
+            # No culture specified — replace with empty string
+            system = system.replace("{{culture_guidelines}}", "")
 
         # Prepend meta-prompt if enabled
         if self._include_meta:

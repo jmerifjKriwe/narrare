@@ -49,6 +49,23 @@ class PromptRegistry:
         self._user_config_dir = user_config_dir or Path.home() / ".config" / "narrare"
         self._bundled_root = self._find_bundled_root()
 
+    # --- Public read-only accessors for collaborators ---
+
+    @property
+    def bundled_root(self) -> Path:
+        """Root directory of bundled prompt templates."""
+        return self._bundled_root
+
+    @property
+    def project_root(self) -> Path | None:
+        """Project root path, or None if not configured."""
+        return self._project_root
+
+    @property
+    def user_config_dir(self) -> Path:
+        """User configuration directory for global overrides."""
+        return self._user_config_dir
+
     def _find_bundled_root(self) -> Path:
         """Locate the bundled prompts directory."""
         try:
@@ -163,6 +180,68 @@ class PromptRegistry:
             paths.append((base / en_path / _SYSTEM_FILE, "bundled_en"))
 
         return paths
+
+    async def resolve_culture(
+        self,
+        *,
+        category: str,
+        language: str,
+        culture_id: str,
+    ) -> str:
+        """Resolve a culture definition file with EN fallback.
+
+        Search order:
+        1. Project override:
+           {project_root}/.narrare/prompts/{category}/cultures/{language}/{culture_id}.md
+        2. User-global:
+           ~/.config/narrare/prompts/{category}/cultures/{language}/{culture_id}.md
+        3. Bundled: _bundled/{category}/cultures/{language}/{culture_id}.md
+        4. Bundled EN fallback: _bundled/{category}/cultures/en/{culture_id}.md
+
+        Returns the content without frontmatter, or empty string if not found.
+        """
+        culture_path = Path(category) / "cultures" / language / f"{culture_id}.md"
+        en_culture_path = Path(category) / "cultures" / "en" / f"{culture_id}.md"
+
+        search_paths: list[tuple[Path, str]] = []
+
+        # Project-level
+        if self._project_root:
+            base = self._project_root / ".narrare" / "prompts"
+            search_paths.append((base / culture_path, "project"))
+
+        # User-global
+        base = self._user_config_dir / "prompts"
+        search_paths.append((base / culture_path, "user"))
+
+        # Bundled
+        search_paths.append((self._bundled_root / culture_path, "bundled"))
+
+        # EN fallback
+        if language != "en":
+            search_paths.append((self._bundled_root / en_culture_path, "bundled_en"))
+
+        for path, source in search_paths:
+            content = await read_text_or_none(path)
+            if content is not None:
+                logger.debug(
+                    "culture_resolved",
+                    category=category,
+                    language=language,
+                    culture_id=culture_id,
+                    source=source,
+                )
+                # Strip frontmatter, return body only
+                parsed = parse_frontmatter(content)
+                return parsed.content.strip()
+
+        logger.warning(
+            "culture_not_found",
+            category=category,
+            language=language,
+            culture_id=culture_id,
+        )
+        return ""
 
     def _parse_prompt(
         self,

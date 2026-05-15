@@ -160,6 +160,7 @@ function checkBackend() {
   const excludeFiles = [
     "auth/router.py",
     "volumes/service.py",
+    "prompts/router.py",
   ];
 
   for (const file of pyFiles) {

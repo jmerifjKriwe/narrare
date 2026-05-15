@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Minimize2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { NameGeneratorModal } from "@/components/generation/NameGeneratorModal";
 import { chaptersApi, settingsApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import type { ChapterSummary } from "@/types";
@@ -35,6 +36,7 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
 
   const queryClient = useQueryClient();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [nameGeneratorOpen, setNameGeneratorOpen] = useState(false);
 
   // Server data — direct from TanStack Query, no store sync
   const { data: chapters = [] } = useQuery({
@@ -105,6 +107,7 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
           onToggleSidebar={toggleSidebar}
           onTogglePanel={toggleContextPanel}
           onToggleFocus={toggleFocusMode}
+          onOpenNameGenerator={() => setNameGeneratorOpen(true)}
           sidebarOpen={sidebarOpen}
           panelOpen={contextPanelOpen}
         />
@@ -195,6 +198,13 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
             // Placeholder — will be implemented with WRITE-002
           },
         }}
+      />
+
+      {/* Name Generator modal */}
+      <NameGeneratorModal
+        projectId={novelId}
+        isOpen={nameGeneratorOpen}
+        onClose={() => setNameGeneratorOpen(false)}
       />
     </div>
   );

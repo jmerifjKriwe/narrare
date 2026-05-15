@@ -389,20 +389,42 @@ Each entry requires: rule, location, reason, approved-by, date.
 ```toml
 # pyproject.toml
 [tool.narrare.architecture.exceptions]
-# Example format:
-# [[tool.narrare.architecture.exceptions.entries]]
-# rule = "RULE-01"
-# file = "core/llm/embeddings.py"
-# reason = "Batch embedding API requires direct client for performance"
-# approved_by = "architecture-review"
-# date = "2026-01-01"
+
+[[tool.narrare.architecture.exceptions.entries]]
+rule = "RULE-01"
+file = "packages/core/narrare_core/memory/mem0_client.py"
+reason = "mem0 AsyncMemory requires direct LLM client for memory extraction. Provider/model is user-configurable via settings. Gateway's intent routing and rate limiting don't apply to infrastructure-level memory extraction."
+approved_by = "generation-prompt-memory-foundation"
+date = "2026-05-15"
 ```
 
-*No exceptions registered at project start. Every exception added here
-is a debt that should be paid down.*
+### Exception: mem0 LLM client in `core/memory/mem0_client.py`
+
+mem0's `AsyncMemory` class requires its own LLM client instance for memory
+extraction — it calls the LLM internally to analyze text, extract facts, and
+build preference profiles. The Gateway's intent-based routing and rate limiting
+do not apply here because:
+
+1. **The LLM call is infrastructure-level**, not a user-facing feature call.
+   mem0 decides when and how to call the LLM for memory extraction.
+2. **Provider/model is user-configurable** via the same settings used by the
+   gateway (stored in `user_ai_settings`). The mem0 client reads these settings
+   to construct its own client.
+3. **Cost-efficient defaults** are used per provider (Haiku for Anthropic,
+   GPT-4.1-nano for OpenAI, Llama3.2 for Ollama) — these are lightweight
+   extraction calls, not generation calls.
+4. **Graceful degradation**: `NullMemoryClient` is used when mem0 is unavailable,
+   so this never blocks user requests.
+
+This exception mirrors the embedding exception in `core/llm/embeddings.py` —
+both are infrastructure-level LLM calls that operate outside the user-facing
+intent routing system.
+
+*Every exception is a debt that should be paid down. Revisit when the Gateway
+supports infrastructure-level calls with different routing rules.*
 
 ---
 
-> Last updated: project initialization
+> Last updated: 2026-05-15 — mem0 RULE-01 exception added
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

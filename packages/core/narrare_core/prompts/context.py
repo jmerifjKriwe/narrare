@@ -67,6 +67,11 @@ class PromptContext:
     text_to_analyse: str = ""
     analysis_focus: str = ""
 
+    # --- Memory / Preference context ---
+    user_preferences: str = ""  # Formatted preference text from memory layer
+    avoidance_patterns: str = ""  # Things the user dislikes (from feedback)
+    style_constraints: str = ""  # Derived style constraints from feedback
+
     # --- Extra variables ---
     # For feature-specific variables not covered above.
     # Keys must be valid Python identifiers.

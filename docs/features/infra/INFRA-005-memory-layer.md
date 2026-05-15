@@ -1,7 +1,7 @@
 ---
 id: INFRA-005
 title: "Memory Layer (Rejection Learning)"
-status: planned
+status: in-progress
 area: infra
 mvp: false
 
@@ -65,9 +65,9 @@ ui_help_long: |
   stored locally, never shared with any service.
 ui_available_in: [settings]
 
-service: core/memory/service.py
-contract: ~
-router: ~
+service: core/memory/feedback_service.py, core/memory/preference_service.py
+contract: apps/api/narrare/memory/contracts.py
+router: apps/api/narrare/memory/router.py
 prompt: ~
 requires: [INFRA-001]
 ---
@@ -103,66 +103,100 @@ Most users don't need to think about it — it just gets better. Power users can
 
 ## How it works (Technical)
 
-**Entry point:** `core/memory/service.py`
-**Primary class:** `MemoryService` (mem0 integration)
-**Storage**: PostgreSQL + local cache
-**Key operations**: `record_feedback()`, `get_preferences()`, `reset()`
+**Core modules (`packages/core/narrare_core/memory/`):**
+- `protocols.py` — Protocol definitions: `MemoryClientProtocol`, `FeedbackServiceProtocol`, `PreferenceServiceProtocol`
+- `models.py` — Data models: `FeedbackEvent`, `Preference`, `FeedbackAction` enum
+- `mem0_client.py` — `Mem0Client` factory and `NullMemoryClient` for graceful degradation (approved RULE-01 exception)
+- `feedback_service.py` — `FeedbackService` — records feedback events to both `feedback_events` table and mem0
+- `preference_service.py` — `PreferenceService` — extracts preferences from mem0, formats for prompt injection
 
-**Feedback collection:**
+**API module (`apps/api/narrare/memory/`):**
+- `contracts.py` — Protocol definitions
+- `schemas.py` — Request/response Pydantic models
+- `models.py` — SQLAlchemy `feedback_events` table model
+- `repository.py` — Database queries for feedback events
+- `service.py` — Business logic orchestrating core services
+- `router.py` — REST endpoints
+
+### Dual Storage Architecture
+
+Feedback data is stored in two systems:
+
+1. **PostgreSQL `feedback_events` table** — Structured storage for individual
+   feedback events with user_id, suggestion_id, action, context, and timestamp.
+   Used for audit trails, analytics, and reprocessing.
+
+2. **mem0 AsyncMemory** — Semantic memory extraction. mem0 processes feedback
+   events to extract patterns (e.g., "user prefers short sentences", "user
+   avoids purple prose"). These extracted preferences are semantic, searchable,
+   and can be injected into prompts.
+
+### mem0 AsyncMemory Integration
+
 ```python
-await memory.record_feedback(
-    suggestion_id=uuid,
-    action="accept",  # | "reject" | "modify"
-    context={
-        "intent": LLMIntent.WRITE,
-        "chapter_id": uuid,
-        "suggestion_text": str,
-        "modification": str | None,  # if modified
-    }
-)
+# mem0_client.py — factory creates client with user-configurable provider
+class Mem0Client:
+    """Creates AsyncMemory with user's LLM provider settings."""
+
+    async def create(self, user_id: str) -> AsyncMemory:
+        settings = await self._load_user_settings(user_id)
+        return AsyncMemory(
+            llm=self._build_llm_client(settings),
+            vector_store=pgvector_config,
+            ...
+        )
 ```
 
-**Pattern extraction:**
-- Style features extracted from suggestions
-- User's modifications analyzed for delta
-- Patterns clustered: positive (do more) vs negative (avoid)
-- Confidence scores track pattern strength
+- **LLM provider**: Configurable via user's AI settings (same provider/model as the gateway)
+- **Cost-efficient defaults**: Haiku (Anthropic), GPT-4.1-nano (OpenAI), Llama3.2 (Ollama)
+- **pgvector backend**: Uses existing PostgreSQL + pgvector for memory storage
+- **RULE-01 exception**: mem0 requires direct LLM client for internal extraction
 
-**Preference profile structure:**
-```python
-{
-    "style": {
-        "sentence_length": "medium",  # short/medium/long
-        "description_density": 0.7,  # 0-1
-        "dialogue_ratio": 0.3,  # 0-1
-        # ... more features
-    },
-    "content": {
-        "preferred_themes": ["redemption", "mystery"],
-        "avoided_tropes": ["love_triangle", "chosen_one"],
-        # ... more
-    },
-    "structure": {
-        "avg_scene_length": 2500,  # words
-        "pacing_preference": "balanced",  # slow/balanced/fast
-        # ... more
-    }
-}
-```
+### NullMemoryClient — Graceful Degradation
 
-**Integration with prompts:**
-- Preferences injected as prompt variables
-- Example: `{{user_style偏好}}` in system prompt
-- Weight: 10-20% of context budget (secondary to content)
+When mem0 is unavailable (not configured, connection failure, etc.), the system
+uses `NullMemoryClient` which implements the same `MemoryClientProtocol` but
+returns empty results. This ensures:
+
+- No hard dependency on mem0 at request time
+- The application starts and functions without memory
+- Feedback events are still recorded to PostgreSQL (can be processed later)
+- Users see no errors — just no personalization
+
+### API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/memory/feedback` | Record feedback on an AI suggestion |
+| GET | `/memory/preferences` | Get current preference profile |
+| DELETE | `/memory/preferences` | Reset all preferences |
+
+### Integration with Prompts
+
+`PreferenceService` formats extracted preferences for prompt injection:
+- `user_preferences` — Style patterns the user prefers
+- `avoidance_patterns` — Patterns the user has rejected
+- `style_constraints` — Explicit style rules
+
+`PromptComposer` auto-injects these via `PromptContext` fields into
+`{{user_preferences}}` blocks in system prompts.
+
+### Migration
+
+- `0006_feedback_events.py` — Creates `feedback_events` table with columns:
+  `id`, `user_id`, `suggestion_id`, `action` (enum), `context` (JSONB),
+  `modification` (text, nullable), `created_at`
 
 ## Constraints & Edge Cases
 
 - Requires minimum 20 feedback events before patterns emerge
-- Cold start: No adaptation until data accumulated
+- Cold start: No adaptation until data accumulated — NullMemoryClient handles this gracefully
 - Conflicting signals: Accept/reject of similar patterns both recorded
 - Reset required for major creative direction changes
-- Learning can be disabled (fallback to default behavior)
-- Privacy: All data stored locally, never transmitted
+- Learning can be disabled (fallback to default behavior via NullMemoryClient)
+- Privacy: All data stored locally in PostgreSQL, never transmitted
+- mem0 LLM calls are infrastructure-level (RULE-01 exception) — cost-efficient models only
+- If mem0 is unavailable, feedback events still recorded to PostgreSQL for later processing
 
 ## Related Features
 
@@ -174,3 +208,4 @@ await memory.record_feedback(
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-15` — Core memory module implemented: mem0 AsyncMemory integration, dual storage (PostgreSQL + mem0), FeedbackService, PreferenceService, NullMemoryClient, API endpoints (POST /feedback, GET /preferences, DELETE /preferences), migration 0006
