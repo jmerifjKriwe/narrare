@@ -110,6 +110,26 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
         />
       )}
 
+      {/* Focus mode top bar — replaces floating button */}
+      {focusMode && (
+        <div className="h-10 flex items-center justify-between px-6 bg-[var(--color-bg-primary)]/80 backdrop-blur-sm border-b border-[var(--color-border)]/30 animate-[narrare-slide-down_0.3s_ease-out]">
+          <span className="text-[0.75rem] text-[var(--color-text-tertiary)] font-[family-name:var(--font-serif)] italic">
+            {t("focusMode")} — {activeChapter?.title || ""}
+          </span>
+          <button
+            type="button"
+            onClick={toggleFocusMode}
+            className="flex items-center gap-2 px-3 py-1 rounded-md text-[0.8125rem] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] transition-colors cursor-pointer"
+          >
+            <Minimize2 size={14} />
+            <span>{t("exitFocusMode")}</span>
+            <kbd className="text-[0.625rem] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] font-[family-name:var(--font-mono)]">
+              {t("escKey")}
+            </kbd>
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar */}
         {sidebarOpen && !focusMode && (
@@ -150,25 +170,6 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
 
       {/* Status bar — hidden in focus mode */}
       {!focusMode && <StatusBar chapter={activeChapter ?? null} />}
-
-      {/* Floating exit button — visible only in focus mode */}
-      {focusMode && (
-        <button
-          type="button"
-          onClick={toggleFocusMode}
-          className="fixed bottom-6 right-6 z-50 p-2.5 rounded-lg
-                     bg-[var(--color-surface)]/90 backdrop-blur-sm
-                     border border-[var(--color-border)]/50
-                     text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]
-                     opacity-40 hover:opacity-100
-                     transition-opacity duration-300 cursor-pointer
-                     shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
-          aria-label={t("exitFocusMode")}
-          title={`${t("exitFocusMode")} (Esc)`}
-        >
-          <Minimize2 size={18} />
-        </button>
-      )}
 
       {/* Command palette */}
       <CommandPalette

@@ -20,5 +20,6 @@
   "categoryFormat": "Mise en forme",
   "categoryEditor": "Éditeur",
   "noCommandsFound": "Aucune commande trouvée",
-  "commandPaletteHint": "⌘K"
+  "commandPaletteHint": "⌘K",
+  "escKey": "Échap"
 }

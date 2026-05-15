@@ -33,24 +33,15 @@ export function DashboardView() {
   };
 
   return (
-    <div
-      className="h-full overflow-y-auto"
-      style={{
-        background:
-          "linear-gradient(180deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%)",
-      }}
-    >
+    <div className="h-full overflow-y-auto bg-gradient-to-b from-[var(--color-bg-primary)] to-[var(--color-bg-secondary)]">
       <div className="max-w-[1000px] mx-auto px-8 py-12">
         {/* Hero section — dramatic welcome */}
-        <div className="mb-14 flex items-end justify-between">
+        <div className="mb-14 flex items-end justify-between animate-[narrare-fade-in_0.5s_ease-out]">
           <div>
-            <h1
-              className="text-[2rem] font-bold leading-tight text-[var(--color-text-primary)]"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
+            <h1 className="text-[2rem] font-bold leading-tight text-[var(--color-text-primary)] font-[family-name:var(--font-display)]">
               {t("title")}
             </h1>
-            <div className="w-12 h-[2px] bg-[var(--color-accent)] mt-4 rounded-full" />
+            <div className="w-20 h-[2px] bg-[var(--color-accent)] mt-4 rounded-full" />
           </div>
           <Link
             href="/settings/ai-providers"
@@ -69,10 +60,7 @@ export function DashboardView() {
           /* Empty state — atmospheric invitation */
           <div className="text-center py-24 px-8">
             <div className="text-3xl mb-6 text-[var(--color-accent-muted)]">✦</div>
-            <p
-              className="text-xl text-[var(--color-text-primary)] mb-3 leading-relaxed"
-              style={{ fontFamily: "var(--font-serif)", fontStyle: "italic" }}
-            >
+            <p className="text-xl text-[var(--color-text-primary)] mb-3 leading-relaxed font-[family-name:var(--font-serif)] italic">
               {t("noNovelsQuote")}
             </p>
             <p className="text-[var(--color-text-tertiary)] mb-10 text-[0.9375rem]">
@@ -88,15 +76,15 @@ export function DashboardView() {
               <NovelCard key={novel.id} novel={novel} onDelete={handleDelete} />
             ))}
 
-            {/* New project card */}
+            {/* New project card — inviting */}
             <button
               type="button"
-              className="flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-transparent cursor-pointer text-[var(--color-text-tertiary)] hover:border-[var(--color-accent-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-light)]/50 transition-all duration-500 min-h-[220px] group"
+              className="flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-[var(--color-border-strong)]/50 bg-transparent cursor-pointer text-[var(--color-text-tertiary)] hover:border-solid hover:border-[var(--color-accent-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-light)]/50 transition-all duration-500 min-h-[220px] group"
               onClick={() => router.push("/wizard")}
               aria-label={t("newNovel")}
             >
-              <div className="w-10 h-10 rounded-full border-2 border-current flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110">
-                <span className="text-lg">+</span>
+              <div className="w-12 h-12 rounded-full border-2 border-current flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110">
+                <span className="text-2xl font-[family-name:var(--font-display)]">+</span>
               </div>
               <span className="text-sm font-medium">{t("newNovel")}</span>
             </button>
@@ -117,21 +105,14 @@ function NovelCard({ novel, onDelete }: { novel: NovelSummary; onDelete: (id: st
       <div
         role="button"
         tabIndex={0}
-        className="group relative text-left rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ease-out w-full bg-[var(--color-surface)] border border-[var(--color-border)]/70"
-        style={{
-          boxShadow: "0 1px 3px rgba(44,40,37,0.04), 0 4px 12px rgba(44,40,37,0.03)",
-        }}
+        className="group relative text-left rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ease-out w-full bg-gradient-to-b from-[var(--color-surface)] to-[var(--color-surface-raised)] border border-[var(--color-border)]/70 border-l-[3px] border-l-[var(--color-accent)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] hover:scale-[1.02]"
         onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow =
-            "0 4px 12px rgba(44,40,37,0.06), 0 16px 40px rgba(44,40,37,0.1)";
-          e.currentTarget.style.transform = "translateY(-4px)";
           e.currentTarget.style.borderColor = "var(--color-accent-muted)";
+          e.currentTarget.style.borderLeftColor = "var(--color-accent)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow =
-            "0 1px 3px rgba(44,40,37,0.04), 0 4px 12px rgba(44,40,37,0.03)";
-          e.currentTarget.style.transform = "translateY(0)";
           e.currentTarget.style.borderColor = "";
+          e.currentTarget.style.borderLeftColor = "var(--color-accent)";
         }}
         onClick={() => router.push(`/novel/${novel.id}/editor`)}
         onKeyDown={(e) => {
@@ -158,20 +139,10 @@ function NovelCard({ novel, onDelete }: { novel: NovelSummary; onDelete: (id: st
         >
           <Trash2 size={14} />
         </button>
-        {/* Top accent bar — gradient amber */}
-        <div
-          className="h-1 w-full"
-          style={{
-            background: "linear-gradient(90deg, var(--color-accent), var(--color-accent-muted))",
-          }}
-        />
 
         <div className="p-6">
           <div className="flex items-start justify-between gap-3 mb-3">
-            <h2
-              className="text-[1.125rem] font-semibold leading-snug text-[var(--color-text-primary)]"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
+            <h2 className="text-[1.25rem] font-semibold leading-snug text-[var(--color-text-primary)] font-[family-name:var(--font-display)]">
               {novel.title}
             </h2>
             {novel.is_demo && (

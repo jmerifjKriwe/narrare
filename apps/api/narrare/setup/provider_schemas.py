@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from narrare.setup.base_schemas import (  # noqa: TC001 (runtime import for Pydantic)
+from narrare.setup.base_schemas import (
     AIProvider,
     StarterContent,
     StoryStructure,
@@ -67,12 +67,14 @@ class WizardState(BaseModel):
     # Step 3
     starter: StarterContent
     import_path: str | None
-    # Step 4
-    provider: AIProvider
-    api_key: str
-    model: str
-    ollama_url: str
+    # Step 4 (optional — skipped if skip_provider=True)
+    provider: AIProvider = AIProvider.ANTHROPIC
+    api_key: str = ""
+    model: str = ""
+    ollama_url: str = "http://localhost:11434"
     zai_endpoint: str = "general"  # "general" or "coding"
+    # Provider skip flag — True when user already has providers configured
+    skip_provider: bool = False
 
 
 class CompleteSetupRequest(BaseModel):

@@ -4,17 +4,21 @@ from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING, cast
+from unittest.mock import AsyncMock, MagicMock
 
 from narrare.setup.schemas import AIProvider
 
 from ._complete_helpers import (
     _FakeAiSettingsRepo,
     _FakeProvidersRepo,
+    _make_mock_session,
+    _make_service,
     _make_wizard_state,
 )
 
 if TYPE_CHECKING:
     from narrare.setup.service import SetupService
+    from tests.fakes import FakeDemoLoader, FakeProviderService
 
 
 class TestCompleteProviders:
@@ -94,3 +98,105 @@ class TestCompleteProviders:
         providers_repo = cast("_FakeProvidersRepo", complete_service._providers_repo)
         assert len(providers_repo.created) == 1
         assert providers_repo.created[0]["api_key_encrypted"] == ""
+
+    # --- Regression: skip_provider flag ------------------------------------
+
+    async def test_complete_skips_provider_when_flag_set(
+        self,
+        fake_provider_service: FakeProviderService,
+        fake_demo_loader: FakeDemoLoader,
+    ) -> None:
+        """When skip_provider=True, no new provider is created and existing is preserved."""
+        user_id = uuid.uuid4()
+        existing_provider_id = uuid.uuid4()
+
+        # Fake existing AI settings with a default provider
+        fake_settings = type(
+            "FakeSettings",
+            (),
+            {
+                "default_provider_id": existing_provider_id,
+                "default_model": "claude-sonnet-4-5-20251020",
+            },
+        )()
+
+        # Mock session.execute to return an existing provider
+        mock_session = _make_mock_session()
+        fake_provider = type(
+            "FakeProvider",
+            (),
+            {
+                "id": existing_provider_id,
+                "provider_name": "anthropic",
+            },
+        )()
+        mock_result = MagicMock(spec=object)
+        mock_result.scalar_one_or_none = AsyncMock(return_value=fake_provider)
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        svc = _make_service(
+            fake_provider_service,
+            fake_demo_loader,
+            mock_session=mock_session,
+            ai_settings_override=fake_settings,
+        )
+
+        state = _make_wizard_state(skip_provider=True)
+
+        result = await svc.complete(str(user_id), state)
+
+        # No provider was created
+        providers_repo = cast("_FakeProvidersRepo", svc._providers_repo)
+        assert len(providers_repo.created) == 0
+
+        # No ai_settings update was made (provider not overwritten)
+        ai_settings_repo = cast("_FakeAiSettingsRepo", svc._ai_settings_repo)
+        assert len(ai_settings_repo.updates) == 0
+
+        # ProjectSettings uses existing provider's name
+        add_calls = mock_session.add.call_args_list
+        project_settings = add_calls[1][0][0]
+        assert project_settings.ai_provider == "anthropic"
+        assert project_settings.ai_model == "claude-sonnet-4-5-20251020"
+
+        assert isinstance(result.novel_id, str)
+
+    async def test_complete_skips_provider_without_existing_settings(
+        self,
+        fake_provider_service: FakeProviderService,
+        fake_demo_loader: FakeDemoLoader,
+    ) -> None:
+        """When skip_provider=True and no existing settings, ProjectSettings uses empty strings."""
+        user_id = uuid.uuid4()
+
+        # Existing settings but no default provider configured
+        fake_settings = type(
+            "FakeSettings",
+            (),
+            {
+                "default_provider_id": None,
+                "default_model": "",
+            },
+        )()
+
+        svc = _make_service(
+            fake_provider_service,
+            fake_demo_loader,
+            ai_settings_override=fake_settings,
+        )
+
+        state = _make_wizard_state(skip_provider=True)
+
+        result = await svc.complete(str(user_id), state)
+
+        # No provider was created
+        providers_repo = cast("_FakeProvidersRepo", svc._providers_repo)
+        assert len(providers_repo.created) == 0
+
+        # ProjectSettings uses empty strings (no provider configured yet)
+        add_calls = svc._session.add.call_args_list  # pyright: ignore[reportAttributeAccessIssue]
+        project_settings = add_calls[1][0][0]
+        assert project_settings.ai_provider == ""
+        assert project_settings.ai_model == ""
+
+        assert isinstance(result.novel_id, str)

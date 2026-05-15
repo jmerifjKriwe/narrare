@@ -96,13 +96,16 @@ export function WizardStep5({
           <SummaryRow label="Content" value={starterLabel[state.starter] || state.starter} />
         </div>
 
-        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
-            {t("provider")}
-          </h3>
-          <SummaryRow label="Provider" value={state.provider} />
-          <SummaryRow label="Model" value={state.model} />
-        </div>
+        {/* Provider section — hidden when Step 4 was skipped */}
+        {!state.skip_provider && (
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+              {t("provider")}
+            </h3>
+            <SummaryRow label="Provider" value={state.provider} />
+            <SummaryRow label="Model" value={state.model} />
+          </div>
+        )}
       </div>
 
       {isCreating && (

@@ -27,7 +27,7 @@ export function StatusBar({ chapter }: StatusBarProps) {
 
   return (
     <div
-      className="h-8 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between px-4 shrink-0"
+      className="h-8 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex items-center justify-between px-4 shrink-0"
       role="status"
       aria-live="polite"
     >

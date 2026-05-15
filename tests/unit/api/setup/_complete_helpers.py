@@ -87,6 +87,7 @@ def _make_service(
     fake_provider_service: FakeProviderService,
     fake_demo_loader: FakeDemoLoader,
     mock_session: MagicMock | None = None,
+    ai_settings_override: object | None = None,
 ) -> SetupService:
     """Create a SetupService with mocked dependencies."""
     return SetupService(
@@ -97,7 +98,7 @@ def _make_service(
         provider_service=fake_provider_service,
         demo_loader=fake_demo_loader,
         providers_repo=_FakeProvidersRepo(),  # type: ignore[arg-type]
-        ai_settings_repo=_FakeAiSettingsRepo(),  # type: ignore[arg-type]
+        ai_settings_repo=_FakeAiSettingsRepo(settings_override=ai_settings_override),  # type: ignore[arg-type]
     )
 
 
@@ -172,10 +173,13 @@ class _FakeProvidersRepo:
 class _FakeAiSettingsRepo:
     """Minimal fake for UserAiSettingsRepository used by complete()."""
 
-    def __init__(self) -> None:
+    def __init__(self, settings_override: object | None = None) -> None:
         self.updates: list[dict[str, object]] = []
+        self._settings_override = settings_override
 
     async def get(self, user_id: uuid.UUID) -> object:
+        if self._settings_override is not None:
+            return self._settings_override
         return object()
 
     async def update(self, user_id: uuid.UUID, **kwargs: object) -> object:

@@ -114,38 +114,62 @@ class SetupService:
 
         logger.info("setup_novel_created", novel_id=str(novel.id), user_id=user_id)
 
+        # Create provider records — ONLY if Step 4 was not skipped
+        if not state.skip_provider:
+            from narrare_core.crypto import encrypt
+
+            encrypted_key = encrypt(state.api_key) if state.provider != AIProvider.OLLAMA else ""
+
+            base_url: str | None = None
+            if state.provider == AIProvider.ZAI and state.zai_endpoint == "coding":
+                base_url = "https://api.z.ai/api/coding/paas/v4"
+
+            provider_entry = await self._providers_repo.create(
+                user_id=uid,
+                provider_name=state.provider.value,
+                api_key_encrypted=encrypted_key,
+                base_url=base_url,
+            )
+
+            # Set default model in user_ai_settings
+            await self._ai_settings_repo.update(
+                uid,
+                default_provider_id=provider_entry.id,
+                default_model=state.model,
+            )
+
+            ai_provider_name = state.provider.value
+            ai_model = state.model
+        else:
+            # Skipping provider — look up user's existing default provider
+            logger.info("setup_skip_provider", user_id=user_id, reason="existing_providers")
+            existing_settings = await self._ai_settings_repo.get(uid)
+            ai_provider_name = ""
+            ai_model = ""
+            if existing_settings and existing_settings.default_provider_id:
+                from sqlalchemy import select
+
+                from narrare.settings.models import UserProvider
+
+                result = await self._session.execute(
+                    select(UserProvider).where(
+                        UserProvider.id == existing_settings.default_provider_id
+                    )
+                )
+                existing_provider = result.scalar_one_or_none()
+                if existing_provider:
+                    ai_provider_name = existing_provider.provider_name
+                    ai_model = existing_settings.default_model or ""
+
         # Create project settings (legacy)
         project_settings = ProjectSettings(
             novel_id=novel.id,
             autosave_interval=state.autosave_interval,
             default_language=state.language,
-            ai_provider=state.provider.value,
-            ai_model=state.model,
+            ai_provider=ai_provider_name,
+            ai_model=ai_model,
         )
         self._session.add(project_settings)
-
-        # Save provider to user_providers (new AI settings system)
-        from narrare_core.crypto import encrypt
-
-        encrypted_key = encrypt(state.api_key) if state.provider != AIProvider.OLLAMA else ""
-
-        base_url: str | None = None
-        if state.provider == AIProvider.ZAI and state.zai_endpoint == "coding":
-            base_url = "https://api.z.ai/api/coding/paas/v4"
-
-        provider_entry = await self._providers_repo.create(
-            user_id=uid,
-            provider_name=state.provider.value,
-            api_key_encrypted=encrypted_key,
-            base_url=base_url,
-        )
-
-        # Set default model in user_ai_settings
-        await self._ai_settings_repo.update(
-            uid,
-            default_provider_id=provider_entry.id,
-            default_model=state.model,
-        )
 
         # Update user settings with preferred language
         from narrare.settings.schemas import UpdateUserSettingsRequest

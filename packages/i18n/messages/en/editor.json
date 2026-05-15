@@ -20,5 +20,6 @@
   "categoryFormat": "Formatting",
   "categoryEditor": "Editor",
   "noCommandsFound": "No commands found",
-  "commandPaletteHint": "⌘K"
+  "commandPaletteHint": "⌘K",
+  "escKey": "Esc"
 }

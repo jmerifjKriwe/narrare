@@ -4,6 +4,15 @@ from __future__ import annotations
 
 import pytest
 
+# Re-export fixtures from _complete_helpers so pytest discovers them.
+# Underscore-prefixed modules are not scanned by pytest, so conftest
+# must explicitly import the decorated fixtures.
+from ._complete_helpers import (  # noqa: F401
+    complete_service,  # pyright: ignore[reportUnusedImport]
+    fake_demo_loader,  # pyright: ignore[reportUnusedImport]
+    fake_provider_service,  # pyright: ignore[reportUnusedImport]
+)
+
 
 @pytest.fixture(autouse=True)
 def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]

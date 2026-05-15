@@ -170,6 +170,8 @@ export interface WizardState {
   model: string;
   ollama_url: string;
   zai_endpoint?: string;
+  // Provider skip flag — true when Step 4 was skipped
+  skip_provider?: boolean;
 }
 
 // API error shape
