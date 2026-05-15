@@ -2,41 +2,67 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import (
+    CurrentUserIdDep,
+    SessionDep,
+    get_composer,
+    get_gateway,
+    get_model_routing_resolver,
+)
 from narrare.generation.schemas import NameGenerateRequest, NameGenerateResponse
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from narrare.generation.name_service import NameGeneratorService
 
 router = APIRouter(prefix="/generation", tags=["generation"])
 
 
-async def _get_service() -> NameGeneratorService:
-    """Factory for NameGeneratorService."""
-    from narrare._app.dependencies import get_composer, get_gateway
+async def _get_service(
+    session: AsyncSession,
+    user_id: str,
+    project_id: UUID,
+) -> NameGeneratorService:
+    """Factory for NameGeneratorService — resolves user's configured model.
+
+    Uses ModelRoutingResolverImpl to look up the user's provider and model
+    for the NAME_GENERATE intent instead of hardcoding them.
+    """
     from narrare.generation.name_service import NameGeneratorService
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
+    from narrare_core.llm.intents import LLMIntent
+
+    resolver = get_model_routing_resolver(session)
+    assert isinstance(resolver, ModelRoutingResolverImpl)
+    resolved = await resolver.resolve(LLMIntent.NAME_GENERATE, UUID(user_id), project_id)
+
+    # Layer generation-specific defaults on top of resolved config
+    config = replace(resolved.config, temperature=0.8, max_tokens=2000)
 
     gateway = get_gateway()
     composer = get_composer()
-    config = ResolvedModelConfig(
-        provider_name="anthropic",
-        model_id="claude-haiku-3-5-20241022",
-        temperature=0.8,
-        max_tokens=2000,
+    return NameGeneratorService(
+        gateway=gateway,
+        composer=composer,
+        config=config,
+        api_key=resolved.api_key,
+        base_url=resolved.base_url,
     )
-    return NameGeneratorService(gateway=gateway, composer=composer, config=config)
 
 
 @router.post("/names", response_model=NameGenerateResponse)
 async def generate_names(
     request: NameGenerateRequest,
     user_id: CurrentUserIdDep,
-    service: NameGeneratorService = Depends(_get_service),
+    session: SessionDep,
 ) -> NameGenerateResponse:
     """Generate names based on type, culture, and preferences."""
+    service = await _get_service(session=session, user_id=user_id, project_id=request.project_id)
     return await service.generate_names(request)

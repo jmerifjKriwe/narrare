@@ -156,6 +156,180 @@ def test_fake_chapter_repo_conforms():
 **Rule:** When adding a new Fake, add a conformance test. If the Protocol
 changes, the conformance test fails immediately.
 
+### Cross-Layer Contract Testing
+
+> **Why this section exists:** Three bugs went undetected because our test
+> standards didn't cover the boundaries between layers. Unit tests mock data,
+> integration tests focus on single layers, and nothing validates that the
+> frontend and backend agree on field names, that i18n namespaces are complete,
+> or that routers don't hardcode configuration. Cross-layer contract tests close
+> these gaps.
+>
+> **References:** RULE-16, RULE-17, RULE-18 in `docs/_shared/CONSTRAINTS.md`
+
+#### i18n Namespace Completeness Tests — RULE-16
+
+**The problem:** Components use `useTranslations("X")` but if `"X"` is not in
+the `namespaces` array in `request.ts`, next-intl silently returns raw keys.
+Unit tests mock translations and never catch this — the component renders
+`"prompts.title"` instead of the actual translated string.
+
+**Test pattern:**
+```
+packages/web/__tests__/i18n-namespace-registry.test.ts
+```
+
+Scans all `.ts`/`.tsx` source files for `useTranslations("X")` calls, extracts
+the root namespace (before any dot), and asserts every namespace is registered
+in the `request.ts` namespaces array.
+
+```typescript
+// packages/web/__tests__/i18n-namespace-registry.test.ts
+import fs from "node:fs"
+import path from "node:path"
+
+describe("i18n namespace registry", () => {
+  it("every useTranslations namespace is registered in request.ts", () => {
+    const sourceDir = path.resolve(__dirname, "../src")
+    const namespaces = extractUsedNamespaces(sourceDir)
+    const registered = extractRegisteredNamespaces(
+      path.resolve(__dirname, "../src/i18n/request.ts")
+    )
+
+    const missing = namespaces.filter(ns => !registered.includes(ns))
+    expect(missing).toEqual([])
+  })
+})
+```
+
+**When to update:** New components using a new namespace must update
+`request.ts` in the same commit. This test runs as part of `pnpm test` and will
+fail CI if namespaces are missing.
+
+**Reference:** RULE-16 in `docs/_shared/CONSTRAINTS.md`
+
+---
+
+#### API Response Contract Tests — RULE-17
+
+**The problem:** Backend Pydantic schemas and frontend TypeScript types can
+drift. When the backend returns `{"id": "..."}` but the frontend reads
+`.prompt_id`, the result is `undefined` at runtime. Unit tests mock the data
+and never see the mismatch. Integration tests validate the schema exists but
+don't check whether the frontend expects the same field names.
+
+**Test pattern:**
+```
+tests/unit/api/test_{domain}_contract.py
+```
+
+For each Pydantic response schema that the frontend consumes directly:
+
+- Assert the expected field names exist (e.g., `prompt_id`, not `id`)
+- Assert the field types match (e.g., `str`, not `int`)
+- Assert forbidden field names are absent
+
+```python
+# tests/unit/api/test_prompt_contract.py
+from pydantic import ValidationError
+import pytest
+
+from apps.api.prompts.schemas import PromptResponse, PromptListResponse
+
+
+class TestPromptResponseContract:
+    """Cross-layer contract: backend schema must match frontend expectations."""
+
+    EXPECTED_FIELDS: dict[str, type] = {
+        "prompt_id": str,
+        "title": str,
+        "category": str,
+        "content": str,
+        "is_default": bool,
+    }
+
+    FORBIDDEN_FIELDS: list[str] = [
+        "id",  # Frontend expects prompt_id, not id
+    ]
+
+    def test_has_all_expected_fields(self) -> None:
+        """Every field the frontend reads must exist with the correct type."""
+        schema_fields = PromptResponse.model_fields
+        for field_name, expected_type in self.EXPECTED_FIELDS.items():
+            assert field_name in schema_fields, (
+                f"Missing field '{field_name}' — frontend will get undefined"
+            )
+            # Check annotation is compatible (handle Optional, etc.)
+            actual_type = schema_fields[field_name].annotation
+            assert expected_type in _unwrap_types(actual_type), (
+                f"Field '{field_name}' is {actual_type}, expected {expected_type}"
+            )
+
+    def test_no_forbidden_fields(self) -> None:
+        """Fields the frontend does NOT expect must be absent."""
+        schema_fields = PromptResponse.model_fields
+        for forbidden in self.FORBIDDEN_FIELDS:
+            assert forbidden not in schema_fields, (
+                f"Forbidden field '{forbidden}' found — rename or remove"
+            )
+```
+
+**When to add:** Every time a new response schema is created or an existing one
+is modified, a contract test must accompany the change in the same PR.
+
+**Reference:** RULE-17 in `docs/_shared/CONSTRAINTS.md`
+
+---
+
+#### Configuration Integrity Tests — RULE-18
+
+**The problem:** Router endpoints that hardcode provider names, model IDs, or
+other configuration work in development but crash for users with different
+configurations. Tests that mock settings never catch hardcoded strings.
+
+**Test pattern:**
+```
+tests/unit/api/test_{domain}_router_contract.py
+```
+
+Uses `inspect.getsource()` to read the factory function source and assert no
+hardcoded configuration strings exist — all configuration must come from
+DI/settings, not string literals.
+
+```python
+# tests/unit/api/test_prompt_router_contract.py
+import inspect
+
+from apps.api.prompts.router import get_prompt_service
+
+
+class TestPromptRouterConfigurationContract:
+    """Router must not hardcode config — all from DI/settings."""
+
+    FORBIDDEN_STRINGS: list[str] = [
+        "openai",
+        "anthropic",
+        "gpt-4",
+        "claude",
+        "localhost",
+    ]
+
+    def test_factory_no_hardcoded_config(self) -> None:
+        """Factory function source must not contain hardcoded config strings."""
+        source = inspect.getsource(get_prompt_service).lower()
+        for forbidden in self.FORBIDDEN_STRINGS:
+            assert forbidden not in source, (
+                f"Hardcoded '{forbidden}' in router factory — "
+                f"use DI/settings instead"
+            )
+```
+
+**When to add:** Every new router that creates services via factory functions
+should have a contract test verifying that configuration comes from
+DI/settings, not hardcoded values.
+
+**Reference:** RULE-18 in `docs/_shared/CONSTRAINTS.md`
+
 ---
 
 ## Mocking Standards — RULE-TEST-01
@@ -426,6 +600,17 @@ Use `just test-single` when:
 | `apps/api/*/service.py` | Unit | 85% | 90% |
 | `apps/api/*/repository.py` | **Integration** | 80% | 90% |
 | `apps/api/*/router*.py` | Integration | 80% | 85% |
+| i18n Namespace Registry | Integration | 100% | 100% |
+| API Response Contracts | Unit | Per schema | Per schema |
+| Router Configuration | Unit | Per router | Per router |
+
+**Contract test file patterns:**
+
+| Test Type | File Pattern |
+|-----------|-------------|
+| i18n Namespace Registry | `packages/web/__tests__/i18n-namespace-registry.test.ts` |
+| API Response Contracts | `tests/unit/api/test_*_contract.py` |
+| Router Configuration | `tests/unit/api/test_*_router_contract.py` |
 
 Coverage below minimum = CI failure. No exceptions.
 

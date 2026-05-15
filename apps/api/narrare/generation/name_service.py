@@ -40,10 +40,14 @@ class NameGeneratorService:
         gateway: LLMGateway,
         composer: PromptComposer,
         config: ResolvedModelConfig,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._gateway = gateway
         self._composer = composer
         self._config = config
+        self._api_key = api_key
+        self._base_url = base_url
 
     async def generate_names(self, request: NameGenerateRequest) -> NameGenerateResponse:
         """Generate names based on request parameters.
@@ -80,6 +84,8 @@ class NameGeneratorService:
             system_prompt=prompt.system,
             user_prompt=prompt.user,
             config=self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
         )
 
         names = self._parse_names(result.text, request)

@@ -8,8 +8,10 @@ const namespaces = [
   "dashboard",
   "editor",
   "errors",
+  "generation",
   "settings",
   "settings-ai",
+  "settings-appearance",
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

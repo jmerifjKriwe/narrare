@@ -139,6 +139,33 @@ This rule makes the correct path unambiguous: modularize, don't compress.
 
 ---
 
+### RULE-15 · No `middleware.ts` — `proxy.ts` is the only Next.js route middleware.
+
+No file named `middleware.ts` may exist in `packages/web/` or any of its subdirectories.
+Next.js 16+ uses `proxy.ts` exclusively. Having both files causes a hard build failure.
+
+**Forbidden:**
+```
+packages/web/middleware.ts          — NEVER create this file
+packages/web/src/middleware.ts      — NEVER create this file
+packages/web/**/middleware.ts       — NEVER create this file
+```
+
+**Required:**
+```
+packages/web/proxy.ts               — edit THIS file for route protection / auth / redirects
+```
+
+**Why:** This has happened repeatedly. AI coding agents and developers instinctively
+create `middleware.ts` because Next.js ≤15 used that convention. The resulting build
+error — "Both middleware file and proxy file are detected" — is cryptic, wastes
+debugging time, and breaks CI for everyone.
+
+The file `proxy.ts` already contains a header warning. That has proven insufficient.
+This rule makes the prohibition machine-enforceable.
+
+---
+
 ## 2. Structural Rules
 
 ### RULE-05 · Module boundaries are ownership boundaries.
@@ -262,6 +289,50 @@ safety net.
 
 ---
 
+### RULE-18 · No hardcoded configuration in routers.
+
+Router endpoints must NOT hardcode provider names, model IDs, API keys, or
+other configuration values that should come from user/project settings.
+All runtime configuration must be resolved via dependency injection or the
+settings cascade.
+
+**Forbidden:**
+```python
+@router.post("/generate")
+async def generate(
+    provider_name: str = "anthropic",  # ← hardcoded
+    model_id: str = "claude-sonnet-4-20250514",  # ← hardcoded
+):
+    ...
+```
+
+**Required:**
+```python
+@router.post("/generate")
+async def generate(
+    settings: ProjectAISettings = Depends(resolve_ai_settings),
+    # ↑ resolved via settings cascade: user > project > system default
+):
+    provider = settings.provider_name
+    model = settings.model_id
+```
+
+**Why:** Hardcoding `provider_name="anthropic"` in a router works in
+development but crashes in production when users have configured a different
+provider. Configuration must flow through the `ModelRoutingResolver` cascade.
+Without this rule, a developer testing with one provider hardcodes their
+defaults — and every user with a different provider gets a runtime crash.
+
+**Enforcement:**
+- `check_architecture.py` could be extended to scan router files for hardcoded
+  provider strings (`"anthropic"`, `"openai"`, `"ollama"`) and known model IDs
+- Regression tests in `tests/unit/api/test_generation_router_contract.py` verify
+  no hardcoded configuration values leak into dependency factory functions
+- Code review: look for string literals in dependency factory functions and
+  router default parameter values
+
+---
+
 ## 3. Quality Rules
 
 ### RULE-09 · Every public function has a type signature.
@@ -325,6 +396,88 @@ except LLMGatewayError as e:
 
 ---
 
+### RULE-16 · i18n namespace registration.
+
+Every `useTranslations("X")` call must have a corresponding `"X"` entry in
+the `namespaces` array in `packages/web/lib/i18n/request.ts`, AND a
+corresponding `X.json` file must exist in all 3 locale directories
+(`en`, `de`, `fr`).
+
+**What goes wrong without this rule:**
+
+When a namespace is used in a component but not registered in `request.ts`,
+`next-intl` silently returns raw keys instead of translated strings. The UI
+shows broken labels like `generation.nameGenerator` instead of
+"Name Generator". This is a **runtime-only failure** — no compile-time check
+catches it. Unit tests mock translations and integration tests may not render
+the specific component, so the broken labels ship to users unnoticed.
+
+**Required:**
+```typescript
+// 1. Component uses the namespace
+const t = useTranslations("generation");
+
+// 2. Namespace registered in request.ts
+export const namespaces = ["common", "generation", ...];
+//                                    ↑ must be listed
+
+// 3. Files exist in all locales
+// packages/web/messages/en/generation.json  ← must exist
+// packages/web/messages/de/generation.json  ← must exist
+// packages/web/messages/fr/generation.json  ← must exist
+```
+
+**Enforcement:**
+- Regression test: `packages/web/__tests__/i18n-namespace-registry.test.ts`
+  scans all source files for `useTranslations("X")` calls and validates that
+  each `"X"` is registered in `request.ts` and that all locale files exist
+- Existing i18n validator (`validate-i18n.ts`) checks key completeness
+  between locales
+
+---
+
+### RULE-17 · API-Frontend contract consistency.
+
+Backend Pydantic response schema field names must exactly match the frontend
+TypeScript interface field names. When the backend returns `{"id": "..."}` but
+the frontend reads `.prompt_id`, the result is `undefined` at runtime.
+
+**What goes wrong without this rule:**
+
+Without contract tests, field name mismatches between backend schemas and
+frontend types cause runtime crashes that unit tests miss — unit tests mock
+the data and never see the real API shape. The backend test asserts the schema
+has `id`, the frontend test asserts the component reads `prompt_id`, and both
+pass while the real integration is broken.
+
+**Required:**
+```python
+# Backend: apps/api/generation/schemas.py
+class PromptResponse(BaseModel):
+    prompt_id: str    # ← field name
+    name: str
+    template: str
+
+# Frontend: packages/web/types/generation.ts
+interface PromptResponse {
+  prompt_id: string  // ← MUST match exactly
+  name: string
+  template: string
+}
+```
+
+**When adding or changing a response schema field, the corresponding
+TypeScript type must be updated in the same commit.**
+
+**Enforcement:**
+- Regression tests in `tests/unit/api/test_prompt_contract.py` verify field
+  names match frontend expectations by importing both schemas and comparing
+- PR review: any Pydantic schema change must have a matching TypeScript change
+- Future: consider auto-generating TypeScript types from Pydantic schemas
+  (`pydantic-to-typescript` or similar)
+
+---
+
 ## 4. Future-Compatibility Rules
 
 ### RULE-12 · The Service Layer is the only public API.
@@ -377,6 +530,10 @@ same service methods without a parallel non-streaming implementation.
 | RULE-10 Test coverage | `pytest --cov` with minimum thresholds |
 | RULE-11 Silent failures | `check_architecture.py` — bare except scan |
 | RULE-14 Model-migration consistency | Integration tests + PR review |
+| RULE-15 No middleware.ts | `check_architecture.py` — file existence scan |
+| RULE-16 i18n namespace registration | `i18n-namespace-registry.test.ts` + `validate-i18n.ts` |
+| RULE-17 API-Frontend contract | `test_prompt_contract.py` + PR review |
+| RULE-18 No hardcoded config in routers | `test_generation_router_contract.py` + PR review |
 | All rules | PR review by Architecture Agent |
 
 ---
@@ -425,6 +582,6 @@ supports infrastructure-level calls with different routing rules.*
 
 ---
 
-> Last updated: 2026-05-15 — mem0 RULE-01 exception added
+> Last updated: 2026-05-15 — RULE-16, RULE-17, RULE-18 added (i18n registration, API-Frontend contract, no hardcoded config)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

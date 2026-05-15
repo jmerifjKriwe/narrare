@@ -1,0 +1,11 @@
+{
+  "title": "Appearance",
+  "description": "Customize the look and feel of your writing environment.",
+  "theme": "Theme",
+  "themes": {
+    "pergament": "Pergament",
+    "pergamentDesc": "Warm, parchment-like tones for a classic writing feel",
+    "neutral": "Neutral",
+    "neutralDesc": "Clean, minimal gray tones for distraction-free writing"
+  }
+}

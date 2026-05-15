@@ -51,7 +51,7 @@ class PromptManagementApiService:
         infos = await self._core.list_prompts(category=category)
         return [
             PromptInfoResponse(
-                id=info.prompt_id,
+                prompt_id=info.prompt_id,
                 name=info.name,
                 category=info.category,
                 language=info.language,
@@ -75,7 +75,7 @@ class PromptManagementApiService:
         if detail is None:
             return None
         return PromptDetailResponse(
-            id=detail.prompt_id,
+            prompt_id=detail.prompt_id,
             content=detail.content,
             base_content=detail.base_content,
             source=detail.source,

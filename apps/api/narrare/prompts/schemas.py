@@ -12,7 +12,7 @@ class PromptInfoResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: str = Field(..., description="Prompt ID: {category}/{language}/{mode}")
+    prompt_id: str = Field(..., description="Prompt ID: {category}/{language}/{mode}")
     name: str
     category: str
     language: str
@@ -26,7 +26,7 @@ class PromptDetailResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    prompt_id: str
     content: str
     base_content: str
     source: str

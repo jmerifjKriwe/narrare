@@ -1,0 +1,11 @@
+{
+  "title": "Apparence",
+  "description": "Personnalisez l'apparence de votre environnement d'écriture.",
+  "theme": "Thème",
+  "themes": {
+    "pergament": "Parchemin",
+    "pergamentDesc": "Tons chauds et parcheminés pour une sensation d'écriture classique",
+    "neutral": "Neutre",
+    "neutralDesc": "Tons gris épurés et minimaux pour une écriture sans distraction"
+  }
+}
