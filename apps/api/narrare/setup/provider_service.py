@@ -7,9 +7,9 @@ Model lists are fetched from provider APIs and cached in Redis.
 
 from __future__ import annotations
 
-import httpx
 import structlog
 
+from narrare.setup._model_fetchers import fetch_models
 from narrare.setup.schemas import (
     AIProvider,
     AvailableModelsResponse,
@@ -113,26 +113,60 @@ class ProviderService:
         """
         Make a minimal real API call to verify the provider + key + model work.
 
+        If *model* is the placeholder ``"test"``, dynamically resolves to the
+        first available model from the provider's model list.
+
         Args:
             provider: The AI provider.
             api_key: Provider API key.
-            model: Model ID to test.
+            model: Model ID to test, or ``"test"`` for dynamic resolution.
             ollama_url: Ollama base URL.
             zai_endpoint: Z.AI endpoint variant — "general" or "coding".
 
         Returns:
             None if the connection works, or the error message string if it fails.
         """
+        resolved_model = model
+        if model == "test":
+            try:
+                models_response = await self.list_models(provider, api_key, ollama_url)
+                if models_response.models:
+                    resolved_model = models_response.models[0].id
+                    logger.info(
+                        "resolved_test_model",
+                        provider=provider.value,
+                        resolved_model=resolved_model,
+                    )
+                else:
+                    msg = (
+                        "Keine Modelle gefunden — prüfen Sie Ihren API-Key"
+                        " und Ihre Netzwerkverbindung."
+                    )
+                    logger.warning("no_models_available", provider=provider.value)
+                    return msg
+            except Exception as e:
+                msg = f"Modellliste konnte nicht abgerufen werden: {e}"
+                logger.warning(
+                    "model_list_fetch_failed",
+                    provider=provider.value,
+                    error=str(e),
+                )
+                return msg
+
         try:
-            await self._test_call(provider, api_key, model, ollama_url, zai_endpoint)
-            logger.info("provider_validation_success", provider=provider.value, model=model)
+            await self._test_call(provider, api_key, resolved_model, ollama_url, zai_endpoint)
+            logger.info(
+                "provider_validation_success",
+                provider=provider.value,
+                model=resolved_model,
+            )
             return None
         except Exception as e:
             error_msg = str(e)
             logger.warning(
                 "provider_validation_failed",
                 provider=provider.value,
-                model=model,
+                model=resolved_model,
                 error=error_msg,
             )
             return error_msg
@@ -143,104 +177,8 @@ class ProviderService:
         api_key: str,
         ollama_url: str,
     ) -> list[ProviderModel]:
-        """Fetch models from provider API."""
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            if provider == AIProvider.ANTHROPIC:
-                return await self._fetch_anthropic_models(client, api_key)
-            if provider == AIProvider.OPENAI:
-                return await self._fetch_openai_models(client, api_key)
-            if provider == AIProvider.OLLAMA:
-                return await self._fetch_ollama_models(client, ollama_url)
-            if provider == AIProvider.OPENROUTER:
-                return await self._fetch_openrouter_models(client, api_key)
-            if provider == AIProvider.ZAI:
-                return await self._fetch_zai_models(client, api_key)
-        # For providers without model list API, use fallback
-        return _FALLBACK_MODELS.get(provider, [])
-
-    async def _fetch_anthropic_models(
-        self, client: httpx.AsyncClient, api_key: str
-    ) -> list[ProviderModel]:
-        response = await client.get(
-            # narrare: allow-direct-llm reason="Setup-phase provider validation and model listing"
-            "https://api.anthropic.com/v1/models",
-            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
-        )
-        response.raise_for_status()
-        data = response.json()
-        return [
-            ProviderModel(
-                id=m["id"],
-                name=m.get("display_name", m["id"]),
-                context_window=m.get("context_window"),
-            )
-            for m in data.get("data", [])
-            if "claude" in m["id"].lower()
-        ]
-
-    async def _fetch_openai_models(
-        self, client: httpx.AsyncClient, api_key: str
-    ) -> list[ProviderModel]:
-        response = await client.get(
-            # narrare: allow-direct-llm reason="Setup-phase provider validation and model listing"
-            "https://api.openai.com/v1/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-        )
-        response.raise_for_status()
-        data = response.json()
-        # Filter to chat-capable models only
-        chat_models = [
-            m
-            for m in data.get("data", [])
-            if any(k in m["id"] for k in ("gpt-4", "gpt-3.5", "o1", "o3"))
-        ]
-        return [ProviderModel(id=m["id"], name=m["id"]) for m in chat_models]
-
-    async def _fetch_ollama_models(
-        self, client: httpx.AsyncClient, ollama_url: str
-    ) -> list[ProviderModel]:
-        base = ollama_url.rstrip("/")
-        response = await client.get(f"{base}/api/tags")
-        response.raise_for_status()
-        data = response.json()
-        return [
-            ProviderModel(
-                id=m["name"],
-                name=m["name"],
-                context_window=m.get("details", {}).get("context_length"),
-            )
-            for m in data.get("models", [])
-        ]
-
-    async def _fetch_openrouter_models(
-        self, client: httpx.AsyncClient, api_key: str
-    ) -> list[ProviderModel]:
-        response = await client.get(
-            "https://openrouter.ai/api/v1/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-        )
-        response.raise_for_status()
-        data = response.json()
-        return [
-            ProviderModel(
-                id=m["id"],
-                name=m.get("name", m["id"]),
-                context_window=m.get("context_length"),
-            )
-            for m in data.get("data", [])
-        ][:30]  # Limit to 30 most relevant
-
-    async def _fetch_zai_models(
-        self, client: httpx.AsyncClient, api_key: str
-    ) -> list[ProviderModel]:
-        response = await client.get(
-            "https://api.z.ai/api/paas/v4/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-        )
-        response.raise_for_status()
-        data = response.json()
-        models = data.get("data", [])
-        return [ProviderModel(id=m["id"], name=m.get("id", m["id"])) for m in models]
+        """Delegate to _model_fetchers.fetch_models."""
+        return await fetch_models(provider, api_key, ollama_url, _FALLBACK_MODELS)
 
     async def _test_call(
         self,
