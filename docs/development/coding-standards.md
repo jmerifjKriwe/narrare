@@ -422,6 +422,11 @@ async def write_chapter(
 
 ## TypeScript Standards
 
+> **⛔ CARDINAL RULE: Never create `middleware.ts` in this project.**
+> Next.js 16+ uses `proxy.ts` exclusively. See **RULE-15** in `docs/_shared/CONSTRAINTS.md`.
+> If you need route protection, auth checks, or server-side request handling, edit
+> `packages/web/proxy.ts`. Creating `middleware.ts` is a build failure enforced by CI.
+
 ### Types
 
 ```typescript

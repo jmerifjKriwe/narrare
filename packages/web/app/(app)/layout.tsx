@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Settings } from "lucide-react";
+
+import { BookOpen, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -29,19 +30,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isError, router]);
 
-  // Minimal loading state — wordmark only, no spinner
+  // Minimal loading state
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[var(--color-bg-primary)]">
-        <div className="text-center">
-          <span
-            className="text-2xl font-bold text-[var(--color-text-tertiary)]/60"
-            style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
-          >
-            Narrare
-          </span>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="text-center flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center animate-pulse">
+            <BookOpen className="w-6 h-6 text-primary-foreground" />
+          </div>
+          <span className="sr-only">{t("loading")}</span>
         </div>
-        <span className="sr-only">{t("loading")}</span>
       </div>
     );
   }
@@ -49,35 +47,37 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const displayName = user?.display_name || user?.email;
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="h-14 shrink-0 flex items-center justify-between px-8 bg-[var(--color-surface)] border-b border-[var(--color-border)] relative">
-        {/* Subtle gradient accent line at bottom of header */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-[1px]"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent, var(--color-accent-muted), transparent)",
-          }}
-        />
-
-        <Link
-          href="/dashboard"
-          className="text-[1.375rem] font-bold text-[var(--color-text-primary)] no-underline hover:text-[var(--color-accent)] transition-colors duration-300"
-          style={{ fontFamily: "var(--font-display)", letterSpacing: "0.04em" }}
-        >
-          Narrare
+    <div className="flex h-screen flex-col bg-background">
+      <header className="h-16 shrink-0 flex items-center justify-between px-8 bg-card border-b border-border">
+        <Link href="/dashboard" className="flex items-center gap-3 no-underline group">
+          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center transition-transform group-hover:scale-105">
+            <BookOpen className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <div>
+            <div
+              className="text-[1.125rem] font-semibold text-foreground leading-none"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Narrare
+            </div>
+          </div>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Link
             href="/settings/ai-providers"
-            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             aria-label={t("settings")}
             title={t("settings")}
           >
             <Settings size={18} />
           </Link>
-          <span className="text-[0.8125rem] text-[var(--color-text-tertiary)]">{displayName}</span>
+          <div className="flex items-center gap-2 pl-4 border-l border-border">
+            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-accent-foreground">
+              {displayName?.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-sm font-medium text-foreground">{displayName}</span>
+          </div>
         </div>
       </header>
       <main className="flex-1 min-h-0 overflow-hidden">{children}</main>

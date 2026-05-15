@@ -87,49 +87,60 @@ export function WizardShell() {
   if (loadingProviders) {
     return (
       <div className="h-full flex items-center justify-center">
-        <span className="text-[var(--color-text-tertiary)]">{tCommon("loading")}</span>
+        <span className="text-muted-foreground animate-pulse">{tCommon("loading")}...</span>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[var(--color-bg-primary)] flex items-start justify-center p-8 px-4">
-      <div className="w-full max-w-[640px]">
+    <div className="h-full overflow-y-auto bg-background flex items-start justify-center p-8 px-4">
+      <div className="w-full max-w-[640px] pt-8">
         {/* Progress line */}
-        <div className="flex items-center gap-3 justify-center mb-8">
-          <div className="flex items-center">
+        <div className="flex items-center justify-center mb-10 px-4">
+          <div className="flex items-center w-full max-w-[400px]">
             {steps.map((step, i) => (
-              <div key={step.label} className="flex items-center">
-                {i > 0 && (
+              <div key={step.label} className="flex items-center flex-1 last:flex-none">
+                <div className="flex flex-col items-center gap-2 relative">
                   <div
                     className={cn(
-                      "w-10 h-[2px] rounded-full transition-all duration-500",
-                      step.step < currentStep
-                        ? "bg-[var(--color-accent)]"
-                        : "bg-[var(--color-border)]",
+                      "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-500 border-2 relative z-10",
+                      step.step === currentStep
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : step.step < currentStep
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card text-muted-foreground border-border",
+                    )}
+                    aria-current={step.step === currentStep ? "step" : undefined}
+                  >
+                    {step.step < currentStep ? "✓" : step.label}
+                  </div>
+                  {/* Optional label below bubble */}
+                  <span
+                    className={cn(
+                      "absolute top-12 whitespace-nowrap text-xs font-medium transition-colors duration-300",
+                      step.step === currentStep
+                        ? "text-foreground"
+                        : "text-muted-foreground opacity-0 sm:opacity-100",
+                    )}
+                  >
+                    {step.title}
+                  </span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div
+                    className={cn(
+                      "flex-1 h-[2px] -mx-1 transition-all duration-500",
+                      steps[i + 1].step <= currentStep ? "bg-primary" : "bg-border",
                     )}
                   />
                 )}
-                <div
-                  className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-500 border-2",
-                    step.step === currentStep
-                      ? "bg-[var(--color-accent)] text-white border-[var(--color-accent)]"
-                      : step.step < currentStep
-                        ? "bg-[var(--color-accent)] text-white border-[var(--color-accent)]"
-                        : "bg-transparent text-[var(--color-text-tertiary)] border-[var(--color-border)]",
-                  )}
-                  aria-current={step.step === currentStep ? "step" : undefined}
-                >
-                  {step.step < currentStep ? "✓" : step.label}
-                </div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Step content card */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-10 shadow-[var(--shadow-md)]">
+        <div className="bg-card border border-border rounded-2xl p-10 shadow-lg mt-8">
           {currentStep === 1 && <WizardStep1 onNext={handleNext} />}
           {currentStep === 2 && <WizardStep3 onNext={handleNext} onBack={handlePrev} />}
           {currentStep === 3 && <WizardStep2 onNext={handleNext} onBack={handlePrev} />}

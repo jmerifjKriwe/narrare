@@ -26,16 +26,16 @@ function StarterCard({ title, description, meta, selected, onSelect }: StarterCa
       type="button"
       onClick={onSelect}
       className={cn(
-        "text-left p-4 border-2 border-[var(--color-border)] rounded-lg bg-[var(--color-surface)]",
-        "cursor-pointer transition-[border-color,background] duration-150 w-full",
-        "hover:border-[var(--color-accent-muted)]",
-        selected && "border-[var(--color-accent)] bg-[var(--color-accent-light)]",
+        "text-left p-4 border-2 rounded-xl bg-card",
+        "cursor-pointer transition-all duration-300 w-full",
+        "hover:border-primary/50",
+        selected ? "border-primary bg-primary/5 shadow-sm" : "border-border",
       )}
       aria-pressed={selected}
     >
-      <div className="font-semibold mb-1">{title}</div>
-      <div className="text-sm text-[var(--color-text-secondary)]">{description}</div>
-      {meta && <div className="text-xs text-[var(--color-text-tertiary)] mt-2">{meta}</div>}
+      <div className="font-semibold mb-1 text-foreground">{title}</div>
+      <div className="text-sm text-muted-foreground">{description}</div>
+      {meta && <div className="text-xs text-muted-foreground/70 mt-2">{meta}</div>}
     </button>
   );
 }
@@ -111,11 +111,13 @@ export function WizardStep3({ onNext, onBack }: { onNext: () => void; onBack: ()
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
-          {t("title")}
-        </h2>
-        <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
+      <div className="flex items-center gap-3">
+        <div>
+          <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+            {t("title")}
+          </h2>
+          <p className="text-muted-foreground text-[0.9375rem]">{t("description")}</p>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">

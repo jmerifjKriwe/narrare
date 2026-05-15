@@ -23,12 +23,43 @@ if _project_root not in sys.path:
 
 from scripts.architecture.checkers import scan_file  # noqa: E402
 from scripts.architecture.helpers import ROOT, load_config  # noqa: E402
-from scripts.architecture.types import CheckResult  # noqa: E402
+from scripts.architecture.types import CheckResult, Violation  # noqa: E402
+
+
+def check_forbidden_files(result: CheckResult) -> None:
+    """RULE-15: No middleware.ts in packages/web/.
+
+    Next.js 16+ uses proxy.ts exclusively. The build breaks if both exist.
+    See: docs/_shared/CONSTRAINTS.md
+    """
+    forbidden_patterns = {
+        "middleware.ts": "packages/web",
+    }
+    for filename, search_dir in forbidden_patterns.items():
+        search_path = ROOT / search_dir
+        if not search_path.exists():
+            continue
+        for match in search_path.rglob(filename):
+            result.violations.append(
+                Violation(
+                    file=match,
+                    line=0,
+                    rule="RULE-15",
+                    detail=(
+                        f"Forbidden file '{filename}' found. "
+                        f"Next.js 16+ uses proxy.ts exclusively. "
+                        f"See RULE-15 in docs/_shared/CONSTRAINTS.md."
+                    ),
+                )
+            )
 
 
 def main() -> int:
     config = load_config()
     result = CheckResult()
+
+    # RULE-15: Check for forbidden files before scanning Python sources
+    check_forbidden_files(result)
 
     scan_roots = [ROOT / "apps", ROOT / "packages", ROOT / "scripts", ROOT / "tests"]
     for scan_root in scan_roots:

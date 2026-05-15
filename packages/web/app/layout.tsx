@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { QueryProvider } from "@/components/shared/QueryProvider";
+import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import "@/styles/globals.css";
 import { DM_Sans, Literata, Playfair_Display } from "next/font/google";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <body>
         <NextIntlClientProvider messages={messages}>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <ThemeProvider />
+            {children}
+          </QueryProvider>
         </NextIntlClientProvider>
       </body>
     </html>

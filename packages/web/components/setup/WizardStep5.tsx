@@ -13,11 +13,9 @@ interface SummaryRowProps {
 
 function SummaryRow({ label, value }: SummaryRowProps) {
   return (
-    <div className="flex justify-between items-baseline py-2 border-b border-[var(--color-border)] text-[0.9375rem] gap-4 last:border-b-0">
-      <span className="text-[var(--color-text-secondary)] shrink-0">{label}</span>
-      <span className="text-[var(--color-text-primary)] font-medium text-right break-words">
-        {value || "—"}
-      </span>
+    <div className="flex justify-between items-baseline py-3 border-b border-border/50 text-[0.9375rem] gap-4 last:border-b-0">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="text-foreground font-medium text-right break-words">{value || "—"}</span>
     </div>
   );
 }
@@ -55,16 +53,19 @@ export function WizardStep5({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
-          {t("title")}
-        </h2>
-        <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
+      <div className="flex items-center gap-3">
+        <div>
+          <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+            {t("title")}
+          </h2>
+          <p className="text-muted-foreground text-[0.9375rem]">{t("description")}</p>
+        </div>
       </div>
 
       <div className="flex flex-col gap-5">
-        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+        <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 mb-3 flex items-center gap-2">
+            <span className="w-6 h-[1px] bg-border inline-block" />
             {t("project")}
           </h3>
           <SummaryRow label="Name" value={state.project_name} />
@@ -75,8 +76,9 @@ export function WizardStep5({
           />
         </div>
 
-        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+        <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 mb-3 flex items-center gap-2">
+            <span className="w-6 h-[1px] bg-border inline-block" />
             {t("novel")}
           </h3>
           <SummaryRow label="Title" value={state.title} />
@@ -89,8 +91,9 @@ export function WizardStep5({
           <SummaryRow label="Tone" value={tTone(state.tone as StoryTone)} />
         </div>
 
-        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+        <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 mb-3 flex items-center gap-2">
+            <span className="w-6 h-[1px] bg-border inline-block" />
             {t("starter")}
           </h3>
           <SummaryRow label="Content" value={starterLabel[state.starter] || state.starter} />
@@ -98,8 +101,9 @@ export function WizardStep5({
 
         {/* Provider section — hidden when Step 4 was skipped */}
         {!state.skip_provider && (
-          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2">
+          <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 mb-3 flex items-center gap-2">
+              <span className="w-6 h-[1px] bg-border inline-block" />
               {t("provider")}
             </h3>
             <SummaryRow label="Provider" value={state.provider} />
@@ -109,8 +113,8 @@ export function WizardStep5({
       </div>
 
       {isCreating && (
-        <p className="text-center text-[var(--color-text-secondary)] text-[0.9375rem] p-2">
-          {t("creating")}
+        <p className="text-center text-muted-foreground text-[0.9375rem] p-2 animate-pulse">
+          {t("creating")}...
         </p>
       )}
 

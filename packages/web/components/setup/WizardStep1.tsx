@@ -45,11 +45,13 @@ export function WizardStep1({ onNext }: { onNext: () => void }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
-          {t("title")}
-        </h2>
-        <p className="text-[var(--color-text-secondary)] text-[0.9375rem]">{t("description")}</p>
+      <div className="flex items-center gap-3">
+        <div>
+          <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+            {t("title")}
+          </h2>
+          <p className="text-muted-foreground text-[0.9375rem]">{t("description")}</p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">

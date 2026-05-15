@@ -9,17 +9,24 @@ const SETTINGS_NAV = [
   { href: "/settings/ai-providers", labelKey: "aiProviders" },
   { href: "/settings/ai-model", labelKey: "aiModel" },
   { href: "/settings/ai-prompts", labelKey: "aiPrompts" },
+  { href: "/settings/appearance", labelKey: "appearance" },
 ] as const;
 
 export default function SettingsLayout({ children }: { readonly children: React.ReactNode }) {
   const pathname = usePathname();
   const t = useTranslations("settings-ai.layout");
 
+  // Mock translation for appearance until i18n is updated
+  const translateLabel = (key: string) => {
+    if (key === "appearance") return "Appearance";
+    return t(key as any);
+  };
+
   return (
     <div className="flex h-full">
       {/* Sidebar */}
-      <nav className="w-56 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <h2 className="text-[0.75rem] font-semibold uppercase tracking-[0.15em] text-[var(--color-text-tertiary)] mb-4">
+      <nav className="w-56 shrink-0 border-r border-border bg-card p-6">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
           {t("title")}
         </h2>
         <ul className="flex flex-col gap-1">
@@ -30,14 +37,14 @@ export default function SettingsLayout({ children }: { readonly children: React.
                 <Link
                   href={item.href as Parameters<typeof Link>[0]["href"]}
                   className={cn(
-                    "block px-3 py-2 rounded-lg text-[0.875rem] transition-colors",
+                    "block px-3 py-2 rounded-lg text-sm transition-colors",
                     isActive
-                      ? "bg-[var(--color-accent-light)] text-[var(--color-accent)] font-medium"
-                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)]",
+                      ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                   aria-current={isActive ? "page" : undefined}
                 >
-                  {t(item.labelKey)}
+                  {translateLabel(item.labelKey)}
                 </Link>
               </li>
             );
