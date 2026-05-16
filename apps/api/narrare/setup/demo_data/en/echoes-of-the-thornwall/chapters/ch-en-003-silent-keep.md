@@ -14,8 +14,6 @@ timeline_position: "Day 6"
 location: "loc-temple-silent-flames"
 ---
 
-# Chapter 3: The Silent Keep
-
 The compass led Elara deeper into the forest than she'd ever ventured. Three days from Aethelgard, the trees grew ancient, the air thick with magic that felt like the void but different—older, gentler.
 
 A waterfall cascaded over stone, and behind it, a cave mouth that glowed with soft, multi-colored light.

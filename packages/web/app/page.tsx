@@ -1,6 +1,7 @@
-import { redirect } from "next/navigation";
+"use client";
 
-// Root page: redirect to dashboard (auth middleware handles unauthenticated users)
-export default function RootPage() {
-  redirect("/dashboard");
+import { DashboardView } from "@/components/studio/DashboardView";
+
+export default function DashboardPage() {
+  return <DashboardView />;
 }

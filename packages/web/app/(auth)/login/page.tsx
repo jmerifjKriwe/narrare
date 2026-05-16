@@ -1,105 +1,112 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { useAuthStore } from "@/lib/stores/authStore";
 
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-type FormData = z.infer<typeof schema>;
-
 export default function LoginPage() {
-  const t = useTranslations("auth");
+  const t = useTranslations("studio.auth");
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
-
-  const onSubmit = async (data: FormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
+    setIsSubmitting(true);
     try {
-      const user = await login(data.email, data.password);
-      router.push(user.has_providers ? "/dashboard" : "/wizard");
+      await login(email, password);
+      router.push("/");
     } catch {
-      setError(t("invalidCredentials"));
+      setError(t("loginError"));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-      {/* Main content */}
-      <div className="relative z-10 w-full max-w-[440px] px-6">
-        {/* Wordmark */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold tracking-[0.08em] text-foreground leading-none">
-            Narrare
-          </h1>
-          {/* Ornamental divider below wordmark */}
-          <div className="mt-4 text-muted-foreground/60 text-xs tracking-[0.3em]">— ❧ —</div>
-          <p className="text-muted-foreground mt-4 text-[0.9375rem] leading-relaxed italic">
-            {t("login")}
-          </p>
+    <div className="w-full max-w-sm">
+      {/* Logo */}
+      <div className="flex justify-center mb-8">
+        <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+          <BookOpen className="w-5 h-5 text-primary-foreground" />
         </div>
-
-        {/* Form card */}
-        <div className="bg-card rounded-lg p-10 border border-border shadow-sm">
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-            {error && (
-              <p className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm border-l-2 border-l-destructive">
-                {error}
-              </p>
-            )}
-            <Input
-              {...register("email")}
-              type="email"
-              label={t("email")}
-              placeholder="you@example.com"
-              error={errors.email?.message}
-              autoComplete="email"
-              autoFocus
-            />
-            <Input
-              {...register("password")}
-              type="password"
-              label={t("password")}
-              error={errors.password?.message}
-              autoComplete="current-password"
-            />
-            <Button
-              type="submit"
-              loading={isSubmitting}
-              className="w-full h-11 text-[0.9375rem] mt-2 tracking-wide font-medium"
-            >
-              {t("loginButton")}
-            </Button>
-          </form>
-        </div>
-
-        {/* Register link */}
-        <p className="mt-10 text-center text-sm text-muted-foreground">
-          {t("noAccount")}{" "}
-          <Link
-            href="/register"
-            className="text-primary no-underline font-medium hover:text-primary/80 transition-colors"
-          >
-            {t("register")}
-          </Link>
-        </p>
       </div>
+
+      {/* Card */}
+      <div className="bg-card border border-border rounded-xl shadow-lg p-8">
+        <h1 className="text-xl font-semibold text-foreground text-center mb-1">
+          {t("loginTitle")}
+        </h1>
+        <p className="text-sm text-muted-foreground text-center mb-6">{t("loginSubtitle")}</p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {error && (
+            <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm border-l-2 border-l-destructive">
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="login-email" className="text-sm font-medium text-foreground">
+              {t("email")}
+            </label>
+            <input
+              id="login-email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t("emailPlaceholder")}
+              autoComplete="email"
+              // biome-ignore lint/a11y/noAutofocus: intentional focus on login email field
+              autoFocus
+              className="h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="login-password" className="text-sm font-medium text-foreground">
+              {t("password")}
+            </label>
+            <input
+              id="login-password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t("passwordPlaceholder")}
+              autoComplete="current-password"
+              className="h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-2 h-9 w-full rounded-md bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+          >
+            {isSubmitting ? t("loading") : t("loginButton")}
+          </button>
+        </form>
+      </div>
+
+      {/* Register link */}
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        {t("noAccount")}{" "}
+        <Link
+          href="/register"
+          className="text-primary font-medium hover:text-primary/80 transition-colors no-underline"
+        >
+          {t("signUp")}
+        </Link>
+      </p>
     </div>
   );
 }

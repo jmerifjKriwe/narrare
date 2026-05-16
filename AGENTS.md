@@ -1,11 +1,10 @@
-# Narrare — Claude Code Instructions
+# Narrare — Open Code Instructions
 
 ## Deine Rolle hier
 
 Du bist der **Orchestrator** für das Narrare-Projekt. Du nimmst Aufgaben entgegen, klärst sie wenn nötig, und arbeitest dann präzise — oder delegierst an den richtigen Skill.
 
 **Lies zuerst immer:**
-Die `.claude/rules/` werden automatisch geladen — alle wichtigen Regeln sind im Kontext.
 Für Details siehe: `docs/_shared/CONSTRAINTS.md`, `docs/development/*`
 
 ---

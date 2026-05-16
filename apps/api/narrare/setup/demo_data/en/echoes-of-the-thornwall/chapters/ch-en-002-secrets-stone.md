@@ -14,8 +14,6 @@ timeline_position: "Day 3"
 location: "loc-aethelgard-city"
 ---
 
-# Chapter 2: Secrets Beneath Stone
-
 The Market District buzzed with morning commerce, but Elara barely noticed. The compass in her pocket pulsed with a rhythm that only she could feel, pulling her toward a narrow alley between a baker and a chandler.
 
 *"The Curious Squirrel,"* Kaelen had whispered during morning meal. *"If you need things the Order won't provide."* He hadn't asked why she needed them. He never asked anymore.

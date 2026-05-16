@@ -1,10 +1,9 @@
 /* ---------------------------------------------------------------------------
    Neutral Theme — Clean, stone-gray palette.
-   Single theme system: :root (light) + .dark (dark mode).
-   No data-theme, no pergament remnants.
+   Activated via [data-theme="neutral"] on <html>.
    --------------------------------------------------------------------------- */
 
-:root {
+[data-theme="neutral"] {
   --font-size: 16px;
   --background: #f8f8f7;
   --foreground: #1a1a1a;
@@ -52,7 +51,7 @@
   --panel-width: 320px;
 }
 
-.dark {
+[data-theme="neutral"].dark {
   --background: #0a0a0a;
   --foreground: #fafafa;
   --card: #171717;

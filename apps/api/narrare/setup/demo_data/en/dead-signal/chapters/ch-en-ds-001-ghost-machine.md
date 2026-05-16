@@ -13,8 +13,6 @@ timeline_position: "Day 1, 1400 hours"
 location: "loc-horizon"
 ---
 
-# Chapter 1: Ghost in the Machine
-
 I was in the middle of recalibrating the quantum sensors—again—when ARIA's voice cut through the hum of the engineering deck.
 
 "Maya. Incoming transmission on the emergency frequency."

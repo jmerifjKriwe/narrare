@@ -13,8 +13,6 @@ timeline_position: "Tag 7"
 location: "loc-wald"
 ---
 
-# Kapitel 2: Die Grenze zwischen Welten
-
 Anna kehrte eine Woche später zum Försterhaus zurück. Sie hatte nicht geplant, zurückzukehren, aber sie hatte geträumt—nicht einmal, sondern jede Nacht. Und in jedem Traum war der Wald da, und die Stimme, und das Gefühl, dass da etwas war, das sie nicht erklären konnte, das aber trotzdem real war.
 
 Diesmal klopfte sie nicht. Sie öffnete die Tür und trat ein, als wäre sie schon oft hier gewesen, und Johann stand am Fenster und blickte in den Wald, als hätte er auf sie gewartet.

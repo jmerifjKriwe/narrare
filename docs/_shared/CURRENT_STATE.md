@@ -181,7 +181,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `narrare_i18n/` stub: will become Python loader for CLI/MCP/A2A
 - Validation: key completeness + placeholder consistency in pre-commit and CI
 
-#### `packages/web/` — Next.js 15 Frontend (Phase 4)
+#### `packages/web/` — Next.js 16 Frontend (Phase 4)
 
 **App Structure (App Router):**
 - `app/(auth)/` — Login, Register pages with form validation (react-hook-form + zod)

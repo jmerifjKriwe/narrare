@@ -13,8 +13,6 @@ timeline_position: "Day 2, 0300 hours"
 location: "loc-horizon"
 ---
 
-# Chapter 3: Signal Lost
-
 Director Kavic's shuttle docked with Horizon Station at 0300 station time. I met him at the airlock, trying to look more confident than I felt.
 
 "Dr. Chen." He offered his hand, and I shook it automatically. "Thank you for agreeing to this meeting."

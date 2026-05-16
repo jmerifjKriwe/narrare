@@ -3,17 +3,14 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { QueryProvider } from "@/components/shared/QueryProvider";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
-import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: {
-    default: "Narrare",
-    template: "%s | Narrare",
-  },
+  title: { default: "Narrare", template: "%s | Narrare" },
   description: "AI-assisted creative writing environment",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -22,7 +19,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={inter.className}>
+      <head>
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: inline FOUC-prevention script must run before paint
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('narrare-theme'));var t=(s&&s.state&&s.state.theme)||'neutral';var m=(s&&s.state&&s.state.colorMode)||'system';document.documentElement.setAttribute('data-theme',t);if(m==='dark'||(m==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){document.documentElement.setAttribute('data-theme','neutral')}})()`,
+          }}
+        />
+      </head>
+      <body>
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>
             <ThemeProvider />

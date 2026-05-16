@@ -18,10 +18,14 @@ interface EditorState {
   // Editor reference — set by EditorSurface, read by CommandPalette
   editor: Editor | null;
 
+  // Drag state — true while a block drag is in progress
+  isDragging: boolean;
+
   // Actions
   setActiveChapterId: (id: string | null) => void;
   setSaveStatus: (status: SaveStatus) => void;
   setEditor: (editor: Editor | null) => void;
+  setIsDragging: (dragging: boolean) => void;
   toggleSidebar: () => void;
   toggleContextPanel: () => void;
   toggleFocusMode: () => void;
@@ -40,6 +44,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   contextPanelOpen: false,
   focusMode: false,
   editor: null,
+  isDragging: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
 
@@ -50,6 +55,8 @@ export const useEditorStore = create<EditorState>((set) => ({
     }),
 
   setEditor: (editor) => set({ editor }),
+
+  setIsDragging: (isDragging) => set({ isDragging }),
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 

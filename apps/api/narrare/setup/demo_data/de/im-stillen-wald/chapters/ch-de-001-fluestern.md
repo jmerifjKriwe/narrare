@@ -13,8 +13,6 @@ timeline_position: "Tag 1"
 location: "loc-foersterhaus"
 ---
 
-# Kapitel 1: Das Flüstern im Wald
-
 Anna Müller kannte das Försterhaus vom Hörensagen. Die Dorfbewohner sprachen darüber in halben Sätzen, als wäre das Haus selbst ein Geheimnis, das man nicht ganz aussprechen sollte. Der Förster, sagten sie, sei so alt wie der Wald. Er sei ein Teil davon, nicht mehr ganz Mensch. Er könne Dinge sehen, die andere nicht sehen könnten. Er könne mit den Bäumen sprechen.
 
 Anna glaubte kein Wort davon. Sie war Lehrerin, sie war eine Frau der Logik, sie brauchte Beweise für Dinge, bevor sie sie glaubte. Aber die Kinder in ihrer Klasse sprachen auch vom Förster und seinen Geschichten, und irgendwann musste sie selbst nachsehen, worum es eigentlich ging.

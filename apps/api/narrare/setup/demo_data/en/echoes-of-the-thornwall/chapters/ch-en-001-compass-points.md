@@ -14,8 +14,6 @@ timeline_position: "Day 1"
 location: "loc-thornwall"
 ---
 
-# Chapter 1: The Compass Points
-
 The ruined tower smelled of ancient stone and something else—something that made Elara's skin tingle.
 
 "Stay together," Master Verrick said, his light spell illuminating cracked walls and collapsed ceilings. "The spatial distortion here is unpredictable."

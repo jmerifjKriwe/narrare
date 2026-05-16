@@ -40,6 +40,7 @@ class UserSettingsRepository:
         for field, value in request.model_dump(exclude_none=True).items():
             setattr(settings, field, value)
         await self._session.flush()
+        await self._session.refresh(settings)
         return settings
 
 
@@ -65,4 +66,5 @@ class ProjectSettingsRepository:
         for field, value in request.model_dump(exclude_none=True).items():
             setattr(settings, field, value)
         await self._session.flush()
+        await self._session.refresh(settings)
         return settings

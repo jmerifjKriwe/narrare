@@ -13,8 +13,6 @@ timeline_position: "Day 1, 1800 hours"
 location: "loc-horizon"
 ---
 
-# Chapter 2: The Door Between Worlds
-
 The connection took four hours to establish. Four hours of ARIA and me working in silence, bypassing safety protocols, draining power from nonessential systems, and essentially turning Horizon Station into a giant quantum transmitter.
 
 When the green light finally flashed on the console, I was so tired I almost missed it.

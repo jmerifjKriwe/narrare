@@ -1,9 +1,55 @@
 /* ---------------------------------------------------------------------------
    Narrare Theme — Premium, high-contrast palette.
    Based on the Figma design specifications.
+   Activated via [data-theme="narrare"] on <html>.
    --------------------------------------------------------------------------- */
 
 :root {
+  /* Fallback values — ensure CSS variables are available to ALL elements,
+     including those created outside the React tree (e.g., TipTap BubbleMenu
+     which uses document.createElement + appendChild). Without these fallbacks,
+     var(--popover) etc. resolve to undefined on detached-then-appended elements. */
+  --font-size: 16px;
+  --background: #f8f8f7;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #2c2c2c;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f3;
+  --secondary-foreground: #2c2c2c;
+  --muted: #f0f0ef;
+  --muted-foreground: #737373;
+  --accent: #f4f4f3;
+  --accent-foreground: #2c2c2c;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e4;
+  --input: transparent;
+  --input-background: #fafafa;
+  --switch-background: #d4d4d3;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #525252;
+  --radius: 0.5rem;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #2c2c2c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f3;
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: #e5e5e4;
+  --sidebar-ring: #525252;
+  --editor-max-width: 68ch;
+  --editor-line-height: 1.8;
+  --editor-font-size: 1.0625rem;
+  --sidebar-width: 288px;
+  --panel-width: 320px;
+}
+
+[data-theme="narrare"] {
   --font-size: 16px;
   --background: #ffffff;
   --foreground: oklch(0.145 0 0);
@@ -51,7 +97,7 @@
   --panel-width: 320px;
 }
 
-.dark {
+[data-theme="narrare"].dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);

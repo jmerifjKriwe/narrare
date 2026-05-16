@@ -105,20 +105,12 @@
   outline: none;
 }
 
-/* Force BubbleMenu fully opaque.
-   TipTap's BubbleMenuPlugin manages opacity via inline styles on the same
-   element that carries the .bubble-menu class. It sets opacity: "0" on hide
-   and opacity: "1" on show. Without these overrides, any CSS transition on
-   the element causes the opacity change to animate, producing a semi-transparent
-   flash where editor text bleeds through the menu.
-   The :has() selector also covers the case where a parent wrapper element
-   (e.g. from floating-ui positioning) receives the opacity instead. */
-.bubble-menu,
-*:has(> .bubble-menu) {
-  opacity: 1 !important;
-  transition: none !important;
-}
-
+/* BubbleMenu — force solid background.
+   TipTap's BubbleMenuPlugin manages visibility and opacity via inline styles
+   (opacity: "0" on hide, opacity: "1" on show). The !important ensures the
+   background stays solid at all times, overriding any inherited transparency.
+   CSS variables are available via :root fallback in themes/narrare.css. */
 .bubble-menu {
+  opacity: 1 !important;
   background-color: var(--popover) !important;
 }

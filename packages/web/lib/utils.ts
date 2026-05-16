@@ -61,3 +61,45 @@ export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength - 1)}…`;
 }
+
+/**
+ * Convert basic Markdown to HTML for TipTap consumption.
+ *
+ * TipTap's `setContent()` expects HTML. When the backend stores content as
+ * Markdown (e.g. demo/seed data), the raw syntax (`#`, `**`, etc.) would
+ * render as plain text. This lightweight converter handles the common cases
+ * found in chapter content. If the input already looks like HTML it is
+ * returned unchanged.
+ */
+export function markdownToHtml(md: string): string {
+  if (!md) return "";
+
+  // Already HTML — leave it alone
+  if (md.trim().startsWith("<")) return md;
+
+  let html = md;
+
+  // Headers: ### → <h3>, ## → <h2>, # → <h1>  (order matters)
+  html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+  html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+  html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+
+  // Bold: **text** → <strong>text</strong>
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+  // Italic: *text* (not inside **)
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+
+  // Split into blocks by double newlines and wrap non-heading blocks in <p>
+  const blocks = html.split(/\n\n+/);
+  html = blocks
+    .map((block) => {
+      const trimmed = block.trim();
+      if (!trimmed) return "";
+      if (trimmed.startsWith("<h")) return trimmed;
+      return `<p>${trimmed.replace(/\n/g, "<br>")}</p>`;
+    })
+    .join("");
+
+  return html;
+}

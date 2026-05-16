@@ -14,8 +14,6 @@ timeline_position: "Day 8"
 location: "loc-silver-flame-fortress"
 ---
 
-# Chapter 4: The Archive of Truth
-
 The Secret Archives lay beneath the fortress, accessible only through a passage the Order didn't officially acknowledge. Elara had found it during her months of secret exploration—using void magic to bypass the Order's wards, a skill she'd developed without anyone teaching her.
 
 Tonight, she needed answers. The compass had pointed here insistently for days. Whatever the Order was hiding, it was down there.

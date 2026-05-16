@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ColorMode, ThemeName } from "@/lib/stores/themeStore";
 import { useThemeStore } from "@/lib/stores/themeStore";
-import type { ColorMode } from "@/lib/stores/themeStore";
 
-function applyColorMode(mode: ColorMode) {
+function applyTheme(theme: ThemeName, colorMode: ColorMode) {
   const root = document.documentElement;
 
-  if (mode === "dark") {
+  // Set theme attribute
+  root.setAttribute("data-theme", theme);
+
+  // Set dark mode class
+  if (colorMode === "dark") {
     root.classList.add("dark");
-  } else if (mode === "light") {
+  } else if (colorMode === "light") {
     root.classList.remove("dark");
   } else {
     // system
@@ -19,6 +23,7 @@ function applyColorMode(mode: ColorMode) {
 }
 
 export function ThemeProvider() {
+  const theme = useThemeStore((s) => s.theme);
   const colorMode = useThemeStore((s) => s.colorMode);
   const [mounted, setMounted] = useState(false);
 
@@ -28,22 +33,19 @@ export function ThemeProvider() {
 
   useEffect(() => {
     if (!mounted) return;
-    applyColorMode(colorMode);
-  }, [colorMode, mounted]);
+    applyTheme(theme, colorMode);
+  }, [theme, colorMode, mounted]);
 
   // Listen for system preference changes when mode is "system"
   useEffect(() => {
     if (!mounted || colorMode !== "system") return;
-
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => {
       document.documentElement.classList.toggle("dark", e.matches);
     };
-
     mediaQuery.addEventListener("change", handler);
     return () => mediaQuery.removeEventListener("change", handler);
   }, [colorMode, mounted]);
 
-  // Return null — this component only modifies the <html> class
   return null;
 }

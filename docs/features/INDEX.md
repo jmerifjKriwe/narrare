@@ -57,6 +57,7 @@
 | [WRITE-008](writing/WRITE-008-multi-draft.md) | Multi-Draft Generation | 📋 | ❌ |
 | [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Block Tools | 📋 | ❌ |
 | [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | 📋 | ❌ |
+| [WRITE-011](writing/WRITE-011-volume-management.md) | Volume Management | 📋 | ❌ |
 
 ### Knowledge Base
 | ID | Feature | Status | MVP |
