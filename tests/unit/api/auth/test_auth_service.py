@@ -6,10 +6,10 @@ import uuid
 from unittest.mock import patch
 
 import pytest
-from fastapi import HTTPException
 
 from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 from narrare.auth.service import AuthService
+from narrare_core.shared.errors import AuthenticationError, ConflictError
 from tests.factories import make_user
 from tests.fakes import FakeAuthRepository
 
@@ -60,10 +60,9 @@ class TestAuthServiceRegister:
         existing = make_user(email="taken@example.com")
         fake_repo.seed(existing)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(ConflictError) as exc:
             await service.register(RegisterRequest(email="taken@example.com", password="secret123"))
-        assert exc.value.status_code == 409
-        assert "already registered" in exc.value.detail
+        assert "already registered" in str(exc.value)
 
     async def test_register_hashes_password_and_creates_user(
         self, service: AuthService, fake_repo: FakeAuthRepository
@@ -106,15 +105,13 @@ class TestAuthServiceLogin:
 
         with (
             patch("narrare.auth.service.verify_password", return_value=False),
-            pytest.raises(HTTPException) as exc,
+            pytest.raises(AuthenticationError),
         ):
             await service.login(LoginRequest(email="test@example.com", password="wrong"))
-        assert exc.value.status_code == 401
 
     async def test_login_with_unknown_email_raises_401(self, service: AuthService) -> None:
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(AuthenticationError):
             await service.login(LoginRequest(email="nobody@example.com", password="secret"))
-        assert exc.value.status_code == 401
 
     async def test_login_with_inactive_user_raises_401(
         self, service: AuthService, fake_repo: FakeAuthRepository
@@ -124,11 +121,10 @@ class TestAuthServiceLogin:
 
         with (
             patch("narrare.auth.service.verify_password", return_value=True),
-            pytest.raises(HTTPException) as exc,
+            pytest.raises(AuthenticationError) as exc,
         ):
             await service.login(LoginRequest(email="test@example.com", password="secret"))
-        assert exc.value.status_code == 401
-        assert "disabled" in exc.value.detail
+        assert "disabled" in str(exc.value)
 
 
 # ---------------------------------------------------------------------------
@@ -153,30 +149,27 @@ class TestAuthServiceRefresh:
     async def test_refresh_with_invalid_token_raises_401(self, service: AuthService) -> None:
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=None),
-            pytest.raises(HTTPException) as exc,
+            pytest.raises(AuthenticationError),
         ):
             await service.refresh("bad-token")
-        assert exc.value.status_code == 401
 
     async def test_refresh_with_missing_sub_raises_401(self, service: AuthService) -> None:
         payload = {"type": "refresh"}  # no "sub"
 
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=payload),
-            pytest.raises(HTTPException) as exc,
+            pytest.raises(AuthenticationError),
         ):
             await service.refresh("token-without-sub")
-        assert exc.value.status_code == 401
 
     async def test_refresh_for_deleted_user_raises_401(self, service: AuthService) -> None:
         payload = {"sub": str(uuid.uuid4()), "type": "refresh"}
 
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=payload),
-            pytest.raises(HTTPException) as exc,
+            pytest.raises(AuthenticationError),
         ):
             await service.refresh("valid-token")
-        assert exc.value.status_code == 401
 
     async def test_refresh_for_inactive_user_raises_401(
         self, service: AuthService, fake_repo: FakeAuthRepository
@@ -187,10 +180,9 @@ class TestAuthServiceRefresh:
 
         with (
             patch("narrare.auth.service.verify_refresh_token", return_value=payload),
-            pytest.raises(HTTPException) as exc,
+            pytest.raises(AuthenticationError),
         ):
             await service.refresh("valid-token")
-        assert exc.value.status_code == 401
 
 
 # ---------------------------------------------------------------------------

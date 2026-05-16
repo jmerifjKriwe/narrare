@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import structlog
-from fastapi import HTTPException, status
 
 from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 from narrare.auth.security import (
@@ -16,6 +15,7 @@ from narrare.auth.security import (
     verify_password,
     verify_refresh_token,
 )
+from narrare_core.shared.errors import AuthenticationError, ConflictError
 
 if TYPE_CHECKING:
     from narrare._app.config import Settings
@@ -42,14 +42,11 @@ class AuthService:
             TokenResponse with access and refresh tokens.
 
         Raises:
-            HTTPException 409: If email is already registered.
+            ConflictError: If email is already registered.
         """
         existing = await self._repo.get_by_email(request.email)
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Email already registered",
-            )
+            raise ConflictError("Email already registered")
 
         hashed = hash_password(request.password)
         user = await self._repo.create(
@@ -72,23 +69,16 @@ class AuthService:
             TokenResponse with access and refresh tokens.
 
         Raises:
-            HTTPException 401: If credentials are invalid.
+            AuthenticationError: If credentials are invalid.
         """
         user = await self._repo.get_by_email(request.email)
 
         # Constant-time comparison to prevent timing attacks
         if not user or not verify_password(request.password, user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise AuthenticationError("Invalid email or password")
 
         if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Account is disabled",
-            )
+            raise AuthenticationError("Account is disabled")
 
         # Rehash password if it uses outdated parameters or legacy algorithm
         if needs_rehash(user.hashed_password):
@@ -114,31 +104,22 @@ class AuthService:
             New TokenResponse with fresh access and refresh tokens.
 
         Raises:
-            HTTPException 401: If refresh token is invalid or expired.
+            AuthenticationError: If refresh token is invalid or expired.
         """
         payload = verify_refresh_token(refresh_token, self._settings.secret_key)
         if payload is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired refresh token",
-            )
+            raise AuthenticationError("Invalid or expired refresh token")
 
         user_id = payload.get("sub")
         if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload",
-            )
+            raise AuthenticationError("Invalid token payload")
 
         # Verify user still exists and is active
         from uuid import UUID
 
         user = await self._repo.get_by_id(UUID(user_id))
         if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found or inactive",
-            )
+            raise AuthenticationError("User not found or inactive")
 
         return self._create_tokens(user_id)
 

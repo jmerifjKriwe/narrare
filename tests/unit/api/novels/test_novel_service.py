@@ -5,10 +5,10 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from fastapi import HTTPException
 
 from narrare.novels.schemas import CreateNovelRequest, UpdateNovelRequest
 from narrare.novels.service import NovelService
+from narrare_core.shared.errors import NotFoundError
 from tests.factories import make_novel
 from tests.fakes import FakeNovelRepository
 
@@ -39,9 +39,8 @@ class TestNovelServiceGet:
         assert result == novel
 
     async def test_get_raises_404_when_not_found(self, service: NovelService) -> None:
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.get(uuid.uuid4(), uuid.uuid4())
-        assert exc.value.status_code == 404
 
 
 class TestNovelServiceList:
@@ -82,9 +81,8 @@ class TestNovelServiceUpdate:
         assert result.title == "Updated Title"
 
     async def test_update_raises_404_when_not_found(self, service: NovelService) -> None:
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.update(uuid.uuid4(), uuid.uuid4(), UpdateNovelRequest())
-        assert exc.value.status_code == 404
 
 
 class TestNovelServiceDelete:
@@ -99,6 +97,5 @@ class TestNovelServiceDelete:
         fake_repo.assert_called_once("delete")
 
     async def test_delete_raises_404_when_not_found(self, service: NovelService) -> None:
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.delete(uuid.uuid4(), uuid.uuid4())
-        assert exc.value.status_code == 404

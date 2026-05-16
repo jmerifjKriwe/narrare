@@ -5,12 +5,12 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from fastapi import HTTPException
 from tests.factories import make_novel, make_volume
 from tests.fakes import FakeNovelService, FakeVolumeRepository
 
 from narrare.volumes.schemas import CreateVolumeRequest, UpdateVolumeRequest
 from narrare.volumes.service import VolumeService
+from narrare_core.shared.errors import NotFoundError
 
 
 @pytest.fixture
@@ -60,9 +60,8 @@ class TestVolumeServiceGet:
     ) -> None:
         novel_id, user_id = _seed_ownership(fake_novel_service)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.get(uuid.uuid4(), novel_id, user_id)
-        assert exc.value.status_code == 404
 
 
 class TestVolumeServiceList:
@@ -128,9 +127,8 @@ class TestVolumeServiceUpdate:
     ) -> None:
         novel_id, user_id = _seed_ownership(fake_novel_service)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.update(uuid.uuid4(), novel_id, user_id, UpdateVolumeRequest())
-        assert exc.value.status_code == 404
 
 
 class TestVolumeServiceDelete:
@@ -152,6 +150,5 @@ class TestVolumeServiceDelete:
     ) -> None:
         novel_id, user_id = _seed_ownership(fake_novel_service)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.delete(uuid.uuid4(), novel_id, user_id)
-        assert exc.value.status_code == 404

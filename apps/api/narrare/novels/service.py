@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import structlog
-from fastapi import HTTPException, status
+
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -26,14 +27,11 @@ class NovelService:
         Get a novel by ID, verifying ownership.
 
         Raises:
-            HTTPException 404: If novel not found or doesn't belong to user.
+            NotFoundError: If novel not found or doesn't belong to user.
         """
         novel = await self._repo.get_by_id(novel_id, user_id)
         if not novel:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Novel not found",
-            )
+            raise NotFoundError("Novel", identifier=str(novel_id))
         return novel
 
     async def list_novels(self, user_id: uuid.UUID) -> list[Novel]:

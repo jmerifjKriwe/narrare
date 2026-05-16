@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import structlog
-from fastapi import HTTPException, status
 
 from narrare.chapters.repository import count_words
+from narrare_core.shared.errors import NotFoundError, ValidationError
 
 if TYPE_CHECKING:
     import uuid
@@ -45,10 +45,7 @@ class ChapterService:
         await self._novel_service.get(novel_id, user_id)  # ownership check
         chapter = await self._repo.get_by_id(chapter_id, novel_id)
         if not chapter:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Chapter not found",
-            )
+            raise NotFoundError("Chapter", identifier=str(chapter_id))
         return chapter
 
     async def list_chapters(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> list[Chapter]:
@@ -77,9 +74,8 @@ class ChapterService:
         request: UpdateChapterContentRequest,
     ) -> Chapter:
         if len(request.content) > _MAX_CONTENT_LENGTH:
-            raise HTTPException(
-                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=f"Chapter content exceeds {_MAX_CONTENT_LENGTH:,} character limit",
+            raise ValidationError(
+                f"Chapter content exceeds {_MAX_CONTENT_LENGTH:,} character limit"
             )
         chapter = await self.get(chapter_id, novel_id, user_id)
         word_count = request.word_count or count_words(request.content)
@@ -154,10 +150,7 @@ class ChapterService:
         chapter = await self.get(chapter_id, novel_id, user_id)
         version = await self._repo.get_version(version_id, chapter_id)
         if not version:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Version not found",
-            )
+            raise NotFoundError("Version", identifier=str(version_id))
 
         # Save current content as version before restoring
         latest = await self._repo.get_latest_version_number(chapter_id)

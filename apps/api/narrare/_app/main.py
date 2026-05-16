@@ -54,6 +54,23 @@ def create_app() -> FastAPI:
     async def _narrare_error_handler(  # pyright: ignore[reportUnusedFunction]
         _: Request, exc: NarrareError
     ) -> JSONResponse:
+        from narrare_core.shared.errors import (
+            AuthenticationError,
+            ConflictError,
+            ForbiddenError,
+            NotFoundError,
+        )
+
+        status_code = 400  # default for NarrareError
+        if isinstance(exc, NotFoundError):
+            status_code = 404
+        elif isinstance(exc, ForbiddenError):
+            status_code = 403
+        elif isinstance(exc, ConflictError):
+            status_code = 409
+        elif isinstance(exc, AuthenticationError):
+            status_code = 401
+
         logger.error(
             "narrare_error",
             code=exc.code,
@@ -61,7 +78,7 @@ def create_app() -> FastAPI:
             exc_info=True,
         )
         return JSONResponse(
-            status_code=400,
+            status_code=status_code,
             content={"detail": str(exc), "code": exc.code},
         )
 

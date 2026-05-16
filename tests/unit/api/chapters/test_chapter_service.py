@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from fastapi import HTTPException
 
 from narrare.chapters.schemas import (
     CreateChapterRequest,
@@ -13,6 +12,7 @@ from narrare.chapters.schemas import (
     UpdateChapterMetaRequest,
 )
 from narrare.chapters.service import ChapterService
+from narrare_core.shared.errors import NotFoundError, ValidationError
 from tests.factories import make_chapter, make_novel
 from tests.fakes import FakeChapterRepository, FakeNovelService
 
@@ -63,14 +63,14 @@ class TestChapterServiceUpdateContent:
         chapter = make_chapter(novel_id=novel_id)
         fake_repo.seed(chapter)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(ValidationError) as exc:
             await service.update_content(
                 chapter.id,
                 novel_id,
                 user_id,
                 UpdateChapterContentRequest(content="x" * 100_001),
             )
-        assert exc.value.status_code == 413
+        assert "character limit" in str(exc.value)
 
     async def test_computes_word_count_when_not_provided(
         self,
@@ -95,14 +95,13 @@ class TestChapterServiceUpdateContent:
     ) -> None:
         novel_id, user_id = _seed_ownership(fake_novel_service)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.update_content(
                 uuid.uuid4(),
                 novel_id,
                 user_id,
                 UpdateChapterContentRequest(content="content"),
             )
-        assert exc.value.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -129,9 +128,8 @@ class TestChapterServiceGet:
     ) -> None:
         novel_id, user_id = _seed_ownership(fake_novel_service)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.get(uuid.uuid4(), novel_id, user_id)
-        assert exc.value.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -265,6 +263,5 @@ class TestChapterServiceDelete:
     ) -> None:
         novel_id, user_id = _seed_ownership(fake_novel_service)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(NotFoundError):
             await service.delete(uuid.uuid4(), novel_id, user_id)
-        assert exc.value.status_code == 404

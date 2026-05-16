@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException, status
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -28,7 +28,7 @@ class VolumeService:
         await self._novel_service.get(novel_id, user_id)
         volume = await self._repo.get_by_id(volume_id, novel_id)
         if not volume:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Volume not found")
+            raise NotFoundError("Volume", identifier=str(volume_id))
         return volume
 
     async def list_volumes(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> list[Volume]:
