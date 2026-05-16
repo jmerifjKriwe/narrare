@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from narrare_core.shared.errors import (
+    AuthenticationError,
+    ConflictError,
+    ForbiddenError,
     LLMAuthError,
     LLMContextTooLargeError,
     LLMGatewayError,
     LLMRateLimitError,
     LLMTimeoutError,
     NarrareError,
+    NotFoundError,
     PromptNotFoundError,
     PromptVariableError,
     WritingError,
@@ -85,3 +89,85 @@ class TestPromptErrors:
     def test_prompt_variable_error_with_prompt_id(self) -> None:
         err = PromptVariableError("language", prompt_id="writing/en/new_chapter")
         assert "writing/en/new_chapter" in str(err)
+
+
+class TestNotFoundError:
+    def test_default_message(self) -> None:
+        err = NotFoundError()
+        assert str(err) == "Resource not found"
+        assert err.code == "NOT_FOUND"
+
+    def test_custom_resource(self) -> None:
+        err = NotFoundError("Chapter")
+        assert str(err) == "Chapter not found"
+        assert err.resource == "Chapter"
+
+    def test_resource_with_identifier(self) -> None:
+        err = NotFoundError("Novel", identifier="abc-123")
+        assert str(err) == "Novel (abc-123) not found"
+        assert err.resource == "Novel"
+        assert err.identifier == "abc-123"
+
+    def test_resource_without_identifier(self) -> None:
+        err = NotFoundError("Volume")
+        assert str(err) == "Volume not found"
+        assert err.identifier == ""
+
+    def test_is_narrare_error(self) -> None:
+        assert issubclass(NotFoundError, NarrareError)
+
+    def test_repr_includes_code(self) -> None:
+        err = NotFoundError("Chapter")
+        assert "NotFoundError" in repr(err)
+        assert "NOT_FOUND" in repr(err)
+
+
+class TestForbiddenError:
+    def test_default_message(self) -> None:
+        err = ForbiddenError()
+        assert str(err) == "Access denied"
+        assert err.code == "FORBIDDEN"
+
+    def test_custom_message(self) -> None:
+        err = ForbiddenError("You cannot edit this novel")
+        assert str(err) == "You cannot edit this novel"
+
+    def test_is_narrare_error(self) -> None:
+        assert issubclass(ForbiddenError, NarrareError)
+
+
+class TestConflictError:
+    def test_default_message(self) -> None:
+        err = ConflictError()
+        assert str(err) == "Conflict"
+        assert err.code == "CONFLICT"
+
+    def test_custom_message(self) -> None:
+        err = ConflictError("Email already registered")
+        assert str(err) == "Email already registered"
+
+    def test_is_narrare_error(self) -> None:
+        assert issubclass(ConflictError, NarrareError)
+
+
+class TestAuthenticationError:
+    def test_default_message(self) -> None:
+        err = AuthenticationError()
+        assert str(err) == "Authentication required"
+        assert err.code == "AUTHENTICATION_ERROR"
+
+    def test_custom_message(self) -> None:
+        err = AuthenticationError("Invalid email or password")
+        assert str(err) == "Invalid email or password"
+
+    def test_is_narrare_error(self) -> None:
+        assert issubclass(AuthenticationError, NarrareError)
+
+    def test_exception_chaining(self) -> None:
+        """AuthenticationError can wrap underlying exceptions."""
+        original = ValueError("bad token")
+        try:
+            raise AuthenticationError("Invalid token") from original
+        except AuthenticationError as exc:
+            assert exc.__cause__ is original
+            assert str(exc) == "Invalid token"

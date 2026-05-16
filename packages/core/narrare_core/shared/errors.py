@@ -152,3 +152,41 @@ class ConfigurationError(NarrareError):
 
     def __init__(self, message: str = "Configuration error", *, code: str | None = None) -> None:
         super().__init__(message, code=code)
+
+
+# ---------------------------------------------------------------------------
+# Resource / request errors
+# ---------------------------------------------------------------------------
+
+
+class NotFoundError(NarrareError):
+    """Requested resource was not found."""
+
+    def __init__(self, resource: str = "Resource", *, identifier: str = "") -> None:
+        detail = resource
+        if identifier:
+            detail += f" ({identifier})"
+        super().__init__(f"{detail} not found", code="NOT_FOUND")
+        self.resource = resource
+        self.identifier = identifier
+
+
+class ForbiddenError(NarrareError):
+    """User does not have permission to access this resource."""
+
+    def __init__(self, message: str = "Access denied") -> None:
+        super().__init__(message, code="FORBIDDEN")
+
+
+class ConflictError(NarrareError):
+    """Resource already exists or state conflict."""
+
+    def __init__(self, message: str = "Conflict") -> None:
+        super().__init__(message, code="CONFLICT")
+
+
+class AuthenticationError(NarrareError):
+    """Authentication failed or not provided."""
+
+    def __init__(self, message: str = "Authentication required") -> None:
+        super().__init__(message, code="AUTHENTICATION_ERROR")

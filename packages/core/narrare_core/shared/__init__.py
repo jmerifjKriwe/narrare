@@ -1,8 +1,11 @@
 """Shared utilities — pure functions, no I/O dependencies."""
 
 from narrare_core.shared.errors import (
+    AuthenticationError,
+    ConflictError,
     ContextAssemblyError,
     EmbeddingError,
+    ForbiddenError,
     KBError,
     LLMAuthError,
     LLMContextTooLargeError,
@@ -12,6 +15,7 @@ from narrare_core.shared.errors import (
     LLMServiceUnavailableError,
     LLMTimeoutError,
     NarrareError,
+    NotFoundError,
     PromptError,
     PromptNotFoundError,
     PromptVariableError,
@@ -28,9 +32,12 @@ from narrare_core.shared.pagination import PaginatedResponse, PaginationParams
 from narrare_core.shared.result import Err, Ok, Result
 
 __all__ = [
+    "AuthenticationError",
+    "ConflictError",
     "ContextAssemblyError",
     "EmbeddingError",
     "Err",
+    "ForbiddenError",
     "KBError",
     "LLMAuthError",
     "LLMContextTooLargeError",
@@ -40,6 +47,7 @@ __all__ = [
     "LLMServiceUnavailableError",
     "LLMTimeoutError",
     "NarrareError",
+    "NotFoundError",
     "Ok",
     "PaginatedResponse",
     "PaginationParams",

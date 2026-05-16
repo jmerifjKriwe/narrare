@@ -67,12 +67,11 @@ class TestFakeConformance:
         assert_implements_protocol(FakeNovelService, NovelServiceProtocol)
 
     def test_fake_llm_gateway(self) -> None:
-        """No gateway Protocol yet — just verify run and stream exist."""
+        """FakeLLMGateway implements LLMGatewayProtocol."""
+        from narrare_core.llm.contracts import LLMGatewayProtocol
         from tests.fakes import FakeLLMGateway
 
-        methods = _class_methods(FakeLLMGateway)
-        assert "run" in methods, f"FakeLLMGateway missing 'run' method (has: {methods})"
-        assert "stream" in methods, f"FakeLLMGateway missing 'stream' method (has: {methods})"
+        assert_implements_protocol(FakeLLMGateway, LLMGatewayProtocol)
 
     def test_fake_provider_service(self) -> None:
         from narrare.setup.contracts import ProviderServiceProtocol
