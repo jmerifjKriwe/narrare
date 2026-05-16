@@ -16,8 +16,8 @@ export function NameResults({ results, isLoading }: NameResultsProps) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center gap-3">
-          <span className="h-8 w-8 animate-spin rounded-full border-3 border-[var(--color-border)] border-t-[var(--color-accent)]" />
-          <span className="text-[var(--color-text-tertiary)] text-[0.875rem]">
+          <span className="h-8 w-8 animate-spin rounded-full border-3 border-border border-t-primary" />
+          <span className="text-muted-foreground text-[0.875rem]">
             {t("generating")}
           </span>
         </div>
@@ -27,7 +27,7 @@ export function NameResults({ results, isLoading }: NameResultsProps) {
 
   if (!results) {
     return (
-      <p className="text-[var(--color-text-tertiary)] text-[0.875rem] text-center py-8">
+      <p className="text-muted-foreground text-[0.875rem] text-center py-8">
         {t("noResults")}
       </p>
     );
@@ -35,7 +35,7 @@ export function NameResults({ results, isLoading }: NameResultsProps) {
 
   if (results.names.length === 0) {
     return (
-      <p className="text-[var(--color-text-tertiary)] text-[0.875rem] text-center py-8">
+      <p className="text-muted-foreground text-[0.875rem] text-center py-8">
         {t("noResults")}
       </p>
     );
@@ -50,7 +50,7 @@ export function NameResults({ results, isLoading }: NameResultsProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-[0.75rem] font-semibold uppercase tracking-[0.15em] text-[var(--color-text-tertiary)]">
+        <h3 className="text-[0.75rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
           {t("nameGenerator")} ({results.count})
         </h3>
       </div>
@@ -59,11 +59,11 @@ export function NameResults({ results, isLoading }: NameResultsProps) {
         {results.names.map((generated) => (
           <li
             key={`${generated.name}-${generated.type}-${generated.culture}`}
-            className="flex items-center justify-between px-4 py-3 border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-accent-light)]/10 transition-colors"
+            className="flex items-center justify-between px-4 py-3 border border-border rounded-xl hover:bg-accent/10 transition-colors"
           >
             <div className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2">
-                <span className="text-[0.9375rem] font-medium text-[var(--color-text-primary)]">
+                <span className="text-[0.9375rem] font-medium text-foreground">
                   {generated.name}
                 </span>
                 {generated.is_duplicate && (
@@ -72,7 +72,7 @@ export function NameResults({ results, isLoading }: NameResultsProps) {
                   </span>
                 )}
               </div>
-              <div className="flex gap-3 text-[0.75rem] text-[var(--color-text-tertiary)]">
+              <div className="flex gap-3 text-[0.75rem] text-muted-foreground">
                 {generated.pronunciation && (
                   <span>
                     {t("pronunciation")}: {generated.pronunciation}
@@ -91,8 +91,8 @@ export function NameResults({ results, isLoading }: NameResultsProps) {
               onClick={() => handleSaveToKb(generated.name)}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-[0.75rem] font-medium transition-colors",
-                "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]",
-                "hover:bg-[var(--color-accent-light)] hover:text-[var(--color-accent)]",
+                "bg-secondary text-muted-foreground",
+                "hover:bg-accent hover:text-accent-foreground",
               )}
               aria-label={`${t("saveToKb")}: ${generated.name}`}
             >

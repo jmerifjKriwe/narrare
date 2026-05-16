@@ -97,7 +97,7 @@ export function NameGenerator({ projectId }: NameGeneratorProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+      <h2 className="text-xl font-semibold text-foreground">
         {t("nameGenerator")}
       </h2>
 
@@ -120,7 +120,7 @@ export function NameGenerator({ projectId }: NameGeneratorProps) {
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="name-count"
-            className="text-[0.8125rem] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]"
+            className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground"
           >
             {t("count")}
           </label>
@@ -131,7 +131,7 @@ export function NameGenerator({ projectId }: NameGeneratorProps) {
             max={50}
             value={count}
             onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value))))}
-            className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] text-[var(--color-text-primary)] text-[0.9375rem] transition-all duration-200 outline-none focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20"
+            className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-[0.9375rem] transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
           />
         </div>
 
@@ -152,7 +152,7 @@ export function NameGenerator({ projectId }: NameGeneratorProps) {
 
       {error && (
         <div
-          className="bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg p-3 text-[0.875rem]"
+          className="bg-destructive/10 text-destructive rounded-lg p-3 text-[0.875rem]"
           role="alert"
         >
           {error}

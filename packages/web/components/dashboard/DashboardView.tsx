@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { BookOpen, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
@@ -34,10 +34,10 @@ export function DashboardView() {
   return (
     <div className="h-full overflow-y-auto bg-background">
       <div className="max-w-[1000px] mx-auto px-8 py-12">
-        {/* Hero section — atmospheric welcome */}
+        {/* Hero section */}
         <div className="mb-14 flex items-end justify-between animate-[narrare-fade-in_0.5s_ease-out]">
           <div>
-            <h1 className="text-4xl font-semibold leading-tight text-foreground font-[family-name:var(--font-display)]">
+            <h1 className="text-4xl font-semibold leading-tight text-foreground">
               {t("title")}
             </h1>
             <div className="w-20 h-1 bg-primary mt-4 rounded-full opacity-80" />
@@ -49,10 +49,14 @@ export function DashboardView() {
             <span className="animate-pulse">{tCommon("loading")}...</span>
           </div>
         ) : novels.length === 0 ? (
-          /* Empty state — atmospheric invitation */
-          <div className="text-center py-24 px-8 border border-border border-dashed rounded-2xl bg-card">
-            <div className="text-3xl mb-6 text-muted-foreground opacity-50">✦</div>
-            <p className="text-xl text-foreground mb-3 leading-relaxed font-[family-name:var(--font-serif)] italic">
+          /* Empty state */
+          <div className="text-center py-24 px-8 border border-border border-dashed rounded-lg bg-card">
+            <div className="flex justify-center mb-6">
+              <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-muted-foreground/50" />
+              </div>
+            </div>
+            <p className="text-xl text-foreground mb-3 leading-relaxed italic">
               {t("noNovelsQuote")}
             </p>
             <p className="text-muted-foreground mb-10 text-sm">{t("noNovelsHint")}</p>
@@ -66,7 +70,7 @@ export function DashboardView() {
               <NovelCard key={novel.id} novel={novel} onDelete={handleDelete} />
             ))}
 
-            {/* New project card — clean dashed outline */}
+            {/* New project card */}
             <button
               type="button"
               className="flex flex-col items-center justify-center p-8 rounded-xl border-2 border-dashed border-border bg-transparent cursor-pointer text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-accent/50 transition-all duration-300 min-h-[200px] group"
@@ -74,7 +78,7 @@ export function DashboardView() {
               aria-label={t("newNovel")}
             >
               <div className="w-12 h-12 rounded-full border border-current flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110">
-                <span className="text-2xl font-[family-name:var(--font-display)]">+</span>
+                <span className="text-2xl">+</span>
               </div>
               <span className="text-sm font-medium">{t("newNovel")}</span>
             </button>
@@ -124,7 +128,7 @@ function NovelCard({ novel, onDelete }: { novel: NovelSummary; onDelete: (id: st
 
         <div className="p-6">
           <div className="flex items-start justify-between gap-3 mb-3">
-            <h2 className="text-lg font-semibold leading-snug text-foreground font-[family-name:var(--font-display)] line-clamp-2">
+            <h2 className="text-lg font-semibold leading-snug text-foreground line-clamp-2">
               {novel.title}
             </h2>
             {novel.is_demo && (

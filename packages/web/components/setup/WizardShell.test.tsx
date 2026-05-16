@@ -311,7 +311,7 @@ describe("WizardShell — skip Step 4 when providers configured", () => {
   it("should show loading state while checking providers", () => {
     render(<WizardShell />);
     // Initially shows loading text
-    expect(screen.getByText("Loading\u2026")).toBeInTheDocument();
+    expect(screen.getByText(/Loading/)).toBeInTheDocument();
   });
 
   it("should mark all steps as completed when on last step with providers", async () => {

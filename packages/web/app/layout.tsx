@@ -3,27 +3,10 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { QueryProvider } from "@/components/shared/QueryProvider";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
+import { Inter } from "next/font/google";
 import "@/styles/globals.css";
-import { DM_Sans, Literata, Playfair_Display } from "next/font/google";
-import { cn } from "@/lib/utils";
 
-const display = Playfair_Display({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-display",
-});
-
-const ui = DM_Sans({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600"],
-  variable: "--font-ui",
-});
-
-const prose = Literata({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-prose",
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
@@ -38,12 +21,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages();
 
   return (
-    <html
-      lang={locale}
-      suppressHydrationWarning
-      className={cn("font-ui", display.variable, ui.variable, prose.variable)}
-    >
-      <body>
+    <html lang={locale} suppressHydrationWarning>
+      <body className={inter.className}>
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>
             <ThemeProvider />

@@ -127,7 +127,7 @@ describe("DashboardView", () => {
 
     render(<DashboardView />, { wrapper });
 
-    expect(screen.getByText("Loading\u2026")).toBeInTheDocument();
+    expect(screen.getByText(/Loading/)).toBeInTheDocument();
   });
 
   it("should show empty state when no novels exist", async () => {

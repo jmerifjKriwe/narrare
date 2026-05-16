@@ -116,7 +116,7 @@ export function EditorSurface({
 
   if (!chapter) {
     return (
-      <div className="flex items-center justify-center h-full text-[var(--color-text-tertiary)] text-[0.9375rem]">
+      <div className="flex items-center justify-center h-full text-muted-foreground text-[0.9375rem]">
         <p>{t("addChapter")}</p>
       </div>
     );

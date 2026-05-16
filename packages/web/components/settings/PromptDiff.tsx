@@ -74,7 +74,7 @@ export function PromptDiff({ promptId, onBack, onResolved }: PromptDiffProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-[var(--color-text-tertiary)] text-[0.875rem]">{t("loadingPrompt")}</p>
+        <p className="text-muted-foreground text-[0.875rem]">{t("loadingPrompt")}</p>
       </div>
     );
   }
@@ -83,7 +83,7 @@ export function PromptDiff({ promptId, onBack, onResolved }: PromptDiffProps) {
     return (
       <div className="flex flex-col gap-4">
         <div
-          className="bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg p-3 text-[0.875rem]"
+          className="bg-destructive/10 text-destructive rounded-lg p-3 text-[0.875rem]"
           role="alert"
         >
           {t("loadFailed")}
@@ -101,17 +101,17 @@ export function PromptDiff({ promptId, onBack, onResolved }: PromptDiffProps) {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">{t("diffTitle")}</h2>
+        <h2 className="text-xl font-semibold text-foreground">{t("diffTitle")}</h2>
       </div>
 
       {/* Side-by-side diff */}
       <div className="grid grid-cols-2 gap-4">
         {/* Override (left) */}
         <div className="flex flex-col gap-2">
-          <h3 className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+          <h3 className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
             {t("yourVersion")}
           </h3>
-          <div className="border border-[var(--color-border)] rounded-xl bg-[var(--color-bg-secondary)] overflow-auto max-h-[500px]">
+          <div className="border border-border rounded-xl bg-secondary overflow-auto max-h-[500px]">
             {diffLines
               .filter((l) => l.type === "same" || l.type === "removed")
               .map((line) => (
@@ -121,7 +121,7 @@ export function PromptDiff({ promptId, onBack, onResolved }: PromptDiffProps) {
                     "px-4 py-0.5 text-[0.8125rem] font-mono whitespace-pre-wrap",
                     line.type === "removed" &&
                       "bg-red-100/50 text-red-800 dark:bg-red-900/20 dark:text-red-400",
-                    line.type === "same" && "text-[var(--color-text-secondary)]",
+                    line.type === "same" && "text-muted-foreground",
                   )}
                 >
                   {line.type === "removed" ? "- " : "  "}
@@ -133,10 +133,10 @@ export function PromptDiff({ promptId, onBack, onResolved }: PromptDiffProps) {
 
         {/* Bundled (right) */}
         <div className="flex flex-col gap-2">
-          <h3 className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+          <h3 className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
             {t("newDefault")}
           </h3>
-          <div className="border border-[var(--color-border)] rounded-xl bg-[var(--color-bg-secondary)] overflow-auto max-h-[500px]">
+          <div className="border border-border rounded-xl bg-secondary overflow-auto max-h-[500px]">
             {diffLines
               .filter((l) => l.type === "same" || l.type === "added")
               .map((line) => (
@@ -146,7 +146,7 @@ export function PromptDiff({ promptId, onBack, onResolved }: PromptDiffProps) {
                     "px-4 py-0.5 text-[0.8125rem] font-mono whitespace-pre-wrap",
                     line.type === "added" &&
                       "bg-green-100/50 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-                    line.type === "same" && "text-[var(--color-text-secondary)]",
+                    line.type === "same" && "text-muted-foreground",
                   )}
                 >
                   {line.type === "added" ? "+ " : "  "}

@@ -41,32 +41,22 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-background">
-      {/* Subtle paper-grain background texture */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.02]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, var(--color-text-primary) 0.5px, transparent 0.5px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-
       {/* Main content */}
       <div className="relative z-10 w-full max-w-[440px] px-6">
-        {/* Wordmark — book title page */}
+        {/* Wordmark */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold tracking-[0.08em] text-foreground leading-none font-[family-name:var(--font-display)]">
+          <h1 className="text-5xl font-bold tracking-[0.08em] text-foreground leading-none">
             Narrare
           </h1>
           {/* Ornamental divider below wordmark */}
           <div className="mt-4 text-muted-foreground/60 text-xs tracking-[0.3em]">— ❧ —</div>
-          <p className="text-muted-foreground mt-4 text-[0.9375rem] leading-relaxed font-[family-name:var(--font-serif)] italic">
+          <p className="text-muted-foreground mt-4 text-[0.9375rem] leading-relaxed italic">
             {t("login")}
           </p>
         </div>
 
-        {/* Form card — clean with subtle shadow */}
-        <div className="bg-card/95 backdrop-blur-sm rounded-2xl p-10 border border-border/80 shadow-lg">
+        {/* Form card */}
+        <div className="bg-card rounded-lg p-10 border border-border shadow-sm">
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
             {error && (
               <p className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm border-l-2 border-l-destructive">
@@ -99,7 +89,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Register link — below card, generous spacing */}
+        {/* Register link */}
         <p className="mt-10 text-center text-sm text-muted-foreground">
           {t("noAccount")}{" "}
           <Link

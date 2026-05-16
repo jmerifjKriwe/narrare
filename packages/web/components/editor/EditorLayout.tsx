@@ -1,18 +1,16 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Minimize2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Clock, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { NameGeneratorModal } from "@/components/generation/NameGeneratorModal";
 import { chaptersApi, settingsApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import type { ChapterSummary } from "@/types";
-import { ChapterSidebar } from "./ChapterSidebar";
 import { CommandPalette } from "./CommandPalette";
 import { ContextPanel } from "./ContextPanel";
 import { EditorSurface } from "./EditorSurface";
-import { EditorToolbar } from "./EditorToolbar";
 import { StatusBar } from "./StatusBar";
 
 interface EditorLayoutProps {
@@ -25,10 +23,10 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
   const {
     activeChapterId,
     setActiveChapterId,
-    sidebarOpen,
     contextPanelOpen,
     focusMode,
     editor,
+    lastSavedAt,
     toggleSidebar,
     toggleContextPanel,
     toggleFocusMode,
@@ -54,6 +52,22 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
   const { data: settings } = useQuery({
     queryKey: ["settings", "project", novelId],
     queryFn: () => settingsApi.getProject(novelId),
+  });
+
+  // Title update mutation
+  const titleMutation = useMutation({
+    mutationFn: ({ chapterId, title }: { chapterId: string; title: string }) =>
+      chaptersApi.updateMeta(novelId, chapterId, { title }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["chapter", novelId, activeChapterId], updated);
+      // Also update the chapter in the list cache
+      const currentChapters =
+        queryClient.getQueryData<ChapterSummary[]>(["chapters", novelId]) ?? [];
+      queryClient.setQueryData(
+        ["chapters", novelId],
+        currentChapters.map((c) => (c.id === updated.id ? { ...c, title: updated.title } : c)),
+      );
+    },
   });
 
   // Auto-select first chapter when chapters load and none is active
@@ -99,71 +113,83 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
     queryClient.setQueryData(["chapters", novelId], updated);
   };
 
+  // Title change handler
+  const handleTitleChange = (newTitle: string) => {
+    if (activeChapterId && newTitle.trim()) {
+      titleMutation.mutate({ chapterId: activeChapterId, title: newTitle });
+    }
+  };
+
+  // Manual save handler for the inline save button
+  const handleManualSave = () => {
+    if (editor && activeChapter) {
+      const autosave = editor.extensionManager.extensions.find(
+        (ext: { name: string }) => ext.name === "autosave",
+      );
+      if (autosave && "storage" in autosave) {
+        const storage = autosave.storage as { forceSave: () => Promise<void> };
+        storage.forceSave();
+      }
+    }
+  };
+
+  // Format last saved time as HH:MM
+  const formatLastSaved = (date: Date | null): string => {
+    if (!date) return "--:--";
+    return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  };
+
   return (
-    <div className="h-full flex flex-col bg-[var(--color-bg-primary)] overflow-hidden">
-      {/* Toolbar — hidden in focus mode */}
+    <div className="flex-1 flex flex-col h-full bg-background">
+      {/* Inline Header — hidden in focus mode */}
       {!focusMode && (
-        <EditorToolbar
-          onToggleSidebar={toggleSidebar}
-          onTogglePanel={toggleContextPanel}
-          onToggleFocus={toggleFocusMode}
-          onOpenNameGenerator={() => setNameGeneratorOpen(true)}
-          sidebarOpen={sidebarOpen}
-          panelOpen={contextPanelOpen}
-        />
+        <div className="border-b border-border/40 px-10 py-5 flex items-center justify-between bg-background shrink-0">
+          <div className="flex-1 max-w-2xl">
+            <input
+              type="text"
+              value={activeChapter?.title ?? ""}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              className="bg-transparent border-none outline-none w-full text-xl font-bold text-foreground placeholder:text-muted-foreground/30 transition-all focus:placeholder:text-muted-foreground/10"
+              placeholder={t("chapterTitlePlaceholder")}
+              aria-label={t("chapterTitlePlaceholder")}
+            />
+          </div>
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2.5 text-sm font-semibold text-muted-foreground/80 bg-muted/30 px-3 py-1.5 rounded-full border border-border/10">
+              <Clock className="w-4 h-4 text-primary/40" aria-hidden="true" />
+              <span className="tabular-nums">{formatLastSaved(lastSavedAt)}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleManualSave}
+              className="flex items-center gap-2.5 px-7 py-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg cursor-pointer font-bold text-sm tracking-wide"
+            >
+              <Save className="w-4 h-4" aria-hidden="true" />
+              <span>{t("save")}</span>
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Focus mode top bar — replaces floating button */}
+      {/* Focus mode: minimal ESC hint */}
       {focusMode && (
-        <div className="h-10 flex items-center justify-between px-6 bg-[var(--color-bg-primary)]/80 backdrop-blur-sm border-b border-[var(--color-border)]/30 animate-[narrare-slide-down_0.3s_ease-out]">
-          <span className="text-[0.75rem] text-[var(--color-text-tertiary)] font-[family-name:var(--font-serif)] italic">
-            {t("focusMode")} — {activeChapter?.title || ""}
-          </span>
-          <button
-            type="button"
-            onClick={toggleFocusMode}
-            className="flex items-center gap-2 px-3 py-1 rounded-md text-[0.8125rem] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] transition-colors cursor-pointer"
-          >
-            <Minimize2 size={14} />
-            <span>{t("exitFocusMode")}</span>
-            <kbd className="text-[0.625rem] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] font-[family-name:var(--font-mono)]">
-              {t("escKey")}
-            </kbd>
-          </button>
+        <div className="absolute bottom-4 right-4 z-10 pointer-events-none">
+          <kbd className="text-[0.625rem] px-2 py-1 rounded bg-muted/60 text-muted-foreground font-mono">
+            {t("escKey")} — {t("exitFocus")}
+          </kbd>
         </div>
       )}
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left sidebar */}
-        {sidebarOpen && !focusMode && (
-          <ChapterSidebar
-            novelId={novelId}
-            chapters={chapters}
-            activeChapterId={activeChapterId}
-            onChapterSelect={setActiveChapterId}
-          />
-        )}
-
-        {/* Main writing surface — convincing paper on desk */}
-        <main
-          className="flex-1 overflow-y-auto"
-          style={{ background: "linear-gradient(180deg, #EDE9E1 0%, #E8E3DA 100%)" }}
-        >
-          <div className="flex justify-center py-6 px-4">
-            <div
-              className="w-full max-w-[780px] min-h-[calc(100vh-160px)] bg-[#FDFCFA] rounded-sm"
-              style={{
-                boxShadow:
-                  "inset 0 0 0 1px rgba(0,0,0,0.03), 0 1px 3px rgba(44,40,37,0.06), 0 8px 24px rgba(44,40,37,0.08), 0 24px 48px rgba(44,40,37,0.04)",
-              }}
-            >
-              <EditorSurface
-                novelId={novelId}
-                chapter={activeChapter ?? null}
-                autosaveInterval={autosaveInterval}
-                onWordCountUpdate={handleWordCountUpdate}
-              />
-            </div>
+        {/* Editor area — clean, no parchment */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto">
+            <EditorSurface
+              novelId={novelId}
+              chapter={activeChapter ?? null}
+              autosaveInterval={autosaveInterval}
+              onWordCountUpdate={handleWordCountUpdate}
+            />
           </div>
         </main>
 
@@ -183,17 +209,7 @@ export function EditorLayout({ novelId }: EditorLayoutProps) {
           toggleSidebar,
           toggleFocusMode,
           toggleContextPanel,
-          saveChapter: () => {
-            if (editor && activeChapter) {
-              const autosave = editor.extensionManager.extensions.find(
-                (ext: { name: string }) => ext.name === "autosave",
-              );
-              if (autosave && "storage" in autosave) {
-                const storage = autosave.storage as { forceSave: () => Promise<void> };
-                storage.forceSave();
-              }
-            }
-          },
+          saveChapter: handleManualSave,
           createChapter: () => {
             // Placeholder — will be implemented with WRITE-002
           },

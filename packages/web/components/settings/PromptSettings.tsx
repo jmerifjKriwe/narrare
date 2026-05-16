@@ -92,7 +92,7 @@ export function PromptSettings() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">{t("aiPrompts")}</h2>
+        <h2 className="text-xl font-semibold text-foreground">{t("aiPrompts")}</h2>
       </div>
 
       {/* Category filter */}
@@ -103,8 +103,8 @@ export function PromptSettings() {
           className={cn(
             "px-3 py-1.5 rounded-lg text-[0.8125rem] font-medium transition-colors",
             filterCategory === "all"
-              ? "bg-[var(--color-accent)] text-white"
-              : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-light)]",
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:bg-accent",
           )}
         >
           {t("allCategories")}
@@ -116,9 +116,9 @@ export function PromptSettings() {
             onClick={() => setFilterCategory(cat)}
             className={cn(
               "px-3 py-1.5 rounded-lg text-[0.8125rem] font-medium transition-colors",
-              filterCategory === cat
-                ? "bg-[var(--color-accent)] text-white"
-                : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-light)]",
+               filterCategory === cat
+                 ? "bg-primary text-primary-foreground"
+                 : "bg-secondary text-muted-foreground hover:bg-accent",
             )}
           >
             {tAi(cat === "kb" ? "knowledgeBase" : cat)}
@@ -127,12 +127,12 @@ export function PromptSettings() {
       </div>
 
       {promptsLoading && (
-        <p className="text-[var(--color-text-tertiary)] text-[0.875rem]">{t("loadingPrompts")}</p>
+        <p className="text-muted-foreground text-[0.875rem]">{t("loadingPrompts")}</p>
       )}
 
       {promptsError && (
         <div
-          className="bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg p-3 text-[0.875rem]"
+          className="bg-destructive/10 text-destructive rounded-lg p-3 text-[0.875rem]"
           role="alert"
         >
           {t("loadFailed")}
@@ -140,13 +140,13 @@ export function PromptSettings() {
       )}
 
       {prompts && prompts.length === 0 && (
-        <p className="text-[var(--color-text-tertiary)] text-[0.875rem]">{t("noPromptsFound")}</p>
+        <p className="text-muted-foreground text-[0.875rem]">{t("noPromptsFound")}</p>
       )}
 
       {/* Grouped prompt list */}
       {Object.entries(groupedPrompts).map(([category, categoryPrompts]) => (
         <div key={category} className="flex flex-col gap-2">
-          <h3 className="text-[0.75rem] font-semibold uppercase tracking-[0.15em] text-[var(--color-text-tertiary)]">
+          <h3 className="text-[0.75rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
             {tAi(category === "kb" ? "knowledgeBase" : category)}
           </h3>
           <ul className="flex flex-col gap-1">
@@ -159,15 +159,15 @@ export function PromptSettings() {
                     onClick={() => setSelectedPromptId(prompt.prompt_id)}
                     className={cn(
                       "w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-colors",
-                      "hover:bg-[var(--color-accent-light)]/30",
-                      prompt.is_overridden && "border border-[var(--color-accent)]/20",
+                      "hover:bg-accent/30",
+                      prompt.is_overridden && "border border-primary/20",
                     )}
                   >
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[0.9375rem] font-medium text-[var(--color-text-primary)]">
-                        {formatPromptName(prompt)}
-                      </span>
-                      <span className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                       <span className="text-[0.9375rem] font-medium text-foreground">
+                         {formatPromptName(prompt)}
+                       </span>
+                       <span className="text-[0.75rem] text-muted-foreground">
                         {prompt.is_overridden ? t("sourceOverride") : t("sourceBundled")}
                       </span>
                     </div>

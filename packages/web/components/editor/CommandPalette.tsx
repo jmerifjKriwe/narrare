@@ -112,12 +112,12 @@ export function CommandPalette({ editor, isOpen, onClose, context }: CommandPale
         aria-hidden="true"
       />
 
-      <div className="relative w-full max-w-[500px] mx-4 bg-[var(--color-surface-overlay)] rounded-lg border border-[var(--color-border)] shadow-xl overflow-hidden">
-        <div className="flex items-center border-b border-[var(--color-border)] px-4">
+      <div className="relative w-full max-w-[500px] mx-4 bg-card rounded-lg border border-border shadow-xl overflow-hidden">
+        <div className="flex items-center border-b border-border px-4">
           <input
             ref={inputRef}
             type="text"
-            className="flex-1 py-3 bg-transparent text-[var(--color-text-primary)] text-sm outline-none placeholder:text-[var(--color-text-placeholder)]"
+            className="flex-1 py-3 bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground"
             placeholder={t("commandPalettePlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -131,7 +131,7 @@ export function CommandPalette({ editor, isOpen, onClose, context }: CommandPale
               return (
                 <div
                   key={`header-${row.label}`}
-                  className="px-4 py-1.5 text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wider"
+                  className="px-4 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider"
                 >
                   {row.label}
                 </div>
@@ -145,15 +145,15 @@ export function CommandPalette({ editor, isOpen, onClose, context }: CommandPale
                 key={row.command.id}
                 className={`w-full flex items-center justify-between px-4 py-2 text-sm cursor-pointer transition-colors ${
                   isSelected
-                    ? "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
-                    : "text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]"
+                    ? "bg-accent text-accent-foreground"
+                    : "text-foreground hover:bg-muted"
                 }`}
                 onClick={() => executeCommand(row.command)}
                 onMouseEnter={() => setSelectedIndex(row.index)}
               >
                 <span>{row.command.label}</span>
                 {row.command.shortcut && (
-                  <span className="text-xs text-[var(--color-text-tertiary)] font-mono">
+                  <span className="text-xs text-muted-foreground font-mono">
                     {row.command.shortcut}
                   </span>
                 )}
@@ -162,7 +162,7 @@ export function CommandPalette({ editor, isOpen, onClose, context }: CommandPale
           })}
 
           {filtered.length === 0 && (
-            <div className="px-4 py-8 text-center text-sm text-[var(--color-text-tertiary)]">
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               {t("noCommandsFound")}
             </div>
           )}

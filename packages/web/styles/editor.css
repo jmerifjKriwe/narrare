@@ -1,0 +1,93 @@
+/* ---------------------------------------------------------------------------
+   Editor Styles — ProseMirror / TipTap styling for the writing surface.
+   Optimized for Narrare Premium Aesthetics.
+   --------------------------------------------------------------------------- */
+
+/* Editor prose styles */
+.narrare-editor .ProseMirror {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-size: var(--editor-font-size);
+  line-height: var(--editor-line-height);
+  color: var(--foreground);
+  max-width: var(--editor-max-width);
+  margin: 0 auto;
+  padding: 8rem 2rem;
+  outline: none;
+  min-height: 80vh;
+}
+
+.narrare-editor .ProseMirror p {
+  margin-bottom: 1.5em;
+  font-weight: 450; /* Slightly more weight for better readability */
+}
+
+.narrare-editor .ProseMirror h1,
+.narrare-editor .ProseMirror h2,
+.narrare-editor .ProseMirror h3 {
+  font-weight: 700;
+  margin-top: 3em;
+  margin-bottom: 1em;
+  line-height: 1.2;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.narrare-editor .ProseMirror h1 {
+  font-size: 2.25rem;
+}
+
+.narrare-editor .ProseMirror h2 {
+  font-size: 1.75rem;
+}
+
+.narrare-editor .ProseMirror h3 {
+  font-size: 1.5rem;
+}
+
+/* Scene break */
+.narrare-editor .ProseMirror .scene-break {
+  text-align: center;
+  color: var(--muted-foreground);
+  letter-spacing: 0.8em;
+  margin: 4em 0;
+  user-select: none;
+  font-size: 0.75rem;
+  font-weight: bold;
+  opacity: 0.5;
+}
+
+/* Dialogue mark */
+.narrare-editor .ProseMirror .dialogue {
+  color: var(--foreground);
+  font-style: italic;
+  opacity: 0.9;
+}
+
+/* Placeholder */
+.narrare-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  opacity: 0.3;
+  pointer-events: none;
+  float: left;
+  height: 0;
+  font-style: italic;
+}
+
+/* Selection */
+.narrare-editor .ProseMirror ::selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Focus mode — expanded padding */
+.editor-focus-mode .narrare-editor .ProseMirror {
+  padding-top: 20vh;
+  padding-bottom: 40vh;
+}
+
+/* Focus mode background */
+.editor-focus-mode {
+  background: var(--background);
+  transition: background 0.5s ease-in-out;
+}

@@ -145,7 +145,7 @@ export default function AiModelPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <span className="text-[var(--color-text-tertiary)]">{t("loading")}</span>
+        <span className="text-muted-foreground">{t("loading")}</span>
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function AiModelPage() {
   if (error && !settings) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
-        <p className="text-[var(--color-error)]" role="alert">
+        <p className="text-destructive" role="alert">
           {error}
         </p>
         <Button
@@ -174,30 +174,30 @@ export default function AiModelPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">{t("title")}</h1>
-        <p className="text-[0.875rem] text-[var(--color-text-secondary)] mt-1">
+        <h1 className="text-xl font-semibold text-foreground">{t("title")}</h1>
+        <p className="text-[0.875rem] text-muted-foreground mt-1">
           {t("description")}
         </p>
       </div>
 
       {/* Default Model Section */}
       <section className="flex flex-col gap-5">
-        <h2 className="text-[0.9375rem] font-semibold text-[var(--color-text-primary)]">
+        <h2 className="text-[0.9375rem] font-semibold text-foreground">
           {t("defaultModel")}
         </h2>
 
         {activeProviders.length === 0 ? (
-          <div className="border border-dashed border-[var(--color-border)] rounded-xl p-6 text-center">
-            <p className="text-[var(--color-text-secondary)]">{t("noActiveProviders")}</p>
+          <div className="border border-dashed border-border rounded-xl p-6 text-center">
+            <p className="text-muted-foreground">{t("noActiveProviders")}</p>
             <a
               href="/settings/ai-providers"
-              className="text-[var(--color-accent)] text-[0.875rem] hover:underline mt-1 inline-block"
+              className="text-primary text-[0.875rem] hover:underline mt-1 inline-block"
             >
               {t("addProviderLink")}
             </a>
           </div>
         ) : (
-          <div className="border border-[var(--color-border)] rounded-xl p-5 bg-[var(--color-surface)]">
+          <div className="border border-border rounded-xl p-5 bg-card">
             <div className="grid grid-cols-2 gap-4">
               <Select
                 label={t("provider")}
@@ -212,10 +212,10 @@ export default function AiModelPage() {
               <div>
                 {isModelLoading ? (
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+                    <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                       {t("model")}
                     </span>
-                    <span className="text-[0.8125rem] text-[var(--color-text-tertiary)] py-3">
+                    <span className="text-[0.8125rem] text-muted-foreground py-3">
                       {t("loadingModels")}
                     </span>
                   </div>
@@ -231,7 +231,7 @@ export default function AiModelPage() {
                   <div className="flex flex-col gap-1.5">
                     <label
                       htmlFor="default-model-input"
-                      className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]"
+                      className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
                     >
                       {t("model")}
                     </label>
@@ -241,13 +241,13 @@ export default function AiModelPage() {
                       value={defaultModel}
                       onChange={(e) => setDefaultModel(e.target.value)}
                       placeholder={t("enterModelId")}
-                      className="w-full px-4 py-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[var(--color-text-primary)] text-[0.9375rem] transition-all duration-300 outline-none placeholder:text-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/15"
+                      className="w-full px-4 py-3 border border-border rounded-xl bg-card text-foreground text-[0.9375rem] transition-all duration-300 outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/15"
                     />
                   </div>
                 )}
               </div>
               {!defaultModel && defaultProviderId && (
-                <p className="text-[0.8125rem] text-[var(--color-text-tertiary)] mt-2">
+                <p className="text-[0.8125rem] text-muted-foreground mt-2">
                   {t("selectModelHint")}
                 </p>
               )}
@@ -257,7 +257,7 @@ export default function AiModelPage() {
       </section>
 
       {/* Separator */}
-      <hr className="border-[var(--color-border)]" />
+      <hr className="border-border" />
 
       {/* Category Overrides */}
       <CategoryOverrides
@@ -278,7 +278,7 @@ export default function AiModelPage() {
       />
 
       {/* Separator */}
-      <hr className="border-[var(--color-border)]" />
+      <hr className="border-border" />
 
       {/* Token Limits */}
       <TokenLimitProfileSelector value={tokenLimitProfile} onChange={setTokenLimitProfile} />
@@ -290,7 +290,7 @@ export default function AiModelPage() {
       {/* Error / Success */}
       {error && (
         <div
-          className="bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg p-3 text-[0.875rem]"
+          className="bg-destructive/10 text-destructive rounded-lg p-3 text-[0.875rem]"
           role="alert"
         >
           {error}

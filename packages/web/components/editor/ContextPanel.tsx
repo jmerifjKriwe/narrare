@@ -18,9 +18,9 @@ export function ContextPanel({ novelId }: ContextPanelProps) {
   });
 
   return (
-    <aside className="w-[var(--panel-width)] border-l border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col shrink-0 overflow-hidden">
-      <div className="px-4 py-3 border-b border-[var(--color-border)] shrink-0">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
+    <aside className="w-[var(--panel-width)] border-l border-border bg-card flex flex-col shrink-0 overflow-hidden">
+      <div className="px-4 py-3 border-b border-border shrink-0">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {t("contextPanel")}
         </span>
       </div>

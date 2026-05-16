@@ -89,7 +89,7 @@ export function WizardStep2({ onNext, onBack }: { onNext: () => void; onBack: ()
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <div>
-          <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          <h2 className="text-xl font-semibold mb-1">
             {t("title")}
           </h2>
           <p className="text-muted-foreground text-[0.9375rem]">{t("description")}</p>

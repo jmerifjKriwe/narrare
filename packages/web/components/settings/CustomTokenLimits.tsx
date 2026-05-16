@@ -73,10 +73,10 @@ export function CustomTokenLimits({ overrides, onChange }: CustomTokenLimitsProp
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[0.9375rem] font-semibold text-[var(--color-text-primary)]">
+        <h3 className="text-[0.9375rem] font-semibold text-foreground">
           {t("title")}
         </h3>
-        <span className="text-[0.75rem] text-[var(--color-text-tertiary)]">{t("description")}</span>
+        <span className="text-[0.75rem] text-muted-foreground">{t("description")}</span>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -85,8 +85,8 @@ export function CustomTokenLimits({ overrides, onChange }: CustomTokenLimitsProp
           const warning = getWarning(catValue);
 
           return (
-            <div key={catValue} className="border border-[var(--color-border)] rounded-xl p-4">
-              <span className="text-[0.875rem] font-medium text-[var(--color-text-primary)] block mb-3">
+            <div key={catValue} className="border border-border rounded-xl p-4">
+              <span className="text-[0.875rem] font-medium text-foreground block mb-3">
                 {tCategories(CATEGORY_LABEL_KEYS[catValue])}
               </span>
               <div className="grid grid-cols-2 gap-4">

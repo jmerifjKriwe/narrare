@@ -89,7 +89,7 @@ export function ProjectAiSettings({ novelId, providers }: ProjectAiSettingsProps
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <span className="text-[var(--color-text-tertiary)]">{t("loading")}</span>
+        <span className="text-muted-foreground">{t("loading")}</span>
       </div>
     );
   }
@@ -97,7 +97,7 @@ export function ProjectAiSettings({ novelId, providers }: ProjectAiSettingsProps
   if (error && !projectSettings) {
     return (
       <div className="flex flex-col items-center gap-3 py-12">
-        <p className="text-[var(--color-error)]" role="alert">
+         <p className="text-destructive" role="alert">
           {error}
         </p>
         <Button
@@ -115,10 +115,10 @@ export function ProjectAiSettings({ novelId, providers }: ProjectAiSettingsProps
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h2 className="text-xl font-semibold text-[var(--color-text-primary)] mb-1">
+        <h2 className="text-xl font-semibold text-foreground mb-1">
           {t("title")}
         </h2>
-        <p className="text-[0.875rem] text-[var(--color-text-secondary)]">{t("description")}</p>
+        <p className="text-[0.875rem] text-muted-foreground">{t("description")}</p>
       </div>
 
       <CategoryOverrides
@@ -139,7 +139,7 @@ export function ProjectAiSettings({ novelId, providers }: ProjectAiSettingsProps
 
       {error && (
         <div
-          className="bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg p-3 text-[0.875rem]"
+          className="bg-destructive/10 text-destructive rounded-lg p-3 text-[0.875rem]"
           role="alert"
         >
           {error}

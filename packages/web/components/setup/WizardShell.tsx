@@ -140,7 +140,7 @@ export function WizardShell() {
         </div>
 
         {/* Step content card */}
-        <div className="bg-card border border-border rounded-2xl p-10 shadow-lg mt-8">
+        <div className="bg-card border border-border rounded-lg p-10 shadow-sm mt-8">
           {currentStep === 1 && <WizardStep1 onNext={handleNext} />}
           {currentStep === 2 && <WizardStep3 onNext={handleNext} onBack={handlePrev} />}
           {currentStep === 3 && <WizardStep2 onNext={handleNext} onBack={handlePrev} />}

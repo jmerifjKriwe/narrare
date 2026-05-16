@@ -35,7 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center animate-pulse">
+          <div className="w-12 h-12 rounded-md bg-primary flex items-center justify-center animate-pulse">
             <BookOpen className="w-6 h-6 text-primary-foreground" />
           </div>
           <span className="sr-only">{t("loading")}</span>
@@ -54,10 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <BookOpen className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <div
-              className="text-[1.125rem] font-semibold text-foreground leading-none"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
+            <div className="text-[1.125rem] font-semibold text-foreground leading-none">
               Narrare
             </div>
           </div>

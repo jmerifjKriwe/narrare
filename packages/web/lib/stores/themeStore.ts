@@ -1,21 +1,19 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Theme = "pergament" | "neutral";
+export type ColorMode = "light" | "dark" | "system";
 
 interface ThemeState {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+  colorMode: ColorMode;
+  setColorMode: (mode: ColorMode) => void;
 }
 
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      theme: "pergament", // Default theme
-      setTheme: (theme) => set({ theme }),
+      colorMode: "system",
+      setColorMode: (colorMode) => set({ colorMode }),
     }),
-    {
-      name: "narrare-theme", // Local storage key
-    },
+    { name: "narrare-theme" },
   ),
 );

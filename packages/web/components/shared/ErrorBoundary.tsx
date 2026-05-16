@@ -30,19 +30,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div
-          className="flex flex-col items-center justify-center gap-4 rounded-xl px-6 py-8 text-center"
-          style={{ backgroundColor: "var(--color-error-light)" }}
-        >
-          <p style={{ color: "var(--color-error)" }} className="text-sm font-medium">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-xl px-6 py-8 text-center bg-destructive/10">
+          <p className="text-sm font-medium text-destructive">
             {this.state.error?.message || "Something went wrong"}
           </p>
           {/* eslint-disable i18next/no-literal-string */}
           <button
             type="button"
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="rounded-md px-4 py-2 text-sm font-medium transition-colors"
-            style={{ backgroundColor: "var(--color-accent)", color: "#ffffff" }}
+            className="rounded-md px-4 py-2 text-sm font-medium transition-colors bg-primary text-primary-foreground"
           >
             Try again
           </button>

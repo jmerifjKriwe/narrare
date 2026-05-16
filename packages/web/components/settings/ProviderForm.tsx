@@ -84,10 +84,10 @@ export function ProviderForm({ existingProvider, onSaved, onCancel }: ProviderFo
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {isEdit ? (
         <div className="flex flex-col gap-1.5">
-          <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+          <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
             {t("provider")}
           </span>
-          <span className="text-[0.9375rem] text-[var(--color-text-primary)]">
+          <span className="text-[0.9375rem] text-foreground">
             {getProviderLabel(existingProvider.provider_name)}
           </span>
         </div>
@@ -103,7 +103,7 @@ export function ProviderForm({ existingProvider, onSaved, onCancel }: ProviderFo
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor="api-key-input"
-          className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]"
+           className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
         >
           {t("apiKey")}
         </label>
@@ -116,12 +116,12 @@ export function ProviderForm({ existingProvider, onSaved, onCancel }: ProviderFo
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={isEdit ? t("apiKeyPlaceholder") : t("apiKeyEnter")}
               autoComplete="off"
-              className="w-full px-4 py-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[var(--color-text-primary)] text-[0.9375rem] font-[family-name:var(--font-sans)] transition-all duration-300 outline-none placeholder:text-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/15 focus:shadow-[0_0_0_4px_var(--color-accent-light)] pr-10"
+              className="w-full px-4 py-3 border border-border rounded-xl bg-card text-foreground text-[0.9375rem] transition-all duration-300 outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/15 pr-10"
             />
             <button
               type="button"
               onClick={() => setShowApiKey(!showApiKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] text-[0.75rem]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground text-[0.75rem]"
               aria-label={showApiKey ? t("hideApiKey") : t("showApiKey")}
             >
               {showApiKey ? t("hide") : t("show")}
@@ -156,7 +156,7 @@ export function ProviderForm({ existingProvider, onSaved, onCancel }: ProviderFo
 
       {error && (
         <div
-          className="bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg p-3 text-[0.875rem]"
+          className="bg-destructive/10 text-destructive rounded-lg p-3 text-[0.875rem]"
           role="alert"
         >
           {error}

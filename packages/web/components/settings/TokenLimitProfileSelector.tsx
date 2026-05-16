@@ -31,7 +31,7 @@ export function TokenLimitProfileSelector({ value, onChange }: TokenLimitProfile
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[0.9375rem] font-semibold text-[var(--color-text-primary)]">
+        <h3 className="text-[0.9375rem] font-semibold text-foreground">
           {t("title")}
         </h3>
       </div>
@@ -50,8 +50,8 @@ export function TokenLimitProfileSelector({ value, onChange }: TokenLimitProfile
               className={cn(
                 "text-left border rounded-xl p-4 transition-all duration-200",
                 isSelected
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-light)] shadow-sm"
-                  : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-secondary)]",
+                  ? "border-primary bg-accent shadow-sm"
+                  : "border-border bg-card hover:border-border hover:bg-secondary",
               )}
               aria-pressed={isSelected}
             >
@@ -59,23 +59,23 @@ export function TokenLimitProfileSelector({ value, onChange }: TokenLimitProfile
                 <span
                   className={cn(
                     "w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-colors",
-                    isSelected ? "border-[var(--color-accent)]" : "border-[var(--color-border)]",
+                     isSelected ? "border-primary" : "border-border",
                   )}
                 >
                   {isSelected && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" />
+                     <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                   )}
                 </span>
                 <span
                   className={cn(
                     "text-[0.9375rem] font-medium",
-                    isSelected ? "text-[var(--color-accent)]" : "text-[var(--color-text-primary)]",
+                     isSelected ? "text-primary" : "text-foreground",
                   )}
                 >
                   {t(labelKey)}
                 </span>
               </div>
-              <p className="text-[0.75rem] text-[var(--color-text-tertiary)] ml-5.5 pl-0.5">
+              <p className="text-[0.75rem] text-muted-foreground ml-5.5 pl-0.5">
                 {t(descKey)}
               </p>
             </button>

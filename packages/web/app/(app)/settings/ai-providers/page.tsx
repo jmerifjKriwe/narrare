@@ -81,7 +81,7 @@ export default function AiProvidersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <span className="text-[var(--color-text-tertiary)]">{t("loading")}</span>
+        <span className="text-muted-foreground">{t("loading")}</span>
       </div>
     );
   }
@@ -90,8 +90,8 @@ export default function AiProvidersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">{t("title")}</h1>
-          <p className="text-[0.875rem] text-[var(--color-text-secondary)] mt-1">
+          <h1 className="text-xl font-semibold text-foreground">{t("title")}</h1>
+          <p className="text-[0.875rem] text-muted-foreground mt-1">
             {t("description")}
           </p>
         </div>
@@ -103,8 +103,8 @@ export default function AiProvidersPage() {
       </div>
 
       {showForm && (
-        <div className="border border-[var(--color-border)] rounded-xl p-6 bg-[var(--color-surface)]">
-          <h2 className="text-[0.9375rem] font-semibold text-[var(--color-text-primary)] mb-4">
+         <div className="border border-border rounded-xl p-6 bg-card">
+           <h2 className="text-[0.9375rem] font-semibold text-foreground mb-4">
             {editingProvider ? t("editProvider") : t("addNewProvider")}
           </h2>
           <ProviderForm
@@ -117,7 +117,7 @@ export default function AiProvidersPage() {
 
       {error && (
         <div
-          className="bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg p-3 text-[0.875rem]"
+          className="bg-destructive/10 text-destructive rounded-lg p-3 text-[0.875rem]"
           role="alert"
         >
           {error}
@@ -125,10 +125,10 @@ export default function AiProvidersPage() {
       )}
 
       {providers.length === 0 && !showForm ? (
-        <div className="text-center py-16 border border-dashed border-[var(--color-border)] rounded-xl">
-          <div className="flex flex-col items-center gap-3">
-            <span className="text-[var(--color-text-tertiary)] text-4xl">🔌</span>
-            <p className="text-[var(--color-text-secondary)]">{t("empty")}</p>
+         <div className="text-center py-16 border border-dashed border-border rounded-xl">
+           <div className="flex flex-col items-center gap-3">
+             <span className="text-muted-foreground text-4xl">🔌</span>
+             <p className="text-muted-foreground">{t("empty")}</p>
             <Button type="button" onClick={() => setShowForm(true)}>
               {t("addProvider")}
             </Button>
@@ -141,15 +141,15 @@ export default function AiProvidersPage() {
               key={provider.id}
               className={cn(
                 "border rounded-xl p-5 transition-colors",
-                provider.is_active
-                  ? "border-[var(--color-border)] bg-[var(--color-surface)]"
-                  : "border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 opacity-70",
+                 provider.is_active
+                   ? "border-border bg-card"
+                   : "border-border bg-secondary/50 opacity-70",
               )}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[0.9375rem] font-medium text-[var(--color-text-primary)]">
+                     <span className="text-[0.9375rem] font-medium text-foreground">
                       {getProviderLabel(provider.provider_name)}
                     </span>
                     <span
@@ -171,17 +171,17 @@ export default function AiProvidersPage() {
                       onChange={() => handleEdit(provider)}
                     />
                     {!provider.has_api_key && provider.provider_name !== "ollama" && (
-                      <p className="text-[0.8125rem] text-[var(--color-text-tertiary)] italic">
+                       <p className="text-[0.8125rem] text-muted-foreground italic">
                         {t("addKeyHint")}
                       </p>
                     )}
                     {provider.base_url ? (
-                      <p className="text-[0.75rem] text-[var(--color-text-tertiary)]">
-                        {t("baseUrl")}
-                        {provider.base_url}
-                      </p>
-                    ) : provider.provider_name === "zai" ? (
-                      <p className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                       <p className="text-[0.75rem] text-muted-foreground">
+                         {t("baseUrl")}
+                         {provider.base_url}
+                       </p>
+                     ) : provider.provider_name === "zai" ? (
+                       <p className="text-[0.75rem] text-muted-foreground">
                         {t("baseUrl")}
                         {t("defaultBaseUrl")}
                       </p>
@@ -212,7 +212,7 @@ export default function AiProvidersPage() {
                     size="sm"
                     loading={deletingId === provider.id}
                     onClick={() => handleDelete(provider.id)}
-                    className="text-[var(--color-error)] hover:text-[var(--color-error)]"
+                     className="text-destructive hover:text-destructive"
                   >
                     {t("delete")}
                   </Button>

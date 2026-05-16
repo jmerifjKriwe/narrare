@@ -2,9 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useThemeStore } from "@/lib/stores/themeStore";
+import type { ColorMode } from "@/lib/stores/themeStore";
+
+function applyColorMode(mode: ColorMode) {
+  const root = document.documentElement;
+
+  if (mode === "dark") {
+    root.classList.add("dark");
+  } else if (mode === "light") {
+    root.classList.remove("dark");
+  } else {
+    // system
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.classList.toggle("dark", prefersDark);
+  }
+}
 
 export function ThemeProvider() {
-  const theme = useThemeStore((s) => s.theme);
+  const colorMode = useThemeStore((s) => s.colorMode);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -13,15 +28,22 @@ export function ThemeProvider() {
 
   useEffect(() => {
     if (!mounted) return;
+    applyColorMode(colorMode);
+  }, [colorMode, mounted]);
 
-    if (theme === "neutral") {
-      document.documentElement.setAttribute("data-theme", "neutral");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-    }
-  }, [theme, mounted]);
+  // Listen for system preference changes when mode is "system"
+  useEffect(() => {
+    if (!mounted || colorMode !== "system") return;
 
-  // Return null because this is just a logic component, not a wrapper
-  // that renders UI elements itself. It just modifies the html tag.
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => {
+      document.documentElement.classList.toggle("dark", e.matches);
+    };
+
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, [colorMode, mounted]);
+
+  // Return null — this component only modifies the <html> class
   return null;
 }

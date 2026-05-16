@@ -139,7 +139,7 @@ export function IntentOverrides({
   return (
     <div className="flex flex-col gap-4 pt-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-[0.9375rem] font-semibold text-[var(--color-text-primary)]">
+        <h3 className="text-[0.9375rem] font-semibold text-foreground">
           {t("title")}
         </h3>
         <Button type="button" variant="ghost" size="sm" onClick={() => setExpanded(false)}>
@@ -147,7 +147,7 @@ export function IntentOverrides({
         </Button>
       </div>
 
-      <p className="text-[0.8125rem] text-[var(--color-text-tertiary)]">{t("description")}</p>
+      <p className="text-[0.8125rem] text-muted-foreground">{t("description")}</p>
 
       <div className="flex flex-col gap-2">
         {CATEGORY_VALUES.map((category) => {
@@ -158,20 +158,20 @@ export function IntentOverrides({
           return (
             <div
               key={category}
-              className="border border-[var(--color-border)] rounded-xl overflow-hidden"
+              className="border border-border rounded-xl overflow-hidden"
             >
               <button
                 type="button"
                 onClick={() => toggleCategory(category)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--color-bg-secondary)] transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-secondary transition-colors"
                 aria-expanded={isOpen}
               >
-                <span className="text-[0.875rem] font-medium text-[var(--color-text-primary)]">
+                 <span className="text-[0.875rem] font-medium text-foreground">
                   {catLabel}
                 </span>
                 <span
                   className={cn(
-                    "text-[var(--color-text-tertiary)] transition-transform duration-200 text-sm",
+                     "text-muted-foreground transition-transform duration-200 text-sm",
                     isOpen && "rotate-180",
                   )}
                 >
@@ -180,7 +180,7 @@ export function IntentOverrides({
               </button>
 
               {isOpen && (
-                <div className="border-t border-[var(--color-border)] px-4 py-3 flex flex-col gap-3 bg-[var(--color-bg-secondary)]/30">
+                <div className="border-t border-border px-4 py-3 flex flex-col gap-3 bg-secondary/30">
                   {intents.map((intent) => {
                     const override = overrides[intent.value];
                     const isActive = !!override;
@@ -193,7 +193,7 @@ export function IntentOverrides({
                     return (
                       <div key={intent.value} className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[0.8125rem] text-[var(--color-text-secondary)]">
+                           <span className="text-[0.8125rem] text-muted-foreground">
                             {intentLabel}
                           </span>
                           <button
@@ -201,7 +201,7 @@ export function IntentOverrides({
                             onClick={() => toggleIntentOverride(intent.value)}
                             className={cn(
                               "relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0",
-                              isActive ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]",
+                               isActive ? "bg-primary" : "bg-muted-foreground/30",
                             )}
                             role="switch"
                             aria-checked={isActive}
@@ -231,7 +231,7 @@ export function IntentOverrides({
                             </div>
                             <div className="flex-1">
                               {isLoading ? (
-                                <span className="text-[0.75rem] text-[var(--color-text-tertiary)]">
+                                 <span className="text-[0.75rem] text-muted-foreground">
                                   {t("loading")}
                                 </span>
                               ) : modelsForProvider.length > 0 ? (
@@ -248,7 +248,7 @@ export function IntentOverrides({
                                 <div className="flex flex-col gap-1.5">
                                   <label
                                     htmlFor={`intent-model-${intent.value}`}
-                                    className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]"
+                                     className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
                                   >
                                     {t("model")}
                                   </label>
@@ -260,7 +260,7 @@ export function IntentOverrides({
                                       updateIntentOverride(intent.value, "model_id", e.target.value)
                                     }
                                     placeholder={t("modelId")}
-                                    className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] text-[var(--color-text-primary)] text-[0.8125rem] transition-all outline-none focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/15"
+                                     className="w-full px-3 py-2 border border-border rounded-lg bg-card text-foreground text-[0.8125rem] transition-all outline-none focus:border-ring focus:ring-2 focus:ring-ring/15"
                                   />
                                 </div>
                               )}

@@ -69,10 +69,10 @@ export function ModelDropdown({
   if (loading) {
     return (
       <div className="flex flex-col gap-1.5">
-        <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+        <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {displayLabel}
         </span>
-        <div className="w-full px-4 py-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[0.9375rem] text-[var(--color-text-tertiary)]">
+        <div className="w-full px-4 py-3 border border-border rounded-xl bg-card text-[0.9375rem] text-muted-foreground">
           {t("loadingFrom", { provider: getProviderLabel(providerName) })}
         </div>
       </div>
@@ -82,10 +82,10 @@ export function ModelDropdown({
   if (error) {
     return (
       <div className="flex flex-col gap-1.5">
-        <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+        <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {displayLabel}
         </span>
-        <p className="text-[0.8125rem] text-[var(--color-error)] mb-2">{error}</p>
+        <p className="text-[0.8125rem] text-destructive mb-2">{error}</p>
         <Input
           label=""
           value={value}

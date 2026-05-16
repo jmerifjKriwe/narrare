@@ -69,10 +69,10 @@ export function EffectiveSettingsDisplay({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[0.9375rem] font-semibold text-[var(--color-text-primary)]">
+        <h3 className="text-[0.9375rem] font-semibold text-foreground">
           {t("title")}
         </h3>
-        <span className="text-[0.75rem] text-[var(--color-text-tertiary)]">{t("description")}</span>
+        <span className="text-[0.75rem] text-muted-foreground">{t("description")}</span>
       </div>
 
       {/* Legend */}
@@ -80,23 +80,23 @@ export function EffectiveSettingsDisplay({
         {Object.entries(SOURCE_STYLE_KEYS).map(([key, style]) => (
           <div key={key} className="flex items-center gap-1.5">
             <span className={cn("inline-block w-2 h-2 rounded-full", style.bg)} />
-            <span className="text-[var(--color-text-tertiary)]">{t(style.labelKey)}</span>
+             <span className="text-muted-foreground">{t(style.labelKey)}</span>
           </div>
         ))}
       </div>
 
       {/* Default model row */}
       {defaultModel && (
-        <div className="border border-[var(--color-border)] rounded-xl p-4 bg-[var(--color-bg-secondary)]/30">
+        <div className="border border-border rounded-xl p-4 bg-secondary/30">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+               <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 {t("defaultModel")}
               </span>
-              <p className="text-[0.9375rem] text-[var(--color-text-primary)] mt-0.5">
+               <p className="text-[0.9375rem] text-foreground mt-0.5">
                 {defaultModel}
                 {defaultProvider && (
-                  <span className="text-[var(--color-text-tertiary)] ml-2">
+                   <span className="text-muted-foreground ml-2">
                     {t("viaProvider", { provider: getProviderLabel(defaultProvider) })}
                   </span>
                 )}
@@ -124,11 +124,11 @@ export function EffectiveSettingsDisplay({
           const style = SOURCE_STYLE_KEYS[setting.source];
 
           return (
-            <div key={catValue} className="border border-[var(--color-border)] rounded-xl p-4">
+            <div key={catValue} className="border border-border rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[0.875rem] font-medium text-[var(--color-text-primary)]">
+                     <span className="text-[0.875rem] font-medium text-foreground">
                       {tCategories(CATEGORY_LABEL_KEYS[catValue])}
                     </span>
                     <span
@@ -142,21 +142,21 @@ export function EffectiveSettingsDisplay({
                     </span>
                   </div>
                   {setting.model ? (
-                    <p className="text-[0.8125rem] text-[var(--color-text-secondary)]">
+                     <p className="text-[0.8125rem] text-muted-foreground">
                       {setting.model}
                       {setting.provider && (
-                        <span className="text-[var(--color-text-tertiary)] ml-1">
+                         <span className="text-muted-foreground ml-1">
                           {t("viaProvider", { provider: getProviderLabel(setting.provider) })}
                         </span>
                       )}
                     </p>
                   ) : (
-                    <p className="text-[0.8125rem] text-[var(--color-text-tertiary)]">
+                    <p className="text-[0.8125rem] text-muted-foreground">
                       {t("usesDefaultModel")}
                     </p>
                   )}
                   {setting.tokenLimits && (
-                    <p className="text-[0.75rem] text-[var(--color-text-tertiary)] mt-0.5">
+                    <p className="text-[0.75rem] text-muted-foreground mt-0.5">
                       {t("summary", {
                         maxTokens: String(setting.tokenLimits.max_tokens),
                         temp: String(setting.tokenLimits.temperature),

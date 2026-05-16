@@ -84,10 +84,10 @@ export function CategoryOverrides({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-[0.9375rem] font-semibold text-[var(--color-text-primary)]">
+        <h3 className="text-[0.9375rem] font-semibold text-foreground">
           {t("title")}
         </h3>
-        <span className="text-[0.75rem] text-[var(--color-text-tertiary)]">{t("description")}</span>
+        <span className="text-[0.75rem] text-muted-foreground">{t("description")}</span>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -102,12 +102,12 @@ export function CategoryOverrides({
             <div
               key={catValue}
               className={cn(
-                "border border-[var(--color-border)] rounded-xl p-4 transition-all duration-200",
-                isActive && "border-[var(--color-accent)]/30 bg-[var(--color-accent-light)]/20",
+                "border border-border rounded-xl p-4 transition-all duration-200",
+                isActive && "border-primary/30 bg-accent/20",
               )}
             >
               <div className="flex items-center justify-between gap-4">
-                <span className="text-[0.9375rem] font-medium text-[var(--color-text-primary)] min-w-[120px]">
+                 <span className="text-[0.9375rem] font-medium text-foreground min-w-[120px]">
                   {catLabel}
                 </span>
                 <button
@@ -115,7 +115,7 @@ export function CategoryOverrides({
                   onClick={() => toggleOverride(catValue)}
                   className={cn(
                     "relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0",
-                    isActive ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]",
+                     isActive ? "bg-primary" : "bg-muted-foreground/30",
                   )}
                   role="switch"
                   aria-checked={isActive}
@@ -144,10 +144,10 @@ export function CategoryOverrides({
                   <div className="flex-1">
                     {isLoading ? (
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]">
+                        <span className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                           {t("selectModel")}
                         </span>
-                        <span className="text-[0.8125rem] text-[var(--color-text-tertiary)] py-2">
+                        <span className="text-[0.8125rem] text-muted-foreground py-2">
                           {t("loading")}
                         </span>
                       </div>
@@ -163,7 +163,7 @@ export function CategoryOverrides({
                       <div className="flex flex-col gap-1.5">
                         <label
                           htmlFor={`category-model-${catValue}`}
-                          className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]"
+                           className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
                         >
                           {t("selectModel")}
                         </label>
@@ -173,7 +173,7 @@ export function CategoryOverrides({
                           value={override.model_id}
                           onChange={(e) => updateOverride(catValue, "model_id", e.target.value)}
                           placeholder={t("enterModelId")}
-                          className="w-full px-4 py-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[var(--color-text-primary)] text-[0.9375rem] transition-all duration-300 outline-none placeholder:text-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/15"
+                           className="w-full px-4 py-3 border border-border rounded-xl bg-card text-foreground text-[0.9375rem] transition-all duration-300 outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/15"
                         />
                       </div>
                     )}

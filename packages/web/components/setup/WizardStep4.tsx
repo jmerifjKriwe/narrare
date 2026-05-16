@@ -81,7 +81,7 @@ export function WizardStep4({ onNext, onBack }: { onNext: () => void; onBack: ()
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <div>
-          <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          <h2 className="text-xl font-semibold mb-1">
             {t("title")}
           </h2>
           <p className="text-muted-foreground text-[0.9375rem]">{t("description")}</p>
@@ -127,7 +127,7 @@ export function WizardStep4({ onNext, onBack }: { onNext: () => void; onBack: ()
         )}
 
         {modelsLoading ? (
-          <p className="text-sm text-[var(--color-text-secondary)] p-2">{t("modelLoading")}</p>
+          <p className="text-sm text-muted-foreground p-2">{t("modelLoading")}</p>
         ) : models.length > 0 ? (
           <Select
             label={t("model")}
@@ -145,10 +145,10 @@ export function WizardStep4({ onNext, onBack }: { onNext: () => void; onBack: ()
           />
         )}
 
-        {validating && <p className="text-sm text-[var(--color-info)]">{t("validating")}</p>}
+        {validating && <p className="text-sm text-blue-600 dark:text-blue-400">{t("validating")}</p>}
 
         {error && (
-          <p className="bg-[var(--color-error-light)] text-[var(--color-error)] rounded-lg p-3 text-sm">
+          <p className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">
             {error}
           </p>
         )}

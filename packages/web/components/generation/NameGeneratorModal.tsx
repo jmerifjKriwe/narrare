@@ -53,17 +53,17 @@ export function NameGeneratorModal({ projectId, isOpen, onClose }: NameGenerator
         aria-modal="true"
         aria-label={t("nameGenerator")}
         tabIndex={-1}
-        className="relative ml-auto w-full max-w-md h-full bg-[var(--color-surface)] border-l border-[var(--color-border)] shadow-2xl flex flex-col overflow-hidden animate-[narrare-slide-left_0.25s_ease-out]"
+        className="relative ml-auto w-full max-w-md h-full bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden animate-[narrare-slide-left_0.25s_ease-out]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] shrink-0">
-          <span className="text-[0.875rem] font-semibold text-[var(--color-text-primary)]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+          <span className="text-[0.875rem] font-semibold text-foreground">
             {t("nameGenerator")}
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X size={16} />

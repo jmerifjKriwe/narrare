@@ -82,7 +82,7 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-[var(--color-text-tertiary)] text-[0.875rem]">{t("loadingPrompt")}</p>
+        <p className="text-muted-foreground text-[0.875rem]">{t("loadingPrompt")}</p>
       </div>
     );
   }
@@ -91,7 +91,7 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
     return (
       <div className="flex flex-col gap-4">
         <div
-          className="bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-lg p-3 text-[0.875rem]"
+          className="bg-destructive/10 text-destructive rounded-lg p-3 text-[0.875rem]"
           role="alert"
         >
           {t("loadFailed")}
@@ -125,12 +125,12 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
         <button
           type="button"
           onClick={onBack}
-          className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors text-[0.875rem]"
+          className="text-muted-foreground hover:text-foreground transition-colors text-[0.875rem]"
           aria-label={t("backToPrompts")}
         >
           {t("back")}
         </button>
-        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">{promptId}</h2>
+        <h2 className="text-xl font-semibold text-foreground">{promptId}</h2>
       </div>
 
       {/* Source indicator */}
@@ -139,8 +139,8 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
           className={cn(
             "inline-flex items-center px-2.5 py-0.5 rounded-full text-[0.75rem] font-semibold",
             prompt.is_overridden
-              ? "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
-              : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]",
+              ? "bg-accent text-accent-foreground"
+              : "bg-secondary text-muted-foreground",
           )}
         >
           {prompt.is_overridden ? t("sourceOverride") : t("sourceBundled")}
@@ -162,8 +162,8 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
           className={cn(
             "rounded-lg p-3 text-[0.875rem]",
             statusMessage.type === "success"
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-[var(--color-error)]/10 text-[var(--color-error)]",
+               ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+               : "bg-destructive/10 text-destructive",
           )}
           role="status"
         >
@@ -179,7 +179,7 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
             <>
               <label
                 htmlFor="prompt-editor"
-                className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]"
+                className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
               >
                 {t("promptContent")}
               </label>
@@ -187,7 +187,7 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
                 id="prompt-editor"
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
-                className="w-full min-h-[400px] px-4 py-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[var(--color-text-primary)] text-[0.875rem] font-mono transition-all duration-200 outline-none focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/15 resize-y"
+                className="w-full min-h-[400px] px-4 py-3 border border-border rounded-xl bg-card text-foreground text-[0.875rem] font-mono transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/15 resize-y"
               />
               <div className="flex justify-end gap-3">
                 <Button variant="secondary" onClick={() => setEditMode(false)}>
@@ -202,13 +202,13 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
             <>
               <label
                 htmlFor="prompt-viewer"
-                className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)]"
+                className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
               >
                 {prompt.is_overridden ? t("promptContent") : t("baseContent")}
               </label>
               <div
                 id="prompt-viewer"
-                className="w-full min-h-[400px] px-4 py-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] text-[0.875rem] font-mono whitespace-pre-wrap overflow-auto"
+                className="w-full min-h-[400px] px-4 py-3 border border-border rounded-xl bg-secondary text-foreground text-[0.875rem] font-mono whitespace-pre-wrap overflow-auto"
               >
                 {prompt.content}
               </div>
@@ -241,14 +241,14 @@ function PromptVariables({ variables }: { readonly variables: string[] }) {
 
   return (
     <aside className="w-52 shrink-0">
-      <h4 className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-tertiary)] mb-3">
+      <h4 className="text-[0.75rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-3">
         {t("variables")}
       </h4>
       <ul className="flex flex-col gap-1.5">
         {variables.map((variable) => (
           <li
             key={variable}
-            className="px-3 py-1.5 rounded-lg bg-[var(--color-bg-secondary)] text-[0.8125rem] font-mono text-[var(--color-text-secondary)]"
+             className="px-3 py-1.5 rounded-lg bg-secondary text-[0.8125rem] font-mono text-muted-foreground"
           >
             {`{{${variable}}}`}
           </li>
