@@ -8,7 +8,7 @@ Domain-specific dependencies live in their respective domain modules.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import structlog
 from fastapi import Depends, HTTPException, status
@@ -19,6 +19,12 @@ from narrare._app.config import Settings, get_settings
 from narrare._app.database import get_async_session
 from narrare_core.llm import LLMGateway
 from narrare_core.prompts import MetaPromptLoader, PromptComposer, PromptRegistry
+
+if TYPE_CHECKING:
+    from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
+    from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
+    from narrare.settings.user_ai_settings_service import UserAiSettingsService
+    from narrare.settings.user_providers_service import UserProvidersService
 
 logger = structlog.get_logger(__name__)
 
@@ -128,7 +134,7 @@ CurrentUserIdDep = Annotated[str, Depends(get_current_user_id)]
 # ---------------------------------------------------------------------------
 
 
-def get_user_providers_service(session: SessionDep) -> object:
+def get_user_providers_service(session: SessionDep) -> UserProvidersService:
     """Factory for UserProvidersService."""
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
     from narrare.settings.user_providers_repository import UserProvidersRepository
@@ -140,7 +146,7 @@ def get_user_providers_service(session: SessionDep) -> object:
     )
 
 
-def get_user_ai_settings_service(session: SessionDep) -> object:
+def get_user_ai_settings_service(session: SessionDep) -> UserAiSettingsService:
     """Factory for UserAiSettingsService."""
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
     from narrare.settings.user_ai_settings_service import UserAiSettingsService
@@ -152,7 +158,7 @@ def get_user_ai_settings_service(session: SessionDep) -> object:
     )
 
 
-def get_project_ai_settings_service(session: SessionDep) -> object:
+def get_project_ai_settings_service(session: SessionDep) -> ProjectAiSettingsService:
     """Factory for ProjectAiSettingsService."""
     from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
@@ -164,7 +170,7 @@ def get_project_ai_settings_service(session: SessionDep) -> object:
     )
 
 
-def get_model_routing_resolver(session: SessionDep) -> object:
+def get_model_routing_resolver(session: SessionDep) -> ModelRoutingResolverImpl:
     """Factory for ModelRoutingResolverImpl (Task 11.1).
 
     Creates a resolver with all required repositories injected.

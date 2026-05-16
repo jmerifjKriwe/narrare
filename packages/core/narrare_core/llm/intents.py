@@ -38,7 +38,7 @@ class LLMIntent(StrEnum):
 
     # Knowledge base operations
     KB_CREATE = "kb_create"  # Interactive KB entity creation
-    KB_IMPROVE = "kb_improove"  # KB entry improvement
+    KB_IMPROVE = "kb_improve"  # KB entry improvement
     KB_EXTRACT = "kb_extract"  # Extract entities from text
 
     # Planning operations

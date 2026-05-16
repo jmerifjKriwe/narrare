@@ -129,8 +129,11 @@ class EmbeddingError(NarrareError):
     """Error generating or storing embeddings."""
 
 
-class MemoryError(NarrareError):
-    """Error in the memory layer."""
+class NarrareMemoryError(NarrareError):
+    """Error in the Narrare memory layer (mem0 adapter).
+
+    Named NarrareMemoryError to avoid shadowing Python's built-in MemoryError.
+    """
 
 
 class ValidationError(NarrareError):

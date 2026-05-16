@@ -18,6 +18,7 @@ See: CONSTRAINTS.md RULE-02
 from __future__ import annotations
 
 import importlib.resources
+from dataclasses import dataclass
 from pathlib import Path
 
 import structlog
@@ -270,33 +271,14 @@ class PromptRegistry:
         )
 
 
+@dataclass(frozen=True, slots=True)
 class ResolvedPrompt:
     """A resolved and parsed prompt ready for variable substitution."""
 
-    __slots__ = (
-        "category",
-        "first_message",
-        "language",
-        "metadata",
-        "mode",
-        "source",
-        "system_prompt",
-    )
-
-    def __init__(
-        self,
-        system_prompt: str,
-        first_message: str | None,
-        source: str,
-        category: str,
-        language: str,
-        mode: str,
-        metadata: dict[str, object],
-    ) -> None:
-        self.system_prompt = system_prompt
-        self.first_message = first_message
-        self.source = source
-        self.category = category
-        self.language = language
-        self.mode = mode
-        self.metadata = metadata
+    system_prompt: str
+    first_message: str | None
+    source: str
+    category: str
+    language: str
+    mode: str
+    metadata: dict[str, object]
