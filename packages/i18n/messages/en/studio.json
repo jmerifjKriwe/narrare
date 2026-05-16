@@ -379,6 +379,100 @@
       "feature3": "Detailed text analysis",
       "feature4": "Progress tracking and writing goals",
       "feature5": "Modern, distraction-free design"
+    },
+    "promptsTab": "System Prompts"
+  },
+  "wizard": {
+    "step1": {
+      "title": "Project Setup",
+      "description": "Name your project and configure basic settings",
+      "projectName": "Project name",
+      "projectNamePlaceholder": "My Novel",
+      "language": "Language",
+      "autosave": "Autosave interval (seconds)",
+      "autosaveHint": "0 = off, max 3600 seconds",
+      "langEn": "English",
+      "langDe": "Deutsch",
+      "langFr": "Français"
+    },
+    "step2": {
+      "title": "Starter Content",
+      "description": "Choose how to begin your project",
+      "blank": "Blank project",
+      "blankDescription": "Start with an empty canvas and build from scratch",
+      "import": "Import manuscript",
+      "importDescription": "Import an existing manuscript from a file",
+      "importPath": "File path",
+      "importPathPlaceholder": "/path/to/your/manuscript",
+      "validationFailed": "Validation failed"
+    },
+    "step3": {
+      "title": "Novel Details",
+      "description": "Describe your novel — the AI uses this to tailor suggestions",
+      "novelTitle": "Title",
+      "novelTitlePlaceholder": "Your novel title",
+      "author": "Author",
+      "authorPlaceholder": "Your name",
+      "genre": "Genre",
+      "genrePlaceholder": "Fantasy, Thriller, Romance…",
+      "logline": "Logline",
+      "loglinePlaceholder": "A one-sentence summary of your story",
+      "structure": "Story structure",
+      "tone": "Tone"
+    },
+    "step4": {
+      "title": "AI Provider",
+      "description": "Configure your AI provider to enable AI-assisted features",
+      "provider": "Provider",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "sk-…",
+      "ollamaUrl": "Ollama URL",
+      "model": "Model",
+      "modelPlaceholder": "Select or type a model ID",
+      "modelLoading": "Loading models…",
+      "validating": "Validating connection…",
+      "validationFailed": "Validation failed",
+      "zaiEndpoint": "Z.AI Endpoint",
+      "zaiGeneral": "General API (api.z.ai/api/paas/v4)",
+      "zaiCoding": "Coding API (api.z.ai/api/coding/paas/v4)"
+    },
+    "step5": {
+      "title": "Confirm",
+      "description": "Review your choices before creating the project",
+      "project": "Project",
+      "novel": "Novel",
+      "starter": "Content",
+      "provider": "AI Provider",
+      "creating": "Creating your project",
+      "name": "Name",
+      "language": "Language",
+      "autosave": "Autosave",
+      "autosaveOff": "Off",
+      "novelTitle": "Title",
+      "author": "Author",
+      "genre": "Genre",
+      "structure": "Structure",
+      "tone": "Tone",
+      "content": "Content",
+      "model": "Model",
+      "blankProject": "Blank project",
+      "importFrom": "Import from {path}"
+    },
+    "storyStructure": {
+      "three_act": "Three-Act Structure",
+      "five_act": "Five-Act Structure",
+      "heros_journey": "Hero's Journey",
+      "save_the_cat": "Save the Cat",
+      "seven_point": "Seven-Point Structure"
+    },
+    "tone": {
+      "dramatic": "Dramatic",
+      "humorous": "Humorous",
+      "suspenseful": "Suspenseful",
+      "contemplative": "Contemplative",
+      "romantic": "Romantic",
+      "dark": "Dark",
+      "adventurous": "Adventurous"
     }
   },
   "volumes": {

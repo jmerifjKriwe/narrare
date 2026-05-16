@@ -379,6 +379,100 @@
       "feature3": "Analyses de texte détaillées",
       "feature4": "Suivi des progrès et objectifs d'écriture",
       "feature5": "Design moderne et sans distraction"
+    },
+    "promptsTab": "Prompts système"
+  },
+  "wizard": {
+    "step1": {
+      "title": "Configuration du projet",
+      "description": "Nommez votre projet et configurez les paramètres de base",
+      "projectName": "Nom du projet",
+      "projectNamePlaceholder": "Mon roman",
+      "language": "Langue",
+      "autosave": "Intervalle de sauvegarde (secondes)",
+      "autosaveHint": "0 = désactivé, max 3600 secondes",
+      "langEn": "English",
+      "langDe": "Deutsch",
+      "langFr": "Français"
+    },
+    "step2": {
+      "title": "Contenu de départ",
+      "description": "Choisissez comment commencer votre projet",
+      "blank": "Projet vierge",
+      "blankDescription": "Commencez avec une page blanche et construisez à partir de zéro",
+      "import": "Importer un manuscrit",
+      "importDescription": "Importez un manuscrit existant depuis un fichier",
+      "importPath": "Chemin du fichier",
+      "importPathPlaceholder": "/chemin/vers/votre/manuscrit",
+      "validationFailed": "Validation échouée"
+    },
+    "step3": {
+      "title": "Détails du roman",
+      "description": "Décrivez votre roman — l'IA utilise ces informations pour des suggestions adaptées",
+      "novelTitle": "Titre",
+      "novelTitlePlaceholder": "Titre de votre roman",
+      "author": "Auteur",
+      "authorPlaceholder": "Votre nom",
+      "genre": "Genre",
+      "genrePlaceholder": "Fantasy, Thriller, Romance…",
+      "logline": "Logline",
+      "loglinePlaceholder": "Un résumé en une phrase de votre histoire",
+      "structure": "Structure narrative",
+      "tone": "Ton"
+    },
+    "step4": {
+      "title": "Fournisseur IA",
+      "description": "Configurez votre fournisseur IA pour les fonctionnalités assistées",
+      "provider": "Fournisseur",
+      "apiKey": "Clé API",
+      "apiKeyPlaceholder": "sk-…",
+      "ollamaUrl": "URL Ollama",
+      "model": "Modèle",
+      "modelPlaceholder": "Sélectionnez ou entrez un ID de modèle",
+      "modelLoading": "Chargement des modèles…",
+      "validating": "Validation de la connexion…",
+      "validationFailed": "Validation échouée",
+      "zaiEndpoint": "Point de terminaison Z.AI",
+      "zaiGeneral": "API Générale (api.z.ai/api/paas/v4)",
+      "zaiCoding": "API Coding (api.z.ai/api/coding/paas/v4)"
+    },
+    "step5": {
+      "title": "Confirmer",
+      "description": "Vérifiez vos choix avant de créer le projet",
+      "project": "Projet",
+      "novel": "Roman",
+      "starter": "Contenu",
+      "provider": "Fournisseur IA",
+      "creating": "Création du projet",
+      "name": "Nom",
+      "language": "Langue",
+      "autosave": "Sauvegarde auto",
+      "autosaveOff": "Désactivé",
+      "novelTitle": "Titre",
+      "author": "Auteur",
+      "genre": "Genre",
+      "structure": "Structure",
+      "tone": "Ton",
+      "content": "Contenu",
+      "model": "Modèle",
+      "blankProject": "Projet vierge",
+      "importFrom": "Import depuis {path}"
+    },
+    "storyStructure": {
+      "three_act": "Structure en trois actes",
+      "five_act": "Structure en cinq actes",
+      "heros_journey": "Le voyage du héros",
+      "save_the_cat": "Save the Cat",
+      "seven_point": "Structure en sept points"
+    },
+    "tone": {
+      "dramatic": "Dramatique",
+      "humorous": "Humoristique",
+      "suspenseful": "Suspense",
+      "contemplative": "Contemplatif",
+      "romantic": "Romantique",
+      "dark": "Sombre",
+      "adventurous": "Aventureux"
     }
   },
   "volumes": {

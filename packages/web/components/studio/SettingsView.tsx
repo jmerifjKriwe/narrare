@@ -30,7 +30,7 @@ const CATEGORIES: CategoryConfig[] = [
   { id: "general", icon: Settings2, labelKey: "settings.general" },
   { id: "writing", icon: Target, labelKey: "settings.writingGoals" },
   { id: "ai", icon: Sparkles, labelKey: "settings.aiSetup" },
-  { id: "prompts", icon: FileText, labelKey: "settings.prompts" },
+  { id: "prompts", icon: FileText, labelKey: "settings.promptsTab" },
   { id: "shortcuts", icon: Keyboard, labelKey: "settings.shortcuts" },
   { id: "about", icon: Info, labelKey: "settings.about" },
 ];

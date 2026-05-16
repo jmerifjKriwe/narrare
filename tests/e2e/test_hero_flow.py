@@ -51,6 +51,20 @@ class TestHeroFlow:
 
         page.route("**/api/v1/**", _add_auth_header)
 
+        # Inject cookie for the middleware (proxy.ts)
+        # This is needed because the middleware runs on the server and checks cookies,
+        # but the test otherwise only provides the token via header interception.
+        page.context.add_cookies(
+            [
+                {
+                    "name": "narrare_auth",
+                    "value": access_token,
+                    "url": base_url,
+                    "path": "/",
+                }
+            ]
+        )
+
         # Re-install LLM mocks (route order matters — auth + LLM mocks coexist)
         setup_llm_mocks(page)
 

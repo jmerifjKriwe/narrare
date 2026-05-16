@@ -38,13 +38,9 @@ export function DashboardView() {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: () => novelsApi.create({ title: t("dashboard.untitledNovel") }),
-    onSuccess: (novel) => {
-      queryClient.invalidateQueries({ queryKey: ["novels"] });
-      router.push(`/novel/${novel.id}`);
-    },
-  });
+  function handleNewNovel() {
+    router.push("/wizard");
+  }
 
   function formatDate(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString(locale, {
@@ -180,9 +176,8 @@ export function DashboardView() {
               {/* New novel card */}
               <button
                 type="button"
-                onClick={() => createMutation.mutate()}
-                disabled={createMutation.isPending}
-                className="flex flex-col items-center justify-center bg-card border-2 border-dashed border-border rounded-lg p-6 hover:border-primary/50 hover:bg-accent transition-colors min-h-[180px] disabled:opacity-50"
+                onClick={handleNewNovel}
+                className="flex flex-col items-center justify-center bg-card border-2 border-dashed border-border rounded-lg p-6 hover:border-primary/50 hover:bg-accent transition-colors min-h-[180px]"
               >
                 <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Plus className="w-5 h-5 text-muted-foreground" />

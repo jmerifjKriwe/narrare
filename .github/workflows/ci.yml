@@ -394,7 +394,13 @@ jobs:
 
       - name: Start frontend server
         run: |
-          cd packages/web && pnpm start > /tmp/frontend-server.log 2>&1 &
+          # Use the standalone server instead of 'pnpm start' because Next.js standalone mode
+          # is not compatible with 'next start'.
+          # We need to copy static and public files into the standalone directory first.
+          cp -r packages/web/.next/static packages/web/.next/standalone/packages/web/.next/static
+          cp -r packages/web/public packages/web/.next/standalone/packages/web/public
+
+          PORT=3000 node packages/web/.next/standalone/packages/web/server.js > /tmp/frontend-server.log 2>&1 &
           echo "Waiting for frontend server..."
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3000 > /dev/null; then

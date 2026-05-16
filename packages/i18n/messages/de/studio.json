@@ -43,7 +43,7 @@
     "heading2": "Überschrift 2",
     "heading3": "Überschrift 3",
     "blockquote": "Zitat",
-    "addBlock": "Block hinzuf\u00fcgen"
+    "addBlock": "Block hinzufügen"
   },
   "bubble": {
     "bold": "B",
@@ -379,6 +379,100 @@
       "feature3": "Detaillierte Text-Analysen",
       "feature4": "Fortschrittsverfolgung und Schreibziele",
       "feature5": "Modernes, ablenkungsfreies Design"
+    },
+    "promptsTab": "System-Prompts"
+  },
+  "wizard": {
+    "step1": {
+      "title": "Projekt-Einrichtung",
+      "description": "Benenne dein Projekt und konfiguriere die Grundeinstellungen",
+      "projectName": "Projektname",
+      "projectNamePlaceholder": "Mein Roman",
+      "language": "Sprache",
+      "autosave": "Auto-Speichern-Intervall (Sekunden)",
+      "autosaveHint": "0 = aus, max. 3600 Sekunden",
+      "langEn": "English",
+      "langDe": "Deutsch",
+      "langFr": "Français"
+    },
+    "step2": {
+      "title": "Startinhalt",
+      "description": "Wähle, wie du dein Projekt beginnen möchtest",
+      "blank": "Leeres Projekt",
+      "blankDescription": "Beginne mit einem leeren Blatt und baue von Grund auf auf",
+      "import": "Manuskript importieren",
+      "importDescription": "Importiere ein bestehendes Manuskript aus einer Datei",
+      "importPath": "Dateipfad",
+      "importPathPlaceholder": "/pfad/zum/manuskript",
+      "validationFailed": "Validierung fehlgeschlagen"
+    },
+    "step3": {
+      "title": "Roman-Details",
+      "description": "Beschreibe deinen Roman — die KI nutzt dies für maßgeschneiderte Vorschläge",
+      "novelTitle": "Titel",
+      "novelTitlePlaceholder": "Dein Romantitel",
+      "author": "Autor",
+      "authorPlaceholder": "Dein Name",
+      "genre": "Genre",
+      "genrePlaceholder": "Fantasy, Thriller, Liebesroman…",
+      "logline": "Logline",
+      "loglinePlaceholder": "Ein einzeiliger Zusammenfassung deiner Geschichte",
+      "structure": "Erzählstruktur",
+      "tone": "Ton"
+    },
+    "step4": {
+      "title": "KI-Anbieter",
+      "description": "Konfiguriere deinen KI-Anbieter für KI-gestützte Funktionen",
+      "provider": "Anbieter",
+      "apiKey": "API-Schlüssel",
+      "apiKeyPlaceholder": "sk-…",
+      "ollamaUrl": "Ollama-URL",
+      "model": "Modell",
+      "modelPlaceholder": "Wähle oder gib eine Modell-ID ein",
+      "modelLoading": "Modelle laden…",
+      "validating": "Verbindung wird überprüft…",
+      "validationFailed": "Validierung fehlgeschlagen",
+      "zaiEndpoint": "Z.AI-Endpunkt",
+      "zaiGeneral": "General API (api.z.ai/api/paas/v4)",
+      "zaiCoding": "Coding API (api.z.ai/api/coding/paas/v4)"
+    },
+    "step5": {
+      "title": "Bestätigen",
+      "description": "Überprüfe deine Auswahl bevor das Projekt erstellt wird",
+      "project": "Projekt",
+      "novel": "Roman",
+      "starter": "Inhalt",
+      "provider": "KI-Anbieter",
+      "creating": "Projekt wird erstellt",
+      "name": "Name",
+      "language": "Sprache",
+      "autosave": "Auto-Speichern",
+      "autosaveOff": "Aus",
+      "novelTitle": "Titel",
+      "author": "Autor",
+      "genre": "Genre",
+      "structure": "Struktur",
+      "tone": "Ton",
+      "content": "Inhalt",
+      "model": "Modell",
+      "blankProject": "Leeres Projekt",
+      "importFrom": "Import aus {path}"
+    },
+    "storyStructure": {
+      "three_act": "Drei-Akt-Struktur",
+      "five_act": "Fünf-Akt-Struktur",
+      "heros_journey": "Heldenreise",
+      "save_the_cat": "Save the Cat",
+      "seven_point": "Sieben-Punkt-Struktur"
+    },
+    "tone": {
+      "dramatic": "Dramatisch",
+      "humorous": "Humorvoll",
+      "suspenseful": "Spannend",
+      "contemplative": "Nachdenklich",
+      "romantic": "Romantisch",
+      "dark": "Düster",
+      "adventurous": "Abenteuerlich"
     }
   },
   "volumes": {
