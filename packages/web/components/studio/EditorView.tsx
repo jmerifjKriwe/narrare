@@ -3,10 +3,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, Save, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { chaptersApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
+import { CommandPalette } from "./editor/CommandPalette";
+import type { CommandContext } from "./editor/commands";
+import { NameGeneratorModal } from "./generation/NameGeneratorModal";
 import { TipTapEditor } from "./TipTapEditor";
 
 interface EditorViewProps {
@@ -21,12 +24,21 @@ export function EditorView({ novelId }: EditorViewProps) {
   const activeChapterId = useEditorStore((s) => s.activeChapterId);
   const editor = useEditorStore((s) => s.editor);
   const setSaveStatus = useEditorStore((s) => s.setSaveStatus);
+  const toggleSidebar = useEditorStore((s) => s.toggleSidebar);
+  const toggleFocusMode = useEditorStore((s) => s.toggleFocusMode);
+  const toggleContextPanel = useEditorStore((s) => s.toggleContextPanel);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+
+  // Command palette state
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Name generator modal state
+  const [nameGeneratorOpen, setNameGeneratorOpen] = useState(false);
 
   // Fetch active chapter content
   const { data: chapter, isLoading } = useQuery({
@@ -55,9 +67,24 @@ export function EditorView({ novelId }: EditorViewProps) {
     setCharCount(chars);
   }, [content]);
 
-  async function handleSave() {
+  const handleSave = useCallback(async () => {
     if (!activeChapterId) return;
 
+    // Try autosave forceSave first if available
+    const autosaveExt = editor?.extensionManager.extensions.find((ext) => ext.name === "autosave");
+    if (autosaveExt) {
+      const storage = autosaveExt.storage as { forceSave: () => Promise<void> };
+      await storage.forceSave();
+      setLastSaved(
+        new Date().toLocaleTimeString(locale, {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+      return;
+    }
+
+    // Fallback: manual save without autosave extension
     setSaveStatus("saving");
     try {
       await Promise.all([
@@ -77,7 +104,66 @@ export function EditorView({ novelId }: EditorViewProps) {
     } catch {
       setSaveStatus("error");
     }
-  }
+  }, [activeChapterId, editor, novelId, content, title, locale, setSaveStatus, queryClient]);
+
+  // Autosave handler for TipTapEditor
+  const handleAutosave = useCallback(
+    async (htmlContent: string) => {
+      if (!activeChapterId) return;
+      setSaveStatus("saving");
+      try {
+        await Promise.all([
+          chaptersApi.updateContent(novelId, activeChapterId, htmlContent),
+          chaptersApi.updateMeta(novelId, activeChapterId, { title }),
+        ]);
+        setSaveStatus("saved");
+        setLastSaved(
+          new Date().toLocaleTimeString(locale, {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        );
+        queryClient.invalidateQueries({
+          queryKey: ["novels", novelId, "chapters"],
+        });
+      } catch {
+        setSaveStatus("error");
+      }
+    },
+    [activeChapterId, novelId, title, locale, setSaveStatus, queryClient],
+  );
+
+  // Command context for CommandPalette
+  const commandContext: CommandContext = useCallback(
+    () => ({
+      toggleSidebar,
+      toggleFocusMode,
+      toggleContextPanel,
+      saveChapter: () => void handleSave(),
+      createChapter: () => {
+        // TODO: Wire to chapter creation
+      },
+    }),
+    [toggleSidebar, toggleFocusMode, toggleContextPanel, handleSave],
+  )();
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Cmd/Ctrl+K → Command Palette
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+      // Cmd/Ctrl+S → Save
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleSave]);
 
   const readingTime = Math.ceil(wordCount / 200);
 
@@ -115,6 +201,15 @@ export function EditorView({ novelId }: EditorViewProps) {
             <Clock className="w-4 h-4" />
             <span>{lastSaved ?? "--:--"}</span>
           </div>
+          {/* Name Generator trigger */}
+          <button
+            type="button"
+            onClick={() => setNameGeneratorOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title={t("editor.nameGenerator")}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+          </button>
           <button
             type="button"
             onClick={handleSave}
@@ -187,7 +282,12 @@ export function EditorView({ novelId }: EditorViewProps) {
       {/* Editor area */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <TipTapEditor content={content} onChange={setContent} />
+          <TipTapEditor
+            content={content}
+            onChange={setContent}
+            onAutosave={handleAutosave}
+            autosaveInterval={30_000}
+          />
         </div>
       </div>
 
@@ -205,6 +305,21 @@ export function EditorView({ novelId }: EditorViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Command Palette overlay */}
+      <CommandPalette
+        editor={editor}
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        context={commandContext}
+      />
+
+      {/* Name Generator slide-in panel */}
+      <NameGeneratorModal
+        novelId={novelId}
+        isOpen={nameGeneratorOpen}
+        onClose={() => setNameGeneratorOpen(false)}
+      />
     </div>
   );
 }

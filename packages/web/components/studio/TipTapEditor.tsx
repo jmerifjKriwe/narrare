@@ -6,14 +6,20 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import { Check, RotateCcw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
 import { BlockControls } from "./BlockControls";
+import { Autosave } from "./editor/extensions/Autosave";
+import { DialogueMark } from "./editor/extensions/DialogueMark";
+import { NarrareDocument } from "./editor/extensions/NarrareDocument";
+import { SceneBreak } from "./editor/extensions/SceneBreak";
 
 interface TipTapEditorProps {
   content: string;
   onChange: (content: string) => void;
+  onAutosave?: (content: string) => Promise<void>;
+  autosaveInterval?: number;
 }
 
 interface AISuggestion {
@@ -22,21 +28,41 @@ interface AISuggestion {
   position: { from: number; to: number };
 }
 
-export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
+export function TipTapEditor({
+  content,
+  onChange,
+  onAutosave,
+  autosaveInterval,
+}: TipTapEditorProps) {
   const t = useTranslations("studio");
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectionInput, setShowRejectionInput] = useState(false);
 
+  // Memoize autosave config so extensions array stays stable
+  const autosaveConfig = useMemo(
+    () => ({
+      interval: autosaveInterval ?? 30_000,
+      saveFn: onAutosave ?? (async () => {}),
+      enabled: !!onAutosave,
+    }),
+    [onAutosave, autosaveInterval],
+  );
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
+        document: false,
         heading: {
           levels: [1, 2, 3],
         },
       }),
+      NarrareDocument,
+      SceneBreak,
+      DialogueMark,
+      Autosave.configure(autosaveConfig),
       Placeholder.configure({
         placeholder: t("editor.placeholder"),
       }),
