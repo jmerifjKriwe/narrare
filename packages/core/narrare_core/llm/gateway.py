@@ -170,9 +170,10 @@ class LLMGateway:
                     tokens=token_usage.total_tokens,
                     duration_ms=round(elapsed * 1000),
                 )
-                self._obs.finish_trace(obs_trace, str(result), token_usage, round(elapsed * 1000))
+                result_text = result.output
+                self._obs.finish_trace(obs_trace, result_text, token_usage, round(elapsed * 1000))
                 return LLMResult(
-                    text=str(result),
+                    text=result_text,
                     usage=token_usage,
                     model=model_id,
                     intent=intent.value,
