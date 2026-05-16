@@ -1,21 +1,17 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { aiSettingsApi } from "@/lib/api/client";
-import type { CreateProviderRequest, TokenLimitProfile, UpdateProviderRequest } from "@/types";
+import type { ModelOverride, TokenLimitOverride, TokenLimitProfile } from "@/types";
+import { CategoryOverrides } from "./CategoryOverrides";
+import { CustomTokenLimits } from "./CustomTokenLimits";
+import { IntentOverrides } from "./IntentOverrides";
+import { ProviderList } from "./ProviderList";
 
-// --- Provider label map ---
-
-const PROVIDER_OPTIONS: { value: string; label: string }[] = [
-  { value: "openai", label: "OpenAI" },
-  { value: "anthropic", label: "Anthropic / Claude" },
-  { value: "google", label: "Google / Gemini" },
-  { value: "ollama", label: "Ollama (Local)" },
-  { value: "openrouter", label: "OpenRouter" },
-];
+// --- Token profile options ---
 
 const TOKEN_PROFILES: { value: TokenLimitProfile; labelKey: string }[] = [
   { value: "quick", labelKey: "settings.ai.tokenProfileQuick" },
@@ -24,138 +20,13 @@ const TOKEN_PROFILES: { value: TokenLimitProfile; labelKey: string }[] = [
   { value: "custom", labelKey: "settings.ai.tokenProfileCustom" },
 ];
 
-function providerLabel(name: string): string {
-  return PROVIDER_OPTIONS.find((p) => p.value === name)?.label ?? name;
-}
-
-// --- Provider Form (Add / Edit) ---
-
-interface ProviderFormProps {
-  mode: "add" | "edit";
-  initialProviderName?: string;
-  initialBaseUrl?: string | null;
-  hasKey?: boolean;
-  last4?: string;
-  onSubmit: (data: CreateProviderRequest | UpdateProviderRequest) => void;
-  onCancel: () => void;
-  isPending: boolean;
-  t: (key: string) => string;
-}
-
-function ProviderForm({
-  mode,
-  initialProviderName,
-  initialBaseUrl,
-  hasKey,
-  last4,
-  onSubmit,
-  onCancel,
-  isPending,
-  t,
-}: ProviderFormProps) {
-  const [providerName, setProviderName] = useState(initialProviderName ?? "openai");
-  const [apiKey, setApiKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState(initialBaseUrl ?? "");
-
-  function handleSubmit() {
-    if (mode === "add") {
-      onSubmit({
-        provider_name: providerName,
-        api_key: apiKey,
-        base_url: baseUrl || null,
-      } satisfies CreateProviderRequest);
-    } else {
-      const payload: UpdateProviderRequest = {};
-      if (apiKey) payload.api_key = apiKey;
-      if (baseUrl !== (initialBaseUrl ?? "")) payload.base_url = baseUrl || null;
-      onSubmit(payload);
-    }
-  }
-
-  return (
-    <div className="space-y-4 ml-15">
-      {mode === "add" && (
-        <div>
-          <label htmlFor="provider-name" className="block text-sm font-medium mb-1.5">
-            {t("settings.ai.providerName")}
-          </label>
-          <select
-            id="provider-name"
-            value={providerName}
-            onChange={(e) => setProviderName(e.target.value)}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          >
-            {PROVIDER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      <div>
-        <label htmlFor="provider-api-key" className="block text-sm font-medium mb-1.5">
-          {mode === "edit" ? t("settings.ai.editApiKey") : t("settings.ai.apiKey")}
-        </label>
-        <input
-          id="provider-api-key"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          placeholder={
-            mode === "edit" && hasKey
-              ? `••••••••${last4 ?? ""}`
-              : t("settings.ai.apiKeyPlaceholder")
-          }
-        />
-        {mode === "edit" && hasKey && (
-          <p className="text-xs text-muted-foreground mt-1">{t("settings.ai.apiKeyHint")}</p>
-        )}
-      </div>
-      <div>
-        <label htmlFor="provider-base-url" className="block text-sm font-medium mb-1.5">
-          {t("settings.ai.baseUrl")}
-        </label>
-        <input
-          id="provider-base-url"
-          type="text"
-          value={baseUrl}
-          onChange={(e) => setBaseUrl(e.target.value)}
-          className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          placeholder="https://api.openai.com/v1"
-        />
-      </div>
-      <div className="flex gap-3 pt-2">
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isPending}
-          className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
-        >
-          {isPending ? t("settings.ai.loading") : t("settings.ai.save")}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-6 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm"
-        >
-          {t("settings.ai.cancel")}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // --- Main AI Tab ---
 
 export function AiTab() {
   const t = useTranslations("studio");
   const queryClient = useQueryClient();
 
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showCustomLimits, setShowCustomLimits] = useState(false);
 
   // Data fetching
   const { data: providers = [], isLoading: providersLoading } = useQuery({
@@ -174,35 +45,29 @@ export function AiTab() {
     enabled: !!aiSettings?.default_provider_id,
   });
 
-  // Mutations
-  const createProviderMutation = useMutation({
-    mutationFn: (data: CreateProviderRequest) => aiSettingsApi.createProvider(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings", "ai", "providers"] });
-      setShowAddForm(false);
-    },
-    onError: (err) => console.error("Failed to create provider:", err),
-  });
+  // Dynamic model loading per provider (for overrides)
+  const [providerModelsCache, setProviderModelsCache] = useState<
+    Record<string, { value: string; label: string }[]>
+  >({});
+  const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
 
-  const updateProviderMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateProviderRequest }) =>
-      aiSettingsApi.updateProvider(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings", "ai", "providers"] });
-      setEditingProviderId(null);
-    },
-    onError: (err) => console.error("Failed to update provider:", err),
-  });
+  async function loadModelsForProvider(providerId: string) {
+    if (providerModelsCache[providerId] || loadingModels[providerId]) return;
+    setLoadingModels((prev) => ({ ...prev, [providerId]: true }));
+    try {
+      const data = await aiSettingsApi.getProviderModels(providerId);
+      setProviderModelsCache((prev) => ({
+        ...prev,
+        [providerId]: data.models.map((m) => ({ value: m.id, label: m.name })),
+      }));
+    } catch {
+      // Silently fail — the user can still type a model ID manually
+    } finally {
+      setLoadingModels((prev) => ({ ...prev, [providerId]: false }));
+    }
+  }
 
-  const deleteProviderMutation = useMutation({
-    mutationFn: (id: string) => aiSettingsApi.deleteProvider(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings", "ai", "providers"] });
-      setConfirmDeleteId(null);
-    },
-    onError: (err) => console.error("Failed to delete provider:", err),
-  });
-
+  // Settings mutation
   const updateAiSettingsMutation = useMutation({
     mutationFn: aiSettingsApi.updateUserSettings,
     onSuccess: () => {
@@ -211,6 +76,7 @@ export function AiTab() {
     onError: (err) => console.error("Failed to update AI settings:", err),
   });
 
+  // Handlers
   function handleDefaultProviderChange(providerId: string) {
     updateAiSettingsMutation.mutate({
       default_provider_id: providerId || null,
@@ -226,6 +92,34 @@ export function AiTab() {
     updateAiSettingsMutation.mutate({ token_limit_profile: profile });
   }
 
+  function handleCategoryOverridesChange(categoryOverrides: Record<string, ModelOverride>) {
+    updateAiSettingsMutation.mutate({ category_overrides: categoryOverrides });
+  }
+
+  function handleIntentOverridesChange(intentOverrides: Record<string, ModelOverride>) {
+    for (const override of Object.values(intentOverrides)) {
+      if (override.provider_id && !providerModelsCache[override.provider_id]) {
+        loadModelsForProvider(override.provider_id);
+      }
+    }
+    updateAiSettingsMutation.mutate({ intent_overrides: intentOverrides });
+  }
+
+  function handleTokenLimitOverridesChange(
+    tokenLimitOverrides: Record<string, TokenLimitOverride>,
+  ) {
+    updateAiSettingsMutation.mutate({ token_limit_overrides: tokenLimitOverrides });
+  }
+
+  // Pre-load models for active category overrides
+  if (aiSettings?.category_overrides) {
+    for (const override of Object.values(aiSettings.category_overrides)) {
+      if (override.provider_id && !providerModelsCache[override.provider_id]) {
+        loadModelsForProvider(override.provider_id);
+      }
+    }
+  }
+
   // --- Render ---
 
   if (providersLoading) {
@@ -236,6 +130,8 @@ export function AiTab() {
     );
   }
 
+  const currentProfile = aiSettings?.token_limit_profile ?? "balanced";
+
   return (
     <div>
       <div className="mb-6">
@@ -243,138 +139,8 @@ export function AiTab() {
         <p className="text-sm text-muted-foreground">{t("settings.ai.description")}</p>
       </div>
       <div className="space-y-4">
-        {/* Provider list */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                <span className="text-lg">🤖</span>
-              </div>
-              <div>
-                <h3 className="font-medium">{t("settings.ai.provider")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t("settings.ai.providerDescription")}
-                </p>
-              </div>
-            </div>
-            {!showAddForm && (
-              <button
-                type="button"
-                onClick={() => setShowAddForm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{t("settings.ai.addProvider")}</span>
-              </button>
-            )}
-          </div>
-
-          {/* Add form */}
-          {showAddForm && (
-            <ProviderForm
-              mode="add"
-              onSubmit={(data) => createProviderMutation.mutate(data as CreateProviderRequest)}
-              onCancel={() => setShowAddForm(false)}
-              isPending={createProviderMutation.isPending}
-              t={t}
-            />
-          )}
-
-          {/* Provider list or empty state */}
-          {!showAddForm && (
-            <div className="ml-15 space-y-2">
-              {providers.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">{t("settings.ai.noProviders")}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("settings.ai.noProvidersDescription")}
-                  </p>
-                </div>
-              ) : (
-                providers.map((provider) => (
-                  <div
-                    key={provider.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border bg-background"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <p className="text-sm font-medium">
-                          {providerLabel(provider.provider_name)}
-                        </p>
-                        {provider.has_api_key && provider.api_key_last4 && (
-                          <p className="text-xs text-muted-foreground">
-                            ••••{provider.api_key_last4}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {editingProviderId === provider.id ? (
-                        <ProviderForm
-                          mode="edit"
-                          initialProviderName={provider.provider_name}
-                          initialBaseUrl={provider.base_url}
-                          hasKey={provider.has_api_key}
-                          last4={provider.api_key_last4}
-                          onSubmit={(data) =>
-                            updateProviderMutation.mutate({
-                              id: provider.id,
-                              data: data as UpdateProviderRequest,
-                            })
-                          }
-                          onCancel={() => setEditingProviderId(null)}
-                          isPending={updateProviderMutation.isPending}
-                          t={t}
-                        />
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setEditingProviderId(provider.id)}
-                            className="px-3 py-1.5 text-xs bg-muted rounded-md hover:bg-accent transition-colors"
-                          >
-                            {t("settings.ai.editApiKey")}
-                          </button>
-                          {confirmDeleteId === provider.id ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                {t("settings.ai.confirmDelete")}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => deleteProviderMutation.mutate(provider.id)}
-                                disabled={deleteProviderMutation.isPending}
-                                className="px-3 py-1.5 text-xs bg-destructive text-destructive-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
-                              >
-                                {t("settings.ai.deleteProvider")}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDeleteId(null)}
-                                className="px-3 py-1.5 text-xs bg-muted rounded-md hover:bg-accent transition-colors"
-                              >
-                                {t("settings.ai.cancel")}
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(provider.id)}
-                              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                              aria-label={t("settings.ai.deleteProvider")}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+        {/* Provider management */}
+        <ProviderList providers={providers} isLoading={providersLoading} />
 
         {/* Default model */}
         <div className="bg-card border border-border rounded-lg p-6">
@@ -387,7 +153,6 @@ export function AiTab() {
             </div>
           </div>
           <div className="space-y-4 ml-15">
-            {/* Default provider selector */}
             <div className="flex items-center justify-between">
               <span className="text-sm">{t("settings.ai.providerName")}</span>
               <select
@@ -398,13 +163,12 @@ export function AiTab() {
                 <option value="">{t("settings.ai.noneSelected")}</option>
                 {providers.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {providerLabel(p.provider_name)}
+                    {p.provider_name}
                   </option>
                 ))}
               </select>
             </div>
             <div className="h-px bg-border" />
-            {/* Model selector */}
             <div className="flex items-center justify-between">
               <span className="text-sm">{t("settings.ai.defaultModel")}</span>
               {modelsLoading ? (
@@ -440,7 +204,7 @@ export function AiTab() {
           </div>
           <div className="ml-15">
             <select
-              value={aiSettings?.token_limit_profile ?? "balanced"}
+              value={currentProfile}
               onChange={(e) => handleTokenProfileChange(e.target.value as TokenLimitProfile)}
               className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
             >
@@ -452,6 +216,84 @@ export function AiTab() {
             </select>
           </div>
         </div>
+
+        {/* Category Overrides */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+              <span className="text-lg">📂</span>
+            </div>
+            <div>
+              <h3 className="font-medium">{t("settings.ai.categoryOverrides.title")}</h3>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.ai.categoryOverrides.description")}
+              </p>
+            </div>
+          </div>
+          <CategoryOverrides
+            overrides={aiSettings?.category_overrides ?? {}}
+            providers={providers}
+            onChange={handleCategoryOverridesChange}
+            modelOptions={providerModelsCache}
+            loadingModels={loadingModels}
+          />
+        </div>
+
+        {/* Intent Overrides */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+              <span className="text-lg">🔧</span>
+            </div>
+            <div>
+              <h3 className="font-medium">{t("settings.ai.intentOverrides.title")}</h3>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.ai.intentOverrides.description")}
+              </p>
+            </div>
+          </div>
+          <IntentOverrides
+            overrides={aiSettings?.intent_overrides ?? {}}
+            providers={providers}
+            onChange={handleIntentOverridesChange}
+            modelOptions={providerModelsCache}
+            loadingModels={loadingModels}
+          />
+        </div>
+
+        {/* Custom Token Limits (only when profile is "custom") */}
+        {currentProfile === "custom" && (
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                  <span className="text-lg">🎛️</span>
+                </div>
+                <div>
+                  <h3 className="font-medium">{t("settings.ai.tokenLimits.title")}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {t("settings.ai.tokenLimits.description")}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCustomLimits(!showCustomLimits)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showCustomLimits
+                  ? t("settings.ai.intentOverrides.collapse")
+                  : t("settings.ai.intentOverrides.advanced")}
+              </button>
+            </div>
+            {showCustomLimits && (
+              <CustomTokenLimits
+                overrides={aiSettings?.token_limit_overrides ?? {}}
+                onChange={handleTokenLimitOverridesChange}
+              />
+            )}
+          </div>
+        )}
 
         {/* System prompts info */}
         <div className="bg-muted/30 border border-border rounded-lg p-4 text-sm text-muted-foreground">

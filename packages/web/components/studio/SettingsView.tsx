@@ -1,17 +1,18 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Info, Keyboard, Settings2, Sparkles, Target } from "lucide-react";
+import { BookOpen, FileText, Info, Keyboard, Settings2, Sparkles, Target } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AiTab } from "@/components/studio/settings/AiTab";
 import { GeneralTab } from "@/components/studio/settings/GeneralTab";
+import { PromptsTab } from "@/components/studio/settings/PromptsTab";
 import { WritingGoalsTab } from "@/components/studio/settings/WritingGoalsTab";
 import { settingsApi } from "@/lib/api/client";
 
 // --- Types ---
 
-type SettingsCategory = "general" | "writing" | "ai" | "shortcuts" | "about";
+type SettingsCategory = "general" | "writing" | "ai" | "prompts" | "shortcuts" | "about";
 
 interface CategoryConfig {
   id: SettingsCategory;
@@ -29,6 +30,7 @@ const CATEGORIES: CategoryConfig[] = [
   { id: "general", icon: Settings2, labelKey: "settings.general" },
   { id: "writing", icon: Target, labelKey: "settings.writingGoals" },
   { id: "ai", icon: Sparkles, labelKey: "settings.aiSetup" },
+  { id: "prompts", icon: FileText, labelKey: "settings.prompts" },
   { id: "shortcuts", icon: Keyboard, labelKey: "settings.shortcuts" },
   { id: "about", icon: Info, labelKey: "settings.about" },
 ];
@@ -138,6 +140,8 @@ export function SettingsView({ novelId }: SettingsViewProps) {
         return <WritingGoalsTab novelId={novelId} />;
       case "ai":
         return <AiTab />;
+      case "prompts":
+        return <PromptsTab />;
       case "shortcuts":
         return renderShortcuts();
       case "about":
