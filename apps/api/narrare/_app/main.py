@@ -7,6 +7,7 @@ routers, and exception handlers.
 
 from __future__ import annotations
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -17,6 +18,8 @@ from narrare._app.logging import configure_logging
 from narrare._app.middleware import RequestLoggingMiddleware
 from narrare._app.telemetry import setup_telemetry
 from narrare_core.shared.errors import NarrareError
+
+logger = structlog.get_logger(__name__)
 
 # Configure logging at module level so it's ready before uvicorn starts.
 configure_logging()
@@ -55,9 +58,31 @@ def create_app() -> FastAPI:
     async def _narrare_error_handler(  # pyright: ignore[reportUnusedFunction]
         _: Request, exc: NarrareError
     ) -> JSONResponse:
+        logger.error(
+            "narrare_error",
+            code=exc.code,
+            detail=str(exc),
+            exc_info=True,
+        )
         return JSONResponse(
             status_code=400,
             content={"detail": str(exc), "code": exc.code},
+        )
+
+    # --- Unhandled exception handler ---
+    @app.exception_handler(Exception)
+    async def _unhandled_exception_handler(  # pyright: ignore[reportUnusedFunction]
+        _: Request, exc: Exception
+    ) -> JSONResponse:
+        logger.error(
+            "unhandled_exception",
+            exc_type=type(exc).__name__,
+            detail=str(exc),
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
         )
 
     # --- Routers ---

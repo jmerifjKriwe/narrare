@@ -6,24 +6,20 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, func, select
 
+from narrare._app.base_repository import BaseRepository
 from narrare.memory.models import FeedbackEventModel
 
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
 
-
-class FeedbackRepository:
+class FeedbackRepository(BaseRepository):
     """DB queries for the memory domain."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
 
     async def create(self, event: FeedbackEventModel) -> FeedbackEventModel:
         """Persist a new feedback event."""
         self._session.add(event)
-        await self._session.flush()
+        await self._flush_and_refresh(event)
         return event
 
     async def list_by_user_project(
@@ -67,5 +63,5 @@ class FeedbackRepository:
                 FeedbackEventModel.project_id == project_id,
             )
         )
-        await self._session.flush()
+        await self._flush()
         return count

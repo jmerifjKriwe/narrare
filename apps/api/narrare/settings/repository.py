@@ -10,20 +10,16 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from narrare._app.base_repository import BaseRepository
 from narrare.settings.models import ProjectSettings, UserSettings
 
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from narrare.settings.schemas import UpdateProjectSettingsRequest, UpdateUserSettingsRequest
 
 
-class UserSettingsRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class UserSettingsRepository(BaseRepository):
     async def get(self, user_id: uuid.UUID) -> UserSettings:
         result = await self._session.execute(
             select(UserSettings).where(UserSettings.user_id == user_id)
@@ -32,22 +28,18 @@ class UserSettingsRepository:
         if not settings:
             settings = UserSettings(user_id=user_id)
             self._session.add(settings)
-            await self._session.flush()
+            await self._flush_and_refresh(settings)
         return settings
 
     async def update(self, user_id: uuid.UUID, request: UpdateUserSettingsRequest) -> UserSettings:
         settings = await self.get(user_id)
         for field, value in request.model_dump(exclude_none=True).items():
             setattr(settings, field, value)
-        await self._session.flush()
-        await self._session.refresh(settings)
+        await self._flush_and_refresh(settings)
         return settings
 
 
-class ProjectSettingsRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class ProjectSettingsRepository(BaseRepository):
     async def get(self, novel_id: uuid.UUID) -> ProjectSettings:
         result = await self._session.execute(
             select(ProjectSettings).where(ProjectSettings.novel_id == novel_id)
@@ -56,7 +48,7 @@ class ProjectSettingsRepository:
         if not settings:
             settings = ProjectSettings(novel_id=novel_id)
             self._session.add(settings)
-            await self._session.flush()
+            await self._flush_and_refresh(settings)
         return settings
 
     async def update(
@@ -65,6 +57,5 @@ class ProjectSettingsRepository:
         settings = await self.get(novel_id)
         for field, value in request.model_dump(exclude_none=True).items():
             setattr(settings, field, value)
-        await self._session.flush()
-        await self._session.refresh(settings)
+        await self._flush_and_refresh(settings)
         return settings

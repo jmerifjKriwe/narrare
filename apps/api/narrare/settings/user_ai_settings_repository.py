@@ -11,19 +11,15 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from narrare._app.base_repository import BaseRepository
 from narrare.settings.models import UserAiSettings
 
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
 
-
-class UserAiSettingsRepository:
+class UserAiSettingsRepository(BaseRepository):
     """Repository for ``user_ai_settings`` table operations."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
 
     async def get(self, user_id: uuid.UUID) -> UserAiSettings:
         """Get AI settings for a user. Auto-creates if missing.
@@ -41,8 +37,7 @@ class UserAiSettingsRepository:
         if not settings:
             settings = UserAiSettings(user_id=user_id)
             self._session.add(settings)
-            await self._session.flush()
-            await self._session.refresh(settings)
+            await self._flush_and_refresh(settings)
         return settings
 
     async def update(self, user_id: uuid.UUID, **kwargs: object) -> UserAiSettings:
@@ -59,6 +54,5 @@ class UserAiSettingsRepository:
         settings = await self.get(user_id)
         for field, value in kwargs.items():
             setattr(settings, field, value)
-        await self._session.flush()
-        await self._session.refresh(settings)
+        await self._flush_and_refresh(settings)
         return settings

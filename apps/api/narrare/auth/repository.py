@@ -6,19 +6,15 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from narrare._app.base_repository import BaseRepository
 from narrare.auth.models import User
 
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
 
-
-class AuthRepository:
+class AuthRepository(BaseRepository):
     """DB queries for the auth domain."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
 
     async def get_by_email(self, email: str) -> User | None:
         result = await self._session.execute(select(User).where(User.email == email.lower()))
@@ -40,18 +36,18 @@ class AuthRepository:
             display_name=display_name,
         )
         self._session.add(user)
-        await self._session.flush()
+        await self._flush_and_refresh(user)
         return user
 
     async def set_verified(self, user_id: uuid.UUID) -> None:
         user = await self.get_by_id(user_id)
         if user:
             user.is_verified = True
-            await self._session.flush()
+            await self._flush()
 
     async def update_hashed_password(self, user_id: uuid.UUID, hashed_password: str) -> None:
         """Update a user's password hash (used for argon2 rehashing on login)."""
         user = await self.get_by_id(user_id)
         if user:
             user.hashed_password = hashed_password
-            await self._session.flush()
+            await self._flush()

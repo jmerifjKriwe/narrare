@@ -6,20 +6,16 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
+from narrare._app.base_repository import BaseRepository
 from narrare.volumes.models import Volume
 
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from narrare.volumes.schemas import UpdateVolumeRequest
 
 
-class VolumeRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class VolumeRepository(BaseRepository):
     async def get_by_id(self, volume_id: uuid.UUID, novel_id: uuid.UUID) -> Volume | None:
         result = await self._session.execute(
             select(Volume).where(Volume.id == volume_id, Volume.novel_id == novel_id)
@@ -41,15 +37,15 @@ class VolumeRepository:
     async def create(self, novel_id: uuid.UUID, title: str, position: int) -> Volume:
         volume = Volume(novel_id=novel_id, title=title, position=position)
         self._session.add(volume)
-        await self._session.flush()
+        await self._flush_and_refresh(volume)
         return volume
 
     async def update(self, volume: Volume, request: UpdateVolumeRequest) -> Volume:
         for field, value in request.model_dump(exclude_none=True).items():
             setattr(volume, field, value)
-        await self._session.flush()
+        await self._flush_and_refresh(volume)
         return volume
 
     async def delete(self, volume: Volume) -> None:
         await self._session.delete(volume)
-        await self._session.flush()
+        await self._flush()

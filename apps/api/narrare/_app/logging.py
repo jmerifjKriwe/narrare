@@ -85,6 +85,25 @@ def _configure_development_logging(
     file_handler.setFormatter(formatter)
     root.addHandler(file_handler)
 
+    # Error file handler — ERROR and above, with full tracebacks
+    error_file_handler = RotatingFileHandler(
+        log_path.parent / "error.log",
+        maxBytes=5 * 1024 * 1024,  # 5 MB
+        backupCount=3,
+        encoding="utf-8",
+    )
+    error_file_handler.setLevel(logging.ERROR)
+    error_file_handler.setFormatter(
+        structlog.stdlib.ProcessorFormatter(
+            processors=[
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                structlog.dev.ConsoleRenderer(),
+            ],
+            foreign_pre_chain=shared_processors,  # type: ignore[arg-type]
+        )
+    )
+    root.addHandler(error_file_handler)
+
     # Also route uvicorn's loggers to both handlers so uvicorn output
     # is captured in the log file too
     for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
@@ -112,7 +131,7 @@ def _configure_production_logging(
     shared_processors: list[Processor],
     log_level: int,
 ) -> None:
-    """Production: JSON to stdout only."""
+    """Production: JSON to stdout + error file with full tracebacks."""
     # Clear existing handlers (idempotent)
     root = logging.getLogger()
     root.handlers.clear()
@@ -130,6 +149,20 @@ def _configure_production_logging(
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     root.addHandler(handler)
+
+    # Error file handler — ERROR and above, with full tracebacks
+    log_path = Path("logs")
+    log_path.mkdir(parents=True, exist_ok=True)
+
+    error_file_handler = RotatingFileHandler(
+        log_path / "error.log",
+        maxBytes=5 * 1024 * 1024,  # 5 MB
+        backupCount=3,
+        encoding="utf-8",
+    )
+    error_file_handler.setLevel(logging.ERROR)
+    error_file_handler.setFormatter(formatter)
+    root.addHandler(error_file_handler)
 
     structlog.configure(
         processors=[  # type: ignore[arg-type]

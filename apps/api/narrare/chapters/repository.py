@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, func, select, update
 
+from narrare._app.base_repository import BaseRepository
 from narrare.chapters.models import Chapter, ChapterVersion
 
 if TYPE_CHECKING:
@@ -19,9 +20,9 @@ if TYPE_CHECKING:
     )
 
 
-class ChapterRepository:
+class ChapterRepository(BaseRepository):
     def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+        super().__init__(session)
 
     async def get_by_id(self, chapter_id: uuid.UUID, novel_id: uuid.UUID) -> Chapter | None:
         result = await self._session.execute(
@@ -58,20 +59,20 @@ class ChapterRepository:
             word_count=count_words(request.content),
         )
         self._session.add(chapter)
-        await self._session.flush()
+        await self._flush_and_refresh(chapter)
         return chapter
 
     async def update_content(self, chapter: Chapter, content: str, word_count: int) -> Chapter:
         chapter.content = content
         chapter.word_count = word_count
         chapter.embeddings_dirty = True
-        await self._session.flush()
+        await self._flush_and_refresh(chapter)
         return chapter
 
     async def update_meta(self, chapter: Chapter, request: UpdateChapterMetaRequest) -> Chapter:
         for field, value in request.model_dump(exclude_none=True).items():
             setattr(chapter, field, value)
-        await self._session.flush()
+        await self._flush_and_refresh(chapter)
         return chapter
 
     async def reorder(self, novel_id: uuid.UUID, chapter_ids: list[uuid.UUID]) -> list[Chapter]:
@@ -82,12 +83,12 @@ class ChapterRepository:
                 .where(Chapter.id == chapter_id, Chapter.novel_id == novel_id)
                 .values(position=position)
             )
-        await self._session.flush()
+        await self._flush()
         return await self.list_by_novel(novel_id)
 
     async def delete(self, chapter: Chapter) -> None:
         await self._session.delete(chapter)
-        await self._session.flush()
+        await self._flush()
 
     # -- Version methods --
 
@@ -106,7 +107,7 @@ class ChapterRepository:
             source=source,
         )
         self._session.add(version)
-        await self._session.flush()
+        await self._flush_and_refresh(version)
         return version
 
     async def get_latest_version_number(self, chapter_id: uuid.UUID) -> int:
@@ -160,7 +161,7 @@ class ChapterRepository:
                 ChapterVersion.version_number.not_in(subq),
             )
         )
-        await self._session.flush()
+        await self._flush()
         return result.rowcount  # type: ignore[union-attr]
 
 

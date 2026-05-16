@@ -201,15 +201,6 @@ export function EditorView({ novelId }: EditorViewProps) {
             <Clock className="w-4 h-4" />
             <span>{lastSaved ?? "--:--"}</span>
           </div>
-          {/* Name Generator trigger */}
-          <button
-            type="button"
-            onClick={() => setNameGeneratorOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title={t("editor.nameGenerator")}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-          </button>
           <button
             type="button"
             onClick={handleSave}
@@ -221,7 +212,7 @@ export function EditorView({ novelId }: EditorViewProps) {
         </div>
       </div>
 
-      {/* Formatting toolbar */}
+      {/* Toolbar: formatting actions + AI tools (new features go here) */}
       {editor && (
         <div className="border-b border-border px-8 py-2 bg-card flex items-center gap-1">
           <button
@@ -275,6 +266,16 @@ export function EditorView({ novelId }: EditorViewProps) {
             title={t("editor.blockquote")}
           >
             {"\u201C"}
+          </button>
+          <div className="w-px h-5 bg-border mx-1" />
+          <button
+            type="button"
+            onClick={() => setNameGeneratorOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary"
+            title={t("editor.nameGenerator")}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{t("editor.nameGenerator")}</span>
           </button>
         </div>
       )}

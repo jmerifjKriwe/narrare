@@ -10,19 +10,15 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from narrare._app.base_repository import BaseRepository
 from narrare.settings.models import UserProvider
 
 if TYPE_CHECKING:
     import uuid
 
-    from sqlalchemy.ext.asyncio import AsyncSession
 
-
-class UserProvidersRepository:
+class UserProvidersRepository(BaseRepository):
     """Repository for ``user_providers`` table operations."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
 
     async def create(
         self,
@@ -49,8 +45,7 @@ class UserProvidersRepository:
             base_url=base_url,
         )
         self._session.add(provider)
-        await self._session.flush()
-        await self._session.refresh(provider)
+        await self._flush_and_refresh(provider)
         return provider
 
     async def get(self, provider_id: uuid.UUID) -> UserProvider | None:
@@ -101,8 +96,7 @@ class UserProvidersRepository:
             raise ValueError(f"Provider {provider_id} not found")
         for field, value in kwargs.items():
             setattr(provider, field, value)
-        await self._session.flush()
-        await self._session.refresh(provider)
+        await self._flush_and_refresh(provider)
         return provider
 
     async def delete(self, provider_id: uuid.UUID) -> None:
@@ -114,7 +108,7 @@ class UserProvidersRepository:
         provider = await self.get(provider_id)
         if provider is not None:
             await self._session.delete(provider)
-            await self._session.flush()
+            await self._flush()
 
     async def get_active(self, user_id: uuid.UUID) -> list[UserProvider]:
         """List active providers for a user.
