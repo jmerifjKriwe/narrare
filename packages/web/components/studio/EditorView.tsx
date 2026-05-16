@@ -70,27 +70,22 @@ export function EditorView({ novelId }: EditorViewProps) {
   const handleSave = useCallback(async () => {
     if (!activeChapterId) return;
 
-    // Try autosave forceSave first if available
-    const autosaveExt = editor?.extensionManager.extensions.find((ext) => ext.name === "autosave");
-    if (autosaveExt) {
-      const storage = autosaveExt.storage as { forceSave: () => Promise<void> };
-      await storage.forceSave();
-      setLastSaved(
-        new Date().toLocaleTimeString(locale, {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      );
-      return;
-    }
-
-    // Fallback: manual save without autosave extension
     setSaveStatus("saving");
     try {
-      await Promise.all([
-        chaptersApi.updateContent(novelId, activeChapterId, content),
-        chaptersApi.updateMeta(novelId, activeChapterId, { title }),
-      ]);
+      // Always save title via meta endpoint
+      await chaptersApi.updateMeta(novelId, activeChapterId, { title });
+
+      // Save content — prefer autosave extension's forceSave, fallback to direct API
+      const autosaveExt = editor?.extensionManager.extensions.find(
+        (ext) => ext.name === "autosave",
+      );
+      if (autosaveExt) {
+        const storage = autosaveExt.storage as { forceSave: () => Promise<void> };
+        await storage.forceSave();
+      } else {
+        await chaptersApi.updateContent(novelId, activeChapterId, content);
+      }
+
       setSaveStatus("saved");
       setLastSaved(
         new Date().toLocaleTimeString(locale, {

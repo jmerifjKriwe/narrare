@@ -125,10 +125,25 @@ class NameGeneratorService:
         Returns:
             List of GeneratedName objects.
         """
+        # Strip markdown code fences if present (```json ... ```)
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            # Remove opening fence (```json or ```)
+            first_newline = cleaned.index("\n") if "\n" in cleaned else len(cleaned)
+            cleaned = cleaned[first_newline + 1 :]
+            # Remove closing fence (```)
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+
         try:
-            raw = json.loads(text)  # type: ignore[reportUnknownVariableType]
+            raw = json.loads(cleaned)  # type: ignore[reportUnknownVariableType]
         except json.JSONDecodeError:
-            logger.warning("name_parse_failed_json", text_length=len(text))
+            logger.warning(
+                "name_parse_failed_json",
+                text_length=len(text),
+                text_preview=text[:200],
+            )
             return []
 
         raw_items: list[object]
