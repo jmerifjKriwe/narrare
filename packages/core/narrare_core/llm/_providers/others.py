@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.google import GoogleProvider
+from pydantic_ai.providers.groq import GroqProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from narrare_core.llm._providers.registry import register, register_model
@@ -27,8 +29,10 @@ def _make_google(
 ) -> Model:
     """Gemini models via Google AI.
 
-    When ``api_key`` is provided, uses it directly. Otherwise falls back
-    to the ``GOOGLE_API_KEY`` environment variable.
+    When ``api_key`` is provided, passes it explicitly to the provider
+    so each request uses its own credentials (thread-safe). Otherwise
+    falls back to the ``GOOGLE_API_KEY`` / ``GEMINI_API_KEY`` environment
+    variable.
 
     Args:
         model_id: Google model identifier (e.g. "gemini-2.0-flash").
@@ -39,11 +43,8 @@ def _make_google(
         Configured GoogleModel instance.
     """
     if api_key is not None:
-        # Google SDK supports explicit api_key via the model constructor
-        # or environment variable. Pass it via the provider if available.
-        # For now, we set the env var locally — the GoogleModel reads it.
-        # TODO: refactor when pydantic-ai GoogleModel supports explicit api_key
-        os.environ["GOOGLE_API_KEY"] = api_key
+        provider = GoogleProvider(api_key=api_key)
+        return GoogleModel(model_id, provider=provider)
     return GoogleModel(model_id)
 
 
@@ -68,8 +69,9 @@ def _make_groq(
 ) -> Model:
     """Fast inference via Groq.
 
-    When ``api_key`` is provided, uses it directly. Otherwise falls back
-    to the ``GROQ_API_KEY`` environment variable.
+    When ``api_key`` is provided, passes it explicitly to the provider
+    so each request uses its own credentials (thread-safe). Otherwise
+    falls back to the ``GROQ_API_KEY`` environment variable.
 
     Args:
         model_id: Groq model identifier (e.g. "mixtral-8x7b-32768").
@@ -80,7 +82,8 @@ def _make_groq(
         Configured GroqModel instance.
     """
     if api_key is not None:
-        os.environ["GROQ_API_KEY"] = api_key
+        provider = GroqProvider(api_key=api_key)
+        return GroqModel(model_id, provider=provider)
     return GroqModel(model_id)
 
 
