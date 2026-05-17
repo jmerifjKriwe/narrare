@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
@@ -30,9 +30,7 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-md bg-primary flex items-center justify-center animate-pulse">
-            <BookOpen className="w-6 h-6 text-primary-foreground" />
-          </div>
+          <Image src="/logo.png" alt="" width={48} height={48} className="animate-pulse" />
           <span className="sr-only">{t("appName")}</span>
         </div>
       </div>
