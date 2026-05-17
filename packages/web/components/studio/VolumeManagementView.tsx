@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { volumesApi } from "@/lib/api/client";
-import type { CreateVolumeRequest, UpdateVolumeRequest, Volume, VolumeStats } from "@/types";
+import type { CreateVolumeRequest, UpdateVolumeRequest, Volume } from "@/types";
 import { VolumeCard, VolumeFormFields } from "./VolumeCard";
 
 // ---------------------------------------------------------------------------

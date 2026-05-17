@@ -73,7 +73,7 @@ export function EditorView({ novelId }: EditorViewProps) {
   // Sync title and content from API data
   useEffect(() => {
     if (chapter) {
-      setTitle(chapter.title);
+      setTitle(chapter.title ?? "");
       setContent(markdownToHtml(chapter.content || ""));
     }
   }, [chapter]);
