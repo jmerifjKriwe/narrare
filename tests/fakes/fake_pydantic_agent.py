@@ -30,6 +30,11 @@ class FakeAgentResult:
     data: str = ""
     _usage: FakeUsage = field(default_factory=FakeUsage)
 
+    @property
+    def output(self) -> str:
+        """The output text — matches pydantic-ai's AgentRunResult.output."""
+        return self.data
+
     def usage(self) -> FakeUsage:
         return self._usage
 

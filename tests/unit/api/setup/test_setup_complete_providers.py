@@ -131,7 +131,7 @@ class TestCompleteProviders:
             },
         )()
         mock_result = MagicMock(spec=object)
-        mock_result.scalar_one_or_none = AsyncMock(return_value=fake_provider)
+        mock_result.scalar_one_or_none = MagicMock(spec=object, return_value=fake_provider)
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         svc = _make_service(

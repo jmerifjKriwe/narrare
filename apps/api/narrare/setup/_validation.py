@@ -9,8 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException, status
-
 from narrare.setup.schemas import (
     AIProvider,
     DemoProjectInfo,
@@ -24,6 +22,7 @@ from narrare.setup.schemas import (
     Step4ProviderRequest,
     Step4ProviderResponse,
 )
+from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
     from narrare.setup.contracts import DemoLoaderProtocol, ProviderServiceProtocol
@@ -41,13 +40,12 @@ async def validate_step1(request: Step1LocationRequest) -> Step1LocationResponse
         Step1LocationResponse with valid=True if all checks pass.
 
     Raises:
-        HTTPException 422: If validation fails.
+        ValidationError: If validation fails.
     """
     if request.language not in _SUPPORTED_LANGUAGES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=f"Language '{request.language}' not supported. "
-            f"Supported: {sorted(_SUPPORTED_LANGUAGES)}",
+        raise ValidationError(
+            f"Language '{request.language}' not supported. "
+            f"Supported: {sorted(_SUPPORTED_LANGUAGES)}"
         )
 
     return Step1LocationResponse(
@@ -84,20 +82,14 @@ async def validate_step3(
         Step3StarterResponse with demo info if applicable.
 
     Raises:
-        HTTPException 422: If import path is missing or doesn't exist.
+        ValidationError: If import path is missing or doesn't exist.
     """
     if request.starter == StarterContent.IMPORT:
         if not request.import_path:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Import path is required when starter is 'import'",
-            )
+            raise ValidationError("Import path is required when starter is 'import'")
         import_dir = Path(request.import_path)
         if not import_dir.exists() or not import_dir.is_dir():
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Import directory does not exist: {request.import_path}",
-            )
+            raise ValidationError(f"Import directory does not exist: {request.import_path}")
         return Step3StarterResponse(valid=True, starter=request.starter)
 
     demo_info: DemoProjectInfo | None = None
@@ -129,13 +121,10 @@ async def validate_step4(
         Step4ProviderResponse with valid=True if connection succeeds.
 
     Raises:
-        HTTPException 422: If connection validation fails.
+        ValidationError: If connection validation fails.
     """
     if request.provider != AIProvider.OLLAMA and not request.api_key:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="API key is required for this provider",
-        )
+        raise ValidationError("API key is required for this provider")
 
     error = await provider_service.validate_connection(
         provider=request.provider,
@@ -146,10 +135,7 @@ async def validate_step4(
     )
 
     if error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=error,
-        )
+        raise ValidationError(error)
 
     return Step4ProviderResponse(
         valid=True,

@@ -59,6 +59,7 @@ def create_app() -> FastAPI:
             ConflictError,
             ForbiddenError,
             NotFoundError,
+            ValidationError,
         )
 
         status_code = 400  # default for NarrareError
@@ -70,6 +71,8 @@ def create_app() -> FastAPI:
             status_code = 409
         elif isinstance(exc, AuthenticationError):
             status_code = 401
+        elif isinstance(exc, ValidationError):
+            status_code = 422
 
         logger.error(
             "narrare_error",

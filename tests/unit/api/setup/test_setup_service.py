@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException
 
 from narrare.setup.schemas import (
     AIProvider,
@@ -17,6 +16,7 @@ from narrare.setup.schemas import (
     Step4ProviderRequest,
 )
 from narrare.setup.service import SetupService
+from narrare_core.shared.errors import ValidationError
 from tests.fakes import FakeDemoLoader, FakeProviderService
 
 
@@ -58,10 +58,9 @@ class TestValidateStep1:
 
     async def test_unsupported_language_raises_422(self, service: SetupService) -> None:
         req = Step1LocationRequest(project_name="Project", language="ja")
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(ValidationError) as exc:
             await service.validate_step1(req)
-        assert exc.value.status_code == 422
-        assert "ja" in exc.value.detail
+        assert "ja" in str(exc.value)
 
     async def test_supported_languages_accepted(self, service: SetupService) -> None:
         for lang in ("en", "de", "fr"):
@@ -107,18 +106,16 @@ class TestValidateStep3:
 
     async def test_import_without_path_raises_422(self, service: SetupService) -> None:
         req = Step3StarterRequest(starter=StarterContent.IMPORT, import_path=None)
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(ValidationError):
             await service.validate_step3(req)
-        assert exc.value.status_code == 422
 
     async def test_import_nonexistent_path_raises_422(self, service: SetupService) -> None:
         req = Step3StarterRequest(
             starter=StarterContent.IMPORT,
             import_path="/definitely/does/not/exist",
         )
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(ValidationError):
             await service.validate_step3(req)
-        assert exc.value.status_code == 422
 
 
 class TestValidateStep4:
@@ -143,9 +140,8 @@ class TestValidateStep4:
             api_key="bad-key",
             model="claude-haiku-3-5-20241022",
         )
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(ValidationError):
             await service.validate_step4(req)
-        assert exc.value.status_code == 422
 
     async def test_missing_api_key_raises_422(self, service: SetupService) -> None:
         req = Step4ProviderRequest(
@@ -153,9 +149,8 @@ class TestValidateStep4:
             api_key="",
             model="claude-haiku-3-5-20241022",
         )
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(ValidationError):
             await service.validate_step4(req)
-        assert exc.value.status_code == 422
 
     async def test_ollama_skips_api_key_check(
         self, service: SetupService, fake_provider_service: FakeProviderService
