@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
 
 from narrare_core.llm.intents import ResolvedModelConfig
-from narrare_core.llm.result import LLMResult, TokenUsage
+from tests.fakes.fake_llm_gateway import FakeLLMGateway
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -26,17 +25,10 @@ _MOCK_NAMES_JSON = (
 
 
 @pytest.fixture
-def _mock_gateway() -> MagicMock:
-    """Create a mock LLMGateway that returns structured name data."""
-    gateway = MagicMock()  # narrare: allow reason="Mocking LLMGateway for integration test"
-    gateway.run = AsyncMock(
-        return_value=LLMResult(
-            text=_MOCK_NAMES_JSON,
-            usage=TokenUsage(prompt_tokens=50, completion_tokens=100, total_tokens=150),
-            model="claude-haiku",
-            intent="name_generate",
-        ),
-    )
+def mock_gateway() -> FakeLLMGateway:
+    """Fake LLMGateway that returns structured name data."""
+    gateway = FakeLLMGateway()
+    gateway.returns(_MOCK_NAMES_JSON, model="claude-haiku")
     return gateway
 
 
@@ -45,14 +37,12 @@ class TestGenerateNames:
         self,
         client: AsyncClient,
         auth_headers: dict[str, str],
+        mock_gateway: FakeLLMGateway,
     ) -> None:
         """POST /generation/names with valid request returns names."""
         from narrare._app.dependencies import _get_composer_instance
         from narrare.generation.name_service import NameGeneratorService
         from narrare.generation.router import _get_service as original_factory
-
-        # Override the service factory to inject mock gateway
-        mock_gw = _mock_gateway()
 
         mock_config = ResolvedModelConfig(
             provider_name="anthropic",
@@ -62,7 +52,7 @@ class TestGenerateNames:
         )
 
         mock_service = NameGeneratorService(
-            gateway=mock_gw,
+            gateway=mock_gateway,
             composer=_get_composer_instance(),
             config=mock_config,
         )

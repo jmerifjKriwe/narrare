@@ -33,6 +33,16 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 os.environ.setdefault("ANTHROPIC_API_KEY", "sk-test-dummy-anthropic-key")
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-dummy-openai-key")
 
+# Block ALL real LLM API calls in tests.
+# If a test accidentally creates a real pydantic-ai Agent and calls .run(),
+# this raises a clear RuntimeError instead of silently hitting the network.
+# narrare: allow reason="global test guard — blocks real LLM API calls"
+from pydantic_ai import (  # noqa: E402
+    models,
+)
+
+models.ALLOW_MODEL_REQUESTS = False
+
 
 # ---------------------------------------------------------------------------
 # Architecture constraint test

@@ -450,6 +450,143 @@ class FakeChapterRepository:
 
 ---
 
+## LLM Testing — Pydantic AI Tools
+
+> **Scope:** Tests that exercise the gateway→agent bridge or need deterministic LLM behavior.
+> **No new dependencies** — uses pydantic-ai's built-in testing models.
+> **Reference:** `tests/unit/core/llm/conftest.py` for fixture definitions.
+
+### Global Guard — `ALLOW_MODEL_REQUESTS = False`
+
+Set in `tests/conftest.py` — prevents **all** real LLM API calls in the test suite.
+If a test accidentally creates a real pydantic-ai Agent and calls `.run()` without
+mocking the model, pydantic-ai raises a clear `RuntimeError` instead of silently
+hitting the network.
+
+```python
+# tests/conftest.py (already set)
+from pydantic_ai import models
+
+models.ALLOW_MODEL_REQUESTS = False
+```
+
+### Tool Hierarchy
+
+Not all tests need the same level of LLM mocking. Use the right tool for the job:
+
+| Test Level | Tool | Why |
+|-----------|------|-----|
+| Service unit tests | `FakeLLMGateway` | Service doesn't know about agents |
+| Gateway unit tests | `TestModel` / `FunctionModel` | Tests the real Agent code path |
+| Agent-level tests | `TestModel` + `capture_run_messages` | Asserts tool call behavior |
+| Integration tests | `FakeLLMGateway` + dependency override | End-to-end through HTTP |
+| E2E tests | Playwright route mocking | Full browser stack |
+
+### `TestModel` — Deterministic Agent Responses
+
+`TestModel` (from `pydantic_ai.models.test`) replaces the real LLM with deterministic responses.
+Use the `gateway_with_test_model` fixture from `tests/unit/core/llm/conftest.py`:
+
+```python
+async def test_gateway_returns_result(
+    self,
+    gateway_with_test_model: LLMGateway,
+    write_config: ResolvedModelConfig,
+) -> None:
+    # No mocking — TestModel is injected as the model
+    result = await gateway_with_test_model.run(
+        intent=LLMIntent.WRITE,
+        system_prompt="System.",
+        user_prompt="Write.",
+        config=write_config,
+        retry_config=NO_RETRY,
+    )
+    assert isinstance(result, LLMResult)
+```
+
+Custom response text: `TestModel(custom_output_text="Your response here")`.
+
+### `FunctionModel` — Scenario-Specific Behavior
+
+`FunctionModel` (from `pydantic_ai.models.function`) runs a Python function as the LLM.
+Use when different inputs need different responses:
+
+```python
+from pydantic_ai.messages import ModelResponse, TextPart
+from pydantic_ai.models.function import FunctionModel
+
+def smart_mock(messages, info):
+    last_msg = messages[-1]
+    user_text = str(last_msg)
+    if "error" in user_text.lower():
+        raise ModelHTTPError(status_code=500, model_name="test")
+    return ModelResponse(parts=[TextPart("All good.")])
+
+# For streaming tests, also provide stream_function:
+async def smart_mock_stream(messages, info):
+    raise ModelHTTPError(status_code=500, model_name="test")
+    yield  # makes this an async generator
+
+error_model = FunctionModel(smart_mock, stream_function=smart_mock_stream)
+```
+
+**Important:** When testing the `stream()` path, `FunctionModel` requires a `stream_function`
+parameter. Without it, pydantic-ai raises an `AssertionError` before the regular function runs.
+
+### `capture_run_messages` — Tool Call Assertions
+
+For agents with tools (future: writing sessions), use `capture_run_messages` to inspect
+which tools were called and with what arguments:
+
+```python
+from pydantic_ai import Agent, capture_run_messages
+from pydantic_ai.models.test import TestModel
+
+agent = Agent("test", output_type=str)
+
+@agent.tool
+async def lookup_character(ctx, name: str) -> str:
+    return f"Character: {name}"
+
+test_model = TestModel()
+with capture_run_messages() as messages:
+    with agent.override(model=test_model):
+        result = await agent.run("Write about Anna")
+
+tool_calls = [
+    part for msg in messages
+    for part in msg.parts if hasattr(part, "tool_name")
+]
+assert any(tc.tool_name == "lookup_character" for tc in tool_calls)
+```
+
+### RULE-01 Exception Pattern for Test Files
+
+Test files that import `pydantic_ai` must add `# narrare: allow reason="..."` as a
+**standalone comment on the line immediately before** the import. This is because
+`ruff format` wraps long lines, and the architecture checker looks at `lineno - 2` to `lineno`.
+
+```python
+# ✅ Correct — comment on line before import
+# narrare: allow reason="gateway tests use TestModel instead of real LLM"
+from pydantic_ai.models.test import TestModel
+
+# ❌ Wrong — comment at end of import (ruff format may wrap it away)
+from pydantic_ai.models.test import TestModel  # narrare: allow reason="..."
+```
+
+### What STAYS the Same
+
+`FakeLLMGateway` (in `tests/fakes/`) remains the primary tool for **service-level** tests.
+Services don't know about agents — they call `gateway.run()`. Inject `FakeLLMGateway`
+through the constructor. This is the Protocol-first pattern from RULE-TEST-01.
+
+`FakePydanticAgent` is kept for the streaming chunk test (TestModel doesn't produce
+real streaming chunks). It will be removed once pydantic-ai's TestModel supports
+configurable streaming behavior.
+
+---
+
 ## Fixtures and Test Infrastructure
 
 ### Fake Fixtures

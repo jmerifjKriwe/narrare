@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from pydantic_ai.models.test import (  # narrare: allow
+from pydantic_ai.models.test import (  # narrare: allow reason="test fixtures"
     TestModel,
 )
 
@@ -21,6 +21,29 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.intents import ResolvedModelConfig
+
+
+@pytest.fixture
+def gateway() -> LLMGateway:
+    """LLMGateway instance for tests that need a plain gateway (no TestModel)."""
+    from narrare_core.llm.gateway import LLMGateway
+
+    return LLMGateway(default_provider="anthropic")
+
+
+@pytest.fixture
+def write_config() -> ResolvedModelConfig:
+    """Default ResolvedModelConfig for gateway tests."""
+    from narrare_core.llm.intents import ResolvedModelConfig
+
+    return ResolvedModelConfig(
+        provider_name="anthropic",
+        model_id="claude-sonnet-4-5-20251020",
+        temperature=0.8,
+        max_tokens=4096,
+        streams=True,
+    )
 
 
 @pytest.fixture
@@ -61,8 +84,30 @@ def capture_messages():
 
     Use to assert tool calls, multi-turn conversation flow, and message ordering.
     Requires pydantic-ai >= 1.0.
+
+    Example usage (for future writing session tests with tools):
+
+        from pydantic_ai import Agent
+        from pydantic_ai.models.test import TestModel
+
+        agent = Agent('test', output_type=str)
+
+        @agent.tool
+        async def lookup_character(ctx, name: str) -> str:
+            return f"Character: {name}"
+
+        test_model = TestModel()
+        with capture_messages() as messages:
+            with agent.override(model=test_model):
+                result = await agent.run("Write about Anna")
+
+        tool_calls = [
+            part for msg in messages
+            for part in msg.parts if hasattr(part, "tool_name")
+        ]
+        assert any(tc.tool_name == "lookup_character" for tc in tool_calls)
     """
-    from pydantic_ai import (  # narrare: allow
+    from pydantic_ai import (  # narrare: allow reason="message capture fixture"
         capture_run_messages,
     )
 

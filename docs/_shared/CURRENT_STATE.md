@@ -259,8 +259,9 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `api/novels/` — novel_service (1 file)
 - `api/volumes/` — volume_service (1 file)
 - `api/metrics/` — metrics_router (1 file)
-- `api/` — test_contracts.py, test_fake_conformance.py (2 files)
-- Plus 3 hypothesis property-based tests (in core/shared and core/prompts)
+  - `api/` — test_contracts.py, test_fake_conformance.py (2 files)
+  - **LLM testing infrastructure**: `ALLOW_MODEL_REQUESTS=False` global guard, `TestModel`/`FunctionModel` fixtures, `capture_run_messages` fixture for tool call assertions
+  - Plus 3 hypothesis property-based tests (in core/shared and core/prompts)
 
 **Integration tests (7+ files):**
 - `setup/test_setup_api.py`, `novels/test_novels_api.py`
@@ -345,6 +346,14 @@ Phase 5 (Integration & Polish) is underway. Recent implementation progress:
 - DemoProjectInfo extended with author/logline/pov/tags from metadata.json
 - WizardStep3 prefills store when demo is selected
 
+**Pydantic AI testing tools integration:**
+- `ALLOW_MODEL_REQUESTS=False` global guard in root conftest.py — no test can accidentally make real LLM calls
+- `TestModel` and `FunctionModel` fixtures in `tests/unit/core/llm/conftest.py` — replace hand-rolled `FakePydanticAgent` for gateway tests
+- `capture_run_messages` fixture ready for writing session tool call assertions
+- Gateway tests refactored: 7 of 10 tests use TestModel/FunctionModel (3 use FakePydanticAgent for streaming chunks)
+- Shared fixtures consolidated: `gateway` and `write_config` fixtures moved to shared conftest.py
+- Integration test `test_generation_api.py` switched from bare MagicMock to FakeLLMGateway
+
 Next focus: writing sessions (SSE streaming), AI features in editor, KB dedup integration for name generator.
 
 **Volume management implementation:**
@@ -419,6 +428,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | mem0 integration | mem0ai>=1.0 added to core dependencies, psycopg[binary]>=3.0 for pgvector |
 | Metadata sidebar (replaces status bar) | EditorView: bottom status bar replaced by collapsible right MetadataSidebar with live stats, session tracking, chapter metadata, and novel progress |
 | Volume Management | WRITE-011 fully implemented — backend enrichment, stats, reorder, frontend UI with volume selector and management page |
+| Pydantic AI testing tools | `TestModel`/`FunctionModel`/`capture_run_messages` fixtures, `ALLOW_MODEL_REQUESTS=False` guard, FakeLLMGateway in integration tests |
 
 ---
 

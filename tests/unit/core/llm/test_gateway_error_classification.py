@@ -6,13 +6,16 @@ L3 (string heuristic), and edge cases.
 
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
+
 from pydantic_ai.exceptions import (  # narrare: allow reason="gateway error classification tests"
     ModelHTTPError,
     UnexpectedModelBehavior,
 )
 
-from narrare_core.llm.gateway import LLMGateway
+if TYPE_CHECKING:
+    from narrare_core.llm.gateway import LLMGateway
+
 from narrare_core.shared.errors import (
     LLMAuthError,
     LLMContextTooLargeError,
@@ -22,11 +25,6 @@ from narrare_core.shared.errors import (
     LLMServiceUnavailableError,
     LLMTimeoutError,
 )
-
-
-@pytest.fixture
-def gateway() -> LLMGateway:
-    return LLMGateway(default_provider="anthropic")
 
 
 class TestLLMGatewayClassifyErrorAdditional:

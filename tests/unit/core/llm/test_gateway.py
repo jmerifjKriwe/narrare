@@ -1,12 +1,20 @@
-"""Tests for llm/gateway.py — using FakePydanticAgent instead of MagicMock chains."""
+"""Tests for llm/gateway.py — using pydantic-ai TestModel where possible."""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
 
-from narrare_core.llm.gateway import LLMGateway
+# narrare: allow reason="gateway tests use TestModel instead of real LLM"
+from pydantic_ai.models.test import (
+    TestModel,
+)
+
+if TYPE_CHECKING:
+    from narrare_core.llm.gateway import LLMGateway
+
 from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.result import LLMResult
 from narrare_core.llm.retry import NO_RETRY
@@ -17,22 +25,6 @@ from narrare_core.shared.errors import (
     LLMTimeoutError,
 )
 from tests.fakes.fake_pydantic_agent import FakePydanticAgent
-
-
-@pytest.fixture
-def gateway() -> LLMGateway:
-    return LLMGateway(default_provider="anthropic")
-
-
-@pytest.fixture
-def write_config() -> ResolvedModelConfig:
-    return ResolvedModelConfig(
-        provider_name="anthropic",
-        model_id="claude-sonnet-4-5-20251020",
-        temperature=0.8,
-        max_tokens=4096,
-        streams=True,
-    )
 
 
 class TestLLMGatewayClassifyError:
@@ -55,43 +47,53 @@ class TestLLMGatewayClassifyError:
 class TestLLMGatewayRun:
     async def test_returns_llm_result_on_success(
         self,
-        gateway: LLMGateway,
+        gateway_with_test_model: LLMGateway,
         write_config: ResolvedModelConfig,
     ) -> None:
-        fake_agent = FakePydanticAgent()
-        fake_agent.returns("Generated text.", input_tokens=10, output_tokens=50)
-
-        with (
-            patch.object(gateway, "_get_model_with_credentials", return_value=object()),
-            patch.object(gateway, "_make_agent", return_value=fake_agent),
-        ):
-            result = await gateway.run(
-                intent=LLMIntent.WRITE,
-                system_prompt="System.",
-                user_prompt="Write something.",
-                config=write_config,
-                retry_config=NO_RETRY,
-            )
+        """Gateway returns LLMResult when Agent succeeds."""
+        result = await gateway_with_test_model.run(
+            intent=LLMIntent.WRITE,
+            system_prompt="System.",
+            user_prompt="Write something.",
+            config=write_config,
+            retry_config=NO_RETRY,
+        )
 
         assert isinstance(result, LLMResult)
-        assert result.text == "Generated text."
-        assert result.usage.total_tokens == 60
+        assert result.text == "Test response from pydantic-ai TestModel."
+        assert result.usage.total_tokens > 0
         assert result.intent == "write"
 
     async def test_raises_domain_error_on_failure(
         self,
-        gateway: LLMGateway,
+        gateway_with_test_model: LLMGateway,
         write_config: ResolvedModelConfig,
     ) -> None:
-        fake_agent = FakePydanticAgent()
-        fake_agent.raises(Exception("401 Unauthorized invalid api key"))
+        """Gateway raises LLMGatewayError when Agent fails."""
+        # narrare: allow reason="testing error classification with pydantic-ai exception"
+        from pydantic_ai.exceptions import (
+            ModelHTTPError,
+        )
+
+        # narrare: allow reason="testing error handling with FunctionModel"
+        from pydantic_ai.models.function import (
+            FunctionModel,
+        )
+
+        def raise_auth_error(messages, info):
+            raise ModelHTTPError(status_code=401, model_name="test")
+
+        error_model = FunctionModel(raise_auth_error)
 
         with (
-            patch.object(gateway, "_get_model_with_credentials", return_value=object()),
-            patch.object(gateway, "_make_agent", return_value=fake_agent),
+            patch.object(
+                gateway_with_test_model,
+                "_get_model_with_credentials",
+                return_value=error_model,
+            ),
             pytest.raises(LLMAuthError),
         ):
-            await gateway.run(
+            await gateway_with_test_model.run(
                 intent=LLMIntent.WRITE,
                 system_prompt="System.",
                 user_prompt="Write.",
@@ -101,24 +103,23 @@ class TestLLMGatewayRun:
 
     async def test_uses_config_provider_and_model(
         self,
-        gateway: LLMGateway,
+        gateway_with_test_model: LLMGateway,
     ) -> None:
+        """Gateway passes provider_name and model_id to factory."""
         captured_args: list[tuple[str, str]] = []
 
         def capture_model(provider_name: str, model_id: str, **kwargs: object) -> object:
             captured_args.append((provider_name, model_id))
-            return object()
-
-        fake_agent = FakePydanticAgent()
-        fake_agent.returns("text", input_tokens=5, output_tokens=10)
+            return TestModel(custom_output_text="captured")
 
         config = ResolvedModelConfig(provider_name="zai", model_id="glm-z1-32b")
 
-        with (
-            patch.object(gateway, "_get_model_with_credentials", side_effect=capture_model),
-            patch.object(gateway, "_make_agent", return_value=fake_agent),
+        with patch.object(
+            gateway_with_test_model,
+            "_get_model_with_credentials",
+            side_effect=capture_model,
         ):
-            await gateway.run(
+            await gateway_with_test_model.run(
                 intent=LLMIntent.WRITE,
                 system_prompt="System.",
                 user_prompt="Write.",
@@ -130,24 +131,23 @@ class TestLLMGatewayRun:
 
     async def test_passes_credentials_to_factory(
         self,
-        gateway: LLMGateway,
+        gateway_with_test_model: LLMGateway,
     ) -> None:
+        """Gateway passes api_key and base_url to factory."""
         captured_kwargs: list[dict[str, object]] = []
 
         def capture_credentials(provider_name: str, model_id: str, **kwargs: object) -> object:
             captured_kwargs.append(kwargs)
-            return object()
-
-        fake_agent = FakePydanticAgent()
-        fake_agent.returns("text", input_tokens=5, output_tokens=10)
+            return TestModel(custom_output_text="captured")
 
         config = ResolvedModelConfig(provider_name="openrouter", model_id="gpt-4o")
 
-        with (
-            patch.object(gateway, "_get_model_with_credentials", side_effect=capture_credentials),
-            patch.object(gateway, "_make_agent", return_value=fake_agent),
+        with patch.object(
+            gateway_with_test_model,
+            "_get_model_with_credentials",
+            side_effect=capture_credentials,
         ):
-            await gateway.run(
+            await gateway_with_test_model.run(
                 intent=LLMIntent.WRITE,
                 system_prompt="System.",
                 user_prompt="Write.",
@@ -199,45 +199,62 @@ class TestLLMGatewayStream:
 
     async def test_stream_raises_domain_error_on_failure(
         self,
-        gateway: LLMGateway,
+        gateway_with_test_model: LLMGateway,
         write_config: ResolvedModelConfig,
     ) -> None:
-        fake_agent = FakePydanticAgent()
-        fake_agent.raises_on_stream(Exception("503 Service unavailable"))
+        # narrare: allow reason="testing stream error classification with pydantic-ai exception"
+        from pydantic_ai.exceptions import (
+            ModelHTTPError,
+        )
+
+        # narrare: allow reason="testing stream error handling with FunctionModel"
+        from pydantic_ai.models.function import (
+            FunctionModel,
+        )
+
+        def raise_unavailable(messages, info):
+            raise ModelHTTPError(status_code=503, model_name="test")
+
+        async def raise_on_stream(messages, info):
+            raise ModelHTTPError(status_code=503, model_name="test")
+            yield  # noqa: unreachable — makes this an async generator
+
+        error_model = FunctionModel(raise_unavailable, stream_function=raise_on_stream)
 
         with (
-            patch.object(gateway, "_get_model_with_credentials", return_value=object()),
-            patch.object(gateway, "_make_agent", return_value=fake_agent),
+            patch.object(
+                gateway_with_test_model,
+                "_get_model_with_credentials",
+                return_value=error_model,
+            ),
             pytest.raises(LLMServiceUnavailableError),
         ):
-            async for _ in gateway.stream(
+            async for _ in gateway_with_test_model.stream(
                 intent=LLMIntent.WRITE,
                 system_prompt="System.",
                 user_prompt="Write.",
                 config=write_config,
             ):
-                pass  # should never reach here
+                pass
 
     async def test_stream_uses_config_provider_and_model(
         self,
-        gateway: LLMGateway,
+        gateway_with_test_model: LLMGateway,
     ) -> None:
         captured_args: list[tuple[str, str]] = []
 
         def capture_model(provider_name: str, model_id: str, **kwargs: object) -> object:
             captured_args.append((provider_name, model_id))
-            return object()
-
-        fake_agent = FakePydanticAgent()
-        fake_agent.returns_stream([])  # empty stream
+            return TestModel(custom_output_text="captured")
 
         config = ResolvedModelConfig(provider_name="openai", model_id="gpt-4o")
 
-        with (
-            patch.object(gateway, "_get_model_with_credentials", side_effect=capture_model),
-            patch.object(gateway, "_make_agent", return_value=fake_agent),
+        with patch.object(
+            gateway_with_test_model,
+            "_get_model_with_credentials",
+            side_effect=capture_model,
         ):
-            async for _ in gateway.stream(
+            async for _ in gateway_with_test_model.stream(
                 intent=LLMIntent.WRITE,
                 system_prompt="System.",
                 user_prompt="Write.",
