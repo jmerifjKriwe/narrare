@@ -60,7 +60,6 @@ class TestHeroFlow:
                     "name": "narrare_auth",
                     "value": access_token,
                     "url": base_url,
-                    "path": "/",
                 }
             ]
         )
