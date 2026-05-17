@@ -6,13 +6,21 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AiTab } from "@/components/studio/settings/AiTab";
 import { GeneralTab } from "@/components/studio/settings/GeneralTab";
+import { NovelDetailsTab } from "@/components/studio/settings/NovelDetailsTab";
 import { PromptsTab } from "@/components/studio/settings/PromptsTab";
 import { WritingGoalsTab } from "@/components/studio/settings/WritingGoalsTab";
 import { settingsApi } from "@/lib/api/client";
 
 // --- Types ---
 
-type SettingsCategory = "general" | "writing" | "ai" | "prompts" | "shortcuts" | "about";
+type SettingsCategory =
+  | "novel-details"
+  | "general"
+  | "writing"
+  | "ai"
+  | "prompts"
+  | "shortcuts"
+  | "about";
 
 interface CategoryConfig {
   id: SettingsCategory;
@@ -27,6 +35,7 @@ interface SettingsViewProps {
 // --- Static config ---
 
 const CATEGORIES: CategoryConfig[] = [
+  { id: "novel-details", icon: BookOpen, labelKey: "settings.novelDetails" },
   { id: "general", icon: Settings2, labelKey: "settings.general" },
   { id: "writing", icon: Target, labelKey: "settings.writingGoals" },
   { id: "ai", icon: Sparkles, labelKey: "settings.aiSetup" },
@@ -71,7 +80,7 @@ const SHORTCUTS: Array<
 export function SettingsView({ novelId }: SettingsViewProps) {
   const t = useTranslations("studio");
   const queryClient = useQueryClient();
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>("general");
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>("novel-details");
 
   // User settings
   const { data: userSettings, isLoading: userSettingsLoading } = useQuery({
@@ -127,6 +136,8 @@ export function SettingsView({ novelId }: SettingsViewProps) {
 
   function renderContent() {
     switch (activeCategory) {
+      case "novel-details":
+        return <NovelDetailsTab novelId={novelId} />;
       case "general":
         return (
           <GeneralTab

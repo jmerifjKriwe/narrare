@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -139,6 +139,19 @@ export function DashboardView() {
                   key={novel.id}
                   className="group bg-card border border-border rounded-lg p-6 hover:shadow-md transition-shadow relative"
                 >
+                  {/* Edit button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/novel/${novel.id}/settings`);
+                    }}
+                    className="absolute top-4 right-14 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-accent rounded-md transition-opacity"
+                    aria-label={t("dashboard.edit")}
+                  >
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                  </button>
+
                   {/* Delete button */}
                   <button
                     type="button"
