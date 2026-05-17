@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { NameGeneratorModal } from "./NameGeneratorModal";
@@ -6,11 +7,7 @@ import { NameResults } from "./NameResults";
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
-
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "en",
-}));
+// Note: next-intl is mocked globally in setupTests.ts
 
 vi.mock("@/lib/api/client", () => ({
   generationApi: {
@@ -44,13 +41,22 @@ const mockNames = [
 ];
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function renderWithProviders(ui: React.ReactElement) {
+  const queryClient = new QueryClient();
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe("NameGeneratorModal", () => {
   describe("rendering", () => {
     it("renders modal when open", async () => {
-      render(<NameGeneratorModal novelId="novel-1" isOpen={true} onClose={vi.fn()} />);
+      renderWithProviders(<NameGeneratorModal novelId="novel-1" isOpen={true} onClose={vi.fn()} />);
 
       await waitFor(() => {
         expect(document.querySelector("div")).toBeInTheDocument();
@@ -58,7 +64,7 @@ describe("NameGeneratorModal", () => {
     });
 
     it("does not render when closed", async () => {
-      const { container } = render(
+      const { container } = renderWithProviders(
         <NameGeneratorModal novelId="novel-1" isOpen={false} onClose={vi.fn()} />,
       );
 
@@ -71,7 +77,7 @@ describe("NameGeneratorModal", () => {
 describe("NameResults", () => {
   describe("rendering", () => {
     it("renders names when provided", async () => {
-      render(
+      renderWithProviders(
         <NameResults
           results={{
             names: mockNames,
@@ -89,7 +95,7 @@ describe("NameResults", () => {
     });
 
     it("renders empty state when no names", async () => {
-      render(<NameResults results={null} isLoading={false} />);
+      renderWithProviders(<NameResults results={null} isLoading={false} />);
 
       await waitFor(() => {
         expect(document.querySelector("div")).toBeInTheDocument();

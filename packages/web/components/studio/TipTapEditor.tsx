@@ -6,7 +6,7 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import { Check, RotateCcw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
 import { BlockControls } from "./BlockControls";
@@ -40,14 +40,25 @@ export function TipTapEditor({
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectionInput, setShowRejectionInput] = useState(false);
 
-  // Memoize autosave config so extensions array stays stable
+  // Ref always holds the current saveFn — avoids stale closure in Autosave extension
+  // (useEditor freezes extensions at mount time, so a direct closure would never update)
+  const saveFnRef = useRef(onAutosave ?? (async () => {}));
+
+  // Keep the ref synced whenever onAutosave changes
+  useEffect(() => {
+    saveFnRef.current = onAutosave ?? (async () => {});
+  }, [onAutosave]);
+
+  // Stable config: the wrapper reads from the ref at call time, not closure capture time
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref-based pattern — onAutosave changes are synced via saveFnRef, not via useMemo recomputation
   const autosaveConfig = useMemo(
     () => ({
       interval: autosaveInterval ?? 30_000,
-      saveFn: onAutosave ?? (async () => {}),
+      saveFn: (content: string) => saveFnRef.current(content),
       enabled: !!onAutosave,
     }),
-    [onAutosave, autosaveInterval],
+    [autosaveInterval],
   );
 
   const editor = useEditor({
