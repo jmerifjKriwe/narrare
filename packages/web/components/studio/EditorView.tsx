@@ -105,19 +105,14 @@ export function EditorView({ novelId }: EditorViewProps) {
 
     setSaveStatus("saving");
     try {
-      // Always save title via meta endpoint
-      await chaptersApi.updateMeta(novelId, activeChapterId, { title });
+      // Get live content from TipTap editor (more reliable than React state)
+      const htmlContent = editor?.getHTML() ?? content;
 
-      // Save content — prefer autosave extension's forceSave, fallback to direct API
-      const autosaveExt = editor?.extensionManager.extensions.find(
-        (ext) => ext.name === "autosave",
-      );
-      if (autosaveExt) {
-        const storage = autosaveExt.storage as { forceSave: () => Promise<void> };
-        await storage.forceSave();
-      } else {
-        await chaptersApi.updateContent(novelId, activeChapterId, content);
-      }
+      // Save both title and content in parallel
+      await Promise.all([
+        chaptersApi.updateMeta(novelId, activeChapterId, { title }),
+        chaptersApi.updateContent(novelId, activeChapterId, htmlContent),
+      ]);
 
       setSaveStatus("saved");
       setLastSaved(
