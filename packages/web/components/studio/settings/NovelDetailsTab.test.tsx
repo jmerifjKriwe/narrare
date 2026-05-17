@@ -7,22 +7,13 @@ import type { Novel } from "@/types";
 import { NovelDetailsTab } from "./NovelDetailsTab";
 
 // --- Mocks ---
+// Note: next-intl is mocked globally in setupTests.ts
 
 vi.mock("@/lib/api/client", () => ({
   novelsApi: {
     get: vi.fn(),
     update: vi.fn(),
   },
-}));
-
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
-    if (params) {
-      return Object.entries(params).reduce((str, [k, v]) => str.replace(`{${k}}`, String(v)), key);
-    }
-    return key;
-  },
-  useLocale: () => "en",
 }));
 
 // --- Fixtures ---

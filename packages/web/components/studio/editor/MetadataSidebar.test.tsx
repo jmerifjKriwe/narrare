@@ -1,19 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createChapter, createChapterSummary } from "@/mocks/data";
 import type { Chapter, ChapterSummary } from "@/types";
 import { MetadataSidebar } from "./MetadataSidebar";
 
-// Mock next-intl
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
-    if (params) {
-      return Object.entries(params).reduce((str, [k, v]) => str.replace(`{${k}}`, String(v)), key);
-    }
-    return key;
-  },
-  useLocale: () => "en",
-}));
+// Note: next-intl is mocked globally in setupTests.ts
 
 // ---------------------------------------------------------------------------
 // Shared fixtures

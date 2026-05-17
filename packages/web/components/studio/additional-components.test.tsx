@@ -8,11 +8,7 @@ import { WorldBuilding } from "./WorldBuilding";
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
-
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "en",
-}));
+// Note: next-intl is mocked globally in setupTests.ts
 
 // ---------------------------------------------------------------------------
 // Tests

@@ -11,11 +11,7 @@ import { WizardStep5 } from "./WizardStep5";
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
-
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "en",
-}));
+// Note: next-intl is mocked globally in setupTests.ts
 
 vi.mock("@/lib/api/client", () => ({
   authApi: {
