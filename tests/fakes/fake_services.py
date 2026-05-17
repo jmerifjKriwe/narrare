@@ -56,7 +56,7 @@ class FakeNovelService:
     async def create(self, user_id: uuid.UUID, request: CreateNovelRequest) -> Novel:
         self.calls.append({"method": "create", "user_id": user_id})
         novel = Novel()
-        from tests.fakes.fake_repositories import _apply_setattr
+        from tests.fakes._shared import _apply_setattr
 
         _apply_setattr(
             novel,
@@ -83,7 +83,7 @@ class FakeNovelService:
         self.calls.append({"method": "update", "novel_id": novel_id})
         novel = await self.get(novel_id, user_id)
         updates = request.model_dump(exclude_none=True)
-        from tests.fakes.fake_repositories import _apply_setattr
+        from tests.fakes._shared import _apply_setattr
 
         _apply_setattr(novel, updates)
         return novel

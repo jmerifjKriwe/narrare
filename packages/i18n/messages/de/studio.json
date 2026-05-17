@@ -540,8 +540,31 @@
     }
   },
   "volumes": {
-    "comingSoon": "Bände-Verwaltung",
-    "comingSoonDesc": "Dieses Feature wird bald verfügbar sein."
+    "comingSoon": "Bändeverwaltung",
+    "comingSoonDesc": "Dieses Feature wird bald verfügbar sein.",
+    "allVolumes": "Alle Kapitel",
+    "title": "Bände",
+    "createVolume": "Band erstellen",
+    "editVolume": "Band bearbeiten",
+    "deleteVolume": "Band löschen",
+    "defaultBadge": "Standard",
+    "titleLabel": "Titel",
+    "subtitleLabel": "Untertitel",
+    "descriptionLabel": "Beschreibung",
+    "wordCountTargetLabel": "Wortzahl-Ziel",
+    "chapterCount": "{count} Kapitel",
+    "wordCount": "{count} Wörter",
+    "completion": "{percent}% abgeschlossen",
+    "noTarget": "Kein Ziel gesetzt",
+    "deleteConfirm": "Möchtest du diesen Band wirklich löschen? Kapitel werden nicht gelöscht, sondern nur ihrem Band zugeordnet.",
+    "cannotDeleteDefault": "Der Standard-Band kann nicht gelöscht werden.",
+    "reorderUp": "Nach oben",
+    "reorderDown": "Nach unten",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "createSuccess": "Band erstellt",
+    "updateSuccess": "Band aktualisiert",
+    "deleteSuccess": "Band gelöscht"
   },
   "auth": {
     "loginTitle": "Bei Narrare anmelden",

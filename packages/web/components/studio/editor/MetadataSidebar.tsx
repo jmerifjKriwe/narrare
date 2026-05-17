@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { formatWordCount } from "@/lib/utils";
-import type { Chapter, ChapterSummary } from "@/types";
+import type { Chapter, ChapterSummary, VolumeStats } from "@/types";
 
 interface MetadataSidebarProps {
   /** Live word count from editor content */
@@ -17,6 +17,8 @@ interface MetadataSidebarProps {
   chapters: ChapterSummary[];
   /** Word count when chapter was first loaded (for session delta) */
   sessionStartWordCount: number;
+  /** Active volume stats — when set, shows volume progress instead of novel progress */
+  activeVolumeStats: VolumeStats | null;
 }
 
 const WRITING_GOAL = 80_000;
@@ -34,6 +36,7 @@ export function MetadataSidebar({
   chapter,
   chapters,
   sessionStartWordCount,
+  activeVolumeStats,
 }: MetadataSidebarProps) {
   const t = useTranslations("studio");
   const locale = useLocale();
@@ -41,10 +44,17 @@ export function MetadataSidebar({
   const readingTime = Math.ceil(wordCount / 250);
   const sessionDelta = wordCount - sessionStartWordCount;
   const totalWords = chapters.reduce((sum, c) => sum + c.word_count, 0);
-  const progressPercent = Math.min(Math.round((totalWords / WRITING_GOAL) * 100), 100);
   const chapterPosition = chapter ? chapters.findIndex((c) => c.id === chapter.id) + 1 : 0;
 
   const fmt = (n: number) => formatWordCount(n, locale);
+
+  // Determine progress display: volume-level when active, novel-level otherwise
+  const progressWordCount = activeVolumeStats?.word_count ?? totalWords;
+  const progressTarget = activeVolumeStats?.word_count_target ?? WRITING_GOAL;
+  const progressLabel = activeVolumeStats
+    ? t("metadataSidebar.novelProgress")
+    : t("metadataSidebar.novelProgress");
+  const displayPercent = Math.min(Math.round((progressWordCount / progressTarget) * 100), 100);
 
   return (
     <div className="w-64 bg-card border-l border-border overflow-y-auto flex-shrink-0">
@@ -115,21 +125,21 @@ export function MetadataSidebar({
 
       {/* Novel Progress */}
       <div>
-        <SectionHeader>{t("metadataSidebar.novelProgress")}</SectionHeader>
+        <SectionHeader>{progressLabel}</SectionHeader>
         <div className="px-4 py-3 space-y-2">
-          <StatRow label={t("metadataSidebar.totalWords")} value={fmt(totalWords)} />
+          <StatRow label={t("metadataSidebar.totalWords")} value={fmt(progressWordCount)} />
           <div className="w-full bg-muted rounded-full h-2">
             <div
               className="bg-primary h-2 rounded-full transition-all duration-300"
               // Dynamic percentage width requires inline style
-              style={{ width: `${progressPercent}%` }}
+              style={{ width: `${displayPercent}%` }}
             />
           </div>
           <p className="text-xs text-muted-foreground text-center">
             {t("metadataSidebar.progressLabel", {
-              current: fmt(totalWords),
-              goal: fmt(WRITING_GOAL),
-              percent: progressPercent,
+              current: fmt(progressWordCount),
+              goal: fmt(progressTarget),
+              percent: displayPercent,
             })}
           </p>
         </div>

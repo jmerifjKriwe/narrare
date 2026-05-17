@@ -12,7 +12,13 @@ from narrare._app.dependencies import CurrentUserIdDep
 from narrare.novels.repository import NovelRepository
 from narrare.novels.service import NovelService
 from narrare.volumes.repository import VolumeRepository
-from narrare.volumes.schemas import CreateVolumeRequest, UpdateVolumeRequest, VolumeResponse
+from narrare.volumes.schemas import (
+    CreateVolumeRequest,
+    ReorderVolumesRequest,
+    UpdateVolumeRequest,
+    VolumeResponse,
+    VolumeStatsResponse,
+)
 from narrare.volumes.service import VolumeService
 
 if TYPE_CHECKING:
@@ -24,7 +30,10 @@ router = APIRouter(prefix="/novels/{novel_id}/volumes", tags=["volumes"])
 def _get_service(session: AsyncSession = Depends(get_async_session)) -> VolumeService:
     return VolumeService(
         repo=VolumeRepository(session),
-        novel_service=NovelService(repo=NovelRepository(session)),
+        novel_service=NovelService(
+            repo=NovelRepository(session),
+            volume_repo=VolumeRepository(session),
+        ),
     )
 
 
@@ -47,6 +56,39 @@ async def create_volume(
 ) -> VolumeResponse:
     volume = await service.create(novel_id, uuid.UUID(user_id), request)
     return VolumeResponse.model_validate(volume)
+
+
+@router.patch("/reorder", response_model=list[VolumeResponse])
+async def reorder_volumes(
+    novel_id: uuid.UUID,
+    request: ReorderVolumesRequest,
+    user_id: CurrentUserIdDep,
+    service: VolumeService = Depends(_get_service),
+) -> list[VolumeResponse]:
+    volumes = await service.reorder(novel_id, uuid.UUID(user_id), request.volume_ids)
+    return [VolumeResponse.model_validate(v) for v in volumes]
+
+
+@router.get("/{volume_id}", response_model=VolumeResponse)
+async def get_volume(
+    novel_id: uuid.UUID,
+    volume_id: uuid.UUID,
+    user_id: CurrentUserIdDep,
+    service: VolumeService = Depends(_get_service),
+) -> VolumeResponse:
+    volume = await service.get(volume_id, novel_id, uuid.UUID(user_id))
+    return VolumeResponse.model_validate(volume)
+
+
+@router.get("/{volume_id}/stats", response_model=VolumeStatsResponse)
+async def get_volume_stats(
+    novel_id: uuid.UUID,
+    volume_id: uuid.UUID,
+    user_id: CurrentUserIdDep,
+    service: VolumeService = Depends(_get_service),
+) -> VolumeStatsResponse:
+    stats = await service.get_stats(volume_id, novel_id, uuid.UUID(user_id))
+    return VolumeStatsResponse(**stats)
 
 
 @router.patch("/{volume_id}", response_model=VolumeResponse)

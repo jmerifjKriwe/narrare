@@ -14,6 +14,7 @@ import type {
   Chapter,
   ChapterSummary,
   CreateProviderRequest,
+  CreateVolumeRequest,
   DemoProjectInfo,
   DiffResponse,
   NameGenerateRequest,
@@ -29,10 +30,13 @@ import type {
   UpdateProjectAiSettingsRequest,
   UpdateProviderRequest,
   UpdateUserAiSettingsRequest,
+  UpdateVolumeRequest,
   User,
   UserAiSettings,
   UserProvider,
   UserSettings,
+  Volume,
+  VolumeStats,
   WizardState,
 } from "@/types";
 
@@ -175,10 +179,13 @@ export const novelsApi = {
 // --- Chapters ---
 
 export const chaptersApi = {
-  list: (novelId: string) => fetchApi<ChapterSummary[]>(`/novels/${novelId}/chapters`),
+  list: (novelId: string, volumeId?: string | null) => {
+    const params = volumeId ? `?volume_id=${volumeId}` : "";
+    return fetchApi<ChapterSummary[]>(`/novels/${novelId}/chapters${params}`);
+  },
   get: (novelId: string, chapterId: string) =>
     fetchApi<Chapter>(`/novels/${novelId}/chapters/${chapterId}`),
-  create: (novelId: string, payload: { title?: string; content?: string }) =>
+  create: (novelId: string, payload: { title?: string; content?: string; volume_id?: string }) =>
     fetchApi<Chapter>(`/novels/${novelId}/chapters`, {
       method: "POST",
       body: JSON.stringify(payload),
@@ -200,6 +207,31 @@ export const chaptersApi = {
     }),
   delete: (novelId: string, chapterId: string) =>
     fetchApi<void>(`/novels/${novelId}/chapters/${chapterId}`, { method: "DELETE" }),
+};
+
+// --- Volumes ---
+
+export const volumesApi = {
+  list: (novelId: string) => fetchApi<Volume[]>(`/novels/${novelId}/volumes`),
+  create: (novelId: string, payload: CreateVolumeRequest) =>
+    fetchApi<Volume>(`/novels/${novelId}/volumes`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  update: (novelId: string, volumeId: string, payload: UpdateVolumeRequest) =>
+    fetchApi<Volume>(`/novels/${novelId}/volumes/${volumeId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  delete: (novelId: string, volumeId: string) =>
+    fetchApi<void>(`/novels/${novelId}/volumes/${volumeId}`, { method: "DELETE" }),
+  getStats: (novelId: string, volumeId: string) =>
+    fetchApi<VolumeStats>(`/novels/${novelId}/volumes/${volumeId}/stats`),
+  reorder: (novelId: string, volumeIds: string[]) =>
+    fetchApi<Volume[]>(`/novels/${novelId}/volumes/reorder`, {
+      method: "PATCH",
+      body: JSON.stringify({ volume_ids: volumeIds }),
+    }),
 };
 
 // --- Settings ---

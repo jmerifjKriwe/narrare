@@ -66,8 +66,33 @@ export interface Volume {
   id: string;
   novel_id: string;
   title: string;
+  subtitle: string | null;
+  description: string | null;
+  word_count_target: number | null;
+  is_default: boolean;
   position: number;
   created_at: string;
+}
+
+export interface VolumeStats {
+  word_count: number;
+  chapter_count: number;
+  word_count_target: number | null;
+  completion_percentage: number | null;
+}
+
+export interface CreateVolumeRequest {
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  word_count_target?: number | null;
+}
+
+export interface UpdateVolumeRequest {
+  title?: string | null;
+  subtitle?: string | null;
+  description?: string | null;
+  word_count_target?: number | null;
 }
 
 export interface UserSettings {

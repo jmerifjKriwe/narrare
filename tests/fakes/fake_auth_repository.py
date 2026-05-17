@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 
 from narrare.auth.models import User
-from tests.fakes.fake_repositories import CallRecord, _apply_setattr
+from tests.fakes._shared import CallRecord, _apply_setattr
 
 
 class FakeAuthRepository:

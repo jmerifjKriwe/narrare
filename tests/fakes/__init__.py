@@ -15,16 +15,14 @@ Usage:
 """
 
 from tests.fakes.fake_auth_repository import FakeAuthRepository
+from tests.fakes.fake_chapter_repo import FakeChapterRepository
 from tests.fakes.fake_llm_gateway import FakeLLMGateway
-from tests.fakes.fake_repositories import (
-    FakeChapterRepository,
-    FakeNovelRepository,
-    FakeVolumeRepository,
-)
+from tests.fakes.fake_novel_repo import FakeNovelRepository
 from tests.fakes.fake_services import (
     FakeNovelService,
 )
 from tests.fakes.fake_setup import FakeDemoLoader, FakeProviderService
+from tests.fakes.fake_volume_repo import FakeVolumeRepository
 
 __all__ = [
     "FakeAuthRepository",

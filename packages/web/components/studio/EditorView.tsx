@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, PanelRight, Save, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { chaptersApi } from "@/lib/api/client";
+import { chaptersApi, volumesApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
 import { CommandPalette } from "./editor/CommandPalette";
@@ -23,6 +23,7 @@ export function EditorView({ novelId }: EditorViewProps) {
   const queryClient = useQueryClient();
 
   const activeChapterId = useEditorStore((s) => s.activeChapterId);
+  const activeVolumeId = useEditorStore((s) => s.activeVolumeId);
   const editor = useEditorStore((s) => s.editor);
   const setSaveStatus = useEditorStore((s) => s.setSaveStatus);
   const toggleSidebar = useEditorStore((s) => s.toggleSidebar);
@@ -57,9 +58,16 @@ export function EditorView({ novelId }: EditorViewProps) {
 
   // Fetch all chapters for novel (deduplicated — also fetched by Sidebar)
   const { data: chapters = [] } = useQuery({
-    queryKey: ["novels", novelId, "chapters"],
-    queryFn: () => chaptersApi.list(novelId),
+    queryKey: ["novels", novelId, "chapters", activeVolumeId],
+    queryFn: () => chaptersApi.list(novelId, activeVolumeId ?? undefined),
     enabled: !!novelId,
+  });
+
+  // Fetch active volume stats when a volume is selected
+  const { data: volumeStats } = useQuery({
+    queryKey: ["novels", novelId, "volumes", activeVolumeId, "stats"],
+    queryFn: () => volumesApi.getStats(novelId, activeVolumeId!),
+    enabled: !!novelId && !!activeVolumeId,
   });
 
   // Sync title and content from API data
@@ -327,6 +335,7 @@ export function EditorView({ novelId }: EditorViewProps) {
             chapter={chapter ?? null}
             chapters={chapters}
             sessionStartWordCount={sessionStartWordCount}
+            activeVolumeStats={volumeStats ?? null}
           />
         )}
       </div>

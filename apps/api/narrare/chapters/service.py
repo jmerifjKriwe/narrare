@@ -20,6 +20,7 @@ if TYPE_CHECKING:
         UpdateChapterMetaRequest,
     )
     from narrare.novels.contracts import NovelServiceProtocol
+    from narrare.volumes.contracts import VolumeRepositoryProtocol
 
 logger = structlog.get_logger(__name__)
 
@@ -31,9 +32,11 @@ class ChapterService:
         self,
         repo: ChapterRepositoryProtocol,
         novel_service: NovelServiceProtocol,
+        volume_repo: VolumeRepositoryProtocol | None = None,
     ) -> None:
         self._repo = repo
         self._novel_service = novel_service
+        self._volume_repo = volume_repo
 
     async def get(
         self,
@@ -48,9 +51,11 @@ class ChapterService:
             raise NotFoundError("Chapter", identifier=str(chapter_id))
         return chapter
 
-    async def list_chapters(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> list[Chapter]:
+    async def list_chapters(
+        self, novel_id: uuid.UUID, user_id: uuid.UUID, volume_id: uuid.UUID | None = None
+    ) -> list[Chapter]:
         await self._novel_service.get(novel_id, user_id)
-        return await self._repo.list_by_novel(novel_id)
+        return await self._repo.list_by_novel(novel_id, volume_id=volume_id)
 
     async def create(
         self,
@@ -62,7 +67,15 @@ class ChapterService:
         position = request.position
         if position is None:
             position = (await self._repo.max_position(novel_id)) + 1
-        chapter = await self._repo.create(novel_id, request, position)
+
+        # Resolve volume_id: use request or fall back to novel's default volume
+        volume_id = request.volume_id
+        if volume_id is None and self._volume_repo is not None:
+            default_volume = await self._volume_repo.get_default_volume(novel_id)
+            if default_volume is not None:
+                volume_id = default_volume.id
+
+        chapter = await self._repo.create(novel_id, request, position, volume_id=volume_id)
         logger.info("chapter_created", chapter_id=str(chapter.id), novel_id=str(novel_id))
         return chapter
 

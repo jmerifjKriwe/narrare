@@ -14,13 +14,21 @@ if TYPE_CHECKING:
     from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.novels.models import Novel
     from narrare.novels.schemas import CreateNovelRequest, UpdateNovelRequest
+    from narrare.volumes.contracts import VolumeRepositoryProtocol
 
 logger = structlog.get_logger(__name__)
 
+_DEFAULT_VOLUME_TITLE = "Volume 1"
+
 
 class NovelService:
-    def __init__(self, repo: NovelRepositoryProtocol) -> None:
+    def __init__(
+        self,
+        repo: NovelRepositoryProtocol,
+        volume_repo: VolumeRepositoryProtocol | None = None,
+    ) -> None:
         self._repo = repo
+        self._volume_repo = volume_repo
 
     async def get(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel:
         """
@@ -39,8 +47,19 @@ class NovelService:
         return await self._repo.list_by_user(user_id)
 
     async def create(self, user_id: uuid.UUID, request: CreateNovelRequest) -> Novel:
-        """Create a new novel for a user."""
+        """Create a new novel for a user with a default volume."""
         novel = await self._repo.create(user_id, request)
+        if self._volume_repo is not None:
+            await self._volume_repo.create(
+                novel_id=novel.id,
+                title=_DEFAULT_VOLUME_TITLE,
+                position=0,
+                is_default=True,
+            )
+            logger.info(
+                "default_volume_created",
+                novel_id=str(novel.id),
+            )
         logger.info("novel_created", novel_id=str(novel.id), user_id=str(user_id))
         return novel
 

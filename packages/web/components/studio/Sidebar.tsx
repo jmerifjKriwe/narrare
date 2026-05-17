@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
-import { authApi, chaptersApi } from "@/lib/api/client";
+import { authApi, chaptersApi, volumesApi } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useEditorStore } from "@/lib/stores/editorStore";
 
@@ -38,6 +38,8 @@ export function Sidebar() {
   const novelId = params.id as string | undefined;
   const activeChapterId = useEditorStore((s) => s.activeChapterId);
   const setActiveChapterId = useEditorStore((s) => s.setActiveChapterId);
+  const activeVolumeId = useEditorStore((s) => s.activeVolumeId);
+  const setActiveVolumeId = useEditorStore((s) => s.setActiveVolumeId);
 
   const { data: user } = useQuery({
     queryKey: ["auth", "me"],
@@ -45,16 +47,27 @@ export function Sidebar() {
     // Deduplicated — already running in layout
   });
 
-  // Fetch chapters for current novel
+  // Fetch volumes for volume selector
+  const { data: volumes = [] } = useQuery({
+    queryKey: ["novels", novelId, "volumes"],
+    queryFn: () => volumesApi.list(novelId!),
+    enabled: !!novelId,
+  });
+
+  // Fetch chapters for current novel, optionally filtered by volume
   const { data: chapters = [] } = useQuery({
-    queryKey: ["novels", novelId, "chapters"],
-    queryFn: () => chaptersApi.list(novelId!),
+    queryKey: ["novels", novelId, "chapters", activeVolumeId],
+    queryFn: () => chaptersApi.list(novelId!, activeVolumeId ?? undefined),
     enabled: !!novelId,
   });
 
   // Create chapter mutation
   const createChapterMutation = useMutation({
-    mutationFn: () => chaptersApi.create(novelId!, { title: t("sidebar.newChapterTitle") }),
+    mutationFn: () =>
+      chaptersApi.create(novelId!, {
+        title: t("sidebar.newChapterTitle"),
+        ...(activeVolumeId ? { volume_id: activeVolumeId } : {}),
+      }),
     onSuccess: (chapter) => {
       setActiveChapterId(chapter.id);
       queryClient.invalidateQueries({
@@ -170,6 +183,24 @@ export function Sidebar() {
       {/* Chapter list — show for all novel routes */}
       {novelId && (
         <>
+          {/* Volume selector — hidden when only default volume exists */}
+          {volumes.length > 1 && (
+            <div className="px-3 py-2 border-b border-border">
+              <select
+                value={activeVolumeId ?? ""}
+                onChange={(e) => setActiveVolumeId(e.target.value || null)}
+                className="w-full px-3 py-1.5 text-sm bg-card border border-border rounded-md"
+                aria-label={t("volumes.title")}
+              >
+                <option value="">{t("volumes.allVolumes")}</option>
+                {volumes.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="px-3 py-2 border-b border-border">
             <p className="text-xs text-muted-foreground px-4 py-1 uppercase">
               {t("sidebar.chapters")}

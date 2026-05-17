@@ -12,6 +12,7 @@ class CreateChapterRequest(BaseModel):
     title: str = Field(default="", max_length=500)
     content: str = Field(default="")
     position: int | None = None  # If None, appended at end
+    volume_id: uuid.UUID | None = None
 
 
 class UpdateChapterContentRequest(BaseModel):

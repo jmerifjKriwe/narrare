@@ -17,6 +17,7 @@ from narrare.novels.schemas import (
     UpdateNovelRequest,
 )
 from narrare.novels.service import NovelService
+from narrare.volumes.repository import VolumeRepository
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +26,10 @@ router = APIRouter(prefix="/novels", tags=["novels"])
 
 
 def _get_service(session: AsyncSession = Depends(get_async_session)) -> NovelService:
-    return NovelService(repo=NovelRepository(session))
+    return NovelService(
+        repo=NovelRepository(session),
+        volume_repo=VolumeRepository(session),
+    )
 
 
 @router.get("", response_model=list[NovelSummaryResponse])

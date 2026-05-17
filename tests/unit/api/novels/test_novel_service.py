@@ -10,7 +10,7 @@ from narrare.novels.schemas import CreateNovelRequest, UpdateNovelRequest
 from narrare.novels.service import NovelService
 from narrare_core.shared.errors import NotFoundError
 from tests.factories import make_novel
-from tests.fakes import FakeNovelRepository
+from tests.fakes import FakeNovelRepository, FakeVolumeRepository
 
 
 @pytest.fixture
@@ -19,8 +19,20 @@ def fake_repo() -> FakeNovelRepository:
 
 
 @pytest.fixture
+def fake_volume_repo() -> FakeVolumeRepository:
+    return FakeVolumeRepository()
+
+
+@pytest.fixture
 def service(fake_repo: FakeNovelRepository) -> NovelService:
     return NovelService(repo=fake_repo)
+
+
+@pytest.fixture
+def service_with_volumes(
+    fake_repo: FakeNovelRepository, fake_volume_repo: FakeVolumeRepository
+) -> NovelService:
+    return NovelService(repo=fake_repo, volume_repo=fake_volume_repo)
 
 
 def _create_request(**overrides: str) -> CreateNovelRequest:
@@ -60,6 +72,41 @@ class TestNovelServiceCreate:
     async def test_create_calls_repo_and_returns_novel(
         self, service: NovelService, fake_repo: FakeNovelRepository
     ) -> None:
+        uid = uuid.uuid4()
+        request = _create_request()
+
+        result = await service.create(uid, request)
+        assert result.title == "My Novel"
+        fake_repo.assert_called_once("create")
+
+
+class TestNovelServiceCreateDefaultVolume:
+    """Task 4.1: Default volume auto-creation on novel creation."""
+
+    async def test_create_calls_volume_repo_create_with_default_args(
+        self,
+        service_with_volumes: NovelService,
+        fake_volume_repo: FakeVolumeRepository,
+    ) -> None:
+        """NovelService.create() calls volume_repo with default=True, title='Volume 1', pos=0."""
+        uid = uuid.uuid4()
+        request = _create_request()
+
+        novel = await service_with_volumes.create(uid, request)
+
+        # Verify volume_repo.create was called with the right args
+        fake_volume_repo.assert_called(
+            "create",
+            novel_id=novel.id,
+            title="Volume 1",
+            position=0,
+            is_default=True,
+        )
+
+    async def test_create_without_volume_repo_still_works(
+        self, service: NovelService, fake_repo: FakeNovelRepository
+    ) -> None:
+        """When volume_repo is None, novel creation still works (backward compat)."""
         uid = uuid.uuid4()
         request = _create_request()
 

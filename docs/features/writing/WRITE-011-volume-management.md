@@ -1,9 +1,9 @@
 ---
 id: WRITE-011
 title: "Volume Management"
-status: planned
+status: implemented
 area: writing
-mvp: false
+mvp: true
 
 ui_tooltip: "Organize your novel into volumes with independent statistics and context switching."
 ui_help_short: |
@@ -78,18 +78,24 @@ Long-form fiction often spans multiple volumes — trilogies, series of arcs, or
 - **Statistics:** Word count, chapter count, and completion percentage are computed per-volume
 - **Default volume:** Every novel starts with one; chapters are never orphaned
 
-### Backend (existing)
+### Backend (implemented)
 
-- `apps/api/narrare/volumes/` — CRUD models, repository, service, router, contracts, schemas
-- Alembic migration for `volumes` table already exists
+- `apps/api/narrare/volumes/` — Full CRUD + stats + reorder: models, repository, service, router, contracts, schemas
+- Volume model enriched with `subtitle`, `description`, `word_count_target`, `is_default` columns
+- Default volume auto-creation on novel creation (same transaction)
+- Volume statistics endpoint: `GET /volumes/{id}/stats` — word count, chapter count, completion percentage
+- Volume reorder endpoint: `PATCH /volumes/reorder` — positional reordering in transaction
+- Default volume deletion protection — cannot delete the default volume
+- Chapter–volume assignment: create with `volume_id`, list filtered by `volume_id`
+- Migration 0007 for volume enrichment columns
 - API endpoints follow the standard contract-first pattern
 
-### Frontend (planned)
+### Frontend (implemented)
 
-- Volume selector in the novel sidebar (dropdown or tabs)
-- Volume management page at `/novel/{id}/volumes`
-- Chapter list filtered by active volume
-- Volume statistics in analysis panel
+- Volume selector dropdown in sidebar (hidden when single volume — auto-detects)
+- Volume management page at `/novel/{id}/volumes` with CRUD, reorder (up/down), stats display
+- Volume progress in MetadataSidebar — shows active volume progress vs novel-level when "All" selected
+- i18n support for en, de, fr locales (studio.volumes namespace)
 
 ## Constraints & Edge Cases
 
@@ -111,4 +117,5 @@ Long-form fiction often spans multiple volumes — trilogies, series of arcs, or
 ## Status & History
 
 - **2026-05-16:** Feature spec created
-- **Status:** Planned — backend CRUD exists, frontend UI not yet built
+- **2026-05-17:** Implementation complete — backend enrichment, stats, reorder, frontend UI
+- **Status:** Implemented — backend enrichment, stats/reorder endpoints, frontend volume selector and management page

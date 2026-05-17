@@ -33,10 +33,13 @@ class ChapterRepository(BaseRepository):
         )
         return result.scalar_one_or_none()
 
-    async def list_by_novel(self, novel_id: uuid.UUID) -> list[Chapter]:
-        result = await self._session.execute(
-            select(Chapter).where(Chapter.novel_id == novel_id).order_by(Chapter.position)
-        )
+    async def list_by_novel(
+        self, novel_id: uuid.UUID, volume_id: uuid.UUID | None = None
+    ) -> list[Chapter]:
+        stmt = select(Chapter).where(Chapter.novel_id == novel_id)
+        if volume_id is not None:
+            stmt = stmt.where(Chapter.volume_id == volume_id)
+        result = await self._session.execute(stmt.order_by(Chapter.position))
         return list(result.scalars())
 
     async def max_position(self, novel_id: uuid.UUID) -> int:
@@ -50,9 +53,12 @@ class ChapterRepository(BaseRepository):
         novel_id: uuid.UUID,
         request: CreateChapterRequest,
         position: int,
+        *,
+        volume_id: uuid.UUID | None = None,
     ) -> Chapter:
         chapter = Chapter(
             novel_id=novel_id,
+            volume_id=volume_id,
             title=request.title,
             content=request.content,
             position=position,

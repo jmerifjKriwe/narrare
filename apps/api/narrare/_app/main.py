@@ -111,6 +111,7 @@ def _register_routers(app: FastAPI) -> None:
     """Register all domain routers."""
     from narrare.auth.router import router as auth_router
     from narrare.chapters.router import router as chapters_router
+    from narrare.chapters.router_versions import router as chapter_versions_router
     from narrare.generation.router import router as generation_router
     from narrare.memory.router import router as memory_router
     from narrare.metrics.router import router as metrics_router
@@ -125,6 +126,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix=prefix)
     app.include_router(novels_router, prefix=prefix)
     app.include_router(chapters_router, prefix=prefix)
+    app.include_router(chapter_versions_router, prefix=prefix)
     app.include_router(volumes_router, prefix=prefix)
     app.include_router(settings_router, prefix=prefix)
     app.include_router(memory_router, prefix=prefix)

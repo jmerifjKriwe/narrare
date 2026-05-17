@@ -65,6 +65,7 @@ const defaultProps = {
   chapter: mockChapter as Chapter | null,
   chapters: mockChapters,
   sessionStartWordCount: 500,
+  activeVolumeStats: null,
 };
 
 // ---------------------------------------------------------------------------

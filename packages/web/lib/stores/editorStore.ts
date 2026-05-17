@@ -6,6 +6,9 @@ interface EditorState {
   // Active chapter (UI state: which tab is selected — data fetched via TanStack Query)
   activeChapterId: string | null;
 
+  // Active volume filter (null = "All")
+  activeVolumeId: string | null;
+
   // Save state
   saveStatus: SaveStatus;
   lastSavedAt: Date | null;
@@ -23,6 +26,7 @@ interface EditorState {
 
   // Actions
   setActiveChapterId: (id: string | null) => void;
+  setActiveVolumeId: (id: string | null) => void;
   setSaveStatus: (status: SaveStatus) => void;
   setEditor: (editor: Editor | null) => void;
   setIsDragging: (dragging: boolean) => void;
@@ -38,6 +42,7 @@ interface EditorState {
 
 export const useEditorStore = create<EditorState>((set) => ({
   activeChapterId: null,
+  activeVolumeId: null,
   saveStatus: "idle",
   lastSavedAt: null,
   sidebarOpen: true,
@@ -47,6 +52,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   isDragging: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
+
+  setActiveVolumeId: (id) => set({ activeVolumeId: id }),
 
   setSaveStatus: (saveStatus) =>
     set({

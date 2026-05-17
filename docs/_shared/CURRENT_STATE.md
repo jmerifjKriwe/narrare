@@ -11,8 +11,8 @@
 ## Last Updated
 
 Date: 2026-05-17
-Updated by: NarrareFrontendSpecialist
-Session summary: Editor UX improvement — bottom status bar replaced by collapsible MetadataSidebar with live stats, session tracking, chapter info, and novel progress. i18n for 3 locales.
+Updated by: NarrareDevCoordinator
+Session summary: Volume Management (WRITE-011) fully implemented — backend model enrichment, stats endpoint, reorder endpoint, default volume auto-creation, chapter–volume assignment, frontend volume selector in sidebar, volume management page, MetadataSidebar volume stats, i18n for 3 locales.
 
 ---
 
@@ -135,7 +135,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `novels/` — CRUD: models → repository → service → router, contracts, schemas
 - `chapters/` — CRUD: models → repository → service → router, contracts, schemas
   - Content versioning: ChapterVersion model, version repository/service/router endpoints
-- `volumes/` — CRUD: models → repository → service → router, contracts, schemas
+- `volumes/` — Full CRUD + stats + reorder: models → repository → service → router, contracts, schemas; enriched model (subtitle, description, word_count_target, is_default); default volume auto-creation; stats aggregation; deletion protection
 - `settings/` — Full AI settings: contracts, provider management, model routing, token limits
   - `contracts.py`, `schemas.py`, `models.py`, `repository.py`, `router.py`
   - `user_providers_repository.py`, `user_ai_settings_repository.py`, `project_ai_settings_repository.py`
@@ -347,6 +347,12 @@ Phase 5 (Integration & Polish) is underway. Recent implementation progress:
 
 Next focus: writing sessions (SSE streaming), AI features in editor, KB dedup integration for name generator.
 
+**Volume management implementation:**
+- Backend enriched: subtitle, description, word_count_target, is_default columns; default volume auto-creation; volume stats endpoint; reorder endpoint; deletion protection; chapter–volume assignment
+- Frontend complete: volume selector in sidebar, volume management page with CRUD/reorder/stats, MetadataSidebar volume progress, i18n for 3 locales
+- Migration 0007 for volume enrichment
+- 15 new unit tests + 1 integration test for volume management
+
 ---
 
 ## What Is Blocked
@@ -412,6 +418,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Migration 0006 | feedback_events table for memory layer dual storage |
 | mem0 integration | mem0ai>=1.0 added to core dependencies, psycopg[binary]>=3.0 for pgvector |
 | Metadata sidebar (replaces status bar) | EditorView: bottom status bar replaced by collapsible right MetadataSidebar with live stats, session tracking, chapter metadata, and novel progress |
+| Volume Management | WRITE-011 fully implemented — backend enrichment, stats, reorder, frontend UI with volume selector and management page |
 
 ---
 
