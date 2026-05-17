@@ -1,6 +1,12 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -11,7 +17,9 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "a11y": { "recommended": true },
+      "a11y": {
+        "recommended": true
+      },
       "correctness": {
         "recommended": true,
         "noUnusedVariables": "error",
@@ -45,7 +53,17 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/.next", "!**/components/shadcn", "!**/coverage"]
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/.next",
+      "!**/components/shadcn",
+      "!**/coverage",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!**/playwright.config.ts",
+      "!**/test-results/"
+    ]
   },
   "vcs": {
     "enabled": true,

@@ -83,3 +83,6 @@ scripts/local/
 opencode.json
 .tmp/
 packages/web/skills-lock.json
+packages/web/coverage/
+packages/web/playwright-report/
+packages/web/test-results/

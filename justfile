@@ -236,6 +236,10 @@ test-e2e:
 test-frontend:
     cd packages/web && pnpm test
 
+# Run frontend tests with coverage (fails if thresholds not met)
+test-frontend-coverage:
+    cd packages/web && pnpm test:coverage
+
 # Run all tests (backend + frontend)
 test-all: test test-frontend
 
