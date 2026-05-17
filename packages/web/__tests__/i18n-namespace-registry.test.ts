@@ -8,12 +8,25 @@
  *
  * Previously the "generation" namespace was used in components but missing
  * from the registry, causing untranslated labels in the NameGenerator UI.
+ *
+ * Note: The current app uses a single "studio" namespace for all translations.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const WEB_ROOT = resolve(__dirname, "..");
+const WEB_ROOT = resolve(__dirname, ".");
+
+/** Directories to skip when scanning for source files. */
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".next",
+  "__tests__",
+  "_archive_app",
+  "_archive_components",
+  "_archive_styles",
+  "_archive_tests",
+]);
 
 /** Recursively collect all .ts/.tsx file paths, skipping unwanted dirs. */
 function collectSourceFiles(dir: string, files: string[] = []): string[] {
@@ -21,7 +34,7 @@ function collectSourceFiles(dir: string, files: string[] = []): string[] {
   for (const entry of entries) {
     const fullPath = join(dir, entry);
     // Skip directories we don't want to scan
-    if (entry === "node_modules" || entry === ".next" || entry === "__tests__") {
+    if (SKIP_DIRS.has(entry)) {
       continue;
     }
     const stat = statSync(fullPath);
