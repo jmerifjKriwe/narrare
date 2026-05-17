@@ -5,6 +5,7 @@ import {
   estimateReadingTime,
   formatRelativeTime,
   formatWordCount,
+  markdownToHtml,
   truncate,
 } from "./utils";
 
@@ -164,5 +165,49 @@ describe("truncate", () => {
   });
   it("should truncate single character over limit", () => {
     expect(truncate("abc", 2)).toBe("a…");
+  });
+});
+
+describe("markdownToHtml", () => {
+  it("should return empty string for empty input", () => {
+    expect(markdownToHtml("")).toBe("");
+  });
+
+  it("should return HTML unchanged", () => {
+    expect(markdownToHtml("<p>Hello world</p>")).toBe("<p>Hello world</p>");
+  });
+
+  it("should convert # header to h1", () => {
+    expect(markdownToHtml("# Hello World")).toBe("<h1>Hello World</h1>");
+  });
+
+  it("should convert ## header to h2", () => {
+    expect(markdownToHtml("## Chapter One")).toBe("<h2>Chapter One</h2>");
+  });
+
+  it("should convert ### header to h3", () => {
+    expect(markdownToHtml("### Section A")).toBe("<h3>Section A</h3>");
+  });
+
+  it("should convert **text** to strong (wrapped in p)", () => {
+    expect(markdownToHtml("**bold text**")).toBe("<p><strong>bold text</strong></p>");
+  });
+
+  it("should convert *text* to em (wrapped in p)", () => {
+    expect(markdownToHtml("*italic text*")).toBe("<p><em>italic text</em></p>");
+  });
+
+  it("should wrap multiple paragraphs in p tags", () => {
+    const input = "First paragraph\n\nSecond paragraph";
+    const result = markdownToHtml(input);
+    expect(result).toContain("<p>First paragraph</p>");
+    expect(result).toContain("<p>Second paragraph</p>");
+  });
+
+  it("should handle mixed content with headers and bold", () => {
+    const input = "# Title\n\nSome **bold** text here.";
+    const result = markdownToHtml(input);
+    expect(result).toContain("<h1>Title</h1>");
+    expect(result).toContain("<strong>bold</strong>");
   });
 });

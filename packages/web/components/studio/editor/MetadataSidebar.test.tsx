@@ -221,10 +221,9 @@ describe("MetadataSidebar", () => {
       render(<MetadataSidebar {...defaultProps} />);
 
       // ch-1 is at index 0, so position = 1 of 3
-      // The label AND value both render the same key via the mock,
-      // so we expect two matching elements (label span + value span)
-      const posTexts = screen.getAllByText("metadataSidebar.chapterPosition");
-      expect(posTexts).toHaveLength(2);
+      // The component renders a single StatRow with label + value
+      const posText = screen.getByText("metadataSidebar.chapterPosition");
+      expect(posText).toBeInTheDocument();
     });
 
     it("shows select chapter message when chapter is null", () => {

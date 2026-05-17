@@ -45,7 +45,7 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/.next", "!**/components/shadcn"]
+    "includes": ["**", "!**/node_modules", "!**/.next", "!**/components/shadcn", "!**/coverage"]
   },
   "vcs": {
     "enabled": true,

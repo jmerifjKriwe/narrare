@@ -15,7 +15,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const WEB_ROOT = resolve(__dirname, ".");
+const WEB_ROOT = resolve(__dirname, "..");
 
 /** Directories to skip when scanning for source files. */
 const SKIP_DIRS = new Set([
