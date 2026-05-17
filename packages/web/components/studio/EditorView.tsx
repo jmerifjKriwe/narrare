@@ -1,14 +1,15 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, Save, Sparkles } from "lucide-react";
+import { Clock, PanelRight, Save, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { chaptersApi } from "@/lib/api/client";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
 import { CommandPalette } from "./editor/CommandPalette";
 import type { CommandContext } from "./editor/commands";
+import { MetadataSidebar } from "./editor/MetadataSidebar";
 import { NameGeneratorModal } from "./generation/NameGeneratorModal";
 import { TipTapEditor } from "./TipTapEditor";
 
@@ -28,11 +29,18 @@ export function EditorView({ novelId }: EditorViewProps) {
   const toggleFocusMode = useEditorStore((s) => s.toggleFocusMode);
   const toggleContextPanel = useEditorStore((s) => s.toggleContextPanel);
 
+  const contextPanelOpen = useEditorStore((s) => s.contextPanelOpen);
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const [paragraphCount, setParagraphCount] = useState(0);
+  const [sessionStartWordCount, setSessionStartWordCount] = useState(0);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+
+  // Track last chapter ID for session start reset
+  const prevChapterIdRef = useRef<string | null>(null);
 
   // Command palette state
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -47,6 +55,13 @@ export function EditorView({ novelId }: EditorViewProps) {
     enabled: !!activeChapterId,
   });
 
+  // Fetch all chapters for novel (deduplicated — also fetched by Sidebar)
+  const { data: chapters = [] } = useQuery({
+    queryKey: ["novels", novelId, "chapters"],
+    queryFn: () => chaptersApi.list(novelId),
+    enabled: !!novelId,
+  });
+
   // Sync title and content from API data
   useEffect(() => {
     if (chapter) {
@@ -55,7 +70,15 @@ export function EditorView({ novelId }: EditorViewProps) {
     }
   }, [chapter]);
 
-  // Compute word and character counts
+  // Track session start word count (resets only when chapter changes)
+  useEffect(() => {
+    if (chapter && chapter.id !== prevChapterIdRef.current) {
+      prevChapterIdRef.current = chapter.id;
+      setSessionStartWordCount(chapter.word_count);
+    }
+  }, [chapter]);
+
+  // Compute word, character, and paragraph counts
   useEffect(() => {
     const text = content.replace(/<[^>]*>/g, "");
     const words = text
@@ -63,8 +86,10 @@ export function EditorView({ novelId }: EditorViewProps) {
       .split(/\s+/)
       .filter((w) => w.length > 0).length;
     const chars = text.length;
+    const paragraphs = text.split(/\n+/).filter((line) => line.trim().length > 0).length;
     setWordCount(words);
     setCharCount(chars);
+    setParagraphCount(paragraphs);
   }, [content]);
 
   const handleSave = useCallback(async () => {
@@ -160,8 +185,6 @@ export function EditorView({ novelId }: EditorViewProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [handleSave]);
 
-  const readingTime = Math.ceil(wordCount / 200);
-
   // No chapter selected
   if (!activeChapterId) {
     return (
@@ -196,6 +219,15 @@ export function EditorView({ novelId }: EditorViewProps) {
             <Clock className="w-4 h-4" />
             <span>{lastSaved ?? "--:--"}</span>
           </div>
+          <button
+            type="button"
+            onClick={toggleContextPanel}
+            className={`p-2 rounded-md hover:bg-accent transition-colors ${contextPanelOpen ? "bg-accent" : ""}`}
+            title={t("metadataSidebar.toggle")}
+            aria-label={t("metadataSidebar.toggle")}
+          >
+            <PanelRight className="w-4 h-4" />
+          </button>
           <button
             type="button"
             onClick={handleSave}
@@ -275,31 +307,28 @@ export function EditorView({ novelId }: EditorViewProps) {
         </div>
       )}
 
-      {/* Editor area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          <TipTapEditor
-            content={content}
-            onChange={setContent}
-            onAutosave={handleAutosave}
-            autosaveInterval={30_000}
+      {/* Editor area + Metadata Sidebar */}
+      <div className="flex-1 flex min-h-0">
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto">
+            <TipTapEditor
+              content={content}
+              onChange={setContent}
+              onAutosave={handleAutosave}
+              autosaveInterval={30_000}
+            />
+          </div>
+        </div>
+        {contextPanelOpen && (
+          <MetadataSidebar
+            wordCount={wordCount}
+            charCount={charCount}
+            paragraphCount={paragraphCount}
+            chapter={chapter ?? null}
+            chapters={chapters}
+            sessionStartWordCount={sessionStartWordCount}
           />
-        </div>
-      </div>
-
-      {/* Status bar */}
-      <div className="border-t border-border px-8 py-3 bg-card">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-6 text-muted-foreground">
-            <span>{t("editor.words", { count: wordCount })}</span>
-            <span>{t("editor.characters", { count: charCount })}</span>
-            <span>{t("editor.readingTime", { minutes: readingTime })}</span>
-          </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="text-xs">{t("editor.aiActive")}</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Command Palette overlay */}

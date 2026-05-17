@@ -261,6 +261,12 @@ components/studio/
 ├── WorldBuilding.tsx   ← Entity management (3-column)
 ├── AnalysisPanel.tsx   ← Stats + analysis cards
 └── SettingsView.tsx    ← Settings (2-column with tab switching)
+
+components/editor/
+├── CommandPalette.tsx
+├── commands.ts
+├── MetadataSidebar.tsx  ← Right sidebar (live stats, chapter metadata)
+└── extensions/
 ```
 
 ### Naming Rules
@@ -377,21 +383,20 @@ Source: `EditorView.tsx` + `TipTapEditor.tsx`
 **Layout:** Full-height flex column (`flex-1 flex flex-col h-full bg-background`).
 
 ```
-┌──────────────────────────────────────┐
-│ Header bar (border-b, bg-card)       │  ← px-8 py-4, flex, items-center, justify-between
-│ [Chapter title input]   [Clock] [Save]│
-├──────────────────────────────────────┤
-│                                      │
-│  Editor area (flex-1, overflow-y-auto│
-│  max-w-4xl mx-auto)                  │
-│                                      │
-│  [TipTap content: min-h-[70vh]       │
-│   px-8 py-6]                         │
-│                                      │
-├──────────────────────────────────────┤
-│ Status bar (border-t, bg-card)       │  ← px-8 py-3
-│ [X words] [X chars] [~X min] [KI ✨] │
-└──────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ Header bar (border-b, bg-card)                                │
+│ [Chapter title input]  [Clock] [PanelToggle] [Save]          │
+├──────────────────────────────────────────────────────────────┤
+│ Toolbar: formatting + AI tools                                │
+├─────────────────────────────────────┬────────────────────────┤
+│ Editor area (flex-1, overflow-y)    │ MetadataSidebar (w-64) │
+│ max-w-4xl mx-auto                   │ (conditional)          │
+│                                     │                        │
+│ [TipTap content]                    │ Statistics             │
+│                                     │ Session                │
+│                                     │ Chapter Info           │
+│                                     │ Novel Progress         │
+└─────────────────────────────────────┴────────────────────────┘
 ```
 
 **TipTap configuration:**
@@ -420,13 +425,20 @@ Source: `EditorView.tsx` + `TipTapEditor.tsx`
 - Time display uses **client-only rendering**: initialized as `null`, set in `useEffect` to avoid hydration mismatch
 - Save button: `flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity shadow-sm`
 
-**Status bar computation:**
+**Metadata sidebar** (`components/editor/MetadataSidebar.tsx`):
+
+Collapsible right panel (`w-64`, toggled via `contextPanelOpen` in editorStore) with four sections:
+- **Statistics**: live word count, character count, reading time (250 wpm), paragraph count
+- **Session**: word delta since chapter open (green/red/muted), session start word count
+- **Chapter Info**: status badge (draft/reviewed/final), POV character, timeline position, chapter position
+- **Novel Progress**: total words across chapters, progress bar toward 80,000-word goal
+
 ```typescript
-// Strip HTML tags for counting
+// Live stats computed in EditorView, passed as props
 const text = content.replace(/<[^>]*>/g, "");
 const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
 const charCount = text.length;
-const readingTime = Math.ceil(wordCount / 200);  // 200 words/minute
+const readingTime = Math.ceil(wordCount / 250);  // 250 words/minute
 ```
 
 ### WorldBuilding (`/worldbuilding`)
@@ -683,6 +695,7 @@ All icons from `lucide-react`:
 | `Info`          | About settings category                    |
 | `Cpu`           | AI provider settings                       |
 | `MessageSquare` | System prompts settings                    |
+| `PanelRight`   | Metadata sidebar toggle button        |
 
 ---
 

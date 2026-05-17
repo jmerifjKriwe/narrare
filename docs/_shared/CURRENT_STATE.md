@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-15
-Updated by: NarrareDocsSpecialist
-Session summary: Phase 5 generation-prompt-memory-foundation wave — documentation updated for memory layer, prompt management, culture injection, and name generation. New modules: memory/, prompts/, generation/ in API; memory/ and prompts/ management in core; bundled generation prompts; frontend prompt settings + name generator components.
+Date: 2026-05-17
+Updated by: NarrareFrontendSpecialist
+Session summary: Editor UX improvement — bottom status bar replaced by collapsible MetadataSidebar with live stats, session tracking, chapter info, and novel progress. i18n for 3 locales.
 
 ---
 
@@ -195,7 +195,8 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `global-error.tsx` as last resort
 
 **Components:**
-- `components/editor/` — EditorLayout, EditorSurface (TipTap), EditorToolbar, ChapterSidebar (DnD Kit), ContextPanel, StatusBar, CommandPalette (Cmd+K)
+- `components/editor/` — EditorLayout, EditorSurface (TipTap), EditorToolbar, ChapterSidebar (DnD Kit), ContextPanel, MetadataSidebar, CommandPalette (Cmd+K)
+  - `MetadataSidebar.tsx` — Right sidebar with live statistics, session delta, chapter metadata, novel progress (replaces bottom status bar)
   - `extensions/` — 4 custom TipTap extensions: NarrareDocument, SceneBreak, DialogueMark, Autosave
   - `commands.ts` — Command registry for palette (format + editor actions, extensible for AI features)
 - `components/editor/EditorLayout.tsx` — Focus mode: ESC handler + floating Minimize2 button (semi-transparent, focus-mode only)
@@ -332,6 +333,7 @@ Phase 5 (Integration & Polish) is underway. Recent implementation progress:
 **Editor UX improvements (Issue 1):**
 - Focus mode: ESC key exits focus mode
 - Floating Minimize2 button (semi-transparent, focus-mode only) as alternative exit
+- Metadata sidebar: collapsible right panel with live word/char/paragraph counts, session word delta, chapter status/POV/timeline, novel progress bar — replaces bottom status bar
 
 **Dashboard improvements (Issue 2):**
 - Novel delete: Trash2 icon on NovelCards (hover-revealed)
@@ -409,6 +411,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Name generator implementation | API endpoint POST /generation/names, frontend NameGenerator + NameResults components, i18n for 3 locales |
 | Migration 0006 | feedback_events table for memory layer dual storage |
 | mem0 integration | mem0ai>=1.0 added to core dependencies, psycopg[binary]>=3.0 for pgvector |
+| Metadata sidebar (replaces status bar) | EditorView: bottom status bar replaced by collapsible right MetadataSidebar with live stats, session tracking, chapter metadata, and novel progress |
 
 ---
 

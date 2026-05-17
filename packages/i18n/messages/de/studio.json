@@ -46,6 +46,30 @@
     "addBlock": "Block hinzufügen",
     "nameGenerator": "Namensgenerator"
   },
+  "metadataSidebar": {
+    "title": "Metadaten",
+    "statistics": "Statistiken",
+    "words": "Wörter",
+    "characters": "Zeichen",
+    "readingTime": "Lesezeit",
+    "readingTimeValue": "~{minutes} Min.",
+    "paragraphs": "Absätze",
+    "session": "Session",
+    "sessionDelta": "+{count} Wörter",
+    "sessionDeltaNegative": "{count} Wörter",
+    "sessionStart": "Start: {count} Wörter",
+    "chapterInfo": "Kapitel-Info",
+    "status": "Status",
+    "povCharacter": "POV-Charakter",
+    "timelinePosition": "Zeitleiste",
+    "chapterPosition": "Kapitel {current} von {total}",
+    "noPov": "Nicht festgelegt",
+    "noTimeline": "Nicht festgelegt",
+    "novelProgress": "Roman-Fortschritt",
+    "totalWords": "Gesamtwörter",
+    "progressLabel": "{current} / {goal} ({percent}%)",
+    "toggle": "Metadaten"
+  },
   "commandPalette": {
     "title": "Kommandopalette",
     "placeholder": "Befehl eingeben...",
@@ -81,7 +105,7 @@
     "duplicate": "Duplikat",
     "pronunciation": "Aussprache",
     "meaning": "Bedeutung",
-    "saveToKb": "In WB speichern",
+    "saveToKb": "In KB speichern",
     "close": "Schließen"
   },
   "bubble": {

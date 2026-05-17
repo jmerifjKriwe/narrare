@@ -1,12 +1,12 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { aiSettingsApi } from "@/lib/api/client";
 import type { CreateProviderRequest, UpdateProviderRequest, UserProvider } from "@/types";
-import { ProviderForm, providerLabel } from "./ProviderForm";
+import { ProviderForm } from "./ProviderForm";
 
 // --- Component ---
 
@@ -15,7 +15,7 @@ interface ProviderListProps {
   readonly isLoading: boolean;
 }
 
-export function ProviderList({ providers, isLoading }: ProviderListProps) {
+export function ProviderList({ providers, isLoading: _isLoading }: ProviderListProps) {
   const t = useTranslations("studio");
   const queryClient = useQueryClient();
 
