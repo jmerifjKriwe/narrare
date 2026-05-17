@@ -3,6 +3,32 @@ Fake pydantic-ai Agent for unit testing the LLM Gateway.
 
 Simulates the pydantic-ai Agent interface without requiring real LLM calls.
 Used in gateway tests via patch.object(gateway, "_make_agent", return_value=fake_agent).
+
+---
+
+## Deprecation Notice (2026-05-17)
+
+`FakePydanticAgent` is deprecated. Use pydantic-ai's built-in `TestModel` instead.
+
+- `TestModel` stays in sync with pydantic-ai releases automatically
+- `TestModel` supports all pydantic-ai Agent features (tools, result_type, etc.)
+- Only use `FakePydanticAgent` for the streaming chunk test
+  (`test_stream_yields_text_chunks_and_final_chunk`) until pydantic-ai's
+  TestModel supports configurable streaming responses
+
+Migration:
+```python
+# Before
+fake_agent = FakePydanticAgent()
+fake_agent.returns("text")
+
+# After (preferred)
+test_model = TestModel(custom_output_text="text")
+# Use gateway_with_test_model fixture from tests/unit/core/llm/conftest.py
+```
+
+See: `tests/unit/core/llm/conftest.py` for available fixtures.
+See: `docs/development/testing-standards.md` — "LLM Testing — Pydantic AI Tools"
 """
 
 from __future__ import annotations
