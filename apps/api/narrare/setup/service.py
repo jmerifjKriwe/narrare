@@ -187,7 +187,7 @@ class SetupService:
         ):
             try:
                 await self._demo_loader.load(state.starter, novel.id, uid)
-                redirect_to = f"/novel/{novel.id}/editor"
+                redirect_to = f"/novel/{novel.id}"
             except FileNotFoundError:
                 logger.warning(
                     "demo_content_missing",

@@ -230,7 +230,7 @@ export const handlers = [
   http.post("*/api/v1/setup/complete", async () => {
     return HttpResponse.json({
       novel_id: "new-novel-id",
-      redirect_to: "/novels/new-novel-id",
+      redirect_to: "/novel/new-novel-id",
       message: "Setup complete",
     });
   }),

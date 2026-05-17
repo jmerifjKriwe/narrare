@@ -237,7 +237,7 @@ class TestCompleteSetup:
         validated = CompleteSetupResponse.model_validate(data)
         # If demo files exist → editor; if not → dashboard (graceful fallback)
         assert validated.redirect_to in (
-            f"/novel/{validated.novel_id}/editor",
+            f"/novel/{validated.novel_id}",
             "/dashboard",
         )
 

@@ -87,5 +87,5 @@ class CompleteSetupResponse(BaseModel):
     """Returned after successful setup completion."""
 
     novel_id: str
-    redirect_to: str  # "/dashboard" or "/novel/{id}/editor"
+    redirect_to: str  # "/dashboard" or "/novel/{id}"
     message: str

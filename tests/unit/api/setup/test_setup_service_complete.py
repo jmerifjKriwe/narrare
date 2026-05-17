@@ -94,7 +94,7 @@ class TestComplete:
         result = await svc.complete(user_id, state)
 
         assert isinstance(result, CompleteSetupResponse)
-        assert "/editor" in result.redirect_to
+        assert result.redirect_to == f"/novel/{result.novel_id}"
         # Demo loader.load should have been called
         load_calls = [c for c in fake_demo_loader.calls if c["method"] == "load"]
         assert len(load_calls) == 1
@@ -113,7 +113,7 @@ class TestComplete:
 
         result = await svc.complete(user_id, state)
 
-        assert "/editor" in result.redirect_to
+        assert result.redirect_to == f"/novel/{result.novel_id}"
         load_calls = [c for c in fake_demo_loader.calls if c["method"] == "load"]
         assert len(load_calls) == 1
         assert load_calls[0]["starter"] == StarterContent.DEMO_SCIFI
@@ -131,7 +131,7 @@ class TestComplete:
 
         result = await svc.complete(user_id, state)
 
-        assert "/editor" in result.redirect_to
+        assert result.redirect_to == f"/novel/{result.novel_id}"
         load_calls = [c for c in fake_demo_loader.calls if c["method"] == "load"]
         assert len(load_calls) == 1
         assert load_calls[0]["starter"] == StarterContent.DEMO_GERMAN
