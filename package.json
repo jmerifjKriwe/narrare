@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "private": true,
 
-    "devDependencies": {
+  "devDependencies": {
     "ts-morph": "^28.0.0",
     "tsx": "^4.21.0"
   },
   "scripts": {
     "check:i18n": "tsx scripts/validate-i18n.ts"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss@<8.5.10": ">=8.5.10"
+    }
   }
 }
