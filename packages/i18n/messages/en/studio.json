@@ -63,6 +63,7 @@
     "povCharacter": "POV Character",
     "timelinePosition": "Timeline",
     "chapterPosition": "Chapter {current} of {total}",
+    "chapterPositionLabel": "Chapter",
     "noPov": "Not set",
     "noTimeline": "Not set",
     "novelProgress": "Novel Progress",

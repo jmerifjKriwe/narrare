@@ -86,7 +86,7 @@ export function EditorView({ novelId }: EditorViewProps) {
       .split(/\s+/)
       .filter((w) => w.length > 0).length;
     const chars = text.length;
-    const paragraphs = text.split(/\n+/).filter((line) => line.trim().length > 0).length;
+    const paragraphs = (content.match(/<p[\s>]/g) || []).length || 1;
     setWordCount(words);
     setCharCount(chars);
     setParagraphCount(paragraphs);

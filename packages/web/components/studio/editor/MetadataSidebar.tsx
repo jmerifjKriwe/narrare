@@ -96,7 +96,7 @@ export function MetadataSidebar({
                 value={chapter.timeline_position || t("metadataSidebar.noTimeline")}
               />
               <StatRow
-                label={t("metadataSidebar.chapterPosition")}
+                label={t("metadataSidebar.chapterPositionLabel")}
                 value={
                   chapters.length > 0
                     ? t("metadataSidebar.chapterPosition", {

@@ -63,6 +63,7 @@
     "povCharacter": "Personnage POV",
     "timelinePosition": "Chronologie",
     "chapterPosition": "Chapitre {current} sur {total}",
+    "chapterPositionLabel": "Chapitre",
     "noPov": "Non défini",
     "noTimeline": "Non défini",
     "novelProgress": "Progression du roman",

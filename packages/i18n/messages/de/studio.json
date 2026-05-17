@@ -63,6 +63,7 @@
     "povCharacter": "POV-Charakter",
     "timelinePosition": "Zeitleiste",
     "chapterPosition": "Kapitel {current} von {total}",
+    "chapterPositionLabel": "Kapitel",
     "noPov": "Nicht festgelegt",
     "noTimeline": "Nicht festgelegt",
     "novelProgress": "Roman-Fortschritt",
