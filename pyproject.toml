@@ -78,6 +78,9 @@ exclude = [
   # Versteckte Dateien/Verzeichnisse
   "**/.*",
 
+  # E2E tests - require full stack, can't be type-checked in isolation
+  "tests/e2e/**",
+
   # Virtual Environment (explizit, Performance)
   ".venv",
 

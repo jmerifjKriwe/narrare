@@ -53,8 +53,22 @@ async def check_db_available() -> None:
 async def test_engine() -> AsyncGenerator[AsyncEngine]:
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
-    # Run actual Alembic migrations (not create_all) to test migration scripts
-    await _run_test_migrations(TEST_DATABASE_URL)
+    # Skip migrations if tables already exist (CI already ran them)
+    # This prevents duplicate migration attempts and async/sync conflicts
+    try:
+        async with engine.connect() as conn:
+            result = await conn.execute(
+                sqlalchemy.text(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                    "WHERE table_schema = 'public' AND table_name = 'users'"
+                )
+            )
+            table_exists = (result.scalar() or 0) > 0
+    except Exception:
+        table_exists = False
+
+    if not table_exists:
+        await _run_test_migrations(TEST_DATABASE_URL)
 
     yield engine
     async with engine.begin() as conn:
@@ -74,9 +88,12 @@ async def _run_test_migrations(db_url: str) -> None:
 
     from alembic import command
 
-    # Resolve alembic config relative to the API directory
-    api_dir = Path(__file__).resolve().parents[2] / "apps" / "api"
+    # Resolve alembic config relative to the workspace root
+    # tests/integration/conftest.py -> workspace root
+    workspace_root = Path(__file__).resolve().parents[2]
+    api_dir = workspace_root / "apps" / "api"
     alembic_cfg = Config(str(api_dir / "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", str(api_dir / "alembic"))
     alembic_cfg.set_main_option("sqlalchemy.url", db_url)
 
     loop = asyncio.get_running_loop()
