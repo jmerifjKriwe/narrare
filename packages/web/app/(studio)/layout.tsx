@@ -30,7 +30,7 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center flex flex-col items-center gap-4">
-          <Image src="/logo.png" alt="" width={48} height={48} className="animate-pulse" />
+          <Image src="/logo.png" alt="" width={48} height={48} className="animate-pulse" priority />
           <span className="sr-only">{t("appName")}</span>
         </div>
       </div>
