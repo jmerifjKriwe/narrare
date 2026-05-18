@@ -7,7 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
   # Web framework
   "fastapi==0.136.1",
-  "uvicorn[standard]==0.46.0",
+  "uvicorn[standard]==0.47.0",
   "python-multipart==0.0.28",
 
   # Data validation
@@ -22,7 +22,7 @@ dependencies = [
   "pgvector==0.4.2",
 
   # LLM
-  "pydantic-ai==1.93.0",
+  "pydantic-ai==1.97.0",
 
   # Background tasks
   "taskiq==0.12.4",
@@ -44,9 +44,9 @@ dependencies = [
 
   # Observability
   "structlog==25.5.0",
-  "opentelemetry-api>=1.39.0,<1.42.0",
-  "opentelemetry-sdk>=1.39.0,<1.41.0",
-  "opentelemetry-instrumentation-fastapi>=0.60b0,<0.62b0",
+  "opentelemetry-api>=1.39.0,<1.41.0",
+  "opentelemetry-sdk>=1.39.0,<1.42.0",
+  "opentelemetry-instrumentation-fastapi>=0.60b0,<0.63",
   "opentelemetry-exporter-otlp>=1.39.0,<1.41.0",
 
   # Rate limiting
