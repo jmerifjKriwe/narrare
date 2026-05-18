@@ -195,7 +195,7 @@ export function GenerationPanel({
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="flex flex-col h-full border-l border-border bg-card">
+    <div className="flex flex-col h-full border-l border-border bg-card w-80">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">

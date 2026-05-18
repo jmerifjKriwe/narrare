@@ -140,7 +140,14 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(err.detail || `HTTP ${response.status}`);
+    if (typeof err.detail === "string") {
+      throw new Error(err.detail);
+    }
+    if (Array.isArray(err.detail)) {
+      const messages = err.detail.map((e: { msg?: string }) => e.msg).filter(Boolean);
+      throw new Error(messages.join("; ") || `HTTP ${response.status}`);
+    }
+    throw new Error(`HTTP ${response.status}`);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;

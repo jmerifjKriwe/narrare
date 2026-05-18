@@ -66,9 +66,9 @@ export interface GenerationStats {
 
 export const writingApi = {
   startGeneration: (chapterId: string, novelId: string, request: GenerateRequest) =>
-    fetchApi<GenerateResponse>(`/writing/chapters/${chapterId}/generate`, {
+    fetchApi<GenerateResponse>(`/writing/chapters/${chapterId}/generate?novel_id=${novelId}`, {
       method: "POST",
-      body: JSON.stringify({ ...request, novel_id: novelId }),
+      body: JSON.stringify(request),
     }),
 
   stopGeneration: (requestId: string) =>
@@ -199,12 +199,18 @@ export class WritingSessionSocket {
     private chapterId: string,
     private onMessage: (msg: SessionResponse) => void,
     private onError?: (error: Error) => void,
+    private userId?: string,
+    private projectId?: string,
   ) {}
 
   connect(): void {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-    const wsUrl = `${protocol}//${baseUrl || window.location.host}/api/v1/writing/sessions/${this.chapterId}`;
+    const params = new URLSearchParams();
+    if (this.userId) params.set("user_id", this.userId);
+    if (this.projectId) params.set("project_id", this.projectId);
+    const qs = params.toString();
+    const wsUrl = `${protocol}//${baseUrl || window.location.host}/api/v1/writing/sessions/${this.chapterId}${qs ? `?${qs}` : ""}`;
 
     this.ws = new WebSocket(wsUrl);
 

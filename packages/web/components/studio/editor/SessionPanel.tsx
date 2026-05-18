@@ -4,6 +4,7 @@ import { Bot, Loader2, Send, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type SessionResponse, WritingSessionSocket } from "@/lib/api/generation";
+import { useAuthStore } from "@/lib/stores/authStore";
 import type { Message } from "./ChatMessage";
 import { ChatMessage } from "./ChatMessage";
 
@@ -13,6 +14,7 @@ import { ChatMessage } from "./ChatMessage";
 
 interface SessionPanelProps {
   readonly chapterId: string;
+  readonly novelId: string;
   readonly onClose: () => void;
 }
 
@@ -31,8 +33,9 @@ function createMessageId(): string {
 // SessionPanel component
 // ---------------------------------------------------------------------------
 
-export function SessionPanel({ chapterId, onClose }: SessionPanelProps) {
+export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps) {
   const t = useTranslations("studio");
+  const currentUser = useAuthStore((s) => s.user);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -53,7 +56,7 @@ export function SessionPanel({ chapterId, onClose }: SessionPanelProps) {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingText]);
+  }, [messages]);
 
   // -------------------------------------------------------------------------
   // WebSocket lifecycle
@@ -138,6 +141,8 @@ export function SessionPanel({ chapterId, onClose }: SessionPanelProps) {
       () => {
         setIsConnected(false);
       },
+      currentUser?.id,
+      novelId,
     );
 
     socketRef.current = socket;
@@ -149,8 +154,8 @@ export function SessionPanel({ chapterId, onClose }: SessionPanelProps) {
       socketRef.current = null;
       setIsConnected(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: socket connects on chapter change
-  }, [chapterId, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- socket reconnects when user/novel/chapter changes
+  }, [chapterId, t, currentUser?.id, novelId]);
 
   // -------------------------------------------------------------------------
   // Actions

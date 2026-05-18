@@ -11,10 +11,10 @@ import { markdownToHtml } from "@/lib/utils";
 import { CommandPalette } from "./editor/CommandPalette";
 import type { CommandContext, CommandState } from "./editor/commands";
 import { GenerationPanel } from "./editor/GenerationPanel";
-import { NameGeneratorModal } from "./editor/generation/NameGeneratorModal";
 import { MetadataSidebar } from "./editor/MetadataSidebar";
 import { SessionPanel } from "./editor/SessionPanel";
-import { TipTapEditor } from "./editor/TipTapEditor";
+import { NameGeneratorModal } from "./generation/NameGeneratorModal";
+import { TipTapEditor } from "./TipTapEditor";
 
 interface EditorViewProps {
   novelId: string;
@@ -463,7 +463,7 @@ export function EditorView({ novelId }: EditorViewProps) {
           </div>
         </div>
         {showSessionPanel && (
-          <SessionPanel chapterId={activeChapterId} onClose={handleSessionClose} />
+          <SessionPanel chapterId={activeChapterId} novelId={novelId} onClose={handleSessionClose} />
         )}
         {showGenerationPanel && (
           <GenerationPanel
