@@ -151,7 +151,7 @@ class LLMGateway:
                 result = await agent.run(user_prompt)
                 elapsed = time.monotonic() - start
 
-                usage = result.usage()
+                usage = result.usage
                 token_usage = TokenUsage(
                     prompt_tokens=usage.input_tokens or 0,
                     completion_tokens=usage.output_tokens or 0,
@@ -247,7 +247,7 @@ class LLMGateway:
                     yield StreamChunk(text=text)
 
                 elapsed = time.monotonic() - start
-                usage = stream_result.usage()
+                usage = stream_result.usage
                 token_usage = TokenUsage(
                     prompt_tokens=usage.input_tokens or 0,
                     completion_tokens=usage.output_tokens or 0,

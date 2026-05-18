@@ -61,6 +61,7 @@ class FakeAgentResult:
         """The output text — matches pydantic-ai's AgentRunResult.output."""
         return self.data
 
+    @property
     def usage(self) -> FakeUsage:
         return self._usage
 
@@ -85,6 +86,7 @@ class FakeStreamContext:
         for chunk in self._chunks:
             yield chunk
 
+    @property
     def usage(self) -> FakeUsage:
         return self._usage
 
