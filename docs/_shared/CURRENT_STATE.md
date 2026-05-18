@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-17
+Date: 2026-05-18
 Updated by: NarrareDevCoordinator
-Session summary: Volume Management (WRITE-011) fully implemented — backend model enrichment, stats endpoint, reorder endpoint, default volume auto-creation, chapter–volume assignment, frontend volume selector in sidebar, volume management page, MetadataSidebar volume stats, i18n for 3 locales.
+Session summary: New Chapter Generation (WRITE-002) implemented — core writing pipeline, 4 generation modes, context assembly, bundled prompts, API with SSE+WebSocket, frontend generation UI, 98 tasks complete.
 
 ---
 
@@ -116,6 +116,19 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 **Stub Modules (interfaces only):**
 - `context/`, `cache/`, `schemas/`, `embeddings/`
 
+**Writing Layer (`writing/`):**
+- `models.py` — GenerationMode, GenerationStatus, WritingContext, GenerationRequest, SessionState, SceneState
+- `context_models.py` — KBEntity, RecentChapter dataclasses
+- `contracts.py` — WritingPipelineProtocol, ContextAssemblerProtocol, DraftProcessorProtocol, SessionManagerProtocol
+- `context_assembler.py` — WritingContextAssembler with 5-tier ranking + token budgets
+- `budget.py` — TokenBudgetManager for tier allocation
+- `draft_processor.py` — DraftProcessor with artifact removal + markdown normalization
+- `pipeline.py` — WritingPipeline with 4-mode dispatch (full_draft, scene_by_scene, interview_assisted, interactive_session)
+- `pipeline_scene.py` — Scene-by-scene mode logic
+- `pipeline_interview.py` — Interview-assisted mode logic
+- `session_manager.py` — SessionManager with cache-backed persistence (SessionCacheProtocol)
+- `prompts/_bundled/writing/` — 12 system prompts (4 modes × 3 languages) + 4 tone variants
+
 **Event System (`events/`):**
 - Event types, bus protocol (Protocol-based), NullEventBus for testing
 
@@ -165,6 +178,21 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `generation/` — Generation features: contracts, schemas, name_service, router
   - POST /generation/names — Generate names with culture/type/count options
 
+**Writing Module (`writing/`):**
+- `models.py` — GenerationRequest SQLAlchemy model
+- `schemas.py` — 11 Pydantic request/response schemas
+- `contracts.py` — WritingServiceProtocol, GenerationRepositoryProtocol
+- `repository.py` — GenerationRepository (CRUD, status transitions, concurrent prevention)
+- `service.py` — WritingService (orchestration of pipeline + repo + feedback)
+- `scene_service.py` — Scene-by-scene methods
+- `stats_service.py` — Generation analytics
+- `ws_handler.py` — WebSocket session handler
+- `_ws_cache.py` — WebSocket connection cache for active sessions
+- `router.py` — REST + SSE endpoints (generate, stream, status, cancel)
+- `router_sessions.py` — WebSocket route (`WS /api/v1/writing/sessions/{chapter_id}`)
+- `router_stats.py` — Stats endpoints
+- Migration 0008 — generation_requests table + FK to chapter_versions
+
 **Database:**
 - Alembic migration `0001_initial.py` — initial schema
 - Alembic migration `0004_ai_settings.py` — `user_providers`, `user_ai_settings`, project AI override columns
@@ -209,6 +237,13 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `components/generation/` — Generation features
   - `NameGenerator.tsx` — Name generator form (type, culture, count, gender selectors)
   - `NameResults.tsx` — Results display with pronunciation, meaning, duplicate badges
+- `components/studio/editor/` — Writing generation UI
+  - `GenerationPanel.tsx` — Generation trigger + streaming display
+  - `GenerationConfig.tsx` — Mode selection + options (4 modes, tone variants)
+  - `GenerationDraft.tsx` — Draft zone + controls (accept, reject, save)
+  - `SessionPanel.tsx` — Interactive session chat UI
+  - `ChatMessage.tsx` — Chat message bubble component
+  - Generation commands registered in CommandPalette
 - `components/ui/` — Button (shadcn/cva-based), Input, Select
 - `components/shadcn/` — shadcn/ui generated primitives (future component source)
 - `components/shared/` — QueryProvider, ErrorBoundary
@@ -222,6 +257,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `lib/api/client.ts` — Native fetch with token refresh, no axios; `setAccessToken`/`clearAccessToken` sync `narrare_auth` cookie for proxy
 - `lib/api/streaming.ts` — SSE streaming client for AI responses (fetch + ReadableStream)
 - API clients: `promptsApi` (7 methods for prompt CRUD) + `generationApi` (1 method for name generation)
+- `lib/api/generation.ts` — API client for writing generation (SSE streaming + WebSocket client for sessions)
 
 **Styling:**
 - Tailwind CSS v4 as sole styling system (styled-jsx removed)
@@ -305,62 +341,14 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 ## What Is In Progress
 
-Phase 5 (Integration & Polish) is underway. Recent implementation progress:
+Phase 5 (current) — writing generation feature complete:
+1. ✅ Writing generation pipeline (WRITE-002) — fully implemented
+2. KB dedup integration for name generator
+3. Backend test coverage gaps (memory service, prompt management)
+4. Frontend test coverage gaps (generation panel, session panel)
+5. E2E tests with Playwright
 
-**Generation-Prompt-Memory Foundation:**
-- Memory layer: mem0 AsyncMemory integration with pgvector, dual storage (PostgreSQL + mem0), FeedbackService, PreferenceService, NullMemoryClient graceful degradation
-- Prompt management: PromptManagementService with override CRUD, update detection, diff comparison, variable metadata registry
-- Culture injection: {{culture_guidelines}} placeholder, 3 cultures (fantasy/modern/scifi) × 3 languages (en/de/fr), EN fallback
-- Generation intents: GENERATE, NAME_GENERATE, TITLE_GENERATE in IntentCategory.GENERATION
-- Name generator: API endpoint (POST /generation/names), frontend components (NameGenerator, NameResults)
-- Prompt settings UI: PromptSettings (category grouping, source indicators), PromptEditor (variables sidebar), PromptDiff (side-by-side)
-- Memory API: 3 endpoints (POST /feedback, GET /preferences, DELETE /preferences)
-- Prompts API: 7 endpoints for full prompt CRUD
-- Migration 0006 for feedback_events table
-- RULE-01 exception documented for mem0 direct LLM client
-
-**Editor foundation (Issue 5):**
-- 4 TipTap extensions implemented: NarrareDocument, SceneBreak, DialogueMark, Autosave
-- CommandPalette with Cmd+K — formatting + editor action commands registered via commands.ts
-- EditorSurface refactored to use Autosave extension
-- editorStore holds TipTap editor ref (set by EditorSurface, read by CommandPalette)
-
-**Auth session fix (Issue 4):**
-- Backend sets httpOnly `narrare_refresh` cookie on login/register
-- Refresh endpoint reads token from cookie (not request body)
-- Frontend `restoreSession()` restores session from cookie
-- `cookie_helpers.py` centralizes cookie settings
-
-**Editor UX improvements (Issue 1):**
-- Focus mode: ESC key exits focus mode
-- Floating Minimize2 button (semi-transparent, focus-mode only) as alternative exit
-- Metadata sidebar: collapsible right panel with live word/char/paragraph counts, session word delta, chapter status/POV/timeline, novel progress bar — replaces bottom status bar
-
-**Dashboard improvements (Issue 2):**
-- Novel delete: Trash2 icon on NovelCards (hover-revealed)
-- Confirmation dialog before delete
-- Uses `novelsApi.delete()` mutation
-
-**Wizard flow improvements (Issue 3):**
-- Steps 2↔3 swapped: starter selection first, then novel details
-- DemoProjectInfo extended with author/logline/pov/tags from metadata.json
-- WizardStep3 prefills store when demo is selected
-
-**Pydantic AI testing tools integration:**
-- `ALLOW_MODEL_REQUESTS=False` global guard in root conftest.py — no test can accidentally make real LLM calls
-- `TestModel` and `FunctionModel` fixtures in `tests/unit/core/llm/conftest.py` — replace hand-rolled `FakePydanticAgent` for gateway tests
-- `capture_run_messages` fixture ready for writing session tool call assertions
-- Gateway tests refactored: 7 of 10 tests use TestModel/FunctionModel (3 use FakePydanticAgent for streaming chunks)
-- Shared fixtures consolidated: `gateway` and `write_config` fixtures moved to shared conftest.py
-- Integration test `test_generation_api.py` switched from bare MagicMock to FakeLLMGateway
-
-Next focus: writing sessions (SSE streaming), AI features in editor, KB dedup integration for name generator.
-
-**Volume management implementation:**
-- Backend enriched: subtitle, description, word_count_target, is_default columns; default volume auto-creation; volume stats endpoint; reorder endpoint; deletion protection; chapter–volume assignment
-- Frontend complete: volume selector in sidebar, volume management page with CRUD/reorder/stats, MetadataSidebar volume progress, i18n for 3 locales
-- Migration 0007 for volume enrichment
-- 15 new unit tests + 1 integration test for volume management
+Next focus: extend chapter (WRITE-003), rewrite selection (WRITE-004), KB editor UI.
 
 ---
 
@@ -480,12 +468,13 @@ All demo content is complete — sufficient for testing through Phase 5.
 ## Next Session Should Start With
 
 **Phase 5 (current):**
-1. Writing sessions (SSE streaming) — connect core writing features to the editor
-2. KB dedup integration for name generator (currently a placeholder)
-3. AI features in editor toolbar slots (using commands.ts registry pattern)
-4. E2E tests with Playwright (route mocking for LLM responses)
-5. Backend test coverage gaps (memory service, prompt management, generation, settings, gateway error classification, retry logic)
-6. Frontend test coverage gaps (prompt settings, name generator, editor extensions, CommandPalette, dashboard delete, focus mode)
+1. Writing module tests — unit tests for core writing pipeline, context assembler, draft processor, session manager
+2. Writing module integration tests — API-level tests for generation endpoints, SSE streaming, WebSocket sessions
+3. KB dedup integration for name generator (currently a placeholder)
+4. AI features in editor toolbar slots (using commands.ts registry pattern)
+5. E2E tests with Playwright (route mocking for LLM responses)
+6. Backend test coverage gaps (memory service, prompt management, generation, settings, gateway error classification, retry logic)
+7. Frontend test coverage gaps (prompt settings, name generator, editor extensions, CommandPalette, dashboard delete, focus mode)
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)

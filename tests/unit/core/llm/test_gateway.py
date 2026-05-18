@@ -217,7 +217,7 @@ class TestLLMGatewayStream:
 
         async def raise_on_stream(messages, info):
             raise ModelHTTPError(status_code=503, model_name="test")
-            yield  # noqa: unreachable — makes this an async generator
+            yield
 
         error_model = FunctionModel(raise_unavailable, stream_function=raise_on_stream)
 

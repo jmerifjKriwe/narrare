@@ -1,7 +1,7 @@
 ---
 id: WRITE-005
 title: "Interactive Writing Session"
-status: planned
+status: stable
 area: writing
 mvp: false
 
@@ -64,10 +64,10 @@ ui_help_long: |
   Use chapter save to preserve prose you want to keep.
 ui_available_in: [editor]
 
-service: writing/session_service.py
-contract: writing/contracts.py#SessionServiceProtocol
-router: writing/router.py
-prompt: core/prompts/_bundled/writing/en/chat
+service: writing/service.py
+contract: writing/contracts.py#WritingServiceProtocol, core/writing/contracts.py#SessionManagerProtocol
+router: writing/router_sessions.py
+prompt: core/prompts/_bundled/writing/{en,de,fr}/interactive_session/system.md
 requires: [INFRA-001, INFRA-002, KB-001]
 ---
 
@@ -102,21 +102,27 @@ when the session ends. Save important prose to your chapter.
 
 ## How it works (Technical)
 
-**Entry point:** `writing/router.py` → WebSocket `/api/v1/writing/sessions/{chapter_id}`
-**Service:** `SessionService` in `writing/session_service.py`
-**Contract:** `SessionServiceProtocol` in `writing/contracts.py`
-**LLM Intent:** `LLMIntent.CHAT`
+**Core module:** `packages/core/narrare_core/writing/session_manager.py`
+**API module:** `apps/api/narrare/writing/`
+
+**Entry point:** `writing/router_sessions.py` → WebSocket `WS /api/v1/writing/sessions/{chapter_id}`
+**WebSocket handler:** `ws_handler.py` — real-time bidirectional messaging
+**Service:** `WritingService` in `writing/service.py` (orchestrates session + pipeline + feedback)
+**Session manager:** `SessionManager` in `core/writing/session_manager.py` — cache-backed persistence via `SessionCacheProtocol`
+**Contract:** `SessionManagerProtocol` in `core/writing/contracts.py`
+**LLM Intent:** `LLMIntent.GENERATE`
 **Protocol:** WebSocket for real-time bidirectional messaging
 
-**Session state:**
+**Session state (core models):**
 ```python
-class WritingSession:
+class SessionState:
     id: UUID
     chapter_id: UUID
     messages: list[SessionMessage]  # conversation history
     prose_buffer: str  # accumulated prose
     started_at: datetime
     last_activity: datetime
+    # Managed by SessionManager with cache-backed persistence
 ```
 
 **Message types:**
@@ -126,7 +132,13 @@ class WritingSession:
 - `user_feedback`: Revision direction
 - `save_to_chapter`: Commit prose to chapter
 
+**Session persistence:**
+- Redis-backed via `SessionCacheProtocol` (cache layer abstraction)
+- 30-minute inactivity timeout — sessions auto-expire
+- `_ws_cache.py` — WebSocket connection cache for active sessions
+
 **Context management:**
+- Uses `WritingContextAssembler` with 5-tier ranking (shared with other generation modes)
 - Conversation history included in each LLM call
 - Chapter context included (recent text, frontmatter)
 - KB entries for characters/locations mentioned
@@ -137,6 +149,12 @@ class WritingSession:
 - Writer can accept (add to buffer) or reject
 - Buffer accumulates accepted prose
 - "Save to chapter" commits buffer to chapter storage
+
+**Frontend components:**
+- `components/studio/editor/SessionPanel.tsx` — Interactive session chat UI
+- `components/studio/editor/ChatMessage.tsx` — Chat message bubble component
+- `lib/api/generation.ts` — WebSocket client for session messaging
+- Session commands registered in CommandPalette
 
 ## Constraints & Edge Cases
 
@@ -158,3 +176,5 @@ class WritingSession:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-17` — Implementation started (in-progress). WebSocket endpoint with session handler, Redis-backed persistence via SessionCacheProtocol, 30-min inactivity timeout, frontend SessionPanel + ChatMessage components, core SessionManager with cache abstraction.
+- `2026-05-18` — Fully implemented (stable). WebSocket bidirectional messaging operational, session persistence working, frontend session UI complete.

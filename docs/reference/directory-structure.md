@@ -122,6 +122,19 @@ packages/core/narrare_core/
 │   ├── budget.py               ← Token budget calculator
 │   └── model_limits.py         ← Model registry and limits
 │
+├── writing/                    ← Writing generation pipeline
+│   ├── __init__.py
+│   ├── models.py               ← GenerationMode, GenerationStatus, WritingContext, GenerationRequest, SessionState, SceneState
+│   ├── context_models.py       ← KBEntity, RecentChapter dataclasses
+│   ├── contracts.py            ← WritingPipelineProtocol, ContextAssemblerProtocol, DraftProcessorProtocol, SessionManagerProtocol
+│   ├── context_assembler.py    ← WritingContextAssembler with 5-tier ranking + token budgets
+│   ├── budget.py               ← TokenBudgetManager for tier allocation
+│   ├── draft_processor.py      ← DraftProcessor with artifact removal + markdown normalization
+│   ├── pipeline.py             ← WritingPipeline with 4-mode dispatch
+│   ├── pipeline_scene.py       ← Scene-by-scene mode logic
+│   ├── pipeline_interview.py   ← Interview-assisted mode logic
+│   └── session_manager.py      ← SessionManager with cache-backed persistence
+│
 ├── embeddings/                 ← Vector operations
 │   ├── __init__.py
 │   ├── store.py                ← pgvector abstraction (only place pgvector is used)
@@ -238,6 +251,13 @@ packages/web/
 │   │   ├── Button.tsx              ← shadcn/cva-based button (primary/secondary/ghost/danger + loading)
 │   │   ├── Input.tsx               ← Text input with label/error/hint
 │   │   └── Select.tsx              ← Select dropdown
+│   ├── studio/                       ← AI-assisted writing studio components
+│   │   └── editor/
+│   │       ├── GenerationPanel.tsx    ← Generation trigger + streaming display
+│   │       ├── GenerationConfig.tsx   ← Mode selection + options (4 modes, tone variants)
+│   │       ├── GenerationDraft.tsx    ← Draft zone + controls (accept, reject, save)
+│   │       ├── SessionPanel.tsx       ← Interactive session chat UI
+│   │       └── ChatMessage.tsx        ← Chat message bubble component
 │   ├── shadcn/                     ← shadcn/ui generated components (future use)
 │   └── shared/
 │       ├── QueryProvider.tsx       ← TanStack Query client provider
@@ -246,7 +266,8 @@ packages/web/
 ├── lib/
 │   ├── api/
 │   │   ├── client.ts              ← fetch-based API client with token refresh (230 lines)
-│   │   └── streaming.ts           ← SSE streaming client for AI responses
+│   │   ├── streaming.ts           ← SSE streaming client for AI responses
+│   │   └── generation.ts          ← API client for writing generation (SSE streaming + WebSocket client)
 │   ├── stores/
 │   │   ├── editorStore.ts         ← UI state: activeChapterId, saveStatus, toggles, editor ref (for CommandPalette)
 │   │   ├── authStore.ts           ← Auth state + login/register/restoreSession actions
@@ -335,24 +356,20 @@ apps/api/narrare/
 │   ├── service.py
 │   └── router.py
 │
-├── writing/                    ← Split by responsibility (was 1200-line monolith)
+├── writing/                    ← Writing generation module (4 modes: full_draft, scene_by_scene, interview_assisted, interactive_session)
 │   ├── __init__.py
-│   ├── contracts.py            ← All writing Protocols defined here
-│   ├── schemas.py
-│   ├── models.py               ← WritingSession, WritingMessage
-│   │
-│   ├── draft_service.py        ← One-shot: new/extend/rewrite chapter
-│   ├── session_service.py      ← Interactive writing sessions
-│   ├── multi_draft_service.py  ← Multi-draft generation
-│   ├── unblock_service.py      ← Writer's block tools
-│   ├── co_author_service.py    ← Co-author sessions
-│   ├── voice_checker_service.py← Voice consistency checking
-│   │
-│   ├── session_store.py        ← Redis + filesystem session persistence
-│   │
-│   ├── router_drafts.py        ← Routes: /writing/new, /extend, /rewrite
-│   ├── router_sessions.py      ← Routes: /writing/session/*
-│   └── router_tools.py         ← Routes: /writing/unblock, /check-voice, /co-author
+│   ├── contracts.py            ← WritingServiceProtocol, GenerationRepositoryProtocol
+│   ├── schemas.py              ← 11 Pydantic request/response schemas
+│   ├── models.py               ← GenerationRequest SQLAlchemy model
+│   ├── repository.py           ← GenerationRepository (CRUD, status transitions, concurrent prevention)
+│   ├── service.py              ← WritingService (orchestration of pipeline + repo + feedback)
+│   ├── scene_service.py        ← Scene-by-scene methods
+│   ├── stats_service.py        ← Generation analytics
+│   ├── ws_handler.py           ← WebSocket session handler
+│   ├── _ws_cache.py            ← WebSocket connection cache for active sessions
+│   ├── router.py               ← REST + SSE endpoints (generate, stream, status, cancel)
+│   ├── router_sessions.py      ← WebSocket route (WS /api/v1/writing/sessions/{chapter_id})
+│   └── router_stats.py         ← Stats endpoints
 │
 ├── kb/                         ← Knowledge Base
 │   ├── __init__.py

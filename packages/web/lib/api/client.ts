@@ -108,7 +108,7 @@ export async function restoreSession(): Promise<boolean> {
   }
 }
 
-async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `/api/v1${endpoint}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

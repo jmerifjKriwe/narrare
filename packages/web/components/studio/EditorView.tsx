@@ -1,17 +1,20 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, PanelRight, Save, Sparkles } from "lucide-react";
+import { Clock, PanelRight, Save, Sparkles, Wand2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chaptersApi, volumesApi } from "@/lib/api/client";
+import { writingApi } from "@/lib/api/generation";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
 import { CommandPalette } from "./editor/CommandPalette";
-import type { CommandContext } from "./editor/commands";
+import type { CommandContext, CommandState } from "./editor/commands";
+import { GenerationPanel } from "./editor/GenerationPanel";
+import { NameGeneratorModal } from "./editor/generation/NameGeneratorModal";
 import { MetadataSidebar } from "./editor/MetadataSidebar";
-import { NameGeneratorModal } from "./generation/NameGeneratorModal";
-import { TipTapEditor } from "./TipTapEditor";
+import { SessionPanel } from "./editor/SessionPanel";
+import { TipTapEditor } from "./editor/TipTapEditor";
 
 interface EditorViewProps {
   novelId: string;
@@ -22,6 +25,7 @@ export function EditorView({ novelId }: EditorViewProps) {
   const locale = useLocale();
   const queryClient = useQueryClient();
 
+  // Core state
   const activeChapterId = useEditorStore((s) => s.activeChapterId);
   const activeVolumeId = useEditorStore((s) => s.activeVolumeId);
   const editor = useEditorStore((s) => s.editor);
@@ -29,8 +33,20 @@ export function EditorView({ novelId }: EditorViewProps) {
   const toggleSidebar = useEditorStore((s) => s.toggleSidebar);
   const toggleFocusMode = useEditorStore((s) => s.toggleFocusMode);
   const toggleContextPanel = useEditorStore((s) => s.toggleContextPanel);
-
   const contextPanelOpen = useEditorStore((s) => s.contextPanelOpen);
+
+  // Generation state
+  const isGenerating = useEditorStore((s) => s.isGenerating);
+  const activeRequestId = useEditorStore((s) => s.activeRequestId);
+  const draftText = useEditorStore((s) => s.draftText);
+  const sessionActive = useEditorStore((s) => s.sessionActive);
+  const generationPanelOpen = useEditorStore((s) => s.generationPanelOpen);
+  const setGenerating = useEditorStore((s) => s.setGenerating);
+  const setActiveRequestId = useEditorStore((s) => s.setActiveRequestId);
+  const setGenerationMode = useEditorStore((s) => s.setGenerationMode);
+  const setDraftText = useEditorStore((s) => s.setDraftText);
+  const setSessionActive = useEditorStore((s) => s.setSessionActive);
+  const toggleGenerationPanel = useEditorStore((s) => s.toggleGenerationPanel);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -156,7 +172,78 @@ export function EditorView({ novelId }: EditorViewProps) {
     [activeChapterId, novelId, title, locale, setSaveStatus, queryClient],
   );
 
-  // Command context for CommandPalette
+  // -------------------------------------------------------------------------
+  // Generation actions
+  // -------------------------------------------------------------------------
+
+  const handleDraftAccepted = useCallback(
+    (text: string) => {
+      if (editor) {
+        editor.commands.insertContent(text);
+      }
+      setDraftText("");
+      setGenerating(false);
+      setActiveRequestId(null);
+      // Trigger autosave after accepting draft
+      const htmlContent = editor?.getHTML() ?? content;
+      handleAutosave(htmlContent);
+    },
+    [editor, content, setDraftText, setGenerating, setActiveRequestId, handleAutosave],
+  );
+
+  const handleStartSession = useCallback(() => {
+    setGenerationMode("interactive_session");
+    setSessionActive(true);
+    // Close generation panel if open
+    if (generationPanelOpen) {
+      toggleGenerationPanel();
+    }
+  }, [setGenerationMode, setSessionActive, generationPanelOpen, toggleGenerationPanel]);
+
+  const handleSessionClose = useCallback(() => {
+    setSessionActive(false);
+    setGenerationMode(null);
+  }, [setSessionActive, setGenerationMode]);
+
+  const handleStartGeneration = useCallback(
+    (mode: string) => {
+      if (mode === "interactive_session") {
+        handleStartSession();
+        return;
+      }
+      setGenerationMode(mode);
+      toggleGenerationPanel();
+    },
+    [handleStartSession, setGenerationMode, toggleGenerationPanel],
+  );
+
+  const handleStopGeneration = useCallback(async () => {
+    if (activeRequestId) {
+      await writingApi.stopGeneration(activeRequestId);
+    }
+    setGenerating(false);
+    setActiveRequestId(null);
+  }, [activeRequestId, setGenerating, setActiveRequestId]);
+
+  const handleAcceptDraft = useCallback(() => {
+    if (draftText) {
+      handleDraftAccepted(draftText);
+    }
+  }, [draftText, handleDraftAccepted]);
+
+  const handleRejectDraft = useCallback(async () => {
+    if (activeRequestId) {
+      await writingApi.rejectDraft(activeRequestId);
+    }
+    setDraftText("");
+    setGenerating(false);
+    setActiveRequestId(null);
+  }, [activeRequestId, setDraftText, setGenerating, setActiveRequestId]);
+
+  // -------------------------------------------------------------------------
+  // Command context & state
+  // -------------------------------------------------------------------------
+
   const commandContext: CommandContext = useCallback(
     () => ({
       toggleSidebar,
@@ -166,11 +253,37 @@ export function EditorView({ novelId }: EditorViewProps) {
       createChapter: () => {
         // TODO: Wire to chapter creation
       },
+      startGeneration: handleStartGeneration,
+      stopGeneration: handleStopGeneration,
+      acceptDraft: handleAcceptDraft,
+      rejectDraft: handleRejectDraft,
+      toggleGenerationPanel,
     }),
-    [toggleSidebar, toggleFocusMode, toggleContextPanel, handleSave],
+    [
+      toggleSidebar,
+      toggleFocusMode,
+      toggleContextPanel,
+      handleSave,
+      handleStartGeneration,
+      handleStopGeneration,
+      handleAcceptDraft,
+      handleRejectDraft,
+      toggleGenerationPanel,
+    ],
   )();
 
-  // Global keyboard shortcuts
+  const commandState: CommandState = useMemo(
+    () => ({
+      isGenerating,
+      hasDraft: draftText.length > 0,
+    }),
+    [isGenerating, draftText],
+  );
+
+  // -------------------------------------------------------------------------
+  // Keyboard shortcuts
+  // -------------------------------------------------------------------------
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       // Cmd/Ctrl+K → Command Palette
@@ -188,7 +301,18 @@ export function EditorView({ novelId }: EditorViewProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [handleSave]);
 
-  // No chapter selected
+  // -------------------------------------------------------------------------
+  // Sidebar priority: SessionPanel > GenerationPanel > MetadataSidebar
+  // -------------------------------------------------------------------------
+
+  const showSessionPanel = sessionActive && !!activeChapterId;
+  const showGenerationPanel = generationPanelOpen && !!activeChapterId && !showSessionPanel;
+  const showMetadataSidebar = contextPanelOpen && !showSessionPanel && !showGenerationPanel;
+
+  // -------------------------------------------------------------------------
+  // Render — no chapter selected
+  // -------------------------------------------------------------------------
+
   if (!activeChapterId) {
     return (
       <div className="flex-1 flex items-center justify-center h-full text-muted-foreground">
@@ -205,6 +329,10 @@ export function EditorView({ novelId }: EditorViewProps) {
       </div>
     );
   }
+
+  // -------------------------------------------------------------------------
+  // Render — main editor view
+  // -------------------------------------------------------------------------
 
   return (
     <div className="flex-1 flex flex-col h-full bg-background">
@@ -242,7 +370,7 @@ export function EditorView({ novelId }: EditorViewProps) {
         </div>
       </div>
 
-      {/* Toolbar: formatting actions + AI tools (new features go here) */}
+      {/* Toolbar: formatting actions + AI tools */}
       {editor && (
         <div className="border-b border-border px-8 py-2 bg-card flex items-center gap-1">
           <button
@@ -307,10 +435,22 @@ export function EditorView({ novelId }: EditorViewProps) {
             <Sparkles className="w-3.5 h-3.5" />
             <span>{t("editor.nameGenerator")}</span>
           </button>
+          <div className="w-px h-5 bg-border mx-1" />
+          <button
+            type="button"
+            onClick={toggleGenerationPanel}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary ${
+              generationPanelOpen ? "bg-accent" : ""
+            }`}
+            title={t("editor.generate")}
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+            <span>{t("editor.generate")}</span>
+          </button>
         </div>
       )}
 
-      {/* Editor area + Metadata Sidebar */}
+      {/* Editor area + Side panels */}
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto">
@@ -322,7 +462,20 @@ export function EditorView({ novelId }: EditorViewProps) {
             />
           </div>
         </div>
-        {contextPanelOpen && (
+        {showSessionPanel && (
+          <SessionPanel chapterId={activeChapterId} onClose={handleSessionClose} />
+        )}
+        {showGenerationPanel && (
+          <GenerationPanel
+            novelId={novelId}
+            chapterId={activeChapterId}
+            chapterContent={content}
+            onDraftAccepted={handleDraftAccepted}
+            onClose={toggleGenerationPanel}
+            onStartSession={handleStartSession}
+          />
+        )}
+        {showMetadataSidebar && (
           <MetadataSidebar
             wordCount={wordCount}
             charCount={charCount}
@@ -341,6 +494,7 @@ export function EditorView({ novelId }: EditorViewProps) {
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         context={commandContext}
+        commandState={commandState}
       />
 
       {/* Name Generator slide-in panel */}

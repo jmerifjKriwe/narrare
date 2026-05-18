@@ -24,6 +24,14 @@ interface EditorState {
   // Drag state — true while a block drag is in progress
   isDragging: boolean;
 
+  // Generation state
+  isGenerating: boolean;
+  activeRequestId: string | null;
+  generationMode: string | null;
+  draftText: string;
+  sessionActive: boolean;
+  generationPanelOpen: boolean;
+
   // Actions
   setActiveChapterId: (id: string | null) => void;
   setActiveVolumeId: (id: string | null) => void;
@@ -38,6 +46,12 @@ interface EditorState {
     wordCount: number,
     chapters: ChapterSummary[],
   ) => ChapterSummary[];
+  setGenerating: (value: boolean) => void;
+  setActiveRequestId: (id: string | null) => void;
+  setGenerationMode: (mode: string | null) => void;
+  setDraftText: (text: string) => void;
+  setSessionActive: (value: boolean) => void;
+  toggleGenerationPanel: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -50,6 +64,12 @@ export const useEditorStore = create<EditorState>((set) => ({
   focusMode: false,
   editor: null,
   isDragging: false,
+  isGenerating: false,
+  activeRequestId: null,
+  generationMode: null,
+  draftText: "",
+  sessionActive: false,
+  generationPanelOpen: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
 
@@ -81,4 +101,16 @@ export const useEditorStore = create<EditorState>((set) => ({
    */
   updateChapterWordCount: (chapterId, wordCount, chapters) =>
     chapters.map((c) => (c.id === chapterId ? { ...c, word_count: wordCount } : c)),
+
+  setGenerating: (isGenerating) => set({ isGenerating }),
+
+  setActiveRequestId: (activeRequestId) => set({ activeRequestId }),
+
+  setGenerationMode: (generationMode) => set({ generationMode }),
+
+  setDraftText: (draftText) => set({ draftText }),
+
+  setSessionActive: (sessionActive) => set({ sessionActive }),
+
+  toggleGenerationPanel: () => set((s) => ({ generationPanelOpen: !s.generationPanelOpen })),
 }));

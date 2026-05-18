@@ -15,7 +15,8 @@ import narrare.chapters.models
 import narrare.memory.models
 import narrare.novels.models
 import narrare.settings.models
-import narrare.volumes.models  # noqa: F401
+import narrare.volumes.models
+import narrare.writing.models  # noqa: F401
 from alembic import context
 
 # Import the declarative base and all ORM models so Alembic can detect tables.

@@ -3,13 +3,19 @@
 import type { Editor } from "@tiptap/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { builtInCommands, type CommandContext, type CommandItem } from "./commands";
+import {
+  builtInCommands,
+  type CommandContext,
+  type CommandItem,
+  type CommandState,
+} from "./commands";
 
 interface CommandPaletteProps {
   editor: Editor | null;
   isOpen: boolean;
   onClose: () => void;
   context: CommandContext;
+  commandState: CommandState;
 }
 
 /** Flat renderable row — either a section header or a command item. */
@@ -17,17 +23,25 @@ type RenderRow =
   | { kind: "header"; label: string }
   | { kind: "command"; index: number; command: CommandItem };
 
-export function CommandPalette({ editor, isOpen, onClose, context }: CommandPaletteProps) {
+export function CommandPalette({
+  editor,
+  isOpen,
+  onClose,
+  context,
+  commandState,
+}: CommandPaletteProps) {
   const t = useTranslations("studio");
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Filter by visibility and query
   const filtered = useMemo(() => {
-    if (!query.trim()) return builtInCommands;
+    const visible = builtInCommands.filter((cmd) => !cmd.isVisible || cmd.isVisible(commandState));
+    if (!query.trim()) return visible;
     const lower = query.toLowerCase();
-    return builtInCommands.filter((cmd) => cmd.label.toLowerCase().includes(lower));
-  }, [query]);
+    return visible.filter((cmd) => cmd.label.toLowerCase().includes(lower));
+  }, [query, commandState]);
 
   // Build renderable rows with headers
   const rows = useMemo((): RenderRow[] => {
@@ -36,6 +50,7 @@ export function CommandPalette({ editor, isOpen, onClose, context }: CommandPale
 
     const formatCmds = filtered.filter((c) => c.category === "format");
     const editorCmds = filtered.filter((c) => c.category === "editor");
+    const generationCmds = filtered.filter((c) => c.category === "generation");
 
     if (formatCmds.length > 0) {
       result.push({ kind: "header", label: t("commandPalette.categoryFormat") });
@@ -45,6 +60,11 @@ export function CommandPalette({ editor, isOpen, onClose, context }: CommandPale
     if (editorCmds.length > 0) {
       result.push({ kind: "header", label: t("commandPalette.categoryEditor") });
       for (const cmd of editorCmds)
+        result.push({ kind: "command", index: cmdIndex++, command: cmd });
+    }
+    if (generationCmds.length > 0) {
+      result.push({ kind: "header", label: t("commandPalette.categoryGeneration") });
+      for (const cmd of generationCmds)
         result.push({ kind: "command", index: cmdIndex++, command: cmd });
     }
     return result;

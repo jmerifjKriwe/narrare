@@ -48,10 +48,10 @@
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
 | [WRITE-001](writing/WRITE-001-editor.md) | Writing Editor | 📋 | ✅ |
-| [WRITE-002](writing/WRITE-002-new-chapter.md) | AI: New Chapter Generation | 📋 | ❌ |
+| [WRITE-002](writing/WRITE-002-new-chapter.md) | AI: New Chapter Generation | ✅ | ✅ |
 | [WRITE-003](writing/WRITE-003-extend.md) | AI: Extend Chapter | 📋 | ❌ |
 | [WRITE-004](writing/WRITE-004-rewrite.md) | AI: Rewrite Selection | 📋 | ❌ |
-| [WRITE-005](writing/WRITE-005-interactive-session.md) | Interactive Writing Session | 📋 | ❌ |
+| [WRITE-005](writing/WRITE-005-interactive-session.md) | Interactive Writing Session | ✅ | ✅ |
 | [WRITE-006](writing/WRITE-006-co-author.md) | Co-Author Mode | 📋 | ❌ |
 | [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | 📋 | ❌ |
 | [WRITE-008](writing/WRITE-008-multi-draft.md) | Multi-Draft Generation | 📋 | ❌ |

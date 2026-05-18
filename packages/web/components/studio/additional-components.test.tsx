@@ -10,6 +10,25 @@ import { WorldBuilding } from "./WorldBuilding";
 // ---------------------------------------------------------------------------
 // Note: next-intl is mocked globally in setupTests.ts
 
+// Shared command context mock with all required fields
+const mockCommandContext = {
+  toggleSidebar: vi.fn(),
+  toggleFocusMode: vi.fn(),
+  toggleContextPanel: vi.fn(),
+  saveChapter: vi.fn(),
+  createChapter: vi.fn(),
+  startGeneration: vi.fn(),
+  stopGeneration: vi.fn(),
+  acceptDraft: vi.fn(),
+  rejectDraft: vi.fn(),
+  toggleGenerationPanel: vi.fn(),
+};
+
+const mockCommandState = {
+  isGenerating: false,
+  hasDraft: false,
+};
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -64,13 +83,8 @@ describe("CommandPalette", () => {
           editor={null}
           isOpen={true}
           onClose={vi.fn()}
-          context={{
-            toggleSidebar: vi.fn(),
-            toggleFocusMode: vi.fn(),
-            toggleContextPanel: vi.fn(),
-            saveChapter: vi.fn(),
-            createChapter: vi.fn(),
-          }}
+          context={mockCommandContext}
+          commandState={mockCommandState}
         />,
       );
 
@@ -85,13 +99,8 @@ describe("CommandPalette", () => {
           editor={null}
           isOpen={false}
           onClose={vi.fn()}
-          context={{
-            toggleSidebar: vi.fn(),
-            toggleFocusMode: vi.fn(),
-            toggleContextPanel: vi.fn(),
-            saveChapter: vi.fn(),
-            createChapter: vi.fn(),
-          }}
+          context={mockCommandContext}
+          commandState={mockCommandState}
         />,
       );
 

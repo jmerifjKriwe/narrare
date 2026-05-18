@@ -1,7 +1,7 @@
 ---
 id: WRITE-002
 title: "AI: New Chapter Generation"
-status: planned
+status: stable
 area: writing
 mvp: true
 
@@ -68,10 +68,10 @@ ui_help_long: |
   `narrare writing generate --chapter <id> --outline <file>`
 ui_available_in: [editor, cli]
 
-service: writing/draft_service.py
-contract: writing/contracts.py#DraftServiceProtocol
-router: writing/router.py
-prompt: core/prompts/_bundled/writing/en/new_chapter
+service: writing/service.py
+contract: writing/contracts.py#WritingServiceProtocol, core/writing/contracts.py#WritingPipelineProtocol
+router: writing/router.py, writing/router_stats.py
+prompt: core/prompts/_bundled/writing/{en,de,fr}/{new_chapter,scene_by_scene,interview}/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 ---
 
@@ -111,32 +111,52 @@ Generated text is fully editable — treat it as your rough draft.
 
 ## How it works (Technical)
 
+**Core module:** `packages/core/narrare_core/writing/`
+**API module:** `apps/api/narrare/writing/`
+
 **Entry point:** `writing/router.py` → `POST /api/v1/writing/chapters/{id}/generate`
-**Service:** `DraftService.generate_chapter()` in `writing/draft_service.py`
-**Contract:** `DraftServiceProtocol` in `writing/contracts.py`
-**LLM Intent:** `LLMIntent.WRITE`
+**Streaming:** `GET /api/v1/writing/generation/{id}/stream` (SSE)
+**Stats:** `writing/router_stats.py` → generation analytics endpoints
+**Service:** `WritingService` in `writing/service.py` (orchestrates pipeline + repo + feedback)
+**Contract:** `WritingServiceProtocol` in `writing/contracts.py`, `WritingPipelineProtocol` in `core/writing/contracts.py`
+**LLM Intent:** `LLMIntent.GENERATE`
 **Streaming:** Yes — Server-Sent Events (SSE)
 
-**Generation pipeline:**
-1. **Context assembly** (INFRA-003): Gather KB entries, recent chapters
-2. **Prompt building** (INFRA-002): Assemble system + user prompts
-3. **Style analysis**: Extract style patterns from previous chapters (optional)
-4. **LLM call**: Stream generation via LLM Gateway
-5. **Token management**: Track usage, stop at target word count
-6. **Post-processing**: Format Markdown, clean artifacts
+**4 Generation modes (dispatch via WritingPipeline):**
+1. **full_draft** — Complete chapter from start to finish via `pipeline.py`
+2. **scene_by_scene** — Generate one scene at a time with review between scenes via `pipeline_scene.py` (see `scene_service.py` on API side)
+3. **interview_assisted** — Guided Q&A to build context, then generate via `pipeline_interview.py`
+4. **interactive_session** — Real-time collaborative writing via WebSocket (see WRITE-005)
 
-**Prompt variables:**
-- `{{project_title}}`, `{{genre}}`, `{{tone}}`
-- `{{chapter_outline}}` or `{{chapter_prompt}}`
-- `{{kb_characters}}` — relevant character profiles
-- `{{kb_locations}}` — relevant location descriptions
-- `{{recent_chapters}}` — last 2-3 chapters summaries
-- `{{style_examples}}` — excerpts from user's writing (if voice cloning enabled)
+**Generation pipeline:**
+1. **Context assembly** (INFRA-003): `WritingContextAssembler` with 5-tier ranking + token budgets
+   - Immediate context (30%), Recent chapters (20%), KB referenced (25%), KB suggested (15%), Pinned (10%)
+   - Token budget enforcement via `budget.py` (`TokenBudgetManager`)
+   - KB entity relevance: 50% similarity, 30% frequency, 20% recency
+2. **Prompt building** (INFRA-002): Assemble system + user prompts from `_bundled/writing/{lang}/{mode}/`
+   - 12 system prompts (4 modes × 3 languages: en, de, fr)
+   - 4 tone variants: balanced, dramatic, suspenseful, quiet
+3. **LLM call**: Stream generation via LLM Gateway
+4. **Post-processing**: `DraftProcessor` — artifact removal + markdown normalization
+5. **Persistence**: `GenerationRepository` — status transitions, concurrent generation prevention
+
+**API models:**
+- SQLAlchemy model: `generation_requests` table (migration 0008) with FK to `chapter_versions`
+- 11 Pydantic schemas in `writing/schemas.py`
+- Status lifecycle: pending → generating → completed/failed
 
 **User controls during generation:**
 - Stop/Resume generation
-- Adjust word count target mid-stream
-- Regenerate from last scene break
+- Mode selection via `GenerationConfig.tsx`
+- Draft review via `GenerationDraft.tsx`
+- Real-time streaming display via `GenerationPanel.tsx`
+
+**Frontend components:**
+- `lib/api/generation.ts` — API client with SSE streaming + WebSocket client
+- `components/studio/editor/GenerationPanel.tsx` — Generation trigger + streaming display
+- `components/studio/editor/GenerationConfig.tsx` — Mode selection + options
+- `components/studio/editor/GenerationDraft.tsx` — Draft zone + controls
+- Generation commands registered in CommandPalette
 
 ## Constraints & Edge Cases
 
@@ -160,3 +180,5 @@ Generated text is fully editable — treat it as your rough draft.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-17` — Implementation started (in-progress). Core writing pipeline with 4 generation modes, API endpoints with SSE streaming, frontend GenerationPanel/Config/Draft components. Prompts: 12 system prompts (4 modes × 3 languages) + 4 tone variants. Migration 0008 for generation_requests table.
+- `2026-05-18` — Fully implemented (stable). All 4 generation modes operational, SSE streaming + WebSocket sessions, frontend generation UI complete, 98 tasks done.

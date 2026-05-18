@@ -2,19 +2,29 @@
  * Command registry for the editor command palette.
  *
  * Each command has an action that receives the TipTap editor and a context
- * object with callbacks for editor-level operations. AI features will add
- * commands here in the future.
+ * object with callbacks for editor-level operations. Generation commands
+ * are conditionally visible based on the current generation state.
  */
 
 import type { Editor } from "@tiptap/react";
 import type { ComponentType } from "react";
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface CommandState {
+  isGenerating: boolean;
+  hasDraft: boolean;
+}
+
 export interface CommandItem {
   id: string;
   label: string;
-  category: "format" | "editor";
+  category: "format" | "editor" | "generation";
   icon?: ComponentType<{ size?: number }>;
   shortcut?: string;
+  isVisible?: (state: CommandState) => boolean;
   action: (editor: Editor, context: CommandContext) => void;
 }
 
@@ -24,7 +34,16 @@ export interface CommandContext {
   toggleContextPanel: () => void;
   saveChapter: () => void;
   createChapter: () => void;
+  startGeneration: (mode: string) => void;
+  stopGeneration: () => void;
+  acceptDraft: () => void;
+  rejectDraft: () => void;
+  toggleGenerationPanel: () => void;
 }
+
+// ---------------------------------------------------------------------------
+// Built-in commands
+// ---------------------------------------------------------------------------
 
 export const builtInCommands: CommandItem[] = [
   // Formatting
@@ -97,5 +116,55 @@ export const builtInCommands: CommandItem[] = [
     category: "editor",
     shortcut: "⌘S",
     action: (_editor, ctx) => ctx.saveChapter(),
+  },
+  // Generation commands
+  {
+    id: "generate-chapter",
+    label: "Generate Chapter",
+    category: "generation",
+    isVisible: (state) => !state.isGenerating && !state.hasDraft,
+    action: (_editor, ctx) => ctx.startGeneration("full_draft"),
+  },
+  {
+    id: "generate-outline",
+    label: "Generate from Outline",
+    category: "generation",
+    isVisible: (state) => !state.isGenerating && !state.hasDraft,
+    action: (_editor, ctx) => ctx.startGeneration("scene_by_scene"),
+  },
+  {
+    id: "auto-continue",
+    label: "Auto-Continue",
+    category: "generation",
+    isVisible: (state) => !state.isGenerating && !state.hasDraft,
+    action: (_editor, ctx) => ctx.startGeneration("interview_assisted"),
+  },
+  {
+    id: "start-session",
+    label: "Start Interactive Session",
+    category: "generation",
+    isVisible: (state) => !state.isGenerating && !state.hasDraft,
+    action: (_editor, ctx) => ctx.startGeneration("interactive_session"),
+  },
+  {
+    id: "stop-generation",
+    label: "Stop Generation",
+    category: "generation",
+    isVisible: (state) => state.isGenerating,
+    action: (_editor, ctx) => ctx.stopGeneration(),
+  },
+  {
+    id: "accept-draft",
+    label: "Accept Draft",
+    category: "generation",
+    isVisible: (state) => state.hasDraft,
+    action: (_editor, ctx) => ctx.acceptDraft(),
+  },
+  {
+    id: "reject-draft",
+    label: "Reject Draft",
+    category: "generation",
+    isVisible: (state) => state.hasDraft,
+    action: (_editor, ctx) => ctx.rejectDraft(),
   },
 ];

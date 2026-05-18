@@ -368,6 +368,68 @@ export const handlers = [
   }),
 
   // ---------------------------------------------------------------------------
+  // Writing — Generation
+  // ---------------------------------------------------------------------------
+
+  http.post("*/api/v1/writing/chapters/:chapterId/generate", async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      request_id: "gen-test-id",
+      status: "pending",
+      mode: body.mode ?? "full_draft",
+    });
+  }),
+
+  http.delete("*/api/v1/writing/generation/:requestId", async () => {
+    return HttpResponse.json({
+      request_id: "gen-test-id",
+      status: "stopped",
+      word_count: 800,
+    });
+  }),
+
+  http.post("*/api/v1/writing/generation/:requestId/accept", async () => {
+    return HttpResponse.json({
+      request_id: "gen-test-id",
+      chapter_id: "chapter-1",
+      word_count: 1200,
+    });
+  }),
+
+  http.post("*/api/v1/writing/generation/:requestId/reject", async () => {
+    return HttpResponse.json({
+      request_id: "gen-test-id",
+      status: "rejected",
+    });
+  }),
+
+  http.post("*/api/v1/writing/generation/:requestId/scene/next", async () => {
+    return HttpResponse.json({
+      request_id: "gen-test-id",
+      scene_number: 2,
+      status: "streaming",
+    });
+  }),
+
+  http.post("*/api/v1/writing/generation/:requestId/scene/:sceneNum/accept", async () => {
+    return HttpResponse.json({
+      request_id: "gen-test-id",
+      chapter_id: "chapter-1",
+      word_count: 400,
+    });
+  }),
+
+  http.get("*/api/v1/writing/novels/:novelId/stats", async () => {
+    return HttpResponse.json({
+      total_generations: 42,
+      success_rate: 0.95,
+      avg_tokens: 1500,
+      avg_word_count: 800,
+      most_used_model: "gpt-4",
+    });
+  }),
+
+  // ---------------------------------------------------------------------------
   // Volumes
   // ---------------------------------------------------------------------------
 

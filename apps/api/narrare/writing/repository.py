@@ -1,0 +1,167 @@
+"""Generation request repository — DB queries only."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import case, func, select, update
+
+from narrare._app.base_repository import BaseRepository
+from narrare.writing.models import GenerationRequest
+
+if TYPE_CHECKING:
+    import uuid
+
+
+class GenerationRepository(BaseRepository):
+    """DB queries for generation request tracking."""
+
+    async def create(
+        self,
+        chapter_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        mode: str,
+    ) -> uuid.UUID:
+        """Insert a new generation request with status 'pending'.
+
+        Returns:
+            The UUID of the newly created request.
+        """
+        request = GenerationRequest(
+            chapter_id=chapter_id,
+            novel_id=novel_id,
+            user_id=user_id,
+            mode=mode,
+            status="pending",
+        )
+        self._session.add(request)
+        await self._flush_and_refresh(request)
+        return request.id
+
+    async def get_by_id(self, request_id: uuid.UUID) -> GenerationRequest | None:
+        """Fetch a generation request by its primary key."""
+        result = await self._session.execute(
+            select(GenerationRequest).where(GenerationRequest.id == request_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def update_status(
+        self,
+        request_id: uuid.UUID,
+        status: str,
+        **kwargs: Any,
+    ) -> None:
+        """Update status and optional fields on a generation request.
+
+        Accepted kwargs: tokens_used, word_count, error_message,
+        completed_at, started_at, model_id, provider_name.
+        """
+        values: dict[str, Any] = {"status": status}
+        allowed = {
+            "tokens_used",
+            "word_count",
+            "error_message",
+            "completed_at",
+            "started_at",
+            "model_id",
+            "provider_name",
+        }
+        for key, value in kwargs.items():
+            if key in allowed:
+                values[key] = value
+        await self._session.execute(
+            update(GenerationRequest).where(GenerationRequest.id == request_id).values(**values)
+        )
+        await self._flush()
+
+    async def get_active_for_chapter(self, chapter_id: uuid.UUID) -> GenerationRequest | None:
+        """Check for pending/streaming requests (concurrent prevention)."""
+        result = await self._session.execute(
+            select(GenerationRequest).where(
+                GenerationRequest.chapter_id == chapter_id,
+                GenerationRequest.status.in_(["pending", "streaming"]),
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def cleanup_stale(self, max_age_minutes: int = 30) -> int:
+        """Mark streaming requests older than N minutes as failed.
+
+        Returns:
+            Number of requests marked as failed.
+        """
+        cutoff = datetime.now(UTC) - timedelta(minutes=max_age_minutes)
+        # Count first
+        count_result = await self._session.execute(
+            select(func.count())
+            .select_from(GenerationRequest)
+            .where(
+                GenerationRequest.status == "streaming",
+                GenerationRequest.updated_at < cutoff,
+            )
+        )
+        count = count_result.scalar() or 0
+
+        if count > 0:
+            await self._session.execute(
+                update(GenerationRequest)
+                .where(
+                    GenerationRequest.status == "streaming",
+                    GenerationRequest.updated_at < cutoff,
+                )
+                .values(
+                    status="failed",
+                    error_message="Stale request — cleaned up by system",
+                    completed_at=datetime.now(UTC),
+                )
+            )
+            await self._flush()
+
+        return count
+
+    async def get_stats_for_novel(self, novel_id: uuid.UUID) -> dict[str, Any]:
+        """Aggregate generation statistics for a novel.
+
+        Returns dict with: total_generations, success_rate, avg_tokens,
+        avg_word_count, most_used_model.
+        """
+        result = await self._session.execute(
+            select(
+                func.count().label("total"),
+                func.avg(
+                    case(
+                        (
+                            GenerationRequest.status == "completed",
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("success_rate"),
+                func.avg(GenerationRequest.tokens_used).label("avg_tokens"),
+                func.avg(GenerationRequest.word_count).label("avg_word_count"),
+            ).where(GenerationRequest.novel_id == novel_id)
+        )
+        row = result.one()
+
+        # Most used model
+        model_result = await self._session.execute(
+            select(GenerationRequest.model_id, func.count().label("cnt"))
+            .where(
+                GenerationRequest.novel_id == novel_id,
+                GenerationRequest.model_id.isnot(None),
+            )
+            .group_by(GenerationRequest.model_id)
+            .order_by(func.count().desc())
+            .limit(1)
+        )
+        model_row = model_result.first()
+
+        return {
+            "total_generations": int(row.total),
+            "success_rate": float(row.success_rate or 0),
+            "avg_tokens": float(row.avg_tokens or 0),
+            "avg_word_count": float(row.avg_word_count or 0),
+            "most_used_model": model_row[0] if model_row else None,
+        }

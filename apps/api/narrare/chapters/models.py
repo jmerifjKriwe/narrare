@@ -72,6 +72,11 @@ class ChapterVersion(Base):
     word_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="autosave")
+    generation_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("generation_requests.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

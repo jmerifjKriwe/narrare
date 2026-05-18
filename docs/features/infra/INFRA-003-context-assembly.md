@@ -1,7 +1,7 @@
 ---
 id: INFRA-003
 title: "Context Assembly Pipeline"
-status: planned
+status: in-progress
 area: infra
 mvp: true
 
@@ -50,8 +50,8 @@ ui_help_long: |
   priority, less relevant content is trimmed first.
 ui_available_in: [editor]
 
-service: core/context/assembler.py
-contract: ~
+service: core/writing/context_assembler.py (writing specialization), core/context/assembler.py (general)
+contract: core/writing/contracts.py#ContextAssemblerProtocol
 router: ~
 prompt: ~
 requires: [INFRA-001, INFRA-002, KB-001]
@@ -86,12 +86,12 @@ fine-tune context for complex scenes.
 
 ## How it works (Technical)
 
-**Entry point:** `core/context/assembler.py`
-**Primary class:** `ContextAssembler`
+**Entry point:** `core/context/assembler.py` (general), `core/writing/context_assembler.py` (writing specialization)
+**Primary class:** `ContextAssembler` (general), `WritingContextAssembler` (writing)
 **Input:** `PromptContext` with chapter_id, mode, language
 **Output:** Structured context with ranked KB entries and recent chapters
 
-**5 Context tiers:**
+**5 Context tiers (general):**
 1. **Immediate Context**: Current chapter content + frontmatter
 2. **Recent History**: Last 3-5 chapters, ranked by recency and relevance
 3. **Knowledge Base**: Character/location/faction profiles, ranked by similarity
@@ -106,12 +106,39 @@ fine-tune context for complex scenes.
 5. Apply token budget: prioritize high-ranked items
 6. Format as structured context for prompt variables
 
-**Token budgeting:**
+**Token budgeting (general):**
 - Each intent has a token budget for context
 - Immediate context gets 30%
 - KB entries get 40% (proportional to rank)
 - Recent history gets 30%
 - Pinned items bypass budgeting
+
+### Writing Specialization
+
+The writing pipeline uses `WritingContextAssembler` (`core/writing/context_assembler.py`) with a specialized 5-tier ranking tuned for creative writing:
+
+**Tier allocation (token budget enforced by `TokenBudgetManager` in `budget.py`):**
+
+| Tier | Budget | Description |
+|------|--------|-------------|
+| Immediate | 30% | Current chapter content + frontmatter |
+| Recent | 20% | Last 3-5 chapters with relevance scoring |
+| KB Referenced | 25% | KB entries explicitly referenced in chapter/frontmatter |
+| KB Suggested | 15% | AI-recommended entries via embedding similarity |
+| Pinned | 10% | User-pinned entries (bypasses overflow) |
+
+**Token budget enforcement:**
+- `TokenBudgetManager` allocates tokens per tier based on model context window
+- Overflow handling: lower-priority tiers are trimmed first
+- Pinned items always included (10% reserved), even if other tiers overflow
+- Budget recalculated per generation request based on resolved model config
+
+**KB entity relevance ranking:**
+- 50% similarity — embedding-based cosine similarity to chapter content
+- 30% frequency — how often the entity appears in recent chapters
+- 20% recency — when the entity was last referenced in the manuscript
+
+**Shared between context tiers:** The writing assembler reuses the general context tier structure but applies domain-specific ranking weights optimized for narrative consistency.
 
 ## Constraints & Edge Cases
 
@@ -131,3 +158,4 @@ fine-tune context for complex scenes.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-17` — Writing specialization implemented. `WritingContextAssembler` with 5-tier ranking (30/20/25/15/10 split), `TokenBudgetManager` for tier allocation with overflow handling, KB entity relevance ranking (50% similarity, 30% frequency, 20% recency). Core data models in `context_models.py` (`KBEntity`, `RecentChapter`).
