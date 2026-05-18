@@ -9,10 +9,5 @@
   },
   "scripts": {
     "check:i18n": "tsx scripts/validate-i18n.ts"
-  },
-  "pnpm": {
-    "overrides": {
-      "postcss@<8.5.10": ">=8.5.10"
-    }
   }
 }
