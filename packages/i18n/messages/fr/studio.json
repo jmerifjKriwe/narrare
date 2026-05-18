@@ -45,7 +45,8 @@
     "heading3": "Titre 3",
     "blockquote": "Citation",
     "addBlock": "Ajouter un bloc",
-    "nameGenerator": "Générateur de noms"
+    "nameGenerator": "Générateur de noms",
+    "generate": "Générer"
   },
   "metadataSidebar": {
     "title": "Métadonnées",
@@ -77,7 +78,8 @@
     "placeholder": "Tapez une commande...",
     "categoryFormat": "Mise en forme",
     "categoryEditor": "Éditeur",
-    "noResults": "Aucune commande trouvée"
+    "noResults": "Aucune commande trouvée",
+    "categoryGeneration": "Génération"
   },
   "generation": {
     "nameGenerator": "Générateur de noms",
@@ -617,6 +619,7 @@
     "starting": "Démarrage...",
     "interactiveDescription": "Démarrez une session interactive pour écrire en collaboration avec l'IA. Guidez la direction de l'histoire en temps réel.",
     "startSession": "Démarrer la session",
+    "interviewDescription": "L'IA vous posera des questions sur le chapitre puis générera un brouillon basé sur vos réponses. Cliquez « Démarrer la session » pour commencer.",
     "aiDraftBadge": "Brouillon IA",
     "wordCountProgress": "{current} / {target} mots",
     "waitingForText": "En attente de la réponse de l'IA...",
@@ -627,7 +630,9 @@
     "retry": "Réessayer",
     "startFailed": "Échec du démarrage de la génération",
     "unknownError": "Une erreur inconnue est survenue",
-    "connectionLost": "Connexion perdue"
+    "connectionLost": "Connexion perdue",
+    "validationMissingInput": "Au moins un des champs plan, consigne ou continuation automatique doit être rempli.",
+    "outlineHelpScene": "Optionnel. Décrivez la structure des scènes, par ex. : « Scène 1 : Arrivée au château. Scène 2 : Négociation avec le roi. » Sans plan, l'IA interprétera librement."
   },
   "sessionPanel": {
     "title": "Session interactive",
@@ -644,7 +649,22 @@
     "saved": "Brouillon sauvegardé dans le chapitre !",
     "saveFailed": "Échec de la sauvegarde du brouillon",
     "sessionEnded": "Session terminée",
-    "errorConnecting": "Échec de la connexion"
+    "errorConnecting": "Échec de la connexion",
+    "connecting": "Connexion...",
+    "interviewTitle": "Mode interview",
+    "generateDraft": "Générer le brouillon",
+    "interviewGreetings": [
+      "Bonjour ! Je suis ravi de vous aider avec votre prochain chapitre. Laissez-moi vous poser quelques questions pour écrire exactement ce que vous imaginez. De quoi traite ce chapitre ?",
+      "Salut ! Avant de commencer, j'aimerais en savoir plus sur votre vision pour ce chapitre. Quel est l'événement le plus important qui devrait se produire ?",
+      "Bienvenue ! Pour créer le meilleur brouillon possible, j'ai besoin de quelques détails. Pouvez-vous me dire où en est l'histoire ?",
+      "Bonjour ! Déterminons ensemble la direction de ce chapitre. Quels personnages sont au centre ?",
+      "Bonne journée ! Je suis prêt à vous aider à écrire. Dites-moi d'abord : quel est l'objectif principal de ce chapitre ?",
+      "Bonjour ! Avant de commencer à écrire, je veux m'assurer de bien saisir votre vision. Quel ton ce chapitre devrait-il avoir ?",
+      "Salut ! Plus j'en sais sur vos idées, mieux je peux vous aider. Qu'est-ce qui préoccupe vos personnages en ce moment ?",
+      "Bon retour ! Planifions le prochain chapitre. Avez-vous une scène spécifique en tête ?",
+      "Salut ! Je suis curieux d'en savoir plus sur vos idées. Décrivez en quelques phrases ce qui devrait se passer dans ce chapitre.",
+      "Bonjour ! Ravi de vous avoir ici. Pour trouver le ton parfait : quelle est la scène émotionnelle centrale de ce chapitre ?"
+    ]
   },
   "auth": {
     "loginTitle": "Se connecter à Narrare",

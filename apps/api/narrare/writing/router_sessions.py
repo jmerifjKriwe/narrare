@@ -3,16 +3,14 @@
 Extracted from ``router.py`` for RULE-04 compliance (max 150 lines).
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, WebSocket
 
-from narrare._app.dependencies import get_composer, get_gateway
-
 if TYPE_CHECKING:
     from uuid import UUID
+
+from narrare._app.dependencies import get_composer, get_gateway
 
 router = APIRouter(tags=["writing"])
 
@@ -23,8 +21,14 @@ async def interactive_session(
     chapter_id: UUID,
     user_id: str = "",
     project_id: UUID | None = None,
+    mode: str = "interactive_session",
 ) -> None:
-    """WebSocket endpoint for interactive writing sessions."""
+    """WebSocket endpoint for interactive writing sessions.
+
+    Args:
+        mode: Session mode — ``interactive_session`` (collaborative writing)
+            or ``interview_assisted`` (structured interview → draft).
+    """
     from narrare.writing._ws_cache import InMemorySessionCache
     from narrare.writing.ws_handler import WritingSessionHandler
     from narrare_core.llm.intents import ResolvedModelConfig
@@ -34,6 +38,13 @@ async def interactive_session(
     from narrare_core.writing.session_manager import SessionManager
 
     if not user_id or project_id is None:
+        await websocket.accept()
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "Missing user_id or project_id — please reload the page.",
+            }
+        )
         await websocket.close(code=4001, reason="Missing user_id or project_id")
         return
 
@@ -62,5 +73,6 @@ async def interactive_session(
         gateway=gateway,
         composer=composer,
         config=config,
+        mode=mode,
     )
     await handler.handle(websocket, chapter_id, user_id, project_id)

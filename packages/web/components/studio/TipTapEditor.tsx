@@ -101,6 +101,11 @@ export function TipTapEditor({
   useEffect(() => {
     if (editor) {
       useEditorStore.getState().setEditor(editor);
+      // Expose on window for E2E testing — TipTap doesn't attach EditorView
+      // to the DOM element, so Playwright cannot access it via el.view
+      if (typeof window !== "undefined") {
+        (window as unknown as Window & { __narrareEditor: unknown }).__narrareEditor = editor;
+      }
     }
   }, [editor]);
 

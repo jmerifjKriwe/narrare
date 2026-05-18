@@ -167,7 +167,7 @@ export async function streamGeneration(
 // ---------------------------------------------------------------------------
 
 export interface SessionMessage {
-  type: "user_direction" | "user_feedback" | "save_to_chapter" | "end_session";
+  type: "user_direction" | "user_feedback" | "save_to_chapter" | "end_session" | "generate_draft";
   content?: string;
   action?: string;
   text?: string;
@@ -181,13 +181,16 @@ export interface SessionResponse {
     | "feedback_acknowledged"
     | "saved"
     | "timeout"
-    | "error";
+    | "error"
+    | "draft_done"
+    | "interview_greeting";
   text?: string;
   message?: string;
   content?: string;
   action?: string;
   word_count?: number;
   session_id?: string;
+  mode?: string;
 }
 
 export class WritingSessionSocket {
@@ -201,16 +204,21 @@ export class WritingSessionSocket {
     private onError?: (error: Error) => void,
     private userId?: string,
     private projectId?: string,
+    private mode: string = "interactive_session",
   ) {}
 
   connect(): void {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    // Derive WebSocket base: replace http(s) with ws(s), or use current host
+    const wsBaseUrl = baseUrl
+      ? baseUrl.replace(/^http/, "ws") // http:// → ws://, https:// → wss://
+      : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
     const params = new URLSearchParams();
     if (this.userId) params.set("user_id", this.userId);
     if (this.projectId) params.set("project_id", this.projectId);
+    if (this.mode && this.mode !== "interactive_session") params.set("mode", this.mode);
     const qs = params.toString();
-    const wsUrl = `${protocol}//${baseUrl || window.location.host}/api/v1/writing/sessions/${this.chapterId}${qs ? `?${qs}` : ""}`;
+    const wsUrl = `${wsBaseUrl}/api/v1/writing/sessions/${this.chapterId}${qs ? `?${qs}` : ""}`;
 
     this.ws = new WebSocket(wsUrl);
 

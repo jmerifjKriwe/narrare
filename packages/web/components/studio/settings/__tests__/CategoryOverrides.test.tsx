@@ -166,9 +166,7 @@ describe("CategoryOverrides", () => {
       />,
     );
     // Should show a text input since no models are available
-    expect(
-      screen.getByPlaceholderText("settings.ai.categoryOverrides.enterModelId"),
-    ).toBeDefined();
+    expect(screen.getByPlaceholderText("settings.ai.categoryOverrides.enterModelId")).toBeDefined();
   });
 
   it("shows loading state when models are loading", () => {
@@ -213,9 +211,7 @@ describe("CategoryOverrides", () => {
       />,
     );
     // Anthropic (p2) is inactive, so only OpenAI (p1) should be in the select
-    const providerSelect = screen.getByLabelText(
-      "settings.ai.categoryOverrides.selectProvider",
-    );
+    const providerSelect = screen.getByLabelText("settings.ai.categoryOverrides.selectProvider");
     const options = Array.from(providerSelect.querySelectorAll("option"));
     const optionTexts = options.map((o) => o.text);
     expect(optionTexts).toContain("OpenAI");

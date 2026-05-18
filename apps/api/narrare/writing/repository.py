@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import case, func, select, update
+from sqlalchemy import case, func, or_, select, update
 
 from narrare._app.base_repository import BaseRepository
 from narrare.writing.models import GenerationRequest
@@ -86,31 +86,47 @@ class GenerationRepository(BaseRepository):
         )
         return result.scalar_one_or_none()
 
-    async def cleanup_stale(self, max_age_minutes: int = 30) -> int:
-        """Mark streaming requests older than N minutes as failed.
+    async def cleanup_stale(
+        self,
+        max_age_minutes: int = 30,
+        pending_age_minutes: int = 5,
+    ) -> int:
+        """Mark stale streaming and pending requests as failed.
+
+        Streaming requests older than *max_age_minutes* and pending
+        requests older than *pending_age_minutes* are marked as failed.
+        Pending requests that never started streaming are cleaned up
+        with a shorter window since they indicate a pre-stream failure
+        (e.g. validation error).
+
+        Args:
+            max_age_minutes: Cutoff in minutes for ``streaming`` status.
+            pending_age_minutes: Cutoff in minutes for ``pending`` status.
 
         Returns:
             Number of requests marked as failed.
         """
-        cutoff = datetime.now(UTC) - timedelta(minutes=max_age_minutes)
+        now = datetime.now(UTC)
+        streaming_cutoff = now - timedelta(minutes=max_age_minutes)
+        pending_cutoff = now - timedelta(minutes=pending_age_minutes)
+
+        stale_filter = or_(
+            (GenerationRequest.status == "streaming")
+            & (GenerationRequest.updated_at < streaming_cutoff),
+            (GenerationRequest.status == "pending")
+            & (GenerationRequest.updated_at < pending_cutoff),
+        )
+
         # Count first
         count_result = await self._session.execute(
-            select(func.count())
-            .select_from(GenerationRequest)
-            .where(
-                GenerationRequest.status == "streaming",
-                GenerationRequest.updated_at < cutoff,
-            )
+            select(func.count()).select_from(GenerationRequest).where(stale_filter)
         )
         count = count_result.scalar() or 0
 
         if count > 0:
             await self._session.execute(
                 update(GenerationRequest)
-                .where(
-                    GenerationRequest.status == "streaming",
-                    GenerationRequest.updated_at < cutoff,
-                )
+                .where(stale_filter)
                 .values(
                     status="failed",
                     error_message="Stale request — cleaned up by system",

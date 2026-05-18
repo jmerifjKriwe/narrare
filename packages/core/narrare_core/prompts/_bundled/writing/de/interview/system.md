@@ -41,6 +41,7 @@ Führe ein fokussiertes Interview mit dem Autor über das kommende Kapitel. Befo
 4. Formatiere die gesammelten Antworten als strukturierten Kontext für die Generierung
 
 Kapitel-Outline: {{chapter_outline}}
+Autorenanweisungen: {{author_instructions}}
 Wortziel: {{word_target}}
 Ton: {{tone_instructions}}
 

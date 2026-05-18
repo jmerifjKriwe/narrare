@@ -41,6 +41,7 @@ Menez un entretien ciblé avec l'auteur sur le chapitre à venir. Suivez ces dir
 4. Après avoir recueilli les réponses, formatez-les en contexte structuré pour la génération
 
 Plan du chapitre : {{chapter_outline}}
+Instructions de l'auteur : {{author_instructions}}
 Objectif de mots : {{word_target}}
 Ton : {{tone_instructions}}
 

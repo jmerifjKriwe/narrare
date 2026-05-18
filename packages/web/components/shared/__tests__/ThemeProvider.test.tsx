@@ -27,12 +27,10 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 function mockTheme(theme: string, colorMode: string) {
-  mockThemeStore.mockImplementation(
-    (selector?: (s: Record<string, unknown>) => unknown) => {
-      const state = { theme, colorMode };
-      return selector ? selector(state) : state;
-    },
-  );
+  mockThemeStore.mockImplementation((selector?: (s: Record<string, unknown>) => unknown) => {
+    const state = { theme, colorMode };
+    return selector ? selector(state) : state;
+  });
 }
 
 describe("ThemeProvider", () => {

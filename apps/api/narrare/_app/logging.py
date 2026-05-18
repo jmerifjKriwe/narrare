@@ -25,10 +25,16 @@ logger = structlog.get_logger(__name__)
 
 def configure_logging() -> None:
     """Configure structlog + stdlib logging with dual handlers in development."""
-    from narrare._app.config import get_settings
+    from narrare._app.config import BASE_DIR, get_settings
 
     settings = get_settings()
     log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+
+    # Resolve log_file relative to project root, not CWD
+    if settings.log_file and not Path(settings.log_file).is_absolute():
+        log_file = str(BASE_DIR / settings.log_file)
+    else:
+        log_file = settings.log_file
 
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -38,8 +44,8 @@ def configure_logging() -> None:
         structlog.stdlib.PositionalArgumentsFormatter(),
     ]
 
-    if settings.is_development and settings.log_file:
-        _configure_development_logging(shared_processors, log_level, settings.log_file)
+    if settings.is_development and log_file:
+        _configure_development_logging(shared_processors, log_level, log_file)
     else:
         _configure_production_logging(shared_processors, log_level)
 

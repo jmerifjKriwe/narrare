@@ -42,6 +42,7 @@ Générez UNE scène à la fois à partir du plan du chapitre. Suivez ces direct
 5. Terminez chaque scène à un point de rupture naturel — jamais en pleine action, sauf si un suspense est approprié
 
 Plan du chapitre : {{chapter_outline}}
+Instructions de l'auteur : {{author_instructions}}
 Objectif de mots par scène : {{word_target}}
 Ton : {{tone_instructions}}
 

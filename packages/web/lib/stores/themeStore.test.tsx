@@ -54,7 +54,7 @@ describe("ThemeStore", () => {
 
       // Create a new store instance (simulating page reload)
       const hydratedState = useThemeStore.getState();
-      
+
       // Note: In a real test with persist middleware, we would need to
       // simulate the hydration. For this unit test, we verify the setters work.
       expect(hydratedState.theme).toBe("narrare");
@@ -66,7 +66,7 @@ describe("ThemeStore", () => {
     it("should accept all valid theme values", () => {
       useThemeStore.getState().setTheme("neutral");
       expect(useThemeStore.getState().theme).toBe("neutral");
-      
+
       useThemeStore.getState().setTheme("narrare");
       expect(useThemeStore.getState().theme).toBe("narrare");
     });
@@ -74,10 +74,10 @@ describe("ThemeStore", () => {
     it("should accept all valid colorMode values", () => {
       useThemeStore.getState().setColorMode("light");
       expect(useThemeStore.getState().colorMode).toBe("light");
-      
+
       useThemeStore.getState().setColorMode("dark");
       expect(useThemeStore.getState().colorMode).toBe("dark");
-      
+
       useThemeStore.getState().setColorMode("system");
       expect(useThemeStore.getState().colorMode).toBe("system");
     });

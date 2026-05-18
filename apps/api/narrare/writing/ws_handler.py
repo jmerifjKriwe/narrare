@@ -3,11 +3,15 @@
 Handles the full lifecycle of a WebSocket-based writing session:
 connection acceptance, message routing, LLM interaction, and cleanup.
 
-Delegates to:
-- :class:`SessionManager` for session state
-- :class:`WritingPipeline` for generation
-- :class:`LLMGateway` for LLM calls (RULE-01)
-- :class:`PromptComposer` for prompt assembly (RULE-02)
+Supports two modes:
+- ``interactive_session``: Collaborative writing — LLM generates prose,
+  user steers direction.
+- ``interview_assisted``: Structured interview — LLM asks questions,
+  user answers, then LLM generates a draft.  Draft generation is
+  delegated to :class:`InterviewDraftGenerator`.
+
+All LLM calls go through :class:`LLMGateway` (RULE-01).
+All prompts built through :class:`PromptComposer` (RULE-02).
 """
 
 from __future__ import annotations
@@ -32,6 +36,7 @@ logger = structlog.get_logger(__name__)
 class WritingSessionHandler:
     """Handles WebSocket connections for interactive writing sessions.
 
+    Supports ``interactive_session`` and ``interview_assisted`` modes.
     Dependencies are injected via constructor (DI pattern).
     """
 
@@ -44,6 +49,7 @@ class WritingSessionHandler:
         config: ResolvedModelConfig,
         api_key: str | None = None,
         base_url: str | None = None,
+        mode: str = "interactive_session",
     ) -> None:
         self._session_manager = session_manager
         self._pipeline = pipeline
@@ -52,6 +58,7 @@ class WritingSessionHandler:
         self._config = config
         self._api_key = api_key
         self._base_url = base_url
+        self._mode = mode
 
     async def handle(
         self,
@@ -75,13 +82,23 @@ class WritingSessionHandler:
                 user_id=UUID(user_id),
             )
 
-            await websocket.send_json(
-                {
-                    "type": "greeting",
-                    "message": "What would you like to write today?",
-                    "session_id": str(session_id),
-                }
-            )
+            # Mode-aware greeting
+            if self._mode == "interview_assisted":
+                await websocket.send_json(
+                    {
+                        "type": "greeting",
+                        "mode": "interview",
+                        "session_id": str(session_id),
+                    }
+                )
+            else:
+                await websocket.send_json(
+                    {
+                        "type": "greeting",
+                        "message": "What would you like to write today?",
+                        "session_id": str(session_id),
+                    }
+                )
 
             # Message loop with 30-minute idle timeout
             while True:
@@ -144,6 +161,8 @@ class WritingSessionHandler:
             await self._handle_feedback(websocket, session_id, data)
         elif msg_type == "save_to_chapter":
             await self._handle_save(websocket, session_id)
+        elif msg_type == "generate_draft" and self._mode == "interview_assisted":
+            await self._handle_generate_draft(websocket, session_id)
         elif msg_type == "end_session":
             await websocket.close()
         else:
@@ -164,8 +183,15 @@ class WritingSessionHandler:
         session_id: UUID,
         content: str,
     ) -> None:
-        """Handle user direction — generate text and stream back."""
+        """Handle user direction — generate text and stream back.
+
+        In ``interactive_session`` mode, generates prose directly.
+        In ``interview_assisted`` mode, asks follow-up questions.
+        """
         await self._session_manager.add_message(session_id, "user", content)
+
+        # Determine prompt mode based on session mode
+        prompt_mode = "interview" if self._mode == "interview_assisted" else "interactive_session"
 
         # Stream generated response
         accumulated: list[str] = []
@@ -175,13 +201,14 @@ class WritingSessionHandler:
 
             ctx = PromptContext(
                 language="en",
-                mode="interactive",
+                mode=prompt_mode,
                 author_instructions=content,
             )
-            prompt = await self._composer.build(LLMIntent.WRITE, ctx)
+            intent = LLMIntent.CHAT if self._mode == "interview_assisted" else LLMIntent.WRITE
+            prompt = await self._composer.build(intent, ctx)
 
             async for chunk in self._gateway.stream(
-                intent=LLMIntent.WRITE,
+                intent=intent,
                 system_prompt=prompt.system,
                 user_prompt=prompt.user,
                 config=self._config,
@@ -276,6 +303,28 @@ class WritingSessionHandler:
                     "message": str(e),
                 }
             )
+
+    async def _handle_generate_draft(
+        self,
+        websocket: WebSocket,
+        session_id: UUID,
+    ) -> None:
+        """Generate a full draft from collected interview answers.
+
+        Delegates to :class:`InterviewDraftGenerator` for transcript
+        formatting and draft streaming.
+        """
+        from narrare.writing._interview_draft import InterviewDraftGenerator
+
+        generator = InterviewDraftGenerator(
+            session_manager=self._session_manager,
+            gateway=self._gateway,
+            composer=self._composer,
+            config=self._config,
+            api_key=self._api_key,
+            base_url=self._base_url,
+        )
+        await generator.generate(websocket, session_id)
 
     async def _handle_timeout(
         self,

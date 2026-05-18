@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from narrare._app.main import create_app
 
@@ -185,9 +186,9 @@ class TestWebSocketSessionLifecycle:
         _, auth_headers = _register_user(client)
         _, chapter_id = _create_novel_and_chapter(client, auth_headers)
 
-        # Connect without required params
+        # Connect without required params - server closes with 4001
         with (
-            pytest.raises(Exception),
+            pytest.raises(WebSocketDisconnect),  # server rejects invalid auth
             client.websocket_connect(
                 f"/api/v1/writing/sessions/{chapter_id}",
             ) as ws,

@@ -245,6 +245,40 @@ class TestCleanupStale:
         # Only the SELECT count query, no UPDATE
         assert mock_session.execute.call_count == 1
 
+    async def test_uses_pending_age_minutes_for_pending_cutoff(
+        self, repo: GenerationRepository, mock_session: AsyncMock
+    ) -> None:
+        """cleanup_stale() accepts pending_age_minutes for pending status cutoff."""
+        mock_session.execute.return_value.scalar.return_value = 2
+        repo._flush = AsyncMock()
+
+        count = await repo.cleanup_stale(max_age_minutes=30, pending_age_minutes=5)
+        assert count == 2
+        assert mock_session.execute.call_count == 2
+        repo._flush.assert_called_once()
+
+    async def test_default_pending_age_minutes_is_five(
+        self, repo: GenerationRepository, mock_session: AsyncMock
+    ) -> None:
+        """cleanup_stale() defaults pending_age_minutes to 5."""
+        mock_session.execute.return_value.scalar.return_value = 0
+
+        # Should work without specifying pending_age_minutes
+        count = await repo.cleanup_stale()
+        assert count == 0
+        assert mock_session.execute.call_count == 1
+
+    async def test_marks_both_streaming_and_pending_stale(
+        self, repo: GenerationRepository, mock_session: AsyncMock
+    ) -> None:
+        """cleanup_stale() catches both stale streaming AND pending requests."""
+        mock_session.execute.return_value.scalar.return_value = 7
+        repo._flush = AsyncMock()
+
+        count = await repo.cleanup_stale(max_age_minutes=30, pending_age_minutes=5)
+        assert count == 7
+        repo._flush.assert_called_once()
+
 
 # ---------------------------------------------------------------------------
 # get_stats_for_novel

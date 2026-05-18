@@ -42,6 +42,7 @@ Rédigez un brouillon complet de chapitre basé sur le plan et le contexte fourn
 5. Respectez le rythme — équilibrez action, dialogue, description et réflexion
 
 Plan du chapitre : {{chapter_outline}}
+Instructions de l'auteur : {{author_instructions}}
 Objectif de mots : {{word_target}}
 Ton : {{tone_instructions}}
 

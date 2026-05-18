@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { AnalysisPanel } from "./AnalysisPanel";
 
 // ---------------------------------------------------------------------------
@@ -37,10 +37,10 @@ describe("AnalysisPanel", () => {
       // Find analyze buttons
       const buttons = await screen.findAllByRole("button", { name: /analyze/i });
       expect(buttons.length).toBeGreaterThan(0);
-      
+
       // Click the first analyze button
       await userEvent.click(buttons[0]);
-      
+
       // Should now show some analysis content (we don't check specifics due to i18n)
       expect(document.querySelector("div")).toBeInTheDocument();
     });
@@ -49,13 +49,13 @@ describe("AnalysisPanel", () => {
       render(<AnalysisPanel novelId="novel-1" />);
 
       const buttons = await screen.findAllByRole("button", { name: /analyze/i });
-      
+
       // Click to open
       await userEvent.click(buttons[0]);
-      
+
       // Click to close
       await userEvent.click(buttons[0]);
-      
+
       // Component should still render
       expect(document.querySelector("div.flex-1.overflow-y-auto.p-8")).toBeInTheDocument();
     });

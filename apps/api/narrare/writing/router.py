@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/writing", tags=["writing"])
 
 
-async def _get_writing_service(
+async def get_writing_service(
     session: AsyncSession,
     user_id: str,
     project_id: UUID | None = None,
@@ -56,7 +56,7 @@ async def _get_writing_service(
     resolved = await resolver.resolve(
         LLMIntent.WRITE,
         UUID(user_id),
-        project_id or UUID(int=0),
+        project_id,
     )
     config = replace(resolved.config, temperature=0.7, max_tokens=4000)
 
@@ -94,7 +94,7 @@ async def start_generation(
     session: SessionDep,
 ) -> GenerateResponse:
     """Start chapter generation — returns request_id, then stream via SSE."""
-    service = await _get_writing_service(session, user_id, novel_id)
+    service = await get_writing_service(session, user_id, novel_id)
     return await service.start_generation(chapter_id, novel_id, user_id, request)
 
 
@@ -105,7 +105,7 @@ async def stream_generation(
     session: SessionDep,
 ) -> StreamingResponse:
     """SSE stream for generated text chunks."""
-    service = await _get_writing_service(session, user_id)
+    service = await get_writing_service(session, user_id)
 
     async def event_stream():
         async for chunk in service.stream_generation(request_id, user_id):
@@ -122,7 +122,7 @@ async def stop_generation(
     session: SessionDep,
 ) -> StopResponse:
     """Stop an in-progress generation."""
-    service = await _get_writing_service(session, user_id)
+    service = await get_writing_service(session, user_id)
     return await service.stop_generation(request_id, user_id)
 
 
@@ -134,7 +134,7 @@ async def accept_draft(
     modified_text: str | None = None,
 ) -> AcceptResponse:
     """Accept a generated draft."""
-    service = await _get_writing_service(session, user_id)
+    service = await get_writing_service(session, user_id)
     return await service.accept_draft(request_id, user_id, modified_text)
 
 
@@ -145,5 +145,5 @@ async def reject_draft(
     session: SessionDep,
 ) -> RejectResponse:
     """Reject a generated draft."""
-    service = await _get_writing_service(session, user_id)
+    service = await get_writing_service(session, user_id)
     return await service.reject_draft(request_id, user_id)

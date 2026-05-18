@@ -42,6 +42,7 @@ Generiere jeweils EINE Szene aus dem Kapitel-Outline. Befolge diese Richtlinien:
 5. Beende jede Szene an einem natürlichen Haltepunkt — nie mitten in der Aktion, es sei denn, ein Cliffhanger ist angemessen
 
 Kapitel-Outline: {{chapter_outline}}
+Autorenanweisungen: {{author_instructions}}
 Wortziel pro Szene: {{word_target}}
 Ton: {{tone_instructions}}
 

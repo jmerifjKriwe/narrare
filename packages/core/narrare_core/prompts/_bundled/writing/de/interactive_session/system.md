@@ -43,6 +43,7 @@ Arbeite alongside dem Autor in einer interaktiven Schreibsitzung. Befolge diese 
 6. Wenn die Anfrage des Autors offen ist, nutze dein Urteil basierend auf dem Kontext
 
 Kapitel-Outline: {{chapter_outline}}
+Autorenanweisungen: {{author_instructions}}
 Wortziel: {{word_target}}
 Ton: {{tone_instructions}}
 

@@ -6,12 +6,14 @@ import { DashboardView } from "@/components/studio/DashboardView";
 
 const { mockNovelsApi, mockUseQuery } = vi.hoisted(() => ({
   mockNovelsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  mockUseQuery: vi.fn(({ queryKey }: { queryKey: string[] }) => {
-    if (queryKey[0] === "auth") {
-      return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
-    }
-    return { data: [], isLoading: false };
-  }),
+  mockUseQuery: vi.fn(
+    ({ queryKey }: { queryKey: string[] }): { data: unknown; isLoading: boolean } => {
+      if (queryKey[0] === "auth") {
+        return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
+      }
+      return { data: [], isLoading: false };
+    },
+  ),
 }));
 
 vi.mock("@/lib/api/client", () => ({
@@ -37,7 +39,7 @@ describe("DashboardView", () => {
   afterEach(() => {
     vi.clearAllMocks();
     mockUseQuery.mockImplementation(
-      ({ queryKey }: { queryKey: string[] }) => {
+      ({ queryKey }: { queryKey: string[] }): { data: unknown; isLoading: boolean } => {
         if (queryKey[0] === "auth") {
           return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
         }
@@ -79,29 +81,39 @@ describe("DashboardView", () => {
   });
 
   it("shows loading state when novels are loading", () => {
-    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
-      if (queryKey[0] === "auth") {
-        return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
-      }
-      return { data: undefined, isLoading: true };
-    });
+    mockUseQuery.mockImplementation(
+      ({ queryKey }: { queryKey: string[] }): { data: unknown; isLoading: boolean } => {
+        if (queryKey[0] === "auth") {
+          return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
+        }
+        return { data: undefined, isLoading: true };
+      },
+    );
     render(<DashboardView />);
     // Loading skeleton renders 3 pulse animation divs
     expect(screen.getByText("dashboard.title")).toBeDefined();
   });
 
   it("shows novels grid when novels exist", () => {
-    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
-      if (queryKey[0] === "auth") {
-        return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
-      }
-      return {
-        data: [
-          { id: "1", title: "My Novel", author: "Author", genre: "Fantasy", updated_at: "2024-01-01" },
-        ],
-        isLoading: false,
-      };
-    });
+    mockUseQuery.mockImplementation(
+      ({ queryKey }: { queryKey: string[] }): { data: unknown; isLoading: boolean } => {
+        if (queryKey[0] === "auth") {
+          return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
+        }
+        return {
+          data: [
+            {
+              id: "1",
+              title: "My Novel",
+              author: "Author",
+              genre: "Fantasy",
+              updated_at: "2024-01-01",
+            },
+          ],
+          isLoading: false,
+        };
+      },
+    );
     render(<DashboardView />);
     expect(screen.getByText("My Novel")).toBeDefined();
     expect(screen.getByText("Author")).toBeDefined();

@@ -167,7 +167,6 @@ class WritingService:
                 completed_at=datetime.now(UTC),
             )
             logger.error("generation_stream_failed", request_id=str(request_id), error=str(e))
-            raise
 
     async def stop_generation(self, request_id: UUID, user_id: str) -> StopResponse:
         """Stop an in-progress generation."""

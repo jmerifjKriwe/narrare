@@ -23,7 +23,7 @@ interface GenerationPanelProps {
   readonly chapterContent: string;
   readonly onDraftAccepted: (text: string) => void;
   readonly onClose: () => void;
-  readonly onStartSession?: () => void;
+  readonly onStartSession?: (mode: string) => void;
 }
 
 type PanelPhase = "config" | "streaming" | "review" | "error";
@@ -122,7 +122,12 @@ export function GenerationPanel({
       );
     },
     onError: (err: unknown) => {
-      setErrorMsg(err instanceof Error ? err.message : t("generationPanel.startFailed"));
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("MISSING_INPUT") || msg.includes("At least one")) {
+        setErrorMsg(t("generationPanel.validationMissingInput"));
+      } else {
+        setErrorMsg(msg || t("generationPanel.startFailed"));
+      }
       setPhase("error");
     },
   });

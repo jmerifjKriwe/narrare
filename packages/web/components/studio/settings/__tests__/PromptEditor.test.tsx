@@ -1,7 +1,12 @@
+import {
+  type UseMutationResult,
+  type UseQueryResult,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PromptEditor } from "@/components/studio/settings/PromptEditor";
-import { useQuery, useMutation } from "@tanstack/react-query";
 
 // --- Mock data ---
 
@@ -51,8 +56,14 @@ describe("PromptEditor", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useQuery).mockReturnValue({ data: mockPrompt, isLoading: false });
-    vi.mocked(useMutation).mockReturnValue({ mutate: vi.fn(), isPending: false });
+    vi.mocked(useQuery).mockReturnValue({
+      data: mockPrompt,
+      isLoading: false,
+    } as unknown as UseQueryResult);
+    vi.mocked(useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as unknown as UseMutationResult);
   });
 
   it("renders prompt ID as title", () => {
@@ -66,21 +77,31 @@ describe("PromptEditor", () => {
   });
 
   it("shows loading state when prompt is loading", () => {
-    vi.mocked(useQuery).mockReturnValue({ data: undefined, isLoading: true });
+    vi.mocked(useQuery).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as unknown as UseQueryResult);
 
     render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
     expect(screen.getByText("settings.prompts.loadingPrompt")).toBeDefined();
   });
 
   it("shows error state when prompt fails to load", () => {
-    vi.mocked(useQuery).mockReturnValue({ data: undefined, isLoading: false, error: new Error("fail") });
+    vi.mocked(useQuery).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error("fail"),
+    } as unknown as UseQueryResult);
 
     render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
     expect(screen.getByText("settings.prompts.loadFailed")).toBeDefined();
   });
 
   it("shows error state when prompt is null", () => {
-    vi.mocked(useQuery).mockReturnValue({ data: null, isLoading: false });
+    vi.mocked(useQuery).mockReturnValue({
+      data: null,
+      isLoading: false,
+    } as unknown as UseQueryResult);
 
     render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
     expect(screen.getByText("settings.prompts.loadFailed")).toBeDefined();
@@ -92,7 +113,10 @@ describe("PromptEditor", () => {
   });
 
   it("shows override source badge for overridden prompt", () => {
-    vi.mocked(useQuery).mockReturnValue({ data: overriddenPrompt, isLoading: false });
+    vi.mocked(useQuery).mockReturnValue({
+      data: overriddenPrompt,
+      isLoading: false,
+    } as unknown as UseQueryResult);
 
     render(<PromptEditor promptId="generation/names" hasUpdate={false} onBack={onBack} />);
     expect(screen.getByText("settings.prompts.sourceOverride")).toBeDefined();

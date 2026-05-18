@@ -619,6 +619,7 @@
     "starting": "Starting...",
     "interactiveDescription": "Start an interactive session to write collaboratively with the AI. Guide the story direction in real-time.",
     "startSession": "Start Session",
+    "interviewDescription": "The AI will ask you questions about the chapter and then generate a draft based on your answers. Click \"Start Session\" to begin.",
     "aiDraftBadge": "AI Draft",
     "wordCountProgress": "{current} / {target} words",
     "waitingForText": "Waiting for AI response...",
@@ -629,7 +630,9 @@
     "retry": "Retry",
     "startFailed": "Failed to start generation",
     "unknownError": "An unknown error occurred",
-    "connectionLost": "Connection lost"
+    "connectionLost": "Connection lost",
+    "validationMissingInput": "At least one of outline, prompt, or auto-continue must be provided.",
+    "outlineHelpScene": "Optional. Describe the scene structure, e.g.: \"Scene 1: Arrival at the castle. Scene 2: Negotiation with the king.\" Without an outline, the AI will interpret freely."
   },
   "sessionPanel": {
     "title": "Interactive Session",
@@ -646,7 +649,22 @@
     "saved": "Draft saved to chapter!",
     "saveFailed": "Failed to save draft",
     "sessionEnded": "Session ended",
-    "errorConnecting": "Failed to connect"
+    "errorConnecting": "Failed to connect",
+    "connecting": "Connecting...",
+    "interviewTitle": "Interview Mode",
+    "generateDraft": "Generate Draft",
+    "interviewGreetings": [
+      "Hello! I'm excited to help with your next chapter. Let me ask a few questions so I can write exactly what you envision. What is this chapter about?",
+      "Hey! Before we dive in, I'd love to learn more about your vision for this chapter. What's the most important event that should happen?",
+      "Welcome! To craft the best draft for you, I need some details. Can you tell me where the story currently stands?",
+      "Hi there! Let's figure out together where this chapter should go. Which characters are at the center?",
+      "Good day! I'm ready to help you write. First, tell me: what is the main goal of this chapter?",
+      "Hello! Before I start writing, I want to make sure I capture your vision. What tone should this chapter have?",
+      "Hey! The more I know about your ideas, the better I can help. What's on your characters' minds right now?",
+      "Welcome back! Let's plan the next chapter. Do you have a specific scene in mind?",
+      "Hi! I'm curious about your ideas. Describe in a few sentences what should happen in this chapter.",
+      "Hello! Great to have you here. To hit the perfect note: what's the emotional core scene of this chapter?"
+    ]
   },
   "auth": {
     "loginTitle": "Sign in to Narrare",

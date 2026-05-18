@@ -43,6 +43,7 @@ Work alongside the author in an interactive writing session. Follow these guidel
 6. If the author's request is open-ended, use your judgment based on the context
 
 Chapter outline: {{chapter_outline}}
+Author instructions: {{author_instructions}}
 Word target: {{word_target}}
 Tone: {{tone_instructions}}
 

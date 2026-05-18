@@ -41,6 +41,7 @@ Conduct a focused interview with the author about the upcoming chapter. Follow t
 4. After collecting answers, format them as structured context for generation
 
 Chapter outline: {{chapter_outline}}
+Author instructions: {{author_instructions}}
 Word target: {{word_target}}
 Tone: {{tone_instructions}}
 

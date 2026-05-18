@@ -42,6 +42,7 @@ Schreibe einen vollständigen Kapitelentwurf basierend auf dem Outline und dem b
 5. Achte auf das Tempo — balanciere Aktion, Dialog, Beschreibung und Reflexion
 
 Kapitel-Outline: {{chapter_outline}}
+Autorenanweisungen: {{author_instructions}}
 Wortziel: {{word_target}}
 Ton: {{tone_instructions}}
 

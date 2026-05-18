@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING
 
 import structlog
+from alembic.config import Config
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
+
+from alembic import command
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -21,10 +28,6 @@ async def _get_db_version(db_url: str) -> str | None:
     Returns ``None`` if the ``alembic_version`` table does not exist yet
     (fresh database).
     """
-    from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.pool import NullPool
-
     engine = create_async_engine(db_url, poolclass=NullPool)
     try:
         async with engine.connect() as conn:
@@ -47,10 +50,6 @@ async def _run_pending_migrations() -> None:
     """
     import asyncio
     import os
-
-    from alembic.config import Config
-
-    from alembic import command
 
     db_url = os.environ.get(
         "DATABASE_URL",
@@ -79,6 +78,45 @@ async def _run_pending_migrations() -> None:
         )
     else:
         logger.info("db_schema_up_to_date", version=new)
+
+
+async def _run_stale_cleanup() -> int:
+    """Run stale generation cleanup using a standalone DB session.
+
+    Creates a short-lived session outside of the request lifecycle,
+    instantiates ``GenerationRepository``, and calls ``cleanup_stale()``.
+
+    Returns:
+        Number of stale requests marked as failed.
+    """
+    from narrare._app.database import _async_session_factory  # pyright: ignore[reportPrivateUsage]
+    from narrare.writing.repository import GenerationRepository
+
+    async with _async_session_factory() as session:
+        try:
+            repo = GenerationRepository(session)
+            count = await repo.cleanup_stale()
+            await session.commit()
+            return count
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def _periodic_cleanup_loop() -> None:
+    """Periodically clean up stale generation requests every 5 minutes.
+
+    Runs indefinitely until cancelled.  Each iteration handles its own
+    errors so a single failure does not stop the loop.
+    """
+    while True:
+        await asyncio.sleep(300)
+        try:
+            count = await _run_stale_cleanup()
+            if count > 0:
+                logger.info("periodic_cleanup", stale_cleaned=count)
+        except Exception:
+            logger.warning("periodic_cleanup_failed", exc_info=True)
 
 
 @asynccontextmanager
@@ -121,12 +159,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except Exception:
         logger.warning("event_bus_init_failed", exc_info=True)
 
+    # Startup cleanup: remove stale generation requests (must not block startup)
+    try:
+        count = await _run_stale_cleanup()
+        if count > 0:
+            logger.info("startup_cleanup", stale_cleaned=count)
+    except Exception:
+        logger.warning("startup_cleanup_failed", exc_info=True)
+
+    # Periodic background task — cleans up stale requests every 5 minutes
+    cleanup_task = asyncio.create_task(_periodic_cleanup_loop())
+
     logger.info("narrare_api_ready")
 
     yield
 
     # --- Shutdown ---
     logger.info("narrare_api_stopping")
+
+    # Cancel periodic cleanup task
+    cleanup_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await cleanup_task
+    logger.info("periodic_cleanup_cancelled")
 
     # Event bus shutdown
     try:

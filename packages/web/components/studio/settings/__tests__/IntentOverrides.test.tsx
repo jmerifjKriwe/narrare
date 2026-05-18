@@ -216,7 +216,11 @@ describe("IntentOverrides", () => {
     fireEvent.click(screen.getByText("settings.ai.intentOverrides.advanced"));
 
     // Provider and model selects should be visible for active override
-    expect(screen.getByLabelText("settings.ai.intentOverrides.provider", { exact: false })).toBeDefined();
-    expect(screen.getByLabelText("settings.ai.intentOverrides.model", { exact: false })).toBeDefined();
+    expect(
+      screen.getByLabelText("settings.ai.intentOverrides.provider", { exact: false }),
+    ).toBeDefined();
+    expect(
+      screen.getByLabelText("settings.ai.intentOverrides.model", { exact: false }),
+    ).toBeDefined();
   });
 });

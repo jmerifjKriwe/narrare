@@ -43,6 +43,7 @@ Travaillez aux côtés de l'auteur dans une session d'écriture interactive. Sui
 6. Si la demande de l'auteur est ouverte, utilisez votre jugement en vous basant sur le contexte
 
 Plan du chapitre : {{chapter_outline}}
+Instructions de l'auteur : {{author_instructions}}
 Objectif de mots : {{word_target}}
 Ton : {{tone_instructions}}
 

@@ -41,7 +41,13 @@ vi.mock("@/lib/stores/wizardStore", () => ({
  * loadModels (provider === "ollama" OR key.length > 8).
  */
 function makeStoreState(
-  overrides: Partial<ReturnType<typeof mockUseWizardStoreFn>["state"]> = {},
+  overrides: Partial<{
+    provider: string;
+    api_key: string;
+    model: string;
+    ollama_url: string;
+    zai_endpoint: string;
+  }> = {},
 ) {
   return {
     updateStep4: mockUpdateStep4,
@@ -53,7 +59,7 @@ function makeStoreState(
       zai_endpoint: "general",
       ...overrides,
     },
-  };
+  } as ReturnType<typeof mockUseWizardStoreFn>;
 }
 
 /** Find the "next →" button */
@@ -114,9 +120,7 @@ describe("WizardStep4", () => {
   it("disables next button when no model is selected", () => {
     // Use short api_key so loadModels is NOT triggered → model stays ""
     // Also, we need the mock to not return any models (empty) as fallback
-    mockUseWizardStoreFn.mockReturnValueOnce(
-      makeStoreState({ api_key: "", model: "" }),
-    );
+    mockUseWizardStoreFn.mockReturnValueOnce(makeStoreState({ api_key: "", model: "" }));
     render(<WizardStep4 onNext={onNext} onBack={onBack} />);
     expect(getNextButton().disabled).toBe(true);
   });

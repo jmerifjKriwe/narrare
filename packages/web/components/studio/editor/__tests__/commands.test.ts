@@ -65,7 +65,10 @@ describe("builtInCommands", () => {
   it("generation commands are only visible when not generating and no draft", () => {
     const startCommands = builtInCommands.filter(
       (c) =>
-        c.category === "generation" && c.isVisible && !c.id.includes("stop") && !c.id.includes("draft"),
+        c.category === "generation" &&
+        c.isVisible &&
+        !c.id.includes("stop") &&
+        !c.id.includes("draft"),
     );
     for (const cmd of startCommands) {
       expect(cmd.isVisible!({ isGenerating: false, hasDraft: false })).toBe(true);
@@ -76,18 +79,18 @@ describe("builtInCommands", () => {
 
   it("stop-generation is only visible while generating", () => {
     const stopCmd = builtInCommands.find((c) => c.id === "stop-generation")!;
-    expect(stopCmd.isVisible({ isGenerating: true, hasDraft: false })).toBe(true);
-    expect(stopCmd.isVisible({ isGenerating: false, hasDraft: false })).toBe(false);
-    expect(stopCmd.isVisible({ isGenerating: false, hasDraft: true })).toBe(false);
+    expect(stopCmd.isVisible!({ isGenerating: true, hasDraft: false })).toBe(true);
+    expect(stopCmd.isVisible!({ isGenerating: false, hasDraft: false })).toBe(false);
+    expect(stopCmd.isVisible!({ isGenerating: false, hasDraft: true })).toBe(false);
   });
 
   it("accept-draft and reject-draft are only visible when draft exists", () => {
     const acceptCmd = builtInCommands.find((c) => c.id === "accept-draft")!;
     const rejectCmd = builtInCommands.find((c) => c.id === "reject-draft")!;
-    expect(acceptCmd.isVisible({ isGenerating: false, hasDraft: true })).toBe(true);
-    expect(acceptCmd.isVisible({ isGenerating: false, hasDraft: false })).toBe(false);
-    expect(rejectCmd.isVisible({ isGenerating: false, hasDraft: true })).toBe(true);
-    expect(rejectCmd.isVisible({ isGenerating: false, hasDraft: false })).toBe(false);
+    expect(acceptCmd.isVisible!({ isGenerating: false, hasDraft: true })).toBe(true);
+    expect(acceptCmd.isVisible!({ isGenerating: false, hasDraft: false })).toBe(false);
+    expect(rejectCmd.isVisible!({ isGenerating: false, hasDraft: true })).toBe(true);
+    expect(rejectCmd.isVisible!({ isGenerating: false, hasDraft: false })).toBe(false);
   });
 
   it("format commands call editor actions", () => {

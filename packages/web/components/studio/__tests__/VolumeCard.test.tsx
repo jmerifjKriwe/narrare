@@ -12,10 +12,9 @@ const mockVolume: Volume = {
   subtitle: "A subtitle",
   description: "A description",
   word_count_target: 50000,
-  sort_order: 1,
+  position: 1,
   is_default: false,
   created_at: "2024-01-01T00:00:00Z",
-  updated_at: "2024-01-01T00:00:00Z",
 };
 
 const defaultVolume: Volume = {
@@ -25,16 +24,16 @@ const defaultVolume: Volume = {
 };
 
 const mockStats: VolumeStats = {
-  volume_id: "vol-1",
   chapter_count: 5,
   word_count: 12000,
+  word_count_target: 50000,
   completion_percentage: 24,
 };
 
 const emptyStats: VolumeStats = {
-  volume_id: "vol-1",
   chapter_count: 0,
   word_count: 0,
+  word_count_target: null,
   completion_percentage: null,
 };
 
@@ -369,16 +368,28 @@ describe("VolumeFormFields", () => {
         target="75000"
       />,
     );
-    expect((screen.getByLabelText("volumes.titleLabel", { exact: false }) as HTMLInputElement).value).toBe("My Title");
-    expect((screen.getByLabelText("volumes.subtitleLabel", { exact: false }) as HTMLInputElement).value).toBe("Sub");
-    expect((screen.getByLabelText("volumes.descriptionLabel", { exact: false }) as HTMLTextAreaElement).value).toBe("Desc");
-    expect((screen.getByLabelText("volumes.wordCountTargetLabel", { exact: false }) as HTMLInputElement).value).toBe("75000");
+    expect(
+      (screen.getByLabelText("volumes.titleLabel", { exact: false }) as HTMLInputElement).value,
+    ).toBe("My Title");
+    expect(
+      (screen.getByLabelText("volumes.subtitleLabel", { exact: false }) as HTMLInputElement).value,
+    ).toBe("Sub");
+    expect(
+      (screen.getByLabelText("volumes.descriptionLabel", { exact: false }) as HTMLTextAreaElement)
+        .value,
+    ).toBe("Desc");
+    expect(
+      (screen.getByLabelText("volumes.wordCountTargetLabel", { exact: false }) as HTMLInputElement)
+        .value,
+    ).toBe("75000");
   });
 
   it("calls onTitleChange when title input changes", () => {
     const onTitleChange = vi.fn();
     render(<VolumeFormFields {...defaultProps} onTitleChange={onTitleChange} />);
-    fireEvent.change(screen.getByLabelText("volumes.titleLabel", { exact: false }), { target: { value: "New Title" } });
+    fireEvent.change(screen.getByLabelText("volumes.titleLabel", { exact: false }), {
+      target: { value: "New Title" },
+    });
     expect(onTitleChange).toHaveBeenCalledWith("New Title");
   });
 
@@ -398,7 +409,7 @@ describe("VolumeFormFields", () => {
     render(<VolumeFormFields {...defaultProps} title="Title" isPending={true} />);
     // When isPending is true, the button shows a spinner icon instead of text
     const buttons = screen.getAllByRole("button");
-    const submitBtn = buttons[buttons.length - 1]; // last button = submit
+    const submitBtn = buttons[buttons.length - 1] as HTMLButtonElement; // last button = submit
     expect(submitBtn.disabled).toBe(true);
   });
 

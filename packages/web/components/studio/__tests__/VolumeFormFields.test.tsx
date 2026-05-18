@@ -57,7 +57,9 @@ describe("VolumeFormFields", () => {
   });
 
   it("disables submit button when isPending", () => {
-    const { container } = render(<VolumeFormFields {...defaultProps} isPending={true} title="Title" />);
+    const { container } = render(
+      <VolumeFormFields {...defaultProps} isPending={true} title="Title" />,
+    );
     const buttons = container.querySelectorAll("button");
     expect(buttons.length).toBe(2);
     // Second button is the submit button

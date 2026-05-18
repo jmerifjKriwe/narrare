@@ -42,6 +42,7 @@ Generate ONE scene at a time from the chapter outline. Follow these guidelines:
 5. End each scene at a natural break point — never mid-action unless cliffhanger is appropriate
 
 Chapter outline: {{chapter_outline}}
+Author instructions: {{author_instructions}}
 Word target per scene: {{word_target}}
 Tone: {{tone_instructions}}
 

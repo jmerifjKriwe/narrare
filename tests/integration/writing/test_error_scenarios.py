@@ -174,7 +174,7 @@ class TestMissingInput:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """word_target outside 100–50000 returns 422."""
+        """word_target outside 100-50000 returns 422."""
         novel_id, chapter_id = await _create_novel_with_chapter(client, auth_headers)
 
         resp = await client.post(

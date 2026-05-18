@@ -42,6 +42,7 @@ Write a complete chapter draft based on the outline and context provided. Follow
 5. Respect pacing — balance action, dialogue, description, and reflection
 
 Chapter outline: {{chapter_outline}}
+Author instructions: {{author_instructions}}
 Word target: {{word_target}}
 Tone: {{tone_instructions}}
 

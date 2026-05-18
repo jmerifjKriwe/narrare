@@ -141,7 +141,14 @@ export function Sidebar() {
       <div className="p-6 border-b border-border">
         <Link href="/" className="flex items-center gap-3 no-underline group">
           <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center transition-transform group-hover:scale-105 overflow-hidden">
-            <Image src="/logo.png" alt="Narrare" width={32} height={32} className="rounded" priority />
+            <Image
+              src="/logo.png"
+              alt="Narrare"
+              width={32}
+              height={32}
+              className="rounded"
+              priority
+            />
           </div>
           <div>
             <h1 className="text-lg font-medium">{t("sidebar.appName")}</h1>

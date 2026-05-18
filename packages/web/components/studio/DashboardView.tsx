@@ -66,7 +66,14 @@ export function DashboardView() {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="w-12 h-12 rounded-md bg-primary flex items-center justify-center animate-pulse overflow-hidden">
-          <Image src="/logo.png" alt="Narrare" width={32} height={32} className="rounded" priority />
+          <Image
+            src="/logo.png"
+            alt="Narrare"
+            width={32}
+            height={32}
+            className="rounded"
+            priority
+          />
         </div>
       </div>
     );

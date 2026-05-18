@@ -45,7 +45,8 @@
     "heading3": "Überschrift 3",
     "blockquote": "Zitat",
     "addBlock": "Block hinzufügen",
-    "nameGenerator": "Namensgenerator"
+    "nameGenerator": "Namensgenerator",
+    "generate": "Generieren"
   },
   "metadataSidebar": {
     "title": "Metadaten",
@@ -77,7 +78,8 @@
     "placeholder": "Befehl eingeben...",
     "categoryFormat": "Formatierung",
     "categoryEditor": "Editor",
-    "noResults": "Keine Befehle gefunden"
+    "noResults": "Keine Befehle gefunden",
+    "categoryGeneration": "Generierung"
   },
   "generation": {
     "nameGenerator": "Namensgenerator",
@@ -617,6 +619,7 @@
     "starting": "Starte...",
     "interactiveDescription": "Starte eine interaktive Session, um gemeinsam mit der KI zu schreiben. Lege die Richtung der Geschichte in Echtzeit.",
     "startSession": "Session starten",
+    "interviewDescription": "Die KI stellt dir Fragen zum Kapitel und generiert dann einen Entwurf basierend auf deinen Antworten. Klicke »Session starten« um zu beginnen.",
     "aiDraftBadge": "KI-Entwurf",
     "wordCountProgress": "{current} / {target} Wörter",
     "waitingForText": "Warte auf KI-Antwort...",
@@ -627,7 +630,9 @@
     "retry": "Erneut versuchen",
     "startFailed": "Generierung konnte nicht gestartet werden",
     "unknownError": "Ein unbekannter Fehler ist aufgetreten",
-    "connectionLost": "Verbindung verloren"
+    "connectionLost": "Verbindung verloren",
+    "validationMissingInput": "Mindestens eines der Felder Gliederung, Prompt oder automatisches Fortfahren muss ausgefüllt sein.",
+    "outlineHelpScene": "Optional. Beschreibe die Szenen-Struktur, z.B.: »Szene 1: Ankunft am Schloss. Szene 2: Verhandlung mit dem König.« Ohne Gliederung wird die KI frei interpretieren."
   },
   "sessionPanel": {
     "title": "Interaktive Session",
@@ -644,7 +649,22 @@
     "saved": "Entwurf im Kapitel gespeichert!",
     "saveFailed": "Entwurf konnte nicht gespeichert werden",
     "sessionEnded": "Session beendet",
-    "errorConnecting": "Verbindung fehlgeschlagen"
+    "errorConnecting": "Verbindung fehlgeschlagen",
+    "connecting": "Verbinde...",
+    "interviewTitle": "Interview-Modus",
+    "generateDraft": "Entwurf generieren",
+    "interviewGreetings": [
+      "Hallo! Ich freue mich, dir beim nächsten Kapitel zu helfen. Lass uns ein paar Fragen klären, damit ich genau das schreibe, was du dir vorstellst. Worum geht es in diesem Kapitel?",
+      "Hey! Bevor wir loslegen, möchte ich gerne mehr über deine Vision für dieses Kapitel erfahren. Was ist das wichtigste Ereignis, das passieren soll?",
+      "Willkommen! Um den besten Entwurf für dich zu erstellen, brauche ich ein paar Infos. Kannst du mir erzählen, wo die Geschichte gerade steht?",
+      "Hi! Lass uns gemeinsam herausfinden, wohin dieses Kapitel gehen soll. Welche Charaktere stehen im Mittelpunkt?",
+      "Guten Tag! Ich bin bereit, dir beim Schreiben zu helfen. Erzähl mir zuerst: Was ist das Hauptziel dieses Kapitels?",
+      "Hallo zusammen! Bevor ich anfange zu schreiben, möchte ich sicherstellen, dass ich deine Vision treffe. Welchen Ton soll dieses Kapitel haben?",
+      "Hey du! Je mehr ich über deine Ideen weiß, desto besser kann ich helfen. Was beschäftigt deine Charaktere gerade?",
+      "Willkommen zurück! Lass uns das nächste Kapitel planen. Gibt es eine bestimmte Szene, die du im Kopf hast?",
+      "Hi! Ich bin gespannt auf deine Ideen. Beschreibe mir in ein paar Sätzen, was in diesem Kapitel passieren soll.",
+      "Hallo! Schön, dass du hier bist. Um perfekt auf dich einzugehen: Was ist die emotionale Kernszene dieses Kapitels?"
+    ]
   },
   "auth": {
     "loginTitle": "Bei Narrare anmelden",

@@ -23,7 +23,9 @@ const { mockPrompts, mockUpdates, mockPromptsList, mockPromptsUpdates } = vi.hoi
       variables: [],
     },
   ],
-  mockUpdates: [{ prompt_id: "generation/names", has_update: true, bundled_content: "new content" }],
+  mockUpdates: [
+    { prompt_id: "generation/names", has_update: true, bundled_content: "new content" },
+  ],
   mockPromptsList: vi.fn(),
   mockPromptsUpdates: vi.fn(),
 }));

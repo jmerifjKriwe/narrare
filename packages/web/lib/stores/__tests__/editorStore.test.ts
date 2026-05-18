@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { useEditorStore } from "@/lib/stores/editorStore";
+import type { ChapterSummary } from "@/types";
 
 describe("editorStore", () => {
   beforeEach(() => {
@@ -111,10 +112,28 @@ describe("editorStore", () => {
   });
 
   it("updateChapterWordCount is a pure function", () => {
-    const chapters = [
-      { id: "c1", word_count: 100, title: "Ch1" },
-      { id: "c2", word_count: 200, title: "Ch2" },
-    ] as never[];
+    const chapters: ChapterSummary[] = [
+      {
+        id: "c1",
+        word_count: 100,
+        title: "Ch1",
+        novel_id: "n1",
+        volume_id: null,
+        position: 0,
+        status: "draft",
+        updated_at: "2024-01-01",
+      },
+      {
+        id: "c2",
+        word_count: 200,
+        title: "Ch2",
+        novel_id: "n1",
+        volume_id: null,
+        position: 1,
+        status: "draft",
+        updated_at: "2024-01-01",
+      },
+    ];
     const updated = useEditorStore.getState().updateChapterWordCount("c1", 150, chapters);
     expect(updated[0].word_count).toBe(150);
     expect(updated[1].word_count).toBe(200);

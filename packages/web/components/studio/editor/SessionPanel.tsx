@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Loader2, Send, X } from "lucide-react";
+import { Bot, Loader2, Send, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type SessionResponse, WritingSessionSocket } from "@/lib/api/generation";
@@ -15,8 +15,13 @@ import { ChatMessage } from "./ChatMessage";
 interface SessionPanelProps {
   readonly chapterId: string;
   readonly novelId: string;
+  readonly mode: "interactive_session" | "interview_assisted";
   readonly onClose: () => void;
 }
+
+// ---------------------------------------------------------------------------
+// Interview greetings are loaded from i18n (sessionPanel.interviewGreetings)
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,7 +38,7 @@ function createMessageId(): string {
 // SessionPanel component
 // ---------------------------------------------------------------------------
 
-export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps) {
+export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanelProps) {
   const t = useTranslations("studio");
   const currentUser = useAuthStore((s) => s.user);
 
@@ -56,26 +61,63 @@ export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // Interview greetings from i18n
+  // -------------------------------------------------------------------------
+
+  const greetings: string[] = t.raw("sessionPanel.interviewGreetings");
+  const greetingIndex = useMemo(
+    () => Math.floor(Math.random() * greetings.length),
+    [greetings.length],
+  );
+
+  // -------------------------------------------------------------------------
+  // Interview mode: show local greeting immediately on mount
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (mode === "interview_assisted" && messages.length === 0 && greetings.length > 0) {
+      setMessages([
+        {
+          id: createMessageId(),
+          role: "assistant",
+          content: greetings[greetingIndex],
+        },
+      ]);
+    }
+  }, [mode, greetings, greetingIndex, messages.length]);
 
   // -------------------------------------------------------------------------
   // WebSocket lifecycle
   // -------------------------------------------------------------------------
 
   useEffect(() => {
+    if (!currentUser?.id) return;
+
     const socket = new WritingSessionSocket(
       chapterId,
       (msg: SessionResponse) => {
         switch (msg.type) {
           case "greeting":
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: createMessageId(),
-                role: "assistant",
-                content: msg.message ?? msg.text ?? "",
-              },
-            ]);
+            // For interview mode, greeting is already shown locally
+            if (mode !== "interview_assisted") {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: createMessageId(),
+                  role: "assistant",
+                  content: msg.message ?? msg.text ?? "",
+                },
+              ]);
+            }
+            setIsConnected(true);
+            break;
+
+          case "interview_greeting":
+            // Already handled by local greeting — just mark connected
+            setIsConnected(true);
             break;
 
           case "text_chunk":
@@ -89,6 +131,17 @@ export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps)
             streamingTextRef.current = "";
             setStreamingText("");
             setIsStreaming(false);
+            if (prose) {
+              setMessages((prev) => [
+                ...prev,
+                { id: createMessageId(), role: "assistant", content: "", prose },
+              ]);
+            }
+            break;
+          }
+
+          case "draft_done": {
+            const prose = msg.text ?? "";
             if (prose) {
               setMessages((prev) => [
                 ...prev,
@@ -143,6 +196,7 @@ export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps)
       },
       currentUser?.id,
       novelId,
+      mode,
     );
 
     socketRef.current = socket;
@@ -154,8 +208,8 @@ export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps)
       socketRef.current = null;
       setIsConnected(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- socket reconnects when user/novel/chapter changes
-  }, [chapterId, t, currentUser?.id, novelId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- socket reconnects when user/novel/chapter/mode changes
+  }, [chapterId, t, currentUser?.id, novelId, mode]);
 
   // -------------------------------------------------------------------------
   // Actions
@@ -179,6 +233,10 @@ export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps)
     if (!socketRef.current || !proseBuffer) return;
     socketRef.current.send({ type: "save_to_chapter", text: proseBuffer });
   }, [proseBuffer]);
+
+  const handleGenerateDraft = useCallback(() => {
+    socketRef.current?.send({ type: "generate_draft" });
+  }, []);
 
   const handleEndSession = useCallback(() => {
     socketRef.current?.send({ type: "end_session" });
@@ -219,7 +277,11 @@ export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps)
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Bot className="w-4 h-4 text-primary" />
-          <span>{t("sessionPanel.title")}</span>
+          <span>
+            {mode === "interview_assisted"
+              ? t("sessionPanel.interviewTitle")
+              : t("sessionPanel.title")}
+          </span>
           <span
             className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
             title={isConnected ? t("sessionPanel.connected") : t("sessionPanel.disconnected")}
@@ -298,6 +360,17 @@ export function SessionPanel({ chapterId, novelId, onClose }: SessionPanelProps)
 
       {/* Action buttons */}
       <div className="border-t border-border px-4 py-3 flex gap-2">
+        {mode === "interview_assisted" && messages.length >= 3 && (
+          <button
+            type="button"
+            onClick={handleGenerateDraft}
+            disabled={!isConnected || isStreaming}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-colors disabled:opacity-50"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{t("sessionPanel.generateDraft")}</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={handleSaveToChapter}

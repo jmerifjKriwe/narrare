@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { ProviderForm } from "./ProviderForm";
 
 // ---------------------------------------------------------------------------
@@ -22,30 +22,34 @@ describe("ProviderForm", () => {
 
   describe("rendering", () => {
     it("renders in add mode", () => {
-      render(<ProviderForm
-        mode="add"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key} // Simple identity mock for translation
-      />);
+      render(
+        <ProviderForm
+          mode="add"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key} // Simple identity mock for translation
+        />,
+      );
 
       // Should render the form container
       expect(document.querySelector("div.space-y-4.ml-15")).toBeInTheDocument();
     });
 
     it("renders in edit mode", () => {
-      render(<ProviderForm
-        mode="edit"
-        initialProviderName="openai"
-        initialBaseUrl="https://api.openai.com/v1"
-        hasKey={true}
-        last4="1234"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="edit"
+          initialProviderName="openai"
+          initialBaseUrl="https://api.openai.com/v1"
+          hasKey={true}
+          last4="1234"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
       expect(document.querySelector("div.space-y-4.ml-15")).toBeInTheDocument();
     });
@@ -53,55 +57,63 @@ describe("ProviderForm", () => {
 
   describe("interactions", () => {
     it("sets provider name in add mode", async () => {
-      render(<ProviderForm
-        mode="add"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="add"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
-      const providerSelect = screen.getByLabelText("settings.ai.providerName");
+      const providerSelect = screen.getByLabelText("settings.ai.providerName") as HTMLSelectElement;
       await userEvent.selectOptions(providerSelect, "anthropic");
       expect(providerSelect.value).toBe("anthropic");
     });
 
     it("sets API key", async () => {
-      render(<ProviderForm
-        mode="add"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="add"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
-      const apiKeyInput = screen.getByLabelText("settings.ai.apiKey");
+      const apiKeyInput = screen.getByLabelText("settings.ai.apiKey") as HTMLInputElement;
       await userEvent.type(apiKeyInput, "test-key-123");
       expect(apiKeyInput.value).toBe("test-key-123");
     });
 
     it("sets base URL", async () => {
-      render(<ProviderForm
-        mode="add"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="add"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
-      const baseUrlInput = screen.getByLabelText("settings.ai.baseUrl");
+      const baseUrlInput = screen.getByLabelText("settings.ai.baseUrl") as HTMLInputElement;
       await userEvent.type(baseUrlInput, "https://custom.api.com");
       expect(baseUrlInput.value).toBe("https://custom.api.com");
     });
 
     it("calls onSubmit with correct data in add mode", async () => {
-      render(<ProviderForm
-        mode="add"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="add"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
       // Select provider
       const providerSelect = screen.getByLabelText("settings.ai.providerName");
@@ -129,22 +141,24 @@ describe("ProviderForm", () => {
           provider_name: "google",
           api_key: "my-api-key",
           base_url: "https://api.example.com",
-        })
+        }),
       );
     });
 
     it("calls onSubmit with only changed fields in edit mode", async () => {
-      render(<ProviderForm
-        mode="edit"
-        initialProviderName="openai"
-        initialBaseUrl="https://api.openai.com/v1"
-        hasKey={true}
-        last4="1234"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="edit"
+          initialProviderName="openai"
+          initialBaseUrl="https://api.openai.com/v1"
+          hasKey={true}
+          last4="1234"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
       // Change only the API key
       const apiKeyInput = screen.getByLabelText("settings.ai.editApiKey");
@@ -163,7 +177,7 @@ describe("ProviderForm", () => {
         expect.objectContaining({
           api_key: "new-key-5678",
           // base_url should not be included if unchanged
-        })
+        }),
       );
 
       // Verify base_url is not in the call (or is the same as initial)
@@ -173,17 +187,19 @@ describe("ProviderForm", () => {
     });
 
     it("does not call onSubmit when API key is empty in edit mode (no change)", async () => {
-      render(<ProviderForm
-        mode="edit"
-        initialProviderName="openai"
-        initialBaseUrl="https://api.openai.com/v1"
-        hasKey={false}
-        last4=""
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="edit"
+          initialProviderName="openai"
+          initialBaseUrl="https://api.openai.com/v1"
+          hasKey={false}
+          last4=""
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
       // Don't change anything
       const submitButton = screen.getByRole("button", { name: /settings\.ai\.save/i });
@@ -201,13 +217,15 @@ describe("ProviderForm", () => {
     });
 
     it("calls onCancel when cancel button is clicked", async () => {
-      render(<ProviderForm
-        mode="add"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="add"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
       const cancelButton = screen.getByRole("button", { name: /settings\.ai\.cancel/i });
       await userEvent.click(cancelButton);
@@ -216,13 +234,15 @@ describe("ProviderForm", () => {
     });
 
     it("shows loading state when isPending is true", () => {
-      render(<ProviderForm
-        mode="add"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={true}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="add"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={true}
+          t={(key: string) => key}
+        />,
+      );
 
       const submitButton = screen.getByRole("button", { name: /settings\.ai\.loading/i });
       expect(submitButton).toBeInTheDocument();
@@ -231,17 +251,19 @@ describe("ProviderForm", () => {
     });
 
     it("hints at existing API key in edit mode", () => {
-      render(<ProviderForm
-        mode="edit"
-        initialProviderName="anthropic"
-        initialBaseUrl="https://api.anthropic.com"
-        hasKey={true}
-        last4="9876"
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-        isPending={false}
-        t={(key: string) => key}
-      />);
+      render(
+        <ProviderForm
+          mode="edit"
+          initialProviderName="anthropic"
+          initialBaseUrl="https://api.anthropic.com"
+          hasKey={true}
+          last4="9876"
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+          isPending={false}
+          t={(key: string) => key}
+        />,
+      );
 
       const apiKeyHint = screen.getByText("settings.ai.apiKeyHint");
       expect(apiKeyHint).toBeInTheDocument();

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
-from narrare.writing.router import _get_writing_service
+from narrare.writing.router import get_writing_service
 from narrare.writing.schemas import (
     AcceptResponse,
     GenerationStatsResponse,
@@ -38,7 +38,7 @@ async def next_scene(
     session: SessionDep,
 ) -> SceneNextResponse:
     """Request the next scene in scene-by-scene mode."""
-    service = await _get_writing_service(session, user_id)
+    service = await get_writing_service(session, user_id)
     return await service.next_scene(request_id, user_id)
 
 
@@ -53,7 +53,7 @@ async def accept_scene(
     session: SessionDep,
 ) -> AcceptResponse:
     """Accept a specific scene."""
-    service = await _get_writing_service(session, user_id)
+    service = await get_writing_service(session, user_id)
     return await service.accept_scene(request_id, scene_number, user_id)
 
 
@@ -69,5 +69,5 @@ async def get_stats(
     session: SessionDep,
 ) -> GenerationStatsResponse:
     """Get aggregated generation statistics for a novel."""
-    service = await _get_writing_service(session, user_id, novel_id)
+    service = await get_writing_service(session, user_id, novel_id)
     return await service.get_stats(novel_id, user_id)

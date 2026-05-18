@@ -77,9 +77,7 @@ describe("GenerationDraft", () => {
   });
 
   it("disables accept button when isAcceptPending", () => {
-    render(
-      <GenerationDraft {...defaultProps} phase="review" isAcceptPending={true} />,
-    );
+    render(<GenerationDraft {...defaultProps} phase="review" isAcceptPending={true} />);
     const button = screen.getByText("generationPanel.accept").closest("button");
     expect(button).not.toBeNull();
     expect(button!.disabled).toBe(true);

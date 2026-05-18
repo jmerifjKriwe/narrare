@@ -5,7 +5,12 @@ import { Sidebar } from "@/components/studio/Sidebar";
 // Mock editorStore selectors
 vi.mock("@/lib/stores/editorStore", () => ({
   useEditorStore: vi.fn((selector?: (s: Record<string, unknown>) => unknown) => {
-    const state = { activeChapterId: "ch-1", activeVolumeId: "vol-1", setActiveChapterId: vi.fn(), setActiveVolumeId: vi.fn() };
+    const state = {
+      activeChapterId: "ch-1",
+      activeVolumeId: "vol-1",
+      setActiveChapterId: vi.fn(),
+      setActiveVolumeId: vi.fn(),
+    };
     return selector ? selector(state) : state;
   }),
 }));
@@ -33,8 +38,20 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
 
 // Mock API client
 vi.mock("@/lib/api/client", () => ({
-  volumesApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), reorder: vi.fn() },
-  chaptersApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), reorder: vi.fn() },
+  volumesApi: {
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    reorder: vi.fn(),
+  },
+  chaptersApi: {
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    reorder: vi.fn(),
+  },
   authApi: { me: vi.fn() },
 }));
 

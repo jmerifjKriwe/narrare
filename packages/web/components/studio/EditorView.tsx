@@ -55,6 +55,9 @@ export function EditorView({ novelId }: EditorViewProps) {
   const [paragraphCount, setParagraphCount] = useState(0);
   const [sessionStartWordCount, setSessionStartWordCount] = useState(0);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [sessionMode, setSessionMode] = useState<"interactive_session" | "interview_assisted">(
+    "interactive_session",
+  );
 
   // Track last chapter ID for session start reset
   const prevChapterIdRef = useRef<string | null>(null);
@@ -191,24 +194,29 @@ export function EditorView({ novelId }: EditorViewProps) {
     [editor, content, setDraftText, setGenerating, setActiveRequestId, handleAutosave],
   );
 
-  const handleStartSession = useCallback(() => {
-    setGenerationMode("interactive_session");
-    setSessionActive(true);
-    // Close generation panel if open
-    if (generationPanelOpen) {
-      toggleGenerationPanel();
-    }
-  }, [setGenerationMode, setSessionActive, generationPanelOpen, toggleGenerationPanel]);
+  const handleStartSession = useCallback(
+    (mode: string) => {
+      setGenerationMode(mode);
+      setSessionMode(mode as "interactive_session" | "interview_assisted");
+      setSessionActive(true);
+      // Close generation panel if open
+      if (generationPanelOpen) {
+        toggleGenerationPanel();
+      }
+    },
+    [setGenerationMode, setSessionActive, generationPanelOpen, toggleGenerationPanel],
+  );
 
   const handleSessionClose = useCallback(() => {
     setSessionActive(false);
     setGenerationMode(null);
+    setSessionMode("interactive_session");
   }, [setSessionActive, setGenerationMode]);
 
   const handleStartGeneration = useCallback(
     (mode: string) => {
-      if (mode === "interactive_session") {
-        handleStartSession();
+      if (mode === "interactive_session" || mode === "interview_assisted") {
+        handleStartSession(mode);
         return;
       }
       setGenerationMode(mode);
@@ -463,7 +471,12 @@ export function EditorView({ novelId }: EditorViewProps) {
           </div>
         </div>
         {showSessionPanel && (
-          <SessionPanel chapterId={activeChapterId} novelId={novelId} onClose={handleSessionClose} />
+          <SessionPanel
+            chapterId={activeChapterId}
+            novelId={novelId}
+            mode={sessionMode}
+            onClose={handleSessionClose}
+          />
         )}
         {showGenerationPanel && (
           <GenerationPanel
