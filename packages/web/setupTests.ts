@@ -38,6 +38,14 @@ vi.mock("next-intl", () => ({
   useTimeZone: () => "UTC",
 }));
 
+// Mock next/navigation globally (useRouter, useParams, useSearchParams, usePathname)
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn() }),
+  useParams: () => ({ id: "novel-1" }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/",
+}));
+
 // Establish API mocking before all tests
 beforeAll(() => server.listen({ onUnhandledRequest: "bypass" }));
 
