@@ -17,13 +17,17 @@ from narrare._app.main import create_app
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from fastapi import FastAPI
-
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_test",
 )
+
+# Ensure the app's lifespan runs migrations on the SAME database the tests use.
+# Without this, the lifespan reads DATABASE_URL from the dev environment
+# (e.g. postgres:5432/narrare_dev) while tests use TEST_DATABASE_URL
+# (e.g. postgres_test:5432/narrare_test) — tables never get created.
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -41,7 +45,7 @@ def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ig
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
 async def check_db_available() -> None:
-    """Skip all integration tests if database is not available."""
+    """Skip all integration tests if database is not available, run migrations."""
     try:
         engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
         async with engine.connect() as conn:
@@ -50,6 +54,33 @@ async def check_db_available() -> None:
     except Exception:
         pytest.skip("Database not available")
 
+    # Run migrations once per session via subprocess to avoid event-loop conflicts.
+    # The alembic env.py uses asyncio.run() which would clash with our session loop.
+    # On CI this is idempotent (migrations already ran in the CI step before tests).
+    import subprocess
+    from pathlib import Path
+
+    alembic_dir = Path(__file__).resolve().parent.parent.parent / "apps" / "api" / "alembic"
+    alembic_ini = alembic_dir.parent / "alembic.ini"
+    subprocess.run(
+        [
+            "python",
+            "-m",
+            "alembic",
+            "-c",
+            str(alembic_ini) if alembic_ini.exists() else "alembic.ini",
+            "upgrade",
+            "head",
+        ],
+        env={
+            **os.environ,
+            "DATABASE_URL": TEST_DATABASE_URL,
+        },
+        cwd=alembic_dir.parent,
+        check=True,
+        capture_output=True,
+    )
+
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def test_engine() -> AsyncGenerator[AsyncEngine]:
@@ -57,14 +88,6 @@ async def test_engine() -> AsyncGenerator[AsyncEngine]:
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=True)
     yield engine
     await engine.dispose()
-
-
-@pytest_asyncio.fixture(scope="session", loop_scope="session")
-async def _test_app() -> AsyncGenerator[FastAPI]:  # pyright: ignore[reportUnusedFunction]
-    """Session-scoped FastAPI app — lifespan runs once, not per test."""
-    app = create_app()
-    yield app
-    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture(loop_scope="session")
@@ -79,18 +102,19 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
 
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def client(_test_app: FastAPI, db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     """Test HTTP client with DB session override."""
+    app = create_app()
 
     async def override_session():
         yield db_session
 
-    _test_app.dependency_overrides[get_async_session] = override_session
+    app.dependency_overrides[get_async_session] = override_session
 
-    async with AsyncClient(transport=ASGITransport(app=_test_app), base_url="http://test") as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
-    _test_app.dependency_overrides.pop(get_async_session, None)
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture(loop_scope="session")

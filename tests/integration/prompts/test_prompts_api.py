@@ -64,14 +64,14 @@ class TestGetPrompt:
         if not prompts:
             pytest.skip("No prompts available in bundled directory")
 
-        prompt_id = prompts[0]["id"]
+        prompt_id = prompts[0]["prompt_id"]
         response = await client.get(
             f"/api/v1/prompts/{prompt_id}",
             headers=auth_headers,
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == prompt_id
+        assert data["prompt_id"] == prompt_id
         assert "content" in data
         assert "base_content" in data
         assert "source" in data
@@ -106,7 +106,7 @@ class TestSaveOverride:
         if not prompts:
             pytest.skip("No prompts available in bundled directory")
 
-        prompt_id = prompts[0]["id"]
+        prompt_id = prompts[0]["prompt_id"]
         response = await client.put(
             f"/api/v1/prompts/{prompt_id}",
             json={"content": "---\nprompt_version: '1.0.0'\n---\n\nTest override content"},
@@ -179,7 +179,7 @@ class TestCascadeInfo:
         if not prompts:
             pytest.skip("No prompts available in bundled directory")
 
-        prompt_id = prompts[0]["id"]
+        prompt_id = prompts[0]["prompt_id"]
         response = await client.get(
             f"/api/v1/prompts/{prompt_id}/cascade",
             headers=auth_headers,

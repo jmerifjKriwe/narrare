@@ -33,7 +33,7 @@ async def _get_service() -> PromptManagementApiService:
     return PromptManagementApiService(core_service=core_service)
 
 
-# --- IMPORTANT: /updates must be defined BEFORE /{prompt_id} to avoid path conflicts ---
+# --- IMPORTANT: Specific routes must be defined BEFORE /{prompt_id} to avoid path conflicts ---
 
 
 @router.get("/updates", response_model=list[UpdateInfoResponse])
@@ -43,6 +43,32 @@ async def detect_updates(
 ) -> list[UpdateInfoResponse]:
     """Detect prompts with available bundled updates."""
     return await service.detect_updates()
+
+
+@router.get("/{prompt_id:path}/cascade", response_model=list[CascadePathResponse])
+async def cascade_info(
+    prompt_id: str,
+    user_id: CurrentUserIdDep,
+    service: PromptManagementApiService = Depends(_get_service),
+) -> list[CascadePathResponse]:
+    """Get cascade resolution paths for a prompt."""
+    return await service.cascade_info(prompt_id)
+
+
+@router.get("/{prompt_id:path}/diff", response_model=DiffResponse | None)
+async def get_diff(
+    prompt_id: str,
+    user_id: CurrentUserIdDep,
+    service: PromptManagementApiService = Depends(_get_service),
+) -> DiffResponse | None:
+    """Get side-by-side diff for an overridden prompt."""
+    result = await service.get_diff(prompt_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="prompts.no_override_for_diff",
+        )
+    return result
 
 
 @router.get("", response_model=list[PromptInfoResponse])
@@ -87,29 +113,3 @@ async def reset_override(
 ) -> bool:
     """Reset a prompt override, restoring bundled default."""
     return await service.reset_override(prompt_id)
-
-
-@router.get("/{prompt_id:path}/cascade", response_model=list[CascadePathResponse])
-async def cascade_info(
-    prompt_id: str,
-    user_id: CurrentUserIdDep,
-    service: PromptManagementApiService = Depends(_get_service),
-) -> list[CascadePathResponse]:
-    """Get cascade resolution paths for a prompt."""
-    return await service.cascade_info(prompt_id)
-
-
-@router.get("/{prompt_id:path}/diff", response_model=DiffResponse | None)
-async def get_diff(
-    prompt_id: str,
-    user_id: CurrentUserIdDep,
-    service: PromptManagementApiService = Depends(_get_service),
-) -> DiffResponse | None:
-    """Get side-by-side diff for an overridden prompt."""
-    result = await service.get_diff(prompt_id)
-    if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="prompts.no_override_for_diff",
-        )
-    return result

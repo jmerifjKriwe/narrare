@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import structlog
@@ -56,8 +57,12 @@ async def _run_pending_migrations() -> None:
         "postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev",
     )
 
+    # Resolve alembic script location relative to this file:
+    # _app/lifespan.py → _app/ → narrare/ → apps/api/ → alembic/
+    _alembic_dir = Path(__file__).resolve().parent.parent.parent / "alembic"
+
     alembic_cfg = Config()
-    alembic_cfg.set_main_option("script_location", "alembic")
+    alembic_cfg.set_main_option("script_location", str(_alembic_dir))
     alembic_cfg.set_main_option("sqlalchemy.url", db_url)
 
     # Log current version before migration

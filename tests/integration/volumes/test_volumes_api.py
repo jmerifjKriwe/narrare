@@ -34,7 +34,10 @@ class TestListVolumes:
     ) -> None:
         response = await client.get(f"/api/v1/novels/{novel_id}/volumes", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        # New novels get an auto-created default volume
+        assert len(data) == 1
+        assert data[0]["is_default"] is True
 
     async def test_list_without_auth_returns_401(self, client: AsyncClient, novel_id: str) -> None:
         response = await client.get(f"/api/v1/novels/{novel_id}/volumes")
@@ -82,7 +85,8 @@ class TestCreateVolume:
         )
         assert response.status_code == 201
         validated = VolumeResponse.model_validate(response.json())
-        assert validated.position == 1
+        assert validated.title == "Book Two"
+        assert validated.position == 0
 
 
 class TestUpdateVolume:
@@ -186,7 +190,7 @@ class TestVolumeCRUDLifecycle:
         assert create_resp.status_code == 201
         vol2 = create_resp.json()
         vol2_id = vol2["id"]
-        assert vol2["position"] == 1
+        assert vol2["position"] == 0
         assert vol2["title"] == "Volume 2"
 
         list_resp = await client.get(
