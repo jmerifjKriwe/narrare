@@ -747,11 +747,42 @@
     "groups": {
       "basicInfo": "Grundinformationen",
       "appearance": "Erscheinung",
+      "appearanceHint": "Körperliche Merkmale und äußere Besonderheiten",
       "personality": "Persönlichkeit",
+      "personalityHint": "Kernmerkmale, Stärken, Schwächen und Motivationen",
       "background": "Hintergrund",
+      "backgroundHint": "Geschichte, Erziehung und prägende Erfahrungen",
       "relationships": "Beziehungen",
+      "relationshipsHint": "Wichtige Verbündete, Rivalen und Verbindungen",
       "development": "Entwicklung",
-      "speech": "Sprechweise & Manierismen"
+      "speech": "Sprechweise & Manierismen",
+      "speechHint": "Wie der Charakter spricht und sich verhält",
+      "features": "Merkmale",
+      "featuresHint": "Architektur, natürliche Merkmale und Wahrzeichen",
+      "inhabitants": "Einwohner",
+      "inhabitantsHint": "Bevölkerung, Spezies und Fraktionen am Ort",
+      "history": "Geschichte",
+      "historyHint": "Historische Ereignisse, Gründung und aktueller Zustand",
+      "structure": "Struktur",
+      "structureHint": "Führung, Hierarchie und Organisation",
+      "belief_system": "Glaubenssystem",
+      "belief_systemHint": "Grundüberzeugungen, Ziele und Methoden",
+      "properties": "Eigenschaften",
+      "propertiesHint": "Physische Merkmale und Zustand",
+      "origin_details": "Ursprungsdetails",
+      "origin_detailsHint": "Erschaffer, Entstehungsdatum und Herkunftsort",
+      "significance": "Bedeutung",
+      "significanceHint": "Zweck, Kräfte und historische Wichtigkeit",
+      "mechanics": "Mechanik",
+      "mechanicsHint": "Regeln, Kosten, Einschränkungen und Kompetenzstufen",
+      "practitioner_details": "Anwenderdetails",
+      "practitioner_detailsHint": "Nutzer, Voraussetzungen und Ausbildung",
+      "origins": "Ursprünge",
+      "originsHint": "Quelle, Entdeckung und Entwicklung",
+      "period": "Zeitraum",
+      "periodHint": "Epoche, Daten und Dauer",
+      "events": "Ereignisse",
+      "eventsHint": "Wichtige Ereignisse, Personen und Konflikte"
     },
     "sections": {
       "background": "Hintergrund",
@@ -761,18 +792,39 @@
       "appearance": "Erscheinung",
       "appearanceHint": "Beschreibe das äußere Erscheinungsbild und besondere Merkmale...",
       "development": "Entwicklung",
-      "developmentHint": "Beschreibe den Charakterbogen, die Entwicklung und wichtige Veränderungen..."
+      "developmentHint": "Beschreibe den Charakterbogen, die Entwicklung und wichtige Veränderungen...",
+      "description": "Beschreibung",
+      "descriptionHint": "Beschreibe die Haupteigenschaften und Bedeutung des Eintrags...",
+      "notes": "Notizen",
+      "notesHint": "Zusätzliche Notizen, Beobachtungen oder Erinnerungen..."
     },
     "groupLabels": {
       "basicInfo": {
         "age": "Alter",
         "role": "Rolle in der Geschichte",
+        "occupation": "Beruf",
         "gender": "Geschlecht",
         "pronouns": "Pronomen",
         "nationality": "Nationalität/Herkunft",
         "pov_character": "Erzählerfigur",
         "affiliation": "Zugehörigkeit",
-        "aliases": "Aliase"
+        "aliases": "Aliase",
+        "element": "Element",
+        "location_type": "Ortstyp",
+        "parent_location": "Übergeordneter Ort",
+        "coordinates": "Koordinaten",
+        "climate": "Klima",
+        "terrain": "Gelände",
+        "size": "Größe",
+        "founded": "Gegründet",
+        "members": "Mitglieder",
+        "ideology": "Ideologie",
+        "first_appearance": "Erster Auftritt",
+        "object_type": "Objekttyp",
+        "owner": "Besitzer",
+        "origin": "Ursprung",
+        "system_type": "Systemtyp",
+        "practitioners": "Anwender"
       },
       "appearance": {
         "height": "Größe",
@@ -791,8 +843,118 @@
         "desires": "Wünsche/Ziele",
         "motivations": "Motivationen",
         "quirks": "Eigenarten"
+      },
+      "background": {
+        "family": "Familie",
+        "upbringing": "Erziehung",
+        "education": "Ausbildung",
+        "key_events": "Schlüsselerlebnisse",
+        "formative_experiences": "Prägende Erfahrungen"
+      },
+      "relationships": {
+        "allies": "Verbündete",
+        "rivals": "Rivalen",
+        "family_members": "Familienmitglieder",
+        "mentors": "Mentoren"
+      },
+      "speech": {
+        "typical_phrases": "Typische Formulierungen",
+        "dialect": "Dialekt/Akzent",
+        "vocabulary_quirks": "Sprachgewohnheiten",
+        "body_language": "Körpersprache"
+      },
+      "development": {
+        "arc": "Charakterbogen",
+        "starting_point": "Ausgangspunkt",
+        "key_turning_points": "Wendepunkte",
+        "current_state": "Aktueller Zustand",
+        "planned_arc": "Geplante Entwicklung",
+        "first_appearance": "Erster Auftritt"
+      },
+      "features": {
+        "architecture": "Architektur",
+        "natural_features": "Natürliche Merkmale",
+        "landmarks": "Wahrzeichen",
+        "atmosphere": "Atmosphäre"
+      },
+      "inhabitants": {
+        "population": "Bevölkerung",
+        "species": "Spezies",
+        "factions": "Fraktionen",
+        "notable_residents": "Bekannte Einwohner"
+      },
+      "history": {
+        "founded": "Gegründet",
+        "key_events": "Schlüsselerlebnisse",
+        "current_state": "Aktueller Zustand",
+        "origin_story": "Ursprungsgeschichte",
+        "current_status": "Aktueller Status"
+      },
+      "structure": {
+        "leadership": "Führung",
+        "hierarchy": "Hierarchie",
+        "membership_count": "Mitgliederzahl",
+        "headquarters": "Hauptquartier"
+      },
+      "belief_system": {
+        "beliefs": "Überzeugungen",
+        "goals": "Ziele",
+        "methods": "Methoden",
+        "taboos": "Tabus"
+      },
+      "properties": {
+        "material": "Material",
+        "dimensions": "Abmessungen",
+        "weight": "Gewicht",
+        "condition": "Zustand",
+        "appearance": "Erscheinungsbild"
+      },
+      "origin_details": {
+        "creator": "Erschaffer",
+        "created_date": "Entstehungsdatum",
+        "place_of_origin": "Herkunftsort",
+        "method_of_creation": "Herstellungsverfahren"
+      },
+      "significance": {
+        "purpose": "Zweck",
+        "powers": "Kräfte",
+        "historical_significance": "Historische Bedeutung",
+        "current_location": "Aktueller Standort"
+      },
+      "mechanics": {
+        "rules": "Regeln",
+        "cost": "Kosten",
+        "limitations": "Einschränkungen",
+        "levels": "Stufen"
+      },
+      "practitioner_details": {
+        "users": "Bekannte Nutzer",
+        "requirements": "Voraussetzungen",
+        "training": "Ausbildung",
+        "organizations": "Organisationen"
+      },
+      "origins": {
+        "source": "Quelle",
+        "discovered_by": "Entdeckt von",
+        "discovered_date": "Entdeckungsdatum",
+        "history": "Geschichte"
+      },
+      "period": {
+        "era": "Epoche",
+        "era_name": "Epochenname",
+        "start_date": "Startdatum",
+        "end_date": "Enddatum",
+        "duration": "Dauer",
+        "first_appearance": "Erster Auftritt"
+      },
+      "events": {
+        "major_events": "Wichtige Ereignisse",
+        "key_figures": "Schlüsselfiguren",
+        "conflicts": "Konflikte",
+        "discoveries": "Entdeckungen"
       }
-    }
+    },
+    "additionalNotes": "Zusätzliche Notizen"
   },
   "auth": {
     "loginTitle": "Bei Narrare anmelden",

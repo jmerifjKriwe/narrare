@@ -747,11 +747,42 @@
     "groups": {
       "basicInfo": "Basic Information",
       "appearance": "Appearance",
+      "appearanceHint": "Physical characteristics and distinctive features",
       "personality": "Personality",
+      "personalityHint": "Core traits, strengths, weaknesses, and motivations",
       "background": "Background",
+      "backgroundHint": "History, upbringing, and formative experiences",
       "relationships": "Relationships",
+      "relationshipsHint": "Key allies, rivals, and connections",
       "development": "Development",
-      "speech": "Speech & Mannerisms"
+      "speech": "Speech & Mannerisms",
+      "speechHint": "How the character speaks and carries themselves",
+      "features": "Features",
+      "featuresHint": "Architectural style, natural features, and landmarks",
+      "inhabitants": "Inhabitants",
+      "inhabitantsHint": "Population, species, and factions at this location",
+      "history": "History",
+      "historyHint": "Historical events, founding, and current state",
+      "structure": "Structure",
+      "structureHint": "Leadership, hierarchy, and organization",
+      "belief_system": "Belief System",
+      "belief_systemHint": "Core beliefs, goals, and methods",
+      "properties": "Properties",
+      "propertiesHint": "Physical characteristics and condition",
+      "origin_details": "Origin Details",
+      "origin_detailsHint": "Creator, creation date, and place of origin",
+      "significance": "Significance",
+      "significanceHint": "Purpose, powers, and historical importance",
+      "mechanics": "Mechanics",
+      "mechanicsHint": "Rules, costs, limitations, and proficiency levels",
+      "practitioner_details": "Practitioner Details",
+      "practitioner_detailsHint": "Users, requirements, and training",
+      "origins": "Origins",
+      "originsHint": "Source, discovery, and evolution",
+      "period": "Period",
+      "periodHint": "Era, dates, and duration",
+      "events": "Events",
+      "eventsHint": "Major events, figures, and conflicts"
     },
     "sections": {
       "background": "Background",
@@ -761,18 +792,39 @@
       "appearance": "Appearance",
       "appearanceHint": "Describe the character's physical appearance and distinctive features...",
       "development": "Development",
-      "developmentHint": "Describe the character's growth, arc, and key transformations..."
+      "developmentHint": "Describe the character's growth, arc, and key transformations...",
+      "description": "Description",
+      "descriptionHint": "Describe the entity's key characteristics and significance...",
+      "notes": "Notes",
+      "notesHint": "Additional notes, observations, or reminders..."
     },
     "groupLabels": {
       "basicInfo": {
         "age": "Age",
         "role": "Role in Story",
+        "occupation": "Occupation",
         "gender": "Gender",
         "pronouns": "Pronouns",
         "nationality": "Nationality/Origin",
         "pov_character": "POV Character",
         "affiliation": "Affiliation",
-        "aliases": "Aliases"
+        "aliases": "Aliases",
+        "element": "Element",
+        "location_type": "Location Type",
+        "parent_location": "Parent Location",
+        "coordinates": "Coordinates",
+        "climate": "Climate",
+        "terrain": "Terrain",
+        "size": "Size",
+        "founded": "Founded",
+        "members": "Members",
+        "ideology": "Ideology",
+        "first_appearance": "First Appearance",
+        "object_type": "Object Type",
+        "owner": "Owner",
+        "origin": "Origin",
+        "system_type": "System Type",
+        "practitioners": "Practitioners"
       },
       "appearance": {
         "height": "Height",
@@ -791,8 +843,118 @@
         "desires": "Desires & Goals",
         "motivations": "Motivations",
         "quirks": "Quirks"
+      },
+      "background": {
+        "family": "Family",
+        "upbringing": "Upbringing",
+        "education": "Education",
+        "key_events": "Key Events",
+        "formative_experiences": "Formative Experiences"
+      },
+      "relationships": {
+        "allies": "Allies",
+        "rivals": "Rivals",
+        "family_members": "Family Members",
+        "mentors": "Mentors"
+      },
+      "speech": {
+        "typical_phrases": "Typical Phrases",
+        "dialect": "Dialect / Accent",
+        "vocabulary_quirks": "Vocabulary Quirks",
+        "body_language": "Body Language"
+      },
+      "development": {
+        "arc": "Character Arc",
+        "starting_point": "Starting Point",
+        "key_turning_points": "Key Turning Points",
+        "current_state": "Current State",
+        "planned_arc": "Planned Arc",
+        "first_appearance": "First Appearance"
+      },
+      "features": {
+        "architecture": "Architecture",
+        "natural_features": "Natural Features",
+        "landmarks": "Landmarks",
+        "atmosphere": "Atmosphere"
+      },
+      "inhabitants": {
+        "population": "Population",
+        "species": "Species",
+        "factions": "Factions",
+        "notable_residents": "Notable Residents"
+      },
+      "history": {
+        "founded": "Founded",
+        "key_events": "Key Events",
+        "current_state": "Current State",
+        "origin_story": "Origin Story",
+        "current_status": "Current Status"
+      },
+      "structure": {
+        "leadership": "Leadership",
+        "hierarchy": "Hierarchy",
+        "membership_count": "Membership Count",
+        "headquarters": "Headquarters"
+      },
+      "belief_system": {
+        "beliefs": "Beliefs",
+        "goals": "Goals",
+        "methods": "Methods",
+        "taboos": "Taboos"
+      },
+      "properties": {
+        "material": "Material",
+        "dimensions": "Dimensions",
+        "weight": "Weight",
+        "condition": "Condition",
+        "appearance": "Appearance"
+      },
+      "origin_details": {
+        "creator": "Creator",
+        "created_date": "Created Date",
+        "place_of_origin": "Place of Origin",
+        "method_of_creation": "Method of Creation"
+      },
+      "significance": {
+        "purpose": "Purpose",
+        "powers": "Powers",
+        "historical_significance": "Historical Significance",
+        "current_location": "Current Location"
+      },
+      "mechanics": {
+        "rules": "Rules",
+        "cost": "Cost",
+        "limitations": "Limitations",
+        "levels": "Levels"
+      },
+      "practitioner_details": {
+        "users": "Notable Users",
+        "requirements": "Requirements",
+        "training": "Training",
+        "organizations": "Organizations"
+      },
+      "origins": {
+        "source": "Source",
+        "discovered_by": "Discovered By",
+        "discovered_date": "Discovered Date",
+        "history": "History"
+      },
+      "period": {
+        "era": "Era",
+        "era_name": "Era Name",
+        "start_date": "Start Date",
+        "end_date": "End Date",
+        "duration": "Duration",
+        "first_appearance": "First Appearance"
+      },
+      "events": {
+        "major_events": "Major Events",
+        "key_figures": "Key Figures",
+        "conflicts": "Conflicts",
+        "discoveries": "Discoveries"
       }
-    }
+    },
+    "additionalNotes": "Additional Notes"
   },
   "auth": {
     "loginTitle": "Sign in to Narrare",
