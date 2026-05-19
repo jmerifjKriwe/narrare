@@ -12,9 +12,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
 from alembic import op
 
 if TYPE_CHECKING:
@@ -28,53 +25,39 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Create kb_templates table for template overrides."""
-    # Create the enum type first
-    op.execute("CREATE TYPE templatescope AS ENUM ('user', 'project', 'global')")
-
-    op.create_table(
-        "kb_templates",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("entity_type", sa.String(50), nullable=False),
-        sa.Column("language", sa.String(10), nullable=False, server_default="en"),
-        sa.Column(
-            "scope",
-            sa.Enum("user", "project", "global", name="templatescope", create_type=False),
-            nullable=False,
-        ),
-        sa.Column("scope_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("based_on_version", sa.String(20), nullable=True),
-        sa.Column(
-            "schema_version",
-            sa.String(20),
-            nullable=False,
-            server_default="2.0.0",
-        ),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-        sa.CheckConstraint(
-            "entity_type IN ('character', 'location', 'faction', 'object', 'system', 'timeline')",
-            name="ck_kb_templates_entity_type",
-        ),
-        sa.UniqueConstraint(
-            "entity_type",
-            "language",
-            "scope",
-            "scope_id",
-            name="uq_kb_templates_unique",
-        ),
+    # Create the enum type (idempotent — safe to re-run)
+    op.execute(
+        "DO $$ BEGIN"
+        "  CREATE TYPE templatescope AS ENUM ('user', 'project', 'global');"
+        " EXCEPTION WHEN duplicate_object THEN NULL;"
+        " END $$"
     )
-    op.create_index("ix_kb_templates_scope", "kb_templates", ["scope", "scope_id"])
+
+    # Create table (use raw SQL for idempotency — table may partially exist)
+    op.execute(
+        "CREATE TABLE IF NOT EXISTS kb_templates ("
+        "  id UUID PRIMARY KEY,"
+        "  entity_type VARCHAR(50) NOT NULL,"
+        "  language VARCHAR(10) NOT NULL DEFAULT 'en',"
+        "  scope templatescope NOT NULL,"
+        "  scope_id UUID,"
+        "  content TEXT NOT NULL,"
+        "  based_on_version VARCHAR(20),"
+        "  schema_version VARCHAR(20) NOT NULL DEFAULT '2.0.0',"
+        "  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),"
+        "  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),"
+        "  CONSTRAINT ck_kb_templates_entity_type"
+        "    CHECK (entity_type IN ("
+        "      'character','location','faction',"
+        "      'object','system','timeline'"
+        "    )),"
+        "  CONSTRAINT uq_kb_templates_unique"
+        "    UNIQUE (entity_type, language, scope, scope_id)"
+        ")"
+    )
+
+    # Create index (idempotent)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_kb_templates_scope ON kb_templates (scope, scope_id)")
 
 
 def downgrade() -> None:
