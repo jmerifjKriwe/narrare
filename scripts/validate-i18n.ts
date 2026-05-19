@@ -58,7 +58,7 @@ function loadLocaleKeys(locale: string): Map<string, { value: string; file: stri
 // ==========================================
 // 1. FRONTEND: AST-based check for React/TSX
 // ==========================================
-function checkFrontend() {
+function checkFrontend(files?: string[]) {
   console.log("⏳ Checking frontend components (AST via ts-morph)...");
 
   // Explicit path to the monorepo tsconfig
@@ -83,10 +83,24 @@ function checkFrontend() {
     "global-error.tsx",      // Runs outside React context — no providers available
     "ErrorBoundary.tsx",     // Class component — cannot use hooks
   ];
-  const sourceFiles = project.getSourceFiles().filter((sf) => {
-    const p = sf.getFilePath();
-    return p.endsWith(".tsx") && !excludePatterns.some((ex) => p.includes(ex));
-  });
+
+  let sourceFiles;
+  if (files && files.length > 0) {
+    // Only load the specified files (staged-only mode)
+    sourceFiles = files
+      .filter(f => f.endsWith('.tsx') && !excludePatterns.some(ex => f.includes(ex)))
+      .map(f => {
+        const absPath = path.isAbsolute(f) ? f : path.resolve(PROJECT_ROOT, f);
+        return project.getSourceFile(absPath) || project.addSourceFileAtPath(absPath);
+      })
+      .filter(Boolean);
+  } else {
+    // All TSX files (existing full-check behaviour)
+    sourceFiles = project.getSourceFiles().filter((sf) => {
+      const p = sf.getFilePath();
+      return p.endsWith(".tsx") && !excludePatterns.some((ex) => p.includes(ex));
+    });
+  }
 
   for (const sourceFile of sourceFiles) {
     const filePath = sourceFile.getFilePath();
@@ -135,26 +149,11 @@ function checkFrontend() {
 // ==========================================
 // 2. BACKEND: Python hardcoded string check
 // ==========================================
-function checkBackend() {
+function checkBackend(files?: string[]) {
   console.log("⏳ Checking backend (.py files)...");
   const backendDir = path.join(PROJECT_ROOT, "apps/api/narrare");
 
   if (!fs.existsSync(backendDir)) return;
-
-  const walkSync = (dir: string, filelist: string[] = []) => {
-    fs.readdirSync(dir).forEach((file) => {
-      const dirFile = path.join(dir, file);
-      if (fs.statSync(dirFile).isDirectory())
-        filelist = walkSync(dirFile, filelist);
-      else filelist.push(dirFile);
-    });
-    return filelist;
-  };
-
-  const pyFiles = walkSync(backendDir).filter(
-    (f) =>
-      f.endsWith(".py") && !f.includes("test") && !f.includes("__pycache__"),
-  );
 
   // Skip files until Python i18n is set up — these are developer-facing error strings
   const excludeFiles = [
@@ -162,6 +161,39 @@ function checkBackend() {
     "volumes/service.py",
     "prompts/router.py",
   ];
+
+  let pyFiles: string[];
+  if (files && files.length > 0) {
+    // Only check the specified files (staged-only mode)
+    pyFiles = files.filter(f => {
+      const absPath = path.isAbsolute(f) ? f : path.resolve(PROJECT_ROOT, f);
+      return absPath.startsWith(backendDir)
+        && f.endsWith('.py')
+        && !f.includes('test')
+        && !f.includes('__pycache__')
+        && (f.includes('service.py') || f.includes('router.py'))
+        && !excludeFiles.some(ex => f.endsWith(ex));
+    }).map(f => path.isAbsolute(f) ? f : path.resolve(PROJECT_ROOT, f));
+  } else {
+    // All matching Python files (existing full-check behaviour)
+    const walkSync = (dir: string, filelist: string[] = []): string[] => {
+      fs.readdirSync(dir).forEach((file) => {
+        const dirFile = path.join(dir, file);
+        if (fs.statSync(dirFile).isDirectory())
+          filelist = walkSync(dirFile, filelist);
+        else filelist.push(dirFile);
+      });
+      return filelist;
+    };
+    pyFiles = walkSync(backendDir).filter(
+      (f) =>
+        f.endsWith(".py") && !f.includes("test") && !f.includes("__pycache__"),
+    ).filter(f => {
+      if (!f.includes("service.py") && !f.includes("router.py")) return false;
+      if (excludeFiles.some(ex => f.endsWith(ex))) return false;
+      return true;
+    });
+  }
 
   for (const file of pyFiles) {
     if (!file.includes("service.py") && !file.includes("router.py")) continue;
@@ -329,12 +361,32 @@ function checkPlaceholderConsistency() {
 // ==========================================
 // PIPELINE START
 // ==========================================
+const args = process.argv.slice(2);
+const hasFileArgs = args.length > 0;
+
 console.log("\n🚀 Starting i18n validation...\n");
 
-checkFrontend();
-checkBackend();
-checkKeyCompleteness();
-checkPlaceholderConsistency();
+if (hasFileArgs) {
+  const tsxFiles = args.filter(f => f.endsWith('.tsx'));
+  const pyFiles = args.filter(f => f.endsWith('.py'));
+  const i18nFiles = args.filter(f => f.includes('packages/i18n/messages'));
+
+  if (tsxFiles.length > 0) checkFrontend(tsxFiles);
+  if (pyFiles.length > 0) checkBackend(pyFiles);
+  if (i18nFiles.length > 0) {
+    checkKeyCompleteness();
+    checkPlaceholderConsistency();
+  }
+
+  if (tsxFiles.length === 0 && pyFiles.length === 0 && i18nFiles.length === 0) {
+    console.log("  ℹ️  No i18n-relevant files to check.");
+  }
+} else {
+  checkFrontend();
+  checkBackend();
+  checkKeyCompleteness();
+  checkPlaceholderConsistency();
+}
 
 if (hasErrors) {
   console.error(

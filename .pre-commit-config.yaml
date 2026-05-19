@@ -48,22 +48,18 @@ repos:
       # Biome lint + format — catches code issues and enforces style
       - id: biome-frontend
         name: Biome (Frontend)
-        entry: bash -c 'cd packages/web && npx biome check --write .'
+        entry: bash -c 'cd packages/web && npx biome check --write "$@"' --
         language: system
         types_or: [ts, tsx]
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
+        files: ^packages/web/
 
-      # i18n validation — catches hardcoded user-facing strings in TSX
+      # i18n validation — catches hardcoded user-facing strings
       - id: validate-i18n
         name: i18n Validation
-        entry: bash -c 'cd /workspace && npx tsx scripts/validate-i18n.ts'
+        entry: bash -c 'cd /workspace && npx tsx scripts/validate-i18n.ts "$@"' --
         language: system
-        types: [tsx]
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
+        types_or: [tsx, python, json]
+        files: ^(packages/web/.*\.tsx|apps/api/.*\.py|packages/i18n/messages/.*\.json)
 
       # TypeScript type check — consider moving to stages: [pre-push] or CI-only if slow
       - id: typecheck-frontend
