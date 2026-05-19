@@ -23,8 +23,6 @@ from tests.e2e.test_auth_flow import TestAuthFlow
 from tests.e2e.test_editor_autosave import TestEditorAutosave
 from tests.e2e.test_setup_wizard import TestSetupWizard
 
-pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
-
 
 # Keep the original class name and structure for compatibility
 @pytest.mark.e2e

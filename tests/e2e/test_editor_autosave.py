@@ -17,8 +17,6 @@ import pytest
 from tests.e2e.mocks.llm_responses import setup_llm_mocks
 from tests.e2e.test_helpers import _click_next
 
-pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
-
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
@@ -52,7 +50,7 @@ class TestEditorAutosave:
         # Navigate to login UI if needed
         if not _skip_login:
             page.goto(f"{base_url}/login")
-            page.wait_for_load_state("networkidle")
+            page.wait_for_url("**/login", timeout=10000)
 
             # Fill credentials and login
             email_input = page.locator("#login-email")
@@ -67,7 +65,7 @@ class TestEditorAutosave:
 
         # Navigate to wizard
         page.goto(f"{base_url}/wizard")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(1000)
 
         # Complete wizard setup first
         project_name_input = page.locator(

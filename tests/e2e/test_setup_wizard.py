@@ -18,8 +18,6 @@ from tests.e2e.test_helpers import _click_next
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
-pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
-
 
 @pytest.mark.e2e
 class TestSetupWizard:
@@ -44,7 +42,7 @@ class TestSetupWizard:
         # Navigate to login UI if needed
         if not _skip_login:
             page.goto(f"{base_url}/login")
-            page.wait_for_load_state("networkidle")
+            page.wait_for_url("**/login", timeout=10000)
 
             # Fill credentials and login
             email_input = page.locator("#login-email")
@@ -59,7 +57,7 @@ class TestSetupWizard:
 
         # Navigate to wizard
         page.goto(f"{base_url}/wizard")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(1000)
 
     def test_wizard_step_1_project_setup(
         self,

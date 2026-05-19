@@ -56,7 +56,7 @@ class TestAuthFlow:
         # Manually injecting cookies bypasses this flow and causes redirects to
         # /login after the wizard completes.
         page.goto(f"{base_url}/login")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_url("**/login", timeout=10000)
 
         # --- Debug: verify we actually landed on the login page ---
         current_url = page.url
@@ -119,7 +119,7 @@ class TestAuthFlow:
             # - the dashboard title (novels loaded)
             # - the empty state (no novels yet)
             # - or redirects back to /login if authApi.me() fails
-            page.wait_for_load_state("networkidle")
+            page.wait_for_timeout(1000)  # Kurz warten bis UI stabil
             current_url = page.url
             page_text = page.inner_text("body")
 
