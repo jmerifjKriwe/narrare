@@ -94,10 +94,21 @@ async function refreshAccessToken(): Promise<void> {
 }
 
 /**
- * Attempt to restore a session using the httpOnly refresh cookie.
- * Called on app load (F5) when the in-memory access token is null.
- * Returns true if a new access token was obtained, false otherwise.
+ * Log out on the server: POST to /api/v1/auth/logout to clear the httpOnly
+ * refresh cookie. This uses raw fetch (not fetchApi) because there may be no
+ * access token at the time of logout.
  */
+export async function logoutApi(): Promise<void> {
+  try {
+    await fetch("/api/v1/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // Network error — ignore, we still clear local state
+  }
+}
+
 export async function restoreSession(): Promise<boolean> {
   if (_accessToken) return true; // already have a valid token
   try {
@@ -121,7 +132,9 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
   if (response.status === 401) {
     if (endpoint === "/auth/refresh") {
       clearAccessToken();
-      window.location.href = "/login";
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
       throw new Error("Session expired");
     }
     try {

@@ -326,7 +326,8 @@ apps/api/narrare/
 │   ├── service.py              ← Business logic (uses repository)
 │   ├── security.py             ← JWT, password hashing
 │   ├── cookie_helpers.py       ← httpOnly refresh cookie set/clear (narrare_refresh)
-│   └── router.py               ← FastAPI routes (thin, delegates to service)
+│   ├── router.py               ← FastAPI routes (login, register, refresh, logout)
+│   └── router_me.py            ← GET /me route (extracted for file size limit)
 │
 ├── novels/
 │   ├── __init__.py

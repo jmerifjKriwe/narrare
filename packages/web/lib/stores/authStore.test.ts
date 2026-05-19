@@ -3,6 +3,7 @@ import {
   authApi,
   clearAccessToken,
   getAccessToken,
+  logoutApi,
   restoreSession,
   setAccessToken,
 } from "@/lib/api/client";
@@ -15,6 +16,7 @@ vi.mock("@/lib/api/client", () => ({
   clearAccessToken: vi.fn(),
   getAccessToken: vi.fn(() => null),
   restoreSession: vi.fn(),
+  logoutApi: vi.fn(),
   authApi: {
     login: vi.fn(),
     register: vi.fn(),
@@ -38,6 +40,7 @@ describe("useAuthStore", () => {
       user: null,
       isLoading: false,
       isAuthenticated: false,
+      _sessionChecked: false,
     });
     vi.clearAllMocks();
     mockLocation.href = "";
@@ -57,6 +60,11 @@ describe("useAuthStore", () => {
     it("should not be loading initially", () => {
       const state = useAuthStore.getState();
       expect(state.isLoading).toBe(false);
+    });
+
+    it("should have _sessionChecked set to false initially", () => {
+      const state = useAuthStore.getState();
+      expect(state._sessionChecked).toBe(false);
     });
   });
 
@@ -161,28 +169,36 @@ describe("useAuthStore", () => {
   });
 
   describe("logout", () => {
-    it("should clear user and authenticated state", () => {
+    it("should clear user and authenticated state and reset _sessionChecked", async () => {
       // Set up authenticated state first
       useAuthStore.setState({
         user: createUser(),
         isAuthenticated: true,
+        _sessionChecked: true,
       });
 
-      useAuthStore.getState().logout();
+      await useAuthStore.getState().logout();
 
       const state = useAuthStore.getState();
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
+      expect(state._sessionChecked).toBe(false);
     });
 
-    it("should call clearAccessToken", () => {
-      useAuthStore.getState().logout();
+    it("should call logoutApi before clearing local state", async () => {
+      await useAuthStore.getState().logout();
+
+      expect(logoutApi).toHaveBeenCalledOnce();
+    });
+
+    it("should call clearAccessToken after logoutApi", async () => {
+      await useAuthStore.getState().logout();
 
       expect(clearAccessToken).toHaveBeenCalled();
     });
 
-    it("should redirect to /login", () => {
-      useAuthStore.getState().logout();
+    it("should redirect to /login", async () => {
+      await useAuthStore.getState().logout();
 
       expect(window.location.href).toBe("/login");
     });
@@ -200,6 +216,7 @@ describe("useAuthStore", () => {
       expect(state.user).toEqual(user);
       expect(state.isAuthenticated).toBe(true);
       expect(state.isLoading).toBe(false);
+      expect(state._sessionChecked).toBe(true);
     });
 
     it("should call restoreSession when no access token exists", async () => {
@@ -233,20 +250,42 @@ describe("useAuthStore", () => {
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
       expect(state.isLoading).toBe(false);
+      expect(state._sessionChecked).toBe(true);
     });
 
-    it("should handle restoreSession failure gracefully", async () => {
+    it("should skip me() call when restoreSession fails (Fix 4)", async () => {
       vi.mocked(getAccessToken).mockReturnValue(null);
       vi.mocked(restoreSession).mockResolvedValue(false);
-      // If restoreSession fails, authApi.me() will also fail (no valid token)
-      vi.mocked(authApi.me).mockRejectedValue(new Error("Not authenticated"));
 
       await useAuthStore.getState().loadUser();
 
+      // authApi.me() should NOT be called — we avoid the guaranteed 401
+      expect(authApi.me).not.toHaveBeenCalled();
       const state = useAuthStore.getState();
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
       expect(state.isLoading).toBe(false);
+      expect(state._sessionChecked).toBe(true);
+    });
+
+    it("should early-return on second call when _sessionChecked is already true", async () => {
+      // Simulate first successful call
+      const user = createUser();
+      vi.mocked(getAccessToken).mockReturnValue("existing-token");
+      vi.mocked(authApi.me).mockResolvedValue(user);
+
+      await useAuthStore.getState().loadUser();
+      expect(useAuthStore.getState()._sessionChecked).toBe(true);
+      expect(useAuthStore.getState().user).toEqual(user);
+
+      // Reset mock counters to detect second call
+      vi.mocked(authApi.me).mockClear();
+
+      // Second call should early-return
+      await useAuthStore.getState().loadUser();
+
+      // authApi.me() should not be called again
+      expect(authApi.me).not.toHaveBeenCalled();
     });
   });
 });

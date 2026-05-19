@@ -137,6 +137,10 @@ export const handlers = [
     });
   }),
 
+  http.post("*/api/v1/auth/logout", async () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.get("*/api/v1/auth/me", async ({ request }) => {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader) {

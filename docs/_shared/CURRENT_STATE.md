@@ -142,7 +142,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `event_listener.py` — Event → TaskIQ task routing
 
 **Domain Modules (all contract-first per ADR-003):**
-- `auth/` — JWT auth: models, service, router, repository, contracts, schemas, security, cookie_helpers
+- `auth/` — JWT auth: models, service, router, router_me, repository, contracts, schemas, security, cookie_helpers
   - argon2id password hashing (bcrypt backward compatibility for existing hashes)
   - httpOnly refresh token cookie (`narrare_refresh`) — set on login/register, cleared on logout
 - `novels/` — CRUD: models → repository → service → router, contracts, schemas
@@ -214,7 +214,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 **App Structure (App Router):**
 - `app/(auth)/` — Login, Register pages with form validation (react-hook-form + zod)
 - Login/Register redirect: `has_providers ? /dashboard : /wizard` (checks `user_providers` table)
-- `auth/me` endpoint returns `has_providers: bool`
+- `auth/me` endpoint (in `router_me.py`) returns `has_providers: bool`
 - `app/(app)/` — Authenticated pages with shared layout (auth shell + user info)
   - `dashboard/` — Novel list with create/navigate
   - `wizard/` — Setup wizard (5-step, inherits app layout with header/user info)
@@ -271,16 +271,18 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 **Auth & Security:**
 - In-memory access token (not localStorage)
-- httpOnly refresh token cookie (`narrare_refresh`) — backend sets on login/register, refresh endpoint reads from cookie
+- httpOnly refresh token cookie (`narrare_refresh`) — backend sets on login/register, refresh endpoint reads from cookie; cleared by `POST /api/v1/auth/logout`
 - `cookie_helpers.py` — backend helper for setting/clearing refresh cookies (httpOnly, SameSite=Lax)
+- `POST /api/v1/auth/logout` — clears `narrare_refresh` cookie; no server-side token invalidation needed (cookie is the sole revocation mechanism)
 - `restoreSession()` — frontend function to restore session from httpOnly cookie via silent refresh
 - `proxy.ts` — Next.js route-level proxy verifying JWT cookie (`narrare_auth`) via jose for server-side auth protection on `/dashboard`, `/wizard`, `/novel/*`; redirects to `/login` if invalid
 - Client syncs `narrare_auth` cookie alongside in-memory token (for proxy consumption)
+- `_sessionChecked` guard in authStore — prevents infinite 401 refresh loops by tracking `loadUser()` terminal state; breaks retry cycle after first failed session check
 - Auto-redirect to /login on 401
 
 **Testing:**
 - Vitest 3.x + Testing Library + MSW
-- 243 tests across proxy, utils, stores, API client, UI components, wizard steps
+- 453 tests across proxy, utils, stores, API client, UI components, wizard steps
 - `npm run test` / `vitest run`
 
 #### `tests/` — Test Suite

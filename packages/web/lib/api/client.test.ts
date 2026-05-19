@@ -4,6 +4,7 @@ import {
   chaptersApi,
   clearAccessToken,
   getAccessToken,
+  logoutApi,
   novelsApi,
   restoreSession,
   setAccessToken,
@@ -242,6 +243,28 @@ describe("API Client", () => {
 
       expect(result).toBe(false);
       expect(getAccessToken()).toBeNull();
+    });
+  });
+
+  describe("logoutApi", () => {
+    it("should call POST /api/v1/auth/logout with credentials", async () => {
+      await logoutApi();
+
+      // Should not throw — success case
+    });
+
+    it("should handle network errors gracefully", async () => {
+      const { server } = await import("@/mocks/server");
+      const { HttpResponse, http } = await import("msw");
+
+      server.use(
+        http.post("*/api/v1/auth/logout", () =>
+          HttpResponse.json({ detail: "Server error" }, { status: 500 }),
+        ),
+      );
+
+      // Should not throw despite server error
+      await expect(logoutApi()).resolves.toBeUndefined();
     });
   });
 

@@ -123,6 +123,16 @@ class AuthService:
 
         return self._create_tokens(user_id)
 
+    async def logout(self) -> None:
+        """
+        Log a logout event.
+
+        This is a purely informational method — no server-side token
+        invalidation is performed.  The caller (router) is responsible
+        for clearing the httpOnly refresh cookie.
+        """
+        logger.info("user_logged_out")
+
     def _create_tokens(self, user_id: str) -> TokenResponse:
         """Create access + refresh token pair."""
         access = create_access_token(

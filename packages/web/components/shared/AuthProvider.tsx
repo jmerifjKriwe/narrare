@@ -13,13 +13,14 @@ import { useAuthStore } from "@/lib/stores/authStore";
 export function AuthProvider({ children }: { readonly children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const sessionChecked = useAuthStore((s) => s._sessionChecked);
   const loadUser = useAuthStore((s) => s.loadUser);
 
   useEffect(() => {
-    if (!user && !isLoading) {
+    if (!user && !isLoading && !sessionChecked) {
       loadUser();
     }
-  }, [user, isLoading, loadUser]);
+  }, [user, isLoading, sessionChecked, loadUser]);
 
   return <>{children}</>;
 }

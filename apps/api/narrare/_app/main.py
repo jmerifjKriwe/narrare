@@ -110,6 +110,7 @@ def create_app() -> FastAPI:
 def _register_routers(app: FastAPI) -> None:
     """Register all domain routers."""
     from narrare.auth.router import router as auth_router
+    from narrare.auth.router_me import router as auth_me_router
     from narrare.chapters.router import router as chapters_router
     from narrare.chapters.router_versions import router as chapter_versions_router
     from narrare.generation.router import router as generation_router
@@ -129,6 +130,7 @@ def _register_routers(app: FastAPI) -> None:
     prefix = "/api/v1"
 
     app.include_router(auth_router, prefix=prefix)
+    app.include_router(auth_me_router, prefix=prefix)
     app.include_router(novels_router, prefix=prefix)
     app.include_router(chapters_router, prefix=prefix)
     app.include_router(chapter_versions_router, prefix=prefix)

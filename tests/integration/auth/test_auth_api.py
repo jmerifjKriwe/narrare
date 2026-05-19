@@ -248,6 +248,47 @@ class TestRefresh:
         assert response.status_code == 200
 
 
+class TestLogout:
+    async def test_logout_returns_204(self, client: AsyncClient) -> None:
+        """Logout returns 204 No Content."""
+        response = await client.post("/api/v1/auth/logout")
+        assert response.status_code == 204
+
+    async def test_logout_clears_refresh_cookie(self, client: AsyncClient) -> None:
+        """Logout clears the narrare_refresh cookie."""
+        response = await client.post("/api/v1/auth/logout")
+        assert response.status_code == 204
+        cookie_header = response.headers.get("set-cookie", "")
+        assert REFRESH_COOKIE_NAME in cookie_header
+
+    async def test_logout_without_auth_works(self, client: AsyncClient) -> None:
+        """Logout works without any authentication."""
+        # No auth headers, no cookies — should still return 204
+        response = await client.post("/api/v1/auth/logout")
+        assert response.status_code == 204
+
+    async def test_logout_clears_cookie_after_login(self, client: AsyncClient) -> None:
+        """After a valid login, logout clears the refresh cookie."""
+        reg = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "logout-flow@example.com",
+                "password": "password123",
+            },
+        )
+        assert reg.status_code == 201
+        refresh_token = reg.json()["refresh_token"]
+
+        # Logout with the refresh cookie set
+        response = await client.post(
+            "/api/v1/auth/logout",
+            cookies={REFRESH_COOKIE_NAME: refresh_token},
+        )
+        assert response.status_code == 204
+        cookie_header = response.headers.get("set-cookie", "")
+        assert REFRESH_COOKIE_NAME in cookie_header
+
+
 class TestGetCurrentUser:
     async def test_me_returns_user_profile(
         self, client: AsyncClient, auth_headers: dict[str, str]
