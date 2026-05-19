@@ -12,7 +12,7 @@
 
 Date: 2026-05-19
 Updated by: NarrareDevCoordinator
-Session summary: KB v2 complete — template-driven structured metadata with field_groups + sections for all 8 entity types × 3 languages, cross-reference resolution, 2 new entity types (concept, setting), template management UI, seed version-aware upsert. All templates v2, seed service handles version upgrades.
+Session summary: KB template i18n consolidation — 24 language-specific templates → 8 language-neutral (v3 format). TemplateMeta drops template_language. Field descriptions moved to kb.fieldDesc i18n namespace. Migration 0012 drops language column. KBTypeField uses kb.fieldDesc.* for placeholders. 78 files changed.
 
 ---
 
@@ -133,8 +133,8 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `kb/schemas/` — 8 entity schemas (character, location, faction, object, system, timeline, concept, setting) with nested metadata groups (CharacterMetadata, LocationMetadata, etc.)
 - `templates/models.py` — Template, TemplateField, TemplateFieldGroup, TemplateSection, TemplateMeta models
 - `templates/parser.py` — parse_template() with v1 flat + v2 grouped frontmatter support
-- `templates/defaults/{en,de,fr}/` — 24 bundled templates (8 types × 3 langs), all v2 format with field_groups + sections
-- Character template: 7 groups, 44 fields. Location: 4 groups, 17 fields. Faction: 4 groups, 15 fields. Object: 4 groups, 17 fields. System: 4 groups, 15 fields. Timeline: 2 groups, 10 fields. Concept + Setting: v2 format with domain-specific groups.
+- `templates/defaults/` — 8 language-neutral templates (one per entity type, v3 format with field_groups + sections). Display text comes from i18n exclusively. 24 → 8 files consolidated.
+- Character template: 7 groups, 44 fields. Location: 4 groups, 17 fields. Faction: 4 groups, 15 fields. Object: 4 groups, 17 fields. System: 4 groups, 15 fields. Timeline: 2 groups, 10 fields. Concept + Setting: v3 format with domain-specific groups. No language dimension — all display text via i18n.
 
 **Event System (`events/`):**
 - Event types, bus protocol (Protocol-based), NullEventBus for testing
@@ -210,9 +210,10 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 **Templates Module (`templates/`):**
 - Full CRUD: models (KBTemplate SQLAlchemy), repository, service, router, contracts, schemas
-- Cascade resolution: user override → project override → bundled default (mirrors Prompt system)
+- Cascade resolution: user override → project override → bundled default (mirrors Prompt system, language-independent)
 - `cascade_resolver.py` — TemplateScope enum (USER, PROJECT, GLOBAL) with priority-based resolution
 - Migration 0010 — kb_templates table (idempotent, IF NOT EXISTS pattern)
+- Migration 0012 — drops `template_language` column from kb_templates; seed now loads 8 language-neutral templates
 
 **Setup (`setup/`):**
 - `seed_templates.py` — Version-aware upsert: seeds new templates AND updates existing globals when bundled version is newer
@@ -273,7 +274,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
   - `KBEntryHeader.tsx` — Name, type, tags header
   - `KBFieldGroup.tsx` — Accordion group component
   - `KBFlatEditor.tsx` — Fallback flat editor for entries without templates
-  - `KBTypeField.tsx` — Renders correct input per field_type (str, int, bool, list, select)
+  - `KBTypeField.tsx` — Renders correct input per field_type (str, int, bool, list, select); uses `kb.fieldDesc.*` i18n keys for placeholder text
   - `KBTagInput.tsx` — Tag/chip input for list fields
   - `KBSectionEditor.tsx` — Guided body section textarea with @mention autocomplete
   - `KBMentionRenderer.tsx` — Renders @mentions as clickable badges
@@ -474,6 +475,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | KB v2: i18n | Group labels, hints, field labels for all types (en/de/fr) |
 | FR character YAML fix | Quoted (ex: ...) descriptions to prevent YAML mapping key parsing error |
 | Seed version-aware upsert | seed_templates.py now updates existing global entries when bundled version is newer |
+| KB template i18n consolidation | 24 language-specific templates → 8 language-neutral. TemplateMeta drops template_language. Field descriptions moved to kb.fieldDesc i18n namespace. Migration 0012. 78 files changed. |
 
 ---
 
