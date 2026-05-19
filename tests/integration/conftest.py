@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
 from typing import TYPE_CHECKING
 
@@ -16,20 +15,7 @@ from narrare._app.database import get_async_session
 from narrare._app.main import create_app
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
-
-# Module-level event loop for pytest-asyncio compatibility
-# This ensures all session-scoped and function-scoped fixtures use the same loop
-_event_loop: asyncio.AbstractEventLoop | None = None
-
-
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop]:
-    """Create a session-scoped event loop to avoid loop mismatch errors."""
-    global _event_loop
-    if _event_loop is None or _event_loop.is_closed():
-        _event_loop = asyncio.new_event_loop()
-    yield _event_loop
+    from collections.abc import AsyncGenerator
 
 
 TEST_DATABASE_URL = os.environ.get(
