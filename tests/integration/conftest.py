@@ -1,8 +1,7 @@
-"""Integration test configuration - minimal setup for debugging."""
+"""Integration test configuration — pytest-asyncio 1.3.0 compatible."""
 
 from __future__ import annotations
 
-import asyncio
 import os
 from typing import TYPE_CHECKING
 
@@ -18,23 +17,7 @@ from narrare._app.main import create_app
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-
-# --- CRITICAL: Session-scoped event loop for pytest-asyncio compatibility ---
-# pytest-asyncio 1.3.0+ creates separate event loops for session-scoped and
-# function-scoped fixtures. This causes "attached to a different loop" errors
-# when session-scoped async fixtures (test_engine) are used with function-scoped
-# async fixtures (db_session).
-# The solution: create a session-scoped event_loop fixture that all async
-# fixtures use. This is the CORRECT pattern for pytest-asyncio 1.3.0+.
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create a session-scoped event loop that all async fixtures share."""
-    policy = asyncio.get_event_loop_policy()  # type: ignore[reportDeprecated]
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
+    from fastapi import FastAPI
 
 
 TEST_DATABASE_URL = os.environ.get(
@@ -56,7 +39,7 @@ def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ig
     monkeypatch.setenv("NARRARE_ENCRYPTION_KEY", Fernet.generate_key().decode())
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
 async def check_db_available() -> None:
     """Skip all integration tests if database is not available."""
     try:
@@ -68,7 +51,7 @@ async def check_db_available() -> None:
         pytest.skip("Database not available")
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def test_engine() -> AsyncGenerator[AsyncEngine]:
     """Session-scoped test engine."""
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=True)
@@ -76,9 +59,17 @@ async def test_engine() -> AsyncGenerator[AsyncEngine]:
     await engine.dispose()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def _test_app() -> AsyncGenerator[FastAPI]:  # pyright: ignore[reportUnusedFunction]
+    """Session-scoped FastAPI app — lifespan runs once, not per test."""
+    app = create_app()
+    yield app
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(loop_scope="session")
 async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
-    """Transaction-wrapped session."""
+    """Transaction-wrapped session — rolled back after each test."""
     async with test_engine.connect() as conn:
         transaction = await conn.begin()
         session = AsyncSession(bind=conn, expire_on_commit=False)
@@ -87,23 +78,22 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
         await transaction.rollback()
 
 
-@pytest_asyncio.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+@pytest_asyncio.fixture(loop_scope="session")
+async def client(_test_app: FastAPI, db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     """Test HTTP client with DB session override."""
-    app = create_app()
 
     async def override_session():
         yield db_session
 
-    app.dependency_overrides[get_async_session] = override_session
+    _test_app.dependency_overrides[get_async_session] = override_session
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+    async with AsyncClient(transport=ASGITransport(app=_test_app), base_url="http://test") as c:
         yield c
 
-    app.dependency_overrides.clear()
+    _test_app.dependency_overrides.pop(get_async_session, None)
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict[str, str]:
     """Create a test user and return authorization headers with valid token."""
     import uuid
