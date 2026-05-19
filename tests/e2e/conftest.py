@@ -51,7 +51,7 @@ def api_url() -> str:
 def browser_type_launch_args() -> dict[str, Any]:
     """Launch Chromium only. Headless in CI, headed locally for debugging."""
     return {
-        "headless": os.environ.get("CI", "") == "true",
+        "headless": os.environ.get("HEADED", "") != "true",
         "args": ["--disable-gpu", "--no-sandbox"],
     }
 
