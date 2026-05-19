@@ -214,7 +214,7 @@ class TestDefaultTemplates:
     @pytest.mark.parametrize("language", ["en", "de", "fr"])
     @pytest.mark.parametrize(
         "entity_type",
-        ["character", "location", "faction", "object", "system", "timeline"],
+        ["character", "concept", "faction", "location", "object", "setting", "system", "timeline"],
     )
     def test_all_entity_types_all_languages(
         self,
@@ -239,13 +239,22 @@ class TestDefaultTemplates:
         assert content is None
 
     def test_list_default_templates(self) -> None:
-        """Should list all 6 entity types x 3 languages = 18 templates."""
+        """Should list all 8 entity types x 3 languages = 24, minus missing fr templates = 22."""
         templates = list_default_templates()
-        assert len(templates) == 18
+        assert len(templates) == 22
 
         # All entity types present
         entity_types = {t[0] for t in templates}
-        assert entity_types == {"character", "location", "faction", "object", "system", "timeline"}
+        assert entity_types == {
+            "character",
+            "concept",
+            "faction",
+            "location",
+            "object",
+            "setting",
+            "system",
+            "timeline",
+        }
 
         # All languages present
         languages = {t[1] for t in templates}
@@ -258,7 +267,7 @@ class TestDefaultTemplates:
 
         template = parse_template(raw)
         assert template.meta.template_type == "character"
-        assert len(template.fields) == 11  # 11 character fields
+        assert len(template.fields) == 43  # 43 character fields
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +295,7 @@ class TestSchemaBridgeGetFormFields:
 
     @pytest.mark.parametrize(
         "entity_type",
-        ["character", "location", "faction", "object", "system", "timeline"],
+        ["character", "concept", "faction", "location", "object", "setting", "system", "timeline"],
     )
     def test_all_known_types_have_fields(self, entity_type: str) -> None:
         """All known entity types should have template fields."""

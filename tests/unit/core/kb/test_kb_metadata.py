@@ -17,10 +17,12 @@ from pydantic import ValidationError
 from narrare_core.kb.schemas import (
     SCHEMA_REGISTRY,
     CharacterMetadata,
+    ConceptMetadata,
     FactionMetadata,
     KBEntryMetadata,
     LocationMetadata,
     ObjectMetadata,
+    SettingMetadata,
     SystemMetadata,
     TimelineMetadata,
     get_schema,
@@ -244,7 +246,7 @@ class TestSchemaRegistry:
 
     @pytest.mark.parametrize(
         "entity_type",
-        ["character", "location", "faction", "object", "system", "timeline"],
+        ["character", "concept", "faction", "location", "object", "setting", "system", "timeline"],
     )
     def test_known_type_returns_correct_schema(self, entity_type: str) -> None:
         """All known entity types should map to their specific schema."""
@@ -263,10 +265,19 @@ class TestSchemaRegistry:
         schema = get_schema("")
         assert schema is KBEntryMetadata
 
-    def test_registry_has_six_entries(self) -> None:
-        """Registry should contain exactly the 6 known entity types."""
-        assert len(SCHEMA_REGISTRY) == 6
-        expected = {"character", "location", "faction", "object", "system", "timeline"}
+    def test_registry_has_eight_entries(self) -> None:
+        """Registry should contain exactly the 8 known entity types."""
+        assert len(SCHEMA_REGISTRY) == 8
+        expected = {
+            "character",
+            "concept",
+            "faction",
+            "location",
+            "object",
+            "setting",
+            "system",
+            "timeline",
+        }
         assert set(SCHEMA_REGISTRY.keys()) == expected
 
 
@@ -283,9 +294,11 @@ class TestCrossSchemaValidation:
         [
             KBEntryMetadata,
             CharacterMetadata,
-            LocationMetadata,
+            ConceptMetadata,
             FactionMetadata,
+            LocationMetadata,
             ObjectMetadata,
+            SettingMetadata,
             SystemMetadata,
             TimelineMetadata,
         ],
@@ -300,9 +313,11 @@ class TestCrossSchemaValidation:
         [
             KBEntryMetadata,
             CharacterMetadata,
-            LocationMetadata,
+            ConceptMetadata,
             FactionMetadata,
+            LocationMetadata,
             ObjectMetadata,
+            SettingMetadata,
             SystemMetadata,
             TimelineMetadata,
         ],
