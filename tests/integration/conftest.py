@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,24 @@ from narrare._app.main import create_app
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+
+
+# --- CRITICAL: Session-scoped event loop for pytest-asyncio compatibility ---
+# pytest-asyncio 1.3.0+ creates separate event loops for session-scoped and
+# function-scoped fixtures. This causes "attached to a different loop" errors
+# when session-scoped async fixtures (test_engine) are used with function-scoped
+# async fixtures (db_session).
+# The solution: create a session-scoped event_loop fixture that all async
+# fixtures use. This is the CORRECT pattern for pytest-asyncio 1.3.0+.
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create a session-scoped event loop that all async fixtures share."""
+    policy = asyncio.get_event_loop_policy()  # type: ignore[reportDeprecated]
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 
 TEST_DATABASE_URL = os.environ.get(

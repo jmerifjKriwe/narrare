@@ -161,7 +161,6 @@ known-first-party = ["narrare_core", "narrare_i18n", "narrare"]
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["apps/api", "packages/core"]
 python_files = ["test_*.py"]
