@@ -30,7 +30,7 @@ class TestAuthFlow:
         base_url: str,
         api_url: str,
         register_unique_user,
-    ) -> dict[str, str | bool]:
+    ) -> None:
         """Complete user journey: signup → UI login → session establishment."""
         # Install LLM mocks BEFORE any interaction that could trigger LLM calls
         setup_llm_mocks(page)
@@ -126,10 +126,4 @@ class TestAuthFlow:
                     f"Page text: {page_text[:500]}"
                 )
 
-        # Return session info for tests that need it
-        return {
-            "email": email,
-            "password": password,
-            "access_token": access_token,
-            "skip_login": _skip_login,
-        }
+        # Session is now established — no return needed (pytest tests must return None)

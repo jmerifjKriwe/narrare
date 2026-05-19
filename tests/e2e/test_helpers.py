@@ -46,9 +46,10 @@ def _click_next(page: Page, expected_step: int | None = None) -> None:
 
     # If expected_step is provided, wait for the step to be active
     if expected_step is not None:
-        # Wait for step indicator to show expected step
-        step_indicator = page.locator(f'[data-step="{expected_step}"], .step-{expected_step}').first
-        if step_indicator.is_visible():
-            step_indicator.wait_for(state="visible", timeout=5000)
-        # Alternative: wait for URL to reflect step
-        page.wait_for_url(f"**/setup*step*{expected_step}**", timeout=5000)
+        # The wizard is an SPA — steps change via Zustand client state, NOT URL routing.
+        # The active step indicator has aria-current="step" and contains the step number.
+        # Before the transition, this locator matches 0 elements (old step has different
+        # text), so wait_for correctly blocks until the new step becomes active.
+        page.locator('[aria-current="step"]').filter(has_text=str(expected_step)).first.wait_for(
+            state="visible", timeout=5000
+        )
