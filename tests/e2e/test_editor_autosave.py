@@ -58,10 +58,8 @@ class TestEditorAutosave:
             page.fill("#login-email", email)
             page.fill("#login-password", password)
 
-            with page.expect_response("**/api/v1/auth/login", timeout=15000):
-                page.click('button[type="submit"]')
-
-            page.wait_for_url(f"{base_url}/", timeout=10000)
+            page.click('button[type="submit"]')
+            page.wait_for_url(f"{base_url}/", timeout=15000)
 
         # Navigate to wizard
         page.goto(f"{base_url}/wizard")

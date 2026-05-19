@@ -95,23 +95,12 @@ class TestAuthFlow:
             # router.push("/") on success. The root page "/" IS the dashboard —
             # there is no /dashboard route. New users see the empty dashboard
             # with a "New Novel" button that leads to /wizard.
-            with page.expect_response("**/api/v1/auth/login", timeout=15000) as login_response_info:
-                page.click('button[type="submit"]')
-
-            login_response = login_response_info.value
-            login_status = login_response.status
-            print(f"\n=== LOGIN API RESPONSE: HTTP {login_status} ===")
-
-            if login_status >= 400:
-                try:
-                    body = login_response.json()
-                    print(f"  Response body: {body}")
-                except Exception:
-                    print(f"  Response text: {login_response.text()[:500]}")
-
-            # Wait for the redirect to "/" (the dashboard page).
+            # Click submit and wait for redirect to "/" (dashboard).
             # The login component does router.push("/") after successful login.
-            page.wait_for_url(f"{base_url}/", timeout=10000)
+            # We don't wait for the API response because Next.js rewrites proxy
+            # the request server-side, making expect_response unreliable.
+            page.click('button[type="submit"]')
+            page.wait_for_url(f"{base_url}/", timeout=15000)
             print(f"Login redirect successful. Current URL: {page.url}")
 
             # Verify the dashboard actually loaded (not a redirect back to /login).
@@ -134,8 +123,7 @@ class TestAuthFlow:
                     print(f"  Login error message: {error_div.inner_text()}")
                 raise AssertionError(
                     f"Login redirected back to /login. URL: {current_url}\n"
-                    f"Page text: {page_text[:500]}\n"
-                    f"Login API returned HTTP {login_status}."
+                    f"Page text: {page_text[:500]}"
                 )
 
         # Return session info for tests that need it
