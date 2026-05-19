@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
+pytestmark = pytest.mark.requires_db
 
 
 class TestListNovels:

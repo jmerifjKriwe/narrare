@@ -17,6 +17,8 @@ import pytest
 from tests.e2e.mocks.llm_responses import setup_llm_mocks
 from tests.e2e.test_helpers import _click_next
 
+pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
+
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 

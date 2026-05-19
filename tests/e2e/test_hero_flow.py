@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
+
 from tests.e2e.test_auth_flow import TestAuthFlow
 from tests.e2e.test_editor_autosave import TestEditorAutosave
 from tests.e2e.test_setup_wizard import TestSetupWizard

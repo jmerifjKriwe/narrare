@@ -17,6 +17,8 @@ from tests.e2e.mocks.llm_responses import setup_llm_mocks
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
+# E2E tests are enabled - run with: pytest tests/e2e/ -m e2e
+
 
 @pytest.mark.e2e
 class TestAuthFlow:

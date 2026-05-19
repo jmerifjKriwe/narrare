@@ -37,12 +37,26 @@ class TestGatewayIntegration:
         db_session: AsyncSession,
     ) -> None:
         """User with category override → resolver uses override model."""
+        from narrare.auth.models import User
+        from narrare.auth.security import hash_password
         from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
         from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
         from narrare.settings.user_providers_repository import UserProvidersRepository
         from narrare_core.crypto import encrypt
 
         user_id = uuid.uuid4()
+
+        # Create user first (required for FK constraint)
+        user = User(
+            id=user_id,
+            email="test@example.com",
+            hashed_password=hash_password("password123"),
+            display_name="Test User",
+            is_active=True,
+            is_verified=True,
+        )
+        db_session.add(user)
+        await db_session.flush()
 
         # Create provider
         provider = UserProvider(
