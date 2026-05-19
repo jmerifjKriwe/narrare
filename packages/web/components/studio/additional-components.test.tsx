@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AnalysisPanel } from "./AnalysisPanel";
@@ -66,7 +67,14 @@ describe("BlockControls", () => {
 describe("WorldBuilding", () => {
   describe("rendering", () => {
     it("renders world building component", async () => {
-      render(<WorldBuilding novelId="novel-1" />);
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+      render(
+        <QueryClientProvider client={queryClient}>
+          <WorldBuilding novelId="novel-1" />
+        </QueryClientProvider>,
+      );
 
       await waitFor(() => {
         expect(document.querySelector("div")).toBeInTheDocument();

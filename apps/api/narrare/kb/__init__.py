@@ -1,0 +1,1 @@
+"""Knowledge Base domain module."""

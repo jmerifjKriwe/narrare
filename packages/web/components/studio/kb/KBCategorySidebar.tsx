@@ -1,0 +1,111 @@
+"use client";
+
+/**
+ * KB Category Sidebar — Column 1 of the 3-column KB browser.
+ *
+ * Shows entity type tabs with count badges and an "All" option.
+ */
+
+import { useTranslations } from "next-intl";
+import type { KBEntityType } from "@/lib/api/kb";
+import { useKBEntries } from "@/lib/hooks/useKB";
+import { ENTITY_TYPES, TYPE_ICONS, TYPE_LABEL_KEYS } from "./constants";
+
+interface KBCategorySidebarProps {
+  novelId: string;
+  activeType: KBEntityType | null;
+  onTypeChange: (type: KBEntityType | null) => void;
+}
+
+export function KBCategorySidebar({ novelId, activeType, onTypeChange }: KBCategorySidebarProps) {
+  const t = useTranslations("studio");
+
+  // Fetch counts for each entity type
+  const { data: allData } = useKBEntries(novelId, { page_size: 1 });
+  const totalCount = allData?.total ?? 0;
+
+  return (
+    <div className="w-56 border-r border-border bg-card flex flex-col">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          {t("kb.title")}
+        </h2>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2">
+        <div className="space-y-0.5">
+          {/* "All" tab */}
+          <button
+            type="button"
+            onClick={() => onTypeChange(null)}
+            className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md transition-all text-sm ${
+              activeType === null
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <span>{t("kb.allTypes")}</span>
+            <span
+              className={`text-xs px-1.5 py-0.5 rounded ${
+                activeType === null ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {totalCount}
+            </span>
+          </button>
+
+          {/* Per-type tabs */}
+          {ENTITY_TYPES.map((type) => (
+            <TypeButton
+              key={type}
+              novelId={novelId}
+              type={type}
+              isActive={activeType === type}
+              onClick={() => onTypeChange(type)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Per-type button with live count ---
+
+interface TypeButtonProps {
+  novelId: string;
+  type: KBEntityType;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+function TypeButton({ novelId, type, isActive, onClick }: TypeButtonProps) {
+  const t = useTranslations("studio");
+  const Icon = TYPE_ICONS[type];
+
+  const { data } = useKBEntries(novelId, { entity_type: type, page_size: 1 });
+  const count = data?.total ?? 0;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md transition-all text-sm ${
+        isActive
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "hover:bg-accent text-foreground"
+      }`}
+    >
+      <span className="flex items-center gap-3">
+        <Icon className="w-4 h-4" />
+        <span>{t(TYPE_LABEL_KEYS[type])}</span>
+      </span>
+      <span
+        className={`text-xs px-1.5 py-0.5 rounded ${
+          isActive ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}

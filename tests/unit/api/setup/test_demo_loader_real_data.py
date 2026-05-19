@@ -166,10 +166,8 @@ class TestLoadChaptersGerman:
 class TestLoadKBEntries:
     """Test _load_kb_entries behavior with real and missing KB module."""
 
-    async def test_load_kb_entries_handles_missing_kb_module(
-        self, loader: DemoLoader, tmp_path: Path
-    ) -> None:
-        """When KB module is not available, _load_kb_entries logs and returns."""
+    async def test_load_kb_entries_with_kb_module(self, loader: DemoLoader, tmp_path: Path) -> None:
+        """When KB module is available, entries are created from files."""
         kb_dir = tmp_path / "kb"
         kb_dir.mkdir()
         (kb_dir / "char-test.md").write_text(
@@ -178,11 +176,10 @@ class TestLoadKBEntries:
         )
 
         novel_id = uuid.uuid4()
-        # Should not raise — the ImportError is caught internally
         await loader._load_kb_entries(kb_dir, novel_id)
 
-        # No KB entries should be added since the module doesn't exist
-        loader._session.add.assert_not_called()  # pyright: ignore[reportAttributeAccessIssue]
+        # One KB entry should be added since the module now exists
+        assert loader._session.add.call_count == 1  # pyright: ignore[reportAttributeAccessIssue]
 
     async def test_load_kb_entries_skips_missing_dir(
         self, loader: DemoLoader, tmp_path: Path
@@ -203,10 +200,10 @@ class TestLoadKBEntries:
         await loader._load_kb_entries(kb_dir, novel_id)
         loader._session.add.assert_not_called()  # pyright: ignore[reportAttributeAccessIssue]
 
-    async def test_load_kb_entries_with_mocked_kb_module(
+    async def test_load_kb_entries_with_real_module(
         self, loader: DemoLoader, tmp_path: Path
     ) -> None:
-        """When KB module is mocked, entries are loaded from files."""
+        """When KB module is available, entries are loaded from files."""
         kb_dir = tmp_path / "kb"
         kb_dir.mkdir()
         (kb_dir / "char-anna.md").write_text(
@@ -218,25 +215,11 @@ class TestLoadKBEntries:
             encoding="utf-8",
         )
 
-        # Create a mock KBEntry class
-        mock_kb_entry = (
-            MagicMock()
-        )  # narrare: allow reason="No real KBEntry class available to spec"
-
         novel_id = uuid.uuid4()
-        import sys
+        await loader._load_kb_entries(kb_dir, novel_id)
 
-        # Mock the narrare.kb.models module
-        kb_module = MagicMock()  # narrare: allow reason="Mocking module for sys.modules injection"
-        kb_module.KBEntry = mock_kb_entry
-        sys.modules["narrare.kb.models"] = kb_module
-
-        try:
-            await loader._load_kb_entries(kb_dir, novel_id)
-            # Two KB entries should have been added to the session
-            assert loader._session.add.call_count == 2  # pyright: ignore[reportAttributeAccessIssue]
-        finally:
-            sys.modules.pop("narrare.kb.models", None)
+        # Two KB entries should have been added to the session
+        assert loader._session.add.call_count == 2  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class TestLoadKBEntryCounts:

@@ -18,6 +18,7 @@ import { useParams, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { authApi, chaptersApi, volumesApi } from "@/lib/api/client";
+import { useKBTotalCount } from "@/lib/hooks/useKB";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useEditorStore } from "@/lib/stores/editorStore";
 
@@ -181,7 +182,10 @@ export function Sidebar() {
               }`}
             >
               <item.icon className="w-4 h-4" />
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              {item.key === "worldbuilding" && novelId && (
+                <SidebarKBBadge novelId={novelId} active={active} />
+              )}
             </Link>
           );
         })}
@@ -275,5 +279,21 @@ export function Sidebar() {
         </div>
       </div>
     </div>
+  );
+}
+
+// --- KB entry count badge for sidebar ---
+
+function SidebarKBBadge({ novelId, active }: { novelId: string; active: boolean }) {
+  const kbCount = useKBTotalCount(novelId);
+  if (kbCount === 0) return null;
+  return (
+    <span
+      className={`text-xs px-1.5 py-0.5 rounded ${
+        active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
+      }`}
+    >
+      {kbCount}
+    </span>
   );
 }

@@ -39,3 +39,16 @@ class TestContractsImportCleanly:
         assert hasattr(SetupServiceProtocol, "complete")
         assert hasattr(ProviderServiceProtocol, "list_models")
         assert hasattr(DemoLoaderProtocol, "load")
+
+    def test_kb_contracts_import(self) -> None:
+        from narrare.kb.contracts import (
+            KBRepositoryProtocol,
+            KBServiceProtocol,
+            RelationshipRepositoryProtocol,
+            RelationshipServiceProtocol,
+        )
+
+        assert hasattr(KBRepositoryProtocol, "create")
+        assert hasattr(KBServiceProtocol, "create")
+        assert hasattr(RelationshipRepositoryProtocol, "create")
+        assert hasattr(RelationshipServiceProtocol, "create")

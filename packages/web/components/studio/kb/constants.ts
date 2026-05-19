@@ -1,0 +1,61 @@
+/**
+ * KB Entity type configuration constants.
+ *
+ * Shared across all KB sub-components.
+ */
+
+import { Clock, type LucideIcon, MapPin, Package, Shield, User, Zap } from "lucide-react";
+import type { KBEntityType } from "@/lib/api/kb";
+
+/** The 6 entity types supported by the KB system. */
+export const ENTITY_TYPES: KBEntityType[] = [
+  "character",
+  "location",
+  "faction",
+  "object",
+  "system",
+  "timeline",
+];
+
+/** Map entity type → lucide icon. */
+export const TYPE_ICONS: Record<KBEntityType, LucideIcon> = {
+  character: User,
+  location: MapPin,
+  faction: Shield,
+  object: Package,
+  system: Zap,
+  timeline: Clock,
+};
+
+/** i18n key suffix for each entity type label. */
+export const TYPE_LABEL_KEYS: Record<KBEntityType, string> = {
+  character: "kb.characters",
+  location: "kb.locations",
+  faction: "kb.factions",
+  object: "kb.objects",
+  system: "kb.systems",
+  timeline: "kb.timelines",
+};
+
+/** Status badge color classes. */
+export const STATUS_COLORS: Record<string, string> = {
+  draft: "bg-muted text-muted-foreground",
+  reviewed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  canon: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  deprecated: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+};
+
+/** Relative time formatter (simplified, client-only). */
+export function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `${diffDay}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}

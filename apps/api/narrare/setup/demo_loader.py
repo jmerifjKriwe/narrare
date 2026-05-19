@@ -209,9 +209,10 @@ class DemoLoader:
         """
         Load KB Markdown files into KBEntry records.
 
-        KB module is not yet implemented in Phase 2/3 — we store the
-        raw content and metadata for when KB is built in a later phase.
-        This uses a deferred import so the module can compile without KB.
+        Parses frontmatter to separate system fields (id, name, type, status,
+        tags) from entity-specific metadata. System fields populate dedicated
+        DB columns; everything else goes into the JSONB ``metadata`` column.
+        The Markdown body after frontmatter becomes ``body``.
         """
         if not kb_dir.exists():
             logger.debug("demo_kb_dir_missing", path=str(kb_dir))
@@ -221,27 +222,54 @@ class DemoLoader:
         if not kb_files:
             return
 
-        # Attempt to import KB model — not yet available in Phase 3
+        # Import KB model — available since Phase 4
         try:
-            from narrare.kb.models import KBEntry  # type: ignore[import-not-found]
+            from narrare.kb.models import KBEntry
         except ImportError:
             logger.info(
                 "kb_module_not_yet_available",
-                message="KB entries will be loaded when KB module is implemented (Phase 4+)",
+                message="KB entries will be loaded when KB module is implemented",
                 count=len(kb_files),
             )
             return
+
+        # System fields stored as dedicated DB columns
+        system_fields = {
+            "id",
+            "name",
+            "type",
+            "status",
+            "tags",
+            "template_type",
+            "template_version",
+        }
 
         for kb_file in kb_files:
             raw = kb_file.read_text(encoding="utf-8")
             parsed = parse_frontmatter(raw)
 
-            entry: KBEntry = KBEntry(  # type: ignore[possibly-undefined]  # deferred import
+            entity_type = parsed.get("type", "character")
+            name = parsed.get("name", kb_file.stem)
+            slug = parsed.get("id", kb_file.stem)
+            status = parsed.get("status", "draft")
+            tags = parsed.get("tags", [])
+
+            # All non-system frontmatter fields go into metadata JSONB
+            metadata = {k: v for k, v in parsed.metadata.items() if k not in system_fields}
+
+            # Body is the markdown content after frontmatter
+            body = parsed.content if parsed.content else ""
+
+            entry = KBEntry(
                 novel_id=novel_id,
-                entity_type=parsed.get("type", "character"),
-                name=parsed.get("name", kb_file.stem),
-                content=parsed.content,
-                status=parsed.get("status", "draft"),
+                entity_type=entity_type,
+                name=name,
+                slug=slug,
+                status=status,
+                tags=tags,
+                metadata_=metadata,
+                body=body,
+                embeddings_dirty=True,
             )
             self._session.add(entry)  # pyright: ignore[reportUnknownArgumentType]
 
