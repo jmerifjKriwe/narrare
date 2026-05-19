@@ -16,7 +16,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { authApi, chaptersApi, volumesApi } from "@/lib/api/client";
 import { useKBTotalCount } from "@/lib/hooks/useKB";
 import { useAuthStore } from "@/lib/stores/authStore";
@@ -77,12 +77,35 @@ export function Sidebar() {
     },
   });
 
-  // Auto-select first chapter when chapters load and none is selected
+  // Reset active chapter when novelId changes (user navigates to a different novel)
+  const prevNovelIdRef = useRef(novelId);
   useEffect(() => {
-    if (chapters.length > 0 && !activeChapterId) {
+    if (prevNovelIdRef.current !== novelId) {
+      setActiveChapterId(null);
+      prevNovelIdRef.current = novelId;
+    }
+  }, [novelId, setActiveChapterId]);
+
+  // Build a stable chapter-id set for O(1) lookups
+  const chapterIds = useCallback(() => new Set(chapters.map((c) => c.id)), [chapters]);
+
+  // Restore last-active chapter from localStorage, or fall back to first chapter
+  useEffect(() => {
+    if (!novelId || chapters.length === 0 || activeChapterId) return;
+    const key = `narrare:lastChapter:${novelId}`;
+    const stored = localStorage.getItem(key);
+    if (stored && chapterIds().has(stored)) {
+      setActiveChapterId(stored);
+    } else {
       setActiveChapterId(chapters[0].id);
     }
-  }, [chapters, activeChapterId, setActiveChapterId]);
+  }, [novelId, chapters, activeChapterId, setActiveChapterId, chapterIds]);
+
+  // Persist active chapter to localStorage whenever it changes
+  useEffect(() => {
+    if (!novelId || !activeChapterId) return;
+    localStorage.setItem(`narrare:lastChapter:${novelId}`, activeChapterId);
+  }, [novelId, activeChapterId]);
 
   const navItems: NavItem[] = novelId
     ? [
