@@ -16,6 +16,7 @@ import narrare.kb.models
 import narrare.memory.models
 import narrare.novels.models
 import narrare.settings.models
+import narrare.templates.models
 import narrare.volumes.models
 import narrare.writing.models  # noqa: F401
 from alembic import context

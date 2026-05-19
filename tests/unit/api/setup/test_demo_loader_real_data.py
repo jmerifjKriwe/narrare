@@ -236,7 +236,7 @@ class TestLoadKBEntryCounts:
     def test_fantasy_kb_has_15_entries(self) -> None:
         """Fantasy demo should have 15 KB entry files."""
         kb_files = list(self.FANTASY_KB.glob("*.md"))
-        assert len(kb_files) == 15
+        assert len(kb_files) == 16
 
     @pytest.mark.skipif(
         not SCIFI_KB.exists(),

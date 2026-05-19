@@ -10,7 +10,15 @@ import { fetchApi } from "./client";
 
 // --- KB Entry types ---
 
-export type KBEntityType = "character" | "location" | "faction" | "object" | "system" | "timeline";
+export type KBEntityType =
+  | "character"
+  | "concept"
+  | "faction"
+  | "location"
+  | "object"
+  | "setting"
+  | "system"
+  | "timeline";
 
 export type KBEntryStatus = "draft" | "reviewed" | "canon" | "deprecated";
 
@@ -88,7 +96,70 @@ export interface KBInverseSuggestion {
   description: string;
 }
 
+// --- Reference Resolution types ---
+
+export interface ReferenceResolution {
+  mention: string;
+  entry_id: string | null;
+  entry_name: string | null;
+  entity_type: string | null;
+  slug: string | null;
+}
+
+export interface ResolveReferencesResponse {
+  resolved: ReferenceResolution[];
+  html: string | null;
+}
+
 // --- List query params ---
+
+// --- KB Template types ---
+
+export interface KBTemplateField {
+  name: string;
+  field_type: string;
+  required: boolean;
+  description: string;
+}
+
+export interface KBTemplateSection {
+  name: string;
+  label_key: string;
+  description_key: string;
+  order: number;
+}
+
+export interface KBTemplateFieldGroup {
+  name: string;
+  label_key: string;
+  description_key: string;
+  fields: KBTemplateField[];
+  order: number;
+}
+
+export interface KBTemplateMeta {
+  template_type: string;
+  template_version: string;
+  template_language: string;
+  schema_version: string;
+}
+
+export interface KBTemplate {
+  meta: KBTemplateMeta;
+  fields: KBTemplateField[];
+  field_groups: KBTemplateFieldGroup[];
+  sections: KBTemplateSection[];
+  body: string;
+}
+
+export interface KBTemplateInfo {
+  entity_type: string;
+  language: string;
+  scope: string;
+  schema_version: string;
+  has_override: boolean;
+  has_update: boolean;
+}
 
 export interface KBEntryListParams {
   entity_type?: KBEntityType;
@@ -104,6 +175,14 @@ export interface KBSearchParams extends KBEntryListParams {
 // --- API functions ---
 
 export const kbApi = {
+  // -- Templates --
+
+  getTemplate: (novelId: string, entityType: string) =>
+    fetchApi<KBTemplate>(`/novels/${novelId}/kb/templates/${entityType}`),
+
+  listTemplates: (novelId: string) => fetchApi<KBTemplateInfo[]>(`/novels/${novelId}/kb/templates`),
+
+  // -- Entries --
   // -- Entries --
 
   listEntries: (novelId: string, params?: KBEntryListParams) => {
@@ -167,5 +246,18 @@ export const kbApi = {
   getInverseSuggestion: (novelId: string, relType: string) =>
     fetchApi<KBInverseSuggestion>(
       `/novels/${novelId}/kb/relationships/inverse-suggestion?rel_type=${encodeURIComponent(relType)}`,
+    ),
+
+  // -- Reference Resolution --
+
+  resolveReferences: (novelId: string, text: string) =>
+    fetchApi<ResolveReferencesResponse>(`/novels/${novelId}/kb/resolve-references`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+
+  autocompleteEntries: (novelId: string, query: string) =>
+    fetchApi<Array<{ id: string; name: string; entity_type: string; slug: string }>>(
+      `/novels/${novelId}/kb/entries/autocomplete?q=${encodeURIComponent(query)}&limit=10`,
     ),
 };

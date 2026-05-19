@@ -14,6 +14,69 @@ first_appearance: "ch-en-ds-001"
 pov_character: false
 affiliation: "Xenex Corporation"
 occupation: "Director of Offworld Operations"
+metadata:
+  appearance:
+    height: Not specified
+    build: Not described in detail
+    clothing_style: >-
+      Professional corporate attire. Polished, authoritative presence
+      befitting a Xenex Corporation director.
+  personality:
+    traits:
+      - polite
+      - professional
+      - ruthless
+      - ambitious
+      - calculating
+    strengths:
+      - technical competence
+      - strategic intelligence
+      - corporate power and influence
+      - patience and subtle manipulation
+    weaknesses:
+      - lacks ethical qualms about "necessary" actions
+      - manipulative — uses offers and requests instead of orders
+      - secretive about his true motives
+      - sees people as tools for progress
+    motivations: >-
+      Believes knowledge belongs to those who can use it. Genuinely thinks
+      corporate profitability equals human advancement. Polite and professional
+      but utterly without moral qualms about doing what's "necessary."
+  background:
+    key_events:
+      - Rose through Xenex Corporation ranks through technical competence and ruthless pragmatism
+      - Supervised the Quantum Resonance Experiment at Earth-based Research Facility 7 (three years ago)
+      - Funded Horizon Station specifically for its location at a quantum anomaly coordinate
+      - Covered up the true outcome of the quantum resonance experiment
+    formative_experiences: >-
+      The Quantum Resonance Project at Facility 7 resulted in something that
+      Kavic has been searching for ever since. Maya's sister was involved in
+      that experiment. Kavic knows exactly what happened to her.
+  speech:
+    typical_phrases:
+      - makes offers that feel like choices
+      - uses corporate framing — "progress," "knowledge," "the greater good"
+    vocabulary_quirks: >-
+      Never makes direct threats — makes offers. Never issues orders — makes
+      requests that feel like choices. Speaks in calm, reasonable tones while
+      exercising immense power behind the scenes.
+  relationships:
+    rivals:
+      - Maya Chen (conflict over ethics vs. progress)
+    notes: >-
+      Corporate superior to Maya. Knows what happened to Maya's sister but
+      withholds the information. Manipulates crew through career incentives —
+      those who cooperate find opportunities, those who don't find their
+      careers stalled. No laws are broken, merely bent.
+  development:
+    starting_point: >-
+      Corporate director who believes progress justifies any cost. Polite,
+      professional, and utterly convinced of his righteousness.
+    planned_arc: >-
+      Seeks to exploit quantum resonance regardless of ethical cost. Mirror
+      image of Maya — someone who chose knowledge over ethics and believes he
+      made the right choice. His role is to test whether Maya will make the
+      same choice.
 ---
 
 # Director Kavic

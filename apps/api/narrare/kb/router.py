@@ -1,9 +1,4 @@
-"""KB entry routes — entry CRUD and search endpoints.
-
-Thin delegation to KBService.  No business logic here (RULE-06).
-"""
-
-from __future__ import annotations
+"""KB entry routes — thin delegation to KBService (RULE-06)."""
 
 import uuid
 
@@ -16,6 +11,8 @@ from narrare.kb.schemas import (
     KBEntryListResponse,
     KBEntryResponse,
     KBEntryUpdate,
+    ResolveReferencesRequest,
+    ResolveReferencesResponse,
 )
 from narrare.kb.service import KBService
 
@@ -34,14 +31,12 @@ async def create_entry(
     service: KBService = Depends(get_kb_service),
 ) -> KBEntryResponse:
     """Create a new KB entry."""
-    entry = await service.create(novel_id, uuid.UUID(user_id), request)
-    return KBEntryResponse.model_validate(entry)
+    return KBEntryResponse.model_validate(
+        await service.create(novel_id, uuid.UUID(user_id), request)
+    )
 
 
-@router.get(
-    "/novels/{novel_id}/kb/entries",
-    response_model=KBEntryListResponse,
-)
+@router.get("/novels/{novel_id}/kb/entries", response_model=KBEntryListResponse)
 async def list_entries(
     novel_id: uuid.UUID,
     user_id: CurrentUserIdDep,
@@ -68,10 +63,7 @@ async def list_entries(
     )
 
 
-@router.get(
-    "/novels/{novel_id}/kb/entries/search",
-    response_model=KBEntryListResponse,
-)
+@router.get("/novels/{novel_id}/kb/entries/search", response_model=KBEntryListResponse)
 async def search_entries(
     novel_id: uuid.UUID,
     user_id: CurrentUserIdDep,
@@ -100,10 +92,7 @@ async def search_entries(
     )
 
 
-@router.get(
-    "/novels/{novel_id}/kb/entries/{entry_id}",
-    response_model=KBEntryResponse,
-)
+@router.get("/novels/{novel_id}/kb/entries/{entry_id}", response_model=KBEntryResponse)
 async def get_entry(
     novel_id: uuid.UUID,
     entry_id: uuid.UUID,
@@ -111,14 +100,10 @@ async def get_entry(
     service: KBService = Depends(get_kb_service),
 ) -> KBEntryResponse:
     """Get a single KB entry."""
-    entry = await service.get(novel_id, entry_id, uuid.UUID(user_id))
-    return KBEntryResponse.model_validate(entry)
+    return KBEntryResponse.model_validate(await service.get(novel_id, entry_id, uuid.UUID(user_id)))
 
 
-@router.patch(
-    "/novels/{novel_id}/kb/entries/{entry_id}",
-    response_model=KBEntryResponse,
-)
+@router.patch("/novels/{novel_id}/kb/entries/{entry_id}", response_model=KBEntryResponse)
 async def update_entry(
     novel_id: uuid.UUID,
     entry_id: uuid.UUID,
@@ -127,14 +112,12 @@ async def update_entry(
     service: KBService = Depends(get_kb_service),
 ) -> KBEntryResponse:
     """Update a KB entry."""
-    entry = await service.update(novel_id, entry_id, uuid.UUID(user_id), request)
-    return KBEntryResponse.model_validate(entry)
+    return KBEntryResponse.model_validate(
+        await service.update(novel_id, entry_id, uuid.UUID(user_id), request)
+    )
 
 
-@router.delete(
-    "/novels/{novel_id}/kb/entries/{entry_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
+@router.delete("/novels/{novel_id}/kb/entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_entry(
     novel_id: uuid.UUID,
     entry_id: uuid.UUID,
@@ -143,3 +126,25 @@ async def delete_entry(
 ) -> None:
     """Delete a KB entry."""
     await service.delete(novel_id, entry_id, uuid.UUID(user_id))
+
+
+@router.post("/novels/{novel_id}/kb/resolve-references", response_model=ResolveReferencesResponse)
+async def resolve_references(
+    novel_id: uuid.UUID,
+    request: ResolveReferencesRequest,
+    user_id: CurrentUserIdDep,
+    service: KBService = Depends(get_kb_service),
+) -> ResolveReferencesResponse:
+    """Resolve @Name mentions to KB entries."""
+    return await service.resolve_references(novel_id, uuid.UUID(user_id), request.text)
+
+
+@router.get("/novels/{novel_id}/kb/entries/autocomplete")
+async def autocomplete_entries(
+    novel_id: uuid.UUID,
+    q: str,
+    user_id: CurrentUserIdDep,
+    service: KBService = Depends(get_kb_service),
+    limit: int = Query(default=10, ge=1, le=50),
+) -> list[dict[str, str]]:
+    return await service.autocomplete(novel_id, uuid.UUID(user_id), q, limit)

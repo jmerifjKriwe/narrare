@@ -13,9 +13,11 @@ import importlib.resources
 _ENTITY_TYPES = frozenset(
     {
         "character",
-        "location",
+        "concept",
         "faction",
+        "location",
         "object",
+        "setting",
         "system",
         "timeline",
     }

@@ -476,7 +476,8 @@
       "feature4": "Progress tracking and writing goals",
       "feature5": "Modern, distraction-free design"
     },
-    "promptsTab": "System Prompts"
+    "promptsTab": "System Prompts",
+    "kbTemplates": "KB Templates"
   },
   "wizard": {
     "step1": {
@@ -679,6 +680,8 @@
     "objects": "Objects",
     "systems": "Systems",
     "timelines": "Timelines",
+    "concepts": "Concepts",
+    "settings": "Settings",
     "status": {
       "draft": "Draft",
       "reviewed": "Reviewed",
@@ -717,7 +720,79 @@
     "saveSuccess": "Entry saved",
     "deleteSuccess": "Entry deleted",
     "relCreated": "Relationship created",
-    "arrow": "\u2192"
+    "arrow": "\u2192",
+    "kbTemplates": "KB Templates",
+    "kbTemplatesDescription": "Customize templates for your knowledge base entries",
+    "loadingTemplates": "Loading templates...",
+    "noTemplates": "No templates available",
+    "update": "Update",
+    "template": "Template",
+    "templateVersion": "v{version} \u00b7 {lang}",
+    "custom": "Custom",
+    "defaultLabel": "Default",
+    "updateAvailable": "Update available",
+    "templateSaved": "Template saved",
+    "failedToSaveTemplate": "Failed to save template",
+    "templateReset": "Template reset to default",
+    "failedToResetTemplate": "Failed to reset template",
+    "failedToLoadTemplate": "Failed to load template",
+    "back": "Back",
+    "version": "Version {version}",
+    "resetToDefaultConfirm": "Reset this template to the default version? Your changes will be lost.",
+    "resetting": "Resetting...",
+    "resetToDefault": "Reset to default",
+    "saving": "Saving...",
+    "searching": "Searching...",
+    "noMatchingEntries": "No matching entries",
+    "groups": {
+      "basicInfo": "Basic Information",
+      "appearance": "Appearance",
+      "personality": "Personality",
+      "background": "Background",
+      "relationships": "Relationships",
+      "development": "Development",
+      "speech": "Speech & Mannerisms"
+    },
+    "sections": {
+      "background": "Background",
+      "backgroundHint": "Describe the character's history, upbringing, and formative experiences...",
+      "personality": "Personality",
+      "personalityHint": "Describe the character's personality, motivations, and inner conflicts...",
+      "appearance": "Appearance",
+      "appearanceHint": "Describe the character's physical appearance and distinctive features...",
+      "development": "Development",
+      "developmentHint": "Describe the character's growth, arc, and key transformations..."
+    },
+    "groupLabels": {
+      "basicInfo": {
+        "age": "Age",
+        "role": "Role in Story",
+        "gender": "Gender",
+        "pronouns": "Pronouns",
+        "nationality": "Nationality/Origin",
+        "pov_character": "POV Character",
+        "affiliation": "Affiliation",
+        "aliases": "Aliases"
+      },
+      "appearance": {
+        "height": "Height",
+        "build": "Build",
+        "hair_color": "Hair Color",
+        "eye_color": "Eye Color",
+        "skin_tone": "Skin Tone",
+        "distinctive_marks": "Distinctive Marks",
+        "clothing_style": "Clothing Style"
+      },
+      "personality": {
+        "traits": "Core Traits",
+        "strengths": "Strengths",
+        "weaknesses": "Weaknesses",
+        "fears": "Fears",
+        "desires": "Desires & Goals",
+        "motivations": "Motivations",
+        "quirks": "Quirks"
+      }
+    }
   },
   "auth": {
     "loginTitle": "Sign in to Narrare",

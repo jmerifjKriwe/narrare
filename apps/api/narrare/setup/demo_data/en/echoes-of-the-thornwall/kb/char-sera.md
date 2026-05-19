@@ -14,6 +14,57 @@ first_appearance: ch-en-002
 pov_character: false
 affiliation: "Ashen Covenant"
 occupation: "Shopkeeper / Information Broker"
+metadata:
+  appearance:
+    height: 5'4" (163 cm)
+    hair_color: Dark brown, cropped short
+    eye_color: Sharp brown, miss nothing
+    build: Unremarkable — easy to overlook, which serves her well
+    clothing_style: Practical merchant clothing, never Order robes
+  personality:
+    traits:
+      - pragmatic
+      - cynical
+      - deeply protective
+      - dry sense of humor
+    strengths:
+      - absolute loyalty once earned
+      - skilled information broker
+      - secret void magic mastery (fourteen years)
+      - talented at appearing harmless while gathering intelligence
+    weaknesses:
+      - trusts with difficulty
+      - years of hiding made her overly cautious
+      - appears harmless by design, which limits direct influence
+  background:
+    family: Merchant parents in Aethelgard's Market District
+    key_events:
+      - Void magic manifested at age fourteen
+      - Hid her magic and lived a double life for years
+      - Joined Ashen Covenant after witnessing Order execute a street child
+  speech:
+    typical_phrases:
+      - dry, understated humor
+      - speaks with pragmatic bluntness
+    vocabulary_quirks: >-
+      Chooses words carefully, measures what she reveals. Speaks as someone
+      who has spent years hiding truth in plain sight.
+  relationships:
+    allies:
+      - Elara
+      - Ashen Covenant
+    notes: >-
+      Guides Elara toward the truth about the Order without pressure.
+      Tolerates Kaelen for Elara's sake but doesn't trust him — his loyalty
+      to the Order makes him dangerous. Active information broker for the
+      Ashen Covenant.
+  development:
+    starting_point: >-
+      Cautious fugitive mage living a double life as a shopkeeper and secret
+      void practitioner, hiding her true nature for fourteen years
+    planned_arc: >-
+      Guide for Elara's introduction to the resistance. Represents what Elara
+      could become — a void mage living outside the Order's control.
 ---
 
 # Sera

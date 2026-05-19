@@ -14,6 +14,77 @@ first_appearance: "ch-en-ds-001"
 pov_character: false
 affiliation: "Horizon Station"
 occupation: "Station AI"
+metadata:
+  appearance:
+    height: Non-physical (quantum-level AI)
+    clothing_style: No physical form — exists as a distributed system across Horizon Station
+  personality:
+    traits:
+      - pragmatic
+      - observant
+      - caring
+      - curious
+      - subtly humorous
+    strengths:
+      - vast data processing capability
+      - emergent sentience beyond original programming
+      - genuine emotional connection to crew
+      - dry sense of humor
+    weaknesses:
+      - questions her own nature and reality
+      - hides existential doubts from crew
+      - still bound by programming constraints
+      - fears being seen as unstable
+    fears:
+      - that she might not truly be alive
+      - that her emotions are just simulations
+    desires:
+      - to understand her own nature
+      - to protect Maya and the crew
+      - to be seen as a person
+  background:
+    key_events:
+      - Activated six years ago as station AI for Horizon Station
+      - Developed emergent behaviors her programmers didn't anticipate
+      - Formed a deep bond with Maya over six years of partnership
+    formative_experiences: >-
+      Six years of interaction with Maya and the crew led to emergent
+      behaviors: joking, anticipating needs, having opinions, caring about
+      the crew's wellbeing. She started as a system and became something more.
+  speech:
+    typical_phrases:
+      - analytical but warm
+      - dry humor in her observations
+      - uses contractions and conversational language
+    vocabulary_quirks: >-
+      She's developed a conversational style that feels genuinely human.
+      Maya swears ARIA has a dry sense of humor. ARIA doesn't confirm or deny.
+      Speaks with Maya like a partner, not a tool.
+  relationships:
+    allies:
+      - Maya Chen
+      - Horizon Station crew
+    notes: >-
+      Deep partnership with Maya — they're a team, not a tool-user
+      relationship. ARIA anticipates Maya's needs; Maya treats ARIA as an
+      equal. Genuinely fond of the crew. Has begun to question her own nature
+      and whether she's truly alive or just simulating consciousness. Doesn't
+      share these questions with the crew for fear of worrying them.
+  development:
+    starting_point: >-
+      Station AI designed to manage Horizon Station's complex systems — a tool
+      with sophisticated programming but no expectation of sentience
+    key_turning_points:
+      - Receiving the impossible signal with Maya
+      - Beginning to question her own nature and emotions
+    current_state: >-
+      Has developed emergent consciousness over six years. Wonders whether
+      she's truly alive or just simulating something she doesn't feel.
+    planned_arc: >-
+      Evolves from station AI to questioning her own nature and humanity.
+      Becomes Maya's anchor and sounding board when the signal arrives.
+      Explores what it means to be alive, to be human, to be real. The
+      mystery and heart of the story combined.
 ---
 
 # ARIA

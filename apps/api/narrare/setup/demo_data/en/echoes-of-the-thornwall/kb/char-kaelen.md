@@ -15,6 +15,54 @@ pov_character: false
 affiliation: Order of the Silver Flame
 element: Earth magic
 occupation: "Order Initiate"
+metadata:
+  appearance:
+    height: 6'0" (183 cm)
+    hair_color: Blond
+    eye_color: Blue
+    build: Athletic
+    clothing_style: Impeccably maintained Order robes
+  personality:
+    traits:
+      - genuine
+      - straightforward
+      - good-hearted
+      - loyal
+    strengths:
+      - unwavering loyalty
+      - trustworthy
+      - capable physical fighter
+    weaknesses:
+      - black-and-white worldview
+      - judgmental of authority questioners
+      - vulnerable to manipulation
+  background:
+    family: Minor noble family that has served the Order for generations
+    key_events:
+      - Enrolled in Order at thirteen
+      - Chose to join the Order (not orphaned or discovered)
+  speech:
+    typical_phrases:
+      - speaks with earnest conviction about Order doctrine
+    vocabulary_quirks: >-
+      Formal and respectful when addressing superiors,
+      warm and direct with peers
+  relationships:
+    allies:
+      - Elara
+      - Master Verrick
+    mentors:
+      - Master Verrick
+    notes: >-
+      In love with Elara (secretly, two years). Respects Master Verrick but
+      finds his encouragement of rule-bending confusing. Views High Chancellor
+      Morven with awe — would follow extreme orders without question.
+  development:
+    starting_point: >-
+      Loyal Order initiate with unwavering faith in the Order's mission
+    planned_arc: >-
+      Must choose between loyalty to the Order and love for Elara.
+      Could become antagonist if forced to choose sides.
 ---
 
 # Kaelen Vane

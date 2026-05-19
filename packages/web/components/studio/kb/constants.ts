@@ -4,15 +4,27 @@
  * Shared across all KB sub-components.
  */
 
-import { Clock, type LucideIcon, MapPin, Package, Shield, User, Zap } from "lucide-react";
+import {
+  BookOpen,
+  Clock,
+  Globe,
+  type LucideIcon,
+  MapPin,
+  Package,
+  Shield,
+  User,
+  Zap,
+} from "lucide-react";
 import type { KBEntityType } from "@/lib/api/kb";
 
-/** The 6 entity types supported by the KB system. */
+/** The 8 entity types supported by the KB system. */
 export const ENTITY_TYPES: KBEntityType[] = [
   "character",
-  "location",
+  "concept",
   "faction",
+  "location",
   "object",
+  "setting",
   "system",
   "timeline",
 ];
@@ -20,9 +32,11 @@ export const ENTITY_TYPES: KBEntityType[] = [
 /** Map entity type → lucide icon. */
 export const TYPE_ICONS: Record<KBEntityType, LucideIcon> = {
   character: User,
-  location: MapPin,
+  concept: BookOpen,
   faction: Shield,
+  location: MapPin,
   object: Package,
+  setting: Globe,
   system: Zap,
   timeline: Clock,
 };
@@ -30,9 +44,11 @@ export const TYPE_ICONS: Record<KBEntityType, LucideIcon> = {
 /** i18n key suffix for each entity type label. */
 export const TYPE_LABEL_KEYS: Record<KBEntityType, string> = {
   character: "kb.characters",
-  location: "kb.locations",
+  concept: "kb.concepts",
   faction: "kb.factions",
+  location: "kb.locations",
   object: "kb.objects",
+  setting: "kb.settings",
   system: "kb.systems",
   timeline: "kb.timelines",
 };

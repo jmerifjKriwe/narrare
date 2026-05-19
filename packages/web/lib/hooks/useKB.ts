@@ -20,7 +20,10 @@ import {
   type KBRelationship,
   type KBRelationshipCreateRequest,
   type KBSearchParams,
+  type KBTemplate,
+  type KBTemplateInfo,
   kbApi,
+  type ResolveReferencesResponse,
 } from "@/lib/api/kb";
 
 // --- Query key factory ---
@@ -37,6 +40,13 @@ const kbKeys = {
     [...kbKeys.all(novelId), "relationships", entryId] as const,
   inverseSuggestion: (novelId: string, relType: string) =>
     [...kbKeys.all(novelId), "inverse", relType] as const,
+  templates: (novelId: string) => [...kbKeys.all(novelId), "templates"] as const,
+  template: (novelId: string, entityType: string) =>
+    [...kbKeys.templates(novelId), entityType] as const,
+  references: (novelId: string, text: string) =>
+    [...kbKeys.all(novelId), "references", text] as const,
+  autocomplete: (novelId: string, query: string) =>
+    [...kbKeys.all(novelId), "autocomplete", query] as const,
 };
 
 // --- Entry hooks ---
@@ -71,6 +81,26 @@ export function useKBSearch(novelId: string, query: string, params?: Partial<KBS
     queryKey: kbKeys.search(novelId, { q: query, ...params }),
     queryFn: () => kbApi.searchEntries(novelId, { q: query, ...params }),
     enabled: !!novelId && query.length > 0,
+  });
+}
+
+// --- Template hooks ---
+
+/** Fetch template for a given entity type. Pass null to disable. */
+export function useKBTemplate(novelId: string, entityType: string | null) {
+  return useQuery<KBTemplate | null>({
+    queryKey: kbKeys.template(novelId, entityType ?? ""),
+    queryFn: () => (entityType ? kbApi.getTemplate(novelId, entityType) : Promise.resolve(null)),
+    enabled: !!novelId && !!entityType,
+  });
+}
+
+/** Fetch all available templates for a novel. */
+export function useKBTemplates(novelId: string) {
+  return useQuery<KBTemplateInfo[]>({
+    queryKey: kbKeys.templates(novelId),
+    queryFn: () => kbApi.listTemplates(novelId),
+    enabled: !!novelId,
   });
 }
 
@@ -191,6 +221,26 @@ export function useKBInverseSuggestion(novelId: string, relType: string | null) 
         ? kbApi.getInverseSuggestion(novelId, relType)
         : Promise.resolve({ rel_type: "", inverse_rel_type: "", description: "" }),
     enabled: !!novelId && !!relType,
+  });
+}
+
+// --- Reference Resolution hooks ---
+
+/** Resolve @Name mentions in a text to KB entry references. Pass null to disable. */
+export function useKBResolveReferences(novelId: string, text: string | null) {
+  return useQuery<ResolveReferencesResponse | null>({
+    queryKey: kbKeys.references(novelId, text ?? ""),
+    queryFn: () => (text ? kbApi.resolveReferences(novelId, text) : Promise.resolve(null)),
+    enabled: !!novelId && !!text && text.length > 0,
+  });
+}
+
+/** Auto-complete KB entry names for @mention dropdown. Requires at least 2 characters. */
+export function useKBAutocomplete(novelId: string, query: string) {
+  return useQuery<Array<{ id: string; name: string; entity_type: string; slug: string }>>({
+    queryKey: kbKeys.autocomplete(novelId, query),
+    queryFn: () => kbApi.autocompleteEntries(novelId, query),
+    enabled: !!novelId && query.length >= 2,
   });
 }
 

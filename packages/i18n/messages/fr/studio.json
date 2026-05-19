@@ -476,7 +476,8 @@
       "feature4": "Suivi des progrès et objectifs d'écriture",
       "feature5": "Design moderne et sans distraction"
     },
-    "promptsTab": "Prompts système"
+    "promptsTab": "Prompts système",
+    "kbTemplates": "Modèles KB"
   },
   "wizard": {
     "step1": {
@@ -679,6 +680,8 @@
     "objects": "Objets",
     "systems": "Systèmes",
     "timelines": "Chronologies",
+    "concepts": "Concepts",
+    "settings": "Paramètres du monde",
     "status": {
       "draft": "Brouillon",
       "reviewed": "Révisé",
@@ -717,7 +720,79 @@
     "saveSuccess": "Entrée enregistrée",
     "deleteSuccess": "Entrée supprimée",
     "relCreated": "Relation créée",
-    "arrow": "\u2192"
+    "arrow": "\u2192",
+    "kbTemplates": "Modèles KB",
+    "kbTemplatesDescription": "Personnaliser les modèles pour les entrées de la base de connaissances",
+    "loadingTemplates": "Chargement des modèles...",
+    "noTemplates": "Aucun modèle disponible",
+    "update": "Mettre à jour",
+    "template": "Modèle",
+    "templateVersion": "v{version} \u00b7 {lang}",
+    "custom": "Personnalisé",
+    "defaultLabel": "Par défaut",
+    "updateAvailable": "Mise à jour disponible",
+    "templateSaved": "Modèle enregistré",
+    "failedToSaveTemplate": "Échec de l'enregistrement du modèle",
+    "templateReset": "Modèle réinitialisé par défaut",
+    "failedToResetTemplate": "Échec de la réinitialisation",
+    "failedToLoadTemplate": "Échec du chargement du modèle",
+    "back": "Retour",
+    "version": "Version {version}",
+    "resetToDefaultConfirm": "Réinitialiser ce modèle à la version par défaut ? Vos modifications seront perdues.",
+    "resetting": "Réinitialisation...",
+    "resetToDefault": "Réinitialiser par défaut",
+    "saving": "Enregistrement...",
+    "searching": "Recherche...",
+    "noMatchingEntries": "Aucune entrée correspondante",
+    "groups": {
+      "basicInfo": "Informations de base",
+      "appearance": "Apparence",
+      "personality": "Personnalité",
+      "background": "Contexte",
+      "relationships": "Relations",
+      "development": "Développement",
+      "speech": "Parole & Maniérismes"
+    },
+    "sections": {
+      "background": "Contexte",
+      "backgroundHint": "Décrivez l'histoire, l'éducation et les expériences formatrices du personnage...",
+      "personality": "Personnalité",
+      "personalityHint": "Décrivez la personnalité, les motivations et les conflits intérieurs...",
+      "appearance": "Apparence",
+      "appearanceHint": "Décrivez l'apparence physique et les traits distinctifs...",
+      "development": "Développement",
+      "developmentHint": "Décrivez l'évolution, l'arc narratif et les transformations clés..."
+    },
+    "groupLabels": {
+      "basicInfo": {
+        "age": "Âge",
+        "role": "Rôle dans l'histoire",
+        "gender": "Genre",
+        "pronouns": "Pronoms",
+        "nationality": "Nationalité/Origine",
+        "pov_character": "Personnage POV",
+        "affiliation": "Affiliation",
+        "aliases": "Alias"
+      },
+      "appearance": {
+        "height": "Taille",
+        "build": "Carrure",
+        "hair_color": "Couleur des cheveux",
+        "eye_color": "Couleur des yeux",
+        "skin_tone": "Teint",
+        "distinctive_marks": "Signes particuliers",
+        "clothing_style": "Style vestimentaire"
+      },
+      "personality": {
+        "traits": "Traits principaux",
+        "strengths": "Forces",
+        "weaknesses": "Faiblesses",
+        "fears": "Peurs",
+        "desires": "Désirs/Objectifs",
+        "motivations": "Motivations",
+        "quirks": "Particularités"
+      }
+    }
   },
   "auth": {
     "loginTitle": "Se connecter à Narrare",

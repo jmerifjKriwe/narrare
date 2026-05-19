@@ -15,6 +15,68 @@ pov_character: false
 affiliation: "Order of the Silver Flame"
 element: "Fire magic"
 occupation: "High Chancellor"
+metadata:
+  appearance:
+    height: 6'2" (188 cm)
+    hair_color: White (formerly black)
+    eye_color: Cold blue, rarely showing emotion
+    distinctive_marks: Burn scars on both hands from fire magic practice
+    clothing_style: Immaculate silver robes with Order insignia, rarely seen without ceremonial staff
+  personality:
+    traits:
+      - pragmatic
+      - calculating
+      - ruthless
+      - conviction-driven
+    strengths:
+      - one of the most powerful fire mages in living memory
+      - unmatched political authority over magical institutions
+      - unwavering conviction in his cause
+      - strategic intelligence
+    weaknesses:
+      - lacks empathy for individuals
+      - extreme methods create more rebels than they eliminate
+      - overconfidence blinds him to genuine threats
+      - trusts no one, limiting his information
+      - physical and magical power in decline
+    motivations: >-
+      Prevent another Void Cataclysm by any means necessary. His trauma from
+      witnessing the Cataclysm drives every decision.
+  background:
+    family: Entire family died in the Void Cataclysm forty years ago
+    key_events:
+      - Witnessed the Void Cataclysm as a young initiate forty years ago
+      - Lost his entire family and the magical academy in the disaster
+      - Rose through Order ranks with ruthless determination
+      - Became High Chancellor fifteen years ago
+    formative_experiences: >-
+      The Void Cataclysm forged his lifelong conviction that void magic must be
+      controlled or eradicated. This trauma drives his increasingly extreme methods.
+  speech:
+    typical_phrases:
+      - speaks in measured, authoritative statements
+      - uses "necessary" and "greater good" framing
+    vocabulary_quirks: >-
+      Formal and commanding. Rarely raises his voice — his authority doesn't
+      require volume. Chooses words like weapons.
+  relationships:
+    allies:
+      - Order of the Silver Flame
+    rivals:
+      - Ashen Covenant
+    notes: >-
+      Views Elara as a potential threat due to void affinity; testing her loyalty.
+      Suspects Master Verrick is too soft on initiates but values his competence.
+      Actively hunting the Ashen Covenant resistance.
+  development:
+    starting_point: >-
+      Young initiate traumatized by the Void Cataclysm, driven by the memory of
+      his family's death and the destruction of the magical academy
+    planned_arc: >-
+      Willing to sacrifice everything to prevent another magical cataclysm.
+      His methods grow increasingly extreme, creating more rebels than they
+      eliminate. Could become the story's central antagonist or a tragic figure
+      who went too far in pursuit of a noble goal.
 ---
 
 # High Chancellor Morven

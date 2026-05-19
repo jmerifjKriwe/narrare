@@ -1,16 +1,20 @@
 """KB entry service — business logic.
 
-Orchestrates entry creation, validation, slug generation, and
-ownership checks.  Delegates DB operations to the repository.
+Orchestrates entry creation, validation, slug generation, reference
+resolution, and ownership checks.  Delegates DB operations to the repository.
 """
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb._utils import MENTION_RE, slugify
+from narrare.kb.schemas import (
+    ReferenceResolution,
+    ResolveReferencesResponse,
+)
 from narrare_core.shared.errors import (
     ConflictError,
     ForbiddenError,
@@ -20,24 +24,18 @@ from narrare_core.shared.errors import (
 from narrare_core.templates.schema_bridge import validate_metadata
 
 if TYPE_CHECKING:
+    import re
     import uuid
 
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.models import KBEntry
-    from narrare.kb.schemas import KBEntryCreate, KBEntryUpdate
+    from narrare.kb.schemas import (
+        KBEntryCreate,
+        KBEntryUpdate,
+    )
     from narrare.novels.contracts import NovelRepositoryProtocol
 
 logger = structlog.get_logger(__name__)
-
-
-def _slugify(name: str) -> str:
-    """Convert a name to a URL-friendly slug.
-
-    Lowercases, replaces whitespace with hyphens, strips special chars,
-    and collapses consecutive hyphens.
-    """
-    slug = re.sub(r"[^a-z0-9-]", "", re.sub(r"\s+", "-", name.lower()))
-    return re.sub(r"-+", "-", slug).strip("-")
 
 
 class KBService:
@@ -52,10 +50,7 @@ class KBService:
         self._novel_repo = novel_repo
 
     async def _verify_novel_ownership(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        """Verify the novel belongs to the user.
-
-        Raises ForbiddenError if ownership check fails.
-        """
+        """Raise ForbiddenError if the novel does not belong to the user."""
         if self._novel_repo is None:
             return
 
@@ -69,15 +64,7 @@ class KBService:
         user_id: uuid.UUID,
         data: KBEntryCreate,
     ) -> KBEntry:
-        """Create a new KB entry.
-
-        Validates metadata, generates slug, checks uniqueness.
-
-        Raises:
-            ValidationError: Invalid metadata for entity type.
-            ConflictError: Slug already exists in this novel.
-            ForbiddenError: Novel not owned by user.
-        """
+        """Create entry — validate metadata, generate slug, check uniqueness."""
         await self._verify_novel_ownership(novel_id, user_id)
 
         # Validate metadata against core schema registry
@@ -90,7 +77,7 @@ class KBService:
                 ) from exc
 
         # Generate slug if not provided
-        slug = data.slug or _slugify(data.name)
+        slug = data.slug or slugify(data.name)
         if not slug:
             raise ValidationError("Could not generate a valid slug from the name")
 
@@ -162,15 +149,7 @@ class KBService:
         user_id: uuid.UUID,
         data: KBEntryUpdate,
     ) -> KBEntry:
-        """Update an existing entry.
-
-        Re-validates metadata if changed.  Updates slug if name changes.
-
-        Raises:
-            NotFoundError: Entry not found.
-            ValidationError: Invalid metadata.
-            ConflictError: New slug already taken.
-        """
+        """Update entry — re-validate metadata, regenerate slug on name change."""
         entry = await self.get(novel_id, entry_id, user_id)
         updates: dict[str, object] = {}
 
@@ -178,7 +157,7 @@ class KBService:
             updates["name"] = data.name
             # Regenerate slug when name changes (unless slug also provided)
             if data.slug is None:
-                new_slug = _slugify(data.name)
+                new_slug = slugify(data.name)
                 if new_slug and new_slug != entry.slug:
                     updates["slug"] = new_slug
 
@@ -224,14 +203,79 @@ class KBService:
         return updated
 
     async def delete(self, novel_id: uuid.UUID, entry_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        """Delete an entry.
-
-        Raises:
-            NotFoundError: Entry not found.
-        """
+        """Delete an entry (raises NotFoundError if not found)."""
         entry = await self.get(novel_id, entry_id, user_id)
         await self._repo.delete(entry)
         logger.info("kb_entry_deleted", entry_id=str(entry_id))
+
+    async def resolve_references(
+        self,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        text: str,
+    ) -> ResolveReferencesResponse:
+        """Find all @Name mentions in text and resolve them to KB entries.
+
+        Mentions that match an entry name (case-insensitive) are linked;
+        unmatched mentions are returned without an entry_id.
+        All mentions are optional — missing entries never cause errors.
+        """
+        await self._verify_novel_ownership(novel_id, user_id)
+
+        mentions = {m.group(1).strip() for m in MENTION_RE.finditer(text)}
+        resolved: list[ReferenceResolution] = []
+
+        for mention in mentions:
+            entry = await self._repo.get_by_name(novel_id, mention)
+            if entry is not None:
+                resolved.append(
+                    ReferenceResolution(
+                        mention=mention,
+                        entry_id=str(entry.id),
+                        entry_name=entry.name,
+                        entity_type=entry.entity_type,
+                        slug=entry.slug,
+                    )
+                )
+            else:
+                resolved.append(ReferenceResolution(mention=mention))
+
+        # Generate HTML with anchor tags for resolved entries
+        def _replace_link(m: re.Match[str]) -> str:
+            name = m.group(1).strip()
+            for r in resolved:
+                if r.mention == name and r.entry_id is not None:
+                    return (
+                        f'<a href="/studio/{novel_id}/kb/{r.slug}" '
+                        f'class="kb-mention" '
+                        f'data-entry-id="{r.entry_id}" '
+                        f'data-entity-type="{r.entity_type}">'
+                        f"@{r.entry_name}"
+                        f"</a>"
+                    )
+            return m.group(0)
+
+        html = MENTION_RE.sub(_replace_link, text)
+
+        return ResolveReferencesResponse(resolved=resolved, html=html)
+
+    async def autocomplete(
+        self,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        q: str,
+        limit: int = 10,
+    ) -> list[dict[str, str]]:
+        """Auto-complete KB entry names by prefix.
+
+        Returns lightweight dicts with id, name, entity_type, slug.
+        """
+        await self._verify_novel_ownership(novel_id, user_id)
+        entries = await self._repo.search_by_name_prefix(novel_id, q, limit)
+        return [
+            {"id": str(e.id), "name": e.name, "entity_type": e.entity_type, "slug": e.slug}
+            for e in entries
+        ]
 
     async def search(
         self,

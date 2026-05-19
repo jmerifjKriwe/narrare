@@ -7,9 +7,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from narrare.kb._utils import slugify
+from narrare.kb.contracts import KBRepositoryProtocol
 from narrare.kb.models import KBEntry
 from narrare.kb.schemas import KBEntryCreate, KBEntryUpdate
-from narrare.kb.service import KBService, _slugify
+from narrare.kb.service import KBService
+from narrare.novels.contracts import NovelRepositoryProtocol
 from narrare.novels.models import Novel
 from narrare_core.shared.errors import (
     ConflictError,
@@ -25,25 +28,25 @@ from narrare_core.shared.errors import (
 
 class TestSlugify:
     def test_simple_name(self) -> None:
-        assert _slugify("John Smith") == "john-smith"
+        assert slugify("John Smith") == "john-smith"
 
     def test_special_chars_removed(self) -> None:
-        assert _slugify("O'Brien & Co.") == "obrien-co"
+        assert slugify("O'Brien & Co.") == "obrien-co"
 
     def test_multiple_spaces(self) -> None:
-        assert _slugify("  Hello   World  ") == "hello-world"
+        assert slugify("  Hello   World  ") == "hello-world"
 
     def test_unicode_preserved_digits(self) -> None:
-        assert _slugify("Character #1") == "character-1"
+        assert slugify("Character #1") == "character-1"
 
     def test_german_chars_removed(self) -> None:
-        assert _slugify("Müller Haus") == "mller-haus"
+        assert slugify("Müller Haus") == "mller-haus"
 
     def test_empty_string(self) -> None:
-        assert _slugify("") == ""
+        assert slugify("") == ""
 
     def test_only_special_chars(self) -> None:
-        assert _slugify("@#$%") == ""
+        assert slugify("@#$%") == ""
 
 
 # ---------------------------------------------------------------------------
@@ -55,8 +58,8 @@ def _make_service(
     novel_owned: bool = True,
 ) -> tuple[KBService, AsyncMock, AsyncMock]:
     """Create a KBService with mock repos."""
-    repo = AsyncMock()
-    novel_repo = AsyncMock()
+    repo = AsyncMock(spec=KBRepositoryProtocol)
+    novel_repo = AsyncMock(spec=NovelRepositoryProtocol)
 
     if novel_owned:
         novel = MagicMock(spec=Novel)

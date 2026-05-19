@@ -20,6 +20,7 @@ interface KBDetailPanelProps {
   entry: KBEntry | null;
   relationships: KBRelationship[];
   isCreating: boolean;
+  initialEntityType?: import("@/lib/api/kb").KBEntityType;
   onCreateCancel: () => void;
   onCreated: (entryId: string) => void;
   onDeleted: () => void;
@@ -30,6 +31,7 @@ export function KBDetailPanel({
   entry,
   relationships,
   isCreating,
+  initialEntityType,
   onCreateCancel,
   onCreated,
   onDeleted,
@@ -37,7 +39,14 @@ export function KBDetailPanel({
   const t = useTranslations("studio");
 
   if (isCreating) {
-    return <KBCreateForm novelId={novelId} onCancel={onCreateCancel} onCreated={onCreated} />;
+    return (
+      <KBCreateForm
+        novelId={novelId}
+        initialEntityType={initialEntityType}
+        onCancel={onCreateCancel}
+        onCreated={onCreated}
+      />
+    );
   }
 
   if (!entry) {

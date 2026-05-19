@@ -6,7 +6,9 @@ implementations in the API layer.
 
 Public exports:
     TemplateField — Single field definition in a template
+    TemplateFieldGroup — Group of related metadata fields
     TemplateMeta — Template metadata (type, version, language)
+    TemplateSection — Guided body text section
     Template — Complete parsed template
     TemplateResolver — Protocol for template resolution
     parse_template — Parse Markdown+YAML frontmatter into Template
@@ -18,15 +20,17 @@ Public exports:
 
 from .contracts import TemplateResolver
 from .defaults import list_default_templates, load_default_template
-from .models import Template, TemplateField, TemplateMeta
+from .models import Template, TemplateField, TemplateFieldGroup, TemplateMeta, TemplateSection
 from .parser import parse_template
 from .schema_bridge import get_form_fields, validate_metadata
 
 __all__ = [
     "Template",
     "TemplateField",
+    "TemplateFieldGroup",
     "TemplateMeta",
     "TemplateResolver",
+    "TemplateSection",
     "get_form_fields",
     "list_default_templates",
     "load_default_template",

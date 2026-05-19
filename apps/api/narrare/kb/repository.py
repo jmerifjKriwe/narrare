@@ -41,6 +41,34 @@ class KBRepository(BaseRepository):
         )
         return result.scalar_one_or_none()
 
+    async def get_by_name(self, novel_id: uuid.UUID, name: str) -> KBEntry | None:
+        """Find an entry by exact name match within a novel (case-insensitive)."""
+        result = await self._session.execute(
+            select(KBEntry).where(
+                KBEntry.novel_id == novel_id,
+                KBEntry.name.ilike(name),
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def search_by_name_prefix(
+        self,
+        novel_id: uuid.UUID,
+        prefix: str,
+        limit: int = 10,
+    ) -> list[KBEntry]:
+        """Search entries by name prefix (for auto-complete)."""
+        result = await self._session.execute(
+            select(KBEntry)
+            .where(
+                KBEntry.novel_id == novel_id,
+                KBEntry.name.ilike(f"{prefix}%"),
+            )
+            .order_by(KBEntry.name)
+            .limit(limit)
+        )
+        return list(result.scalars())
+
     async def list_entries(
         self,
         novel_id: uuid.UUID,

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "@/mocks/server";
 import { setAccessToken } from "../client";
 import {
-  type GenerateResponse,
   type GenerationChunk,
   streamGeneration,
   WritingSessionSocket,

@@ -1,7 +1,8 @@
 """Pydantic models for the template system.
 
 Defines the data structures used to represent entity-type templates,
-including their metadata (type, version, language) and field definitions.
+including their metadata (type, version, language), field definitions,
+grouped metadata fields, and guided body text sections.
 """
 
 from __future__ import annotations
@@ -22,6 +23,31 @@ class TemplateField(BaseModel):
     description: str = ""
 
 
+class TemplateSection(BaseModel):
+    """A guided body text section for an entity type.
+
+    Sections like "Background", "Personality" with a placeholder hint.
+    """
+
+    name: str
+    label_key: str = ""
+    description_key: str = ""
+    order: int = 0
+
+
+class TemplateFieldGroup(BaseModel):
+    """A named group of related metadata fields.
+
+    Groups like "Grundinformationen", "Erscheinung", "Persönlichkeit".
+    """
+
+    name: str
+    label_key: str = ""
+    description_key: str = ""
+    fields: list[TemplateField] = []
+    order: int = 0
+
+
 class TemplateMeta(BaseModel):
     """Metadata extracted from a template's YAML frontmatter."""
 
@@ -35,11 +61,14 @@ class Template(BaseModel):
     """A complete entity-type template with metadata, fields, and body.
 
     Parsed from Markdown + YAML frontmatter files.  The ``fields`` list
-    describes recommended metadata fields; ``body`` is the Markdown
-    template content for display or further processing.
+    describes recommended metadata fields (kept for backward compat);
+    ``field_groups`` and ``sections`` provide richer structure for
+    the v2 template format.
     """
 
     meta: TemplateMeta
-    fields: list[TemplateField]
+    fields: list[TemplateField] = []
+    field_groups: list[TemplateFieldGroup] = []
+    sections: list[TemplateSection] = []
     body: str = ""
     raw: str = ""

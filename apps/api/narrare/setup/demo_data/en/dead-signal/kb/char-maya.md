@@ -14,6 +14,83 @@ first_appearance: "ch-en-ds-001"
 pov_character: true
 affiliation: "Xenex Corporation / Horizon Station"
 occupation: "Chief Engineer"
+metadata:
+  appearance:
+    height: Not specified
+    build: Not described in detail
+    clothing_style: >-
+      Practical engineering attire suitable for a remote space station. Likely
+      functional, not fashionable.
+  personality:
+    traits:
+      - practical to a fault
+      - stubborn
+      - ingenious
+      - skeptical
+      - solitary
+    strengths:
+      - brilliant engineer (doctorate in Quantum Communications at 24)
+      - solves problems others declare impossible
+      - keeps station running through ingenuity and persistence
+      - loyal to her crew like family
+    weaknesses:
+      - emotionally closed-off
+      - workaholic
+      - avoids confronting past trauma
+      - uses isolation as refuge from painful memories
+    fears:
+      - things that can't be measured or explained
+      - confronting her sister's disappearance
+    desires:
+      - to discover the truth about her sister
+      - to keep her crew safe
+  background:
+    family: Parents were terraforming engineers in Mars orbital colonies; younger sister disappeared in a quantum resonance experiment
+    upbringing: >-
+      Grew up in orbital colonies around Mars, surrounded by technology that
+      made life possible where it shouldn't be.
+    education: Doctorate in Quantum Communications at age 24
+    key_events:
+      - Recruited for Horizon Station project at 28
+      - Served as Chief Engineer for six years
+      - Younger sister disappeared during an Earth-based quantum resonance experiment
+      - Requested the most remote posting available after sister's disappearance
+  speech:
+    typical_phrases:
+      - technical but accessible language
+      - pragmatic, skeptical observations
+      - speaks to machines as if they can understand her
+    vocabulary_quirks: >-
+      Technical terms mixed with dry humor. Known for speaking to machines
+      (she swears they respond better). First-person POV in story — pragmatic,
+      skeptical but open to evidence.
+  relationships:
+    allies:
+      - ARIA (station AI)
+      - Horizon Station crew
+    family_members:
+      - younger sister (deceased/missing)
+    notes: >-
+      Complex partnership with ARIA — treats the AI like a person. Takes
+      responsibility for twelve crew members as family. Left behind family on
+      Earth and a reason she doesn't discuss. Officially her sister's death was
+      an accident; Maya never believed it.
+  development:
+    starting_point: >-
+      Grounded, practical engineer who believes everything can be measured,
+      fixed, and explained through data. Uses isolation at the edge of space
+      to avoid confronting painful memories.
+    key_turning_points:
+      - Receiving an impossible signal from Earth
+      - Discovery that her sister's death was connected to quantum resonance
+    current_state: >-
+      Has kept Horizon Station running for six years. Has been running from
+      memories and the truth about her sister's disappearance.
+    planned_arc: >-
+      Confronts impossible signal and repressed memories about her sister's
+      death. Must learn that some things can't be measured or fixed, only
+      accepted. The signal forces her to confront both an impossibility and
+      the memories she's been running from.
 ---
 
 # Dr. Maya Chen

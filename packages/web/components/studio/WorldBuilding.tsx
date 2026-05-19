@@ -87,6 +87,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
         entry={selectedEntry ?? null}
         relationships={relationships}
         isCreating={isCreating}
+        initialEntityType={activeType ?? undefined}
         onCreateCancel={handleCreateCancel}
         onCreated={handleCreated}
         onDeleted={handleDeleted}

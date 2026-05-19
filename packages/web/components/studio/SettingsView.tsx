@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AiTab } from "@/components/studio/settings/AiTab";
 import { GeneralTab } from "@/components/studio/settings/GeneralTab";
+import { KBTemplatesTab } from "@/components/studio/settings/KBTemplatesTab";
 import { NovelDetailsTab } from "@/components/studio/settings/NovelDetailsTab";
 import { PromptsTab } from "@/components/studio/settings/PromptsTab";
 import { WritingGoalsTab } from "@/components/studio/settings/WritingGoalsTab";
@@ -19,6 +20,7 @@ type SettingsCategory =
   | "writing"
   | "ai"
   | "prompts"
+  | "kb-templates"
   | "shortcuts"
   | "about";
 
@@ -40,6 +42,7 @@ const CATEGORIES: CategoryConfig[] = [
   { id: "writing", icon: Target, labelKey: "settings.writingGoals" },
   { id: "ai", icon: Sparkles, labelKey: "settings.aiSetup" },
   { id: "prompts", icon: FileText, labelKey: "settings.promptsTab" },
+  { id: "kb-templates", icon: BookOpen, labelKey: "settings.kbTemplates" },
   { id: "shortcuts", icon: Keyboard, labelKey: "settings.shortcuts" },
   { id: "about", icon: Info, labelKey: "settings.about" },
 ];
@@ -153,6 +156,8 @@ export function SettingsView({ novelId }: SettingsViewProps) {
         return <AiTab />;
       case "prompts":
         return <PromptsTab />;
+      case "kb-templates":
+        return <KBTemplatesTab novelId={novelId} />;
       case "shortcuts":
         return renderShortcuts();
       case "about":

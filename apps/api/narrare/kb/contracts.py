@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         KBEntryCreate,
         KBEntryUpdate,
         KBRelationshipCreate,
+        ResolveReferencesResponse,
     )
 
 
@@ -26,6 +27,13 @@ class KBRepositoryProtocol(Protocol):
     async def create(self, entry: KBEntry) -> KBEntry: ...
     async def get_by_id(self, entry_id: uuid.UUID) -> KBEntry | None: ...
     async def get_by_slug(self, novel_id: uuid.UUID, slug: str) -> KBEntry | None: ...
+    async def get_by_name(self, novel_id: uuid.UUID, name: str) -> KBEntry | None: ...
+    async def search_by_name_prefix(
+        self,
+        novel_id: uuid.UUID,
+        prefix: str,
+        limit: int = 10,
+    ) -> list[KBEntry]: ...
     async def list_entries(
         self,
         novel_id: uuid.UUID,
@@ -80,6 +88,19 @@ class KBServiceProtocol(Protocol):
     async def delete(
         self, novel_id: uuid.UUID, entry_id: uuid.UUID, user_id: uuid.UUID
     ) -> None: ...
+    async def resolve_references(
+        self,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        text: str,
+    ) -> ResolveReferencesResponse: ...
+    async def autocomplete(
+        self,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        q: str,
+        limit: int = 10,
+    ) -> list[dict[str, str]]: ...
     async def search(
         self,
         novel_id: uuid.UUID,

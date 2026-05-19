@@ -758,6 +758,175 @@ export const handlers = [
   }),
 
   // ---------------------------------------------------------------------------
+  // KB Templates
+  // ---------------------------------------------------------------------------
+
+  http.get("*/api/v1/novels/:novelId/kb/templates", async () => {
+    return HttpResponse.json([
+      {
+        entity_type: "character",
+        language: "en",
+        scope: "default",
+        schema_version: "2.0.0",
+        has_override: false,
+        has_update: false,
+      },
+    ]);
+  }),
+
+  http.get("*/api/v1/novels/:novelId/kb/templates/character", async () => {
+    return HttpResponse.json({
+      meta: {
+        template_type: "character",
+        template_version: "2.0.0",
+        template_language: "en",
+        schema_version: "2.0.0",
+      },
+      fields: [
+        { name: "age", field_type: "str", required: false, description: "Character's age" },
+        { name: "role", field_type: "str", required: false, description: "Role in the story" },
+      ],
+      field_groups: [
+        {
+          name: "basic_info",
+          label_key: "kb.groups.basicInfo",
+          description_key: "",
+          order: 1,
+          fields: [
+            { name: "age", field_type: "str", required: false, description: "Character's age" },
+            { name: "role", field_type: "str", required: false, description: "Role in the story" },
+            { name: "gender", field_type: "str", required: false, description: "Gender" },
+            { name: "pronouns", field_type: "str", required: false, description: "Pronouns" },
+            {
+              name: "nationality",
+              field_type: "str",
+              required: false,
+              description: "Nationality or origin",
+            },
+            {
+              name: "pov_character",
+              field_type: "bool",
+              required: false,
+              description: "Is this a POV character?",
+            },
+            {
+              name: "affiliation",
+              field_type: "str",
+              required: false,
+              description: "Group or organization",
+            },
+            {
+              name: "aliases",
+              field_type: "list",
+              required: false,
+              description: "Other names or titles",
+            },
+          ],
+        },
+        {
+          name: "appearance",
+          label_key: "kb.groups.appearance",
+          description_key: "",
+          order: 2,
+          fields: [
+            { name: "height", field_type: "str", required: false, description: "Height" },
+            { name: "build", field_type: "str", required: false, description: "Body type" },
+            { name: "hair_color", field_type: "str", required: false, description: "Hair color" },
+            { name: "eye_color", field_type: "str", required: false, description: "Eye color" },
+            { name: "skin_tone", field_type: "str", required: false, description: "Skin tone" },
+            {
+              name: "distinctive_marks",
+              field_type: "str",
+              required: false,
+              description: "Scars, tattoos, etc.",
+            },
+            {
+              name: "clothing_style",
+              field_type: "str",
+              required: false,
+              description: "Typical attire",
+            },
+          ],
+        },
+        {
+          name: "personality",
+          label_key: "kb.groups.personality",
+          description_key: "",
+          order: 3,
+          fields: [
+            {
+              name: "traits",
+              field_type: "list",
+              required: false,
+              description: "Core personality traits",
+            },
+            {
+              name: "strengths",
+              field_type: "list",
+              required: false,
+              description: "Character strengths",
+            },
+            {
+              name: "weaknesses",
+              field_type: "list",
+              required: false,
+              description: "Character weaknesses",
+            },
+            {
+              name: "fears",
+              field_type: "list",
+              required: false,
+              description: "Fears and anxieties",
+            },
+            {
+              name: "desires",
+              field_type: "list",
+              required: false,
+              description: "Desires and goals",
+            },
+            {
+              name: "motivations",
+              field_type: "str",
+              required: false,
+              description: "Core motivations",
+            },
+            {
+              name: "quirks",
+              field_type: "list",
+              required: false,
+              description: "Quirks and habits",
+            },
+          ],
+        },
+      ],
+      sections: [
+        {
+          name: "background",
+          label_key: "kb.sections.background",
+          description_key: "kb.sections.backgroundHint",
+          order: 1,
+        },
+        {
+          name: "development",
+          label_key: "kb.sections.development",
+          description_key: "kb.sections.developmentHint",
+          order: 2,
+        },
+      ],
+      body: "",
+    });
+  }),
+
+  http.get("*/api/v1/novels/:novelId/kb/templates/:entityType", async ({ params }) => {
+    const { entityType } = params;
+    // Return 404 for non-character types to test fallback
+    return HttpResponse.json(
+      { detail: `No template found for entity type '${entityType}'` },
+      { status: 404 },
+    );
+  }),
+
+  // ---------------------------------------------------------------------------
   // Chapter Details
   // ---------------------------------------------------------------------------
 

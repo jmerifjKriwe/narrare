@@ -1,19 +1,20 @@
 "use client";
 
-/**
- * KB Entry Detail — shows and edits a single KB entry.
- *
- * Displays: name (inline editable), entity type icon, status selector,
- * tags, body textarea, metadata, and relationship section.
- */
-
-import { Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { KBEntry, KBEntryStatus, KBRelationship } from "@/lib/api/kb";
-import { useDeleteKBEntry, useUpdateKBEntry } from "@/lib/hooks/useKB";
+import { useDeleteKBEntry, useKBTemplate, useUpdateKBEntry } from "@/lib/hooks/useKB";
 import { TYPE_ICONS } from "./constants";
+import { getGroupIcon, getSectionIcon } from "./groupMaps";
+import { KBEntryHeader } from "./KBEntryHeader";
+import { KBFieldGroup } from "./KBFieldGroup";
+import { KBFlatEditor } from "./KBFlatEditor";
 import { KBRelationshipSection } from "./KBRelationshipSection";
+import { KBSectionEditor } from "./KBSectionEditor";
+import { KBTagInput } from "./KBTagInput";
+import { KBTypeField } from "./KBTypeField";
+import { buildBodyFromSections, parseSectionsFromBody } from "./kbBodyUtils";
 
 interface KBEntryDetailProps {
   novelId: string;
@@ -22,31 +23,64 @@ interface KBEntryDetailProps {
   onDeleted: () => void;
 }
 
+function formatKey(key: string): string {
+  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEntryDetailProps) {
   const t = useTranslations("studio");
   const Icon = TYPE_ICONS[entry.entity_type];
+
+  const { data: template, isLoading: templateLoading } = useKBTemplate(novelId, entry.entity_type);
+  const hasTemplate = !!template && template.field_groups.length > 0;
 
   const updateMutation = useUpdateKBEntry(novelId);
   const deleteMutation = useDeleteKBEntry(novelId);
 
   const [name, setName] = useState(entry.name);
-  const [body, setBody] = useState(entry.body);
-  const [tagsInput, setTagsInput] = useState(entry.tags.join(", "));
   const [status, setStatus] = useState<KBEntryStatus>(entry.status);
+  const [tags, setTags] = useState<string[]>(entry.tags);
+  const [fieldValues, setFieldValues] = useState<Record<string, unknown>>(entry.metadata);
+  const [sectionContents, setSectionContents] = useState<Record<string, string>>({});
+  const [extraBody, setExtraBody] = useState("");
 
   useEffect(() => {
     setName(entry.name);
-    setBody(entry.body);
-    setTagsInput(entry.tags.join(", "));
     setStatus(entry.status);
-  }, [entry.name, entry.body, entry.tags, entry.status]);
+    setTags(entry.tags);
+    setFieldValues(entry.metadata as Record<string, unknown>);
+    if (template?.sections?.length) {
+      const { sectionContents: parsed, remaining } = parseSectionsFromBody(
+        entry.body,
+        template.sections,
+      );
+      setSectionContents(parsed);
+      setExtraBody(remaining);
+    } else setExtraBody(entry.body);
+  }, [entry, template]);
+
+  const sortedGroups = useMemo(
+    () => [...(template?.field_groups ?? [])].sort((a, b) => a.order - b.order),
+    [template],
+  );
+  const sortedSections = useMemo(
+    () => [...(template?.sections ?? [])].sort((a, b) => a.order - b.order),
+    [template],
+  );
+
+  const label = (key: string, fb: string) => {
+    const v = t(key);
+    return v !== key ? v : fb;
+  };
 
   function handleSave() {
-    const tags = tagsInput
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-    updateMutation.mutate({ entryId: entry.id, data: { name, body, tags, status } });
+    const body = hasTemplate
+      ? buildBodyFromSections(template!.sections, sectionContents, extraBody)
+      : extraBody;
+    updateMutation.mutate({
+      entryId: entry.id,
+      data: { name, body, tags, status, metadata: fieldValues },
+    });
   }
 
   function handleDelete() {
@@ -54,130 +88,161 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
     deleteMutation.mutate(entry.id, { onSuccess: onDeleted });
   }
 
+  const handleFieldChange = (fieldName: string, value: unknown) =>
+    setFieldValues((prev) => ({ ...prev, [fieldName]: value }));
+
+  if (templateLoading) {
+    return (
+      <div className="flex-1 overflow-y-auto bg-background flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const statusOptions: KBEntryStatus[] = ["draft", "reviewed", "canon", "deprecated"];
+
   return (
     <div className="flex-1 overflow-y-auto bg-background">
-      <div className="max-w-3xl mx-auto p-8">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
-              <Icon className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="text-2xl font-medium bg-transparent border-none outline-none w-full"
-              />
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                  {t(`kb.status.${status}`)}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={updateMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity shadow-sm text-sm disabled:opacity-50"
-            >
-              {t("kb.save")}
-            </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-              className="p-2 text-destructive hover:bg-destructive/10 rounded-md disabled:opacity-50"
-              aria-label={t("kb.deleteEntry")}
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+      <div className="max-w-3xl mx-auto p-8 space-y-6">
+        <KBEntryHeader
+          name={name}
+          status={status}
+          statusLabel={t(`kb.status.${status}`)}
+          Icon={Icon}
+          namePlaceholder={t("kb.namePlaceholder")}
+          isSaving={updateMutation.isPending}
+          isDeleting={deleteMutation.isPending}
+          onNameChange={setName}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          deleteLabel={t("kb.deleteEntry")}
+          saveLabel={t("kb.save")}
+        />
 
-        <div className="space-y-6">
-          {/* Status selector */}
-          <FieldGroup label={t("metadataSidebar.status")} htmlFor="entry-status">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label
+              htmlFor="entry-status"
+              className="block text-xs font-medium text-muted-foreground mb-1.5"
+            >
+              {t("metadataSidebar.status")}
+            </label>
             <select
               id="entry-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as KBEntryStatus)}
-              className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm"
+              className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm
+                transition-colors duration-150 hover:border-muted-foreground/30
+                focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
             >
-              {(["draft", "reviewed", "canon", "deprecated"] as KBEntryStatus[]).map((s) => (
+              {statusOptions.map((s) => (
                 <option key={s} value={s}>
                   {t(`kb.status.${s}`)}
                 </option>
               ))}
             </select>
-          </FieldGroup>
+          </div>
+          <div>
+            <span className="block text-xs font-medium text-muted-foreground mb-1.5">
+              {t("kb.tags")}
+            </span>
+            <KBTagInput value={tags} onChange={setTags} placeholder={t("kb.tagsPlaceholder")} />
+          </div>
+        </div>
+        {updateMutation.isError && (
+          <div
+            className="px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive"
+            role="alert"
+          >
+            {updateMutation.error?.message ?? "Failed to save"}
+          </div>
+        )}
 
-          {/* Tags */}
-          <FieldGroup label={t("kb.tags")} htmlFor="entry-tags">
-            <input
-              id="entry-tags"
-              type="text"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              placeholder={t("kb.tagsPlaceholder")}
-              className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm"
-            />
-          </FieldGroup>
+        {hasTemplate ? (
+          <div className="space-y-3">
+            {sortedGroups.map((group) => {
+              const iconMeta = getGroupIcon(group.name);
+              return (
+                <KBFieldGroup
+                  key={group.name}
+                  icon={iconMeta.icon}
+                  iconColor={iconMeta.color}
+                  title={label(`kb.groups.${group.name}`, formatKey(group.name))}
+                  description={group.description_key ? t(group.description_key) : undefined}
+                >
+                  {group.fields.map((field) => (
+                    <KBTypeField
+                      key={field.name}
+                      field={field}
+                      value={fieldValues[field.name]}
+                      onChange={handleFieldChange}
+                      label={label(
+                        `kb.groupLabels.${group.name}.${field.name}`,
+                        formatKey(field.name),
+                      )}
+                    />
+                  ))}
+                </KBFieldGroup>
+              );
+            })}
+          </div>
+        ) : (
+          <KBFlatEditor
+            template={template}
+            fieldValues={fieldValues}
+            body={extraBody}
+            entryMetadata={entry.metadata}
+            onFieldChange={handleFieldChange}
+            onBodyChange={setExtraBody}
+          />
+        )}
 
-          {/* Body */}
-          <FieldGroup label={t("kb.body")} htmlFor="entry-body">
+        {sortedSections.length > 0 && (
+          <div className="space-y-4">
+            <div className="h-px bg-border/50" />
+            {sortedSections.map((section) => {
+              const iconMeta = getSectionIcon(section.name);
+              return (
+                <KBSectionEditor
+                  key={section.name}
+                  name={section.name}
+                  novelId={novelId}
+                  icon={iconMeta.icon}
+                  iconColor={iconMeta.color}
+                  title={label(`kb.sections.${section.name}`, formatKey(section.name))}
+                  hint={label(`kb.sections.${section.name}Hint`, "")}
+                  value={sectionContents[section.name] ?? ""}
+                  onChange={(name, val) => setSectionContents((prev) => ({ ...prev, [name]: val }))}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {hasTemplate && extraBody.trim() && (
+          <div>
+            <label
+              htmlFor="entry-extra-body"
+              className="block text-xs font-medium text-muted-foreground mb-1.5"
+            >
+              {t("kb.additionalNotes")}
+            </label>
             <textarea
-              id="entry-body"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder={t("kb.bodyPlaceholder")}
-              className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm min-h-[200px] resize-y"
+              id="entry-extra-body"
+              value={extraBody}
+              onChange={(e) => setExtraBody(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 bg-input-background border border-border/60 rounded-md text-sm resize-y
+                transition-colors duration-150 hover:border-muted-foreground/30
+                focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/10"
             />
-          </FieldGroup>
+          </div>
+        )}
 
-          {/* Metadata */}
-          {Object.keys(entry.metadata).length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1.5">
-                {t("kb.metadata")}
-              </h3>
-              <div className="bg-muted/30 rounded-md p-3 space-y-1">
-                {Object.entries(entry.metadata).map(([key, value]) => (
-                  <div key={key} className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground font-medium">{key}:</span>
-                    <span>{String(value)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Relationships */}
+        <div className="pt-2">
           <KBRelationshipSection novelId={novelId} entry={entry} relationships={relationships} />
         </div>
       </div>
-    </div>
-  );
-}
-
-// --- Reusable field group ---
-
-interface FieldGroupProps {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}
-
-function FieldGroup({ label, htmlFor, children }: FieldGroupProps) {
-  return (
-    <div>
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-muted-foreground mb-1.5">
-        {label}
-      </label>
-      {children}
     </div>
   );
 }

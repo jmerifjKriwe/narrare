@@ -64,7 +64,8 @@ class KBEntry(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "entity_type IN ('character', 'location', 'faction', 'object', 'system', 'timeline')",
+            "entity_type IN ('character', 'concept', 'faction', 'location', "
+            "'object', 'setting', 'system', 'timeline')",
             name="ck_kb_entries_entity_type",
         ),
         CheckConstraint(

@@ -9,17 +9,21 @@ from __future__ import annotations
 
 from .base import KBEntryMetadata
 from .character import CharacterMetadata
+from .concept import ConceptMetadata
 from .faction import FactionMetadata
 from .location import LocationMetadata
 from .object import ObjectMetadata
+from .setting import SettingMetadata
 from .system import SystemMetadata
 from .timeline import TimelineMetadata
 
 SCHEMA_REGISTRY: dict[str, type[KBEntryMetadata]] = {
     "character": CharacterMetadata,
-    "location": LocationMetadata,
+    "concept": ConceptMetadata,
     "faction": FactionMetadata,
+    "location": LocationMetadata,
     "object": ObjectMetadata,
+    "setting": SettingMetadata,
     "system": SystemMetadata,
     "timeline": TimelineMetadata,
 }

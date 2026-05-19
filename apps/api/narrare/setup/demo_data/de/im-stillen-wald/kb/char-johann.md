@@ -14,6 +14,87 @@ first_appearance: "ch-de-001"
 pov_character: false
 affiliation: "Försterei"
 occupation: "Förster"
+metadata:
+  appearance:
+    height: Groß und knorrig, wie eine alte Eiche
+    hair_color: Grau, struppig, immer mit Nadeln und Blättern darin
+    eye_color: Dunkelgrün, kaum von der Waldfarbe zu unterscheiden
+    build: Rissige und narbige Hände vom jahrelangen Arbeiten im Wald
+    clothing_style: Alte Lederkleidung, immer gewohnheitsmäßig nachgeflickt
+  personality:
+    traits:
+      - schweigsam
+      - beobachtend
+      - geduldig wie das Wachsen der Bäume
+      - hartnäckig wie Wurzeln im Felsen
+      - einsam
+    strengths:
+      - tiefe Verbindung zum Wald
+      - Wahrnehmung von Dingen, die andere nicht sehen
+      - Geduld und Widerstandskraft
+      - Verständnis der natürlichen Welt
+    weaknesses:
+      - Einsamkeit — von Dorfbewohnern respektiert, aber nicht verstanden
+      - lebt in einer Welt, die andere nicht wahrnehmen können
+      - spricht wenig, was zu Missverständnissen führt
+      - fühlt sich zwischen der Menschenwelt und der Waldwelt zerrissen
+    fears:
+      - nicht näher beschrieben (zeigt keine Furcht)
+    desires:
+      - den Wald zu schützen
+      - das Geheimnis des Waldes zu bewahren
+  background:
+    family: Familie Bauer bewacht den Stillen Wald seit Generationen; Vater und Großvater waren Förster
+    upbringing: Im Wald geboren und aufgewachsen
+    key_events:
+      - Wurde im Wald geboren, wie schon sein Vater und dessen Vater vor ihm
+      - Lebt seit fünfzig Jahren in seinem Försterhaus
+      - Hat eine tiefe Verbindung zum Waldgeist entwickelt
+    formative_experiences: >-
+      Fünfzig Jahre im Försterhaus, allein bis auf den Wald selbst. Die
+      Dorfbewohner sagen, er sei ein Teil des Waldes geworden. Er spürt,
+      wenn der Wald gestört wird, hört die Schreie der Bäume, wenn ein Sturm
+      sie bricht. In tiefen Nächten glaubt er, die Stimmen seiner Vorfahren
+      zu hören.
+  speech:
+    typical_phrases:
+      - spricht in kurzen, bedachten Sätzen
+      - verwendet Metaphern aus der Natur
+    dialect: Ländlich, vom Leben im Wald geprägt
+    vocabulary_quirks: >-
+      Ein Mann des Waldes, nicht der Worte. Spricht wenig, beobachtet viel.
+      Seine Ruhe ist nicht Abwesenheit von Gedanken, sondern eine Art
+      zuzuhören — dem Wald, den Tieren, den Winden. Wenn er spricht, sind
+      seine Worte schwer und bedacht wie das Wachsen der Bäume.
+    body_language: >-
+      Ruhig und bedächtig. Kann stundenlang stillsitzen und beobachten.
+      Seine Hände, rissig und narbig, verraten ein Leben harter Arbeit.
+  relationships:
+    allies:
+      - Der Waldgeist
+    notes: >-
+      Einer der wenigen Menschen, die den Waldgeist wahrnehmen können. Der
+      Waldgeist respektiert ihn, weil er den Wald respektiert. Von den
+      Dorfbewohnern respektiert, aber nicht verstanden. Seine Verbindung zu
+      Anna ist eine Brücke — sie fordert ihn heraus mit ihren Fragen, und
+      langsam lehrt er sie, anders zu sehen. Manchmal sprechen er und der
+      Waldgeist miteinander, nicht mit Worten, aber mit der Verständigung,
+      die entsteht, wenn zwei Dinge dasselbe lieben.
+  development:
+    starting_point: >-
+      Einsamer Förster, der die Geheimnisse des Waldes besser kennt als die
+      Geheimnisse der Menschen. Ein Mann, der längst ein Teil des Waldes
+      geworden ist.
+    key_turning_points:
+      - Ankunft von Anna im Dorf
+      - Seltsame Vorfälle im Wald, die auf eine Störung hinweisen
+    planned_arc: >-
+      Brücke zwischen menschlicher Welt und dem Wald, der jenseits der
+      menschlichen Ordnung existiert. Muss entscheiden, wie er mit den
+      seltsamen Geschehnissen umgeht — ob er das Geheimnis bewahrt oder
+      teilt, ob er den Wald beschützt oder die Menschen. Seine Rolle ist
+      es, die Verbindung zwischen Annas rationaler Welt und der
+      unerklärlichen Welt des Waldes zu sein.
 ---
 
 # Johann Bauer

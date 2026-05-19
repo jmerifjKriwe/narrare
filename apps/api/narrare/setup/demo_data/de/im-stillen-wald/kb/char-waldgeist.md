@@ -12,6 +12,85 @@ role: supporting
 arc: "Die Prüfung für Anna und Bestätigung für Johann - das Geheimnis des Waldes manifestiert"
 first_appearance: "ch-de-001"
 pov_character: false
+metadata:
+  appearance:
+    height: Wechselhaft — mal wie ein alter Mann, mal wie ein Kind
+    hair_color: Wechselnd, je nach Erscheinungsform
+    eye_color: Nicht definiert — die Gestalt ist aus Schatten und Licht
+    build: Formbar, nicht fest — ist, was der Betrachter braucht
+    skin_tone: Nicht definiert
+    distinctive_marks: >-
+      Manchmal wie ein alter Mann, knorrig wie eine Eiche. Manchmal wie ein
+      Kind, lebendig wie ein junger Trieb. Manchmal nichts menschliches — nur
+      eine Gestalt aus Schatten und Licht, Nebel und Sternschein.
+    clothing_style: Gestalt aus Schatten und Licht — trägt keine Kleidung im menschlichen Sinne
+  personality:
+    traits:
+      - uralt
+      - geduldig
+      - ausgleichend
+      - weder gut noch böse
+    strengths:
+      - Unsterblichkeit
+      - Erinnerung des Waldes an alles, was je geschehen ist
+      - tiefe Weisheit, die über menschliches Verständnis hinausgeht
+      - unendliche Geduld
+    weaknesses:
+      - für Menschen schwer verständlich (spricht nicht in Worten)
+      - handelt nach Regeln des Waldes, nicht der Menschen
+      - kann nicht eingreifen, nur führen und prüfen
+    motivations: >-
+      Der Waldgeist ist die Waage, auf der die Absichten der Menschen gewogen
+      werden. Er vergisst nichts, verzeiht manches, aber nicht alles. Er
+      schützt die, die den Wald respektieren, und führt die in die Irre, die
+      ihm schaden wollen.
+    quirks:
+      - spricht in Bildern, Gefühlen und Erinnerungen, nicht in Worten
+      - seine Gestalt wechselt je nach Betrachter
+  background:
+    family: Der Wald selbst — er ist die Erinnerung des Waldes
+    key_events:
+      - Existiert seit Jahrhunderten im Stillen Wald
+      - Manifestiert sich für die, die sehen können
+      - Hat eine Verbindung zur Familie Bauer über Generationen
+    formative_experiences: >-
+      Der Waldgeist ist kein Geist im klassischen Sinne — kein Verstorbener,
+      der auf der Erde geblieben ist. Er ist der Wald selbst, die Erinnerung
+      des Waldes an alles, was je in ihm geschehen ist. Er ist die Grenze
+      zwischen Leben und Tod, manifestiert in einer Gestalt, die Menschen
+      wahrnehmen können.
+  speech:
+    typical_phrases:
+      - spricht nicht mit Worten, oder doch — aber Worte sind nur ein kleiner Teil
+      - spricht in Bildern, Gefühlen, Erinnerungen
+    vocabulary_quirks: >-
+      Der Waldgeist spricht nicht mit Worten im menschlichen Sinne. Er
+      spricht in Bildern, in Gefühlen, in Erinnerungen, die nicht die deinen
+      sind. Wer ihn hört, hört mehr als Sprache — er hört den Wald selbst,
+      atemlos und unendlich alt.
+  relationships:
+    allies:
+      - Johann Bauer
+    notes: >-
+      Johann ist einer der wenigen Menschen, die den Waldgeist wahrnehmen
+      können. Der Waldgeist respektiert Johann, weil Johann den Wald
+      respektiert. In stillen Nächten sprechen sie miteinander — nicht mit
+      Worten, aber mit der Verständigung, die entsteht, wenn zwei Dinge
+      dasselbe lieben. Anna sieht den Waldgeist zuerst nicht — sie ist zu
+      sehr in ihrer Logik verankert. Der Waldgeist hat Geduld mit ihr; er
+      weiß, dass Menschen Zeit brauchen, um zu lernen, wie man wieder glaubt.
+  development:
+    starting_point: >-
+      Uralte Waldpräsenz, die existiert als Erinnerung und Grenze. Eine
+      Manifestation des Waldes selbst, die die Absichten der Menschen wägt.
+    key_turning_points:
+      - Ankunft von Anna, die ihn nicht sehen kann
+      - Seltsame Geschehnisse im Wald, die eine Prüfung einleiten
+    planned_arc: >-
+      Die Prüfung für Anna und Bestätigung für Johann — das Geheimnis des
+      Waldes manifestiert. Er ist die Grenze zwischen der menschlichen Welt
+      und der Welt jenseits der menschlichen Ordnung. Er ist die Frage, nach
+      der beide suchen, und die Antwort, die sie nicht ganz verstehen.
 ---
 
 # Der Waldgeist

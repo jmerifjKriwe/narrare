@@ -476,7 +476,8 @@
       "feature4": "Fortschrittsverfolgung und Schreibziele",
       "feature5": "Modernes, ablenkungsfreies Design"
     },
-    "promptsTab": "System-Prompts"
+    "promptsTab": "System-Prompts",
+    "kbTemplates": "KB-Vorlagen"
   },
   "wizard": {
     "step1": {
@@ -679,6 +680,8 @@
     "objects": "Objekte",
     "systems": "Systeme",
     "timelines": "Zeitlinien",
+    "concepts": "Konzepte",
+    "settings": "Settings",
     "status": {
       "draft": "Entwurf",
       "reviewed": "Überprüft",
@@ -717,7 +720,79 @@
     "saveSuccess": "Eintrag gespeichert",
     "deleteSuccess": "Eintrag gelöscht",
     "relCreated": "Beziehung erstellt",
-    "arrow": "\u2192"
+    "arrow": "\u2192",
+    "kbTemplates": "KB-Vorlagen",
+    "kbTemplatesDescription": "Vorlagen für Wissensdatenbank-Einträge anpassen",
+    "loadingTemplates": "Vorlagen werden geladen...",
+    "noTemplates": "Keine Vorlagen verfügbar",
+    "update": "Aktualisieren",
+    "template": "Vorlage",
+    "templateVersion": "v{version} \u00b7 {lang}",
+    "custom": "Angepasst",
+    "defaultLabel": "Standard",
+    "updateAvailable": "Aktualisierung verfügbar",
+    "templateSaved": "Vorlage gespeichert",
+    "failedToSaveTemplate": "Vorlage konnte nicht gespeichert werden",
+    "templateReset": "Vorlage auf Standard zurückgesetzt",
+    "failedToResetTemplate": "Zurücksetzen fehlgeschlagen",
+    "failedToLoadTemplate": "Vorlage konnte nicht geladen werden",
+    "back": "Zurück",
+    "version": "Version {version}",
+    "resetToDefaultConfirm": "Vorlage auf Standardversion zurücksetzen? Ihre Änderungen gehen verloren.",
+    "resetting": "Wird zurückgesetzt...",
+    "resetToDefault": "Auf Standard zurücksetzen",
+    "saving": "Speichern...",
+    "searching": "Suche...",
+    "noMatchingEntries": "Keine passenden Einträge",
+    "groups": {
+      "basicInfo": "Grundinformationen",
+      "appearance": "Erscheinung",
+      "personality": "Persönlichkeit",
+      "background": "Hintergrund",
+      "relationships": "Beziehungen",
+      "development": "Entwicklung",
+      "speech": "Sprechweise & Manierismen"
+    },
+    "sections": {
+      "background": "Hintergrund",
+      "backgroundHint": "Beschreibe die Geschichte, Erziehung und prägenden Erfahrungen...",
+      "personality": "Persönlichkeit",
+      "personalityHint": "Beschreibe Persönlichkeit, Motivation und innere Konflikte...",
+      "appearance": "Erscheinung",
+      "appearanceHint": "Beschreibe das äußere Erscheinungsbild und besondere Merkmale...",
+      "development": "Entwicklung",
+      "developmentHint": "Beschreibe den Charakterbogen, die Entwicklung und wichtige Veränderungen..."
+    },
+    "groupLabels": {
+      "basicInfo": {
+        "age": "Alter",
+        "role": "Rolle in der Geschichte",
+        "gender": "Geschlecht",
+        "pronouns": "Pronomen",
+        "nationality": "Nationalität/Herkunft",
+        "pov_character": "Erzählerfigur",
+        "affiliation": "Zugehörigkeit",
+        "aliases": "Aliase"
+      },
+      "appearance": {
+        "height": "Größe",
+        "build": "Statur",
+        "hair_color": "Haarfarbe",
+        "eye_color": "Augenfarbe",
+        "skin_tone": "Hautfarbe",
+        "distinctive_marks": "Besondere Merkmale",
+        "clothing_style": "Kleidungsstil"
+      },
+      "personality": {
+        "traits": "Kernmerkmale",
+        "strengths": "Stärken",
+        "weaknesses": "Schwächen",
+        "fears": "Ängste",
+        "desires": "Wünsche/Ziele",
+        "motivations": "Motivationen",
+        "quirks": "Eigenarten"
+      }
+    }
   },
   "auth": {
     "loginTitle": "Bei Narrare anmelden",

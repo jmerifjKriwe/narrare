@@ -25,6 +25,9 @@ if TYPE_CHECKING:
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
     from narrare.settings.user_ai_settings_service import UserAiSettingsService
     from narrare.settings.user_providers_service import UserProvidersService
+    from narrare.templates.cascade_resolver import CascadeResolver
+    from narrare.templates.repository import TemplateRepository
+    from narrare.templates.service import TemplateApiService
 
 logger = structlog.get_logger(__name__)
 
@@ -185,3 +188,33 @@ def get_model_routing_resolver(session: SessionDep) -> ModelRoutingResolverImpl:
         user_ai_settings_repo=UserAiSettingsRepository(session),
         project_ai_settings_repo=ProjectAiSettingsRepository(session),
     )
+
+
+# ---------------------------------------------------------------------------
+# Template services
+# ---------------------------------------------------------------------------
+
+
+def get_template_repository(session: SessionDep) -> TemplateRepository:
+    """Factory for TemplateRepository."""
+    from narrare.templates.repository import TemplateRepository
+
+    return TemplateRepository(session)
+
+
+def get_template_api_service(session: SessionDep) -> TemplateApiService:
+    """Factory for TemplateApiService."""
+    from narrare.templates.repository import TemplateRepository
+    from narrare.templates.service import TemplateApiService
+
+    repo = TemplateRepository(session)
+    return TemplateApiService(repository=repo)
+
+
+def get_cascade_resolver(session: SessionDep) -> CascadeResolver:
+    """Factory for CascadeResolver with DB-backed repository."""
+    from narrare.templates.cascade_resolver import CascadeResolver
+    from narrare.templates.repository import TemplateRepository
+
+    repo = TemplateRepository(session)
+    return CascadeResolver(repository=repo)

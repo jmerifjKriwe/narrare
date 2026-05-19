@@ -15,14 +15,20 @@ import { ENTITY_TYPES } from "./constants";
 
 interface KBCreateFormProps {
   novelId: string;
+  initialEntityType?: KBEntityType;
   onCancel: () => void;
   onCreated: (entryId: string) => void;
 }
 
-export function KBCreateForm({ novelId, onCancel, onCreated }: KBCreateFormProps) {
+export function KBCreateForm({
+  novelId,
+  initialEntityType,
+  onCancel,
+  onCreated,
+}: KBCreateFormProps) {
   const t = useTranslations("studio");
 
-  const [entityType, setEntityType] = useState<KBEntityType>("character");
+  const [entityType, setEntityType] = useState<KBEntityType>(initialEntityType ?? "character");
   const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -46,9 +52,11 @@ export function KBCreateForm({ novelId, onCancel, onCreated }: KBCreateFormProps
   function typeLabel(type: KBEntityType): string {
     const map: Record<KBEntityType, string> = {
       character: "kb.characters",
+      concept: "kb.concepts",
       location: "kb.locations",
       faction: "kb.factions",
       object: "kb.objects",
+      setting: "kb.settings",
       system: "kb.systems",
       timeline: "kb.timelines",
     };
