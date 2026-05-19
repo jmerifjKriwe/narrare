@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import TYPE_CHECKING
 
@@ -15,7 +16,21 @@ from narrare._app.database import get_async_session
 from narrare._app.main import create_app
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Generator
+
+# Module-level event loop for pytest-asyncio compatibility
+# This ensures all session-scoped and function-scoped fixtures use the same loop
+_event_loop: asyncio.AbstractEventLoop | None = None
+
+
+@pytest.fixture(scope="session")
+def event_loop() -> Generator[asyncio.AbstractEventLoop]:
+    """Create a session-scoped event loop to avoid loop mismatch errors."""
+    global _event_loop
+    if _event_loop is None or _event_loop.is_closed():
+        _event_loop = asyncio.new_event_loop()
+    yield _event_loop
+
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -81,3 +96,41 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
         yield c
 
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict[str, str]:
+    """Create a test user and return authorization headers with valid token."""
+    import uuid
+    from datetime import UTC, datetime, timedelta
+
+    import jwt
+
+    from narrare.auth.models import User
+    from narrare.auth.security import hash_password
+
+    # Create test user in the database
+    user = User(
+        id=uuid.uuid4(),
+        email="test@example.com",
+        hashed_password=hash_password("testpassword123"),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    # Create a valid JWT token
+    secret_key = "test-secret-key-not-for-production"
+    token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "iat": datetime.now(UTC),
+            "exp": datetime.now(UTC) + timedelta(minutes=60),
+            "type": "access",
+        },
+        secret_key,
+        algorithm="HS256",
+    )
+
+    return {"Authorization": f"Bearer {token}"}
