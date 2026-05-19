@@ -189,8 +189,7 @@ packages/core/narrare_core/
 
 ---
 
-## `packages/web/` — Next.js 15 Frontend
-
+## `packages/web/` — Next.js 16 Frontend
 The web frontend for Narrare. Next.js App Router with TypeScript.
 **Styling:** Tailwind CSS v4 only (no styled-jsx, no CSS modules).
 **State:** TanStack Query for server state, Zustand for UI state.

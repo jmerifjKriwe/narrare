@@ -395,7 +395,6 @@ export interface KBTemplateFieldGroup {
 export interface KBTemplateMeta {
   template_type: string;
   template_version: string;
-  template_language: string;
   schema_version: string;
 }
 
@@ -409,7 +408,6 @@ export interface KBTemplate {
 
 export interface KBTemplateInfo {
   entity_type: string;
-  language: string;
   scope: string;
   schema_version: string;
   has_override: boolean;
@@ -418,7 +416,6 @@ export interface KBTemplateInfo {
 
 export interface KBTemplateDetail {
   entity_type: string;
-  language: string;
   scope: string;
   content: string;
   base_content: string | null;
@@ -429,14 +426,12 @@ export interface KBTemplateDetail {
 
 export interface KBTemplateUpdateInfo {
   entity_type: string;
-  language: string;
   override_version: string | null;
   current_bundled_version: string | null;
 }
 
 export interface KBTemplateDiff {
   entity_type: string;
-  language: string;
   override_content: string;
   bundled_content: string;
 }

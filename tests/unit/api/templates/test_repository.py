@@ -39,7 +39,6 @@ def _make_mock_session() -> AsyncMock:
 
 def _make_kb_template(
     entity_type: str = "character",
-    language: str = "en",
     scope: str = "user",
     scope_id: uuid.UUID | None = None,
     content: str = "---\ntemplate_type: character\n---\n# Body",
@@ -49,7 +48,6 @@ def _make_kb_template(
     return KBTemplate(
         id=uuid.uuid4(),
         entity_type=entity_type,
-        language=language,
         scope=TemplateScope(scope),
         scope_id=scope_id,
         content=content,
@@ -83,7 +81,7 @@ class TestGetOverride:
         self, repo: TemplateRepository, mock_session: AsyncMock
     ) -> None:
         """get_override returns None when no row matches."""
-        result = await repo.get_override("character", "en", "user", uuid.uuid4())
+        result = await repo.get_override("character", "user", uuid.uuid4())
         assert result is None
 
     async def test_get_override_returns_template_when_found(
@@ -93,10 +91,9 @@ class TestGetOverride:
         kb_tpl = _make_kb_template()
         mock_session.execute.return_value.scalar_one_or_none.return_value = kb_tpl
 
-        result = await repo.get_override("character", "en", "user", uuid.uuid4())
+        result = await repo.get_override("character", "user", uuid.uuid4())
         assert result is not None
         assert result.meta.template_type == "character"
-        assert result.meta.template_language == "en"
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +148,6 @@ class TestSaveOverride:
 
         result = await repo.save_override(
             entity_type="character",
-            language="en",
             scope="user",
             scope_id=scope_id,
             content="---\ntemplate_type: character\n---\n# New body",
@@ -176,7 +172,6 @@ class TestSaveOverride:
 
         result = await repo.save_override(
             entity_type="character",
-            language="en",
             scope="user",
             scope_id=uuid.uuid4(),
             content="---\ntemplate_type: character\n---\n# Updated body",
@@ -201,7 +196,7 @@ class TestDeleteOverride:
         MockCursorResult = MagicMock(spec=["rowcount"], rowcount=0)
         mock_session.execute.return_value = MockCursorResult
 
-        result = await repo.delete_override("character", "en", "user", uuid.uuid4())
+        result = await repo.delete_override("character", "user", uuid.uuid4())
         assert result is False
 
     async def test_delete_override_returns_true_when_deleted(
@@ -211,7 +206,7 @@ class TestDeleteOverride:
         MockCursorResult = MagicMock(spec=["rowcount"], rowcount=1)
         mock_session.execute.return_value = MockCursorResult
 
-        result = await repo.delete_override("character", "en", "user", uuid.uuid4())
+        result = await repo.delete_override("character", "user", uuid.uuid4())
         assert result is True
 
 

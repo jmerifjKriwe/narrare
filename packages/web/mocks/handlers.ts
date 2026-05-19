@@ -765,7 +765,6 @@ export const handlers = [
     return HttpResponse.json([
       {
         entity_type: "character",
-        language: "en",
         scope: "default",
         schema_version: "2.0.0",
         has_override: false,
@@ -779,7 +778,6 @@ export const handlers = [
       meta: {
         template_type: "character",
         template_version: "2.0.0",
-        template_language: "en",
         schema_version: "2.0.0",
       },
       fields: [

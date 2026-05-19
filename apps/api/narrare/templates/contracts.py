@@ -20,13 +20,13 @@ class TemplateRepositoryProtocol(Protocol):
     """Protocol for template override storage.
 
     Implementations provide CRUD access to persisted template overrides
-    in the ``kb_templates`` table.  All methods are async.
+    in the ``kb_templates`` table.  All methods are async.  Templates
+    are keyed by ``(entity_type, scope, scope_id)`` — no language dimension.
     """
 
     async def get_override(
         self,
         entity_type: str,
-        language: str,
         scope: str,
         scope_id: uuid.UUID | None,
     ) -> Template | None:
@@ -34,7 +34,6 @@ class TemplateRepositoryProtocol(Protocol):
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en", "de", "fr").
             scope: Scope level ("user", "project", or "global").
             scope_id: Scope identifier (user or project UUID), or None for global.
 
@@ -62,7 +61,6 @@ class TemplateRepositoryProtocol(Protocol):
     async def save_override(
         self,
         entity_type: str,
-        language: str,
         scope: str,
         scope_id: uuid.UUID | None,
         content: str,
@@ -71,12 +69,11 @@ class TemplateRepositoryProtocol(Protocol):
     ) -> Template:
         """Insert or update a template override (upsert).
 
-        Uses the unique constraint on (entity_type, language, scope, scope_id)
+        Uses the unique constraint on (entity_type, scope, scope_id)
         to perform an upsert.
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en", "de", "fr").
             scope: Scope level ("user", "project", or "global").
             scope_id: Scope identifier, or None for global.
             content: Full template content (YAML frontmatter + body markdown).
@@ -90,7 +87,6 @@ class TemplateRepositoryProtocol(Protocol):
     async def delete_override(
         self,
         entity_type: str,
-        language: str,
         scope: str,
         scope_id: uuid.UUID | None,
     ) -> bool:
@@ -98,7 +94,6 @@ class TemplateRepositoryProtocol(Protocol):
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en", "de", "fr").
             scope: Scope level ("user", "project", or "global").
             scope_id: Scope identifier, or None for global.
 

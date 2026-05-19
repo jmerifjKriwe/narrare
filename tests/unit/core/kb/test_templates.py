@@ -4,8 +4,8 @@ Tests cover:
 - parse_template with valid template (character.md)
 - parse_template with missing frontmatter
 - parse_template with empty string
-- Defaults loading for en/de/fr
-- Defaults fallback to en
+- Defaults loading (language-neutral)
+- list_default_templates returns entity types only
 - schema_bridge get_form_fields for character
 - schema_bridge validate_metadata valid and invalid
 - TemplateField, TemplateMeta, Template models
@@ -67,18 +67,12 @@ class TestTemplateMeta:
         meta = TemplateMeta(template_type="character")
         assert meta.template_type == "character"
         assert meta.template_version == "1.0.0"
-        assert meta.template_language == "en"
         assert meta.schema_version == "1.0.0"
 
-    def test_all_fields(self) -> None:
-        meta = TemplateMeta(
-            template_type="location",
-            template_version="2.0.0",
-            template_language="de",
-            schema_version="1.1.0",
-        )
-        assert meta.template_language == "de"
-        assert meta.template_version == "2.0.0"
+    def test_has_no_language(self) -> None:
+        """TemplateMeta no longer has template_language."""
+        meta = TemplateMeta(template_type="character")
+        assert not hasattr(meta, "template_language")
 
 
 # ---------------------------------------------------------------------------
@@ -119,12 +113,11 @@ class TestParseTemplate:
     """Tests for the parse_template function."""
 
     def test_valid_character_template(self) -> None:
-        """Parsing a valid character template should extract meta + fields."""
+        """Parsing a valid v1 character template should extract meta + fields."""
         raw = (
             "---\n"
             "template_type: character\n"
             "template_version: '1.0.0'\n"
-            "template_language: en\n"
             "schema_version: '1.0.0'\n"
             "age:\n"
             "  type: int\n"
@@ -142,7 +135,6 @@ class TestParseTemplate:
 
         assert template.meta.template_type == "character"
         assert template.meta.template_version == "1.0.0"
-        assert template.meta.template_language == "en"
         assert template.raw == raw
 
         # Should have 2 fields (age and role)
@@ -158,6 +150,62 @@ class TestParseTemplate:
         assert role_field.required is True
 
         assert "# Character Template" in template.body
+
+    def test_valid_v3_template_no_descriptions(self) -> None:
+        """V3 template without descriptions should parse with empty descriptions."""
+        raw = (
+            "---\n"
+            "template_type: character\n"
+            "template_version: '3.0.0'\n"
+            "schema_version: '2.0.0'\n"
+            "field_groups:\n"
+            "  basic_info:\n"
+            "    label_key: kb.groups.basicInfo\n"
+            "    fields:\n"
+            "      age:\n"
+            "        type: int\n"
+            "      role:\n"
+            "        type: str\n"
+            "---\n"
+            "# Body\n"
+        )
+        template = parse_template(raw)
+
+        assert template.meta.template_type == "character"
+        assert template.meta.template_version == "3.0.0"
+        assert not hasattr(template.meta, "template_language")
+
+        age_field = next(f for f in template.fields if f.name == "age")
+        assert age_field.field_type == "int"
+        assert age_field.description == ""
+
+    def test_legacy_v2_template_language_ignored(self) -> None:
+        """V2 template with template_language: en should still parse."""
+        raw = (
+            "---\n"
+            "template_type: character\n"
+            "template_version: '2.0.0'\n"
+            "template_language: en\n"
+            "schema_version: '2.0.0'\n"
+            "field_groups:\n"
+            "  basic_info:\n"
+            "    label_key: kb.groups.basicInfo\n"
+            "    fields:\n"
+            "      age:\n"
+            "        type: int\n"
+            "        description: Character age\n"
+            "---\n"
+            "# Body\n"
+        )
+        template = parse_template(raw)
+
+        assert template.meta.template_type == "character"
+        assert template.meta.template_version == "2.0.0"
+        assert not hasattr(template.meta, "template_language")
+
+        # Description preserved from v2 template
+        age_field = next(f for f in template.fields if f.name == "age")
+        assert age_field.description == "Character age"
 
     def test_missing_frontmatter(self) -> None:
         """Content without frontmatter should become body with empty meta."""
@@ -204,48 +252,34 @@ class TestParseTemplate:
 
 
 # ---------------------------------------------------------------------------
-# Defaults loading
+# Defaults loading (language-neutral)
 # ---------------------------------------------------------------------------
 
 
 class TestDefaultTemplates:
-    """Tests for loading bundled default templates."""
+    """Tests for loading bundled default templates (language-neutral)."""
 
-    @pytest.mark.parametrize("language", ["en", "de", "fr"])
     @pytest.mark.parametrize(
         "entity_type",
         ["character", "concept", "faction", "location", "object", "setting", "system", "timeline"],
     )
-    def test_all_entity_types_all_languages(
-        self,
-        entity_type: str,
-        language: str,
-    ) -> None:
-        """Every entity type should have a template in every language."""
-        content = load_default_template(entity_type, language)
+    def test_all_entity_types_have_template(self, entity_type: str) -> None:
+        """Every entity type should have a default template."""
+        content = load_default_template(entity_type)
         assert content is not None
         assert entity_type in content
 
-    def test_fallback_to_english(self) -> None:
-        """Non-existent language should fall back to English."""
-        # "xx" doesn't exist — should get the English version
-        content = load_default_template("character", "xx")
-        assert content is not None
-        assert "Character" in content  # English template has "Character"
-
     def test_unknown_entity_type_returns_none(self) -> None:
         """Unknown entity type should return None."""
-        content = load_default_template("unknown_type", "en")
+        content = load_default_template("unknown_type")
         assert content is None
 
     def test_list_default_templates(self) -> None:
-        """Should list all 8 entity types x 3 languages = 24, minus missing fr templates = 22."""
+        """Should list exactly 8 entity types."""
         templates = list_default_templates()
-        assert len(templates) == 22
+        assert len(templates) == 8
 
-        # All entity types present
-        entity_types = {t[0] for t in templates}
-        assert entity_types == {
+        assert set(templates) == {
             "character",
             "concept",
             "faction",
@@ -256,18 +290,41 @@ class TestDefaultTemplates:
             "timeline",
         }
 
-        # All languages present
-        languages = {t[1] for t in templates}
-        assert languages == {"en", "de", "fr"}
+    def test_list_returns_strings_not_tuples(self) -> None:
+        """list_default_templates returns list[str], not list[tuple]."""
+        templates = list_default_templates()
+        assert all(isinstance(t, str) for t in templates)
 
     def test_character_template_parseable(self) -> None:
-        """The English character template should parse correctly."""
-        raw = load_default_template("character", "en")
+        """The character template should parse correctly as v3."""
+        raw = load_default_template("character")
         assert raw is not None
 
         template = parse_template(raw)
         assert template.meta.template_type == "character"
-        assert len(template.fields) == 43  # 43 character fields
+        assert template.meta.template_version == "3.0.0"
+        assert not hasattr(template.meta, "template_language")
+
+    def test_all_templates_are_v3(self) -> None:
+        """All bundled templates should be v3.0.0."""
+        for entity_type in list_default_templates():
+            raw = load_default_template(entity_type)
+            assert raw is not None
+            template = parse_template(raw)
+            assert template.meta.template_version == "3.0.0", (
+                f"{entity_type} is {template.meta.template_version}, expected 3.0.0"
+            )
+
+    def test_all_templates_have_empty_descriptions(self) -> None:
+        """All bundled v3 templates should have empty field descriptions."""
+        for entity_type in list_default_templates():
+            raw = load_default_template(entity_type)
+            assert raw is not None
+            template = parse_template(raw)
+            for field in template.fields:
+                assert field.description == "", (
+                    f"{entity_type}.{field.name} has description: {field.description!r}"
+                )
 
 
 # ---------------------------------------------------------------------------

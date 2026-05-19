@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-18
+Date: 2026-05-19
 Updated by: NarrareDevCoordinator
-Session summary: New Chapter Generation (WRITE-002) implemented — core writing pipeline, 4 generation modes, context assembly, bundled prompts, API with SSE+WebSocket, frontend generation UI, 98 tasks complete.
+Session summary: KB v2 complete — template-driven structured metadata with field_groups + sections for all 8 entity types × 3 languages, cross-reference resolution, 2 new entity types (concept, setting), template management UI, seed version-aware upsert. All templates v2, seed service handles version upgrades.
 
 ---
 
@@ -129,6 +129,13 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `session_manager.py` — SessionManager with cache-backed persistence (SessionCacheProtocol)
 - `prompts/_bundled/writing/` — 12 system prompts (4 modes × 3 languages) + 4 tone variants
 
+**KB v2 Layer (`kb/` + `templates/`):**
+- `kb/schemas/` — 8 entity schemas (character, location, faction, object, system, timeline, concept, setting) with nested metadata groups (CharacterMetadata, LocationMetadata, etc.)
+- `templates/models.py` — Template, TemplateField, TemplateFieldGroup, TemplateSection, TemplateMeta models
+- `templates/parser.py` — parse_template() with v1 flat + v2 grouped frontmatter support
+- `templates/defaults/{en,de,fr}/` — 24 bundled templates (8 types × 3 langs), all v2 format with field_groups + sections
+- Character template: 7 groups, 44 fields. Location: 4 groups, 17 fields. Faction: 4 groups, 15 fields. Object: 4 groups, 17 fields. System: 4 groups, 15 fields. Timeline: 2 groups, 10 fields. Concept + Setting: v2 format with domain-specific groups.
+
 **Event System (`events/`):**
 - Event types, bus protocol (Protocol-based), NullEventBus for testing
 
@@ -193,6 +200,23 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `router_stats.py` — Stats endpoints
 - Migration 0008 — generation_requests table + FK to chapter_versions
 
+**KB Module (`kb/`):**
+- Full CRUD: models, repository, service, router, contracts, schemas (following RULE-03 contract-first)
+- `kb/_utils.py` — MENTION_RE regex for @Name cross-references (Unicode, multi-word support)
+- `kb/service.py` — resolve_references(), autocomplete endpoint
+- `kb/repository.py` — get_by_name(), search_by_name_prefix() for cross-reference lookup
+- 8 entity types: character, location, faction, object, system, timeline, concept, setting
+- Migration 0011 — expands CHECK constraints for concept + setting entity types
+
+**Templates Module (`templates/`):**
+- Full CRUD: models (KBTemplate SQLAlchemy), repository, service, router, contracts, schemas
+- Cascade resolution: user override → project override → bundled default (mirrors Prompt system)
+- `cascade_resolver.py` — TemplateScope enum (USER, PROJECT, GLOBAL) with priority-based resolution
+- Migration 0010 — kb_templates table (idempotent, IF NOT EXISTS pattern)
+
+**Setup (`setup/`):**
+- `seed_templates.py` — Version-aware upsert: seeds new templates AND updates existing globals when bundled version is newer
+
 **Database:**
 - Alembic migration `0001_initial.py` — initial schema
 - Alembic migration `0004_ai_settings.py` — `user_providers`, `user_ai_settings`, project AI override columns
@@ -244,6 +268,25 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
   - `SessionPanel.tsx` — Interactive session chat UI
   - `ChatMessage.tsx` — Chat message bubble component
   - Generation commands registered in CommandPalette
+- `components/studio/kb/` — Template-driven KB editor
+  - `KBEntryDetail.tsx` — Main entry detail, loads template, renders accordion groups or flat fallback
+  - `KBEntryHeader.tsx` — Name, type, tags header
+  - `KBFieldGroup.tsx` — Accordion group component
+  - `KBFlatEditor.tsx` — Fallback flat editor for entries without templates
+  - `KBTypeField.tsx` — Renders correct input per field_type (str, int, bool, list, select)
+  - `KBTagInput.tsx` — Tag/chip input for list fields
+  - `KBSectionEditor.tsx` — Guided body section textarea with @mention autocomplete
+  - `KBMentionRenderer.tsx` — Renders @mentions as clickable badges
+  - `KBCreateForm.tsx` — Entry creation with entity type pre-selection from active category tab
+  - `groupMaps.ts` — Icons/colors for 25 field groups and 8 sections across all entity types
+  - `kbBodyUtils.ts` — Body ↔ section parsing/assembly
+  - `constants.ts` — 8 entity types, TYPE_ICONS, TYPE_LABEL_KEYS
+- `components/studio/settings/` — Template management in Settings
+  - `KBTemplatesTab.tsx` — Template list with type filter, override/update status
+  - `KBTemplateEditor.tsx` — Raw YAML editor with save/reset mutations
+- `components/studio/WorldBuilding.tsx` — Passes activeType as initialEntityType to KB panels
+- `lib/api/kb.ts` — KBTemplate types + API client (getTemplate, listTemplates, resolveReferences, autocompleteEntries)
+- `lib/hooks/useKB.ts` — useKBTemplate, useKBTemplates, useKBResolveReferences, useKBAutocomplete hooks
 - `components/ui/` — Button (shadcn/cva-based), Input, Select
 - `components/shadcn/` — shadcn/ui generated primitives (future component source)
 - `components/shared/` — QueryProvider, ErrorBoundary
@@ -343,14 +386,15 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 ## What Is In Progress
 
-Phase 5 (current) — writing generation feature complete:
+Phase 5 (current):
 1. ✅ Writing generation pipeline (WRITE-002) — fully implemented
-2. KB dedup integration for name generator
-3. Backend test coverage gaps (memory service, prompt management)
-4. Frontend test coverage gaps (generation panel, session panel)
-5. E2E tests with Playwright
+2. ✅ KB v2 — template-driven structured metadata, cross-references, 8 entity types, template management
+3. KB dedup integration for name generator
+4. Backend test coverage gaps (memory service, prompt management)
+5. Frontend test coverage gaps (generation panel, session panel)
+6. E2E tests with Playwright
 
-Next focus: extend chapter (WRITE-003), rewrite selection (WRITE-004), KB editor UI.
+Next focus: extend chapter (WRITE-003), rewrite selection (WRITE-004), KB editor UI refinements.
 
 ---
 
@@ -419,6 +463,17 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Metadata sidebar (replaces status bar) | EditorView: bottom status bar replaced by collapsible right MetadataSidebar with live stats, session tracking, chapter metadata, and novel progress |
 | Volume Management | WRITE-011 fully implemented — backend enrichment, stats, reorder, frontend UI with volume selector and management page |
 | Pydantic AI testing tools | `TestModel`/`FunctionModel`/`capture_run_messages` fixtures, `ALLOW_MODEL_REQUESTS=False` guard, FakeLLMGateway in integration tests |
+| KB v2: Core schemas | 8 entity schemas with nested metadata groups (CharacterMetadata.appearance, etc.) |
+| KB v2: Core templates | 24 bundled templates (8 types × 3 langs) in v2 format with field_groups + sections |
+| KB v2: Backend CRUD | kb/ module + templates/ module — full CRUD, cascade resolution, seed version-aware upsert |
+| KB v2: Cross-references | @Name pattern with MENTION_RE regex, resolve_references + autocomplete endpoints |
+| KB v2: New entity types | concept (ConceptMetadata) + setting (SettingMetadata) — migration 0011 |
+| KB v2: Frontend editor | Template-driven accordion editor (8 sub-components, all <200 lines), flat fallback |
+| KB v2: Template management | KBTemplatesTab + KBTemplateEditor in Settings, raw YAML with save/reset |
+| KB v2: groupMaps | 25 field group icons + 8 section icons across all entity types |
+| KB v2: i18n | Group labels, hints, field labels for all types (en/de/fr) |
+| FR character YAML fix | Quoted (ex: ...) descriptions to prevent YAML mapping key parsing error |
+| Seed version-aware upsert | seed_templates.py now updates existing global entries when bundled version is newer |
 
 ---
 
@@ -470,21 +525,19 @@ All demo content is complete — sufficient for testing through Phase 5.
 ## Next Session Should Start With
 
 **Phase 5 (current):**
-1. Writing module tests — unit tests for core writing pipeline, context assembler, draft processor, session manager
-2. Writing module integration tests — API-level tests for generation endpoints, SSE streaming, WebSocket sessions
-3. KB dedup integration for name generator (currently a placeholder)
-4. AI features in editor toolbar slots (using commands.ts registry pattern)
+1. Smoke test: create character → see all 7 accordion groups → fill fields → save → verify structured metadata
+2. Smoke test: verify all 8 entity types show correct groups in template-driven editor
+3. Writing module tests — unit tests for core writing pipeline, context assembler, draft processor, session manager
+4. KB dedup integration for name generator (currently a placeholder)
 5. E2E tests with Playwright (route mocking for LLM responses)
-6. Backend test coverage gaps (memory service, prompt management, generation, settings, gateway error classification, retry logic)
-7. Frontend test coverage gaps (prompt settings, name generator, editor extensions, CommandPalette, dashboard delete, focus mode)
+6. Backend test coverage gaps (memory service, prompt management, generation, settings)
+7. Frontend test coverage gaps (generation panel, session panel, KB editor)
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)
-2. Build KB editor UI (interactive AI sessions)
+2. AI-assisted KB entry enrichment (LLM fills template fields from body text)
 3. Add analysis panels to the ContextPanel
 4. Embedding provider abstraction (Q-003)
-5. Fallback chains for model routing (if primary fails, try secondary)
-6. Model recommendation and benchmarking
 
 Infrastructure now includes: OpenTelemetry tracing, Langfuse LLM observability, event-driven
 architecture (Redis Pub/Sub → TaskIQ), content versioning, argon2id auth, async rate limiting,

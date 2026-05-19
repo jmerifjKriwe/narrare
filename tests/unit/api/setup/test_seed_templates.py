@@ -35,7 +35,6 @@ def _make_template(version: str, schema_version: str = "1.0.0") -> Template:
 
 def _make_existing(
     entity_type: str = "character",
-    language: str = "en",
     based_on_version: str | None = "1.0.0",
 ) -> MagicMock:
     """Create an existing KBTemplate row mock.
@@ -45,7 +44,6 @@ def _make_existing(
     """
     tmpl = MagicMock(spec=KBTemplate)
     tmpl.entity_type = entity_type
-    tmpl.language = language
     tmpl.scope = TemplateScope.GLOBAL
     tmpl.scope_id = None
     tmpl.based_on_version = based_on_version
@@ -86,7 +84,7 @@ class TestSeedInsertNew:
         mock_session: AsyncMock,
     ) -> None:
         """No existing global entry → insert and return 1."""
-        mock_list.return_value = [("character", "en")]
+        mock_list.return_value = ["character"]
         mock_load.return_value = "---\ntemplate_type: character\n---\nBody"
         mock_parse.return_value = _make_template("2.0.0")
 
@@ -99,7 +97,6 @@ class TestSeedInsertNew:
         mock_session.add.assert_called_once()
         added: KBTemplate = mock_session.add.call_args[0][0]
         assert added.entity_type == "character"
-        assert added.language == "en"
         assert added.scope == TemplateScope.GLOBAL
         assert added.based_on_version == "2.0.0"
 
@@ -123,7 +120,7 @@ class TestSeedUpdateExisting:
         mock_session: AsyncMock,
     ) -> None:
         """Existing v1.0.0, bundled v2.1.0 → update content and version."""
-        mock_list.return_value = [("character", "en")]
+        mock_list.return_value = ["character"]
         mock_load.return_value = "---\ntemplate_type: character\n---\nNew body"
         mock_parse.return_value = _make_template("2.1.0", schema_version="2.0.0")
 
@@ -149,7 +146,7 @@ class TestSeedUpdateExisting:
         mock_session: AsyncMock,
     ) -> None:
         """Existing with based_on_version=None treated as 0.0.0 → update."""
-        mock_list.return_value = [("character", "en")]
+        mock_list.return_value = ["character"]
         mock_load.return_value = "content"
         mock_parse.return_value = _make_template("1.0.0")
 
@@ -181,7 +178,7 @@ class TestSeedSkipExisting:
         mock_session: AsyncMock,
     ) -> None:
         """Existing v2.0.0, bundled v2.0.0 → skip, return 0."""
-        mock_list.return_value = [("character", "en")]
+        mock_list.return_value = ["character"]
         mock_load.return_value = "content"
         mock_parse.return_value = _make_template("2.0.0")
 
@@ -204,7 +201,7 @@ class TestSeedSkipExisting:
         mock_session: AsyncMock,
     ) -> None:
         """Existing v3.0.0, bundled v2.0.0 → skip, return 0."""
-        mock_list.return_value = [("character", "en")]
+        mock_list.return_value = ["character"]
         mock_load.return_value = "content"
         mock_parse.return_value = _make_template("2.0.0")
 
@@ -233,7 +230,7 @@ class TestSeedMissingBundled:
         mock_session: AsyncMock,
     ) -> None:
         """load_default_template returns None → skip, return 0."""
-        mock_list.return_value = [("character", "xx")]
+        mock_list.return_value = ["character"]
         mock_load.return_value = None
 
         count = await seed_templates(mock_session)
@@ -263,16 +260,16 @@ class TestSeedCount:
     ) -> None:
         """1 insert + 1 update + 1 skip → return 2."""
         mock_list.return_value = [
-            ("character", "en"),  # no existing → insert
-            ("location", "en"),  # existing v1.0.0, bundled v2.0.0 → update
-            ("faction", "en"),  # existing v2.0.0, bundled v2.0.0 → skip
+            "character",  # no existing → insert
+            "location",  # existing v1.0.0, bundled v2.0.0 → update
+            "faction",  # existing v2.0.0, bundled v2.0.0 → skip
         ]
         mock_load.return_value = "content"
         mock_parse.return_value = _make_template("2.0.0")
 
         # First call: no existing; second: old version; third: same version
-        existing_old = _make_existing("location", "en", "1.0.0")
-        existing_same = _make_existing("faction", "en", "2.0.0")
+        existing_old = _make_existing("location", "1.0.0")
+        existing_same = _make_existing("faction", "2.0.0")
 
         results = [None, existing_old, existing_same]
         call_idx = 0

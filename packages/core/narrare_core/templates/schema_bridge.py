@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 def get_form_fields(entity_type: str) -> list[TemplateField]:
     """Load template fields for an entity type, enriched with schema info.
 
-    Loads the default English template for the entity type, parses it,
+    Loads the default template for the entity type, parses it,
     and returns the field definitions.  If no template exists, returns
     an empty list.
 
@@ -31,7 +31,7 @@ def get_form_fields(entity_type: str) -> list[TemplateField]:
     Returns:
         List of TemplateField from the default template.
     """
-    raw = load_default_template(entity_type, language="en")
+    raw = load_default_template(entity_type)
     if raw is None:
         return []
     template = parse_template(raw)

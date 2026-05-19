@@ -212,7 +212,7 @@ for FastAPI, HTTP, and database calls. Exports to any OTLP-compatible backend.
 
 ## Frontend
 
-### Next.js `15` (App Router) + TypeScript
+### Next.js `16` (App Router) + TypeScript
 **Why:** SSR + SSE support. Strong TypeScript ecosystem. App Router for layouts and streaming.
 **Role:** WebUI — the primary client interface.
 **Not:** Pages Router — App Router exclusively.

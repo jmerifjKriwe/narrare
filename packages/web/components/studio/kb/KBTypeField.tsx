@@ -11,6 +11,8 @@
  *   *      → text input (fallback)
  */
 
+import { useTranslations } from "next-intl";
+
 import type { KBTemplateField } from "@/lib/api/kb";
 import { KBTagInput } from "./KBTagInput";
 
@@ -23,12 +25,31 @@ interface KBTypeFieldProps {
   onChange: (name: string, value: unknown) => void;
   /** Translated label for the field. */
   label: string;
+  /** Group name used to build i18n description keys. */
+  groupName?: string;
   /** Error message if any. */
   error?: string;
 }
 
-export function KBTypeField({ field, value, onChange, label, error }: KBTypeFieldProps) {
+export function KBTypeField({ field, value, onChange, label, groupName, error }: KBTypeFieldProps) {
+  const t = useTranslations("studio");
   const fieldId = `kb-field-${field.name}`;
+
+  /**
+   * Resolve description text from i18n (`kb.fieldDesc.{group}.{field}`).
+   * Returns null when neither i18n key nor field.description exists.
+   */
+  const descriptionText = (() => {
+    if (groupName) {
+      const i18nKey = `kb.fieldDesc.${groupName}.${field.name}`;
+      const i18nVal = t(i18nKey);
+      if (i18nVal !== i18nKey) return i18nVal;
+    }
+    return field.description || null;
+  })();
+
+  /** Placeholder text — falls back to description then label. */
+  const placeholder = descriptionText ?? label;
 
   function handleStrChange(e: React.ChangeEvent<HTMLInputElement>) {
     onChange(field.name, e.target.value);
@@ -73,7 +94,7 @@ export function KBTypeField({ field, value, onChange, label, error }: KBTypeFiel
             type="number"
             value={value !== undefined && value !== null ? String(value) : ""}
             onChange={handleIntChange}
-            placeholder={field.description || label}
+            placeholder={placeholder}
             className={inputClass}
             aria-invalid={!!error}
             aria-describedby={error ? `${baseId}-error` : undefined}
@@ -116,8 +137,8 @@ export function KBTypeField({ field, value, onChange, label, error }: KBTypeFiel
               />
             </button>
           </div>
-          {field.description && (
-            <p className="text-xs text-muted-foreground/60 mt-1">{field.description}</p>
+          {descriptionText && (
+            <p className="text-xs text-muted-foreground/60 mt-1">{descriptionText}</p>
           )}
           {error && (
             <p className="text-xs text-destructive mt-1" role="alert">
@@ -137,7 +158,7 @@ export function KBTypeField({ field, value, onChange, label, error }: KBTypeFiel
           <KBTagInput
             value={Array.isArray(value) ? (value as string[]) : []}
             onChange={handleListChange}
-            placeholder={field.description || label}
+            placeholder={placeholder}
           />
           {error && (
             <p className="text-xs text-destructive mt-1" role="alert">
@@ -163,7 +184,7 @@ export function KBTypeField({ field, value, onChange, label, error }: KBTypeFiel
             type="text"
             value={value !== undefined && value !== null ? String(value) : ""}
             onChange={handleStrChange}
-            placeholder={field.description || label}
+            placeholder={placeholder}
             className={inputClass}
             aria-invalid={!!error}
             aria-describedby={error ? `${baseId}-error` : undefined}

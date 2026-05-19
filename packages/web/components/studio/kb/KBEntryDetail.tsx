@@ -180,6 +180,7 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
                         `kb.groupLabels.${group.name}.${field.name}`,
                         formatKey(field.name),
                       )}
+                      groupName={group.name}
                     />
                   ))}
                 </KBFieldGroup>

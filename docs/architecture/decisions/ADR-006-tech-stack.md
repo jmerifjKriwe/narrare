@@ -30,7 +30,7 @@ new project. Risk: some stubs not yet updated — mitigated by
 pyright is faster, has better inference for modern Python typing patterns,
 and is the type checker used by the VS Code Python extension — meaning
 developers see errors inline without running a separate command.
-mypy is mature but slower and less accurate on Python 3.12+ type features.
+mypy is mature but slower and less accurate on Python 3.14+ type features.
 
 ### TipTap v3 (not ProseMirror directly, not Slate, not Lexical)
 

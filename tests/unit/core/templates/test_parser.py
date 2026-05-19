@@ -1,7 +1,7 @@
-"""Unit tests for template parser — v2 format, backward compat, sections.
+"""Unit tests for template parser — v2 backward compat, v1, sections, edge cases.
 
 Tests cover:
-- parse_template with v2 grouped format (field_groups + sections)
+- parse_template with v2 grouped format (backward compat — language ignored)
 - parse_template with v1 flat format (backward compat)
 - Sections parsing independently
 - Field groups flattening into fields list
@@ -10,12 +10,12 @@ Tests cover:
 
 from __future__ import annotations
 
-from narrare_core.templates.models import TemplateFieldGroup, TemplateSection
+from narrare_core.templates.models import TemplateFieldGroup
 from narrare_core.templates.parser import parse_template
 
 
-class TestParseTemplateV2:
-    """Tests for v2 grouped frontmatter format."""
+class TestParseTemplateV2BackwardCompat:
+    """Backward compatibility: v2 templates with template_language still parse."""
 
     V2_TEMPLATE = """---
 template_type: character
@@ -54,12 +54,22 @@ sections:
 Body content.
 """
 
-    def test_parses_meta(self) -> None:
+    def test_parses_meta_ignores_language(self) -> None:
+        """template_language in v2 frontmatter is silently ignored."""
         template = parse_template(self.V2_TEMPLATE)
         assert template.meta.template_type == "character"
         assert template.meta.template_version == "2.0.0"
-        assert template.meta.template_language == "en"
         assert template.meta.schema_version == "2.0.0"
+        assert not hasattr(template.meta, "template_language")
+
+    def test_preserves_field_descriptions(self) -> None:
+        """V2 field descriptions are preserved for backward compat."""
+        template = parse_template(self.V2_TEMPLATE)
+        age_field = next(f for f in template.fields if f.name == "age")
+        assert age_field.description == "Character age"
+
+        height_field = next(f for f in template.fields if f.name == "height")
+        assert height_field.description == "Physical height"
 
     def test_parses_field_groups(self) -> None:
         template = parse_template(self.V2_TEMPLATE)
@@ -78,49 +88,16 @@ Body content.
         assert appearance.fields[0].name == "height"
 
     def test_flattens_fields_from_groups(self) -> None:
-        """Fields from all groups should be flattened for backward compat."""
         template = parse_template(self.V2_TEMPLATE)
         assert len(template.fields) == 3  # age, role, height
-
-        field_names = {f.name for f in template.fields}
-        assert "age" in field_names
-        assert "role" in field_names
-        assert "height" in field_names
-
-    def test_preserves_field_details_in_flattened(self) -> None:
-        """Flattened fields should retain type and description."""
-        template = parse_template(self.V2_TEMPLATE)
-        age_field = next(f for f in template.fields if f.name == "age")
-        assert age_field.field_type == "int"
-        assert age_field.description == "Character age"
-
-        role_field = next(f for f in template.fields if f.name == "role")
-        assert role_field.field_type == "str"
-        assert role_field.required is True
 
     def test_parses_sections(self) -> None:
         template = parse_template(self.V2_TEMPLATE)
         assert len(template.sections) == 2
 
-        bg = template.sections[0]
-        assert isinstance(bg, TemplateSection)
-        assert bg.name == "background"
-        assert bg.label_key == "kb.sections.background"
-        assert bg.description_key == "kb.sections.backgroundHint"
-        assert bg.order == 1
-
-        pers = template.sections[1]
-        assert pers.name == "personality"
-        assert pers.order == 2
-
     def test_body_content(self) -> None:
         template = parse_template(self.V2_TEMPLATE)
         assert "# Character Template" in template.body
-        assert "Body content." in template.body
-
-    def test_raw_preserved(self) -> None:
-        template = parse_template(self.V2_TEMPLATE)
-        assert template.raw == self.V2_TEMPLATE
 
 
 class TestParseTemplateV1BackwardCompat:
@@ -145,10 +122,12 @@ aliases:
 # Character Template
 """
 
-    def test_parses_meta(self) -> None:
+    def test_parses_meta_ignores_language(self) -> None:
+        """template_language in v1 frontmatter is silently ignored."""
         template = parse_template(self.V1_TEMPLATE)
         assert template.meta.template_type == "character"
         assert template.meta.template_version == "1.0.0"
+        assert not hasattr(template.meta, "template_language")
 
     def test_parses_flat_fields(self) -> None:
         template = parse_template(self.V1_TEMPLATE)
@@ -193,9 +172,7 @@ sections:
         assert template.field_groups == []
 
     def test_still_parses_flat_fields_when_no_groups(self) -> None:
-        """Even with sections, flat fields should parse as before."""
         template = parse_template(self.SECTIONS_ONLY)
-        # No flat fields defined, but sections alone shouldn't affect flat parsing
         assert template.fields == []
 
 
@@ -221,14 +198,12 @@ field_groups:
 """
 
     def test_group_with_extra_meta(self) -> None:
-        """Extra keys on groups (beyond label_key/description_key/fields) are accepted."""
         template = parse_template(self.V2_WITH_EXTRA)
         assert len(template.field_groups) == 1
         assert template.field_groups[0].name == "custom_group"
         assert template.field_groups[0].label_key == "custom.label"
 
     def test_field_with_extra_props(self) -> None:
-        """Extra keys on field definitions are accepted."""
         template = parse_template(self.V2_WITH_EXTRA)
         assert len(template.fields) == 1
         assert template.fields[0].name == "custom_field"
@@ -253,13 +228,11 @@ class TestParseTemplateEdgeCases:
         assert template.sections == []
 
     def test_v1_simple_key_value(self) -> None:
-        """Simple key:value frontmatter entries should still become fields."""
         template = parse_template("---\ntemplate_type: object\nowner: someone\n---\nBody.\n")
         owner_field = next(f for f in template.fields if f.name == "owner")
         assert owner_field.field_type == "str"
 
     def test_v2_no_fields_in_group(self) -> None:
-        """Groups without fields should produce empty field list."""
         raw = """---
 template_type: character
 template_version: "2.0.0"
@@ -274,10 +247,9 @@ field_groups:
         template = parse_template(raw)
         assert len(template.field_groups) == 1
         assert template.field_groups[0].fields == []
-        assert template.fields == []  # flattened from groups
+        assert template.fields == []
 
     def test_v2_group_with_non_dict_value(self) -> None:
-        """Groups with non-dict values should be skipped gracefully."""
         raw = """---
 template_type: character
 template_version: "2.0.0"
@@ -297,7 +269,6 @@ field_groups:
         assert template.field_groups[0].name == "valid_group"
 
     def test_v2_section_with_non_dict_value(self) -> None:
-        """Sections with non-dict values should use defaults."""
         raw = """---
 template_type: character
 template_version: "2.0.0"

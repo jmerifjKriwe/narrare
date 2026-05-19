@@ -12,13 +12,12 @@ from narrare_core.templates import Template, TemplateMeta
 
 def _make_template(
     entity_type: str = "character",
-    language: str = "en",
 ) -> Template:
     """Create a minimal template for testing."""
     return Template(
         meta=TemplateMeta(
             template_type=entity_type,
-            template_language=language,
+            template_version="1.0.0",
         ),
         fields=[],
         body="# Template body",
@@ -38,9 +37,9 @@ class TestCascadeResolver:
         mock_parse.return_value = template
 
         resolver = CascadeResolver()
-        result = await resolver.resolve("character", "en")
+        result = await resolver.resolve("character")
 
-        mock_load.assert_called_once_with("character", "en")
+        mock_load.assert_called_once_with("character")
         assert result is template
 
     @patch("narrare.templates.cascade_resolver.load_default_template")
@@ -49,19 +48,8 @@ class TestCascadeResolver:
         mock_load.return_value = None
 
         resolver = CascadeResolver()
-        result = await resolver.resolve("nonexistent_type", "en")
+        result = await resolver.resolve("nonexistent_type")
 
-        assert result is None
-
-    @patch("narrare.templates.cascade_resolver.load_default_template")
-    async def test_returns_none_when_no_template_at_all(self, mock_load: MagicMock) -> None:
-        """Returns None when no template exists in any language."""
-        mock_load.return_value = None
-
-        resolver = CascadeResolver()
-        result = await resolver.resolve("character", "xx")
-
-        mock_load.assert_called_once_with("character", "xx")
         assert result is None
 
     @patch("narrare.templates.cascade_resolver.load_default_template")
@@ -80,7 +68,7 @@ class TestCascadeResolver:
         mock_parse.return_value = _make_template()
 
         resolver = CascadeResolver(repository=mock_repo)
-        result = await resolver.resolve("character", "en", user_id=uuid.uuid4())
+        result = await resolver.resolve("character", user_id=uuid.uuid4())
 
         mock_repo.get_override.assert_called_once()
         assert result is not None
@@ -99,9 +87,9 @@ class TestCascadeResolver:
 
         resolver = CascadeResolver(repository=mock_repo)
         user_id = uuid.uuid4()
-        result = await resolver.resolve("character", "en", user_id=user_id)
+        result = await resolver.resolve("character", user_id=user_id)
 
-        mock_repo.get_override.assert_called_once_with("character", "en", "user", user_id)
+        mock_repo.get_override.assert_called_once_with("character", "user", user_id)
         assert result is user_tpl
         mock_load.assert_not_called()
 
@@ -115,9 +103,7 @@ class TestCascadeResolver:
         """After user override not found, checks project override."""
         mock_repo = MagicMock(spec=TemplateRepositoryProtocol)
 
-        async def fake_get_override(
-            et: str, lang: str, scope: str, sid: uuid.UUID | None
-        ) -> Template | None:
+        async def fake_get_override(et: str, scope: str, sid: uuid.UUID | None) -> Template | None:
             if scope == "user":
                 return None
             if scope == "project":
@@ -129,7 +115,6 @@ class TestCascadeResolver:
         resolver = CascadeResolver(repository=mock_repo)
         result = await resolver.resolve(
             "character",
-            "en",
             user_id=uuid.uuid4(),
             project_id=uuid.uuid4(),
         )
@@ -150,7 +135,7 @@ class TestCascadeResolver:
             ),
         ):
             resolver = CascadeResolver()
-            result = resolver.resolve_sync("character", "en")
+            result = resolver.resolve_sync("character")
             assert result is not None
 
     @patch("narrare.templates.cascade_resolver.load_default_template")
@@ -167,7 +152,7 @@ class TestCascadeResolver:
 
         with patch(
             "narrare.templates.cascade_resolver.list_default_templates",
-            return_value=[("character", "en"), ("location", "en")],
+            return_value=["character", "location"],
         ):
             resolver = CascadeResolver()
             results = resolver.list_available()

@@ -28,32 +28,19 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-# Valid entity types — must match the DB check constraint
-_VALID_ENTITY_TYPES = frozenset(
-    {
-        "character",
-        "concept",
-        "faction",
-        "location",
-        "object",
-        "setting",
-        "system",
-        "timeline",
-    },
-)
-
 
 class TemplateRepository(BaseRepository):
     """Repository for template overrides in the kb_templates table.
 
     Provides CRUD operations for template overrides at any scope level
     (user, project, global).  Uses upsert semantics for save operations.
+    Templates are keyed by ``(entity_type, scope, scope_id)`` — no
+    language dimension.
     """
 
     async def get_override(
         self,
         entity_type: str,
-        language: str,
         scope: str,
         scope_id: uuid.UUID | None,
     ) -> Template | None:
@@ -61,7 +48,6 @@ class TemplateRepository(BaseRepository):
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en", "de", "fr").
             scope: Scope level ("user", "project", "global").
             scope_id: Scope identifier, or None for global.
 
@@ -70,7 +56,6 @@ class TemplateRepository(BaseRepository):
         """
         stmt = select(KBTemplate).where(
             KBTemplate.entity_type == entity_type,
-            KBTemplate.language == language,
             KBTemplate.scope == TemplateScope(scope),
             KBTemplate.scope_id == scope_id,
         )
@@ -105,7 +90,6 @@ class TemplateRepository(BaseRepository):
     async def save_override(
         self,
         entity_type: str,
-        language: str,
         scope: str,
         scope_id: uuid.UUID | None,
         content: str,
@@ -119,7 +103,6 @@ class TemplateRepository(BaseRepository):
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en", "de", "fr").
             scope: Scope level ("user", "project", "global").
             scope_id: Scope identifier, or None for global.
             content: Full template content (YAML frontmatter + body markdown).
@@ -131,7 +114,6 @@ class TemplateRepository(BaseRepository):
         # Check for existing row
         stmt = select(KBTemplate).where(
             KBTemplate.entity_type == entity_type,
-            KBTemplate.language == language,
             KBTemplate.scope == TemplateScope(scope),
             KBTemplate.scope_id == scope_id,
         )
@@ -146,7 +128,6 @@ class TemplateRepository(BaseRepository):
         else:
             db_row = KBTemplate(
                 entity_type=entity_type,
-                language=language,
                 scope=TemplateScope(scope),
                 scope_id=scope_id,
                 content=content,
@@ -159,7 +140,6 @@ class TemplateRepository(BaseRepository):
         logger.info(
             "template_override_saved",
             entity_type=entity_type,
-            language=language,
             scope=scope,
             scope_id=str(scope_id) if scope_id else None,
         )
@@ -168,7 +148,6 @@ class TemplateRepository(BaseRepository):
     async def delete_override(
         self,
         entity_type: str,
-        language: str,
         scope: str,
         scope_id: uuid.UUID | None,
     ) -> bool:
@@ -176,7 +155,6 @@ class TemplateRepository(BaseRepository):
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en", "de", "fr").
             scope: Scope level ("user", "project", "global").
             scope_id: Scope identifier, or None for global.
 
@@ -185,7 +163,6 @@ class TemplateRepository(BaseRepository):
         """
         stmt = delete(KBTemplate).where(
             KBTemplate.entity_type == entity_type,
-            KBTemplate.language == language,
             KBTemplate.scope == TemplateScope(scope),
             KBTemplate.scope_id == scope_id,
         )
@@ -195,7 +172,6 @@ class TemplateRepository(BaseRepository):
             logger.info(
                 "template_override_deleted",
                 entity_type=entity_type,
-                language=language,
                 scope=scope,
                 scope_id=str(scope_id) if scope_id else None,
             )

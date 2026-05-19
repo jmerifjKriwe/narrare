@@ -289,7 +289,7 @@ Demo content:
 
 ```
 packages/web/
-  ✓ Next.js 15 App Router setup
+  ✓ Next.js 16 App Router setup
   ✓ Tailwind CSS + design tokens (CSS variables in globals.css)
   ✓ i18n setup (next-intl, en/de/fr)
   ✓ Zustand stores: auth, editor, ui

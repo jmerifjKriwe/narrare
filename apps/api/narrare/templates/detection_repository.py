@@ -39,7 +39,7 @@ class TemplateDetectionRepository(BaseRepository):
             scope_id: Scope identifier, or None for global.
 
         Returns:
-            List of dicts with entity_type, language, override_version,
+            List of dicts with entity_type, override_version,
             current_bundled_version keys.
         """
         from narrare_core.templates import load_default_template, parse_template
@@ -55,7 +55,7 @@ class TemplateDetectionRepository(BaseRepository):
         for override in overrides:
             if override.based_on_version is None:
                 continue
-            raw = load_default_template(override.entity_type, override.language)
+            raw = load_default_template(override.entity_type)
             if raw is None:
                 continue
             bundled = parse_template(raw)
@@ -64,7 +64,6 @@ class TemplateDetectionRepository(BaseRepository):
                 updates.append(
                     {
                         "entity_type": override.entity_type,
-                        "language": override.language,
                         "override_version": override.based_on_version,
                         "current_bundled_version": current_version,
                     }

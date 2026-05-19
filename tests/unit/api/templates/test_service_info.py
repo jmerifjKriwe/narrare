@@ -22,14 +22,12 @@ from narrare_core.templates import Template, TemplateMeta
 
 def _make_template(
     entity_type: str = "character",
-    language: str = "en",
     raw: str = "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body",
 ) -> Template:
     """Create a minimal template for testing."""
     return Template(
         meta=TemplateMeta(
             template_type=entity_type,
-            template_language=language,
             template_version="1.0.0",
             schema_version="2.0.0",
         ),
@@ -71,7 +69,6 @@ class TestDetectUpdates:
             return_value=[
                 {
                     "entity_type": "character",
-                    "language": "en",
                     "override_version": "1.0.0",
                     "current_bundled_version": "2.0.0",
                 },
@@ -88,7 +85,6 @@ class TestDetectUpdates:
             return_value=[
                 UpdateInfoResponse(
                     entity_type="character",
-                    language="en",
                     override_version="1.0.0",
                     current_bundled_version="2.0.0",
                 ),
@@ -124,12 +120,10 @@ class TestGetDiff:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "narrare.templates.info_service.load_default_template",
-                lambda _t, _l: "---\ntemplate_type: character\n---\n# Bundled",
+                lambda _t: "---\ntemplate_type: character\n---\n# Bundled",
             )
 
-            result = await info_service.get_diff(
-                "character", "en", scope="user", scope_id=uuid.uuid4()
-            )
+            result = await info_service.get_diff("character", scope="user", scope_id=uuid.uuid4())
 
         assert result is not None
         assert result.override_content == "---\ntemplate_type: character\n---\n# Override"
@@ -145,7 +139,7 @@ class TestGetDiff:
             repository=mock_repo,
             session=MagicMock(spec=AsyncSession),
         )
-        result = await info_service.get_diff("character", "en", scope="user", scope_id=uuid.uuid4())
+        result = await info_service.get_diff("character", scope="user", scope_id=uuid.uuid4())
         assert result is None
 
 
@@ -169,14 +163,13 @@ class TestCascadeInfo:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "narrare.templates.info_service.load_default_template",
-                lambda _t, _l: "---\ntemplate_type: character\n---\n# Body",
+                lambda _t: "---\ntemplate_type: character\n---\n# Body",
             )
 
             user_id = uuid.uuid4()
             project_id = uuid.uuid4()
             result = await info_service.cascade_info(
                 "character",
-                "en",
                 user_id=user_id,
                 project_id=project_id,
             )

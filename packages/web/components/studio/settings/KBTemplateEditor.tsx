@@ -120,7 +120,7 @@ export function KBTemplateEditor({
             {t("kb.template")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {t("kb.templateVersion", { version: detail.schema_version, lang: detail.language })}
+            {t("kb.templateVersion", { version: detail.schema_version })}
             {detail.is_overridden ? ` · ${t("kb.custom")}` : ` · ${t("kb.defaultLabel")}`}
             {hasUpdate && ` · ${t("kb.updateAvailable")}`}
           </p>

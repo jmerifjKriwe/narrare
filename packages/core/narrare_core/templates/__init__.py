@@ -4,10 +4,13 @@ Provides parsing, default template access, and schema bridging.
 The ``TemplateResolver`` protocol is defined in ``contracts.py`` for
 implementations in the API layer.
 
+Templates are language-neutral structural definitions.  Display text
+comes from the i18n system.
+
 Public exports:
     TemplateField — Single field definition in a template
     TemplateFieldGroup — Group of related metadata fields
-    TemplateMeta — Template metadata (type, version, language)
+    TemplateMeta — Template metadata (type, version)
     TemplateSection — Guided body text section
     Template — Complete parsed template
     TemplateResolver — Protocol for template resolution

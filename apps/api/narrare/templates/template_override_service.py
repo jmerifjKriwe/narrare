@@ -38,7 +38,6 @@ class TemplateOverrideService:
         self,
         user_id: uuid.UUID,
         entity_type: str,
-        language: str,
         *,
         project_id: uuid.UUID | None = None,
     ) -> Template | None:
@@ -49,20 +48,18 @@ class TemplateOverrideService:
         Args:
             user_id: User UUID.
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en", "de", "fr").
             project_id: Optional project UUID for project-scope fallback.
 
         Returns:
             Parsed Template if found, or None.
         """
         # Try user override first
-        user_tpl = await self._repo.get_override(entity_type, language, "user", user_id)
+        user_tpl = await self._repo.get_override(entity_type, "user", user_id)
         if user_tpl is not None:
             logger.debug(
                 "template_override_found_user",
                 user_id=str(user_id),
                 entity_type=entity_type,
-                language=language,
             )
             return user_tpl
 
@@ -70,7 +67,6 @@ class TemplateOverrideService:
         if project_id is not None:
             proj_tpl = await self._repo.get_override(
                 entity_type,
-                language,
                 "project",
                 project_id,
             )
@@ -79,7 +75,6 @@ class TemplateOverrideService:
                     "template_override_found_project",
                     project_id=str(project_id),
                     entity_type=entity_type,
-                    language=language,
                 )
                 return proj_tpl
 
@@ -87,7 +82,6 @@ class TemplateOverrideService:
             "template_override_not_found",
             user_id=str(user_id),
             entity_type=entity_type,
-            language=language,
             project_id=str(project_id) if project_id else None,
         )
         return None
@@ -96,7 +90,6 @@ class TemplateOverrideService:
         self,
         user_id: uuid.UUID,
         entity_type: str,
-        language: str,
         template: Template,
         based_on_version: str,
         *,
@@ -107,7 +100,6 @@ class TemplateOverrideService:
         Args:
             user_id: User UUID.
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en").
             template: The template to save as override.
             based_on_version: Bundled version this override is based on.
             project_id: If provided, saves as project-scope override.
@@ -117,7 +109,6 @@ class TemplateOverrideService:
 
         await self._repo.save_override(
             entity_type=entity_type,
-            language=language,
             scope=scope,
             scope_id=scope_id,
             content=template.raw,
@@ -128,7 +119,6 @@ class TemplateOverrideService:
             "template_override_saved",
             user_id=str(user_id),
             entity_type=entity_type,
-            language=language,
             scope=scope,
             based_on_version=based_on_version,
         )
@@ -137,7 +127,6 @@ class TemplateOverrideService:
         self,
         user_id: uuid.UUID,
         entity_type: str,
-        language: str,
         *,
         project_id: uuid.UUID | None = None,
     ) -> bool:
@@ -146,7 +135,6 @@ class TemplateOverrideService:
         Args:
             user_id: User UUID.
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en").
             project_id: If provided, deletes project-scope override.
 
         Returns:
@@ -157,7 +145,6 @@ class TemplateOverrideService:
 
         deleted = await self._repo.delete_override(
             entity_type=entity_type,
-            language=language,
             scope=scope,
             scope_id=scope_id,
         )
@@ -167,7 +154,6 @@ class TemplateOverrideService:
                 "template_override_deleted",
                 user_id=str(user_id),
                 entity_type=entity_type,
-                language=language,
                 scope=scope,
             )
         else:
@@ -175,7 +161,6 @@ class TemplateOverrideService:
                 "template_override_delete_skipped",
                 user_id=str(user_id),
                 entity_type=entity_type,
-                language=language,
             )
 
         return deleted

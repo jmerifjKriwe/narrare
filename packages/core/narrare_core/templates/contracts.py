@@ -17,15 +17,15 @@ class TemplateResolver(Protocol):
     """Protocol for resolving entity-type templates.
 
     Implementations may use a cascade (user project → user global →
-    bundled defaults) or a simple bundled-only lookup.
+    bundled defaults) or a simple bundled-only lookup.  Resolution is
+    by entity_type only — there is no language dimension.
     """
 
-    def resolve(self, entity_type: str, language: str) -> Template | None:
-        """Resolve a template for the given entity type and language.
+    def resolve(self, entity_type: str) -> Template | None:
+        """Resolve a template for the given entity type.
 
         Args:
             entity_type: Entity type string (e.g. "character").
-            language: Language code (e.g. "en", "de", "fr").
 
         Returns:
             The resolved template, or ``None`` if not found.

@@ -135,7 +135,6 @@ export function KBTemplatesTab({ novelId }: KBTemplatesTabProps) {
                       <span className="block text-xs text-muted-foreground">
                         {t("kb.templateVersion", {
                           version: tpl.schema_version,
-                          lang: tpl.language,
                         })}
                         {tpl.has_override ? ` · ${t("kb.custom")}` : ` · ${t("kb.defaultLabel")}`}
                       </span>

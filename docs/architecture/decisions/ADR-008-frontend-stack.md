@@ -20,7 +20,7 @@ needed to handle:
 5. Authentication with token refresh and session management
 6. A design system that is warm, literary, and not "dashboard-like"
 
-The initial scaffold used Next.js 15 + axios + styled-jsx + Zustand for all state.
+The initial scaffold used Next.js 16 + axios + styled-jsx + Zustand for all state.
 After auditing the frontend stack, significant optimizations were identified and applied.
 
 ---
@@ -88,7 +88,7 @@ After auditing the frontend stack, significant optimizations were identified and
 ## Rationale
 
 **fetch over axios:** The SSE requirement is non-negotiable. Running two HTTP clients
-(axios for CRUD, fetch for streaming) creates confusion. fetch handles both, and Next.js 15
+(axios for CRUD, fetch for streaming) creates confusion. fetch handles both, and Next.js 16
 has built-in fetch optimizations (deduplication, caching).
 
 **Tailwind over styled-jsx:** Tailwind v4's CSS-native configuration eliminated the need

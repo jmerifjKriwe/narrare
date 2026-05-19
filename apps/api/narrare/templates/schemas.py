@@ -11,7 +11,6 @@ class TemplateInfoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     entity_type: str = Field(..., description="Entity type (character, location, etc.)")
-    language: str = Field(default="en", description="Language code")
     scope: str = Field(..., description="Scope level: user, project, or global")
     scope_id: str | None = Field(default=None, description="Scope identifier UUID")
     schema_version: str = Field(default="2.0.0", description="Template schema version")
@@ -28,7 +27,6 @@ class TemplateDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     entity_type: str
-    language: str
     scope: str
     content: str
     base_content: str | None = None
@@ -54,7 +52,6 @@ class UpdateInfoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     entity_type: str
-    language: str
     override_version: str | None = None
     current_bundled_version: str | None = None
 
@@ -65,6 +62,5 @@ class DiffResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     entity_type: str
-    language: str
     override_content: str
     bundled_content: str

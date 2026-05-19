@@ -3,7 +3,7 @@
 Uses the shared ``parse_frontmatter`` utility so that template parsing
 is consistent with the rest of the application's frontmatter handling.
 
-Supports two frontmatter formats:
+Supports three frontmatter formats:
 
 **v1 (flat):**:
 
@@ -20,6 +20,7 @@ Supports two frontmatter formats:
     ---
     template_type: character
     template_version: "2.0.0"
+    template_language: en
     schema_version: "2.0.0"
     field_groups:
       basic_info:
@@ -33,6 +34,26 @@ Supports two frontmatter formats:
         label_key: kb.sections.background
         order: 1
     ---
+
+**v3 (language-neutral):**:
+
+    ---
+    template_type: character
+    template_version: "3.0.0"
+    schema_version: "2.0.0"
+    field_groups:
+      basic_info:
+        label_key: kb.groups.basicInfo
+        fields:
+          age:
+            type: int
+    sections:
+      background:
+        label_key: kb.sections.background
+        order: 1
+    ---
+
+Legacy ``template_language`` keys in v2 templates are silently ignored.
 """
 
 from __future__ import annotations
@@ -43,7 +64,8 @@ from narrare_core.shared.frontmatter import parse_frontmatter
 
 from .models import Template, TemplateField, TemplateFieldGroup, TemplateMeta, TemplateSection
 
-# Frontmatter keys that map to TemplateMeta fields
+# Frontmatter keys that map to TemplateMeta fields (or are silently
+# ignored for backward compatibility, e.g. ``template_language``).
 _META_KEYS = frozenset(
     {
         "template_type",
@@ -196,7 +218,6 @@ def parse_template(raw: str) -> Template:
     meta = TemplateMeta(
         template_type=metadata.get("template_type", ""),
         template_version=metadata.get("template_version", "1.0.0"),
-        template_language=metadata.get("template_language", "en"),
         schema_version=metadata.get("schema_version", "1.0.0"),
     )
 

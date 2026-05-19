@@ -1,8 +1,12 @@
 """Pydantic models for the template system.
 
 Defines the data structures used to represent entity-type templates,
-including their metadata (type, version, language), field definitions,
+including their metadata (type, version), field definitions,
 grouped metadata fields, and guided body text sections.
+
+Templates are language-neutral structural definitions.  Display text
+comes from the i18n system via ``label_key`` / ``description_key``
+references.
 """
 
 from __future__ import annotations
@@ -21,6 +25,9 @@ class TemplateField(BaseModel):
     field_type: str = "str"
     required: bool = False
     description: str = ""
+    """Field description.  In v3 templates this is empty — display text comes
+    from i18n via ``kb.fieldDesc.*``.  The field itself stays (default ``""``)
+    for backward compatibility with v1/v2 templates."""
 
 
 class TemplateSection(BaseModel):
@@ -53,7 +60,6 @@ class TemplateMeta(BaseModel):
 
     template_type: str
     template_version: str = "1.0.0"
-    template_language: str = "en"
     schema_version: str = "1.0.0"
 
 

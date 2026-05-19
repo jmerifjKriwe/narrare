@@ -2,7 +2,8 @@
 
 Provides the ``KBTemplate`` model that stores user, project, and global
 template overrides in the database.  Supports the cascade resolution
-pattern: user → project → bundled defaults.
+pattern: user → project → bundled defaults.  Templates are keyed by
+``(entity_type, scope, scope_id)`` — no language dimension.
 """
 
 from __future__ import annotations
@@ -30,9 +31,9 @@ class KBTemplate(Base):
     """Stored template override — user/project/global level.
 
     Each row stores a full template override (YAML frontmatter + body markdown)
-    for a specific (entity_type, language) combination at a given scope level.
-    The cascade resolver checks higher-priority scopes (user > project > global)
-    before falling back to bundled defaults.
+    for a specific entity type at a given scope level.  The cascade resolver
+    checks higher-priority scopes (user > project > global) before falling
+    back to bundled defaults.
     """
 
     __tablename__ = "kb_templates"
@@ -43,7 +44,6 @@ class KBTemplate(Base):
         default=uuid.uuid4,
     )
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
     scope: Mapped[TemplateScope] = mapped_column(
         Enum(TemplateScope),
         nullable=False,
@@ -75,7 +75,6 @@ class KBTemplate(Base):
     __table_args__ = (
         UniqueConstraint(
             "entity_type",
-            "language",
             "scope",
             "scope_id",
             name="uq_kb_templates_unique",
@@ -89,7 +88,4 @@ class KBTemplate(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"KBTemplate(id={self.id}, type={self.entity_type!r}, "
-            f"lang={self.language!r}, scope={self.scope.value})"
-        )
+        return f"KBTemplate(id={self.id}, type={self.entity_type!r}, scope={self.scope.value})"

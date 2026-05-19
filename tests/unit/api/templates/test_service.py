@@ -23,14 +23,12 @@ from narrare_core.templates import Template, TemplateMeta
 
 def _make_template(
     entity_type: str = "character",
-    language: str = "en",
     raw: str = "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body",
 ) -> Template:
     """Create a minimal template for testing."""
     return Template(
         meta=TemplateMeta(
             template_type=entity_type,
-            template_language=language,
             template_version="1.0.0",
             schema_version="2.0.0",
         ),
@@ -74,13 +72,11 @@ class TestListTemplates:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "narrare.templates.service.list_default_templates",
-                lambda: [("character", "en")],
+                lambda: ["character"],
             )
             m.setattr(
                 "narrare.templates.service.load_default_template",
-                lambda _t, _l: (
-                    "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body"
-                ),
+                lambda _t: "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body",
             )
             m.setattr(
                 "narrare.templates.service.parse_template",
@@ -104,13 +100,11 @@ class TestListTemplates:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "narrare.templates.service.list_default_templates",
-                lambda: [("character", "en")],
+                lambda: ["character"],
             )
             m.setattr(
                 "narrare.templates.service.load_default_template",
-                lambda _t, _l: (
-                    "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body"
-                ),
+                lambda _t: "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body",
             )
             m.setattr(
                 "narrare.templates.service.parse_template",
@@ -139,18 +133,14 @@ class TestGetTemplate:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "narrare.templates.service.load_default_template",
-                lambda _t, _l: (
-                    "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body"
-                ),
+                lambda _t: "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body",
             )
             m.setattr(
                 "narrare.templates.service.parse_template",
                 lambda _r: _make_template(),
             )
 
-            result = await service.get_template(
-                "character", "en", scope="user", scope_id=uuid.uuid4()
-            )
+            result = await service.get_template("character", scope="user", scope_id=uuid.uuid4())
 
         assert result is not None
         assert result.entity_type == "character"
@@ -171,18 +161,14 @@ class TestGetTemplate:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "narrare.templates.service.load_default_template",
-                lambda _t, _l: (
-                    "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body"
-                ),
+                lambda _t: "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body",
             )
             m.setattr(
                 "narrare.templates.service.parse_template",
                 lambda _r: _make_template(),
             )
 
-            result = await service.get_template(
-                "character", "en", scope="user", scope_id=uuid.uuid4()
-            )
+            result = await service.get_template("character", scope="user", scope_id=uuid.uuid4())
 
         assert result is not None
         assert result.content == "---\ntemplate_type: character\n---\n# Overridden body"
@@ -197,12 +183,10 @@ class TestGetTemplate:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "narrare.templates.service.load_default_template",
-                lambda _t, _l: None,
+                lambda _t: None,
             )
 
-        result = await service.get_template(
-            "nonexistent", "en", scope="user", scope_id=uuid.uuid4()
-        )
+        result = await service.get_template("nonexistent", scope="user", scope_id=uuid.uuid4())
         assert result is None
 
 
@@ -223,9 +207,7 @@ class TestSaveOverride:
         with pytest.MonkeyPatch().context() as m:
             m.setattr(
                 "narrare.templates.service.load_default_template",
-                lambda _t, _l: (
-                    "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body"
-                ),
+                lambda _t: "---\ntemplate_type: character\ntemplate_version: 1.0.0\n---\n# Body",
             )
 
             request = SaveOverrideRequest(
@@ -234,7 +216,6 @@ class TestSaveOverride:
             )
             result = await service.save_override(
                 "character",
-                "en",
                 request,
                 scope="user",
                 scope_id=uuid.uuid4(),
@@ -256,9 +237,7 @@ class TestResetOverride:
     ) -> None:
         """reset_override returns True when an override was deleted."""
         mock_repo.delete_override.return_value = True
-        result = await service.reset_override(
-            "character", "en", scope="user", scope_id=uuid.uuid4()
-        )
+        result = await service.reset_override("character", scope="user", scope_id=uuid.uuid4())
         assert result is True
 
     async def test_reset_override_returns_false_when_none(
@@ -266,7 +245,5 @@ class TestResetOverride:
     ) -> None:
         """reset_override returns False when no override existed."""
         mock_repo.delete_override.return_value = False
-        result = await service.reset_override(
-            "character", "en", scope="user", scope_id=uuid.uuid4()
-        )
+        result = await service.reset_override("character", scope="user", scope_id=uuid.uuid4())
         assert result is False

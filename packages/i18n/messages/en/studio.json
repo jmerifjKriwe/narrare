@@ -727,7 +727,7 @@
     "noTemplates": "No templates available",
     "update": "Update",
     "template": "Template",
-    "templateVersion": "v{version} \u00b7 {lang}",
+    "templateVersion": "v{version}",
     "custom": "Custom",
     "defaultLabel": "Default",
     "updateAvailable": "Update available",
@@ -952,6 +952,193 @@
         "key_figures": "Key Figures",
         "conflicts": "Conflicts",
         "discoveries": "Discoveries"
+      }
+    },
+    "fieldDesc": {
+      "basicInfo": {
+        "age": "Character age",
+        "role": "Role in the story (e.g. protagonist, antagonist)",
+        "gender": "Character gender",
+        "pronouns": "Preferred pronouns",
+        "nationality": "Nationality or place of origin",
+        "pov_character": "Whether this is a point-of-view character",
+        "affiliation": "Group or organization the character belongs to",
+        "element": "Associated element or affinity",
+        "occupation": "Character's profession or trade",
+        "aliases": "Alternative names or nicknames",
+        "location_type": "Type of location (e.g. city, building, region)",
+        "parent_location": "The larger area this location is part of",
+        "coordinates": "Geographic coordinates or position",
+        "climate": "Typical weather and climate conditions",
+        "terrain": "Landscape and terrain type",
+        "size": "Physical size or area covered",
+        "founded": "Date or year the entity was founded",
+        "members": "Notable members of the group",
+        "ideology": "Core ideology or belief system",
+        "first_appearance": "Chapter or scene of first appearance",
+        "object_type": "Category of the object (e.g. weapon, artifact, tool)",
+        "owner": "Current owner of the object",
+        "origin": "Where the entity originates from",
+        "system_type": "Type of system (e.g. magic, technology, martial)",
+        "practitioners": "People who practice this system"
+      },
+      "appearance": {
+        "height": "Physical height",
+        "build": "Body type and build",
+        "hair_color": "Hair color and style",
+        "eye_color": "Eye color",
+        "skin_tone": "Skin tone and complexion",
+        "distinctive_marks": "Scars, tattoos, birthmarks, or other distinguishing features",
+        "clothing_style": "Typical clothing and fashion preferences"
+      },
+      "personality": {
+        "traits": "Core personality traits (e.g. brave, cunning, kind)",
+        "strengths": "Character strengths and positive qualities",
+        "weaknesses": "Character flaws and shortcomings",
+        "fears": "What the character is afraid of",
+        "desires": "Goals, dreams, and deepest desires",
+        "motivations": "What drives the character forward",
+        "quirks": "Unusual habits or mannerisms"
+      },
+      "background": {
+        "family": "Family background and relatives",
+        "upbringing": "How the character was raised",
+        "education": "Educational background and training",
+        "key_events": "Important events that shaped the character",
+        "formative_experiences": "Experiences that defined who they are"
+      },
+      "relationships": {
+        "allies": "Friends, companions, and supporters",
+        "rivals": "Competitors and adversaries",
+        "family_members": "Important family connections",
+        "mentors": "Teachers, guides, and mentors"
+      },
+      "development": {
+        "arc": "Overall character arc and transformation",
+        "starting_point": "Where the character begins their journey",
+        "key_turning_points": "Moments that change the character's direction",
+        "current_state": "Where the character is now in their development",
+        "planned_arc": "Future development planned for the character",
+        "first_appearance": "When the character first appears in the story"
+      },
+      "speech": {
+        "typical_phrases": "Catchphrases and frequently used expressions",
+        "dialect": "Dialect or accent",
+        "vocabulary_quirks": "Unusual speech patterns or word choices",
+        "body_language": "Gestures, posture, and physical mannerisms"
+      },
+      "features": {
+        "architecture": "Architectural style and notable buildings",
+        "natural_features": "Natural landscape and geographical features",
+        "landmarks": "Notable landmarks and points of interest",
+        "atmosphere": "Overall mood and atmosphere of the location"
+      },
+      "inhabitants": {
+        "population": "Number and demographics of inhabitants",
+        "species": "Species or races that inhabit the location",
+        "factions": "Groups and factions present at this location",
+        "notable_residents": "Well-known individuals living here"
+      },
+      "history": {
+        "founded": "When and by whom the entity was founded",
+        "key_events": "Major historical events",
+        "current_state": "Present-day condition or situation",
+        "origin_story": "The founding myth or origin narrative",
+        "current_status": "Current operational status"
+      },
+      "structure": {
+        "leadership": "Current leaders and leadership structure",
+        "hierarchy": "Organizational hierarchy and ranks",
+        "membership_count": "Approximate number of members",
+        "headquarters": "Main base of operations"
+      },
+      "belief_system": {
+        "beliefs": "Core beliefs and tenets",
+        "goals": "Primary objectives and ambitions",
+        "methods": "Methods and practices used",
+        "taboos": "Forbidden actions and taboos"
+      },
+      "properties": {
+        "material": "Material composition",
+        "dimensions": "Physical dimensions and measurements",
+        "weight": "Weight or mass",
+        "condition": "Current physical condition",
+        "appearance": "Visual description of the object's appearance"
+      },
+      "origin_details": {
+        "creator": "Who created the object",
+        "created_date": "When the object was created",
+        "place_of_origin": "Where the object was created",
+        "method_of_creation": "How the object was made"
+      },
+      "significance": {
+        "purpose": "Intended purpose or function",
+        "powers": "Special abilities or magical properties",
+        "historical_significance": "Importance in history or lore",
+        "current_location": "Where the object is currently located"
+      },
+      "mechanics": {
+        "rules": "Fundamental rules governing the system",
+        "cost": "Cost or price of using the system",
+        "limitations": "Known limitations and restrictions",
+        "levels": "Proficiency levels or power tiers"
+      },
+      "practitioner_details": {
+        "users": "Notable practitioners of the system",
+        "requirements": "Prerequisites for learning the system",
+        "training": "Training methods and curriculum",
+        "organizations": "Groups and schools that teach the system"
+      },
+      "origins": {
+        "source": "Original source of the system's power",
+        "discovered_by": "Who first discovered the system",
+        "discovered_date": "When the system was discovered",
+        "history": "Historical development and evolution"
+      },
+      "period": {
+        "era": "Historical era or epoch",
+        "era_name": "Name given to this era",
+        "start_date": "When the period begins",
+        "end_date": "When the period ends",
+        "duration": "Length of the period",
+        "first_appearance": "First mention or occurrence in the story"
+      },
+      "events": {
+        "major_events": "Key events that define this period",
+        "key_figures": "Important people during this period",
+        "conflicts": "Wars, disputes, and major conflicts",
+        "discoveries": "Important discoveries and inventions"
+      },
+      "definition": {
+        "name": "Name of the concept",
+        "category": "Category or domain (e.g. social, technological, cultural)",
+        "description": "Explanation of what the concept entails",
+        "scope": "How broadly the concept applies in the world",
+        "related_concepts": "Connected concepts and ideas"
+      },
+      "basics": {
+        "name": "Name of the setting",
+        "genre": "Genre of the setting (e.g. fantasy, sci-fi, historical)",
+        "time_period": "Time period the setting is based in",
+        "scope": "Scale of the setting (e.g. single city, continent, galaxy)"
+      },
+      "world_rules": {
+        "physics": "Physical laws and natural rules of the world",
+        "magic_system": "How magic works in this setting",
+        "technology_level": "Level of technological advancement",
+        "restrictions": "Limitations on what is possible in this world"
+      },
+      "society": {
+        "government": "Political system and governance",
+        "economy": "Economic system and trade",
+        "culture": "Cultural norms, traditions, and values",
+        "social_structure": "Social hierarchy and class structure"
+      },
+      "geography": {
+        "continents": "Major landmasses and continents",
+        "climate_zones": "Climate regions and weather patterns",
+        "key_locations": "Important places within the setting",
+        "borders": "Political or natural boundaries"
       }
     },
     "additionalNotes": "Additional Notes"

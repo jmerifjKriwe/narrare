@@ -36,7 +36,6 @@ class TemplateInfoService:
     async def cascade_info(
         self,
         entity_type: str,
-        language: str,
         *,
         user_id: uuid.UUID | None = None,
         project_id: uuid.UUID | None = None,
@@ -45,7 +44,6 @@ class TemplateInfoService:
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en").
             user_id: User UUID, or None.
             project_id: Project UUID, or None.
 
@@ -55,7 +53,7 @@ class TemplateInfoService:
         paths: list[dict[str, object]] = []
 
         if user_id:
-            user_override = await self._repo.get_override(entity_type, language, "user", user_id)
+            user_override = await self._repo.get_override(entity_type, "user", user_id)
             paths.append(
                 {
                     "level": "user",
@@ -66,9 +64,7 @@ class TemplateInfoService:
             )
 
         if project_id:
-            proj_override = await self._repo.get_override(
-                entity_type, language, "project", project_id
-            )
+            proj_override = await self._repo.get_override(entity_type, "project", project_id)
             paths.append(
                 {
                     "level": "project",
@@ -78,7 +74,7 @@ class TemplateInfoService:
                 }
             )
 
-        raw = load_default_template(entity_type, language)
+        raw = load_default_template(entity_type)
         paths.append(
             {
                 "level": "bundled",
@@ -112,7 +108,6 @@ class TemplateInfoService:
         return [
             UpdateInfoResponse(
                 entity_type=u["entity_type"],
-                language=u["language"],
                 override_version=u["override_version"],
                 current_bundled_version=u["current_bundled_version"],
             )
@@ -122,7 +117,6 @@ class TemplateInfoService:
     async def get_diff(
         self,
         entity_type: str,
-        language: str,
         *,
         scope: str = "user",
         scope_id: uuid.UUID | None = None,
@@ -131,23 +125,21 @@ class TemplateInfoService:
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en").
             scope: Scope level ("user", "project", "global").
             scope_id: Scope identifier, or None for global.
 
         Returns:
             DiffResponse with override and bundled content, or None.
         """
-        override = await self._repo.get_override(entity_type, language, scope, scope_id)
+        override = await self._repo.get_override(entity_type, scope, scope_id)
         if override is None:
             return None
 
-        raw = load_default_template(entity_type, language)
+        raw = load_default_template(entity_type)
         bundled_content = raw if raw is not None else ""
 
         return DiffResponse(
             entity_type=entity_type,
-            language=language,
             override_content=override.raw,
             bundled_content=bundled_content,
         )

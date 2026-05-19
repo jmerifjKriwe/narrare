@@ -54,12 +54,10 @@ async def list_templates(
     novel_id: str,
     user_id: CurrentUserIdDep,
     entity_type: str | None = Query(default=None),
-    language: str | None = Query(default=None),
     service: TemplateApiService = Depends(_service),
 ) -> list[TemplateInfoResponse]:
     return await service.list_templates(
         entity_type=entity_type,
-        language=language,
         scope="user",
         scope_id=str_to_uuid(user_id),
     )
@@ -70,12 +68,10 @@ async def get_template(
     novel_id: str,
     entity_type: str,
     user_id: CurrentUserIdDep,
-    language: str = Query(default="en"),
     service: TemplateApiService = Depends(_service),
 ) -> TemplateDetailResponse:
     result = await service.get_template(
         entity_type=entity_type,
-        language=language,
         scope="user",
         scope_id=str_to_uuid(user_id),
     )
@@ -91,12 +87,10 @@ async def get_diff(
     novel_id: str,
     entity_type: str,
     user_id: CurrentUserIdDep,
-    language: str = Query(default="en"),
     service: TemplateInfoService = Depends(_info_service),
 ) -> DiffResponse:
     result = await service.get_diff(
         entity_type=entity_type,
-        language=language,
         scope="user",
         scope_id=str_to_uuid(user_id),
     )
@@ -115,12 +109,10 @@ async def save_override(
     entity_type: str,
     request: SaveOverrideRequest,
     user_id: CurrentUserIdDep,
-    language: str = Query(default="en"),
     service: TemplateApiService = Depends(_service),
 ) -> TemplateDetailResponse:
     return await service.save_override(
         entity_type=entity_type,
-        language=language,
         request=request,
         scope="user",
         scope_id=str_to_uuid(user_id),
@@ -132,12 +124,10 @@ async def reset_override(
     novel_id: str,
     entity_type: str,
     user_id: CurrentUserIdDep,
-    language: str = Query(default="en"),
     service: TemplateApiService = Depends(_service),
 ) -> bool:
     return await service.reset_override(
         entity_type=entity_type,
-        language=language,
         scope="user",
         scope_id=str_to_uuid(user_id),
     )

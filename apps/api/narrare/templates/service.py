@@ -55,7 +55,6 @@ class TemplateApiService:
         self,
         *,
         entity_type: str | None = None,
-        language: str | None = None,
         scope: str = "user",
         scope_id: uuid.UUID | None = None,
     ) -> list[TemplateInfoResponse]:
@@ -66,7 +65,6 @@ class TemplateApiService:
 
         Args:
             entity_type: Optional entity type filter.
-            language: Optional language filter.
             scope: Scope level ("user", "project", "global").
             scope_id: Scope identifier, or None for global.
 
@@ -76,12 +74,11 @@ class TemplateApiService:
         bundled = list_default_templates()
         overrides_raw = await self._repo.list_overrides(scope, scope_id)
 
-        overrides_map: dict[tuple[str, str], TemplateInfoResponse] = {}
+        overrides_map: dict[str, TemplateInfoResponse] = {}
         for tpl in overrides_raw:
-            key = (tpl.meta.template_type, tpl.meta.template_language)
+            key = tpl.meta.template_type
             overrides_map[key] = TemplateInfoResponse(
                 entity_type=tpl.meta.template_type,
-                language=tpl.meta.template_language,
                 scope=scope,
                 scope_id=str(scope_id) if scope_id else None,
                 schema_version=tpl.meta.schema_version,
@@ -90,31 +87,27 @@ class TemplateApiService:
             )
 
         result: list[TemplateInfoResponse] = []
-        seen: set[tuple[str, str]] = set()
+        seen: set[str] = set()
 
-        for entity_type_b, language_b in bundled:
-            key = (entity_type_b, language_b)
-            if key in seen:
+        for entity_type_b in bundled:
+            if entity_type_b in seen:
                 continue
-            seen.add(key)
+            seen.add(entity_type_b)
 
             if entity_type is not None and entity_type_b != entity_type:
                 continue
-            if language is not None and language_b != language:
-                continue
 
-            raw = load_default_template(entity_type_b, language_b)
+            raw = load_default_template(entity_type_b)
             if raw is None:
                 continue
             bundled_tpl = parse_template(raw)
 
-            if key in overrides_map:
-                result.append(overrides_map[key])
+            if entity_type_b in overrides_map:
+                result.append(overrides_map[entity_type_b])
             else:
                 result.append(
                     TemplateInfoResponse(
                         entity_type=entity_type_b,
-                        language=language_b,
                         scope=scope,
                         scope_id=str(scope_id) if scope_id else None,
                         schema_version=bundled_tpl.meta.schema_version,
@@ -128,7 +121,6 @@ class TemplateApiService:
     async def get_template(
         self,
         entity_type: str,
-        language: str,
         *,
         scope: str = "user",
         scope_id: uuid.UUID | None = None,
@@ -140,21 +132,20 @@ class TemplateApiService:
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en").
             scope: Scope level ("user", "project", "global").
             scope_id: Scope identifier, or None for global.
 
         Returns:
             TemplateDetailResponse or None if not found.
         """
-        raw = load_default_template(entity_type, language)
+        raw = load_default_template(entity_type)
         if raw is None:
             return None
 
         base_content = raw
         base_tpl = parse_template(raw)
 
-        override = await self._repo.get_override(entity_type, language, scope, scope_id)
+        override = await self._repo.get_override(entity_type, scope, scope_id)
         if override is not None:
             content = override.raw
             is_overridden = True
@@ -166,7 +157,6 @@ class TemplateApiService:
 
         return TemplateDetailResponse(
             entity_type=entity_type,
-            language=language,
             scope=scope,
             content=content,
             base_content=base_content,
@@ -178,7 +168,6 @@ class TemplateApiService:
     async def save_override(
         self,
         entity_type: str,
-        language: str,
         request: SaveOverrideRequest,
         *,
         scope: str = "user",
@@ -188,7 +177,6 @@ class TemplateApiService:
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en").
             request: SaveOverrideRequest with content.
             scope: Scope level ("user", "project", "global").
             scope_id: Scope identifier, or None for global.
@@ -198,26 +186,23 @@ class TemplateApiService:
         """
         override = await self._repo.save_override(
             entity_type=entity_type,
-            language=language,
             scope=scope,
             scope_id=scope_id,
             content=request.content,
             based_on_version=request.based_on_version,
         )
 
-        raw = load_default_template(entity_type, language)
+        raw = load_default_template(entity_type)
         base_content: str | None = raw
 
         logger.info(
             "template_override_saved_api",
             entity_type=entity_type,
-            language=language,
             scope=scope,
         )
 
         return TemplateDetailResponse(
             entity_type=entity_type,
-            language=language,
             scope=scope,
             content=request.content,
             base_content=base_content,
@@ -229,7 +214,6 @@ class TemplateApiService:
     async def reset_override(
         self,
         entity_type: str,
-        language: str,
         *,
         scope: str = "user",
         scope_id: uuid.UUID | None = None,
@@ -238,7 +222,6 @@ class TemplateApiService:
 
         Args:
             entity_type: Entity type (e.g. "character").
-            language: Language code (e.g. "en").
             scope: Scope level ("user", "project", "global").
             scope_id: Scope identifier, or None for global.
 
@@ -247,7 +230,6 @@ class TemplateApiService:
         """
         return await self._repo.delete_override(
             entity_type=entity_type,
-            language=language,
             scope=scope,
             scope_id=scope_id,
         )

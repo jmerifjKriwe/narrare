@@ -78,7 +78,6 @@ scripts/local/
 # Added by code-review-graph
 .code-review-graph/
 .mcp.json
-
 .claude/settings.local.json
 opencode.json
 .tmp/
@@ -86,3 +85,4 @@ packages/web/skills-lock.json
 packages/web/coverage/
 packages/web/playwright-report/
 packages/web/test-results/
+skills-lock.json

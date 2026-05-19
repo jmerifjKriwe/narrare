@@ -5,7 +5,8 @@ Tests cover:
 - TemplateFieldGroup defaults and construction
 - Template model with new field_groups and sections fields
 - Template backward compatibility (fields list still works)
-- extra="allow" on group models (via default Pydantic behaviour)
+- TemplateMeta no longer has template_language (v3)
+- TemplateField.description docstring / backward compat
 """
 
 from __future__ import annotations
@@ -71,6 +72,53 @@ class TestTemplateFieldGroup:
     def test_empty_fields_by_default(self) -> None:
         group = TemplateFieldGroup(name="empty_group")
         assert group.fields == []
+
+
+class TestTemplateFieldDescription:
+    """Tests for TemplateField.description — optional in v3, backward compat."""
+
+    def test_description_defaults_to_empty(self) -> None:
+        """In v3 templates, description defaults to empty string."""
+        field = TemplateField(name="age", field_type="int")
+        assert field.description == ""
+
+    def test_description_can_be_set(self) -> None:
+        """Legacy templates may set description — backward compat."""
+        field = TemplateField(name="age", field_type="int", description="Character age")
+        assert field.description == "Character age"
+
+
+class TestTemplateMetaV3:
+    """Tests for TemplateMeta — no template_language in v3."""
+
+    def test_minimal(self) -> None:
+        meta = TemplateMeta(template_type="character")
+        assert meta.template_type == "character"
+        assert meta.template_version == "1.0.0"
+        assert meta.schema_version == "1.0.0"
+
+    def test_has_no_template_language_attribute(self) -> None:
+        """TemplateMeta should not have a template_language field."""
+        meta = TemplateMeta(template_type="character")
+        assert not hasattr(meta, "template_language")
+
+    def test_model_fields_does_not_include_language(self) -> None:
+        """Verify the model schema excludes template_language."""
+        field_names = set(TemplateMeta.model_fields.keys())
+        assert "template_language" not in field_names
+        assert "template_type" in field_names
+        assert "template_version" in field_names
+        assert "schema_version" in field_names
+
+    def test_full(self) -> None:
+        meta = TemplateMeta(
+            template_type="location",
+            template_version="3.0.0",
+            schema_version="2.0.0",
+        )
+        assert meta.template_type == "location"
+        assert meta.template_version == "3.0.0"
+        assert meta.schema_version == "2.0.0"
 
 
 class TestTemplateExtended:

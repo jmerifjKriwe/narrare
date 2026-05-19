@@ -1,8 +1,8 @@
 """Bundled default template access via importlib.resources.
 
 Provides functions to load and list the default entity-type templates
-bundled with the package.  Templates are Markdown + YAML frontmatter
-files organised by language code (en, de, fr).
+bundled with the package.  Templates are language-neutral Markdown +
+YAML frontmatter files stored flat in the ``defaults/`` directory.
 """
 
 from __future__ import annotations
@@ -23,60 +23,41 @@ _ENTITY_TYPES = frozenset(
     }
 )
 
-# Supported language codes
-_LANGUAGES = frozenset({"en", "de", "fr"})
 
-
-def _read_resource(language: str, entity_type: str) -> str | None:
+def _read_resource(entity_type: str) -> str | None:
     """Read a template resource file, returning None if not found."""
     filename = f"{entity_type}.md"
     try:
         resource_path = importlib.resources.files(
             "narrare_core.templates.defaults",
-        ).joinpath(language, filename)
+        ).joinpath(filename)
         data = resource_path.read_text(encoding="utf-8")
         return data
     except FileNotFoundError, TypeError:
         return None
 
 
-def load_default_template(entity_type: str, language: str = "en") -> str | None:
-    """Load a bundled default template for the given entity type and language.
-
-    Falls back to English (``"en"``) if the requested language template
-    doesn't exist.
+def load_default_template(entity_type: str) -> str | None:
+    """Load a bundled default template for the given entity type.
 
     Args:
         entity_type: Entity type string (e.g. "character").
-        language: Language code (e.g. "en", "de", "fr").
 
     Returns:
-        The raw template string, or ``None`` if not even the English
-        fallback exists.
+        The raw template string, or ``None`` if no template exists
+        for the given entity type.
     """
-    # Try the requested language first
-    content = _read_resource(language, entity_type)
-    if content is not None:
-        return content
-
-    # Fall back to English
-    if language != "en":
-        content = _read_resource("en", entity_type)
-        if content is not None:
-            return content
-
-    return None
+    return _read_resource(entity_type)
 
 
-def list_default_templates() -> list[tuple[str, str]]:
+def list_default_templates() -> list[str]:
     """List all available bundled default templates.
 
     Returns:
-        List of (entity_type, language) pairs for every bundled template.
+        List of entity type strings for every bundled template.
     """
-    results: list[tuple[str, str]] = []
-    for language in sorted(_LANGUAGES):
-        for entity_type in sorted(_ENTITY_TYPES):
-            if _read_resource(language, entity_type) is not None:
-                results.append((entity_type, language))
+    results: list[str] = []
+    for entity_type in sorted(_ENTITY_TYPES):
+        if _read_resource(entity_type) is not None:
+            results.append(entity_type)
     return results
