@@ -255,29 +255,17 @@ POST   /api/v1/planning/storyboard/{novel_id}/remap     # Preview structure chan
 
 ## Future Work (TODO — documented, not implemented)
 
-### F1: AI Chapter Summarization
+### F1: AI-Powered Structure Remap (depends on WRITE-012)
 
-**Problem**: The Context Assembly Pipeline (INFRA-003) currently fetches **full chapter content** for Tier 2 (Recent History: last 3-5 chapters). This is token-expensive and limits how much history can be included in the context window.
+**Problem**: The position-ratio heuristic (`chapter_number / total_chapters → suggest_stage()`) works for similar structures but produces poor results when structures differ significantly (e.g., three_act → heros_journey).
 
-**Proposed solution**: Add an AI-powered chapter summarization function that populates the existing `chapters.summary` column (field already exists on the `Chapter` model, currently unused/empty). Summaries would be:
+**Proposed solution**: Once [WRITE-012 Chapter Summary](docs/features/writing/WRITE-012-chapter-summary.md) is implemented, the remap function can analyze chapter summaries (stored in the existing `chapters.summary` column) to suggest stage assignments based on narrative content rather than position. A chapter with a climactic confrontation summary would map to the climax stage regardless of its position.
 
-1. **Generated on-demand or on save**: After chapter content changes, trigger async summarization via TaskIQ
-2. **Stored in PostgreSQL**: `chapters.summary` (Text column, already exists)
-3. **Used by Context Assembly**: Tier 2 (Recent History) uses summaries instead of full content — dramatically reducing token usage
-4. **Used by Storyboard**: Show summary on chapter card hover/tooltip
-5. **Used by Structure Remap**: AI analyzes summaries to suggest intelligent stage assignments when story structure changes (replaces position-ratio heuristic)
+**Dependency**: WRITE-012 is already fully specified — `SummaryService` with `LLMIntent.SUMMARIZE_CHAPTER`, auto-summarize on save, manual trigger endpoint. The storyboard only needs to consume the summaries, not build the summarization pipeline.
 
-**Dependencies**: New `LLMIntent` (e.g., `SUMMARIZE`), new bundled prompt in `core/prompts/_bundled/`, event-driven trigger via existing Redis Pub/Sub + TaskIQ infrastructure.
+**Broader impact of WRITE-012**:
+- [INFRA-003](docs/features/infra/INFRA-003-context-assembly.md) — Tier 2 (Recent History) currently loads full chapter content. With summaries, it could use condensed versions, dramatically reducing token usage.
+- [CONS-001](docs/features/consistency/CONS-001-consistency-checker.md) — Cross-chapter context during checks.
+- PLAN-005 Storyboard — Card summaries on hover, intelligent remap.
 
-**Related features**:
-- [INFRA-003](docs/features/infra/INFRA-003-context-assembly.md) — Primary consumer: Recent History tier would use summaries
-- [PLAN-005](docs/features/planning/PLAN-005-storyboard.md) — Storyboard card summaries + intelligent remap
-- [ANAL-011](docs/features/analysis/ANAL-011-plot-analysis.md) — Plot analysis could use summaries for arc detection
-
-**Why not now**: This change already introduces significant scope (adapters, storage, UI, drag & drop, remap). AI summarization is a cross-cutting concern that touches the LLM gateway, prompt system, event system, and context assembly — deserving its own focused change with proper testing.
-
-### F2: AI-Powered Structure Remap
-
-**Current**: Position-ratio heuristic (`chapter_number / total_chapters → suggest_stage()`)
-
-**Future**: When AI chapter summaries exist (F1), the remap function can analyze summary content to suggest stage assignments based on narrative content rather than position alone. E.g., a chapter with a climactic confrontation summary should map to the climax stage regardless of its position.
+**Why not now**: WRITE-012 is a cross-cutting feature (LLM gateway, prompt system, event system) that deserves its own focused change. The storyboard works with position-based heuristics initially.

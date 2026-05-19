@@ -92,3 +92,15 @@ The `planning/` domain module SHALL follow RULE-03 (Protocol-First Development) 
 - **WHEN** the planning module is implemented
 - **THEN** `contracts.py` SHALL define `StoryboardServiceProtocol`, `OutlineRepositoryProtocol`, and `SyncCheckerProtocol`
 - **THEN** these protocols SHALL be implemented by the service, repository, and sync checker respectively
+
+### Requirement: Structure remap uses position-based heuristics (AI remap is future)
+The initial structure remap implementation SHALL use position-ratio heuristics to assign chapters to new stages. AI-powered remap based on chapter summaries (WRITE-012) is a future enhancement.
+
+#### Scenario: Position-based remap for similar structures
+- **WHEN** remap is called from three_act to five_act for a novel with 10 chapters
+- **THEN** the system SHALL use `suggest_stage(chapter_number, total_chapters)` from the target structure's adapter
+- **THEN** chapters in the first third SHALL map to early stages, middle third to middle stages, etc.
+
+#### Scenario: Remap notes AI enhancement opportunity
+- **WHEN** the remap logic is implemented
+- **THEN** a code TODO SHALL reference WRITE-012 as the future dependency for intelligent summary-based remap

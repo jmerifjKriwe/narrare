@@ -80,9 +80,8 @@
 - [ ] 10.3 Update `docs/features/planning/PLAN-005-storyboard.md` — comprehensive update: new technical details, sync status, drag & drop, structure change workflow, full-width panel design
 - [ ] 10.4 Update `docs/features/INDEX.md` — change PLAN-003/004/005 status from "planned" to "in-progress", add cross-references
 - [ ] 10.5 Update `docs/_shared/CURRENT_STATE.md` — add planning module to "What Exists", update Phase 5 progress
-- [ ] 10.6 Add TODO comment in code for AI Chapter Summarization (future work: `chapters.summary` population, referenced from INFRA-003 Context Assembly Tier 2 and PLAN-005 structure remap)
+- [ ] 10.6 Add TODO comment in code for AI-Powered Structure Remap (future work: depends on [WRITE-012 Chapter Summary](docs/features/writing/WRITE-012-chapter-summary.md) — once `chapters.summary` is populated by WRITE-012, remap can analyze summaries for intelligent stage suggestions instead of position-ratio heuristic)
 
 ## TODO (Future Work — not implemented in this change)
 
-- **AI Chapter Summarization**: New `LLMIntent.SUMMARIZE` + prompt to populate `chapters.summary` column (already exists on model). Primary consumer: INFRA-003 Context Assembly Tier 2 (Recent History) — would replace full chapter content with summaries, dramatically reducing token usage. Also enables AI-powered structure remap (analyze summaries → suggest stage assignments). Cross-cutting: touches LLM gateway, prompt system, event system, context assembly.
-- **AI-Powered Structure Remap**: Replace position-ratio heuristic with summary-based stage suggestion. Depends on AI Chapter Summarization.
+- **AI-Powered Structure Remap**: Replace position-ratio heuristic with summary-based stage suggestion. Depends on [WRITE-012 Chapter Summary](docs/features/writing/WRITE-012-chapter-summary.md) which is already specified (`SummaryService`, `LLMIntent.SUMMARIZE_CHAPTER`, auto-summarize on save). Once WRITE-012 populates `chapters.summary`, the storyboard remap can analyze summaries to suggest stage assignments based on narrative content. WRITE-012 also benefits INFRA-003 Context Assembly (Tier 2 Recent History → summaries instead of full content) and CONS-001 Consistency Checker.

@@ -49,8 +49,8 @@
 
 ## 8. Validation & Cleanup
 
-- [ ] 8.1 Run `scripts/check_architecture.py` and fix any violations.
-- [ ] 8.2 Run full test suite (unit + integration) and ensure all tests pass.
-- [ ] 8.3 Run pre-commit hooks on all changed files.
-- [ ] 8.4 Verify parser backward compat: old v2 templates (with language + descriptions) still parse without error.
-- [ ] 8.5 Update `docs/_shared/CURRENT_STATE.md` to reflect the consolidation.
+- [x] 8.1 Run `scripts/check_architecture.py` and fix any violations.
+- [x] 8.2 Run full test suite (unit + integration) and ensure all tests pass.
+- [x] 8.3 Run pre-commit hooks on all changed files.
+- [x] 8.4 Verify parser backward compat: old v2 templates (with language + descriptions) still parse without error.
+- [x] 8.5 Update `docs/_shared/CURRENT_STATE.md` to reflect the consolidation.

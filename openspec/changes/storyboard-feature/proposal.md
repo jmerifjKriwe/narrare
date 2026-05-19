@@ -44,8 +44,7 @@ _(No existing spec-level requirement changes. The novel model's `story_structure
 - i18n: new keys for storyboard UI, structure names, sync statuses (en, de, fr)
 
 **Future work (documented as TODO, not implemented in this change):**
-- AI Chapter Summarization: LLM-powered function to populate `chapters.summary` column (field already exists on model). Primary consumer: INFRA-003 Context Assembly (Tier 2 Recent History currently uses full chapter content — summaries would dramatically reduce token usage). Also needed for intelligent structure remapping. Depends on core/llm gateway + new LLM intent.
-- AI-powered structure remap: use chapter summaries to suggest stage assignments when structure changes (replaces position-ratio heuristic)
+- AI-powered structure remap: use chapter summaries (from [WRITE-012](docs/features/writing/WRITE-012-chapter-summary.md)) to suggest stage assignments when structure changes. WRITE-012 is already specified and populates `chapters.summary`. Once implemented, the storyboard remap can analyze summaries instead of relying on position-ratio heuristics. Related consumers: INFRA-003 Context Assembly (Tier 2), CONS-001 Consistency Checker.
 
 **Data model:**
 - New table: `chapter_outlines` (id, chapter_id, version_id, planned_beats JSONB, outline_notes, stage_assignment, created_at, updated_at)
