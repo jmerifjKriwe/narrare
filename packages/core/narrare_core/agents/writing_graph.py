@@ -12,9 +12,12 @@ Siehe ADR-015 Phase 4.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic_graph import End, GraphBuilder, StepContext, TypeExpression
+
+if TYPE_CHECKING:
+    from pydantic_graph.graph_builder import Graph as BuilderGraph
 
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
 from narrare_core.agents.writing_graph_types import (
@@ -56,7 +59,7 @@ async def _get_model(deps: WritingDeps) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def build_writing_graph() -> GraphBuilder:
+def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, WritingState]:
     """Erstelle den Writing-Graphen mit allen Steps + Edges.
 
     Returns:
@@ -166,19 +169,19 @@ def build_writing_graph() -> GraphBuilder:
             .branch(g.match(TypeExpression[NeedsRevision]).label("needs revision").to(revise_draft))
         ),
         g.edge_from(revise_draft).to(write_draft),
-        g.edge_from(finalize).to(g.end_node),
+        g.edge_from(finalize).to(g.end_node),  # pyright: ignore[reportArgumentType]
     )
 
     return g
 
 
-def create_writing_graph():
+def create_writing_graph() -> BuilderGraph[WritingState, WritingDeps, None, WritingState]:
     """Convenience: Build und return den Writing-Graph.
 
     Usage::
 
         graph = create_writing_graph()
         result = await graph.run(state=WritingState(...), deps=WritingDeps(...))
-        final_state = result.data  # WritingState
+        final_state = result  # WritingState (graph.run() returns OutputT directly)
     """
     return build_writing_graph().build()

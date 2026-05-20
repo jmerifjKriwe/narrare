@@ -63,6 +63,6 @@ async def stream_via_writing_graph(
     )
 
     result = await graph.run(state=state, deps=deps)
-    # result.data is WritingState (see create_writing_graph docstring)
-    final_text = result.data.final
+    # graph.run() returns OutputT (= WritingState) directly
+    final_text = result.final
     yield StreamChunk(text=final_text, is_final=True, usage=None)
