@@ -1,7 +1,7 @@
 ---
 id: INFRA-005
 title: "Memory Layer (Rejection Learning)"
-status: implemented
+status: in progress
 area: infra
 mvp: false
 
