@@ -1143,6 +1143,37 @@
     },
     "additionalNotes": "Additional Notes"
   },
+  "storyboard": {
+    "title": "Storyboard",
+    "collapsed": "{structure} — {count, plural, one {# chapter} other {# chapters}}",
+    "expand": "Expand Storyboard",
+    "collapse": "Collapse Storyboard",
+    "toggleStoryboard": "Toggle Storyboard",
+    "emptySlot": "Drop chapter here",
+    "status": {
+      "empty": "Empty",
+      "planned": "Planned",
+      "on_track": "On Track",
+      "deviated": "Deviated",
+      "completed": "Completed"
+    },
+    "outline": {
+      "title": "Chapter Outline",
+      "beats": "Planned Beats",
+      "notes": "Notes",
+      "noBeats": "No beats planned yet"
+    },
+    "remap": {
+      "title": "Change Story Structure",
+      "description": "Review how your chapters will be remapped to the new structure.",
+      "chapterTitle": "Chapter",
+      "currentStage": "Current Stage",
+      "newStage": "New Stage",
+      "confirm": "Confirm Change",
+      "cancel": "Cancel",
+      "noChanges": "No chapters need to be remapped."
+    }
+  },
   "auth": {
     "loginTitle": "Sign in to Narrare",
     "loginSubtitle": "Welcome back",

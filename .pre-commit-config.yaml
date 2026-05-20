@@ -48,7 +48,7 @@ repos:
       # Biome lint + format — catches code issues and enforces style
       - id: biome-frontend
         name: Biome (Frontend)
-        entry: bash -c 'cd packages/web && npx biome check --write "$@"' --
+        entry: bash -c 'cd packages/web && npx biome check --write "${@/#packages\/web\//}"' --
         language: system
         types_or: [ts, tsx]
         files: ^packages/web/

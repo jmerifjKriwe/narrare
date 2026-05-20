@@ -18,6 +18,7 @@ from tests.fakes.fake_auth_repository import FakeAuthRepository
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
 from tests.fakes.fake_llm_gateway import FakeLLMGateway
 from tests.fakes.fake_novel_repo import FakeNovelRepository
+from tests.fakes.fake_outline_repo import FakeOutlineRepository
 from tests.fakes.fake_services import (
     FakeNovelService,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "FakeLLMGateway",
     "FakeNovelRepository",
     "FakeNovelService",
+    "FakeOutlineRepository",
     "FakeProviderService",
     "FakeVolumeRepository",
 ]

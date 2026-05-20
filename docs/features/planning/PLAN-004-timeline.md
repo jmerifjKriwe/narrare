@@ -1,7 +1,7 @@
 ---
 id: PLAN-004
 title: "Timeline Management"
-status: planned
+status: in-progress
 area: planning
 mvp: false
 
@@ -176,9 +176,32 @@ class TimelineEntry:
 
 - [KB-001](../kb/KB-001-entity-management.md) — Timeline entities in KB
 - [KB-007](../kb/KB-007-extraction.md) — Fact extraction
-- [CONS-001](../consistency/CONS-001-checker.md) — Overall consistency
-- [PLAN-003](PLAN-003-structure.md) — Structure view
+- [PLAN-005](PLAN-005-storyboard.md) — Storyboard view (uses `timeline_position` field for chronological context in stage layout)
+- [CONS-001](../consistency/CONS-001-checker.md) — Temporal consistency checks
+
+## Timeline Integration Point
+
+The `timeline_position` field on chapters is available for the storyboard's
+chronological context. PLAN-005 Storyboard uses `chapter.position` (sequential
+ordering) for stage assignment, but the `timeline_position` field provides
+optional temporal metadata that future timeline features can build on.
+
+**What exists now:**
+- `timeline_position` field in chapter data model (available for chronological context)
+- Storyboard (PLAN-005) uses chapter position for structure stage assignment
+
+**Full timeline management remains future work:**
+- Date/time tracking on chapters and scenes
+- Auto-extraction of temporal expressions from chapter content
+- Character age tracking and consistency checking
+- Chronological vs narrative ordering (flashback/flashforward detection)
+- Temporal consistency validation (impossible dates, age contradictions)
+- Timeline visualization (chronological, per-character, by-chapter views)
+
+These features require dedicated timeline services, KB integration for temporal
+entities, and AI-powered extraction — not yet implemented.
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-20` — Updated: noted `timeline_position` integration point with storyboard (PLAN-005). Full timeline management features remain future work. Status changed to in-progress (integration point only).

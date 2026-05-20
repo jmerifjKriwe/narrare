@@ -1143,6 +1143,37 @@
     },
     "additionalNotes": "Zusätzliche Notizen"
   },
+  "storyboard": {
+    "title": "Storyboard",
+    "collapsed": "{structure} — {count, plural, one {# Kapitel} other {# Kapitel}}",
+    "expand": "Storyboard aufklappen",
+    "collapse": "Storyboard zuklappen",
+    "toggleStoryboard": "Storyboard umschalten",
+    "emptySlot": "Kapitel hier ablegen",
+    "status": {
+      "empty": "Leer",
+      "planned": "Geplant",
+      "on_track": "Im Rahmen",
+      "deviated": "Abgewichen",
+      "completed": "Abgeschlossen"
+    },
+    "outline": {
+      "title": "Kapitelgliederung",
+      "beats": "Geplante Beats",
+      "notes": "Notizen",
+      "noBeats": "Noch keine Beats geplant"
+    },
+    "remap": {
+      "title": "Story-Struktur ändern",
+      "description": "Überprüfe, wie deine Kapitel der neuen Struktur zugeordnet werden.",
+      "chapterTitle": "Kapitel",
+      "currentStage": "Aktuelle Phase",
+      "newStage": "Neue Phase",
+      "confirm": "Änderung bestätigen",
+      "cancel": "Abbrechen",
+      "noChanges": "Keine Kapitel müssen neu zugeordnet werden."
+    }
+  },
   "auth": {
     "loginTitle": "Bei Narrare anmelden",
     "loginSubtitle": "Willkommen zurück",

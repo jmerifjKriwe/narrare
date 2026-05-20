@@ -1,173 +1,186 @@
 ---
 id: PLAN-005
 title: "Storyboard View"
-status: planned
+status: in-progress
 area: planning
 mvp: false
 
 ui_tooltip: "Compare planned outline against written chapters with ripple analysis."
 ui_help_short: |
-  See how your written chapters match your plans. Storyboard compares outline
-  to actual content, identifies deviations, and analyzes downstream effects of
-  changes — helping you keep your story on track.
+  See your story's structure at a glance. Storyboard organizes chapters into
+  stages, tracks sync between plan and writing, and lets you reorganize by
+  dragging — helping you keep your story on track.
 ui_help_long: |
   ## Storyboard View
 
-  Compare your plans against what you've actually written. Storyboard tracks
-  the relationship between intention and execution.
+  See your story's shape. Storyboard organizes chapters into structural stages
+  (acts, turning points) so you can see the big picture while writing.
 
-  **Sync Checking:**
+  **Structure-Aware Layout:**
 
-  Compare finished chapters against plans:
-  - **Synchronized**: Chapter matches plan
-  - **Deviated**: Drifted from plan (how and why)
-  - **Abandoned**: Major planned elements not executed
-  - **Impacted**: Affected by earlier chapter changes
+  Chapters are organized into columns based on your chosen story structure:
+  - **Three-Act**: Setup → Confrontation → Resolution
+  - **Five-Act**: Exposition → Rising Action → Climax → Falling Action → Resolution
+  - **Hero's Journey**: 12 stages from Ordinary World to Return
+  - **Save the Cat**: 15 beats across 3 acts
+  - **Seven-Point**: 7 turning points for tight plotting
 
-  **Ripple Analysis:**
+  **Sync Status:**
 
-  See downstream effects of changes:
-  - Which chapters are affected by this change
-  - What needs to be updated
-  - Severity of impact (critical/minor)
-  - Suggested fixes
+  Each chapter shows its sync status — how closely it follows the plan:
+  - ⬜ **Empty**: No outline yet (gray)
+  - 📘 **Planned**: Outline exists, chapter not started (blue)
+  - 🟢 **On Track**: Chapter matches stage expectations (green)
+  - 🟡 **Deviated**: Chapter drifted from planned stage (yellow)
+  - 💎 **Completed**: Chapter finished and aligned (emerald)
 
   **How it works:**
-  1. Open Planning panel
-  2. Click "Storyboard"
-  3. For each chapter, see:
-     - Plan: What was intended
-     - Actual: What was written
-     - Status: Sync status (color-coded)
-     - Deviations: What changed from plan
-  4. Click any chapter to see:
-     - Detailed plan vs actual comparison
-     - Specific deviations listed
-     - Ripple effects on later chapters
-  5. For changes, see:
-     - Affected chapters highlighted
-     - Impact severity
-     - Update suggestions
-  6. Update plans or fix content as needed
+  1. Open the storyboard panel (above the editor toolbar)
+  2. See chapters organized into structure stages
+  3. Drag chapters between stages to reorganize
+  4. Click a chapter card to jump to it in the editor
+  5. Edit chapter outlines with planned beats and notes
+  6. Change story structure → see remap preview → confirm or cancel
 
-  **Status colors:**
-  - 🟢 Green: Synchronized (matches plan)
-  - 🟡 Yellow: Deviated (intentional changes)
-  - 🔴 Red: Abandoned (planned elements missing)
-  - 🔵 Blue: Impacted (affected by earlier changes)
+  **Structure Change Workflow:**
+  When you switch story structures (e.g., Three-Act → Hero's Journey):
+  1. Preview how chapters remap to new stages
+  2. Review the before/after for each chapter
+  3. Confirm to apply, or cancel to revert
 
   **Best practices:**
-  - Plan before writing (even brief outlines)
-  - Run sync checks after each chapter
-  - Use ripple analysis before major rewrites
-  - Update plans when story evolves naturally
+  - Open storyboard while writing for spatial awareness
+  - Keep outlines updated — sync status is only as good as your plans
+  - Try different structures to find the best fit
+  - Use drag & drop to experiment with chapter placement
 
-  **Use cases:**
-  - Track project completion
-  - Identify abandoned plot threads
-  - See effects of structural changes
-  - Guide revision priorities
-
-  Storyboard helps you ship what you planned — or understand why you changed
-  direction. Either way, you're making informed choices.
-
-  Available in Planning panel or via CLI:
-  `narrare storyboard --novel <id> --check sync`
+  Available in the editor's storyboard panel.
 ui_available_in: [planning, cli]
 
-service: storyboard/service.py
+service: planning/service.py
 contract: planning/contracts.py#StoryboardServiceProtocol
-router: storyboard/router.py
+router: planning/router.py
 prompt: ~
-requires: [PLAN-001, WRITE-001]
+requires: [PLAN-003, WRITE-001]
 ---
 
 # PLAN-005 — Storyboard View
 
 ## What it does
 
-Compares planned outlines (scene plans, chapter outlines) against written
-content. Tracks sync status (synchronized, deviated, abandoned, impacted) and
-provides ripple analysis for downstream effects of changes.
+Organizes chapters into a structure-aware storyboard with stage columns (based
+on story structure like Three-Act, Hero's Journey, etc.). Tracks sync between
+planned outlines and written content using 5 status levels. Supports drag & drop
+reorganization and structure change remap with preview.
 
 ## Why it exists
 
-Stories evolve during writing. Planned scenes get abandoned, directions
-change, or new ideas emerge. Writers lose track of what was planned vs what
-was written. Storyboard makes intention vs. execution visible.
+Writers lose spatial awareness while deep in a chapter. The storyboard provides
+a bird's-eye view of the story's structure, showing which stage each chapter
+occupies and whether it's on track. This makes structural problems visible
+before they compound.
 
 ## How it works (User perspective)
 
-1. Open Planning panel
-2. Click "Storyboard"
-3. For each chapter, see:
-   - **Plan summary**: What was intended
-   - **Status indicator**: Color-coded sync status
-   - **Deviations**: What changed from plan
-4. Click any chapter for details:
-   - Side-by-side plan vs actual
-   - Specific deviations listed
-   - What was abandoned (if any)
-5. For changes, see ripple effects:
-   - Later chapters affected
-   - Severity of impact
-   - Suggested updates
-
-Use to track project completion, identify orphaned plot threads, or understand
-how changes propagate through your story.
+1. Toggle storyboard panel open (above editor toolbar, full-width collapsible)
+2. See chapters organized into structure stage columns
+3. Each chapter card shows: title, word count, sync status badge
+4. Drag chapters between stages to reassign
+5. Click a chapter card to navigate to it in the editor
+6. Expand a chapter to edit its outline (planned beats, notes)
+7. Change story structure in settings:
+   - Preview remap: see which chapters move to which stages
+   - Confirm or cancel the structure change
+8. Collapse storyboard to a summary row when focused on writing
 
 ## How it works (Technical)
 
-**Entry point:** `storyboard/router.py` → `GET /api/v1/storyboard/{novel_id}`
-**Service:** `StoryboardService.check_sync()` in `storyboard/service.py`
-**Contract:** `StoryboardServiceProtocol` in `planning/contracts.py`
+**Entry point:** `GET /api/v1/planning/storyboard/{novel_id}`
+**Service:** `StoryboardService` in `apps/api/narrare/planning/service.py`
+**Contract:** `StoryboardServiceProtocol` in `apps/api/narrare/planning/contracts.py`
+**Core adapters:** `StructureAdapterRegistry` in `packages/core/narrare_core/planning/adapters/`
+**Sync checker:** `StructuralSyncChecker` in `packages/core/narrare_core/planning/sync.py`
 
-**Sync status:**
+**Storage:** `chapter_outlines` table (migration 0013), `ChapterOutline` SQLAlchemy model
+
+**API endpoints** (under `/api/v1/planning/`):
+- `GET /storyboard/{novel_id}` — Full storyboard view with stages and chapters
+- `GET /sync/{novel_id}` — Sync status for all chapters
+- `GET /outlines/{chapter_id}` — Get or auto-create chapter outline
+- `PUT /outlines/{chapter_id}` — Update outline (beats, notes, stage)
+- `POST /remap/{novel_id}` — Preview or confirm structure remap
+
+**Sync status (5 levels):**
 ```python
-class ChapterSyncStatus:
-    chapter_id: UUID
-    status: "synchronized" | "deviated" | "abandoned" | "impacted"
-    plan_summary: str  # From scene plan or outline
-    deviations: list[str]  # What changed
-    abandoned_elements: list[str]  # Planned but not written
-    impact_from: list[UUID]  # Chapters that changed this one
+class SyncStatus(str, Enum):
+    EMPTY = "empty"          # No outline exists
+    PLANNED = "planned"      # Outline exists, chapter not started
+    ON_TRACK = "on_track"    # Chapter matches stage expectations
+    DEVIATED = "deviated"    # Chapter drifted from planned stage
+    COMPLETED = "completed"  # Chapter finished and aligned
 ```
 
-**Sync checking:**
-- Compares chapter content against scene plan (PLAN-001)
-- Extracts actual beats from written text
-- Compares planned vs actual beats
-- Flags deviations (added/removed/changed elements)
-- Identifies abandoned plan elements
+**Storyboard assembly:**
+1. Fetch novel → get `story_structure` → resolve adapter from registry
+2. Fetch chapters (ordered by position) → fetch/create outlines for each
+3. Group chapters into stages based on `stage_assignment`
+4. Calculate sync status per chapter using `StructuralSyncChecker`
 
-**Ripple analysis:**
-- Uses chapter metadata only (fast, no content analysis)
-- Tracks dependencies between chapters (cliffhangers, subplots)
-- When chapter changes: identifies affected chapters
-- Calculates impact severity based on dependency strength
+**Drag & drop reorganization:**
+- Frontend uses `@dnd-kit` (`useDraggable` on cards, `useDroppable` on columns)
+- Click vs drag distinguished by movement threshold
+- On drop: calls `PUT /outlines/{chapter_id}` with new `stage_assignment`
+- Invalidates storyboard query to refresh
 
-**Dependencies:**
-- Cliffhanger resolutions (Chapter N → Chapter N+1)
-- Subplot threads (appear in multiple chapters)
-- Character arcs (continued across chapters)
-- Timeline continuity (Chapter N establishes X for Chapter N+1)
+**Structure change workflow:**
+1. User changes `story_structure` in settings
+2. Frontend calls `POST /remap/{novel_id}` with `confirm=false` for preview
+3. Backend calculates new stage for each chapter via `adapter.suggest_stage()`
+4. Frontend shows `StructureChangeDialog` with before/after table
+5. On confirm: backend updates all outlines + novel's `story_structure`
+6. On cancel: frontend reverts local state, no API call
+
+**Remap heuristic (current):**
+Position-ratio based — maps `chapter_position / total_chapters` to stage ranges.
+Each adapter defines stage boundaries as fractions of total story length.
+
+**Future: AI-powered remap** (depends on WRITE-012 Chapter Summary):
+- Analyze chapter summaries for narrative content instead of position ratio
+- Would enable content-aware stage suggestions (e.g., detect climax content)
+- Also benefits INFRA-003 Context Assembly (Tier 2 Recent History)
+
+**Frontend components** (7, all in `packages/web/components/studio/planning/`):
+- `StoryboardPanel` — Full-width collapsible container, DndContext, stage layout
+- `StoryboardCard` — Draggable chapter card with status badge
+- `StoryboardStageColumn` — Droppable stage column
+- `SyncStatusBadge` — Color-coded status indicator
+- `StoryboardScrollArrows` — Horizontal scroll controls
+- `OutlineEditor` — Inline beat checklist + notes editor
+- `StructureChangeDialog` — Remap preview modal
+
+**API client:** `packages/web/lib/api/planning.ts`
+**Hooks:** `useStoryboard`, `useChapterOutline`, `useRemap` (TanStack Query)
 
 ## Constraints & Edge Cases
 
-- Requires scene plans or chapter outlines to exist
-- Comparison approximate (semantic, not literal)
-- Ripple analysis uses metadata only (may miss content dependencies)
-- Abandoned elements may be intentional (writer discretion)
-- Impact severity estimated (not always accurate)
-- No automatic fixing — manual updates required
+- Requires chapters to exist for storyboard to populate
+- Sync status is heuristic-based (position ratio), not semantic content analysis
+- Drag & drop stage reassignment updates outline only (not chapter content)
+- Structure remap overwrites all stage assignments (no partial remap)
+- No undo for confirmed remap (would need separate audit trail)
+- AI-powered remap is future work (depends on WRITE-012 Chapter Summary)
+- Empty novels show empty stage columns with drop zone indicators
+- Adapter registry validates structure type on access (raises for unknown types)
 
 ## Related Features
 
-- [PLAN-001](PLAN-001-scene-planning.md) — Source of plans
-- [WRITE-001](../writing/WRITE-001-editor.md) — Source of actual content
-- [PLAN-003](PLAN-003-structure.md) — Reorganization affects storyboard
-- [ASSIST-001](../ai_assist/ASSIST-001-plot-check.md) — Plot guidance
+- [PLAN-003](PLAN-003-structure.md) — Structure adapters (core layer, used by storyboard for stage layout)
+- [PLAN-004](PLAN-004-timeline.md) — Timeline integration (`timeline_position` field for chronological context)
+- [WRITE-001](../writing/WRITE-001-editor.md) — Editor where storyboard panel lives
+- [WRITE-012](../writing/WRITE-012-chapter-summary.md) — Future: AI-powered remap using chapter summaries
+- [INFRA-003](../infra/INFRA-003-context-assembly.md) — Future: summaries benefit Tier 2 Recent History
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-20` — Fully implemented: core structure adapters (5 types), backend service with 6 methods and 5 REST endpoints, frontend with 7 components + drag & drop + structure change workflow + i18n (3 locales). Status → in-progress.

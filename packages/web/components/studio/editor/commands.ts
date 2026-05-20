@@ -32,6 +32,7 @@ export interface CommandContext {
   toggleSidebar: () => void;
   toggleFocusMode: () => void;
   toggleContextPanel: () => void;
+  toggleStoryboard: () => void;
   saveChapter: () => void;
   createChapter: () => void;
   startGeneration: (mode: string) => void;
@@ -109,6 +110,12 @@ export const builtInCommands: CommandItem[] = [
     label: "Toggle Context Panel",
     category: "editor",
     action: (_editor, ctx) => ctx.toggleContextPanel(),
+  },
+  {
+    id: "toggleStoryboard",
+    label: "Toggle Storyboard",
+    category: "editor",
+    action: (_editor, ctx) => ctx.toggleStoryboard(),
   },
   {
     id: "save",

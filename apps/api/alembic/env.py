@@ -15,6 +15,7 @@ import narrare.chapters.models
 import narrare.kb.models
 import narrare.memory.models
 import narrare.novels.models
+import narrare.planning.models
 import narrare.settings.models
 import narrare.templates.models
 import narrare.volumes.models

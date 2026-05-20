@@ -111,3 +111,27 @@ def make_user(**overrides: Any) -> Any:
         },
     )
     return user
+
+
+def make_chapter_outline(**overrides: Any) -> Any:
+    """Create a ChapterOutline instance with sensible defaults."""
+    from datetime import UTC, datetime
+
+    from narrare.planning.models import ChapterOutline
+
+    outline = ChapterOutline()
+    _set_attrs(
+        outline,
+        {
+            "id": overrides.pop("id", uuid.uuid4()),
+            "chapter_id": overrides.pop("chapter_id", uuid.uuid4()),
+            "version_id": overrides.pop("version_id", None),
+            "stage_assignment": overrides.pop("stage_assignment", "act-1"),
+            "planned_beats": overrides.pop("planned_beats", []),
+            "outline_notes": overrides.pop("outline_notes", ""),
+            "created_at": overrides.pop("created_at", datetime.now(UTC)),
+            "updated_at": overrides.pop("updated_at", datetime.now(UTC)),
+            **overrides,
+        },
+    )
+    return outline

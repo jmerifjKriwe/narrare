@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-19
-Updated by: NarrareDevCoordinator
-Session summary: KB template i18n consolidation — 24 language-specific templates → 8 language-neutral (v3 format). TemplateMeta drops template_language. Field descriptions moved to kb.fieldDesc i18n namespace. Migration 0012 drops language column. KBTypeField uses kb.fieldDesc.* for placeholders. 78 files changed.
+Date: 2026-05-20
+Updated by: NarrareDocsSpecialist
+Session summary: Storyboard feature documentation — PLAN-003/004/005 feature files updated to reflect implementation. CURRENT_STATE.md updated with planning module entries. INDEX.md updated with in-progress status.
 
 ---
 
@@ -139,6 +139,16 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 **Event System (`events/`):**
 - Event types, bus protocol (Protocol-based), NullEventBus for testing
 
+**Planning Layer (`planning/`):**
+- `models.py` — ChapterOutlineData, SyncStatus enum (5 levels), StageAssignment dataclass
+- `sync.py` — StructuralSyncChecker with 5 status levels (empty, planned, on_track, deviated, completed)
+- `adapters/base.py` — StructureAdapter Protocol, StageDef/BeatDef dataclasses, StructureAdapterRegistry
+- `adapters/three_act.py` — 3-stage adapter (act-1, act-2, act-3)
+- `adapters/five_act.py` — 5-stage adapter
+- `adapters/heros_journey.py` — 12-stage adapter (condensed to visual layout)
+- `adapters/save_the_cat.py` — 15-beat adapter in 3 acts
+- `adapters/seven_point.py` — 7 turning-point adapter
+
 #### `apps/api/narrare/` — FastAPI Backend (Phase 2 & 3)
 
 **App Infrastructure (`_app/`):**
@@ -215,6 +225,17 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - Migration 0010 — kb_templates table (idempotent, IF NOT EXISTS pattern)
 - Migration 0012 — drops `template_language` column from kb_templates; seed now loads 8 language-neutral templates
 
+**Planning Module (`planning/`):**
+- Full storyboard + outline management: models, contracts, schemas, repository, service, router, _helpers
+- `models.py` — ChapterOutline SQLAlchemy model (chapter_id FK, stage_assignment, planned_beats JSONB, outline_notes)
+- `contracts.py` — OutlineRepositoryProtocol, StoryboardServiceProtocol
+- `schemas.py` — Pydantic request/response schemas (BeatSchema, OutlineResponse, StoryboardResponse, SyncStatusResponse, RemapPreviewItem, RemapResponse)
+- `repository.py` — OutlineRepository (get_by_chapter_id, create, update, get_all_for_novel)
+- `service.py` — StoryboardService (get_storyboard, get_sync_status, get_or_create_outline, update_outline, preview_remap, confirm_remap)
+- `router.py` — 5 REST endpoints under `/api/v1/planning/`
+- `_helpers.py` — compute_sync, find_position, to_outline_response (extracted per RULE-04)
+- Migration 0013 — chapter_outlines table
+
 **Setup (`setup/`):**
 - `seed_templates.py` — Version-aware upsert: seeds new templates AND updates existing globals when bundled version is newer
 
@@ -286,6 +307,16 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
   - `KBTemplatesTab.tsx` — Template list with type filter, override/update status
   - `KBTemplateEditor.tsx` — Raw YAML editor with save/reset mutations
 - `components/studio/WorldBuilding.tsx` — Passes activeType as initialEntityType to KB panels
+- `components/studio/planning/` — Storyboard UI
+  - `StoryboardPanel.tsx` — Full-width collapsible container above toolbar, DndContext, stage layout
+  - `StoryboardCard.tsx` — Draggable chapter card (title, status badge, word count, click-to-navigate)
+  - `StoryboardStageColumn.tsx` — Droppable stage column with header
+  - `SyncStatusBadge.tsx` — Color-coded status indicator (5 states)
+  - `StoryboardScrollArrows.tsx` — Horizontal scroll controls
+  - `OutlineEditor.tsx` — Inline beat checklist + notes editor with auto-save
+  - `StructureChangeDialog.tsx` — Remap preview modal (before/after table, confirm/cancel)
+- `lib/api/planning.ts` — Planning API client (6 methods: getStoryboard, getSyncStatus, getOutline, updateOutline, previewRemap, confirmRemap)
+- `lib/hooks/usePlanning.ts` — TanStack Query hooks (useStoryboard, useChapterOutline, useRemap)
 - `lib/api/kb.ts` — KBTemplate types + API client (getTemplate, listTemplates, resolveReferences, autocompleteEntries)
 - `lib/hooks/useKB.ts` — useKBTemplate, useKBTemplates, useKBResolveReferences, useKBAutocomplete hooks
 - `components/ui/` — Button (shadcn/cva-based), Input, Select
@@ -335,12 +366,14 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `core/llm/` — gateway, intents, retry, providers_registry, embeddings (5 files)
 - `core/prompts/` — registry, composer, variable_engine, meta, variable_engine_hypothesis (5 files)
 - `core/shared/` — frontmatter, result, errors, file_utils, result_hypothesis, frontmatter_hypothesis (6 files)
+- `core/planning/` — adapters (all 5 types + registry), sync checker, models (117 tests)
 - `api/setup/` — setup_service, setup_schemas, demo_loader, provider_service, _complete_helpers, test_setup_complete_providers (6 files)
 - `api/auth/` — auth_service, security (2 files)
 - `api/chapters/` — chapter_service (1 file)
 - `api/novels/` — novel_service (1 file)
 - `api/volumes/` — volume_service (1 file)
 - `api/metrics/` — metrics_router (1 file)
+- `api/planning/` — service unit tests, integration tests for 5 endpoints (22 tests)
   - `api/` — test_contracts.py, test_fake_conformance.py (2 files)
   - **LLM testing infrastructure**: `ALLOW_MODEL_REQUESTS=False` global guard, `TestModel`/`FunctionModel` fixtures, `capture_run_messages` fixture for tool call assertions
   - Plus 3 hypothesis property-based tests (in core/shared and core/prompts)
@@ -390,10 +423,11 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 Phase 5 (current):
 1. ✅ Writing generation pipeline (WRITE-002) — fully implemented
 2. ✅ KB v2 — template-driven structured metadata, cross-references, 8 entity types, template management
-3. KB dedup integration for name generator
-4. Backend test coverage gaps (memory service, prompt management)
-5. Frontend test coverage gaps (generation panel, session panel)
-6. E2E tests with Playwright
+3. ✅ Storyboard feature (PLAN-003/005 merged implementation) — core adapters, backend service, frontend UI, i18n
+4. KB dedup integration for name generator
+5. Backend test coverage gaps (memory service, prompt management)
+6. Frontend test coverage gaps (generation panel, session panel)
+7. E2E tests with Playwright
 
 Next focus: extend chapter (WRITE-003), rewrite selection (WRITE-004), KB editor UI refinements.
 
@@ -476,6 +510,10 @@ All demo content is complete — sufficient for testing through Phase 5.
 | FR character YAML fix | Quoted (ex: ...) descriptions to prevent YAML mapping key parsing error |
 | Seed version-aware upsert | seed_templates.py now updates existing global entries when bundled version is newer |
 | KB template i18n consolidation | 24 language-specific templates → 8 language-neutral. TemplateMeta drops template_language. Field descriptions moved to kb.fieldDesc i18n namespace. Migration 0012. 78 files changed. |
+| Storyboard: Core planning adapters | 5 structure adapters (three_act, five_act, heros_journey, save_the_cat, seven_point) + StructureAdapterRegistry in `core/planning/adapters/`. StructuralSyncChecker with 5 status levels in `core/planning/sync.py`. |
+| Storyboard: Backend service | StoryboardService (6 methods), OutlineRepository, ChapterOutline model, 5 REST endpoints under `/api/v1/planning/`, migration 0013. 139 backend tests. |
+| Storyboard: Frontend UI | 7 components (StoryboardPanel, StoryboardCard, StoryboardStageColumn, SyncStatusBadge, StoryboardScrollArrows, OutlineEditor, StructureChangeDialog), API client, TanStack Query hooks, editor integration, structure change flow, i18n for 3 locales. |
+| Storyboard: Feature docs | PLAN-003/004/005 feature files updated to reflect implementation. INDEX.md status updated. |
 
 ---
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, PanelRight, Save, Sparkles, Wand2 } from "lucide-react";
+import { Clock, LayoutGrid, PanelRight, Save, Sparkles, Wand2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chaptersApi, volumesApi } from "@/lib/api/client";
@@ -14,6 +14,7 @@ import { GenerationPanel } from "./editor/GenerationPanel";
 import { MetadataSidebar } from "./editor/MetadataSidebar";
 import { SessionPanel } from "./editor/SessionPanel";
 import { NameGeneratorModal } from "./generation/NameGeneratorModal";
+import { StoryboardPanel } from "./planning/StoryboardPanel";
 import { TipTapEditor } from "./TipTapEditor";
 
 interface EditorViewProps {
@@ -34,6 +35,8 @@ export function EditorView({ novelId }: EditorViewProps) {
   const toggleFocusMode = useEditorStore((s) => s.toggleFocusMode);
   const toggleContextPanel = useEditorStore((s) => s.toggleContextPanel);
   const contextPanelOpen = useEditorStore((s) => s.contextPanelOpen);
+  const storyboardOpen = useEditorStore((s) => s.storyboardOpen);
+  const toggleStoryboard = useEditorStore((s) => s.toggleStoryboard);
 
   // Generation state
   const isGenerating = useEditorStore((s) => s.isGenerating);
@@ -257,6 +260,7 @@ export function EditorView({ novelId }: EditorViewProps) {
       toggleSidebar,
       toggleFocusMode,
       toggleContextPanel,
+      toggleStoryboard,
       saveChapter: () => void handleSave(),
       createChapter: () => {
         // TODO: Wire to chapter creation
@@ -277,6 +281,7 @@ export function EditorView({ novelId }: EditorViewProps) {
       handleAcceptDraft,
       handleRejectDraft,
       toggleGenerationPanel,
+      toggleStoryboard,
     ],
   )();
 
@@ -344,6 +349,9 @@ export function EditorView({ novelId }: EditorViewProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-background">
+      {/* Storyboard panel — full-width, above toolbar */}
+      <StoryboardPanel novelId={novelId} />
+
       {/* Header bar */}
       <div className="border-b border-border px-8 py-4 flex items-center justify-between bg-card">
         <input
@@ -358,6 +366,15 @@ export function EditorView({ novelId }: EditorViewProps) {
             <Clock className="w-4 h-4" />
             <span>{lastSaved ?? "--:--"}</span>
           </div>
+          <button
+            type="button"
+            onClick={toggleStoryboard}
+            className={`p-2 rounded-md hover:bg-accent transition-colors ${storyboardOpen ? "bg-accent" : ""}`}
+            title={t("storyboard.toggleStoryboard")}
+            aria-label={t("storyboard.toggleStoryboard")}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
           <button
             type="button"
             onClick={toggleContextPanel}

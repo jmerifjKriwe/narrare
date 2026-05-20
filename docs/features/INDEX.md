@@ -91,9 +91,11 @@
 |----|---------|--------|-----|
 | [PLAN-001](planning/PLAN-001-scene-planning.md) | Scene Planning | 📋 | ❌ |
 | [PLAN-002](planning/PLAN-002-gap-analysis.md) | Narrative Gap Analysis | 📋 | ❌ |
-| [PLAN-003](planning/PLAN-003-structure.md) | Story Structure Visualization | 📋 | ❌ |
-| [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | 📋 | ❌ |
-| [PLAN-005](planning/PLAN-005-storyboard.md) | Storyboard View | 📋 | ❌ |
+| [PLAN-003](planning/PLAN-003-structure.md) | Story Structure Visualization | 🔨 | ❌ |
+| [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | 🔨 | ❌ |
+| [PLAN-005](planning/PLAN-005-storyboard.md) | Storyboard View | 🔨 | ❌ |
+
+> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) are being implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 has a partial integration point (`timeline_position` field) — full timeline management remains future work.
 
 ### AI Assist (Standalone Operations)
 | ID | Feature | Status | MVP |
@@ -223,5 +225,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: project initialization
+> Last updated: 2026-05-20 — Storyboard feature (PLAN-003/004/005) documentation updated
 > Features are specified before they are implemented — never after

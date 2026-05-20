@@ -1,7 +1,7 @@
 ---
 id: PLAN-003
 title: "Story Structure Visualization"
-status: planned
+status: in-progress
 area: planning
 mvp: false
 
@@ -120,39 +120,35 @@ Visualize to understand, reorganize to improve.
 
 ## How it works (Technical)
 
-**Entry point:** `planning/router.py` → `GET /api/v1/planning/structure/{novel_id}`
-**Service:** `StructureService.get_structure()` in `planning/service.py`
-**Contract:** `StructureServiceProtocol` in `planning/contracts.py`
+**Core layer:** `packages/core/narrare_core/planning/adapters/`
+**Entry point:** `GET /api/v1/planning/storyboard/{novel_id}` (via PLAN-005 Storyboard)
+**Service:** `StoryboardService` in `apps/api/narrare/planning/service.py`
+**Contract:** `StoryboardServiceProtocol` in `apps/api/narrare/planning/contracts.py`
 
-**Structure data:**
-```python
-class StoryStructure:
-    acts: list[Act]  # User-defined or auto-detected
-    chapters: list[ChapterSummary]
-    arcs: list[ArcSummary]  # Character/thematic arcs
-    plot_points: list[PlotPoint]  # Inciting incident, climax, etc.
+**Structure adapters** (registered in `StructureAdapterRegistry`):
 
-class ChapterSummary:
-    id: UUID
-    number: int
-    title: str
-    word_count: int
-    pov_character: str | None
-    location: str | None
-    act: int | None
-```
+| Adapter | Stages | File |
+|---------|--------|------|
+| Three-Act Structure | 3 (act-1, act-2, act-3) | `adapters/three_act.py` |
+| Five-Act Structure | 5 (act-1 through act-5) | `adapters/five_act.py` |
+| Hero's Journey | 12 stages condensed to visual layout | `adapters/heros_journey.py` |
+| Save the Cat | 15 beats in 3 acts | `adapters/save_the_cat.py` |
+| Seven-Point Structure | 7 turning points | `adapters/seven_point.py` |
 
-**Visualization types:**
-- **Act structure**: Hierarchical view of acts → chapters
-- **Arc map**: Timeline view of character/thematic development
-- **Chapter flow**: Sequential bar chart with metadata
-- **Dramatic structure**: Key plot points on tension curve
+Each adapter implements the `StructureAdapter` Protocol:
+- `stages` — list of `StageDef` with id, name, description, position
+- `suggest_stage(chapter_position, total_chapters)` — maps a chapter to a stage
+- `get_beat_expectations(stage_id)` — expected beats for a stage
+
+**Structure visualization** is now part of the storyboard panel (PLAN-005), not a
+separate view. The storyboard renders chapters organized into structure stages
+with color-coded columns. Switching structures triggers a remap preview that
+reassigns chapters to new stages.
 
 **Reorganization:**
-- Drag chapters to new positions
-- Updates chapter.number automatically
-- Frontmatter updated to match
-- Reorg suggestions logged (undo available)
+- Drag chapters between stage columns (via @dnd-kit)
+- Updates chapter outline's `stage_assignment` via API
+- Structure change workflow with remap preview (PLAN-005)
 
 ## Constraints & Edge Cases
 
@@ -166,10 +162,11 @@ class ChapterSummary:
 ## Related Features
 
 - [PLAN-001](PLAN-001-scene-planning.md) — Scene-level planning
-- [PLAN-005](PLAN-005-storyboard.md) — Plan vs tracking
+- [PLAN-005](PLAN-005-storyboard.md) — Storyboard view (uses structure adapters for stage layout and remap)
 - [ANAL-011](../analysis/ANAL-011-plot-analysis.md) — Arc detection
 - [WRITE-002](../writing/WRITE-002-new-chapter.md) — Chapter metadata
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-20` — Core structure adapters implemented (5 adapters + registry in `core/planning/adapters/`). Merged with PLAN-005 storyboard — structure visualization is now part of the storyboard panel, not a separate view.

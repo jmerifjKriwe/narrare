@@ -17,6 +17,7 @@ interface EditorState {
   sidebarOpen: boolean;
   contextPanelOpen: boolean;
   focusMode: boolean;
+  storyboardOpen: boolean;
 
   // Editor reference — set by EditorSurface, read by CommandPalette
   editor: Editor | null;
@@ -41,6 +42,7 @@ interface EditorState {
   toggleSidebar: () => void;
   toggleContextPanel: () => void;
   toggleFocusMode: () => void;
+  toggleStoryboard: () => void;
   updateChapterWordCount: (
     chapterId: string,
     wordCount: number,
@@ -62,6 +64,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   sidebarOpen: true,
   contextPanelOpen: false,
   focusMode: false,
+  storyboardOpen: false,
   editor: null,
   isDragging: false,
   isGenerating: false,
@@ -94,6 +97,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       focusMode: !s.focusMode,
       sidebarOpen: s.focusMode, // restore sidebar when exiting focus
     })),
+
+  toggleStoryboard: () => set((s) => ({ storyboardOpen: !s.storyboardOpen })),
 
   /**
    * Pure function: returns new chapters array with updated word count.

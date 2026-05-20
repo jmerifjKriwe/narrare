@@ -7,6 +7,7 @@ function createContext() {
     toggleSidebar: vi.fn(),
     toggleFocusMode: vi.fn(),
     toggleContextPanel: vi.fn(),
+    toggleStoryboard: vi.fn(),
     saveChapter: vi.fn(),
     startGeneration: vi.fn(),
     stopGeneration: vi.fn(),
@@ -36,6 +37,7 @@ describe("builtInCommands", () => {
       "toggleSidebar",
       "toggleFocusMode",
       "togglePanel",
+      "toggleStoryboard",
       "save",
     ]);
   });

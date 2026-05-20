@@ -16,6 +16,7 @@ const mockCommandContext = {
   toggleSidebar: vi.fn(),
   toggleFocusMode: vi.fn(),
   toggleContextPanel: vi.fn(),
+  toggleStoryboard: vi.fn(),
   saveChapter: vi.fn(),
   createChapter: vi.fn(),
   startGeneration: vi.fn(),

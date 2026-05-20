@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { novelsApi } from "@/lib/api/client";
 import type { Novel, StoryStructure, StoryTone } from "@/types";
+import { StructureChangeDialog } from "../planning/StructureChangeDialog";
 
 // --- Static option configs ---
 
@@ -62,6 +63,10 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
   const [localSynopsis, setLocalSynopsis] = useState("");
   const [dirty, setDirty] = useState(false);
 
+  // Structure change dialog state
+  const [remapDialogOpen, setRemapDialogOpen] = useState(false);
+  const [pendingStructure, setPendingStructure] = useState<string | null>(null);
+
   // Sync novel data → local state when query resolves
   useEffect(() => {
     if (novel) {
@@ -103,6 +108,21 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
 
   function handleSave() {
     const payload = buildChangedPayload();
+
+    // Check if story structure changed — show remap dialog instead of direct save
+    if (novel && payload.story_structure && payload.story_structure !== novel.story_structure) {
+      // Save other fields first (excluding structure)
+      const otherPayload = { ...payload };
+      delete otherPayload.story_structure;
+      if (Object.keys(otherPayload).length > 0) {
+        saveMutation.mutate(otherPayload);
+      }
+      // Open remap dialog for the structure change
+      setPendingStructure(payload.story_structure);
+      setRemapDialogOpen(true);
+      return;
+    }
+
     if (Object.keys(payload).length > 0) {
       saveMutation.mutate(payload);
     }
@@ -147,6 +167,15 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
   function handleSynopsisChange(value: string) {
     setLocalSynopsis(value);
     setDirty(true);
+  }
+
+  // Remap dialog: cancel reverts local structure to original
+  function handleRemapCancel() {
+    if (novel) {
+      setLocalStoryStructure(novel.story_structure);
+    }
+    setPendingStructure(null);
+    setDirty(false);
   }
 
   // Loading state
@@ -376,6 +405,21 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
           </div>
         )}
       </div>
+
+      {/* Structure Change Dialog */}
+      {pendingStructure && (
+        <StructureChangeDialog
+          open={remapDialogOpen}
+          novelId={novelId}
+          newStructure={pendingStructure}
+          onClose={() => {
+            setRemapDialogOpen(false);
+            setPendingStructure(null);
+            setDirty(false);
+          }}
+          onCancel={handleRemapCancel}
+        />
+      )}
     </div>
   );
 }
