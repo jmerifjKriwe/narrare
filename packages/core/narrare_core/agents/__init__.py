@@ -7,8 +7,18 @@ from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
 from narrare_core.agents.draft_types import DraftConfig, DraftOutput
 from narrare_core.agents.kb_agent import KBAgent, KBDeps
+from narrare_core.agents.writing_graph import (
+    Approved,
+    NeedsRevision,
+    WritingDeps,
+    WritingState,
+    WritingStatus,
+    build_writing_graph,
+    create_writing_graph,
+)
 
 __all__ = [
+    "Approved",
     "DraftAgent",
     "DraftConfig",
     "DraftDeps",
@@ -16,4 +26,10 @@ __all__ = [
     "KBAgent",
     "KBDeps",
     "NarrareAgent",
+    "NeedsRevision",
+    "WritingDeps",
+    "WritingState",
+    "WritingStatus",
+    "build_writing_graph",
+    "create_writing_graph",
 ]

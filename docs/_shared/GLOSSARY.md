@@ -89,6 +89,12 @@ Located in `packages/web/components/ui/`.
 
 ## D
 
+**Decision**
+A typed result from the `ReviewDraft` graph node that determines branching in the
+WritingGraph. Two variants: `Approved` (routes to `Finalize`) and `NeedsRevision`
+(routes to `ReviseDraft` → loop back to `WriteDraft`). Max 3 revision attempts before
+force-finalize. Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
+
 **Domain Module**
 A self-contained directory within `apps/api/narrare/` that owns one business
 domain (e.g., `writing/`, `kb/`, `analysis/`). Contains its own schemas, models,
@@ -156,6 +162,12 @@ Parsed by `core/shared/frontmatter.py` — the single implementation.
 ---
 
 ## G
+
+**GraphBuilder**
+The current pydantic-graph API (v1.97+) for constructing state-machine graphs.
+Used to build the `WritingGraph` with nodes, edges, decisions, and forks.
+Preferred over the deprecated `Graph()` constructor. Factory function:
+`create_writing_graph()` in `core/agents/writing_graph.py`. Part of ADR-015 Phase 4.
 
 **Gateway (LLM Gateway)**
 The single entry point for all LLM calls in the system.
@@ -375,8 +387,26 @@ style profile, flagging deviations in tone, sentence structure, vocabulary, etc.
 **Writing Session**
 See *Session (Writing Session)*.
 
+**WritingGraph**
+A pydantic-graph state machine implementing the creative writing workflow:
+PlanOutline → WriteDraft → ReviewDraft → Decision (Approved → Finalize | NeedsRevision → ReviseDraft → WriteDraft loop).
+State is carried by `WritingState`, dependencies by `WritingDeps`. Built via `GraphBuilder` API
+in `core/agents/writing_graph.py`. Integrated into `WritingPipeline` via `use_writing_graph` feature flag.
+Mermaid diagram at `docs/architecture/workflows/writing-graph.mermaid`. Part of ADR-015 Phase 4.
+
+**WritingState**
+A dataclass carrying the full state of a WritingGraph run: `chapter_id`, `novel_id`,
+`outline`, `draft`, `revision`, `final`, `status` (`WritingStatus` enum), and `attempts` counter.
+Passed between graph nodes during execution. Defined in `core/agents/writing_graph_types.py`.
+Part of ADR-015 Phase 4.
+
+**WritingStatus**
+An enum tracking the current phase of a WritingGraph run: `PLANNED`, `OUTLINED`, `DRAFTED`,
+`IN_REVIEW`, `NEEDS_REVISION`, `APPROVED`, `REVISED`, `COMPLETED`. Used by `WritingState.status`.
+Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
+
 ---
 
-> Last updated: 2026-05-20 — KBAgent, ToolSearch, FunctionToolset, Toolset (ADR-015 Phase 3)
+> Last updated: 2026-05-20 — WritingGraph, GraphBuilder, WritingState, WritingStatus, Decision (ADR-015 Phase 4)
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

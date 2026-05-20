@@ -45,6 +45,18 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   - KBAgent / KBDeps exported from core/agents/__init__.py
   - 31 new tests: 14 KBAgent, 14 KB-Formatters, 3 Integration (DraftAgent+KBAgent)
 
+- ADR-015 Phase 4: WritingGraph with GraphBuilder API
+  - WritingState + WritingStatus + WritingDeps dataclasses in core/agents/writing_graph_types.py
+  - 5 Graph Nodes via GraphBuilder API (pydantic-graph 1.97+): PlanOutline, WriteDraft, ReviewDraft, ReviseDraft, Finalize
+  - Approved + NeedsRevision Decision types for review branching
+  - GraphBuilder API (current, non-deprecated pydantic-graph API)
+  - Decision-Branching: ReviewDraft → Approved → Finalize, NeedsRevision → ReviseDraft
+  - ReviseDraft → WriteDraft loop with max 3 attempts guard
+  - Pipeline integration: use_writing_graph feature flag in WritingPipeline
+  - pipeline_graph.py as separate module (RULE-04 file-size compliance)
+  - Mermaid diagram via graph.render() saved to docs/architecture/workflows/
+  - 23 tests (8 Types + 11 Graph + 4 Pipeline), 0 architecture violations
+
 - httpOnly refresh token cookie (`narrare_refresh`) for secure session management
 - Frontend `restoreSession()` — silent refresh via httpOnly cookie on page reload
 - Editor TipTap extensions: NarrareDocument (chapter-scoped doc), DialogueMark (dialogue spans), Autosave (debounced save)

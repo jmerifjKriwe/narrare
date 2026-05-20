@@ -73,6 +73,7 @@ class WritingPipeline:
         draft_processor: DraftProcessor,
         registry: ModelRegistry | None = None,
         use_draft_agent: bool = False,
+        use_writing_graph: bool = False,
     ) -> None:
         self._gateway = gateway
         self._composer = composer
@@ -80,6 +81,7 @@ class WritingPipeline:
         self._draft_processor = draft_processor
         self._registry = registry
         self._use_draft_agent = use_draft_agent
+        self._use_writing_graph = use_writing_graph
         self._stop_signals: set[UUID] = set()
 
     # ------------------------------------------------------------------
@@ -188,7 +190,16 @@ class WritingPipeline:
         base_url: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Generate a complete chapter draft in one pass."""
-        if self._use_draft_agent and self._registry is not None:
+        if self._use_writing_graph and self._registry is not None:
+            async for chunk in self._stream_via_writing_graph(
+                request,
+                context,
+                config,
+                api_key=api_key,
+                base_url=base_url,
+            ):
+                yield chunk
+        elif self._use_draft_agent and self._registry is not None:
             async for chunk in self._stream_via_draft_agent(
                 request,
                 context,
@@ -309,6 +320,29 @@ class WritingPipeline:
             is_final=True,
             usage=None,
         )
+
+    async def _stream_via_writing_graph(
+        self,
+        request: GenerationRequest,
+        context: WritingContext,
+        config: ResolvedModelConfig,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> AsyncIterator[StreamChunk]:
+        """Delegate to WritingGraph via pipeline_graph submodule (RULE-04)."""
+        from narrare_core.writing.pipeline_graph import stream_via_writing_graph
+
+        async for chunk in stream_via_writing_graph(
+            request,
+            context,
+            config,
+            registry=self._registry,
+            context_assembler=self._context_assembler,
+            api_key=api_key,
+            base_url=base_url,
+        ):
+            yield chunk
 
     # ------------------------------------------------------------------
     # Helpers (used by sub-modules via the pipeline instance)
