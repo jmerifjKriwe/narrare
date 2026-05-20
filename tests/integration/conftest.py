@@ -121,12 +121,11 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
 async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict[str, str]:
     """Create a test user and return authorization headers with valid token."""
     import uuid
-    from datetime import UTC, datetime, timedelta
+    from datetime import UTC, datetime
 
-    import jwt
-
+    from narrare._app.config import get_settings
     from narrare.auth.models import User
-    from narrare.auth.security import hash_password
+    from narrare.auth.security import create_access_token, hash_password
 
     # Create test user in the database
     user = User(
@@ -139,17 +138,14 @@ async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict[st
     db_session.add(user)
     await db_session.flush()
 
-    # Create a valid JWT token
-    secret_key = "test-secret-key-not-for-production"
-    token = jwt.encode(
-        {
-            "sub": str(user.id),
-            "iat": datetime.now(UTC),
-            "exp": datetime.now(UTC) + timedelta(minutes=60),
-            "type": "access",
-        },
-        secret_key,
-        algorithm="HS256",
+    # Create a valid JWT token using the same settings the app uses.
+    # get_settings() is @lru_cache'd — create_app() already populated it,
+    # so both the app and this fixture use the identical secret_key.
+    settings = get_settings()
+    token = create_access_token(
+        subject=str(user.id),
+        secret_key=settings.secret_key,
+        expires_minutes=settings.access_token_expire_minutes,
     )
 
     return {"Authorization": f"Bearer {token}"}
