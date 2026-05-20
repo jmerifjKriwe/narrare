@@ -465,13 +465,13 @@ class WritingPipeline:
 
 ---
 
-## Phase 3 — KB-Tools + ToolSearch
+## ✅ Phase 3 — KB-Tools + ToolSearch (abgeschlossen)
 
 **Ziel**: ContextAssembler wird zu einem Toolset. KB-Entity-Zugriff wird dem Modell als Tool angeboten — mit deferred loading via ToolSearch.
 
 ### Tasks
 
-#### 3.1 KBAgent definieren (Core Specialist)
+#### ✅ 3.1 KBAgent definieren (Core Specialist)
 
 ```python
 class KBDeps:
@@ -532,9 +532,9 @@ class KBAgent(NarrareAgent[KBDeps, None]):
 ```
 
 **Layer**: Core
-**DoD**: 3 KB-Tools definiert mit `defer_loading=True`
+**DoD**: ✅ 3 KB-Tools definiert mit `defer_loading=True` (search_kb, get_entity, get_related_entities)
 
-#### 3.2 ToolSearch-Capability konfigurieren (Core Specialist)
+#### ✅ 3.2 ToolSearch-Capability konfigurieren (Core Specialist)
 
 ```python
 # In NarrareAgent.__init__():
@@ -550,9 +550,9 @@ Provider-Adaptivität:
 - `ToolSearch` erkennt automatisch, welche Strategie für das aktuelle Model passt
 
 **Layer**: Core
-**DoD**: ToolSearch funktioniert mit allen Narrare-Providern
+**DoD**: ✅ ToolSearch-Capability integriert (implementiert mit `strategy="keywords"`)
 
-#### 3.3 DraftAgent + KBAgent integrieren (Core Specialist)
+#### ✅ 3.3 DraftAgent + KBAgent integrieren (Core Specialist)
 
 ```python
 class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
@@ -566,7 +566,7 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
                 Toolset(kb_agent.get_toolset()),
                 # KB-Tools sind deferred — das Modell sieht nur
                 # die Namen + kurze Beschreibung, nicht die volle Schema
-                ToolSearch(strategy="bm25"),
+                ToolSearch(strategy="keywords"),
             ],
         )
 ```
@@ -581,9 +581,9 @@ capabilities=[
 ```
 
 **Layer**: Core
-**DoD**: DraftAgent kann KB-Tools nutzen, ToolSearch lädt Tools nur bei Bedarf
+**DoD**: ✅ DraftAgent kann KB-Tools nutzen (optionaler `kb_agent`-Parameter), ToolSearch lädt Tools nur bei Bedarf
 
-#### 3.4 Tests (Platform Specialist)
+#### ✅ 3.4 Tests (Platform Specialist)
 
 - KB-Tools mit `FunctionModel` testen
 - ToolSearch-Verhalten: TestModel zeigt welche Tools geladen wurden
@@ -591,7 +591,14 @@ capabilities=[
 - Vergleich Token-Verbrauch mit/ohne ToolSearch
 
 **Layer**: Platform
-**DoD**: 15+ Tests für KB-Tools + ToolSearch
+**DoD**: ✅ 31 Tests für KB-Tools + ToolSearch (14 KBAgent + 14 KB-Formatters + 3 Integration)
+
+> **Implementation Notes:**
+> - KBAgent verwendet `FunctionToolset` (statt nativer pydantic-ai Agent-Tools) mit `defer_loading=True` für alle 3 KB-Tools
+> - KB-Format-Logik in eigenem Modul (`kb_formatters.py`) wegen RULE-04 (File-Size-Limit)
+> - ToolSearch-Strategie: `"keywords"` (nicht `"bm25"` wie initial geplant — lokaler Keyword-Match)
+> - KB-Service ist via `KBDeps.kb_service` injizierbar, aber optional — Tools liefern Fallback-Messages wenn kein Service konfiguriert
+> - DraftAgent nimmt `kb_agent: KBAgent | None` als optionalen Parameter (abwärtskompatibel)
 
 ---
 
@@ -802,8 +809,8 @@ Phasen 1–2 können **teilweise parallel** laufen (Gateway-Umbau beeinträchtig
 
 | Layer | Phase 0 | Phase 1 | Phase 2 | Phase 3 | Phase 4 |
 |-------|---------|---------|---------|---------|---------|
-| **Core** | Gateway→Registry, Module Struktur | ✅ UsageLimits, Hooks, Observability | ✅ DraftAgent, Output Types, Output Func | KB-Tools, KBAgent, ToolSearch | Graph-Steps, Graph-State, Agent-Tools |
+| **Core** | Gateway→Registry, Module Struktur | ✅ UsageLimits, Hooks, Observability | ✅ DraftAgent, Output Types, Output Func | ✅ KB-Tools, KBAgent, ToolSearch, KB-Formatters | Graph-Steps, Graph-State, Agent-Tools |
 | **Backend** | Call-Sites prüfen | ✅ | ✅ Service-Integration (Feature-Flag) | Repository-Integration | Graph-Persistence |
 | **Frontend** | — | ✅ Token-Usage in Sidebar | — | — | — |
-| **Platform** | CI-Checks aktualisieren | — | ✅ DraftAgent-Tests (20 Tests, >90%) | KB-Integration-Tests | Feature-Flag, Paralleltests |
-| **Docs** | ADR + Plan | — | (dieser PR) | — | Mermaid-Diagramm |
+| **Platform** | CI-Checks aktualisieren | — | ✅ DraftAgent-Tests (20 Tests, >90%) | ✅ KB-Tool-Tests (31 Tests: Agent + Formatters + Integration) | Feature-Flag, Paralleltests |
+| **Docs** | ADR + Plan | — | (dieser PR) | ✅ ADR-015, Glossary, CHANGELOG (dieser PR) | Mermaid-Diagramm |

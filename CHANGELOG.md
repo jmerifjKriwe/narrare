@@ -35,6 +35,16 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   - Feature flag `use_draft_agent` in WritingPipeline constructor (default: False, legacy path)
   - 20 new tests for DraftAgent (unit: agent, tools, types) with TestModel/FunctionModel
 
+- ADR-015 Phase 3: KB-Tools + ToolSearch
+  - KBAgent in core/agents/kb_agent.py — tool provider with 3 deferred-loaded KB tools (search_kb, get_entity, get_related_entities)
+  - FunctionToolset with defer_loading=True for all KB tools
+  - KB formatters in core/agents/kb_formatters.py — format_entries, format_entity, format_related (separate module per RULE-04)
+  - ToolSearch capability (strategy="keywords") integrated into DraftAgent when KBAgent is present
+  - DraftAgent optional kb_agent parameter for KB-tool capability injection
+  - Toolset capability wiring KBAgent FunctionToolset into DraftAgent
+  - KBAgent / KBDeps exported from core/agents/__init__.py
+  - 31 new tests: 14 KBAgent, 14 KB-Formatters, 3 Integration (DraftAgent+KBAgent)
+
 - httpOnly refresh token cookie (`narrare_refresh`) for secure session management
 - Frontend `restoreSession()` — silent refresh via httpOnly cookie on page reload
 - Editor TipTap extensions: NarrareDocument (chapter-scoped doc), DialogueMark (dialogue spans), Autosave (debounced save)

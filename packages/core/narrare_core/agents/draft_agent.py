@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai.capabilities import ToolSearch, Toolset
 from pydantic_ai.exceptions import ModelRetry
 
 from narrare_core.agents.base import NarrareAgent
@@ -24,6 +25,7 @@ from narrare_core.agents.draft_types import DraftOutput
 from narrare_core.writing.draft_processor import DraftProcessor
 
 if TYPE_CHECKING:
+    from narrare_core.agents.kb_agent import KBAgent
     from narrare_core.writing.context_assembler import WritingContextAssembler
 
 
@@ -48,6 +50,7 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
     Features:
     - Output Function: Post-Processing (Artifact-Removal, Markdown-Normalisierung)
     - Tool: KB-Kontext-Abfrage (über ContextAssembler)
+    - Capabilities: ToolSearch + KB-Tools (über KBAgent)
     - Validator: Qualitäts-Check (Mindestwortzahl) via ``ModelRetry``
     """
 
@@ -55,9 +58,17 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
         self,
         model: Any,
         word_target: int | None = None,
+        kb_agent: KBAgent | None = None,  # NEU in Phase 3
     ) -> None:
         self._word_target = word_target
         self._draft_processor = DraftProcessor()
+        self._kb_agent = kb_agent
+
+        # Capabilities bauen: ToolSearch + KB-Tools wenn KBAgent verfügbar
+        capabilities: list[Any] = []
+        if kb_agent is not None:
+            capabilities.append(ToolSearch(strategy="keywords"))
+            capabilities.append(Toolset(kb_agent.get_toolset()))
 
         # output_type als Sequence: Output Function + Fallback-Typ
         # Der Callable wird als Output-Tool registriert, den das Modell
@@ -66,11 +77,12 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
             model=model,
             deps_type=DraftDeps,
             output_type=[self._process_draft_output, DraftOutput],
+            capabilities=capabilities,
             system_prompt=(
                 "You are a creative writing assistant. Generate chapter content "
                 "that is engaging, well-structured, and matches the provided context. "
-                "You may use the get_kb_context tool to look up knowledge base entities "
-                "when you need details about characters, locations, or other story elements."
+                "You may use the knowledge base tools to look up characters, locations, "
+                "and other story elements when you need details."
             ),
         )
 

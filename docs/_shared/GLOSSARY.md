@@ -100,7 +100,8 @@ A pydantic-ai Agent (`NarrareAgent[DraftDeps, DraftOutput]`) that generates
 chapter drafts using an Output Function for post-processing and a tool for
 KB context lookup. Defined in `core/agents/draft_agent.py`. Replaces the
 manual DraftProcessor pipeline path when the `use_draft_agent` feature flag
-is active (Phase 2 of ADR-015).
+is active (Phase 2 of ADR-015). In Phase 3, accepts an optional `kb_agent`
+parameter to inject KBAgent KB tools and ToolSearch capability.
 
 **Draft**
 A single AI-generated version of a chapter or section. Multi-Draft mode
@@ -132,6 +133,12 @@ All error messages use i18n except `global-error.tsx` which runs before provider
 ## F
 
 **Fact**
+
+**FunctionToolset**
+A pydantic-ai toolset (`pydantic_ai.toolsets.FunctionToolset`) that bundles
+multiple `Tool` instances with `defer_loading=True`. Used by `KBAgent` to
+provide KB tools (`search_kb`, `get_entity`, `get_related_entities`) to other
+Agents via `Toolset` capability injection. Defined in `core/agents/kb_agent.py`.
 A structured piece of information extracted from a chapter or KB entry.
 Stored in the Knowledge Graph. Example: "Character X is married to Character Y."
 Used for consistency checking.
@@ -180,6 +187,13 @@ API call.
 ---
 
 ## K
+
+**KBAgent**
+A pydantic-ai Agent (`NarrareAgent[KBDeps, None]`) that provides KB tools
+for other agents — never executed directly (`output_type=None`). Exposes
+3 deferred-loaded tools via `FunctionToolset`: `search_kb()`, `get_entity()`,
+and `get_related_entities()`. Defined in `core/agents/kb_agent.py`.
+Part of ADR-015 Phase 3.
 
 **KB (Knowledge Base)**
 The project-level structured knowledge store — characters, locations, world facts,
@@ -324,6 +338,19 @@ Used for voice consistency checking and drift detection.
 
 ## T
 
+**ToolSearch**
+A pydantic-ai capability (`pydantic_ai.capabilities.ToolSearch`) that enables
+an Agent to discover and load tools on demand (deferred loading). In Narrare,
+integrated into `DraftAgent` when a `KBAgent` is present (`strategy="keywords"`).
+The model sees only tool names and short descriptions until it requests the
+full schema via ToolSearch. Part of ADR-015 Phase 3.
+
+**Toolset**
+A pydantic-ai capability (`pydantic_ai.capabilities.Toolset`) that injects a
+`FunctionToolset` (from another Agent like `KBAgent`) into an Agent's available
+tools. Combined with `ToolSearch`, tools are only loaded when the model decides
+they are needed.
+
 **Transport Layer**
 The HTTP routers (`apps/api/narrare/*/router*.py`), future MCP tools, and
 future A2A agent handlers. Contains zero business logic. Maps protocol-specific
@@ -350,6 +377,6 @@ See *Session (Writing Session)*.
 
 ---
 
-> Last updated: project initialization
+> Last updated: 2026-05-20 — KBAgent, ToolSearch, FunctionToolset, Toolset (ADR-015 Phase 3)
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist
