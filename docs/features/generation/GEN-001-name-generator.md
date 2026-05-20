@@ -1,7 +1,7 @@
 ---
 id: GEN-001
 title: "Character/Place Name Generator"
-status: in-progress
+status: implemented
 area: generation
 mvp: false
 

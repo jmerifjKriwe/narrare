@@ -1,7 +1,7 @@
 ---
 id: SET-003
 title: "Per-task Model Configuration"
-status: in-progress
+status: implemented
 area: settings
 mvp: false
 

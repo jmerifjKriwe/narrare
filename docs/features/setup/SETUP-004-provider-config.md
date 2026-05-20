@@ -1,7 +1,7 @@
 ---
 id: SETUP-004
 title: "AI Provider Configuration"
-status: planned
+status: implemented
 area: setup
 mvp: true
 

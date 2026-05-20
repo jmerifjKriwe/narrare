@@ -1,7 +1,7 @@
 ---
 id: INFRA-002
 title: "Unified Prompt System"
-status: in-progress
+status: implemented
 area: infra
 mvp: true
 

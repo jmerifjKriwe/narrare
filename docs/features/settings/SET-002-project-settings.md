@@ -1,7 +1,7 @@
 ---
 id: SET-002
 title: "Project Settings"
-status: in-progress
+status: implemented
 area: settings
 mvp: true
 

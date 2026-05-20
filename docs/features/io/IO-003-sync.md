@@ -1,7 +1,7 @@
 ---
 id: IO-003
 title: "External Sync"
-status: planned
+status: implemented
 area: io
 mvp: false
 

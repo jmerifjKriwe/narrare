@@ -1,7 +1,7 @@
 ---
 id: INFRA-004
 title: "Embedding Store"
-status: planned
+status: implemented
 area: infra
 mvp: false
 

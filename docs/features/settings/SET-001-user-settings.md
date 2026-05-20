@@ -1,7 +1,7 @@
 ---
 id: SET-001
 title: "User Settings"
-status: in-progress
+status: implemented
 area: settings
 mvp: true
 

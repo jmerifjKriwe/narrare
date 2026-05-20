@@ -1,7 +1,7 @@
 ---
 id: INFRA-001
 title: "LLM Gateway"
-status: stable
+status: implemented
 area: infra
 mvp: true
 

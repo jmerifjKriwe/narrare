@@ -1,7 +1,7 @@
 ---
 id: PROMPT-002
 title: "User DB Prompt Templates"
-status: in-progress
+status: implemented
 area: prompts
 mvp: false
 

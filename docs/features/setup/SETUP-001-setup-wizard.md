@@ -1,7 +1,7 @@
 ---
 id: SETUP-001
 title: "Setup Wizard"
-status: planned
+status: implemented
 area: setup
 mvp: true
 

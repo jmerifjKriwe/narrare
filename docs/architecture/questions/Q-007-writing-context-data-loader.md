@@ -1,6 +1,6 @@
 # Q-007 — Writing Context Data Loader
 
-> **Status:** 🔴 Blocking
+> **Status:** ✅ Resolved
 > **Blocks:** Generation quality for full_draft, scene_by_scene, interview_assisted modes
 > **Raised:** 2026-05-18
 

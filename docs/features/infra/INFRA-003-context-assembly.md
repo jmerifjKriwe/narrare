@@ -1,7 +1,7 @@
 ---
 id: INFRA-003
 title: "Context Assembly Pipeline"
-status: in-progress
+status: in progress
 area: infra
 mvp: true
 

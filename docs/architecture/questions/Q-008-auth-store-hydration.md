@@ -1,6 +1,6 @@
 # Q-008 — Auth Store wird nach Page Reload nicht rehydriert
 
-> **Status:** 🟡 Open
+> **Status:** ✅ Resolved
 > **Blocks:** Alle Komponenten die `user.id` brauchen (WebSocket, personalisierte UI)
 > **Raised:** 2026-05-18
 

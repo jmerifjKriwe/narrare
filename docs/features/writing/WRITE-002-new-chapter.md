@@ -1,7 +1,7 @@
 ---
 id: WRITE-002
 title: "AI: New Chapter Generation"
-status: stable
+status: planned
 area: writing
 mvp: true
 

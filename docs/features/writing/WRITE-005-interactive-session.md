@@ -1,7 +1,7 @@
 ---
 id: WRITE-005
 title: "Interactive Writing Session"
-status: stable
+status: implemented
 area: writing
 mvp: false
 

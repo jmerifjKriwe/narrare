@@ -1,7 +1,7 @@
 ---
 id: CONS-002
 title: "Custom Consistency Rules"
-status: planned
+status: in progress
 area: consistency
 mvp: false
 

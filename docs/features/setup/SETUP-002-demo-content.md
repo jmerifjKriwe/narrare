@@ -203,7 +203,7 @@ id: ch-de-001
 title: "Das Flüstern im Wald"
 chapter: 1
 volume: 1
-status: draft
+status: planned
 word_count: 680
 pov_character: char-anna
 pov_type: third-limited
@@ -224,7 +224,7 @@ role: supporting
 arc: "Die Prüfung für Anna und Bestätigung für Johann"
 first_appearance: ch-de-001
 pov_character: false
-status: draft
+status: planned
 ---
 ```
 
@@ -238,7 +238,7 @@ tags: [house, forest-edge, isolated]
 location_type: building
 first_appearance: ch-de-001
 parent_location: loc-wald
-status: draft
+status: planned
 ---
 ```
 

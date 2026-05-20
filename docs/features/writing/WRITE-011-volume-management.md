@@ -1,7 +1,7 @@
 ---
 id: WRITE-011
 title: "Volume Management"
-status: implemented
+status: in progress
 area: writing
 mvp: true
 

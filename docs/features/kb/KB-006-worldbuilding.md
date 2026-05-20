@@ -1,7 +1,7 @@
 ---
 id: KB-006
 title: "Worldbuilding Assistant"
-status: planned
+status: in progress
 area: kb
 mvp: false
 

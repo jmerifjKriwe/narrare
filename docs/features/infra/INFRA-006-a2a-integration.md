@@ -1,7 +1,7 @@
 ---
 id: INFRA-006
 title: "A2A Integration"
-status: planned
+status: in progress
 area: infra
 mvp: false
 

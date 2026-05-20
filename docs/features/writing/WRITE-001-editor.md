@@ -1,7 +1,7 @@
 ---
 id: WRITE-001
 title: "Writing Editor"
-status: in_progress
+status: implemented
 area: writing
 mvp: true
 

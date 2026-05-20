@@ -1,7 +1,7 @@
 ---
 id: STATS-001
 title: "Writing Statistics"
-status: planned
+status: implemented
 area: analytics
 mvp: false
 
