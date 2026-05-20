@@ -633,7 +633,10 @@
     "unknownError": "An unknown error occurred",
     "connectionLost": "Connection lost",
     "validationMissingInput": "At least one of outline, prompt, or auto-continue must be provided.",
-    "outlineHelpScene": "Optional. Describe the scene structure, e.g.: \"Scene 1: Arrival at the castle. Scene 2: Negotiation with the king.\" Without an outline, the AI will interpret freely."
+    "outlineHelpScene": "Optional. Describe the scene structure, e.g.: \"Scene 1: Arrival at the castle. Scene 2: Negotiation with the king.\" Without an outline, the AI will interpret freely.",
+    "tokensTotal": "Tokens total",
+    "tokensPrompt": "Prompt",
+    "tokensCompletion": "Completion"
   },
   "sessionPanel": {
     "title": "Interactive Session",

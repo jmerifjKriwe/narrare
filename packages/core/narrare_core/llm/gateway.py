@@ -20,6 +20,7 @@ import structlog
 
 # narrare: allow-agent reason="ModelRegistry convenience run() creates ephemeral Agent"
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import UsageLimitExceeded
 
 from narrare_core.llm._providers.registry import get as get_provider
 
@@ -71,8 +72,8 @@ class ModelRegistry:
                 when provided.  ``None`` lets the factory fall back to the
                 default env var (for dev/test).
             base_url: Optional base URL — overrides the provider default.
-            usage_limits: Prepared for Phase 1 of ADR-015.
-                **Currently ignored.**  Will be applied in Phase 1.
+            usage_limits: If provided, usage limits are passed through to
+                the model's Agent at run time.
 
         Returns:
             Configured pydantic-ai Model instance ready for use with ``Agent``.
@@ -113,8 +114,8 @@ class ModelRegistry:
             output_type: Optional structured output type.
                 Defaults to ``str`` (plain text).
             deps: Optional dependencies for the Agent.
-            usage_limits: Prepared for Phase 1 of ADR-015.
-                **Currently ignored.**
+            usage_limits: Passed to ``agent.run(usage_limits=...)`` to
+                enforce token and request limits.
 
         Returns:
             The agent's output — either ``str`` (when ``output_type`` is
@@ -127,10 +128,14 @@ class ModelRegistry:
             system_prompt=system_prompt or "",
             output_type=output_type or str,
         )
-        result = await agent.run(
-            prompt, deps=deps
-        )  # narrare: allow-agent reason="ModelRegistry convenience run() (ADR-015)"
-        return result.output
+        try:
+            result = await agent.run(
+                prompt, deps=deps, usage_limits=usage_limits
+            )  # narrare: allow-agent reason="ModelRegistry convenience run() (ADR-015)"
+            return result.output
+        except UsageLimitExceeded:
+            # Phase 1: Wird in Phase 1.3 als user-visible error klassifiziert
+            raise
 
 
 # Backward compatibility — LLMGateway has moved to _legacy.py

@@ -290,6 +290,12 @@ export interface UpdateProjectAiSettingsRequest {
   token_limit_overrides?: Record<string, TokenLimitOverride>;
 }
 
+export interface TokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 // ---------------------------------------------------------------------------
 // Prompt Override types
 // ---------------------------------------------------------------------------

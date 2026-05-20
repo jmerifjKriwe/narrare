@@ -8,6 +8,7 @@ describe("GenerationDraft", () => {
     draftText: "",
     wordCount: 0,
     targetNum: 1000,
+    tokenUsage: null,
     isAcceptPending: false,
     isRejectPending: false,
     onStop: vi.fn(),

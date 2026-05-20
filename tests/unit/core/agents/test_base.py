@@ -100,8 +100,11 @@ class TestNarrareAgent:
         )
         result = await agent.run("test", deps=None)
         assert result == "success (no tool calls)"
-        # NarrareObservability is always injected + TestCapability
-        assert call_log == ["get_instructions called"]
+        # NarrareObservability is always injected + TestCapability.
+        # Instructions are re-extracted during run() when a capability
+        # overrides for_run (NarrareObservability returns a fresh instance),
+        # so get_instructions is called once at init and once at run time.
+        assert call_log == ["get_instructions called", "get_instructions called"]
 
     async def test_with_non_none_deps(self) -> None:
         """Agent kann mit benutzerdefinierten Dependencies verwendet werden."""

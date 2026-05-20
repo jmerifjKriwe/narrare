@@ -1,7 +1,7 @@
 ---
 id: INFRA-001
 title: "LLM Gateway"
-status: implemented
+status: maintained
 area: infra
 mvp: true
 
@@ -71,7 +71,7 @@ interface that all features can rely on.
 ## How it works (Technical)
 
 **Entry point:** `core/llm/gateway.py`
-**Primary class:** `LLMGateway`
+**Primary class:** `ModelRegistry` (v2, seit ADR-015); `LLMGateway` als Legacy-Re-Export (Phase-2-Removal-Target)
 **Providers:** `core/llm/_providers/` — one adapter per provider
 **Intents:** `core/llm/intents.py` — defines task types and model routing
 **Errors:** `shared/errors.py` — classified error types (auth, rate limit, timeout, etc.)
@@ -89,6 +89,15 @@ interface that all features can rely on.
 
 **Retry logic:** Configurable `RetryConfig` — defaults to 3 attempts with exponential
 backoff. Only retries transient failures (rate limits, network errors).
+
+**Usage Limits:** `ModelRegistry.get_model()` accepts an optional `UsageLimits`
+parameter to enforce token budgets per request. Three profiles are available:
+`conservative` (32K tokens), `balanced` (64K tokens), and `unlimited`.
+
+**Observability:** `NarrareObservability` is a pydantic-ai capability that hooks
+into every model request to track tokens, duration, and errors. It is automatically
+injected into all `NarrareAgent` instances and replaces the manual
+`record_success`/`record_failure` pattern (ADR-015 Phase 1).
 
 ## Constraints & Edge Cases
 
@@ -108,3 +117,4 @@ backoff. Only retries transient failures (rate limits, network errors).
 
 - `project-init` — Implemented as core infrastructure
 - `2025-01-09` — Stable, fully implemented with all providers
+- `2026-05-20` — Maintained (ADR-015 Phase 1): `ModelRegistry` ersetzt `LLMGateway` als primären Entry-Point; `LLMGateway` bleibt als Legacy-Re-Export erhalten. `UsageLimits`-Parameter und `NarrareObservability`-Hook-Capability hinzugefügt.

@@ -17,6 +17,7 @@ import pytest
 from pydantic_ai.models.test import (
     TestModel,
 )
+from pydantic_ai.usage import UsageLimits
 
 if TYPE_CHECKING:
     from narrare_core.llm.gateway import ModelRegistry
@@ -246,4 +247,26 @@ class TestModelRegistryEdgeCases:
             config=write_config,
         )
 
+        assert isinstance(result, str)
+
+
+class TestModelRegistryUsageLimits:
+    """UsageLimits werden korrekt an agent.run() übergeben."""
+
+    async def test_run_passes_usage_limits_to_agent(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """usage_limits-Parameter erreicht agent.run()."""
+        limits = UsageLimits(request_limit=5, total_tokens_limit=1000)
+
+        result = await registry_with_test_model.run(
+            intent=LLMIntent.WRITE,
+            prompt="Hello",
+            config=write_config,
+            usage_limits=limits,
+        )
+
+        assert result is not None
         assert isinstance(result, str)

@@ -26,6 +26,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 if TYPE_CHECKING:
     from narrare_core.llm.gateway import LLMGateway
     from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm.result import StreamChunk
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.pipeline import WritingPipeline
     from narrare_core.writing.session_manager import SessionManager
@@ -195,6 +196,7 @@ class WritingSessionHandler:
 
         # Stream generated response
         accumulated: list[str] = []
+        final_chunk: StreamChunk | None = None
         try:
             from narrare_core.llm.intents import LLMIntent
             from narrare_core.prompts.context import PromptContext
@@ -216,6 +218,7 @@ class WritingSessionHandler:
                 base_url=self._base_url,
             ):
                 if chunk.is_final:
+                    final_chunk = chunk
                     break
                 accumulated.append(chunk.text)
                 await websocket.send_json(
@@ -246,7 +249,14 @@ class WritingSessionHandler:
                 "assistant",
                 full_text,
             )
-            await websocket.send_json({"type": "text_done", "text": full_text})
+            msg: dict[str, object] = {"type": "text_done", "text": full_text}
+            if final_chunk is not None and final_chunk.usage is not None:
+                msg["usage"] = {
+                    "prompt_tokens": final_chunk.usage.prompt_tokens,
+                    "completion_tokens": final_chunk.usage.completion_tokens,
+                    "total_tokens": final_chunk.usage.total_tokens,
+                }
+            await websocket.send_json(msg)
 
     async def _handle_feedback(
         self,

@@ -10,6 +10,7 @@ import {
   streamGeneration,
   writingApi,
 } from "@/lib/api/generation";
+import type { TokenUsage } from "@/types";
 import { GenerationConfig } from "./GenerationConfig";
 import { GenerationDraft } from "./GenerationDraft";
 
@@ -56,6 +57,7 @@ export function GenerationPanel({
   const [wordCount, setWordCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [connectionLost, setConnectionLost] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const lastParamsRef = useRef<GenerateRequest | null>(null);
@@ -98,6 +100,7 @@ export function GenerationPanel({
 
       const controller = new AbortController();
       abortRef.current = controller;
+      setTokenUsage(null);
 
       await streamGeneration(
         data.request_id,
@@ -119,6 +122,9 @@ export function GenerationPanel({
           abortRef.current = null;
         },
         controller.signal,
+        (usage) => {
+          setTokenUsage(usage);
+        },
       );
     },
     onError: (err: unknown) => {
@@ -244,6 +250,7 @@ export function GenerationPanel({
             draftText={draftText}
             wordCount={wordCount}
             targetNum={targetNum}
+            tokenUsage={tokenUsage}
             isAcceptPending={acceptMutation.isPending}
             isRejectPending={rejectMutation.isPending}
             onStop={handleStop}

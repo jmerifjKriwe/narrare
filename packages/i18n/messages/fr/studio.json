@@ -633,7 +633,10 @@
     "unknownError": "Une erreur inconnue est survenue",
     "connectionLost": "Connexion perdue",
     "validationMissingInput": "Au moins un des champs plan, consigne ou continuation automatique doit être rempli.",
-    "outlineHelpScene": "Optionnel. Décrivez la structure des scènes, par ex. : « Scène 1 : Arrivée au château. Scène 2 : Négociation avec le roi. » Sans plan, l'IA interprétera librement."
+    "outlineHelpScene": "Optionnel. Décrivez la structure des scènes, par ex. : « Scène 1 : Arrivée au château. Scène 2 : Négociation avec le roi. » Sans plan, l'IA interprétera librement.",
+    "tokensTotal": "Tokens total",
+    "tokensPrompt": "Prompt",
+    "tokensCompletion": "Completion"
   },
   "sessionPanel": {
     "title": "Session interactive",
