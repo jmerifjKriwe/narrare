@@ -9,6 +9,7 @@ interface StructureChangeDialogProps {
   open: boolean;
   novelId: string;
   newStructure: string;
+  currentStructure: string;
   onClose: () => void;
   onCancel: () => void;
 }
@@ -17,6 +18,7 @@ export function StructureChangeDialog({
   open,
   novelId,
   newStructure,
+  currentStructure,
   onClose,
   onCancel,
 }: StructureChangeDialogProps) {
@@ -37,6 +39,16 @@ export function StructureChangeDialog({
 
   const preview = previewMutation.data;
   const isLoading = previewMutation.isPending || confirmMutation.isPending;
+
+  /** Translate a stage ID using i18n for a given structure type. */
+  function translateStage(stageId: string, structureType: string): string {
+    if (!stageId) return stageId;
+    try {
+      return t(`storyboard.stages.${structureType}.${stageId}` as Parameters<typeof t>[0]);
+    } catch {
+      return stageId;
+    }
+  }
 
   function handleConfirm() {
     confirmMutation.mutate(undefined, {
@@ -91,9 +103,11 @@ export function StructureChangeDialog({
                 {preview.remapped.map((item) => (
                   <tr key={item.chapter_id} className="border-b border-border/50">
                     <td className="py-2">{item.chapter_title}</td>
-                    <td className="py-2 text-muted-foreground">{item.old_stage}</td>
+                    <td className="py-2 text-muted-foreground">
+                      {translateStage(item.old_stage, currentStructure)}
+                    </td>
                     <td className="px-2 py-2 text-muted-foreground">→</td>
-                    <td className="py-2">{item.new_stage}</td>
+                    <td className="py-2">{translateStage(item.new_stage, newStructure)}</td>
                   </tr>
                 ))}
               </tbody>

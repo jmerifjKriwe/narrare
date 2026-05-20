@@ -22,14 +22,14 @@ vi.mock("@/lib/hooks/usePlanning", () => ({
         {
           chapter_id: "ch-1",
           chapter_title: "Chapter One",
-          old_stage: "Act 1",
-          new_stage: "Exposition",
+          old_stage: "act-1",
+          new_stage: "exposition",
         },
         {
           chapter_id: "ch-2",
           chapter_title: "Chapter Two",
-          old_stage: "Act 2",
-          new_stage: "Rising Action",
+          old_stage: "act-2",
+          new_stage: "rising-action",
         },
       ],
     },
@@ -50,6 +50,7 @@ describe("StructureChangeDialog", () => {
     open: true,
     novelId: "novel-1",
     newStructure: "five_act",
+    currentStructure: "three_act",
     onClose: vi.fn(),
     onCancel: vi.fn(),
   };
@@ -69,10 +70,16 @@ describe("StructureChangeDialog", () => {
     // Check chapter data in the preview
     expect(screen.getByText("Chapter One")).toBeDefined();
     expect(screen.getByText("Chapter Two")).toBeDefined();
-    expect(screen.getByText("Act 1")).toBeDefined();
-    expect(screen.getByText("Exposition")).toBeDefined();
-    expect(screen.getByText("Act 2")).toBeDefined();
-    expect(screen.getByText("Rising Action")).toBeDefined();
+
+    // Stage names should be i18n-translated from stage IDs
+    // old_stage "act-1" (three_act) → "storyboard.stages.three_act.act-1"
+    expect(screen.getByText("storyboard.stages.three_act.act-1")).toBeDefined();
+    // new_stage "exposition" (five_act) → "storyboard.stages.five_act.exposition"
+    expect(screen.getByText("storyboard.stages.five_act.exposition")).toBeDefined();
+    // old_stage "act-2" (three_act) → "storyboard.stages.three_act.act-2"
+    expect(screen.getByText("storyboard.stages.three_act.act-2")).toBeDefined();
+    // new_stage "rising-action" (five_act) → "storyboard.stages.five_act.rising-action"
+    expect(screen.getByText("storyboard.stages.five_act.rising-action")).toBeDefined();
   });
 
   it("confirm button calls confirmRemap API", () => {

@@ -412,6 +412,7 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
           open={remapDialogOpen}
           novelId={novelId}
           newStructure={pendingStructure}
+          currentStructure={novel?.story_structure ?? "three_act"}
           onClose={() => {
             setRemapDialogOpen(false);
             setPendingStructure(null);

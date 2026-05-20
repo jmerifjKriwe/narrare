@@ -1172,6 +1172,48 @@
       "confirm": "Confirm Change",
       "cancel": "Cancel",
       "noChanges": "No chapters need to be remapped."
+    },
+    "stages": {
+      "three_act": {
+        "act-1": "Act I: Setup",
+        "act-2": "Act II: Confrontation",
+        "act-3": "Act III: Resolution"
+      },
+      "five_act": {
+        "exposition": "Exposition",
+        "rising-action": "Rising Action",
+        "climax": "Climax",
+        "falling-action": "Falling Action",
+        "resolution": "Resolution"
+      },
+      "heros_journey": {
+        "ordinary-world": "Ordinary World",
+        "call-to-adventure": "Call to Adventure",
+        "refusal": "Refusal of the Call",
+        "mentor": "Meeting the Mentor",
+        "crossing-threshold": "Crossing the Threshold",
+        "tests-allies-enemies": "Tests, Allies, Enemies",
+        "approach": "Approach to the Inmost Cave",
+        "ordeal": "The Ordeal",
+        "reward": "Reward",
+        "road-back": "The Road Back",
+        "resurrection": "Resurrection",
+        "return-with-elixir": "Return with the Elixir"
+      },
+      "save_the_cat": {
+        "act-1": "Act I: Thesis",
+        "act-2": "Act II: Antithesis",
+        "act-3": "Act III: Synthesis"
+      },
+      "seven_point": {
+        "hook": "Hook",
+        "plot-turn-1": "Plot Turn 1",
+        "pinch-1": "Pinch 1",
+        "midpoint": "Midpoint",
+        "pinch-2": "Pinch 2",
+        "plot-turn-2": "Plot Turn 2",
+        "resolution": "Resolution"
+      }
     }
   },
   "auth": {

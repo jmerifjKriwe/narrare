@@ -1172,6 +1172,48 @@
       "confirm": "Änderung bestätigen",
       "cancel": "Abbrechen",
       "noChanges": "Keine Kapitel müssen neu zugeordnet werden."
+    },
+    "stages": {
+      "three_act": {
+        "act-1": "Aufzug I: Aufbau",
+        "act-2": "Aufzug II: Konfrontation",
+        "act-3": "Aufzug III: Auflösung"
+      },
+      "five_act": {
+        "exposition": "Exposition",
+        "rising-action": "Steigerung",
+        "climax": "Höhepunkt",
+        "falling-action": "Fallende Handlung",
+        "resolution": "Lösung"
+      },
+      "heros_journey": {
+        "ordinary-world": "Gewohnte Welt",
+        "call-to-adventure": "Der Ruf zum Abenteuer",
+        "refusal": "Verweigerung des Rufs",
+        "mentor": "Begegnung mit dem Mentor",
+        "crossing-threshold": "Überschreiten der Schwelle",
+        "tests-allies-enemies": "Prüfungen, Verbündete, Feinde",
+        "approach": "Annäherung an die tiefste Höhle",
+        "ordeal": "Die Prüfung",
+        "reward": "Belohnung",
+        "road-back": "Der Rückweg",
+        "resurrection": "Auferstehung",
+        "return-with-elixir": "Rückkehr mit dem Elixier"
+      },
+      "save_the_cat": {
+        "act-1": "Akt I: These",
+        "act-2": "Akt II: Antithese",
+        "act-3": "Akt III: Synthese"
+      },
+      "seven_point": {
+        "hook": "Einstieg",
+        "plot-turn-1": "Wendepunkt 1",
+        "pinch-1": "Zuspitzung 1",
+        "midpoint": "Mittelpunkt",
+        "pinch-2": "Zuspitzung 2",
+        "plot-turn-2": "Wendepunkt 2",
+        "resolution": "Auflösung"
+      }
     }
   },
   "auth": {

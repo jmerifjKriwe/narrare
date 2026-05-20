@@ -28,7 +28,7 @@ export function StoryboardCard({ chapter, onNavigate }: StoryboardCardProps) {
         "w-[100px] p-2 rounded-md border bg-card border-border cursor-pointer",
         "hover:shadow-sm transition-shadow",
         "flex flex-col gap-1.5 text-left",
-        isDragging && "opacity-50 shadow-lg",
+        isDragging && "opacity-30 border-dashed border-muted-foreground/30",
       )}
     >
       <button

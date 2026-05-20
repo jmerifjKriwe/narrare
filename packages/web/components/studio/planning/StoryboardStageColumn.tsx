@@ -9,9 +9,16 @@ import { StoryboardCard } from "./StoryboardCard";
 interface StoryboardStageColumnProps {
   stage: StoryboardStageResponse;
   onNavigate: (chapterId: string) => void;
+  isDragActive?: boolean;
+  structureType: string;
 }
 
-export function StoryboardStageColumn({ stage, onNavigate }: StoryboardStageColumnProps) {
+export function StoryboardStageColumn({
+  stage,
+  onNavigate,
+  isDragActive = false,
+  structureType,
+}: StoryboardStageColumnProps) {
   const t = useTranslations("studio");
 
   const { isOver, setNodeRef } = useDroppable({
@@ -19,17 +26,30 @@ export function StoryboardStageColumn({ stage, onNavigate }: StoryboardStageColu
     data: { stageId: stage.stage_id },
   });
 
+  /** Try i18n lookup for stage name, fall back to server-provided name. */
+  function getStageName(): string {
+    try {
+      return t(`storyboard.stages.${structureType}.${stage.stage_id}` as Parameters<typeof t>[0]);
+    } catch {
+      return stage.stage_name;
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
       className={cn(
         "flex-shrink-0 w-[140px] flex flex-col gap-2 p-2 rounded-lg border-2 min-h-[200px]",
         "transition-colors",
-        isOver ? "border-primary bg-primary/5" : "border-border bg-card",
+        isOver
+          ? "border-primary bg-primary/5 shadow-[0_0_8px_rgba(var(--color-primary),0.15)]"
+          : isDragActive
+            ? "border-primary/40 border-dashed bg-card"
+            : "border-border bg-card",
       )}
     >
       {/* Stage header */}
-      <h4 className="text-xs font-semibold text-center truncate px-1">{stage.stage_name}</h4>
+      <h4 className="text-xs font-semibold text-center truncate px-1">{getStageName()}</h4>
 
       {/* Chapter cards */}
       <div className="flex flex-col gap-1.5 flex-1">

@@ -25,6 +25,7 @@ vi.stubGlobal("ResizeObserver", MockResizeObserver);
 // Mock @dnd-kit/core with all required exports
 vi.mock("@dnd-kit/core", () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   PointerSensor: class {},
   useSensor: () => ({}),
   useSensors: () => [],
@@ -115,10 +116,10 @@ describe("StoryboardPanel", () => {
     useEditorStore.setState({ storyboardOpen: true });
     render(<StoryboardPanel novelId="novel-1" />);
 
-    // Should show stage column headers
-    expect(screen.getByText("Act 1")).toBeDefined();
-    expect(screen.getByText("Act 2")).toBeDefined();
-    expect(screen.getByText("Act 3")).toBeDefined();
+    // Should show stage column headers (i18n keys from mock)
+    expect(screen.getByText("storyboard.stages.three_act.act-1")).toBeDefined();
+    expect(screen.getByText("storyboard.stages.three_act.act-2")).toBeDefined();
+    expect(screen.getByText("storyboard.stages.three_act.act-3")).toBeDefined();
 
     // Should show the chapter card title
     expect(screen.getByText("The Beginning")).toBeDefined();

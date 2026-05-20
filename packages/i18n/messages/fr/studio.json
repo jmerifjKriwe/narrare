@@ -1172,6 +1172,48 @@
       "confirm": "Confirmer le changement",
       "cancel": "Annuler",
       "noChanges": "Aucun chapitre ne nécessite de réassignation."
+    },
+    "stages": {
+      "three_act": {
+        "act-1": "Acte I : Exposition",
+        "act-2": "Acte II : Confrontation",
+        "act-3": "Acte III : Résolution"
+      },
+      "five_act": {
+        "exposition": "Exposition",
+        "rising-action": "Action montante",
+        "climax": "Climax",
+        "falling-action": "Action descendante",
+        "resolution": "Dénouement"
+      },
+      "heros_journey": {
+        "ordinary-world": "Monde ordinaire",
+        "call-to-adventure": "Appel à l'aventure",
+        "refusal": "Refus de l'appel",
+        "mentor": "Rencontre du mentor",
+        "crossing-threshold": "Franchissement du seuil",
+        "tests-allies-enemies": "Épreuves, alliés, ennemis",
+        "approach": "Approche de la caverne",
+        "ordeal": "L'Épreuve",
+        "reward": "Récompense",
+        "road-back": "Le Chemin du retour",
+        "resurrection": "Résurrection",
+        "return-with-elixir": "Retour avec l'élixir"
+      },
+      "save_the_cat": {
+        "act-1": "Acte I : Thèse",
+        "act-2": "Acte II : Antithèse",
+        "act-3": "Acte III : Synthèse"
+      },
+      "seven_point": {
+        "hook": "Accroche",
+        "plot-turn-1": "Tournant 1",
+        "pinch-1": "Pincement 1",
+        "midpoint": "Point médian",
+        "pinch-2": "Pincement 2",
+        "plot-turn-2": "Tournant 2",
+        "resolution": "Résolution"
+      }
     }
   },
   "auth": {

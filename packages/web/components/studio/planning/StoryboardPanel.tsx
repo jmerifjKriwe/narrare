@@ -1,17 +1,39 @@
 "use client";
 
-import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { ChevronDown, ChevronUp, LayoutGrid, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useStoryboard, useUpdateOutline } from "@/lib/hooks/usePlanning";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { cn } from "@/lib/utils";
+import type { ChapterInStoryboard } from "@/types";
 import { StoryboardScrollArrows } from "./StoryboardScrollArrows";
 import { StoryboardStageColumn } from "./StoryboardStageColumn";
+import { SyncStatusBadge } from "./SyncStatusBadge";
 
 interface StoryboardPanelProps {
   novelId: string;
+}
+
+/** Find a chapter across all storyboard stages by its id. */
+function findChapter(
+  stages: { chapters: ChapterInStoryboard[] }[],
+  chapterId: string,
+): ChapterInStoryboard | undefined {
+  for (const stage of stages) {
+    const found = stage.chapters.find((ch) => ch.chapter_id === chapterId);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 export function StoryboardPanel({ novelId }: StoryboardPanelProps) {
@@ -28,19 +50,34 @@ export function StoryboardPanel({ novelId }: StoryboardPanelProps) {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeChapter =
+    activeId && storyboard ? findChapter(storyboard.stages, activeId) : undefined;
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.data.current?.chapterId ?? ""));
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    if (!over) return;
 
-    const chapterId = String(active.data.current?.chapterId ?? "").replace("chapter-", "");
-    const stageId = String(over.data.current?.stageId ?? "").replace("stage-", "");
+    if (over) {
+      const chapterId = String(active.data.current?.chapterId ?? "").replace("chapter-", "");
+      const stageId = String(over.data.current?.stageId ?? "").replace("stage-", "");
 
-    if (chapterId && stageId) {
-      updateOutlineMutation.mutate({
-        chapterId,
-        data: { stage_assignment: stageId },
-      });
+      if (chapterId && stageId) {
+        updateOutlineMutation.mutate({
+          chapterId,
+          data: { stage_assignment: stageId },
+        });
+      }
     }
+
+    setActiveId(null);
+  }
+
+  function handleDragCancel() {
+    setActiveId(null);
   }
 
   function handleNavigate(chapterId: string) {
@@ -98,14 +135,39 @@ export function StoryboardPanel({ novelId }: StoryboardPanelProps) {
         <div className="relative px-4 py-3">
           <StoryboardScrollArrows scrollContainerRef={scrollRef} />
           <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-none">
-            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
               {storyboard.stages.map((stage) => (
                 <StoryboardStageColumn
                   key={stage.stage_id}
                   stage={stage}
                   onNavigate={handleNavigate}
+                  isDragActive={activeId !== null}
+                  structureType={storyboard.structure_type}
                 />
               ))}
+
+              <DragOverlay dropAnimation={{ duration: 200, easing: "ease" }}>
+                {activeId && activeChapter ? (
+                  <div
+                    className={cn(
+                      "w-[100px] p-2 rounded-md border bg-card border-primary/50",
+                      "shadow-xl ring-2 ring-primary/30 scale-105 opacity-90",
+                      "flex flex-col gap-1.5 rotate-2",
+                    )}
+                  >
+                    <p className="text-xs font-medium truncate">{activeChapter.title}</p>
+                    <SyncStatusBadge status={activeChapter.sync_status} className="self-start" />
+                    <p className="text-[10px] text-muted-foreground">
+                      {t("editor.words", { count: activeChapter.word_count })}
+                    </p>
+                  </div>
+                ) : null}
+              </DragOverlay>
             </DndContext>
           </div>
         </div>

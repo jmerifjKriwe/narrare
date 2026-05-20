@@ -35,6 +35,8 @@ vi.mock("@dnd-kit/core", () => ({
   }: {
     children: React.ReactNode;
     onDragEnd: (event: DragEndEvent) => void;
+    onDragStart?: (event: unknown) => void;
+    onDragCancel?: () => void;
     sensors: unknown[];
   }) => {
     // Expose onDragEnd globally for test access
@@ -42,6 +44,7 @@ vi.mock("@dnd-kit/core", () => ({
       onDragEnd;
     return <>{children}</>;
   },
+  DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   PointerSensor: class {},
   useSensor: () => ({}),
   useSensors: () => [],
