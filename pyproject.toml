@@ -216,7 +216,12 @@ skips = ["B101"]  # assert_used is fine in tests
 [tool.narrare.architecture]
 llm_allowed_modules = [
   "packages/core/narrare_core/llm/",
+  "packages/core/narrare_core/agents/",
   "tests/",  # Test files can import pydantic_ai for TestModel/FunctionModel testing tools
+]
+agent_allowed_modules = [
+  "packages/core/narrare_core/agents/",
+  "tests/",
 ]
 prompt_allowed_modules = ["packages/core/narrare_core/prompts/"]
 forbidden_llm_imports = ["openai", "anthropic", "pydantic_ai"]

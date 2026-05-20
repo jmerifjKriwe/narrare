@@ -20,7 +20,8 @@ from pydantic_ai.models.test import (  # narrare: allow reason="test fixtures"
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm._legacy import LLMGateway
+    from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
 
 
@@ -76,6 +77,33 @@ def gateway_with_test_model(test_model: TestModel) -> Generator[LLMGateway]:
 
     with patch.object(gateway, "_get_model_with_credentials", return_value=test_model):
         yield gateway
+
+
+@pytest.fixture
+def registry() -> ModelRegistry:
+    """ModelRegistry instance for tests."""
+    from narrare_core.llm.gateway import ModelRegistry
+
+    return ModelRegistry()
+
+
+@pytest.fixture
+def registry_with_test_model(test_model: TestModel) -> Generator[ModelRegistry]:
+    """ModelRegistry wired with TestModel — no real LLM calls.
+
+    Patches the provider registry's ``get`` function to return a factory
+    that always produces ``TestModel``, so no API calls are made.
+    """
+    from unittest.mock import patch
+
+    from narrare_core.llm.gateway import ModelRegistry
+
+    registry = ModelRegistry()
+    # Must patch at the point of use (gateway.get_provider), not the source module
+    # because "from X import get as get_provider" creates a local binding.
+    with patch("narrare_core.llm.gateway.get_provider") as mock_get:
+        mock_get.return_value = lambda model_id, **kwargs: test_model
+        yield registry
 
 
 @pytest.fixture
