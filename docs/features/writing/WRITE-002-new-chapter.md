@@ -137,7 +137,7 @@ Generated text is fully editable — treat it as your rough draft.
    - 12 system prompts (4 modes × 3 languages: en, de, fr)
    - 4 tone variants: balanced, dramatic, suspenseful, quiet
 3. **LLM call**: Stream generation via LLM Gateway
-4. **Post-processing**: `DraftProcessor` — artifact removal + markdown normalization
+4. **Post-processing**: `DraftProcessor` (legacy path) or `DraftAgent` Output Function (Phase 2 ADR-015, via `use_draft_agent` feature flag) — artifact removal + markdown normalization + word-target enforcement
 5. **Persistence**: `GenerationRepository` — status transitions, concurrent generation prevention
 
 **API models:**

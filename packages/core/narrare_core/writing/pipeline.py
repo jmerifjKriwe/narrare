@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.gateway import LLMGateway, ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.context_models import KBEntity, RecentChapter
@@ -71,11 +71,15 @@ class WritingPipeline:
         composer: PromptComposer,
         context_assembler: WritingContextAssembler,
         draft_processor: DraftProcessor,
+        registry: ModelRegistry | None = None,
+        use_draft_agent: bool = False,
     ) -> None:
         self._gateway = gateway
         self._composer = composer
         self._context_assembler = context_assembler
         self._draft_processor = draft_processor
+        self._registry = registry
+        self._use_draft_agent = use_draft_agent
         self._stop_signals: set[UUID] = set()
 
     # ------------------------------------------------------------------
@@ -184,6 +188,35 @@ class WritingPipeline:
         base_url: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Generate a complete chapter draft in one pass."""
+        if self._use_draft_agent and self._registry is not None:
+            async for chunk in self._stream_via_draft_agent(
+                request,
+                context,
+                config,
+                api_key=api_key,
+                base_url=base_url,
+            ):
+                yield chunk
+        else:
+            async for chunk in self._legacy_full_draft(
+                request,
+                context,
+                config,
+                api_key=api_key,
+                base_url=base_url,
+            ):
+                yield chunk
+
+    async def _legacy_full_draft(
+        self,
+        request: GenerationRequest,
+        context: WritingContext,
+        config: ResolvedModelConfig,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> AsyncIterator[StreamChunk]:
+        """Legacy full-draft path via LLMGateway (original implementation)."""
         prompt_context = self._build_prompt_context(request, context)
         prompt = await self._composer.build(LLMIntent.WRITE, prompt_context)
 
@@ -230,6 +263,52 @@ class WritingPipeline:
             word_target=request.word_target,
         )
         yield StreamChunk(text=cleaned, is_final=True, usage=final_usage)
+
+    async def _stream_via_draft_agent(
+        self,
+        request: GenerationRequest,
+        context: WritingContext,
+        config: ResolvedModelConfig,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> AsyncIterator[StreamChunk]:
+        """Generate a draft via DraftAgent (pydantic-ai based).
+
+        Uses the DraftAgent's Output Function for post-processing
+        and quality validation instead of the legacy gateway path.
+        """
+        # Lazy import to avoid circular dependencies
+        from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
+
+        # Nur aufgerufen wenn self._registry gesetzt ist (siehe _full_draft Guard)
+        registry = self._registry
+        assert registry is not None
+
+        prompt_context = self._build_prompt_context(request, context)
+        prompt = await self._composer.build(LLMIntent.WRITE, prompt_context)
+
+        model = await registry.get_model(
+            config,
+            api_key=api_key,
+            base_url=base_url,
+        )
+
+        agent = DraftAgent(model=model, word_target=request.word_target)
+        deps = DraftDeps(context_assembler=self._context_assembler)
+
+        # Der DraftAgent hat bereits einen eigenen system_prompt.
+        # Wir übergeben den user_prompt mit dem assemblierten Kontext.
+        # narrare: allow-agent reason="DraftAgent is called from pipeline compat layer (Phase 2.3)"
+        result = await agent.run(prompt=prompt.user, deps=deps)
+
+        # DraftOutput → StreamChunk Konvertierung
+        # TokenUsage ist aktuell nicht verfügbar (Phase 3: Agent-Usage-Reporting)
+        yield StreamChunk(
+            text=result.text,
+            is_final=True,
+            usage=None,
+        )
 
     # ------------------------------------------------------------------
     # Helpers (used by sub-modules via the pipeline instance)

@@ -22,6 +22,7 @@ from narrare_core.agents.capabilities import NarrareObservability
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
+    from pydantic_ai.output import OutputSpec
 
 
 class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in Phase 2+
@@ -42,7 +43,7 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         self,
         model: Model,
         deps_type: type[DepsT],
-        output_type: type[OutputT] | None = None,
+        output_type: OutputSpec[OutputT] | None = None,
         capabilities: list[Any] | None = None,
         system_prompt: str | None = None,
     ) -> None:

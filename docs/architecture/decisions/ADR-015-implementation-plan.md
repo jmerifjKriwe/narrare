@@ -13,7 +13,7 @@
 ```
 Phase 0: 🏗️ Fundament (ADR + Gateway als ModelRegistry + Module)     ~3 Tage
      ↓
-Phase 1: 🔧 Usage Limits + Hooks/Observability                        ~4 Tage
+Phase 1: ✅ Usage Limits + Hooks/Observability (abgeschlossen)
      ↓
 Phase 2: ✍️ Output Functions → DraftAgent                              ~7 Tage
      ↓
@@ -197,13 +197,13 @@ Kategorisieren:
 
 ---
 
-## Phase 1 — Usage Limits + Hooks
+## ✅ Phase 1 — Usage Limits + Hooks (abgeschlossen)
 
 **Ziel**: Token-Sicherheit + bessere Observability — beides noch im alten Gateway-Modell, aber kompatibel mit der neuen Architektur.
 
 ### Tasks
 
-#### 1.1 UsageLimits-Parameter in ModelRegistry (Core Specialist)
+#### ✅ 1.1 UsageLimits-Parameter in ModelRegistry (Core Specialist)
 
 ```python
 class ModelRegistry:
@@ -235,7 +235,7 @@ LIMIT_PROFILES = {
 - `UsageLimitExceeded` wird als user-visible error klassifiziert
 - Tests: Limits werden angewendet, Limitüberschreitung wird abgefangen
 
-#### 1.2 NarrareObservability-Hooks-Capability (Core Specialist)
+#### ✅ 1.2 NarrareObservability-Hooks-Capability (Core Specialist)
 
 ```python
 @dataclass
@@ -282,7 +282,7 @@ Integration:
 - Logfire-Option funktioniert (global oder per-Agent)
 - Tests: Hooks feuern, Metriken landen im richtigen Backend
 
-#### 1.3 Token-Usage in UI anzeigen (Frontend Specialist)
+#### ✅ 1.3 Token-Usage in UI anzeigen (Frontend Specialist)
 
 Nach jedem Generation-Aufruf die verbrauchten Tokens aus `result.usage` auslesen und in der `MetadataSidebar` anzeigen:
 - Tokens dieser Session
@@ -294,13 +294,13 @@ Nach jedem Generation-Aufruf die verbrauchten Tokens aus `result.usage` auslesen
 
 ---
 
-## Phase 2 — Output Functions: DraftAgent
+## ✅ Phase 2 — Output Functions: DraftAgent (abgeschlossen)
 
 **Ziel**: Writing-Pipeline auf echten Agent umstellen. `DraftProcessor` wird Output Function.
 
 ### Tasks
 
-#### 2.1 Output Types definieren (Core Specialist)
+#### ✅ 2.1 Output Types definieren (Core Specialist)
 
 Strukturierte Output-Types für den Draft-Prozess:
 
@@ -325,7 +325,7 @@ class DraftConfig(BaseModel):
 **Layer**: Core
 **DoD**: Pydantic-Modelle definiert und getestet
 
-#### 2.2 DraftAgent definieren (Core Specialist)
+#### ✅ 2.2 DraftAgent definieren (Core Specialist)
 
 ```python
 class DraftDeps:
@@ -428,7 +428,7 @@ result = await agent.run(prompt, deps=DraftDeps(...))
 - `ModelRetry` aus Validator führt zu erneuten LLM-Calls
 - Streaming funktioniert (Partial→Final-Unterscheidung via `ctx.partial_output`)
 
-#### 2.3 Alte Pipeline als Kompatibilitätsschicht (Core Specialist)
+#### ✅ 2.3 Alte Pipeline als Kompatibilitätsschicht (Core Specialist)
 
 Die alte `WritingPipeline` wird zum **Wrapper**:
 ```python
@@ -451,7 +451,7 @@ class WritingPipeline:
 **Layer**: Core
 **DoD**: Feature-Flag schaltet zwischen altem und neuem Pipeline-Pfad um
 
-#### 2.4 Tests für DraftAgent (Platform Specialist)
+#### ✅ 2.4 Tests für DraftAgent (Platform Specialist)
 
 - Unit-Tests mit `TestModel` + `FunctionModel` (keine echten LLM-Calls)
 - Output Function wird korrekt aufgerufen
@@ -777,7 +777,7 @@ diagram = mermaid_diagram(writing_graph)
 | Phase | Risiko | Wahrsch. | Impact | Mitigation |
 |-------|--------|----------|--------|------------|
 | 0 | CI-Tooling schlägt fehl nach RULE-Änderung | Mittel | Niedrig | Vor Merge testen |
-| 1 | UsageLimits blockieren legitime Calls | Niedrig | Mittel | Good Defaults, Logging |
+| 1 | UsageLimits blockieren legitime Calls | Niedrig | Niedrig | Good Defaults, Logging |
 | 2 | DraftAgent produziert anderen Output als alte Pipeline | Mittel | Hoch | Paralleler Betrieb, automatischer Vergleich in Tests |
 | 3 | ToolSearch funktioniert nicht mit allen Providern | Mittel | Mittel | Fallback auf BM25 |
 | 4 | Graph-Persistence zu langsam | Niedrig | Mittel | Redis-Option bereithalten |
@@ -802,8 +802,8 @@ Phasen 1–2 können **teilweise parallel** laufen (Gateway-Umbau beeinträchtig
 
 | Layer | Phase 0 | Phase 1 | Phase 2 | Phase 3 | Phase 4 |
 |-------|---------|---------|---------|---------|---------|
-| **Core** | Gateway→Registry, Module Struktur | UsageLimits, Hooks, Observability | DraftAgent, Output Types, Output Func | KB-Tools, KBAgent, ToolSearch | Graph-Steps, Graph-State, Agent-Tools |
-| **Backend** | Call-Sites prüfen | — | Service-Integration | Repository-Integration | Graph-Persistence |
-| **Frontend** | — | Token-Usage in Sidebar | — | — | — |
-| **Platform** | CI-Checks aktualisieren | — | DraftAgent-Tests | KB-Integration-Tests | Feature-Flag, Paralleltests |
-| **Docs** | ADR + Plan | — | — | — | Mermaid-Diagramm |
+| **Core** | Gateway→Registry, Module Struktur | ✅ UsageLimits, Hooks, Observability | ✅ DraftAgent, Output Types, Output Func | KB-Tools, KBAgent, ToolSearch | Graph-Steps, Graph-State, Agent-Tools |
+| **Backend** | Call-Sites prüfen | ✅ | ✅ Service-Integration (Feature-Flag) | Repository-Integration | Graph-Persistence |
+| **Frontend** | — | ✅ Token-Usage in Sidebar | — | — | — |
+| **Platform** | CI-Checks aktualisieren | — | ✅ DraftAgent-Tests (20 Tests, >90%) | KB-Integration-Tests | Feature-Flag, Paralleltests |
+| **Docs** | ADR + Plan | — | (dieser PR) | — | Mermaid-Diagramm |

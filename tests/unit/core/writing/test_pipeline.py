@@ -321,3 +321,72 @@ class TestInterviewAssisted:
 
         call_kwargs = mock_gateway.run.call_args
         assert call_kwargs.kwargs["intent"] == LLMIntent.CHAT
+
+
+class TestPipelineDraftAgentMode:
+    """Full draft mode with use_draft_agent flag.
+
+    Verifies that the pipeline correctly falls back to the legacy path
+    when the DraftAgent path is not fully configured.
+    """
+
+    @pytest.mark.asyncio
+    async def test_pipeline_with_draft_agent_flag_disabled_still_uses_legacy(
+        self,
+        pipeline: WritingPipeline,
+        mock_gateway: Any,
+    ) -> None:
+        """use_draft_agent=False (default) → Legacy-Pfad wird verwendet."""
+        mock_gateway.stream = MagicMock(
+            spec=[],
+            return_value=_stream_from(
+                StreamChunk(text="Hello "),
+                StreamChunk(text="World."),
+                StreamChunk(text="", is_final=True, usage=_usage()),
+            ),
+        )
+
+        chunks = await _collect(
+            pipeline.generate(_request(), config=_config()),
+        )
+
+        # Gateway.stream im Legacy-Pfad aufgerufen
+        mock_gateway.stream.assert_called_once()
+        texts = [c.text for c in chunks]
+        assert "Hello " in texts
+
+    @pytest.mark.asyncio
+    async def test_pipeline_without_registry_still_uses_legacy(
+        self,
+        mock_gateway: Any,
+        mock_composer: Any,
+        mock_assembler: Any,
+        mock_processor: Any,
+    ) -> None:
+        """registry=None (default) → Legacy-Pfad, auch wenn Flag aktiv."""
+        pipeline = WritingPipeline(
+            gateway=mock_gateway,
+            composer=mock_composer,
+            context_assembler=mock_assembler,
+            draft_processor=mock_processor,
+            use_draft_agent=True,  # Flag aktiviert
+            registry=None,  # Aber kein Registry → Fallback auf Legacy
+        )
+
+        mock_gateway.stream = MagicMock(
+            spec=[],
+            return_value=_stream_from(
+                StreamChunk(text="Hello "),
+                StreamChunk(text="World."),
+                StreamChunk(text="", is_final=True, usage=_usage()),
+            ),
+        )
+
+        chunks = await _collect(
+            pipeline.generate(_request(), config=_config()),
+        )
+
+        # Trotz use_draft_agent=True wird Legacy verwendet (kein Registry)
+        mock_gateway.stream.assert_called_once()
+        texts = [c.text for c in chunks]
+        assert "Hello " in texts

@@ -13,6 +13,28 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- ADR-015 Phase 0: Agents as First-Class Citizens
+  - ModelRegistry in core/llm/gateway.py (v2 entry point)
+  - NarrareAgent base class in core/agents/base.py
+  - RULE-01b: Agent creation restricted to core/agents/
+- ADR-015 Phase 1: Usage Limits + Observability
+  - UsageLimits parameter in ModelRegistry.run() and get_model()
+  - NarrareObservability capability with before/after/error hooks
+  - Token usage display in GenerationPanel after each generation
+  - SSE stream sends is_final and usage in final chunk
+  - WebSocket sends usage in text_done event
+  - TokenUsage TypeScript interface
+  - i18n keys for token display (tokensTotal, tokensPrompt, tokensCompletion)
+
+- ADR-015 Phase 2: Output Functions → DraftAgent
+  - DraftOutput / DraftConfig Pydantic models in core/agents/draft_types.py
+  - DraftAgent with Output Function (post-processing via DraftProcessor), KB tool, and quality validator
+  - DraftDeps dependency container for context assembly
+  - NarrareAgent base class now supports OutputSpec (list of types/callables for output_type)
+  - WritingPipeline._stream_via_draft_agent() — new DraftAgent path via feature flag
+  - Feature flag `use_draft_agent` in WritingPipeline constructor (default: False, legacy path)
+  - 20 new tests for DraftAgent (unit: agent, tools, types) with TestModel/FunctionModel
+
 - httpOnly refresh token cookie (`narrare_refresh`) for secure session management
 - Frontend `restoreSession()` — silent refresh via httpOnly cookie on page reload
 - Editor TipTap extensions: NarrareDocument (chapter-scoped doc), DialogueMark (dialogue spans), Autosave (debounced save)

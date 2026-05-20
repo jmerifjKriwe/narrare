@@ -95,6 +95,13 @@ domain (e.g., `writing/`, `kb/`, `analysis/`). Contains its own schemas, models,
 repository, service, contracts, and router. Never imports from another domain's
 internal modules.
 
+**DraftAgent**
+A pydantic-ai Agent (`NarrareAgent[DraftDeps, DraftOutput]`) that generates
+chapter drafts using an Output Function for post-processing and a tool for
+KB context lookup. Defined in `core/agents/draft_agent.py`. Replaces the
+manual DraftProcessor pipeline path when the `use_draft_agent` feature flag
+is active (Phase 2 of ADR-015).
+
 **Draft**
 A single AI-generated version of a chapter or section. Multi-Draft mode
 generates several drafts simultaneously for comparison.
@@ -237,6 +244,19 @@ and focus mode animations. Located in `packages/web/` dependencies.
 **Novel**
 The top-level project container. Has metadata (genre, language, tone, style),
 volumes, chapters, a KB, and a Knowledge Graph.
+
+---
+
+## O
+
+**Output Function**
+A callable registered as part of `output_type` in a pydantic-ai Agent (e.g.,
+`output_type=[callable, Model]`). The callable is called by the model as a
+tool — it receives structured parameters and returns the typed output. In
+Narrare, the `DraftAgent` uses an Output Function to post-process generated
+text (artifact removal, markdown normalization, word-target enforcement)
+instead of the legacy `DraftProcessor` pipeline path. Defined inline in
+`core/agents/draft_agent.py` as `_process_draft_output`.
 
 ---
 
