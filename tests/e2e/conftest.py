@@ -121,13 +121,11 @@ def authenticated_page(browser: Browser, browser_context_args: dict[str, Any]) -
         access_token,
     )
 
-    # Alternative: set token via the API client's setAccessToken function
-    # We do this by navigating to a page and injecting a script that calls setAccessToken
+    # Set the narrare_auth cookie for Next.js middleware (server-side route protection)
+    # This mirrors what setAccessToken() does in packages/web/lib/api/client.ts
     page.evaluate(
         """(token) => {
-            // The frontend bundles setAccessToken in its module scope.
-            // We can intercept API calls and add the Authorization header instead.
-            window.__E2E_AUTH_TOKEN__ = token;
+            document.cookie = `narrare_auth=${token}; path=/; max-age=3600; samesite=lax`;
         }""",
         access_token,
     )
