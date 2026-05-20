@@ -10,8 +10,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from narrare_core.agents.kb_formatters import (
-    format_entries,
     format_entity,
+    format_entries,
     format_related,
 )
 
