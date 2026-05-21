@@ -40,6 +40,7 @@
 | [ADR-014](ADR-014-tdd-agent-workflow.md) | TDD Agent Workflow & Regression-First Fixes | ✅ | 2026-05-14 | Agent System, Testing |
 | [ADR-015](ADR-015-agents-first-class.md) | Pydantic-AI Agents as First-Class Citizens | 🔄 | 2026-05-20 | `core/llm/`, `core/agents/`, RULE-01 |
 | [ADR-016](ADR-016-prompt-caching.md) | Prompt Caching Strategy (Agent-Singletons + ModelSettings) | 🔄 | 2026-05-20 | `core/agents/`, `core/llm/`, Observability |
+| [ADR-017](017-embedding-cascade.md) | Embedding Cascade for mem0 (4-tier fallback) | ✅ | 2026-05-21 | `core/memory/`, `packages/core/narrare_core/memory/` |
 
 ---
 

@@ -1,4 +1,7 @@
-"""Memory routes — thin, delegates immediately to memory services."""
+"""Memory routes — feedback recording and preference retrieval.
+
+Analysis endpoint is in ``router_analysis.py`` for RULE-04 compliance.
+"""
 
 from __future__ import annotations
 
@@ -27,7 +30,8 @@ router = APIRouter(prefix="/memory", tags=["memory"])
 async def _get_feedback_service(
     session: AsyncSession = Depends(get_async_session),
 ) -> MemoryFeedbackService:
-    """Async factory for MemoryFeedbackService."""
+    """Async factory for MemoryFeedbackService with event publishing."""
+    from narrare.events.publisher import EventPublisher
     from narrare.memory.models import FeedbackEventModel
     from narrare.memory.repository import FeedbackRepository
     from narrare.memory.service import MemoryFeedbackService
@@ -49,6 +53,7 @@ async def _get_feedback_service(
             intent=event.intent,
             suggestion_text=event.suggestion_text,
             modification=event.modification or None,
+            rating=event.rating,
             context=event.context or None,
             created_at=event.created_at,
         )
@@ -58,7 +63,12 @@ async def _get_feedback_service(
         mem0_client=null_client,
         persist_fn=_persist_adapter,
     )
-    return MemoryFeedbackService(repository=repo, core_feedback=core_feedback)
+    publisher = EventPublisher()
+    return MemoryFeedbackService(
+        repository=repo,
+        core_feedback=core_feedback,
+        event_publisher=publisher,
+    )
 
 
 async def _get_preference_service(

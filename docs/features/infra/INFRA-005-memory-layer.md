@@ -1,7 +1,7 @@
 ---
 id: INFRA-005
 title: "Memory Layer (Rejection Learning)"
-status: in progress
+status: implemented
 area: infra
 mvp: false
 
@@ -209,3 +209,4 @@ returns empty results. This ensures:
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-15` — Core memory module implemented: mem0 AsyncMemory integration, dual storage (PostgreSQL + mem0), FeedbackService, PreferenceService, NullMemoryClient, API endpoints (POST /feedback, GET /preferences, DELETE /preferences), migration 0006
+- `2026-05-21` — **Full implementation complete.** 4-tier embedding cascade (ADR-017) enables mem0 for all users regardless of LLM provider. Rating field added to FeedbackEvent. PreferenceAnalysisAgent for deep pattern analysis. Event-driven mem0 processing (FeedbackRecorded → TaskIQ). POST /memory/analyze endpoint with min-event guard. Frontend: modify-tracking, RatingPrompt, LearningTab preference profile, LearningStatus indicator. See LEARN-001 for full details.

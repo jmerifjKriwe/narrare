@@ -1,12 +1,22 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, FileText, Info, Keyboard, Settings2, Sparkles, Target } from "lucide-react";
+import {
+  BookOpen,
+  Brain,
+  FileText,
+  Info,
+  Keyboard,
+  Settings2,
+  Sparkles,
+  Target,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AiTab } from "@/components/studio/settings/AiTab";
 import { GeneralTab } from "@/components/studio/settings/GeneralTab";
 import { KBTemplatesTab } from "@/components/studio/settings/KBTemplatesTab";
+import { LearningTab } from "@/components/studio/settings/LearningTab";
 import { NovelDetailsTab } from "@/components/studio/settings/NovelDetailsTab";
 import { PromptsTab } from "@/components/studio/settings/PromptsTab";
 import { WritingGoalsTab } from "@/components/studio/settings/WritingGoalsTab";
@@ -21,6 +31,7 @@ type SettingsCategory =
   | "ai"
   | "prompts"
   | "kb-templates"
+  | "learning"
   | "shortcuts"
   | "about";
 
@@ -43,6 +54,7 @@ const CATEGORIES: CategoryConfig[] = [
   { id: "ai", icon: Sparkles, labelKey: "settings.aiSetup" },
   { id: "prompts", icon: FileText, labelKey: "settings.promptsTab" },
   { id: "kb-templates", icon: BookOpen, labelKey: "settings.kbTemplates" },
+  { id: "learning", icon: Brain, labelKey: "settings.learning" },
   { id: "shortcuts", icon: Keyboard, labelKey: "settings.shortcuts" },
   { id: "about", icon: Info, labelKey: "settings.about" },
 ];
@@ -158,6 +170,8 @@ export function SettingsView({ novelId }: SettingsViewProps) {
         return <PromptsTab />;
       case "kb-templates":
         return <KBTemplatesTab novelId={novelId} />;
+      case "learning":
+        return <LearningTab novelId={novelId} />;
       case "shortcuts":
         return renderShortcuts();
       case "about":

@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.memory.schemas import (
+        AnalyzeResponse,
         FeedbackRequest,
         FeedbackResponse,
         PreferenceResponse,
@@ -31,3 +32,8 @@ class PreferenceServiceProtocol(Protocol):
     async def reset_preferences(
         self, user_id: uuid.UUID, project_id: uuid.UUID
     ) -> ResetResponse: ...
+
+
+@runtime_checkable
+class PreferenceAnalysisServiceProtocol(Protocol):
+    async def analyze(self, user_id: uuid.UUID, project_id: uuid.UUID) -> AnalyzeResponse: ...

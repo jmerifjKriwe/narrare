@@ -15,7 +15,7 @@ from narrare._app.database import get_async_session
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.settings.custom_tone_service import CustomToneService
 from narrare.settings.repository import UserSettingsRepository
-from narrare.settings.schemas import (
+from narrare.settings.schemas_tones import (
     CustomTone,
     CustomToneCreate,
     CustomToneUpdate,

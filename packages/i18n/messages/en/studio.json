@@ -478,7 +478,8 @@
       "feature5": "Modern, distraction-free design"
     },
     "promptsTab": "System Prompts",
-    "kbTemplates": "KB Templates"
+    "kbTemplates": "KB Templates",
+    "learning": "Learning"
   },
   "wizard": {
     "step1": {
@@ -1282,5 +1283,35 @@
     "loginError": "Invalid email or password",
     "registerError": "Registration failed",
     "loading": "Loading..."
+  },
+  "learning": {
+    "title": "Learning",
+    "description": "See how the AI learns your writing style from your feedback",
+    "statusInteractions": "{count}/50 interactions",
+    "confidence": "Confidence: {score}%",
+    "stylePatterns": "Style Patterns",
+    "contentPatterns": "Content Patterns",
+    "avoidancePatterns": "Avoidance Patterns",
+    "noData": "Not enough data yet. Keep writing!",
+    "reset": "Reset Preferences",
+    "resetConfirm": "This will delete all learned preferences. Continue?",
+    "resetting": "Resetting...",
+    "confirmReset": "Yes, Reset",
+    "cancelReset": "Cancel",
+    "rating": "Rate this suggestion",
+    "rejectReason": "Why did you reject this?",
+    "submitRating": "Submit",
+    "skipRating": "Skip",
+    "ratingSubmitted": "Thanks for your feedback!",
+    "analyze": "Analyze Now",
+    "analyzing": "Analyzing...",
+    "minEventsHint": "Need at least {min} interactions ({current}/{min})",
+    "profileEmpty": "No preference profile yet",
+    "loading": "Loading learning data...",
+    "progressLabel": "Learning Progress",
+    "tierCollecting": "Collecting",
+    "tierEmerging": "Emerging",
+    "tierGrowing": "Growing",
+    "tierEstablished": "Established"
   }
 }

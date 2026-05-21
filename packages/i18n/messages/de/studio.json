@@ -478,7 +478,8 @@
       "feature5": "Modernes, ablenkungsfreies Design"
     },
     "promptsTab": "System-Prompts",
-    "kbTemplates": "KB-Vorlagen"
+    "kbTemplates": "KB-Vorlagen",
+    "learning": "Lernen"
   },
   "wizard": {
     "step1": {
@@ -1282,5 +1283,35 @@
     "loginError": "Ungültige E-Mail oder Passwort",
     "registerError": "Registrierung fehlgeschlagen",
     "loading": "Wird geladen..."
+  },
+  "learning": {
+    "title": "Lernen",
+    "description": "Sieh, wie die KI deinen Schreibstil aus deinem Feedback lernt",
+    "statusInteractions": "{count}/50 Interaktionen",
+    "confidence": "Konfidenz: {score}%",
+    "stylePatterns": "Stilmuster",
+    "contentPatterns": "Inhaltsmuster",
+    "avoidancePatterns": "Vermeidungsmuster",
+    "noData": "Noch nicht genug Daten. Weiter schreiben!",
+    "reset": "Präferenzen zurücksetzen",
+    "resetConfirm": "Dies löscht alle gelernten Präferenzen. Fortfahren?",
+    "resetting": "Wird zurückgesetzt...",
+    "confirmReset": "Ja, zurücksetzen",
+    "cancelReset": "Abbrechen",
+    "rating": "Bewerte diesen Vorschlag",
+    "rejectReason": "Warum hast du das abgelehnt?",
+    "submitRating": "Absenden",
+    "skipRating": "Überspringen",
+    "ratingSubmitted": "Danke für dein Feedback!",
+    "analyze": "Jetzt analysieren",
+    "analyzing": "Analysiere...",
+    "minEventsHint": "Mindestens {min} Interaktionen nötig ({current}/{min})",
+    "profileEmpty": "Noch kein Präferenzprofil",
+    "loading": "Lern-Daten werden geladen...",
+    "progressLabel": "Lernfortschritt",
+    "tierCollecting": "Sammeln",
+    "tierEmerging": "Entstehend",
+    "tierGrowing": "Wachsend",
+    "tierEstablished": "Etabliert"
   }
 }

@@ -11,8 +11,8 @@
 ## Last Updated
 
 Date: 2026-05-21
-Updated by: NarrareDocsSpecialist
-Session summary: Chapter Summary (WRITE-012) feature documentation updated to implemented status. Storyboard AI integration documented. WritingGraphStatus frontend component added. CURRENT_STATE.md updated with Chapter Summary and WritingGraph entries.
+Updated by: NarrarePlatformSpecialist
+Session summary: LEARN-001 Feedback Loop closed. All 55 tasks completed. Embedding cascade (ADR-017) ensures memory for all users. PreferenceAnalysisAgent wired. Frontend modify-tracking, rating UI, preference profile page implemented. Feature specs updated to implemented.
 
 ---
 
@@ -440,7 +440,8 @@ Phase 5 (current):
 3. ✅ Storyboard feature (PLAN-003/005 merged implementation) — core adapters, backend service, frontend UI, i18n
 4. ✅ Chapter Summary (WRITE-012) — ChapterSummaryAgent, SummaryService + REST endpoint, WritingGraph summary step, prompt in analysis/en/summarize/
 5. ✅ AI-powered storyboard remap — AIRemapService with summary analysis, enhanced sync COMPLETED detection, WritingGraphStatus UI
-6. KB dedup integration for name generator
+6. ✅ Feedback & Learning Loop (LEARN-001) — mem0 AsyncMemory wiring, 4-tier embedding cascade, PreferenceAnalysisAgent, modify-tracking, rating UI, preference profile page
+7. KB dedup integration for name generator
 7. Backend test coverage gaps (memory service, prompt management)
 8. Frontend test coverage gaps (generation panel, session panel)
 9. E2E tests with Playwright
@@ -534,6 +535,8 @@ All demo content is complete — sufficient for testing through Phase 5.
 | AI-powered storyboard sync | StructuralSyncChecker rule 3b: summary + content → COMPLETED (stronger than word count alone) |
 | AI-powered structure remap | AIRemapService: analyze_chapter_role(), meets_coverage_threshold(50%), calculate_confidence(); hybrid approach with position-ratio fallback |
 | WritingGraphStatus UI | Compact collapsible panel in EditorView showing pipeline step status (highlighted current, completed checkmarks) |
+| LEARN-001 Feedback Loop | Full feedback loop closed. 55 tasks: Embedding cascade (ADR-017, 4-tier fallback for all providers), FeedbackEvent extended with rating + enriched context, mem0 AsyncMemory via MemoryClientCache, PreferenceAnalysisAgent for deep pattern analysis, event-driven processing (FeedbackRecorded/PreferenceAnalysisTriggered → TaskIQ), POST /memory/analyze endpoint, frontend modify-tracking + RatingPrompt + LearningTab preference profile + LearningStatus indicator, 3 migrations |
+| INFRA-005 Memory Layer | Completed: embedding cascade + PreferenceAnalysisAgent extend the core memory module. Feature spec updated to implemented |
 
 ---
 
@@ -554,6 +557,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 | ADR-012 | Event-Driven Architecture (Redis Pub/Sub) | ✅ Implemented |
 | ADR-013 | Internationalization Architecture | ✅ Implemented |
 | ADR-014 | RULE-14: Model-Migration Consistency | ✅ Enforced |
+| ADR-015 | Pydantic-AI Agents as First-Class Citizens | 🔄 Proposed |
+| ADR-016 | Prompt Caching Strategy | 🔄 Proposed |
+| ADR-017 | Embedding Cascade for mem0 | ✅ Implemented in `core/memory/embedding_cascade.py` |
 
 ---
 

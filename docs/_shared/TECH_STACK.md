@@ -112,6 +112,12 @@ rejection feedback, and session history across conversations.
     - OpenAI → GPT-4.1-nano
     - Ollama → Llama3.2
   - Graceful degradation via `NullMemoryClient` — system works without memory
+  - **Embedding Cascade** (ADR-017): 4-tier fallback ensures mem0 works for all users:
+    1. OpenAI `text-embedding-3-small` (if OpenAI key configured)
+    2. Provider-native (future hook)
+    3. Local `all-MiniLM-L6-v2` via sentence-transformers (no API needed)
+    4. Disabled — NullMemoryClient fallback
+  - Users can override via `embedding_provider` setting (`"auto"` | `"openai"` | `"local"` | `"disabled"`)
 **Flow:** Feedback collection (`FeedbackService`) → preference extraction (mem0 AsyncMemory) → prompt injection (`PreferenceService` → `PromptComposer`)
 **Location:** Only used via `core/memory/mem0_client.py` (singleton factory, approved RULE-01 exception).
 **Not:** Custom memory service — mem0 with pgvector backend gives us semantic search
@@ -124,6 +130,14 @@ continues without memory features. Never a hard dependency at request time.
 **Role:** KB entry embeddings, chapter summary embeddings, style profile embeddings.
 **Location:** Only via `core/llm/embeddings.py` (approved RULE-01 exception).
 **Future:** Provider-agnostic embedding interface planned — model swappable via config.
+
+### sentence-transformers `all-MiniLM-L6-v2` (optional)
+**Why:** Local embedding fallback for users without OpenAI access (z.ai, Anthropic, Ollama).
+**Role:** Powers the embedding cascade for mem0 memory search when no API-based embeddings are available.
+**Architecture:** 4-tier cascade: OpenAI → provider-native (future) → local (sentence-transformers) → disabled.
+See ADR-017 for full rationale.
+**Location:** Only via `core/memory/embedding_cascade.py`.
+**Not:** A required dependency — optional via `pip install narrare-core[memory]`.
 
 ---
 
@@ -318,6 +332,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-05-15 — mem0 architecture details (AsyncMemory, pgvector backend, configurable provider, NullMemoryClient)
+> Last updated: 2026-05-21 — embedding cascade (ADR-017), sentence-transformers as optional dependency
 > Maintained by: Architecture Agent
 > Changes require ADR

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from narrare.settings.contracts import UserSettingsRepositoryProtocol
 
-from narrare.settings.schemas import CustomTone, CustomToneCreate, CustomToneUpdate
+from narrare.settings.schemas_tones import CustomTone, CustomToneCreate, CustomToneUpdate
 
 logger = structlog.get_logger(__name__)
 

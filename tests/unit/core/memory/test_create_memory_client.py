@@ -186,3 +186,145 @@ class TestCreateMemoryClientSuccess:
         assert embedder_config["config"]["model"] == "text-embedding-3-large"
         assert embedder_config["config"]["api_key"] == "embed-key"
         assert embedder_config["config"]["base_url"] == "https://embed.api.com"
+
+
+class TestCreateMemoryClientCascade:
+    """Tests for cascade-based embedding resolution in create_memory_client."""
+
+    async def test_zai_user_gets_local_embeddings(self) -> None:
+        """z.ai user (no embedding API) → Tier 3 local sentence-transformers."""
+        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
+        mock_mem0 = (
+            MagicMock()
+        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
+        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+
+        with patch.dict("sys.modules", {"mem0": mock_mem0}):
+            result = await create_memory_client(
+                provider="zai",
+                api_key="zai-key",
+                user_providers=["zai"],
+                user_api_keys={"zai": "zai-key"},
+            )
+
+        assert result is mock_client
+        call_args = mock_mem0.AsyncMemory.from_config.call_args
+        config = call_args.kwargs.get("config_dict") or call_args[0][0]
+        # mem0 uses "huggingface" provider for sentence-transformers
+        assert config["embedder"]["provider"] == "huggingface"
+        assert config["embedder"]["config"]["model"] == "all-MiniLM-L6-v2"
+
+    async def test_openai_user_gets_openai_embeddings(self) -> None:
+        """OpenAI user → Tier 1 OpenAI embeddings."""
+        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
+        mock_mem0 = (
+            MagicMock()
+        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
+        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+
+        with patch.dict("sys.modules", {"mem0": mock_mem0}):
+            result = await create_memory_client(
+                provider="openai",
+                api_key="sk-test",
+                user_providers=["openai"],
+                user_api_keys={"openai": "sk-test"},
+            )
+
+        assert result is mock_client
+        call_args = mock_mem0.AsyncMemory.from_config.call_args
+        config = call_args.kwargs.get("config_dict") or call_args[0][0]
+        assert config["embedder"]["provider"] == "openai"
+        assert config["embedder"]["config"]["model"] == "text-embedding-3-small"
+        assert config["embedder"]["config"]["api_key"] == "sk-test"
+
+    async def test_anthropic_user_gets_local_embeddings(self) -> None:
+        """Anthropic user (no embedding API) → Tier 3 local."""
+        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
+        mock_mem0 = (
+            MagicMock()
+        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
+        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+
+        with patch.dict("sys.modules", {"mem0": mock_mem0}):
+            result = await create_memory_client(
+                provider="anthropic",
+                api_key="sk-ant-key",
+                user_providers=["anthropic"],
+                user_api_keys={"anthropic": "sk-ant-key"},
+            )
+
+        assert result is mock_client
+        call_args = mock_mem0.AsyncMemory.from_config.call_args
+        config = call_args.kwargs.get("config_dict") or call_args[0][0]
+        assert config["embedder"]["provider"] == "huggingface"
+
+    async def test_disabled_provider_returns_null_client(self) -> None:
+        """embedding_provider="disabled" → NullMemoryClient."""
+        result = await create_memory_client(
+            provider="openai",
+            api_key="sk-test",
+            embedding_provider="disabled",
+        )
+        assert isinstance(result, NullMemoryClient)
+
+    async def test_custom_instructions_in_config(self) -> None:
+        """Custom instructions are passed to mem0 config."""
+        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
+        mock_mem0 = (
+            MagicMock()
+        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
+        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+
+        custom_prompt = "Extract only dialogue preferences."
+        with patch.dict("sys.modules", {"mem0": mock_mem0}):
+            await create_memory_client(
+                provider="openai",
+                api_key="sk-test",
+                custom_instructions=custom_prompt,
+            )
+
+        call_args = mock_mem0.AsyncMemory.from_config.call_args
+        config = call_args.kwargs.get("config_dict") or call_args[0][0]
+        assert config["custom_instructions"] == custom_prompt
+
+    async def test_default_custom_instructions_in_config(self) -> None:
+        """Default WRITING_PREFERENCE_EXTRACTION_PROMPT used when no custom."""
+        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
+        mock_mem0 = (
+            MagicMock()
+        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
+        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+
+        from narrare_core.memory.mem0_client import WRITING_PREFERENCE_EXTRACTION_PROMPT
+
+        with patch.dict("sys.modules", {"mem0": mock_mem0}):
+            await create_memory_client(
+                provider="openai",
+                api_key="sk-test",
+            )
+
+        call_args = mock_mem0.AsyncMemory.from_config.call_args
+        config = call_args.kwargs.get("config_dict") or call_args[0][0]
+        assert config["custom_instructions"] == WRITING_PREFERENCE_EXTRACTION_PROMPT
+
+    async def test_legacy_embedding_params_override_cascade(self) -> None:
+        """Legacy embedding_model/api_key/base_url params override cascade."""
+        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
+        mock_mem0 = (
+            MagicMock()
+        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
+        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+
+        with patch.dict("sys.modules", {"mem0": mock_mem0}):
+            await create_memory_client(
+                provider="openai",
+                api_key="llm-key",
+                embedding_model="text-embedding-3-large",
+                embedding_api_key="embed-key",
+                embedding_base_url="https://embed.api.com",
+            )
+
+        call_args = mock_mem0.AsyncMemory.from_config.call_args
+        config = call_args.kwargs.get("config_dict") or call_args[0][0]
+        assert config["embedder"]["config"]["model"] == "text-embedding-3-large"
+        assert config["embedder"]["config"]["api_key"] == "embed-key"

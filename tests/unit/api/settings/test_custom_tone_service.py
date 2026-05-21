@@ -7,7 +7,7 @@ import uuid
 import pytest
 
 from narrare.settings.custom_tone_service import MAX_CUSTOM_TONES, CustomToneService
-from narrare.settings.schemas import CustomToneCreate, CustomToneUpdate
+from narrare.settings.schemas_tones import CustomToneCreate, CustomToneUpdate
 from narrare_core.shared.errors import NotFoundError, ValidationError
 from tests.fakes.fake_user_settings_repo import FakeUserSettingsRepository
 

@@ -10,6 +10,11 @@ from narrare_core.agents.graph_store import GraphStateStore
 from narrare_core.agents.kb_agent import KBAgent, KBDeps
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.outline_types import OutlineOutput
+from narrare_core.agents.preference_analysis_agent import (
+    PreferenceAnalysisAgent,
+    PreferenceAnalysisDeps,
+)
+from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
@@ -39,6 +44,9 @@ __all__ = [
     "OutlineAgent",
     "OutlineDeps",
     "OutlineOutput",
+    "PreferenceAnalysisAgent",
+    "PreferenceAnalysisDeps",
+    "PreferenceAnalysisOutput",
     "ReviewAgent",
     "ReviewDeps",
     "ReviewOutput",

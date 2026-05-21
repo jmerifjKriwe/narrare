@@ -6,7 +6,7 @@ Contains request/response models for all settings endpoints:
 - AI provider management (create, update, masked response)
 - AI settings (default model, category/intent overrides, token limits)
 - Project AI overrides
-- Custom tones (user-defined writing tones)
+- Custom tones — see schemas_tones.py (RULE-04 split)
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ import uuid  # noqa: TC003 - needed at runtime for Pydantic model resolution
 from datetime import datetime  # noqa: TC003
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from narrare.settings.schemas_tones import CustomTone  # noqa: TC001 — used in Pydantic annotation
 
 # ---------------------------------------------------------------------------
 # Existing schemas (user settings, project settings)
@@ -121,6 +123,9 @@ class UserAiSettingsResponse(BaseModel):
     intent_overrides: dict[str, object]
     token_limit_profile: str
     token_limit_overrides: dict[str, object]
+    embedding_provider: str = "auto"
+    embedding_model: str | None = None
+    active_embedding_tier: str | None = None
     updated_at: datetime
 
 
@@ -140,6 +145,16 @@ class UpdateUserAiSettingsRequest(BaseModel):
         pattern=r"^(quick|balanced|long_texts|custom)$",
     )
     token_limit_overrides: dict[str, object] | None = None
+    embedding_provider: str | None = Field(
+        default=None,
+        max_length=20,
+        description="Embedding provider: auto, openai, local, or disabled",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        max_length=100,
+        description="Custom embedding model name (null = use default)",
+    )
 
 
 class ProjectAiSettingsResponse(BaseModel):
@@ -163,34 +178,3 @@ class UpdateProjectAiSettingsRequest(BaseModel):
     category_overrides: dict[str, object] | None = None
     intent_overrides: dict[str, object] | None = None
     token_limit_overrides: dict[str, object] | None = None
-
-
-# ---------------------------------------------------------------------------
-# Custom tone schemas
-# ---------------------------------------------------------------------------
-
-
-class CustomTone(BaseModel):
-    """A user-defined writing tone."""
-
-    id: str = Field(description="Unique tone identifier (UUID)")
-    name: str = Field(min_length=1, max_length=50, description="Display name")
-    instructions: str = Field(
-        min_length=1, max_length=500, description="Tone instructions for the LLM"
-    )
-
-
-class CustomToneCreate(BaseModel):
-    """Request to create a new custom tone."""
-
-    name: str = Field(min_length=1, max_length=50, description="Display name")
-    instructions: str = Field(
-        min_length=1, max_length=500, description="Tone instructions for the LLM"
-    )
-
-
-class CustomToneUpdate(BaseModel):
-    """Request to update an existing custom tone."""
-
-    name: str | None = Field(default=None, min_length=1, max_length=50)
-    instructions: str | None = Field(default=None, min_length=1, max_length=500)

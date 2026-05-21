@@ -117,6 +117,10 @@ class UserAiSettings(Base):
     token_limit_overrides: Mapped[dict[str, object]] = mapped_column(
         JSONB, default=dict, server_default="{}", nullable=False
     )
+    embedding_provider: Mapped[str] = mapped_column(
+        String(20), default="auto", server_default="auto", nullable=False
+    )
+    embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

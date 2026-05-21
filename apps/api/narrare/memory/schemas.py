@@ -16,8 +16,12 @@ class FeedbackRequest(BaseModel):
     intent: str = Field(..., min_length=1, max_length=50)
     suggestion_text: str = Field(..., min_length=1)
     modification: str | None = None
+    rating: int | None = Field(default=None, ge=1, le=5, description="Optional 1-5 rating")
     context: dict[str, object] | None = None
     project_id: uuid.UUID
+    chapter_id: uuid.UUID | None = None
+    genre: str | None = None
+    mode: str | None = None
 
 
 class FeedbackResponse(BaseModel):
@@ -50,3 +54,27 @@ class ResetResponse(BaseModel):
 
     message: str
     deleted_count: int
+
+
+class AnalyzeRequest(BaseModel):
+    """Request body for triggering preference analysis."""
+
+    project_id: uuid.UUID
+
+
+class AnalyzeResponse(BaseModel):
+    """Response body after preference analysis completes."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    project_id: uuid.UUID
+    confidence: float
+    summary: str
+    style_patterns: list[str]
+    content_patterns: list[str]
+    avoidance_patterns: list[str]
+    event_count_at_analysis: int
+    created_at: datetime
+    updated_at: datetime

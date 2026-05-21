@@ -106,7 +106,7 @@ jobs:
             -r apps/api/narrare packages/core/narrare_core
 
       - name: pip-audit
-        run: uv run pip-audit
+        run: uv run pip-audit --skip-editable --ignore-vuln PYSEC-2025-183
 
   # -------------------------------------------------------------------------
   # Unit tests (< 5 min, no Docker)

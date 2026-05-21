@@ -36,6 +36,7 @@ class FeedbackEvent:
     intent: str
     suggestion_text: str
     modification: str = ""
+    rating: int | None = None  # 1-5, optional user rating
     context: dict[str, object] = field(default_factory=dict[str, object])
     id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(

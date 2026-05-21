@@ -478,7 +478,8 @@
       "feature5": "Design moderne et sans distraction"
     },
     "promptsTab": "Prompts système",
-    "kbTemplates": "Modèles KB"
+    "kbTemplates": "Modèles KB",
+    "learning": "Apprentissage"
   },
   "wizard": {
     "step1": {
@@ -1282,5 +1283,35 @@
     "loginError": "E-mail ou mot de passe invalide",
     "registerError": "Échec de l'inscription",
     "loading": "Chargement..."
+  },
+  "learning": {
+    "title": "Apprentissage",
+    "description": "Découvrez comment l'IA apprend votre style d'écriture à partir de vos retours",
+    "statusInteractions": "{count}/50 interactions",
+    "confidence": "Confiance : {score}%",
+    "stylePatterns": "Patterns de style",
+    "contentPatterns": "Patterns de contenu",
+    "avoidancePatterns": "Patterns d'évitement",
+    "noData": "Pas encore assez de données. Continuez à écrire !",
+    "reset": "Réinitialiser les préférences",
+    "resetConfirm": "Cela supprimera toutes les préférences apprises. Continuer ?",
+    "resetting": "Réinitialisation...",
+    "confirmReset": "Oui, réinitialiser",
+    "cancelReset": "Annuler",
+    "rating": "Évaluez cette suggestion",
+    "rejectReason": "Pourquoi avez-vous rejeté ceci ?",
+    "submitRating": "Soumettre",
+    "skipRating": "Ignorer",
+    "ratingSubmitted": "Merci pour votre retour !",
+    "analyze": "Analyser maintenant",
+    "analyzing": "Analyse en cours...",
+    "minEventsHint": "Au moins {min} interactions requises ({current}/{min})",
+    "profileEmpty": "Pas encore de profil de préférence",
+    "loading": "Chargement des données d'apprentissage...",
+    "progressLabel": "Progression de l'apprentissage",
+    "tierCollecting": "Collecte",
+    "tierEmerging": "Émergent",
+    "tierGrowing": "Croissance",
+    "tierEstablished": "Établi"
   }
 }

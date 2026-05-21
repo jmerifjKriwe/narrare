@@ -7,7 +7,7 @@ Two service classes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -39,12 +39,18 @@ class MemoryFeedbackService:
         self,
         repository: FeedbackRepository,
         core_feedback: FeedbackService,
+        event_publisher: Any | None = None,
     ) -> None:
         self._repository = repository
         self._core_feedback = core_feedback
+        self._event_publisher = event_publisher
 
     async def record_feedback(self, request: FeedbackRequest, user_id: UUID) -> FeedbackResponse:
         """Record a feedback event and return the persisted response.
+
+        Builds the core FeedbackEvent with enriched context (rating,
+        chapter_id, genre, mode) and records it. Optionally publishes
+        a ``FeedbackRecorded`` event for TaskIQ async processing.
 
         Args:
             request: Feedback data from the client.
@@ -56,6 +62,16 @@ class MemoryFeedbackService:
         from narrare_core.memory.models import FeedbackAction, FeedbackEvent
 
         action = FeedbackAction(request.action)
+
+        # Build enriched context with additional metadata
+        context = dict(request.context) if request.context else {}
+        if request.chapter_id:
+            context["chapter_id"] = str(request.chapter_id)
+        if request.genre:
+            context["genre"] = request.genre
+        if request.mode:
+            context["mode"] = request.mode
+
         event = FeedbackEvent(
             user_id=user_id,
             project_id=request.project_id,
@@ -64,7 +80,8 @@ class MemoryFeedbackService:
             intent=request.intent,
             suggestion_text=request.suggestion_text,
             modification=request.modification or "",
-            context=request.context or {},
+            rating=request.rating,
+            context=context,
         )
 
         await self._core_feedback.record(event)
@@ -74,7 +91,23 @@ class MemoryFeedbackService:
             user_id=str(user_id),
             project_id=str(request.project_id),
             action=action.value,
+            has_rating=request.rating is not None,
         )
+
+        # Publish event for async processing (TaskIQ integration)
+        if self._event_publisher is not None:
+            try:
+                await self._event_publisher.publish_feedback_recorded(
+                    user_id=user_id,
+                    project_id=request.project_id,
+                    event_id=event.id,
+                )
+            except Exception:
+                logger.warning(
+                    "event_publish_failed",
+                    event_id=str(event.id),
+                    exc_info=True,
+                )
 
         return FeedbackResponse(
             id=event.id,
