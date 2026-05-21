@@ -16,6 +16,8 @@ import pytest
 from pydantic_graph import StepContext
 
 from narrare_core.agents.draft_types import DraftOutput
+from narrare_core.agents.outline_types import OutlineOutput
+from narrare_core.agents.review_types import ReviewOutput
 from narrare_core.agents.writing_graph import create_writing_graph
 from narrare_core.agents.writing_graph_types import (
     Approved,
@@ -86,11 +88,56 @@ class TestPlanOutline:
     async def test_plan_outline_generates_default_outline(self, writing_graph: Any) -> None:
         node = writing_graph.nodes["plan_outline"]
         state = _make_state(chapter_id="ch-42")
-        deps = _make_deps(chapter_outline="")
-        ctx = StepContext(state=state, deps=deps, inputs=None)
-        await node.call(ctx)
-        assert "ch-42" in state.outline
+        deps = _make_deps(chapter_outline="", genre="fantasy", tone="dark")
+        mock_output = OutlineOutput(
+            chapter_title="The Dark Descent",
+            scenes=["Entry into darkness", "The first trial"],
+            outline_text="The hero enters the dark forest.",
+        )
+        with (
+            patch(
+                "narrare_core.agents.writing_graph._get_model",
+                new_callable=AsyncMock,
+                return_value="mock_model",
+            ),
+            patch("narrare_core.agents.writing_graph.OutlineAgent") as MockAgent,
+        ):
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_output)
+            MockAgent.return_value = mock_instance
+            ctx = StepContext(state=state, deps=deps, inputs=None)
+            await node.call(ctx)
+        assert "The hero enters the dark forest." in state.outline
         assert state.status == WritingStatus.OUTLINED
+
+    @pytest.mark.asyncio
+    async def test_plan_outline_calls_outline_agent(self, writing_graph: Any) -> None:
+        """plan_outline ruft OutlineAgent wenn kein chapter_outline."""
+        node = writing_graph.nodes["plan_outline"]
+        state = _make_state(chapter_id="ch-05")
+        deps = _make_deps(chapter_outline="", genre="sci-fi", tone="dark")
+        mock_output = OutlineOutput(
+            chapter_title="The Discovery",
+            scenes=["Scene 1", "Scene 2"],
+            outline_text="A spaceship discovers an alien artifact.",
+        )
+        with (
+            patch(
+                "narrare_core.agents.writing_graph._get_model",
+                new_callable=AsyncMock,
+                return_value="mock_model",
+            ),
+            patch("narrare_core.agents.writing_graph.OutlineAgent") as MockAgent,
+        ):
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_output)
+            MockAgent.return_value = mock_instance
+            ctx = StepContext(state=state, deps=deps, inputs=None)
+            await node.call(ctx)
+            MockAgent.assert_called_once_with(model="mock_model")
+            mock_instance.run.assert_called_once()
+            prompt_arg = mock_instance.run.call_args[1]["prompt"]
+            assert "ch-05" in prompt_arg
 
 
 class TestReviewDraft:
@@ -100,8 +147,24 @@ class TestReviewDraft:
         draft = " ".join(["word"] * 800)
         state = _make_state(draft=draft, attempts=0)
         deps = _make_deps(word_target=1000)
-        ctx = StepContext(state=state, deps=deps, inputs=None)
-        result = await node.call(ctx)
+        mock_output = ReviewOutput(
+            approved=True,
+            feedback="Well structured.",
+            quality_score=7,
+        )
+        with (
+            patch(
+                "narrare_core.agents.writing_graph._get_model",
+                new_callable=AsyncMock,
+                return_value="mock_model",
+            ),
+            patch("narrare_core.agents.writing_graph.ReviewAgent") as MockAgent,
+        ):
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_output)
+            MockAgent.return_value = mock_instance
+            ctx = StepContext(state=state, deps=deps, inputs=None)
+            result = await node.call(ctx)
         assert isinstance(result, Approved)
 
     @pytest.mark.asyncio
@@ -249,8 +312,24 @@ class TestStatePersistence:
         store = MockStore()
         state = _make_state(draft=" ".join(["word"] * 800), attempts=0)
         deps = _make_deps(word_target=1000, store=store, run_id="run-1")
-        ctx = StepContext(state=state, deps=deps, inputs=None)
-        result = await node.call(ctx)
+        mock_output = ReviewOutput(
+            approved=True,
+            feedback="Well structured.",
+            quality_score=7,
+        )
+        with (
+            patch(
+                "narrare_core.agents.writing_graph._get_model",
+                new_callable=AsyncMock,
+                return_value="mock_model",
+            ),
+            patch("narrare_core.agents.writing_graph.ReviewAgent") as MockAgent,
+        ):
+            mock_instance = AsyncMock()
+            mock_instance.run = AsyncMock(return_value=mock_output)
+            MockAgent.return_value = mock_instance
+            ctx = StepContext(state=state, deps=deps, inputs=None)
+            result = await node.call(ctx)
         assert isinstance(result, Approved)
         assert len(store.saves) == 1
 

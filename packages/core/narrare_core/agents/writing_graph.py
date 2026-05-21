@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from pydantic_graph.graph_builder import Graph as BuilderGraph
 
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
+from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
+from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.writing_graph_types import (
     Approved,
     NeedsRevision,
@@ -80,11 +82,32 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
 
     @g.step
     async def plan_outline(ctx: StepContext[WritingState, WritingDeps, None]) -> None:
-        """Erstelle Outline aus dem vorhandenem Kontext."""
+        """Erstelle Outline via OutlineAgent."""
         if ctx.deps.chapter_outline:
             ctx.state.outline = ctx.deps.chapter_outline
-        else:
-            ctx.state.outline = "Chapter " + ctx.state.chapter_id + " outline"
+            ctx.state.status = WritingStatus.OUTLINED
+            await _save_state(ctx)
+            return
+
+        model = await _get_model(ctx.deps)
+        agent = OutlineAgent(model=model)
+
+        instruction = (
+            f"Create a chapter outline for chapter {ctx.state.chapter_id}.\n"
+            f"Genre: {ctx.deps.genre}\n"
+            f"Tone: {ctx.deps.tone}\n"
+            f"Language: {ctx.deps.language}\n"
+        )
+        if ctx.deps.chapter_content:
+            instruction += f"Existing content context:\n{ctx.deps.chapter_content[:500]}\n"
+
+        deps = OutlineDeps(
+            genre=ctx.deps.genre,
+            tone=ctx.deps.tone,
+            language=ctx.deps.language,
+        )
+        result = await agent.run(prompt=instruction, deps=deps)
+        ctx.state.outline = result.outline_text or result.chapter_title
         ctx.state.status = WritingStatus.OUTLINED
         await _save_state(ctx)
 
@@ -113,14 +136,16 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
     async def review_draft(
         ctx: StepContext[WritingState, WritingDeps, None],
     ) -> Approved | NeedsRevision:
-        """Review den Draft — gibt Approved oder NeedsRevision zurück."""
+        """Review den Draft via ReviewAgent + word-count Guards."""
         word_count = len(ctx.state.draft.split()) if ctx.state.draft else 0
         target = ctx.deps.word_target
 
+        # Hard guard: max attempts
         if ctx.state.attempts >= 3:
             await _save_state(ctx)
             return Approved()
 
+        # Hard guard: draft too short
         if target and word_count < int(target * 0.5):
             ctx.state.attempts += 1
             await _save_state(ctx)
@@ -132,16 +157,29 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
                 + ").",
             )
 
-        if target and word_count < int(target * 0.8) and ctx.state.attempts < 1:
+        # LLM-powered review via ReviewAgent
+        model = await _get_model(ctx.deps)
+        agent = ReviewAgent(model=model)
+        rdeps = ReviewDeps(word_target=target)
+
+        review_prompt = (
+            f"Review the following draft text.\n"
+            f"Genre: {ctx.deps.genre}\n"
+            f"Tone: {ctx.deps.tone}\n"
+            f"Target word count: {target}\n"
+            f"Actual word count: {word_count}\n"
+            f"Draft:\n{ctx.state.draft}\n"
+        )
+
+        result = await agent.run(prompt=review_prompt, deps=rdeps)
+
+        if not result.approved and ctx.state.attempts < 3:
             ctx.state.attempts += 1
+            feedback_parts = [result.feedback]
+            if result.suggestions:
+                feedback_parts.append("Suggestions:\n- " + "\n- ".join(result.suggestions))
             await _save_state(ctx)
-            return NeedsRevision(
-                feedback="Good start ("
-                + str(word_count)
-                + " words), target is ~"
-                + str(target)
-                + ".",
-            )
+            return NeedsRevision(feedback="\n\n".join(feedback_parts))
 
         await _save_state(ctx)
         return Approved()
