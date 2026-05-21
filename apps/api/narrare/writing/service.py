@@ -7,6 +7,7 @@ This is the main business logic layer for chapter generation.  It delegates:
 - Feedback recording to :class:`FeedbackCollector`
 - Scene operations to :class:`SceneService`
 - Stats to :class:`StatsService`
+- Tone resolution to :func:`resolve_tone_instructions` (tone_resolver module)
 
 Implements :class:`WritingServiceProtocol` from ``contracts.py`` (RULE-03).
 """
@@ -19,6 +20,7 @@ from uuid import UUID
 
 import structlog
 
+from narrare.writing._helpers import record_feedback, validate_generation_input
 from narrare.writing.schemas import (
     AcceptResponse,
     GenerateRequest,
@@ -28,11 +30,13 @@ from narrare.writing.schemas import (
     SceneNextResponse,
     StopResponse,
 )
-from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+from narrare.writing.tone_resolver import resolve_tone_instructions
+from narrare_core.shared.errors import ConflictError, NotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.models import GenerationRequest
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.scene_service import SceneService
@@ -60,6 +64,7 @@ class WritingService:
         feedback_service: FeedbackCollector | None = None,
         scene_service: SceneService | None = None,
         stats_service: StatsService | None = None,
+        tone_service: CustomToneService | None = None,
     ) -> None:
         self._repo = repo
         self._pipeline = pipeline
@@ -70,6 +75,7 @@ class WritingService:
         self._feedback = feedback_service
         self._scene_service = scene_service
         self._stats_service = stats_service
+        self._tone_service = tone_service
 
     # -- Generation lifecycle -------------------------------------------
 
@@ -81,7 +87,7 @@ class WritingService:
         request: GenerateRequest,
     ) -> GenerateResponse:
         """Start a generation request. Raises ValidationError or ConflictError."""
-        _validate_generation_input(request)
+        validate_generation_input(request)
         active = await self._repo.get_active_for_chapter(chapter_id)
         if active is not None:
             raise ConflictError(f"Generation already active for chapter {chapter_id}")
@@ -91,12 +97,14 @@ class WritingService:
             novel_id=novel_id,
             user_id=UUID(user_id),
             mode=request.mode.value,
+            tone=request.tone,
         )
         logger.info(
             "generation_started",
             request_id=str(request_id),
             chapter_id=str(chapter_id),
             mode=request.mode.value,
+            tone=request.tone,
         )
 
         return GenerateResponse(
@@ -130,6 +138,13 @@ class WritingService:
             project_id=request_model.novel_id,
             user_id=request_model.user_id,
             mode=mode,
+            tone=request_model.tone,
+        )
+
+        custom_tone_instructions = await resolve_tone_instructions(
+            tone=request_model.tone,
+            user_id=request_model.user_id,
+            tone_service=self._tone_service,
         )
 
         accumulated: list[str] = []
@@ -139,6 +154,7 @@ class WritingService:
                 config=self._config,
                 api_key=self._api_key,
                 base_url=self._base_url,
+                custom_tone_instructions=custom_tone_instructions,
                 **context_kwargs,  # type: ignore[arg-type]
             ):
                 if chunk.is_final:
@@ -189,7 +205,7 @@ class WritingService:
     ) -> AcceptResponse:
         """Accept a generated draft."""
         request_model = await self._get_validated_request(request_id, user_id)
-        await _record_feedback(self._feedback, request_model, "accept", modified_text=modified_text)
+        await record_feedback(self._feedback, request_model, "accept", modified_text=modified_text)
         logger.info("draft_accepted", request_id=str(request_id))
 
         return AcceptResponse(
@@ -201,7 +217,7 @@ class WritingService:
     async def reject_draft(self, request_id: UUID, user_id: str) -> RejectResponse:
         """Reject a generated draft."""
         request_model = await self._get_validated_request(request_id, user_id)
-        await _record_feedback(self._feedback, request_model, "reject")
+        await record_feedback(self._feedback, request_model, "reject")
         logger.info("draft_rejected", request_id=str(request_id))
 
         return RejectResponse(request_id=request_id)
@@ -260,40 +276,3 @@ class WritingService:
         if str(request_model.user_id) != user_id:
             raise NotFoundError("Generation request", identifier=str(request_id))
         return request_model
-
-
-# ---------------------------------------------------------------------------
-# Module-level helpers (shared across sub-services)
-# ---------------------------------------------------------------------------
-
-
-def _validate_generation_input(request: GenerateRequest) -> None:
-    """Ensure at least one of prompt, outline, or auto_continue is set."""
-    if not request.prompt and not request.outline and not request.auto_continue:
-        raise ValidationError(
-            "At least one of prompt, outline, or auto_continue must be provided",
-            code="MISSING_INPUT",
-        )
-
-
-async def _record_feedback(
-    feedback_service: FeedbackCollector | None,
-    request_model: GenerationRequest,
-    action: str,
-    *,
-    modified_text: str | None = None,
-) -> None:
-    """Record feedback via FeedbackCollector if available."""
-    if feedback_service is None:
-        return
-    from narrare_core.memory.models import FeedbackAction, FeedbackEvent
-
-    event = FeedbackEvent(
-        user_id=request_model.user_id,
-        project_id=request_model.novel_id,
-        suggestion_id=request_model.id,
-        action=FeedbackAction(action),
-        intent="write",
-        suggestion_text=modified_text or "",
-    )
-    await feedback_service.record(event)

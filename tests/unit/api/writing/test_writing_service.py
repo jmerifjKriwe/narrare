@@ -100,7 +100,7 @@ def service(
     mock_draft_processor: MagicMock,
     config: ResolvedModelConfig,
 ) -> WritingService:
-    """WritingService with mocked dependencies."""
+    """WritingService with mocked dependencies (no tone service by default)."""
     return WritingService(
         repo=mock_repo,
         pipeline=mock_pipeline,
@@ -137,6 +137,39 @@ class TestStartGeneration:
         assert response.mode == "full_draft"
         assert isinstance(response.request_id, uuid.UUID)
         mock_repo.create.assert_called_once()
+
+    async def test_start_generation_passes_tone_to_repo(
+        self,
+        service: WritingService,
+        mock_repo: AsyncMock,
+    ) -> None:
+        """start_generation() stores the tone from the request."""
+        chapter_id = uuid.uuid4()
+        novel_id = uuid.uuid4()
+        user_id = str(uuid.uuid4())
+        request = _make_request(tone="humorous")
+
+        await service.start_generation(chapter_id, novel_id, user_id, request)
+
+        mock_repo.create.assert_called_once()
+        call_kwargs = mock_repo.create.call_args.kwargs
+        assert call_kwargs["tone"] == "humorous"
+
+    async def test_start_generation_default_tone_is_balanced(
+        self,
+        service: WritingService,
+        mock_repo: AsyncMock,
+    ) -> None:
+        """start_generation() defaults tone to 'balanced' when not specified."""
+        chapter_id = uuid.uuid4()
+        novel_id = uuid.uuid4()
+        user_id = str(uuid.uuid4())
+        request = _make_request()
+
+        await service.start_generation(chapter_id, novel_id, user_id, request)
+
+        call_kwargs = mock_repo.create.call_args.kwargs
+        assert call_kwargs.get("tone", "balanced") == "balanced"
 
     async def test_start_generation_with_concurrent_request_raises_conflict(
         self,

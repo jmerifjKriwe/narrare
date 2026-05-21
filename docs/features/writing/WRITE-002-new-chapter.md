@@ -1,7 +1,7 @@
 ---
 id: WRITE-002
 title: "AI: New Chapter Generation"
-status: planned
+status: stable
 area: writing
 mvp: true
 
@@ -122,6 +122,16 @@ Generated text is fully editable — treat it as your rough draft.
 **LLM Intent:** `LLMIntent.GENERATE`
 **Streaming:** Yes — Server-Sent Events (SSE)
 
+**Backend files (in `apps/api/narrare/writing/`):**
+- `ws_handler.py` — WebSocket session handler
+- `_ws_cache.py` — In-memory session cache
+- `_interview_draft.py` — Interview draft handling
+- `tone_resolver.py` — Tone resolution logic (bundled vs custom)
+- `_helpers.py` — Shared helpers (validation, feedback)
+
+**Core files (in `packages/core/narrare_core/writing/`):**
+- `pipeline_graph.py` — WritingGraph-based full draft generation (ADR-015)
+
 **4 Generation modes (dispatch via WritingPipeline):**
 1. **full_draft** — Complete chapter from start to finish via `pipeline.py`
 2. **scene_by_scene** — Generate one scene at a time with review between scenes via `pipeline_scene.py` (see `scene_service.py` on API side)
@@ -133,17 +143,21 @@ Generated text is fully editable — treat it as your rough draft.
    - Immediate context (30%), Recent chapters (20%), KB referenced (25%), KB suggested (15%), Pinned (10%)
    - Token budget enforcement via `budget.py` (`TokenBudgetManager`)
    - KB entity relevance: 50% similarity, 30% frequency, 20% recency
-2. **Prompt building** (INFRA-002): Assemble system + user prompts from `_bundled/writing/{lang}/{mode}/`
-   - 12 system prompts (4 modes × 3 languages: en, de, fr)
-   - 4 tone variants: balanced, dramatic, suspenseful, quiet
+ 2. **Prompt building** (INFRA-002): Assemble system + user prompts from `_bundled/writing/{lang}/{mode}/`
+    - 12 system prompts (4 modes × 3 languages: en, de, fr)
+    - 9 bundled tones (defined in `pipeline.py` `_TONE_INSTRUCTIONS`): balanced, dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous, quiet
+    - Custom tones: user-defined instructions stored in `user_settings.custom_tones`, resolved by `tone_resolver.py` and passed as `custom_tone_instructions` to `WritingPipeline.generate()`
+    - Prompt cascade overrides: `prompts/_bundled/writing/tones/{balanced,dramatic,quiet,suspenseful}.md`
+    - `is_bundled_tone()` public function in `pipeline.py` distinguishes bundled vs custom tones
 3. **LLM call**: Stream generation via LLM Gateway
 4. **Post-processing**: `DraftProcessor` (legacy path) or `DraftAgent` Output Function (Phase 2 ADR-015, via `use_draft_agent` feature flag) — artifact removal + markdown normalization + word-target enforcement
 5. **Persistence**: `GenerationRepository` — status transitions, concurrent generation prevention
 
 **API models:**
-- SQLAlchemy model: `generation_requests` table (migration 0008) with FK to `chapter_versions`
+- SQLAlchemy model: `generation_requests` table (migration 0008, tone column added in migration 0020) with FK to `chapter_versions`
 - 11 Pydantic schemas in `writing/schemas.py`
 - Status lifecycle: pending → generating → completed/failed
+- `tone` column stores the selected tone (bundled name or custom tone ID)
 
 **User controls during generation:**
 - Stop/Resume generation
@@ -151,11 +165,16 @@ Generated text is fully editable — treat it as your rough draft.
 - Draft review via `GenerationDraft.tsx`
 - Real-time streaming display via `GenerationPanel.tsx`
 
-**Frontend components:**
+**Frontend components (in `packages/web/`):**
 - `lib/api/generation.ts` — API client with SSE streaming + WebSocket client
 - `components/studio/editor/GenerationPanel.tsx` — Generation trigger + streaming display
-- `components/studio/editor/GenerationConfig.tsx` — Mode selection + options
+- `components/studio/editor/GenerationConfig.tsx` — Mode selection + options (tone selector shows 9 bundled + custom tones with visual separator)
 - `components/studio/editor/GenerationDraft.tsx` — Draft zone + controls
+- `components/studio/editor/SessionPanel.tsx` — Interactive session chat UI
+- `components/studio/editor/ChatMessage.tsx` — Chat message bubble
+- `components/studio/editor/commands.ts` — Command palette with generation commands
+- `components/studio/writing/WritingGraphStatus.tsx` — Pipeline step status display
+- `lib/constants/tones.ts` — Bundled tone definitions (frontend-side)
 - Generation commands registered in CommandPalette
 
 ## Constraints & Edge Cases
@@ -182,3 +201,4 @@ Generated text is fully editable — treat it as your rough draft.
 - `project-init` — Added to registry as planned feature
 - `2026-05-17` — Implementation started (in-progress). Core writing pipeline with 4 generation modes, API endpoints with SSE streaming, frontend GenerationPanel/Config/Draft components. Prompts: 12 system prompts (4 modes × 3 languages) + 4 tone variants. Migration 0008 for generation_requests table.
 - `2026-05-18` — Fully implemented (stable). All 4 generation modes operational, SSE streaming + WebSocket sessions, frontend generation UI complete, 98 tasks done.
+- `2026-05-21` — Tone flow fixed: expanded from 4 to 9 bundled tones + custom tone support. Tone now stored in generation_requests (migration 0020) and flows correctly through pipeline. Integration tests re-enabled. Spec paths corrected.

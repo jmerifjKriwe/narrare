@@ -23,6 +23,7 @@ class GenerationRepository(BaseRepository):
         novel_id: uuid.UUID,
         user_id: uuid.UUID,
         mode: str,
+        tone: str = "balanced",
     ) -> uuid.UUID:
         """Insert a new generation request with status 'pending'.
 
@@ -34,6 +35,7 @@ class GenerationRepository(BaseRepository):
             novel_id=novel_id,
             user_id=user_id,
             mode=mode,
+            tone=tone,
             status="pending",
         )
         self._session.add(request)

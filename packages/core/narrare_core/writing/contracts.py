@@ -33,11 +33,18 @@ class WritingPipelineProtocol(Protocol):
     async def generate(
         self,
         request: GenerationRequest,
+        *,
+        custom_tone_instructions: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream generated text chunks for the given request.
 
         Yields ``StreamChunk`` instances containing text fragments.
         The final chunk has ``is_final=True`` and includes token usage.
+
+        Args:
+            request: The generation request with mode, tone, etc.
+            custom_tone_instructions: User-defined tone instructions
+                to override bundled tones.
         """
         ...
 

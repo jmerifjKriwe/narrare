@@ -7,6 +7,7 @@ Thin delegation layer (RULE-06): every route immediately delegates to
 from __future__ import annotations
 
 import json
+import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter type resolution
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter
@@ -17,7 +18,6 @@ from narrare.writing.deps import get_writing_service
 
 if TYPE_CHECKING:
     from typing import Any
-    from uuid import UUID
 
 from narrare.writing.schemas import (
     AcceptResponse,
@@ -35,8 +35,8 @@ router = APIRouter(prefix="/writing", tags=["writing"])
 
 @router.post("/chapters/{chapter_id}/generate", response_model=GenerateResponse)
 async def start_generation(
-    chapter_id: UUID,
-    novel_id: UUID,
+    chapter_id: uuid.UUID,
+    novel_id: uuid.UUID,
     request: GenerateRequest,
     user_id: CurrentUserIdDep,
     session: SessionDep,
@@ -48,7 +48,7 @@ async def start_generation(
 
 @router.get("/generation/{request_id}/stream")
 async def stream_generation(
-    request_id: UUID,
+    request_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
 ) -> StreamingResponse:
@@ -74,7 +74,7 @@ async def stream_generation(
 
 @router.delete("/generation/{request_id}", response_model=StopResponse)
 async def stop_generation(
-    request_id: UUID,
+    request_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
 ) -> StopResponse:
@@ -85,7 +85,7 @@ async def stop_generation(
 
 @router.post("/generation/{request_id}/accept", response_model=AcceptResponse)
 async def accept_draft(
-    request_id: UUID,
+    request_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
     modified_text: str | None = None,
@@ -97,7 +97,7 @@ async def accept_draft(
 
 @router.post("/generation/{request_id}/reject", response_model=RejectResponse)
 async def reject_draft(
-    request_id: UUID,
+    request_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
 ) -> RejectResponse:

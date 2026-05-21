@@ -26,6 +26,7 @@ class GenerationRequest(Base):
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     mode: Mapped[str] = mapped_column(String(30), nullable=False)
+    tone: Mapped[str] = mapped_column(String(100), nullable=False, default="balanced")
     model_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     provider_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     tokens_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

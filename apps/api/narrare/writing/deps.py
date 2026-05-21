@@ -28,7 +28,9 @@ async def get_writing_service(
     project_id: UUID | None = None,
 ) -> WritingService:
     """Factory for WritingService — resolves model config per user/intent."""
+    from narrare.settings.custom_tone_service import CustomToneService
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
+    from narrare.settings.repository import UserSettingsRepository
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.service import WritingService
     from narrare_core.llm.intents import LLMIntent
@@ -57,6 +59,10 @@ async def get_writing_service(
     )
     repo = GenerationRepository(session)
 
+    # Wire CustomToneService for custom tone resolution
+    settings_repo = UserSettingsRepository(session)
+    tone_service = CustomToneService(repo=settings_repo)
+
     return WritingService(
         repo=repo,
         pipeline=pipeline,
@@ -64,4 +70,5 @@ async def get_writing_service(
         config=config,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
+        tone_service=tone_service,
     )

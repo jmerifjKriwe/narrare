@@ -35,7 +35,7 @@ class GenerateRequest(BaseModel):
     prompt: str | None = None
     auto_continue: bool = False
     word_target: int | None = Field(None, ge=100, le=50000)
-    tone: str = Field("balanced", pattern=r"^(dramatic|quiet|suspenseful|balanced)$")
+    tone: str = Field("balanced", min_length=1, max_length=100)
     language: str = Field("en", min_length=2, max_length=5)
 
 

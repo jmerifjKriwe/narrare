@@ -5,7 +5,7 @@ Extracted from ``router.py`` for RULE-04 compliance (max 150 lines).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter type resolution
 
 from fastapi import APIRouter
 
@@ -16,9 +16,6 @@ from narrare.writing.schemas import (
     GenerationStatsResponse,
     SceneNextResponse,
 )
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 router = APIRouter(prefix="/writing", tags=["writing"])
 
@@ -33,7 +30,7 @@ router = APIRouter(prefix="/writing", tags=["writing"])
     response_model=SceneNextResponse,
 )
 async def next_scene(
-    request_id: UUID,
+    request_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
 ) -> SceneNextResponse:
@@ -47,7 +44,7 @@ async def next_scene(
     response_model=AcceptResponse,
 )
 async def accept_scene(
-    request_id: UUID,
+    request_id: uuid.UUID,
     scene_number: int,
     user_id: CurrentUserIdDep,
     session: SessionDep,
@@ -64,7 +61,7 @@ async def accept_scene(
 
 @router.get("/novels/{novel_id}/stats", response_model=GenerationStatsResponse)
 async def get_stats(
-    novel_id: UUID,
+    novel_id: uuid.UUID,
     user_id: CurrentUserIdDep,
     session: SessionDep,
 ) -> GenerationStatsResponse:

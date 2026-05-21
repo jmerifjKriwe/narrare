@@ -86,6 +86,7 @@ class GenerationRepositoryProtocol(Protocol):
         novel_id: UUID,
         user_id: UUID,
         mode: str,
+        tone: str = "balanced",
     ) -> UUID: ...
 
     async def get_by_id(self, request_id: UUID) -> object | None: ...

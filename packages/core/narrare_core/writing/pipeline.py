@@ -79,6 +79,18 @@ _TONE_INSTRUCTIONS: dict[str, str] = {
 }
 
 
+def is_bundled_tone(tone: str) -> bool:
+    """Check whether a tone name is one of the bundled built-in tones.
+
+    Args:
+        tone: Tone name to check.
+
+    Returns:
+        ``True`` if the tone has built-in instructions.
+    """
+    return tone in _TONE_INSTRUCTIONS
+
+
 class WritingPipeline:
     """Orchestrates the writing generation pipeline in four modes.
 
@@ -118,8 +130,28 @@ class WritingPipeline:
         genre: str = "",
         user_preferences: str = "",
         avoidance_patterns: str = "",
+        custom_tone_instructions: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
-        """Stream generated text chunks for the given request."""
+        """Stream generated text chunks for the given request.
+
+        Args:
+            request: The generation request with mode, tone, etc.
+            config: Resolved model configuration for the LLM call.
+            api_key: Optional API key override.
+            base_url: Optional base URL override.
+            chapter_content: Existing chapter text for continuation.
+            chapter_frontmatter: Chapter metadata/frontmatter.
+            chapter_outline: Chapter outline or structure notes.
+            recent_chapters: List of recent chapters for context.
+            kb_entities: Knowledge base entities for reference.
+            project_title: Title of the project/novel.
+            genre: Genre of the writing project.
+            user_preferences: User's writing preference string.
+            avoidance_patterns: Patterns the user wants to avoid.
+            custom_tone_instructions: User-defined tone instructions
+                to override bundled tones. When provided, used directly
+                instead of looking up ``_TONE_INSTRUCTIONS``.
+        """
         context = await self._context_assembler.assemble(
             chapter_content=chapter_content,
             chapter_frontmatter=chapter_frontmatter,
@@ -230,8 +262,24 @@ class WritingPipeline:
         mode: str = "new_chapter",
         author_instructions: str | None = None,
         extra_overrides: dict[str, str] | None = None,
+        custom_tone_instructions: str | None = None,
     ) -> PromptContext:
-        """Build a PromptContext from request + assembled writing context."""
+        """Build a PromptContext from request + assembled writing context.
+
+        Args:
+            request: The generation request.
+            context: Assembled writing context.
+            mode: Prompt mode (e.g. "new_chapter", "continuation").
+            author_instructions: Override for author instructions.
+            extra_overrides: Additional extra variable overrides.
+            custom_tone_instructions: User-defined tone instructions.
+                When provided, used directly instead of bundled lookup.
+        """
+        tone_instr = (
+            custom_tone_instructions
+            if custom_tone_instructions is not None
+            else self._tone_instructions(context.tone)
+        )
         extra: dict[str, str] = {
             "user_id": str(request.user_id),
             "project_id": str(request.project_id),
@@ -240,7 +288,7 @@ class WritingPipeline:
             "kb_locations": context.kb_locations,
             "recent_chapters": context.recent_chapters,
             "word_target": str(context.word_target) if context.word_target else "",
-            "tone_instructions": self._tone_instructions(context.tone),
+            "tone_instructions": tone_instr,
             "writing_language": context.writing_language,
         }
         if extra_overrides:
