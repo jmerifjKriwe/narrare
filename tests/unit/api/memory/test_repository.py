@@ -26,7 +26,11 @@ class FakeAsyncSession:
         pass
 
     async def execute(self, stmt: Any) -> MagicMock:  # narrare: allow-mock — Fake async session
-        return MagicMock()  # narrare: allow-mock
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalars.return_value.all.return_value = []
+        mock_result.scalar.return_value = 0
+        return mock_result
 
     async def delete(self, entity: Any) -> None:
         if entity in self._data:
