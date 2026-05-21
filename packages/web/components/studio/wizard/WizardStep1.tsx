@@ -103,6 +103,7 @@ export function WizardStep1({ onNext }: WizardStep1Props) {
           <button
             type="submit"
             disabled={isSubmitting}
+            data-testid="wizard-next"
             className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
           >
             {isSubmitting ? `${tCommon("next")}…` : `${tCommon("next")} →`}

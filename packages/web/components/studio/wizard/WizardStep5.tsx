@@ -134,6 +134,7 @@ export function WizardStep5({ onComplete, onBack }: WizardStep5Props) {
           type="button"
           onClick={onBack}
           disabled={isCreating}
+          data-testid="wizard-back"
           className="px-6 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm disabled:opacity-50"
         >
           ← {tCommon("back")}
@@ -142,6 +143,7 @@ export function WizardStep5({ onComplete, onBack }: WizardStep5Props) {
           type="button"
           onClick={handleComplete}
           disabled={isCreating}
+          data-testid="wizard-complete"
           className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
         >
           {isCreating ? `${tCommon("finish")}…` : `${tCommon("finish")} ✓`}

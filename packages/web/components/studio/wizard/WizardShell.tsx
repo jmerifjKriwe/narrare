@@ -109,6 +109,7 @@ export function WizardShell() {
               <div key={step.label} className="flex items-center flex-1 last:flex-none">
                 <div className="flex flex-col items-center gap-2 relative">
                   <div
+                    data-testid={`wizard-step-${step.step}`}
                     className={cn(
                       "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-500 border-2 relative z-10",
                       step.step === currentStep

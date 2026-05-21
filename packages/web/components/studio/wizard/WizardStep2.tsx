@@ -175,6 +175,7 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
         <button
           type="button"
           onClick={onBack}
+          data-testid="wizard-back"
           className="px-6 py-2 bg-muted rounded-md hover:bg-accent transition-colors text-sm"
         >
           ← {tCommon("back")}
@@ -183,6 +184,7 @@ export function WizardStep2({ onNext, onBack }: WizardStep2Props) {
           type="button"
           onClick={handleNext}
           disabled={isSubmitting}
+          data-testid="wizard-next"
           className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
         >
           {isSubmitting ? `${tCommon("next")}…` : `${tCommon("next")} →`}

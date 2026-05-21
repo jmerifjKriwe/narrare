@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.e2e.mocks.llm_responses import setup_llm_mocks
-from tests.e2e.test_helpers import _click_next
+from tests.e2e.test_helpers import _click_next, _wait_for_wizard_ready
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -63,7 +63,8 @@ class TestEditorAutosave:
 
         # Navigate to wizard
         page.goto(f"{base_url}/wizard")
-        page.wait_for_timeout(1000)
+        # Wait for wizard to fully load (step 1 visible)
+        _wait_for_wizard_ready(page)
 
         # Complete wizard setup first
         project_name_input = page.locator(
