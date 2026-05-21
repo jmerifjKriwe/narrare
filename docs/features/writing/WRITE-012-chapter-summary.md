@@ -1,7 +1,7 @@
 ---
 id: WRITE-012
 title: "Chapter Summary"
-status: planned
+status: implemented
 area: writing
 mvp: false
 
@@ -14,10 +14,10 @@ ui_help_long: |
   Narrare can generate summaries automatically when you save a chapter, or you can trigger them manually whenever you want.
 ui_available_in: ["editor", "cli", "mcp", "api"]
 
-service: packages/core/writing/summary_service.py
-contract: packages/core/writing/contracts.py#SummaryService
-router: apps/api/routers/writing/summary.py
-prompt: core/prompts/_bundled/writing/en/summary/system.md
+service: packages/core/narrare_core/agents/summary_agent.py (ChapterSummaryAgent)
+contract: apps/api/narrare/writing/summary_contracts.py
+router: apps/api/narrare/writing/summary_router.py
+prompt: packages/core/narrare_core/prompts/_bundled/analysis/en/summarize/system.md
 requires: []
 ---
 
@@ -40,27 +40,45 @@ Remembering exactly what happened in early chapters when writing later ones is a
 
 ## How it works (Technical)
 
-**Entry point:** `apps/api/routers/writing/summary.py` → `POST /api/v1/chapters/{id}/summarize`
-**Service:** `SummaryService.summarize_chapter()` in `packages/core/writing/summary_service.py`
-**Contract:** `SummaryServiceProtocol` in `packages/core/writing/contracts.py`
-**LLM Intent:** `LLMIntent.SUMMARIZE_CHAPTER`
-**Prompt:** `core/prompts/_bundled/writing/en/summary/system.md`
+**Entry point:** `POST /api/v1/planning/summary/chapters/{chapter_id}?novel_id={novel_id}` in `apps/api/narrare/writing/summary_router.py`
+**Service/Agent:** `ChapterSummaryAgent` in `packages/core/narrare_core/agents/summary_agent.py` (used directly) + `SummaryService` in `apps/api/narrare/writing/summary_service.py` (API orchestration)
+**Contract:** `SummaryServiceProtocol` in `apps/api/narrare/writing/summary_contracts.py`
+**LLM Intent:** `LLMIntent.SUMMARIZE` (category: `PLANNING`, mode: `summarize`)
+**Prompt:** `packages/core/narrare_core/prompts/_bundled/analysis/en/summarize/system.md`
+**Output type:** `SummaryOutput(summary, key_points, word_count, metadata)` in `packages/core/narrare_core/agents/summary_types.py`
 **Streaming:** no
 
-Chapter summary reads the chapter's full content and updates the `summary` field in its frontmatter.
+The `ChapterSummaryAgent` is a `NarrareAgent` subclass that calls the LLM via the gateway. The API `SummaryService` wraps the agent, handles DB persistence (writes to `chapters.summary`), and handles error scenarios.
+
+**WritingGraph integration:** A `generate_summary` step runs after `finalize` in the WritingGraph (`packages/core/narrare_core/agents/writing_graph.py`). It calls `ChapterSummaryAgent` with the final draft content and stores the result in `ctx.state.summary`, setting status to `WritingStatus.SUMMARIZED`. This means every AI-written chapter gets a summary automatically.
+
+### Storyboard integration
+
+Chapter summaries feed into two storyboard features:
+
+1. **Enhanced sync status:** `StructuralSyncChecker` (in `packages/core/narrare_core/planning/sync.py`) uses `has_summary AND has_content` as a stronger signal for COMPLETED status (Rule 3b), replacing the previous word-count-only heuristic.
+
+2. **AI-powered structure remap:** `AIRemapService` (in `packages/core/narrare_core/planning/remap.py`) analyzes chapter summaries to suggest narrative stage assignments. When ≥50% of chapters have summaries, the remap uses content-aware stage suggestions instead of position-ratio heuristics. Confidence is calculated based on summary coverage ratio.
 
 ## Constraints & Edge Cases
 
 - Generated summaries typically run 2-4 sentences and focus on plot-relevant information.
 - Short chapters receive proportionally shorter summaries.
 - Manual summaries are overwritten if automatic generation is triggered.
+- Summary generation adds LLM cost per chapter (configurable via model routing for cheaper models).
+- AI remap falls back to position-ratio heuristics when <50% of chapters have summaries.
+- The WritingGraph summary step is non-blocking — runs after finalize, does not block the drafting loop.
+- Empty chapters produce empty summaries (no LLM call is made).
 
 ## Related Features
 
 - [WRITE-002](../writing/WRITE-002-new-chapter.md) — The chapter system where summaries are stored in frontmatter
 - [INFRA-003](../infra/INFRA-003-context-assembly.md) — Uses chapter summaries as history context for AI writing features
 - [CONS-001](../consistency/CONS-001-checker.md) — Uses summaries to understand cross-chapter context during checks
+- [PLAN-005](../planning/PLAN-005-storyboard.md) — Consumes summaries for enhanced sync status + AI-powered structure remap
+- [PLAN-003](../planning/PLAN-003-structure.md) — Structure adapters used by AI remap for stage classification
 
 ## Status & History
 
 - `2026-05-19` — Added to registry
+- `2026-05-21` — Implemented: ChapterSummaryAgent, SummaryService + REST endpoint, WritingGraph summary step, storyboard AI integration

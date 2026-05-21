@@ -36,7 +36,7 @@ export function SyncStatusBadge({ status, className }: SyncStatusBadgeProps) {
         className,
       )}
     >
-      <span className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOTS[status])} />
+      <span className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOTS[status])} aria-hidden="true" />
       {t(`storyboard.status.${status}`)}
     </span>
   );

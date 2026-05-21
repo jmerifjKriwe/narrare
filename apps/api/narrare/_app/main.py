@@ -128,6 +128,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.writing.router import router as writing_router
     from narrare.writing.router_sessions import router as writing_sessions_router
     from narrare.writing.router_stats import router as writing_stats_router
+    from narrare.writing.summary_router import router as summary_router
 
     prefix = "/api/v1"
 
@@ -150,6 +151,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(writing_router, prefix=prefix)
     app.include_router(writing_sessions_router, prefix=prefix)
     app.include_router(writing_stats_router, prefix=prefix)
+    app.include_router(summary_router, prefix=prefix)
 
 
 # Application instance

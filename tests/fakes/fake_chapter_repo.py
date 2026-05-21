@@ -31,6 +31,14 @@ class FakeChapterRepository:
         )
         return self._store.get((chapter_id, novel_id))
 
+    async def get(self, chapter_id: uuid.UUID) -> Chapter | None:
+        """Get a chapter by ID without novel_id scope."""
+        self.calls.append(CallRecord("get", kwargs={"chapter_id": chapter_id}))
+        for (cid, _), chapter in self._store.items():
+            if cid == chapter_id:
+                return chapter
+        return None
+
     async def list_by_novel(
         self, novel_id: uuid.UUID, volume_id: uuid.UUID | None = None
     ) -> list[Chapter]:
@@ -93,6 +101,12 @@ class FakeChapterRepository:
         chapter.content = content
         chapter.word_count = word_count
         chapter.embeddings_dirty = True
+        return chapter
+
+    async def update_summary(self, chapter: Chapter, summary: str) -> Chapter:
+        """Persist a chapter summary."""
+        self.calls.append(CallRecord("update_summary", kwargs={"summary": summary}))
+        chapter.summary = summary
         return chapter
 
     async def update_meta(self, chapter: Chapter, request: UpdateChapterMetaRequest) -> Chapter:

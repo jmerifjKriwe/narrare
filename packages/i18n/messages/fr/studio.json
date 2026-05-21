@@ -1146,6 +1146,19 @@
     },
     "additionalNotes": "Notes supplémentaires"
   },
+  "writingGraph": {
+    "allComplete": "Toutes les étapes terminées",
+    "progress": "Étape {current}/{total} : {label}",
+    "ariaLabel": "Progression du pipeline d'écriture",
+    "steps": {
+      "plan_outline": "Plan",
+      "write_draft": "Brouillon",
+      "review_draft": "Révision",
+      "revise_draft": "Correction",
+      "finalize": "Finalisation",
+      "generate_summary": "Résumé"
+    }
+  },
   "storyboard": {
     "title": "Storyboard",
     "collapsed": "{structure} — {count, plural, one {# chapitre} other {# chapitres}}",
@@ -1174,7 +1187,9 @@
       "newStage": "Nouvelle étape",
       "confirm": "Confirmer le changement",
       "cancel": "Annuler",
-      "noChanges": "Aucun chapitre ne nécessite de réassignation."
+      "noChanges": "Aucun chapitre ne nécessite de réassignation.",
+      "aiConfidence": "Réassignation IA ({confidence}% de confiance)",
+      "aiSuggested": "Suggestion IA"
     },
     "stages": {
       "three_act": {

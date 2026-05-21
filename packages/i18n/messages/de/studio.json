@@ -1146,6 +1146,19 @@
     },
     "additionalNotes": "Zusätzliche Notizen"
   },
+  "writingGraph": {
+    "allComplete": "Alle Schritte abgeschlossen",
+    "progress": "Schritt {current}/{total}: {label}",
+    "ariaLabel": "Schreibfortschritt",
+    "steps": {
+      "plan_outline": "Gliederung",
+      "write_draft": "Entwurf",
+      "review_draft": "Prüfen",
+      "revise_draft": "Überarbeiten",
+      "finalize": "Finalisieren",
+      "generate_summary": "Zusammenfassen"
+    }
+  },
   "storyboard": {
     "title": "Storyboard",
     "collapsed": "{structure} — {count, plural, one {# Kapitel} other {# Kapitel}}",
@@ -1174,7 +1187,9 @@
       "newStage": "Neue Phase",
       "confirm": "Änderung bestätigen",
       "cancel": "Abbrechen",
-      "noChanges": "Keine Kapitel müssen neu zugeordnet werden."
+      "noChanges": "Keine Kapitel müssen neu zugeordnet werden.",
+      "aiConfidence": "KI-gestützte Neuzuordnung ({confidence}% Konfidenz)",
+      "aiSuggested": "KI-Vorschlag"
     },
     "stages": {
       "three_act": {

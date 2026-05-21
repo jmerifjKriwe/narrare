@@ -12,6 +12,8 @@ from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.outline_types import OutlineOutput
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
+from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
+from narrare_core.agents.summary_types import SummaryOutput
 from narrare_core.agents.writing_graph import (
     Approved,
     NeedsRevision,
@@ -24,6 +26,7 @@ from narrare_core.agents.writing_graph import (
 
 __all__ = [
     "Approved",
+    "ChapterSummaryAgent",
     "DraftAgent",
     "DraftConfig",
     "DraftDeps",
@@ -39,6 +42,8 @@ __all__ = [
     "ReviewAgent",
     "ReviewDeps",
     "ReviewOutput",
+    "SummaryDeps",
+    "SummaryOutput",
     "WritingDeps",
     "WritingState",
     "WritingStatus",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { useConfirmRemap, usePreviewRemap } from "@/lib/hooks/usePlanning";
@@ -107,12 +107,29 @@ export function StructureChangeDialog({
                       {translateStage(item.old_stage, currentStructure)}
                     </td>
                     <td className="px-2 py-2 text-muted-foreground">→</td>
-                    <td className="py-2">{translateStage(item.new_stage, newStructure)}</td>
+                    <td className="py-2">
+                      {translateStage(item.new_stage, newStructure)}
+                      {item.ai_suggested_stage && item.ai_suggested_stage !== item.new_stage && (
+                        <span className="ml-1 text-[10px] text-blue-500">
+                          {t("storyboard.remap.aiSuggested")}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : null}
+
+          {/* AI confidence badge */}
+          {preview && preview.ai_confidence != null && preview.ai_confidence > 0 && (
+            <div className="flex items-center gap-1.5 px-4 py-2 mt-3 bg-blue-50 dark:bg-blue-900/20 rounded-md text-xs text-blue-700 dark:text-blue-300">
+              <Sparkles className="w-3.5 h-3.5" />
+              {t("storyboard.remap.aiConfidence", {
+                confidence: String(Math.round(preview.ai_confidence * 100)),
+              })}
+            </div>
+          )}
 
           {previewMutation.isError && (
             <p className="text-sm text-destructive mt-2">

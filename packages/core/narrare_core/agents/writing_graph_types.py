@@ -24,6 +24,7 @@ class WritingStatus(StrEnum):
     REVIEWED = "reviewed"
     NEEDS_REVISION = "needs_revision"
     REVISED = "revised"
+    SUMMARIZED = "summarized"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -81,6 +82,7 @@ class WritingState:
     draft: str = ""
     revision: str = ""
     final: str = ""
+    summary: str = ""
     status: WritingStatus = WritingStatus.PLANNED
     attempts: int = 0
     feedback: str = ""

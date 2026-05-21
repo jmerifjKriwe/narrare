@@ -1146,6 +1146,19 @@
     },
     "additionalNotes": "Additional Notes"
   },
+  "writingGraph": {
+    "allComplete": "All steps complete",
+    "progress": "Step {current}/{total}: {label}",
+    "ariaLabel": "Writing pipeline progress",
+    "steps": {
+      "plan_outline": "Outline",
+      "write_draft": "Draft",
+      "review_draft": "Review",
+      "revise_draft": "Revise",
+      "finalize": "Finalize",
+      "generate_summary": "Summarize"
+    }
+  },
   "storyboard": {
     "title": "Storyboard",
     "collapsed": "{structure} — {count, plural, one {# chapter} other {# chapters}}",
@@ -1174,7 +1187,9 @@
       "newStage": "New Stage",
       "confirm": "Confirm Change",
       "cancel": "Cancel",
-      "noChanges": "No chapters need to be remapped."
+      "noChanges": "No chapters need to be remapped.",
+      "aiConfidence": "AI-powered remap ({confidence}% confidence)",
+      "aiSuggested": "AI suggested"
     },
     "stages": {
       "three_act": {

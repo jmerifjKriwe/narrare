@@ -34,6 +34,7 @@ class ChapterOutlineData:
     outline_notes: str
     has_content: bool  # whether the chapter has actual written content
     word_count: int
+    has_summary: bool = False  # whether the chapter has been summarized
 
 
 @dataclass(frozen=True, slots=True)

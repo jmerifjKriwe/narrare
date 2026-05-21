@@ -27,6 +27,7 @@ class TestWritingStatus:
             "reviewed",
             "needs_revision",
             "revised",
+            "summarized",
             "completed",
             "failed",
         ]
@@ -49,6 +50,7 @@ class TestWritingState:
         assert state.draft == ""
         assert state.revision == ""
         assert state.final == ""
+        assert state.summary == ""
         assert state.status == WritingStatus.PLANNED
         assert state.attempts == 0
         assert state.feedback == ""

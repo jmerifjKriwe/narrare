@@ -499,10 +499,13 @@ export interface RemapPreviewItem {
   chapter_title: string;
   old_stage: string;
   new_stage: string;
+  ai_confidence?: number;
+  ai_suggested_stage?: string;
 }
 
 export interface RemapResponse {
   new_structure: string;
   remapped: RemapPreviewItem[];
+  ai_confidence?: number;
   confirmed: boolean;
 }

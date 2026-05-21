@@ -75,6 +75,21 @@ class ChapterRepository(BaseRepository):
         await self._flush_and_refresh(chapter)
         return chapter
 
+    async def get(self, chapter_id: uuid.UUID) -> Chapter | None:
+        """Get a chapter by ID without novel_id scope.
+
+        Useful for services that don't have a novel_id context
+        (e.g. summary service).
+        """
+        result = await self._session.execute(select(Chapter).where(Chapter.id == chapter_id))
+        return result.scalar_one_or_none()
+
+    async def update_summary(self, chapter: Chapter, summary: str) -> Chapter:
+        """Persist a chapter summary."""
+        chapter.summary = summary
+        await self._flush_and_refresh(chapter)
+        return chapter
+
     async def update_meta(self, chapter: Chapter, request: UpdateChapterMetaRequest) -> Chapter:
         for field, value in request.model_dump(exclude_none=True).items():
             setattr(chapter, field, value)

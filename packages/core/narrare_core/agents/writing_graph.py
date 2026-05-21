@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
+from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.agents.writing_graph_types import (
     Approved,
     NeedsRevision,
@@ -203,10 +204,42 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
     @g.step
     async def finalize(
         ctx: StepContext[WritingState, WritingDeps, Approved],
-    ) -> End[WritingState]:
-        """Finalisiere den Output und beende den Graph."""
+    ) -> None:
+        """Finalisiere den Output."""
         ctx.state.final = ctx.state.revision or ctx.state.draft
         ctx.state.status = WritingStatus.COMPLETED
+        await _save_state(ctx)
+
+    @g.step
+    async def generate_summary(
+        ctx: StepContext[WritingState, WritingDeps, None],
+    ) -> End[WritingState]:
+        """Erzeuge Kapitel-Zusammenfassung via ChapterSummaryAgent und beende den Graph."""
+        content = ctx.state.final or ctx.state.draft
+        if not content.strip():
+            ctx.state.status = WritingStatus.SUMMARIZED
+            await _save_state(ctx)
+            return End(ctx.state)
+
+        model = await _get_model(ctx.deps)
+        agent = ChapterSummaryAgent(model=model)
+
+        instruction = (
+            f"Summarize chapter {ctx.state.chapter_id}.\n"
+            f"Genre: {ctx.deps.genre}\n"
+            f"Language: {ctx.deps.language}\n"
+            f"Chapter title: {ctx.state.outline[:100]}\n\n"
+            f"Content:\n{content[:3000]}\n"
+        )
+
+        deps = SummaryDeps(
+            language=ctx.deps.language,
+            genre=ctx.deps.genre,
+            chapter_title=ctx.state.outline[:100],
+        )
+        result = await agent.run(prompt=instruction, deps=deps)
+        ctx.state.summary = result.summary
+        ctx.state.status = WritingStatus.SUMMARIZED
         await _save_state(ctx)
         return End(ctx.state)
 
@@ -221,7 +254,8 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             .branch(g.match(TypeExpression[NeedsRevision]).label("needs revision").to(revise_draft))
         ),
         g.edge_from(revise_draft).to(write_draft),
-        g.edge_from(finalize).to(g.end_node),  # pyright: ignore[reportArgumentType]
+        g.edge_from(finalize).to(generate_summary),
+        g.edge_from(generate_summary).to(g.end_node),  # pyright: ignore[reportArgumentType]
     )
 
     return g

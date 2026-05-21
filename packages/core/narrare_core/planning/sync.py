@@ -49,6 +49,10 @@ class StructuralSyncChecker:
         if outline.stage_assignment != suggested_stage:
             return SyncStatus.DEVIATED
 
+        # Rule 3b: Summary + content → COMPLETED (stronger signal than word count alone)
+        if outline.has_summary and outline.has_content:
+            return SyncStatus.COMPLETED
+
         # Rule 4: All required beats addressed → COMPLETED
         required_beats = [b for b in outline.planned_beats if b.required]
         if required_beats and outline.word_count > 0:

@@ -65,7 +65,14 @@ class TestGraphBuild:
         assert "stateDiagram" in mermaid
 
     def test_graph_has_correct_node_count(self, writing_graph: Any) -> None:
-        expected = {"plan_outline", "write_draft", "review_draft", "revise_draft", "finalize"}
+        expected = {
+            "plan_outline",
+            "write_draft",
+            "review_draft",
+            "revise_draft",
+            "finalize",
+            "generate_summary",
+        }
         actual = set(writing_graph.nodes.keys())
         assert expected.issubset(actual)
 
@@ -191,16 +198,22 @@ class TestReviewDraft:
 class TestFinalize:
     @pytest.mark.asyncio
     async def test_finalize_sets_final(self, writing_graph: Any) -> None:
-        from pydantic_graph import End
-
         node = writing_graph.nodes["finalize"]
         state = _make_state(draft="Draft text.", revision="Revised text.")
         deps = _make_deps()
         ctx = StepContext(state=state, deps=deps, inputs=Approved())
-        result = await node.call(ctx)
-        assert isinstance(result, End)
+        await node.call(ctx)
         assert state.final == "Revised text."
         assert state.status == WritingStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_finalize_uses_draft_when_no_revision(self, writing_graph: Any) -> None:
+        node = writing_graph.nodes["finalize"]
+        state = _make_state(draft="Draft only.", revision="")
+        deps = _make_deps()
+        ctx = StepContext(state=state, deps=deps, inputs=Approved())
+        await node.call(ctx)
+        assert state.final == "Draft only."
 
 
 # C. Node-Tests — Mit DraftAgent Mock
@@ -360,14 +373,11 @@ class TestStatePersistence:
     @pytest.mark.asyncio
     async def test_finalize_saves_state(self, writing_graph: Any) -> None:
         """finalize ruft _save_state auf."""
-        from pydantic_graph import End
-
         node = writing_graph.nodes["finalize"]
         store = MockStore()
         state = _make_state(draft="Final text.")
         deps = _make_deps(store=store, run_id="run-42")
         ctx = StepContext(state=state, deps=deps, inputs=Approved())
-        result = await node.call(ctx)
-        assert isinstance(result, End)
+        await node.call(ctx)
         assert len(store.saves) == 1
         assert store.saves[0][0] == "run-42"

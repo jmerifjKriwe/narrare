@@ -110,15 +110,23 @@ before they compound.
 - `PUT /outlines/{chapter_id}` — Update outline (beats, notes, stage)
 - `POST /remap/{novel_id}` — Preview or confirm structure remap
 
-**Sync status (5 levels):**
+**Sync status (5 levels, rule-based priority):**
 ```python
 class SyncStatus(str, Enum):
-    EMPTY = "empty"          # No outline exists
+    EMPTY = "empty"          # No outline exists, no content
     PLANNED = "planned"      # Outline exists, chapter not started
-    ON_TRACK = "on_track"    # Chapter matches stage expectations
-    DEVIATED = "deviated"    # Chapter drifted from planned stage
-    COMPLETED = "completed"  # Chapter finished and aligned
+    DEVIATED = "deviated"    # Stage assignment differs from suggested
+    COMPLETED = "completed"  # Summary + content exists (strong signal), OR all beats addressed
+    ON_TRACK = "on_track"    # Aligned but still in progress
 ```
+
+**Rule priority** (first match wins in `StructuralSyncChecker.calculate_sync_status`):
+1. No stage AND no content → `EMPTY`
+2. Has outline but no content → `PLANNED`
+3. Stage mismatch → `DEVIATED`
+4. **Has summary AND has content** → `COMPLETED` *(new: summary presence is a stronger signal than word count alone)*
+5. All required beats addressed + word_count > 0 → `COMPLETED` *(fallback for chapters without summaries)*
+6. Everything aligned → `ON_TRACK`
 
 **Storyboard assembly:**
 1. Fetch novel → get `story_structure` → resolve adapter from registry
@@ -140,14 +148,22 @@ class SyncStatus(str, Enum):
 5. On confirm: backend updates all outlines + novel's `story_structure`
 6. On cancel: frontend reverts local state, no API call
 
-**Remap heuristic (current):**
-Position-ratio based — maps `chapter_position / total_chapters` to stage ranges.
-Each adapter defines stage boundaries as fractions of total story length.
+**Remap heuristic:**
+Two modes, selected automatically based on summary coverage:
 
-**Future: AI-powered remap** (depends on WRITE-012 Chapter Summary):
-- Analyze chapter summaries for narrative content instead of position ratio
-- Would enable content-aware stage suggestions (e.g., detect climax content)
-- Also benefits INFRA-003 Context Assembly (Tier 2 Recent History)
+1. **Position-ratio** (fallback): Maps `chapter_position / total_chapters` to stage ranges. Each adapter defines stage boundaries as fractions of total story length. Used when <50% of chapters have summaries.
+
+2. **AI-powered** (when summaries available): Uses `AIRemapService` in `packages/core/narrare_core/planning/remap.py` to analyze chapter summaries for narrative content. Activated when ≥50% of chapters have non-empty summaries (configurable threshold, default 0.5). Falls back to position-ratio for individual chapters whose summaries are insufficient.
+
+**AI remap confidence:**
+`AIRemapService.calculate_confidence()` returns a score based on summary coverage:
+- `0.0` — No summaries available (uses position-ratio)
+- `0.5` — Partial coverage (≥50% but <100% chapters have summaries)
+- `1.0` — Full coverage (every chapter has a summary)
+
+**Dependency:** AI remap requires [WRITE-012 Chapter Summary](../writing/WRITE-012-chapter-summary.md) to populate `chapters.summary`. The storyboard's `should_use_ai_remap()` helper checks coverage before activating AI mode.
+
+Also benefits INFRA-003 Context Assembly (Tier 2 Recent History uses summaries instead of full chapter content).
 
 **Frontend components** (7, all in `packages/web/components/studio/planning/`):
 - `StoryboardPanel` — Full-width collapsible container, DndContext, stage layout
@@ -164,11 +180,12 @@ Each adapter defines stage boundaries as fractions of total story length.
 ## Constraints & Edge Cases
 
 - Requires chapters to exist for storyboard to populate
-- Sync status is heuristic-based (position ratio), not semantic content analysis
+- Sync status is rule-based: summary presence + content is the strongest COMPLETED signal; falls back to word-count heuristic when no summary exists
 - Drag & drop stage reassignment updates outline only (not chapter content)
 - Structure remap overwrites all stage assignments (no partial remap)
 - No undo for confirmed remap (would need separate audit trail)
-- AI-powered remap is future work (depends on WRITE-012 Chapter Summary)
+- AI remap requires ≥50% chapters with summaries (configurable); falls back to position-ratio when below threshold
+- AI remap uses summary text analysis — accuracy depends on summary quality and structure adapter specificity
 - Empty novels show empty stage columns with drop zone indicators
 - Adapter registry validates structure type on access (raises for unknown types)
 
@@ -177,10 +194,11 @@ Each adapter defines stage boundaries as fractions of total story length.
 - [PLAN-003](PLAN-003-structure.md) — Structure adapters (core layer, used by storyboard for stage layout)
 - [PLAN-004](PLAN-004-timeline.md) — Timeline integration (`timeline_position` field for chronological context)
 - [WRITE-001](../writing/WRITE-001-editor.md) — Editor where storyboard panel lives
-- [WRITE-012](../writing/WRITE-012-chapter-summary.md) — Future: AI-powered remap using chapter summaries
-- [INFRA-003](../infra/INFRA-003-context-assembly.md) — Future: summaries benefit Tier 2 Recent History
+- [WRITE-012](../writing/WRITE-012-chapter-summary.md) — Provides chapter summaries consumed by enhanced sync status + AI-powered structure remap
+- [INFRA-003](../infra/INFRA-003-context-assembly.md) — Consumes chapter summaries for Tier 2 Recent History (context assembly)
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-20` — Fully implemented: core structure adapters (5 types), backend service with 6 methods and 5 REST endpoints, frontend with 7 components + drag & drop + structure change workflow + i18n (3 locales). Status → in-progress.
+- `2026-05-21` — AI-powered remap implemented (AIRemapService with chapter summary analysis, configurable 50% coverage threshold). Enhanced sync COMPLETED detection uses summary presence. Integrated with WRITE-012 Chapter Summary. WritingGraphStatus component added to editor.

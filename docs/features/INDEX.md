@@ -58,6 +58,7 @@
 | [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Block Tools | 📋 | ❌ |
 | [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | 📋 | ❌ |
 | [WRITE-011](writing/WRITE-011-volume-management.md) | Volume Management | ✅ | ✅ |
+| [WRITE-012](writing/WRITE-012-chapter-summary.md) | Chapter Summary | ✅ | ❌ |
 
 ### Knowledge Base
 | ID | Feature | Status | MVP |
@@ -225,5 +226,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-20 — Storyboard feature (PLAN-003/004/005) documentation updated
+> Last updated: 2026-05-21 — WRITE-012 Chapter Summary marked as implemented. Cross-reference from storyboard features updated.
 > Features are specified before they are implemented — never after
