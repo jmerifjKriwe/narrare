@@ -4,21 +4,21 @@ Split from test_pipeline.py for RULE-04 compliance.
 Remaining tests in test_pipeline_errors.py.
 
 Covers:
-1. Full draft mode — streams text through
-2. Scene-by-scene — generates scene by scene
-3. Interview-assisted — generates questions then returns
+1. Full draft mode — delegates to WritingGraph
+2. Scene-by-scene — generates scene by scene via registry.stream()
+3. Interview-assisted — generates questions then returns via registry.run()
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
 from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
-from narrare_core.llm.result import LLMResult, StreamChunk, TokenUsage
+from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.draft_processor import DraftProcessor
@@ -86,10 +86,10 @@ async def _stream_from(*chunks: StreamChunk) -> AsyncIterator[StreamChunk]:
 
 
 @pytest.fixture()
-def mock_gateway() -> Any:
-    """Mock LLMGateway with configurable stream/run."""
-    gw = MagicMock(spec=["stream", "run"])
-    return gw
+def mock_registry() -> Any:
+    """Mock ModelRegistry with configurable stream/run."""
+    reg = MagicMock(spec=["stream", "run"])
+    return reg
 
 
 @pytest.fixture()
@@ -120,13 +120,13 @@ def mock_processor() -> Any:
 
 @pytest.fixture()
 def pipeline(
-    mock_gateway: Any,
+    mock_registry: Any,
     mock_composer: Any,
     mock_assembler: Any,
     mock_processor: Any,
 ) -> WritingPipeline:
     return WritingPipeline(
-        gateway=mock_gateway,
+        registry=mock_registry,
         composer=mock_composer,
         context_assembler=mock_assembler,
         draft_processor=mock_processor,
@@ -134,74 +134,29 @@ def pipeline(
 
 
 class TestFullDraft:
-    """Full draft mode streams text through."""
+    """Full draft mode delegates to WritingGraph."""
 
     @pytest.mark.asyncio
-    async def test_streams_chunks_through(
+    async def test_delegates_to_writing_graph(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
     ) -> None:
-        mock_gateway.stream = MagicMock(
-            spec=[],
-            return_value=_stream_from(
-                StreamChunk(text="Hello "),
-                StreamChunk(text="World."),
-                StreamChunk(text="", is_final=True, usage=_usage()),
-            ),
-        )
+        """Full draft always uses WritingGraph path."""
+        with patch(
+            "narrare_core.writing.pipeline_graph.stream_via_writing_graph",
+        ) as mock_graph_stream:
 
-        chunks = await _collect(
-            pipeline.generate(_request(), config=_config()),
-        )
+            async def fake_gen(*a: Any, **kw: Any) -> AsyncIterator[StreamChunk]:
+                yield StreamChunk(text="Hello World.", is_final=True)
 
-        texts = [c.text for c in chunks]
-        assert "Hello " in texts
-        assert "World." in texts
+            mock_graph_stream.side_effect = lambda *a, **kw: fake_gen(a, kw)
 
-    @pytest.mark.asyncio
-    async def test_final_chunk_contains_cleaned_text(
-        self,
-        pipeline: WritingPipeline,
-        mock_gateway: Any,
-        mock_processor: Any,
-    ) -> None:
-        mock_gateway.stream = MagicMock(
-            spec=[],
-            return_value=_stream_from(
-                StreamChunk(text="Hello "),
-                StreamChunk(text="World."),
-                StreamChunk(text="", is_final=True, usage=_usage()),
-            ),
-        )
-        mock_processor.process = MagicMock(spec=[], return_value="Hello World.")
+            chunks = await _collect(
+                pipeline.generate(_request(), config=_config()),
+            )
 
-        chunks = await _collect(
-            pipeline.generate(_request(), config=_config()),
-        )
-
-        final = [c for c in chunks if c.is_final]
-        assert len(final) == 1
-        assert final[0].text == "Hello World."
-        assert final[0].usage is not None
-
-    @pytest.mark.asyncio
-    async def test_gateway_called_with_correct_intent(
-        self,
-        pipeline: WritingPipeline,
-        mock_gateway: Any,
-    ) -> None:
-        mock_gateway.stream = MagicMock(
-            spec=[],
-            return_value=_stream_from(
-                StreamChunk(text="", is_final=True, usage=_usage()),
-            ),
-        )
-
-        await _collect(pipeline.generate(_request(), config=_config()))
-
-        call_kwargs = mock_gateway.stream.call_args
-        assert call_kwargs.kwargs["intent"] == LLMIntent.WRITE
+            mock_graph_stream.assert_called_once()
+            assert any("Hello World." in c.text for c in chunks)
 
 
 class TestSceneByScene:
@@ -211,7 +166,7 @@ class TestSceneByScene:
     async def test_generates_each_scene(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
+        mock_registry: Any,
     ) -> None:
         scene1_gen = _stream_from(
             StreamChunk(text="Scene one text."),
@@ -221,7 +176,7 @@ class TestSceneByScene:
             StreamChunk(text="Scene two text."),
             StreamChunk(text="", is_final=True, usage=_usage()),
         )
-        mock_gateway.stream = MagicMock(
+        mock_registry.stream = MagicMock(
             spec=[],
             side_effect=[scene1_gen, scene2_gen],
         )
@@ -245,9 +200,9 @@ class TestSceneByScene:
     async def test_single_scene_no_separator(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
+        mock_registry: Any,
     ) -> None:
-        mock_gateway.stream = MagicMock(
+        mock_registry.stream = MagicMock(
             spec=[],
             return_value=_stream_from(
                 StreamChunk(text="Only scene."),
@@ -267,6 +222,28 @@ class TestSceneByScene:
         texts = [c.text for c in chunks]
         assert "***" not in texts
 
+    @pytest.mark.asyncio
+    async def test_registry_stream_called_with_correct_intent(
+        self,
+        pipeline: WritingPipeline,
+        mock_registry: Any,
+    ) -> None:
+        mock_registry.stream = MagicMock(
+            spec=[],
+            return_value=_stream_from(
+                StreamChunk(text="", is_final=True, usage=_usage()),
+            ),
+        )
+
+        request = _request(
+            mode=GenerationMode.SCENE_BY_SCENE,
+            outline="A scene",
+        )
+        await _collect(pipeline.generate(request, config=_config()))
+
+        call_kwargs = mock_registry.stream.call_args
+        assert call_kwargs.kwargs["intent"] == LLMIntent.WRITE
+
 
 class TestInterviewAssisted:
     """Interview mode generates questions and returns them."""
@@ -275,16 +252,11 @@ class TestInterviewAssisted:
     async def test_generates_questions(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
+        mock_registry: Any,
     ) -> None:
-        mock_gateway.run = AsyncMock(
-            return_value=LLMResult(
-                text=(
-                    "1. What is the protagonist's motivation?\n2. Where does the story take place?"
-                ),
-                usage=_usage(),
-                model="test-model",
-                intent="chat",
+        mock_registry.run = AsyncMock(
+            return_value=(
+                "1. What is the protagonist's motivation?\n2. Where does the story take place?"
             ),
         )
 
@@ -305,88 +277,14 @@ class TestInterviewAssisted:
     async def test_uses_chat_intent(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
+        mock_registry: Any,
     ) -> None:
-        mock_gateway.run = AsyncMock(
-            return_value=LLMResult(
-                text="Questions here.",
-                usage=_usage(),
-                model="test-model",
-                intent="chat",
-            ),
+        mock_registry.run = AsyncMock(
+            return_value="Questions here.",
         )
 
         request = _request(mode=GenerationMode.INTERVIEW_ASSISTED)
         await _collect(pipeline.generate(request, config=_config()))
 
-        call_kwargs = mock_gateway.run.call_args
-        assert call_kwargs.kwargs["intent"] == LLMIntent.CHAT
-
-
-class TestPipelineDraftAgentMode:
-    """Full draft mode with use_draft_agent flag.
-
-    Verifies that the pipeline correctly falls back to the legacy path
-    when the DraftAgent path is not fully configured.
-    """
-
-    @pytest.mark.asyncio
-    async def test_pipeline_with_draft_agent_flag_disabled_still_uses_legacy(
-        self,
-        pipeline: WritingPipeline,
-        mock_gateway: Any,
-    ) -> None:
-        """use_draft_agent=False (default) → Legacy-Pfad wird verwendet."""
-        mock_gateway.stream = MagicMock(
-            spec=[],
-            return_value=_stream_from(
-                StreamChunk(text="Hello "),
-                StreamChunk(text="World."),
-                StreamChunk(text="", is_final=True, usage=_usage()),
-            ),
-        )
-
-        chunks = await _collect(
-            pipeline.generate(_request(), config=_config()),
-        )
-
-        # Gateway.stream im Legacy-Pfad aufgerufen
-        mock_gateway.stream.assert_called_once()
-        texts = [c.text for c in chunks]
-        assert "Hello " in texts
-
-    @pytest.mark.asyncio
-    async def test_pipeline_without_registry_still_uses_legacy(
-        self,
-        mock_gateway: Any,
-        mock_composer: Any,
-        mock_assembler: Any,
-        mock_processor: Any,
-    ) -> None:
-        """registry=None (default) → Legacy-Pfad, auch wenn Flag aktiv."""
-        pipeline = WritingPipeline(
-            gateway=mock_gateway,
-            composer=mock_composer,
-            context_assembler=mock_assembler,
-            draft_processor=mock_processor,
-            use_draft_agent=True,  # Flag aktiviert
-            registry=None,  # Aber kein Registry → Fallback auf Legacy
-        )
-
-        mock_gateway.stream = MagicMock(
-            spec=[],
-            return_value=_stream_from(
-                StreamChunk(text="Hello "),
-                StreamChunk(text="World."),
-                StreamChunk(text="", is_final=True, usage=_usage()),
-            ),
-        )
-
-        chunks = await _collect(
-            pipeline.generate(_request(), config=_config()),
-        )
-
-        # Trotz use_draft_agent=True wird Legacy verwendet (kein Registry)
-        mock_gateway.stream.assert_called_once()
-        texts = [c.text for c in chunks]
-        assert "Hello " in texts
+        call_args = mock_registry.run.call_args
+        assert call_args.args[0] == LLMIntent.CHAT

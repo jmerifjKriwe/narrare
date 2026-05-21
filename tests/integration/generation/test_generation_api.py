@@ -53,8 +53,9 @@ class TestGenerateNames:
             max_tokens=2000,
         )
 
+        # Use FakeLLMGateway as a registry-compatible object
         mock_service = NameGeneratorService(
-            gateway=mock_gateway,
+            registry=mock_gateway,  # FakeLLMGateway exposes run() with kw-only args
             composer=_get_composer_instance(),
             config=mock_config,
         )
@@ -92,7 +93,6 @@ class TestGenerateNames:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST /generation/names with count=100 returns 422 (validation)."""
         response = await client.post(
             "/api/v1/generation/names",
             json={
@@ -112,7 +112,6 @@ class TestGenerateNames:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST /generation/names with invalid name_type returns 422."""
         response = await client.post(
             "/api/v1/generation/names",
             json={
@@ -131,7 +130,6 @@ class TestGenerateNames:
         self,
         client: AsyncClient,
     ) -> None:
-        """POST /generation/names without auth returns 401."""
         response = await client.post(
             "/api/v1/generation/names",
             json={
@@ -148,7 +146,6 @@ class TestGenerateNames:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST /generation/names without project_id returns 422."""
         response = await client.post(
             "/api/v1/generation/names",
             json={

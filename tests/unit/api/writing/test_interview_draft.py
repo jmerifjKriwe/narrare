@@ -97,7 +97,7 @@ def _make_generator() -> tuple[InterviewDraftGenerator, SessionManager, Mock]:
 
     generator = InterviewDraftGenerator(
         session_manager=session_manager,
-        gateway=gateway,
+        registry=gateway,
         composer=composer,  # type: ignore[assignment]
         config=config,
     )

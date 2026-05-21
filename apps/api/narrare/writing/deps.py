@@ -12,7 +12,7 @@ from uuid import UUID
 
 from narrare._app.dependencies import (
     get_composer,
-    get_gateway,
+    get_model_registry,
     get_model_routing_resolver,
 )
 
@@ -45,12 +45,12 @@ async def get_writing_service(
     )
     config = replace(resolved.config, temperature=0.7, max_tokens=4000)
 
-    gateway = get_gateway()
+    registry = get_model_registry()
     composer = get_composer()
     assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
     pipeline = WritingPipeline(
-        gateway=gateway,
+        registry=registry,
         composer=composer,
         context_assembler=assembler,
         draft_processor=draft_processor,

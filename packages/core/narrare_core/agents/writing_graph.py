@@ -45,6 +45,12 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
+async def _save_state(ctx: StepContext[WritingState, WritingDeps, Any]) -> None:
+    """Save state checkpoint if store is configured."""
+    if ctx.deps.store is not None and ctx.deps.run_id:
+        await ctx.deps.store.save(ctx.deps.run_id, ctx.state)
+
+
 async def _get_model(deps: WritingDeps) -> Any:
     """Hole Model aus der Registry."""
     return await deps.registry.get_model(
@@ -80,6 +86,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         else:
             ctx.state.outline = "Chapter " + ctx.state.chapter_id + " outline"
         ctx.state.status = WritingStatus.OUTLINED
+        await _save_state(ctx)
 
     @g.step
     async def write_draft(ctx: StepContext[WritingState, WritingDeps, None]) -> None:
@@ -100,6 +107,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         result = await agent.run(prompt=instruction, deps=deps)
         ctx.state.draft = result.text
         ctx.state.status = WritingStatus.DRAFTED
+        await _save_state(ctx)
 
     @g.step
     async def review_draft(
@@ -110,10 +118,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         target = ctx.deps.word_target
 
         if ctx.state.attempts >= 3:
+            await _save_state(ctx)
             return Approved()
 
         if target and word_count < int(target * 0.5):
             ctx.state.attempts += 1
+            await _save_state(ctx)
             return NeedsRevision(
                 feedback="Draft too short ("
                 + str(word_count)
@@ -124,6 +134,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
 
         if target and word_count < int(target * 0.8) and ctx.state.attempts < 1:
             ctx.state.attempts += 1
+            await _save_state(ctx)
             return NeedsRevision(
                 feedback="Good start ("
                 + str(word_count)
@@ -132,6 +143,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
                 + ".",
             )
 
+        await _save_state(ctx)
         return Approved()
 
     @g.step
@@ -148,6 +160,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         ctx.state.revision = result.text
         ctx.state.draft = result.text
         ctx.state.status = WritingStatus.REVISED
+        await _save_state(ctx)
 
     @g.step
     async def finalize(
@@ -156,6 +169,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         """Finalisiere den Output und beende den Graph."""
         ctx.state.final = ctx.state.revision or ctx.state.draft
         ctx.state.status = WritingStatus.COMPLETED
+        await _save_state(ctx)
         return End(ctx.state)
 
     # Edges
@@ -176,12 +190,5 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
 
 
 def create_writing_graph() -> BuilderGraph[WritingState, WritingDeps, None, WritingState]:
-    """Convenience: Build und return den Writing-Graph.
-
-    Usage::
-
-        graph = create_writing_graph()
-        result = await graph.run(state=WritingState(...), deps=WritingDeps(...))
-        final_state = result  # WritingState (graph.run() returns OutputT directly)
-    """
+    """Convenience: build and return the Writing-Graph."""
     return build_writing_graph().build()

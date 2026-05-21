@@ -15,7 +15,7 @@ Siehe ADR-015 Phase 3.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
 from pydantic_ai.tools import Tool
@@ -31,17 +31,18 @@ from narrare_core.agents.kb_formatters import (
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
 
+    from narrare_core.kb.query_service import KBQueryService
+
 
 class KBDeps:
     """Dependencies for KBAgent tools.
 
     Attributes:
-        kb_service: Optional KB service for querying entries/relationships.
-            In Phase 3, this is optional — tools return fallback messages
-            when no service is configured. Phase 3+ will wire this up.
+        kb_service: Optional KB query service conforming to KBQueryService.
+            When None, tools return fallback messages.
     """
 
-    def __init__(self, kb_service: Any = None) -> None:
+    def __init__(self, kb_service: KBQueryService | None = None) -> None:
         self.kb_service = kb_service
 
 
@@ -81,7 +82,7 @@ class KBAgent(NarrareAgent[KBDeps, None]):
     # Public API
     # ------------------------------------------------------------------
 
-    def get_toolset(self) -> FunctionToolset:
+    def get_toolset(self) -> FunctionToolset[KBDeps]:
         """Return the FunctionToolset for integration in other agents.
 
         Usage:
@@ -95,7 +96,7 @@ class KBAgent(NarrareAgent[KBDeps, None]):
 
     async def search_kb(
         self,
-        ctx: RunContext[Any],
+        ctx: RunContext[KBDeps],
         query: str,
         entity_type: str | None = None,
     ) -> str:
@@ -110,7 +111,7 @@ class KBAgent(NarrareAgent[KBDeps, None]):
         Returns:
             Formatted string of matching entries, or a message if none found.
         """
-        kb_service = getattr(ctx.deps, "kb_service", None) if ctx.deps else None
+        kb_service = ctx.deps.kb_service
         if kb_service is not None:
             try:
                 entries = await kb_service.search(query, entity_type=entity_type)
@@ -122,7 +123,7 @@ class KBAgent(NarrareAgent[KBDeps, None]):
 
     async def get_entity(
         self,
-        ctx: RunContext[Any],
+        ctx: RunContext[KBDeps],
         name: str,
     ) -> str:
         """Get detailed information about a knowledge base entity by name.
@@ -134,7 +135,7 @@ class KBAgent(NarrareAgent[KBDeps, None]):
         Returns:
             Formatted entity details, or a message if not found.
         """
-        kb_service = getattr(ctx.deps, "kb_service", None) if ctx.deps else None
+        kb_service = ctx.deps.kb_service
         if kb_service is not None:
             try:
                 entity = await kb_service.get_by_name(name)
@@ -146,7 +147,7 @@ class KBAgent(NarrareAgent[KBDeps, None]):
 
     async def get_related_entities(
         self,
-        ctx: RunContext[Any],
+        ctx: RunContext[KBDeps],
         entity_name: str,
         relation_type: str | None = None,
     ) -> str:
@@ -160,15 +161,15 @@ class KBAgent(NarrareAgent[KBDeps, None]):
         Returns:
             Formatted list of related entities, or a message if none found.
         """
-        kb_service = getattr(ctx.deps, "kb_service", None) if ctx.deps else None
+        kb_service = ctx.deps.kb_service
         if kb_service is not None:
             try:
                 entity = await kb_service.get_by_name(entity_name)
                 if entity:
                     entity_id = getattr(entity, "id", None)
                     if entity_id:
-                        relations = await kb_service.get_related_entries(
-                            entity_id, rel_type=relation_type
+                        relations = await kb_service.get_related(
+                            entity_id, relation_type=relation_type
                         )
                         if relations:
                             return format_related(entity_name, relations)

@@ -14,6 +14,12 @@ import pytest
 from pydantic_ai import RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import FunctionToolset
+from tests.unit.core.agents._kb_mocks import (
+    BrokenGetByNameService,
+    BrokenGetRelatedService,
+    BrokenSearchService,
+    MockKBService,
+)
 
 from narrare_core.agents.kb_agent import KBAgent, KBDeps
 
@@ -59,7 +65,7 @@ class TestInstantiation:
 
 
 class TestTools:
-    """B. Tools — Toolset, Tool-Verhalten, Fallback + Happy Path (11 Tests)."""
+    """B. Tools — Toolset, Tool-Verhalten, Fallback + Happy Path."""
 
     def test_get_toolset_returns_function_toolset(self, kb_agent: KBAgent) -> None:
         toolset = kb_agent.get_toolset()
@@ -95,63 +101,48 @@ class TestTools:
 
     @pytest.mark.asyncio
     async def test_search_kb_service_error(self, kb_agent: KBAgent, test_model: TestModel) -> None:
-        class BrokenService:
-            async def search(self, query: str, **kwargs: object) -> None:
-                raise ConnectionError("Connection refused")
-
         result = await kb_agent.search_kb(
-            _ctx(test_model, KBDeps(kb_service=BrokenService())), query="test"
+            _ctx(test_model, KBDeps(kb_service=BrokenSearchService())), query="test"
         )
         assert "KB search failed" in result and "Connection refused" in result
 
     @pytest.mark.asyncio
     async def test_get_entity_service_error(self, kb_agent: KBAgent, test_model: TestModel) -> None:
-        class BrokenService:
-            async def get_by_name(self, name: str) -> None:
-                raise ValueError("Not found in DB")
-
         result = await kb_agent.get_entity(
-            _ctx(test_model, KBDeps(kb_service=BrokenService())), name="Ghost"
+            _ctx(test_model, KBDeps(kb_service=BrokenGetByNameService())), name="Ghost"
         )
         assert "KB lookup failed" in result and "Not found in DB" in result
 
     @pytest.mark.asyncio
     async def test_search_kb_with_results(self, kb_agent: KBAgent, test_model: TestModel) -> None:
-        class MockService:
-            async def search(self, query: str, **kwargs: object) -> list[SimpleNamespace]:
-                return [SimpleNamespace(name="Anna", entity_type="character", body="Hero.")]
-
+        service = MockKBService(
+            search_results=[SimpleNamespace(name="Anna", entity_type="character", body="Hero.")]
+        )
         result = await kb_agent.search_kb(
-            _ctx(test_model, KBDeps(kb_service=MockService())), query="Anna"
+            _ctx(test_model, KBDeps(kb_service=service)), query="Anna"
         )
         assert "Found KB entries" in result and "Anna" in result and "[character]" in result
 
     @pytest.mark.asyncio
     async def test_get_entity_with_results(self, kb_agent: KBAgent, test_model: TestModel) -> None:
-        class MockService:
-            async def get_by_name(self, name: str) -> SimpleNamespace:
-                return SimpleNamespace(
-                    name="Anna", entity_type="character", body="Hero.", tags=[], status="draft"
-                )
-
+        service = MockKBService(
+            entity=SimpleNamespace(
+                name="Anna", entity_type="character", body="Hero.", tags=[], status="draft"
+            )
+        )
         result = await kb_agent.get_entity(
-            _ctx(test_model, KBDeps(kb_service=MockService())), name="Anna"
+            _ctx(test_model, KBDeps(kb_service=service)), name="Anna"
         )
         assert "Entity: Anna" in result and "Type: character" in result
 
     @pytest.mark.asyncio
     async def test_get_related_with_results(self, kb_agent: KBAgent, test_model: TestModel) -> None:
-        class MockService:
-            async def get_by_name(self, name: str) -> SimpleNamespace:
-                return SimpleNamespace(id="e1", name="Anna", entity_type="character", body=".")
-
-            async def get_related_entries(
-                self, entity_id: str, rel_type: str | None = None
-            ) -> list[SimpleNamespace]:
-                return [SimpleNamespace(target_name="Peter", rel_type="ally")]
-
+        service = MockKBService(
+            entity=SimpleNamespace(id="e1", name="Anna", entity_type="character", body="."),
+            related=[SimpleNamespace(target_name="Peter", rel_type="ally")],
+        )
         result = await kb_agent.get_related_entities(
-            _ctx(test_model, KBDeps(kb_service=MockService())), entity_name="Anna"
+            _ctx(test_model, KBDeps(kb_service=service)), entity_name="Anna"
         )
         assert "Entities related to 'Anna'" in result and "Peter (ally)" in result
 
@@ -159,16 +150,9 @@ class TestTools:
     async def test_get_related_service_error(
         self, kb_agent: KBAgent, test_model: TestModel
     ) -> None:
-        class BrokenService:
-            async def get_by_name(self, name: str) -> SimpleNamespace:
-                return SimpleNamespace(id="e1", name="Anna", entity_type="character", body=".")
-
-            async def get_related_entries(
-                self, entity_id: str, rel_type: str | None = None
-            ) -> None:
-                raise RuntimeError("DB timeout")
-
+        entity = SimpleNamespace(id="e1", name="Anna", entity_type="character", body=".")
+        service = BrokenGetRelatedService(entity=entity)
         result = await kb_agent.get_related_entities(
-            _ctx(test_model, KBDeps(kb_service=BrokenService())), entity_name="Anna"
+            _ctx(test_model, KBDeps(kb_service=service)), entity_name="Anna"
         )
         assert "KB relationship lookup failed" in result and "DB timeout" in result

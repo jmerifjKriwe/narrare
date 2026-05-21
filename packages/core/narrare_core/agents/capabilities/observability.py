@@ -40,8 +40,30 @@ class NarrareObservability(AbstractCapability):
     _provider_name: str = ""
 
     async def for_run(self, ctx: RunContext[Any]) -> NarrareObservability:
-        """Frische Instanz pro Run — isoliert Per-Run-State."""
-        return NarrareObservability()
+        """Frische Instanz pro Run — isoliert Per-Run-State.
+
+        Versucht Observability-Kontext aus ``ctx.deps`` zu extrahieren.
+        Unterstützt aktuell das ``WritingDeps``-Pattern (``model_config``
+        mit ``provider_name`` + ``model_id``). Für andere Deps-Types
+        fallen die Werte auf ``"unknown"`` zurück (bisheriges Verhalten).
+        """
+        obs = NarrareObservability()
+
+        deps = ctx.deps
+        if deps is not None:
+            # WritingDeps / agents mit model_config-Attribut
+            model_config = getattr(deps, "model_config", None)
+            if model_config is not None:
+                provider = getattr(model_config, "provider_name", None)
+                model_id = getattr(model_config, "model_id", None)
+                if provider:
+                    obs._provider_name = provider
+                if model_id:
+                    obs._model_id = model_id
+
+        return obs
+
+        return obs
 
     async def before_model_request(
         self,

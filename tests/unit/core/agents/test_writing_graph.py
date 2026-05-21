@@ -196,3 +196,99 @@ class TestReviseDraft:
         assert state.revision == "Revised and improved draft."
         assert state.draft == "Revised and improved draft."
         assert state.status == WritingStatus.REVISED
+
+
+# D. State Persistence — _save_state
+
+
+class MockStore:
+    """Simple mock for GraphStateStore to verify save calls."""
+
+    def __init__(self) -> None:
+        self.saves: list[tuple[str, object]] = []
+
+    async def save(self, run_id: str, state: object) -> None:
+        self.saves.append((run_id, state))
+
+    async def load(self, run_id: str) -> object | None:
+        return None
+
+    async def delete(self, run_id: str) -> None:
+        pass
+
+
+class TestStatePersistence:
+    """_save_state wird korrekt aufgerufen — oder nicht, wenn store=None."""
+
+    @pytest.mark.asyncio
+    async def test_plan_outline_saves_state_with_store(self, writing_graph: Any) -> None:
+        """plan_outline ruft _save_state auf wenn store gesetzt ist."""
+        node = writing_graph.nodes["plan_outline"]
+        store = MockStore()
+        state = _make_state()
+        deps = _make_deps(chapter_outline="Outline.", store=store, run_id="run-1")
+        ctx = StepContext(state=state, deps=deps, inputs=None)
+        await node.call(ctx)
+        assert len(store.saves) == 1
+        assert store.saves[0][0] == "run-1"
+        assert store.saves[0][1] is state
+
+    @pytest.mark.asyncio
+    async def test_plan_outline_does_not_crash_without_store(self, writing_graph: Any) -> None:
+        """plan_outline darf nicht crashen wenn store=None."""
+        node = writing_graph.nodes["plan_outline"]
+        state = _make_state()
+        deps = _make_deps(chapter_outline="Outline.", store=None, run_id="")
+        ctx = StepContext(state=state, deps=deps, inputs=None)
+        await node.call(ctx)  # should not raise
+
+    @pytest.mark.asyncio
+    async def test_review_draft_saves_on_approved(self, writing_graph: Any) -> None:
+        """review_draft ruft _save_state bei Approved auf."""
+        node = writing_graph.nodes["review_draft"]
+        store = MockStore()
+        state = _make_state(draft=" ".join(["word"] * 800), attempts=0)
+        deps = _make_deps(word_target=1000, store=store, run_id="run-1")
+        ctx = StepContext(state=state, deps=deps, inputs=None)
+        result = await node.call(ctx)
+        assert isinstance(result, Approved)
+        assert len(store.saves) == 1
+
+    @pytest.mark.asyncio
+    async def test_review_draft_saves_on_needs_revision(self, writing_graph: Any) -> None:
+        """review_draft ruft _save_state bei NeedsRevision auf."""
+        node = writing_graph.nodes["review_draft"]
+        store = MockStore()
+        state = _make_state(draft=" ".join(["word"] * 200), attempts=0)
+        deps = _make_deps(word_target=1000, store=store, run_id="run-1")
+        ctx = StepContext(state=state, deps=deps, inputs=None)
+        result = await node.call(ctx)
+        assert isinstance(result, NeedsRevision)
+        assert len(store.saves) == 1
+
+    @pytest.mark.asyncio
+    async def test_review_draft_saves_on_max_attempts(self, writing_graph: Any) -> None:
+        """review_draft ruft _save_state bei max revisions."""
+        node = writing_graph.nodes["review_draft"]
+        store = MockStore()
+        state = _make_state(draft="short", attempts=3)
+        deps = _make_deps(word_target=1000, store=store, run_id="run-1")
+        ctx = StepContext(state=state, deps=deps, inputs=None)
+        result = await node.call(ctx)
+        assert isinstance(result, Approved)
+        assert len(store.saves) == 1
+
+    @pytest.mark.asyncio
+    async def test_finalize_saves_state(self, writing_graph: Any) -> None:
+        """finalize ruft _save_state auf."""
+        from pydantic_graph import End
+
+        node = writing_graph.nodes["finalize"]
+        store = MockStore()
+        state = _make_state(draft="Final text.")
+        deps = _make_deps(store=store, run_id="run-42")
+        ctx = StepContext(state=state, deps=deps, inputs=Approved())
+        result = await node.call(ctx)
+        assert isinstance(result, End)
+        assert len(store.saves) == 1
+        assert store.saves[0][0] == "run-42"

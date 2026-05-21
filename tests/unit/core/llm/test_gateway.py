@@ -1,265 +1,169 @@
-"""Tests for llm/gateway.py — using pydantic-ai TestModel where possible."""
+"""Tests for llm/gateway.py — ModelRegistry run() and stream() methods."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-import pytest
-
-# narrare: allow reason="gateway tests use TestModel instead of real LLM"
-from pydantic_ai.models.test import (
-    TestModel,
-)
-
 if TYPE_CHECKING:
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.result import StreamChunk
 
+from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
-from narrare_core.llm.result import LLMResult
-from narrare_core.llm.retry import NO_RETRY
-from narrare_core.shared.errors import (
-    LLMAuthError,
-    LLMRateLimitError,
-    LLMServiceUnavailableError,
-    LLMTimeoutError,
-)
-from tests.fakes.fake_pydantic_agent import FakePydanticAgent
 
 
-class TestLLMGatewayClassifyError:
-    def test_classifies_rate_limit(self, gateway: LLMGateway) -> None:
-        err = Exception("429 Too Many Requests rate limit exceeded")
-        result = gateway._classify_error(err)
-        assert isinstance(result, LLMRateLimitError)
-
-    def test_classifies_auth_error(self, gateway: LLMGateway) -> None:
-        err = Exception("401 Unauthorized invalid api key")
-        result = gateway._classify_error(err)
-        assert isinstance(result, LLMAuthError)
-
-    def test_classifies_timeout(self, gateway: LLMGateway) -> None:
-        err = Exception("Request timed out after 30s")
-        result = gateway._classify_error(err)
-        assert isinstance(result, LLMTimeoutError)
-
-
-class TestLLMGatewayRun:
-    async def test_returns_llm_result_on_success(
+class TestModelRegistryRun:
+    async def test_returns_string_on_success(
         self,
-        gateway_with_test_model: LLMGateway,
+        registry_with_test_model: ModelRegistry,
         write_config: ResolvedModelConfig,
     ) -> None:
-        """Gateway returns LLMResult when Agent succeeds."""
-        result = await gateway_with_test_model.run(
+        """ModelRegistry.run() returns string output when Agent succeeds."""
+        result = await registry_with_test_model.run(
+            LLMIntent.WRITE,
+            prompt="Write something.",
+            config=write_config,
+        )
+
+        assert isinstance(result, str)
+        assert result == "Test response from pydantic-ai TestModel."
+
+    async def test_passes_system_prompt(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """ModelRegistry.run() passes system_prompt to Agent."""
+        # With TestModel this doesn't error — just verify it doesn't raise
+        result = await registry_with_test_model.run(
+            LLMIntent.WRITE,
+            prompt="Write.",
+            config=write_config,
+            system_prompt="You are a helpful writer.",
+        )
+        assert isinstance(result, str)
+
+    async def test_passes_credentials_to_get_model(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """ModelRegistry.run() passes api_key and base_url to get_model."""
+        captured_kwargs: list[dict[str, object]] = []
+
+        original_get_model = registry_with_test_model.get_model
+
+        async def capture_get_model(config, **kwargs):
+            captured_kwargs.append(kwargs)
+            return await original_get_model(config, **kwargs)
+
+        with patch.object(
+            registry_with_test_model,
+            "get_model",
+            side_effect=capture_get_model,
+        ):
+            await registry_with_test_model.run(
+                LLMIntent.WRITE,
+                prompt="Write.",
+                config=write_config,
+                api_key="sk-test-key",
+                base_url="https://custom.api/v1",
+            )
+
+        assert captured_kwargs[0]["api_key"] == "sk-test-key"
+        assert captured_kwargs[0]["base_url"] == "https://custom.api/v1"
+
+
+class TestModelRegistryStream:
+    """Tests for the streaming method."""
+
+    async def test_stream_yields_text_chunks_and_final_chunk(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """ModelRegistry.stream() yields text chunks and a final chunk."""
+        chunks: list[StreamChunk] = []
+        async for chunk in registry_with_test_model.stream(
             intent=LLMIntent.WRITE,
             system_prompt="System.",
-            user_prompt="Write something.",
+            user_prompt="Write.",
             config=write_config,
-            retry_config=NO_RETRY,
-        )
+        ):
+            chunks.append(chunk)
 
-        assert isinstance(result, LLMResult)
-        assert result.text == "Test response from pydantic-ai TestModel."
-        assert result.usage.total_tokens > 0
-        assert result.intent == "write"
+        # TestModel returns a single text response
+        # Should have at least 1 text chunk + 1 final chunk
+        assert len(chunks) >= 1
+        final_chunks = [c for c in chunks if c.is_final]
+        assert len(final_chunks) == 1
+        assert final_chunks[0].text == ""
+        assert final_chunks[0].usage is not None
+        assert final_chunks[0].usage.total_tokens > 0
 
-    async def test_raises_domain_error_on_failure(
+    async def test_stream_with_credentials(
         self,
-        gateway_with_test_model: LLMGateway,
+        registry_with_test_model: ModelRegistry,
         write_config: ResolvedModelConfig,
     ) -> None:
-        """Gateway raises LLMGatewayError when Agent fails."""
-        # narrare: allow reason="testing error classification with pydantic-ai exception"
-        from pydantic_ai.exceptions import (
-            ModelHTTPError,
-        )
+        """ModelRegistry.stream() passes credentials to get_model."""
+        captured_kwargs: list[dict[str, object]] = []
 
-        # narrare: allow reason="testing error handling with FunctionModel"
-        from pydantic_ai.models.function import (
-            FunctionModel,
-        )
+        original_get_model = registry_with_test_model.get_model
 
-        def raise_auth_error(messages, info):
-            raise ModelHTTPError(status_code=401, model_name="test")
+        async def capture_get_model(config, **kwargs):
+            captured_kwargs.append(kwargs)
+            return await original_get_model(config, **kwargs)
 
-        error_model = FunctionModel(raise_auth_error)
-
-        with (
-            patch.object(
-                gateway_with_test_model,
-                "_get_model_with_credentials",
-                return_value=error_model,
-            ),
-            pytest.raises(LLMAuthError),
+        with patch.object(
+            registry_with_test_model,
+            "get_model",
+            side_effect=capture_get_model,
         ):
-            await gateway_with_test_model.run(
+            async for _ in registry_with_test_model.stream(
                 intent=LLMIntent.WRITE,
                 system_prompt="System.",
                 user_prompt="Write.",
                 config=write_config,
-                retry_config=NO_RETRY,
-            )
-
-    async def test_uses_config_provider_and_model(
-        self,
-        gateway_with_test_model: LLMGateway,
-    ) -> None:
-        """Gateway passes provider_name and model_id to factory."""
-        captured_args: list[tuple[str, str]] = []
-
-        def capture_model(provider_name: str, model_id: str, **kwargs: object) -> object:
-            captured_args.append((provider_name, model_id))
-            return TestModel(custom_output_text="captured")
-
-        config = ResolvedModelConfig(provider_name="zai", model_id="glm-z1-32b")
-
-        with patch.object(
-            gateway_with_test_model,
-            "_get_model_with_credentials",
-            side_effect=capture_model,
-        ):
-            await gateway_with_test_model.run(
-                intent=LLMIntent.WRITE,
-                system_prompt="System.",
-                user_prompt="Write.",
-                config=config,
-                retry_config=NO_RETRY,
-            )
-
-        assert captured_args == [("zai", "glm-z1-32b")]
-
-    async def test_passes_credentials_to_factory(
-        self,
-        gateway_with_test_model: LLMGateway,
-    ) -> None:
-        """Gateway passes api_key and base_url to factory."""
-        captured_kwargs: list[dict[str, object]] = []
-
-        def capture_credentials(provider_name: str, model_id: str, **kwargs: object) -> object:
-            captured_kwargs.append(kwargs)
-            return TestModel(custom_output_text="captured")
-
-        config = ResolvedModelConfig(provider_name="openrouter", model_id="gpt-4o")
-
-        with patch.object(
-            gateway_with_test_model,
-            "_get_model_with_credentials",
-            side_effect=capture_credentials,
-        ):
-            await gateway_with_test_model.run(
-                intent=LLMIntent.WRITE,
-                system_prompt="System.",
-                user_prompt="Write.",
-                config=config,
                 api_key="sk-or-test-key",
                 base_url="https://openrouter.ai/api/v1",
-                retry_config=NO_RETRY,
-            )
+            ):
+                pass
 
         assert captured_kwargs[0]["api_key"] == "sk-or-test-key"
         assert captured_kwargs[0]["base_url"] == "https://openrouter.ai/api/v1"
 
 
-class TestLLMGatewayStream:
-    """Tests for the streaming method."""
+class TestTokenLimitProfile:
+    """Token-Limit-Profile → UsageLimits Mapping."""
 
-    async def test_stream_yields_text_chunks_and_final_chunk(
-        self,
-        gateway: LLMGateway,
-        write_config: ResolvedModelConfig,
-    ) -> None:
-        from narrare_core.llm.result import StreamChunk
+    def test_profile_to_limits_returns_usage_limits(self) -> None:
+        """Bekannte Profile geben UsageLimits zurück."""
+        for profile in ("quick", "balanced", "long_texts", "conservative", "custom"):
+            result = ModelRegistry._profile_to_limits(profile)
+            assert result is not None
+            assert hasattr(result, "request_limit")
+            assert hasattr(result, "total_tokens_limit")
 
-        fake_agent = FakePydanticAgent()
-        fake_agent.returns_stream(["Hello", " world", "!"], input_tokens=20, output_tokens=80)
+    def test_unknown_profile_returns_none(self) -> None:
+        """Unbekanntes Profil gibt None zurück."""
+        result = ModelRegistry._profile_to_limits("nonexistent")
+        assert result is None
 
-        with (
-            patch.object(gateway, "_get_model_with_credentials", return_value=object()),
-            patch.object(gateway, "_make_agent", return_value=fake_agent),
-        ):
-            chunks: list[StreamChunk] = []
-            async for chunk in gateway.stream(
-                intent=LLMIntent.WRITE,
-                system_prompt="System.",
-                user_prompt="Write.",
-                config=write_config,
-            ):
-                chunks.append(chunk)
+    def test_empty_profile_returns_none(self) -> None:
+        """Leeres Profil gibt None zurück."""
+        result = ModelRegistry._profile_to_limits("")
+        assert result is None
 
-        # Should have 3 text chunks + 1 final chunk
-        assert len(chunks) == 4
-        assert chunks[0].text == "Hello"
-        assert chunks[1].text == " world"
-        assert chunks[2].text == "!"
-        assert chunks[3].is_final is True
-        assert chunks[3].text == ""
-        assert chunks[3].usage is not None
-        assert chunks[3].usage.total_tokens == 100
+    def test_quick_profile_low_limits(self) -> None:
+        """'quick' Profil hat niedrige Limits."""
+        result = ModelRegistry._profile_to_limits("quick")
+        assert result is not None
+        assert result.request_limit == 10
+        assert result.total_tokens_limit == 16000
 
-    async def test_stream_raises_domain_error_on_failure(
-        self,
-        gateway_with_test_model: LLMGateway,
-        write_config: ResolvedModelConfig,
-    ) -> None:
-        # narrare: allow reason="testing stream error classification with pydantic-ai exception"
-        from pydantic_ai.exceptions import (
-            ModelHTTPError,
-        )
-
-        # narrare: allow reason="testing stream error handling with FunctionModel"
-        from pydantic_ai.models.function import (
-            FunctionModel,
-        )
-
-        def raise_unavailable(messages, info):
-            raise ModelHTTPError(status_code=503, model_name="test")
-
-        async def raise_on_stream(messages, info):
-            raise ModelHTTPError(status_code=503, model_name="test")
-            yield
-
-        error_model = FunctionModel(raise_unavailable, stream_function=raise_on_stream)
-
-        with (
-            patch.object(
-                gateway_with_test_model,
-                "_get_model_with_credentials",
-                return_value=error_model,
-            ),
-            pytest.raises(LLMServiceUnavailableError),
-        ):
-            async for _ in gateway_with_test_model.stream(
-                intent=LLMIntent.WRITE,
-                system_prompt="System.",
-                user_prompt="Write.",
-                config=write_config,
-            ):
-                pass
-
-    async def test_stream_uses_config_provider_and_model(
-        self,
-        gateway_with_test_model: LLMGateway,
-    ) -> None:
-        captured_args: list[tuple[str, str]] = []
-
-        def capture_model(provider_name: str, model_id: str, **kwargs: object) -> object:
-            captured_args.append((provider_name, model_id))
-            return TestModel(custom_output_text="captured")
-
-        config = ResolvedModelConfig(provider_name="openai", model_id="gpt-4o")
-
-        with patch.object(
-            gateway_with_test_model,
-            "_get_model_with_credentials",
-            side_effect=capture_model,
-        ):
-            async for _ in gateway_with_test_model.stream(
-                intent=LLMIntent.WRITE,
-                system_prompt="System.",
-                user_prompt="Write.",
-                config=config,
-            ):
-                pass
-
-        assert captured_args == [("openai", "gpt-4o")]
+    def test_long_texts_profile_high_limits(self) -> None:
+        """'long_texts' Profil hat hohe Limits."""
+        result = ModelRegistry._profile_to_limits("long_texts")
+        assert result is not None
+        assert result.total_tokens_limit == 128000

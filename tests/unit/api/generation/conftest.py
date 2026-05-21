@@ -16,7 +16,7 @@ from narrare.generation.schemas import (
     NameType,
 )
 from narrare_core.llm.intents import ResolvedModelConfig
-from tests.fakes.fake_llm_gateway import FakeLLMGateway
+from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -91,8 +91,16 @@ SAMPLE_FENCED_RESPONSE = (
 
 
 @pytest.fixture
-def fake_gateway() -> FakeLLMGateway:
-    """Fake LLM gateway with programmable responses."""
+def fake_registry() -> FakeModelRegistry:
+    """Fake ModelRegistry with programmable responses."""
+    return FakeModelRegistry()
+
+
+@pytest.fixture
+def fake_gateway() -> Any:
+    """Backward-compatible fake gateway — delegates to FakeModelRegistry."""
+    from tests.fakes.fake_llm_gateway import FakeLLMGateway
+
     return FakeLLMGateway()
 
 
@@ -116,13 +124,13 @@ def config() -> ResolvedModelConfig:
 
 @pytest.fixture
 def service(
-    fake_gateway: FakeLLMGateway,
+    fake_registry: FakeModelRegistry,
     mock_composer: AsyncMock,
     config: ResolvedModelConfig,
 ) -> NameGeneratorService:
-    """NameGeneratorService wired with fake gateway and mock composer."""
+    """NameGeneratorService wired with fake registry and mock composer."""
     return NameGeneratorService(
-        gateway=fake_gateway,
+        registry=fake_registry,
         composer=mock_composer,
         config=config,
         api_key=None,

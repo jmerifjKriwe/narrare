@@ -9,6 +9,13 @@ import pytest
 from narrare_core.agents.capabilities.observability import NarrareObservability
 
 
+class _FakeRunContext:
+    """Minimaler RunContext-Ersatz für Tests."""
+
+    def __init__(self, deps: object = None) -> None:
+        self.deps = deps
+
+
 class TestNarrareObservability:
     """NarrareObservability-Hooks feuern korrekt."""
 
@@ -20,7 +27,7 @@ class TestNarrareObservability:
     async def test_for_run_returns_fresh_instance(self) -> None:
         """for_run erzeugt frische Instanz."""
         obs = NarrareObservability()
-        fresh = await obs.for_run(None)  # type: ignore[arg-type]
+        fresh = await obs.for_run(_FakeRunContext())  # type: ignore[arg-type]
         assert fresh is not obs
         assert isinstance(fresh, NarrareObservability)
 
@@ -70,3 +77,43 @@ class TestNarrareObservability:
                 error=ValueError("test error"),
             )
         mock_record.assert_called_once()
+
+    # ------------------------------------------------------------------
+    # for_run — Deps-Extraktion
+    # ------------------------------------------------------------------
+
+    async def test_for_run_extracts_model_config_from_deps(self) -> None:
+        """for_run extrahiert provider_name + model_id aus deps.model_config."""
+        obs = NarrareObservability()
+
+        class FakeModelConfig:
+            provider_name = "test_provider"
+            model_id = "test-model-v1"
+
+        class FakeDeps:
+            model_config = FakeModelConfig()
+
+        ctx = _FakeRunContext(deps=FakeDeps())
+        fresh = await obs.for_run(ctx)  # type: ignore[arg-type]
+
+        assert fresh._provider_name == "test_provider"
+        assert fresh._model_id == "test-model-v1"
+
+    async def test_for_run_does_not_override_explicit_values(self) -> None:
+        """for_run überschreibt keine bereits gesetzten Werte.
+
+        Da NarrareObservability() mit Defaults erzeugt wird (leere Strings),
+        werden die Werte aus deps übernommen. Sollte ein Konstruktor-Parameter
+        in Zukunft explizite Werte setzen, überschreibt for_run sie nicht.
+        """
+        obs = NarrareObservability()
+        obs._provider_name = "explicit_provider"
+
+        class FakeDepsWithoutConfig:
+            pass
+
+        ctx = _FakeRunContext(deps=FakeDepsWithoutConfig())
+        fresh = await obs.for_run(ctx)  # type: ignore[arg-type]
+
+        # Kein model_config in deps → Werte bleiben unverändert (leer)
+        assert fresh._provider_name == ""

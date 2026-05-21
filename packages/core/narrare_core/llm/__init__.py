@@ -1,7 +1,7 @@
 """LLM Gateway — the only path to any LLM provider. See CONSTRAINTS.md RULE-01."""
 
-from narrare_core.llm.contracts import LLMGatewayProtocol
-from narrare_core.llm.gateway import LLMGateway, ModelRegistry
+from narrare_core.llm.contracts import ModelRegistryProtocol
+from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.llm.intents import (
     INTENT_CATEGORY_MAP,
     IntentCategory,
@@ -27,13 +27,12 @@ __all__ = [
     "CategoryOverride",
     "IntentCategory",
     "IntentOverride",
-    "LLMGateway",
-    "LLMGatewayProtocol",
     "LLMIntent",
     "LLMObservability",
     "LLMResult",
     "LLMStream",
     "ModelRegistry",
+    "ModelRegistryProtocol",
     "ModelRoutingResolver",
     "ResolvedModel",
     "ResolvedModelConfig",

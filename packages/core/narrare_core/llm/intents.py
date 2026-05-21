@@ -130,7 +130,7 @@ class ResolvedModelConfig:
     which provider, which model, and generation parameters.
 
     This is the output of ``ModelRoutingResolver.resolve()`` and the
-    input to ``LLMGateway.run()`` / ``LLMGateway.stream()``.
+    input to ``ModelRegistry.run()`` / ``ModelRegistry.stream()``.
 
     Replaces the old ``ModelConfig`` which had no ``provider_name``
     and relied on ``infer_provider()`` heuristics.
@@ -143,3 +143,4 @@ class ResolvedModelConfig:
     temperature: float = 0.7
     max_tokens: int = 2000
     streams: bool = False
+    token_limit_profile: str | None = None

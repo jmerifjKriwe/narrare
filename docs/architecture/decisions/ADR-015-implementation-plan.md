@@ -686,6 +686,55 @@ Saved to `docs/architecture/workflows/writing-graph.mermaid`.
 
 ---
 
+## Task 0.4 — Call-Site-Inventar (nachträglich erstellt)
+
+> Erstellt am 2026-05-20. Vollständiger Scan aller `gateway.run()`, `gateway.stream()`, `registry.get_model()`, `registry.run()` und direkten `Agent()`-Aufrufe (exkl. Tests und `__pycache__`).
+
+### gateway.run() / gateway.stream() Aufrufe (Legacy-Pfad)
+
+| Datei | Zeile | Intent | Migration-Kategorie |
+|-------|-------|--------|---------------------|
+| `apps/api/narrare/generation/name_service.py` | 82 | Name-Generierung (WRITE intent) | Simple → `Registry.run()` Komfort-Methode |
+| `apps/api/narrare/writing/ws_handler.py` | 212 | Writing WebSocket-Streaming | Complex → DraftAgent (Phase 2 erledigt) |
+| `apps/api/narrare/writing/_interview_draft.py` | 152 | Interview-Draft-Streaming | Complex → Pipeline nutzt DraftAgent intern |
+| `packages/core/narrare_core/writing/pipeline.py` | 238 | Pipeline-Streaming (Legacy-Pfad) | Complex → Feature-Flag steuert Alt/Neu |
+| `packages/core/narrare_core/writing/pipeline_scene.py` | 64 | Scene-Pipeline-Streaming (private access) | Complex → Pipeline nutzt DraftAgent intern |
+| `packages/core/narrare_core/writing/pipeline_interview.py` | 60 | Interview-Pipeline run (private access) | Complex → Pipeline nutzt DraftAgent intern |
+| `packages/core/narrare_core/llm/model_routing.py` | 66 | Model-Routing / Fallback-Test | Simple → `Registry.run()` Komfort-Methode |
+
+### registry.get_model() Aufrufe (Neuer Pfad)
+
+| Datei | Zeile | Agent | Status |
+|-------|-------|-------|--------|
+| `packages/core/narrare_core/agents/draft_agent.py` | 7 | DraftAgent | ✅ Migriert |
+| `packages/core/narrare_core/agents/base.py` | 9 | NarrareAgent (Base) | ✅ Migriert |
+| `packages/core/narrare_core/agents/base.py` | 37 | NarrareAgent (Base) | ✅ Migriert |
+| `packages/core/narrare_core/agents/writing_graph.py` | 50 | WritingGraph | ✅ Migriert |
+| `packages/core/narrare_core/writing/pipeline.py` | 302 | Pipeline → DraftAgent | ✅ Migriert (Feature-Flag-Pfad) |
+
+### Direkte Agent()-Instanziierung
+
+| Datei | Zeile | Status |
+|-------|-------|--------|
+| `apps/api/narrare/setup/provider_service.py` | 223 | ⚠️ Allowlisted — Setup-Phase Validation (ADR-015 Ausnahme, mit `# narrare: allow-agent` Comment) |
+| `packages/core/narrare_core/writing/pipeline.py` | 308 | ✅ `DraftAgent()` — NarrareAgent-Subklasse, korrekte Nutzung |
+| `packages/core/narrare_core/llm/gateway.py` | 126 | ⚠️ Legacy-Gateway — intern erlaubt (wird mit Task 5 entfernt) |
+| `packages/core/narrare_core/llm/_legacy.py` | 95 | ⚠️ `_LegacyGateway` — intern erlaubt (wird mit Task 5 entfernt) |
+
+### Kategorisierung
+
+- **Simple Calls** (kein Output-Type, kein Tools) → nutzen `Registry.run()` Komfort-Methode
+  - `name_service.py` (Name-Generierung)
+  - `model_routing.py` (Model-Routing/Fallback)
+- **Complex Calls** (Writing-Pipeline) → auf Agent umgestellt ✅
+  - `pipeline.py`, `pipeline_scene.py`, `pipeline_interview.py` nutzen intern DraftAgent oder Legacy-Pfad (Feature-Flag-gesteuert)
+  - `ws_handler.py`, `_interview_draft.py` rufen Pipeline auf, die ihrerseits DraftAgent nutzt
+- **Not migrated** → dokumentieren warum nicht
+  - `provider_service.py:223` — Setup-Phase Validation: kein Agent sinnvoll, explizit allowlisted
+  - `gateway.py:126`, `_legacy.py:95` — Legacy-Gateway erzeugt intern Agent für Kompatibilität; wird mit Legacy-Entfernung (Task 5) obsolet
+
+---
+
 ## Risikobewertung
 
 | Phase | Risiko | Wahrsch. | Impact | Mitigation |

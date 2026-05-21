@@ -13,7 +13,7 @@
 ```
 Phase 0: 🏗️ Agent-Singletons + Cache-Config in ResolvedModelConfig     ~2 Tage
      ↓
-Phase 1: 🔧 Provider-native Cache-Settings (Anthropic, OpenAI, Google) ~3 Tage
+Phase 1: 🔧 Provider-native Cache-Settings (Anthropic, Google) + Verification (OpenAI, Z.AI, Groq) ~3 Tage
      ↓
 Phase 2: 📊 Observability + Cache-Hit-Tracking                         ~2 Tage
                                                           ─────────────
@@ -120,12 +120,16 @@ Prüfe ob pydantic-ai's GoogleProvider Context Caching unterstützt. Wenn ja, ko
 **Layer**: Core
 **DoD**: Google Caching entweder konfiguriert oder als "nicht verfügbar" dokumentiert.
 
-#### 1.4 Groq / OpenRouter / Z.AI / Ollama (Core Specialist)
+#### 1.4 Z.AI / Groq / OpenRouter / Ollama (Core Specialist)
 
-Groq und OpenRouter nutzen OpenAI-kompatibles Caching (automatisch). Z.AI und Ollama: kein Caching nötig.
+**Z.AI** (glm-*): Automatisches Context-Caching (implizit, keine Konfiguration nötig). Cache-Hits sichtbar via `usage.prompt_tokens_details.cached_tokens`. Cached tokens zu ~50% des Standardpreises abgerechnet. Siehe https://docs.z.ai/guides/capabilities/cache.
+
+**Groq** und **OpenRouter**: OpenAI-kompatibles Caching (automatisch).
+
+**Ollama**: Kein Caching nötig (lokal, Latenz vernachlässigbar).
 
 **Layer**: Core
-**DoD**: Dokumentierte Caching-Strategie pro Provider.
+**DoD**: Dokumentierte Caching-Strategie pro Provider. Z.AI Cache-Hit-Metrik in Observability Tracking berücksichtigt (zusätzlich zu `cache_read_input_tokens` auch `prompt_tokens_details.cached_tokens` prüfen).
 
 ---
 

@@ -1,6 +1,6 @@
-"""Name generation API service — uses LLM gateway and prompt composer.
+"""Name generation API service — uses LLM registry and prompt composer.
 
-Builds prompts via PromptComposer, calls LLMGateway, parses structured
+Builds prompts via PromptComposer, calls ModelRegistry, parses structured
 JSON responses into GeneratedName objects. Includes placeholder KB
 dedup check for future integration.
 """
@@ -21,7 +21,7 @@ from narrare.generation.schemas import (
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
 
@@ -31,19 +31,19 @@ logger = structlog.get_logger(__name__)
 class NameGeneratorService:
     """Generates names using LLM with culture-aware prompts.
 
-    Uses PromptComposer for prompt assembly and LLMGateway for execution.
+    Uses PromptComposer for prompt assembly and ModelRegistry for execution.
     Parses structured JSON responses into GeneratedName objects.
     """
 
     def __init__(
         self,
-        gateway: LLMGateway,
+        registry: ModelRegistry,
         composer: PromptComposer,
         config: ResolvedModelConfig,
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> None:
-        self._gateway = gateway
+        self._registry = registry
         self._composer = composer
         self._config = config
         self._api_key = api_key
@@ -79,16 +79,16 @@ class NameGeneratorService:
             user_prompt=self._build_user_prompt(request),
         )
 
-        result = await self._gateway.run(
-            intent=LLMIntent.NAME_GENERATE,
-            system_prompt=prompt.system,
-            user_prompt=prompt.user,
+        result: str = await self._registry.run(  # pyright: ignore[reportUnknownVariableType]
+            LLMIntent.NAME_GENERATE,
+            prompt=prompt.user,
             config=self._config,
+            system_prompt=prompt.system,
             api_key=self._api_key,
             base_url=self._base_url,
         )
 
-        names = self._parse_names(result.text, request)
+        names = self._parse_names(result, request)
         names = await self._check_duplicates(names, request.project_id)
 
         logger.info(

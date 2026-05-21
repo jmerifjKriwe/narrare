@@ -14,7 +14,7 @@ import structlog
 from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
-from narrare_core.shared.errors import LLMGatewayError, WritingError
+from narrare_core.shared.errors import WritingError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -57,19 +57,20 @@ async def stream_interview_assisted(
     prompt = await pipeline._composer.build(LLMIntent.CHAT, prompt_context)  # pyright: ignore[reportPrivateUsage]
 
     try:
-        result = await pipeline._gateway.run(  # pyright: ignore[reportPrivateUsage]
-            intent=LLMIntent.CHAT,
-            system_prompt=prompt.system,
-            user_prompt=prompt.user,
+        result_text: str = await pipeline._registry.run(  # pyright: ignore[reportPrivateUsage,reportUnknownVariableType]
+            LLMIntent.CHAT,
+            prompt=prompt.user,
             config=config,
+            system_prompt=prompt.system,
             api_key=api_key,
             base_url=base_url,
         )
-    except LLMGatewayError as e:
+    except Exception as e:
         raise WritingError(
             f"Interview question generation failed: {e}",
             code="INTERVIEW_FAILED",
         ) from e
 
-    yield StreamChunk(text=result.text)
-    yield StreamChunk(text="", is_final=True, usage=result.usage)
+    # ModelRegistry.run() returns str, not LLMResult — wrap for compatibility
+    yield StreamChunk(text=result_text)
+    yield StreamChunk(text="", is_final=True, usage=None)

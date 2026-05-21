@@ -1,12 +1,12 @@
 """Writing generation pipeline — orchestrates context → prompt → LLM → post-process.
 
 MODES:
-    - ``full_draft``          Generate a complete chapter in one pass.
+    - ``full_draft``          Generate a complete chapter via WritingGraph.
     - ``scene_by_scene``      Delegates to pipeline_scene module.
     - ``interview_assisted``  Delegates to pipeline_interview module.
     - ``interactive_session`` Handled via WebSocket (raises ValueError here).
 
-RULE-01: All LLM calls go through the injected gateway.
+RULE-01: All LLM calls go through the injected registry.
 RULE-02: All prompts built through the injected composer.
 """
 
@@ -16,10 +16,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
-from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.context import PromptContext
-from narrare_core.shared.errors import LLMGatewayError, WritingError
+from narrare_core.shared.errors import WritingError
 from narrare_core.writing.models import (
     GenerationMode,
     GenerationRequest,
@@ -30,7 +28,9 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
-    from narrare_core.llm.gateway import LLMGateway, ModelRegistry
+    from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm.result import StreamChunk
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.context_models import KBEntity, RecentChapter
@@ -67,21 +67,15 @@ class WritingPipeline:
 
     def __init__(
         self,
-        gateway: LLMGateway,
+        registry: ModelRegistry,
         composer: PromptComposer,
         context_assembler: WritingContextAssembler,
         draft_processor: DraftProcessor,
-        registry: ModelRegistry | None = None,
-        use_draft_agent: bool = False,
-        use_writing_graph: bool = False,
     ) -> None:
-        self._gateway = gateway
+        self._registry = registry
         self._composer = composer
         self._context_assembler = context_assembler
         self._draft_processor = draft_processor
-        self._registry = registry
-        self._use_draft_agent = use_draft_agent
-        self._use_writing_graph = use_writing_graph
         self._stop_signals: set[UUID] = set()
 
     # ------------------------------------------------------------------
@@ -177,7 +171,7 @@ class WritingPipeline:
         return request_id in self._stop_signals
 
     # ------------------------------------------------------------------
-    # Mode: Full Draft
+    # Mode: Full Draft (always via WritingGraph)
     # ------------------------------------------------------------------
 
     async def _full_draft(
@@ -189,148 +183,7 @@ class WritingPipeline:
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
-        """Generate a complete chapter draft in one pass."""
-        if self._use_writing_graph and self._registry is not None:
-            async for chunk in self._stream_via_writing_graph(
-                request,
-                context,
-                config,
-                api_key=api_key,
-                base_url=base_url,
-            ):
-                yield chunk
-        elif self._use_draft_agent and self._registry is not None:
-            async for chunk in self._stream_via_draft_agent(
-                request,
-                context,
-                config,
-                api_key=api_key,
-                base_url=base_url,
-            ):
-                yield chunk
-        else:
-            async for chunk in self._legacy_full_draft(
-                request,
-                context,
-                config,
-                api_key=api_key,
-                base_url=base_url,
-            ):
-                yield chunk
-
-    async def _legacy_full_draft(
-        self,
-        request: GenerationRequest,
-        context: WritingContext,
-        config: ResolvedModelConfig,
-        *,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> AsyncIterator[StreamChunk]:
-        """Legacy full-draft path via LLMGateway (original implementation)."""
-        prompt_context = self._build_prompt_context(request, context)
-        prompt = await self._composer.build(LLMIntent.WRITE, prompt_context)
-
-        accumulated: list[str] = []
-        final_usage: TokenUsage | None = None
-
-        try:
-            async for chunk in self._gateway.stream(
-                intent=LLMIntent.WRITE,
-                system_prompt=prompt.system,
-                user_prompt=prompt.user,
-                config=config,
-                api_key=api_key,
-                base_url=base_url,
-            ):
-                if self._is_stopped(request.id):
-                    logger.info(
-                        "generation_stopped",
-                        request_id=str(request.id),
-                        chunks=len(accumulated),
-                    )
-                    break
-                if chunk.is_final:
-                    final_usage = chunk.usage
-                    continue
-                accumulated.append(chunk.text)
-                yield chunk
-
-        except LLMGatewayError as e:
-            logger.error(
-                "generation_failed",
-                error=str(e),
-                request_id=str(request.id),
-                chunks=len(accumulated),
-            )
-            raise WritingError(
-                f"Draft generation failed after {len(accumulated)} chunks: {e}",
-                code="GENERATION_FAILED",
-            ) from e
-
-        raw_text = "".join(accumulated)
-        cleaned = self._draft_processor.process(
-            raw_text,
-            word_target=request.word_target,
-        )
-        yield StreamChunk(text=cleaned, is_final=True, usage=final_usage)
-
-    async def _stream_via_draft_agent(
-        self,
-        request: GenerationRequest,
-        context: WritingContext,
-        config: ResolvedModelConfig,
-        *,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> AsyncIterator[StreamChunk]:
-        """Generate a draft via DraftAgent (pydantic-ai based).
-
-        Uses the DraftAgent's Output Function for post-processing
-        and quality validation instead of the legacy gateway path.
-        """
-        # Lazy import to avoid circular dependencies
-        from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
-
-        # Nur aufgerufen wenn self._registry gesetzt ist (siehe _full_draft Guard)
-        registry = self._registry
-        assert registry is not None
-
-        prompt_context = self._build_prompt_context(request, context)
-        prompt = await self._composer.build(LLMIntent.WRITE, prompt_context)
-
-        model = await registry.get_model(
-            config,
-            api_key=api_key,
-            base_url=base_url,
-        )
-
-        agent = DraftAgent(model=model, word_target=request.word_target)
-        deps = DraftDeps(context_assembler=self._context_assembler)
-
-        # Der DraftAgent hat bereits einen eigenen system_prompt.
-        # Wir übergeben den user_prompt mit dem assemblierten Kontext.
-        # narrare: allow-agent reason="DraftAgent is called from pipeline compat layer (Phase 2.3)"
-        result = await agent.run(prompt=prompt.user, deps=deps)
-
-        # DraftOutput → StreamChunk Konvertierung
-        # TokenUsage ist aktuell nicht verfügbar (Phase 3: Agent-Usage-Reporting)
-        yield StreamChunk(
-            text=result.text,
-            is_final=True,
-            usage=None,
-        )
-
-    async def _stream_via_writing_graph(
-        self,
-        request: GenerationRequest,
-        context: WritingContext,
-        config: ResolvedModelConfig,
-        *,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> AsyncIterator[StreamChunk]:
-        """Delegate to WritingGraph via pipeline_graph submodule (RULE-04)."""
+        """Generate a complete chapter draft via WritingGraph."""
         from narrare_core.writing.pipeline_graph import stream_via_writing_graph
 
         async for chunk in stream_via_writing_graph(

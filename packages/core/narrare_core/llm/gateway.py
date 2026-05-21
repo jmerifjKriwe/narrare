@@ -6,27 +6,31 @@ This is the Gateway v2.  Instead of creating ephemeral Agents and calling
 Agents obtain their Model here, then call ``agent.run()`` themselves.
 
 **RULE-01b**: ``from pydantic_ai import Agent`` is restricted in ``core/llm/``.
-The convenience ``run()`` method on ``ModelRegistry`` is the only approved
-exception — it creates an ephemeral Agent for simple one-shot calls.
+The convenience ``run()`` and ``stream()`` methods on ``ModelRegistry`` are
+the only approved exceptions — they create ephemeral Agents for simple calls.
 
 See CONSTRAINTS.md RULE-01b and ADR-015.
 """
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import structlog
 
-# narrare: allow-agent reason="ModelRegistry convenience run() creates ephemeral Agent"
+# narrare: allow-agent reason="ModelRegistry convenience run()/stream() creates ephemeral Agent"
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import UsageLimitExceeded
+from pydantic_ai.usage import UsageLimits
 
 from narrare_core.llm._providers.registry import get as get_provider
+from narrare_core.llm.result import StreamChunk, TokenUsage
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from pydantic_ai.models import Model
-    from pydantic_ai.usage import UsageLimits
 
     from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 
@@ -34,8 +38,8 @@ logger = structlog.get_logger(__name__)
 
 T = TypeVar("T")
 
-# Public API: ModelRegistry (v2) + LLMGateway (legacy re-export for back compat)
-__all__ = ["LLMGateway", "ModelRegistry"]
+# Public API
+__all__ = ["ModelRegistry"]
 
 
 class ModelRegistry:
@@ -49,11 +53,39 @@ class ModelRegistry:
     * ``UsageLimits`` pre-configuration — prepared for Phase 1 of ADR-015
 
     Simple use cases (health checks, name generation) can use the
-    convenience :meth:`run` method, which creates an ephemeral Agent,
-    calls it, and returns the output.  Complex use cases (writing
-    pipeline) should use :meth:`get_model` + their own Agent definition
-    in :mod:`~narrare_core.agents`.
+    convenience :meth:`run` and :meth:`stream` methods, which create
+    ephemeral Agents.  Complex use cases (writing pipeline) should use
+    :meth:`get_model` + their own Agent definition in
+    :mod:`~narrare_core.agents`.
     """
+
+    @staticmethod
+    def _profile_to_limits(profile: str) -> UsageLimits | None:
+        """Convert a named token limit profile to UsageLimits.
+
+        These profiles are stored in user_ai_settings and project_settings
+        as the ``token_limit_profile`` column.
+
+        Args:
+            profile: One of "quick", "balanced", "long_texts", "conservative", "custom".
+
+        Returns:
+            Configured UsageLimits, or None if the profile is unknown.
+        """
+        profiles: dict[str, dict[str, int]] = {
+            "quick": {"request_limit": 10, "total_tokens_limit": 16000},
+            "balanced": {"request_limit": 25, "total_tokens_limit": 64000},
+            "long_texts": {"request_limit": 25, "total_tokens_limit": 128000},
+            "conservative": {"request_limit": 10, "total_tokens_limit": 32000},
+            "custom": {"request_limit": 25, "total_tokens_limit": 64000},  # falls back to balanced
+        }
+        limits = profiles.get(profile)
+        if limits is None:
+            return None
+        return UsageLimits(
+            request_limit=limits["request_limit"],
+            total_tokens_limit=limits["total_tokens_limit"],
+        )
 
     async def get_model(
         self,
@@ -82,6 +114,12 @@ class ModelRegistry:
             KeyError: If ``config.provider_name`` is not registered in the
                 :mod:`~narrare_core.llm._providers` registry.
         """
+        # Auto-convert token_limit_profile to UsageLimits if not explicitly set
+        if usage_limits is None:
+            profile = getattr(config, "token_limit_profile", None) or ""
+            if profile:
+                usage_limits = self._profile_to_limits(profile)
+
         factory = get_provider(config.provider_name)
         return factory(config.model_id, api_key=api_key, base_url=base_url)
 
@@ -95,6 +133,8 @@ class ModelRegistry:
         output_type: type[T] | None = None,
         deps: Any = None,
         usage_limits: UsageLimits | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> T:
         """Convenience: create ephemeral Agent, run it, return the output.
 
@@ -116,14 +156,17 @@ class ModelRegistry:
             deps: Optional dependencies for the Agent.
             usage_limits: Passed to ``agent.run(usage_limits=...)`` to
                 enforce token and request limits.
+            api_key: Optional API key — overrides the environment variable.
+            base_url: Optional base URL — overrides the provider default.
 
         Returns:
             The agent's output — either ``str`` (when ``output_type`` is
             ``None`` or ``str``) or an instance of the specified type ``T``.
         """
-        # narrare: allow-agent reason="ModelRegistry convenience run() (ADR-015)"
-        model = await self.get_model(config, usage_limits=usage_limits)
-        agent = Agent(
+        model = await self.get_model(
+            config, api_key=api_key, base_url=base_url, usage_limits=usage_limits
+        )
+        agent = Agent(  # narrare: allow-agent reason="ModelRegistry convenience run() (ADR-015)"
             model=model,
             system_prompt=system_prompt or "",
             output_type=output_type or str,
@@ -137,6 +180,60 @@ class ModelRegistry:
             # Phase 1: Wird in Phase 1.3 als user-visible error klassifiziert
             raise
 
+    async def stream(
+        self,
+        *,
+        intent: LLMIntent,
+        system_prompt: str,
+        user_prompt: str,
+        config: ResolvedModelConfig,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> AsyncIterator[StreamChunk]:
+        """Convenience: create ephemeral Agent, stream text output.
 
-# Backward compatibility — LLMGateway has moved to _legacy.py
-from narrare_core.llm._legacy import LLMGateway  # noqa: E402, I001  # pyright: ignore[reportUnusedImport]
+        Use this for streaming LLM calls that need text deltas — for
+        example interactive writing sessions or draft generation.
+
+        Args:
+            intent: The operation intent (used for logging).
+            system_prompt: System role message.
+            user_prompt: User role message.
+            config: Fully resolved model configuration.
+            api_key: Optional API key — overrides the environment variable.
+            base_url: Optional base URL — overrides the provider default.
+
+        Yields:
+            StreamChunk instances with text fragments.  The final chunk
+            has ``is_final=True`` and populated ``usage``.
+        """
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
+        agent = Agent(
+            model=model,
+            system_prompt=system_prompt,
+            output_type=str,
+        )
+
+        start = time.monotonic()
+
+        # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
+        async with agent.run_stream(user_prompt) as stream_result:
+            async for text in stream_result.stream_text(delta=True):
+                yield StreamChunk(text=text)
+
+            elapsed = time.monotonic() - start
+            usage = stream_result.usage
+            token_usage = TokenUsage(
+                prompt_tokens=usage.input_tokens or 0,
+                completion_tokens=usage.output_tokens or 0,
+                total_tokens=usage.total_tokens or 0,
+            )
+            logger.info(
+                "model_registry_stream_complete",
+                intent=intent.value,
+                model=config.model_id,
+                tokens=token_usage.total_tokens,
+                duration_ms=round(elapsed * 1000),
+            )
+            yield StreamChunk(text="", is_final=True, usage=token_usage)

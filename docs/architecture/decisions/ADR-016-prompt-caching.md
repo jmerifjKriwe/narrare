@@ -22,7 +22,7 @@ Narrare unterstützt 7 LLM-Provider mit unterschiedlichen Caching-Mechanismen. N
 | **Groq** (OpenAI-kompatibel) | Automatisches Caching auf Server-Seite (wie OpenAI) | `cache_read_input_tokens` in Usage |
 | **OpenRouter** (Proxy) | Forwarded Provider-Caching | Hängt vom Ziel-Provider ab |
 | **Ollama** (lokal) | Kein Prompt-Caching | Lokal, Latenz ist vernachlässigbar |
-| **Z.AI** (glm-*, OpenAI-kompatibel) | Verhalten unbekannt | Als "kein Caching" annehmen |
+| **Z.AI** (glm-*) | Automatisches Context-Caching (implizit) | `usage.prompt_tokens_details.cached_tokens`, kein expliziter API-Control nötig, ~50% Kostenersparnis bei Cache-Hits |
 
 ### Aktuelle Probleme
 
@@ -57,7 +57,7 @@ Narrare unterstützt 7 LLM-Provider mit unterschiedlichen Caching-Mechanismen. N
 
 ### Option A — Provider-native Caching (pro Provider konfigurieren)
 
-Nutze die nativen Caching-Mechanismen jedes Providers: Anthropic `anthropic_cache=True` in ModelSettings, OpenAI automatisch (Agent muss persistent sein), Google explicit `cached_contents` API, Groq/OpenRouter automatisch, Ollama/Z.AI ignorieren.
+Nutze die nativen Caching-Mechanismen jedes Providers: Anthropic `anthropic_cache=True` in ModelSettings, OpenAI/Z.AI/Groq automatisch (Agent muss persistent sein), Google explicit `cached_contents` API, OpenRouter forwarded, Ollama ignorieren.
 
 **Pros:**
 - Maximale Kontrolle, volle Provider-Features
@@ -119,7 +119,7 @@ Option A bietet maximale Kontrolle, aber Narrare nutzt pydantic-ai als Abstrakti
 ## Consequences
 
 **Positive:**
-- Signifikante Kostenreduktion bei Anthropic und OpenAI (größte Kostentreiber)
+- Signifikante Kostenreduktion bei Anthropic, OpenAI und Z.AI (größte Kostentreiber)
 - Schnellere Time-to-First-Token bei Cache-Hits
 - Messbar via `cache_read_input_tokens` in Usage-Stats
 - Architektur ist vorbereitet für produktive User

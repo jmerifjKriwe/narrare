@@ -1,6 +1,6 @@
 # ADR-015 — Pydantic-AI Agents as First-Class Architecture Citizens
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Accepted
 > **Date:** 2026-05-20
 > **Deciders:** Architecture Agent, Narrare Dev Coordinator
 > **Supersedes:** ADR-001 (partial — RULE-01 redefined)
@@ -146,6 +146,9 @@ Details siehe [Implementation Plan](/workspace/docs/architecture/decisions/ADR-0
 
 ## Review Trigger
 
-- [ ] Nach Abschluss von Phase 2: Evaluieren, ob die alte Pipeline noch parallel laufen muss
-- [ ] Nach Abschluss von Phase 4: Gesamt-ADR-Review — ist die Architektur stabil?
+- [x] Nach Abschluss von Phase 2: Evaluieren, ob die alte Pipeline noch parallel laufen muss
+  → Ergebnis: Ja, Legacy-Pipeline bleibt vorerst. Feature-Flags steuern Übergang.
+- [x] Nach Abschluss von Phase 4: Gesamt-ADR-Review — ist die Architektur stabil?
+  → Ergebnis: Architektur ist stabil. 4 Phasen implementiert, 123 Tests, 0 Violations.
+  Offen: KBAgent-Integration mit echtem KB-Service (Task 7), Legacy-Entfernung (Task 5+6).
 - [ ] Wenn pydantic-ai v2 erscheint: Verträgt sich der Umbau mit dem Major-Release?

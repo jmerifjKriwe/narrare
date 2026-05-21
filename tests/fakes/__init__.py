@@ -5,18 +5,19 @@ Every Fake class implements the corresponding Protocol from contracts.py.
 Used in unit tests instead of MagicMock — see RULE-TEST-01 in testing-standards.md.
 
 Usage:
-    from tests.fakes import FakeLLMGateway, FakeChapterRepository
+    from tests.fakes import FakeModelRegistry, FakeLLMGateway
 
-    fake_repo = FakeChapterRepository()
-    fake_repo.seed(make_chapter(id=uuid4(), novel_id=uuid4()))
+    fake_registry = FakeModelRegistry()
+    fake_registry.returns("Generated text")
 
+    # Or use backward-compatible FakeLLMGateway:
     fake_gateway = FakeLLMGateway()
     fake_gateway.returns("Generated text")
 """
 
 from tests.fakes.fake_auth_repository import FakeAuthRepository
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
-from tests.fakes.fake_llm_gateway import FakeLLMGateway
+from tests.fakes.fake_llm_gateway import FakeLLMGateway, FakeModelRegistry
 from tests.fakes.fake_novel_repo import FakeNovelRepository
 from tests.fakes.fake_outline_repo import FakeOutlineRepository
 from tests.fakes.fake_services import (
@@ -30,6 +31,7 @@ __all__ = [
     "FakeChapterRepository",
     "FakeDemoLoader",
     "FakeLLMGateway",
+    "FakeModelRegistry",
     "FakeNovelRepository",
     "FakeNovelService",
     "FakeOutlineRepository",

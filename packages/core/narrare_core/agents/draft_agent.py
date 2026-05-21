@@ -147,10 +147,21 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
         Wird vom Modell gerufen, wenn es Details zu Charakteren,
         Orten oder anderen Story-Elementen benötigt.
         """
-        if ctx.deps and ctx.deps.context_assembler:
-            # Phase 3: Rich KB-Tool. For Phase 2, return available context.
-            return "KB context lookup not fully implemented in Phase 2."
-        return "No context assembler available."
+        if not entity_names:
+            return "No entity names provided."
+
+        assembler = ctx.deps.context_assembler if ctx.deps else None
+        if assembler is None:
+            return "No context assembler available."
+
+        # Build a summary of requested entity names.
+        # Full KB lookup happens via KBAgent tools (ToolSearch + Toolset).
+        # This tool provides a fallback when KBAgent is not wired up.
+        names = ", ".join(entity_names)
+        return (
+            f"Requested context for: {names}."
+            " Use search_kb or get_entity tools for detailed lookup."
+        )
 
     # ------------------------------------------------------------------
     # Run

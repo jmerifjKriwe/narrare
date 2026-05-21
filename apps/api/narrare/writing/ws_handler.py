@@ -10,7 +10,7 @@ Supports two modes:
   user answers, then LLM generates a draft.  Draft generation is
   delegated to :class:`InterviewDraftGenerator`.
 
-All LLM calls go through :class:`LLMGateway` (RULE-01).
+All LLM calls go through :class:`ModelRegistry` (RULE-01).
 All prompts built through :class:`PromptComposer` (RULE-02).
 """
 
@@ -24,7 +24,7 @@ import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
 if TYPE_CHECKING:
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.prompts.composer import PromptComposer
@@ -45,7 +45,7 @@ class WritingSessionHandler:
         self,
         session_manager: SessionManager,
         pipeline: WritingPipeline,
-        gateway: LLMGateway,
+        registry: ModelRegistry,
         composer: PromptComposer,
         config: ResolvedModelConfig,
         api_key: str | None = None,
@@ -54,7 +54,7 @@ class WritingSessionHandler:
     ) -> None:
         self._session_manager = session_manager
         self._pipeline = pipeline
-        self._gateway = gateway
+        self._registry = registry
         self._composer = composer
         self._config = config
         self._api_key = api_key
@@ -209,7 +209,7 @@ class WritingSessionHandler:
             intent = LLMIntent.CHAT if self._mode == "interview_assisted" else LLMIntent.WRITE
             prompt = await self._composer.build(intent, ctx)
 
-            async for chunk in self._gateway.stream(
+            async for chunk in self._registry.stream(
                 intent=intent,
                 system_prompt=prompt.system,
                 user_prompt=prompt.user,
@@ -328,7 +328,7 @@ class WritingSessionHandler:
 
         generator = InterviewDraftGenerator(
             session_manager=self._session_manager,
-            gateway=self._gateway,
+            registry=self._registry,
             composer=self._composer,
             config=self._config,
             api_key=self._api_key,
