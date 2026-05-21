@@ -17,7 +17,10 @@ from starlette.websockets import WebSocketDisconnect
 from narrare._app.main import create_app
 
 pytestmark = [
-    pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues"),
+    pytest.mark.skip(
+        reason="WebSocket tests need dedicated app fixture with patched dependencies "
+        "— sync TestClient bypasses conftest patches; tracked separately"
+    ),
     pytest.mark.requires_db,
 ]
 

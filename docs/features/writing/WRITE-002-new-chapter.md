@@ -147,7 +147,7 @@ Generated text is fully editable — treat it as your rough draft.
     - 12 system prompts (4 modes × 3 languages: en, de, fr)
     - 9 bundled tones (defined in `pipeline.py` `_TONE_INSTRUCTIONS`): balanced, dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous, quiet
     - Custom tones: user-defined instructions stored in `user_settings.custom_tones`, resolved by `tone_resolver.py` and passed as `custom_tone_instructions` to `WritingPipeline.generate()`
-    - Prompt cascade overrides: `prompts/_bundled/writing/tones/{balanced,dramatic,quiet,suspenseful}.md`
+     - Prompt cascade overrides: 9 tone files in `prompts/_bundled/writing/tones/` (balanced, dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous, quiet)
     - `is_bundled_tone()` public function in `pipeline.py` distinguishes bundled vs custom tones
 3. **LLM call**: Stream generation via LLM Gateway
 4. **Post-processing**: `DraftProcessor` (legacy path) or `DraftAgent` Output Function (Phase 2 ADR-015, via `use_draft_agent` feature flag) — artifact removal + markdown normalization + word-target enforcement

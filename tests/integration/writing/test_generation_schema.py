@@ -18,10 +18,7 @@ from narrare.writing.models import GenerationRequest
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = [
-    pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues"),
-    pytest.mark.requires_db,
-]
+pytestmark = pytest.mark.requires_db
 
 
 class TestGenerationRequestsTable:
@@ -42,6 +39,7 @@ class TestGenerationRequestsTable:
             "chapter_id",
             "status",
             "mode",
+            "tone",
             "model_id",
             "provider_name",
             "tokens_used",
@@ -83,6 +81,7 @@ class TestGenerationRequestsTable:
             novel_id=novel_id,
             mode="full_draft",
             status="pending",
+            tone="dramatic",
         )
         db_session.add(request)
         await db_session.flush()
@@ -93,6 +92,7 @@ class TestGenerationRequestsTable:
         found = result.scalar_one()
         assert found.mode == "full_draft"
         assert found.status == "pending"
+        assert found.tone == "dramatic"
         assert found.tokens_used == 0
         assert found.word_count == 0
         assert found.error_message is None
