@@ -32,6 +32,14 @@ class FakeProfileRepo:
         self._profiles: dict[str, Any] = {}
 
     async def upsert(self, profile: Any) -> Any:
+        from datetime import UTC, datetime
+
+        if profile.id is None:
+            profile.id = uuid4()
+        if profile.created_at is None:
+            profile.created_at = datetime.now(UTC)
+        if profile.updated_at is None:
+            profile.updated_at = datetime.now(UTC)
         key = f"{profile.user_id}:{profile.project_id}"
         self._profiles[key] = profile
         return profile

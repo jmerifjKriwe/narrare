@@ -44,6 +44,8 @@ class FakeUserAiSettings:
     intent_overrides: dict[str, Any] = field(default_factory=dict)
     token_limit_profile: str = "balanced"
     token_limit_overrides: dict[str, Any] = field(default_factory=dict)
+    embedding_provider: str = "auto"
+    embedding_model: str | None = None
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 

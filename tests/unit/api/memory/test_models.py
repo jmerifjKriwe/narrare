@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from narrare.memory.models import FeedbackEventModel, PreferenceProfileModel
@@ -47,9 +47,24 @@ class TestFeedbackEventModel:
 
 class TestPreferenceProfileModel:
     def test_all_fields_have_defaults(self) -> None:
+        """Model accepts all fields with explicit values.
+
+        Column defaults (default=, server_default=) only apply at SQL INSERT
+        time, not at Python instantiation. We provide explicit values here to
+        verify the model stores them correctly.
+        """
+        now = datetime.now(UTC)
         profile = PreferenceProfileModel(
             user_id=uuid4(),
             project_id=uuid4(),
+            style_patterns=[],
+            content_patterns=[],
+            avoidance_patterns=[],
+            confidence=0.0,
+            summary="",
+            event_count_at_analysis=0,
+            created_at=now,
+            updated_at=now,
         )
         assert profile.style_patterns == []
         assert profile.content_patterns == []
