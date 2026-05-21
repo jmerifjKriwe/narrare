@@ -65,7 +65,7 @@ describe("WizardStep1", () => {
       currentStep: 1,
       state: {
         project_name: "",
-        language: "en",
+        writing_language: "en",
         autosave_interval: 30,
         title: "",
         author: "",
@@ -108,7 +108,7 @@ describe("WizardStep2", () => {
       currentStep: 2,
       state: {
         project_name: "Test Project",
-        language: "en",
+        writing_language: "en",
         autosave_interval: 30,
         title: "",
         author: "",
@@ -148,7 +148,7 @@ describe("WizardStep3", () => {
       currentStep: 3,
       state: {
         project_name: "Test Project",
-        language: "en",
+        writing_language: "en",
         autosave_interval: 30,
         title: "My Novel",
         author: "Test Author",
@@ -193,7 +193,7 @@ describe("WizardStep5", () => {
       currentStep: 5,
       state: {
         project_name: "Test Project",
-        language: "en",
+        writing_language: "en",
         autosave_interval: 30,
         title: "My Novel",
         author: "Test Author",

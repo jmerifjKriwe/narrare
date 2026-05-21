@@ -74,9 +74,9 @@ class TestCultureDefinitions:
         culture_id: str,
         language: str,
     ) -> None:
-        """Each culture x language combination must have a definition file."""
-        path = _BUNDLED_ROOT / "generation" / "cultures" / language / f"{culture_id}.md"
-        assert path.exists(), f"Missing culture definition: {path}"
+        """Each name_style x language combination must have a definition file."""
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
+        assert path.exists(), f"Missing name_style definition: {path}"
 
     @pytest.mark.parametrize("culture_id", _CULTURE_IDS)
     @pytest.mark.parametrize("language", _CULTURE_LANGUAGES)
@@ -85,8 +85,8 @@ class TestCultureDefinitions:
         culture_id: str,
         language: str,
     ) -> None:
-        """Culture definitions must have parseable frontmatter."""
-        path = _BUNDLED_ROOT / "generation" / "cultures" / language / f"{culture_id}.md"
+        """Name style definitions must have parseable frontmatter."""
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
         content = path.read_text()
         parsed = parse_frontmatter(content)
         assert parsed.has_frontmatter, f"No frontmatter in {path}"
@@ -98,8 +98,8 @@ class TestCultureDefinitions:
         culture_id: str,
         language: str,
     ) -> None:
-        """Culture definitions must have culture_id, culture_name, language, version."""
-        path = _BUNDLED_ROOT / "generation" / "cultures" / language / f"{culture_id}.md"
+        """Name style definitions must have culture_id, culture_name, language, version."""
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
         content = path.read_text()
         parsed = parse_frontmatter(content)
         required_fields = ("culture_id", "culture_name", "language", "version")
@@ -115,8 +115,8 @@ class TestCultureDefinitions:
         culture_id: str,
         language: str,
     ) -> None:
-        """Culture definition metadata values must be correct."""
-        path = _BUNDLED_ROOT / "generation" / "cultures" / language / f"{culture_id}.md"
+        """Name style definition metadata values must be correct."""
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
         content = path.read_text()
         parsed = parse_frontmatter(content)
         assert parsed.metadata["culture_id"] == culture_id
@@ -129,16 +129,16 @@ class TestCultureDefinitions:
         culture_id: str,
         language: str,
     ) -> None:
-        """Culture definitions must have non-empty body content."""
-        path = _BUNDLED_ROOT / "generation" / "cultures" / language / f"{culture_id}.md"
+        """Name style definitions must have non-empty body content."""
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
         content = path.read_text()
         parsed = parse_frontmatter(content)
         assert len(parsed.content.strip()) > 0, f"Empty content body in {path}"
 
     def test_total_culture_file_count(self) -> None:
-        """Verify total expected count: 3 cultures x 3 languages = 9 files."""
-        cultures_dir = _BUNDLED_ROOT / "generation" / "cultures"
-        md_files = list(cultures_dir.rglob("*.md"))
+        """Verify total expected count: 3 styles x 3 languages = 9 files."""
+        styles_dir = _BUNDLED_ROOT / "generation" / "name-styles"
+        md_files = list(styles_dir.rglob("*.md"))
         assert len(md_files) == 9, (
-            f"Expected 9 culture files, found {len(md_files)}: {[str(p) for p in md_files]}"
+            f"Expected 9 name-style files, found {len(md_files)}: {[str(p) for p in md_files]}"
         )

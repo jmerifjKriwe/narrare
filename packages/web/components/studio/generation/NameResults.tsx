@@ -50,7 +50,7 @@ export function NameResults({ results, isLoading }: NameResultsProps) {
       <ul className="flex flex-col gap-2">
         {results.names.map((generated) => (
           <li
-            key={`${generated.name}-${generated.type}-${generated.culture}`}
+            key={`${generated.name}-${generated.type}-${generated.name_style}`}
             className="flex items-center justify-between px-4 py-3 border border-border rounded-xl hover:bg-accent/10 transition-colors"
           >
             <div className="flex flex-col gap-0.5">

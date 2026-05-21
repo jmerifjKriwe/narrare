@@ -24,7 +24,7 @@ def _write_culture(
     content: str,
 ) -> None:
     """Write a culture definition file at the expected path."""
-    p = root / category / "cultures" / lang
+    p = root / category / "name-styles" / lang
     p.mkdir(parents=True, exist_ok=True)
     (p / f"{culture_id}.md").write_text(content)
 

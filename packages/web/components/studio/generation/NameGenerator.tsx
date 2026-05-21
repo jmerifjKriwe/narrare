@@ -4,20 +4,17 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { generationApi } from "@/lib/api/client";
+import { NAME_STYLE_SUGGESTIONS } from "@/lib/constants/name-styles";
 import type { Gender, NameGenerateRequest, NameGenerateResponse, NameType } from "@/types";
 import { NameResults } from "./NameResults";
+
+const NAME_STYLE_DATALIST_ID = "name-style-suggestions";
 
 const NAME_TYPES: { value: NameType; labelKey: string }[] = [
   { value: "character", labelKey: "character" },
   { value: "place", labelKey: "place" },
   { value: "organization", labelKey: "organization" },
   { value: "item", labelKey: "item" },
-];
-
-const CULTURES = [
-  { value: "fantasy", labelKey: "fantasy" },
-  { value: "modern", labelKey: "modern" },
-  { value: "scifi", labelKey: "scifi" },
 ];
 
 const GENDERS: { value: Gender; labelKey: string }[] = [
@@ -27,7 +24,7 @@ const GENDERS: { value: Gender; labelKey: string }[] = [
   { value: "neutral", labelKey: "neutral" },
 ];
 
-const LANGUAGES = [
+const EXPLANATION_LANGUAGES = [
   { value: "en", labelKey: "langEnglish" },
   { value: "de", labelKey: "langGerman" },
   { value: "fr", labelKey: "langFrench" },
@@ -41,10 +38,10 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
   const t = useTranslations("studio");
 
   const [nameType, setNameType] = useState<NameType>("character");
-  const [culture, setCulture] = useState("fantasy");
+  const [nameStyle, setNameStyle] = useState("Fantasy");
   const [count, setCount] = useState(10);
   const [gender, setGender] = useState<Gender>("any");
-  const [language, setLanguage] = useState("en");
+  const [explanationLanguage, setExplanationLanguage] = useState("en");
   const [results, setResults] = useState<NameGenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,10 +63,10 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
     generateMutation.mutate({
       project_id: novelId,
       name_type: nameType,
-      culture,
+      name_style: nameStyle,
       count,
       gender,
-      language,
+      explanation_language: explanationLanguage,
     });
   };
 
@@ -78,17 +75,12 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
     label: t(`generation.${nt.labelKey}`),
   }));
 
-  const cultureOptions = CULTURES.map((c) => ({
-    value: c.value,
-    label: t(`generation.${c.labelKey}`),
-  }));
-
   const genderOptions = GENDERS.map((g) => ({
     value: g.value,
     label: t(`generation.${g.labelKey}`),
   }));
 
-  const languageOptions = LANGUAGES.map((l) => ({
+  const languageOptions = EXPLANATION_LANGUAGES.map((l) => ({
     value: l.value,
     label: t(`generation.${l.labelKey}`),
   }));
@@ -122,23 +114,24 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
 
         <div className="flex flex-col gap-1.5">
           <label
-            htmlFor="name-culture"
+            htmlFor="name-style"
             className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground"
           >
-            {t("generation.culture")}
+            {t("generation.nameStyle")}
           </label>
-          <select
-            id="name-culture"
-            value={culture}
-            onChange={(e) => setCulture(e.target.value)}
+          <input
+            id="name-style"
+            type="text"
+            list={NAME_STYLE_DATALIST_ID}
+            value={nameStyle}
+            onChange={(e) => setNameStyle(e.target.value)}
             className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-[0.9375rem] transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-          >
-            {cultureOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
+          />
+          <datalist id={NAME_STYLE_DATALIST_ID}>
+            {NAME_STYLE_SUGGESTIONS.map((suggestion) => (
+              <option key={suggestion} value={suggestion} />
             ))}
-          </select>
+          </datalist>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -182,15 +175,15 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
 
         <div className="flex flex-col gap-1.5">
           <label
-            htmlFor="name-language"
+            htmlFor="name-explanation-language"
             className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground"
           >
-            {t("generation.language")}
+            {t("generation.explanationLanguage")}
           </label>
           <select
-            id="name-language"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
+            id="name-explanation-language"
+            value={explanationLanguage}
+            onChange={(e) => setExplanationLanguage(e.target.value)}
             className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-[0.9375rem] transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
           >
             {languageOptions.map((opt) => (

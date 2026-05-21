@@ -13,8 +13,10 @@ import type {
   CascadePath,
   Chapter,
   ChapterSummary,
+  CreateCustomToneRequest,
   CreateProviderRequest,
   CreateVolumeRequest,
+  CustomTone,
   DemoProjectInfo,
   DiffResponse,
   KBTemplateDetail,
@@ -30,6 +32,7 @@ import type {
   PromptDetail,
   PromptInfo,
   TokenResponse,
+  UpdateCustomToneRequest,
   UpdateInfo,
   UpdateProjectAiSettingsRequest,
   UpdateProviderRequest,
@@ -275,7 +278,11 @@ export const settingsApi = {
 // --- Setup Wizard ---
 
 export const setupApi = {
-  validateStep1: (data: { project_name: string; language: string; autosave_interval: number }) =>
+  validateStep1: (data: {
+    project_name: string;
+    writing_language: string;
+    autosave_interval: number;
+  }) =>
     fetchApi<{ valid: boolean }>("/setup/validate/step-1", {
       method: "POST",
       body: JSON.stringify(data),
@@ -427,4 +434,24 @@ export const generationApi = {
       method: "POST",
       body: JSON.stringify(request),
     }),
+};
+
+// --- Custom Tones ---
+
+export const tonesApi = {
+  list: () => fetchApi<CustomTone[]>("/settings/user/tones"),
+
+  create: (data: CreateCustomToneRequest) =>
+    fetchApi<CustomTone>("/settings/user/tones", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateCustomToneRequest) =>
+    fetchApi<CustomTone>(`/settings/user/tones/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) => fetchApi<void>(`/settings/user/tones/${id}`, { method: "DELETE" }),
 };

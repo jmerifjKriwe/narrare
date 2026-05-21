@@ -63,6 +63,7 @@ class WritingDeps:
     word_target: int | None = None
     tone: str = "balanced"
     language: str = "en"
+    writing_language: str = ""  # output language (freetext)
     store: Any = None  # GraphStateStore (Any zur Vermeidung von Zirkelimporten)
     run_id: str = ""
 

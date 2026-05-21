@@ -6,6 +6,7 @@ Contains request/response models for all settings endpoints:
 - AI provider management (create, update, masked response)
 - AI settings (default model, category/intent overrides, token limits)
 - Project AI overrides
+- Custom tones (user-defined writing tones)
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ class UserSettingsResponse(BaseModel):
     display_name: str
     ui_language: str
     theme: str
+    custom_tones: list[CustomTone] = []
     updated_at: datetime
 
 
@@ -33,6 +35,9 @@ class UpdateUserSettingsRequest(BaseModel):
     display_name: str | None = Field(default=None, max_length=100)
     ui_language: str | None = Field(default=None, min_length=2, max_length=10)
     theme: str | None = Field(default=None, pattern="^(light|dark|system)$")
+    custom_tones: list[dict[str, object]] | None = Field(
+        default=None, description="Full replacement list of custom tones"
+    )
 
 
 class ProjectSettingsResponse(BaseModel):
@@ -161,28 +166,31 @@ class UpdateProjectAiSettingsRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Token limit profile schemas (Task 10.3)
+# Custom tone schemas
 # ---------------------------------------------------------------------------
 
-from narrare_core.llm.override_schemas import TokenLimitOverride  # noqa: E402
 
-TOKEN_LIMIT_PROFILES: dict[str, dict[str, TokenLimitOverride]] = {
-    "quick": {
-        "default": TokenLimitOverride(max_tokens=500, temperature=0.7),
-    },
-    "balanced": {
-        "default": TokenLimitOverride(max_tokens=2000, temperature=0.7),
-    },
-    "long_texts": {
-        "default": TokenLimitOverride(max_tokens=8000, temperature=0.7),
-    },
-    "custom": {},
-}
-"""Pre-defined token limit profiles.
+class CustomTone(BaseModel):
+    """A user-defined writing tone."""
 
-Each profile maps a key (category name or "default") to a
-``TokenLimitOverride``. The "custom" profile starts empty — the user
-fills in per-category overrides.
-"""
+    id: str = Field(description="Unique tone identifier (UUID)")
+    name: str = Field(min_length=1, max_length=50, description="Display name")
+    instructions: str = Field(
+        min_length=1, max_length=500, description="Tone instructions for the LLM"
+    )
 
-VALID_TOKEN_LIMIT_PROFILES: set[str] = set(TOKEN_LIMIT_PROFILES.keys())
+
+class CustomToneCreate(BaseModel):
+    """Request to create a new custom tone."""
+
+    name: str = Field(min_length=1, max_length=50, description="Display name")
+    instructions: str = Field(
+        min_length=1, max_length=500, description="Tone instructions for the LLM"
+    )
+
+
+class CustomToneUpdate(BaseModel):
+    """Request to update an existing custom tone."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=50)
+    instructions: str | None = Field(default=None, min_length=1, max_length=500)

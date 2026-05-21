@@ -49,9 +49,9 @@ class TestBuildUserPrompt:
         prompt = svc._build_user_prompt(request)
         assert "place" in prompt
 
-    def test_includes_culture(self) -> None:
+    def test_includes_name_style(self) -> None:
         svc = self._make_prompt_service()
-        request = _default_request(culture="norse")
+        request = _default_request(name_style="norse")
         prompt = svc._build_user_prompt(request)
         assert "norse" in prompt
 
@@ -61,9 +61,9 @@ class TestBuildUserPrompt:
         prompt = svc._build_user_prompt(request)
         assert "female" in prompt
 
-    def test_includes_language(self) -> None:
+    def test_includes_explanation_language(self) -> None:
         svc = self._make_prompt_service()
-        request = _default_request(language="fr")
+        request = _default_request(explanation_language="fr")
         prompt = svc._build_user_prompt(request)
         assert "fr" in prompt
 
@@ -107,7 +107,7 @@ class TestRegistryAndComposerIntegration:
     ) -> None:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
-        request = _default_request(culture="celtic", count=3)
+        request = _default_request(name_style="celtic", count=3)
         await service.generate_names(request)
 
         call_kwargs = mock_composer.build.call_args
@@ -160,11 +160,11 @@ class TestRegistryAndComposerIntegration:
         fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         request = _default_request(
-            culture="japanese",
+            name_style="japanese",
             name_type=NameType.PLACE,
             count=3,
             gender=GenderEnum.MALE,
-            language="ja",
+            explanation_language="ja",
         )
         await service.generate_names(request)
 
@@ -173,7 +173,7 @@ class TestRegistryAndComposerIntegration:
         context = call_args[0][1]  # second positional arg is PromptContext
         assert context.language == "ja"
         assert context.mode == "names"
-        assert context.extra["culture"] == "japanese"
+        assert context.extra["name_style"] == "japanese"
         assert context.extra["name_type"] == "place"
         assert context.extra["count"] == "3"
         assert context.extra["gender"] == "male"

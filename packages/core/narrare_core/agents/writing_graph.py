@@ -97,7 +97,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             f"Create a chapter outline for chapter {ctx.state.chapter_id}.\n"
             f"Genre: {ctx.deps.genre}\n"
             f"Tone: {ctx.deps.tone}\n"
-            f"Language: {ctx.deps.language}\n"
+            f"Writing language: {ctx.deps.writing_language}\n"
         )
         if ctx.deps.chapter_content:
             instruction += f"Existing content context:\n{ctx.deps.chapter_content[:500]}\n"
@@ -227,7 +227,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         instruction = (
             f"Summarize chapter {ctx.state.chapter_id}.\n"
             f"Genre: {ctx.deps.genre}\n"
-            f"Language: {ctx.deps.language}\n"
+            f"Writing language: {ctx.deps.writing_language}\n"
             f"Chapter title: {ctx.state.outline[:100]}\n\n"
             f"Content:\n{content[:3000]}\n"
         )

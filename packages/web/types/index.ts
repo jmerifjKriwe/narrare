@@ -15,7 +15,7 @@ export interface Novel {
   title: string;
   author: string;
   genre: string;
-  language: string;
+  writing_language: string;
   tone: string;
   story_structure: string;
   logline: string;
@@ -30,7 +30,7 @@ export interface NovelSummary {
   title: string;
   author: string;
   genre: string;
-  language: string;
+  writing_language: string;
   is_demo: boolean;
   updated_at: string;
 }
@@ -140,13 +140,15 @@ export type StoryStructure =
   | "seven_point";
 
 export type StoryTone =
+  | "balanced"
   | "dramatic"
   | "humorous"
   | "suspenseful"
   | "contemplative"
   | "romantic"
   | "dark"
-  | "adventurous";
+  | "adventurous"
+  | "quiet";
 
 export interface ProviderModel {
   id: string;
@@ -177,7 +179,7 @@ export interface DemoProjectInfo {
 export interface WizardState {
   // Step 1
   project_name: string;
-  language: string;
+  writing_language: string;
   autosave_interval: number;
   // Step 2
   title: string;
@@ -349,10 +351,10 @@ export type Gender = "male" | "female" | "neutral" | "any";
 export interface NameGenerateRequest {
   project_id: string;
   name_type: NameType;
-  culture: string;
+  name_style: string;
   count: number;
   gender: Gender;
-  language: string;
+  explanation_language: string;
 }
 
 export interface GeneratedName {
@@ -360,7 +362,7 @@ export interface GeneratedName {
   pronunciation: string | null;
   meaning: string | null;
   type: string;
-  culture: string;
+  name_style: string;
   is_duplicate: boolean;
   confidence: number;
 }
@@ -368,7 +370,7 @@ export interface GeneratedName {
 export interface NameGenerateResponse {
   names: GeneratedName[];
   count: number;
-  culture: string;
+  name_style: string;
   name_type: string;
 }
 
@@ -508,4 +510,24 @@ export interface RemapResponse {
   remapped: RemapPreviewItem[];
   ai_confidence?: number;
   confirmed: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Custom Tone types
+// ---------------------------------------------------------------------------
+
+export interface CustomTone {
+  id: string;
+  name: string;
+  instructions: string;
+}
+
+export interface CreateCustomToneRequest {
+  name: string;
+  instructions: string;
+}
+
+export interface UpdateCustomToneRequest {
+  name?: string;
+  instructions?: string;
 }

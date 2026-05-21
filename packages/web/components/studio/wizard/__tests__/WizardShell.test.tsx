@@ -19,7 +19,7 @@ vi.mock("@/lib/stores/wizardStore", () => ({
       prevStep: vi.fn(),
       reset: vi.fn(),
       setStep: vi.fn(),
-      state: { locale: "en", theme: "neutral" },
+      state: { locale: "en", theme: "neutral", writing_language: "en" },
     };
     return selector ? selector(state) : state;
   }),

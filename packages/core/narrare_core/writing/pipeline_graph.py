@@ -57,7 +57,8 @@ async def stream_via_writing_graph(
         genre=context.genre,
         word_target=request.word_target,
         tone=context.tone,
-        language=request.language,
+        language=request.writing_language,
+        writing_language=context.writing_language,
     )
 
     state = WritingState(
@@ -119,7 +120,8 @@ async def run_with_persistence(
         genre=context.genre,
         word_target=request.word_target,
         tone=context.tone,
-        language=request.language,
+        language=request.writing_language,
+        writing_language=context.writing_language,
         store=store,
         run_id=current_run_id,
     )

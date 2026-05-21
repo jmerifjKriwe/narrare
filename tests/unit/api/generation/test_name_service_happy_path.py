@@ -40,7 +40,7 @@ class TestGenerateNamesHappyPath:
 
         assert result.count == 3
         assert len(result.names) == 3
-        assert result.culture == "fantasy"
+        assert result.name_style == "fantasy"
         assert result.name_type == "character"
 
     async def test_first_name_has_correct_fields(
@@ -57,7 +57,7 @@ class TestGenerateNamesHappyPath:
         assert first.pronunciation == "ay-LIN-dra"
         assert first.meaning == "starlight"
         assert first.type == "character"
-        assert first.culture == "fantasy"
+        assert first.name_style == "fantasy"
 
     async def test_names_without_pronunciation_get_none(
         self,
@@ -173,10 +173,10 @@ class TestGenerateNamesParameters:
             _json_names_response([{"name": "Sakura", "meaning": "cherry blossom"}])
         )
 
-        result = await service.generate_names(_default_request(culture="japanese"))
+        result = await service.generate_names(_default_request(name_style="japanese"))
 
-        assert result.culture == "japanese"
-        assert result.names[0].culture == "japanese"
+        assert result.name_style == "japanese"
+        assert result.names[0].name_style == "japanese"
 
     async def test_gender_male(
         self,
@@ -235,6 +235,6 @@ class TestGenerateNamesParameters:
             _json_names_response([{"name": "Falkenstein", "meaning": "falcon stone"}])
         )
 
-        result = await service.generate_names(_default_request(language="de"))
+        result = await service.generate_names(_default_request(explanation_language="de"))
 
         assert len(result.names) == 1

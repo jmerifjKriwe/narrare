@@ -11,11 +11,13 @@ import pytest
 from pydantic import ValidationError
 
 from narrare.settings.schemas import (
-    TOKEN_LIMIT_PROFILES,
-    VALID_TOKEN_LIMIT_PROFILES,
     UpdateProjectAiSettingsRequest,
     UpdateUserAiSettingsRequest,
     UpdateUserSettingsRequest,
+)
+from narrare.settings.token_profiles import (
+    TOKEN_LIMIT_PROFILES,
+    VALID_TOKEN_LIMIT_PROFILES,
 )
 
 # ---------------------------------------------------------------------------

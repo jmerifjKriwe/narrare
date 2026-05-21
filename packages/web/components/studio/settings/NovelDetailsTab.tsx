@@ -4,27 +4,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, FileText, Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { novelsApi } from "@/lib/api/client";
-import type { Novel, StoryStructure, StoryTone } from "@/types";
+import { novelsApi, tonesApi } from "@/lib/api/client";
+import { GENRE_SUGGESTIONS } from "@/lib/constants/genres";
+import { BUNDLED_TONES } from "@/lib/constants/tones";
+import type { CustomTone, Novel, StoryStructure, StoryTone } from "@/types";
 import { StructureChangeDialog } from "../planning/StructureChangeDialog";
 
 // --- Static option configs ---
 
-const LANGUAGE_OPTIONS: { value: string; labelKey: string }[] = [
-  { value: "en", labelKey: "settings.generalSection.langEn" },
-  { value: "de", labelKey: "settings.generalSection.langDe" },
-  { value: "fr", labelKey: "settings.generalSection.langFr" },
-];
-
-const TONE_OPTIONS: { value: StoryTone; labelKey: string }[] = [
-  { value: "dramatic", labelKey: "wizard.tone.dramatic" },
-  { value: "humorous", labelKey: "wizard.tone.humorous" },
-  { value: "suspenseful", labelKey: "wizard.tone.suspenseful" },
-  { value: "contemplative", labelKey: "wizard.tone.contemplative" },
-  { value: "romantic", labelKey: "wizard.tone.romantic" },
-  { value: "dark", labelKey: "wizard.tone.dark" },
-  { value: "adventurous", labelKey: "wizard.tone.adventurous" },
-];
+const GENRE_DATALIST_ID = "novel-genre-suggestions";
 
 const STRUCTURE_OPTIONS: { value: StoryStructure; labelKey: string }[] = [
   { value: "three_act", labelKey: "wizard.storyStructure.three_act" },
@@ -55,13 +43,19 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
   // Local state for each editable field
   const [localTitle, setLocalTitle] = useState("");
   const [localAuthor, setLocalAuthor] = useState("");
-  const [localLanguage, setLocalLanguage] = useState("en");
+  const [localWritingLanguage, setLocalWritingLanguage] = useState("en");
   const [localGenre, setLocalGenre] = useState("");
   const [localTone, setLocalTone] = useState("");
   const [localStoryStructure, setLocalStoryStructure] = useState("three_act");
   const [localLogline, setLocalLogline] = useState("");
   const [localSynopsis, setLocalSynopsis] = useState("");
   const [dirty, setDirty] = useState(false);
+
+  // Custom tones from API
+  const { data: customTones } = useQuery({
+    queryKey: ["customTones"],
+    queryFn: () => tonesApi.list(),
+  });
 
   // Structure change dialog state
   const [remapDialogOpen, setRemapDialogOpen] = useState(false);
@@ -72,7 +66,7 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
     if (novel) {
       setLocalTitle(novel.title);
       setLocalAuthor(novel.author);
-      setLocalLanguage(novel.language);
+      setLocalWritingLanguage(novel.writing_language);
       setLocalGenre(novel.genre);
       setLocalTone(novel.tone);
       setLocalStoryStructure(novel.story_structure);
@@ -87,7 +81,8 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
     const payload: Partial<Novel> = {};
     if (localTitle !== novel.title) payload.title = localTitle;
     if (localAuthor !== novel.author) payload.author = localAuthor;
-    if (localLanguage !== novel.language) payload.language = localLanguage;
+    if (localWritingLanguage !== novel.writing_language)
+      payload.writing_language = localWritingLanguage;
     if (localGenre !== novel.genre) payload.genre = localGenre;
     if (localTone !== novel.tone) payload.tone = localTone;
     if (localStoryStructure !== novel.story_structure)
@@ -139,8 +134,8 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
     setDirty(true);
   }
 
-  function handleLanguageChange(value: string) {
-    setLocalLanguage(value);
+  function handleWritingLanguageChange(value: string) {
+    setLocalWritingLanguage(value);
     setDirty(true);
   }
 
@@ -248,18 +243,14 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
               <p className="text-xs text-muted-foreground mb-2">
                 {t("settings.novelDetailsSection.languageFieldDescription")}
               </p>
-              <select
+              <input
                 id="novel-language"
-                value={localLanguage}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                className="px-4 py-2 bg-background border border-border rounded-md text-sm"
-              >
-                {LANGUAGE_OPTIONS.map(({ value, labelKey }) => (
-                  <option key={value} value={value}>
-                    {t(labelKey)}
-                  </option>
-                ))}
-              </select>
+                type="text"
+                value={localWritingLanguage}
+                onChange={(e) => handleWritingLanguageChange(e.target.value)}
+                maxLength={100}
+                className="w-full max-w-md px-4 py-2 bg-background border border-border rounded-md text-sm"
+              />
             </div>
           </div>
         </div>
@@ -288,10 +279,16 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
               <input
                 id="novel-genre"
                 type="text"
+                list={GENRE_DATALIST_ID}
                 value={localGenre}
                 onChange={(e) => handleGenreChange(e.target.value)}
                 className="w-full max-w-md px-4 py-2 bg-background border border-border rounded-md text-sm"
               />
+              <datalist id={GENRE_DATALIST_ID}>
+                {GENRE_SUGGESTIONS.map((suggestion) => (
+                  <option key={suggestion} value={suggestion} />
+                ))}
+              </datalist>
             </div>
             <div>
               <label htmlFor="novel-tone" className="text-sm font-medium mb-1 block">
@@ -307,11 +304,22 @@ export function NovelDetailsTab({ novelId }: NovelDetailsTabProps) {
                 className="px-4 py-2 bg-background border border-border rounded-md text-sm"
               >
                 <option value="">—</option>
-                {TONE_OPTIONS.map(({ value, labelKey }) => (
-                  <option key={value} value={value}>
-                    {t(labelKey)}
-                  </option>
-                ))}
+                <optgroup label={t("tones.bundled")}>
+                  {BUNDLED_TONES.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {t(opt.label)}
+                    </option>
+                  ))}
+                </optgroup>
+                {customTones && customTones.length > 0 && (
+                  <optgroup label={t("tones.custom")}>
+                    {customTones.map((tone: CustomTone) => (
+                      <option key={tone.id} value={`custom:${tone.id}`}>
+                        {tone.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
             <div>

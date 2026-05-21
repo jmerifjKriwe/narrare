@@ -70,10 +70,10 @@ class TestGenerateNames:
                 json={
                     "project_id": str(uuid4()),
                     "name_type": "character",
-                    "culture": "fantasy",
+                    "name_style": "fantasy",
                     "count": 3,
                     "gender": "any",
-                    "language": "en",
+                    "explanation_language": "en",
                 },
                 headers=auth_headers,
             )
@@ -81,9 +81,9 @@ class TestGenerateNames:
             data = response.json()
             assert "names" in data
             assert "count" in data
-            assert "culture" in data
+            assert "name_style" in data
             assert "name_type" in data
-            assert data["culture"] == "fantasy"
+            assert data["name_style"] == "fantasy"
             assert data["name_type"] == "character"
         finally:
             app.dependency_overrides.pop(original_factory, None)
@@ -98,10 +98,10 @@ class TestGenerateNames:
             json={
                 "project_id": str(uuid4()),
                 "name_type": "character",
-                "culture": "fantasy",
+                "name_style": "fantasy",
                 "count": 100,
                 "gender": "any",
-                "language": "en",
+                "explanation_language": "en",
             },
             headers=auth_headers,
         )
@@ -117,10 +117,10 @@ class TestGenerateNames:
             json={
                 "project_id": str(uuid4()),
                 "name_type": "invalid_type",
-                "culture": "fantasy",
+                "name_style": "fantasy",
                 "count": 5,
                 "gender": "any",
-                "language": "en",
+                "explanation_language": "en",
             },
             headers=auth_headers,
         )
@@ -135,7 +135,7 @@ class TestGenerateNames:
             json={
                 "project_id": str(uuid4()),
                 "name_type": "character",
-                "culture": "fantasy",
+                "name_style": "fantasy",
                 "count": 5,
             },
         )
@@ -150,7 +150,7 @@ class TestGenerateNames:
             "/api/v1/generation/names",
             json={
                 "name_type": "character",
-                "culture": "fantasy",
+                "name_style": "fantasy",
                 "count": 5,
             },
             headers=auth_headers,

@@ -25,7 +25,7 @@ const mockNames = [
     pronunciation: "AY-lin-dra",
     meaning: "Starlight wanderer",
     type: "character",
-    culture: "fantasy",
+    name_style: "fantasy",
     is_duplicate: false,
     confidence: 0.92,
   },
@@ -34,7 +34,7 @@ const mockNames = [
     pronunciation: "THA-lo-rin",
     meaning: "Mountain lord",
     type: "character",
-    culture: "fantasy",
+    name_style: "fantasy",
     is_duplicate: false,
     confidence: 0.88,
   },
@@ -82,7 +82,7 @@ describe("NameResults", () => {
           results={{
             names: mockNames,
             count: 2,
-            culture: "fantasy",
+            name_style: "fantasy",
             name_type: "character",
           }}
           isLoading={false}

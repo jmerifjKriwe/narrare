@@ -17,6 +17,7 @@ from narrare._app.database import get_async_session
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.settings.router_ai import router as ai_router
+from narrare.settings.router_tones import router as tones_router
 from narrare.settings.schemas import (
     ProjectSettingsResponse,
     UpdateProjectSettingsRequest,
@@ -31,6 +32,9 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 # Include AI sub-router (no prefix - routes already have /ai/ prefix)
 router.include_router(ai_router)
+
+# Include custom tones sub-router (no prefix - routes already have /settings/user/tones prefix)
+router.include_router(tones_router)
 
 
 # ---------------------------------------------------------------------------

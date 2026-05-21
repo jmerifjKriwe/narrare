@@ -28,10 +28,10 @@ def _default_request(**overrides: Any) -> NameGenerateRequest:  # pyright: ignor
     defaults: dict[str, Any] = {
         "project_id": uuid.uuid4(),
         "name_type": NameType.CHARACTER,
-        "culture": "fantasy",
+        "name_style": "fantasy",
         "count": 5,
         "gender": GenderEnum.ANY,
-        "language": "en",
+        "explanation_language": "en",
     }
     defaults.update(overrides)
     return NameGenerateRequest(**defaults)

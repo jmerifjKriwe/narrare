@@ -67,7 +67,7 @@ class TestGenerateSummary:
             draft="The hero fought bravely against the dark lord and won.",
             outline="The Final Battle",
         )
-        deps = _make_deps(genre="fantasy", language="en")
+        deps = _make_deps(genre="fantasy", writing_language="en")
         mock_output = SummaryOutput(
             summary="The hero defeats the dark lord.", key_points=["Hero fights", "Victory"]
         )
@@ -91,7 +91,7 @@ class TestGenerateSummary:
     async def test_generate_summary_uses_final_when_available(self, writing_graph: Any) -> None:
         node = writing_graph.nodes["generate_summary"]
         state = _make_state(draft="Draft.", final="Final polished.", outline="Outline")
-        deps = _make_deps(genre="fantasy", language="en")
+        deps = _make_deps(genre="fantasy", writing_language="en")
         mock_output = SummaryOutput(summary="Summary of final.", key_points=["Final summarized"])
         with (
             patch(
@@ -124,7 +124,7 @@ class TestGenerateSummary:
     async def test_generate_summary_calls_chapter_summary_agent(self, writing_graph: Any) -> None:
         node = writing_graph.nodes["generate_summary"]
         state = _make_state(draft="Some content.", outline="Chapter 5: Revelation")
-        deps = _make_deps(genre="mystery", language="de")
+        deps = _make_deps(genre="mystery", writing_language="de")
         mock_output = SummaryOutput(summary="Eine Zusammenfassung.", key_points=["Punkt 1"])
         with (
             patch(

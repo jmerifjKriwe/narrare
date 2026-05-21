@@ -98,7 +98,7 @@ class SetupService:
             title=state.title,
             author=state.author,
             genre=state.genre,
-            language=state.language,
+            writing_language=state.language,
             tone=state.tone.value,
             story_structure=state.story_structure.value,
             logline=state.logline,

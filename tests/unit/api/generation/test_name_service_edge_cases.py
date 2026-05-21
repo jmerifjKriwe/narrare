@@ -71,9 +71,9 @@ class TestErrorHandling:
         fake_registry.returns("not json")
 
         result = await service.generate_names(
-            _default_request(culture="egyptian", name_type=NameType.CHARACTER)
+            _default_request(name_style="egyptian", name_type=NameType.CHARACTER)
         )
-        assert result.culture == "egyptian"
+        assert result.name_style == "egyptian"
         assert result.name_type == "character"
 
 

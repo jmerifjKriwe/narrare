@@ -63,6 +63,6 @@ async def generate_names(
     user_id: CurrentUserIdDep,
     session: SessionDep,
 ) -> NameGenerateResponse:
-    """Generate names based on type, culture, and preferences."""
+    """Generate names based on type, name_style, and preferences."""
     service = await _get_service(session=session, user_id=user_id, project_id=request.project_id)
     return await service.generate_names(request)

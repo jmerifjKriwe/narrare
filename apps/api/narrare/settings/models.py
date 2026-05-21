@@ -20,6 +20,9 @@ class UserSettings(Base):
     display_name: Mapped[str] = mapped_column(String(100), default="", nullable=False)
     ui_language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
     theme: Mapped[str] = mapped_column(String(20), default="system", nullable=False)
+    custom_tones: Mapped[list[object]] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

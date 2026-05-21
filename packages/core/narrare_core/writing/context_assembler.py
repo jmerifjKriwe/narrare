@@ -92,6 +92,7 @@ class WritingContextAssembler:
         project_title: str = "",
         genre: str = "",
         language: str = "en",
+        writing_language: str = "",  # output language (freetext)
         tone: str = "balanced",
         word_target: int | None = None,
         user_preferences: str = "",
@@ -170,7 +171,8 @@ class WritingContextAssembler:
             kb_pinned=pinned_text,
             project_title=project_title,
             genre=genre,
-            language=language,
+            language=language,  # prompt file selection (en/de/fr)
+            writing_language=writing_language,  # output language (freetext)
             tone=tone,
             word_target=word_target,
             user_preferences=user_preferences,

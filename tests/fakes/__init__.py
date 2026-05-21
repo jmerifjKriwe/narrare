@@ -24,6 +24,7 @@ from tests.fakes.fake_services import (
     FakeNovelService,
 )
 from tests.fakes.fake_setup import FakeDemoLoader, FakeProviderService
+from tests.fakes.fake_user_settings_repo import FakeUserSettingsRepository
 from tests.fakes.fake_volume_repo import FakeVolumeRepository
 
 __all__ = [
@@ -36,5 +37,6 @@ __all__ = [
     "FakeNovelService",
     "FakeOutlineRepository",
     "FakeProviderService",
+    "FakeUserSettingsRepository",
     "FakeVolumeRepository",
 ]

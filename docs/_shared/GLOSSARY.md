@@ -134,6 +134,12 @@ A React component that catches runtime errors in its child tree. In Narrare:
 - `<ErrorBoundary>` component wraps specific components like the TipTap editor
 All error messages use i18n except `global-error.tsx` which runs before providers mount.
 
+**Explanation Language**
+A string field (2–50 chars) on the name generation request specifying the
+language in which name meanings and explanations should be written. Defaults
+to the novel's `writing_language`. Replaces the former `language` field on
+name generation requests. Distinct from *Writing Language* and *Prompt Language*.
+
 ---
 
 ## F
@@ -176,9 +182,11 @@ classification, model routing, telemetry. No code outside `core/llm/` may
 call an LLM directly.
 
 **Genre**
-A writing genre (e.g., fantasy, thriller, romance). Affects prompt selection
-(genre-specific prompt files take precedence over generic ones) and generation
-parameters.
+A writing genre (e.g., fantasy, thriller, romance). Freetext field — users can
+enter compound genres like "dark fantasy romance" or "scifi-western". Genre
+influences generation parameters and context assembly. Does **not** select
+genre-specific prompt files; tone and writing language are the primary prompt
+modifiers.
 
 ---
 
@@ -268,8 +276,15 @@ and focus mode animations. Located in `packages/web/` dependencies.
 ## N
 
 **Novel**
-The top-level project container. Has metadata (genre, language, tone, style),
+The top-level project container. Has metadata (genre, writing_language, tone, style),
 volumes, chapters, a KB, and a Knowledge Graph.
+
+**Name Style**
+A freetext field (1–100 chars) describing the cultural or aesthetic style for
+generated character/place names (e.g., "Norse mythology", "Victorian English",
+"high fantasy"). Replaces the former `culture` field. If a bundled name-style
+definition file exists, it is loaded; otherwise the raw string is injected
+directly into the prompt.
 
 ---
 
@@ -292,6 +307,12 @@ instead of the legacy `DraftProcessor` pipeline path. Defined inline in
 A typed dataclass carrying all variables needed to render a prompt:
 project metadata, language, mode, KB context bundle, style profile, etc.
 Passed to `core/prompts/composer.py`. No service assembles prompts directly.
+
+**Prompt Language**
+The language of the prompt template files themselves. Selected via the prompt
+cascade — the resolver picks the best-matching language file (e.g., `de/names/system.md`).
+Configured per-prompt-category, not per-user. Distinct from *Writing Language*
+(what language the AI writes in) and *UI Language* (what language the interface shows).
 
 **Protocol (Python Protocol)**
 A structural subtyping interface definition (`typing.Protocol`).
@@ -350,6 +371,15 @@ Used for voice consistency checking and drift detection.
 
 ## T
 
+**Tone**
+The narrative tone for generated text. Nine bundled tones are available:
+dramatic, humorous, contemplative, romantic, dark, adventurous, lyrical,
+quiet, balanced. The "balanced" tone produces no additional tone instructions
+(neutral/default). Users can also define custom tones (up to 20 per user)
+via the Tone Library in settings. Custom tones are stored as `{id, name, instructions}`
+in user preferences. Both bundled and custom tone identifiers are accepted
+by the `tone` field on novels and generation requests.
+
 **ToolSearch**
 A pydantic-ai capability (`pydantic_ai.capabilities.ToolSearch`) that enables
 an Agent to discover and load tools on demand (deferred loading). In Narrare,
@@ -370,6 +400,16 @@ inputs to Service Layer calls.
 
 ---
 
+## U
+
+**UI Language**
+The display language of the user interface. Supported: `en`, `de`, `fr`.
+Stored in user settings. Affects all labels, buttons, placeholders, and
+system messages. Distinct from *Writing Language* (the language the AI writes in)
+and *Prompt Language* (the language of prompt template files).
+
+---
+
 ## V
 
 **Volume**
@@ -383,6 +423,14 @@ style profile, flagging deviations in tone, sentence structure, vocabulary, etc.
 ---
 
 ## W
+
+**Writing Language**
+The language in which the AI generates creative text (prose, dialogue, narration).
+A freetext field (no enum) — users can enter any language name like "English",
+"Deutsch", "日本語". Stored as `writing_language` on the Novel model. Injected
+into prompts via `WritingContext` and `PromptContext`. Defaults to the UI locale
+on novel creation. Distinct from *UI Language* (interface language) and
+*Prompt Language* (template file language).
 
 **Writing Session**
 See *Session (Writing Session)*.
@@ -407,6 +455,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-05-20 — WritingGraph, GraphBuilder, WritingState, WritingStatus, Decision (ADR-015 Phase 4)
+> Last updated: 2026-05-21 — Metadata-consistency change: Tone, Writing Language, UI Language, Prompt Language, Name Style, Explanation Language entries; Genre correction
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

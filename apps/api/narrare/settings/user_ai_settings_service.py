@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.settings.schemas import VALID_TOKEN_LIMIT_PROFILES
+from narrare.settings.token_profiles import VALID_TOKEN_LIMIT_PROFILES
 from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:

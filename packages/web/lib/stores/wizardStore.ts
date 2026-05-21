@@ -10,7 +10,7 @@ interface WizardStoreState {
   prevStep: () => void;
   updateStep1: (data: {
     project_name: string;
-    language: string;
+    writing_language: string;
     autosave_interval: number;
   }) => void;
   updateStep2: (data: {
@@ -20,6 +20,7 @@ interface WizardStoreState {
     logline: string;
     story_structure: StoryStructure;
     tone: StoryTone;
+    writing_language?: string;
   }) => void;
   updateStep3: (data: { starter: StarterContent; import_path?: string | null }) => void;
   updateStep4: (data: {
@@ -34,7 +35,7 @@ interface WizardStoreState {
 
 const defaultState: WizardState = {
   project_name: "",
-  language: "en",
+  writing_language: "en",
   autosave_interval: 30,
   title: "",
   author: "",

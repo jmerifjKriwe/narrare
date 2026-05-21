@@ -175,8 +175,8 @@ class TestCheckDuplicates:
         service: NameGeneratorService,
     ) -> None:
         names = [
-            GeneratedName(name="Aria", type="character", culture="fantasy"),
-            GeneratedName(name="Bjorn", type="character", culture="norse"),
+            GeneratedName(name="Aria", type="character", name_style="fantasy"),
+            GeneratedName(name="Bjorn", type="character", name_style="norse"),
         ]
         result = await service._check_duplicates(names, uuid.uuid4())
         assert result == names

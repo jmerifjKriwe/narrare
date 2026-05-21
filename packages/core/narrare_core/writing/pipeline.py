@@ -56,6 +56,26 @@ _TONE_INSTRUCTIONS: dict[str, str] = {
         "and withheld information. Create urgency and uncertainty."
     ),
     "balanced": "",
+    "humorous": (
+        "Use witty observations, lighthearted tone, playful language, "
+        "comedic timing, and unexpected juxtapositions. Maintain levity."
+    ),
+    "contemplative": (
+        "Use reflective prose, philosophical musings, measured pacing, "
+        "internal monologue, and layered observations."
+    ),
+    "romantic": (
+        "Use evocative sensory details, emotional language, intimate moments, "
+        "lyrical prose, and heightened emotional resonance."
+    ),
+    "dark": (
+        "Use grim imagery, foreboding atmosphere, visceral details, "
+        "moral ambiguity, and unsettling tension."
+    ),
+    "adventurous": (
+        "Use dynamic action sequences, energetic pacing, bold descriptive "
+        "language, rising stakes, and momentum."
+    ),
 }
 
 
@@ -108,7 +128,8 @@ class WritingPipeline:
             kb_entities=kb_entities,
             project_title=project_title,
             genre=genre,
-            language=request.language,
+            language=request.writing_language,
+            writing_language=request.writing_language,
             tone=request.tone,
             word_target=request.word_target,
             user_preferences=user_preferences,
@@ -220,12 +241,14 @@ class WritingPipeline:
             "recent_chapters": context.recent_chapters,
             "word_target": str(context.word_target) if context.word_target else "",
             "tone_instructions": self._tone_instructions(context.tone),
+            "writing_language": context.writing_language,
         }
         if extra_overrides:
             extra.update(extra_overrides)
 
         return PromptContext(
             language=context.language,
+            writing_language=context.writing_language,
             project_title=context.project_title,
             genre=context.genre,
             tone=context.tone,
@@ -240,4 +263,7 @@ class WritingPipeline:
     @staticmethod
     def _tone_instructions(tone: str) -> str:
         """Return tone-specific writing instructions."""
+        # TODO(metadata-consistency): Add user override support via prompt cascade
+        # Currently bundled instructions only. Future: user can override via
+        # prompt cascade mechanism (see design.md Decision 6).
         return _TONE_INSTRUCTIONS.get(tone, "")

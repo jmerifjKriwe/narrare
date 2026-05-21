@@ -84,9 +84,10 @@ class WritingContext:
     # Metadata
     project_title: str = ""
     genre: str = ""
-    language: str = "en"
+    language: str = "en"  # prompt file selection (en/de/fr)
     tone: str = "balanced"
     word_target: int | None = None
+    writing_language: str = "en"  # output language (freetext)
 
     # Memory layer
     user_preferences: str = ""
@@ -116,8 +117,8 @@ class WritingContext:
             "kb_pinned": self.kb_pinned,
             "project_title": self.project_title,
             "genre": self.genre,
-            "language": self.language,
             "tone": self.tone,
+            "writing_language": self.writing_language,
             "word_target": str(self.word_target) if self.word_target else "",
             "user_preferences": self.user_preferences,
             "avoidance_patterns": self.avoidance_patterns,
@@ -147,7 +148,7 @@ class GenerationRequest:
     auto_continue: bool = False
     word_target: int | None = None
     tone: str = "balanced"
-    language: str = "en"
+    writing_language: str = "en"
     id: UUID = field(default_factory=uuid4)
 
 

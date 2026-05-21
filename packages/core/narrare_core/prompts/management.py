@@ -80,7 +80,7 @@ class PromptManagementService:
             prompt_category = parts[0]
             if category and prompt_category != category:
                 continue
-            if len(parts) >= 3 and parts[1] == "cultures":
+            if len(parts) >= 3 and parts[1] == "name-styles":
                 continue
 
             prompt_language = parts[1]

@@ -6,7 +6,7 @@ prompt_version: "1.0.0"
 
 ## System Prompt
 
-You are a creative name generator for fiction writers. Generate names that fit the specified type, culture, and context.
+You are a creative name generator for fiction writers. Generate names that fit the specified type, name style, and context.
 
 {{culture_guidelines}}
 
@@ -19,7 +19,8 @@ Generate {{count}} {{name_type}} names for a fiction project.
 - Name type: {{name_type}}
 - Count: {{count}}
 - Gender: {{gender}}
-- Language: {{language}}
+- Language: {{writing_language}}
+- Explain meanings in: {{explanation_language}}
 - Existing names in project (avoid duplicates): {{existing_names}}
 
 ### Output Format
@@ -29,12 +30,12 @@ Respond with a JSON array of objects, each containing:
 - "pronunciation": optional pronunciation guide
 - "meaning": optional meaning or origin
 - "type": the name type
-- "culture": the culture setting used
+- "culture": the name style used
 
 ### Rules
 
 1. Each name must be unique within the batch
 2. Avoid names that already exist in the project (listed in existing_names)
-3. Names should feel natural for the specified culture and type
-4. If gender is specified, names should be culturally appropriate for that gender
+3. Names should feel natural for the specified name style and type
+4. If gender is specified, names should be appropriate for that gender
 5. Return exactly the requested number of names

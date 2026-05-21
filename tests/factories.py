@@ -39,7 +39,7 @@ def make_novel(**overrides: Any) -> Any:
             "title": overrides.pop("title", "Test Novel"),
             "author": overrides.pop("author", "Test Author"),
             "genre": overrides.pop("genre", ""),
-            "language": overrides.pop("language", "en"),
+            "writing_language": overrides.pop("writing_language", "en"),
             "tone": overrides.pop("tone", ""),
             "story_structure": overrides.pop("story_structure", "three_act"),
             "logline": overrides.pop("logline", ""),

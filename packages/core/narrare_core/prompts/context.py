@@ -34,6 +34,7 @@ class PromptContext:
 
     # --- Project metadata ---
     language: str = "en"
+    writing_language: str = ""  # output language (freetext, e.g. "Schweizerdeutsch")
     project_title: str = ""
     genre: str = ""
     tone: str = ""

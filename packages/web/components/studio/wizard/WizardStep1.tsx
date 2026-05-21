@@ -12,7 +12,7 @@ const schema = z.object({
     .string()
     .min(1, "Project name is required")
     .regex(/^[^/\\:*?"<>|]*$/, "Project name contains invalid characters"),
-  language: z.enum(["en", "de", "fr"]),
+  writing_language: z.string().max(100, "Language must be 100 characters or less"),
   autosave_interval: z.number().min(0).max(3600),
 });
 type FormData = z.infer<typeof schema>;
@@ -34,7 +34,7 @@ export function WizardStep1({ onNext }: WizardStep1Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       project_name: state.project_name,
-      language: (state.language as "en" | "de" | "fr") || "en",
+      writing_language: state.writing_language || "en",
       autosave_interval: state.autosave_interval,
     },
   });
@@ -70,12 +70,12 @@ export function WizardStep1({ onNext }: WizardStep1Props) {
         </div>
 
         <div>
-          <label htmlFor="language" className="block text-sm font-medium mb-1.5">
+          <label htmlFor="writing_language" className="block text-sm font-medium mb-1.5">
             {t("wizard.step1.language")}
           </label>
           <select
-            id="language"
-            {...register("language")}
+            id="writing_language"
+            {...register("writing_language")}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
           >
             <option value="en">{t("wizard.step1.langEn")}</option>
