@@ -34,31 +34,54 @@ Du schreibst **immer Tests** zur Implementation.
 
 ---
 
-## LLM-Calls: So und nicht anders
+## LLM-Calls — Agents-First (neues Pattern)
+
+Services rufen Agents auf, nicht LLMs direkt. Model kommt aus ModelRegistry.
 
 ```python
-# ✅ Korrekt: Gateway injiziert, Prompt aus Composer
-class ChapterService:
-    def __init__(self, gateway: LLMGateway, composer: PromptComposer) -> None:
-        self._gateway = gateway
-        self._composer = composer
+# ✅ Korrekt: Agent aus narrare_core.agents, Model aus ModelRegistry
+from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
+from narrare_core.llm.gateway import ModelRegistry
 
-    async def write(self, request: WriteRequest) -> WriteResult:
-        ctx = PromptContext(language=request.language, mode="new_chapter", ...)
-        prompt = await self._composer.build(LLMIntent.WRITE, ctx)
-        result = await self._gateway.run(
-            intent=LLMIntent.WRITE,
-            system_prompt=prompt.system,
-            user_prompt=prompt.user,
+class ChapterSummaryService:
+    def __init__(
+        self,
+        registry: ModelRegistry,
+        config: ResolvedModelConfig,
+        chapter_repo: ChapterRepository,
+    ) -> None:
+        self._registry = registry
+        self._config = config
+        self._chapter_repo = chapter_repo
+
+    async def summarize(self, chapter_id: UUID) -> SummaryResult:
+        chapter = await self._chapter_repo.get(chapter_id)
+        model = await self._registry.get_model(self._config)
+        agent = ChapterSummaryAgent(model=model)
+        deps = SummaryDeps(language="en", chapter_title=chapter.title)
+        result = await agent.run(
+            prompt=f"Summarize {chapter.content}",
+            deps=deps,
         )
-        return WriteResult(content=result.text)
+        return SummaryResult(summary=result.summary)
 
 # ❌ Verboten: direkter LLM-Import
 import openai  # RULE-01 Verletzung → CI schlägt fehl
 
-# ❌ Verboten: f-String Prompt-Bau
-system_prompt = f"You are a {role}..."  # RULE-02 Verletzung → CI schlägt fehl
+# ❌ Verboten: f-String Prompt-Bau (für komplexe Prompts —
+#     kurze Inline-Prompts sind in Agents erlaubt)
+#
+#     Komplexe Prompts → prompts/_bundled/ mit PromptComposer
+#     Einfache Agent-Prompts → direkter String im Service
 ```
+
+**Pattern-Zusammenfassung:**
+1. Service injected `ModelRegistry` + `ResolvedModelConfig` (from routing)
+2. `model = await registry.get_model(config)` — holt LLM-Modell
+3. `agent = SomeNarrareAgent(model=model)` — instantiiert Agent
+4. `deps = SomeDeps(...)` — baut Dependencies für den Agent
+5. `result = await agent.run(prompt=..., deps=deps)` — führt Agent aus
+6. Agent returned strukturiertes `OutputT` (Pydantic-Modell)
 
 ---
 
@@ -89,10 +112,14 @@ class ChapterService:
 ```python
 # ✅ Korrekt
 try:
-    result = await self._gateway.run(...)
-except LLMGatewayError as e:
-    logger.error("chapter_write_failed", chapter_id=str(id), error=str(e))
-    raise WritingError("Generation failed") from e
+    model = await self._registry.get_model(self._config)
+    agent = ChapterSummaryAgent(model=model)
+    result = await agent.run(prompt=prompt, deps=deps)
+except NotFoundError:
+    raise
+except Exception as exc:
+    logger.error("operation_failed", error=str(exc), exc_info=True)
+    raise WritingError("Operation failed") from exc
 
 # ❌ Verboten: stille Fehler
 try:
