@@ -44,8 +44,8 @@ async def detect_override_updates(
             continue
 
         category = parts[0]
-        # Skip culture directories
-        if len(parts) >= 3 and parts[1] == "cultures":
+        # Skip name-style directories
+        if len(parts) >= 3 and parts[1] == "name-styles":
             continue
         language = parts[1]
         mode = parts[2]

@@ -4,7 +4,7 @@ import { useWizardStore } from "./wizardStore";
 describe("useWizardStore", () => {
   const defaultState = {
     project_name: "",
-    language: "en",
+    writing_language: "en",
     autosave_interval: 30,
     title: "",
     author: "",
@@ -33,7 +33,7 @@ describe("useWizardStore", () => {
     it("should have default state values", () => {
       const state = useWizardStore.getState().state;
       expect(state.project_name).toBe("");
-      expect(state.language).toBe("en");
+      expect(state.writing_language).toBe("en");
       expect(state.story_structure).toBe("three_act");
     });
   });
@@ -91,13 +91,13 @@ describe("useWizardStore", () => {
     it("should update step 1 fields", () => {
       useWizardStore.getState().updateStep1({
         project_name: "My Novel",
-        language: "de",
+        writing_language: "de",
         autosave_interval: 60,
       });
 
       const state = useWizardStore.getState().state;
       expect(state.project_name).toBe("My Novel");
-      expect(state.language).toBe("de");
+      expect(state.writing_language).toBe("de");
       expect(state.autosave_interval).toBe(60);
     });
 
@@ -106,13 +106,15 @@ describe("useWizardStore", () => {
         state: { ...defaultState, title: "Existing Title" },
       });
 
-      useWizardStore
-        .getState()
-        .updateStep1({ project_name: "New Project", language: "de", autosave_interval: 60 });
+      useWizardStore.getState().updateStep1({
+        project_name: "New Project",
+        writing_language: "de",
+        autosave_interval: 60,
+      });
 
       const state = useWizardStore.getState().state;
       expect(state.project_name).toBe("New Project");
-      expect(state.language).toBe("de");
+      expect(state.writing_language).toBe("de");
       expect(state.autosave_interval).toBe(60);
       expect(state.title).toBe("Existing Title");
     });
@@ -192,7 +194,7 @@ describe("useWizardStore", () => {
       useWizardStore.setState({
         state: {
           project_name: "Modified Project",
-          language: "de",
+          writing_language: "de",
           autosave_interval: 60,
           title: "Modified Title",
           author: "Modified Author",
@@ -213,7 +215,7 @@ describe("useWizardStore", () => {
 
       const state = useWizardStore.getState().state;
       expect(state.project_name).toBe("");
-      expect(state.language).toBe("en");
+      expect(state.writing_language).toBe("en");
       expect(state.title).toBe("");
       expect(state.author).toBe("");
       expect(state.provider).toBe("anthropic");

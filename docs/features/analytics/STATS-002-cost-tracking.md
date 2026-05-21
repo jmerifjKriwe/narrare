@@ -1,7 +1,7 @@
 ---
 id: STATS-002
 title: "AI Cost Tracking"
-status: implemented
+status: planned
 area: analytics
 mvp: false
 

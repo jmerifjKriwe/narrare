@@ -4,6 +4,7 @@ Owns metadata schemas, relationship type definitions, and any future
 KB-specific domain logic.  No HTTP, no database sessions, no user auth.
 """
 
+from narrare_core.kb.query_service import KBQueryService
 from narrare_core.kb.schemas import (
     SCHEMA_REGISTRY,
     KBEntryMetadata,
@@ -13,5 +14,6 @@ from narrare_core.kb.schemas import (
 __all__ = [
     "SCHEMA_REGISTRY",
     "KBEntryMetadata",
+    "KBQueryService",
     "get_schema",
 ]

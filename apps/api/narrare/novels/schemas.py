@@ -12,7 +12,7 @@ class CreateNovelRequest(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     author: str = Field(default="", max_length=200)
     genre: str = Field(default="", max_length=100)
-    language: str = Field(default="en", min_length=2, max_length=10)
+    writing_language: str = Field(default="en", max_length=100)
     tone: str = Field(default="", max_length=100)
     story_structure: str = Field(default="three_act", max_length=100)
     logline: str = Field(default="", max_length=500)
@@ -23,7 +23,7 @@ class UpdateNovelRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=500)
     author: str | None = Field(default=None, max_length=200)
     genre: str | None = Field(default=None, max_length=100)
-    language: str | None = Field(default=None, min_length=2, max_length=10)
+    writing_language: str | None = Field(default=None, max_length=100)
     tone: str | None = Field(default=None, max_length=100)
     story_structure: str | None = Field(default=None, max_length=100)
     logline: str | None = Field(default=None, max_length=500)
@@ -37,7 +37,7 @@ class NovelResponse(BaseModel):
     title: str
     author: str
     genre: str
-    language: str
+    writing_language: str
     tone: str
     story_structure: str
     logline: str
@@ -56,6 +56,6 @@ class NovelSummaryResponse(BaseModel):
     title: str
     author: str
     genre: str
-    language: str
+    writing_language: str
     is_demo: bool
     updated_at: datetime

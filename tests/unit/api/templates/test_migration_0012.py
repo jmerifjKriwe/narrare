@@ -7,17 +7,35 @@ tests (requires a real PostgreSQL instance).
 
 from __future__ import annotations
 
-import importlib
+import importlib.util
 import inspect
-import sys
+from pathlib import Path
 
 
 def _load_migration_module():  # type: ignore[no-untyped-def]
-    """Load the migration module and return it."""
-    migrations_path = "/workspace/apps/api/alembic/versions"
-    if migrations_path not in sys.path:
-        sys.path.insert(0, migrations_path)
-    return importlib.import_module("0012_drop_template_language")
+    """Load the migration module directly from file path."""
+    migration_file = (
+        Path(__file__).resolve().parents[4]
+        / "apps"
+        / "api"
+        / "alembic"
+        / "versions"
+        / "0012_drop_template_language.py"
+    )
+    if not migration_file.exists():
+        import pytest
+
+        pytest.skip(f"Migration file not found: {migration_file}")
+    spec = importlib.util.spec_from_file_location(
+        "migration_0012_drop_template_language", str(migration_file)
+    )
+    if spec is None or spec.loader is None:
+        import pytest
+
+        pytest.skip(f"Cannot load migration from {migration_file}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class TestMigration0012Metadata:

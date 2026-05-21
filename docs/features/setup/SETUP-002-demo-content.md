@@ -1,7 +1,7 @@
 ---
 id: SETUP-002
 title: "Demo Projects"
-status: planned
+status: in progress
 area: setup
 mvp: true
 

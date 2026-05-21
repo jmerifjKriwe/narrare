@@ -1,6 +1,6 @@
-"""Name generation API service — uses LLM gateway and prompt composer.
+"""Name generation API service — uses LLM registry and prompt composer.
 
-Builds prompts via PromptComposer, calls LLMGateway, parses structured
+Builds prompts via PromptComposer, calls ModelRegistry, parses structured
 JSON responses into GeneratedName objects. Includes placeholder KB
 dedup check for future integration.
 """
@@ -21,7 +21,7 @@ from narrare.generation.schemas import (
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
 
@@ -29,21 +29,21 @@ logger = structlog.get_logger(__name__)
 
 
 class NameGeneratorService:
-    """Generates names using LLM with culture-aware prompts.
+    """Generates names using LLM with style-aware prompts.
 
-    Uses PromptComposer for prompt assembly and LLMGateway for execution.
+    Uses PromptComposer for prompt assembly and ModelRegistry for execution.
     Parses structured JSON responses into GeneratedName objects.
     """
 
     def __init__(
         self,
-        gateway: LLMGateway,
+        registry: ModelRegistry,
         composer: PromptComposer,
         config: ResolvedModelConfig,
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> None:
-        self._gateway = gateway
+        self._registry = registry
         self._composer = composer
         self._config = config
         self._api_key = api_key
@@ -53,7 +53,7 @@ class NameGeneratorService:
         """Generate names based on request parameters.
 
         Args:
-            request: Name generation request with type, culture, count, etc.
+            request: Name generation request with type, name_style, count, etc.
 
         Returns:
             NameGenerateResponse with generated names and metadata.
@@ -62,10 +62,10 @@ class NameGeneratorService:
         from narrare_core.prompts.context import PromptContext
 
         context = PromptContext(
-            language=request.language,
+            language=request.explanation_language,
             mode="names",
             extra={
-                "culture": request.culture,
+                "name_style": request.name_style,
                 "name_type": request.name_type.value,
                 "count": str(request.count),
                 "gender": request.gender.value,
@@ -79,29 +79,29 @@ class NameGeneratorService:
             user_prompt=self._build_user_prompt(request),
         )
 
-        result = await self._gateway.run(
-            intent=LLMIntent.NAME_GENERATE,
-            system_prompt=prompt.system,
-            user_prompt=prompt.user,
+        result: str = await self._registry.run(  # pyright: ignore[reportUnknownVariableType]
+            LLMIntent.NAME_GENERATE,
+            prompt=prompt.user,
             config=self._config,
+            system_prompt=prompt.system,
             api_key=self._api_key,
             base_url=self._base_url,
         )
 
-        names = self._parse_names(result.text, request)
+        names = self._parse_names(result, request)
         names = await self._check_duplicates(names, request.project_id)
 
         logger.info(
             "names_generated",
             name_type=request.name_type.value,
-            culture=request.culture,
+            name_style=request.name_style,
             count=len(names),
         )
 
         return NameGenerateResponse(
             names=names,
             count=len(names),
-            culture=request.culture,
+            name_style=request.name_style,
             name_type=request.name_type.value,
         )
 
@@ -109,9 +109,9 @@ class NameGeneratorService:
         """Build the user-facing prompt for name generation."""
         return (
             f"Generate {request.count} {request.name_type.value} names "
-            f"for a {request.culture} setting. "
+            f"for a {request.name_style} setting. "
             f"Gender preference: {request.gender.value}. "
-            f"Language: {request.language}. "
+            f"Language: {request.explanation_language}. "
             f"Return as JSON array with fields: name, pronunciation, meaning."
         )
 
@@ -120,7 +120,7 @@ class NameGeneratorService:
 
         Args:
             text: Raw LLM response text.
-            request: Original request for type/culture metadata.
+            request: Original request for type/name_style metadata.
 
         Returns:
             List of GeneratedName objects.
@@ -168,7 +168,7 @@ class NameGeneratorService:
                     pronunciation=str(pron_val) if pron_val is not None else None,  # type: ignore[reportUnknownArgumentType]
                     meaning=str(mean_val) if mean_val is not None else None,  # type: ignore[reportUnknownArgumentType]
                     type=request.name_type.value,
-                    culture=request.culture,
+                    name_style=request.name_style,
                 ),
             )
         return names

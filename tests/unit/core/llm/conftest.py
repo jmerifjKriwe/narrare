@@ -1,7 +1,7 @@
 """Shared fixtures for core/llm/ unit tests.
 
 Provides pydantic-ai testing tools (TestModel, FunctionModel) for tests
-that exercise the gateway->agent bridge. These replace hand-rolled fakes
+that exercise the registry->agent bridge. These replace hand-rolled fakes
 with pydantic-ai's built-in test models, which stay in sync with the
 library automatically.
 
@@ -20,16 +20,8 @@ from pydantic_ai.models.test import (  # narrare: allow reason="test fixtures"
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
-
-
-@pytest.fixture
-def gateway() -> LLMGateway:
-    """LLMGateway instance for tests that need a plain gateway (no TestModel)."""
-    from narrare_core.llm.gateway import LLMGateway
-
-    return LLMGateway(default_provider="anthropic")
 
 
 @pytest.fixture
@@ -61,21 +53,30 @@ def test_model() -> TestModel:
 
 
 @pytest.fixture
-def gateway_with_test_model(test_model: TestModel) -> Generator[LLMGateway]:
-    """LLMGateway wired with TestModel — no FakePydanticAgent needed.
+def registry() -> ModelRegistry:
+    """ModelRegistry instance for tests."""
+    from narrare_core.llm.gateway import ModelRegistry
 
-    The gateway's _make_agent still creates real pydantic-ai Agents,
-    but the model is TestModel so no API calls are made. Only
-    _get_model_with_credentials is patched to inject TestModel.
+    return ModelRegistry()
+
+
+@pytest.fixture
+def registry_with_test_model(test_model: TestModel) -> Generator[ModelRegistry]:
+    """ModelRegistry wired with TestModel — no real LLM calls.
+
+    Patches the provider registry's ``get`` function to return a factory
+    that always produces ``TestModel``, so no API calls are made.
     """
     from unittest.mock import patch
 
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.gateway import ModelRegistry
 
-    gateway = LLMGateway(default_provider="anthropic")
-
-    with patch.object(gateway, "_get_model_with_credentials", return_value=test_model):
-        yield gateway
+    registry = ModelRegistry()
+    # Must patch at the point of use (gateway.get_provider), not the source module
+    # because "from X import get as get_provider" creates a local binding.
+    with patch("narrare_core.llm.gateway.get_provider") as mock_get:
+        mock_get.return_value = lambda model_id, **kwargs: test_model
+        yield registry
 
 
 @pytest.fixture

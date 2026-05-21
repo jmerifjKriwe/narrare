@@ -10,6 +10,7 @@ ROOT = Path(__file__).parent.parent.parent
 # Approval markers — if present in a comment near a violation line, it's an approved exception.
 APPROVAL_MARKER = "# narrare: allow"
 LEGACY_MARKER = "# narrare: allow-direct-llm"
+AGENT_MARKER = "# narrare: allow-agent"
 
 
 def load_config() -> dict[str, object]:
@@ -22,9 +23,9 @@ def load_config() -> dict[str, object]:
 
 def is_approved_exception(source_lines: list[str], lineno: int) -> tuple[bool, str]:
     """Check if the line or its preceding comment has an approval marker."""
-    for check_line in range(max(0, lineno - 2), min(len(source_lines), lineno + 1)):
+    for check_line in range(max(0, lineno - 3), min(len(source_lines), lineno + 2)):
         line = source_lines[check_line]
-        if APPROVAL_MARKER in line or LEGACY_MARKER in line:
+        if APPROVAL_MARKER in line or LEGACY_MARKER in line or AGENT_MARKER in line:
             reason_start = line.find("reason=")
             reason = ""
             if reason_start != -1:

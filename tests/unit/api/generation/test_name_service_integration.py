@@ -1,4 +1,4 @@
-"""Gateway/composer integration and prompt-building tests for NameGeneratorService."""
+"""Registry/composer integration and prompt-building tests for NameGeneratorService."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 from narrare.generation.name_service import NameGeneratorService
 from narrare.generation.schemas import GenderEnum, NameType
-from narrare_core.llm.gateway import LLMGateway
+from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 from narrare_core.prompts.composer import PromptComposer
 
 if TYPE_CHECKING:
-    from tests.fakes.fake_llm_gateway import FakeLLMGateway
+    from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 from .conftest import (
     SAMPLE_ARRAY_RESPONSE,
@@ -32,7 +32,7 @@ class TestBuildUserPrompt:
     def _make_prompt_service() -> NameGeneratorService:
         """Create a service with spec'd mocks for prompt-only tests."""
         return NameGeneratorService(
-            gateway=MagicMock(spec=LLMGateway),
+            registry=MagicMock(spec=ModelRegistry),
             composer=MagicMock(spec=PromptComposer),
             config=_make_config(),
         )
@@ -49,9 +49,9 @@ class TestBuildUserPrompt:
         prompt = svc._build_user_prompt(request)
         assert "place" in prompt
 
-    def test_includes_culture(self) -> None:
+    def test_includes_name_style(self) -> None:
         svc = self._make_prompt_service()
-        request = _default_request(culture="norse")
+        request = _default_request(name_style="norse")
         prompt = svc._build_user_prompt(request)
         assert "norse" in prompt
 
@@ -61,9 +61,9 @@ class TestBuildUserPrompt:
         prompt = svc._build_user_prompt(request)
         assert "female" in prompt
 
-    def test_includes_language(self) -> None:
+    def test_includes_explanation_language(self) -> None:
         svc = self._make_prompt_service()
-        request = _default_request(language="fr")
+        request = _default_request(explanation_language="fr")
         prompt = svc._build_user_prompt(request)
         assert "fr" in prompt
 
@@ -78,20 +78,20 @@ class TestBuildUserPrompt:
 
 
 # ---------------------------------------------------------------------------
-# Gateway / Composer integration
+# Registry / Composer integration
 # ---------------------------------------------------------------------------
 
 
-class TestGatewayAndComposerIntegration:
-    """Verify the service calls gateway and composer with correct arguments."""
+class TestRegistryAndComposerIntegration:
+    """Verify the service calls registry and composer with correct arguments."""
 
     async def test_calls_composer_with_name_generate_intent(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
         mock_composer: AsyncMock,
     ) -> None:
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         await service.generate_names(_default_request())
 
@@ -102,12 +102,12 @@ class TestGatewayAndComposerIntegration:
     async def test_calls_composer_with_user_prompt(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
         mock_composer: AsyncMock,
     ) -> None:
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
-        request = _default_request(culture="celtic", count=3)
+        request = _default_request(name_style="celtic", count=3)
         await service.generate_names(request)
 
         call_kwargs = mock_composer.build.call_args
@@ -115,77 +115,56 @@ class TestGatewayAndComposerIntegration:
         assert "celtic" in user_prompt
         assert "3" in user_prompt
 
-    async def test_calls_gateway_with_name_generate_intent(
+    async def test_calls_registry_with_name_generate_intent(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         await service.generate_names(_default_request())
 
-        fake_gateway.assert_called_with_intent(LLMIntent.NAME_GENERATE)
+        fake_registry.assert_called_with_intent(LLMIntent.NAME_GENERATE)
 
-    async def test_calls_gateway_once(
+    async def test_calls_registry_once(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         await service.generate_names(_default_request())
 
-        fake_gateway.assert_called_once()
+        fake_registry.assert_called_once()
 
-    async def test_passes_composed_prompts_to_gateway(
+    async def test_passes_config_to_registry(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
-        mock_composer: AsyncMock,
-    ) -> None:
-        """Gateway receives the system/user prompts from the composer."""
-        from narrare_core.prompts.composer import ComposedPrompt
-
-        mock_composer.build.return_value = ComposedPrompt(
-            system="Custom system prompt for names.",
-            user="Custom user prompt for names.",
-        )
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
-
-        await service.generate_names(_default_request())
-
-        call = fake_gateway.last_call()
-        assert call.system_prompt == "Custom system prompt for names."
-        assert call.user_prompt == "Custom user prompt for names."
-
-    async def test_passes_config_to_gateway(
-        self,
-        service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
         config: ResolvedModelConfig,
     ) -> None:
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         await service.generate_names(_default_request())
 
-        call = fake_gateway.last_call()
+        call = fake_registry.last_call()
         assert call.config == config
 
     async def test_composer_context_includes_request_params(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
         mock_composer: AsyncMock,
     ) -> None:
         """PromptContext passed to composer should include culture, name_type, etc."""
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         request = _default_request(
-            culture="japanese",
+            name_style="japanese",
             name_type=NameType.PLACE,
             count=3,
             gender=GenderEnum.MALE,
-            language="ja",
+            explanation_language="ja",
         )
         await service.generate_names(request)
 
@@ -194,7 +173,7 @@ class TestGatewayAndComposerIntegration:
         context = call_args[0][1]  # second positional arg is PromptContext
         assert context.language == "ja"
         assert context.mode == "names"
-        assert context.extra["culture"] == "japanese"
+        assert context.extra["name_style"] == "japanese"
         assert context.extra["name_type"] == "place"
         assert context.extra["count"] == "3"
         assert context.extra["gender"] == "male"

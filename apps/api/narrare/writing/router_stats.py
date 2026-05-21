@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
-from narrare.writing.router import get_writing_service
+from narrare.writing.deps import get_writing_service
 from narrare.writing.schemas import (
     AcceptResponse,
     GenerationStatsResponse,

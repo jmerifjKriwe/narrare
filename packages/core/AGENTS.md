@@ -17,7 +17,9 @@ Du arbeitest im **Fundament** von Narrare. Core-Code hat keine HTTP-Dependencies
 
 ```
 narrare_core/
-├── llm/         ← Gateway, Intents, Provider-Adapter, Embeddings
+├── agents/      ← Agents (pydantic-ai) — PRIMÄRER Weg zu LLMs
+│                   Agents sind erste-Klasse-Bürger (ADR-015)
+├── llm/         ← ModelRegistry, Intents, Provider-Adapter
 │                   NUR HIER dürfen LLM-Clients importiert werden (RULE-01)
 ├── prompts/     ← Registry, Composer, Context, Variable Engine
 │                   NUR HIER werden Prompts gebaut (RULE-02)
@@ -37,45 +39,63 @@ narrare_core/
 
 ---
 
-## Das Gateway — die wichtigste Datei
+## Agents — der primäre Weg zu LLMs
 
-`llm/gateway.py` ist der einzige Weg zu jedem LLM-Provider.
+`narrare_core/agents/` enthält alle Narrare-Agents. Agents sind
+erste-Klasse-Bürger (ADR-015). Jeder Agent ist ein pydantic-ai Agent,
+der über `NarrareAgent` (Basisklasse) standardisierte Capabilities erbt.
 
 ```python
-# Verwendung (von überall außer core/llm/):
-from narrare_core.llm import LLMGateway, LLMIntent
+# Verwendung im Backend-Service:
+from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
+from narrare_core.llm.gateway import ModelRegistry
 
-result = await gateway.run(
-    intent=LLMIntent.WRITE,
-    system_prompt=prompt.system,
-    user_prompt=prompt.user,
-)
+model = await registry.get_model(config)
+agent = ChapterSummaryAgent(model=model)
+deps = SummaryDeps(language="en", genre="Fantasy", chapter_title="Ch 1")
+result = await agent.run(prompt="Content...", deps=deps)
+# → result.summary, result.key_points
 ```
 
-**Provider hinzufügen:**
+**Neuen Agent hinzufügen:**
+1. Type-Datei `*_types.py` erstellen (Pydantic Output-Modell)
+2. Agent-Datei `*_agent.py` erstellen (extends `NarrareAgent[DepsT, OutputT]`)
+3. Prompt in `prompts/_bundled/{category}/{lang}/{mode}/system.md` (optional)
+4. In `agents/__init__.py` exportieren
+5. Service im Backend schreiben (siehe `apps/api/AGENTS.md`)
+6. Tests: Agent-Level (TestModel) + Service-Level (Fake)
+
+**Bestehende Agents:**
+- `ChapterSummaryAgent` — Kapitel zusammenfassen
+- `DraftAgent` — Entwürfe schreiben
+- `OutlineAgent` — Gliederungen erstellen
+- `ReviewAgent` — Texte reviewen
+- `KBAgent` — Knowledge-Base-Operationen
+- WritingGraph — Multi-Step-Workflow orchestriert mehrere Agents
+
+**Provider hinzufügen** (altes Gateway-Zeug):
 1. `llm/_providers/{name}.py` erstellen
 2. `register("name", factory_function)` aufrufen
 3. In `llm/_providers/__init__.py` importieren
 
 ---
 
-## Der Prompt-Composer — zweite kritische Datei
+## Prompt-Composer (für interne Agent-Nutzung)
 
 ```python
-# Verwendung (von überall außer core/prompts/):
+# Agent-interne Nutzung (nicht direkt in Services)
 from narrare_core.prompts import PromptComposer, PromptContext
 from narrare_core.llm import LLMIntent
 
-ctx = PromptContext(
-    language="de",
-    project_title="Im stillen Wald",
-    mode="new_chapter",
-)
-prompt = await composer.build(LLMIntent.WRITE, ctx)
-# → prompt.system, prompt.user sind fertig für gateway.run()
+ctx = PromptContext(language="de", project_title="Im stillen Wald", mode="summarize")
+prompt = await composer.build(LLMIntent.SUMMARIZE, ctx)
+# → prompt.system, prompt.user
 ```
 
-**Neuen Intent hinzufügen:**
+Der Composer wird primär *innerhalb* von Agent-Implementierungen genutzt.
+Backend-Services rufen Agents auf, nicht den Composer direkt.
+
+**Neuen Intent hinzufügen (selten nötig):**
 1. `LLMIntent` in `llm/intents.py` erweitern
 2. `MODEL_ROUTING` Eintrag hinzufügen
 3. `_INTENT_TO_CATEGORY` und `_INTENT_TO_MODE` in `prompts/composer.py` erweitern
@@ -123,12 +143,28 @@ prompt_version: "1.0.0"
 
 Unit Tests in `tests/unit/core/` — kein I/O, keine echte API:
 
+### Agent-Level Tests (TestModel)
 ```python
-# Gateway mocken
-from unittest.mock import AsyncMock, patch
+from pydantic_ai.models.test import TestModel
+from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 
-with patch.object(gateway, "_make_agent", return_value=mock_agent):
-    result = await gateway.run(...)
+async def test_summary_agent_returns_output():
+    model = TestModel(custom_output_text="Summary text.")
+    agent = ChapterSummaryAgent(model=model)
+    deps = SummaryDeps(language="en")
+    result = await agent.run(prompt="Content.", deps=deps)
+    assert isinstance(result.summary, str)
+```
+
+### Service-Level Tests (Fake)
+```python
+async def test_summary_service_persists(
+    self, service: ChapterSummaryService, fake_repo: FakeChapterRepository
+) -> None:
+    chapter = make_chapter()
+    fake_repo.seed(chapter)
+    result = await service.summarize(chapter.id)
+    assert fake_repo.last_summary is not None
 ```
 
 Coverage-Ziel für `core/`: **90% minimum**, 95% angestrebt.

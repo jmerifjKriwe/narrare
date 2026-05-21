@@ -67,11 +67,11 @@ class TestFakeConformance:
         assert_implements_protocol(FakeNovelService, NovelServiceProtocol)
 
     def test_fake_llm_gateway(self) -> None:
-        """FakeLLMGateway implements LLMGatewayProtocol."""
-        from narrare_core.llm.contracts import LLMGatewayProtocol
+        """FakeLLMGateway implements ModelRegistryProtocol."""
+        from narrare_core.llm.contracts import ModelRegistryProtocol
         from tests.fakes import FakeLLMGateway
 
-        assert_implements_protocol(FakeLLMGateway, LLMGatewayProtocol)
+        assert_implements_protocol(FakeLLMGateway, ModelRegistryProtocol)
 
     def test_fake_provider_service(self) -> None:
         from narrare.setup.contracts import ProviderServiceProtocol

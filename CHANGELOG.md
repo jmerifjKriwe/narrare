@@ -13,6 +13,50 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- ADR-015 Phase 0: Agents as First-Class Citizens
+  - ModelRegistry in core/llm/gateway.py (v2 entry point)
+  - NarrareAgent base class in core/agents/base.py
+  - RULE-01b: Agent creation restricted to core/agents/
+- ADR-015 Phase 1: Usage Limits + Observability
+  - UsageLimits parameter in ModelRegistry.run() and get_model()
+  - NarrareObservability capability with before/after/error hooks
+  - Token usage display in GenerationPanel after each generation
+  - SSE stream sends is_final and usage in final chunk
+  - WebSocket sends usage in text_done event
+  - TokenUsage TypeScript interface
+  - i18n keys for token display (tokensTotal, tokensPrompt, tokensCompletion)
+
+- ADR-015 Phase 2: Output Functions → DraftAgent
+  - DraftOutput / DraftConfig Pydantic models in core/agents/draft_types.py
+  - DraftAgent with Output Function (post-processing via DraftProcessor), KB tool, and quality validator
+  - DraftDeps dependency container for context assembly
+  - NarrareAgent base class now supports OutputSpec (list of types/callables for output_type)
+  - WritingPipeline._stream_via_draft_agent() — new DraftAgent path via feature flag
+  - Feature flag `use_draft_agent` in WritingPipeline constructor (default: False, legacy path)
+  - 20 new tests for DraftAgent (unit: agent, tools, types) with TestModel/FunctionModel
+
+- ADR-015 Phase 3: KB-Tools + ToolSearch
+  - KBAgent in core/agents/kb_agent.py — tool provider with 3 deferred-loaded KB tools (search_kb, get_entity, get_related_entities)
+  - FunctionToolset with defer_loading=True for all KB tools
+  - KB formatters in core/agents/kb_formatters.py — format_entries, format_entity, format_related (separate module per RULE-04)
+  - ToolSearch capability (strategy="keywords") integrated into DraftAgent when KBAgent is present
+  - DraftAgent optional kb_agent parameter for KB-tool capability injection
+  - Toolset capability wiring KBAgent FunctionToolset into DraftAgent
+  - KBAgent / KBDeps exported from core/agents/__init__.py
+  - 31 new tests: 14 KBAgent, 14 KB-Formatters, 3 Integration (DraftAgent+KBAgent)
+
+- ADR-015 Phase 4: WritingGraph with GraphBuilder API
+  - WritingState + WritingStatus + WritingDeps dataclasses in core/agents/writing_graph_types.py
+  - 5 Graph Nodes via GraphBuilder API (pydantic-graph 1.97+): PlanOutline, WriteDraft, ReviewDraft, ReviseDraft, Finalize
+  - Approved + NeedsRevision Decision types for review branching
+  - GraphBuilder API (current, non-deprecated pydantic-graph API)
+  - Decision-Branching: ReviewDraft → Approved → Finalize, NeedsRevision → ReviseDraft
+  - ReviseDraft → WriteDraft loop with max 3 attempts guard
+  - Pipeline integration: use_writing_graph feature flag in WritingPipeline
+  - pipeline_graph.py as separate module (RULE-04 file-size compliance)
+  - Mermaid diagram via graph.render() saved to docs/architecture/workflows/
+  - 23 tests (8 Types + 11 Graph + 4 Pipeline), 0 architecture violations
+
 - httpOnly refresh token cookie (`narrare_refresh`) for secure session management
 - Frontend `restoreSession()` — silent refresh via httpOnly cookie on page reload
 - Editor TipTap extensions: NarrareDocument (chapter-scoped doc), DialogueMark (dialogue spans), Autosave (debounced save)

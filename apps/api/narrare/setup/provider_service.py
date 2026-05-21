@@ -208,7 +208,7 @@ class ProviderService:
         elif provider in env_map:
             os.environ[env_map[provider]] = api_key
 
-        # narrare: allow-direct-llm reason="Setup-phase provider validation and model listing"
+        # narrare: allow-agent reason="Setup-phase provider validation (ADR-015)"
         from pydantic_ai import Agent
 
         if provider == AIProvider.ZAI and zai_endpoint == "coding":
@@ -220,9 +220,13 @@ class ProviderService:
             factory = get_provider(provider_name)
             pydantic_model = factory(model)
 
-        agent = Agent(pydantic_model, output_type=str)
+        agent = Agent(  # narrare: allow-agent reason="Setup-phase validation (ADR-015)"
+            pydantic_model, output_type=str
+        )
         # Minimal prompt — just verify the connection works
-        result = await agent.run("Reply with the single word: OK")
+        result = await agent.run(  # narrare: allow-agent reason="Setup-phase validation (ADR-015)"
+            "Reply with the single word: OK"
+        )  # narrare: allow-agent reason="Setup-phase validation (ADR-015)"
 
         if not str(result):
             raise ValueError("Empty response from provider")

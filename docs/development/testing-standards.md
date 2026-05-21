@@ -58,31 +58,33 @@ WHERE clause or missing JOIN passes the unit test but fails in production.
 ```python
 # Example: tests/unit/api/chapters/test_chapter_service.py
 
-class TestChapterServiceUpdateContent:
-    async def test_returns_draft_on_success(
-        self, service: ChapterService, fake_repo: FakeChapterRepository
+class TestChapterSummaryService:
+    async def test_returns_summary_on_success(
+        self, service: ChapterSummaryService, fake_repo: FakeChapterRepository
     ) -> None:
-        chapter = make_chapter()
+        chapter = make_chapter(content="Once upon a time...")
         fake_repo.seed(chapter)
 
-        result = await service.update_content(
-            chapter.id, chapter.novel_id, user_id, request
-        )
+        result = await service.summarize(chapter.id)
 
-        assert result.content == "new content"
+        assert result.summary != ""
+        assert result.word_count > 0
 
-    async def test_raises_on_llm_failure(
-        self, service: DraftService, fake_gateway: FakeLLMGateway
+    async def test_skips_empty_chapter(
+        self, service: ChapterSummaryService, fake_repo: FakeChapterRepository
     ) -> None:
-        fake_gateway.raises(LLMGatewayError("timeout"))
-        with pytest.raises(WritingError, match="Generation failed"):
-            await service.write(request=valid_write_request())
+        chapter = make_chapter(content="")
+        fake_repo.seed(chapter)
 
-    async def test_uses_correct_intent(
-        self, service: DraftService, fake_gateway: FakeLLMGateway
+        result = await service.summarize(chapter.id)
+
+        assert result.summary == ""
+
+    async def test_raises_on_missing_chapter(
+        self, service: ChapterSummaryService
     ) -> None:
-        await service.write(request=valid_write_request())
-        fake_gateway.assert_called_with_intent(LLMIntent.WRITE)
+        with pytest.raises(NotFoundError):
+            await service.summarize(uuid4())
 ```
 
 ### Integration Tests — Repositories and Router Endpoints
@@ -342,10 +344,11 @@ DI/settings, not hardcoded values.
 Every domain dependency (Repository, Service, LLM Gateway) gets a **Fake class**
 that implements the corresponding Protocol from `contracts.py`.
 
+*Ausnahme: Agents/LLM-Dependencies werden mit TestModel/FunctionModel gemockt — nicht mit Fake-Klassen.*
+
 ```
 tests/fakes/
 ├── __init__.py
-├── fake_llm_gateway.py       ← FakeLLMGateway
 ├── fake_repositories.py      ← FakeChapterRepo, FakeNovelRepo, etc.
 ├── fake_services.py          ← FakeNovelService, FakeAuthService, etc.
 └── fake_setup.py             ← FakeProviderService, FakeDemoLoader
@@ -355,21 +358,18 @@ tests/fakes/
 
 ```python
 # ✅ Fake classes for domain dependencies
-from tests.fakes import FakeChapterRepository, FakeLLMGateway
+from tests.fakes import FakeChapterRepository
 
 fake_repo = FakeChapterRepository()
 fake_repo.seed(make_chapter(id=uuid4()))
 
-fake_gateway = FakeLLMGateway()
-fake_gateway.returns("Generated text")
+# ✅ TestModel for agent-level LLM mocking
+from pydantic_ai.models.test import TestModel
+model = TestModel(custom_output_text="Summary text")
 
 # ✅ patch() for external functions that are not dependencies
 with patch("narrare.auth.service.hash_password", return_value="hashed"):
     await service.register(request)
-
-# ✅ patch.object() for private methods in core tests
-with patch.object(gateway, "_make_agent", return_value=fake_agent):
-    await gateway.run(...)
 
 # ✅ AsyncMock() on Fake objects for individual method overrides
 fake_repo.get_by_id = AsyncMock(return_value=None)
@@ -381,11 +381,9 @@ fake_repo.get_by_id = AsyncMock(return_value=None)
 # ❌ Bare MagicMock() without spec=
 session = MagicMock()
 repo = MagicMock()
-gateway = MagicMock()
 
 # ❌ MagicMock as replacement for a domain dependency
 service._repo = MagicMock()  # Use FakeChapterRepository instead
-service._gateway = MagicMock()  # Use FakeLLMGateway instead
 
 # ❌ Nested mock chains
 mock_result = MagicMock()
@@ -406,6 +404,7 @@ mock_agent.run = AsyncMock(return_value=mock_result)
 | **Readability** | `fake_repo.seed(chapter)` — clear intent | `mock.get_by_id = AsyncMock(...)` — scattered setup |
 | **Reusability** | Shared across all tests | Setup repeated per test file |
 | **Documentation** | Fake IS the contract documentation | Mock hides the contract |
+| **LLM/Agent testing** | TestModel statt Fake — TestModel testet den echten pydantic-ai Code-Path | MagicMock umgeht den Agent komplett |
 
 ### Fake Class Pattern
 
@@ -476,32 +475,23 @@ Not all tests need the same level of LLM mocking. Use the right tool for the job
 
 | Test Level | Tool | Why |
 |-----------|------|-----|
-| Service unit tests | `FakeLLMGateway` | Service doesn't know about agents |
-| Gateway unit tests | `TestModel` / `FunctionModel` | Tests the real Agent code path |
+| Service unit tests | `TestModel` (via fixture) | Service instantiates agents |
+| Gateway unit tests | `TestModel` / `FunctionModel` | Tests the real agent code path |
 | Agent-level tests | `TestModel` + `capture_run_messages` | Asserts tool call behavior |
-| Integration tests | `FakeLLMGateway` + dependency override | End-to-end through HTTP |
+| Integration tests | `TestModel` + dependency override | End-to-end through HTTP |
 | E2E tests | Playwright route mocking | Full browser stack |
 
 ### `TestModel` — Deterministic Agent Responses
 
 `TestModel` (from `pydantic_ai.models.test`) replaces the real LLM with deterministic responses.
-Use the `gateway_with_test_model` fixture from `tests/unit/core/llm/conftest.py`:
 
 ```python
-async def test_gateway_returns_result(
-    self,
-    gateway_with_test_model: LLMGateway,
-    write_config: ResolvedModelConfig,
-) -> None:
-    # No mocking — TestModel is injected as the model
-    result = await gateway_with_test_model.run(
-        intent=LLMIntent.WRITE,
-        system_prompt="System.",
-        user_prompt="Write.",
-        config=write_config,
-        retry_config=NO_RETRY,
-    )
-    assert isinstance(result, LLMResult)
+async def test_summary_agent_returns_structured_output() -> None:
+    model = TestModel(custom_output_text="A short summary.")
+    agent = ChapterSummaryAgent(model=model)
+    deps = SummaryDeps(language="en", chapter_title="Ch 1")
+    result = await agent.run(prompt="Summarize this.", deps=deps)
+    assert result.summary == "A short summary."
 ```
 
 Custom response text: `TestModel(custom_output_text="Your response here")`.
@@ -575,15 +565,19 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.models.test import TestModel  # narrare: allow reason="..."
 ```
 
-### What STAYS the Same
+### What CHANGED — Testing Migration Notes
 
-`FakeLLMGateway` (in `tests/fakes/`) remains the primary tool for **service-level** tests.
-Services don't know about agents — they call `gateway.run()`. Inject `FakeLLMGateway`
-through the constructor. This is the Protocol-first pattern from RULE-TEST-01.
+**Service-Level Tests**: Services instantiieren jetzt Agents direkt.
+Der LLM-Aufruf wird über `TestModel` gemockt — nicht mehr über `FakeLLMGateway`.
 
-`FakePydanticAgent` is kept for the streaming chunk test (TestModel doesn't produce
-real streaming chunks). It will be removed once pydantic-ai's TestModel supports
-configurable streaming behavior.
+**Agent-Level Tests**: Agents werden mit `TestModel` oder `FunctionModel`
+getestet (siehe Tabelle oben).
+
+**Integration Tests**: `TestModel` wird via Dependency Injection eingespielt.
+Keine echten LLM-API-Calls — `ALLOW_MODEL_REQUESTS = False` in conftest.py verhindert das.
+
+**Fake-Klassen existieren weiterhin** für Repository/Service-Protokolle.
+Nur für Agent/LLM-Dependencies werden jetzt TestModel/FunctionModel verwendet.
 
 ---
 
@@ -610,9 +604,9 @@ class ChapterService:
 
 # tests/conftest.py
 @pytest.fixture
-def fake_gateway() -> FakeLLMGateway:
-    """Fake LLM gateway — configurable responses, call tracking."""
-    return FakeLLMGateway()
+def test_model() -> TestModel:
+    """Pydantic AI TestModel — deterministische LLM-Responses."""
+    return TestModel(custom_output_text="Default response.")
 
 @pytest.fixture
 def fake_chapter_repo() -> FakeChapterRepository:
@@ -621,10 +615,11 @@ def fake_chapter_repo() -> FakeChapterRepository:
 # Per-domain fixtures in test subdirectories:
 # tests/unit/api/chapters/conftest.py
 @pytest.fixture
-def service(fake_chapter_repo, fake_novel_service) -> ChapterService:
-    return ChapterService(
-        repo=fake_chapter_repo,
-        novel_service=fake_novel_service,
+def service(fake_chapter_repo, test_model, registry, config) -> ChapterSummaryService:
+    return ChapterSummaryService(
+        registry=registry,
+        config=config,
+        chapter_repo=fake_chapter_repo,
     )
 ```
 

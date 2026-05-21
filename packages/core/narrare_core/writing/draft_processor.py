@@ -91,6 +91,38 @@ class DraftProcessor:
         return cleaned.strip()
 
     # ------------------------------------------------------------------
+    # Public API — granular access for DraftAgent output function
+    # ------------------------------------------------------------------
+
+    def strip_artifacts(self, text: str) -> str:
+        """Remove common LLM boilerplate prefixes and markers.
+
+        Public wrapper around :meth:`_strip_artifacts`.
+        """
+        return self._strip_artifacts(text)
+
+    def normalise_markdown(self, text: str) -> str:
+        """Normalise blank lines and scene-break markers.
+
+        Public wrapper around :meth:`_normalise_markdown`.
+        """
+        return self._normalise_markdown(text)
+
+    def remove_incomplete_trailing(self, text: str) -> str:
+        """Remove an incomplete trailing sentence fragment.
+
+        Public wrapper around :meth:`_remove_incomplete_trailing`.
+        """
+        return self._remove_incomplete_trailing(text)
+
+    def enforce_word_target(self, text: str, word_target: int) -> str:
+        """Truncate to nearest sentence boundary within ±10 % tolerance.
+
+        Public wrapper around :meth:`_enforce_word_target`.
+        """
+        return self._enforce_word_target(text, word_target)
+
+    # ------------------------------------------------------------------
     # Step 1: Artifact stripping
     # ------------------------------------------------------------------
 

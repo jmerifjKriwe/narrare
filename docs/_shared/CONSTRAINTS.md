@@ -11,16 +11,31 @@
 
 These four rules are absolute. No exception without a documented, reviewed decision.
 
-### RULE-01 · LLM calls go through the Gateway. Always.
+### RULE-01b · Agents are the way to use LLMs. Models come from the ModelRegistry. Always.
 
-No module outside `core/llm/` may import or instantiate an LLM client.
-No module outside `core/llm/` may make HTTP calls to LLM provider endpoints.
+No module outside `core/agents/` may import or instantiate `pydantic_ai.Agent` or any subclass.
+No module outside `core/llm/` may import or instantiate model/provider classes.
+No module may make HTTP calls to LLM provider endpoints.
 
-**Forbidden everywhere except `core/llm/`:**
+**Erlaubt in `core/agents/`:**
+```python
+from pydantic_ai import Agent
+from pydantic_ai.capabilities import ...
+from pydantic_ai.output import ...
+agent.run() / agent.run_sync()
+```
+
+**Erlaubt in `core/llm/`:**
+```python
+from pydantic_ai.models import Model
+from pydantic_ai.providers import ...
+from pydantic_ai.models.openai import OpenAIChatModel (etc.)
+```
+
+**Forbidden everywhere:**
 ```python
 import openai
 import anthropic
-from pydantic_ai import Agent
 openai.AsyncOpenAI()
 httpx.post("https://api.openai.com/...")
 httpx.post("https://api.anthropic.com/...")
@@ -28,16 +43,18 @@ httpx.post("https://api.anthropic.com/...")
 
 **Required everywhere else:**
 ```python
-from core.llm.gateway import LLMGateway  # injected, never instantiated locally
-result = await gateway.run(intent=LLMIntent.WRITE, content=..., context=...)
+from narrare_core.agents.base import NarrareAgent  # injected, never instantiated locally
+result = await agent.run(prompt=..., deps=...)
 ```
 
-**Why:** Retry logic, cost tracking, model selection, error classification,
-telemetry — none of these can be guaranteed if calls are scattered.
-One bypass means one silent failure with no metrics and no fallback.
+**Why:** RULE-01 allowed pydantic_ai.Agent imports only in core/llm/, but
+pydantic-ai is an agent framework, not a model framework. Agents (tools,
+capabilities, output types, system prompts) belong in core/agents/. The
+ModelRegistry in core/llm/ provides model instances for agents.
+Separation of concerns: agent logic vs model resolution.
 
 **Approved exceptions:** Listed in `pyproject.toml [tool.narrare.architecture]`.
-Each exception requires the inline comment `# narrare: allow-direct-llm  reason="..."`.
+Each exception requires the inline comment `# narrare: allow-agent  reason="..."`.
 
 ---
 
@@ -521,8 +538,9 @@ same service methods without a parallel non-streaming implementation.
 
 | Rule | Enforced by |
 |------|-------------|
-| RULE-01 LLM Gateway | `check_architecture.py` — import scan |
-| RULE-01 LLM URLs | `check_architecture.py` — string scan |
+| RULE-01b Agent/Model imports | `check_architecture.py` — import scan (agent + model checks) |
+| RULE-01b Agent instantiation | `check_architecture.py` — AST scan (Agent(), .run(), .run_sync()) |
+| RULE-01b LLM URLs | `check_architecture.py` — string scan |
 | RULE-02 Prompt building | `check_architecture.py` — AST scan |
 | RULE-04 File size | `check_architecture.py` — line count |
 | RULE-06 Router purity | `check_architecture.py` — complexity heuristic |
@@ -553,6 +571,20 @@ file = "packages/core/narrare_core/memory/mem0_client.py"
 reason = "mem0 AsyncMemory requires direct LLM client for memory extraction. Provider/model is user-configurable via settings. Gateway's intent routing and rate limiting don't apply to infrastructure-level memory extraction."
 approved_by = "generation-prompt-memory-foundation"
 date = "2026-05-15"
+
+[[tool.narrare.architecture.exceptions.entries]]
+rule = "RULE-01b"
+file = "packages/core/narrare_core/llm/gateway.py"
+reason = "Gateway._make_agent() is the internal bridge between ModelRegistry and Agent. Core/llm/ creates Agent instances with resolved models and system prompts — this is the approved boundary crossing. Agents in core/agents/ will use higher-level NarrareAgent wrappers."
+approved_by = "ADR-015"
+date = "2026-05-20"
+
+[[tool.narrare.architecture.exceptions.entries]]
+rule = "RULE-01b"
+file = "apps/api/narrare/setup/provider_service.py"
+reason = "Setup-phase provider validation requires direct pydantic-ai Agent to test credentials. This runs once during project setup, not in the LLM call path."
+approved_by = "ADR-015"
+date = "2026-05-20"
 ```
 
 ### Exception: mem0 LLM client in `core/memory/mem0_client.py`
@@ -582,6 +614,6 @@ supports infrastructure-level calls with different routing rules.*
 
 ---
 
-> Last updated: 2026-05-15 — RULE-16, RULE-17, RULE-18 added (i18n registration, API-Frontend contract, no hardcoded config)
+> Last updated: 2026-05-20 — RULE-01→RULE-01b (agents first-class, ModelRegistry)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

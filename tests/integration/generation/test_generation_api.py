@@ -53,8 +53,9 @@ class TestGenerateNames:
             max_tokens=2000,
         )
 
+        # Use FakeLLMGateway as a registry-compatible object
         mock_service = NameGeneratorService(
-            gateway=mock_gateway,
+            registry=mock_gateway,  # FakeLLMGateway exposes run() with kw-only args
             composer=_get_composer_instance(),
             config=mock_config,
         )
@@ -69,10 +70,10 @@ class TestGenerateNames:
                 json={
                     "project_id": str(uuid4()),
                     "name_type": "character",
-                    "culture": "fantasy",
+                    "name_style": "fantasy",
                     "count": 3,
                     "gender": "any",
-                    "language": "en",
+                    "explanation_language": "en",
                 },
                 headers=auth_headers,
             )
@@ -80,9 +81,9 @@ class TestGenerateNames:
             data = response.json()
             assert "names" in data
             assert "count" in data
-            assert "culture" in data
+            assert "name_style" in data
             assert "name_type" in data
-            assert data["culture"] == "fantasy"
+            assert data["name_style"] == "fantasy"
             assert data["name_type"] == "character"
         finally:
             app.dependency_overrides.pop(original_factory, None)
@@ -92,16 +93,15 @@ class TestGenerateNames:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST /generation/names with count=100 returns 422 (validation)."""
         response = await client.post(
             "/api/v1/generation/names",
             json={
                 "project_id": str(uuid4()),
                 "name_type": "character",
-                "culture": "fantasy",
+                "name_style": "fantasy",
                 "count": 100,
                 "gender": "any",
-                "language": "en",
+                "explanation_language": "en",
             },
             headers=auth_headers,
         )
@@ -112,16 +112,15 @@ class TestGenerateNames:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST /generation/names with invalid name_type returns 422."""
         response = await client.post(
             "/api/v1/generation/names",
             json={
                 "project_id": str(uuid4()),
                 "name_type": "invalid_type",
-                "culture": "fantasy",
+                "name_style": "fantasy",
                 "count": 5,
                 "gender": "any",
-                "language": "en",
+                "explanation_language": "en",
             },
             headers=auth_headers,
         )
@@ -131,13 +130,12 @@ class TestGenerateNames:
         self,
         client: AsyncClient,
     ) -> None:
-        """POST /generation/names without auth returns 401."""
         response = await client.post(
             "/api/v1/generation/names",
             json={
                 "project_id": str(uuid4()),
                 "name_type": "character",
-                "culture": "fantasy",
+                "name_style": "fantasy",
                 "count": 5,
             },
         )
@@ -148,12 +146,11 @@ class TestGenerateNames:
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST /generation/names without project_id returns 422."""
         response = await client.post(
             "/api/v1/generation/names",
             json={
                 "name_type": "character",
-                "culture": "fantasy",
+                "name_style": "fantasy",
                 "count": 5,
             },
             headers=auth_headers,

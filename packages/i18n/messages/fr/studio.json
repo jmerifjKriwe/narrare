@@ -84,7 +84,8 @@
   "generation": {
     "nameGenerator": "Générateur de noms",
     "nameType": "Type",
-    "culture": "Culture",
+    "nameStyle": "Style de noms",
+    "explanationLanguage": "Langue d'explication",
     "count": "Nombre",
     "gender": "Genre",
     "language": "Langue",
@@ -477,7 +478,8 @@
       "feature5": "Design moderne et sans distraction"
     },
     "promptsTab": "Prompts système",
-    "kbTemplates": "Modèles KB"
+    "kbTemplates": "Modèles KB",
+    "learning": "Apprentissage"
   },
   "wizard": {
     "step1": {
@@ -485,7 +487,7 @@
       "description": "Nommez votre projet et configurez les paramètres de base",
       "projectName": "Nom du projet",
       "projectNamePlaceholder": "Mon roman",
-      "language": "Langue",
+      "language": "Langue d'écriture",
       "autosave": "Intervalle de sauvegarde (secondes)",
       "autosaveHint": "0 = désactivé, max 3600 secondes",
       "langEn": "English",
@@ -512,6 +514,8 @@
       "authorPlaceholder": "Votre nom",
       "genre": "Genre",
       "genrePlaceholder": "Fantasy, Thriller, Romance…",
+      "writingLanguage": "Langue d'écriture",
+      "writingLanguagePlaceholder": "p.ex. Anglais, Allemand, Français…",
       "logline": "Logline",
       "loglinePlaceholder": "Un résumé en une phrase de votre histoire",
       "structure": "Structure narrative",
@@ -571,6 +575,31 @@
       "dark": "Sombre",
       "adventurous": "Aventureux"
     }
+  },
+  "tones": {
+    "title": "Bibliothèque de tons",
+    "description": "Gérez les tons prédéfinis et personnalisés pour votre écriture",
+    "bundled": "Tons prédéfinis",
+    "balanced": "Équilibré",
+    "dramatic": "Dramatique",
+    "humorous": "Humoristique",
+    "suspenseful": "Suspense",
+    "contemplative": "Contemplatif",
+    "romantic": "Romantique",
+    "dark": "Sombre",
+    "adventurous": "Aventureux",
+    "quiet": "Calme",
+    "custom": "Tons personnalisés",
+    "addTone": "Ajouter un ton personnalisé",
+    "editTone": "Modifier le ton",
+    "deleteTone": "Supprimer le ton",
+    "toneName": "Nom du ton",
+    "toneInstructions": "Instructions du ton",
+    "maxTonesReached": "Maximum de 20 tons personnalisés atteint",
+    "countLabel": "{count} sur {max} tons personnalisés",
+    "emptyState": "Aucun ton personnalisé. Créez-en un pour personnaliser votre expérience d'écriture.",
+    "saveFailed": "Échec de l'enregistrement du ton",
+    "validationRequired": "Le nom et les instructions sont requis"
   },
   "volumes": {
     "comingSoon": "Gestion des volumes",
@@ -633,7 +662,10 @@
     "unknownError": "Une erreur inconnue est survenue",
     "connectionLost": "Connexion perdue",
     "validationMissingInput": "Au moins un des champs plan, consigne ou continuation automatique doit être rempli.",
-    "outlineHelpScene": "Optionnel. Décrivez la structure des scènes, par ex. : « Scène 1 : Arrivée au château. Scène 2 : Négociation avec le roi. » Sans plan, l'IA interprétera librement."
+    "outlineHelpScene": "Optionnel. Décrivez la structure des scènes, par ex. : « Scène 1 : Arrivée au château. Scène 2 : Négociation avec le roi. » Sans plan, l'IA interprétera librement.",
+    "tokensTotal": "Tokens total",
+    "tokensPrompt": "Prompt",
+    "tokensCompletion": "Completion"
   },
   "sessionPanel": {
     "title": "Session interactive",
@@ -1143,6 +1175,19 @@
     },
     "additionalNotes": "Notes supplémentaires"
   },
+  "writingGraph": {
+    "allComplete": "Toutes les étapes terminées",
+    "progress": "Étape {current}/{total} : {label}",
+    "ariaLabel": "Progression du pipeline d'écriture",
+    "steps": {
+      "plan_outline": "Plan",
+      "write_draft": "Brouillon",
+      "review_draft": "Révision",
+      "revise_draft": "Correction",
+      "finalize": "Finalisation",
+      "generate_summary": "Résumé"
+    }
+  },
   "storyboard": {
     "title": "Storyboard",
     "collapsed": "{structure} — {count, plural, one {# chapitre} other {# chapitres}}",
@@ -1171,7 +1216,9 @@
       "newStage": "Nouvelle étape",
       "confirm": "Confirmer le changement",
       "cancel": "Annuler",
-      "noChanges": "Aucun chapitre ne nécessite de réassignation."
+      "noChanges": "Aucun chapitre ne nécessite de réassignation.",
+      "aiConfidence": "Réassignation IA ({confidence}% de confiance)",
+      "aiSuggested": "Suggestion IA"
     },
     "stages": {
       "three_act": {
@@ -1236,5 +1283,35 @@
     "loginError": "E-mail ou mot de passe invalide",
     "registerError": "Échec de l'inscription",
     "loading": "Chargement..."
+  },
+  "learning": {
+    "title": "Apprentissage",
+    "description": "Découvrez comment l'IA apprend votre style d'écriture à partir de vos retours",
+    "statusInteractions": "{count}/50 interactions",
+    "confidence": "Confiance : {score}%",
+    "stylePatterns": "Patterns de style",
+    "contentPatterns": "Patterns de contenu",
+    "avoidancePatterns": "Patterns d'évitement",
+    "noData": "Pas encore assez de données. Continuez à écrire !",
+    "reset": "Réinitialiser les préférences",
+    "resetConfirm": "Cela supprimera toutes les préférences apprises. Continuer ?",
+    "resetting": "Réinitialisation...",
+    "confirmReset": "Oui, réinitialiser",
+    "cancelReset": "Annuler",
+    "rating": "Évaluez cette suggestion",
+    "rejectReason": "Pourquoi avez-vous rejeté ceci ?",
+    "submitRating": "Soumettre",
+    "skipRating": "Ignorer",
+    "ratingSubmitted": "Merci pour votre retour !",
+    "analyze": "Analyser maintenant",
+    "analyzing": "Analyse en cours...",
+    "minEventsHint": "Au moins {min} interactions requises ({current}/{min})",
+    "profileEmpty": "Pas encore de profil de préférence",
+    "loading": "Chargement des données d'apprentissage...",
+    "progressLabel": "Progression de l'apprentissage",
+    "tierCollecting": "Collecte",
+    "tierEmerging": "Émergent",
+    "tierGrowing": "Croissance",
+    "tierEstablished": "Établi"
   }
 }

@@ -65,7 +65,10 @@ export function WizardStep5({ onComplete, onBack }: WizardStep5Props) {
             {t("wizard.step5.project")}
           </h3>
           <SummaryRow label={t("wizard.step5.name")} value={state.project_name} />
-          <SummaryRow label={t("wizard.step5.language")} value={state.language.toUpperCase()} />
+          <SummaryRow
+            label={t("wizard.step5.language")}
+            value={state.writing_language.toUpperCase()}
+          />
           <SummaryRow
             label={t("wizard.step5.autosave")}
             value={

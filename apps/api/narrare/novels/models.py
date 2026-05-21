@@ -20,7 +20,7 @@ class Novel(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     author: Mapped[str] = mapped_column(String(200), default="", nullable=False)
     genre: Mapped[str] = mapped_column(String(100), default="", nullable=False)
-    language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
+    writing_language: Mapped[str] = mapped_column(String(100), default="en", nullable=False)
     tone: Mapped[str] = mapped_column(String(100), default="", nullable=False)
     story_structure: Mapped[str] = mapped_column(String(100), default="three_act", nullable=False)
     logline: Mapped[str] = mapped_column(Text, default="", nullable=False)

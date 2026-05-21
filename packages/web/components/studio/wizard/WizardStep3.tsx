@@ -1,17 +1,22 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { setupApi } from "@/lib/api/client";
+import { GENRE_SUGGESTIONS } from "@/lib/constants/genres";
+import { BUNDLED_TONES } from "@/lib/constants/tones";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import type { StoryStructure, StoryTone } from "@/types";
+
+const GENRE_DATALIST_ID = "genre-suggestions";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required"),
   author: z.string(),
   genre: z.string(),
+  writing_language: z.string().max(100, "Language must be 100 characters or less"),
   logline: z.string(),
   story_structure: z.string(),
   tone: z.string(),
@@ -26,6 +31,7 @@ interface WizardStep3Props {
 export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
   const t = useTranslations("studio");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const { updateStep2, state } = useWizardStore();
 
   const {
@@ -38,6 +44,7 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
       title: state.title,
       author: state.author,
       genre: state.genre,
+      writing_language: state.writing_language || locale,
       logline: state.logline,
       story_structure: state.story_structure,
       tone: state.tone,
@@ -48,6 +55,7 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
       title: state.title,
       author: state.author,
       genre: state.genre,
+      writing_language: state.writing_language || locale,
       logline: state.logline,
       story_structure: state.story_structure,
       tone: state.tone,
@@ -60,6 +68,7 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
       title: data.title,
       author: data.author,
       genre: data.genre,
+      writing_language: data.writing_language,
       logline: data.logline,
       story_structure: data.story_structure as StoryStructure,
       tone: data.tone as StoryTone,
@@ -74,16 +83,6 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
     "save_the_cat",
     "seven_point",
   ].map((v) => ({ value: v, label: t(`wizard.storyStructure.${v}` as const) }));
-
-  const toneOptions: { value: string; label: string }[] = [
-    "dramatic",
-    "humorous",
-    "suspenseful",
-    "contemplative",
-    "romantic",
-    "dark",
-    "adventurous",
-  ].map((v) => ({ value: v, label: t(`wizard.tone.${v}` as const) }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -127,8 +126,27 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
           <input
             id="genre"
             type="text"
+            list={GENRE_DATALIST_ID}
             {...register("genre")}
             placeholder={t("wizard.step3.genrePlaceholder")}
+            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
+          />
+          <datalist id={GENRE_DATALIST_ID}>
+            {GENRE_SUGGESTIONS.map((suggestion) => (
+              <option key={suggestion} value={suggestion} />
+            ))}
+          </datalist>
+        </div>
+
+        <div>
+          <label htmlFor="writing_language" className="block text-sm font-medium mb-1.5">
+            {t("wizard.step3.writingLanguage")}
+          </label>
+          <input
+            id="writing_language"
+            type="text"
+            {...register("writing_language")}
+            placeholder={t("wizard.step3.writingLanguagePlaceholder")}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
           />
         </div>
@@ -172,9 +190,9 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
             {...register("tone")}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
           >
-            {toneOptions.map((opt) => (
+            {BUNDLED_TONES.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </option>
             ))}
           </select>

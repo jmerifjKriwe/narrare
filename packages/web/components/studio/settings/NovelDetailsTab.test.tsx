@@ -14,6 +14,9 @@ vi.mock("@/lib/api/client", () => ({
     get: vi.fn(),
     update: vi.fn(),
   },
+  tonesApi: {
+    list: vi.fn().mockResolvedValue([]),
+  },
 }));
 
 // --- Fixtures ---
@@ -23,7 +26,7 @@ const mockNovel: Novel = {
   title: "Test Novel",
   author: "Jane Doe",
   genre: "Fantasy",
-  language: "en",
+  writing_language: "en",
   tone: "dramatic",
   story_structure: "three_act",
   logline: "A hero saves the world",

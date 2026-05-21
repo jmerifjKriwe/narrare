@@ -6,6 +6,7 @@ Contains request/response models for all settings endpoints:
 - AI provider management (create, update, masked response)
 - AI settings (default model, category/intent overrides, token limits)
 - Project AI overrides
+- Custom tones — see schemas_tones.py (RULE-04 split)
 """
 
 from __future__ import annotations
@@ -14,6 +15,8 @@ import uuid  # noqa: TC003 - needed at runtime for Pydantic model resolution
 from datetime import datetime  # noqa: TC003
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from narrare.settings.schemas_tones import CustomTone  # noqa: TC001 — used in Pydantic annotation
 
 # ---------------------------------------------------------------------------
 # Existing schemas (user settings, project settings)
@@ -26,6 +29,7 @@ class UserSettingsResponse(BaseModel):
     display_name: str
     ui_language: str
     theme: str
+    custom_tones: list[CustomTone] = []
     updated_at: datetime
 
 
@@ -33,6 +37,9 @@ class UpdateUserSettingsRequest(BaseModel):
     display_name: str | None = Field(default=None, max_length=100)
     ui_language: str | None = Field(default=None, min_length=2, max_length=10)
     theme: str | None = Field(default=None, pattern="^(light|dark|system)$")
+    custom_tones: list[dict[str, object]] | None = Field(
+        default=None, description="Full replacement list of custom tones"
+    )
 
 
 class ProjectSettingsResponse(BaseModel):
@@ -116,6 +123,9 @@ class UserAiSettingsResponse(BaseModel):
     intent_overrides: dict[str, object]
     token_limit_profile: str
     token_limit_overrides: dict[str, object]
+    embedding_provider: str = "auto"
+    embedding_model: str | None = None
+    active_embedding_tier: str | None = None
     updated_at: datetime
 
 
@@ -135,6 +145,16 @@ class UpdateUserAiSettingsRequest(BaseModel):
         pattern=r"^(quick|balanced|long_texts|custom)$",
     )
     token_limit_overrides: dict[str, object] | None = None
+    embedding_provider: str | None = Field(
+        default=None,
+        max_length=20,
+        description="Embedding provider: auto, openai, local, or disabled",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        max_length=100,
+        description="Custom embedding model name (null = use default)",
+    )
 
 
 class ProjectAiSettingsResponse(BaseModel):
@@ -158,31 +178,3 @@ class UpdateProjectAiSettingsRequest(BaseModel):
     category_overrides: dict[str, object] | None = None
     intent_overrides: dict[str, object] | None = None
     token_limit_overrides: dict[str, object] | None = None
-
-
-# ---------------------------------------------------------------------------
-# Token limit profile schemas (Task 10.3)
-# ---------------------------------------------------------------------------
-
-from narrare_core.llm.override_schemas import TokenLimitOverride  # noqa: E402
-
-TOKEN_LIMIT_PROFILES: dict[str, dict[str, TokenLimitOverride]] = {
-    "quick": {
-        "default": TokenLimitOverride(max_tokens=500, temperature=0.7),
-    },
-    "balanced": {
-        "default": TokenLimitOverride(max_tokens=2000, temperature=0.7),
-    },
-    "long_texts": {
-        "default": TokenLimitOverride(max_tokens=8000, temperature=0.7),
-    },
-    "custom": {},
-}
-"""Pre-defined token limit profiles.
-
-Each profile maps a key (category name or "default") to a
-``TokenLimitOverride``. The "custom" profile starts empty — the user
-fills in per-category overrides.
-"""
-
-VALID_TOKEN_LIMIT_PROFILES: set[str] = set(TOKEN_LIMIT_PROFILES.keys())

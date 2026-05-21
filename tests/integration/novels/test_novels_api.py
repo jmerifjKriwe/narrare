@@ -33,7 +33,7 @@ class TestCreateNovel:
     ) -> None:
         response = await client.post(
             "/api/v1/novels",
-            json={"title": "My Fantasy Novel", "genre": "fantasy", "language": "en"},
+            json={"title": "My Fantasy Novel", "genre": "fantasy", "writing_language": "en"},
             headers=auth_headers,
         )
         assert response.status_code == 201

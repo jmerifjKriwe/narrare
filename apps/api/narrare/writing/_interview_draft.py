@@ -4,7 +4,7 @@ Extracted from ``ws_handler.py`` for RULE-04 compliance (max 300 lines).
 Handles building the interview transcript and streaming the final draft.
 
 Uses:
-- :class:`LLMGateway` for LLM calls (RULE-01)
+- :class:`ModelRegistry` for LLM calls (RULE-01)
 - :class:`PromptComposer` for prompt assembly (RULE-02)
 """
 
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from fastapi import WebSocket
 
-    from narrare_core.llm.gateway import LLMGateway
+    from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.session_manager import SessionManager
@@ -31,7 +31,7 @@ class InterviewDraftGenerator:
     """Generates a full chapter draft from collected interview answers.
 
     Formats the conversation history as a transcript and streams a
-    complete draft via the LLM gateway.
+    complete draft via the LLM registry.
 
     Dependencies are injected via constructor (DI pattern).
     """
@@ -39,14 +39,14 @@ class InterviewDraftGenerator:
     def __init__(
         self,
         session_manager: SessionManager,
-        gateway: LLMGateway,
+        registry: ModelRegistry,
         composer: PromptComposer,
         config: ResolvedModelConfig,
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> None:
         self._session_manager = session_manager
-        self._gateway = gateway
+        self._registry = registry
         self._composer = composer
         self._config = config
         self._api_key = api_key
@@ -61,7 +61,7 @@ class InterviewDraftGenerator:
 
         Collects all messages from the session (user answers and
         assistant questions), formats them as a transcript, and
-        streams a complete draft via the LLM gateway.
+        streams a complete draft via the LLM registry.
 
         Sends ``text_chunk`` messages during streaming and a final
         ``draft_done`` or ``error`` message when complete.
@@ -128,7 +128,7 @@ class InterviewDraftGenerator:
         session_id: UUID,
         transcript: str,
     ) -> list[str] | None:
-        """Stream the draft generation via the LLM gateway.
+        """Stream the draft generation via the LLM registry.
 
         Returns:
             List of accumulated text chunks, or ``None`` on error.
@@ -149,7 +149,7 @@ class InterviewDraftGenerator:
             )
             prompt = await self._composer.build(LLMIntent.WRITE, ctx)
 
-            async for chunk in self._gateway.stream(
+            async for chunk in self._registry.stream(
                 intent=LLMIntent.WRITE,
                 system_prompt=prompt.system,
                 user_prompt=prompt.user,

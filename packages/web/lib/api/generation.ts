@@ -5,6 +5,7 @@
  * SSE streaming of generated text, and WebSocket interactive sessions.
  */
 
+import type { TokenUsage } from "@/types";
 import { fetchApi, getAccessToken } from "./client";
 
 // ---------------------------------------------------------------------------
@@ -103,6 +104,8 @@ export const writingApi = {
 
 export interface GenerationChunk {
   text: string;
+  is_final?: boolean;
+  usage?: TokenUsage;
 }
 
 export async function streamGeneration(
@@ -111,6 +114,7 @@ export async function streamGeneration(
   onComplete?: () => void,
   onError?: (error: Error) => void,
   signal?: AbortSignal,
+  onUsage?: (usage: TokenUsage) => void,
 ): Promise<void> {
   const headers: Record<string, string> = { Accept: "text/event-stream" };
   const token = getAccessToken();
@@ -146,7 +150,11 @@ export async function streamGeneration(
             return;
           }
           try {
-            onChunk(JSON.parse(data) as GenerationChunk);
+            const chunk = JSON.parse(data) as GenerationChunk;
+            if (chunk.is_final && chunk.usage) {
+              onUsage?.(chunk.usage);
+            }
+            onChunk(chunk);
           } catch {
             /* skip malformed JSON */
           }

@@ -123,9 +123,9 @@ def _make_handler(
     """Create a WritingSessionHandler with mock dependencies."""
     cache = InMemorySessionCache()
     session_manager = SessionManager(cache=cache)
-    gateway = Mock()
+    registry = Mock()
     # Use Mock (not AsyncMock) for stream — code does `async for` directly
-    gateway.stream = Mock(side_effect=_fake_stream_hello)
+    registry.stream = Mock(side_effect=_fake_stream_hello)
     composer = _FakeComposer()
     config = _make_config()
     pipeline = Mock()
@@ -133,12 +133,12 @@ def _make_handler(
     handler = WritingSessionHandler(
         session_manager=session_manager,
         pipeline=pipeline,
-        gateway=gateway,
+        registry=registry,
         composer=composer,  # type: ignore[assignment]
         config=config,
         mode=mode,
     )
-    return handler, session_manager, gateway, composer
+    return handler, session_manager, registry, composer
 
 
 # ---------------------------------------------------------------------------

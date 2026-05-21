@@ -6,6 +6,10 @@ import ast
 from pathlib import Path
 from typing import Any
 
+from scripts.architecture.agent_checks import (
+    check_agent_imports,
+    check_agent_instantiation,
+)
 from scripts.architecture.helpers import is_approved_exception, relative_to_root
 from scripts.architecture.types import CheckResult, Violation
 
@@ -282,6 +286,7 @@ def scan_file(
 
     allowed_llm: list[str] = config.get("llm_allowed_modules", []) or []
     allowed_prompts: list[str] = config.get("prompt_allowed_modules", []) or []
+    allowed_agents: list[str] = config.get("agent_allowed_modules", []) or []
     forbidden_imports: list[str] = config.get("forbidden_llm_imports", []) or []
     forbidden_urls: list[str] = config.get("forbidden_llm_urls", []) or []
     size_limits: dict[str, int] = config.get("file_size_limits", {}) or {}
@@ -289,6 +294,8 @@ def scan_file(
     all_violations = (
         check_llm_imports(rel_path, tree, source_lines, allowed_llm, forbidden_imports)
         + check_llm_urls(rel_path, source_lines, allowed_llm, forbidden_urls)
+        + check_agent_imports(rel_path, tree, source_lines, allowed_agents)
+        + check_agent_instantiation(rel_path, tree, source_lines, allowed_agents)
         + check_prompt_building(rel_path, tree, source_lines, allowed_prompts)
         + check_bare_except(rel_path, tree)
         + check_file_size(rel_path, source_lines, size_limits)

@@ -36,7 +36,7 @@ class FakePromptRegistry:
     ) -> None:
         self._resolved = resolved or _make_resolved()
         self._culture_content = culture_content
-        self.last_culture_id: str | None = None
+        self.last_name_style: str | None = None
         self.last_category: str | None = None
         self.last_language: str | None = None
 
@@ -58,7 +58,7 @@ class FakePromptRegistry:
         language: str,
         culture_id: str,
     ) -> str:
-        self.last_culture_id = culture_id
+        self.last_name_style = culture_id
         self.last_category = category
         self.last_language = language
         return self._culture_content
@@ -94,7 +94,7 @@ class TestCultureInjection:
     """Task 7.6: Culture injection tests."""
 
     async def test_culture_placeholder_replaced_with_resolved_content(self) -> None:
-        """When prompt contains {{culture_guidelines}} and context.extra["culture"]
+        """When prompt contains {{culture_guidelines}} and context.extra["name_style"]
         is set: placeholder replaced with resolved content."""
         culture_text = "## German Literary Traditions\n- Follow Schiller's dramatic structure"
         registry = FakePromptRegistry(
@@ -103,7 +103,7 @@ class TestCultureInjection:
         )
         composer = PromptComposer(registry, FakeMetaLoader())  # type: ignore[arg-type]
 
-        ctx = PromptContext(language="de", extra={"culture": "german_literary"})
+        ctx = PromptContext(language="de", extra={"name_style": "german_literary"})
         result = await composer.build(LLMIntent.WRITE, ctx)
 
         assert "German Literary Traditions" in result.system
@@ -111,8 +111,8 @@ class TestCultureInjection:
         assert "Write a chapter." in result.system
         assert "End." in result.system
 
-    async def test_culture_placeholder_replaced_with_empty_when_no_culture(self) -> None:
-        """When prompt contains {{culture_guidelines}} and no culture specified:
+    async def test_culture_placeholder_replaced_with_empty_when_no_style(self) -> None:
+        """When prompt contains {{culture_guidelines}} and no name_style specified:
         placeholder replaced with empty string."""
         registry = FakePromptRegistry(
             resolved=_make_resolved(system="Write. {{culture_guidelines}}\nDone."),
@@ -133,25 +133,25 @@ class TestCultureInjection:
         )
         composer = PromptComposer(registry, FakeMetaLoader())  # type: ignore[arg-type]
 
-        ctx = PromptContext(language="en", extra={"culture": "german_literary"})
+        ctx = PromptContext(language="en", extra={"name_style": "german_literary"})
         result = await composer.build(LLMIntent.WRITE, ctx)
 
         # resolve_culture should NOT have been called
-        assert registry.last_culture_id is None
+        assert registry.last_name_style is None
         assert result.system == "Write a chapter."
 
     async def test_culture_resolved_with_correct_parameters(self) -> None:
         """Verify resolve_culture receives the correct category, language,
-        and culture_id."""
+        and name_style."""
         registry = FakePromptRegistry(
             resolved=_make_resolved(system="Write. {{culture_guidelines}}"),
             culture_content="French style.",
         )
         composer = PromptComposer(registry, FakeMetaLoader())  # type: ignore[arg-type]
 
-        ctx = PromptContext(language="fr", extra={"culture": "french_existential"})
+        ctx = PromptContext(language="fr", extra={"name_style": "french_existential"})
         await composer.build(LLMIntent.WRITE, ctx)
 
-        assert registry.last_culture_id == "french_existential"
+        assert registry.last_name_style == "french_existential"
         assert registry.last_language == "fr"
         assert registry.last_category == "writing"

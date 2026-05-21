@@ -1,7 +1,7 @@
 ---
 id: IO-001
 title: "Manuscript Export"
-status: implemented
+status: planned
 area: io
 mvp: false
 

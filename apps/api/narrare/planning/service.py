@@ -2,6 +2,10 @@
 
 Orchestrates outline CRUD, storyboard assembly, sync status calculation,
 and structure remap. Delegates mapping helpers to ``_helpers.py``.
+
+AI Enhancement (WRITE-012): When chapter summaries exist and an
+AIRemapService is injected, structure remap uses AI analysis of summaries
+for intelligent stage suggestions instead of position-ratio heuristic.
 """
 
 from __future__ import annotations
@@ -10,9 +14,16 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.planning._helpers import compute_sync, find_position, to_outline_response
+from narrare.planning._helpers import (
+    ai_suggest_stage,
+    chapter_in_storyboard,
+    compute_sync,
+    ensure_outlines,
+    find_position,
+    should_use_ai_remap,
+    to_outline_response,
+)
 from narrare.planning.schemas import (
-    ChapterInStoryboard,
     OutlineResponse,
     OutlineUpdateRequest,
     RemapPreviewItem,
@@ -30,28 +41,40 @@ if TYPE_CHECKING:
     from narrare.chapters.models import Chapter
     from narrare.novels.models import Novel
     from narrare.planning.contracts import OutlineRepositoryProtocol
-    from narrare_core.planning.adapters.base import StructureAdapter
+    from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.planning.remap import AIRemapService
 
 logger = structlog.get_logger(__name__)
 
-# TODO: WRITE-012 Chapter Summary — once chapters.summary is populated by
-# WRITE-012, use AI analysis of summaries for intelligent stage suggestions
-# instead of position-ratio heuristic. Related: INFRA-003 Context Assembly
-# Tier 2 (Recent History) would also benefit from summaries.
-
 
 class StoryboardService:
-    """Business logic for storyboard views, outlines, and remap."""
+    """Business logic for storyboard views, outlines, and remap.
+
+    Optionally integrates AIRemapService for AI-powered structure remap
+    when chapter summaries are available (WRITE-012).
+    """
 
     def __init__(
         self,
         outline_repo: OutlineRepositoryProtocol,
         chapter_repo: object,
         novel_repo: object,
+        ai_remap_service: AIRemapService | None = None,
+        model_registry: ModelRegistry | None = None,
+        model_config: ResolvedModelConfig | None = None,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
     ) -> None:
         self._outline_repo = outline_repo
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
+        self._ai_remap_service = ai_remap_service
+        self._model_registry = model_registry
+        self._model_config = model_config
+        self._api_key = api_key
+        self._base_url = base_url
 
     # ------------------------------------------------------------------
     # Storyboard view
@@ -62,13 +85,13 @@ class StoryboardService:
         novel = await self._get_novel(novel_id, user_id)
         adapter = adapter_registry.get(novel.story_structure)
         chapters = await self._list_chapters(novel_id)
-        outline_map = await self._ensure_outlines(novel_id, chapters, adapter)
+        outline_map = await ensure_outlines(self._outline_repo, novel_id, chapters, adapter)
         total = max(len(chapters), 1)
 
         stages: list[StoryboardStageResponse] = []
         for stage_def in adapter.stages:
             stage_chapters = [
-                self._chapter_in_storyboard(ch, outline_map, idx, adapter, total)
+                chapter_in_storyboard(ch, outline_map, idx, adapter, total)
                 for idx, ch in enumerate(chapters, start=1)
                 if outline_map.get(ch.id) and outline_map[ch.id].stage_assignment == stage_def.id  # type: ignore[union-attr]
             ]
@@ -204,7 +227,12 @@ class StoryboardService:
         *,
         confirm: bool,
     ) -> RemapResponse:
-        """Shared logic for preview and confirm remap."""
+        """Shared logic for preview and confirm remap.
+
+        Uses AI-powered stage suggestions when AIRemapService is available
+        and enough chapters have summaries. Falls back to position-ratio
+        heuristic otherwise (see WRITE-012).
+        """
         adapter_registry.get(new_structure)  # validate early
         novel = await self._get_novel(novel_id, user_id)
         chapters = await self._list_chapters(novel_id)
@@ -213,11 +241,21 @@ class StoryboardService:
         new_adapter = adapter_registry.get(new_structure)
         total = max(len(chapters), 1)
 
+        # Determine whether to use AI-powered stage suggestions
+        use_ai = await should_use_ai_remap(self._ai_remap_service, chapters)
+
         items: list[RemapPreviewItem] = []
         for idx, ch in enumerate(chapters, start=1):
             outline = outline_map.get(ch.id)
             old_stage = outline.stage_assignment if outline else ""
-            new_stage = new_adapter.suggest_stage(idx, total)
+
+            if use_ai and self._ai_remap_service is not None and ch.summary:
+                new_stage = await ai_suggest_stage(
+                    self._ai_remap_service, ch.summary, new_structure, idx, total, new_adapter
+                )
+            else:
+                new_stage = new_adapter.suggest_stage(idx, total)
+
             items.append(
                 RemapPreviewItem(
                     chapter_id=ch.id,
@@ -246,43 +284,6 @@ class StoryboardService:
             )
 
         return RemapResponse(new_structure=new_structure, remapped=items, confirmed=confirm)
-
-    async def _ensure_outlines(
-        self, novel_id: uuid.UUID, chapters: list[Chapter], adapter: StructureAdapter
-    ) -> dict[uuid.UUID, object]:
-        """Ensure every chapter has an outline, auto-creating missing ones."""
-        outlines = await self._outline_repo.get_all_for_novel(novel_id)
-        outline_map: dict[uuid.UUID, object] = {o.chapter_id: o for o in outlines}
-        total = max(len(chapters), 1)
-
-        for idx, ch in enumerate(chapters, start=1):
-            if ch.id not in outline_map:
-                suggested = adapter.suggest_stage(idx, total)
-                outline = await self._outline_repo.create(
-                    chapter_id=ch.id, stage_assignment=suggested
-                )
-                outline_map[ch.id] = outline
-        return outline_map
-
-    def _chapter_in_storyboard(
-        self,
-        chapter: Chapter,
-        outline_map: dict[uuid.UUID, object],
-        idx: int,
-        adapter: StructureAdapter,
-        total: int,
-    ) -> ChapterInStoryboard:
-        """Build a ChapterInStoryboard for a single chapter."""
-        outline = outline_map.get(chapter.id)
-        suggested = adapter.suggest_stage(idx, total)
-        status = compute_sync(chapter, outline, suggested)
-        return ChapterInStoryboard(
-            chapter_id=chapter.id,
-            title=chapter.title,
-            word_count=chapter.word_count,
-            sync_status=status.value,
-            position=chapter.position,
-        )
 
     async def _get_novel(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel:
         """Fetch a novel by ID or raise NotFoundError."""

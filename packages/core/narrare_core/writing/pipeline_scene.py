@@ -14,7 +14,7 @@ import structlog
 
 from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
-from narrare_core.shared.errors import LLMGatewayError, WritingError
+from narrare_core.shared.errors import WritingError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -61,7 +61,7 @@ async def stream_scene_by_scene(
         accumulated: list[str] = []
 
         try:
-            async for chunk in pipeline._gateway.stream(  # pyright: ignore[reportPrivateUsage]
+            async for chunk in pipeline._registry.stream(  # pyright: ignore[reportPrivateUsage]
                 intent=LLMIntent.WRITE,
                 system_prompt=prompt.system,
                 user_prompt=prompt.user,
@@ -82,7 +82,7 @@ async def stream_scene_by_scene(
                 accumulated.append(chunk.text)
                 yield chunk
 
-        except LLMGatewayError as e:
+        except Exception as e:
             raise WritingError(
                 f"Scene {idx} generation failed: {e}",
                 code="SCENE_GENERATION_FAILED",

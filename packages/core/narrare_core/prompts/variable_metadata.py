@@ -168,7 +168,22 @@ VARIABLE_REGISTRY: dict[str, VariableMeta] = {
     ),
     "culture_guidelines": VariableMeta(
         "culture_guidelines",
-        "Culture-specific naming conventions (auto-injected)",
+        "Name-style-specific naming conventions (auto-injected)",
+        "text",
+    ),
+    "name_style": VariableMeta(
+        "name_style",
+        "Name style for character/place name generation (freetext)",
+        "text",
+    ),
+    "writing_language": VariableMeta(
+        "writing_language",
+        "Output language for writing generation (freetext, e.g. 'Schweizerdeutsch')",
+        "text",
+    ),
+    "explanation_language": VariableMeta(
+        "explanation_language",
+        "Language for name meaning explanations (en/de/fr)",
         "text",
     ),
     # --- Memory / Preference context ---

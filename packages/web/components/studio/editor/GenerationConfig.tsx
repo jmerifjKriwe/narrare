@@ -4,6 +4,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 import type { GenerationMode } from "@/lib/api/generation";
+import { BUNDLED_TONES } from "@/lib/constants/tones";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,13 +31,6 @@ const MODE_TABS: { value: GenerationMode; labelKey: string }[] = [
   { value: "scene_by_scene", labelKey: "generationPanel.modeSceneByScene" },
   { value: "interview_assisted", labelKey: "generationPanel.modeInterview" },
   { value: "interactive_session", labelKey: "generationPanel.modeInteractive" },
-];
-
-const TONE_OPTIONS = [
-  { value: "balanced", labelKey: "generationPanel.toneBalanced" },
-  { value: "dramatic", labelKey: "generationPanel.toneDramatic" },
-  { value: "humorous", labelKey: "generationPanel.toneHumorous" },
-  { value: "suspenseful", labelKey: "generationPanel.toneSuspenseful" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -162,9 +156,9 @@ export function GenerationConfig({
                 onChange={(e) => setTone(e.target.value)}
                 className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
               >
-                {TONE_OPTIONS.map((opt) => (
+                {BUNDLED_TONES.map((opt) => (
                   <option key={opt.value} value={opt.value}>
-                    {t(opt.labelKey)}
+                    {t(opt.label)}
                   </option>
                 ))}
               </select>

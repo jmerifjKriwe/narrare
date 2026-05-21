@@ -10,7 +10,7 @@ from fastapi import APIRouter, WebSocket
 if TYPE_CHECKING:
     from uuid import UUID
 
-from narrare._app.dependencies import get_composer, get_gateway
+from narrare._app.dependencies import get_composer, get_model_registry
 
 router = APIRouter(tags=["writing"])
 
@@ -50,7 +50,7 @@ async def interactive_session(
 
     cache = InMemorySessionCache()
     session_manager = SessionManager(cache=cache)
-    gateway = get_gateway()
+    registry = get_model_registry()
     composer = get_composer()
     config = ResolvedModelConfig(
         provider_name="default",
@@ -61,7 +61,7 @@ async def interactive_session(
     assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
     pipeline = WritingPipeline(
-        gateway=gateway,
+        registry=registry,
         composer=composer,
         context_assembler=assembler,
         draft_processor=draft_processor,
@@ -70,7 +70,7 @@ async def interactive_session(
     handler = WritingSessionHandler(
         session_manager=session_manager,
         pipeline=pipeline,
-        gateway=gateway,
+        registry=registry,
         composer=composer,
         config=config,
         mode=mode,

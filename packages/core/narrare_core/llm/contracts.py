@@ -1,5 +1,5 @@
 """
-Contracts for the LLM Gateway subsystem.
+Contracts for the LLM subsystem.
 
 Every LLM call goes through the gateway — CONSTRAINTS.md RULE-01.
 Contract-first design — CONSTRAINTS.md RULE-03.
@@ -12,67 +12,58 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from pydantic_ai.usage import UsageLimits
+
     from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
-    from narrare_core.llm.result import LLMResult, StreamChunk
-    from narrare_core.llm.retry import RetryConfig
+    from narrare_core.llm.result import StreamChunk
 
 
 @runtime_checkable
-class LLMGatewayProtocol(Protocol):
-    """Contract for the LLM Gateway — single entry point for all LLM calls.
+class ModelRegistryProtocol(Protocol):
+    """Contract for the ModelRegistry — single entry point for all LLM calls.
 
     All LLM interactions in the system must flow through an object that
     satisfies this protocol.  The concrete implementation
-    (:class:`~narrare_core.llm.gateway.LLMGateway`) handles provider
-    selection, retry logic, observability, and error classification.
+    (:class:`~narrare_core.llm.gateway.ModelRegistry`) handles provider
+    resolution, credential injection, and convenience run/stream methods.
 
     See Also
     --------
     CONSTRAINTS.md RULE-01 — LLM calls go through the Gateway.
     CONSTRAINTS.md RULE-03 — Contracts before implementation.
-    ADR-001 — Centralised LLM Gateway decision.
+    ADR-015 — Model Registry migration.
     """
 
     async def run(
         self,
-        *,
         intent: LLMIntent,
-        system_prompt: str,
-        user_prompt: str,
+        prompt: str,
         config: ResolvedModelConfig,
+        *,
+        system_prompt: str | None = ...,
+        usage_limits: UsageLimits | None = ...,
         api_key: str | None = ...,
         base_url: str | None = ...,
-        retry_config: RetryConfig = ...,
-    ) -> LLMResult:
+    ) -> str:
         """Execute a non-streaming LLM call.
 
         Parameters
         ----------
         intent:
             The operation intent — drives model selection and metrics.
-        system_prompt:
-            System role message.
-        user_prompt:
-            User role message.
+        prompt:
+            The user message / prompt text.
         config:
             Fully resolved model configuration (provider + model + params).
-        api_key:
-            Decrypted API key from user settings.  ``None`` lets the
-            provider fall back to environment variables (dev/test).
-        base_url:
-            Custom base URL for OpenAI-compatible providers.
-        retry_config:
-            Retry behaviour configuration.
+        system_prompt:
+            Optional system prompt.  Defaults to empty string.
+        usage_limits:
+            Optional usage limits for the Agent.
 
         Returns
         -------
-        LLMResult
-            Generated text with usage statistics.
-
-        Raises
-        ------
-        LLMGatewayError
-            On failure after all retries.
+        str
+            Generated text output.
         """
         ...
 
@@ -99,19 +90,14 @@ class LLMGatewayProtocol(Protocol):
         config:
             Fully resolved model configuration.
         api_key:
-            Decrypted API key from user settings.
+            Optional API key from user settings.
         base_url:
-            Custom base URL for OpenAI-compatible providers.
+            Optional base URL for OpenAI-compatible providers.
 
         Yields
         ------
         StreamChunk
             Text fragments during generation.  The final chunk has
             ``is_final=True`` and populated ``usage``.
-
-        Raises
-        ------
-        LLMGatewayError
-            If the stream cannot be started or fails mid-stream.
         """
         ...

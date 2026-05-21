@@ -84,7 +84,8 @@
   "generation": {
     "nameGenerator": "Name Generator",
     "nameType": "Type",
-    "culture": "Culture",
+    "nameStyle": "Name Style",
+    "explanationLanguage": "Explanation Language",
     "count": "Count",
     "gender": "Gender",
     "language": "Language",
@@ -477,7 +478,8 @@
       "feature5": "Modern, distraction-free design"
     },
     "promptsTab": "System Prompts",
-    "kbTemplates": "KB Templates"
+    "kbTemplates": "KB Templates",
+    "learning": "Learning"
   },
   "wizard": {
     "step1": {
@@ -485,7 +487,7 @@
       "description": "Name your project and configure basic settings",
       "projectName": "Project name",
       "projectNamePlaceholder": "My Novel",
-      "language": "Language",
+      "language": "Writing Language",
       "autosave": "Autosave interval (seconds)",
       "autosaveHint": "0 = off, max 3600 seconds",
       "langEn": "English",
@@ -512,6 +514,8 @@
       "authorPlaceholder": "Your name",
       "genre": "Genre",
       "genrePlaceholder": "Fantasy, Thriller, Romance…",
+      "writingLanguage": "Writing Language",
+      "writingLanguagePlaceholder": "e.g., English, German, French…",
       "logline": "Logline",
       "loglinePlaceholder": "A one-sentence summary of your story",
       "structure": "Story structure",
@@ -571,6 +575,31 @@
       "dark": "Dark",
       "adventurous": "Adventurous"
     }
+  },
+  "tones": {
+    "title": "Tone Library",
+    "description": "Manage bundled and custom tones for your writing",
+    "bundled": "Bundled Tones",
+    "balanced": "Balanced",
+    "dramatic": "Dramatic",
+    "humorous": "Humorous",
+    "suspenseful": "Suspenseful",
+    "contemplative": "Contemplative",
+    "romantic": "Romantic",
+    "dark": "Dark",
+    "adventurous": "Adventurous",
+    "quiet": "Quiet",
+    "custom": "Custom Tones",
+    "addTone": "Add Custom Tone",
+    "editTone": "Edit Tone",
+    "deleteTone": "Delete Tone",
+    "toneName": "Tone Name",
+    "toneInstructions": "Tone Instructions",
+    "maxTonesReached": "Maximum of 20 custom tones reached",
+    "countLabel": "{count} of {max} custom tones",
+    "emptyState": "No custom tones yet. Create one to personalize your writing experience.",
+    "saveFailed": "Failed to save tone",
+    "validationRequired": "Name and instructions are required"
   },
   "volumes": {
     "comingSoon": "Volume Management",
@@ -633,7 +662,10 @@
     "unknownError": "An unknown error occurred",
     "connectionLost": "Connection lost",
     "validationMissingInput": "At least one of outline, prompt, or auto-continue must be provided.",
-    "outlineHelpScene": "Optional. Describe the scene structure, e.g.: \"Scene 1: Arrival at the castle. Scene 2: Negotiation with the king.\" Without an outline, the AI will interpret freely."
+    "outlineHelpScene": "Optional. Describe the scene structure, e.g.: \"Scene 1: Arrival at the castle. Scene 2: Negotiation with the king.\" Without an outline, the AI will interpret freely.",
+    "tokensTotal": "Tokens total",
+    "tokensPrompt": "Prompt",
+    "tokensCompletion": "Completion"
   },
   "sessionPanel": {
     "title": "Interactive Session",
@@ -1143,6 +1175,19 @@
     },
     "additionalNotes": "Additional Notes"
   },
+  "writingGraph": {
+    "allComplete": "All steps complete",
+    "progress": "Step {current}/{total}: {label}",
+    "ariaLabel": "Writing pipeline progress",
+    "steps": {
+      "plan_outline": "Outline",
+      "write_draft": "Draft",
+      "review_draft": "Review",
+      "revise_draft": "Revise",
+      "finalize": "Finalize",
+      "generate_summary": "Summarize"
+    }
+  },
   "storyboard": {
     "title": "Storyboard",
     "collapsed": "{structure} — {count, plural, one {# chapter} other {# chapters}}",
@@ -1171,7 +1216,9 @@
       "newStage": "New Stage",
       "confirm": "Confirm Change",
       "cancel": "Cancel",
-      "noChanges": "No chapters need to be remapped."
+      "noChanges": "No chapters need to be remapped.",
+      "aiConfidence": "AI-powered remap ({confidence}% confidence)",
+      "aiSuggested": "AI suggested"
     },
     "stages": {
       "three_act": {
@@ -1236,5 +1283,35 @@
     "loginError": "Invalid email or password",
     "registerError": "Registration failed",
     "loading": "Loading..."
+  },
+  "learning": {
+    "title": "Learning",
+    "description": "See how the AI learns your writing style from your feedback",
+    "statusInteractions": "{count}/50 interactions",
+    "confidence": "Confidence: {score}%",
+    "stylePatterns": "Style Patterns",
+    "contentPatterns": "Content Patterns",
+    "avoidancePatterns": "Avoidance Patterns",
+    "noData": "Not enough data yet. Keep writing!",
+    "reset": "Reset Preferences",
+    "resetConfirm": "This will delete all learned preferences. Continue?",
+    "resetting": "Resetting...",
+    "confirmReset": "Yes, Reset",
+    "cancelReset": "Cancel",
+    "rating": "Rate this suggestion",
+    "rejectReason": "Why did you reject this?",
+    "submitRating": "Submit",
+    "skipRating": "Skip",
+    "ratingSubmitted": "Thanks for your feedback!",
+    "analyze": "Analyze Now",
+    "analyzing": "Analyzing...",
+    "minEventsHint": "Need at least {min} interactions ({current}/{min})",
+    "profileEmpty": "No preference profile yet",
+    "loading": "Loading learning data...",
+    "progressLabel": "Learning Progress",
+    "tierCollecting": "Collecting",
+    "tierEmerging": "Emerging",
+    "tierGrowing": "Growing",
+    "tierEstablished": "Established"
   }
 }

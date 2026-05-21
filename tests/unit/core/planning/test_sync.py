@@ -27,6 +27,7 @@ def _make_outline(
     outline_notes: str = "",
     has_content: bool = False,
     word_count: int = 0,
+    has_summary: bool = False,
     chapter_id: UUID | None = None,
 ) -> ChapterOutlineData:
     """Helper to create ChapterOutlineData with sensible defaults."""
@@ -37,6 +38,7 @@ def _make_outline(
         outline_notes=outline_notes,
         has_content=has_content,
         word_count=word_count,
+        has_summary=has_summary,
     )
 
 
@@ -146,7 +148,7 @@ class TestDeviatedStatus:
 
 
 class TestCompletedStatus:
-    """Rule 4: all required beats addressed with content → COMPLETED."""
+    """Rule 3b + 4: summary+content → COMPLETED, or required beats with content → COMPLETED."""
 
     def test_all_required_beats_with_content(self, checker: StructuralSyncChecker) -> None:
         outline = _make_outline(
@@ -169,6 +171,40 @@ class TestCompletedStatus:
                 BeatDef("Required Beat", "Must have", True),
                 BeatDef("Optional Beat", "Nice to have", False),
             ],
+        )
+        assert checker.calculate_sync_status(outline, "act-1") == SyncStatus.COMPLETED
+
+    def test_summary_and_content_returns_completed(self, checker: StructuralSyncChecker) -> None:
+        """Rule 3b: has_summary + has_content → COMPLETED (stronger signal)."""
+        outline = _make_outline(
+            stage_assignment="act-1",
+            has_content=True,
+            word_count=500,
+            has_summary=True,
+        )
+        assert checker.calculate_sync_status(outline, "act-1") == SyncStatus.COMPLETED
+
+    def test_summary_without_content_does_not_return_completed(
+        self, checker: StructuralSyncChecker
+    ) -> None:
+        """Summary without content → ON_TRACK (not rule 3b, not rule 4)."""
+        outline = _make_outline(
+            stage_assignment="act-1",
+            has_content=False,
+            word_count=0,
+            has_summary=True,
+        )
+        # Summary exists but no content: rule 2 (has stage, no content) → PLANNED
+        assert checker.calculate_sync_status(outline, "act-1") == SyncStatus.PLANNED
+
+    def test_content_without_summary_falls_through(self, checker: StructuralSyncChecker) -> None:
+        """Content without summary → falls through to rule 4."""
+        outline = _make_outline(
+            stage_assignment="act-1",
+            has_content=True,
+            word_count=2000,
+            has_summary=False,
+            planned_beats=[BeatDef("Required", "desc", True)],
         )
         assert checker.calculate_sync_status(outline, "act-1") == SyncStatus.COMPLETED
 
@@ -265,7 +301,7 @@ class TestSyncEdgeCases:
         o3 = _make_outline(stage_assignment="act-1", has_content=True, word_count=100)
         statuses.add(checker.calculate_sync_status(o3, "act-2"))
 
-        # COMPLETED
+        # COMPLETED (via beats)
         o4 = _make_outline(
             stage_assignment="act-1",
             has_content=True,
@@ -273,6 +309,15 @@ class TestSyncEdgeCases:
             planned_beats=[BeatDef("Beat", "desc", True)],
         )
         statuses.add(checker.calculate_sync_status(o4, "act-1"))
+
+        # COMPLETED (via summary)
+        o4b = _make_outline(
+            stage_assignment="act-1",
+            has_content=True,
+            word_count=500,
+            has_summary=True,
+        )
+        statuses.add(checker.calculate_sync_status(o4b, "act-1"))
 
         # ON_TRACK
         o5 = _make_outline(stage_assignment="act-1", has_content=True, word_count=500)

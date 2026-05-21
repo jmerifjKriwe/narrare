@@ -48,7 +48,7 @@ class FakeNovelRepository:
                 "title": request.title,
                 "author": "",
                 "genre": "",
-                "language": "en",
+                "writing_language": "en",
                 "tone": "",
                 "story_structure": "three_act",
                 "logline": "",

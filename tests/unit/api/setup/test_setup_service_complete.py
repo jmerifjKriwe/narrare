@@ -50,7 +50,7 @@ class TestComplete:
         novel = add_calls[0][0][0]
         assert novel.title == "My Novel"
         assert novel.genre == "scifi"
-        assert novel.language == "en"
+        assert novel.writing_language == "en"
 
     async def test_complete_creates_project_settings(self, complete_service: SetupService) -> None:
         """Verify ProjectSettings is created with correct values."""

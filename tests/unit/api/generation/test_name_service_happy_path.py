@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from narrare.generation.name_service import NameGeneratorService
 from narrare.generation.schemas import GenderEnum, NameType
-from tests.fakes.fake_llm_gateway import FakeLLMGateway
+from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 if TYPE_CHECKING:
     from unittest.mock import AsyncMock
@@ -30,26 +30,25 @@ class TestGenerateNamesHappyPath:
     async def test_returns_response_with_names(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        """Full happy path: gateway returns valid JSON → parsed into response."""
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        """Full happy path: registry returns valid JSON → parsed into response."""
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         request = _default_request()
         result = await service.generate_names(request)
 
         assert result.count == 3
         assert len(result.names) == 3
-        assert result.culture == "fantasy"
+        assert result.name_style == "fantasy"
         assert result.name_type == "character"
 
     async def test_first_name_has_correct_fields(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        """Verify individual GeneratedName fields are populated correctly."""
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         result = await service.generate_names(_default_request())
         first = result.names[0]
@@ -58,15 +57,14 @@ class TestGenerateNamesHappyPath:
         assert first.pronunciation == "ay-LIN-dra"
         assert first.meaning == "starlight"
         assert first.type == "character"
-        assert first.culture == "fantasy"
+        assert first.name_style == "fantasy"
 
     async def test_names_without_pronunciation_get_none(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        """LLM may omit pronunciation — should be None, not empty string."""
-        fake_gateway.returns(
+        fake_registry.returns(
             _json_names_response(
                 [
                     {"name": "Sera", "meaning": "light"},
@@ -80,10 +78,9 @@ class TestGenerateNamesHappyPath:
     async def test_names_without_meaning_get_none(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        """LLM may omit meaning — should be None."""
-        fake_gateway.returns(
+        fake_registry.returns(
             _json_names_response(
                 [
                     {"name": "Vex"},
@@ -94,17 +91,17 @@ class TestGenerateNamesHappyPath:
         result = await service.generate_names(_default_request())
         assert result.names[0].meaning is None
 
-    async def test_passes_api_key_and_base_url_to_gateway(
+    async def test_passes_api_key_and_base_url_to_registry(
         self,
         mock_composer: AsyncMock,
         config: ResolvedModelConfig,
     ) -> None:
-        """Service forwards optional credentials to gateway."""
-        fake_gw = FakeLLMGateway()
-        fake_gw.returns(SAMPLE_ARRAY_RESPONSE)
+        """Service forwards optional credentials to registry."""
+        fake_reg = FakeModelRegistry()
+        fake_reg.returns(SAMPLE_ARRAY_RESPONSE)
 
         svc = NameGeneratorService(
-            gateway=fake_gw,
+            registry=fake_reg,
             composer=mock_composer,
             config=config,
             api_key="sk-test-key",
@@ -113,7 +110,7 @@ class TestGenerateNamesHappyPath:
 
         await svc.generate_names(_default_request())
 
-        call = fake_gw.last_call()
+        call = fake_reg.last_call()
         assert call.api_key == "sk-test-key"
         assert call.base_url == "https://custom.llm.api/v1"
 
@@ -129,9 +126,9 @@ class TestGenerateNamesParameters:
     async def test_place_names(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(
+        fake_registry.returns(
             _json_names_response([{"name": "Thornhaven", "meaning": "fortress of thorns"}])
         )
 
@@ -143,9 +140,9 @@ class TestGenerateNamesParameters:
     async def test_organization_names(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(
+        fake_registry.returns(
             _json_names_response([{"name": "The Silver Covenant", "meaning": "order of mages"}])
         )
 
@@ -156,9 +153,9 @@ class TestGenerateNamesParameters:
     async def test_item_names(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(
+        fake_registry.returns(
             _json_names_response([{"name": "Dawnbreaker", "meaning": "sword of light"}])
         )
 
@@ -170,23 +167,23 @@ class TestGenerateNamesParameters:
     async def test_different_culture(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(
+        fake_registry.returns(
             _json_names_response([{"name": "Sakura", "meaning": "cherry blossom"}])
         )
 
-        result = await service.generate_names(_default_request(culture="japanese"))
+        result = await service.generate_names(_default_request(name_style="japanese"))
 
-        assert result.culture == "japanese"
-        assert result.names[0].culture == "japanese"
+        assert result.name_style == "japanese"
+        assert result.names[0].name_style == "japanese"
 
     async def test_gender_male(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(_json_names_response([{"name": "Thorin", "meaning": "brave one"}]))
+        fake_registry.returns(_json_names_response([{"name": "Thorin", "meaning": "brave one"}]))
 
         result = await service.generate_names(_default_request(gender=GenderEnum.MALE))
 
@@ -195,9 +192,9 @@ class TestGenerateNamesParameters:
     async def test_gender_female(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(_json_names_response([{"name": "Elara", "meaning": "shining one"}]))
+        fake_registry.returns(_json_names_response([{"name": "Elara", "meaning": "shining one"}]))
 
         result = await service.generate_names(_default_request(gender=GenderEnum.FEMALE))
 
@@ -206,9 +203,9 @@ class TestGenerateNamesParameters:
     async def test_gender_neutral(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(_json_names_response([{"name": "River", "meaning": "flowing water"}]))
+        fake_registry.returns(_json_names_response([{"name": "River", "meaning": "flowing water"}]))
 
         result = await service.generate_names(_default_request(gender=GenderEnum.NEUTRAL))
 
@@ -217,16 +214,14 @@ class TestGenerateNamesParameters:
     async def test_count_reflected_in_user_prompt(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
         mock_composer: AsyncMock,
     ) -> None:
-        """The count from the request is passed to the composer as user_prompt."""
-        fake_gateway.returns(SAMPLE_ARRAY_RESPONSE)
+        fake_registry.returns(SAMPLE_ARRAY_RESPONSE)
 
         request = _default_request(count=20)
         await service.generate_names(request)
 
-        # The user_prompt kwarg to composer.build() should contain the count
         call_kwargs = mock_composer.build.call_args
         user_prompt = call_kwargs.kwargs.get("user_prompt", call_kwargs[1].get("user_prompt", ""))
         assert "20" in user_prompt
@@ -234,12 +229,12 @@ class TestGenerateNamesParameters:
     async def test_language_de(
         self,
         service: NameGeneratorService,
-        fake_gateway: FakeLLMGateway,
+        fake_registry: FakeModelRegistry,
     ) -> None:
-        fake_gateway.returns(
+        fake_registry.returns(
             _json_names_response([{"name": "Falkenstein", "meaning": "falcon stone"}])
         )
 
-        result = await service.generate_names(_default_request(language="de"))
+        result = await service.generate_names(_default_request(explanation_language="de"))
 
         assert len(result.names) == 1

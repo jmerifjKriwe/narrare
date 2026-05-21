@@ -1,1 +1,1 @@
-"""Memory API module — feedback collection and preference retrieval."""
+"""Memory API module — feedback collection, preference retrieval, and analysis."""

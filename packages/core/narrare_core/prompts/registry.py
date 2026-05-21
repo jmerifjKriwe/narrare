@@ -189,20 +189,20 @@ class PromptRegistry:
         language: str,
         culture_id: str,
     ) -> str:
-        """Resolve a culture definition file with EN fallback.
+        """Resolve a name_style definition file with EN fallback.
 
         Search order:
         1. Project override:
-           {project_root}/.narrare/prompts/{category}/cultures/{language}/{culture_id}.md
+           {project_root}/.narrare/prompts/{category}/name-styles/{language}/{culture_id}.md
         2. User-global:
-           ~/.config/narrare/prompts/{category}/cultures/{language}/{culture_id}.md
-        3. Bundled: _bundled/{category}/cultures/{language}/{culture_id}.md
-        4. Bundled EN fallback: _bundled/{category}/cultures/en/{culture_id}.md
+           ~/.config/narrare/prompts/{category}/name-styles/{language}/{culture_id}.md
+        3. Bundled: _bundled/{category}/name-styles/{language}/{culture_id}.md
+        4. Bundled EN fallback: _bundled/{category}/name-styles/en/{culture_id}.md
 
         Returns the content without frontmatter, or empty string if not found.
         """
-        culture_path = Path(category) / "cultures" / language / f"{culture_id}.md"
-        en_culture_path = Path(category) / "cultures" / "en" / f"{culture_id}.md"
+        culture_path = Path(category) / "name-styles" / language / f"{culture_id}.md"
+        en_culture_path = Path(category) / "name-styles" / "en" / f"{culture_id}.md"
 
         search_paths: list[tuple[Path, str]] = []
 
@@ -226,21 +226,22 @@ class PromptRegistry:
             content = await read_text_or_none(path)
             if content is not None:
                 logger.debug(
-                    "culture_resolved",
+                    "name_style_resolved",
                     category=category,
                     language=language,
-                    culture_id=culture_id,
+                    name_style=culture_id,
                     source=source,
                 )
                 # Strip frontmatter, return body only
                 parsed = parse_frontmatter(content)
                 return parsed.content.strip()
 
-        logger.warning(
-            "culture_not_found",
+        logger.debug(
+            "name_style_not_found_as_definition",
             category=category,
             language=language,
-            culture_id=culture_id,
+            name_style=culture_id,
+            detail="will fall back to freetext in composer",
         )
         return ""
 

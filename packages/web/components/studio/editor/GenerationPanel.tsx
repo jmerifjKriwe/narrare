@@ -4,14 +4,18 @@ import { useMutation } from "@tanstack/react-query";
 import { AlertTriangle, RotateCcw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
+import { LearningStatus } from "@/components/studio/learning/LearningStatus";
 import {
   type GenerateRequest,
   type GenerationMode,
   streamGeneration,
   writingApi,
 } from "@/lib/api/generation";
+import { useMemoryStatus, useRecordFeedback } from "@/lib/hooks/useMemory";
+import type { FeedbackRequest, TokenUsage } from "@/types";
 import { GenerationConfig } from "./GenerationConfig";
 import { GenerationDraft } from "./GenerationDraft";
+import { RatingPrompt } from "./RatingPrompt";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,9 +60,20 @@ export function GenerationPanel({
   const [wordCount, setWordCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [connectionLost, setConnectionLost] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const lastParamsRef = useRef<GenerateRequest | null>(null);
+
+  // --- Modify-tracking: store original text for diff on accept ---
+  const originalTextRef = useRef<string>("");
+
+  // --- Rating state ---
+  const [showRating, setShowRating] = useState<"accept" | "reject" | null>(null);
+
+  // --- Memory / learning hooks ---
+  const recordFeedback = useRecordFeedback(novelId);
+  const { eventCount } = useMemoryStatus(novelId);
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -95,9 +110,12 @@ export function GenerationPanel({
       setWordCount(0);
       setErrorMsg(null);
       setConnectionLost(false);
+      setShowRating(null);
+      originalTextRef.current = "";
 
       const controller = new AbortController();
       abortRef.current = controller;
+      setTokenUsage(null);
 
       await streamGeneration(
         data.request_id,
@@ -108,6 +126,8 @@ export function GenerationPanel({
         () => {
           setPhase("review");
           abortRef.current = null;
+          // Store original text for modify-tracking (snapshot before any potential edit)
+          // At this point, draftText is the full AI-generated text
         },
         (err) => {
           if (err.message.includes("HTTP")) {
@@ -119,6 +139,9 @@ export function GenerationPanel({
           abortRef.current = null;
         },
         controller.signal,
+        (usage) => {
+          setTokenUsage(usage);
+        },
       );
     },
     onError: (err: unknown) => {
@@ -151,21 +174,66 @@ export function GenerationPanel({
   const acceptMutation = useMutation({
     mutationFn: () => writingApi.acceptDraft(requestId!),
     onSuccess: () => {
+      // Store original text for modify-tracking comparison
+      if (!originalTextRef.current) {
+        originalTextRef.current = draftText;
+      }
+
+      // Pass accepted text to editor immediately
       onDraftAccepted(draftText);
-      setPhase("config");
-      setDraftText("");
-      setRequestId(null);
+      // Show rating prompt — phase stays in "review" until rating is done
+      setShowRating("accept");
     },
   });
 
   const rejectMutation = useMutation({
     mutationFn: () => writingApi.rejectDraft(requestId!),
     onSuccess: () => {
+      // Store original text for modify-tracking comparison
+      if (!originalTextRef.current) {
+        originalTextRef.current = draftText;
+      }
+      // Show rating prompt — phase stays in "review" until rating is done
+      setShowRating("reject");
+    },
+  });
+
+  /** Called after rating prompt is done (submit or dismiss) — resets to config. */
+  const handleRatingDone = useCallback(
+    (rating?: number, reason?: string) => {
+      if (showRating) {
+        const originalText = originalTextRef.current;
+        const isModified = originalText !== draftText && originalText.length > 0;
+        const action: FeedbackRequest["action"] =
+          showRating === "accept" ? (isModified ? "modify" : "accept") : "reject";
+
+        const feedbackData: FeedbackRequest = {
+          action,
+          suggestion_id: requestId ?? "",
+          intent: mode,
+          suggestion_text: originalText || draftText,
+          modification: isModified ? draftText : undefined,
+          rating: rating ?? undefined,
+          context: reason ? { reject_reason: reason } : undefined,
+          project_id: novelId,
+          chapter_id: chapterId,
+          mode: mode,
+        };
+        recordFeedback.mutate(feedbackData, {
+          onError: () => {
+            /* Non-blocking */
+          },
+        });
+      }
+
       setPhase("config");
       setDraftText("");
       setRequestId(null);
+      setShowRating(null);
+      originalTextRef.current = "";
     },
-  });
+    [showRating, draftText, requestId, mode, novelId, chapterId, recordFeedback],
+  );
 
   const handleRegenerate = useCallback(async () => {
     if (requestId) await writingApi.rejectDraft(requestId);
@@ -206,6 +274,7 @@ export function GenerationPanel({
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Sparkles className="w-4 h-4 text-primary" />
           <span>{t("generationPanel.title")}</span>
+          <LearningStatus eventCount={eventCount} compact />
         </div>
         <button
           type="button"
@@ -239,18 +308,39 @@ export function GenerationPanel({
 
         {/* Streaming / Review phase */}
         {(phase === "streaming" || phase === "review") && (
-          <GenerationDraft
-            phase={phase}
-            draftText={draftText}
-            wordCount={wordCount}
-            targetNum={targetNum}
-            isAcceptPending={acceptMutation.isPending}
-            isRejectPending={rejectMutation.isPending}
-            onStop={handleStop}
-            onAccept={() => acceptMutation.mutate()}
-            onReject={() => rejectMutation.mutate()}
-            onRegenerate={handleRegenerate}
-          />
+          <>
+            <GenerationDraft
+              phase={phase}
+              draftText={draftText}
+              wordCount={wordCount}
+              targetNum={targetNum}
+              tokenUsage={tokenUsage}
+              isAcceptPending={acceptMutation.isPending}
+              isRejectPending={rejectMutation.isPending}
+              onStop={handleStop}
+              onAccept={() => {
+                if (!originalTextRef.current) {
+                  originalTextRef.current = draftText;
+                }
+                acceptMutation.mutate();
+              }}
+              onReject={() => {
+                if (!originalTextRef.current) {
+                  originalTextRef.current = draftText;
+                }
+                rejectMutation.mutate();
+              }}
+              onRegenerate={handleRegenerate}
+            />
+            {/* Rating prompt — shown after accept/reject action completes */}
+            {showRating && (
+              <RatingPrompt
+                action={showRating}
+                onSubmit={({ rating, reason }) => handleRatingDone(rating, reason)}
+                onDismiss={() => handleRatingDone()}
+              />
+            )}
+          </>
         )}
 
         {/* Error state */}

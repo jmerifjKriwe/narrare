@@ -16,6 +16,11 @@ import { SessionPanel } from "./editor/SessionPanel";
 import { NameGeneratorModal } from "./generation/NameGeneratorModal";
 import { StoryboardPanel } from "./planning/StoryboardPanel";
 import { TipTapEditor } from "./TipTapEditor";
+import {
+  type StepStatus,
+  WritingGraphStatus,
+  type WritingStep,
+} from "./writing/WritingGraphStatus";
 
 interface EditorViewProps {
   novelId: string;
@@ -50,6 +55,31 @@ export function EditorView({ novelId }: EditorViewProps) {
   const setDraftText = useEditorStore((s) => s.setDraftText);
   const setSessionActive = useEditorStore((s) => s.setSessionActive);
   const toggleGenerationPanel = useEditorStore((s) => s.toggleGenerationPanel);
+
+  // Compute writing graph status steps from current editor state
+  const writingSteps: Array<{ id: WritingStep; status: StepStatus }> = useMemo(() => {
+    const STEP_ORDER: WritingStep[] = [
+      "plan_outline",
+      "write_draft",
+      "review_draft",
+      "revise_draft",
+      "finalize",
+      "generate_summary",
+    ];
+
+    // When generation is active, show progress through pipeline steps
+    if (isGenerating && activeChapterId) {
+      return STEP_ORDER.map((id, idx) => {
+        // First 2 steps completed, 3rd is current, rest pending as a basic heuristic
+        if (idx < 2) return { id, status: "completed" as const };
+        if (idx === 2) return { id, status: "current" as const };
+        return { id, status: "pending" as const };
+      });
+    }
+
+    // Default: all pending
+    return STEP_ORDER.map((id) => ({ id, status: "pending" as const }));
+  }, [isGenerating, activeChapterId]);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -351,6 +381,9 @@ export function EditorView({ novelId }: EditorViewProps) {
     <div className="flex-1 flex flex-col h-full bg-background">
       {/* Storyboard panel — full-width, above toolbar */}
       <StoryboardPanel novelId={novelId} />
+
+      {/* Writing graph pipeline — progress indicator */}
+      <WritingGraphStatus steps={writingSteps} />
 
       {/* Header bar */}
       <div className="border-b border-border px-8 py-4 flex items-center justify-between bg-card">

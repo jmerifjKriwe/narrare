@@ -1,7 +1,7 @@
 ---
 id: LEARN-001
 title: "Feedback & Learning Loop"
-status: planned
+status: implemented
 area: learning
 mvp: false
 
@@ -148,3 +148,4 @@ class FeedbackRecord:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-21` — **Implemented.** Full feedback loop wired: 4-tier embedding cascade (OpenAI → provider-native → sentence-transformers → disabled) ensures all users get memory regardless of LLM provider. FeedbackEvent extended with rating + enriched context. mem0 AsyncMemory replaces NullMemoryClient for configured users. PreferenceAnalysisAgent performs periodic deep analysis persisted to preference_profiles table. Frontend adds modify-tracking in GenerationDraft, RatingPrompt inline UI, preference profile page (LearningTab), and LearningStatus progress indicator. Event-driven processing via FeedbackRecorded/PreferenceAnalysisTriggered events → TaskIQ tasks. 55 tasks, 3 migrations.

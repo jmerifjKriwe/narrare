@@ -61,16 +61,13 @@ class ModelRoutingResolver(Protocol):
 
     Example implementation flow::
 
-        resolver = DatabaseModelRoutingResolver(db_session)
-        resolved = resolver.resolve(LLMIntent.WRITE, user_id, project_id)
-        result = await gateway.run(
-            intent=LLMIntent.WRITE,
-            config=resolved.config,
-            api_key=resolved.api_key,
-            base_url=resolved.base_url,
-            system_prompt=...,
-            user_prompt=...,
-        )
+        from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
+
+        model = await registry.get_model(config)
+        agent = ChapterSummaryAgent(model=model)
+        deps = SummaryDeps(language="en", genre="Fantasy", chapter_title="Chapter 1")
+        result = await agent.run(prompt="Content...", deps=deps)
+        print(result.summary)
     """
 
     def resolve(

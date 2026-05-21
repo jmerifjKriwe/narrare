@@ -31,10 +31,10 @@ class NameGenerateRequest(BaseModel):
 
     project_id: uuid.UUID
     name_type: NameType = NameType.CHARACTER
-    culture: str = Field(default="fantasy", min_length=1, max_length=50)
+    name_style: str = Field(default="fantasy", min_length=1, max_length=100)
     count: int = Field(default=10, ge=1, le=50)
     gender: GenderEnum = GenderEnum.ANY
-    language: str = Field(default="en", min_length=2, max_length=5)
+    explanation_language: str = Field(default="en", min_length=2, max_length=50)
 
 
 class GeneratedName(BaseModel):
@@ -46,7 +46,7 @@ class GeneratedName(BaseModel):
     pronunciation: str | None = None
     meaning: str | None = None
     type: str
-    culture: str
+    name_style: str
     is_duplicate: bool = False
     confidence: float = 1.0
 
@@ -58,5 +58,5 @@ class NameGenerateResponse(BaseModel):
 
     names: list[GeneratedName]
     count: int
-    culture: str
+    name_style: str
     name_type: str

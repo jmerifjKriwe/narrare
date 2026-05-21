@@ -84,8 +84,8 @@ import structlog
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
 
-from core.llm.gateway import LLMGateway
-from core.prompts.composer import PromptComposer
+from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
+from narrare_core.llm.gateway import ModelRegistry
 
 from narrare.chapters.contracts import ChapterServiceProtocol
 from narrare.chapters.schemas import ChapterResponse
@@ -108,10 +108,12 @@ results = await asyncio.gather(
     service.get_kb_context(novel_id),
 )
 
-# Correct: async generator for streaming
-async def stream_response() -> AsyncIterator[str]:
-    async for chunk in gateway.stream(...):
-        yield chunk
+# Correct: run an agent via ModelRegistry
+async def run_agent() -> SummaryOutput:
+    model = await registry.get_model(config)
+    agent = ChapterSummaryAgent(model=model)
+    result = await agent.run(prompt="Content", deps=SummaryDeps())
+    return result
 ```
 
 ### Error Handling
@@ -132,10 +134,12 @@ class LLMGatewayError(NarrareError): ...
 
 # Always convert external exceptions to domain errors at service boundaries
 try:
-    result = await self._gateway.run(...)
-except LLMGatewayError as e:
-    logger.error("llm_call_failed", intent=intent.value, error=str(e))
-    raise WritingError("Chapter generation failed") from e
+    model = await self._registry.get_model(self._config)
+    agent = MyAgent(model=model)
+    result = await agent.run(prompt=prompt, deps=deps)
+except Exception as exc:
+    logger.error("llm_call_failed", error=str(exc))
+    raise WritingError("Operation failed") from exc
 
 # Never swallow exceptions silently (RULE-11)
 # Never use bare except:
@@ -174,19 +178,19 @@ type Result[T, E] = Ok[T] | Err[E]
 class ChapterWritingService:
     def __init__(
         self,
-        gateway: LLMGateway,
-        composer: PromptComposer,
+        registry: ModelRegistry,
+        config: ResolvedModelConfig,
         repo: ChapterRepository,
     ) -> None:
-        self._gateway = gateway
-        self._composer = composer
+        self._registry = registry
+        self._config = config
         self._repo = repo
 ```
 
 - All dependencies injected via `__init__`, never instantiated inside methods
 - Never `import` a concrete dependency inside a method — receive it in constructor
 - Routers create services with injected dependencies (using FastAPI Depends)
-- This enables testing with MockLLMGateway, MockRepository, etc.
+- This enables testing with fake repository and TestModel
 - If a dependency is missing, flag it — do not create a default inline
 
 ### Logging

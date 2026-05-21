@@ -84,7 +84,8 @@
   "generation": {
     "nameGenerator": "Namensgenerator",
     "nameType": "Typ",
-    "culture": "Kultur",
+    "nameStyle": "Namensstil",
+    "explanationLanguage": "Erklärungssprache",
     "count": "Anzahl",
     "gender": "Geschlecht",
     "language": "Sprache",
@@ -477,7 +478,8 @@
       "feature5": "Modernes, ablenkungsfreies Design"
     },
     "promptsTab": "System-Prompts",
-    "kbTemplates": "KB-Vorlagen"
+    "kbTemplates": "KB-Vorlagen",
+    "learning": "Lernen"
   },
   "wizard": {
     "step1": {
@@ -485,7 +487,7 @@
       "description": "Benenne dein Projekt und konfiguriere die Grundeinstellungen",
       "projectName": "Projektname",
       "projectNamePlaceholder": "Mein Roman",
-      "language": "Sprache",
+      "language": "Schreibsprache",
       "autosave": "Auto-Speichern-Intervall (Sekunden)",
       "autosaveHint": "0 = aus, max. 3600 Sekunden",
       "langEn": "English",
@@ -512,6 +514,8 @@
       "authorPlaceholder": "Dein Name",
       "genre": "Genre",
       "genrePlaceholder": "Fantasy, Thriller, Liebesroman…",
+      "writingLanguage": "Schreibsprache",
+      "writingLanguagePlaceholder": "z.B. Deutsch, Englisch, Französisch…",
       "logline": "Logline",
       "loglinePlaceholder": "Ein einzeiliger Zusammenfassung deiner Geschichte",
       "structure": "Erzählstruktur",
@@ -571,6 +575,31 @@
       "dark": "Düster",
       "adventurous": "Abenteuerlich"
     }
+  },
+  "tones": {
+    "title": "Ton-Bibliothek",
+    "description": "Verwalte vordefinierte und benutzerdefinierte Töne für dein Schreiben",
+    "bundled": "Vordefinierte Töne",
+    "balanced": "Ausgewogen",
+    "dramatic": "Dramatisch",
+    "humorous": "Humorvoll",
+    "suspenseful": "Spannend",
+    "contemplative": "Nachdenklich",
+    "romantic": "Romantisch",
+    "dark": "Düster",
+    "adventurous": "Abenteuerlich",
+    "quiet": "Ruhig",
+    "custom": "Benutzerdefinierte Töne",
+    "addTone": "Benutzerdefinierten Ton hinzufügen",
+    "editTone": "Ton bearbeiten",
+    "deleteTone": "Ton löschen",
+    "toneName": "Tonname",
+    "toneInstructions": "Ton-Anweisungen",
+    "maxTonesReached": "Maximum von 20 benutzerdefinierten Tönen erreicht",
+    "countLabel": "{count} von {max} benutzerdefinierten Tönen",
+    "emptyState": "Noch keine benutzerdefinierten Töne. Erstelle einen, um dein Schreiberlebnis zu personalisieren.",
+    "saveFailed": "Ton konnte nicht gespeichert werden",
+    "validationRequired": "Name und Anweisungen sind erforderlich"
   },
   "volumes": {
     "comingSoon": "Bändeverwaltung",
@@ -633,7 +662,10 @@
     "unknownError": "Ein unbekannter Fehler ist aufgetreten",
     "connectionLost": "Verbindung verloren",
     "validationMissingInput": "Mindestens eines der Felder Gliederung, Prompt oder automatisches Fortfahren muss ausgefüllt sein.",
-    "outlineHelpScene": "Optional. Beschreibe die Szenen-Struktur, z.B.: »Szene 1: Ankunft am Schloss. Szene 2: Verhandlung mit dem König.« Ohne Gliederung wird die KI frei interpretieren."
+    "outlineHelpScene": "Optional. Beschreibe die Szenen-Struktur, z.B.: »Szene 1: Ankunft am Schloss. Szene 2: Verhandlung mit dem König.« Ohne Gliederung wird die KI frei interpretieren.",
+    "tokensTotal": "Tokens gesamt",
+    "tokensPrompt": "Prompt",
+    "tokensCompletion": "Completion"
   },
   "sessionPanel": {
     "title": "Interaktive Session",
@@ -1143,6 +1175,19 @@
     },
     "additionalNotes": "Zusätzliche Notizen"
   },
+  "writingGraph": {
+    "allComplete": "Alle Schritte abgeschlossen",
+    "progress": "Schritt {current}/{total}: {label}",
+    "ariaLabel": "Schreibfortschritt",
+    "steps": {
+      "plan_outline": "Gliederung",
+      "write_draft": "Entwurf",
+      "review_draft": "Prüfen",
+      "revise_draft": "Überarbeiten",
+      "finalize": "Finalisieren",
+      "generate_summary": "Zusammenfassen"
+    }
+  },
   "storyboard": {
     "title": "Storyboard",
     "collapsed": "{structure} — {count, plural, one {# Kapitel} other {# Kapitel}}",
@@ -1171,7 +1216,9 @@
       "newStage": "Neue Phase",
       "confirm": "Änderung bestätigen",
       "cancel": "Abbrechen",
-      "noChanges": "Keine Kapitel müssen neu zugeordnet werden."
+      "noChanges": "Keine Kapitel müssen neu zugeordnet werden.",
+      "aiConfidence": "KI-gestützte Neuzuordnung ({confidence}% Konfidenz)",
+      "aiSuggested": "KI-Vorschlag"
     },
     "stages": {
       "three_act": {
@@ -1236,5 +1283,35 @@
     "loginError": "Ungültige E-Mail oder Passwort",
     "registerError": "Registrierung fehlgeschlagen",
     "loading": "Wird geladen..."
+  },
+  "learning": {
+    "title": "Lernen",
+    "description": "Sieh, wie die KI deinen Schreibstil aus deinem Feedback lernt",
+    "statusInteractions": "{count}/50 Interaktionen",
+    "confidence": "Konfidenz: {score}%",
+    "stylePatterns": "Stilmuster",
+    "contentPatterns": "Inhaltsmuster",
+    "avoidancePatterns": "Vermeidungsmuster",
+    "noData": "Noch nicht genug Daten. Weiter schreiben!",
+    "reset": "Präferenzen zurücksetzen",
+    "resetConfirm": "Dies löscht alle gelernten Präferenzen. Fortfahren?",
+    "resetting": "Wird zurückgesetzt...",
+    "confirmReset": "Ja, zurücksetzen",
+    "cancelReset": "Abbrechen",
+    "rating": "Bewerte diesen Vorschlag",
+    "rejectReason": "Warum hast du das abgelehnt?",
+    "submitRating": "Absenden",
+    "skipRating": "Überspringen",
+    "ratingSubmitted": "Danke für dein Feedback!",
+    "analyze": "Jetzt analysieren",
+    "analyzing": "Analysiere...",
+    "minEventsHint": "Mindestens {min} Interaktionen nötig ({current}/{min})",
+    "profileEmpty": "Noch kein Präferenzprofil",
+    "loading": "Lern-Daten werden geladen...",
+    "progressLabel": "Lernfortschritt",
+    "tierCollecting": "Sammeln",
+    "tierEmerging": "Entstehend",
+    "tierGrowing": "Wachsend",
+    "tierEstablished": "Etabliert"
   }
 }

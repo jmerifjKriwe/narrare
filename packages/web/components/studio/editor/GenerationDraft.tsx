@@ -2,6 +2,7 @@
 
 import { RotateCcw, Sparkles, StopCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type { TokenUsage } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,6 +13,7 @@ interface GenerationDraftProps {
   readonly draftText: string;
   readonly wordCount: number;
   readonly targetNum: number;
+  readonly tokenUsage: TokenUsage | null;
   readonly isAcceptPending: boolean;
   readonly isRejectPending: boolean;
   readonly onStop: () => void;
@@ -29,6 +31,7 @@ export function GenerationDraft({
   draftText,
   wordCount,
   targetNum,
+  tokenUsage,
   isAcceptPending,
   isRejectPending,
   onStop,
@@ -72,6 +75,24 @@ export function GenerationDraft({
           </span>
         )}
       </div>
+
+      {/* Token usage — only show after generation completes */}
+      {tokenUsage && (
+        <div className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
+          <span>⚡</span>
+          <span>
+            {tokenUsage.total_tokens.toLocaleString()} {t("generationPanel.tokensTotal")}
+          </span>
+          <span className="text-muted-foreground/40">·</span>
+          <span>
+            {tokenUsage.prompt_tokens.toLocaleString()} {t("generationPanel.tokensPrompt")}
+          </span>
+          <span className="text-muted-foreground/40">·</span>
+          <span>
+            {tokenUsage.completion_tokens.toLocaleString()} {t("generationPanel.tokensCompletion")}
+          </span>
+        </div>
+      )}
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">

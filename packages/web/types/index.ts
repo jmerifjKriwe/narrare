@@ -15,7 +15,7 @@ export interface Novel {
   title: string;
   author: string;
   genre: string;
-  language: string;
+  writing_language: string;
   tone: string;
   story_structure: string;
   logline: string;
@@ -30,7 +30,7 @@ export interface NovelSummary {
   title: string;
   author: string;
   genre: string;
-  language: string;
+  writing_language: string;
   is_demo: boolean;
   updated_at: string;
 }
@@ -140,13 +140,15 @@ export type StoryStructure =
   | "seven_point";
 
 export type StoryTone =
+  | "balanced"
   | "dramatic"
   | "humorous"
   | "suspenseful"
   | "contemplative"
   | "romantic"
   | "dark"
-  | "adventurous";
+  | "adventurous"
+  | "quiet";
 
 export interface ProviderModel {
   id: string;
@@ -177,7 +179,7 @@ export interface DemoProjectInfo {
 export interface WizardState {
   // Step 1
   project_name: string;
-  language: string;
+  writing_language: string;
   autosave_interval: number;
   // Step 2
   title: string;
@@ -290,6 +292,12 @@ export interface UpdateProjectAiSettingsRequest {
   token_limit_overrides?: Record<string, TokenLimitOverride>;
 }
 
+export interface TokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 // ---------------------------------------------------------------------------
 // Prompt Override types
 // ---------------------------------------------------------------------------
@@ -343,10 +351,10 @@ export type Gender = "male" | "female" | "neutral" | "any";
 export interface NameGenerateRequest {
   project_id: string;
   name_type: NameType;
-  culture: string;
+  name_style: string;
   count: number;
   gender: Gender;
-  language: string;
+  explanation_language: string;
 }
 
 export interface GeneratedName {
@@ -354,7 +362,7 @@ export interface GeneratedName {
   pronunciation: string | null;
   meaning: string | null;
   type: string;
-  culture: string;
+  name_style: string;
   is_duplicate: boolean;
   confidence: number;
 }
@@ -362,7 +370,7 @@ export interface GeneratedName {
 export interface NameGenerateResponse {
   names: GeneratedName[];
   count: number;
-  culture: string;
+  name_style: string;
   name_type: string;
 }
 
@@ -493,10 +501,93 @@ export interface RemapPreviewItem {
   chapter_title: string;
   old_stage: string;
   new_stage: string;
+  ai_confidence?: number;
+  ai_suggested_stage?: string;
 }
 
 export interface RemapResponse {
   new_structure: string;
   remapped: RemapPreviewItem[];
+  ai_confidence?: number;
   confirmed: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Custom Tone types
+// ---------------------------------------------------------------------------
+
+export interface CustomTone {
+  id: string;
+  name: string;
+  instructions: string;
+}
+
+export interface CreateCustomToneRequest {
+  name: string;
+  instructions: string;
+}
+
+export interface UpdateCustomToneRequest {
+  name?: string;
+  instructions?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Memory / Feedback / Learning types
+// ---------------------------------------------------------------------------
+
+export type FeedbackAction = "accept" | "reject" | "modify";
+
+export interface FeedbackRequest {
+  action: FeedbackAction;
+  suggestion_id: string;
+  intent: string;
+  suggestion_text: string;
+  modification?: string | null;
+  rating?: number | null;
+  context?: Record<string, unknown> | null;
+  project_id: string;
+  chapter_id?: string | null;
+  genre?: string | null;
+  mode?: string | null;
+}
+
+export interface FeedbackResponse {
+  id: string;
+  action: string;
+  created_at: string;
+}
+
+export interface PreferenceProfile {
+  user_id: string;
+  project_id: string;
+  event_count: number;
+  confidence: number;
+  style: Record<string, string>;
+  content: Record<string, string>;
+  constraints: string[];
+  last_updated: string;
+}
+
+export interface ResetResponse {
+  message: string;
+  deleted_count: number;
+}
+
+export interface AnalyzeRequest {
+  project_id: string;
+}
+
+export interface AnalyzeResponse {
+  id: string;
+  user_id: string;
+  project_id: string;
+  confidence: number;
+  summary: string;
+  style_patterns: string[];
+  content_patterns: string[];
+  avoidance_patterns: string[];
+  event_count_at_analysis: number;
+  created_at: string;
+  updated_at: string;
 }

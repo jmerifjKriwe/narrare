@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-20
-Updated by: NarrareDocsSpecialist
-Session summary: Storyboard feature documentation — PLAN-003/004/005 feature files updated to reflect implementation. CURRENT_STATE.md updated with planning module entries. INDEX.md updated with in-progress status.
+Date: 2026-05-21
+Updated by: NarrarePlatformSpecialist
+Session summary: LEARN-001 Feedback Loop closed. All 55 tasks completed. Embedding cascade (ADR-017) ensures memory for all users. PreferenceAnalysisAgent wired. Frontend modify-tracking, rating UI, preference profile page implemented. Feature specs updated to implemented.
 
 ---
 
@@ -139,9 +139,17 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 **Event System (`events/`):**
 - Event types, bus protocol (Protocol-based), NullEventBus for testing
 
+**Agent Layer (`agents/`):**
+- `summary_agent.py` — ChapterSummaryAgent (NarrareAgent subclass): produces SummaryOutput with summary text, key points, word count, metadata
+- `summary_types.py` — SummaryOutput Pydantic output type
+- `writing_graph.py` — WritingGraph with 6 steps: plan_outline → write_draft → review_draft → {approved→finalize, needs_revision→revise_draft→write_draft} → generate_summary → end
+  - `generate_summary` step runs after `finalize`, calls ChapterSummaryAgent, stores result in `ctx.state.summary`, sets `WritingStatus.SUMMARIZED`
+- `test_writing_graph_summary.py` — Unit tests for WritingGraph's generate_summary step
+
 **Planning Layer (`planning/`):**
 - `models.py` — ChapterOutlineData, SyncStatus enum (5 levels), StageAssignment dataclass
-- `sync.py` — StructuralSyncChecker with 5 status levels (empty, planned, on_track, deviated, completed)
+- `sync.py` — StructuralSyncChecker with 5 status levels (empty, planned, on_track, deviated, completed); rule 3b checks summary presence for stronger COMPLETED signal
+- `remap.py` — AIRemapService: analyze_chapter_role(), meets_coverage_threshold(), calculate_confidence(); uses chapter summaries for content-aware stage suggestions
 - `adapters/base.py` — StructureAdapter Protocol, StageDef/BeatDef dataclasses, StructureAdapterRegistry
 - `adapters/three_act.py` — 3-stage adapter (act-1, act-2, act-3)
 - `adapters/five_act.py` — 5-stage adapter
@@ -209,6 +217,10 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `router_sessions.py` — WebSocket route (`WS /api/v1/writing/sessions/{chapter_id}`)
 - `router_stats.py` — Stats endpoints
 - Migration 0008 — generation_requests table + FK to chapter_versions
+- `summary_contracts.py` — SummaryServiceProtocol, SummaryResult dataclass
+- `summary_service.py` — ChapterSummaryService (wraps ChapterSummaryAgent, persists to DB)
+- `summary_router.py` — POST `/api/v1/planning/summary/chapters/{chapter_id}` endpoint
+- `summary_deps.py` — FastAPI dependency injection for summary service
 
 **KB Module (`kb/`):**
 - Full CRUD: models, repository, service, router, contracts, schemas (following RULE-03 contract-first)
@@ -231,9 +243,9 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `contracts.py` — OutlineRepositoryProtocol, StoryboardServiceProtocol
 - `schemas.py` — Pydantic request/response schemas (BeatSchema, OutlineResponse, StoryboardResponse, SyncStatusResponse, RemapPreviewItem, RemapResponse)
 - `repository.py` — OutlineRepository (get_by_chapter_id, create, update, get_all_for_novel)
-- `service.py` — StoryboardService (get_storyboard, get_sync_status, get_or_create_outline, update_outline, preview_remap, confirm_remap)
+- `service.py` — StoryboardService (get_storyboard, get_sync_status, get_or_create_outline, update_outline, preview_remap, confirm_remap); injects AIRemapService for AI-powered stage suggestions
 - `router.py` — 5 REST endpoints under `/api/v1/planning/`
-- `_helpers.py` — compute_sync, find_position, to_outline_response (extracted per RULE-04)
+- `_helpers.py` — compute_sync, find_position, to_outline_response, should_use_ai_remap, ai_suggest_stage (extracted per RULE-04)
 - Migration 0013 — chapter_outlines table
 
 **Setup (`setup/`):**
@@ -307,6 +319,8 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
   - `KBTemplatesTab.tsx` — Template list with type filter, override/update status
   - `KBTemplateEditor.tsx` — Raw YAML editor with save/reset mutations
 - `components/studio/WorldBuilding.tsx` — Passes activeType as initialEntityType to KB panels
+- `components/studio/writing/` — Writing pipeline UI
+  - `WritingGraphStatus.tsx` — Compact status panel showing current WritingGraph step (highlighted), completed steps (checkmark), and step labels; integrated in EditorView
 - `components/studio/planning/` — Storyboard UI
   - `StoryboardPanel.tsx` — Full-width collapsible container above toolbar, DndContext, stage layout
   - `StoryboardCard.tsx` — Draggable chapter card (title, status badge, word count, click-to-navigate)
@@ -424,10 +438,13 @@ Phase 5 (current):
 1. ✅ Writing generation pipeline (WRITE-002) — fully implemented
 2. ✅ KB v2 — template-driven structured metadata, cross-references, 8 entity types, template management
 3. ✅ Storyboard feature (PLAN-003/005 merged implementation) — core adapters, backend service, frontend UI, i18n
-4. KB dedup integration for name generator
-5. Backend test coverage gaps (memory service, prompt management)
-6. Frontend test coverage gaps (generation panel, session panel)
-7. E2E tests with Playwright
+4. ✅ Chapter Summary (WRITE-012) — ChapterSummaryAgent, SummaryService + REST endpoint, WritingGraph summary step, prompt in analysis/en/summarize/
+5. ✅ AI-powered storyboard remap — AIRemapService with summary analysis, enhanced sync COMPLETED detection, WritingGraphStatus UI
+6. ✅ Feedback & Learning Loop (LEARN-001) — mem0 AsyncMemory wiring, 4-tier embedding cascade, PreferenceAnalysisAgent, modify-tracking, rating UI, preference profile page
+7. KB dedup integration for name generator
+7. Backend test coverage gaps (memory service, prompt management)
+8. Frontend test coverage gaps (generation panel, session panel)
+9. E2E tests with Playwright
 
 Next focus: extend chapter (WRITE-003), rewrite selection (WRITE-004), KB editor UI refinements.
 
@@ -514,6 +531,12 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Storyboard: Backend service | StoryboardService (6 methods), OutlineRepository, ChapterOutline model, 5 REST endpoints under `/api/v1/planning/`, migration 0013. 139 backend tests. |
 | Storyboard: Frontend UI | 7 components (StoryboardPanel, StoryboardCard, StoryboardStageColumn, SyncStatusBadge, StoryboardScrollArrows, OutlineEditor, StructureChangeDialog), API client, TanStack Query hooks, editor integration, structure change flow, i18n for 3 locales. |
 | Storyboard: Feature docs | PLAN-003/004/005 feature files updated to reflect implementation. INDEX.md status updated. |
+| Chapter Summary implementation | ChapterSummaryAgent (NarrareAgent subclass), SummaryService + REST endpoint POST /api/v1/planning/summary/chapters/{chapter_id}, WritingGraph generate_summary step (after finalize), prompt analysis/en/summarize/system.md |
+| AI-powered storyboard sync | StructuralSyncChecker rule 3b: summary + content → COMPLETED (stronger than word count alone) |
+| AI-powered structure remap | AIRemapService: analyze_chapter_role(), meets_coverage_threshold(50%), calculate_confidence(); hybrid approach with position-ratio fallback |
+| WritingGraphStatus UI | Compact collapsible panel in EditorView showing pipeline step status (highlighted current, completed checkmarks) |
+| LEARN-001 Feedback Loop | Full feedback loop closed. 55 tasks: Embedding cascade (ADR-017, 4-tier fallback for all providers), FeedbackEvent extended with rating + enriched context, mem0 AsyncMemory via MemoryClientCache, PreferenceAnalysisAgent for deep pattern analysis, event-driven processing (FeedbackRecorded/PreferenceAnalysisTriggered → TaskIQ), POST /memory/analyze endpoint, frontend modify-tracking + RatingPrompt + LearningTab preference profile + LearningStatus indicator, 3 migrations |
+| INFRA-005 Memory Layer | Completed: embedding cascade + PreferenceAnalysisAgent extend the core memory module. Feature spec updated to implemented |
 
 ---
 
@@ -534,6 +557,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 | ADR-012 | Event-Driven Architecture (Redis Pub/Sub) | ✅ Implemented |
 | ADR-013 | Internationalization Architecture | ✅ Implemented |
 | ADR-014 | RULE-14: Model-Migration Consistency | ✅ Enforced |
+| ADR-015 | Pydantic-AI Agents as First-Class Citizens | 🔄 Proposed |
+| ADR-016 | Prompt Caching Strategy | 🔄 Proposed |
+| ADR-017 | Embedding Cascade for mem0 | ✅ Implemented in `core/memory/embedding_cascade.py` |
 
 ---
 
@@ -567,11 +593,14 @@ All demo content is complete — sufficient for testing through Phase 5.
 **Phase 5 (current):**
 1. Smoke test: create character → see all 7 accordion groups → fill fields → save → verify structured metadata
 2. Smoke test: verify all 8 entity types show correct groups in template-driven editor
-3. Writing module tests — unit tests for core writing pipeline, context assembler, draft processor, session manager
-4. KB dedup integration for name generator (currently a placeholder)
-5. E2E tests with Playwright (route mocking for LLM responses)
-6. Backend test coverage gaps (memory service, prompt management, generation, settings)
-7. Frontend test coverage gaps (generation panel, session panel, KB editor)
+3. Smoke test: POST /api/v1/planning/summary/chapters/{chapter_id} → verify summary populates chapters.summary
+4. Smoke test: trigger WritingGraph → verify generate_summary step runs after finalize → check summary in graph state
+5. Smoke test: run storyboard remap with ≥50% summaries → verify AI confidence badge shown
+6. Writing module tests — unit tests for core writing pipeline, context assembler, draft processor, session manager
+7. KB dedup integration for name generator (currently a placeholder)
+8. E2E tests with Playwright (route mocking for LLM responses)
+9. Backend test coverage gaps (memory service, prompt management, generation, settings)
+10. Frontend test coverage gaps (generation panel, session panel, KB editor)
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)

@@ -12,7 +12,7 @@ from narrare._app.dependencies import (
     CurrentUserIdDep,
     SessionDep,
     get_composer,
-    get_gateway,
+    get_model_registry,
     get_model_routing_resolver,
 )
 from narrare.generation.schemas import NameGenerateRequest, NameGenerateResponse
@@ -46,10 +46,10 @@ async def _get_service(
     # Layer generation-specific defaults on top of resolved config
     config = replace(resolved.config, temperature=0.8, max_tokens=2000)
 
-    gateway = get_gateway()
+    registry = get_model_registry()
     composer = get_composer()
     return NameGeneratorService(
-        gateway=gateway,
+        registry=registry,
         composer=composer,
         config=config,
         api_key=resolved.api_key,
@@ -63,6 +63,6 @@ async def generate_names(
     user_id: CurrentUserIdDep,
     session: SessionDep,
 ) -> NameGenerateResponse:
-    """Generate names based on type, culture, and preferences."""
+    """Generate names based on type, name_style, and preferences."""
     service = await _get_service(session=session, user_id=user_id, project_id=request.project_id)
     return await service.generate_names(request)

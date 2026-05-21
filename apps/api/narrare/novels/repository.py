@@ -34,7 +34,7 @@ class NovelRepository(BaseRepository):
             title=request.title,
             author=request.author,
             genre=request.genre,
-            language=request.language,
+            writing_language=request.writing_language,
             tone=request.tone,
             story_structure=request.story_structure,
             logline=request.logline,

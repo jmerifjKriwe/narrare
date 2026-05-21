@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.settings.schemas import VALID_TOKEN_LIMIT_PROFILES
+from narrare.settings.token_profiles import VALID_TOKEN_LIMIT_PROFILES
 from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
@@ -52,18 +52,57 @@ class UserAiSettingsService:
         self,
         user_id: uuid.UUID,
     ) -> UserAiSettingsResponse:
-        """Get user AI settings.
+        """Get user AI settings with computed embedding tier.
 
         Args:
             user_id: The user's UUID.
 
         Returns:
-            The user's AI settings response.
+            The user's AI settings response with ``active_embedding_tier``.
         """
-        settings = await self._ai_settings_repo.get(user_id)
         from narrare.settings.schemas import UserAiSettingsResponse
 
-        return UserAiSettingsResponse.model_validate(settings)
+        settings = await self._ai_settings_repo.get(user_id)
+        response = UserAiSettingsResponse.model_validate(settings)
+
+        # Compute active embedding tier from user's providers
+        response.active_embedding_tier = await self._compute_embedding_tier(
+            user_id, settings.embedding_provider
+        )
+
+        return response
+
+    async def _compute_embedding_tier(self, user_id: uuid.UUID, embedding_provider: str) -> str:
+        """Compute the active embedding cascade tier.
+
+        Args:
+            user_id: The user's UUID.
+            embedding_provider: User's embedding provider setting.
+
+        Returns:
+            String describing the active tier: "openai", "local", or "disabled".
+        """
+        from narrare_core.memory.embedding_cascade import EmbeddingCascadeResolver
+
+        providers = await self._providers_repo.get_active(user_id)
+        user_providers = [p.provider_name for p in providers]
+        user_api_keys: dict[str, str] = {}
+        user_base_urls: dict[str, str | None] = {}
+
+        # We don't expose actual API keys here — just check if provider exists
+        # The cascade resolver checks key presence, so we provide placeholder info
+        for p in providers:
+            user_api_keys[p.provider_name] = "exists"  # type: ignore[assignment]
+            user_base_urls[p.provider_name] = p.base_url
+
+        resolver = EmbeddingCascadeResolver()
+        config = resolver.resolve(
+            user_providers=user_providers,
+            user_api_keys=user_api_keys,
+            user_base_urls=user_base_urls,
+            explicit_provider=embedding_provider,
+        )
+        return config.provider
 
     async def update_settings(
         self,

@@ -4,21 +4,21 @@ Split from test_pipeline.py for RULE-04 compliance.
 
 Covers:
 1. Stop signal — stops mid-generation
-2. Error handling — gateway error preserves partial text
+2. Error handling — registry error preserves partial text
 3. Interactive session mode — raises ValueError
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
 from narrare_core.llm.intents import ResolvedModelConfig
-from narrare_core.llm.result import StreamChunk, TokenUsage
-from narrare_core.shared.errors import LLMGatewayError, WritingError
+from narrare_core.llm.result import StreamChunk
+from narrare_core.shared.errors import WritingError
 from narrare_core.writing.models import GenerationMode, GenerationRequest
 from narrare_core.writing.pipeline import WritingPipeline
 
@@ -34,10 +34,6 @@ def _config() -> ResolvedModelConfig:
         max_tokens=2000,
         streams=True,
     )
-
-
-def _usage() -> TokenUsage:
-    return TokenUsage(prompt_tokens=10, completion_tokens=50, total_tokens=60)
 
 
 def _request(
@@ -62,15 +58,10 @@ async def _collect(iterator: AsyncIterator[StreamChunk]) -> list[StreamChunk]:
     return chunks
 
 
-async def _stream_from(*chunks: StreamChunk) -> AsyncIterator[StreamChunk]:
-    for chunk in chunks:
-        yield chunk
-
-
 @pytest.fixture()
-def mock_gateway() -> Any:
-    gw = MagicMock(spec=["stream", "run"])
-    return gw
+def mock_registry() -> Any:
+    reg = MagicMock(spec=["stream", "run"])
+    return reg
 
 
 @pytest.fixture()
@@ -105,13 +96,13 @@ def mock_processor() -> Any:
 
 @pytest.fixture()
 def pipeline(
-    mock_gateway: Any,
+    mock_registry: Any,
     mock_composer: Any,
     mock_assembler: Any,
     mock_processor: Any,
 ) -> WritingPipeline:
     return WritingPipeline(
-        gateway=mock_gateway,
+        registry=mock_registry,
         composer=mock_composer,
         context_assembler=mock_assembler,
         draft_processor=mock_processor,
@@ -125,9 +116,9 @@ class TestStopSignal:
     async def test_stop_halts_generation(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
+        mock_registry: Any,
     ) -> None:
-        request = _request()
+        request = _request(mode=GenerationMode.SCENE_BY_SCENE, outline="A scene")
 
         async def _streaming() -> AsyncIterator[StreamChunk]:
             for i in range(100):
@@ -135,7 +126,7 @@ class TestStopSignal:
                 if i == 3:
                     await pipeline.stop(request.id)
 
-        mock_gateway.stream = MagicMock(spec=[], return_value=_streaming())
+        mock_registry.stream = MagicMock(spec=[], return_value=_streaming())
 
         chunks = await _collect(
             pipeline.generate(request, config=_config()),
@@ -147,50 +138,56 @@ class TestStopSignal:
     async def test_stop_signal_cleaned_up(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
     ) -> None:
+        """Stop signals are cleaned up after generation."""
         request = _request()
 
-        mock_gateway.stream = MagicMock(
-            spec=[],
-            return_value=_stream_from(
-                StreamChunk(text="done."),
-                StreamChunk(text="", is_final=True, usage=_usage()),
-            ),
-        )
+        with patch(
+            "narrare_core.writing.pipeline_graph.stream_via_writing_graph",
+        ) as mock_graph:
 
-        await _collect(pipeline.generate(request, config=_config()))
+            async def fake_gen(*a: Any, **kw: Any) -> AsyncIterator[StreamChunk]:
+                yield StreamChunk(text="done.", is_final=True)
+
+            mock_graph.side_effect = lambda *a, **kw: fake_gen(a, kw)
+
+            await _collect(pipeline.generate(request, config=_config()))
 
         assert request.id not in pipeline._stop_signals
 
 
 class TestErrorHandling:
-    """Gateway errors are wrapped in WritingError."""
+    """Registry errors in scene-by-scene mode are wrapped in WritingError."""
 
     @pytest.mark.asyncio
-    async def test_gateway_error_raises_writing_error(
+    async def test_scene_error_raises_writing_error(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
+        mock_registry: Any,
     ) -> None:
-        mock_gateway.stream = MagicMock(
+        """Scene generation error is wrapped in WritingError."""
+        mock_registry.stream = MagicMock(
             spec=[],
-            side_effect=LLMGatewayError("Provider timeout", code="TIMEOUT"),
+            side_effect=RuntimeError("Provider timeout"),
         )
 
-        with pytest.raises(WritingError, match="Draft generation failed"):
+        request = _request(
+            mode=GenerationMode.SCENE_BY_SCENE,
+            outline="A scene",
+        )
+        with pytest.raises(WritingError, match="Scene 1"):
             await _collect(
-                pipeline.generate(_request(), config=_config()),
+                pipeline.generate(request, config=_config()),
             )
 
     @pytest.mark.asyncio
     async def test_interview_error_raises_writing_error(
         self,
         pipeline: WritingPipeline,
-        mock_gateway: Any,
+        mock_registry: Any,
     ) -> None:
-        mock_gateway.run = AsyncMock(
-            side_effect=LLMGatewayError("Service unavailable", code="SERVICE_UNAVAILABLE"),
+        mock_registry.run = AsyncMock(
+            side_effect=RuntimeError("Service unavailable"),
         )
 
         request = _request(mode=GenerationMode.INTERVIEW_ASSISTED)

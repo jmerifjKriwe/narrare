@@ -2,14 +2,20 @@
 
 Public API:
     FeedbackAction, FeedbackEvent, FeedbackCollector, PreferenceProvider,
-    PreferenceProfile, MemoryFacade, FeedbackService, PreferenceService
+    PreferenceProfile, MemoryFacade, FeedbackService, PreferenceService,
+    EmbeddingConfig, EmbeddingCascadeResolver, MemoryClientCache
 
 The mem0 client factory (``create_memory_client``) is intentionally
 excluded from public exports — it is an internal implementation detail
 used only during service wiring.
 """
 
+from narrare_core.memory.embedding_cascade import (
+    EmbeddingCascadeResolver,
+    EmbeddingConfig,
+)
 from narrare_core.memory.feedback_service import FeedbackService
+from narrare_core.memory.memory_client_cache import MemoryClientCache
 from narrare_core.memory.models import (
     FeedbackAction,
     FeedbackEvent,
@@ -23,10 +29,13 @@ from narrare_core.memory.protocols import (
 )
 
 __all__ = [
+    "EmbeddingCascadeResolver",
+    "EmbeddingConfig",
     "FeedbackAction",
     "FeedbackCollector",
     "FeedbackEvent",
     "FeedbackService",
+    "MemoryClientCache",
     "MemoryFacade",
     "PreferenceProfile",
     "PreferenceProvider",

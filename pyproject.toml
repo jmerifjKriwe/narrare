@@ -148,7 +148,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "N"]
 "**/migrations/**" = ["E501"]
-"**/router*.py" = ["B008", "TC001"]  # FastAPI Depends() pattern; CurrentUserIdDep needed at runtime
+"**/*router*.py" = ["B008", "TC001"]  # FastAPI Depends() pattern; CurrentUserIdDep needed at runtime
 # SQLAlchemy needs datetime at runtime, not just type-checking
 "**/models.py" = ["TC003"]
 "packages/core/narrare_core/llm/retry.py" = ["S311"]  # PRNG for jitter is OK
@@ -216,7 +216,12 @@ skips = ["B101"]  # assert_used is fine in tests
 [tool.narrare.architecture]
 llm_allowed_modules = [
   "packages/core/narrare_core/llm/",
+  "packages/core/narrare_core/agents/",
   "tests/",  # Test files can import pydantic_ai for TestModel/FunctionModel testing tools
+]
+agent_allowed_modules = [
+  "packages/core/narrare_core/agents/",
+  "tests/",
 ]
 prompt_allowed_modules = ["packages/core/narrare_core/prompts/"]
 forbidden_llm_imports = ["openai", "anthropic", "pydantic_ai"]

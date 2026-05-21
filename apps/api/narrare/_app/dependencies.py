@@ -17,10 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from narrare._app.config import Settings, get_settings
 from narrare._app.database import get_async_session
-from narrare_core.llm import LLMGateway
+from narrare_core.llm import ModelRegistry
 from narrare_core.prompts import MetaPromptLoader, PromptComposer, PromptRegistry
 
 if TYPE_CHECKING:
+    from narrare.generation.graph_store import PostgresGraphStateStore
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
     from narrare.settings.user_ai_settings_service import UserAiSettingsService
@@ -39,21 +40,21 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 SessionDep = Annotated[AsyncSession, Depends(get_async_session)]
 
 # ---------------------------------------------------------------------------
-# LLM Gateway (singleton)
+# LLM Model Registry (singleton)
 # ---------------------------------------------------------------------------
 
 
 @lru_cache
-def _get_gateway_instance() -> LLMGateway:
-    return LLMGateway()
+def _get_model_registry_instance() -> ModelRegistry:
+    return ModelRegistry()
 
 
-def get_gateway() -> LLMGateway:
-    """Provide the shared LLM Gateway instance."""
-    return _get_gateway_instance()
+def get_model_registry() -> ModelRegistry:
+    """Provide the shared LLM Model Registry instance."""
+    return _get_model_registry_instance()
 
 
-GatewayDep = Annotated[LLMGateway, Depends(get_gateway)]
+ModelRegistryDep = Annotated[ModelRegistry, Depends(get_model_registry)]
 
 # ---------------------------------------------------------------------------
 # Prompt system (singletons)
@@ -61,13 +62,13 @@ GatewayDep = Annotated[LLMGateway, Depends(get_gateway)]
 
 
 @lru_cache
-def _get_registry_instance() -> PromptRegistry:
+def _get_prompt_registry_instance() -> PromptRegistry:
     return PromptRegistry()
 
 
 def get_registry() -> PromptRegistry:
     """Provide the shared Prompt Registry instance."""
-    return _get_registry_instance()
+    return _get_prompt_registry_instance()
 
 
 @lru_cache
@@ -78,7 +79,7 @@ def _get_meta_loader_instance() -> MetaPromptLoader:
 @lru_cache
 def _get_composer_instance() -> PromptComposer:
     return PromptComposer(
-        registry=_get_registry_instance(),
+        registry=_get_prompt_registry_instance(),
         meta_loader=_get_meta_loader_instance(),
     )
 
@@ -218,3 +219,23 @@ def get_cascade_resolver(session: SessionDep) -> CascadeResolver:
 
     repo = TemplateRepository(session)
     return CascadeResolver(repository=repo)
+
+
+# ---------------------------------------------------------------------------
+# Graph State Store
+# ---------------------------------------------------------------------------
+
+
+from narrare.generation.graph_store import PostgresGraphStateStore  # noqa: E402
+
+
+def get_graph_state_store(session: SessionDep) -> PostgresGraphStateStore:
+    """Provide a PostgresGraphStateStore for the request.
+
+    Wraps the async DB session so the store can persist and load
+    WritingGraph checkpoints.
+    """
+    return PostgresGraphStateStore(session)
+
+
+GraphStateStoreDep = Annotated[PostgresGraphStateStore, Depends(get_graph_state_store)]

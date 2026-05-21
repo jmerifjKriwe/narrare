@@ -94,19 +94,37 @@ class FeedbackService:
         """Translate a FeedbackEvent into mem0-compatible memory text.
 
         Formats the event as natural language that mem0 can extract
-        preferences from.
+        preferences from. Includes rating and enriched context when
+        available.
         """
         if event.action == FeedbackAction.ACCEPT:
-            return f'User accepted a {event.intent} suggestion: "{event.suggestion_text[:200]}"'
+            text = f'User accepted a {event.intent} suggestion: "{event.suggestion_text[:200]}"'
         elif event.action == FeedbackAction.REJECT:
             text = f'User rejected a {event.intent} suggestion: "{event.suggestion_text[:200]}"'
             if event.modification:
                 text += f" (reason: {event.modification})"
-            return text
         elif event.action == FeedbackAction.MODIFY:
-            return (
+            text = (
                 f"User modified a {event.intent} suggestion. "
                 f'Original: "{event.suggestion_text[:100]}". '
                 f'Their version: "{event.modification[:100]}"'
             )
-        return f"User interacted with a {event.intent} suggestion."
+        else:
+            text = f"User interacted with a {event.intent} suggestion."
+
+        # Append rating if present
+        if event.rating:
+            text += f" (rating: {event.rating}/5)"
+
+        # Append enriched context (chapter_id, genre, mode)
+        extra_parts: list[str] = []
+        if event.context.get("chapter_id"):
+            extra_parts.append(f"chapter: {event.context['chapter_id']}")
+        if event.context.get("genre"):
+            extra_parts.append(f"genre: {event.context['genre']}")
+        if event.context.get("mode"):
+            extra_parts.append(f"mode: {event.context['mode']}")
+        if extra_parts:
+            text += f" [{', '.join(extra_parts)}]"
+
+        return text

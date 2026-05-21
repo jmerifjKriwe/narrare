@@ -89,11 +89,25 @@ Located in `packages/web/components/ui/`.
 
 ## D
 
+**Decision**
+A typed result from the `ReviewDraft` graph node that determines branching in the
+WritingGraph. Two variants: `Approved` (routes to `Finalize`) and `NeedsRevision`
+(routes to `ReviseDraft` → loop back to `WriteDraft`). Max 3 revision attempts before
+force-finalize. Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
+
 **Domain Module**
 A self-contained directory within `apps/api/narrare/` that owns one business
 domain (e.g., `writing/`, `kb/`, `analysis/`). Contains its own schemas, models,
 repository, service, contracts, and router. Never imports from another domain's
 internal modules.
+
+**DraftAgent**
+A pydantic-ai Agent (`NarrareAgent[DraftDeps, DraftOutput]`) that generates
+chapter drafts using an Output Function for post-processing and a tool for
+KB context lookup. Defined in `core/agents/draft_agent.py`. Replaces the
+manual DraftProcessor pipeline path when the `use_draft_agent` feature flag
+is active (Phase 2 of ADR-015). In Phase 3, accepts an optional `kb_agent`
+parameter to inject KBAgent KB tools and ToolSearch capability.
 
 **Draft**
 A single AI-generated version of a chapter or section. Multi-Draft mode
@@ -120,11 +134,23 @@ A React component that catches runtime errors in its child tree. In Narrare:
 - `<ErrorBoundary>` component wraps specific components like the TipTap editor
 All error messages use i18n except `global-error.tsx` which runs before providers mount.
 
+**Explanation Language**
+A string field (2–50 chars) on the name generation request specifying the
+language in which name meanings and explanations should be written. Defaults
+to the novel's `writing_language`. Replaces the former `language` field on
+name generation requests. Distinct from *Writing Language* and *Prompt Language*.
+
 ---
 
 ## F
 
 **Fact**
+
+**FunctionToolset**
+A pydantic-ai toolset (`pydantic_ai.toolsets.FunctionToolset`) that bundles
+multiple `Tool` instances with `defer_loading=True`. Used by `KBAgent` to
+provide KB tools (`search_kb`, `get_entity`, `get_related_entities`) to other
+Agents via `Toolset` capability injection. Defined in `core/agents/kb_agent.py`.
 A structured piece of information extracted from a chapter or KB entry.
 Stored in the Knowledge Graph. Example: "Character X is married to Character Y."
 Used for consistency checking.
@@ -143,6 +169,12 @@ Parsed by `core/shared/frontmatter.py` — the single implementation.
 
 ## G
 
+**GraphBuilder**
+The current pydantic-graph API (v1.97+) for constructing state-machine graphs.
+Used to build the `WritingGraph` with nodes, edges, decisions, and forks.
+Preferred over the deprecated `Graph()` constructor. Factory function:
+`create_writing_graph()` in `core/agents/writing_graph.py`. Part of ADR-015 Phase 4.
+
 **Gateway (LLM Gateway)**
 The single entry point for all LLM calls in the system.
 Lives in `core/llm/gateway.py`. Enforces: cost tracking, retry, error
@@ -150,9 +182,11 @@ classification, model routing, telemetry. No code outside `core/llm/` may
 call an LLM directly.
 
 **Genre**
-A writing genre (e.g., fantasy, thriller, romance). Affects prompt selection
-(genre-specific prompt files take precedence over generic ones) and generation
-parameters.
+A writing genre (e.g., fantasy, thriller, romance). Freetext field — users can
+enter compound genres like "dark fantasy romance" or "scifi-western". Genre
+influences generation parameters and context assembly. Does **not** select
+genre-specific prompt files; tone and writing language are the primary prompt
+modifiers.
 
 ---
 
@@ -173,6 +207,13 @@ API call.
 ---
 
 ## K
+
+**KBAgent**
+A pydantic-ai Agent (`NarrareAgent[KBDeps, None]`) that provides KB tools
+for other agents — never executed directly (`output_type=None`). Exposes
+3 deferred-loaded tools via `FunctionToolset`: `search_kb()`, `get_entity()`,
+and `get_related_entities()`. Defined in `core/agents/kb_agent.py`.
+Part of ADR-015 Phase 3.
 
 **KB (Knowledge Base)**
 The project-level structured knowledge store — characters, locations, world facts,
@@ -235,8 +276,28 @@ and focus mode animations. Located in `packages/web/` dependencies.
 ## N
 
 **Novel**
-The top-level project container. Has metadata (genre, language, tone, style),
+The top-level project container. Has metadata (genre, writing_language, tone, style),
 volumes, chapters, a KB, and a Knowledge Graph.
+
+**Name Style**
+A freetext field (1–100 chars) describing the cultural or aesthetic style for
+generated character/place names (e.g., "Norse mythology", "Victorian English",
+"high fantasy"). Replaces the former `culture` field. If a bundled name-style
+definition file exists, it is loaded; otherwise the raw string is injected
+directly into the prompt.
+
+---
+
+## O
+
+**Output Function**
+A callable registered as part of `output_type` in a pydantic-ai Agent (e.g.,
+`output_type=[callable, Model]`). The callable is called by the model as a
+tool — it receives structured parameters and returns the typed output. In
+Narrare, the `DraftAgent` uses an Output Function to post-process generated
+text (artifact removal, markdown normalization, word-target enforcement)
+instead of the legacy `DraftProcessor` pipeline path. Defined inline in
+`core/agents/draft_agent.py` as `_process_draft_output`.
 
 ---
 
@@ -246,6 +307,12 @@ volumes, chapters, a KB, and a Knowledge Graph.
 A typed dataclass carrying all variables needed to render a prompt:
 project metadata, language, mode, KB context bundle, style profile, etc.
 Passed to `core/prompts/composer.py`. No service assembles prompts directly.
+
+**Prompt Language**
+The language of the prompt template files themselves. Selected via the prompt
+cascade — the resolver picks the best-matching language file (e.g., `de/names/system.md`).
+Configured per-prompt-category, not per-user. Distinct from *Writing Language*
+(what language the AI writes in) and *UI Language* (what language the interface shows).
 
 **Protocol (Python Protocol)**
 A structural subtyping interface definition (`typing.Protocol`).
@@ -304,10 +371,42 @@ Used for voice consistency checking and drift detection.
 
 ## T
 
+**Tone**
+The narrative tone for generated text. Nine bundled tones are available:
+dramatic, humorous, contemplative, romantic, dark, adventurous, lyrical,
+quiet, balanced. The "balanced" tone produces no additional tone instructions
+(neutral/default). Users can also define custom tones (up to 20 per user)
+via the Tone Library in settings. Custom tones are stored as `{id, name, instructions}`
+in user preferences. Both bundled and custom tone identifiers are accepted
+by the `tone` field on novels and generation requests.
+
+**ToolSearch**
+A pydantic-ai capability (`pydantic_ai.capabilities.ToolSearch`) that enables
+an Agent to discover and load tools on demand (deferred loading). In Narrare,
+integrated into `DraftAgent` when a `KBAgent` is present (`strategy="keywords"`).
+The model sees only tool names and short descriptions until it requests the
+full schema via ToolSearch. Part of ADR-015 Phase 3.
+
+**Toolset**
+A pydantic-ai capability (`pydantic_ai.capabilities.Toolset`) that injects a
+`FunctionToolset` (from another Agent like `KBAgent`) into an Agent's available
+tools. Combined with `ToolSearch`, tools are only loaded when the model decides
+they are needed.
+
 **Transport Layer**
 The HTTP routers (`apps/api/narrare/*/router*.py`), future MCP tools, and
 future A2A agent handlers. Contains zero business logic. Maps protocol-specific
 inputs to Service Layer calls.
+
+---
+
+## U
+
+**UI Language**
+The display language of the user interface. Supported: `en`, `de`, `fr`.
+Stored in user settings. Affects all labels, buttons, placeholders, and
+system messages. Distinct from *Writing Language* (the language the AI writes in)
+and *Prompt Language* (the language of prompt template files).
 
 ---
 
@@ -325,11 +424,37 @@ style profile, flagging deviations in tone, sentence structure, vocabulary, etc.
 
 ## W
 
+**Writing Language**
+The language in which the AI generates creative text (prose, dialogue, narration).
+A freetext field (no enum) — users can enter any language name like "English",
+"Deutsch", "日本語". Stored as `writing_language` on the Novel model. Injected
+into prompts via `WritingContext` and `PromptContext`. Defaults to the UI locale
+on novel creation. Distinct from *UI Language* (interface language) and
+*Prompt Language* (template file language).
+
 **Writing Session**
 See *Session (Writing Session)*.
 
+**WritingGraph**
+A pydantic-graph state machine implementing the creative writing workflow:
+PlanOutline → WriteDraft → ReviewDraft → Decision (Approved → Finalize | NeedsRevision → ReviseDraft → WriteDraft loop).
+State is carried by `WritingState`, dependencies by `WritingDeps`. Built via `GraphBuilder` API
+in `core/agents/writing_graph.py`. Integrated into `WritingPipeline` via `use_writing_graph` feature flag.
+Mermaid diagram at `docs/architecture/workflows/writing-graph.mermaid`. Part of ADR-015 Phase 4.
+
+**WritingState**
+A dataclass carrying the full state of a WritingGraph run: `chapter_id`, `novel_id`,
+`outline`, `draft`, `revision`, `final`, `status` (`WritingStatus` enum), and `attempts` counter.
+Passed between graph nodes during execution. Defined in `core/agents/writing_graph_types.py`.
+Part of ADR-015 Phase 4.
+
+**WritingStatus**
+An enum tracking the current phase of a WritingGraph run: `PLANNED`, `OUTLINED`, `DRAFTED`,
+`IN_REVIEW`, `NEEDS_REVISION`, `APPROVED`, `REVISED`, `COMPLETED`. Used by `WritingState.status`.
+Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
+
 ---
 
-> Last updated: project initialization
+> Last updated: 2026-05-21 — Metadata-consistency change: Tone, Writing Language, UI Language, Prompt Language, Name Style, Explanation Language entries; Genre correction
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

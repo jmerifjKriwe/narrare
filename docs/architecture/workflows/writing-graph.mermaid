@@ -1,0 +1,23 @@
+---
+title: Writing Graph
+---
+stateDiagram-v2
+  direction LR
+  plan_outline
+  write_draft
+  review_draft
+  state decision <<choice>>
+  finalize
+  revise_draft
+  state finalize_broadcast_fork <<fork>>
+
+  [*] --> plan_outline
+  plan_outline --> write_draft
+  write_draft --> review_draft
+  review_draft --> decision
+  decision --> finalize: approved
+  decision --> revise_draft: needs revision
+  revise_draft --> write_draft
+  finalize --> finalize_broadcast_fork
+  finalize_broadcast_fork --> [*]
+  finalize_broadcast_fork --> [*]

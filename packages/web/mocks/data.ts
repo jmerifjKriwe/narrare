@@ -48,7 +48,7 @@ export function createNovel(overrides: Partial<Novel> = {}): Novel {
     title: "Test Novel",
     author: "",
     genre: "",
-    language: "en",
+    writing_language: "en",
     tone: "",
     story_structure: "three_act",
     logline: "",
@@ -66,7 +66,7 @@ export function createNovelSummary(overrides: Partial<NovelSummary> = {}): Novel
     title: "Test Novel",
     author: "",
     genre: "",
-    language: "en",
+    writing_language: "en",
     is_demo: false,
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
@@ -133,7 +133,7 @@ export function createProjectSettings(overrides: Partial<ProjectSettings> = {}):
 export function createWizardState(overrides: Partial<WizardState> = {}): WizardState {
   return {
     project_name: "Test Project",
-    language: "en",
+    writing_language: "en",
     autosave_interval: 30,
     title: "Test Novel",
     author: "Test Author",
@@ -201,7 +201,7 @@ export function createGeneratedName(overrides: Partial<GeneratedName> = {}): Gen
     pronunciation: "AY-lin-dra",
     meaning: "Starlight wanderer",
     type: "character",
-    culture: "fantasy",
+    name_style: "fantasy",
     is_duplicate: false,
     confidence: 0.92,
     ...overrides,
@@ -214,7 +214,7 @@ export function createNameGenerateResponse(
   return {
     names: [createGeneratedName()],
     count: 1,
-    culture: "fantasy",
+    name_style: "fantasy",
     name_type: "character",
     ...overrides,
   };

@@ -170,16 +170,21 @@ class PromptComposer:
         # Substitute variables in system prompt
         system = substitute(resolved.system_prompt, variables, strict=False)
 
-        # Inject culture guidelines if placeholder present
-        if "{{culture_guidelines}}" in system and context.extra.get("culture"):
-            culture_content = await self._registry.resolve_culture(
+        # Inject name style guidelines if placeholder present
+        if "{{culture_guidelines}}" in system and context.extra.get("name_style"):
+            name_style_content = await self._registry.resolve_culture(
                 category=category,
                 language=context.language,
-                culture_id=str(context.extra["culture"]),
+                culture_id=str(context.extra["name_style"]),
             )
-            system = system.replace("{{culture_guidelines}}", culture_content)
+            if not name_style_content:
+                # Freetext fallback: use the raw name_style string
+                name_style_content = (
+                    f"Generate names fitting the following style: {context.extra['name_style']}"
+                )
+            system = system.replace("{{culture_guidelines}}", name_style_content)
         elif "{{culture_guidelines}}" in system:
-            # No culture specified — replace with empty string
+            # No name_style specified — replace with empty string
             system = system.replace("{{culture_guidelines}}", "")
 
         # Prepend meta-prompt if enabled

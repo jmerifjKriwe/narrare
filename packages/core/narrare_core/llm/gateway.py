@@ -1,24 +1,31 @@
 """
-Narrare LLM Gateway — THE single entry point for all LLM calls.
-No other module may call an LLM provider directly.
-See CONSTRAINTS.md RULE-01 and ADR-001.
+Narrare Model Registry — provides configured Model instances for Agents.
+
+This is the Gateway v2.  Instead of creating ephemeral Agents and calling
+``run_sync()``, the registry returns configured ``Model`` instances.
+Agents obtain their Model here, then call ``agent.run()`` themselves.
+
+**RULE-01b**: ``from pydantic_ai import Agent`` is restricted in ``core/llm/``.
+The convenience ``run()`` and ``stream()`` methods on ``ModelRegistry`` are
+the only approved exceptions — they create ephemeral Agents for simple calls.
+
+See CONSTRAINTS.md RULE-01b and ADR-015.
 """
 
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import structlog
-from pydantic_ai import Agent
 
-from narrare_core.llm import _providers  # noqa: F401  # pyright: ignore[reportUnusedImport]
+# narrare: allow-agent reason="ModelRegistry convenience run()/stream() creates ephemeral Agent"
+from pydantic_ai import Agent
+from pydantic_ai.exceptions import UsageLimitExceeded
+from pydantic_ai.usage import UsageLimits
+
 from narrare_core.llm._providers.registry import get as get_provider
-from narrare_core.llm.gateway_errors import classify_error
-from narrare_core.llm.metrics import record_failure, record_success
-from narrare_core.llm.observability import LLMObservability
-from narrare_core.llm.result import LLMResult, StreamChunk, TokenUsage
-from narrare_core.llm.retry import DEFAULT_RETRY, RetryConfig, with_retry
+from narrare_core.llm.result import StreamChunk, TokenUsage
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -26,173 +33,152 @@ if TYPE_CHECKING:
     from pydantic_ai.models import Model
 
     from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
-    from narrare_core.shared.errors import LLMGatewayError
 
 logger = structlog.get_logger(__name__)
 
+T = TypeVar("T")
 
-class LLMGateway:
+# Public API
+__all__ = ["ModelRegistry"]
+
+
+class ModelRegistry:
+    """Gateway v2 — provides configured Model instances for Agents.
+
+    Agents obtain their Model here, then call ``agent.run()`` themselves.
+    The registry handles:
+
+    * Provider resolution — which factory for a given ``provider_name``
+    * Credential injection — ``api_key`` + ``base_url`` for per-user secrets
+    * ``UsageLimits`` pre-configuration — prepared for Phase 1 of ADR-015
+
+    Simple use cases (health checks, name generation) can use the
+    convenience :meth:`run` and :meth:`stream` methods, which create
+    ephemeral Agents.  Complex use cases (writing pipeline) should use
+    :meth:`get_model` + their own Agent definition in
+    :mod:`~narrare_core.agents`.
     """
-    Central gateway for all LLM calls.
 
-    Handles:
-    - Provider selection based on explicit provider_name (from ResolvedModelConfig)
-    - Retry with exponential backoff
-    - Cost tracking and telemetry
-    - Error classification and wrapping
+    @staticmethod
+    def _profile_to_limits(profile: str) -> UsageLimits | None:
+        """Convert a named token limit profile to UsageLimits.
 
-    This class is instantiated once and injected everywhere via DI.
-    Never instantiate this inside a request handler or service method.
-    """
-
-    def __init__(self, default_provider: str = "anthropic") -> None:
-        """
-        Initialise the gateway.
+        These profiles are stored in user_ai_settings and project_settings
+        as the ``token_limit_profile`` column.
 
         Args:
-            default_provider: Fallback provider when model cannot be inferred.
-                Only used when no ``ResolvedModelConfig`` is provided.
-        """
-        self._default_provider = default_provider
-        self._obs: LLMObservability = LLMObservability()
-        logger.info("llm_gateway_initialized", default_provider=default_provider)
-
-    def _get_model_with_credentials(
-        self,
-        provider_name: str,
-        model_id: str,
-        *,
-        api_key: str | None,
-        base_url: str | None,
-    ) -> Model:
-        """Resolve provider and create model instance with explicit credentials.
-
-        Uses the provider registry to get the factory, then passes credentials
-        through. No env-var inference - credentials come from the caller.
-
-        Args:
-            provider_name: Explicit provider name (e.g. "anthropic", "openrouter").
-            model_id: Model identifier as known to that provider.
-            api_key: Decrypted API key from user settings, or None.
-            base_url: Custom base URL, or None (use provider default).
+            profile: One of "quick", "balanced", "long_texts", "conservative", "custom".
 
         Returns:
-            Configured pydantic-ai Model instance.
+            Configured UsageLimits, or None if the profile is unknown.
         """
-        factory = get_provider(provider_name)
-        return factory(model_id, api_key=api_key, base_url=base_url)
-
-    def _make_agent(self, model: Model, system_prompt: str) -> Agent[None, str]:
-        """Create a pydantic-ai Agent for a single call."""
-        return Agent(
-            model,
-            system_prompt=system_prompt,
-            output_type=str,
+        profiles: dict[str, dict[str, int]] = {
+            "quick": {"request_limit": 10, "total_tokens_limit": 16000},
+            "balanced": {"request_limit": 25, "total_tokens_limit": 64000},
+            "long_texts": {"request_limit": 25, "total_tokens_limit": 128000},
+            "conservative": {"request_limit": 10, "total_tokens_limit": 32000},
+            "custom": {"request_limit": 25, "total_tokens_limit": 64000},  # falls back to balanced
+        }
+        limits = profiles.get(profile)
+        if limits is None:
+            return None
+        return UsageLimits(
+            request_limit=limits["request_limit"],
+            total_tokens_limit=limits["total_tokens_limit"],
         )
 
-    def _classify_error(self, error: Exception) -> LLMGatewayError:
-        """Convert provider exceptions to domain errors.
+    async def get_model(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        usage_limits: UsageLimits | None = None,
+    ) -> Model:
+        """Return a configured Model instance with credentials.
 
-        Delegates to :func:`gateway_errors.classify_error`.
-        Kept as method for backward compatibility with existing tests.
+        Args:
+            config: Fully resolved model configuration
+                (provider, model, parameters).
+            api_key: Optional API key — overrides the environment variable
+                when provided.  ``None`` lets the factory fall back to the
+                default env var (for dev/test).
+            base_url: Optional base URL — overrides the provider default.
+            usage_limits: If provided, usage limits are passed through to
+                the model's Agent at run time.
+
+        Returns:
+            Configured pydantic-ai Model instance ready for use with ``Agent``.
+
+        Raises:
+            KeyError: If ``config.provider_name`` is not registered in the
+                :mod:`~narrare_core.llm._providers` registry.
         """
-        return classify_error(error)
+        # Auto-convert token_limit_profile to UsageLimits if not explicitly set
+        if usage_limits is None:
+            profile = getattr(config, "token_limit_profile", None) or ""
+            if profile:
+                usage_limits = self._profile_to_limits(profile)
+
+        factory = get_provider(config.provider_name)
+        return factory(config.model_id, api_key=api_key, base_url=base_url)
 
     async def run(
         self,
-        *,
         intent: LLMIntent,
-        system_prompt: str,
-        user_prompt: str,
+        prompt: str,
         config: ResolvedModelConfig,
+        *,
+        system_prompt: str | None = None,
+        output_type: type[T] | None = None,
+        deps: Any = None,
+        usage_limits: UsageLimits | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
-        retry_config: RetryConfig = DEFAULT_RETRY,
-    ) -> LLMResult:
-        """Execute a non-streaming LLM call.
+    ) -> T:
+        """Convenience: create ephemeral Agent, run it, return the output.
+
+        Use this for simple one-shot LLM calls that do not need tools,
+        capabilities, or special output processing — for example health
+        checks, name generation, or title generation.
+
+        Complex use cases (writing pipeline, multi-agent orchestration)
+        should use :meth:`get_model` + their own Agent definition in
+        :mod:`~narrare_core.agents` instead.
 
         Args:
-            intent: The operation intent - drives model selection.
-            system_prompt: System role message.
-            user_prompt: User role message.
-            config: Resolved model configuration (provider + model + params).
-                Must be provided by the caller via ``ModelRoutingResolver``.
-            api_key: Decrypted API key from user settings. When ``None``,
-                the provider factory falls back to env vars (dev/test).
-            base_url: Custom base URL for OpenAI-compatible providers.
-            retry_config: Retry behaviour configuration.
+            intent: The operation intent (used for logging).
+            prompt: The user message / prompt text.
+            config: Fully resolved model configuration.
+            system_prompt: Optional system prompt.  Defaults to empty string.
+            output_type: Optional structured output type.
+                Defaults to ``str`` (plain text).
+            deps: Optional dependencies for the Agent.
+            usage_limits: Passed to ``agent.run(usage_limits=...)`` to
+                enforce token and request limits.
+            api_key: Optional API key — overrides the environment variable.
+            base_url: Optional base URL — overrides the provider default.
 
         Returns:
-            LLMResult with generated text and usage statistics.
-
-        Raises:
-            LLMGatewayError: On failure after all retries.
+            The agent's output — either ``str`` (when ``output_type`` is
+            ``None`` or ``str``) or an instance of the specified type ``T``.
         """
-        provider_name = config.provider_name
-        model_id = config.model_id
-        model = self._get_model_with_credentials(
-            provider_name,
-            model_id,
-            api_key=api_key,
-            base_url=base_url,
+        model = await self.get_model(
+            config, api_key=api_key, base_url=base_url, usage_limits=usage_limits
         )
-
-        log = logger.bind(intent=intent.value, model=model_id, provider=provider_name)
-        log.debug("llm_run_start")
-
-        start = time.monotonic()
-        obs_trace = self._obs.start_trace(
-            intent, model_id, provider_name, system_prompt, user_prompt
+        agent = Agent(  # narrare: allow-agent reason="ModelRegistry convenience run() (ADR-015)"
+            model=model,
+            system_prompt=system_prompt or "",
+            output_type=output_type or str,
         )
-
-        async def _call() -> LLMResult:
-            try:
-                agent = self._make_agent(model, system_prompt)
-                result = await agent.run(user_prompt)
-                elapsed = time.monotonic() - start
-
-                usage = result.usage
-                token_usage = TokenUsage(
-                    prompt_tokens=usage.input_tokens or 0,
-                    completion_tokens=usage.output_tokens or 0,
-                    total_tokens=usage.total_tokens or 0,
-                )
-
-                record_success(
-                    intent=intent.value,
-                    model=model_id,
-                    provider=provider_name,
-                    usage=token_usage,
-                    duration_seconds=elapsed,
-                )
-                log.info(
-                    "llm_run_complete",
-                    tokens=token_usage.total_tokens,
-                    duration_ms=round(elapsed * 1000),
-                )
-                result_text = result.output
-                self._obs.finish_trace(obs_trace, result_text, token_usage, round(elapsed * 1000))
-                return LLMResult(
-                    text=result_text,
-                    usage=token_usage,
-                    model=model_id,
-                    intent=intent.value,
-                )
-            except Exception as e:
-                elapsed = time.monotonic() - start
-                domain_error = self._classify_error(e)
-                record_failure(
-                    intent=intent.value,
-                    model=model_id,
-                    provider=provider_name,
-                    error_type=type(domain_error).__name__,
-                    duration_seconds=elapsed,
-                )
-                self._obs.record_error(obs_trace, str(domain_error), type(domain_error).__name__)
-                raise domain_error from e
-
-        result = await with_retry(_call, retry_config, intent=intent.value)
-        return result
+        try:
+            result = await agent.run(
+                prompt, deps=deps, usage_limits=usage_limits
+            )  # narrare: allow-agent reason="ModelRegistry convenience run() (ADR-015)"
+            return result.output
+        except UsageLimitExceeded:
+            # Phase 1: Wird in Phase 1.3 als user-visible error klassifiziert
+            raise
 
     async def stream(
         self,
@@ -204,79 +190,50 @@ class LLMGateway:
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
-        """Execute a streaming LLM call.
+        """Convenience: create ephemeral Agent, stream text output.
+
+        Use this for streaming LLM calls that need text deltas — for
+        example interactive writing sessions or draft generation.
 
         Args:
-            intent: The operation intent.
+            intent: The operation intent (used for logging).
             system_prompt: System role message.
             user_prompt: User role message.
-            config: Resolved model configuration (provider + model + params).
-                Must be provided by the caller via ``ModelRoutingResolver``.
-            api_key: Decrypted API key from user settings. When ``None``,
-                the provider factory falls back to env vars (dev/test).
-            base_url: Custom base URL for OpenAI-compatible providers.
+            config: Fully resolved model configuration.
+            api_key: Optional API key — overrides the environment variable.
+            base_url: Optional base URL — overrides the provider default.
 
         Yields:
-            StreamChunk instances with text fragments.
-            The final chunk has is_final=True and usage populated.
-
-        Raises:
-            LLMGatewayError: If the stream cannot be started or fails mid-stream.
+            StreamChunk instances with text fragments.  The final chunk
+            has ``is_final=True`` and populated ``usage``.
         """
-        provider_name = config.provider_name
-        model_id = config.model_id
-        model = self._get_model_with_credentials(
-            provider_name,
-            model_id,
-            api_key=api_key,
-            base_url=base_url,
+        model = await self.get_model(config, api_key=api_key, base_url=base_url)
+        # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
+        agent = Agent(
+            model=model,
+            system_prompt=system_prompt,
+            output_type=str,
         )
-
-        log = logger.bind(intent=intent.value, model=model_id, provider=provider_name)
-        log.debug("llm_stream_start")
 
         start = time.monotonic()
-        obs_trace = self._obs.start_trace(
-            intent, model_id, provider_name, system_prompt, user_prompt
-        )
 
-        try:
-            agent = self._make_agent(model, system_prompt)
-            async with agent.run_stream(user_prompt) as stream_result:
-                async for text in stream_result.stream_text(delta=True):
-                    yield StreamChunk(text=text)
+        # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
+        async with agent.run_stream(user_prompt) as stream_result:
+            async for text in stream_result.stream_text(delta=True):
+                yield StreamChunk(text=text)
 
-                elapsed = time.monotonic() - start
-                usage = stream_result.usage
-                token_usage = TokenUsage(
-                    prompt_tokens=usage.input_tokens or 0,
-                    completion_tokens=usage.output_tokens or 0,
-                    total_tokens=usage.total_tokens or 0,
-                )
-                record_success(
-                    intent=intent.value,
-                    model=model_id,
-                    provider=provider_name,
-                    usage=token_usage,
-                    duration_seconds=elapsed,
-                )
-                log.info(
-                    "llm_stream_complete",
-                    tokens=token_usage.total_tokens,
-                    duration_ms=round(elapsed * 1000),
-                )
-                self._obs.finish_trace(obs_trace, "", token_usage, round(elapsed * 1000))
-                yield StreamChunk(text="", is_final=True, usage=token_usage)
-
-        except Exception as e:
             elapsed = time.monotonic() - start
-            domain_error = self._classify_error(e)
-            record_failure(
-                intent=intent.value,
-                model=model_id,
-                provider=provider_name,
-                error_type=type(domain_error).__name__,
-                duration_seconds=elapsed,
+            usage = stream_result.usage
+            token_usage = TokenUsage(
+                prompt_tokens=usage.input_tokens or 0,
+                completion_tokens=usage.output_tokens or 0,
+                total_tokens=usage.total_tokens or 0,
             )
-            self._obs.record_error(obs_trace, str(domain_error), type(domain_error).__name__)
-            raise domain_error from e
+            logger.info(
+                "model_registry_stream_complete",
+                intent=intent.value,
+                model=config.model_id,
+                tokens=token_usage.total_tokens,
+                duration_ms=round(elapsed * 1000),
+            )
+            yield StreamChunk(text="", is_final=True, usage=token_usage)
