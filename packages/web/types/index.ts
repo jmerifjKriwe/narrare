@@ -160,7 +160,7 @@ export interface ProviderModel {
 export interface DemoProjectInfo {
   id: StarterContent;
   title: string;
-  language: string;
+  writing_language: string;
   genre: string;
   chapter_count: number;
   character_count: number;

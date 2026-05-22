@@ -182,45 +182,45 @@ class PromptRegistry:
 
         return paths
 
-    async def resolve_culture(
+    async def resolve_name_style(
         self,
         *,
         category: str,
         language: str,
-        culture_id: str,
+        style_id: str,
     ) -> str:
         """Resolve a name_style definition file with EN fallback.
 
         Search order:
         1. Project override:
-           {project_root}/.narrare/prompts/{category}/name-styles/{language}/{culture_id}.md
+           {project_root}/.narrare/prompts/{category}/name-styles/{language}/{style_id}.md
         2. User-global:
-           ~/.config/narrare/prompts/{category}/name-styles/{language}/{culture_id}.md
-        3. Bundled: _bundled/{category}/name-styles/{language}/{culture_id}.md
-        4. Bundled EN fallback: _bundled/{category}/name-styles/en/{culture_id}.md
+           ~/.config/narrare/prompts/{category}/name-styles/{language}/{style_id}.md
+        3. Bundled: _bundled/{category}/name-styles/{language}/{style_id}.md
+        4. Bundled EN fallback: _bundled/{category}/name-styles/en/{style_id}.md
 
         Returns the content without frontmatter, or empty string if not found.
         """
-        culture_path = Path(category) / "name-styles" / language / f"{culture_id}.md"
-        en_culture_path = Path(category) / "name-styles" / "en" / f"{culture_id}.md"
+        style_path = Path(category) / "name-styles" / language / f"{style_id}.md"
+        en_style_path = Path(category) / "name-styles" / "en" / f"{style_id}.md"
 
         search_paths: list[tuple[Path, str]] = []
 
         # Project-level
         if self._project_root:
             base = self._project_root / ".narrare" / "prompts"
-            search_paths.append((base / culture_path, "project"))
+            search_paths.append((base / style_path, "project"))
 
         # User-global
         base = self._user_config_dir / "prompts"
-        search_paths.append((base / culture_path, "user"))
+        search_paths.append((base / style_path, "user"))
 
         # Bundled
-        search_paths.append((self._bundled_root / culture_path, "bundled"))
+        search_paths.append((self._bundled_root / style_path, "bundled"))
 
         # EN fallback
         if language != "en":
-            search_paths.append((self._bundled_root / en_culture_path, "bundled_en"))
+            search_paths.append((self._bundled_root / en_style_path, "bundled_en"))
 
         for path, source in search_paths:
             content = await read_text_or_none(path)
@@ -229,7 +229,7 @@ class PromptRegistry:
                     "name_style_resolved",
                     category=category,
                     language=language,
-                    name_style=culture_id,
+                    name_style=style_id,
                     source=source,
                 )
                 # Strip frontmatter, return body only
@@ -240,7 +240,7 @@ class PromptRegistry:
             "name_style_not_found_as_definition",
             category=category,
             language=language,
-            name_style=culture_id,
+            name_style=style_id,
             detail="will fall back to freetext in composer",
         )
         return ""

@@ -172,10 +172,10 @@ class PromptComposer:
 
         # Inject name style guidelines if placeholder present
         if "{{culture_guidelines}}" in system and context.extra.get("name_style"):
-            name_style_content = await self._registry.resolve_culture(
+            name_style_content = await self._registry.resolve_name_style(
                 category=category,
                 language=context.language,
-                culture_id=str(context.extra["name_style"]),
+                style_id=str(context.extra["name_style"]),
             )
             if not name_style_content:
                 # Freetext fallback: use the raw name_style string

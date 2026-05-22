@@ -1,6 +1,6 @@
 ---
-culture_id: modern
-culture_name: Modern
+style_id: modern
+style_name: Modern
 language: de
 version: "1.0.0"
 ---

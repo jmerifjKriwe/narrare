@@ -30,7 +30,7 @@ Respond with a JSON array of objects, each containing:
 - "pronunciation": optional pronunciation guide
 - "meaning": optional meaning or origin
 - "type": the name type
-- "culture": the name style used
+- "name_style": the name style used
 
 ### Rules
 

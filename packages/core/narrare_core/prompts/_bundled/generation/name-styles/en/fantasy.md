@@ -1,6 +1,6 @@
 ---
-culture_id: fantasy
-culture_name: Fantasy
+style_id: fantasy
+style_name: Fantasy
 language: en
 version: "1.0.0"
 ---

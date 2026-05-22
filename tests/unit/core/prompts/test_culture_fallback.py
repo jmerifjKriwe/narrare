@@ -20,13 +20,13 @@ def _write_culture(
     root: Path,
     category: str,
     lang: str,
-    culture_id: str,
+    style_id: str,
     content: str,
 ) -> None:
     """Write a culture definition file at the expected path."""
     p = root / category / "name-styles" / lang
     p.mkdir(parents=True, exist_ok=True)
-    (p / f"{culture_id}.md").write_text(content)
+    (p / f"{style_id}.md").write_text(content)
 
 
 def _make_registry(tmp_path: Path) -> PromptRegistry:
@@ -41,7 +41,7 @@ def _make_registry(tmp_path: Path) -> PromptRegistry:
 
 
 class TestCultureFallback:
-    """Task 7.7: Culture fallback tests for PromptRegistry.resolve_culture()."""
+    """Task 7.7: Culture fallback tests for PromptRegistry.resolve_name_style()."""
 
     async def test_culture_resolved_in_requested_language(self, tmp_path: Path) -> None:
         """Culture resolved in requested language (e.g., 'de') when file exists."""
@@ -52,15 +52,15 @@ class TestCultureFallback:
             "de",
             "german_literary",
             (
-                "---\nculture_id: german_literary\n---\n\n"
+                "---\nstyle_id: german_literary\n---\n\n"
                 "## German Literary Traditions\n- Follow Schiller."
             ),
         )
 
-        result = await registry.resolve_culture(
+        result = await registry.resolve_name_style(
             category="writing",
             language="de",
-            culture_id="german_literary",
+            style_id="german_literary",
         )
 
         assert "German Literary Traditions" in result
@@ -79,10 +79,10 @@ class TestCultureFallback:
             "## English Version of German Culture\n- Follow standard structure.",
         )
 
-        result = await registry.resolve_culture(
+        result = await registry.resolve_name_style(
             category="writing",
             language="de",
-            culture_id="german_literary",
+            style_id="german_literary",
         )
 
         assert "English Version of German Culture" in result
@@ -92,10 +92,10 @@ class TestCultureFallback:
         """Culture not found in any language: returns empty string."""
         registry = _make_registry(tmp_path)
 
-        result = await registry.resolve_culture(
+        result = await registry.resolve_name_style(
             category="writing",
             language="ja",
-            culture_id="nonexistent_culture",
+            style_id="nonexistent_culture",
         )
 
         assert result == ""
@@ -123,10 +123,10 @@ class TestCultureFallback:
             "Project-level gothic culture.",
         )
 
-        result = await registry.resolve_culture(
+        result = await registry.resolve_name_style(
             category="writing",
             language="en",
-            culture_id="gothic",
+            style_id="gothic",
         )
 
         assert result == "Project-level gothic culture."
@@ -136,10 +136,10 @@ class TestCultureFallback:
         registry = _make_registry(tmp_path)
         # Don't write any files
 
-        result = await registry.resolve_culture(
+        result = await registry.resolve_name_style(
             category="writing",
             language="en",
-            culture_id="nonexistent",
+            style_id="nonexistent",
         )
 
         assert result == ""
@@ -152,15 +152,15 @@ class TestCultureFallback:
             "writing",
             "en",
             "minimalist",
-            "---\nculture_id: minimalist\nversion: '1.0'\n---\n\nKeep it simple. No adverbs.",
+            "---\nstyle_id: minimalist\nversion: '1.0'\n---\n\nKeep it simple. No adverbs.",
         )
 
-        result = await registry.resolve_culture(
+        result = await registry.resolve_name_style(
             category="writing",
             language="en",
-            culture_id="minimalist",
+            style_id="minimalist",
         )
 
         assert "Keep it simple. No adverbs." in result
-        assert "culture_id" not in result
+        assert "style_id" not in result
         assert "version" not in result

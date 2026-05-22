@@ -51,14 +51,14 @@ class FakePromptRegistry:
     ) -> ResolvedPrompt:
         return self._resolved
 
-    async def resolve_culture(
+    async def resolve_name_style(
         self,
         *,
         category: str,
         language: str,
-        culture_id: str,
+        style_id: str,
     ) -> str:
-        self.last_name_style = culture_id
+        self.last_name_style = style_id
         self.last_category = category
         self.last_language = language
         return self._culture_content
@@ -136,12 +136,12 @@ class TestCultureInjection:
         ctx = PromptContext(language="en", extra={"name_style": "german_literary"})
         result = await composer.build(LLMIntent.WRITE, ctx)
 
-        # resolve_culture should NOT have been called
+        # resolve_name_style should NOT have been called
         assert registry.last_name_style is None
         assert result.system == "Write a chapter."
 
     async def test_culture_resolved_with_correct_parameters(self) -> None:
-        """Verify resolve_culture receives the correct category, language,
+        """Verify resolve_name_style receives the correct category, language,
         and name_style."""
         registry = FakePromptRegistry(
             resolved=_make_resolved(system="Write. {{culture_guidelines}}"),

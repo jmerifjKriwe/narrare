@@ -67,70 +67,70 @@ class TestNameGenerationPrompts:
 class TestCultureDefinitions:
     """Verify bundled culture definition files."""
 
-    @pytest.mark.parametrize("culture_id", _CULTURE_IDS)
+    @pytest.mark.parametrize("style_id", _CULTURE_IDS)
     @pytest.mark.parametrize("language", _CULTURE_LANGUAGES)
     def test_culture_definition_exists(
         self,
-        culture_id: str,
+        style_id: str,
         language: str,
     ) -> None:
         """Each name_style x language combination must have a definition file."""
-        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{style_id}.md"
         assert path.exists(), f"Missing name_style definition: {path}"
 
-    @pytest.mark.parametrize("culture_id", _CULTURE_IDS)
+    @pytest.mark.parametrize("style_id", _CULTURE_IDS)
     @pytest.mark.parametrize("language", _CULTURE_LANGUAGES)
     def test_culture_has_valid_frontmatter(
         self,
-        culture_id: str,
+        style_id: str,
         language: str,
     ) -> None:
         """Name style definitions must have parseable frontmatter."""
-        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{style_id}.md"
         content = path.read_text()
         parsed = parse_frontmatter(content)
         assert parsed.has_frontmatter, f"No frontmatter in {path}"
 
-    @pytest.mark.parametrize("culture_id", _CULTURE_IDS)
+    @pytest.mark.parametrize("style_id", _CULTURE_IDS)
     @pytest.mark.parametrize("language", _CULTURE_LANGUAGES)
     def test_culture_has_required_fields(
         self,
-        culture_id: str,
+        style_id: str,
         language: str,
     ) -> None:
-        """Name style definitions must have culture_id, culture_name, language, version."""
-        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
+        """Name style definitions must have style_id, style_name, language, version."""
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{style_id}.md"
         content = path.read_text()
         parsed = parse_frontmatter(content)
-        required_fields = ("culture_id", "culture_name", "language", "version")
+        required_fields = ("style_id", "style_name", "language", "version")
         for field in required_fields:
             assert field in parsed.metadata, (
                 f"Missing field '{field}' in {path}. Available: {list(parsed.metadata.keys())}"
             )
 
-    @pytest.mark.parametrize("culture_id", _CULTURE_IDS)
+    @pytest.mark.parametrize("style_id", _CULTURE_IDS)
     @pytest.mark.parametrize("language", _CULTURE_LANGUAGES)
     def test_culture_metadata_values(
         self,
-        culture_id: str,
+        style_id: str,
         language: str,
     ) -> None:
         """Name style definition metadata values must be correct."""
-        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{style_id}.md"
         content = path.read_text()
         parsed = parse_frontmatter(content)
-        assert parsed.metadata["culture_id"] == culture_id
+        assert parsed.metadata["style_id"] == style_id
         assert parsed.metadata["language"] == language
 
-    @pytest.mark.parametrize("culture_id", _CULTURE_IDS)
+    @pytest.mark.parametrize("style_id", _CULTURE_IDS)
     @pytest.mark.parametrize("language", _CULTURE_LANGUAGES)
     def test_culture_has_content_body(
         self,
-        culture_id: str,
+        style_id: str,
         language: str,
     ) -> None:
         """Name style definitions must have non-empty body content."""
-        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{culture_id}.md"
+        path = _BUNDLED_ROOT / "generation" / "name-styles" / language / f"{style_id}.md"
         content = path.read_text()
         parsed = parse_frontmatter(content)
         assert len(parsed.content.strip()) > 0, f"Empty content body in {path}"

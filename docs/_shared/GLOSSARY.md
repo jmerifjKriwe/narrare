@@ -373,7 +373,7 @@ Used for voice consistency checking and drift detection.
 
 **Tone**
 The narrative tone for generated text. Nine bundled tones are available:
-dramatic, humorous, contemplative, romantic, dark, adventurous, lyrical,
+dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous,
 quiet, balanced. The "balanced" tone produces no additional tone instructions
 (neutral/default). Users can also define custom tones (up to 20 per user)
 via the Tone Library in settings. Custom tones are stored as `{id, name, instructions}`

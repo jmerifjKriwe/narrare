@@ -49,12 +49,12 @@ class FakePromptRegistry:
     ) -> ResolvedPrompt:
         return self._resolved
 
-    async def resolve_culture(
+    async def resolve_name_style(
         self,
         *,
         category: str,
         language: str,
-        culture_id: str,
+        style_id: str,
     ) -> str:
         return ""
 

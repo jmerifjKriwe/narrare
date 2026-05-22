@@ -3,6 +3,8 @@
 Extracted from ``router.py`` for RULE-04 compliance (max 150 lines).
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, WebSocket

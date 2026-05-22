@@ -1,9 +1,9 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import { generationApi } from "@/lib/api/client";
+import { useEffect, useRef, useState } from "react";
+import { generationApi, novelsApi } from "@/lib/api/client";
 import { NAME_STYLE_SUGGESTIONS } from "@/lib/constants/name-styles";
 import type { Gender, NameGenerateRequest, NameGenerateResponse, NameType } from "@/types";
 import { NameResults } from "./NameResults";
@@ -44,6 +44,21 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
   const [explanationLanguage, setExplanationLanguage] = useState("en");
   const [results, setResults] = useState<NameGenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch novel to determine default explanation_language from writing_language
+  const { data: novel } = useQuery({
+    queryKey: ["novels", novelId],
+    queryFn: () => novelsApi.get(novelId),
+  });
+
+  // Sync explanation_language from novel's writing_language — only once on first load
+  const languageSynced = useRef(false);
+  useEffect(() => {
+    if (novel?.writing_language && !languageSynced.current) {
+      setExplanationLanguage(novel.writing_language);
+      languageSynced.current = true;
+    }
+  }, [novel?.writing_language]);
 
   const generateMutation = useMutation({
     mutationFn: (request: NameGenerateRequest) => generationApi.generateNames(request),

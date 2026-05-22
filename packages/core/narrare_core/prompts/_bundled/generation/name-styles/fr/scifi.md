@@ -1,6 +1,6 @@
 ---
-culture_id: scifi
-culture_name: Sci-Fi
+style_id: scifi
+style_name: Sci-Fi
 language: fr
 version: "1.0.0"
 ---

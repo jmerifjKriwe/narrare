@@ -62,6 +62,8 @@ def _configure_development_logging(
 
     # Clear existing handlers (idempotent)
     root = logging.getLogger()
+    for handler in root.handlers[:]:
+        handler.close()
     root.handlers.clear()
     root.setLevel(logging.DEBUG)  # Let everything through; handlers filter
 
@@ -140,6 +142,8 @@ def _configure_production_logging(
     """Production: JSON to stdout + error file with full tracebacks."""
     # Clear existing handlers (idempotent)
     root = logging.getLogger()
+    for handler in root.handlers[:]:
+        handler.close()
     root.handlers.clear()
     root.setLevel(log_level)
 

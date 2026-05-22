@@ -30,7 +30,7 @@ Répondez avec un tableau JSON d'objets, contenant chacun :
 - "pronunciation" : guide de prononciation facultatif
 - "meaning" : signification ou origine facultative
 - "type" : le type de nom
-- "culture" : le style de nom utilisé
+- "name_style" : le style de nom utilisé
 
 ### Règles
 
