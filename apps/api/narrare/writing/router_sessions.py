@@ -5,12 +5,9 @@ Extracted from ``router.py`` for RULE-04 compliance (max 150 lines).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from uuid import UUID  # noqa: TC003 — needed at runtime for Pydantic ForwardRef resolution
 
 from fastapi import APIRouter, WebSocket
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 from narrare._app.dependencies import get_composer, get_model_registry
 

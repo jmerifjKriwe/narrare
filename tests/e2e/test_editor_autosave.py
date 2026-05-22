@@ -119,20 +119,17 @@ class TestEditorAutosave:
 
             _click_next(page)
 
-        # Complete wizard
-        complete_selectors = [
-            'button:has-text("Finish")',
-            'button:has-text("Complete")',
-            'button:has-text("Start")',
-            'button:has-text("Erstellen")',
-            'button:has-text("Bestätigen")',
-        ]
-        for selector in complete_selectors:
-            locator = page.locator(selector).first
-            if locator.is_visible():
-                with page.expect_response("**/api/v1/setup/complete", timeout=15000):
-                    locator.click()
-                break
+        # Wait for step 5 (confirmation) to render before looking for the complete button.
+        # Without this wait, the test immediately checks is_visible() on selectors that
+        # haven't rendered yet, silently skips the loop, and wait_for_url times out.
+        page.locator('[data-testid="wizard-complete"]').first.wait_for(
+            state="visible", timeout=15000
+        )
+
+        # Complete wizard — use data-testid selector (most reliable, matches WizardStep5.tsx)
+        complete_button = page.locator('[data-testid="wizard-complete"]').first
+        with page.expect_response("**/api/v1/setup/complete", timeout=15000):
+            complete_button.click()
 
         # Wait for redirect to novel editor
         page.wait_for_url(f"{base_url}/novel/**", timeout=15000)

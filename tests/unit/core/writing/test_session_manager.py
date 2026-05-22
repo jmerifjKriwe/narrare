@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -118,6 +119,22 @@ class TestSessionLifecycle:
         state = await manager.get_session(uuid4())
         assert state is None
 
+    async def test_get_session_inactive_returns_none(
+        self, manager: SessionManager, cache: InMemoryCache
+    ) -> None:
+        chapter_id, project_id, user_id = _uuids()
+        session_id = await manager.create_session(chapter_id, project_id, user_id)
+
+        # Manually set is_active=False in the cached JSON (without deleting key)
+        key = f"writing:session:{session_id}"
+        raw = cache._data[key]
+        data = json.loads(raw)
+        data["is_active"] = False
+        cache._data[key] = json.dumps(data)
+
+        state = await manager.get_session(session_id)
+        assert state is None
+
 
 # ---------------------------------------------------------------------------
 # History management
@@ -176,6 +193,25 @@ class TestHistoryManagement:
         state = await manager.get_session(session_id)
         assert state is not None
         assert len(state.conversation_history) == 10
+
+    async def test_system_messages_exceed_cap_drops_user_messages(
+        self, manager: SessionManager
+    ) -> None:
+        chapter_id, project_id, user_id = _uuids()
+        session_id = await manager.create_session(chapter_id, project_id, user_id)
+
+        for i in range(25):
+            await manager.add_message(session_id, "system", f"System {i}")
+
+        await manager.add_message(session_id, "user", "Some user message")
+        await manager.add_message(session_id, "user", "Another user message")
+
+        state = await manager.get_session(session_id)
+        assert state is not None
+        system_msgs = [m for m in state.conversation_history if m["role"] == "system"]
+        user_msgs = [m for m in state.conversation_history if m["role"] == "user"]
+        assert len(system_msgs) == 25
+        assert len(user_msgs) == 0
 
 
 # ---------------------------------------------------------------------------

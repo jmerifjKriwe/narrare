@@ -1,12 +1,8 @@
 """Tests for writing/context_assembler.py — overflow, bypass, ranking, edge cases.
 
 Split from test_context_assembler.py for RULE-04 compliance.
-
-Covers:
-1. Budget overflow — large chapter content truncated to fit
-2. Pinned bypass — pinned items included regardless of budget
-3. Relevance ranking — entities sorted by weighted score
-4. Edge cases — empty input, custom token counter, frontmatter parsing
+Covers: budget overflow, pinned bypass, relevance ranking, tier 3 truncation
+priority, edge cases (empty input, custom token counter, frontmatter parsing).
 """
 
 from __future__ import annotations
@@ -221,6 +217,44 @@ class TestRelevanceRanking:
             recency=0.0,
         )
         assert entity.relevance_score == 0.0
+
+
+class TestTier3TruncationPriority:
+    @pytest.mark.asyncio
+    async def test_factions_truncated_first(self) -> None:
+        ctx = await WritingContextAssembler(total_budget=15).assemble(
+            chapter_content="x",
+            kb_entities=[
+                _entity("fac-1", "faction", "Rebels", "hero.", is_referenced=True),
+                _entity("loc-1", "location", "Forest", "hero.", is_referenced=True),
+                _entity("char-1", "character", "Alice", "hero.", is_referenced=True),
+            ],
+        )
+        assert ctx.kb_factions == "" and ctx.kb_locations != "" and ctx.kb_characters != ""
+
+    @pytest.mark.asyncio
+    async def test_locations_truncated_before_characters(self) -> None:
+        ctx = await WritingContextAssembler(total_budget=20).assemble(
+            chapter_content="x",
+            kb_entities=[
+                _entity("fac-1", "faction", "Rebels", "word " * 40, is_referenced=True),
+                _entity("loc-1", "location", "Forest", "word " * 40, is_referenced=True),
+                _entity("char-1", "character", "Alice", "hero.", is_referenced=True),
+            ],
+        )
+        assert ctx.kb_factions == "" and ctx.kb_characters != ""
+
+    @pytest.mark.asyncio
+    async def test_characters_survive_longest(self) -> None:
+        ctx = await WritingContextAssembler(total_budget=8).assemble(
+            chapter_content="x",
+            kb_entities=[
+                _entity("fac-1", "faction", "Rebels", "word " * 20, is_referenced=True),
+                _entity("loc-1", "location", "Forest", "word " * 20, is_referenced=True),
+                _entity("char-1", "character", "Alice", "hero.", is_referenced=True),
+            ],
+        )
+        assert ctx.kb_factions == "" and ctx.kb_locations == "" and ctx.kb_characters != ""
 
 
 class TestEdgeCases:

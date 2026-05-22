@@ -174,6 +174,12 @@ class TestWordCount:
         result = processor.process(text, word_target=100)
         assert result == text
 
+    def test_truncation_below_minimum_returns_original(self, processor: DraftProcessor) -> None:
+        first_sentence = "Long sentence here with many words that goes on and on and finally"
+        text = f"{first_sentence} ends. " + " ".join(f"word{i}" for i in range(10))
+        result = processor.process(text, word_target=20, is_partial=True)
+        assert result == text
+
 
 # ---------------------------------------------------------------------------
 # 4. Empty / edge cases
@@ -225,3 +231,31 @@ class TestEdgeCases:
         assert "```" not in result
         assert "Chapter 1" not in result
         assert result == "The story begins here."
+
+
+# ---------------------------------------------------------------------------
+# 5. Public API — wrappers tested directly
+# ---------------------------------------------------------------------------
+
+
+class TestPublicAPI:
+    """Public wrapper methods tested directly."""
+
+    def test_strip_artifacts_removes_boilerplate(self, processor: DraftProcessor) -> None:
+        text = "Here is your chapter draft:\n\nProse."
+        assert processor.strip_artifacts(text) == "Prose."
+
+    def test_normalise_markdown_collapses_blank_lines(self, processor: DraftProcessor) -> None:
+        text = "text\n\n\n\nmore"
+        assert processor.normalise_markdown(text) == "text\n\nmore"
+
+    def test_remove_incomplete_trailing_truncates_fragment(self, processor: DraftProcessor) -> None:
+        text = "First. Second. Incom"
+        assert processor.remove_incomplete_trailing(text) == "First. Second."
+
+    def test_enforce_word_target_truncates(self, processor: DraftProcessor) -> None:
+        words = [f"w{i}." for i in range(150)]
+        text = " ".join(words)
+        result = processor.enforce_word_target(text, word_target=100)
+        result_words = len(result.split())
+        assert 90 <= result_words <= 110

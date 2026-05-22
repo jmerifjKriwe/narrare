@@ -24,7 +24,9 @@ class TestWizardCompletion:
 
     def verify_wizard_state(self, page: Page) -> None:
         """Verify wizard state before completion."""
-        page.wait_for_load_state("networkidle")
+        # NOTE: Replaced networkidle (unreliable with persistent connections like SSE/polling)
+        # with a simple debounce. The wizard DOM is already rendered at this point — we only
+        # need a brief pause for any pending micro-tasks to settle.
         page.wait_for_timeout(500)
 
         # Check current wizard step by looking for step 5 specific content
