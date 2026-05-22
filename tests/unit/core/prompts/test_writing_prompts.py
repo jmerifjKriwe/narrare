@@ -23,8 +23,18 @@ _BUNDLED_ROOT = Path(__file__).parent.parent.parent.parent.parent / (
 _WRITING_LANGUAGES = ("en", "de", "fr")
 _WRITING_MODES = ("new_chapter", "scene_by_scene", "interview", "interactive_session")
 
-# Expected tone IDs
-_TONE_IDS = ("dramatic", "quiet", "suspenseful", "balanced")
+# Expected tone IDs — all 9 bundled tones
+_TONE_IDS = (
+    "adventurous",
+    "balanced",
+    "contemplative",
+    "dark",
+    "dramatic",
+    "humorous",
+    "quiet",
+    "romantic",
+    "suspenseful",
+)
 
 # Required variable placeholders that ALL writing prompts must contain
 _REQUIRED_VARIABLES = (
@@ -232,11 +242,11 @@ class TestToneVariants:
         assert len(parsed.content.strip()) > 0, f"Empty content body in {path}"
 
     def test_total_tone_file_count(self) -> None:
-        """Verify total expected count: 4 tone files."""
+        """Verify total expected count: 9 tone files (all bundled tones)."""
         tones_dir = _BUNDLED_ROOT / "writing" / "tones"
         md_files = list(tones_dir.glob("*.md"))
-        assert len(md_files) == 4, (
-            f"Expected 4 tone files, found {len(md_files)}: {[str(p) for p in md_files]}"
+        assert len(md_files) == 9, (
+            f"Expected 9 tone files, found {len(md_files)}: {[str(p) for p in md_files]}"
         )
 
 
