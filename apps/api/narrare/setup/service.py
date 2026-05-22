@@ -98,7 +98,7 @@ class SetupService:
             title=state.title,
             author=state.author,
             genre=state.genre,
-            writing_language=state.language,
+            writing_language=state.writing_language,
             tone=state.tone.value,
             story_structure=state.story_structure.value,
             logline=state.logline,
@@ -165,19 +165,16 @@ class SetupService:
         project_settings = ProjectSettings(
             novel_id=novel.id,
             autosave_interval=state.autosave_interval,
-            default_language=state.language,
+            default_language=state.writing_language,
             ai_provider=ai_provider_name,
             ai_model=ai_model,
         )
         self._session.add(project_settings)
 
-        # Update user settings with preferred language
-        from narrare.settings.schemas import UpdateUserSettingsRequest
-
-        await self._user_settings_repo.update(
-            uid,
-            UpdateUserSettingsRequest(ui_language=state.language),
-        )
+        # NOTE: Do NOT set ui_language from writing_language — they are
+        # orthogonal. UI language is managed by next-intl based on browser
+        # locale. Writing language is the novel's creative language.
+        # (Previously this incorrectly set ui_language=state.language)
 
         # Load demo content if selected
         if state.starter in (

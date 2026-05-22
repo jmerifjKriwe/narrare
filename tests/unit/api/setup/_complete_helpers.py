@@ -63,7 +63,7 @@ def _make_wizard_state(**overrides: object) -> WizardState:
     """Create a WizardState with sensible defaults."""
     defaults: dict[str, object] = {
         "project_name": "Test Project",
-        "language": "en",
+        "writing_language": "en",
         "autosave_interval": 30,
         "title": "Test Novel",
         "author": "Test Author",

@@ -57,7 +57,7 @@ class TestComplete:
         user_id = str(uuid.uuid4())
         state = _make_wizard_state(
             autosave_interval=60,
-            language="de",
+            writing_language="de",
         )
 
         await complete_service.complete(user_id, state)
@@ -68,17 +68,19 @@ class TestComplete:
         assert project_settings.autosave_interval == 60
         assert project_settings.default_language == "de"
 
-    async def test_complete_updates_user_settings(self, complete_service: SetupService) -> None:
-        """Verify user settings are updated with the selected language."""
+    async def test_complete_does_not_update_user_settings(
+        self, complete_service: SetupService
+    ) -> None:
+        """Verify user settings are NOT updated — writing_language != ui_language."""
         fake_user_repo = complete_service._user_settings_repo  # type: ignore[assignment]
         user_id = uuid.uuid4()
-        state = _make_wizard_state(language="fr")
+        state = _make_wizard_state(writing_language="fr")
 
         await complete_service.complete(str(user_id), state)
 
-        assert len(fake_user_repo.calls) == 1  # type: ignore[attr-defined]
-        assert fake_user_repo.calls[0]["user_id"] == user_id  # type: ignore[attr-defined]
-        assert fake_user_repo.calls[0]["request"].ui_language == "fr"  # type: ignore[attr-defined]
+        # update() should NOT be called — writing language must not bleed into
+        # UI language (they are orthogonal concerns).
+        assert len(fake_user_repo.calls) == 0  # type: ignore[attr-defined]
 
     async def test_complete_with_demo_fantasy_redirects_to_editor(
         self,
@@ -127,7 +129,7 @@ class TestComplete:
         svc = _make_service(fake_provider_service, fake_demo_loader)
 
         user_id = str(uuid.uuid4())
-        state = _make_wizard_state(starter=StarterContent.DEMO_GERMAN, language="de")
+        state = _make_wizard_state(starter=StarterContent.DEMO_GERMAN, writing_language="de")
 
         result = await svc.complete(user_id, state)
 

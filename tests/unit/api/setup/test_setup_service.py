@@ -51,20 +51,20 @@ def service(
 
 class TestValidateStep1:
     async def test_valid_request_returns_response(self, service: SetupService) -> None:
-        req = Step1LocationRequest(project_name="My Project", language="en")
+        req = Step1LocationRequest(project_name="My Project", writing_language="en")
         result = await service.validate_step1(req)
         assert result.valid is True
         assert result.project_name == "My Project"
 
     async def test_unsupported_language_raises_422(self, service: SetupService) -> None:
-        req = Step1LocationRequest(project_name="Project", language="ja")
+        req = Step1LocationRequest(project_name="Project", writing_language="ja")
         with pytest.raises(ValidationError) as exc:
             await service.validate_step1(req)
         assert "ja" in str(exc.value)
 
     async def test_supported_languages_accepted(self, service: SetupService) -> None:
         for lang in ("en", "de", "fr"):
-            req = Step1LocationRequest(project_name="Project", language=lang)
+            req = Step1LocationRequest(project_name="Project", writing_language=lang)
             result = await service.validate_step1(req)
             assert result.valid is True
 

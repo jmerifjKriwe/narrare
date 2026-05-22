@@ -18,36 +18,38 @@ from narrare.setup.schemas import (
 
 class TestStep1LocationRequest:
     def test_valid_project_name(self) -> None:
-        req = Step1LocationRequest(project_name="My Novel Project", language="en")
+        req = Step1LocationRequest(project_name="My Novel Project", writing_language="en")
         assert req.project_name == "My Novel Project"
 
     def test_invalid_characters_in_name(self) -> None:
         with pytest.raises(ValidationError, match="invalid characters"):
-            Step1LocationRequest(project_name="Novel/Project", language="en")
+            Step1LocationRequest(project_name="Novel/Project", writing_language="en")
 
     def test_slash_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            Step1LocationRequest(project_name="a/b", language="en")
+            Step1LocationRequest(project_name="a/b", writing_language="en")
 
     def test_backslash_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            Step1LocationRequest(project_name="a\\b", language="en")
+            Step1LocationRequest(project_name="a\\b", writing_language="en")
 
     def test_empty_name_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            Step1LocationRequest(project_name="", language="en")
+            Step1LocationRequest(project_name="", writing_language="en")
 
     def test_autosave_defaults_to_30(self) -> None:
-        req = Step1LocationRequest(project_name="Novel", language="en")
+        req = Step1LocationRequest(project_name="Novel", writing_language="en")
         assert req.autosave_interval == 30
 
     def test_autosave_zero_allowed(self) -> None:
-        req = Step1LocationRequest(project_name="Novel", language="en", autosave_interval=0)
+        req = Step1LocationRequest(project_name="Novel", writing_language="en", autosave_interval=0)
         assert req.autosave_interval == 0
 
     def test_autosave_above_max_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            Step1LocationRequest(project_name="Novel", language="en", autosave_interval=3601)
+            Step1LocationRequest(
+                project_name="Novel", writing_language="en", autosave_interval=3601
+            )
 
 
 class TestStoryStructureEnum:
@@ -87,7 +89,7 @@ class TestWizardState:
     def test_constructs_with_all_fields(self) -> None:
         state = WizardState(
             project_name="Test",
-            language="en",
+            writing_language="en",
             autosave_interval=30,
             title="My Novel",
             author="Test Author",

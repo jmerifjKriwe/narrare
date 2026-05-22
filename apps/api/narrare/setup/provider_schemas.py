@@ -55,7 +55,7 @@ class WizardState(BaseModel):
 
     # Step 1
     project_name: str
-    language: str
+    writing_language: str
     autosave_interval: int
     # Step 2
     title: str

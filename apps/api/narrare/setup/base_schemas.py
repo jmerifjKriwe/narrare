@@ -54,7 +54,7 @@ class AIProvider(StrEnum):
 
 class Step1LocationRequest(BaseModel):
     project_name: str = Field(min_length=1, max_length=100)
-    language: str = Field(default="en", min_length=2, max_length=10)
+    writing_language: str = Field(default="en", min_length=2, max_length=10)
     autosave_interval: int = Field(default=30, ge=0, le=3600)
 
     @field_validator("project_name")
@@ -72,7 +72,7 @@ class Step1LocationRequest(BaseModel):
 class Step1LocationResponse(BaseModel):
     valid: bool
     project_name: str
-    language: str
+    writing_language: str
     autosave_interval: int
 
 

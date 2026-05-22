@@ -42,16 +42,16 @@ async def validate_step1(request: Step1LocationRequest) -> Step1LocationResponse
     Raises:
         ValidationError: If validation fails.
     """
-    if request.language not in _SUPPORTED_LANGUAGES:
+    if request.writing_language not in _SUPPORTED_LANGUAGES:
         raise ValidationError(
-            f"Language '{request.language}' not supported. "
+            f"Language '{request.writing_language}' not supported. "
             f"Supported: {sorted(_SUPPORTED_LANGUAGES)}"
         )
 
     return Step1LocationResponse(
         valid=True,
         project_name=request.project_name,
-        language=request.language,
+        writing_language=request.writing_language,
         autosave_interval=request.autosave_interval,
     )
 
