@@ -35,7 +35,9 @@ export async function proxy(request: NextRequest) {
 
   try {
     const secret = new TextEncoder().encode(
-      process.env.AUTH_JWT_SECRET ?? "change-me-run-just-generate-secret",
+      process.env.AUTH_JWT_SECRET ??
+        process.env.SECRET_KEY ??
+        "dev-secret-key-change-in-production-min-32-chars",
     );
     await jwtVerify(token, secret);
     return NextResponse.next();

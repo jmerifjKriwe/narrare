@@ -359,6 +359,8 @@ REDIS_URL=redis://localhost:6379/0
 
 # Auth
 SECRET_KEY=<generate with: just generate-secret>
+# Must match SECRET_KEY (used by frontend proxy for JWT verification)
+AUTH_JWT_SECRET=${SECRET_KEY}
 ENVIRONMENT=development
 
 # AI Providers (at least one required)

@@ -65,6 +65,10 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Focus mode exit: ESC key handler + floating Minimize2 button (semi-transparent)
 - Demo project metadata.json files (author, logline, pov, tags) for all 3 starters
 
+### Fixed
+
+- JWT secret fallback chain in `proxy.ts`: added `process.env.SECRET_KEY` as second fallback (matching backend's env var). Previously only checked `AUTH_JWT_SECRET`, causing verification failures on protected routes when only `SECRET_KEY` was set.
+
 ### Changed
 
 - Setup wizard steps 2↔3 swapped: starter selection now comes before novel details
