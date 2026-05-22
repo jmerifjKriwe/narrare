@@ -202,7 +202,7 @@ test:
 
 # Run unit tests only (fast, no Docker needed, parallel)
 test-unit:
-    uv run pytest tests/unit/ -v -n auto
+    uv run pytest tests/unit/ -v -n auto --dist loadfile
 
 # Run tests single-threaded (for debugging)
 test-single file="tests/":
