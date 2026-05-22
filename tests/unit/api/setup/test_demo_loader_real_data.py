@@ -233,8 +233,8 @@ class TestLoadKBEntryCounts:
         not FANTASY_KB.exists(),
         reason="Fantasy demo data not available",
     )
-    def test_fantasy_kb_has_15_entries(self) -> None:
-        """Fantasy demo should have 15 KB entry files."""
+    def test_fantasy_kb_has_16_entries(self) -> None:
+        """Fantasy demo should have 16 KB entry files."""
         kb_files = list(self.FANTASY_KB.glob("*.md"))
         assert len(kb_files) == 16
 

@@ -18,10 +18,6 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
-import pytest
-
-pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
-
 
 class TestValidateStep1:
     async def test_valid_step1(self, client: AsyncClient) -> None:
@@ -29,7 +25,7 @@ class TestValidateStep1:
             "/api/v1/setup/validate/step-1",
             json={
                 "project_name": "My Fantasy Novel",
-                "language": "en",
+                "writing_language": "en",
                 "autosave_interval": 30,
             },
         )
@@ -37,12 +33,12 @@ class TestValidateStep1:
         validated = Step1LocationResponse.model_validate(response.json())
         assert validated.valid is True
 
-    async def test_unsupported_language_rejected(self, client: AsyncClient) -> None:
+    async def test_short_language_code_rejected(self, client: AsyncClient) -> None:
         response = await client.post(
             "/api/v1/setup/validate/step-1",
             json={
                 "project_name": "My Novel",
-                "language": "zh",
+                "writing_language": "x",
             },
         )
         assert response.status_code == 422
@@ -52,7 +48,7 @@ class TestValidateStep1:
             "/api/v1/setup/validate/step-1",
             json={
                 "project_name": "Invalid/Name",
-                "language": "en",
+                "writing_language": "en",
             },
         )
         assert response.status_code == 422
@@ -62,7 +58,7 @@ class TestValidateStep1:
             "/api/v1/setup/validate/step-1",
             json={
                 "project_name": "Mein Roman",
-                "language": "de",
+                "writing_language": "de",
             },
         )
         assert response.status_code == 200
@@ -119,7 +115,7 @@ class TestValidateStep3:
         validated = Step3StarterResponse.model_validate(response.json())
         assert validated.valid is True
         assert validated.demo_info is not None
-        assert validated.demo_info.title == "Im stillen Wald"
+        assert validated.demo_info.title == "Im Stillen Wald"
         assert validated.demo_info.language == "de"
 
     async def test_fantasy_demo_returns_info(self, client: AsyncClient) -> None:
@@ -181,7 +177,7 @@ class TestCompleteSetup:
             json={
                 "state": {
                     "project_name": "Test Project",
-                    "language": "en",
+                    "writing_language": "en",
                     "autosave_interval": 30,
                     "title": "My Test Novel",
                     "author": "Test Author",
@@ -218,9 +214,9 @@ class TestCompleteSetup:
             json={
                 "state": {
                     "project_name": "Stiller Wald",
-                    "language": "de",
+                    "writing_language": "de",
                     "autosave_interval": 30,
-                    "title": "Im stillen Wald",
+                    "title": "Im Stillen Wald",
                     "author": "",
                     "genre": "literary_fiction",
                     "logline": "",
@@ -254,7 +250,7 @@ class TestCompleteSetup:
             json={
                 "state": {
                     "project_name": "DB Test",
-                    "language": "en",
+                    "writing_language": "en",
                     "autosave_interval": 30,
                     "title": "DB Test Novel",
                     "author": "Test",
@@ -299,7 +295,7 @@ class TestCompleteSetup:
             json={
                 "state": {
                     "project_name": "Settings Test",
-                    "language": "en",
+                    "writing_language": "en",
                     "autosave_interval": 30,
                     "title": "Settings Test Novel",
                     "author": "Test",

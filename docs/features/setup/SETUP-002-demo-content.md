@@ -1,7 +1,7 @@
 ---
 id: SETUP-002
 title: "Demo Projects"
-status: in progress
+status: done
 area: setup
 mvp: true
 
@@ -137,63 +137,80 @@ glauben — aber der Preis für diesen Glauben ist höher als sie dachte.
 ## File Structure
 
 ```
-scripts/demo_data/
-  german/
-    project.md                ← novel metadata (title, genre, language, tone) ✅
+apps/api/narrare/setup/demo_data/
+  de/im-stillen-wald/
+    metadata.json            ← novel metadata (JSON, not project.md)
     chapters/
-      ch-de-001-fluestern.md  ← "Das Flüstern im Wald" ✅
-      ch-de-002-grenze-welten.md ← "Grenze der Welten" ✅
+      ch-de-001-fluestern.md
+      ch-de-002-grenze-welten.md
     kb/
-      char-anna.md            ← Anna Müller ✅
-      char-johann.md          ← Johann Bauer ✅
-      char-waldgeist.md       ← Der Waldgeist ✅
-      loc-foersterhaus.md     ← Das Försterhaus ✅
-      loc-wald.md             ← Der stille Wald ✅
-      loc-dorf.md             ← Das Dorf ✅
+      char-anna.md, char-johann.md, char-waldgeist.md
+      loc-foersterhaus.md, loc-wald.md, loc-dorf.md
 
-  english/echoes-of-the-thornwall/
-    project.md                ✅
+  en/echoes-of-the-thornwall/
+    metadata.json
     chapters/
-      ch-en-001-compass-points.md ✅
-      ch-en-002-secrets-stone.md ✅
-      ch-en-003-silent-keep.md ✅
-      ch-en-004-archive-truth.md ✅
+      ch-en-001-compass-points.md
+      ch-en-002-secrets-stone.md
+      ch-en-003-silent-keep.md
+      ch-en-004-archive-truth.md
     kb/
-      char-elara.md, char-kaelen.md, char-morven.md, char-sera.md, char-verrick.md ✅
-      loc-aethelgard.md, loc-silver-flame-fortress.md, loc-temple-silent-flames.md, loc-thornwall.md ✅
-      obj-compass.md ✅
-      fact-ashen-covenant.md, fact-silver-flame.md ✅
-      sys-cataclysm.md, sys-political.md, sys-void-magic.md ✅
+      char-elara.md, char-kaelen.md, char-morven.md, char-sera.md, char-verrick.md
+      loc-aethelgard.md, loc-silver-flame-fortress.md, loc-temple-silent-flames.md, loc-thornwall.md
+      obj-compass.md
+      fact-ashen-covenant.md, fact-silver-flame.md
+      sys-cataclysm.md, sys-political.md, sys-void-magic.md
+      timeline-cataclysm.md
 
-  english/dead-signal/
-    project.md                ✅
+  en/dead-signal/
+    metadata.json
     chapters/
-      ch-en-ds-001-ghost-machine.md ✅
-      ch-en-ds-002-door-worlds.md ✅
-      ch-en-ds-003-signal-lost.md ✅
+      ch-en-ds-001-ghost-machine.md
+      ch-en-ds-002-door-worlds.md
+      ch-en-ds-003-signal-lost.md
     kb/
-      char-aria.md, char-kavic.md, char-maya.md ✅
-      loc-earth-facility-7.md, loc-horizon.md ✅
-      obj-resonator.md ✅
-      sys-comm.md, sys-tech.md ✅
+      char-aria.md, char-kavic.md, char-maya.md
+      loc-earth-facility-7.md, loc-horizon.md
+      obj-resonator.md
+      sys-comm.md, sys-tech.md
 ```
 
 ## Frontmatter Standards for Demo Files
 
-### project.md
-```yaml
----
-id: novel-im-stillen-wald
-title: "Im stillen Wald"
-author: ""
-genre: "literary_fiction"
-language: de
-tone: contemplative
-story_structure: three_act
-logline: "Eine Lehrerin sucht Beweise für das Übernatürliche und findet stattdessen sich selbst."
-demo: true
-demo_id: german
----
+### metadata.json
+```json
+{
+  "id": "demo-fantasy",
+  "title": "Echoes of the Thornwall",
+  "genre": "Fantasy",
+  "language": "en",
+  "description": "A young mage must navigate political intrigue...",
+  "stats": {
+    "characters": 5,
+    "locations": 4,
+    "factions": 2,
+    "objects": 1,
+    "systems": 2,
+    "timelines": 1,
+    "chapters": 4,
+    "wordcount": 3130
+  },
+  "features": [
+    "Multi-POV narrative (3 perspectives)",
+    "Political intrigue and faction dynamics",
+    "Magic system with consequences",
+    "Pre-built knowledge graph with relationships",
+    "Context assembly demonstration"
+  ],
+  "project_md": {
+    "title": "Echoes of the Thornwall",
+    "author": "Narrare Demo",
+    "genre": "Fantasy",
+    "pov": "Third Person Limited (Multiple)",
+    "logline": "When an ancient order begins hunting those with forbidden magic, a young mage must choose between safety and rebellion.",
+    "tags": ["fantasy", "magic", "political-intrigue", "multi-pov"]
+  }
+}
 ```
 
 ### Chapter files
@@ -244,8 +261,8 @@ status: planned
 
 ## How it works (Technical)
 
-**Entry point:** `setup/router.py` → `POST /api/v1/setup/load-demo`
-**Service:** `SetupService.load_demo_content()` in `setup/service.py`
+**Entry point:** Demo loading is triggered automatically via `POST /api/v1/setup/complete` when `starter` is `demo_fantasy`, `demo_scifi`, or `demo_german`. No separate endpoint.
+**Service:** `DemoLoader.load()` in `setup/demo_loader.py` — called by `SetupService.complete()`
 **Contract:** `SetupServiceProtocol` in `setup/contracts.py`
 **Prompt:** ~ (no LLM calls)
 
@@ -253,7 +270,7 @@ status: planned
 
 `SetupService.load_demo_content(starter: StarterContent, novel_id: UUID)`:
 
-1. Reads `project.md` → creates `Novel` DB record
+1. Novel record is created by SetupService.complete() from wizard state. DemoLoader then reads chapter/KB files from demo_data/ and creates corresponding records.
 2. For each chapter file → creates `Chapter` DB record with content + position
 3. For each KB file → creates `KBEntry` DB record with entity type + name + content
 4. Sets project settings (language, genre, tone) from project.md frontmatter
@@ -272,8 +289,8 @@ All three demo projects are **complete** and ready for use:
 | Demo | Chapters | KB Entries | Status |
 |------|----------|------------|--------|
 | **Im stillen Wald** (German) | 2 | 6 | ✅ Complete |
-| **Echoes of the Thornwall** (Fantasy) | 4 | 13 | ✅ Complete |
-| **Dead Signal** (Sci-Fi) | 3 | 7 | ✅ Complete |
+| **Echoes of the Thornwall** (Fantasy) | 4 | 16 | ✅ Complete |
+| **Dead Signal** (Sci-Fi) | 3 | 8 | ✅ Complete |
 
 ### German Demo: Im stillen Wald ✅
 - **Chapters:** `ch-de-001-fluestern.md`, `ch-de-002-grenze-welten.md`
@@ -324,3 +341,4 @@ All three demo projects are **complete** and ready for use:
   - German: 2 chapters + 6 KB entries ✅
   - Fantasy: 4 chapters + 13 KB entries ✅
   - Sci-Fi: 3 chapters + 7 KB entries ✅
+- `2026-05-22` — Spec synchronized with implementation. File paths, metadata format, KB counts, and API endpoint corrected.

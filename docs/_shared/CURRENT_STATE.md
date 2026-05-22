@@ -64,19 +64,19 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 ### Demo Content (complete)
 
-**German demo ("Im stillen Wald") — `scripts/demo_data/german/im-stillen-wald/`:**
+**German demo ("Im stillen Wald") — `apps/api/narrare/setup/demo_data/de/im-stillen-wald/`:**
 - Chapter 1: "Das Flüstern im Wald" (`ch-de-001-fluestern.md`) ✅
 - Chapter 2: "Grenze der Welten" (`ch-de-002-grenze-welten.md`) ✅
-- KB: Der Waldgeist, Das Försterhaus, Der Wald, Das Dorf ✅
-- KB: Charaktere — Anna Müller, Johann Bauer ✅
+- KB: Characters — Anna Müller, Johann Bauer, Der Waldgeist ✅
+- KB: Locations — Das Försterhaus, Der stille Wald, Das Dorf ✅
 
-**Fantasy demo ("Echoes of the Thornwall") — `scripts/demo_data/english/echoes-of-the-thornwall/`:**
+**Fantasy demo ("Echoes of the Thornwall") — `apps/api/narrare/setup/demo_data/en/echoes-of-the-thornwall/`:**
 - 4 chapters (`ch-en-001` through `ch-en-004`) ✅
-- 15 KB entries: 5 characters, 5 locations, 2 factions, 3 systems, 1 object ✅
+- 16 KB entries: 5 characters, 4 locations, 2 factions, 3 systems, 1 object, 1 timeline ✅
 
-**SciFi demo ("Dead Signal") — `scripts/demo_data/english/dead-signal/`:**
+**SciFi demo ("Dead Signal") — `apps/api/narrare/setup/demo_data/en/dead-signal/`:**
 - 3 chapters (`ch-en-ds-001` through `ch-en-ds-003`) ✅
-- 7 KB entries: 3 characters, 2 locations, 1 object, 2 systems ✅
+- 8 KB entries: 3 characters, 2 locations, 1 object, 2 systems ✅
 
 ### Code
 
@@ -417,7 +417,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 #### Infrastructure
 
-- `scripts/` — `check_architecture.py`, `seed_dev_user.py`, `check_commit_message.py`, `demo_data/`, `local/`
+- `scripts/` — `check_architecture.py`, `seed_dev_user.py`, `check_commit_message.py`, `local/`
 - `.devcontainer/` — full dev container setup
 - `.github/workflows/` — CI (`ci.yml`), architecture check (`architecture.yml`), release (`release-please.yml`)
 - Docker Compose (`docker-compose.dev.yml`) for PostgreSQL (pgvector) + Redis
