@@ -68,3 +68,18 @@ async def get_async_session() -> AsyncGenerator[AsyncSession]:
 async def get_engine() -> AsyncEngine:
     """Return the async engine (for migrations and health checks)."""
     return _engine
+
+
+async def dispose_database() -> None:
+    """Dispose the module-level engine and close all pooled connections.
+
+    Called during application shutdown to ensure asyncpg connections are
+    properly closed before the event loop stops.  Without this, connections
+    are garbage-collected with unawaited ``_cancel`` coroutines that
+    produce ``PytestUnraisableExceptionWarning`` under ``filterwarnings=["error"]``.
+    """
+    import structlog
+
+    logger = structlog.get_logger(__name__)
+    await _engine.dispose()
+    logger.info("database_engine_disposed")

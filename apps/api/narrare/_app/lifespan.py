@@ -204,6 +204,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except ImportError:
         pass
 
+    # Database engine shutdown — close all pooled connections
+    try:
+        from narrare._app.database import dispose_database
+
+        await dispose_database()
+        logger.info("database_engine_disposed_lifespan")
+    except Exception:
+        logger.warning("database_dispose_failed", exc_info=True)
+
     logger.info("narrare_api_stopped")
 
 

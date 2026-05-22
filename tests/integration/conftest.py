@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 from typing import TYPE_CHECKING
 
@@ -81,6 +82,23 @@ async def check_db_available() -> None:
         check=True,
         capture_output=True,
     )
+
+
+@pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
+async def _dispose_module_engine() -> AsyncGenerator[None]:  # pyright: ignore[reportUnusedFunction]
+    """Safety net: dispose module-level engine after all integration tests.
+
+    The app lifespan already calls ``dispose_database()`` on shutdown, so
+    this fixture is a belt-and-suspenders cleanup for edge cases where the
+    module-level engine is imported without running the lifespan.
+    """
+    yield
+    try:
+        from narrare._app.database import _engine  # pyright: ignore[reportPrivateUsage]
+
+        await _engine.dispose()
+    except Exception:
+        logging.debug("Safety-net engine dispose failed (already disposed or unavailable)")
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
