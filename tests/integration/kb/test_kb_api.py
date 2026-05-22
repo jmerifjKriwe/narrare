@@ -14,10 +14,7 @@ import pytest
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-pytestmark = [
-    pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues"),
-    pytest.mark.requires_db,
-]
+pytestmark = pytest.mark.requires_db
 
 
 async def _register_user(client: AsyncClient) -> dict[str, str]:

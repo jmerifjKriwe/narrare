@@ -14,13 +14,45 @@ from typing import TYPE_CHECKING
 import pytest
 from sqlalchemy import select, text
 
+from narrare.auth.models import User
+from narrare.novels.models import Novel
 from narrare.settings.models import ProjectSettings
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+
+async def _create_user(session: AsyncSession, user_id: uuid.UUID) -> User:
+    """Insert a minimal User row to satisfy FK constraints."""
+    user = User(
+        id=user_id,
+        email=f"test-{user_id}@example.com",
+        hashed_password="not-a-real-hash",
+    )
+    session.add(user)
+    await session.flush()
+    return user
+
+
+async def _create_novel(session: AsyncSession, novel_id: uuid.UUID) -> Novel:
+    """Insert a minimal Novel row to satisfy FK constraints.
+
+    Novel.user_id references users.id via a DB-level FK (not declared in the
+    ORM model), so we must create a User row first.
+    """
+    user_id = uuid.uuid4()
+    await _create_user(session, user_id)
+    novel = Novel(
+        id=novel_id,
+        user_id=user_id,
+        title="Test Novel for Schema",
+    )
+    session.add(novel)
+    await session.flush()
+    return novel
+
+
 pytestmark = [
-    pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues"),
     pytest.mark.requires_db,
 ]
 
@@ -54,6 +86,7 @@ class TestProjectSettingsTokenLimitProfile:
         includes token_limit_profile but the column was missing from the table.
         """
         novel_id = uuid.uuid4()
+        await _create_novel(db_session, novel_id)
 
         settings = ProjectSettings(
             novel_id=novel_id,
@@ -71,6 +104,7 @@ class TestProjectSettingsTokenLimitProfile:
     async def test_default_value_is_balanced(self, db_session: AsyncSession) -> None:
         """When token_limit_profile is not specified, the server default is 'balanced'."""
         novel_id = uuid.uuid4()
+        await _create_novel(db_session, novel_id)
 
         settings = ProjectSettings(novel_id=novel_id)
         db_session.add(settings)
@@ -85,6 +119,7 @@ class TestProjectSettingsTokenLimitProfile:
     async def test_non_default_profile_value(self, db_session: AsyncSession) -> None:
         """token_limit_profile accepts non-default values like 'quick'."""
         novel_id = uuid.uuid4()
+        await _create_novel(db_session, novel_id)
 
         settings = ProjectSettings(
             novel_id=novel_id,

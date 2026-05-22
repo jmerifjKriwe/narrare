@@ -19,6 +19,8 @@ from narrare._app.main import create_app
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from fastapi import FastAPI
+
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -125,6 +127,38 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
             await transaction.rollback()
 
 
+def _override_factory_deps(app: FastAPI, db_session: AsyncSession) -> None:
+    """Override dependency factories that don't use ``Depends(get_async_session)``.
+
+    Some factories (e.g. ``get_kb_service``) accept ``session: AsyncSession``
+    as a bare parameter instead of ``session = Depends(get_async_session)``.
+    FastAPI therefore treats it as a query parameter and fails with 422.
+    We bypass this by overriding the entire factory with a closure that
+    already captures the test session.
+    """
+    from narrare.kb.dependencies import get_kb_service, get_rel_service
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.relationship_service import RelationshipService
+    from narrare.kb.repository import KBRepository
+    from narrare.kb.service import KBService
+    from narrare.novels.repository import NovelRepository
+
+    def _make_kb_service() -> KBService:
+        return KBService(
+            repo=KBRepository(db_session),
+            novel_repo=NovelRepository(db_session),
+        )
+
+    def _make_rel_service() -> RelationshipService:
+        return RelationshipService(
+            rel_repo=RelationshipRepository(db_session),
+            entry_repo=KBRepository(db_session),
+        )
+
+    app.dependency_overrides[get_kb_service] = _make_kb_service  # type: ignore[assignment]
+    app.dependency_overrides[get_rel_service] = _make_rel_service  # type: ignore[assignment]
+
+
 @pytest_asyncio.fixture(loop_scope="session")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     """Test HTTP client with DB session override."""
@@ -134,6 +168,12 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
         yield db_session
 
     app.dependency_overrides[get_async_session] = override_session
+
+    # Some dependency factories (e.g. KB) accept ``session: AsyncSession``
+    # without ``Depends(get_async_session)``, which prevents FastAPI from
+    # resolving the session through the dependency override above.  We
+    # override these factories directly so they receive the test session.
+    _override_factory_deps(app, db_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c

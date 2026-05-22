@@ -15,10 +15,7 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
 
 
-pytestmark = [
-    pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues"),
-    pytest.mark.requires_db,
-]
+pytestmark = [pytest.mark.requires_db]
 
 
 class TestGetUserAiSettings:
@@ -94,7 +91,7 @@ class TestUpdateUserAiSettings:
             },
             headers=auth_headers,
         )
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     async def test_set_category_override(
         self,

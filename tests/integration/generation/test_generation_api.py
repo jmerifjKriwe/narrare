@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 
+from narrare._app.dependencies import _get_composer_instance
+from narrare.generation.name_service import NameGeneratorService
 from narrare_core.llm.intents import ResolvedModelConfig
-from tests.fakes.fake_llm_gateway import FakeLLMGateway
+from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
-
-pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
-
 
 # Shared mock data for LLM name generation response
 _MOCK_NAMES_JSON = (
@@ -27,11 +27,11 @@ _MOCK_NAMES_JSON = (
 
 
 @pytest.fixture
-def mock_gateway() -> FakeLLMGateway:
-    """Fake LLMGateway that returns structured name data."""
-    gateway = FakeLLMGateway()
-    gateway.returns(_MOCK_NAMES_JSON, model="claude-haiku")
-    return gateway
+def mock_registry() -> FakeModelRegistry:
+    """Fake ModelRegistry that returns structured name data."""
+    registry = FakeModelRegistry()
+    registry.returns(_MOCK_NAMES_JSON)
+    return registry
 
 
 class TestGenerateNames:
@@ -39,13 +39,9 @@ class TestGenerateNames:
         self,
         client: AsyncClient,
         auth_headers: dict[str, str],
-        mock_gateway: FakeLLMGateway,
+        mock_registry: FakeModelRegistry,
     ) -> None:
         """POST /generation/names with valid request returns names."""
-        from narrare._app.dependencies import _get_composer_instance
-        from narrare.generation.name_service import NameGeneratorService
-        from narrare.generation.router import _get_service as original_factory
-
         mock_config = ResolvedModelConfig(
             provider_name="anthropic",
             model_id="claude-haiku-3-5-20241022",
@@ -53,18 +49,22 @@ class TestGenerateNames:
             max_tokens=2000,
         )
 
-        # Use FakeLLMGateway as a registry-compatible object
+        # Use FakeModelRegistry — its run() signature matches the
+        # positional-arg call in NameGeneratorService.generate_names().
         mock_service = NameGeneratorService(
-            registry=mock_gateway,  # FakeLLMGateway exposes run() with kw-only args
+            registry=mock_registry,
             composer=_get_composer_instance(),
             config=mock_config,
         )
 
-        app = client._transport.app  # type: ignore[reportUnknownMemberType]
-
-        app.dependency_overrides[original_factory] = lambda: mock_service
-
-        try:
+        # _get_service is called directly in the route handler (not via
+        # Depends), so dependency_overrides cannot intercept it.
+        # Patch the module-level function instead.
+        with patch(
+            "narrare.generation.router._get_service",
+            new_callable=AsyncMock,
+            return_value=mock_service,
+        ):
             response = await client.post(
                 "/api/v1/generation/names",
                 json={
@@ -77,16 +77,15 @@ class TestGenerateNames:
                 },
                 headers=auth_headers,
             )
-            assert response.status_code == 200
-            data = response.json()
-            assert "names" in data
-            assert "count" in data
-            assert "name_style" in data
-            assert "name_type" in data
-            assert data["name_style"] == "fantasy"
-            assert data["name_type"] == "character"
-        finally:
-            app.dependency_overrides.pop(original_factory, None)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "names" in data
+        assert "count" in data
+        assert "name_style" in data
+        assert "name_type" in data
+        assert data["name_style"] == "fantasy"
+        assert data["name_type"] == "character"
 
     async def test_generate_names_count_over_50_returns_422(
         self,

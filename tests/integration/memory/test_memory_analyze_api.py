@@ -1,20 +1,20 @@
-"""Integration tests for memory API endpoints — including analyze endpoint.
-
-These tests are marked as skip because they require a running database.
-They serve as documentation and can be run in CI with proper infrastructure.
-"""
+"""Integration tests for memory API endpoints — including analyze endpoint."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock
 from uuid import uuid4
+
+import pytest
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-import pytest
-
-pytestmark = pytest.mark.skip(reason="temporarily disabled due to test infrastructure issues")
+# router_analysis.py uses status.HTTP_422_UNPROCESSABLE_ENTITY which triggers
+# a DeprecationWarning in newer Starlette versions. Suppress in this test file
+# since we cannot modify production code.
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 
 class TestRecordFeedback:
@@ -118,12 +118,31 @@ class TestAnalyzePreferences:
         assert response.status_code == 401
 
     async def test_analyze_returns_correct_schema(
-        self, client: AsyncClient, auth_headers: dict[str, str]
+        self, client: AsyncClient, auth_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """POST /memory/analyze returns AnalyzeResponse schema.
 
         This test requires seeding 5+ feedback events first.
+        The LLM agent is mocked to avoid real API calls.
         """
+        from narrare.memory.analysis_service import PreferenceAnalysisService
+        from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
+
+        # Mock _run_agent to avoid real LLM calls — the service's fallback
+        # logic would hang waiting for a TCP timeout without API keys.
+        mock_output = PreferenceAnalysisOutput(
+            summary="Mock analysis result",
+            confidence=0.5,
+            style_patterns=["prefers concise sentences"],
+            content_patterns=["favors dialogue over description"],
+            avoidance_patterns=["dislikes cliffhangers"],
+        )
+        monkeypatch.setattr(
+            PreferenceAnalysisService,
+            "_run_agent",
+            AsyncMock(return_value=mock_output),
+        )
+
         project_id = uuid4()
 
         # Seed 5 feedback events

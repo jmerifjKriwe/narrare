@@ -12,7 +12,7 @@
 
 Date: 2026-05-22
 Updated by: NarrareDevCoordinator
-Session summary: KB dedup integrated for name generator. Backend test coverage gaps closed (62 new tests across prompts/memory/settings/kb). Frontend test coverage gaps closed (47 new tests for 6 components). WRITE-003/004 planning completed. INDEX.md status audit performed.
+Session summary: 121 skipped integration tests reactivated across 14 files (auth 24, settings 50, memory 20, generation 5, KB 24, seed 4, gateway 4). All green. FK helpers, httpx cookie fixes, schema drift, LLM mocking, 3 stubs implemented. KB dependencies latent bug discovered.
 
 ---
 
@@ -393,12 +393,18 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
   - **LLM testing infrastructure**: `ALLOW_MODEL_REQUESTS=False` global guard, `TestModel`/`FunctionModel` fixtures, `capture_run_messages` fixture for tool call assertions
   - Plus 3 hypothesis property-based tests (in core/shared and core/prompts)
 
-**Integration tests (7+ files):**
+**Integration tests (31 files, 340+ tests):**
 - `setup/test_setup_api.py`, `novels/test_novels_api.py`
-- `chapters/test_chapters_api.py`, `auth/test_auth_api.py`
-- `settings/test_settings_api.py`, `volumes/test_volumes_api.py`
-- `health/test_health.py`
-- `conftest.py` with shared fixtures (registered_user, novel_id, auth helpers)
+- `chapters/test_chapters_api.py`, `auth/test_auth_api.py` (24 tests)
+- `settings/` — test_settings_api.py, test_ai_providers_api.py, test_ai_settings_api.py, test_project_ai_settings_api.py, test_gateway_integration.py, test_migration.py, test_project_settings_schema.py (50 tests)
+- `memory/` — test_memory_api.py, test_memory_analyze_api.py (20 tests)
+- `generation/test_generation_api.py` (5 tests)
+- `kb/` — test_kb_api.py, test_kb_schema.py, test_demo_kb_content.py, test_demo_kb_fields.py (27 tests)
+- `volumes/test_volumes_api.py`, `health/test_health.py`
+- `planning/test_planning_api.py`
+- `writing/` — test_writing_api.py, test_full_lifecycle.py, test_scene_lifecycle.py, test_session_lifecycle.py, test_error_scenarios.py, test_generation_schema.py
+- `test_seed_dev_user.py` (4 tests)
+- `conftest.py` with shared fixtures (registered_user, novel_id, auth helpers, KB dependency override)
 - `conftest.py` runs `alembic upgrade head` (not `Base.metadata.create_all()`) to validate migrations
 - `conftest.py` provides `NARRARE_ENCRYPTION_KEY` via autouse fixture
 
@@ -444,6 +450,7 @@ Phase 5 (current):
 6. ✅ Feedback & Learning Loop (LEARN-001) — mem0 AsyncMemory wiring, 4-tier embedding cascade, PreferenceAnalysisAgent, modify-tracking, rating UI, preference profile page
 7. ✅ KB dedup for name generator — flag existing names, prompt-level dedup
 8. ✅ Test coverage uplift — 109 new tests (62 backend + 47 frontend)
+9. ✅ Integration test reactivation — 121 previously-skipped tests reactivated across 14 files (auth, settings, memory, generation, KB, seed, gateway). All green.
 
 Next focus: WRITE-003 (extend chapter), WRITE-004 (rewrite selection), E2E tests.
 
@@ -544,6 +551,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | KB dedup for name generator | _check_duplicates() now queries KB entities, flags duplicates, pre-fills existing_names in prompt context |
 | Backend test coverage uplift | 62 new tests: prompts (15), memory (15), settings (20), kb relationships (12) |
 | Frontend test coverage uplift | 47 new tests: GenerationPanel (8), SessionPanel (8), KBEntryDetail (7), KBCreateForm (10), OutlineEditor (7), NameGeneratorModal (7) |
+| Skipped integration tests | 121 tests reactivated: FK helpers, httpx cookie fix, schema drift fixes, LLM mocking, KB DI workaround, 3 gateway stubs implemented. Latent bug found: kb/dependencies.py missing Depends() |
 
 ---
 
@@ -602,6 +610,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 2. WRITE-004: Rewrite Selection — OpenSpec proposal ready, alternatives comparison UI design
 3. E2E tests with Playwright
 4. INDEX.md status audit — many features marked "planned" that are actually implemented
+5. KB dependencies production bug: `narrare/kb/dependencies.py` bare `session: AsyncSession` needs `= Depends(get_async_session)` — currently worked around in test conftest
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)
