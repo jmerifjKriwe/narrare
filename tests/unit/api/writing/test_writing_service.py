@@ -18,7 +18,7 @@ from narrare.writing.schemas import (
 )
 from narrare.writing.service import WritingService
 from narrare_core.llm.intents import ResolvedModelConfig
-from narrare_core.shared.errors import ConflictError, ValidationError
+from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -240,3 +240,28 @@ class TestStartGeneration:
             request,
         )
         assert response.status == "pending"
+
+    async def test_start_generation_with_invalid_fk_raises_not_found(
+        self,
+        service: WritingService,
+        mock_repo: AsyncMock,
+    ) -> None:
+        """start_generation() converts IntegrityError to NotFoundError.
+
+        Regression test: when chapter_id or novel_id don't exist in the DB,
+        the FK constraint raises IntegrityError.  The service must convert
+        this to NotFoundError (HTTP 404) instead of letting it bubble up as
+        an unhandled 500.
+        """
+        from sqlalchemy.exc import IntegrityError
+
+        mock_repo.create = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
+        mock_repo.get_active_for_chapter.return_value = None
+
+        with pytest.raises(NotFoundError):
+            await service.start_generation(
+                uuid.uuid4(),
+                uuid.uuid4(),
+                str(uuid.uuid4()),
+                _make_request(),
+            )

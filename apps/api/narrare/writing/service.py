@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import structlog
+from sqlalchemy.exc import IntegrityError
 
 from narrare.writing._helpers import record_feedback, validate_generation_input
 from narrare.writing.schemas import (
@@ -92,13 +93,16 @@ class WritingService:
         if active is not None:
             raise ConflictError(f"Generation already active for chapter {chapter_id}")
 
-        request_id = await self._repo.create(
-            chapter_id=chapter_id,
-            novel_id=novel_id,
-            user_id=UUID(user_id),
-            mode=request.mode.value,
-            tone=request.tone,
-        )
+        try:
+            request_id = await self._repo.create(
+                chapter_id=chapter_id,
+                novel_id=novel_id,
+                user_id=UUID(user_id),
+                mode=request.mode.value,
+                tone=request.tone,
+            )
+        except IntegrityError as exc:
+            raise NotFoundError("Chapter or Novel", identifier=str(chapter_id)) from exc
         logger.info(
             "generation_started",
             request_id=str(request_id),
@@ -263,6 +267,18 @@ class WritingService:
         )
 
     # -- Private helpers ------------------------------------------------
+
+    async def validate_request_access(
+        self,
+        request_id: UUID,
+        user_id: str,
+    ) -> None:
+        """Validate that a generation request exists and belongs to the user.
+
+        Raises NotFoundError if not found or access denied.
+        Used by router to validate before starting SSE response.
+        """
+        await self._get_validated_request(request_id, user_id)
 
     async def _get_validated_request(
         self,

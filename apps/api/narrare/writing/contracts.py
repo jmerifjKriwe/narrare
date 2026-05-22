@@ -75,6 +75,12 @@ class WritingServiceProtocol(Protocol):
         user_id: str,
     ) -> GenerationStatsResponse: ...
 
+    async def validate_request_access(
+        self,
+        request_id: UUID,
+        user_id: str,
+    ) -> None: ...
+
 
 @runtime_checkable
 class GenerationRepositoryProtocol(Protocol):

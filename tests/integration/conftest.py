@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 from typing import TYPE_CHECKING
 
@@ -98,7 +99,12 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
         session = AsyncSession(bind=conn, expire_on_commit=False)
         yield session
         await session.close()
-        await transaction.rollback()
+        # Rollback may fail if a DB error (e.g. IntegrityError) already
+        # invalidated the underlying transaction.  Suppress the resulting
+        # SAWarning ("transaction already deassociated from connection")
+        # which would be escalated to an error by filterwarnings=["error"].
+        with contextlib.suppress(Exception):
+            await transaction.rollback()
 
 
 @pytest_asyncio.fixture(loop_scope="session")

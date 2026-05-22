@@ -21,6 +21,44 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.requires_db
 
 
+async def _create_parent_records(
+    db_session: AsyncSession,
+) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+    """Create User → Novel → Chapter chain for FK constraints.
+
+    Returns (user_id, novel_id, chapter_id).
+    """
+    from narrare.auth.models import User
+    from narrare.chapters.models import Chapter
+    from narrare.novels.models import Novel
+
+    user = User(
+        email=f"schema-test-{uuid.uuid4()}@example.com",
+        hashed_password="test-hash-not-real",
+        display_name="Schema Test User",
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    novel = Novel(
+        title="Schema Test Novel",
+        user_id=user.id,
+        writing_language="en",
+    )
+    db_session.add(novel)
+    await db_session.flush()
+
+    chapter = Chapter(
+        title="Schema Test Chapter",
+        novel_id=novel.id,
+        position=1,
+    )
+    db_session.add(chapter)
+    await db_session.flush()
+
+    return user.id, novel.id, chapter.id
+
+
 class TestGenerationRequestsTable:
     """Verify generation_requests columns exist after migration."""
 
@@ -69,11 +107,9 @@ class TestGenerationRequestsTable:
 
     async def test_create_and_query_generation_request(self, db_session: AsyncSession) -> None:
         """GenerationRequest model can be created and queried."""
-        gen_id = uuid.uuid4()
-        chapter_id = uuid.uuid4()
-        user_id = uuid.uuid4()
-        novel_id = uuid.uuid4()
+        user_id, novel_id, chapter_id = await _create_parent_records(db_session)
 
+        gen_id = uuid.uuid4()
         request = GenerationRequest(
             id=gen_id,
             chapter_id=chapter_id,
@@ -99,12 +135,14 @@ class TestGenerationRequestsTable:
 
     async def test_default_status_is_pending(self, db_session: AsyncSession) -> None:
         """Server default for status column is 'pending'."""
+        user_id, novel_id, chapter_id = await _create_parent_records(db_session)
+
         gen_id = uuid.uuid4()
         request = GenerationRequest(
             id=gen_id,
-            chapter_id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
-            novel_id=uuid.uuid4(),
+            chapter_id=chapter_id,
+            user_id=user_id,
+            novel_id=novel_id,
             mode="scene_by_scene",
         )
         db_session.add(request)
@@ -118,12 +156,14 @@ class TestGenerationRequestsTable:
 
     async def test_status_update_via_model(self, db_session: AsyncSession) -> None:
         """Status can be updated from pending to streaming."""
+        user_id, novel_id, chapter_id = await _create_parent_records(db_session)
+
         gen_id = uuid.uuid4()
         request = GenerationRequest(
             id=gen_id,
-            chapter_id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
-            novel_id=uuid.uuid4(),
+            chapter_id=chapter_id,
+            user_id=user_id,
+            novel_id=novel_id,
             mode="full_draft",
         )
         db_session.add(request)

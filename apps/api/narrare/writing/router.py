@@ -55,6 +55,10 @@ async def stream_generation(
     """SSE stream for generated text chunks."""
     service = await get_writing_service(session, user_id)
 
+    # Pre-validate before starting SSE response to avoid
+    # RuntimeError when NotFoundError fires after headers sent.
+    await service.validate_request_access(request_id, user_id)
+
     async def event_stream():
         async for chunk in service.stream_generation(request_id, user_id):
             data: dict[str, Any] = {"text": chunk.text}
