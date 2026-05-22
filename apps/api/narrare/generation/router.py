@@ -36,6 +36,7 @@ async def _get_service(
     for the NAME_GENERATE intent instead of hardcoding them.
     """
     from narrare.generation.name_service import NameGeneratorService
+    from narrare.kb.repository import KBRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare_core.llm.intents import LLMIntent
 
@@ -48,12 +49,14 @@ async def _get_service(
 
     registry = get_model_registry()
     composer = get_composer()
+    kb_repo = KBRepository(session)
     return NameGeneratorService(
         registry=registry,
         composer=composer,
         config=config,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
+        kb_repo=kb_repo,
     )
 
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import uuid
 from typing import TYPE_CHECKING
 
 from narrare.generation.schemas import GeneratedName
@@ -168,9 +167,9 @@ class TestParseNames:
 
 
 class TestCheckDuplicates:
-    """Tests for _check_duplicates — currently a passthrough."""
+    """Tests for _check_duplicates — flags names found in existing list."""
 
-    async def test_returns_all_names_unchanged(
+    def test_returns_all_names_unchanged_when_no_match(
         self,
         service: NameGeneratorService,
     ) -> None:
@@ -178,13 +177,25 @@ class TestCheckDuplicates:
             GeneratedName(name="Aria", type="character", name_style="fantasy"),
             GeneratedName(name="Bjorn", type="character", name_style="norse"),
         ]
-        result = await service._check_duplicates(names, uuid.uuid4())
-        assert result == names
+        result = service._check_duplicates(names, ["Elsa", "Anna"])
         assert len(result) == 2
+        assert all(not n.is_duplicate for n in result)
 
-    async def test_returns_empty_list_unchanged(
+    def test_returns_empty_list_unchanged(
         self,
         service: NameGeneratorService,
     ) -> None:
-        result = await service._check_duplicates([], uuid.uuid4())
+        result = service._check_duplicates([], ["Elsa"])
         assert result == []
+
+    def test_flags_matching_names(
+        self,
+        service: NameGeneratorService,
+    ) -> None:
+        names = [
+            GeneratedName(name="Aria", type="character", name_style="fantasy"),
+            GeneratedName(name="Elsa", type="character", name_style="norse"),
+        ]
+        result = service._check_duplicates(names, ["Elsa"])
+        assert result[0].is_duplicate is False
+        assert result[1].is_duplicate is True

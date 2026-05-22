@@ -12,7 +12,7 @@
 
 Date: 2026-05-22
 Updated by: NarrareDevCoordinator
-Session summary: CI fixes for proxy.ts JWT fallback, tone count test. Dynamized tone discovery in tests. Cleaned unused i18n tone keys.
+Session summary: KB dedup integrated for name generator. Backend test coverage gaps closed (62 new tests across prompts/memory/settings/kb). Frontend test coverage gaps closed (47 new tests for 6 components). WRITE-003/004 planning completed. INDEX.md status audit performed.
 
 ---
 
@@ -371,12 +371,13 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 **Testing:**
 - Vitest 3.x + Testing Library + MSW
-- 453 tests across proxy, utils, stores, API client, UI components, wizard steps
+- 646 tests across proxy, utils, stores, API client, UI components, wizard steps, generation panel, session panel, KB components
 - `npm run test` / `vitest run`
 
 #### `tests/` — Test Suite
 
 **Unit tests (31 files):**
+- 2113 tests total (backend)
 - `core/llm/` — gateway, intents, retry, providers_registry, embeddings (5 files)
 - `core/prompts/` — registry, composer, variable_engine, meta, variable_engine_hypothesis (5 files)
 - `core/shared/` — frontmatter, result, errors, file_utils, result_hypothesis, frontmatter_hypothesis (6 files)
@@ -405,7 +406,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 #### Frontend Tests (packages/web/)
 
-**243 tests across:**
+**243 tests across:** (base suite)
 - `proxy.test.ts` — 10 tests (JWT verification, route protection, redirects)
 - `lib/utils.test.ts` — 32 tests (cn, debounce, formatWordCount, etc.)
 - `lib/stores/editorStore.test.ts` — 21 tests
@@ -441,12 +442,10 @@ Phase 5 (current):
 4. ✅ Chapter Summary (WRITE-012) — ChapterSummaryAgent, SummaryService + REST endpoint, WritingGraph summary step, prompt in analysis/en/summarize/
 5. ✅ AI-powered storyboard remap — AIRemapService with summary analysis, enhanced sync COMPLETED detection, WritingGraphStatus UI
 6. ✅ Feedback & Learning Loop (LEARN-001) — mem0 AsyncMemory wiring, 4-tier embedding cascade, PreferenceAnalysisAgent, modify-tracking, rating UI, preference profile page
-7. KB dedup integration for name generator
-7. Backend test coverage gaps (memory service, prompt management)
-8. Frontend test coverage gaps (generation panel, session panel)
-9. E2E tests with Playwright
+7. ✅ KB dedup for name generator — flag existing names, prompt-level dedup
+8. ✅ Test coverage uplift — 109 new tests (62 backend + 47 frontend)
 
-Next focus: extend chapter (WRITE-003), rewrite selection (WRITE-004), KB editor UI refinements.
+Next focus: WRITE-003 (extend chapter), WRITE-004 (rewrite selection), E2E tests.
 
 ---
 
@@ -542,6 +541,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Tone count dynamization | `_TONE_IDS` now derived from filesystem glob instead of hardcoded list — future tone additions auto-discovered |
 | i18n dead code cleanup | Removed unused `wizard.tone` individual tone-name keys from `studio.json` and `wizard.json` (3 languages × 7 keys = 42 dead keys removed) |
 | INFRA-005 Memory Layer | Completed: embedding cascade + PreferenceAnalysisAgent extend the core memory module. Feature spec updated to implemented |
+| KB dedup for name generator | _check_duplicates() now queries KB entities, flags duplicates, pre-fills existing_names in prompt context |
+| Backend test coverage uplift | 62 new tests: prompts (15), memory (15), settings (20), kb relationships (12) |
+| Frontend test coverage uplift | 47 new tests: GenerationPanel (8), SessionPanel (8), KBEntryDetail (7), KBCreateForm (10), OutlineEditor (7), NameGeneratorModal (7) |
 
 ---
 
@@ -596,16 +598,10 @@ All demo content is complete — sufficient for testing through Phase 5.
 ## Next Session Should Start With
 
 **Phase 5 (current):**
-1. Smoke test: create character → see all 7 accordion groups → fill fields → save → verify structured metadata
-2. Smoke test: verify all 8 entity types show correct groups in template-driven editor
-3. Smoke test: POST /api/v1/planning/summary/chapters/{chapter_id} → verify summary populates chapters.summary
-4. Smoke test: trigger WritingGraph → verify generate_summary step runs after finalize → check summary in graph state
-5. Smoke test: run storyboard remap with ≥50% summaries → verify AI confidence badge shown
-6. Writing module tests — unit tests for core writing pipeline, context assembler, draft processor, session manager
-7. KB dedup integration for name generator (currently a placeholder)
-8. E2E tests with Playwright (route mocking for LLM responses)
-9. Backend test coverage gaps (memory service, prompt management, generation, settings)
-10. Frontend test coverage gaps (generation panel, session panel, KB editor)
+1. WRITE-003: Extend Chapter — OpenSpec proposal ready, prompt templates needed
+2. WRITE-004: Rewrite Selection — OpenSpec proposal ready, alternatives comparison UI design
+3. E2E tests with Playwright
+4. INDEX.md status audit — many features marked "planned" that are actually implemented
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)

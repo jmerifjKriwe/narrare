@@ -202,7 +202,7 @@ class TestWizardCompletion:
         base_url: str,
         api_url: str,
         register_unique_user,
-    ) -> dict[str, str | bool]:
+    ) -> None:
         """Test wizard completion and redirect to dashboard/editor."""
         from tests.e2e.test_setup_wizard import TestSetupWizard
 
@@ -265,9 +265,9 @@ class TestWizardCompletion:
 
         # Verify wizard state and complete
         self.verify_wizard_state(page)
-        result = self.complete_wizard_setup(page, base_url)
+        self.complete_wizard_setup(page, base_url)
 
         # Check for errors
         self.check_errors(page, console_errors)
 
-        return result
+        # result is already printed in complete_wizard_setup — no return needed

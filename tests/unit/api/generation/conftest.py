@@ -128,11 +128,16 @@ def service(
     mock_composer: AsyncMock,
     config: ResolvedModelConfig,
 ) -> NameGeneratorService:
-    """NameGeneratorService wired with fake registry and mock composer."""
+    """NameGeneratorService wired with fake registry and mock composer.
+
+    No KB repo is injected — dedup tests should create their own service
+    instance with a FakeKBRepository.
+    """
     return NameGeneratorService(
         registry=fake_registry,
         composer=mock_composer,
         config=config,
         api_key=None,
         base_url=None,
+        kb_repo=None,
     )

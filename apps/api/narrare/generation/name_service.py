@@ -1,8 +1,9 @@
 """Name generation API service — uses LLM registry and prompt composer.
 
 Builds prompts via PromptComposer, calls ModelRegistry, parses structured
-JSON responses into GeneratedName objects. Includes placeholder KB
-dedup check for future integration.
+JSON responses into GeneratedName objects.  When a KB repository is
+injected, existing entity names are passed to the LLM for proactive
+dedup and generated names are flagged if they match existing KB entries.
 """
 
 from __future__ import annotations
@@ -21,18 +22,31 @@ from narrare.generation.schemas import (
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from narrare.kb.contracts import KBRepositoryProtocol
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
 
+# Mapping from NameType enum values to KB entity_type values.
+# NameType uses "place"/"organization"/"item" while the KB CHECK constraint
+# uses "location"/"faction"/"object".
+_NAME_TYPE_TO_KB_ENTITY: dict[str, str] = {
+    "character": "character",
+    "place": "location",
+    "organization": "faction",
+    "item": "object",
+}
+
 
 class NameGeneratorService:
     """Generates names using LLM with style-aware prompts.
 
     Uses PromptComposer for prompt assembly and ModelRegistry for execution.
-    Parses structured JSON responses into GeneratedName objects.
+    Parses structured JSON responses into GeneratedName objects.  When a
+    KB repository is injected, existing entity names are passed to the LLM
+    for proactive dedup and generated names are flagged on match.
     """
 
     def __init__(
@@ -42,12 +56,14 @@ class NameGeneratorService:
         config: ResolvedModelConfig,
         api_key: str | None = None,
         base_url: str | None = None,
+        kb_repo: KBRepositoryProtocol | None = None,
     ) -> None:
         self._registry = registry
         self._composer = composer
         self._config = config
         self._api_key = api_key
         self._base_url = base_url
+        self._kb_repo = kb_repo
 
     async def generate_names(self, request: NameGenerateRequest) -> NameGenerateResponse:
         """Generate names based on request parameters.
@@ -61,6 +77,12 @@ class NameGeneratorService:
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
 
+        # Fetch existing KB names BEFORE the LLM call for proactive dedup.
+        existing_names = await self._fetch_existing_names(
+            project_id=request.project_id,
+            name_type=request.name_type.value,
+        )
+
         context = PromptContext(
             language=request.explanation_language,
             mode="names",
@@ -69,7 +91,7 @@ class NameGeneratorService:
                 "name_type": request.name_type.value,
                 "count": str(request.count),
                 "gender": request.gender.value,
-                "existing_names": "",
+                "existing_names": ", ".join(existing_names),
             },
         )
 
@@ -89,13 +111,14 @@ class NameGeneratorService:
         )
 
         names = self._parse_names(result, request)
-        names = await self._check_duplicates(names, request.project_id)
+        names = self._check_duplicates(names, existing_names)
 
         logger.info(
             "names_generated",
             name_type=request.name_type.value,
             name_style=request.name_style,
             count=len(names),
+            duplicates=sum(1 for n in names if n.is_duplicate),
         )
 
         return NameGenerateResponse(
@@ -173,15 +196,62 @@ class NameGeneratorService:
             )
         return names
 
-    async def _check_duplicates(
+    async def _fetch_existing_names(
+        self,
+        project_id: UUID,
+        name_type: str,
+    ) -> list[str]:
+        """Fetch existing entity names from the project's KB.
+
+        Queries the KB repository filtered by the mapped entity type.
+        Returns an empty list when no KB repository is configured.
+
+        Args:
+            project_id: The project (novel) ID to query names for.
+            name_type: The NameType value (e.g. "character", "place").
+
+        Returns:
+            List of entity names from the KB.
+        """
+        if self._kb_repo is None:
+            return []
+
+        entity_type = _NAME_TYPE_TO_KB_ENTITY.get(name_type)
+        entries, total = await self._kb_repo.list_entries(
+            novel_id=project_id,
+            entity_type=entity_type,
+            page_size=1000,
+        )
+
+        if total > len(entries):
+            logger.warning(
+                "kb_names_truncated",
+                total=total,
+                returned=len(entries),
+                hint="Consider pagination if this occurs frequently",
+            )
+
+        return [entry.name for entry in entries]
+
+    def _check_duplicates(
         self,
         names: list[GeneratedName],
-        project_id: UUID,
+        existing_names: list[str],
     ) -> list[GeneratedName]:
-        """Check generated names against project KB for duplicates.
+        """Flag generated names that match existing KB entries.
 
-        TODO: Integrate with KB module once implemented.
-        Currently returns all names with is_duplicate=False.
+        Compares case-insensitively with trimmed whitespace.
+        Does NOT remove duplicates — only sets is_duplicate=True.
+
+        Args:
+            names: Generated names to check.
+            existing_names: KB entity names to compare against.
+
+        Returns:
+            The same list with is_duplicate flags set where applicable.
         """
-        # Placeholder — KB module does not exist in API yet
+        existing_lower = {n.strip().lower() for n in existing_names}
+        for name_obj in names:
+            if name_obj.name.strip().lower() in existing_lower:
+                name_obj.is_duplicate = True
         return names

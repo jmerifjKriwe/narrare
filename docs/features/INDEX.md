@@ -32,22 +32,22 @@
 |----|---------|--------|-----|
 | [INFRA-001](infra/INFRA-001-llm-gateway.md) | LLM Gateway | ✅ | ✅ |
 | [INFRA-002](infra/INFRA-002-prompt-system.md) | Unified Prompt System | ✅ | ✅ |
-| [INFRA-003](infra/INFRA-003-context-assembly.md) | Context Assembly Pipeline | 📋 | ✅ |
+| [INFRA-003](infra/INFRA-003-context-assembly.md) | Context Assembly Pipeline | ✅ | ✅ |
 | [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | 📋 | ❌ |
-| [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | 📋 | ❌ |
+| [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
 
 ### Setup & Onboarding
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [SETUP-001](setup/SETUP-001-setup-wizard.md) | Setup Wizard (5-step) | 📋 | ✅ |
-| [SETUP-002](setup/SETUP-002-demo-content.md) | Demo Projects | 📋 | ✅ |
+| [SETUP-001](setup/SETUP-001-setup-wizard.md) | Setup Wizard (5-step) | ✅ | ✅ |
+| [SETUP-002](setup/SETUP-002-demo-content.md) | Demo Projects | ✅ | ✅ |
 | [SETUP-003](setup/SETUP-003-import.md) | Project Import | 📋 | ❌ |
-| [SETUP-004](setup/SETUP-004-provider-config.md) | AI Provider Configuration | 📋 | ✅ |
+| [SETUP-004](setup/SETUP-004-provider-config.md) | AI Provider Configuration | ✅ | ✅ |
 
 ### Writing
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [WRITE-001](writing/WRITE-001-editor.md) | Writing Editor | 📋 | ✅ |
+| [WRITE-001](writing/WRITE-001-editor.md) | Writing Editor | ✅ | ✅ |
 | [WRITE-002](writing/WRITE-002-new-chapter.md) | AI: New Chapter Generation | ✅ | ✅ |
 | [WRITE-003](writing/WRITE-003-extend.md) | AI: Extend Chapter | 📋 | ❌ |
 | [WRITE-004](writing/WRITE-004-rewrite.md) | AI: Rewrite Selection | 📋 | ❌ |
@@ -63,7 +63,7 @@
 ### Knowledge Base
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [KB-001](kb/KB-001-entity-management.md) | KB Entity CRUD | 📋 | ❌ |
+| [KB-001](kb/KB-001-entity-management.md) | KB Entity CRUD | ✅ | ✅ |
 | [KB-002](kb/KB-002-kb-session.md) | Interactive KB Session (AI-guided creation) | 📋 | ❌ |
 | [KB-003](kb/KB-003-kb-improve.md) | AI: Improve KB Entry | 📋 | ❌ |
 | [KB-004](kb/KB-004-kb-consistency.md) | AI: KB Consistency Check | 📋 | ❌ |
@@ -92,11 +92,11 @@
 |----|---------|--------|-----|
 | [PLAN-001](planning/PLAN-001-scene-planning.md) | Scene Planning | 📋 | ❌ |
 | [PLAN-002](planning/PLAN-002-gap-analysis.md) | Narrative Gap Analysis | 📋 | ❌ |
-| [PLAN-003](planning/PLAN-003-structure.md) | Story Structure Visualization | 🔨 | ❌ |
-| [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | 🔨 | ❌ |
-| [PLAN-005](planning/PLAN-005-storyboard.md) | Storyboard View | 🔨 | ❌ |
+| [PLAN-003](planning/PLAN-003-structure.md) | Story Structure Visualization | ✅ | ✅ |
+| [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | 📋 | ❌ |
+| [PLAN-005](planning/PLAN-005-storyboard.md) | Storyboard View | ✅ | ✅ |
 
-> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) are being implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 has a partial integration point (`timeline_position` field) — full timeline management remains future work.
+> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 has a partial integration point (`timeline_position` field) — full timeline management remains planned future work.
 
 ### AI Assist (Standalone Operations)
 | ID | Feature | Status | MVP |
@@ -108,7 +108,7 @@
 ### Generation
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [GEN-001](generation/GEN-001-name-generator.md) | Character/Place Name Generator | 📋 | ❌ |
+| [GEN-001](generation/GEN-001-name-generator.md) | Character/Place Name Generator | ✅ | ✅ |
 | [GEN-002](generation/GEN-002-research.md) | Research Assistant | 📋 | ❌ |
 
 ### Consistency
@@ -120,14 +120,14 @@
 ### Learning & Adaptation
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [LEARN-001](learning/LEARN-001-feedback-loop.md) | Feedback & Learning Loop | 📋 | ❌ |
+| [LEARN-001](learning/LEARN-001-feedback-loop.md) | Feedback & Learning Loop | ✅ | ✅ |
 | [LEARN-002](learning/LEARN-002-style-adaptation.md) | Style Adaptation | 📋 | ❌ |
 
 ### Prompt Customization
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [PROMPT-001](prompts/PROMPT-001-file-overrides.md) | File-based Prompt Overrides | 📋 | ❌ |
-| [PROMPT-002](prompts/PROMPT-002-db-templates.md) | User DB Prompt Templates | 📋 | ❌ |
+| [PROMPT-001](prompts/PROMPT-001-file-overrides.md) | File-based Prompt Overrides | ✅ | ✅ |
+| [PROMPT-002](prompts/PROMPT-002-db-templates.md) | User DB Prompt Templates | ✅ | ✅ |
 
 ### Import / Export
 | ID | Feature | Status | MVP |
@@ -139,9 +139,9 @@
 ### Settings & Configuration
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [SET-001](settings/SET-001-user-settings.md) | User Settings | 🔨 | ✅ |
-| [SET-002](settings/SET-002-project-settings.md) | Project Settings | 🔨 | ✅ |
-| [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | 🔨 | ❌ |
+| [SET-001](settings/SET-001-user-settings.md) | User Settings | ✅ | ✅ |
+| [SET-002](settings/SET-002-project-settings.md) | Project Settings | ✅ | ✅ |
+| [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | ✅ | ✅ |
 
 ### Analytics & Cost
 | ID | Feature | Status | MVP |
@@ -226,5 +226,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-21 — WRITE-012 Chapter Summary marked as implemented. Cross-reference from storyboard features updated.
+> Last updated: 2026-05-22 — Status audit: 16 features updated to reflect actual implementation state (INFRA-003, INFRA-005, SETUP-001/002/004, WRITE-001, KB-001, PLAN-003/005, LEARN-001, PROMPT-001/002, GEN-001, SET-001/002/003). PLAN-004 reverted to planned (partial only).
 > Features are specified before they are implemented — never after

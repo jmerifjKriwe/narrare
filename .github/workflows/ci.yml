@@ -357,7 +357,7 @@ jobs:
       SECRET_KEY: test-secret-key-not-for-production
       ANTHROPIC_API_KEY: sk-test-dummy
       OPENAI_API_KEY: sk-test-dummy
-      NARRARE_ENCRYPTION_KEY: test-encryption-key-not-for-production-WxDA2rJ8F4kL5mN6
+      NARRARE_ENCRYPTION_KEY: WYcr1iULJse2Oo6GPpmw1Au4ovp_fXZwbrNF11C12ZQ=
 
     steps:
       - uses: actions/checkout@v6
