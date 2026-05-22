@@ -67,14 +67,5 @@
     "heros_journey": "Hero's Journey",
     "save_the_cat": "Save the Cat",
     "seven_point": "Seven-Point Story"
-  },
-  "tone": {
-    "dramatic": "Dramatic",
-    "humorous": "Humorous",
-    "suspenseful": "Suspenseful",
-    "contemplative": "Contemplative",
-    "romantic": "Romantic",
-    "dark": "Dark",
-    "adventurous": "Adventurous"
   }
 }

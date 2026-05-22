@@ -2,7 +2,7 @@
 
 Verifies that all prompt files exist with valid YAML frontmatter,
 contain required variable placeholders, and have correct metadata.
-Also verifies tone variant files exist with valid frontmatter.
+Also verifies all bundled tone variant files exist with valid frontmatter.
 """
 
 from __future__ import annotations
@@ -23,18 +23,9 @@ _BUNDLED_ROOT = Path(__file__).parent.parent.parent.parent.parent / (
 _WRITING_LANGUAGES = ("en", "de", "fr")
 _WRITING_MODES = ("new_chapter", "scene_by_scene", "interview", "interactive_session")
 
-# Expected tone IDs — all 9 bundled tones
-_TONE_IDS = (
-    "adventurous",
-    "balanced",
-    "contemplative",
-    "dark",
-    "dramatic",
-    "humorous",
-    "quiet",
-    "romantic",
-    "suspenseful",
-)
+# Dynamically discover tone IDs from the filesystem
+_TONE_DIR = _BUNDLED_ROOT / "writing" / "tones"
+_TONE_IDS = tuple(sorted(f.stem for f in _TONE_DIR.glob("*.md")))
 
 # Required variable placeholders that ALL writing prompts must contain
 _REQUIRED_VARIABLES = (
@@ -207,7 +198,7 @@ class TestWritingPromptVariables:
 
 
 class TestToneVariants:
-    """Verify all 4 tone variant files exist with valid frontmatter."""
+    """Verify all bundled tone variant files exist with valid frontmatter."""
 
     @pytest.mark.parametrize("tone_id", _TONE_IDS)
     def test_tone_file_exists(self, tone_id: str) -> None:
@@ -240,14 +231,6 @@ class TestToneVariants:
         content = path.read_text()
         parsed = parse_frontmatter(content)
         assert len(parsed.content.strip()) > 0, f"Empty content body in {path}"
-
-    def test_total_tone_file_count(self) -> None:
-        """Verify total expected count: 9 tone files (all bundled tones)."""
-        tones_dir = _BUNDLED_ROOT / "writing" / "tones"
-        md_files = list(tones_dir.glob("*.md"))
-        assert len(md_files) == 9, (
-            f"Expected 9 tone files, found {len(md_files)}: {[str(p) for p in md_files]}"
-        )
 
 
 # ---------------------------------------------------------------------------

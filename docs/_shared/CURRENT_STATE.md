@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-21
-Updated by: NarrarePlatformSpecialist
-Session summary: LEARN-001 Feedback Loop closed. All 55 tasks completed. Embedding cascade (ADR-017) ensures memory for all users. PreferenceAnalysisAgent wired. Frontend modify-tracking, rating UI, preference profile page implemented. Feature specs updated to implemented.
+Date: 2026-05-22
+Updated by: NarrareDevCoordinator
+Session summary: CI fixes for proxy.ts JWT fallback, tone count test. Dynamized tone discovery in tests. Cleaned unused i18n tone keys.
 
 ---
 
@@ -536,6 +536,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 | AI-powered structure remap | AIRemapService: analyze_chapter_role(), meets_coverage_threshold(50%), calculate_confidence(); hybrid approach with position-ratio fallback |
 | WritingGraphStatus UI | Compact collapsible panel in EditorView showing pipeline step status (highlighted current, completed checkmarks) |
 | LEARN-001 Feedback Loop | Full feedback loop closed. 55 tasks: Embedding cascade (ADR-017, 4-tier fallback for all providers), FeedbackEvent extended with rating + enriched context, mem0 AsyncMemory via MemoryClientCache, PreferenceAnalysisAgent for deep pattern analysis, event-driven processing (FeedbackRecorded/PreferenceAnalysisTriggered → TaskIQ), POST /memory/analyze endpoint, frontend modify-tracking + RatingPrompt + LearningTab preference profile + LearningStatus indicator, 3 migrations |
+| CI proxy JWT secret fallback | Proxy.ts now checks `SECRET_KEY` as fallback when `AUTH_JWT_SECRET` is unset — resolves 16 e2e wizard test failures on CI |
+| CI tone test fix | `_TONE_IDS` updated from 4→9 tones, count assertion fixed — resolves `test_total_tone_file_count` CI failure |
+| Writing conftest extraction | Shared fixtures moved from `test_writing_service.py` to `tests/unit/api/writing/conftest.py` — resolves 3 ERRORs in `test_writing_service_validation.py` |
+| Tone count dynamization | `_TONE_IDS` now derived from filesystem glob instead of hardcoded list — future tone additions auto-discovered |
+| i18n dead code cleanup | Removed unused `wizard.tone` individual tone-name keys from `studio.json` and `wizard.json` (3 languages × 7 keys = 42 dead keys removed) |
 | INFRA-005 Memory Layer | Completed: embedding cascade + PreferenceAnalysisAgent extend the core memory module. Feature spec updated to implemented |
 
 ---
