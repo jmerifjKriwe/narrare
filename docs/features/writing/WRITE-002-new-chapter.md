@@ -202,3 +202,4 @@ Generated text is fully editable — treat it as your rough draft.
 - `2026-05-17` — Implementation started (in-progress). Core writing pipeline with 4 generation modes, API endpoints with SSE streaming, frontend GenerationPanel/Config/Draft components. Prompts: 12 system prompts (4 modes × 3 languages) + 4 tone variants. Migration 0008 for generation_requests table.
 - `2026-05-18` — Fully implemented (stable). All 4 generation modes operational, SSE streaming + WebSocket sessions, frontend generation UI complete, 98 tasks done.
 - `2026-05-21` — Tone flow fixed: expanded from 4 to 9 bundled tones + custom tone support. Tone now stored in generation_requests (migration 0020) and flows correctly through pipeline. Integration tests re-enabled. Spec paths corrected.
+- `cr-01-audit` — Agents wired to PromptComposer (RULE-02 compliance). Interview prompts enhanced with CoT and negative examples. XML encapsulation for prompt injection defense.

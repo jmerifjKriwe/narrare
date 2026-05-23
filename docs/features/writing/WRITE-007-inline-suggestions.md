@@ -152,3 +152,4 @@ writing style.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `cr-01-audit` — Inline suggest prompt enhanced with negative examples, user preferences, and avoidance patterns

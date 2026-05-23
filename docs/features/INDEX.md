@@ -50,7 +50,7 @@
 | [WRITE-001](writing/WRITE-001-editor.md) | Writing Editor | ✅ | ✅ |
 | [WRITE-002](writing/WRITE-002-new-chapter.md) | AI: New Chapter Generation | ✅ | ✅ |
 | [WRITE-003](writing/WRITE-003-extend.md) | AI: Extend Chapter | 📋 | ❌ |
-| [WRITE-004](writing/WRITE-004-rewrite.md) | AI: Rewrite Selection | 📋 | ❌ |
+| [WRITE-004](writing/WRITE-004-rewrite.md) | AI: Rewrite Selection | 🔨 | ❌ |
 | [WRITE-005](writing/WRITE-005-interactive-session.md) | Interactive Writing Session | ✅ | ✅ |
 | [WRITE-006](writing/WRITE-006-co-author.md) | Co-Author Mode | 📋 | ❌ |
 | [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | 📋 | ❌ |
@@ -226,5 +226,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-22 — Status audit: 16 features updated to reflect actual implementation state (INFRA-003, INFRA-005, SETUP-001/002/004, WRITE-001, KB-001, PLAN-003/005, LEARN-001, PROMPT-001/002, GEN-001, SET-001/002/003). PLAN-004 reverted to planned (partial only).
+> Last updated: 2026-05-23 — CR-01 audit: WRITE-004 moved to in-progress (rewrite prompt template created). Prompt engineering standards enhanced (CoT, negative examples, XML encapsulation).
 > Features are specified before they are implemented — never after

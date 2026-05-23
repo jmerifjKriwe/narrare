@@ -12,7 +12,7 @@
 
 Date: 2026-05-23
 Updated by: NarrareDevCoordinator
-Session summary: Audit review-03-ai-features.md optimizations — complete. Voice Drift Prompt-Ebene (42241d0): KBEntity.metadata, character_voice_profiles in 12 prompts. Ghost-Text Phases 1-4 (be37087 + 1e474b4): full TipTap extension with DecorationSet, SSE streaming, accept/reject UX, caching, config toggle, keyboard hint, analytics. Language resolution (1e474b4): request.language from next-intl locale. SSE tests: 6 frontend + 8 backend. ANAL-008 constraint for metadata["speech"]. Assessment ASSESS-001. 4 commits total.
+Session summary: CR-01 Prompt Quality Audit — 5 agents wired to PromptComposer (RULE-02 compliance), hardcoded system_prompt strings removed. XML encapsulation for prompt injection defense. Interview + interactive_session prompts enhanced with CoT, negative examples, output format. New bundled prompts: review, preferences, outline, rewrite_selection, story_suggest. User preferences added to generation/name prompts. 10 new de/fr translations. WRITE-004 moved to in-progress. Feature docs updated.
 
 ---
 
@@ -92,14 +92,15 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `override_schemas.py` — Pydantic schemas for category/intent/token limit overrides
 
 **Prompt System (`prompts/`):**
-- `composer.py` — Prompt composition with preference auto-injection and culture injection (`{{culture_guidelines}}`)
+- `composer.py` — Prompt composition with preference auto-injection and culture injection (`{{culture_guidelines}}`). Agent-PromptComposer integration: all 5 writing agents receive system prompts from PromptComposer (RULE-02 compliance). XML encapsulation wraps user-controlled content to protect against prompt injection.
 - `registry.py` — Prompt registry with `resolve_culture()` method (EN fallback)
 - `management.py` — `PromptManagementService` — list, get, save, reset, cascade, updates, diff
-- `variable_metadata.py` — Variable registry with descriptions for UI sidebar
+- `variable_metadata.py` — Variable Registry with descriptions for UI sidebar
 - `variable_engine.py` — Variable interpolation
 - `context.py` — `PromptContext` with `user_preferences`, `avoidance_patterns`, `style_constraints` fields
 - `meta.py`
 - `_bundled/generation/` — 3 name generation prompts (en/de/fr) + 9 culture definitions (fantasy/modern/scifi × 3 langs)
+- Prompt engineering standards: Chain-of-Thought reasoning, negative examples, scratchpad pattern, structured output format enforced across all new prompts
 
 **Memory Layer (`memory/`):**
 - `protocols.py` — `MemoryClientProtocol`, `FeedbackServiceProtocol`, `PreferenceServiceProtocol`
@@ -127,7 +128,9 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `pipeline_scene.py` — Scene-by-scene mode logic
 - `pipeline_interview.py` — Interview-assisted mode logic
 - `session_manager.py` — SessionManager with cache-backed persistence (SessionCacheProtocol)
-- `prompts/_bundled/writing/` — 12 system prompts (4 modes × 3 languages) + 4 tone variants
+- `prompts/_bundled/writing/` — 14 system prompts (4 modes × 3 languages + rewrite_selection + story_suggest) + 4 tone variants
+- `prompts/_bundled/analysis/` — 4 prompts (review, preferences, summarize, remap — en with de/fr translations)
+- `prompts/_bundled/planning/` — 1 prompt (outline — en with de/fr translations)
 
 **KB v2 Layer (`kb/` + `templates/`):**
 - `kb/schemas/` — 8 entity schemas (character, location, faction, object, system, timeline, concept, setting) with nested metadata groups (CharacterMetadata, LocationMetadata, etc.)
@@ -558,6 +561,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Voice Drift Prompt-Ebene (review-03 Quick-Win) | KBEntity.metadata field + character_voice_profiles in WritingContext/PromptContext + 12 prompts updated with voice consistency section. Commit 42241d0. Foundation for ANAL-008, ANAL-009, WRITE-010. |
 | Ghost-Text TipTap Assessment (AUFG-03-01) | ProseMirror Decorations API evaluation completed. 4-phase roadmap. Assessment at docs/architecture/assessments/ghost-text-tiptap-assessment.md |
 | Feature Docs Voice Integration (Doc Gate) | ANAL-008, ANAL-009, WRITE-010 updated with integration notes for {{character_voice_profiles}} infrastructure |
+| CR-01 Prompt Quality Audit | RULE-02 compliance: 5 agents wired to PromptComposer, hardcoded system_prompt strings removed. XML encapsulation for prompt injection defense. Interview + interactive_session prompts enhanced with CoT, negative examples, output format. New bundled prompts: review, preferences, outline, rewrite_selection, story_suggest. User preferences added to generation/name prompts. 10 new de/fr translations. |
 
 ---
 
@@ -614,10 +618,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 
 **Phase 5 (current):**
 1. WRITE-003: Extend Chapter — OpenSpec proposal ready, prompt templates needed
-2. WRITE-004: Rewrite Selection — OpenSpec proposal ready, alternatives comparison UI design
+2. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
 3. E2E tests with Playwright
-4. INDEX.md status audit — many features marked "planned" that are actually implemented
-5. KB dependencies production bug: `narrare/kb/dependencies.py` bare `session: AsyncSession` needs `= Depends(get_async_session)` — currently worked around in test conftest
+4. KB dependencies production bug: `narrare/kb/dependencies.py` bare `session: AsyncSession` needs `= Depends(get_async_session)` — currently worked around in test conftest
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)

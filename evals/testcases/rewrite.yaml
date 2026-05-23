@@ -1,0 +1,39 @@
+# Rewrite prompt evaluation
+# Tests quality of text rewriting
+description: "Rewrite Selection — Revision Quality"
+
+prompts:
+  - id: "rewrite-selection"
+    raw: |
+      You are a precise text revision specialist. Rewrite the provided text selection according to the author's direction while preserving their voice.
+
+      Original text: {{selection}}
+      Author instructions: {{instructions}}
+      Genre: {{genre}}
+
+      Do NOT change narrative perspective. Do NOT add or remove characters.
+      Do NOT flatten the author's voice. Output only the rewritten text.
+
+providers:
+  - "openai:gpt-4o-mini"
+
+tests:
+  - vars:
+      selection: "He was very angry about what happened. He walked across the room and opened the door forcefully."
+      instructions: "Show, don't tell. Make it more vivid and specific."
+      genre: "literary fiction"
+    assert:
+      - type: llm-rubric
+        value: "Rewrite should: 1) Show anger through action/body language instead of stating 'he was angry' 2) Use specific sensory details 3) Be approximately the same length or slightly longer 4) Preserve the action sequence (walking, opening door) 5) Feel like a skilled author wrote it"
+        threshold: 0.7
+      - type: not-contains
+        value: "He was very angry"
+
+  - vars:
+      selection: "The wizard cast a spell. It was a fireball. The dragon was defeated easily."
+      instructions: "Make this more dramatic and detailed. Slow down the pacing."
+      genre: "fantasy"
+    assert:
+      - type: llm-rubric
+        value: "Rewrite should: 1) Dramatically slow the pacing with detailed descriptions 2) Show the spellcasting process, not just 'cast a spell' 3) Make the dragon's defeat feel earned, not easy 4) Include sensory details (heat, light, sound) 5) Create tension during the confrontation"
+        threshold: 0.7

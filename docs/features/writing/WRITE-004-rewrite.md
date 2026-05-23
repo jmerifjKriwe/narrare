@@ -1,7 +1,7 @@
 ---
 id: WRITE-004
 title: "AI: Rewrite Selection"
-status: planned
+status: in-progress
 area: writing
 mvp: false
 
@@ -152,3 +152,4 @@ class RewriteRequest:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `cr-01-audit` — Dedicated rewrite prompt template created with CoT, negative examples, and scratchpad pattern

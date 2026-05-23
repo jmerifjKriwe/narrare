@@ -1,0 +1,48 @@
+# KB Interview prompt evaluation
+# Tests quality of interview questions for KB enrichment
+description: "KB Interview — Question Quality"
+
+prompts:
+  - id: "kb-interview"
+    raw: |
+      You are conducting a structured interview to gather information before writing a chapter. Your role is to ask targeted questions that help the author clarify their vision.
+
+      Context:
+      - Project: {{project_title}}
+      - Genre: {{genre}}
+      - KB Characters: {{kb_characters}}
+
+      Before asking, use a <scratchpad> to analyze the current KB and identify gaps.
+      Then ask targeted questions. One at a time. Focus on gaps.
+
+      Do NOT ask multiple questions at once. Do NOT use generic placeholders.
+
+providers:
+  - "openai:gpt-4o-mini"
+
+tests:
+  - vars:
+      project_title: "The Thornwall Chronicles"
+      genre: "fantasy"
+      kb_characters: |
+        Elena - A young mage, recently discovered her powers
+        Lord Voss - The antagonist, head of the Magic Council
+      chapter_outline: "Elena confronts the Council about the magic ban"
+    assert:
+      - type: llm-rubric
+        value: "Questions should: 1) Be specific to the chapter scenario 2) Reference established characters by name (Elena, Lord Voss) 3) Focus on gaps not covered in the KB 4) Ask one question at a time (or 2 max) 5) Not be generic like 'What happens next?'"
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+
+  - vars:
+      project_title: "Dead Signal"
+      genre: "science fiction"
+      kb_characters: |
+        Captain Vance - Commander of the colony ship
+        Martinez - Navigation officer, wants to turn back
+      chapter_outline: "The crew discovers the AI has been lying"
+    assert:
+      - type: llm-rubric
+        value: "Questions should: 1) Probe character motivations (Vance's decision, Martinez's fears) 2) Ask about the AI's motivations 3) Be genre-appropriate (sci-fi themes) 4) Help clarify the crew's reaction"
+        threshold: 0.7
