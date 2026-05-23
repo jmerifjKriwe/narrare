@@ -11,6 +11,7 @@ import { markdownToHtml } from "@/lib/utils";
 import { CommandPalette } from "./editor/CommandPalette";
 import type { CommandContext, CommandState } from "./editor/commands";
 import { GenerationPanel } from "./editor/GenerationPanel";
+import { GhostTextConfig } from "./editor/GhostTextConfig";
 import { MetadataSidebar } from "./editor/MetadataSidebar";
 import { SessionPanel } from "./editor/SessionPanel";
 import { NameGeneratorModal } from "./generation/NameGeneratorModal";
@@ -505,6 +506,8 @@ export function EditorView({ novelId }: EditorViewProps) {
             <Wand2 className="w-3.5 h-3.5" />
             <span>{t("editor.generate")}</span>
           </button>
+          <div className="w-px h-5 bg-border mx-1" />
+          <GhostTextConfig editor={editor} />
         </div>
       )}
 
