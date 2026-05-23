@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-22
+Date: 2026-05-23
 Updated by: NarrareDevCoordinator
-Session summary: 121 skipped integration tests reactivated across 14 files (auth 24, settings 50, memory 20, generation 5, KB 24, seed 4, gateway 4). All green. FK helpers, httpx cookie fixes, schema drift, LLM mocking, 3 stubs implemented. KB dependencies latent bug discovered.
+Session summary: Audit review-02-testing.md optimizations implemented. Phase 1: pytest auto-tagging via pytest_collection_modifyitems (21 new unit tests, 21 manual markers removed, norecursedirs added). Phase 2: promptfoo eval framework with ADR-018 (3 baseline test case sets: writing, names, summarization). Phase 3: testing-standards.md updated with auto-tagging (RULE-TEST-03), snapshot guidance (RULE-TEST-04), and eval documentation.
 
 ---
 
@@ -552,6 +552,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Backend test coverage uplift | 62 new tests: prompts (15), memory (15), settings (20), kb relationships (12) |
 | Frontend test coverage uplift | 47 new tests: GenerationPanel (8), SessionPanel (8), KBEntryDetail (7), KBCreateForm (10), OutlineEditor (7), NameGeneratorModal (7) |
 | Skipped integration tests | 121 tests reactivated: FK helpers, httpx cookie fix, schema drift fixes, LLM mocking, KB DI workaround, 3 gateway stubs implemented. Latent bug found: kb/dependencies.py missing Depends() |
+| Pytest auto-tagging | `pytest_collection_modifyitems` hook in tests/conftest.py auto-assigns unit/integration/e2e markers based on directory path. 21 manual markers removed. `norecursedirs` explicit in pyproject.toml. |
+| promptfoo eval framework | ADR-018. evals/ directory with 3 baseline test case sets (writing-generation, name-generation, summarization). CI workflow (nightly + workflow_dispatch). Orthogonal to pytest — evaluates prompt quality, not code. |
+| testing-standards.md updated | 3 new sections: Auto-Tagging (RULE-TEST-03), Snapshot Testing Rules (RULE-TEST-04), LLM Prompt Evaluation (ADR-018 reference) |
 
 ---
 
@@ -575,6 +578,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | ADR-015 | Pydantic-AI Agents as First-Class Citizens | 🔄 Proposed |
 | ADR-016 | Prompt Caching Strategy | 🔄 Proposed |
 | ADR-017 | Embedding Cascade for mem0 | ✅ Implemented in `core/memory/embedding_cascade.py` |
+| ADR-018 | Promptfoo Eval Framework for Prompt Quality | ✅ | evals/, CI |
 
 ---
 
@@ -620,7 +624,8 @@ All demo content is complete — sufficient for testing through Phase 5.
 
 Infrastructure now includes: OpenTelemetry tracing, Langfuse LLM observability, event-driven
 architecture (Redis Pub/Sub → TaskIQ), content versioning, argon2id auth, async rate limiting,
-memory layer (mem0 + pgvector), prompt management (override CRUD + diff), culture-aware generation.
+memory layer (mem0 + pgvector), prompt management (override CRUD + diff), culture-aware generation,
+promptfoo eval framework (prompt quality regression testing), auto-tagged pytest infrastructure.
 
 ---
 
