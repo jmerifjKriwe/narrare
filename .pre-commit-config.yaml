@@ -10,6 +10,14 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # OpenAPI spec auto-regeneration — keeps spec in sync with API surface
+      - id: openapi-regenerate
+        name: OpenAPI Spec (auto-regenerate)
+        entry: uv run python scripts/export_openapi.py
+        language: system
+        pass_filenames: false
+        files: ^(apps/api/|packages/core/)
+
       # Ruff lint + fix
       - id: ruff-lint
         name: Ruff Lint
