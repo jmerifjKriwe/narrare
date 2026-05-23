@@ -33,6 +33,7 @@ narrare/
 │
 ├── scripts/
 │   ├── check_architecture.py   ← Hard constraint enforcement
+│   ├── export_openapi.py       ← OpenAPI spec static export + CI drift check
 │   └── ...
 │
 ├── tests/
@@ -358,11 +359,12 @@ apps/api/narrare/
 │
 ├── writing/                    ← Writing generation module (4 modes: full_draft, scene_by_scene, interview_assisted, interactive_session)
 │   ├── __init__.py
-│   ├── contracts.py            ← WritingServiceProtocol, GenerationRepositoryProtocol
+│   ├── contracts.py            ← WritingServiceProtocol, GenerationRepositoryProtocol, SuggestServiceProtocol
 │   ├── schemas.py              ← 11 Pydantic request/response schemas
 │   ├── models.py               ← GenerationRequest SQLAlchemy model
 │   ├── repository.py           ← GenerationRepository (CRUD, status transitions, concurrent prevention)
 │   ├── service.py              ← WritingService (orchestration of pipeline + repo + feedback)
+│   ├── suggest_service.py      ← InlineSuggestService (ghost text — lightweight, no pipeline)
 │   ├── scene_service.py        ← Scene-by-scene methods
 │   ├── stats_service.py        ← Generation analytics
 │   ├── ws_handler.py           ← WebSocket session handler
@@ -695,6 +697,7 @@ docs/
 │
 └── reference/                  ← Reference documentation
     ├── directory-structure.md  ← This file
+    ├── openapi.json            ← Static OpenAPI spec (auto-generated, CI-checked)
     └── project-vision.md       ← Why Narrare exists, for whom
 ```
 
