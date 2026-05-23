@@ -73,5 +73,10 @@
   "characterAnalysisDescription": "Analyze character development and consistency",
   "timeline": "Timeline",
   "timelineDescription": "Check temporal consistency",
-  "analyze": "Analyze"
+  "analyze": "Analyze",
+  "ghostTextToggle": "Ghost Text",
+  "ghostTextEnabled": "Enabled",
+  "ghostTextDisabled": "Disabled",
+  "ghostTextDelay": "Trigger delay",
+  "ghostTextDelayValue": "{value}ms"
 }

@@ -81,7 +81,7 @@ class InlineSuggestService:
                 file exists for ``LLMIntent.SUGGEST``.
         """
         ctx = PromptContext(
-            language="en",  # TODO: resolve from project settings
+            language=request.language,
             mode="inline_suggest",
             author_instructions=request.text_before,
             extra={

@@ -5,7 +5,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import { Check, RotateCcw, Sparkles, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createSseSuggestionFetcher } from "@/lib/api/suggest";
 import { useEditorStore } from "@/lib/stores/editorStore";
@@ -40,6 +40,7 @@ export function TipTapEditor({
   chapterId,
 }: TipTapEditorProps) {
   const t = useTranslations("studio");
+  const locale = useLocale();
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -76,8 +77,10 @@ export function TipTapEditor({
   >(undefined);
 
   useEffect(() => {
-    fetchSuggestionRef.current = chapterId ? createSseSuggestionFetcher(chapterId) : undefined;
-  }, [chapterId]);
+    fetchSuggestionRef.current = chapterId
+      ? createSseSuggestionFetcher(chapterId, locale)
+      : undefined;
+  }, [chapterId, locale]);
 
   // Stable config object — empty deps because all dynamic values are read from refs at call time
   const ghostTextConfig = useMemo(

@@ -132,6 +132,11 @@ class InlineSuggestRequest(BaseModel):
         max_length=1000,
         description="Text after cursor (if any) — provides forward context",
     )
+    language: str = Field(
+        default="en",
+        max_length=10,
+        description="Output language for the suggestion (ISO 639-1 code)",
+    )
 
 
 class InlineSuggestResponse(BaseModel):

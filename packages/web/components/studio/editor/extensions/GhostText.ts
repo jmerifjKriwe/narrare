@@ -5,7 +5,7 @@
  *   - Renders gray italic ghost text at cursor position via ProseMirror DecorationSet
  *   - Exposes setGhostText / clearGhostText on storage for test hooks
  *
- * Phase 2: Accept/Reject + Simulated Streaming (current)
+ * Phase 2: Accept/Reject + Simulated Streaming
  *   - Extension options with fetchSuggestion callback
  *   - Built-in simulated suggestion generator (trigger-based completions)
  *   - Character-by-character streaming via setInterval (30ms per char)
@@ -14,8 +14,14 @@
  *   - Auto-trigger: pause detection (>800ms) after ≥5 chars at end of paragraph
  *   - AbortController-based cancellation for pending requests
  *
- * Phase 3: Real SSE streaming (future)
+ * Phase 3: Real SSE streaming
  *   - Connect fetchSuggestion to backend SSE endpoint
+ *
+ * Phase 4: Production Polish
+ *   - Prefix-based suggestion cache (LRU eviction, avoids redundant API calls)
+ *   - Keyboard shortcut hint decoration (Tab accept · Esc dismiss · → word)
+ *   - Runtime configuration: setEnabled / setDelay for reactive toggling
+ *   - Minimal analytics counters (accepted / rejected / total)
  *
  * Architecture decision (per ASSESS-001, §8):
  * Uses `Decoration.widget()` with `side: 1` — simplest correct approach
@@ -60,10 +66,31 @@ export interface GhostTextStorage {
   /** setTimeout timer for auto-trigger debounce */
   _pendingTimer: ReturnType<typeof setTimeout> | null;
 
+  /** Whether ghost text is currently enabled (reactive, set via setEnabled) */
+  _enabled: boolean;
+  /** Current suggestion delay in ms (reactive, set via setDelay) */
+  _suggestionDelay: number;
+
+  /** Prefix-based suggestion cache to avoid redundant API calls */
+  _cache: Map<string, { text: string; timestamp: number }>;
+  /** Maximum age of a cache entry in ms (default: 30_000 = 30 seconds) */
+  _cacheMaxAge: number;
+  /** Maximum number of cache entries before LRU eviction (default: 50) */
+  _cacheMaxSize: number;
+
+  /** Minimal analytics counters for future use */
+  _analytics: { accepted: number; rejected: number; total: number };
+
   /** Test hook — programmatically set ghost text at current cursor position */
   setGhostText: (suggestion: string) => void;
   /** Test hook — clear ghost text */
   clearGhostText: () => void;
+  /** Enable or disable ghost text at runtime */
+  setEnabled: (enabled: boolean) => void;
+  /** Update the suggestion delay at runtime */
+  setDelay: (delay: number) => void;
+  /** Returns analytics counters */
+  getAnalytics: () => { accepted: number; rejected: number; total: number };
 }
 
 // ── Simulated Suggestion Generator (Phase 2 Built-in) ─────────────────────────
@@ -131,6 +158,7 @@ function cancelPendingAutoTrigger(storage: GhostTextStorage): void {
 /**
  * Clears all ghost text state: stops streaming, cancels pending requests
  * and auto-trigger timers, and resets storage values.
+ * Does NOT clear the suggestion cache (performance-only data).
  */
 function clearAll(storage: GhostTextStorage, editor: Editor): void {
   stopStreaming(storage);
@@ -151,6 +179,14 @@ function clearAll(storage: GhostTextStorage, editor: Editor): void {
   }
 }
 
+/** Evicts oldest cache entries when the cache exceeds maxSize (LRU via Map insertion order). */
+function evictCache(storage: GhostTextStorage): void {
+  while (storage._cache.size > storage._cacheMaxSize) {
+    const firstKey = storage._cache.keys().next().value;
+    if (firstKey !== undefined) storage._cache.delete(firstKey);
+  }
+}
+
 /**
  * Begins character-by-character streaming of a suggestion.
  * Each tick reveals one more character from the full suggestion text.
@@ -161,6 +197,7 @@ function startStreaming(storage: GhostTextStorage, editor: Editor, suggestion: s
   storage._fullSuggestion = suggestion;
   storage.currentSuggestion = "";
   storage.suggestionPos = editor.state.selection.head;
+  storage._analytics.total++;
 
   let charIndex = 0;
   storage._streamTimer = setInterval(() => {
@@ -235,6 +272,7 @@ function handleTypingDuringSuggestion(
         }
 
         // ── Mismatch: user typed a different character ────────────────
+        storage._analytics.rejected++;
         clearAll(storage, editor);
         return;
       }
@@ -249,7 +287,7 @@ function handleTypingDuringSuggestion(
  * Schedules an auto-trigger after `suggestionDelay` ms of inactivity.
  *
  * Only activates when:
- * - The extension is enabled
+ * - The extension is enabled (storage._enabled)
  * - No suggestion is currently displayed
  * - The cursor is at the end of a paragraph
  * - There are at least `minChars` characters before the cursor
@@ -259,7 +297,7 @@ function scheduleAutoTrigger(
   editor: Editor,
   options: GhostTextOptions,
 ): void {
-  if (!options.enabled || editor.isDestroyed) return;
+  if (!storage._enabled || editor.isDestroyed) return;
   if (storage.currentSuggestion !== null) return;
 
   const state = editor.state;
@@ -272,7 +310,7 @@ function scheduleAutoTrigger(
 
   if (textBefore.length < (options.minChars ?? 5)) return;
 
-  const delay = options.suggestionDelay ?? 800;
+  const delay = storage._suggestionDelay ?? options.suggestionDelay ?? 800;
   storage._pendingTimer = setTimeout(async () => {
     if (editor.isDestroyed) return;
     if (storage.currentSuggestion !== null) return;
@@ -290,6 +328,7 @@ function scheduleAutoTrigger(
 /**
  * Calls fetchSuggestion and starts streaming the result.
  * Aborts any existing pending request before starting a new one.
+ * Uses prefix-based cache to skip redundant API calls.
  */
 async function fetchAndStreamSuggestion(
   storage: GhostTextStorage,
@@ -301,6 +340,14 @@ async function fetchAndStreamSuggestion(
   // Abort any existing pending request
   if (storage._abortController) {
     storage._abortController.abort();
+  }
+
+  // ── Cache lookup ──────────────────────────────────────────────────────
+  const cached = storage._cache.get(textBefore);
+  if (cached && Date.now() - cached.timestamp < storage._cacheMaxAge) {
+    if (editor.isDestroyed) return;
+    startStreaming(storage, editor, cached.text);
+    return;
   }
 
   const abortController = new AbortController();
@@ -316,6 +363,10 @@ async function fetchAndStreamSuggestion(
     });
 
     if (abortController.signal.aborted || editor.isDestroyed) return;
+
+    // ── Store in cache ─────────────────────────────────────────────────
+    storage._cache.set(textBefore, { text: suggestion, timestamp: Date.now() });
+    evictCache(storage);
 
     startStreaming(storage, editor, suggestion);
   } catch (err) {
@@ -341,6 +392,7 @@ function acceptSuggestion(storage: GhostTextStorage, editor: Editor): boolean {
   const fullText = storage._fullSuggestion ?? storage.currentSuggestion;
   if (!fullText) return false;
 
+  storage._analytics.accepted++;
   clearAll(storage, editor);
   editor.commands.insertContent(fullText);
   return true;
@@ -363,6 +415,7 @@ function acceptFirstWord(storage: GhostTextStorage, editor: Editor): boolean {
   const match = full.match(/^\s*\S+/);
   if (!match) {
     // Pure whitespace suggestion — just insert the whole thing
+    storage._analytics.accepted++;
     clearAll(storage, editor);
     editor.commands.insertContent(full);
     return true;
@@ -393,10 +446,11 @@ function acceptFirstWord(storage: GhostTextStorage, editor: Editor): boolean {
     editor.view.dispatch(editor.state.tr);
   }
 
+  storage._analytics.accepted++;
   return true;
 }
 
-/** Releases all resources: timers and pending requests. */
+/** Releases all resources: timers and pending requests. Does NOT clear cache. */
 function cleanup(storage: GhostTextStorage): void {
   stopStreaming(storage);
   cancelPendingAutoTrigger(storage);
@@ -433,13 +487,30 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
       _abortController: null as AbortController | null,
       _streamTimer: null as ReturnType<typeof setInterval> | null,
       _pendingTimer: null as ReturnType<typeof setTimeout> | null,
+
+      _enabled: true,
+      _suggestionDelay: 800,
+
+      _cache: new Map<string, { text: string; timestamp: number }>(),
+      _cacheMaxAge: 30_000,
+      _cacheMaxSize: 50,
+
+      _analytics: { accepted: 0, rejected: 0, total: 0 } as {
+        accepted: number;
+        rejected: number;
+        total: number;
+      },
+
       setGhostText: () => {},
       clearGhostText: () => {},
+      setEnabled: (_enabled: boolean) => {},
+      setDelay: (_delay: number) => {},
+      getAnalytics: () => ({ accepted: 0, rejected: 0, total: 0 }),
     };
   },
 
   onBeforeCreate() {
-    // ── Bind test hooks ──────────────────────────────────────────────────
+    // ── Bind test hooks and runtime methods ────────────────────────────
     // Must happen here because `this.editor` is not available during addStorage().
 
     this.storage.setGhostText = (suggestion: string) => {
@@ -454,6 +525,19 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
     this.storage.clearGhostText = () => {
       clearAll(this.storage, this.editor);
     };
+
+    this.storage.setEnabled = (enabled: boolean) => {
+      this.storage._enabled = enabled;
+      if (!enabled) {
+        clearAll(this.storage, this.editor);
+      }
+    };
+
+    this.storage.setDelay = (delay: number) => {
+      this.storage._suggestionDelay = delay;
+    };
+
+    this.storage.getAnalytics = () => ({ ...this.storage._analytics });
   },
 
   // ── Keyboard Shortcuts ────────────────────────────────────────────────
@@ -465,6 +549,9 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
     return {
       Tab: () => acceptSuggestion(storage, editor),
       Escape: () => {
+        if (storage.currentSuggestion !== null) {
+          storage._analytics.rejected++;
+        }
         clearAll(storage, editor);
         return true;
       },
@@ -532,10 +619,20 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
             ghostSpan.className = "ghost-text-suggestion";
             ghostSpan.setAttribute("aria-hidden", "true");
 
+            // Build the keyboard shortcut hint (fades in via CSS)
+            const hintSpan = document.createElement("span");
+            hintSpan.textContent = "Tab accept · Esc dismiss · → word";
+            hintSpan.className = "ghost-text-hint";
+            hintSpan.setAttribute("aria-hidden", "true");
+
             return DecorationSet.create(state.doc, [
               Decoration.widget(suggestionPos, ghostSpan, {
                 side: 1,
                 key: "ghost",
+              }),
+              Decoration.widget(suggestionPos, hintSpan, {
+                side: 1,
+                key: "ghost-hint",
               }),
             ]);
           },

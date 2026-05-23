@@ -30,6 +30,7 @@ export interface SuggestChunk {
  */
 export function createSseSuggestionFetcher(
   chapterId: string,
+  language: string = "en",
 ): (params: { textBefore: string; textAfter: string; signal: AbortSignal }) => Promise<string> {
   return (params: {
     textBefore: string;
@@ -63,6 +64,7 @@ export function createSseSuggestionFetcher(
         body: {
           text_before: textBefore,
           text_after: textAfter || undefined,
+          language,
         },
         onChunk: (chunk) => {
           accumulated += chunk.text;

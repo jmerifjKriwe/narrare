@@ -73,5 +73,10 @@
   "characterAnalysisDescription": "Analysez le développement et la cohérence des personnages",
   "timeline": "Chronologie",
   "timelineDescription": "Vérifiez la cohérence temporelle",
-  "analyze": "Analyser"
+  "analyze": "Analyser",
+  "ghostTextToggle": "Ghost Text",
+  "ghostTextEnabled": "Activé",
+  "ghostTextDisabled": "Désactivé",
+  "ghostTextDelay": "Délai de déclenchement",
+  "ghostTextDelayValue": "{value}ms"
 }

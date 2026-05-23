@@ -221,3 +221,45 @@ class TestSuggestInline:
         with pytest.raises(PromptNotFoundError):
             async for _ in suggest_service.suggest_inline(chapter_id, user_id, request):
                 pass  # pragma: no cover
+
+    async def test_suggest_inline_passes_language_to_prompt_context(
+        self,
+        suggest_service: InlineSuggestService,
+        mock_composer: MagicMock,
+    ) -> None:
+        """suggest_inline() uses the language from the request, not a hardcoded value."""
+        import uuid
+
+        from narrare.writing.schemas import InlineSuggestRequest
+
+        chapter_id = uuid.uuid4()
+        user_id = str(uuid.uuid4())
+        request = InlineSuggestRequest(text_before="Der alte Mann", language="de")
+
+        async for _ in suggest_service.suggest_inline(chapter_id, user_id, request):
+            pass
+
+        build_call = mock_composer.build.call_args
+        ctx = build_call[0][1]
+        assert ctx.language == "de"
+
+    async def test_suggest_inline_defaults_language_to_en(
+        self,
+        suggest_service: InlineSuggestService,
+        mock_composer: MagicMock,
+    ) -> None:
+        """suggest_inline() defaults to 'en' when language is not explicitly set."""
+        import uuid
+
+        from narrare.writing.schemas import InlineSuggestRequest
+
+        chapter_id = uuid.uuid4()
+        user_id = str(uuid.uuid4())
+        request = InlineSuggestRequest(text_before="Hello world")
+
+        async for _ in suggest_service.suggest_inline(chapter_id, user_id, request):
+            pass
+
+        build_call = mock_composer.build.call_args
+        ctx = build_call[0][1]
+        assert ctx.language == "en"
