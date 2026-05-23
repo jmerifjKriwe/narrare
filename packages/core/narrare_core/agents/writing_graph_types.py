@@ -67,6 +67,7 @@ class WritingDeps:
     writing_language: str = ""  # output language (freetext)
     store: Any = None  # GraphStateStore (Any zur Vermeidung von Zirkelimporten)
     run_id: str = ""
+    user_id: str = ""  # User identity for preference auto-injection
 
 
 # ---------------------------------------------------------------------------

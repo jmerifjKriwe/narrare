@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -53,6 +53,8 @@ Provide your review as structured output with these fields:
 - If the draft meets the word target, note whether the length feels appropriate
 
 ### User Preferences
+
+The author has deliberately chosen the following style and content preferences. **Treat these as intentional authorial choices, not issues to flag.** Do not suggest changing them unless they actively harm the narrative.
 
 {{user_preferences}}
 

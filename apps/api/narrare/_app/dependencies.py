@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from narrare.templates.cascade_resolver import CascadeResolver
     from narrare.templates.repository import TemplateRepository
     from narrare.templates.service import TemplateApiService
+    from narrare_core.memory.protocols import PreferenceProvider
 
 logger = structlog.get_logger(__name__)
 
@@ -77,10 +78,39 @@ def _get_meta_loader_instance() -> MetaPromptLoader:
 
 
 @lru_cache
+def _get_preference_service_instance() -> PreferenceProvider | None:
+    """Create a PreferenceService if mem0 is available, else None.
+
+    Gracefully degrades when mem0 is not configured at the
+    application level. Returns None so that PromptComposer skips
+    preference auto-injection without crashing.
+
+    When application-level mem0 configuration (provider + API key)
+    is added to Settings, this factory will create a real
+    PreferenceService backed by a mem0 client.
+    """
+    # Check whether the mem0 package is installed at all.
+    try:
+        import mem0  # type: ignore[import-untyped]
+
+        del mem0  # only checking availability
+    except ImportError:
+        logger.info("preference_service_disabled_mem0_not_installed")
+        return None
+
+    # mem0 is installed but we lack system-level provider credentials.
+    # Per-user mem0 clients are created on demand in the memory module
+    # (see narrare.memory.router). Return None so the singleton
+    # PromptComposer skips preference auto-injection gracefully.
+    return None
+
+
+@lru_cache
 def _get_composer_instance() -> PromptComposer:
     return PromptComposer(
         registry=_get_prompt_registry_instance(),
         meta_loader=_get_meta_loader_instance(),
+        preference_service=_get_preference_service_instance(),
     )
 
 

@@ -78,6 +78,9 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 ### Fixed
 
 - JWT secret fallback chain in `proxy.ts`: added `process.env.SECRET_KEY` as second fallback (matching backend's env var). Previously only checked `AUTH_JWT_SECRET`, causing verification failures on protected routes when only `SECRET_KEY` was set.
+- CR-04 Cross-feature coherence fixes:
+  - ReviewAgent preference wiring: `WritingDeps.user_id` and `PromptComposer.preference_service` connected in dependencies.py, "respect preferences" directive added to review prompts (en/de/fr). ReviewAgent now actively uses user preferences during draft review.
+  - Meta-prompt conflict resolution: "outline wins over KB" rule added to all 3 language meta prompts (en/de/fr), ensuring consistent prioritization when user-provided outline contradicts Knowledge Base data.
 
 ### Changed
 

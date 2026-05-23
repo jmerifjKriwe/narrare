@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -53,6 +53,8 @@ Fournissez votre revue sous forme de sortie structurée avec les champs suivants
 - Si le brouillon atteint l'objectif de mots, indiquez si la longueur semble appropriée
 
 ### Préférences utilisateur
+
+L'auteur a délibérément choisi les préférences de style et de contenu suivantes. **Considérez-les comme des choix d'auteur intentionnels, et non comme des problèmes à signaler.** Ne suggérez pas de les modifier à moins qu'elles ne nuisent activement au récit.
 
 {{user_preferences}}
 

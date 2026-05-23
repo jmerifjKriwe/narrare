@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: de
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -53,6 +53,8 @@ Gib dein Review als strukturierte Ausgabe mit folgenden Feldern an:
 - Wenn der Entwurf das Wortziel erreicht, beurteile, ob die Länge angemessen wirkt
 
 ### Nutzereinstellungen
+
+Der Autor hat bewusst die folgenden Stil- und Inhaltseinstellungen gewählt. **Behandle diese als absichtliche Entscheidungen, nicht als zu beanstandende Probleme.** Schlage keine Änderungen vor, es sei denn, sie schaden der Erzählung aktiv.
 
 {{user_preferences}}
 

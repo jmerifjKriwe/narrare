@@ -56,7 +56,7 @@ async def get_model(deps: WritingDeps) -> Any:
 
 def _base_context(deps: WritingDeps, state: WritingState) -> PromptContext:
     """Build base PromptContext with fields common to all steps."""
-    return PromptContext(
+    ctx = PromptContext(
         language=deps.language,
         writing_language=deps.writing_language,
         genre=deps.genre,
@@ -64,6 +64,12 @@ def _base_context(deps: WritingDeps, state: WritingState) -> PromptContext:
         project_title="",
         chapter_title=state.outline[:100] if state.outline else "",
     )
+    # Enable preference auto-injection via PromptComposer
+    if deps.user_id:
+        ctx.extra["user_id"] = deps.user_id
+    if state.novel_id:
+        ctx.extra["project_id"] = state.novel_id
+    return ctx
 
 
 async def get_outline_prompt(
