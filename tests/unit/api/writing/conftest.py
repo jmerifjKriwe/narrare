@@ -7,14 +7,16 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from narrare.writing.contracts import GenerationRepositoryProtocol
 from narrare.writing.service import WritingService
 from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.writing.pipeline import WritingPipeline
 
 
 @pytest.fixture
 def mock_repo() -> AsyncMock:
     """Mock GenerationRepository."""
-    repo = AsyncMock()
+    repo = AsyncMock(spec=GenerationRepositoryProtocol)
     repo.create = AsyncMock(return_value=uuid.uuid4())
     repo.get_by_id = AsyncMock(return_value=None)
     repo.get_active_for_chapter = AsyncMock(return_value=None)
@@ -34,7 +36,7 @@ def mock_repo() -> AsyncMock:
 @pytest.fixture
 def mock_pipeline() -> AsyncMock:
     """Mock WritingPipeline."""
-    pipeline = AsyncMock()
+    pipeline = AsyncMock(spec=WritingPipeline)
     pipeline.stop = AsyncMock()
     return pipeline
 

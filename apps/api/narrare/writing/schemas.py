@@ -112,3 +112,30 @@ class GenerationStatsResponse(BaseModel):
     avg_tokens: float
     avg_word_count: float
     most_used_model: str | None
+
+
+class InlineSuggestRequest(BaseModel):
+    """Request for an inline ghost text suggestion.
+
+    Sent when the user pauses typing.  Contains the text before and
+    optionally after the cursor.  The backend returns a short (1-3
+    sentence) completion streamed via SSE.
+    """
+
+    text_before: str = Field(
+        ...,
+        max_length=5000,
+        description="Text before cursor position — used as the prompt for completion",
+    )
+    text_after: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="Text after cursor (if any) — provides forward context",
+    )
+
+
+class InlineSuggestResponse(BaseModel):
+    """One chunk of an inline suggestion SSE stream."""
+
+    text: str
+    is_final: bool = False

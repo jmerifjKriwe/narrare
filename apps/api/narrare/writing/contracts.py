@@ -13,10 +13,12 @@ if TYPE_CHECKING:
         GenerateRequest,
         GenerateResponse,
         GenerationStatsResponse,
+        InlineSuggestRequest,
         RejectResponse,
         SceneNextResponse,
         StopResponse,
     )
+    from narrare_core.llm.result import StreamChunk
 
 
 @runtime_checkable
@@ -80,6 +82,25 @@ class WritingServiceProtocol(Protocol):
         request_id: UUID,
         user_id: str,
     ) -> None: ...
+
+    async def suggest_inline(
+        self,
+        chapter_id: UUID,
+        user_id: str,
+        request: InlineSuggestRequest,
+    ) -> AsyncIterator[StreamChunk]: ...
+
+
+@runtime_checkable
+class SuggestServiceProtocol(Protocol):
+    """Protocol for the inline suggest service."""
+
+    async def suggest_inline(
+        self,
+        chapter_id: UUID,
+        user_id: str,
+        request: InlineSuggestRequest,
+    ) -> AsyncIterator[StreamChunk]: ...
 
 
 @runtime_checkable
