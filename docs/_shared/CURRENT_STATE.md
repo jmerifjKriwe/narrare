@@ -12,7 +12,7 @@
 
 Date: 2026-05-23
 Updated by: NarrareDevCoordinator
-Session summary: Audit review-02-testing.md optimizations implemented. Phase 1: pytest auto-tagging via pytest_collection_modifyitems (21 new unit tests, 21 manual markers removed, norecursedirs added). Phase 2: promptfoo eval framework with ADR-018 (3 baseline test case sets: writing, names, summarization). Phase 3: testing-standards.md updated with auto-tagging (RULE-TEST-03), snapshot guidance (RULE-TEST-04), and eval documentation.
+Session summary: Audit review-03-ai-features.md optimizations — complete. Voice Drift Prompt-Ebene (42241d0): KBEntity.metadata, character_voice_profiles in 12 prompts. Ghost-Text Phases 1-4 (be37087 + 1e474b4): full TipTap extension with DecorationSet, SSE streaming, accept/reject UX, caching, config toggle, keyboard hint, analytics. Language resolution (1e474b4): request.language from next-intl locale. SSE tests: 6 frontend + 8 backend. ANAL-008 constraint for metadata["speech"]. Assessment ASSESS-001. 4 commits total.
 
 ---
 
@@ -555,6 +555,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Pytest auto-tagging | `pytest_collection_modifyitems` hook in tests/conftest.py auto-assigns unit/integration/e2e markers based on directory path. 21 manual markers removed. `norecursedirs` explicit in pyproject.toml. |
 | promptfoo eval framework | ADR-018. evals/ directory with 3 baseline test case sets (writing-generation, name-generation, summarization). CI workflow (nightly + workflow_dispatch). Orthogonal to pytest — evaluates prompt quality, not code. |
 | testing-standards.md updated | 3 new sections: Auto-Tagging (RULE-TEST-03), Snapshot Testing Rules (RULE-TEST-04), LLM Prompt Evaluation (ADR-018 reference) |
+| Voice Drift Prompt-Ebene (review-03 Quick-Win) | KBEntity.metadata field + character_voice_profiles in WritingContext/PromptContext + 12 prompts updated with voice consistency section. Commit 42241d0. Foundation for ANAL-008, ANAL-009, WRITE-010. |
+| Ghost-Text TipTap Assessment (AUFG-03-01) | ProseMirror Decorations API evaluation completed. 4-phase roadmap. Assessment at docs/architecture/assessments/ghost-text-tiptap-assessment.md |
+| Feature Docs Voice Integration (Doc Gate) | ANAL-008, ANAL-009, WRITE-010 updated with integration notes for {{character_voice_profiles}} infrastructure |
 
 ---
 

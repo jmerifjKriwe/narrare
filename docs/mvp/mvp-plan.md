@@ -1,10 +1,10 @@
-# Narrare — MVP Plan: First Running Version
+# Narrare — Product Roadmap: MVP → Post-MVP
 
-> **Goal:** A fully working, production-quality foundation.
-> Not a demo. Not a prototype. Not "we'll clean this up later."
-> Every piece built here is the real thing — extensible, tested, correct.
+> **MVP is COMPLETE.** This document now tracks the full product roadmap.
+> Phases 0-5 are the MVP (shipped). Phase 6 is the current focus.
+> Post-MVP phases are planned with technical details.
 >
-> This plan is the source of truth for what the first milestone delivers.
+> This plan is the source of truth for what has been built and what comes next.
 > Location: `docs/mvp/mvp-plan.md`
 > Maintained by: Architecture Agent
 
@@ -23,6 +23,11 @@ The MVP is complete when a developer can:
 7. Change settings and have them persist across restarts
 8. Run `just test` and have all tests pass
 9. Run `just check` and have all constraints pass
+10. Generate a full chapter draft with AI (WRITE-002)
+11. Manage knowledge base entries with template-driven editor (KB-001)
+12. See storyboard visualization with drag-and-drop (PLAN-003/005)
+13. Record feedback and see preference profile (LEARN-001)
+14. All 2759+ tests pass (2113 backend + 646 frontend)
 
 No stubs. No "TODO: implement this later." No hardcoded bypasses.
 
@@ -120,8 +125,8 @@ No structural changes needed when AI features arrive.
 
 The order matters. Each phase unblocks the next.
 
-### Phase 0: Repository Foundation
-*Duration estimate: 1 session*
+### Phase 0: Repository Foundation ✅ COMPLETE
+*Duration: 1 session*
 *No application code. Everything that makes development possible.*
 
 ```
@@ -147,8 +152,8 @@ The order matters. Each phase unblocks the next.
 
 ---
 
-### Phase 1: Core Infrastructure
-*Duration estimate: 2-3 sessions*
+### Phase 1: Core Infrastructure ✅ COMPLETE
+*Duration: 2-3 sessions*
 *The foundation layers. No HTTP yet.*
 
 ```
@@ -192,8 +197,8 @@ Prompt cascade resolves correctly in all test cases.
 
 ---
 
-### Phase 2: API Foundation
-*Duration estimate: 2 sessions*
+### Phase 2: API Foundation ✅ COMPLETE
+*Duration: 2 sessions*
 *The HTTP layer. No features yet — just the application shell.*
 
 ```
@@ -255,8 +260,8 @@ Alembic:
 
 ---
 
-### Phase 3: Setup Wizard (Backend)
-*Duration estimate: 1-2 sessions*
+### Phase 3: Setup Wizard Backend ✅ COMPLETE
+*Duration: 1-2 sessions*
 
 ```
 apps/api/narrare/setup/
@@ -283,8 +288,8 @@ Demo content:
 
 ---
 
-### Phase 4: Frontend Foundation
-*Duration estimate: 2-3 sessions*
+### Phase 4: Frontend Foundation ✅ COMPLETE
+*Duration: 2-3 sessions*
 *The shell. Correct from day one. Built for extension.*
 
 ```
@@ -330,21 +335,316 @@ All UI text is i18n strings (no hardcoded English). Light + dark mode works.
 
 ---
 
-### Phase 5: Integration & Polish
-*Duration estimate: 1 session*
+### Phase 5: Integration, AI & Polish ✅ COMPLETE
+*Duration: 15+ sessions*
+*The full feature stack: writing, KB, planning, learning.*
 
-```
-✓ End-to-end flow: signup → wizard → demo content → editor
-✓ Post-login redirect: has_providers ? /dashboard : /wizard
-✓ Dev user seeded automatically on first startup
-✓ Auto-migration: lifespan.py runs alembic upgrade head on startup
-✓ Integration tests use real Alembic migrations (not create_all)
-✓ All settings persist correctly
-✓ All tests pass (unit + integration)
-✓ All checks pass (architecture + lint + typecheck + security)
-✓ README updated with actual setup instructions
-✓ CHANGELOG.md has v0.1.0 entry
-```
+**Core Infrastructure:**
+  ✓ LLM Gateway with 7 providers + ModelRegistry
+  ✓ Prompt system with cascade resolution + variable interpolation
+  ✓ Writing pipeline (4 modes: full_draft, scene_by_scene, interview, interactive)
+  ✓ Context assembly with 5-tier ranking + token budgets
+  ✓ Embedding cascade (4-tier: OpenAI → local → disabled) — ADR-017
+  ✓ PreferenceAnalysisAgent for deep pattern extraction
+  ✓ ChapterSummaryAgent (NarrareAgent pattern)
+  ✓ WritingGraph (6-step pydantic-graph: plan → write → review → finalize → summary)
+  ✓ 5 structure adapters (3-act, 5-act, hero's journey, save the cat, 7-point)
+  ✓ AIRemapService with summary-based stage suggestions
+  ✓ Event-driven architecture (Redis Pub/Sub + TaskIQ stubs)
+
+**Backend Modules (all contract-first, per RULE-03):**
+  ✓ auth/ — JWT + httpOnly refresh cookies + argon2id
+  ✓ novels/ — CRUD + word counts
+  ✓ chapters/ — CRUD + content versioning + versions API
+  ✓ volumes/ — CRUD + stats + reorder + default auto-creation
+  ✓ settings/ — User/Project AI settings + provider management + model routing + token limits
+  ✓ setup/ — 5-step wizard + provider validation + demo loader + Z.AI dual endpoint
+  ✓ writing/ — Generation pipeline + SSE streaming + WebSocket sessions + stats
+  ✓ memory/ — Feedback recording + preference profile + analysis trigger + mem0 integration
+  ✓ prompts/ — 7-endpoint CRUD + update detection + diff comparison + variable metadata
+  ✓ generation/ — Name generation + KB dedup
+  ✓ kb/ — Full CRUD + 8 entity types + cross-references + autocomplete + relationships
+  ✓ templates/ — Cascade resolution (user → project → bundled) + version-aware upsert
+  ✓ planning/ — Storyboard + outlines + sync status + AI remap + chapter summary endpoint
+
+**Frontend:**
+  ✓ TipTap v3 editor with 4 custom extensions (NarrareDocument, SceneBreak, DialogueMark, Autosave)
+  ✓ EditorLayout with sidebar + main + right panel slots
+  ✓ MetadataSidebar with live stats + session delta + chapter metadata
+  ✓ CommandPalette (Cmd+K) with extensible command registry
+  ✓ GenerationPanel + GenerationConfig + GenerationDraft + SessionPanel + ChatMessage
+  ✓ RatingPrompt + LearningStatus + LearningTab + PreferenceProfile
+  ✓ Full KB editor: template-driven accordion, flat fallback, @mention autocomplete, tag input
+  ✓ StoryboardPanel with DnD + 7 sub-components + structure change dialog
+  ✓ WritingGraphStatus (pipeline step visualization)
+  ✓ NameGenerator + NameResults with duplicate badges
+  ✓ PromptSettings + PromptEditor + PromptDiff in Settings
+  ✓ ToneLibrarySection with 9 bundled tones + custom CRUD
+  ✓ Settings: AI providers, model routing, token limits, project AI settings
+  ✓ Dashboard + delete + wizard (5 steps with demo prefill)
+  ✓ Focus mode (ESC + floating minimize button)
+
+**Demo Content:**
+  ✓ "Echoes of the Thornwall" (EN, Fantasy) — 4 chapters, 15 KB entries
+  ✓ "Dead Signal" (EN, SciFi) — 3 chapters, 7 KB entries
+  ✓ "Im stillen Wald" (DE, Fantasy) — 2 chapters, 5 KB entries
+
+**Infrastructure:**
+  ✓ 19 Alembic migrations (auto-run on startup)
+  ✓ OpenTelemetry + Langfuse observability
+  ✓ Redis Pub/Sub event bus + TaskIQ integration stubs
+  ✓ pgBouncer for production
+  ✓ 17 ADRs documented
+  ✓ Pre-commit: architecture, ruff, pyright, bandit, biome, i18n, TypeScript
+
+**Testing:**
+  ✓ 2113 backend tests (unit + integration)
+  ✓ 646 frontend tests (Vitest + Testing Library + MSW)
+  ✓ Property-based tests (hypothesis) for core utilities
+  ✓ Architecture validation via check_architecture.py (526 files, 0 new violations)
+
+**Metadata Consistency (cross-cutting):**
+  ✓ 9 bundled tones (contemplative, dark, adventurous, romantic + existing 5)
+  ✓ writing_language freetext field (separate from prompt language)
+  ✓ name_style freetext field (renamed from culture, with fallback)
+  ✓ explanation_language field
+  ✓ Custom Tone CRUD (4 endpoints)
+
+---
+
+### Phase 6: Writing Intelligence ⏳ IN PROGRESS
+*Duration estimate: 4-6 sessions*
+*Extending the writing experience: continue, rewrite, refine.*
+
+#### WRITE-003: Extend Chapter (AI: Continue)
+
+**Ziel:** Cursor platzieren → "Weiter" → Text wird fortgesetzt.
+
+**User Story:** Writer schreibt einen Absatz, kommt nicht weiter. Klickt "Continue". AI analysiert die letzten 500-1000 Tokens, versteht die Szene, und schreibt nahtlos weiter.
+
+**Architektur:**
+- **Endpoint:** `POST /api/v1/writing/chapters/{id}/extend`
+- **Service:** `DraftService.extend()` in `writing/draft_service.py`
+- **Contract:** Erweiterung von `DraftServiceProtocol` in `writing/contracts.py`
+- **LLM Intent:** `LLMIntent.EXTEND` (bereits definiert in `intents.py`)
+- **Composer Mapping:** `EXTEND → "writing"/"extend_chapter"` (bereits konfiguriert)
+- **Streaming:** SSE (wiederverwendung des bestehenden Streaming-Infrastruktur)
+
+**Core-Änderungen:**
+- Prompt-Templates: `_bundled/writing/{en,de,fr}/extend_chapter/system.md`
+  - Pre-Text Verbatim inkludieren: "Here's what came before: ..."
+  - Cursor-Position markieren: `[CONTINUE FROM HERE]`
+  - Längensteuerung: Short (100-200w), Medium (300-500w), Long (500-1000w)
+  - Stilanalyse aus Pre-Text: Satzstruktur, Dialog-Anteil, Erzählperspektive
+- `WritingContext` erweitern: `pre_text: str`, `post_text: str`, `extend_length: str`
+- `WritingPipeline` erweitern: neue Dispatch-Logik für extend-Modus
+
+**Backend-Änderungen:**
+- Neuer Router `writing/router_extend.py` (RULE-04: eigener Router)
+- Schema: `ExtendRequest(chapter_id, cursor_position, length)`, `ExtendResponse`
+- Service ruft Kontext-Assembler auf (Pre-Text ab Cursor-Position)
+- SSE Streaming wie bei FULL_DRAFT
+
+**Frontend-Änderungen:**
+- Cursor-Position aus TipTap extrahieren (`editor.state.selection`)
+- "Continue" Button im Toolbar oder浮动
+- Inline-Fortsetzung: Text wird direkt am Cursor eingefügt
+- Längen-Wähler: Short/Medium/Long als kompakte Inline-Option
+- Accept/Reject/Continue-More Controls
+- RatingPrompt-Integration (wiederverwendung)
+
+**Constraints:**
+- Min. 100 Wörter bestehender Text für gute Qualität
+- Max. 1000 Wörter pro Fortsetzung
+- TipTap Transaction für Cursor-Position nötig
+
+**Dependencies:** Prompt Templates (neu), bestehende Streaming-Infrastruktur (✅)
+
+#### WRITE-004: Rewrite Selection (AI: Rewrite)
+
+**Ziel:** Text auswählen → Modus wählen → 1-3 Alternativen erhalten → ersetzen.
+
+**User Story:** Writer markiert einen Absatz, der "flach" wirkt. Klickt "Rewrite" → wählt "More Dramatic" → bekommt 3 Varianten → wählt die beste → ersetzt den Originaltext.
+
+**Architektur:**
+- **Endpoint:** `POST /api/v1/writing/rewrite`
+- **Service:** `DraftService.rewrite()` in `writing/draft_service.py`
+- **LLM Intent:** `LLMIntent.REWRITE` (bereits definiert)
+- **Composer Mapping:** `REWRITE → "writing"/"rewrite_selection"` (bereits konfiguriert)
+- **Kein Streaming** — Response kommt als Array von Alternativen
+
+**Core-Änderungen:**
+- `RewriteMode` Enum: `tone | style | voice | fix | custom`
+- Prompt-Templates: `_bundled/writing/{en,de,fr}/rewrite_selection/system.md`
+  - Modus-spezifische Strategien:
+    - Tone: Emotionale Sprache, Pacing, Wortwahl anpassen
+    - Style: Satzstruktur, Beschreibungsdichte, Aktiv/Passiv
+    - Voice: Charakter-Sprachmuster aus KB (speech_patterns field)
+    - Fix: Show-don't-tell, Redundanzen entfernen, schwache Verben stärken
+    - Custom: Freitext-Instruktionen
+- `RewriteRequest(selection_text, chapter_id, mode, options, character_id?, count)`
+- `RewriteResponse(alternatives: list[RewriteAlternative])`
+- `RewriteAlternative(text, label, focus_description)`
+
+**Backend-Änderungen:**
+- Schema: `RewriteRequest`, `RewriteResponse`, `RewriteAlternative`, `RewriteMode`
+- Router `writing/router_rewrite.py`
+- Service: Multi-Response Parsing (1-3 Alternativen aus LLM-Output)
+- Kontext: Selection + 200 Tokens Umgebung + Chapter-Frontmatter + Charakterprofil (für voice)
+
+**Frontend-Änderungen (Design-Highlight):**
+- **Text-Selection Detection:** TipTap Selection → Position + Text extrahieren
+- **Rewrite-Mode-Selektor:** Inline-Panel mit 5 Modi (Tone/Style/Voice/Fix/Custom)
+  - Voice-Modus: Charakter-Dropdown aus KB
+  - Custom-Modus: Freitext-Input
+  - Count-Wähler: 1-3 Alternativen
+- **Alternatives-Vergleichs-UI** (zentrales Design-Element):
+  - Karten-Layout: Original + 1-3 Alternativen als Tabs oder nebeneinander
+  - Inline-Diff-Hervorhebung: Änderungen farblich markiert (hinzugefügt/entfernt)
+  - One-Click Replace: Klick ersetzt die Auswahl direkt im Editor
+  - Insert-as-New: Fügt Alternative als neue Passage ein
+  - Sanfte Animationen für das Erscheinen/Verschwinden der Karten
+  - Ästhetik: Editorial/Refined — nicht vom Schreiben ablenken
+- **Kontextmenü:** Rechtsklick auf Selection → "Rewrite" Option
+- **Toolbar-Integration:** "Rewrite" Button aktiv wenn Text ausgewählt
+
+**Constraints:**
+- Selection min. 50 Wörter, max. 2000 Wörter
+- Voice-Modus braucht Charakter im KB
+- Show-don't-tell kann Details erfinden die nicht im Original stehen
+- Custom-Instruktionen braucht LLM-Interpretation
+
+**Dependencies:** Prompt Templates (neu), Rewrite-Schemas (neu), KB für Voice-Modus (✅)
+
+#### Phase 6 Shared Tasks
+
+- E2E Smoke Tests für beide Features
+- i18n für alle neuen UI-Strings (en/de/fr)
+- Prompt-Templates in 3 Sprachen
+- Unit + Integration Tests für Backend
+- Component Tests für Frontend
+- Feature Specs aktualisieren (WRITE-003, WRITE-004 → status: stable)
+- ADR falls nötig (Rewrite als eigene Service-Schicht)
+
+---
+
+## Post-MVP Roadmap
+
+> **Status:** Geplant. Technische Kerndetails definiert. OpenSpec Proposals bei Start der jeweiligen Phase.
+>
+> **Architekturelle Voraussetzungen:** Alle Post-MVP-Features bauen auf der bestehenden Infrastruktur auf:
+> - RULE-12 (Service Layer als einzige öffentliche API) — MCP/A2A/CLI sind Clients
+> - Protocol-basierte DI — Services ohne Code-Änderungen für neue Clients nutzbar
+> - Event-Driven Architecture (ADR-012) — TaskIQ für Hintergrundverarbeitung bereit
+> - Embedding Cascade (ADR-017) — Skaliert für zukünftige Embedding-Anwendungen
+> - Lernschleife (LEARN-001) — Fundament für alle Adaptions-Features
+
+---
+
+### Post-MVP Phase 1: "Writing Intelligence"
+
+*Schwerpunkt: Die Schreiberfahrung intelligenter machen. Writer's Block überwinden. Stimme erhalten.*
+
+| Feature | ID | Kernpunkte |
+|---------|-----|-----------|
+| **Co-Author Mode** | WRITE-006 | Dialog-basiertes Schreiben mit AI. Nicht "Schreib mir ein Kapitel" sondern "Lass uns gemeinsam diese Szene entwickeln." Nutzt Interactive Session Infrastructure. AI fragt nach, macht Vorschläge, widerspricht. |
+| **Inline AI Suggestions** | WRITE-007 | Autocomplete-ähnlich: AI schlägt den nächsten Satz vor während man tippt. TipTap Decoration API. Debounced (1s Pause → Vorschlag). Ghost-text Darstellung. Tab zum Akzeptieren. Braucht niedrige Latenz LLM-Calls. |
+| **Entity Extraction** | KB-007 | Automatische Entität-Erkennung aus Chapter-Text. AI liest Chapter → schlägt neue KB-Einträge vor (Charaktere, Orte, Gegenstände). Event-getriggert nach Chapter-Save. Nutzt bestehende ChapterSummaryAgent-Infrastruktur. |
+| **Style Adaptation** | LEARN-002 | Baut auf LEARN-001 auf: Preferences werden nicht nur gespeichert sondern aktiv in Prompts injiziert. "Du schreibst kurze Sätze, wenig Adjektive, viel Dialog" → AI passt Output an. `PromptContext.style_constraints` bereits vorbereitet. |
+
+**Technische Kerne:**
+- WRITE-007 braucht TipTap `DecorationSet` Extension + SSE-Streaming mit `<200ms` Time-to-First-Token
+- KB-007 braucht neuen `EntityExtractionAgent` (NarrareAgent-Pattern) + Event: `ChapterSaved → ExtractEntities`
+- LEARN-002 erweitert `PromptComposer` um dynamische Stil-Constraints aus PreferenceProfile
+
+**Dependencies:** Phase 6 (WRITE-003/004) sollte zuerst abgeschlossen sein — WRITE-007 erweitert die Continue-Funktionalität.
+
+---
+
+### Post-MVP Phase 2: "Analysis & Feedback"
+
+*Schwerpunkt: Dem Writer zeigen was funktioniert und was nicht. Objektives Feedback.*
+
+| Feature | ID | Kernpunkte |
+|---------|-----|-----------|
+| **Beta Reader Simulation** | ANAL-001 | AI liest als Beta-Reader: "Pacing dragging in chapter 3", "Character motivation unclear", "Great tension in the chase scene". Structured Output mit `BetaReaderReport` (Gesamtbewertung, Kapitel-Feedback, konkrete Vorschläge). |
+| **POV Analysis** | ANAL-004 | Erkennt Head-Hopping, inkonsistente Perspektive, Filter-Wörter. Pro-Absatz-Analyse. Visuelle Markierung im Editor (TipTap Decoration). |
+| **Author Voice Profiling** | ANAL-007 | Extrahiert Stimm-profil aus bestehendem Text: Satzlängen-Verteilung, Vokabular-Diversität, Dialog/Narration-Ratio, Häufigkeitswörter. Speichert als `VoiceProfile` in User-Settings. |
+| **Character Voice Profiling** | ANAL-008 | Gleiches wie ANAL-007 aber per Charakter. Analysiert alle Dialoge eines Charakters → extrahiert Sprachmuster. Speichert in KB-Entity (CharacterMetadata.speech_patterns). |
+| **Voice Consistency** | WRITE-010 | Nutzt ANAL-007 + ANAL-008 Profile um Voice-Drift zu erkennen. "This dialogue doesn't sound like Elena — she uses short sentences, not philosophical monologues." Inline-Warnungen im Editor. |
+
+**Technische Kerne:**
+- Alle ANAL-Features nutzen NarrareAgent-Pattern mit Structured Output
+- `BetaReaderAgent` (neu): Input = Kapitel-Text + KB-Kontext, Output = `BetaReaderReport`
+- `VoiceProfiler`: Statistische Analyse + LLM-basierte Muster-Erkennung
+- TipTap Decorations für Inline-Markierung (POV-Verletzung, Voice-Drift)
+- ANAL-007/008 Output speichern in User-Settings bzw. KB-Entity
+
+**Dependencies:** Keine harten Abhängigkeiten. Kann parallel zu Phase 1 laufen.
+
+---
+
+### Post-MVP Phase 3: "Collaboration & Publishing"
+
+*Schwerpunkt: Manuscript exportieren. Projekte importieren. Mit AI chatten.*
+
+| Feature | ID | Kernpunkte |
+|---------|-----|-----------|
+| **Manuscript Export** | IO-001 | Export als PDF, ePub, DOCX, Markdown. Jinja2-Templates für Formatierung. Chapter-Order aus Volume-Struktur. KB-Anhang als Anhang. Titelseite aus Novel-Metadaten. |
+| **Project Import** | IO-002 | DOCX/Markdown/TXT Import → AI analysiert Struktur → schlägt Chapters, Volumes, KB-Einträge vor. Nutzt EntityExtractionAgent. Interaktiver Bestätigungs-Flow. |
+| **Story Chat** | ASSIST-003 | Chat-Interface für Fragen zum eigenen Projekt. "Which chapters mention the forest?", "Summarize Elena's arc", "Find continuity errors". RAG über KB + Chapter-Summaries. |
+
+**Technische Kerne:**
+- IO-001: `python-docx` für DOCX, `weasyprint` für PDF, `ebooklib` für ePub
+- IO-002: `python-docx` / `markdown` Parser → `ImportAnalysisAgent` → Struktur-Vorschlag → User-Bestätigung → Batch-Create
+- ASSIST-003: Neuer Chat-Endpoint, RAG mit pgvector-Ähnlichkeitssuche über KB + Summaries, Context-Window-Management
+
+**Dependencies:** IO-002 braucht KB-007 (Entity Extraction) für beste Ergebnisse.
+
+---
+
+### Post-MVP Phase 4: "Platform & Integrations"
+
+*Schwerpunkt: Narrare als Platform. MCP. A2A. Analytics.*
+
+| Feature | ID | Kernpunkte |
+|---------|-----|-----------|
+| **MCP Server** | Q-001 | Model Context Protocol Server. Erlaubt externen AI-Clients (Claude, GPT) auf Narrare-Daten zuzugreifen. Tools: `search_kb`, `get_chapter`, `list_characters`, `write_draft`. Auth über API-Keys. |
+| **A2A Protocol** | Q-002 | Agent-to-Agent Protocol. Narrare als Agent in Multi-Agent-Systemen. Andere Agents können Schreib-Aufgaben delegieren. |
+| **Embedding Abstraction** | Q-003 | Einheitliches Embedding-Interface in `core/llm/embeddings.py`. Aktuell: OpenAI + sentence-transformers ad-hoc. Ziel: Provider-Interface wie LLM-Gateway. |
+| **Writing Statistics** | STATS-001 | Zeitreihen-Analyse: Wörter/Tag, aktive Schreibzeiten, Kapitel-Fortschritt. Dashboard mit Charts. Persistenz in neuer `writing_sessions`-Tabelle. |
+| **Cost Tracking** | STATS-002 | Pro-Request Token-Tracking (bereits teilweise via Langfuse). UI-Dashboard mit Kosten pro Tag/Woche/Monat. Budget-Warnungen. |
+
+**Technische Kerne:**
+- MCP: `fastapi-mcp` oder eigener MCP-Server-Adapter. Tool-Definitionen aus bestehenden Service-Protokollen generieren.
+- A2A: Neuer `apps/a2a/` Adapter. RULE-12 stellt sicher: nur Service-Calls, keine neue Logik.
+- Q-003: `EmbeddingProvider` Protocol + `EmbeddingRegistry`. Cascade wird zur Registry-Methode.
+- STATS-001: `writing_sessions` Tabelle (start_time, end_time, words_written, chapter_id). Cron-Job aggregiert täglich.
+- STATS-002: Langfuse-Daten → `ai_costs` Tabelle → Analytics-Endpoint → Frontend-Dashboard.
+
+**Dependencies:** Keine harten Abhängigkeiten. Kann parallel zu allen anderen Phasen laufen.
+
+---
+
+### Architektur-Entscheidungen für Post-MVP
+
+| Entscheidung | Status | Begründung |
+|-------------|--------|-----------|
+| Neue Agents folgen NarrareAgent-Pattern | ✅ Festgelegt | BetaReaderAgent, VoiceProfiler, EntityExtractionAgent — alle als NarrareAgent-Subklassen |
+| MCP/A2A als Service-Clients | ✅ Festgelegt | RULE-12: Nur Service-Calls, keine neue Logik in Adaptern |
+| IO-Export via Templates | ✅ Festgelegt | Jinja2-Templates für Formatierung, leicht anpassbar |
+| Inline-Suggestions via TipTap Decorations | ✅ Festgelegt | Keine Content-Mutation, nur visuelle Overlays |
+| RAG für Chat via pgvector | ✅ Festgelegt | Bestehende pgvector-Infrastruktur, keine neue DB |
+
+### Offene Architektur-Fragen (Post-MVP)
+
+| ID | Frage | Empfehlung | Blockiert |
+|----|-------|-----------|-----------|
+| Q-001 | MCP Auth-Strategie | OAuth2 + API-Keys (hybrid) | apps/mcp/ |
+| Q-002 | A2A Streaming | SSE-kompatibler Modus (non-streaming fallback via RULE-13) | apps/a2a/ |
+| Q-003 | Embedding-Abstraktion | Provider-Interface wie LLM-Gateway | core/llm/embeddings.py |
+| Q-NEW | Inline-Suggestion Latenz | Prefix-Caching + kurze Prompts? Mini-Modell? | WRITE-007 |
+| Q-NEW | Multi-Agent Chat Memory | Kontext-Window für Chat: wie viele KB-Einträge? Reranking? | ASSIST-003 |
 
 ---
 
@@ -443,6 +743,6 @@ All other providers (OpenAI, Anthropic) are unblocked and can proceed in paralle
 
 ---
 
-> Last updated: project initialization
-> Owner: Architecture Agent
-> This plan changes only via Architecture session + DECISIONS.md entry
+> Last updated: 2026-05-22 — Phase 5 COMPLETE. Phase 6 (WRITE-003/004) IN PROGRESS. Post-MVP roadmap added.
+> Owner: Architecture Agent + Dev Coordinator
+> This plan changes only via Architecture session + ADR entry
