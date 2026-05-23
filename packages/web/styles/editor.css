@@ -114,3 +114,12 @@
   opacity: 1 !important;
   background-color: var(--popover) !important;
 }
+
+/* Ghost Text Inline Suggestion */
+.ghost-text-suggestion {
+  color: #9ca3af;          /* Tailwind: text-gray-400 */
+  font-style: italic;
+  opacity: 0.6;
+  pointer-events: none;    /* Don't interfere with cursor / selection */
+  user-select: none;       /* Prevent text selection */
+}

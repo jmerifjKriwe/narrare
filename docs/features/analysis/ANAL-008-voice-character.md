@@ -164,6 +164,33 @@ fields gracefully.
 
 ## Constraints & Edge Cases
 
+### Critical Implementation Constraint
+
+When saving generated voice profiles to the Knowledge Base, the profile data
+MUST be written to the character's KB metadata under the `speech` key in the
+exact format specified by the [Generation Pipeline data contract](#integration-with-generation-pipeline).
+
+**Mapping rule:**
+```
+CharacterVoiceProfile.verbal_tics  →  metadata["speech"]["typical_phrases"]
+CharacterVoiceProfile.formality    →  metadata["speech"]["dialect"]  (as descriptor string)
+CharacterVoiceProfile.speech_patterns  →  metadata["speech"]["vocabulary_quirks"]  (as JSON string)
+CharacterVoiceProfile.examples     →  metadata["speech"]["body_language"]  (as examples context)
+```
+
+**Why this matters:** The generation pipeline (`WritingContextAssembler._extract_voice_profiles()`)
+reads `KBEntity.metadata["speech"]` and `KBEntity.metadata["personality"]` to inject
+`{{character_voice_profiles}}` into all writing prompts. If the profile data is stored
+in a different structure or location, the prompt-level voice protection will remain empty —
+ANAL-008 analysis results would never reach actual generation.
+
+**Non-compliance:** A future developer implementing ANAL-008 who stores voice profiles
+anywhere else (e.g., a separate table, a different metadata key, or a flat field directly
+on the character model) will cause the generation pipeline to produce characters without
+voice protection. This is a regression.
+
+### Edge Cases
+
 - Minimum 10 dialogue passages per character recommended
 - Very sparse dialogue = poor profile quality
 - Characters with similar voices may not be distinguished

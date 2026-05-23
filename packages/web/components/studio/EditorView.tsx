@@ -517,6 +517,7 @@ export function EditorView({ novelId }: EditorViewProps) {
               onChange={setContent}
               onAutosave={handleAutosave}
               autosaveInterval={30_000}
+              chapterId={activeChapterId ?? undefined}
             />
           </div>
         </div>

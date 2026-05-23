@@ -7,11 +7,13 @@ import StarterKit from "@tiptap/starter-kit";
 import { Check, RotateCcw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createSseSuggestionFetcher } from "@/lib/api/suggest";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
 import { BlockControls } from "./BlockControls";
 import { Autosave } from "./editor/extensions/Autosave";
 import { DialogueMark } from "./editor/extensions/DialogueMark";
+import { GhostText, simulateSuggestion } from "./editor/extensions/GhostText";
 import { NarrareDocument } from "./editor/extensions/NarrareDocument";
 import { SceneBreak } from "./editor/extensions/SceneBreak";
 
@@ -20,6 +22,8 @@ interface TipTapEditorProps {
   onChange: (content: string) => void;
   onAutosave?: (content: string) => Promise<void>;
   autosaveInterval?: number;
+  /** Chapter ID for backend suggestion API calls */
+  chapterId?: string;
 }
 
 interface AISuggestion {
@@ -33,6 +37,7 @@ export function TipTapEditor({
   onChange,
   onAutosave,
   autosaveInterval,
+  chapterId,
 }: TipTapEditorProps) {
   const t = useTranslations("studio");
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
@@ -61,6 +66,38 @@ export function TipTapEditor({
     [autosaveInterval],
   );
 
+  // ── GhostText fetchSuggestion ref (same stale-closure pattern as Autosave) ──
+  // useEditor freezes extensions at mount time, so a direct closure over chapterId
+  // would never update. Instead we store the latest fetcher in a ref and read it
+  // at call time via the stable wrapper.
+  const fetchSuggestionRef = useRef<
+    | ((params: { textBefore: string; textAfter: string; signal: AbortSignal }) => Promise<string>)
+    | undefined
+  >(undefined);
+
+  useEffect(() => {
+    fetchSuggestionRef.current = chapterId ? createSseSuggestionFetcher(chapterId) : undefined;
+  }, [chapterId]);
+
+  // Stable config object — empty deps because all dynamic values are read from refs at call time
+  const ghostTextConfig = useMemo(
+    () =>
+      ({
+        fetchSuggestion: (params: {
+          textBefore: string;
+          textAfter: string;
+          signal: AbortSignal;
+        }) => {
+          return fetchSuggestionRef.current?.(params) ?? simulateSuggestion(params);
+        },
+        enabled: true,
+        minChars: 5,
+        suggestionDelay: 800,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }) satisfies Partial<import("./editor/extensions/GhostText").GhostTextOptions>,
+    [],
+  );
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -74,6 +111,7 @@ export function TipTapEditor({
       SceneBreak,
       DialogueMark,
       Autosave.configure(autosaveConfig),
+      GhostText.configure(ghostTextConfig),
       Placeholder.configure({
         placeholder: t("editor.placeholder"),
       }),
