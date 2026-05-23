@@ -19,7 +19,8 @@ import pytest
 from narrare_core.llm.intents import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk
 from narrare_core.shared.errors import WritingError
-from narrare_core.writing.models import GenerationMode, GenerationRequest
+from narrare_core.writing import GenerationMode
+from narrare_core.writing.models import GenerationRequest
 from narrare_core.writing.pipeline import WritingPipeline
 
 if TYPE_CHECKING:

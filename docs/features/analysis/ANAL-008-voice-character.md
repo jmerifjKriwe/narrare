@@ -123,6 +123,28 @@ class CharacterVoiceProfile:
     emotional_range: str  # restricted, moderate, expressive
 ```
 
+### Integration with Generation Pipeline
+
+When character voice profiles are generated via this feature, they should be saved
+to the character's KB metadata under the `speech` key. The generation pipeline
+(`WritingContextAssembler._extract_voice_profiles()`) automatically reads
+`KBEntity.metadata["speech"]` and `KBEntity.metadata["personality"]` to populate
+the `{{character_voice_profiles}}` variable in all writing prompts.
+
+**Data contract** — `KBEntity.metadata["speech"]` must contain:
+```python
+{
+    "dialect": str | None,
+    "vocabulary_quirks": str | None,
+    "typical_phrases": list[str] | None,
+    "body_language": str | None,
+}
+```
+
+This matches the `SpeechPatterns` schema in `kb/schemas/character.py` and the
+`CharacterMetadata.speech` model. The extraction code handles missing/partial
+fields gracefully.
+
 **Analysis process:**
 1. **Extract dialogue** attributed to each character
 2. **Calculate metrics**:

@@ -10,6 +10,7 @@ Public API:
     DraftProcessor, WritingPipeline, SessionManager,
 """
 
+from narrare_core.writing._enums import GenerationMode, GenerationStatus
 from narrare_core.writing.budget import TokenBudgetManager
 from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.context_models import KBEntity, RecentChapter
@@ -21,9 +22,7 @@ from narrare_core.writing.contracts import (
 )
 from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.models import (
-    GenerationMode,
     GenerationRequest,
-    GenerationStatus,
     SceneState,
     SessionState,
     WritingContext,

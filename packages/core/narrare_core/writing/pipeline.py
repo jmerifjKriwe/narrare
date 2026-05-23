@@ -18,11 +18,7 @@ import structlog
 
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import WritingError
-from narrare_core.writing.models import (
-    GenerationMode,
-    GenerationRequest,
-    WritingContext,
-)
+from narrare_core.writing._enums import GenerationMode
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -35,6 +31,7 @@ if TYPE_CHECKING:
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.context_models import KBEntity, RecentChapter
     from narrare_core.writing.draft_processor import DraftProcessor
+    from narrare_core.writing.models import GenerationRequest, WritingContext
 
 logger = structlog.get_logger(__name__)
 
@@ -287,6 +284,7 @@ class WritingPipeline:
             "kb_characters": context.kb_characters,
             "kb_locations": context.kb_locations,
             "recent_chapters": context.recent_chapters,
+            "character_voice_profiles": context.character_voice_profiles,
             "word_target": str(context.word_target) if context.word_target else "",
             "tone_instructions": tone_instr,
             "writing_language": context.writing_language,
@@ -305,6 +303,7 @@ class WritingPipeline:
             author_instructions=author_instructions or request.prompt or request.outline or "",
             user_preferences=context.user_preferences,
             avoidance_patterns=context.avoidance_patterns,
+            character_voice_profiles=context.character_voice_profiles,
             extra=extra,
         )
 

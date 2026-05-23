@@ -16,8 +16,9 @@ import pytest
 from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
 from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.writing import GenerationMode
 from narrare_core.writing.context_assembler import WritingContextAssembler
-from narrare_core.writing.models import GenerationMode, GenerationRequest, WritingContext
+from narrare_core.writing.models import GenerationRequest, WritingContext
 from narrare_core.writing.pipeline_graph import run_with_persistence, stream_via_writing_graph
 
 if TYPE_CHECKING:

@@ -31,6 +31,18 @@ Factions :
 
 {{recent_chapters}}
 
+### Profils vocaux des personnages
+
+Lorsque vous écrivez des dialogues, maintenez la voix distincte de chaque personnage :
+
+{{character_voice_profiles}}
+
+**Règles de cohérence vocale :**
+- Chaque personnage doit utiliser son dialecte, son vocabulaire et ses tics verbaux établis
+- Les traits de personnalité doivent transparaître dans les dialogues (formel, familier, laconique, éloquent)
+- Les personnages doivent être identifiables par leur seule parole, sans balises de dialogue
+- Ne faites PAS parler tous les personnages de la même manière — préservez leur individualité linguistique
+
 ### Instructions
 
 Générez UNE scène à la fois à partir du plan du chapitre. Suivez ces directives :

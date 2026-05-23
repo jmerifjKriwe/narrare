@@ -10,10 +10,10 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
+from narrare_core.writing import GenerationMode
 from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.draft_processor import DraftProcessor
 from narrare_core.writing.models import (
-    GenerationMode,
     GenerationRequest,
     WritingContext,
 )

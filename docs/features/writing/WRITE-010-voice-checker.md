@@ -156,6 +156,13 @@ For flagged lines, AI generates rewrite that:
 - Maintains scene context
 - Provides explanation for changes
 
+### Prerequisites
+
+The generation pipeline already injects `{{character_voice_profiles}}` into
+writing prompts as a preventive measure. This feature (WRITE-010) adds an
+active checking layer — it should read the same `KBEntity.metadata["speech"]`
+data and `_voice_profiles.py` extraction patterns.
+
 ## Constraints & Edge Cases
 
 - Requires voice profile in KB (create via KB-002 or KB-001)

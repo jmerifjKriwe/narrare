@@ -68,6 +68,9 @@ class PromptContext:
     text_to_analyse: str = ""
     analysis_focus: str = ""
 
+    # --- Character voice profiles ---
+    character_voice_profiles: str = ""  # Voice consistency data for dialogue generation
+
     # --- Memory / Preference context ---
     user_preferences: str = ""  # Formatted preference text from memory layer
     avoidance_patterns: str = ""  # Things the user dislikes (from feedback)

@@ -31,6 +31,18 @@ Factions:
 
 {{recent_chapters}}
 
+### Character Voice Profiles
+
+When writing dialogue, maintain each character's distinct voice based on their speech patterns:
+
+{{character_voice_profiles}}
+
+**Voice consistency rules:**
+- Each character must use their established dialect, vocabulary, and verbal tics
+- Match their personality traits when they speak (formal, casual, terse, eloquent)
+- Characters should be identifiable by their speech alone, without dialogue tags
+- Do NOT make all characters sound the same — preserve their linguistic individuality
+
 ### Instructions
 
 Generate ONE scene at a time from the chapter outline. Follow these guidelines:

@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare_core.shared.frontmatter import parse_frontmatter
+from narrare_core.writing._voice_profiles import extract_voice_profiles
 from narrare_core.writing.budget import TokenBudgetManager
 from narrare_core.writing.models import WritingContext
 
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
+
 
 _REFERENCE_KEYS: frozenset[str] = frozenset(
     {
@@ -158,10 +160,14 @@ class WritingContextAssembler:
         # Tier 5: Pinned (bypass — always included)
         pinned_text = self._format_entities(pinned)
 
+        # Extract character voice profiles from character entities
+        character_voice_profiles = extract_voice_profiles(entities)
+
         return WritingContext(
             chapter_content=content,
             chapter_frontmatter=chapter_frontmatter,
             chapter_outline=chapter_outline,
+            character_voice_profiles=character_voice_profiles,
             recent_chapters=recent_text,
             recent_chapter_count=len(recent),
             kb_characters=chars_text,

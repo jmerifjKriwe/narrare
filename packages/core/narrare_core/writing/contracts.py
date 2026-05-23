@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare_core.llm.result import StreamChunk
+    from narrare_core.writing._enums import GenerationMode
     from narrare_core.writing.models import (
-        GenerationMode,
         GenerationRequest,
         SessionState,
         WritingContext,

@@ -144,6 +144,19 @@ class VoiceDriftResult:
     confidence: float  # 0-1
 ```
 
+### Integration with Generation Pipeline
+
+The generation pipeline (`WritingContextAssembler`) already extracts character
+voice profiles from KB metadata and injects them into writing prompts as
+`{{character_voice_profiles}}`. This serves as a **preventive** measure against
+voice drift — characters should already sound consistent when generated.
+
+Voice Drift Detection (this feature) serves as the **corrective** counterpart:
+it analyzes generated chapters after the fact to detect remaining drift.
+When implementing this feature:
+- Use the same `KBEntity.metadata["speech"]` data contract (see ANAL-008)
+- The `CharacterVoiceProfile` structure should map to `SpeechPatterns` fields
+
 ## Constraints & Edge Cases
 
 - Requires baseline chapter with 1000+ words

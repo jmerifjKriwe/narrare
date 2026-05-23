@@ -1,51 +1,21 @@
 """Data models for the writing subsystem.
 
-Defines generation modes, status lifecycle, and dataclasses used across
-the writing pipeline.  These are pure data containers — no I/O, no
-side-effects, no knowledge of HTTP, users, or database sessions.
+Defines dataclasses used across the writing pipeline.
+Enums live in ``_enums.py`` (RULE-04).
+
+These are pure data containers — no I/O, no side-effects, no knowledge
+of HTTP, users, or database sessions.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import StrEnum
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-# ---------------------------------------------------------------------------
-# Enums
-# ---------------------------------------------------------------------------
-
-
-class GenerationMode(StrEnum):
-    """Four supported generation modes.
-
-    Each mode drives a different pipeline configuration in the prompt
-    composer and determines which context tiers receive the most budget.
-    """
-
-    FULL_DRAFT = "full_draft"
-    SCENE_BY_SCENE = "scene_by_scene"
-    INTERVIEW_ASSISTED = "interview_assisted"
-    INTERACTIVE_SESSION = "interactive_session"
-
-
-class GenerationStatus(StrEnum):
-    """Status lifecycle for a generation request.
-
-    A request transitions through these states in order::
-
-        PENDING → STREAMING → COMPLETED
-                              ↘ STOPPED
-                              ↘ FAILED
-    """
-
-    PENDING = "pending"
-    STREAMING = "streaming"
-    COMPLETED = "completed"
-    STOPPED = "stopped"
-    FAILED = "failed"
-
+if TYPE_CHECKING:
+    from narrare_core.writing._enums import GenerationMode
 
 # ---------------------------------------------------------------------------
 # Context
@@ -89,6 +59,9 @@ class WritingContext:
     word_target: int | None = None
     writing_language: str = "en"  # output language (freetext)
 
+    # Character voice profiles (extracted from KB character speech metadata)
+    character_voice_profiles: str = ""
+
     # Memory layer
     user_preferences: str = ""
     avoidance_patterns: str = ""
@@ -115,6 +88,7 @@ class WritingContext:
             "kb_factions": self.kb_factions,
             "kb_suggested": self.kb_suggested,
             "kb_pinned": self.kb_pinned,
+            "character_voice_profiles": self.character_voice_profiles,
             "project_title": self.project_title,
             "genre": self.genre,
             "tone": self.tone,

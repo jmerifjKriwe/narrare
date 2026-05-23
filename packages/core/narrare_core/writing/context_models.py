@@ -10,7 +10,7 @@ frequency, and recency scores before passing entities to the assembler.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -33,6 +33,7 @@ class KBEntity:
     recency_score: float = 0.0
     is_referenced: bool = False
     is_pinned: bool = False
+    metadata: dict[str, Any] | None = None  # structured entity metadata (speech, personality)
 
     @property
     def relevance_score(self) -> float:

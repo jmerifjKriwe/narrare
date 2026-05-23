@@ -50,7 +50,8 @@ class TestPipelineWritingGraph:
         from uuid import uuid4
 
         from narrare_core.llm.result import StreamChunk
-        from narrare_core.writing.models import GenerationMode, GenerationRequest, WritingContext
+        from narrare_core.writing import GenerationMode
+        from narrare_core.writing.models import GenerationRequest, WritingContext
 
         pipeline = _make_pipeline()
 

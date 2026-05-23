@@ -31,6 +31,18 @@ Gruppierungen:
 
 {{recent_chapters}}
 
+### Charakter-Sprachprofile
+
+Achte bei Dialogen darauf, dass jeder Charakter seine unverwechselbare Stimme behält:
+
+{{character_voice_profiles}}
+
+**Regeln zur Sprachkonsistenz:**
+- Jeder Charakter verwendet seinen etablierten Dialekt, Wortschatz und seine sprachlichen Eigenheiten
+- Die Persönlichkeitsmerkmale sollen im Dialog zum Ausdruck kommen (formell, umgangssprachlich, wortkarg, eloquent)
+- Charaktere sollen allein an ihrer Sprechweise erkennbar sein, ohne Dialog-Tags
+- Lass NICHT alle Charaktere gleich klingen — bewahre ihre sprachliche Individualität
+
 ### Anweisungen
 
 Arbeite alongside dem Autor in einer interaktiven Schreibsitzung. Befolge diese Richtlinien:

@@ -124,7 +124,8 @@ class WritingService:
         **context_kwargs: object,
     ) -> AsyncIterator[StreamChunk]:
         """Stream generated text chunks for an existing request."""
-        from narrare_core.writing.models import GenerationMode, GenerationRequest
+        from narrare_core.writing._enums import GenerationMode
+        from narrare_core.writing.models import GenerationRequest
 
         request_model = await self._get_validated_request(request_id, user_id)
         await self._repo.update_status(

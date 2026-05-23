@@ -248,3 +248,65 @@ class TestFirstChapter:
         )
         assert ctx.is_first_chapter is True
         assert len(ctx.kb_characters) > 0 or len(ctx.kb_suggested) > 0
+
+
+class TestVoiceProfilesInAssembly:
+    """Voice profile extraction integrated into the assembler."""
+
+    @pytest.mark.asyncio
+    async def test_character_voice_profiles_empty_when_no_metadata(
+        self,
+        assembler: WritingContextAssembler,
+    ) -> None:
+        """Assembly with characters but no speech metadata → empty profiles."""
+        fm = _frontmatter(
+            pov_character="char-1",
+            characters=["char-1", "char-2"],
+        )
+        entities = [
+            _entity("char-1", "character", "Alice", "A brave warrior."),
+            _entity("char-2", "character", "Bob", "A wise mage."),
+        ]
+        ctx = await assembler.assemble(
+            chapter_content="Content.",
+            chapter_frontmatter=fm,
+            kb_entities=entities,
+        )
+        assert ctx.character_voice_profiles == ""
+
+    @pytest.mark.asyncio
+    async def test_character_voice_profiles_present_with_metadata(
+        self,
+        assembler: WritingContextAssembler,
+    ) -> None:
+        """Assembly with characters and speech metadata → populated profiles."""
+        entities = [
+            _entity(
+                "char-1",
+                "character",
+                "Alice",
+                "A warrior.",
+            ),
+        ]
+        # Override metadata directly since _entity doesn't support it
+        entities[0] = KBEntity(
+            entity_id="char-1",
+            entity_type="character",
+            name="Alice",
+            content="A warrior.",
+            similarity_score=0.5,
+            frequency_score=0.5,
+            recency_score=0.5,
+            is_pinned=False,
+            is_referenced=False,
+            metadata={
+                "speech": {"dialect": "Southern", "vocabulary_quirks": "archaic"},
+            },
+        )
+        ctx = await assembler.assemble(
+            chapter_content="Content.",
+            kb_entities=entities,
+        )
+        assert ctx.character_voice_profiles != ""
+        assert "**Alice**" in ctx.character_voice_profiles
+        assert "dialect: Southern" in ctx.character_voice_profiles
