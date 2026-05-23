@@ -123,6 +123,7 @@ class WritingPipeline:
         chapter_outline: str = "",
         recent_chapters: list[RecentChapter] | None = None,
         kb_entities: list[KBEntity] | None = None,
+        entity_connections: dict[str, set[str]] | None = None,
         project_title: str = "",
         genre: str = "",
         user_preferences: str = "",
@@ -141,6 +142,8 @@ class WritingPipeline:
             chapter_outline: Chapter outline or structure notes.
             recent_chapters: List of recent chapters for context.
             kb_entities: Knowledge base entities for reference.
+            entity_connections: Adjacency map of entity IDs to connected
+                entity IDs, used for KB entity classification.
             project_title: Title of the project/novel.
             genre: Genre of the writing project.
             user_preferences: User's writing preference string.
@@ -155,6 +158,7 @@ class WritingPipeline:
             chapter_outline=chapter_outline,
             recent_chapters=recent_chapters,
             kb_entities=kb_entities,
+            entity_connections=entity_connections,
             project_title=project_title,
             genre=genre,
             language=request.writing_language,

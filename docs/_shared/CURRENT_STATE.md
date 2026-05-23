@@ -12,7 +12,7 @@
 
 Date: 2026-05-23
 Updated by: NarrareDevCoordinator
-Session summary: CR-02 system-prompt audit optimizations. NarrareAgent.with_meta() factory for meta-prompt prepending. Meta-prompt guardrails (fiction content, conversation, avoidance_patterns) in all 4 variants (en/de/fr/lite). ADR-019. 14 new tests for guardrails + 8 new tests for with_meta().
+Session summary: CR-03 Feature-Adoption audit. `cap_to_budget()` token utility in core/writing/budget.py. Token enforcement: name service (500 tokens for existing names), interview draft (4000 tokens for transcripts). ReviewDeps extended with `writing_context: WritingContext` for enriched reviews with KB data. Entity connection promotion in WritingContextAssembler via `entity_connections` param. `RelationshipRepository.get_adjacency_map()` for adjacency data. 5 new test files. Feature docs updated (INFRA-003, WRITE-002, GEN-001).
 
 ---
 
@@ -121,8 +121,8 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `models.py` — GenerationMode, GenerationStatus, WritingContext, GenerationRequest, SessionState, SceneState
 - `context_models.py` — KBEntity, RecentChapter dataclasses
 - `contracts.py` — WritingPipelineProtocol, ContextAssemblerProtocol, DraftProcessorProtocol, SessionManagerProtocol
-- `context_assembler.py` — WritingContextAssembler with 5-tier ranking + token budgets
-- `budget.py` — TokenBudgetManager for tier allocation
+- `context_assembler.py` — WritingContextAssembler with 5-tier ranking + token budgets + entity connection promotion (first-degree connections of referenced entities promoted from suggested → referenced tier)
+- `budget.py` — TokenBudgetManager for tier allocation; `cap_to_budget()` lightweight token enforcement utility for non-tier contexts
 - `draft_processor.py` — DraftProcessor with artifact removal + markdown normalization
 - `pipeline.py` — WritingPipeline with 4-mode dispatch (full_draft, scene_by_scene, interview_assisted, interactive_session)
 - `pipeline_scene.py` — Scene-by-scene mode logic
@@ -206,6 +206,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
   - GET /prompts/variables — List available variables with descriptions
 - `generation/` — Generation features: contracts, schemas, name_service, router
   - POST /generation/names — Generate names with culture/type/count options
+  - `name_service.py` — existing names list capped at 500 tokens via `cap_to_budget()`
 
 **Writing Module (`writing/`):**
 - `models.py` — GenerationRequest SQLAlchemy model
@@ -231,6 +232,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `kb/_utils.py` — MENTION_RE regex for @Name cross-references (Unicode, multi-word support)
 - `kb/service.py` — resolve_references(), autocomplete endpoint
 - `kb/repository.py` — get_by_name(), search_by_name_prefix() for cross-reference lookup
+- `kb/relationship_repository.py` — relationship CRUD + `get_adjacency_map()` for entity connection adjacency data
 - 8 entity types: character, location, faction, object, system, timeline, concept, setting
 - Migration 0011 — expands CHECK constraints for concept + setting entity types
 
@@ -386,6 +388,8 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `core/prompts/` — registry, composer, variable_engine, meta, variable_engine_hypothesis (5 files)
 - `core/shared/` — frontmatter, result, errors, file_utils, result_hypothesis, frontmatter_hypothesis (6 files)
 - `core/planning/` — adapters (all 5 types + registry), sync checker, models (117 tests)
+- `core/writing/` — budget (incl. cap_to_budget), context_assembler (incl. entity_connections), pipeline, models (6+ files)
+- `core/agents/` — review_agent (incl. writing_context), writing_graph (incl. review context enrichment), summary_agent (3+ files)
 - `api/setup/` — setup_service, setup_schemas, demo_loader, provider_service, _complete_helpers, test_setup_complete_providers (6 files)
 - `api/auth/` — auth_service, security (2 files)
 - `api/chapters/` — chapter_service (1 file)
@@ -402,8 +406,8 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `chapters/test_chapters_api.py`, `auth/test_auth_api.py` (24 tests)
 - `settings/` — test_settings_api.py, test_ai_providers_api.py, test_ai_settings_api.py, test_project_ai_settings_api.py, test_gateway_integration.py, test_migration.py, test_project_settings_schema.py (50 tests)
 - `memory/` — test_memory_api.py, test_memory_analyze_api.py (20 tests)
-- `generation/test_generation_api.py` (5 tests)
-- `kb/` — test_kb_api.py, test_kb_schema.py, test_demo_kb_content.py, test_demo_kb_fields.py (27 tests)
+- `generation/` — test_generation_api.py, test_name_service_budget.py (6+ tests)
+- `kb/` — test_kb_api.py, test_kb_schema.py, test_demo_kb_content.py, test_demo_kb_fields.py, test_relationship_repository.py (30+ tests)
 - `volumes/test_volumes_api.py`, `health/test_health.py`
 - `planning/test_planning_api.py`
 - `writing/` — test_writing_api.py, test_full_lifecycle.py, test_scene_lifecycle.py, test_session_lifecycle.py, test_error_scenarios.py, test_generation_schema.py
@@ -564,6 +568,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Feature Docs Voice Integration (Doc Gate) | ANAL-008, ANAL-009, WRITE-010 updated with integration notes for {{character_voice_profiles}} infrastructure |
 | CR-01 Prompt Quality Audit | RULE-02 compliance: 5 agents wired to PromptComposer, hardcoded system_prompt strings removed. XML encapsulation for prompt injection defense. Interview + interactive_session prompts enhanced with CoT, negative examples, output format. New bundled prompts: review, preferences, outline, rewrite_selection, story_suggest. User preferences added to generation/name prompts. 10 new de/fr translations. |
 | CR-02 System-Prompt Audit | Meta-prompt guardrails added (fiction content, conversation guardrails, avoidance_patterns) to all 4 variants. NarrareAgent.with_meta() factory for meta-prompt loading. ADR-019. 14 new guardrail tests. |
+| CR-03 Feature-Adoption Audit | `cap_to_budget()` token utility + token enforcement on name service (500) and interview draft (4000). ReviewDeps extended with `writing_context` for enriched review with KB data. Entity connection promotion in context assembly via `entity_connections` + `get_adjacency_map()`. 5 new test files. |
 
 ---
 

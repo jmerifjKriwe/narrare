@@ -3,7 +3,7 @@
 Usage:
     model = await registry.get_model(config)
     agent = ReviewAgent(model=model)
-    deps = ReviewDeps(word_target=2000)
+    deps = ReviewDeps(word_target=2000, writing_context=writing_context)
     result = await agent.run(
         prompt="Review this draft:\n\n...draft text...",
         deps=deps,
@@ -13,12 +13,15 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.review_types import ReviewOutput
+
+if TYPE_CHECKING:
+    from narrare_core.writing.models import WritingContext
 
 
 class ReviewDeps:
@@ -26,10 +29,17 @@ class ReviewDeps:
 
     Attributes:
         word_target: Optional target word count for length check.
+        writing_context: Optional assembled writing context with KB entities,
+            recent chapters, and user preferences for enriched review.
     """
 
-    def __init__(self, word_target: int | None = None) -> None:
+    def __init__(
+        self,
+        word_target: int | None = None,
+        writing_context: WritingContext | None = None,
+    ) -> None:
         self.word_target = word_target
+        self.writing_context = writing_context
 
 
 class ReviewAgent(NarrareAgent[ReviewDeps, ReviewOutput]):

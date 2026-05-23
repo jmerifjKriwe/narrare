@@ -288,3 +288,36 @@ class TestInterviewAssisted:
 
         call_args = mock_registry.run.call_args
         assert call_args.args[0] == LLMIntent.CHAT
+
+
+class TestEntityConnectionsPassthrough:
+    """Verify entity_connections flows from generate() to assembler."""
+
+    @pytest.mark.asyncio
+    async def test_generate_passes_entity_connections_to_assembler(
+        self,
+        pipeline: WritingPipeline,
+        mock_assembler: Any,
+    ) -> None:
+        """entity_connections kwarg is forwarded to context_assembler.assemble()."""
+        with patch(
+            "narrare_core.writing.pipeline_graph.stream_via_writing_graph",
+        ) as mock_graph_stream:
+
+            async def fake_gen(*a: Any, **kw: Any) -> AsyncIterator[StreamChunk]:
+                yield StreamChunk(text="done", is_final=True)
+
+            mock_graph_stream.side_effect = lambda *a, **kw: fake_gen(a, kw)
+
+            connections = {"id-a": {"id-b", "id-c"}}
+            await _collect(
+                pipeline.generate(
+                    _request(),
+                    config=_config(),
+                    entity_connections=connections,
+                ),
+            )
+
+        # Verify the assembler received entity_connections
+        assemble_call = mock_assembler.assemble.call_args
+        assert assemble_call.kwargs.get("entity_connections") == connections

@@ -91,6 +91,7 @@ class WritingContextAssembler:
         chapter_outline: str = "",
         recent_chapters: list[RecentChapter] | None = None,
         kb_entities: list[KBEntity] | None = None,
+        entity_connections: dict[str, set[str]] | None = None,
         project_title: str = "",
         genre: str = "",
         language: str = "en",
@@ -114,19 +115,12 @@ class WritingContextAssembler:
         budgets = self._budget_manager.allocate(first_chapter=is_first)
         ref_ids = self._extract_frontmatter_references(chapter_frontmatter)
 
-        # Classify entities
-        pinned = [e for e in entities if e.is_pinned]
-        referenced = [
-            e for e in entities if not e.is_pinned and (e.entity_id in ref_ids or e.is_referenced)
-        ]
-        suggested = sorted(
-            [
-                e
-                for e in entities
-                if not e.is_pinned and e.entity_id not in ref_ids and not e.is_referenced
-            ],
-            key=lambda e: e.relevance_score,
-            reverse=True,
+        # Classify entities (with optional connection-based promotion)
+        connections = entity_connections or {}
+        pinned, referenced, connected, suggested = self._classify_entities(
+            entities,
+            ref_ids,
+            connections,
         )
 
         # Process tiers with overflow tracking
@@ -145,10 +139,11 @@ class WritingContextAssembler:
         t2_limit = budgets["recent"].token_limit + overflow
         recent_text, overflow = self._apply_tier2(recent, t2_limit)
 
-        # Tier 3: KB Referenced (split by entity type)
+        # Tier 3: KB Referenced + connected entities (split by entity type)
         t3_limit = budgets["kb_referenced"].token_limit + overflow
+        tier3_entities = referenced + connected
         chars_text, locs_text, factions_text, overflow = self._apply_tier3(
-            referenced,
+            tier3_entities,
             t3_limit,
         )
 
@@ -337,6 +332,37 @@ class WritingContextAssembler:
             else:
                 ids.add(str(value))  # pyright: ignore[reportUnknownArgumentType]
         return ids
+
+    def _classify_entities(
+        self,
+        entities: list[KBEntity],
+        ref_ids: set[str],
+        connections: dict[str, set[str]],
+    ) -> tuple[list[KBEntity], list[KBEntity], list[KBEntity], list[KBEntity]]:
+        """Classify entities into pinned, referenced, connected, suggested."""
+        pinned = [e for e in entities if e.is_pinned]
+        referenced = [
+            e for e in entities if not e.is_pinned and (e.entity_id in ref_ids or e.is_referenced)
+        ]
+        referenced_ids = {e.entity_id for e in referenced}
+        # First-degree connections of referenced entities
+        connected_ids: set[str] = set()
+        for ref_id in referenced_ids:
+            connected_ids.update(connections.get(ref_id, set()))
+        connected_ids -= referenced_ids | {e.entity_id for e in pinned}
+        connected = [e for e in entities if not e.is_pinned and e.entity_id in connected_ids]
+        suggested = sorted(
+            [
+                e
+                for e in entities
+                if not e.is_pinned
+                and e.entity_id not in referenced_ids
+                and e.entity_id not in connected_ids
+            ],
+            key=lambda e: e.relevance_score,
+            reverse=True,
+        )
+        return pinned, referenced, connected, suggested
 
     def _format_entities(self, entities: list[KBEntity]) -> str:
         """Format entities as a readable text block."""

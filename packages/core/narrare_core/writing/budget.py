@@ -17,7 +17,10 @@ redistributed to KB tiers since there is no history.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,3 +105,59 @@ class TokenBudgetManager:
             )
             for name, pct in pcts.items()
         }
+
+
+# ---------------------------------------------------------------------------
+# Lightweight token-budget utility
+# ---------------------------------------------------------------------------
+
+_APPROX_TOKEN_FACTOR = 1.3
+"""Multiplier applied to word count to approximate BPE token length."""
+
+
+def _default_token_counter(text: str) -> int:
+    """Approximate token count: words * 1.3.
+
+    Avoids a tiktoken dependency in core.  Consumers that need an
+    accurate count (e.g. the API layer) can inject their own counter
+    via the ``token_counter`` parameter of :func:`cap_to_budget`.
+    """
+    if not text:
+        return 0
+    return round(len(text.split()) * _APPROX_TOKEN_FACTOR)
+
+
+def cap_to_budget(
+    text: str,
+    max_tokens: int,
+    token_counter: Callable[[str], int] | None = None,
+) -> str:
+    """Cap text to a token budget, truncating from the end if needed.
+
+    Lightweight utility for services that need simple token enforcement
+    without the full 5-tier allocation system.
+
+    Args:
+        text: The text to potentially truncate.
+        max_tokens: Maximum allowed tokens.
+        token_counter: Optional token counting function.
+            Defaults to word-count * 1.3 approximation.
+
+    Returns:
+        Original text if within budget, otherwise truncated text.
+        Returns empty string if *max_tokens* <= 0.
+    """
+    if max_tokens <= 0:
+        return ""
+
+    count = token_counter or _default_token_counter
+
+    if count(text) <= max_tokens:
+        return text
+
+    # Truncate at word boundaries by progressively removing trailing words.
+    words = text.split()
+    while words and count(" ".join(words)) > max_tokens:
+        words.pop()
+
+    return " ".join(words)

@@ -142,7 +142,8 @@ Generated text is fully editable — treat it as your rough draft.
 1. **Context assembly** (INFRA-003): `WritingContextAssembler` with 5-tier ranking + token budgets
    - Immediate context (30%), Recent chapters (20%), KB referenced (25%), KB suggested (15%), Pinned (10%)
    - Token budget enforcement via `budget.py` (`TokenBudgetManager`)
-   - KB entity relevance: 50% similarity, 30% frequency, 20% recency
+    - Lightweight `cap_to_budget()` utility for non-tier token enforcement (e.g., 4000-token cap on interview transcripts, 500-token cap on existing names)
+    - KB entity relevance: 50% similarity, 30% frequency, 20% recency
  2. **Prompt building** (INFRA-002): Assemble system + user prompts from `_bundled/writing/{lang}/{mode}/`
     - 12 system prompts (4 modes × 3 languages: en, de, fr)
     - 9 bundled tones (defined in `pipeline.py` `_TONE_INSTRUCTIONS`): balanced, dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous, quiet
@@ -203,3 +204,4 @@ Generated text is fully editable — treat it as your rough draft.
 - `2026-05-18` — Fully implemented (stable). All 4 generation modes operational, SSE streaming + WebSocket sessions, frontend generation UI complete, 98 tasks done.
 - `2026-05-21` — Tone flow fixed: expanded from 4 to 9 bundled tones + custom tone support. Tone now stored in generation_requests (migration 0020) and flows correctly through pipeline. Integration tests re-enabled. Spec paths corrected.
 - `cr-01-audit` — Agents wired to PromptComposer (RULE-02 compliance). Interview prompts enhanced with CoT and negative examples. XML encapsulation for prompt injection defense.
+- `cr-03-audit` — Token enforcement: interview transcripts capped at 4000 tokens via `cap_to_budget()`. ReviewAgent enriched with `WritingContext` (KB entities, recent chapters, user preferences). Entity connection promotion in context assembly.

@@ -114,14 +114,14 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             )
 
         model = await get_model(ctx.deps)
-        system_prompt, user_prompt = await get_review_prompt(
+        system_prompt, user_prompt, writing_context = await get_review_prompt(
             ctx.deps.composer,
             ctx.deps,
             ctx.state,
             word_count,
         )
         agent = ReviewAgent(model=model, system_prompt=system_prompt or None)
-        rdeps = ReviewDeps(word_target=target)
+        rdeps = ReviewDeps(word_target=target, writing_context=writing_context)
         result = await agent.run(prompt=user_prompt, deps=rdeps)
 
         if not result.approved and ctx.state.attempts < 3:

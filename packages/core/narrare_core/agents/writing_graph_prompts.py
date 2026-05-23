@@ -3,7 +3,8 @@
 Extracted from writing_graph.py to respect the 200-line limit (RULE-04).
 Contains:
 - Prompt building functions for each graph step
-- Shared helpers (_save_state, _get_model)
+- Shared helpers (save_state, get_model)
+- Context assembly helper for enriched review
 
 See CONSTRAINTS.md RULE-02 (all prompts from PromptComposer).
 """
@@ -11,6 +12,8 @@ See CONSTRAINTS.md RULE-02 (all prompts from PromptComposer).
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+
+import structlog
 
 from narrare_core.agents.writing_graph_types import Approved, NeedsRevision
 from narrare_core.llm.intents import LLMIntent
@@ -21,6 +24,9 @@ if TYPE_CHECKING:
 
     from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
     from narrare_core.prompts.composer import ComposedPrompt
+    from narrare_core.writing.models import WritingContext
+
+logger = structlog.get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -120,14 +126,91 @@ async def get_draft_prompt(
     return (composed.system, composed.user)
 
 
+async def _assemble_review_context(
+    deps: WritingDeps,
+    state: WritingState,
+) -> WritingContext | None:
+    """Try to assemble WritingContext for enriched review.
+
+    Gracefully returns None if context assembly fails — the review
+    proceeds without KB context (better than blocking).  Follows RULE-11
+    (no silent failures): errors are logged via structlog.
+    """
+    if deps.context_assembler is None:
+        return None
+
+    if not state.chapter_id or not state.novel_id:
+        return None
+
+    try:
+        from uuid import UUID
+
+        result = await deps.context_assembler.assemble(
+            chapter_id=UUID(state.chapter_id),
+            project_id=UUID(state.novel_id),
+            mode="full_draft",
+        )
+        return result  # type: ignore[return-value]
+    except Exception as exc:
+        logger.warning(
+            "review_context_assembly_failed",
+            error=str(exc),
+            chapter_id=state.chapter_id,
+        )
+        return None
+
+
+def _enrich_review_prompt_with_context(
+    review_prompt: str,
+    writing_context: WritingContext,
+) -> str:
+    """Append KB context fields to an inline review prompt."""
+    if writing_context.kb_characters:
+        review_prompt += f"\nCharacters:\n{writing_context.kb_characters}\n"
+    if writing_context.kb_locations:
+        review_prompt += f"\nLocations:\n{writing_context.kb_locations}\n"
+    if writing_context.kb_factions:
+        review_prompt += f"\nFactions:\n{writing_context.kb_factions}\n"
+    if writing_context.recent_chapters:
+        review_prompt += f"\nRecent chapters:\n{writing_context.recent_chapters}\n"
+    return review_prompt
+
+
+def _enrich_prompt_context_with_kb(
+    context: PromptContext,
+    writing_context: WritingContext,
+) -> None:
+    """Populate PromptContext.extra with KB data from WritingContext."""
+    if writing_context.kb_characters:
+        context.extra["kb_characters"] = writing_context.kb_characters
+    if writing_context.kb_locations:
+        context.extra["kb_locations"] = writing_context.kb_locations
+    if writing_context.kb_factions:
+        context.extra["kb_factions"] = writing_context.kb_factions
+    if writing_context.kb_suggested:
+        context.extra["kb_suggested"] = writing_context.kb_suggested
+    if writing_context.recent_chapters:
+        context.extra["recent_chapters"] = writing_context.recent_chapters
+    if writing_context.user_preferences:
+        context.extra["user_preferences"] = writing_context.user_preferences
+
+
 async def get_review_prompt(
     composer: Any,
     deps: WritingDeps,
     state: WritingState,
     word_count: int,
-) -> tuple[str, str]:
-    """Return (system_prompt, user_prompt) for the review_draft step."""
+) -> tuple[str, str, WritingContext | None]:
+    """Return (system_prompt, user_prompt, writing_context) for the review_draft step.
+
+    Assembles WritingContext from the context_assembler when available
+    and enriches the prompt with KB data for consistency checks.
+    Returns the assembled context so the caller can pass it to ReviewDeps.
+    """
     draft_text = state.draft or ""
+
+    # Assemble KB context — graceful degradation on failure
+    writing_context = await _assemble_review_context(deps, state)
 
     if composer is None:
         review_prompt = (
@@ -136,9 +219,14 @@ async def get_review_prompt(
             f"Tone: {deps.tone}\n"
             f"Target word count: {deps.word_target}\n"
             f"Actual word count: {word_count}\n"
-            f"Draft:\n{draft_text}\n"
         )
-        return ("", review_prompt)
+        if writing_context is not None:
+            review_prompt = _enrich_review_prompt_with_context(
+                review_prompt,
+                writing_context,
+            )
+        review_prompt += f"\nDraft:\n{draft_text}\n"
+        return ("", review_prompt, writing_context)
 
     context = _base_context(deps, state)
     context.mode = "review"
@@ -147,12 +235,15 @@ async def get_review_prompt(
         "word_count": str(word_count),
     }
 
+    if writing_context is not None:
+        _enrich_prompt_context_with_kb(context, writing_context)
+
     composed: ComposedPrompt = await composer.build(
         LLMIntent.BETA_READ,
         context,
         user_prompt=draft_text,
     )
-    return (composed.system, composed.user)
+    return (composed.system, composed.user, writing_context)
 
 
 async def get_revise_prompt(

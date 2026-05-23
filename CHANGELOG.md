@@ -65,6 +65,16 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Focus mode exit: ESC key handler + floating Minimize2 button (semi-transparent)
 - Demo project metadata.json files (author, logline, pov, tags) for all 3 starters
 
+- CR-03 Feature-Adoption audit (token enforcement + context enrichment)
+  - `cap_to_budget()` lightweight token utility in `core/writing/budget.py` — truncates text at word boundaries to a token budget
+  - Name generator: existing names list capped at 500 tokens to prevent context overflow
+  - Interview draft: transcripts capped at 4000 tokens for interview-assisted mode
+  - ReviewAgent: `ReviewDeps` extended with optional `writing_context: WritingContext` for enriched reviews with KB entities, recent chapters, and user preferences
+  - Review prompt enriched with KB data via `writing_graph_prompts.py`
+  - `WritingContextAssembler.assemble()` accepts `entity_connections` adjacency map — first-degree connections of referenced entities promoted from suggested to referenced tier
+  - `RelationshipRepository.get_adjacency_map()` — builds adjacency map from KB relationship edges
+  - 5 new test files: name service budget, relationship repository, writing graph review context, context assembler connections (happy path + edge cases)
+
 ### Fixed
 
 - JWT secret fallback chain in `proxy.ts`: added `process.env.SECRET_KEY` as second fallback (matching backend's env var). Previously only checked `AUTH_JWT_SECRET`, causing verification failures on protected routes when only `SECRET_KEY` was set.

@@ -81,3 +81,51 @@ class RelationshipRepository(BaseRepository):
             )
         )
         return result.scalar_one() > 0
+
+    async def get_adjacency_map(
+        self,
+        novel_id: uuid.UUID,
+        entity_ids: set[uuid.UUID] | None = None,
+    ) -> dict[str, set[str]]:
+        """Build an entity_connections adjacency map from relationship edges.
+
+        For each entity, finds all first-degree connected entities
+        (both outgoing and incoming relationships).
+
+        Args:
+            novel_id: The novel to query relationships for.
+            entity_ids: Optional set of entity IDs to filter by.
+                When provided, only returns connections for these entities.
+                When None, returns all relationships in the novel.
+
+        Returns:
+            Dict mapping entity_id (as str) → set of connected
+            entity_ids (as str).
+        """
+        from narrare.kb.models import KBEntry
+
+        query = (
+            select(KBRelationship.source_id, KBRelationship.target_id)
+            .join(KBEntry, KBEntry.id == KBRelationship.source_id)
+            .where(KBEntry.novel_id == novel_id)
+        )
+
+        if entity_ids:
+            query = query.where(
+                or_(
+                    KBRelationship.source_id.in_(entity_ids),
+                    KBRelationship.target_id.in_(entity_ids),
+                )
+            )
+
+        result = await self._session.execute(query)
+        rows = result.all()
+
+        adjacency: dict[str, set[str]] = {}
+        for source_id, target_id in rows:
+            src = str(source_id)
+            tgt = str(target_id)
+            adjacency.setdefault(src, set()).add(tgt)
+            adjacency.setdefault(tgt, set()).add(src)
+
+        return adjacency

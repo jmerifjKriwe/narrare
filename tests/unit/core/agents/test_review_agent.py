@@ -14,6 +14,7 @@ from pydantic_ai.models.test import TestModel
 
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
+from narrare_core.writing.models import WritingContext
 
 # ---------------------------------------------------------------------------
 # A. ReviewDeps
@@ -26,10 +27,31 @@ class TestReviewDeps:
     def test_defaults(self) -> None:
         deps = ReviewDeps()
         assert deps.word_target is None
+        assert deps.writing_context is None
 
     def test_custom_values(self) -> None:
         deps = ReviewDeps(word_target=2000)
         assert deps.word_target == 2000
+
+    def test_accepts_writing_context(self) -> None:
+        """ReviewDeps accepts optional WritingContext for enriched review."""
+        ctx = WritingContext(
+            kb_characters="Elena, Marcus",
+            kb_locations="Dark Forest",
+            recent_chapters="Chapter 1: The Beginning",
+        )
+        deps = ReviewDeps(word_target=2000, writing_context=ctx)
+        assert deps.word_target == 2000
+        assert deps.writing_context is not None
+        assert deps.writing_context.kb_characters == "Elena, Marcus"
+        assert deps.writing_context.kb_locations == "Dark Forest"
+
+    def test_without_writing_context_backward_compat(self) -> None:
+        """ReviewDeps works without WritingContext — backward compatible."""
+        deps = ReviewDeps(word_target=1500)
+        assert deps.writing_context is None
+        # All existing code that only uses word_target still works
+        assert deps.word_target == 1500
 
 
 # ---------------------------------------------------------------------------

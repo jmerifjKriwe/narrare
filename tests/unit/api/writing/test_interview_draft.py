@@ -242,3 +242,79 @@ class TestDraftGeneration:
         assert len(state.conversation_history) == 3
         assert state.conversation_history[-1]["role"] == "assistant"
         assert state.prose_buffer  # non-empty
+
+
+# ---------------------------------------------------------------------------
+# Token-budget enforcement
+# ---------------------------------------------------------------------------
+
+
+class TestInterviewDraftTokenBudget:
+    """Token-budget enforcement for interview transcript capping."""
+
+    @staticmethod
+    def _long_qa_pairs(count: int) -> list[dict[str, str]]:
+        """Build *count* Q&A pairs with deliberately verbose answers."""
+        history: list[dict[str, str]] = []
+        for i in range(count):
+            history.append(
+                {
+                    "role": "assistant",
+                    "content": (
+                        f"Question {i}: Tell me about the political landscape "
+                        f"of the kingdom and how the various noble houses "
+                        f"interact with each other?"
+                    ),
+                }
+            )
+            history.append(
+                {
+                    "role": "user",
+                    "content": (
+                        f"Answer {i}: The kingdom is divided into five major "
+                        f"houses, each controlling vast territories and armies. "
+                        f"House Aldric rules the northern mountains, House "
+                        f"Brennick controls the eastern shores, House Carthan "
+                        f"holds the central plains, House Delvane governs the "
+                        f"southern forests, and House Edwyr maintains the "
+                        f"western deserts. Their alliances shift with the "
+                        f"seasons, but currently Aldric and Carthan are united "
+                        f"against Brennick's expansionist policies."
+                    ),
+                }
+            )
+        return history
+
+    async def test_long_transcript_capped_to_budget(self) -> None:
+        """30 Q&A pairs produce a transcript that still generates successfully."""
+        generator, session_manager, _ = _make_generator()
+        ws = MockWebSocket()
+
+        session_id = await session_manager.create_session(uuid4(), uuid4(), uuid4())
+
+        # Add 30 verbose Q&A pairs — would be thousands of tokens uncapped.
+        for msg in self._long_qa_pairs(30):
+            await session_manager.add_message(session_id, msg["role"], msg["content"])
+
+        await generator.generate(ws, session_id)  # type: ignore[arg-type]
+
+        # Draft should complete successfully (no crash).
+        draft_done = [m for m in ws.sent if m["type"] == "draft_done"]
+        assert len(draft_done) == 1
+        assert draft_done[0]["word_count"] > 0
+
+    async def test_short_transcript_not_capped(self) -> None:
+        """Short transcript (2-3 Q&A) passes through unchanged."""
+        generator, session_manager, _ = _make_generator()
+        ws = MockWebSocket()
+
+        session_id = await session_manager.create_session(uuid4(), uuid4(), uuid4())
+        await session_manager.add_message(session_id, "user", "A short answer")
+        await session_manager.add_message(session_id, "assistant", "Tell me more?")
+        await session_manager.add_message(session_id, "user", "Brief detail")
+
+        await generator.generate(ws, session_id)  # type: ignore[arg-type]
+
+        draft_done = [m for m in ws.sent if m["type"] == "draft_done"]
+        assert len(draft_done) == 1
+        assert "Once upon a time" in draft_done[0]["text"]

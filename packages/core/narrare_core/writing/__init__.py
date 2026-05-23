@@ -6,12 +6,12 @@ Public API:
     KBEntity, RecentChapter,
     WritingPipelineProtocol, ContextAssemblerProtocol,
     DraftProcessorProtocol, SessionManagerProtocol,
-    WritingContextAssembler, TokenBudgetManager,
+    WritingContextAssembler, TokenBudgetManager, cap_to_budget,
     DraftProcessor, WritingPipeline, SessionManager,
 """
 
 from narrare_core.writing._enums import GenerationMode, GenerationStatus
-from narrare_core.writing.budget import TokenBudgetManager
+from narrare_core.writing.budget import TokenBudgetManager, cap_to_budget
 from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.context_models import KBEntity, RecentChapter
 from narrare_core.writing.contracts import (
@@ -48,4 +48,5 @@ __all__ = [
     "WritingContextAssembler",
     "WritingPipeline",
     "WritingPipelineProtocol",
+    "cap_to_budget",
 ]

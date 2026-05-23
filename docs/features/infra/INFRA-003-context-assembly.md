@@ -103,8 +103,9 @@ fine-tune context for complex scenes.
 2. Fetch referenced KB entries
 3. Calculate similarity scores for remaining KB entries
 4. Rank by: 50% relevance, 30% usage frequency, 20% recency
-5. Apply token budget: prioritize high-ranked items
-6. Format as structured context for prompt variables
+5. **Connection promotion**: first-degree connections of referenced entities are promoted from suggested → referenced tier (via `entity_connections` adjacency map from `RelationshipRepository.get_adjacency_map()`)
+6. Apply token budget: prioritize high-ranked items
+7. Format as structured context for prompt variables
 
 **Token budgeting (general):**
 - Each intent has a token budget for context
@@ -129,6 +130,7 @@ The writing pipeline uses `WritingContextAssembler` (`core/writing/context_assem
 
 **Token budget enforcement:**
 - `TokenBudgetManager` allocates tokens per tier based on model context window
+- `cap_to_budget()` — lightweight utility for simple token enforcement outside the 5-tier system (used by name generator and interview draft)
 - Overflow handling: lower-priority tiers are trimmed first
 - Pinned items always included (10% reserved), even if other tiers overflow
 - Budget recalculated per generation request based on resolved model config
@@ -137,6 +139,13 @@ The writing pipeline uses `WritingContextAssembler` (`core/writing/context_assem
 - 50% similarity — embedding-based cosine similarity to chapter content
 - 30% frequency — how often the entity appears in recent chapters
 - 20% recency — when the entity was last referenced in the manuscript
+
+**Entity connection promotion (CR-03):**
+- `assemble()` accepts an optional `entity_connections: dict[str, set[str]]` adjacency map
+- Sourced from `RelationshipRepository.get_adjacency_map()` in the API layer
+- First-degree connections of referenced entities are promoted from the suggested tier to the referenced tier
+- Ensures entities linked via KB relationships (e.g., character's allies, location's parent region) are prioritized even without explicit frontmatter references
+- Fully backward-compatible: `None` or empty dict produces identical behavior to pre-connection logic
 
 **Shared between context tiers:** The writing assembler reuses the general context tier structure but applies domain-specific ranking weights optimized for narrative consistency.
 
@@ -159,3 +168,4 @@ The writing pipeline uses `WritingContextAssembler` (`core/writing/context_assem
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-17` — Writing specialization implemented. `WritingContextAssembler` with 5-tier ranking (30/20/25/15/10 split), `TokenBudgetManager` for tier allocation with overflow handling, KB entity relevance ranking (50% similarity, 30% frequency, 20% recency). Core data models in `context_models.py` (`KBEntity`, `RecentChapter`).
+- `2026-05-23` — CR-03 audit: `cap_to_budget()` lightweight token utility for non-tier contexts. `entity_connections` parameter on `assemble()` promotes first-degree KB connections from suggested → referenced tier. `RelationshipRepository.get_adjacency_map()` provides adjacency data from KB relationships.

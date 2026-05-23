@@ -64,3 +64,20 @@ class KBQueryServiceAdapter:
         if relation_type:
             rels = [r for r in rels if r.rel_type == relation_type]
         return rels
+
+    async def adjacency_map(
+        self,
+        entity_ids: set[uuid.UUID] | None = None,
+    ) -> dict[str, set[str]]:
+        """Build adjacency map for KB entities in the current novel.
+
+        Args:
+            entity_ids: Optional set of entity IDs to filter by.
+
+        Returns:
+            Dict mapping entity_id (str) → set of connected entity_ids (str).
+        """
+        return await self._rel_repo.get_adjacency_map(
+            self._novel_id,
+            entity_ids=entity_ids,
+        )

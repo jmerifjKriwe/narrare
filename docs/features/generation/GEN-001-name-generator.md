@@ -125,10 +125,11 @@ Naming is hard. Generic names feel flat, invented names lack consistency, and du
 
 **Generation pipeline:**
 1. Receive request with `name_type`, `culture`, `count`, `gender`, `length` options
-2. `PromptComposer` builds prompt using `NAME_GENERATE` intent
-3. Culture definition injected via `{{culture_guidelines}}` placeholder
-4. LLM Gateway generates names using the composed prompt
-5. Response parsed into `GeneratedName` objects
+2. Check KB for existing names — list of existing names capped at 500 tokens via `cap_to_budget()` to prevent context overflow
+3. `PromptComposer` builds prompt using `NAME_GENERATE` intent
+4. Culture definition injected via `{{culture_guidelines}}` placeholder
+5. LLM Gateway generates names using the composed prompt
+6. Response parsed into `GeneratedName` objects
 
 **Cultural patterns:**
 Culture definitions are stored as prompt files in `core/prompts/_bundled/generation/`:
@@ -184,3 +185,4 @@ class GeneratedName:
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-15` — Core implementation: NAME_GENERATE intent, culture injection (fantasy/modern/scifi × 3 langs), API endpoint (POST /generation/names), frontend NameGenerator/NameResults components, i18n keys. KB dedup check is a placeholder.
+- `2026-05-23` — CR-03 audit: existing names list capped at 500 tokens via `cap_to_budget()` to prevent prompt context overflow in projects with many KB entities.

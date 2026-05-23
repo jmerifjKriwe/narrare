@@ -226,5 +226,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-23 — CR-01 audit: WRITE-004 moved to in-progress (rewrite prompt template created). Prompt engineering standards enhanced (CoT, negative examples, XML encapsulation).
+> Last updated: 2026-05-23 — CR-03 audit: INFRA-003 technical section updated (entity connection promotion, cap_to_budget utility). WRITE-002 and GEN-001 updated with token enforcement notes. No status changes.
 > Features are specified before they are implemented — never after

@@ -18,6 +18,7 @@ from narrare.generation.schemas import (
     NameGenerateRequest,
     NameGenerateResponse,
 )
+from narrare_core.writing.budget import cap_to_budget
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -28,6 +29,10 @@ if TYPE_CHECKING:
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
+
+# Maximum token budget for existing-name dedup context sent to the LLM.
+# At ~1.3 tokens/word this allows roughly 350 short entity names.
+MAX_EXISTING_NAMES_TOKENS: int = 500
 
 # Mapping from NameType enum values to KB entity_type values.
 # NameType uses "place"/"organization"/"item" while the KB CHECK constraint
@@ -231,7 +236,23 @@ class NameGeneratorService:
                 hint="Consider pagination if this occurs frequently",
             )
 
-        return [entry.name for entry in entries]
+        names = [entry.name for entry in entries]
+
+        # Enforce token budget — truncate the list when the joined
+        # string exceeds the allowed budget so prompts never overflow.
+        joined = ", ".join(names)
+        capped = cap_to_budget(joined, MAX_EXISTING_NAMES_TOKENS)
+        result = [n.strip() for n in capped.split(",") if n.strip()]
+
+        if len(result) < len(names):
+            logger.info(
+                "existing_names_capped",
+                original=len(names),
+                capped=len(result),
+                budget=MAX_EXISTING_NAMES_TOKENS,
+            )
+
+        return result
 
     def _check_duplicates(
         self,

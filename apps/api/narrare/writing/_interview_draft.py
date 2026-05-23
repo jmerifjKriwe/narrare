@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare_core.writing.budget import cap_to_budget
+
 if TYPE_CHECKING:
     from uuid import UUID
 
@@ -25,6 +27,10 @@ if TYPE_CHECKING:
     from narrare_core.writing.session_manager import SessionManager
 
 logger = structlog.get_logger(__name__)
+
+# Maximum token budget for the interview transcript fed into the prompt.
+# Prevents "context length exceeded" crashes on long interviews (20+ Q&A pairs).
+MAX_TRANSCRIPT_TOKENS: int = 4000
 
 
 class InterviewDraftGenerator:
@@ -72,6 +78,18 @@ class InterviewDraftGenerator:
             return
 
         transcript = self._format_transcript(session.conversation_history)
+
+        # Enforce token budget — truncate from the end if needed.
+        original_transcript = transcript
+        transcript = cap_to_budget(transcript, MAX_TRANSCRIPT_TOKENS)
+        if len(transcript) < len(original_transcript):
+            logger.warning(
+                "interview_transcript_capped",
+                original_chars=len(original_transcript),
+                capped_chars=len(transcript),
+                budget=MAX_TRANSCRIPT_TOKENS,
+                messages=len(session.conversation_history),
+            )
 
         if not transcript.strip():
             await websocket.send_json(
