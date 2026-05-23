@@ -1,0 +1,49 @@
+name: LLM Prompt Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: "Test case filter (e.g., writing-generation, name-generation)"
+        required: false
+        default: ""
+  schedule:
+    # Nightly at 3 AM UTC — only runs if eval test cases exist
+    - cron: "0 3 * * *"
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.ref == 'refs/heads/main')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install promptfoo
+        run: npm install -g promptfoo
+
+      - name: Run evaluations
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "${{ github.event.inputs.test_filter }}" ]; then
+            promptfoo eval -c evals/testcases/${{ github.event.inputs.test_filter }}.yaml
+          else
+            for f in evals/testcases/*.yaml; do
+              echo "=== Running: $f ==="
+              promptfoo eval -c "$f" || true
+            done
+          fi
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: evals/results/
+          retention-days: 30

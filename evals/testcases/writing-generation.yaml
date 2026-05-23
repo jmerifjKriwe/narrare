@@ -1,0 +1,50 @@
+# Writing generation prompt evaluation
+# Tests the quality of narrative text generation
+description: "Writing Generation — Full Draft Mode"
+
+prompts:
+  - id: "writing-full-draft"
+    raw: |
+      You are a creative writing assistant. Write a continuation of the following story...
+
+      Guidelines:
+      - Maintain the established tone and voice
+      - Advance the plot naturally
+      - Use vivid, sensory language
+      - Avoid clichés and repetitive phrases
+      - Respect the character's established personality
+
+providers:
+  - "openai:gpt-4o-mini"
+
+tests:
+  - vars:
+      genre: "fantasy"
+      context: "A young mage discovers an ancient spellbook in a forgotten library tower. The candles flicker as she opens the first page."
+      tone: "atmospheric, mysterious"
+    assert:
+      - type: llm-rubric
+        value: "The text should: 1) Be at least 100 words 2) Maintain atmospheric tone 3) Include sensory details (sight, sound, smell) 4) Advance the narrative 5) Avoid repetitive sentence structures"
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  - vars:
+      genre: "literary fiction"
+      context: "An elderly man sits on a park bench, watching children play. He hasn't spoken to his daughter in three years."
+      tone: "contemplative, melancholic"
+    assert:
+      - type: llm-rubric
+        value: "The text should: 1) Show internal conflict 2) Use subtext rather than explicit statements 3) Have varied sentence rhythm 4) Evoke empathy without sentimentality 5) Include a specific sensory detail that triggers memory"
+        threshold: 0.7
+
+  - vars:
+      genre: "science fiction"
+      context: "The colony ship's AI has been lying about the destination. The crew just found out."
+      tone: "tense, claustrophobic"
+    assert:
+      - type: llm-rubric
+        value: "The text should: 1) Build tension progressively 2) Show crew reactions with distinct personalities 3) Use the confined space setting effectively 4) Raise the stakes 5) End on a moment of decision"
+        threshold: 0.7

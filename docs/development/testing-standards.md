@@ -705,6 +705,30 @@ def make_novel(**overrides) -> Novel:
 | `pytest-timeout` | ≥2.3 | 10s timeout per test — prevents hanging tests |
 | `hypothesis` | ≥6.100 | Property-based testing for pure functions |
 
+### Auto-Tagging — RULE-TEST-03
+
+Tests are automatically tagged based on their directory path. No manual markers needed.
+
+**Mechanism:** `pytest_collection_modifyitems` hook in `tests/conftest.py` assigns markers:
+
+| Directory | Auto-assigned Markers |
+|-----------|----------------------|
+| `tests/unit/` | `unit` |
+| `tests/integration/` | `integration`, `requires_db` |
+| `tests/e2e/` | `e2e` |
+
+**What this means for developers:**
+- New tests automatically get the correct markers — no `pytestmark` needed
+- `--strict-markers` is safe to use (all markers registered in `pytest_configure`)
+- Select tests by marker: `pytest -m unit`, `pytest -m integration`, `pytest -m e2e`
+- Exclude tests: `pytest -m "not e2e"`
+
+**When you still need manual markers:**
+- Cross-cutting concerns like `@pytest.mark.filterwarnings` or `@pytest.mark.parametrize`
+- Special markers for specific test behaviors (e.g., `@pytest.mark.timeout(30)`)
+
+**Do NOT add** `pytestmark = pytest.mark.requires_db` to integration test files — auto-tagging handles this.
+
 ### Running Tests
 
 ```bash
@@ -863,6 +887,54 @@ it("applies variant-specific Tailwind classes", () => {
 - **CSS styling** — visual appearance is verified manually or via E2E screenshots
 - **Server components** — they have no client-side logic (`loading.tsx`, `page.tsx` wrappers)
 
+### Snapshot Testing Rules — RULE-TEST-04
+
+Snapshot tests capture component render output and compare against a stored baseline.
+While convenient, they create maintenance burden if overused.
+
+**When snapshot tests ARE appropriate:**
+- Very static UI elements (icons, static layouts, error states)
+- Email/notification templates
+- API response schemas that rarely change
+
+**When snapshot tests are FORBIDDEN:**
+- Components with dynamic content (user-generated text, dates, timestamps)
+- Components with randomized output (shuffle, UUIDs, animations)
+- As a substitute for meaningful assertions — snapshot != tested behavior
+
+**Rules:**
+1. Every snapshot must have a descriptive name explaining WHAT it verifies
+2. Review snapshot diffs carefully during updates — never blindly accept
+3. If a snapshot changes frequently (>3 times in a sprint), convert to explicit assertions
+4. Keep snapshot files small — test individual components, not entire pages
+
+**Pattern for snapshot testing:**
+```typescript
+import { render } from "@testing-library/react"
+import { StaticElement } from "./StaticElement"
+
+it("renders status badge correctly", () => {
+  const { container } = render(<StaticElement status="active" />)
+  expect(container).toMatchSnapshot()
+})
+```
+
+**Anti-pattern:**
+```typescript
+// ❌ BAD: Snapshotting dynamic content
+it("renders user profile", () => {
+  const { container } = render(<UserProfile user={dynamicUser} />)
+  expect(container).toMatchSnapshot() // Will break on every user change
+})
+
+// ✅ GOOD: Explicit assertions on dynamic content
+it("displays user name and email", () => {
+  render(<UserProfile user={testUser} />)
+  expect(screen.getByText(testUser.name)).toBeInTheDocument()
+  expect(screen.getByText(testUser.email)).toBeInTheDocument()
+})
+```
+
 ---
 
 ## Property-Based Testing — Hypothesis
@@ -898,6 +970,87 @@ E2E tests use **Playwright** with route mocking for LLM responses.
 **Status:** Implemented in Phase 5. Uses Playwright with route mocking for LLM responses.
 **CI:** Run only on main branch with full stack. LLM provider responses are mocked via Playwright route interception — no real LLM API calls.
 **Run time target:** < 5 minutes total.
+
+---
+
+## LLM Prompt Evaluation — promptfoo
+
+> **Scope:** Qualitative evaluation of LLM prompt outputs.
+> **Independent from pytest** — separate tool, separate cadence.
+> **Reference:** ADR-018
+
+### Why a Separate System
+
+Evaluating prompt quality is fundamentally different from testing code correctness:
+
+| Aspect | pytest (Code Tests) | promptfoo (Prompt Evals) |
+|--------|---------------------|--------------------------|
+| LLM calls | Mocked (TestModel) | **Real** |
+| Result | Pass/Fail | **Score (0–1)** |
+| Determinism | Deterministic | **Non-deterministic** |
+| Cadence | Every commit | Nightly / Manual |
+| Comparison | Current vs. Expected | **Before vs. After** |
+
+### Location
+
+```
+evals/
+├── README.md                ← Usage instructions
+├── promptfooconfig.yaml     ← Global configuration
+├── testcases/               ← Test case definitions (YAML)
+│   ├── writing-generation.yaml
+│   ├── name-generation.yaml
+│   └── summarization.yaml
+├── baselines/               ← Golden outputs (versioned)
+└── results/                 ← Latest eval results (gitignored)
+```
+
+### Running Evals
+
+```bash
+# Run all evals
+npx promptfoo eval
+
+# Run specific test case
+npx promptfoo eval -c evals/testcases/writing-generation.yaml
+
+# View results in browser
+npx promptfoo view
+```
+
+### Writing New Test Cases
+
+1. Create a YAML file in `evals/testcases/`
+2. Define the prompt template with `{{variable}}` placeholders
+3. Add test cases with `vars` and `assert` blocks
+4. Use `llm-rubric` for qualitative scoring, `not-contains` for guardrails
+5. Set appropriate `threshold` (recommended: 0.7 for narrative quality)
+
+### Assertion Types
+
+| Type | Use for |
+|------|---------|
+| `llm-rubric` | Qualitative narrative quality (tone, style, structure) |
+| `similar` | Cosine similarity against baseline text |
+| `contains` / `not-contains` | Guardrails (no "As an AI", no refusal phrases) |
+| `regex` | Format validation (has paragraphs, has specific structure) |
+| `javascript` / `python` | Custom scoring functions |
+
+### CI Integration
+
+- **Nightly:** Runs automatically at 3 AM UTC on main branch
+- **Manual:** `workflow_dispatch` with optional test case filter
+- **Results:** Uploaded as GitHub Actions artifacts (30-day retention)
+- **Not blocking:** Eval failures don't block PRs (advisory only)
+
+### Baseline Strategy
+
+Baselines are versioned golden outputs committed to the repository.
+When prompts change intentionally:
+1. Run evals with new prompt
+2. Review output quality
+3. Create new baseline version (`writing-v2.json`)
+4. Keep old baselines for historical comparison
 
 ---
 

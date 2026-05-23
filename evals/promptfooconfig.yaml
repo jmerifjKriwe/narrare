@@ -1,0 +1,33 @@
+# promptfoo configuration for Narrare prompt evaluation
+# See ADR-018 for architectural context
+
+description: "Narrare LLM Prompt Quality Evaluation"
+
+# Providers will be configured per test case since different
+# prompts target different model intents.
+# Default provider uses OPENAI_API_KEY env var.
+providers:
+  - id: "openai:gpt-4o-mini"
+    label: "openai-default"
+
+# Test cases are referenced from testcases/ directory
+# Each test case file defines its own provider if needed.
+
+# Default assertion types available:
+# - similar: Cosine similarity against baseline
+# - llm-rubric: LLM-as-judge scoring
+# - contains: Substring check
+# - regex: Pattern matching
+# - javascript/python: Custom scoring functions
+
+# Output directory for results
+outputPath: "./evals/results"
+
+# Number of runs per test case (LLM outputs are non-deterministic)
+# Higher = more reliable scoring but more expensive
+defaultTest:
+  options:
+    run: 3
+
+# Sharing is disabled — results stay local
+sharing: false
