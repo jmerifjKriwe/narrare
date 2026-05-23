@@ -12,6 +12,7 @@ import pytest
 
 from narrare.writing.summary_service import ChapterSummaryService
 from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.shared.errors import NotFoundError, WritingError
 
 # ---------------------------------------------------------------------------
@@ -27,6 +28,18 @@ def _make_config() -> ResolvedModelConfig:
         temperature=0.3,
         max_tokens=1000,
     )
+
+
+def _make_composer() -> AsyncMock:
+    """Create a mock PromptComposer that returns a ComposedPrompt."""
+    composer = AsyncMock()
+    composer.build = AsyncMock(
+        return_value=ComposedPrompt(
+            system="You are a summarizer.",
+            user="Summarize this content.",
+        )
+    )
+    return composer
 
 
 # ---------------------------------------------------------------------------
@@ -60,15 +73,22 @@ def config() -> ResolvedModelConfig:
 
 
 @pytest.fixture
+def mock_composer() -> AsyncMock:
+    return _make_composer()
+
+
+@pytest.fixture
 def service(
     mock_registry: AsyncMock,
     config: ResolvedModelConfig,
     mock_chapter_repo: AsyncMock,
+    mock_composer: AsyncMock,
 ) -> ChapterSummaryService:
     return ChapterSummaryService(
         registry=mock_registry,
         config=config,
         chapter_repo=mock_chapter_repo,
+        composer=mock_composer,
     )
 
 
@@ -84,6 +104,7 @@ class TestSummarize:
         self,
         service: ChapterSummaryService,
         mock_chapter_repo: AsyncMock,
+        mock_composer: AsyncMock,
     ) -> None:
         """Happy path: valid chapter content produces a summary."""
         from narrare_core.agents.summary_types import SummaryOutput
@@ -116,6 +137,8 @@ class TestSummarize:
         mock_chapter_repo.update_summary.assert_awaited_once_with(
             chapter, "A hero begins their journey."
         )
+        # Verify composer was called
+        mock_composer.build.assert_awaited_once()
 
     async def test_summarize_with_empty_content_returns_empty(
         self,
@@ -175,14 +198,16 @@ class TestSummarize:
 
         mock_chapter_repo.update_summary.assert_not_called()
 
-    async def test_summarize_uses_correct_params(
+    async def test_summarize_uses_composer_for_prompt(
         self,
         service: ChapterSummaryService,
         mock_chapter_repo: AsyncMock,
         mock_registry: AsyncMock,
+        mock_composer: AsyncMock,
     ) -> None:
-        """Verify that the service passes model config to the registry."""
+        """Verify that the service uses PromptComposer to build prompts."""
         from narrare_core.agents.summary_types import SummaryOutput
+        from narrare_core.llm.intents import LLMIntent
         from tests.factories import make_chapter
 
         chapter = make_chapter(content="Test content for chapter.", title="Test")
@@ -205,6 +230,11 @@ class TestSummarize:
                 language="de",
             )
 
+        # Verify the composer was called with the correct intent
+        mock_composer.build.assert_awaited_once()
+        call_args = mock_composer.build.call_args
+        assert call_args[0][0] == LLMIntent.SUMMARIZE
+
         # Verify the registry was called with the correct config
         mock_registry.get_model.assert_awaited_once_with(
             service._config,
@@ -212,32 +242,10 @@ class TestSummarize:
             base_url=None,
         )
 
-        # Verify the agent was called with the deps
+        # Verify the agent was called with the composed user prompt
         mock_agent.run.assert_awaited_once()
         agent_await_args = mock_agent.run.await_args
         assert agent_await_args is not None
         assert agent_await_args.kwargs["deps"].language == "de"
         assert agent_await_args.kwargs["deps"].max_sentences == 5
         assert agent_await_args.kwargs["deps"].chapter_title == "Test"
-
-
-class TestBuildPrompt:
-    """Tests for ChapterSummaryService._build_prompt()."""
-
-    def test_build_prompt_truncates_content(self) -> None:
-        """Prompt builder truncates content to 3000 chars."""
-        long_content = "word " * 2000  # ~10000 chars
-        prompt = ChapterSummaryService._build_prompt("My Chapter", long_content, "en")
-
-        # The content in the prompt should be truncated
-        assert len(long_content) > 3000
-        assert "My Chapter" in prompt
-        assert "Language: en" in prompt
-
-    def test_build_prompt_includes_title_and_language(self) -> None:
-        """Prompt builder includes chapter title and language."""
-        prompt = ChapterSummaryService._build_prompt("The Beginning", "Some text", "fr")
-
-        assert "The Beginning" in prompt
-        assert "Language: fr" in prompt
-        assert "Some text" in prompt

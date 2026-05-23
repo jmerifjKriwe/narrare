@@ -36,19 +36,18 @@ _REQUIRED_VARIABLES = (
     "{{kb_characters}}",
     "{{kb_locations}}",
     "{{chapter_outline}}",
-    "{{word_target}}",
     "{{tone_instructions}}",
     "{{user_preferences}}",
     "{{avoidance_patterns}}",
     "{{recent_chapters}}",
 )
 
-# Mode-specific required variables
+# Mode-specific required variables (not shared by all modes)
 _MODE_VARIABLES = {
-    "new_chapter": (),
-    "scene_by_scene": (),
-    "interview": (),
-    "interactive_session": (),
+    "new_chapter": ("{{word_target}}",),
+    "scene_by_scene": ("{{word_target}}",),
+    "interview": (),  # interview is a Q&A flow, not draft generation
+    "interactive_session": ("{{word_target}}",),
 }
 
 # Common variables that all modes share
@@ -61,7 +60,6 @@ _COMMON_VARIABLES = (
     "{{kb_locations}}",
     "{{recent_chapters}}",
     "{{chapter_outline}}",
-    "{{word_target}}",
     "{{tone_instructions}}",
     "{{user_preferences}}",
     "{{avoidance_patterns}}",
@@ -182,6 +180,15 @@ class TestWritingPromptVariables:
         content = path.read_text()
         for var in _COMMON_VARIABLES:
             assert var in content, f"Missing variable {var} in {path}"
+
+    @pytest.mark.parametrize("language", _WRITING_LANGUAGES)
+    @pytest.mark.parametrize("mode", _WRITING_MODES)
+    def test_contains_mode_specific_variables(self, language: str, mode: str) -> None:
+        """Each mode must include its mode-specific variable placeholders."""
+        path = _prompt_path(language, mode)
+        content = path.read_text()
+        for var in _MODE_VARIABLES.get(mode, ()):
+            assert var in content, f"Missing mode variable {var} in {path}"
 
     @pytest.mark.parametrize("language", _WRITING_LANGUAGES)
     @pytest.mark.parametrize("mode", _WRITING_MODES)

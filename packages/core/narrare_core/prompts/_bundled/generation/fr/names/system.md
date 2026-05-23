@@ -1,7 +1,7 @@
 ---
 prompt_type: generation
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -31,6 +31,15 @@ Répondez avec un tableau JSON d'objets, contenant chacun :
 - "meaning" : signification ou origine facultative
 - "type" : le type de nom
 - "name_style" : le style de nom utilisé
+
+### Préférences utilisateur
+
+{{user_preferences}}
+
+### Contraintes
+
+- Expliquer les significations en {{explanation_language}}
+- Respecter les modèles d'évitement de l'auteur : {{avoidance_patterns}}
 
 ### Règles
 

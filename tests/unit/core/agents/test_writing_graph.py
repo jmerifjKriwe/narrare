@@ -18,13 +18,13 @@ from pydantic_graph import StepContext
 from narrare_core.agents.draft_types import DraftOutput
 from narrare_core.agents.outline_types import OutlineOutput
 from narrare_core.agents.review_types import ReviewOutput
-from narrare_core.agents.writing_graph import create_writing_graph
 from narrare_core.agents.writing_graph_types import (
     Approved,
     NeedsRevision,
     WritingDeps,
     WritingState,
     WritingStatus,
+    create_writing_graph,
 )
 
 
@@ -103,7 +103,7 @@ class TestPlanOutline:
         )
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),
@@ -130,7 +130,7 @@ class TestPlanOutline:
         )
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),
@@ -141,7 +141,7 @@ class TestPlanOutline:
             MockAgent.return_value = mock_instance
             ctx = StepContext(state=state, deps=deps, inputs=None)
             await node.call(ctx)
-            MockAgent.assert_called_once_with(model="mock_model")
+            MockAgent.assert_called_once_with(model="mock_model", system_prompt=None)
             mock_instance.run.assert_called_once()
             prompt_arg = mock_instance.run.call_args[1]["prompt"]
             assert "ch-05" in prompt_arg
@@ -161,7 +161,7 @@ class TestReviewDraft:
         )
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),
@@ -229,7 +229,7 @@ class TestWriteDraft:
 
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),
@@ -256,7 +256,7 @@ class TestReviseDraft:
 
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),
@@ -332,7 +332,7 @@ class TestStatePersistence:
         )
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),

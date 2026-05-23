@@ -39,17 +39,12 @@ class ReviewAgent(NarrareAgent[ReviewDeps, ReviewOutput]):
     Gibt strukturiertes Feedback mit Bewertung und Verbesserungsvorschlägen.
     """
 
-    def __init__(self, model: Any) -> None:
+    def __init__(self, model: Any, system_prompt: str | None = None) -> None:
         super().__init__(
             model=model,
             deps_type=ReviewDeps,
             output_type=[self._process_review, ReviewOutput],
-            system_prompt=(
-                "You are a professional writing critic and editor. "
-                "Review the provided draft text and give structured feedback. "
-                "Consider: pacing, character voice, dialogue, description quality, "
-                "plot coherence, and stylistic consistency with the genre."
-            ),
+            system_prompt=system_prompt,
         )
 
     async def _process_review(

@@ -59,6 +59,7 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
         model: Any,
         word_target: int | None = None,
         kb_agent: KBAgent | None = None,  # NEU in Phase 3
+        system_prompt: str | None = None,
     ) -> None:
         self._word_target = word_target
         self._draft_processor = DraftProcessor()
@@ -78,12 +79,7 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
             deps_type=DraftDeps,
             output_type=[self._process_draft_output, DraftOutput],
             capabilities=capabilities,
-            system_prompt=(
-                "You are a creative writing assistant. Generate chapter content "
-                "that is engaging, well-structured, and matches the provided context. "
-                "You may use the knowledge base tools to look up characters, locations, "
-                "and other story elements when you need details."
-            ),
+            system_prompt=system_prompt,
         )
 
         # Tools nach Super-Konstruktor registrieren

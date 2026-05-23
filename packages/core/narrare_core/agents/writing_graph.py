@@ -1,28 +1,30 @@
 """WritingGraph — Pydantic Graph für den Writing-Workflow.
 
-Modelliert den kreativen Schreibprozess als Zustandsmaschine:
-
     plan_outline → write_draft → review_draft → finalize
                                     ↑       ↓
                                     └─ revise_draft
 
-Verwendet die GraphBuilder API (pydantic-graph 1.97+).
-Siehe ADR-015 Phase 4.
+Uses GraphBuilder API (pydantic-graph 1.97+). See ADR-015 Phase 4.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-
-from pydantic_graph import End, GraphBuilder, StepContext, TypeExpression
-
-if TYPE_CHECKING:
-    from pydantic_graph.graph_builder import Graph as BuilderGraph
+from pydantic_graph import End, GraphBuilder, StepContext
 
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
+from narrare_core.agents.writing_graph_prompts import (
+    add_edges,
+    get_draft_prompt,
+    get_model,
+    get_outline_prompt,
+    get_review_prompt,
+    get_revise_prompt,
+    get_summary_prompt,
+    save_state,
+)
 from narrare_core.agents.writing_graph_types import (
     Approved,
     NeedsRevision,
@@ -31,7 +33,6 @@ from narrare_core.agents.writing_graph_types import (
     WritingStatus,
 )
 
-# Re-export types for convenience
 __all__ = [
     "Approved",
     "NeedsRevision",
@@ -39,41 +40,11 @@ __all__ = [
     "WritingState",
     "WritingStatus",
     "build_writing_graph",
-    "create_writing_graph",
 ]
 
 
-# ---------------------------------------------------------------------------
-# Helper
-# ---------------------------------------------------------------------------
-
-
-async def _save_state(ctx: StepContext[WritingState, WritingDeps, Any]) -> None:
-    """Save state checkpoint if store is configured."""
-    if ctx.deps.store is not None and ctx.deps.run_id:
-        await ctx.deps.store.save(ctx.deps.run_id, ctx.state)
-
-
-async def _get_model(deps: WritingDeps) -> Any:
-    """Hole Model aus der Registry."""
-    return await deps.registry.get_model(
-        deps.model_config,
-        api_key=deps.api_key,
-        base_url=deps.base_url,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Graph Builder
-# ---------------------------------------------------------------------------
-
-
 def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, WritingState]:
-    """Erstelle den Writing-Graphen mit allen Steps + Edges.
-
-    Returns:
-        GraphBuilder (noch nicht gebuildet — build() wird vor run() aufgerufen).
-    """
+    """Erstelle den Writing-Graphen mit allen Steps + Edges."""
     g = GraphBuilder(
         name="writing-graph",
         state_type=WritingState,
@@ -87,51 +58,41 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         if ctx.deps.chapter_outline:
             ctx.state.outline = ctx.deps.chapter_outline
             ctx.state.status = WritingStatus.OUTLINED
-            await _save_state(ctx)
+            await save_state(ctx)
             return
 
-        model = await _get_model(ctx.deps)
-        agent = OutlineAgent(model=model)
-
-        instruction = (
-            f"Create a chapter outline for chapter {ctx.state.chapter_id}.\n"
-            f"Genre: {ctx.deps.genre}\n"
-            f"Tone: {ctx.deps.tone}\n"
-            f"Writing language: {ctx.deps.writing_language}\n"
+        model = await get_model(ctx.deps)
+        system_prompt, user_prompt = await get_outline_prompt(
+            ctx.deps.composer,
+            ctx.deps,
+            ctx.state,
         )
-        if ctx.deps.chapter_content:
-            instruction += f"Existing content context:\n{ctx.deps.chapter_content[:500]}\n"
-
-        deps = OutlineDeps(
-            genre=ctx.deps.genre,
-            tone=ctx.deps.tone,
-            language=ctx.deps.language,
-        )
-        result = await agent.run(prompt=instruction, deps=deps)
+        agent = OutlineAgent(model=model, system_prompt=system_prompt or None)
+        deps = OutlineDeps(genre=ctx.deps.genre, tone=ctx.deps.tone, language=ctx.deps.language)
+        result = await agent.run(prompt=user_prompt, deps=deps)
         ctx.state.outline = result.outline_text or result.chapter_title
         ctx.state.status = WritingStatus.OUTLINED
-        await _save_state(ctx)
+        await save_state(ctx)
 
     @g.step
     async def write_draft(ctx: StepContext[WritingState, WritingDeps, None]) -> None:
         """Generiere Draft via DraftAgent."""
-        model = await _get_model(ctx.deps)
-        agent = DraftAgent(model=model, word_target=ctx.deps.word_target)
-        parts = [
-            "Write chapter " + ctx.state.chapter_id,
-            "Genre: " + ctx.deps.genre,
-            "Tone: " + ctx.deps.tone,
-        ]
-        if ctx.state.outline:
-            parts.append("Outline:\n" + ctx.state.outline)
-        if ctx.deps.chapter_content:
-            parts.append("Existing content:\n" + ctx.deps.chapter_content)
-        instruction = "\n".join(parts)
+        model = await get_model(ctx.deps)
+        system_prompt, user_prompt = await get_draft_prompt(
+            ctx.deps.composer,
+            ctx.deps,
+            ctx.state,
+        )
+        agent = DraftAgent(
+            model=model,
+            word_target=ctx.deps.word_target,
+            system_prompt=system_prompt or None,
+        )
         deps = DraftDeps(context_assembler=ctx.deps.context_assembler)
-        result = await agent.run(prompt=instruction, deps=deps)
+        result = await agent.run(prompt=user_prompt, deps=deps)
         ctx.state.draft = result.text
         ctx.state.status = WritingStatus.DRAFTED
-        await _save_state(ctx)
+        await save_state(ctx)
 
     @g.step
     async def review_draft(
@@ -141,48 +102,37 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         word_count = len(ctx.state.draft.split()) if ctx.state.draft else 0
         target = ctx.deps.word_target
 
-        # Hard guard: max attempts
         if ctx.state.attempts >= 3:
-            await _save_state(ctx)
+            await save_state(ctx)
             return Approved()
 
-        # Hard guard: draft too short
         if target and word_count < int(target * 0.5):
             ctx.state.attempts += 1
-            await _save_state(ctx)
+            await save_state(ctx)
             return NeedsRevision(
-                feedback="Draft too short ("
-                + str(word_count)
-                + " words, expected ~"
-                + str(target)
-                + ").",
+                feedback=f"Draft too short ({word_count} words, expected ~{target}).",
             )
 
-        # LLM-powered review via ReviewAgent
-        model = await _get_model(ctx.deps)
-        agent = ReviewAgent(model=model)
-        rdeps = ReviewDeps(word_target=target)
-
-        review_prompt = (
-            f"Review the following draft text.\n"
-            f"Genre: {ctx.deps.genre}\n"
-            f"Tone: {ctx.deps.tone}\n"
-            f"Target word count: {target}\n"
-            f"Actual word count: {word_count}\n"
-            f"Draft:\n{ctx.state.draft}\n"
+        model = await get_model(ctx.deps)
+        system_prompt, user_prompt = await get_review_prompt(
+            ctx.deps.composer,
+            ctx.deps,
+            ctx.state,
+            word_count,
         )
-
-        result = await agent.run(prompt=review_prompt, deps=rdeps)
+        agent = ReviewAgent(model=model, system_prompt=system_prompt or None)
+        rdeps = ReviewDeps(word_target=target)
+        result = await agent.run(prompt=user_prompt, deps=rdeps)
 
         if not result.approved and ctx.state.attempts < 3:
             ctx.state.attempts += 1
             feedback_parts = [result.feedback]
             if result.suggestions:
                 feedback_parts.append("Suggestions:\n- " + "\n- ".join(result.suggestions))
-            await _save_state(ctx)
+            await save_state(ctx)
             return NeedsRevision(feedback="\n\n".join(feedback_parts))
 
-        await _save_state(ctx)
+        await save_state(ctx)
         return Approved()
 
     @g.step
@@ -191,15 +141,23 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
     ) -> None:
         """Überarbeite den Draft basierend auf Feedback."""
         ctx.state.feedback = ctx.inputs.feedback
-        model = await _get_model(ctx.deps)
-        agent = DraftAgent(model=model, word_target=ctx.deps.word_target)
-        instruction = "Revise based on feedback: " + ctx.state.feedback + "\n\n" + ctx.state.draft
+        model = await get_model(ctx.deps)
+        system_prompt, user_prompt = await get_revise_prompt(
+            ctx.deps.composer,
+            ctx.deps,
+            ctx.state,
+        )
+        agent = DraftAgent(
+            model=model,
+            word_target=ctx.deps.word_target,
+            system_prompt=system_prompt or None,
+        )
         deps = DraftDeps(context_assembler=ctx.deps.context_assembler)
-        result = await agent.run(prompt=instruction, deps=deps)
+        result = await agent.run(prompt=user_prompt, deps=deps)
         ctx.state.revision = result.text
         ctx.state.draft = result.text
         ctx.state.status = WritingStatus.REVISED
-        await _save_state(ctx)
+        await save_state(ctx)
 
     @g.step
     async def finalize(
@@ -208,59 +166,35 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
         """Finalisiere den Output."""
         ctx.state.final = ctx.state.revision or ctx.state.draft
         ctx.state.status = WritingStatus.COMPLETED
-        await _save_state(ctx)
+        await save_state(ctx)
 
     @g.step
     async def generate_summary(
         ctx: StepContext[WritingState, WritingDeps, None],
     ) -> End[WritingState]:
-        """Erzeuge Kapitel-Zusammenfassung via ChapterSummaryAgent und beende den Graph."""
-        content = ctx.state.final or ctx.state.draft
-        if not content.strip():
+        """Erzeuge Kapitel-Zusammenfassung via ChapterSummaryAgent."""
+        if not (ctx.state.final or ctx.state.draft or "").strip():
             ctx.state.status = WritingStatus.SUMMARIZED
-            await _save_state(ctx)
+            await save_state(ctx)
             return End(ctx.state)
 
-        model = await _get_model(ctx.deps)
-        agent = ChapterSummaryAgent(model=model)
-
-        instruction = (
-            f"Summarize chapter {ctx.state.chapter_id}.\n"
-            f"Genre: {ctx.deps.genre}\n"
-            f"Writing language: {ctx.deps.writing_language}\n"
-            f"Chapter title: {ctx.state.outline[:100]}\n\n"
-            f"Content:\n{content[:3000]}\n"
+        model = await get_model(ctx.deps)
+        system_prompt, user_prompt = await get_summary_prompt(
+            ctx.deps.composer,
+            ctx.deps,
+            ctx.state,
         )
-
+        agent = ChapterSummaryAgent(model=model, system_prompt=system_prompt or None)
         deps = SummaryDeps(
             language=ctx.deps.language,
             genre=ctx.deps.genre,
             chapter_title=ctx.state.outline[:100],
         )
-        result = await agent.run(prompt=instruction, deps=deps)
+        result = await agent.run(prompt=user_prompt, deps=deps)
         ctx.state.summary = result.summary
         ctx.state.status = WritingStatus.SUMMARIZED
-        await _save_state(ctx)
+        await save_state(ctx)
         return End(ctx.state)
 
-    # Edges
-    g.add(
-        g.edge_from(g.start_node).to(plan_outline),
-        g.edge_from(plan_outline).to(write_draft),
-        g.edge_from(write_draft).to(review_draft),
-        g.edge_from(review_draft).to(
-            g.decision()
-            .branch(g.match(TypeExpression[Approved]).label("approved").to(finalize))
-            .branch(g.match(TypeExpression[NeedsRevision]).label("needs revision").to(revise_draft))
-        ),
-        g.edge_from(revise_draft).to(write_draft),
-        g.edge_from(finalize).to(generate_summary),
-        g.edge_from(generate_summary).to(g.end_node),  # pyright: ignore[reportArgumentType]
-    )
-
+    add_edges(g, plan_outline, write_draft, review_draft, revise_draft, finalize, generate_summary)
     return g
-
-
-def create_writing_graph() -> BuilderGraph[WritingState, WritingDeps, None, WritingState]:
-    """Convenience: build and return the Writing-Graph."""
-    return build_writing_graph().build()

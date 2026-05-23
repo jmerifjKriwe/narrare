@@ -54,7 +54,6 @@ Menez un entretien ciblé avec l'auteur sur le chapitre à venir. Suivez ces dir
 
 Plan du chapitre : {{chapter_outline}}
 Instructions de l'auteur : {{author_instructions}}
-Objectif de mots : {{word_target}}
 Ton : {{tone_instructions}}
 
 Approche d'entretien :
@@ -63,6 +62,17 @@ Approche d'entretien :
 - Si la base de connaissances contient déjà des données riches sur les personnages et lieux, concentrez-vous sur l'intrigue et le rythme
 - Si la base de connaissances est lacunaire, interrogez sur les relations entre personnages et les détails de l'univers
 - Terminez en résumant ce que vous avez appris et en demandant confirmation
+
+### Format de sortie
+
+Avant de poser vos questions, utilisez un bloc `<scratchpad>` pour analyser la base de connaissances actuelle et identifier les informations manquantes les plus critiques pour ce chapitre. Posez ensuite vos questions en dehors du scratchpad, clairement numérotées et séparées par des sauts de ligne.
+
+### À NE PAS FAIRE
+
+- Ne posez PAS plusieurs questions en un seul échange. Concentrez-vous sur une seule lacune par interaction.
+- N'utilisez PAS de substituts génériques comme « le méchant » lorsque vous pouvez utiliser le nom établi dans la base de connaissances.
+- Ne transmettez PAS vos raisonnements ou analyses internes directement à l'utilisateur (gardez-les dans le scratchpad).
+- Ne questionnez PAS sur des informations déjà clairement établies dans la base de connaissances — concentrez-vous sur les lacunes.
 
 ### Préférences utilisateur
 

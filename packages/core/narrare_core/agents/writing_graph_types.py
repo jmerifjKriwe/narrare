@@ -53,6 +53,7 @@ class WritingDeps:
     """
 
     registry: Any  # ModelRegistry (Any zur Vermeidung von Zirkelimporten)
+    composer: Any = None  # PromptComposer (RULE-02, Any zur Vermeidung von Zirkelimporten)
     context_assembler: Any = None  # WritingContextAssembler
     model_config: Any = None  # ResolvedModelConfig
     api_key: str | None = None
@@ -105,3 +106,15 @@ class NeedsRevision:
     """Signal: Draft benötigt Überarbeitung."""
 
     feedback: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Convenience
+# ---------------------------------------------------------------------------
+
+
+def create_writing_graph() -> Any:
+    """Convenience: build and return the Writing-Graph."""
+    from narrare_core.agents.writing_graph import build_writing_graph
+
+    return build_writing_graph().build()

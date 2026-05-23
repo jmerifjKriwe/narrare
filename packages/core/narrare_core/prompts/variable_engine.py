@@ -17,6 +17,33 @@ from narrare_core.shared.errors import PromptVariableError
 
 _VARIABLE_RE = re.compile(r"\{\{(\w+)\}\}")
 
+# Variables that contain user-provided content and should be XML-encapsulated
+# to prevent prompt injection.  System-level config vars (language, genre,
+# word_target, etc.) are intentionally excluded — they are author-controlled,
+# not attacker-controlled.
+_USER_CONTENT_VARS: frozenset[str] = frozenset(
+    {
+        "recent_chapters",
+        "chapter_content",
+        "chapter_outline",
+        "author_instructions",
+        "kb_characters",
+        "kb_locations",
+        "kb_factions",
+        "kb_systems",
+        "kb_timelines",
+        "kb_objects",
+        "kb_concepts",
+        "kb_settings",
+        "existing_names",
+        "user_preferences",
+        "avoidance_patterns",
+        "style_constraints",
+        "character_voice_profiles",
+        "feedback_text",
+    }
+)
+
 
 @dataclass(frozen=True, slots=True)
 class VariableInfo:
@@ -38,6 +65,28 @@ def extract_variables(template: str) -> list[VariableInfo]:
     """
     names = dict.fromkeys(_VARIABLE_RE.findall(template))
     return [VariableInfo(name=name) for name in names]
+
+
+def wrap_user_content(name: str, value: str) -> str:
+    """Wrap user-provided content in XML tags for prompt injection defense.
+
+    Variables listed in ``_USER_CONTENT_VARS`` are wrapped in
+    ``<user_content type="...">...</user_content>`` tags so that LLMs
+    can distinguish user data from system instructions.  Other variables
+    pass through unchanged.
+
+    Args:
+        name: The variable name (e.g., ``"recent_chapters"``).
+        value: The resolved value.
+
+    Returns:
+        The value, wrapped in XML tags if it is user-provided content.
+    """
+    if name not in _USER_CONTENT_VARS:
+        return value
+    if not value.strip():
+        return value  # Don't wrap empty values
+    return f'<user_content type="{name}">\n{value}\n</user_content>'
 
 
 def substitute(
@@ -65,7 +114,7 @@ def substitute(
     def replacer(match: re.Match[str]) -> str:
         name = match.group(1)
         if name in variables:
-            return variables[name]
+            return wrap_user_content(name, variables[name])
         if strict:
             raise PromptVariableError(name)
         return match.group(0)  # Leave {{name}} unchanged

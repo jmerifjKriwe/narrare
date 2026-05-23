@@ -107,7 +107,7 @@ def mock_assembler() -> MagicMock:
     return MagicMock(spec=WritingContextAssembler)
 
 
-_PATCH_TARGET = "narrare_core.agents.writing_graph.create_writing_graph"
+_PATCH_TARGET = "narrare_core.agents.writing_graph_types.create_writing_graph"
 
 
 # ---------------------------------------------------------------------------

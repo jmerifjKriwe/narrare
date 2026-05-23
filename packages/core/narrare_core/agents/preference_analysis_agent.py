@@ -58,17 +58,12 @@ class PreferenceAnalysisAgent(NarrareAgent[PreferenceAnalysisDeps, PreferenceAna
     and confidence scoring.
     """
 
-    def __init__(self, model: Any) -> None:
+    def __init__(self, model: Any, system_prompt: str | None = None) -> None:
         super().__init__(
             model=model,
             deps_type=PreferenceAnalysisDeps,
             output_type=[self._process_analysis, PreferenceAnalysisOutput],
-            system_prompt=(
-                "You are a writing preference analyst. Analyze the user's feedback history "
-                "and identify patterns in their preferences: style, content, and constraints. "
-                "Focus on what they consistently accept, reject, or modify. "
-                "Provide structured output with confidence scoring."
-            ),
+            system_prompt=system_prompt,
         )
 
     async def _process_analysis(

@@ -59,16 +59,12 @@ class OutlineAgent(NarrareAgent[OutlineDeps, OutlineOutput]):
     Nutzt Output Function zur Strukturierung.
     """
 
-    def __init__(self, model: Any) -> None:
+    def __init__(self, model: Any, system_prompt: str | None = None) -> None:
         super().__init__(
             model=model,
             deps_type=OutlineDeps,
             output_type=[self._process_outline, OutlineOutput],
-            system_prompt=(
-                "You are a story outlining specialist. "
-                "Generate well-structured chapter outlines with clear scene descriptions. "
-                "Consider genre conventions, pacing, and narrative arc."
-            ),
+            system_prompt=system_prompt,
         )
 
     async def _process_outline(

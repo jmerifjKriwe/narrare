@@ -56,15 +56,12 @@ class ChapterSummaryAgent(NarrareAgent[SummaryDeps, SummaryOutput]):
     with key narrative points.
     """
 
-    def __init__(self, model: Any) -> None:
+    def __init__(self, model: Any, system_prompt: str | None = None) -> None:
         super().__init__(
             model=model,
             deps_type=SummaryDeps,
             output_type=[self._process_summary, SummaryOutput],
-            system_prompt=(
-                "You are a professional literary summarizer. "
-                "Condense chapter content into a concise summary with key points."
-            ),
+            system_prompt=system_prompt,
         )
 
     async def _process_summary(

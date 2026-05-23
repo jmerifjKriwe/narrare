@@ -13,11 +13,11 @@ import pytest
 from pydantic_graph import End, StepContext
 
 from narrare_core.agents.summary_types import SummaryOutput
-from narrare_core.agents.writing_graph import create_writing_graph
 from narrare_core.agents.writing_graph_types import (
     WritingDeps,
     WritingState,
     WritingStatus,
+    create_writing_graph,
 )
 
 
@@ -73,7 +73,7 @@ class TestGenerateSummary:
         )
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),
@@ -95,7 +95,7 @@ class TestGenerateSummary:
         mock_output = SummaryOutput(summary="Summary of final.", key_points=["Final summarized"])
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),
@@ -128,7 +128,7 @@ class TestGenerateSummary:
         mock_output = SummaryOutput(summary="Eine Zusammenfassung.", key_points=["Punkt 1"])
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),
@@ -154,7 +154,7 @@ class TestGenerateSummary:
         mock_output = SummaryOutput(summary="A test summary.", key_points=["Key point 1"])
         with (
             patch(
-                "narrare_core.agents.writing_graph._get_model",
+                "narrare_core.agents.writing_graph.get_model",
                 new_callable=AsyncMock,
                 return_value="mock_model",
             ),

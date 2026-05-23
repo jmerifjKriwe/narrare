@@ -14,6 +14,7 @@ from fastapi import Depends
 
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import (
+    get_composer,
     get_current_user_id,
     get_model_registry,
     get_model_routing_resolver,
@@ -57,11 +58,13 @@ async def get_summary_service(
 
     registry = get_model_registry()
     repo = ChapterRepository(session)
+    composer = get_composer()
 
     return ChapterSummaryService(
         registry=registry,
         config=config,
         chapter_repo=repo,
+        composer=composer,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
     )

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from narrare.memory.schemas import AnalyzeResponse
+from narrare_core.prompts.composer import ComposedPrompt
 
 
 class FakeFeedbackRepo:
@@ -49,6 +50,18 @@ class FakeProfileRepo:
         return self._profiles.get(key)
 
 
+def _make_composer() -> AsyncMock:
+    """Create a mock PromptComposer that returns a ComposedPrompt."""
+    composer = AsyncMock()
+    composer.build = AsyncMock(
+        return_value=ComposedPrompt(
+            system="You are a preference analyst.",
+            user="Analyze the following feedback history.",
+        )
+    )
+    return composer
+
+
 class TestPreferenceAnalysisService:
     def _make_service(self, event_count: int = 10) -> tuple[Any, FakeFeedbackRepo, FakeProfileRepo]:
         from narrare.memory.analysis_service import PreferenceAnalysisService
@@ -56,10 +69,12 @@ class TestPreferenceAnalysisService:
         registry = MagicMock()  # narrare: allow-mock — Mocking ModelRegistry for service unit test
         feedback_repo = FakeFeedbackRepo(event_count=event_count)
         profile_repo = FakeProfileRepo()
+        composer = _make_composer()
         service = PreferenceAnalysisService(
             registry=registry,
             feedback_repo=feedback_repo,  # type: ignore[arg-type]
             profile_repo=profile_repo,  # type: ignore[arg-type]
+            composer=composer,
         )
         return service, feedback_repo, profile_repo
 

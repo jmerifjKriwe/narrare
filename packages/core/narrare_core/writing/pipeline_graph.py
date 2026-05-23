@@ -41,8 +41,11 @@ async def stream_via_writing_graph(
     The graph runs plan → draft → review → finalize internally.
     It returns the completed text as a single chunk (no streaming).
     """
-    from narrare_core.agents.writing_graph import create_writing_graph
-    from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
+    from narrare_core.agents.writing_graph_types import (
+        WritingDeps,
+        WritingState,
+        create_writing_graph,
+    )
 
     graph = create_writing_graph()
 
@@ -91,8 +94,11 @@ async def run_with_persistence(
 
     After successful completion the store entry is cleaned up.
     """
-    from narrare_core.agents.writing_graph import create_writing_graph
-    from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
+    from narrare_core.agents.writing_graph_types import (
+        WritingDeps,
+        WritingState,
+        create_writing_graph,
+    )
 
     graph = create_writing_graph()
 

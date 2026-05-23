@@ -26,8 +26,8 @@ from narrare_core.agents.writing_graph import (
     WritingState,
     WritingStatus,
     build_writing_graph,
-    create_writing_graph,
 )
+from narrare_core.agents.writing_graph_types import create_writing_graph
 
 __all__ = [
     "Approved",

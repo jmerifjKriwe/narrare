@@ -54,7 +54,6 @@ Conduct a focused interview with the author about the upcoming chapter. Follow t
 
 Chapter outline: {{chapter_outline}}
 Author instructions: {{author_instructions}}
-Word target: {{word_target}}
 Tone: {{tone_instructions}}
 
 Interview approach:
@@ -63,6 +62,17 @@ Interview approach:
 - If the KB already has rich character/location data, focus on plot and pacing instead
 - If the KB is sparse, ask about character relationships and world details
 - End by summarizing what you've learned and asking for confirmation
+
+### Output Format
+
+Before asking your questions, use a `<scratchpad>` block to analyze the current KB and identify the most critical missing information for this chapter. Then output your questions outside the scratchpad, clearly numbered and separated by line breaks.
+
+### Do NOT
+
+- Do NOT ask multiple questions in a single turn. Focus on one specific gap per interaction.
+- Do NOT use generic placeholders like "the villain" when you can use the established name from the KB.
+- Do NOT output internal reasoning or analysis directly to the user (keep it inside the scratchpad).
+- Do NOT ask about information already clearly stated in the KB — focus on gaps.
 
 ### User Preferences
 

@@ -54,7 +54,6 @@ Führe ein fokussiertes Interview mit dem Autor über das kommende Kapitel. Befo
 
 Kapitel-Outline: {{chapter_outline}}
 Autorenanweisungen: {{author_instructions}}
-Wortziel: {{word_target}}
 Ton: {{tone_instructions}}
 
 Interview-Ansatz:
@@ -63,6 +62,17 @@ Interview-Ansatz:
 - Wenn die Wissensdatenbank bereits umfangreiche Charakter-/Ortsdaten enthält, konzentriere dich auf Handlung und Tempo
 - Wenn die Wissensdatenbank spärlich ist, frage nach Charakterbeziehungen und Weltdetails
 - Schließe ab, indem du zusammenfasst, was du gelernt hast, und um Bestätigung bittest
+
+### Ausgabeformat
+
+Verwende vor deinen Fragen einen `<scratchpad>`-Block, um die aktuelle Wissensdatenbank zu analysieren und die wichtigsten fehlenden Informationen für dieses Kapitel zu identifizieren. Gib deine Fragen dann außerhalb des Scratchpads aus, klar nummeriert und durch Zeilenumbrüche getrennt.
+
+### NICHT tun
+
+- Stelle NICHT mehrere Fragen in einem einzigen Zug. Konzentriere dich auf eine spezifische Lücke pro Interaktion.
+- Verwende NICHT generische Platzhalter wie „der Bösewicht", wenn du den etablierten Namen aus der Wissensdatenbank verwenden kannst.
+- Gib interne Überlegungen oder Analysen NICHT direkt an den Benutzer weiter (halte sie im Scratchpad).
+- Frage NICHT nach Informationen, die bereits klar in der Wissensdatenbank stehen — konzentriere dich auf Lücken.
 
 ### Nutzereinstellungen
 

@@ -1,7 +1,7 @@
 ---
 prompt_type: generation
 prompt_language: de
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -31,6 +31,15 @@ Antworte mit einem JSON-Array von Objekten, die jeweils enthalten:
 - "meaning": optionale Bedeutung oder Herkunft
 - "type": der Namenstyp
 - "name_style": der verwendete Namensstil
+
+### Nutzereinstellungen
+
+{{user_preferences}}
+
+### Einschränkungen
+
+- Erkläre Bedeutungen auf {{explanation_language}}
+- Berücksichtige die Vermeidungsmuster des Autors: {{avoidance_patterns}}
 
 ### Regeln
 

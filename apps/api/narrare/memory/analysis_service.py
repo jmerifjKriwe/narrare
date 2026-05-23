@@ -3,6 +3,8 @@
 Takes feedback events from the DB, formats them for the core
 ``PreferenceAnalysisAgent``, runs the analysis, and persists the
 result to the ``preference_profiles`` table.
+
+All prompts come from PromptComposer (RULE-02).
 """
 
 from __future__ import annotations
@@ -12,6 +14,8 @@ from typing import TYPE_CHECKING, cast
 import structlog
 
 from narrare.memory.schemas import AnalyzeResponse
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -21,6 +25,7 @@ if TYPE_CHECKING:
     from narrare.memory.repository import FeedbackRepository, PreferenceProfileRepository
     from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
     from narrare_core.llm import ModelRegistry
+    from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
 
@@ -35,6 +40,7 @@ class PreferenceAnalysisService:
         registry: LLM ModelRegistry for creating the agent's model.
         feedback_repo: Repository for querying feedback events.
         profile_repo: Repository for persisting analysis results.
+        composer: PromptComposer for building prompts (RULE-02).
     """
 
     def __init__(
@@ -42,10 +48,12 @@ class PreferenceAnalysisService:
         registry: ModelRegistry,
         feedback_repo: FeedbackRepository,
         profile_repo: PreferenceProfileRepository,
+        composer: PromptComposer,
     ) -> None:
         self._registry = registry
         self._feedback_repo = feedback_repo
         self._profile_repo = profile_repo
+        self._composer = composer
 
     async def analyze(self, user_id: UUID, project_id: UUID) -> AnalyzeResponse:
         """Run PreferenceAnalysisAgent on accumulated feedback.
@@ -194,7 +202,20 @@ class PreferenceAnalysisService:
                 confidence=0.0,
             )
 
-        agent = PreferenceAnalysisAgent(model=model)
+        # Compose prompt via PromptComposer (RULE-02)
+        context = PromptContext(
+            language="en",
+            genre="",
+            mode="preferences",
+            extra={"event_count": str(event_count)},
+        )
+        composed = await self._composer.build(
+            LLMIntent.EXTRACT,
+            context,
+            user_prompt=feedback_text,
+        )
+
+        agent = PreferenceAnalysisAgent(model=model, system_prompt=composed.system)
         deps = PreferenceAnalysisDeps(
             language="en",
             genre="",
@@ -204,7 +225,7 @@ class PreferenceAnalysisService:
 
         try:
             return await agent.run(  # narrare: allow-agent — PreferenceAnalysisAgent orchestration
-                prompt="Analyze the following feedback history for writing preferences.",
+                prompt=composed.user,
                 deps=deps,
             )
         except Exception:
