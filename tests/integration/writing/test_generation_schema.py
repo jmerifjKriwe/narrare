@@ -10,15 +10,12 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-import pytest
 from sqlalchemy import select, text
 
 from narrare.writing.models import GenerationRequest
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-pytestmark = pytest.mark.requires_db
 
 
 async def _create_parent_records(

@@ -14,8 +14,6 @@ import pytest
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-pytestmark = pytest.mark.requires_db
-
 
 @pytest.fixture
 async def novel_with_chapters(

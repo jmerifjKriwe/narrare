@@ -9,12 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-import pytest
-
 if TYPE_CHECKING:
     from httpx import AsyncClient
-
-pytestmark = pytest.mark.requires_db
 
 
 async def _register_user(client: AsyncClient) -> dict[str, str]:

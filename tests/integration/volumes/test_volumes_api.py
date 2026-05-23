@@ -12,8 +12,6 @@ from narrare.volumes.schemas import VolumeResponse
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-pytestmark = pytest.mark.requires_db
-
 
 @pytest.fixture
 async def novel_id(client: AsyncClient, auth_headers: dict[str, str]) -> str:

@@ -11,7 +11,6 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-import pytest
 from sqlalchemy import select, text
 
 from narrare.auth.models import User
@@ -50,11 +49,6 @@ async def _create_novel(session: AsyncSession, novel_id: uuid.UUID) -> Novel:
     session.add(novel)
     await session.flush()
     return novel
-
-
-pytestmark = [
-    pytest.mark.requires_db,
-]
 
 
 class TestProjectSettingsTokenLimitProfile:

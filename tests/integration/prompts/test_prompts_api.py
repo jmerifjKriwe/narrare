@@ -9,8 +9,6 @@ import pytest
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-pytestmark = pytest.mark.requires_db
-
 
 class TestListPrompts:
     async def test_list_prompts_returns_200(

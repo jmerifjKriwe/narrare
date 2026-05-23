@@ -8,6 +8,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add apps/api to Python path so tests can import `narrare.*`
 _api_path = Path(__file__).parent.parent / "apps" / "api"
 if str(_api_path) not in sys.path:
@@ -42,6 +44,36 @@ from pydantic_ai import (  # noqa: E402
 )
 
 models.ALLOW_MODEL_REQUESTS = False
+
+
+# ---------------------------------------------------------------------------
+# Pytest hooks: marker registration and auto-tagging
+# ---------------------------------------------------------------------------
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom markers for --strict-markers compatibility."""
+    config.addinivalue_line("markers", "unit: unit tests (fast, no I/O, mocked dependencies)")
+    config.addinivalue_line("markers", "integration: integration tests (real DB, mocked LLM)")
+    config.addinivalue_line("markers", "requires_db: marks tests requiring database connection")
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Auto-tag tests based on directory path.
+
+    - tests/unit/ → unit
+    - tests/integration/ → integration + requires_db
+    - tests/e2e/ → e2e
+    """
+    for item in items:
+        nodeid = item.nodeid
+        if "tests/unit/" in nodeid:
+            item.add_marker(pytest.mark.unit)
+        elif "tests/integration/" in nodeid:
+            item.add_marker(pytest.mark.integration)
+            item.add_marker(pytest.mark.requires_db)
+        elif "tests/e2e/" in nodeid:
+            item.add_marker(pytest.mark.e2e)
 
 
 # ---------------------------------------------------------------------------

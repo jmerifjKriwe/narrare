@@ -9,10 +9,6 @@ from narrare.settings.schemas import ProjectSettingsResponse, UserSettingsRespon
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-import pytest
-
-pytestmark = [pytest.mark.requires_db]
-
 
 class TestUserSettings:
     async def test_get_user_settings_creates_defaults(

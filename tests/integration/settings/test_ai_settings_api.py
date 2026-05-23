@@ -7,15 +7,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from narrare.settings.schemas import UserAiSettingsResponse
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
-
-
-pytestmark = [pytest.mark.requires_db]
 
 
 class TestGetUserAiSettings:

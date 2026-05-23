@@ -18,8 +18,6 @@ from narrare_core.llm.intents import LLMIntent
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.requires_db
-
 
 class TestGatewayIntegration:
     """End-to-end: intent → resolver → (mock) gateway."""
@@ -143,7 +141,6 @@ class TestGatewayIntegration:
         db_session: AsyncSession,
     ) -> None:
         """User with no provider → ConfigurationError."""
-        import pytest
 
         from narrare.auth.models import User
         from narrare.auth.security import hash_password

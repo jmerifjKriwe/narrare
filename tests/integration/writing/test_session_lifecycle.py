@@ -23,9 +23,6 @@ from narrare._app.main import create_app
 from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
-pytestmark = [pytest.mark.requires_db]
-
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

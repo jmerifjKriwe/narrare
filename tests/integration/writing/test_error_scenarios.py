@@ -11,12 +11,8 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-import pytest
-
 if TYPE_CHECKING:
     from httpx import AsyncClient
-
-pytestmark = pytest.mark.requires_db
 
 
 # ---------------------------------------------------------------------------

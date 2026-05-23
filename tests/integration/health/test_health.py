@@ -7,10 +7,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-import pytest
-
-pytestmark = pytest.mark.requires_db
-
 
 class TestHealthEndpoint:
     async def test_health_returns_ok(self, client: AsyncClient) -> None:

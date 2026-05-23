@@ -42,8 +42,6 @@ TEST_DATABASE_URL = os.environ.get(
     "postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_test",
 )
 
-pytestmark = pytest.mark.requires_db
-
 
 async def _create_tables_if_needed(engine: AsyncEngine) -> None:
     """Create novels + kb_entries tables if they don't exist yet."""

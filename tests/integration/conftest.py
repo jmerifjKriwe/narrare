@@ -34,11 +34,6 @@ TEST_DATABASE_URL = os.environ.get(
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    """Register custom markers."""
-    config.addinivalue_line("markers", "requires_db: marks tests requiring database connection")
-
-
 @pytest.fixture(autouse=True)
 def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]
     """Ensure NARRARE_ENCRYPTION_KEY is set for all integration tests."""

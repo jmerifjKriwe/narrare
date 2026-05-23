@@ -12,8 +12,6 @@ from narrare.novels.schemas import NovelResponse
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-pytestmark = pytest.mark.requires_db
-
 
 @pytest.fixture
 async def novel_id(client: AsyncClient, auth_headers: dict[str, str]) -> str:
