@@ -57,6 +57,29 @@ result = await agent.run(prompt="Content...", deps=deps)
 # → result.summary, result.key_points
 ```
 
+**Meta-Prompt Integration:**
+
+All agents should receive the Narrare meta-prompt for persona consistency. Two paths:
+
+1. **PromptComposer path** (production): Services use `PromptComposer.build()` which automatically
+   prepends the meta-prompt. The resulting `composed.system` is passed as `system_prompt` to the agent.
+
+2. **with_meta() path** (direct agent use): When an agent is instantiated outside a service that
+   uses PromptComposer, use the `with_meta()` factory:
+
+```python
+from narrare_core.prompts.meta import MetaPromptLoader
+
+loader = MetaPromptLoader()
+agent = await ChapterSummaryAgent.with_meta(
+    model=model,
+    deps_type=SummaryDeps,
+    meta_loader=loader,
+    meta_variables={"language": "en", "genre": "Fantasy", "project_title": "My Novel"},
+)
+result = await agent.run(prompt="Content...", deps=deps)
+```
+
 **Neuen Agent hinzufügen:**
 1. Type-Datei `*_types.py` erstellen (Pydantic Output-Modell)
 2. Agent-Datei `*_agent.py` erstellen (extends `NarrareAgent[DepsT, OutputT]`)

@@ -42,6 +42,7 @@
 | [ADR-016](ADR-016-prompt-caching.md) | Prompt Caching Strategy (Agent-Singletons + ModelSettings) | 🔄 | 2026-05-20 | `core/agents/`, `core/llm/`, Observability |
 | [ADR-017](017-embedding-cascade.md) | Embedding Cascade for mem0 (4-tier fallback) | ✅ | 2026-05-21 | `core/memory/`, `packages/core/narrare_core/memory/` |
 | [ADR-018](ADR-018-promptfoo-evals.md) | promptfoo Eval Framework for Prompt Quality | ✅ | 2026-05-23 | `evals/`, CI |
+| [ADR-019](019-system-prompt-consistency.md) | System-Prompt Consistency for pydantic-ai Agents | ✅ | 2026-05-23 | `core/agents/`, `core/prompts/`, RULE-02 |
 
 ---
 

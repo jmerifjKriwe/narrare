@@ -12,7 +12,7 @@
 
 Date: 2026-05-23
 Updated by: NarrareDevCoordinator
-Session summary: CR-01 Prompt Quality Audit — 5 agents wired to PromptComposer (RULE-02 compliance), hardcoded system_prompt strings removed. XML encapsulation for prompt injection defense. Interview + interactive_session prompts enhanced with CoT, negative examples, output format. New bundled prompts: review, preferences, outline, rewrite_selection, story_suggest. User preferences added to generation/name prompts. 10 new de/fr translations. WRITE-004 moved to in-progress. Feature docs updated.
+Session summary: CR-02 system-prompt audit optimizations. NarrareAgent.with_meta() factory for meta-prompt prepending. Meta-prompt guardrails (fiction content, conversation, avoidance_patterns) in all 4 variants (en/de/fr/lite). ADR-019. 14 new tests for guardrails + 8 new tests for with_meta().
 
 ---
 
@@ -143,6 +143,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - Event types, bus protocol (Protocol-based), NullEventBus for testing
 
 **Agent Layer (`agents/`):**
+- `base.py` — NarrareAgent base class with `with_meta()` factory for meta-prompt loading
 - `summary_agent.py` — ChapterSummaryAgent (NarrareAgent subclass): produces SummaryOutput with summary text, key points, word count, metadata
 - `summary_types.py` — SummaryOutput Pydantic output type
 - `writing_graph.py` — WritingGraph with 6 steps: plan_outline → write_draft → review_draft → {approved→finalize, needs_revision→revise_draft→write_draft} → generate_summary → end
@@ -562,6 +563,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | Ghost-Text TipTap Assessment (AUFG-03-01) | ProseMirror Decorations API evaluation completed. 4-phase roadmap. Assessment at docs/architecture/assessments/ghost-text-tiptap-assessment.md |
 | Feature Docs Voice Integration (Doc Gate) | ANAL-008, ANAL-009, WRITE-010 updated with integration notes for {{character_voice_profiles}} infrastructure |
 | CR-01 Prompt Quality Audit | RULE-02 compliance: 5 agents wired to PromptComposer, hardcoded system_prompt strings removed. XML encapsulation for prompt injection defense. Interview + interactive_session prompts enhanced with CoT, negative examples, output format. New bundled prompts: review, preferences, outline, rewrite_selection, story_suggest. User preferences added to generation/name prompts. 10 new de/fr translations. |
+| CR-02 System-Prompt Audit | Meta-prompt guardrails added (fiction content, conversation guardrails, avoidance_patterns) to all 4 variants. NarrareAgent.with_meta() factory for meta-prompt loading. ADR-019. 14 new guardrail tests. |
 
 ---
 
@@ -586,6 +588,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | ADR-016 | Prompt Caching Strategy | 🔄 Proposed |
 | ADR-017 | Embedding Cascade for mem0 | ✅ Implemented in `core/memory/embedding_cascade.py` |
 | ADR-018 | Promptfoo Eval Framework for Prompt Quality | ✅ | evals/, CI |
+| ADR-019 | System-Prompt Consistency for pydantic-ai Agents | ✅ Accepted | `core/agents/`, `core/prompts/`, RULE-02 |
 
 ---
 

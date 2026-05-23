@@ -158,3 +158,92 @@ class TestMetaPromptLoaderInvalidateCache:
         loader.invalidate_cache()
         content = await loader.load("en")
         assert content == "Updated"
+
+
+class TestMetaPromptGuardrails:
+    """Guardrails in bundled meta-prompt templates (CR-02 Phase 4)."""
+
+    # --- English meta-prompt ---
+
+    async def test_en_contains_fiction_content_guidelines(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("en")
+        assert "Fiction Content Guidelines" in content
+
+    async def test_en_contains_conversation_guardrails(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("en")
+        assert "Conversation Guardrails" in content
+
+    async def test_en_contains_avoidance_patterns_variable(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("en")
+        assert "{{avoidance_patterns}}" in content
+
+    async def test_en_contains_fiction_tolerance_text(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("en")
+        assert "normal narrative content" in content
+
+    # --- German meta-prompt ---
+
+    async def test_de_contains_fiction_guidelines(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("de")
+        assert "Fiktionsinhalts-Richtlinien" in content
+
+    async def test_de_contains_conversation_guardrails(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("de")
+        assert "Konversations-Leitlinien" in content
+
+    async def test_de_contains_avoidance_patterns_variable(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("de")
+        assert "{{avoidance_patterns}}" in content
+
+    # --- French meta-prompt ---
+
+    async def test_fr_contains_fiction_guidelines(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("fr")
+        assert "Directives sur le contenu de fiction" in content
+
+    async def test_fr_contains_conversation_guardrails(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("fr")
+        assert "Directives de conversation" in content
+
+    async def test_fr_contains_avoidance_patterns_variable(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("fr")
+        assert "{{avoidance_patterns}}" in content
+
+    # --- Lite meta-prompt ---
+
+    async def test_lite_contains_fiction_reference(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("en", use_lite=True)
+        assert "fiction" in content.lower()
+
+    async def test_lite_contains_avoidance_patterns_variable(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load("en", use_lite=True)
+        assert "{{avoidance_patterns}}" in content
+
+    async def test_lite_is_significantly_shorter_than_full(self) -> None:
+        loader = MetaPromptLoader()
+        full = await loader.load("en")
+        lite = await loader.load("en", use_lite=True)
+        assert len(lite) < len(full) * 0.5
+
+    # --- Variable substitution ---
+
+    async def test_avoidance_patterns_substitution(self) -> None:
+        loader = MetaPromptLoader()
+        content = await loader.load(
+            "en",
+            variables={"avoidance_patterns": "No spiders, no graphic violence"},
+        )
+        assert "No spiders, no graphic violence" in content
+        assert "{{avoidance_patterns}}" not in content

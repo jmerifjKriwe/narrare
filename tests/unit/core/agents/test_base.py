@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+from unittest.mock import AsyncMock
+
 from pydantic_ai.models.test import TestModel
 
 from narrare_core.agents import NarrareAgent
@@ -123,4 +126,172 @@ class TestNarrareAgent:
 
         # Agent with non-None deps type
         result = await agent.run("Hallo", deps=MyDeps(user_name="Alice"))
+        assert result == "success (no tool calls)"
+
+
+class TestNarrareAgentWithMeta:
+    """Test suite for NarrareAgent.with_meta() factory method."""
+
+    @staticmethod
+    def _make_loader(return_value: str = "You are Narrare, a creative writing AI.") -> Any:
+        """Create a fake MetaPromptLoader."""
+
+        class FakeMetaPromptLoader:
+            """Minimal fake for MetaPromptLoader (RULE-TEST-01)."""
+
+            def __init__(self) -> None:
+                self.load = AsyncMock(return_value=return_value)
+
+        return FakeMetaPromptLoader()
+
+    async def test_with_meta_loads_and_prepends_meta_prompt(self) -> None:
+        """with_meta() loads meta-prompt and prepends to system_prompt."""
+        loader = self._make_loader("Meta: You are Narrare.")
+        model = TestModel()
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        agent = await MyAgent.with_meta(
+            model=model,
+            deps_type=type(None),
+            output_type=str,
+            meta_loader=loader,
+            system_prompt="Du bist ein Helfer.",
+        )
+        # Verify loader was called
+        loader.load.assert_awaited_once_with(language="en", variables=None)
+        # Agent works correctly
+        result = await agent.run("test", deps=None)
+        assert result == "success (no tool calls)"
+
+    async def test_with_meta_meta_only_no_system_prompt(self) -> None:
+        """with_meta() uses only meta-prompt when no system_prompt given."""
+        loader = self._make_loader("Meta prompt only.")
+        model = TestModel()
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        agent = await MyAgent.with_meta(
+            model=model,
+            deps_type=type(None),
+            output_type=str,
+            meta_loader=loader,
+        )
+        loader.load.assert_awaited_once()
+        result = await agent.run("test", deps=None)
+        assert result == "success (no tool calls)"
+
+    async def test_with_meta_empty_meta_uses_system_prompt_only(self) -> None:
+        """with_meta() falls back to system_prompt when meta returns empty."""
+        loader = self._make_loader("")
+        model = TestModel()
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        agent = await MyAgent.with_meta(
+            model=model,
+            deps_type=type(None),
+            output_type=str,
+            meta_loader=loader,
+            system_prompt="Just the agent prompt.",
+        )
+        loader.load.assert_awaited_once()
+        result = await agent.run("test", deps=None)
+        assert result == "success (no tool calls)"
+
+    async def test_with_meta_empty_meta_no_system_prompt_passes_none(self) -> None:
+        """with_meta() passes None when both meta and system_prompt are empty."""
+        loader = self._make_loader("")
+        model = TestModel()
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        agent = await MyAgent.with_meta(
+            model=model,
+            deps_type=type(None),
+            output_type=str,
+            meta_loader=loader,
+        )
+        # Should not raise — None system_prompt is valid
+        result = await agent.run("test", deps=None)
+        assert result == "success (no tool calls)"
+
+    async def test_with_meta_passes_language_from_variables(self) -> None:
+        """with_meta() extracts language from meta_variables for the loader."""
+        loader = self._make_loader("Du bist Narrare.")
+        model = TestModel()
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        variables = {"language": "de", "project_title": "Mein Roman"}
+        await MyAgent.with_meta(
+            model=model,
+            deps_type=type(None),
+            output_type=str,
+            meta_loader=loader,
+            meta_variables=variables,
+        )
+        loader.load.assert_awaited_once_with(language="de", variables=variables)
+
+    async def test_with_meta_defaults_to_en_when_no_language(self) -> None:
+        """with_meta() defaults to 'en' when meta_variables has no language."""
+        loader = self._make_loader("You are Narrare.")
+        model = TestModel()
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        await MyAgent.with_meta(
+            model=model,
+            deps_type=type(None),
+            output_type=str,
+            meta_loader=loader,
+            meta_variables={"project_title": "My Novel"},
+        )
+        loader.load.assert_awaited_once_with(
+            language="en",
+            variables={"project_title": "My Novel"},
+        )
+
+    async def test_with_meta_passes_capabilities_and_output_type(self) -> None:
+        """with_meta() forwards all optional params to __init__."""
+        from dataclasses import dataclass
+
+        from pydantic_ai.capabilities import AbstractCapability
+
+        @dataclass
+        class DummyCapability(AbstractCapability):
+            pass
+
+        loader = self._make_loader("Meta.")
+        model = TestModel()
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        agent = await MyAgent.with_meta(
+            model=model,
+            deps_type=type(None),
+            output_type=str,
+            capabilities=[DummyCapability()],
+            meta_loader=loader,
+        )
+        result = await agent.run("test", deps=None)
+        assert result == "success (no tool calls)"
+
+    async def test_init_signature_unchanged_backward_compatible(self) -> None:
+        """__init__ still works exactly as before — no new required params."""
+        model = TestModel()
+
+        class MyAgent(NarrareAgent[None, str]):
+            pass
+
+        # Only the original params — no meta_loader, no meta_variables
+        agent = MyAgent(model=model, deps_type=type(None), output_type=str)
+        result = await agent.run("test", deps=None)
         assert result == "success (no tool calls)"
