@@ -422,6 +422,25 @@
         "deprecatedModels": "{count} modèle(s) obsolète(s)",
         "refreshing": "Actualisation des données des modèles...",
         "error": "Impossible d'atteindre models.dev. Utilisation des données en cache."
+      },
+      "contextBudget": {
+        "title": "Budget de Contexte",
+        "description": "Comment l'IA répartit sa fenêtre de contexte entre les niveaux de mémoire",
+        "tierImmediate": "Session Actuelle",
+        "tierRecent": "Messages Récents",
+        "tierKbReferenced": "BC (Référencé)",
+        "tierKbSuggested": "BC (Suggéré)",
+        "tierPinned": "Épinglés",
+        "sumWarning": "Le total est de {total}% — doit être égal à 100%"
+      },
+      "systemTimeouts": {
+        "title": "Délais Système",
+        "description": "Comportement de connexion et de relance pour les opérations IA",
+        "wsTimeout": "Délai WebSocket (secondes)",
+        "wsTimeoutHint": "Minimum 60 secondes",
+        "retryAttempts": "Tentatives de Relance Max",
+        "retryDelay": "Délai de Base (secondes)",
+        "retryDelayHint": "Backoff exponentiel à partir de cette valeur"
       }
     },
     "prompts": {

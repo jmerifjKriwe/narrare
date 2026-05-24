@@ -4,13 +4,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { aiSettingsApi } from "@/lib/api/client";
-import type { ModelOverride, TokenLimitOverride, TokenLimitProfile } from "@/types";
+import { aiSettingsApi, tokenLimitsApi } from "@/lib/api/client";
+import type { ContextTier, ModelOverride, TokenLimitOverride, TokenLimitProfile } from "@/types";
 import { CategoryOverrides } from "./CategoryOverrides";
+import { ContextBudget } from "./ContextBudget";
 import { CustomTokenLimits } from "./CustomTokenLimits";
+import { DefaultModelSection } from "./DefaultModelSection";
 import { IntentOverrides } from "./IntentOverrides";
 import { ModelDataStatus } from "./ModelDataStatus";
 import { ProviderList } from "./ProviderList";
+import { SystemTimeouts } from "./SystemTimeouts";
 
 // --- Token profile options ---
 
@@ -20,6 +23,14 @@ const TOKEN_PROFILES: { value: TokenLimitProfile; labelKey: string }[] = [
   { value: "long_texts", labelKey: "settings.ai.tokenProfileLong" },
   { value: "custom", labelKey: "settings.ai.tokenProfileCustom" },
 ];
+
+const DEFAULT_TIER_PERCENTAGES: Record<ContextTier, number> = {
+  immediate: 30,
+  recent: 20,
+  kb_referenced: 25,
+  kb_suggested: 15,
+  pinned: 10,
+};
 
 // --- Main AI Tab ---
 
@@ -44,6 +55,11 @@ export function AiTab() {
     queryKey: ["settings", "ai", "models", aiSettings?.default_provider_id],
     queryFn: () => aiSettingsApi.getProviderModels(aiSettings!.default_provider_id!),
     enabled: !!aiSettings?.default_provider_id,
+  });
+
+  const { data: tokenLimitsData } = useQuery({
+    queryKey: ["settings", "token-limits"],
+    queryFn: tokenLimitsApi.getResolved,
   });
 
   // Dynamic model loading per provider (for overrides)
@@ -75,6 +91,15 @@ export function AiTab() {
       queryClient.invalidateQueries({ queryKey: ["settings", "ai"] });
     },
     onError: (err) => console.error("Failed to update AI settings:", err),
+  });
+
+  // Token limits mutation
+  const updateTokenLimitsMutation = useMutation({
+    mutationFn: tokenLimitsApi.updateUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings", "token-limits"] });
+    },
+    onError: (err) => console.error("Failed to update token limits:", err),
   });
 
   // Handlers
@@ -112,6 +137,23 @@ export function AiTab() {
     updateAiSettingsMutation.mutate({ token_limit_overrides: tokenLimitOverrides });
   }
 
+  function handleTierPercentagesChange(tierPercentages: Record<ContextTier, number>) {
+    // Convert percentages to 0-1 range for the API
+    const normalized: Partial<Record<ContextTier, number>> = {};
+    for (const [key, val] of Object.entries(tierPercentages)) {
+      normalized[key as ContextTier] = val / 100;
+    }
+    updateTokenLimitsMutation.mutate({ tier_percentages: normalized });
+  }
+
+  function handleSystemTimeoutsChange(values: {
+    ws_timeout?: number;
+    retry_max_attempts?: number;
+    retry_base_delay?: number;
+  }) {
+    updateTokenLimitsMutation.mutate(values);
+  }
+
   // Pre-load models for active category overrides
   if (aiSettings?.category_overrides) {
     for (const override of Object.values(aiSettings.category_overrides)) {
@@ -147,60 +189,20 @@ export function AiTab() {
         <ModelDataStatus />
 
         {/* Default model */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <span className="text-lg">🎯</span>
-            </div>
-            <div>
-              <h3 className="font-medium">{t("settings.ai.defaultModel")}</h3>
-            </div>
-          </div>
-          <div className="space-y-4 ml-15">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">{t("settings.ai.providerName")}</span>
-              <select
-                value={aiSettings?.default_provider_id ?? ""}
-                onChange={(e) => handleDefaultProviderChange(e.target.value)}
-                className="px-4 py-2 bg-background border border-border rounded-md text-sm"
-              >
-                <option value="">{t("settings.ai.noneSelected")}</option>
-                {providers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.provider_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="h-px bg-border" />
-            <div className="flex items-center justify-between">
-              <span className="text-sm">{t("settings.ai.defaultModel")}</span>
-              {modelsLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              ) : (
-                <select
-                  value={aiSettings?.default_model ?? ""}
-                  onChange={(e) => handleDefaultModelChange(e.target.value)}
-                  disabled={!aiSettings?.default_provider_id}
-                  className="px-4 py-2 bg-background border border-border rounded-md text-sm disabled:opacity-50"
-                >
-                  <option value="">{t("settings.ai.selectProviderFirst")}</option>
-                  {modelsData?.models.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-        </div>
+        <DefaultModelSection
+          aiSettings={aiSettings}
+          providers={providers}
+          modelsData={modelsData}
+          modelsLoading={modelsLoading}
+          onProviderChange={handleDefaultProviderChange}
+          onModelChange={handleDefaultModelChange}
+        />
 
         {/* Token limit profile */}
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <span className="text-lg">⚡</span>
+              <span className="text-lg">{"\u26A1"}</span>
             </div>
             <div>
               <h3 className="font-medium">{t("settings.ai.tokenProfile")}</h3>
@@ -225,7 +227,7 @@ export function AiTab() {
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <span className="text-lg">📂</span>
+              <span className="text-lg">{"\uD83D\uDCC2"}</span>
             </div>
             <div>
               <h3 className="font-medium">{t("settings.ai.categoryOverrides.title")}</h3>
@@ -247,7 +249,7 @@ export function AiTab() {
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <span className="text-lg">🔧</span>
+              <span className="text-lg">{"\uD83D\uDD27"}</span>
             </div>
             <div>
               <h3 className="font-medium">{t("settings.ai.intentOverrides.title")}</h3>
@@ -271,7 +273,7 @@ export function AiTab() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                  <span className="text-lg">🎛️</span>
+                  <span className="text-lg">{"\uD83C\uDF9B\uFE0F"}</span>
                 </div>
                 <div>
                   <h3 className="font-medium">{t("settings.ai.tokenLimits.title")}</h3>
@@ -298,6 +300,57 @@ export function AiTab() {
             )}
           </div>
         )}
+
+        {/* Context Budget */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+              <span className="text-lg">{"\uD83D\uDCCA"}</span>
+            </div>
+            <div>
+              <h3 className="font-medium">{t("settings.ai.contextBudget.title")}</h3>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.ai.contextBudget.description")}
+              </p>
+            </div>
+          </div>
+          <ContextBudget
+            percentages={
+              tokenLimitsData?.tier_percentages
+                ? (Object.fromEntries(
+                    Object.entries(tokenLimitsData.tier_percentages).map(([k, v]) => [
+                      k,
+                      Math.round(v * 100),
+                    ]),
+                  ) as Record<ContextTier, number>)
+                : DEFAULT_TIER_PERCENTAGES
+            }
+            onChange={handleTierPercentagesChange}
+            disabled={!tokenLimitsData}
+          />
+        </div>
+
+        {/* System Timeouts */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+              <span className="text-lg">{"\u23F1\uFE0F"}</span>
+            </div>
+            <div>
+              <h3 className="font-medium">{t("settings.ai.systemTimeouts.title")}</h3>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.ai.systemTimeouts.description")}
+              </p>
+            </div>
+          </div>
+          <SystemTimeouts
+            wsTimeout={tokenLimitsData?.ws_timeout ?? 1800}
+            retryMaxAttempts={tokenLimitsData?.retry_max_attempts ?? 3}
+            retryBaseDelay={tokenLimitsData?.retry_base_delay ?? 1.0}
+            onChange={handleSystemTimeoutsChange}
+            disabled={!tokenLimitsData}
+          />
+        </div>
 
         {/* System prompts info */}
         <div className="bg-muted/30 border border-border rounded-lg p-4 text-sm text-muted-foreground">

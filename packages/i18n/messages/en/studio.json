@@ -422,6 +422,25 @@
         "deprecatedModels": "{count} model(s) deprecated",
         "refreshing": "Refreshing model data...",
         "error": "Could not reach models.dev. Using cached data."
+      },
+      "contextBudget": {
+        "title": "Context Budget",
+        "description": "How the AI distributes its context window across memory tiers",
+        "tierImmediate": "Current Session",
+        "tierRecent": "Recent Messages",
+        "tierKbReferenced": "KB (Referenced)",
+        "tierKbSuggested": "KB (Suggested)",
+        "tierPinned": "Pinned Items",
+        "sumWarning": "Total is {total}% — must equal 100%"
+      },
+      "systemTimeouts": {
+        "title": "System Timeouts",
+        "description": "Connection and retry behavior for AI operations",
+        "wsTimeout": "WebSocket Timeout (seconds)",
+        "wsTimeoutHint": "Minimum 60 seconds",
+        "retryAttempts": "Max Retry Attempts",
+        "retryDelay": "Base Retry Delay (seconds)",
+        "retryDelayHint": "Exponential backoff from this value"
       }
     },
     "prompts": {

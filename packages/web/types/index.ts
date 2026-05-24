@@ -258,6 +258,29 @@ export interface TokenLimitOverride {
   temperature: number;
 }
 
+/** Tier names for context budget allocation. */
+export type ContextTier = "immediate" | "recent" | "kb_referenced" | "kb_suggested" | "pinned";
+
+/** Resolved token limits from all layers (user → project → env → code). */
+export interface TokenLimitsResponse {
+  output_limit: number;
+  token_profile: TokenLimitProfile;
+  tier_percentages: Record<ContextTier, number>;
+  ws_timeout: number;
+  retry_max_attempts: number;
+  retry_base_delay: number;
+}
+
+/** Partial update for token limit overrides. */
+export interface UpdateTokenLimitsRequest {
+  output_limit?: number;
+  token_profile?: TokenLimitProfile;
+  tier_percentages?: Partial<Record<ContextTier, number>>;
+  ws_timeout?: number;
+  retry_max_attempts?: number;
+  retry_base_delay?: number;
+}
+
 export interface UserAiSettings {
   user_id: string;
   default_provider_id: string | null;

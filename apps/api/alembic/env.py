@@ -18,6 +18,7 @@ import narrare.memory.models
 import narrare.novels.models
 import narrare.planning.models
 import narrare.settings.models
+import narrare.settings.token_limits.models
 import narrare.templates.models
 import narrare.volumes.models
 import narrare.writing.models  # noqa: F401

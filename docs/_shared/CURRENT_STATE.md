@@ -583,6 +583,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | CR-08 Config-Expansion | 6 neue Env-Vars: NARRARE_DEFAULT_MAX_TOKENS, WS_IDLE_TIMEOUT, RETRY_*, COST_RATES_JSON |
 | CR-08 Feature Doc | SET-005 — Configurable Token Limits erstellt |
 | CR-08 Nice-to-have Spec | CR-08-NTH — Cost Estimation, Retry Config, Model Registry |
+| KB dependencies bug | Bereits behoben — alle dependencies.py nutzen SessionDep |
 
 ---
 
@@ -642,7 +643,6 @@ All demo content is complete — sufficient for testing through Phase 5.
 1. WRITE-003: Extend Chapter — OpenSpec proposal ready, prompt templates needed
 2. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
 3. E2E tests with Playwright
-4. KB dependencies production bug: `narrare/kb/dependencies.py` bare `session: AsyncSession` needs `= Depends(get_async_session)` — currently worked around in test conftest
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)

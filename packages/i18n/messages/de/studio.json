@@ -422,6 +422,25 @@
         "deprecatedModels": "{count} Modell(e) veraltet",
         "refreshing": "Modelldaten werden aktualisiert...",
         "error": "models.dev konnte nicht erreicht werden. Verwende zwischengespeicherte Daten."
+      },
+      "contextBudget": {
+        "title": "Kontext-Budget",
+        "description": "Wie die KI ihr Kontextfenster auf Speicher-Ebenen verteilt",
+        "tierImmediate": "Aktuelle Sitzung",
+        "tierRecent": "Letzte Nachrichten",
+        "tierKbReferenced": "WB (Referenziert)",
+        "tierKbSuggested": "WB (Vorgeschlagen)",
+        "tierPinned": "Angeheftet",
+        "sumWarning": "Summe ist {total}% — muss 100% ergeben"
+      },
+      "systemTimeouts": {
+        "title": "System-Timeouts",
+        "description": "Verbindungs- und Retry-Verhalten für KI-Operationen",
+        "wsTimeout": "WebSocket-Timeout (Sekunden)",
+        "wsTimeoutHint": "Minimum 60 Sekunden",
+        "retryAttempts": "Max. Wiederholungsversuche",
+        "retryDelay": "Basis-Wiederholungsverzögerung (Sekunden)",
+        "retryDelayHint": "Exponentielles Backoff ab diesem Wert"
       }
     },
     "prompts": {

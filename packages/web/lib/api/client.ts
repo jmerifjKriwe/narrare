@@ -31,11 +31,13 @@ import type {
   ProjectSettings,
   PromptDetail,
   PromptInfo,
+  TokenLimitsResponse,
   TokenResponse,
   UpdateCustomToneRequest,
   UpdateInfo,
   UpdateProjectAiSettingsRequest,
   UpdateProviderRequest,
+  UpdateTokenLimitsRequest,
   UpdateUserAiSettingsRequest,
   UpdateVolumeRequest,
   User,
@@ -390,6 +392,24 @@ export const aiSettingsApi = {
   // Refresh model data from models.dev
   refreshModels: () =>
     fetchApi<ModelRefreshResponse>("/settings/models/refresh", { method: "POST" }),
+};
+
+// --- Token Limits ---
+
+export const tokenLimitsApi = {
+  getResolved: () => fetchApi<TokenLimitsResponse>("/settings/token-limits/"),
+
+  updateUser: (data: UpdateTokenLimitsRequest) =>
+    fetchApi<TokenLimitsResponse>("/settings/token-limits/user", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  updateProject: (projectId: string, data: UpdateTokenLimitsRequest) =>
+    fetchApi<TokenLimitsResponse>(`/settings/token-limits/project/${projectId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 };
 
 // --- Prompts ---

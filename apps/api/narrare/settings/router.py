@@ -25,6 +25,7 @@ from narrare.settings.schemas import (
     UpdateUserSettingsRequest,
     UserSettingsResponse,
 )
+from narrare.settings.token_limits.router import router as token_limits_router
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,6 +40,9 @@ router.include_router(tones_router)
 
 # Include models sub-router (no prefix - routes already have /models/ prefix)
 router.include_router(models_router)
+
+# Include token limits sub-router (no prefix - routes already have /settings/token-limits/ prefix)
+router.include_router(token_limits_router)
 
 
 # ---------------------------------------------------------------------------

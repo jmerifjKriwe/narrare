@@ -3136,6 +3136,155 @@
         }
       }
     },
+    "/api/v1/settings/settings/token-limits/": {
+      "get": {
+        "tags": [
+          "settings",
+          "token-limits"
+        ],
+        "summary": "Get Resolved Limits",
+        "description": "Get resolved token limits (merged across all layers).\n\nQueries are optional:\n- ``project_id``: Include project-level overrides.",
+        "operationId": "get_resolved_limits_api_v1_settings_settings_token_limits__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenLimitOverridesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/settings/token-limits/user": {
+      "put": {
+        "tags": [
+          "settings",
+          "token-limits"
+        ],
+        "summary": "Update User Limits",
+        "description": "Update user-level token limit overrides.",
+        "operationId": "update_user_limits_api_v1_settings_settings_token_limits_user_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTokenLimitsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/settings/settings/token-limits/project/{project_id}": {
+      "put": {
+        "tags": [
+          "settings",
+          "token-limits"
+        ],
+        "summary": "Update Project Limits",
+        "description": "Update project-level token limit overrides.",
+        "operationId": "update_project_limits_api_v1_settings_settings_token_limits_project__project_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTokenLimitsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/settings/user": {
       "get": {
         "tags": [
@@ -8364,6 +8513,45 @@
         "title": "TemplateInfoResponse",
         "description": "Metadata summary for a single template override."
       },
+      "TokenLimitOverridesResponse": {
+        "properties": {
+          "output_limit": {
+            "type": "integer",
+            "title": "Output Limit",
+            "default": 4096
+          },
+          "token_profile": {
+            "type": "string",
+            "title": "Token Profile",
+            "default": "balanced"
+          },
+          "tier_percentages": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Tier Percentages"
+          },
+          "ws_timeout": {
+            "type": "integer",
+            "title": "Ws Timeout",
+            "default": 1800
+          },
+          "retry_max_attempts": {
+            "type": "integer",
+            "title": "Retry Max Attempts",
+            "default": 3
+          },
+          "retry_base_delay": {
+            "type": "number",
+            "title": "Retry Base Delay",
+            "default": 1.0
+          }
+        },
+        "type": "object",
+        "title": "TokenLimitOverridesResponse",
+        "description": "Fully resolved token limit configuration.\n\nReturned by the GET endpoint after merging all layers."
+      },
       "TokenResponse": {
         "properties": {
           "access_token": {
@@ -8735,6 +8923,91 @@
         "type": "object",
         "title": "UpdateProviderRequest",
         "description": "Request to update an existing provider's credentials or status."
+      },
+      "UpdateTokenLimitsRequest": {
+        "properties": {
+          "output_limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 131072.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Limit"
+          },
+          "token_profile": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(quick|balanced|long_texts|custom)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Profile"
+          },
+          "tier_percentages": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier Percentages"
+          },
+          "ws_timeout": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 86400.0,
+                "minimum": 60.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ws Timeout"
+          },
+          "retry_max_attempts": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Max Attempts"
+          },
+          "retry_base_delay": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 60.0,
+                "minimum": 0.1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Base Delay"
+          }
+        },
+        "type": "object",
+        "title": "UpdateTokenLimitsRequest",
+        "description": "Partial update request for token limit overrides.\n\nAll fields are optional — only provided fields are persisted."
       },
       "UpdateUserAiSettingsRequest": {
         "properties": {

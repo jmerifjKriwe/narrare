@@ -36,6 +36,10 @@ The API JSON (~2 MB) is fetched on first access and cached locally.
 | **On network failure** | Last cache is used — graceful degradation |
 | **Manual refresh** | `POST /api/v1/settings/models/refresh` or UI button |
 
+**Startup-Verhalten:** Der Cache wird lazy geladen — beim ersten `get_rates()` Call.
+Kein blocking I/O beim Application-Start. Bei langsamer Netzwerkverbindung
+kann der erste Call ~1-2s dauern; danach ist 24h alles gecached.
+
 ---
 
 ## Data Structure
@@ -88,7 +92,7 @@ Each provider entry contains a `models` dictionary keyed by model ID. Here is th
 | NTH-01 Cost Estimation | 📋 spec | Per-model prices to estimate cost of `TokenUsage` |
 | NTH-03 Registry Validation | 📋 spec | CI check comparing local model registry against models.dev |
 | UI "Refresh Model Data" | 📋 spec | Button in Settings to trigger a manual cache refresh |
-| STATS-002 Cost Tracking | 💡 idea | Could use models.dev for real-time cost calculation |
+| STATS-002 Cost Tracking | 📋 planned | Could use models.dev for real-time cost calculation |
 
 ---
 
