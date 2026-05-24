@@ -152,3 +152,36 @@ class RelationshipServiceProtocol(Protocol):
     ) -> list[KBRelationship]: ...
     async def delete(self, novel_id: uuid.UUID, rel_id: uuid.UUID, user_id: uuid.UUID) -> None: ...
     def get_inverse_suggestion(self, rel_type: str) -> str | None: ...
+
+
+@runtime_checkable
+class ContextUsageProtocol(Protocol):
+    """Protocol for tracking context suggestion usage.
+
+    Records accept/dismiss events and maintains usage counters
+    on KB entries for hybrid search scoring.
+    """
+
+    async def record_accept(
+        self,
+        novel_id: uuid.UUID,
+        entry_id: uuid.UUID,
+        chapter_id: uuid.UUID | None,
+        source: str,
+    ) -> None:
+        """Record a suggestion acceptance and update usage counters."""
+        ...
+
+    async def record_dismiss(
+        self,
+        novel_id: uuid.UUID,
+        entry_id: uuid.UUID,
+        chapter_id: uuid.UUID | None,
+        source: str,
+    ) -> None:
+        """Record a suggestion dismissal (no usage counter update)."""
+        ...
+
+    async def get_usage_stats(self, entry_id: uuid.UUID) -> dict[str, int]:
+        """Return accept/dismiss counts for an entry."""
+        ...

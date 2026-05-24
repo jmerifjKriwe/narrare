@@ -113,6 +113,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.auth.router_me import router as auth_me_router
     from narrare.chapters.router import router as chapters_router
     from narrare.chapters.router_versions import router as chapter_versions_router
+    from narrare.embeddings.router import router as embeddings_router
     from narrare.generation.router import router as generation_router
     from narrare.kb.router import router as kb_router
     from narrare.kb.router_relationships import router as kb_relationships_router
@@ -140,6 +141,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(planning_router, prefix=prefix)
     app.include_router(chapters_router, prefix=prefix)
     app.include_router(chapter_versions_router, prefix=prefix)
+    app.include_router(embeddings_router)  # Full paths already include /api/v1/admin/embeddings/
     app.include_router(volumes_router, prefix=prefix)
     app.include_router(kb_router, prefix=prefix)
     app.include_router(kb_relationships_router, prefix=prefix)

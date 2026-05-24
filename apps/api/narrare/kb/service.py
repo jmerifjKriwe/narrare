@@ -2,6 +2,7 @@
 
 Orchestrates entry creation, validation, slug generation, reference
 resolution, and ownership checks.  Delegates DB operations to the repository.
+After create/update, queues embedding generation tasks (non-blocking).
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.kb._utils import MENTION_RE, slugify
+from narrare.kb._utils import MENTION_RE, generate_reference_html, slugify
 from narrare.kb.schemas import (
     ReferenceResolution,
     ResolveReferencesResponse,
@@ -24,10 +25,10 @@ from narrare_core.shared.errors import (
 from narrare_core.templates.schema_bridge import validate_metadata
 
 if TYPE_CHECKING:
-    import re
     import uuid
 
     from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.kb.embedding_hooks import EmbeddingHookManager
     from narrare.kb.models import KBEntry
     from narrare.kb.schemas import (
         KBEntryCreate,
@@ -45,9 +46,11 @@ class KBService:
         self,
         repo: KBRepositoryProtocol,
         novel_repo: NovelRepositoryProtocol | None = None,
+        embedding_hooks: EmbeddingHookManager | None = None,
     ) -> None:
         self._repo = repo
         self._novel_repo = novel_repo
+        self._embedding_hooks = embedding_hooks
 
     async def _verify_novel_ownership(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """Raise ForbiddenError if the novel does not belong to the user."""
@@ -98,7 +101,6 @@ class KBService:
             metadata_=data.metadata,
             body=data.body or "",
             template_version=data.template_version,
-            embeddings_dirty=True,
         )
 
         entry = await self._repo.create(entry)
@@ -108,6 +110,11 @@ class KBService:
             novel_id=str(novel_id),
             entity_type=data.entity_type,
         )
+
+        # Queue embedding generation (non-blocking)
+        if self._embedding_hooks is not None:
+            await self._embedding_hooks.on_entry_created(entry)
+
         return entry
 
     async def get(self, novel_id: uuid.UUID, entry_id: uuid.UUID, user_id: uuid.UUID) -> KBEntry:
@@ -189,7 +196,6 @@ class KBService:
                     f"Invalid metadata for entity type '{effective_type}': {exc}"
                 ) from exc
             updates["metadata_"] = data.metadata
-            updates["embeddings_dirty"] = True
 
         # Check slug uniqueness if slug changed
         new_slug = updates.get("slug")
@@ -200,6 +206,15 @@ class KBService:
 
         updated = await self._repo.update(entry, updates)
         logger.info("kb_entry_updated", entry_id=str(entry_id))
+
+        # Queue embedding generation if content changed (non-blocking)
+        if self._embedding_hooks is not None:
+            content_changed = "body" in updates or "metadata_" in updates
+            await self._embedding_hooks.on_entry_updated(
+                updated,
+                content_changed=content_changed,
+            )
+
         return updated
 
     async def delete(self, novel_id: uuid.UUID, entry_id: uuid.UUID, user_id: uuid.UUID) -> None:
@@ -240,22 +255,7 @@ class KBService:
             else:
                 resolved.append(ReferenceResolution(mention=mention))
 
-        # Generate HTML with anchor tags for resolved entries
-        def _replace_link(m: re.Match[str]) -> str:
-            name = m.group(1).strip()
-            for r in resolved:
-                if r.mention == name and r.entry_id is not None:
-                    return (
-                        f'<a href="/studio/{novel_id}/kb/{r.slug}" '
-                        f'class="kb-mention" '
-                        f'data-entry-id="{r.entry_id}" '
-                        f'data-entity-type="{r.entity_type}">'
-                        f"@{r.entry_name}"
-                        f"</a>"
-                    )
-            return m.group(0)
-
-        html = MENTION_RE.sub(_replace_link, text)
+        html = generate_reference_html(text, resolved, novel_id)
 
         return ResolveReferencesResponse(resolved=resolved, html=html)
 

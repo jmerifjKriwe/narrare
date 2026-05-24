@@ -11,8 +11,8 @@
 ## Last Updated
 
 Date: 2026-05-24
-Updated by: NarrareDevCoordinator
-Session summary: CR-08 Hardcoded Values audit umgesetzt. FIND-006/009/010/011 behoben. TokenBudgetManager konfigurierbar (tier_overrides). ResolvedModelConfig.resolve_output_limit() mit quick/balanced/long Profilen. 6 neue Operator-Env-Vars in config.py. Backend-Deps nutzen resolve_output_limit() statt hardcoded max_tokens. WebSocket-Timeout aus Settings. mem0 Client-Erstellung mit Config-Werten. FIND-005 (KB Suggest) bereits gelöst — kein hardcoded max_entries mehr. SET-005 feature doc erstellt. CR-08-NTH spec für Nice-to-haves. 18 neue Tests (11 budget + 7 intents). Alle 2323 Tests grün.
+Updated by: NarrarePlatformSpecialist
+Session summary: INFRA-004 Embedding Store — validation and documentation tasks. Architecture check: 4 RULE-04 violations found (file size limits). Test suite: 294 passed, 1 E2E failure (pre-existing, requires running server). CURRENT_STATE.md updated with core embeddings, API embeddings, KB hooks. INFRA-004 feature spec status changed to "in progress".
 
 ---
 
@@ -114,8 +114,13 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `crypto.py` — Fernet encryption for API keys (reads `NARRARE_ENCRYPTION_KEY`)
 - `pagination.py`, `frontmatter.py`, `file_utils.py`, `errors.py`
 
+**Embedding Layer (`embeddings/`):**
+- `store.py` — EmbeddingStoreProtocol, SearchResult, EmbeddingStats
+- `hash.py` — compute_content_hash (SHA-256 for dirty detection)
+- `scoring.py` — Hybrid search scoring (0.5 similarity + 0.3 usage + 0.2 recency)
+
 **Stub Modules (interfaces only):**
-- `context/`, `cache/`, `schemas/`, `embeddings/`
+- `context/`, `cache/`, `schemas/`
 
 **Writing Layer (`writing/`):**
 - `models.py` — GenerationMode, GenerationStatus, WritingContext, GenerationRequest, SessionState, SceneState
@@ -233,6 +238,9 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `kb/service.py` — resolve_references(), autocomplete endpoint
 - `kb/repository.py` — get_by_name(), search_by_name_prefix() for cross-reference lookup
 - `kb/relationship_repository.py` — relationship CRUD + `get_adjacency_map()` for entity connection adjacency data
+- `kb/embedding_hooks.py` — EmbeddingHookManager for content hash + TaskIQ task dispatch on KB changes
+- `kb/usage_service.py` — ContextUsageService for accept/dismiss tracking (usage_count, last_referenced_at)
+- `kb/models.py` — Added `last_referenced_at`, `usage_count` columns for hybrid search scoring
 - 8 entity types: character, location, faction, object, system, timeline, concept, setting
 - Migration 0011 — expands CHECK constraints for concept + setting entity types
 
@@ -253,6 +261,17 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `router.py` — 5 REST endpoints under `/api/v1/planning/`
 - `_helpers.py` — compute_sync, find_position, to_outline_response, should_use_ai_remap, ai_suggest_stage (extracted per RULE-04)
 - Migration 0013 — chapter_outlines table
+
+**Embedding Store Module (`embeddings/`):**
+- models, repository, service, router, dependencies, tasks, contracts, schemas
+- `models.py` — Embedding SQLAlchemy model with source_type/source_id, content_hash, embedding vector, HNSW index
+- `repository.py` — EmbeddingRepository with upsert, search (cosine similarity + hybrid scoring), stats
+- `service.py` — EmbeddingService wrapping store + gateway + TaskIQ dispatch
+- `router.py` — REST endpoints for search, stats, reindex
+- `tasks.py` — TaskIQ background tasks for embedding generation
+- `contracts.py` — EmbeddingServiceProtocol, EmbeddingRepositoryProtocol
+- `schemas.py` — Pydantic request/response schemas for search, stats
+- `dependencies.py` — FastAPI dependency injection
 
 **Setup (`setup/`):**
 - `seed_templates.py` — Version-aware upsert: seeds new templates AND updates existing globals when bundled version is newer
@@ -466,7 +485,9 @@ Phase 5 (current):
 
 11. 🔄 WRITE-003: Extend Chapter — Implementation in progress (Core pipeline + prompts, Backend API, Frontend AIAnnotation infrastructure)
 
-Next focus: INFRA-004 (Embedding Store), KB-002 (Assisted Creation), KB-005/INFRA-009 (merged: Proactive Context), KB-007 (Extraction). All designed, implementation pending.
+12. 🔄 INFRA-004: Embedding Store — Implementation in progress (Core: store/hash/scoring, API: models/repo/service/router/tasks, KB hooks + usage tracking. Architecture violations pending: RULE-04 file size splits needed in repository.py, test files)
+
+Next focus: KB-002 (Assisted Creation), KB-005/INFRA-009 (merged: Proactive Context), KB-007 (Extraction). All designed, implementation pending.
 
 ---
 
@@ -602,6 +623,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 | WRITE-003: Core pipeline | GenerationMode.EXTEND, WritingPipeline._extend() (direct LLM call, no WritingGraph), extend-specific context budget (50/15/20/10/5), extend prompts (en/de/fr) |
 | WRITE-003: Backend API | ExtendService (separate from DraftService per RULE-04), ExtendRequest schema (text_before, text_after, length, tone, language), POST /extend SSE-direct endpoint, ExtendServiceProtocol contract, integration tests |
 | WRITE-003: Frontend AIAnnotation | AIAnnotation Mark (ai-generated) + AIAnnotationTracker Plugin (modify detection, single-pending constraint), AIAnnotationActions floating UI, ContinueButton with length selector, extend command in CommandPalette, AIAnnotationApi standalone functions (insert/append/finalize/accept/reject), Clean Save integration (Autosave removes pending marks) |
+| INFRA-004: Core embeddings module | `packages/core/narrare_core/embeddings/` — store.py (EmbeddingStoreProtocol, SearchResult, EmbeddingStats), hash.py (compute_content_hash SHA-256), scoring.py (hybrid search scoring 0.5/0.3/0.2) |
+| INFRA-004: API embeddings module | `apps/api/narrare/embeddings/` — models, repository, service, router, dependencies, tasks, contracts, schemas. Full embedding CRUD + search + TaskIQ background generation |
+| INFRA-004: KB embedding hooks | `kb/embedding_hooks.py` — EmbeddingHookManager for content hash + task dispatch on KB changes; `kb/usage_service.py` — ContextUsageService for accept/dismiss tracking; `kb/models.py` — added last_referenced_at, usage_count columns |
 
 ---
 
@@ -658,9 +682,10 @@ All demo content is complete — sufficient for testing through Phase 5.
 ## Next Session Should Start With
 
 **Phase 5 (current):**
-1. WRITE-003: Extend Chapter — remaining: Task 2.4 (promptfoo eval baseline), Task 8.3-8.4 (architecture validation + test suite), E2E tests
-2. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
-3. E2E tests with Playwright
+1. INFRA-004: Embedding Store — RULE-04 file size violations to fix: `embeddings/repository.py` (318→250), `test_embedding_service.py` (380→300), `test_embedding_repository.py` (453→400), `test_usage_service.py` RULE-TEST-01 bare MagicMock
+2. WRITE-003: Extend Chapter — remaining: Task 2.4 (promptfoo eval baseline), Task 8.3-8.4 (architecture validation + test suite), E2E tests
+3. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
+4. E2E tests with Playwright
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)

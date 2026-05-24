@@ -22,13 +22,19 @@ def get_kb_repository(session: SessionDep) -> KBRepository:
 
 def get_kb_service(session: SessionDep) -> KBService:
     """Create a KBService with injected dependencies."""
+    from narrare.embeddings.repository import EmbeddingRepository
+    from narrare.kb.embedding_hooks import EmbeddingHookManager
     from narrare.kb.repository import KBRepository
     from narrare.kb.service import KBService
     from narrare.novels.repository import NovelRepository
 
+    embedding_hooks = EmbeddingHookManager(
+        embedding_repo=EmbeddingRepository(session),
+    )
     return KBService(
         repo=KBRepository(session),
         novel_repo=NovelRepository(session),
+        embedding_hooks=embedding_hooks,
     )
 
 

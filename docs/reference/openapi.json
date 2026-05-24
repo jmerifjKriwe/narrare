@@ -1276,6 +1276,148 @@
         }
       }
     },
+    "/api/v1/admin/embeddings/status/{novel_id}": {
+      "get": {
+        "tags": [
+          "embeddings"
+        ],
+        "summary": "Get Embedding Status",
+        "description": "Return embedding statistics for a novel.",
+        "operationId": "get_embedding_status_api_v1_admin_embeddings_status__novel_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingStatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/embeddings/reprocess/{novel_id}": {
+      "post": {
+        "tags": [
+          "embeddings"
+        ],
+        "summary": "Reprocess Embeddings",
+        "description": "Trigger re-embedding for all content in a novel.",
+        "operationId": "reprocess_embeddings_api_v1_admin_embeddings_reprocess__novel_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ReprocessRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReprocessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/embeddings/model": {
+      "get": {
+        "tags": [
+          "embeddings"
+        ],
+        "summary": "Get Model Info",
+        "description": "Return the currently active embedding model and dimension.",
+        "operationId": "get_model_info_api_v1_admin_embeddings_model_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInfoResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/novels/{novel_id}/volumes": {
       "get": {
         "tags": [
@@ -6199,6 +6341,45 @@
         "title": "DemoProjectInfo",
         "description": "Metadata about a bundled demo project — loaded from metadata.json."
       },
+      "EmbeddingStatsResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total number of embeddable entities"
+          },
+          "embedded": {
+            "type": "integer",
+            "title": "Embedded",
+            "description": "Entities with up-to-date embeddings"
+          },
+          "pending": {
+            "type": "integer",
+            "title": "Pending",
+            "description": "Entities queued but not yet processed"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "description": "Entities whose embedding generation failed"
+          },
+          "coverage_percentage": {
+            "type": "number",
+            "title": "Coverage Percentage",
+            "description": "Percentage of embedded entities (0-100)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "embedded",
+          "pending",
+          "failed",
+          "coverage_percentage"
+        ],
+        "title": "EmbeddingStatsResponse",
+        "description": "Response model for embedding status endpoint."
+      },
       "ExtendLength": {
         "type": "string",
         "enum": [
@@ -7164,6 +7345,33 @@
         ],
         "title": "LoginRequest"
       },
+      "ModelInfoResponse": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "Currently active embedding model"
+          },
+          "dimension": {
+            "type": "integer",
+            "title": "Dimension",
+            "description": "Dimension of the embedding vectors"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider",
+            "description": "Embedding provider (e.g. 'openai')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "dimension",
+          "provider"
+        ],
+        "title": "ModelInfoResponse",
+        "description": "Response model for current embedding model info."
+      },
       "NameGenerateRequest": {
         "properties": {
           "project_id": {
@@ -8029,6 +8237,46 @@
         ],
         "title": "ReorderVolumesRequest",
         "description": "Batch reorder — provide full ordered list of volume IDs."
+      },
+      "ReprocessRequest": {
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "Optional model override for reprocessing"
+          }
+        },
+        "type": "object",
+        "title": "ReprocessRequest",
+        "description": "Request model for reprocessing endpoint."
+      },
+      "ReprocessResponse": {
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "title": "Queued",
+            "description": "Number of tasks queued"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable status message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "queued",
+          "message"
+        ],
+        "title": "ReprocessResponse",
+        "description": "Response model for reprocessing endpoint."
       },
       "ResetResponse": {
         "properties": {

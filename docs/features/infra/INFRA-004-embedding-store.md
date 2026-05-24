@@ -1,7 +1,7 @@
 ---
 id: INFRA-004
 title: "Embedding Store"
-status: designed
+status: in progress
 area: infra
 mvp: false
 

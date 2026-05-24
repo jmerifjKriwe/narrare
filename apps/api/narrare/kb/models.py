@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -50,6 +51,17 @@ class KBEntry(Base):
     body: Mapped[str | None] = mapped_column(Text, default="", nullable=True)
     template_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     embeddings_dirty: Mapped[bool] = mapped_column(default=False, nullable=False)
+    # Usage tracking for hybrid search scoring (migration 0022_embeddings)
+    last_referenced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    usage_count: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
