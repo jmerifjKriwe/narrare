@@ -20,6 +20,7 @@ from narrare_core.llm.intents import LLMIntent
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare.writing.extend_service import ExtendService
     from narrare.writing.service import WritingService
     from narrare.writing.suggest_service import InlineSuggestService
 
@@ -87,6 +88,71 @@ async def get_writing_service(
     tone_service = CustomToneService(repo=settings_repo)
 
     return WritingService(
+        repo=repo,
+        pipeline=pipeline,
+        draft_processor=draft_processor,
+        config=config,
+        api_key=resolved.api_key,
+        base_url=resolved.base_url,
+        tone_service=tone_service,
+    )
+
+
+async def get_extend_service(
+    session: AsyncSession,
+    user_id: str,
+    project_id: UUID | None = None,
+) -> ExtendService:
+    """Factory for ExtendService — resolves model config for EXTEND intent.
+
+    Args:
+        session: DB session for repository and settings lookups.
+        user_id: Authenticated user identifier.
+        project_id: Optional project/novel ID for project-level settings.
+
+    Returns:
+        Configured ExtendService ready for use.
+    """
+    from narrare.settings.custom_tone_service import CustomToneService
+    from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
+    from narrare.settings.repository import UserSettingsRepository
+    from narrare.writing.extend_service import ExtendService
+    from narrare.writing.repository import GenerationRepository
+    from narrare_core.writing.context_assembler import WritingContextAssembler
+    from narrare_core.writing.draft_processor import DraftProcessor
+    from narrare_core.writing.pipeline import WritingPipeline
+
+    resolver = get_model_routing_resolver(session)
+    assert isinstance(resolver, ModelRoutingResolverImpl)
+    resolved = await resolver.resolve(
+        LLMIntent.EXTEND,
+        UUID(user_id),
+        project_id,
+    )
+    profile = resolved.config.token_limit_profile or "balanced"
+    config = replace(
+        resolved.config,
+        temperature=0.7,
+        max_tokens=resolved.config.resolve_output_limit(profile),
+    )
+
+    registry = get_model_registry()
+    composer = get_composer()
+    assembler = WritingContextAssembler()
+    draft_processor = DraftProcessor()
+    pipeline = WritingPipeline(
+        registry=registry,
+        composer=composer,
+        context_assembler=assembler,
+        draft_processor=draft_processor,
+    )
+    repo = GenerationRepository(session)
+
+    # Wire CustomToneService for custom tone resolution
+    settings_repo = UserSettingsRepository(session)
+    tone_service = CustomToneService(repo=settings_repo)
+
+    return ExtendService(
         repo=repo,
         pipeline=pipeline,
         draft_processor=draft_processor,

@@ -16,6 +16,7 @@ import type { ComponentType } from "react";
 export interface CommandState {
   isGenerating: boolean;
   hasDraft: boolean;
+  hasPendingAnnotation: boolean;
 }
 
 export interface CommandItem {
@@ -40,6 +41,7 @@ export interface CommandContext {
   acceptDraft: () => void;
   rejectDraft: () => void;
   toggleGenerationPanel: () => void;
+  startExtend: (length: "short" | "medium" | "long") => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,5 +175,26 @@ export const builtInCommands: CommandItem[] = [
     category: "generation",
     isVisible: (state) => state.hasDraft,
     action: (_editor, ctx) => ctx.rejectDraft(),
+  },
+  {
+    id: "continue-writing",
+    label: "Continue Writing",
+    category: "generation",
+    isVisible: (state) => !state.isGenerating && !state.hasDraft && !state.hasPendingAnnotation,
+    action: (_editor, ctx) => ctx.startExtend("medium"),
+  },
+  {
+    id: "continue-writing-short",
+    label: "Continue Writing (Short)",
+    category: "generation",
+    isVisible: (state) => !state.isGenerating && !state.hasDraft && !state.hasPendingAnnotation,
+    action: (_editor, ctx) => ctx.startExtend("short"),
+  },
+  {
+    id: "continue-writing-long",
+    label: "Continue Writing (Long)",
+    category: "generation",
+    isVisible: (state) => !state.isGenerating && !state.hasDraft && !state.hasPendingAnnotation,
+    action: (_editor, ctx) => ctx.startExtend("long"),
   },
 ];

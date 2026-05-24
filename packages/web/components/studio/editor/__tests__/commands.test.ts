@@ -15,6 +15,7 @@ function createContext() {
     rejectDraft: vi.fn(),
     createChapter: vi.fn(),
     toggleGenerationPanel: vi.fn(),
+    startExtend: vi.fn(),
   };
 }
 
@@ -52,6 +53,9 @@ describe("builtInCommands", () => {
       "stop-generation",
       "accept-draft",
       "reject-draft",
+      "continue-writing",
+      "continue-writing-short",
+      "continue-writing-long",
     ]);
   });
 
@@ -73,26 +77,46 @@ describe("builtInCommands", () => {
         !c.id.includes("draft"),
     );
     for (const cmd of startCommands) {
-      expect(cmd.isVisible!({ isGenerating: false, hasDraft: false })).toBe(true);
-      expect(cmd.isVisible!({ isGenerating: true, hasDraft: false })).toBe(false);
-      expect(cmd.isVisible!({ isGenerating: false, hasDraft: true })).toBe(false);
+      expect(
+        cmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
+      ).toBe(true);
+      expect(
+        cmd.isVisible!({ isGenerating: true, hasDraft: false, hasPendingAnnotation: false }),
+      ).toBe(false);
+      expect(
+        cmd.isVisible!({ isGenerating: false, hasDraft: true, hasPendingAnnotation: false }),
+      ).toBe(false);
     }
   });
 
   it("stop-generation is only visible while generating", () => {
     const stopCmd = builtInCommands.find((c) => c.id === "stop-generation")!;
-    expect(stopCmd.isVisible!({ isGenerating: true, hasDraft: false })).toBe(true);
-    expect(stopCmd.isVisible!({ isGenerating: false, hasDraft: false })).toBe(false);
-    expect(stopCmd.isVisible!({ isGenerating: false, hasDraft: true })).toBe(false);
+    expect(
+      stopCmd.isVisible!({ isGenerating: true, hasDraft: false, hasPendingAnnotation: false }),
+    ).toBe(true);
+    expect(
+      stopCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
+    ).toBe(false);
+    expect(
+      stopCmd.isVisible!({ isGenerating: false, hasDraft: true, hasPendingAnnotation: false }),
+    ).toBe(false);
   });
 
   it("accept-draft and reject-draft are only visible when draft exists", () => {
     const acceptCmd = builtInCommands.find((c) => c.id === "accept-draft")!;
     const rejectCmd = builtInCommands.find((c) => c.id === "reject-draft")!;
-    expect(acceptCmd.isVisible!({ isGenerating: false, hasDraft: true })).toBe(true);
-    expect(acceptCmd.isVisible!({ isGenerating: false, hasDraft: false })).toBe(false);
-    expect(rejectCmd.isVisible!({ isGenerating: false, hasDraft: true })).toBe(true);
-    expect(rejectCmd.isVisible!({ isGenerating: false, hasDraft: false })).toBe(false);
+    expect(
+      acceptCmd.isVisible!({ isGenerating: false, hasDraft: true, hasPendingAnnotation: false }),
+    ).toBe(true);
+    expect(
+      acceptCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
+    ).toBe(false);
+    expect(
+      rejectCmd.isVisible!({ isGenerating: false, hasDraft: true, hasPendingAnnotation: false }),
+    ).toBe(true);
+    expect(
+      rejectCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
+    ).toBe(false);
   });
 
   it("format commands call editor actions", () => {
@@ -227,5 +251,34 @@ describe("builtInCommands", () => {
     const sceneBreakCmd = builtInCommands.find((c) => c.id === "sceneBreak")!;
     sceneBreakCmd.action(editor as never, {} as never);
     expect(editor.commands.insertContent).toHaveBeenCalledWith({ type: "sceneBreak" });
+  });
+
+  it("continue-writing commands call startExtend with correct length", () => {
+    const context = createContext();
+
+    const continueCmd = builtInCommands.find((c) => c.id === "continue-writing")!;
+    continueCmd.action({} as never, context);
+    expect(context.startExtend).toHaveBeenCalledWith("medium");
+
+    const shortCmd = builtInCommands.find((c) => c.id === "continue-writing-short")!;
+    shortCmd.action({} as never, context);
+    expect(context.startExtend).toHaveBeenCalledWith("short");
+
+    const longCmd = builtInCommands.find((c) => c.id === "continue-writing-long")!;
+    longCmd.action({} as never, context);
+    expect(context.startExtend).toHaveBeenCalledWith("long");
+  });
+
+  it("continue-writing commands are hidden when annotation is pending", () => {
+    const continueCmd = builtInCommands.find((c) => c.id === "continue-writing")!;
+    expect(
+      continueCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
+    ).toBe(true);
+    expect(
+      continueCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: true }),
+    ).toBe(false);
+    expect(
+      continueCmd.isVisible!({ isGenerating: true, hasDraft: false, hasPendingAnnotation: false }),
+    ).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 ---
 id: WRITE-003
 title: "AI: Extend Chapter"
-status: planned
+status: in-progress
 area: writing
 mvp: false
 
@@ -54,9 +54,9 @@ ui_help_long: |
   Available in Editor toolbar or via keyboard shortcut.
 ui_available_in: [editor]
 
-service: writing/draft_service.py
-contract: writing/contracts.py#DraftServiceProtocol
-router: writing/router.py
+service: writing/extend_service.py
+contract: writing/contracts_extend.py#ExtendServiceProtocol
+router: writing/router_extend.py
 prompt: core/prompts/_bundled/writing/en/extend_chapter
 requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 ---
@@ -89,24 +89,37 @@ The continuation appears exactly where your cursor was, ready to edit.
 
 ## How it works (Technical)
 
-**Entry point:** `writing/router.py` → `POST /api/v1/writing/chapters/{id}/extend`
-**Service:** `DraftService.extend()` in `writing/draft_service.py`
-**Contract:** `DraftServiceProtocol` in `writing/contracts.py`
+**Entry point:** `POST /api/v1/writing/chapters/{chapter_id}/extend` (SSE-direct — same endpoint starts and streams)
+**Service:** `ExtendService` in `writing/extend_service.py` (separate from DraftService per RULE-04)
+**Contract:** `ExtendServiceProtocol` in `writing/contracts_extend.py`
 **LLM Intent:** `LLMIntent.EXTEND`
-**Streaming:** Yes — SSE
+**Streaming:** SSE-direct — no two-step start/stream; the endpoint returns an SSE stream immediately
+**Schema:** `ExtendRequest` with `text_before` (required, max 10000), `text_after` (optional, max 2000), `length` (ExtendLength enum: short/medium/long), `tone`, `language`
 
-**Context gathering:**
-- **Pre-text**: Last 500-1000 tokens before cursor
-- **Post-text**: Next 200 tokens after cursor (for context)
-- **Chapter frontmatter**: POV, location, timeline position
-- **KB entries**: Characters mentioned, current location
-- **Recent chapters**: Last 1-2 chapters for story continuity
+**Pipeline:** `WritingPipeline._extend()` — direct LLM call via PromptComposer + Gateway (no WritingGraph). Uses `mode="extend_chapter"` in prompt context. Length maps to word targets: short~150, medium~400, long~750.
+
+**Context assembly:** `WritingContextAssembler` with extend-specific budget allocation:
+- 50% immediate context (text_before + text_after around cursor)
+- 15% recent chapters
+- 20% KB referenced entities
+- 10% KB suggested entities
+- 5% pinned KB entries
+
+**Frontend infrastructure:**
+- `AIAnnotation` TipTap Mark (`ai-generated`) with attributes: `request_id`, `source`, `original_text`, `status`, `created_at`
+- `AIAnnotationTracker` Plugin — monitors transactions within pending mark ranges, detects modifications, enforces single-pending-mark constraint
+- `ContinueButton` — toolbar button with length selector dropdown (short/medium/long), triggers extend flow
+- `AIAnnotationActions` — floating accept/reject/rate UI positioned near pending mark
+- Standalone lifecycle functions: `insertAIContent()`, `appendToPendingMark()`, `finalizePendingMark()`, `acceptMark()`, `rejectMark()`
+- Clean Save integration — Autosave removes pending marks before save, records implicit ACCEPT/MODIFY feedback
 
 **Prompt strategy:**
 - Pre-text included verbatim: "Here's what came before:"
-- Cursor position marked: "[CONTINUE FROM HERE]"
+- Cursor position marked: `[CONTINUE FROM HERE]`
 - Style analysis: sentence structure, dialogue ratio from pre-text
 - Scene state: what's happening, who's present, what's at stake
+- Voice profiles from KB character metadata
+- User preferences injected via PromptComposer
 
 **Generation:**
 - Streams from cursor position
@@ -135,3 +148,4 @@ The continuation appears exactly where your cursor was, ready to edit.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-24` — Implementation started: Core pipeline (`_extend()`), extend prompts (en/de/fr), extend-specific context budget, Backend API (`ExtendService`, SSE-direct endpoint), Frontend AIAnnotation infrastructure (Mark + Tracker Plugin, ContinueButton, AIAnnotationActions, Clean Save integration)

@@ -5068,6 +5068,73 @@
         }
       }
     },
+    "/api/v1/writing/chapters/{chapter_id}/extend": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Extend Chapter",
+        "description": "SSE stream for chapter extension — create + stream in one call.\n\nAccepts the user's current text context (split at cursor) and\nreturns an AI continuation streamed via SSE.  The final SSE event\nincludes ``request_id`` for use with accept/reject endpoints.\n\nUses ``LLMIntent.EXTEND`` for model routing.  Word target depends\non ``request.length`` (short~150, medium~400, long~750).",
+        "operationId": "extend_chapter_api_v1_writing_chapters__chapter_id__extend_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtendRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/writing/generation/{request_id}/scene/next": {
       "post": {
         "tags": [
@@ -6132,6 +6199,64 @@
         "title": "DemoProjectInfo",
         "description": "Metadata about a bundled demo project — loaded from metadata.json."
       },
+      "ExtendLength": {
+        "type": "string",
+        "enum": [
+          "short",
+          "medium",
+          "long"
+        ],
+        "title": "ExtendLength",
+        "description": "Target length for chapter extension."
+      },
+      "ExtendRequest": {
+        "properties": {
+          "text_before": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Text Before",
+            "description": "Text before cursor position — style anchor for continuation"
+          },
+          "text_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text After",
+            "description": "Text after cursor (if any) — provides forward context"
+          },
+          "length": {
+            "$ref": "#/components/schemas/ExtendLength",
+            "description": "Target length for the extension",
+            "default": "medium"
+          },
+          "tone": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Tone",
+            "default": "balanced"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 2,
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text_before"
+        ],
+        "title": "ExtendRequest",
+        "description": "Request for chapter extension — insert AI text at cursor position.\n\nThe frontend splits the document at the cursor and sends the text\nsegments.  The backend never receives a numeric offset (design.md D3)."
+      },
       "FeedbackRequest": {
         "properties": {
           "action": {
@@ -6432,6 +6557,7 @@
         "type": "string",
         "enum": [
           "full_draft",
+          "extend",
           "scene_by_scene",
           "interview_assisted",
           "interactive_session"

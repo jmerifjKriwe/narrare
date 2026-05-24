@@ -9,13 +9,14 @@ from enum import StrEnum
 
 
 class GenerationMode(StrEnum):
-    """Four supported generation modes.
+    """Supported generation modes.
 
     Each mode drives a different pipeline configuration in the prompt
     composer and determines which context tiers receive the most budget.
     """
 
     FULL_DRAFT = "full_draft"
+    EXTEND = "extend"
     SCENE_BY_SCENE = "scene_by_scene"
     INTERVIEW_ASSISTED = "interview_assisted"
     INTERACTIVE_SESSION = "interactive_session"

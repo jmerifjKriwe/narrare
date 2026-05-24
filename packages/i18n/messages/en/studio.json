@@ -1347,5 +1347,21 @@
     "tierEmerging": "Emerging",
     "tierGrowing": "Growing",
     "tierEstablished": "Established"
+  },
+  "annotation": {
+    "aiContinuation": "AI Continuation",
+    "aiRewrite": "AI Rewrite",
+    "aiSuggestion": "AI Suggestion",
+    "keep": "Keep",
+    "undo": "Undo",
+    "aiWords": "{count} words",
+    "continueWriting": "Continue writing",
+    "selectLength": "Select length",
+    "stop": "Stop",
+    "length": {
+      "short": "Short (~150 words)",
+      "medium": "Medium (~400 words)",
+      "long": "Long (~750 words)"
+    }
   }
 }

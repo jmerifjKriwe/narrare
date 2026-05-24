@@ -13,6 +13,10 @@ Tier allocation (default 6000-token budget):
 When ``first_chapter=True``, the recent tier budget (20%) is
 redistributed to KB tiers since there is no history.
 
+When ``mode="extend"`` or ``mode="extend_chapter"``, the allocation
+shifts to prioritise immediate context (50/15/20/10/5) because the
+pre-text + marker + post-text is critical for seamless continuation.
+
 Configuration overrides
 -----------------------
 The ``tier_overrides`` parameter on ``__init__`` allows callers to
@@ -80,6 +84,14 @@ class TokenBudgetManager:
         "kb_referenced": 0.35,
         "kb_suggested": 0.25,
         "pinned": 0.10,
+    }
+
+    _EXTEND_PERCENTAGES: ClassVar[dict[str, float]] = {
+        "immediate": 0.50,
+        "recent": 0.15,
+        "kb_referenced": 0.20,
+        "kb_suggested": 0.10,
+        "pinned": 0.05,
     }
 
     def __init__(
@@ -178,21 +190,33 @@ class TokenBudgetManager:
         self,
         *,
         first_chapter: bool = False,
+        mode: str | None = None,
     ) -> dict[str, TierBudget]:
         """Calculate token limits for each tier.
 
         Parameters
         ----------
         first_chapter:
-            When ``True``, the *recent* tier receives 0 tokens and
-            the KB tiers get the redistributed budget.
+            When ``True`` and *mode* is not extend, the *recent* tier
+            receives 0 tokens and the KB tiers get the redistributed
+            budget.
+        mode:
+            Generation mode string.  When ``"extend"`` or
+            ``"extend_chapter"``, the extend-specific percentages are
+            used (50/15/20/10/5) regardless of *first_chapter*.  Overflow
+            handles the no-recent-chapters case naturally.
 
         Returns
         -------
         dict[str, TierBudget]
             Mapping of tier name to its budget allocation.
         """
-        base = self._FIRST_CHAPTER_PERCENTAGES if first_chapter else self._BASE_PERCENTAGES
+        if mode in ("extend", "extend_chapter"):
+            base = self._EXTEND_PERCENTAGES
+        elif first_chapter:
+            base = self._FIRST_CHAPTER_PERCENTAGES
+        else:
+            base = self._BASE_PERCENTAGES
         pcts = self._compute_percentages(base)
         self._validate_percentages(pcts)
         return {

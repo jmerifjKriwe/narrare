@@ -1347,5 +1347,21 @@
     "tierEmerging": "Émergent",
     "tierGrowing": "Croissance",
     "tierEstablished": "Établi"
+  },
+  "annotation": {
+    "aiContinuation": "Continuation IA",
+    "aiRewrite": "Réécriture IA",
+    "aiSuggestion": "Suggestion IA",
+    "keep": "Conserver",
+    "undo": "Annuler",
+    "aiWords": "{count} mots",
+    "continueWriting": "Continuer l'écriture",
+    "selectLength": "Choisir la longueur",
+    "stop": "Arrêter",
+    "length": {
+      "short": "Court (~150 mots)",
+      "medium": "Moyen (~400 mots)",
+      "long": "Long (~750 mots)"
+    }
   }
 }

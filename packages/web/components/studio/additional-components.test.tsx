@@ -24,11 +24,13 @@ const mockCommandContext = {
   acceptDraft: vi.fn(),
   rejectDraft: vi.fn(),
   toggleGenerationPanel: vi.fn(),
+  startExtend: vi.fn(),
 };
 
 const mockCommandState = {
   isGenerating: false,
   hasDraft: false,
+  hasPendingAnnotation: false,
 };
 
 // ---------------------------------------------------------------------------

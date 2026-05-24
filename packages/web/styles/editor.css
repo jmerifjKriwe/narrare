@@ -140,3 +140,23 @@
   from { opacity: 0; }
   to { opacity: 0.5; }
 }
+
+/* AI Annotation — pending AI-generated text highlight */
+.ai-generated-text.ai-generated-pending {
+  background-color: rgba(59, 130, 246, 0.08);
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.dark .ai-generated-text.ai-generated-pending {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+/* AI Annotation — anchor for floating actions (invisible) */
+.ai-annotation-anchor {
+  display: inline;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  user-select: none;
+}

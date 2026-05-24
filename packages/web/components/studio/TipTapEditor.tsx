@@ -7,10 +7,15 @@ import StarterKit from "@tiptap/starter-kit";
 import { Check, RotateCcw, Sparkles, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { writingApi } from "@/lib/api/generation";
 import { createSseSuggestionFetcher } from "@/lib/api/suggest";
+import { useRecordFeedback } from "@/lib/hooks/useMemory";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
+import type { FeedbackRequest } from "@/types";
 import { BlockControls } from "./BlockControls";
+import { AIAnnotationActions } from "./editor/AIAnnotationActions";
+import { AIAnnotationExtension, AIAnnotationMark } from "./editor/extensions/AIAnnotation";
 import { Autosave } from "./editor/extensions/Autosave";
 import { DialogueMark } from "./editor/extensions/DialogueMark";
 import { GhostText, simulateSuggestion } from "./editor/extensions/GhostText";
@@ -24,6 +29,8 @@ interface TipTapEditorProps {
   autosaveInterval?: number;
   /** Chapter ID for backend suggestion API calls */
   chapterId?: string;
+  /** Novel/project ID for feedback recording */
+  novelId?: string;
 }
 
 interface AISuggestion {
@@ -38,6 +45,7 @@ export function TipTapEditor({
   onAutosave,
   autosaveInterval,
   chapterId,
+  novelId,
 }: TipTapEditorProps) {
   const t = useTranslations("studio");
   const locale = useLocale();
@@ -45,6 +53,9 @@ export function TipTapEditor({
   const [selectedSuggestion, setSelectedSuggestion] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectionInput, setShowRejectionInput] = useState(false);
+
+  // Feedback hook for implicit accept on autosave
+  const recordFeedback = useRecordFeedback(novelId ?? "");
 
   // Ref always holds the current saveFn — avoids stale closure in Autosave extension
   // (useEditor freezes extensions at mount time, so a direct closure would never update)
@@ -63,8 +74,39 @@ export function TipTapEditor({
       interval: autosaveInterval ?? 30_000,
       saveFn: (content: string) => saveFnRef.current(content),
       enabled: !!onAutosave,
+      onImplicitAccept: novelId
+        ? (data: {
+            requestId: string;
+            source: string;
+            originalText: string;
+            action: "accept" | "modify";
+            currentText?: string;
+          }) => {
+            // Record implicit feedback when pending marks are resolved on autosave
+            const feedbackData: FeedbackRequest = {
+              action: data.action,
+              suggestion_id: data.requestId,
+              intent: data.source,
+              suggestion_text: data.originalText,
+              modification: data.currentText ?? null,
+              project_id: novelId,
+              chapter_id: chapterId ?? null,
+              mode: data.source,
+            };
+            recordFeedback.mutate(feedbackData, {
+              onError: () => {
+                /* Non-blocking */
+              },
+            });
+
+            // Also notify backend about the implicit accept
+            writingApi.acceptDraft(data.requestId, data.currentText).catch(() => {
+              /* Non-blocking */
+            });
+          }
+        : undefined,
     }),
-    [autosaveInterval],
+    [autosaveInterval, novelId, chapterId, recordFeedback],
   );
 
   // ── GhostText fetchSuggestion ref (same stale-closure pattern as Autosave) ──
@@ -113,6 +155,8 @@ export function TipTapEditor({
       NarrareDocument,
       SceneBreak,
       DialogueMark,
+      AIAnnotationMark,
+      AIAnnotationExtension,
       Autosave.configure(autosaveConfig),
       GhostText.configure(ghostTextConfig),
       Placeholder.configure({
@@ -241,6 +285,11 @@ export function TipTapEditor({
 
       <EditorContent editor={editor} className="h-full" />
       <BlockControls editor={editor} />
+
+      {/* AI Annotation floating actions */}
+      {editor && novelId && (
+        <AIAnnotationActions editor={editor} projectId={novelId} chapterId={chapterId} />
+      )}
 
       {/* AI Suggestion Modal */}
       {aiSuggestion && (

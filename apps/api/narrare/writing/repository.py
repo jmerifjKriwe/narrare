@@ -88,6 +88,13 @@ class GenerationRepository(BaseRepository):
         )
         return result.scalar_one_or_none()
 
+    async def chapter_exists(self, chapter_id: uuid.UUID) -> bool:
+        """Check if a chapter exists (lightweight existence query)."""
+        from narrare.chapters.models import Chapter
+
+        result = await self._session.execute(select(Chapter.id).where(Chapter.id == chapter_id))
+        return result.scalar_one_or_none() is not None
+
     async def cleanup_stale(
         self,
         max_age_minutes: int = 30,

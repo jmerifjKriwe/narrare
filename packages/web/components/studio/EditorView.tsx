@@ -301,6 +301,9 @@ export function EditorView({ novelId }: EditorViewProps) {
       acceptDraft: handleAcceptDraft,
       rejectDraft: handleRejectDraft,
       toggleGenerationPanel,
+      startExtend: (_length: "short" | "medium" | "long") => {
+        // TODO: Wire to extend flow (ContinueButton handles this directly)
+      },
     }),
     [
       toggleSidebar,
@@ -320,6 +323,7 @@ export function EditorView({ novelId }: EditorViewProps) {
     () => ({
       isGenerating,
       hasDraft: draftText.length > 0,
+      hasPendingAnnotation: false, // TODO: Wire to hasPendingMark(editor)
     }),
     [isGenerating, draftText],
   );
@@ -521,6 +525,7 @@ export function EditorView({ novelId }: EditorViewProps) {
               onAutosave={handleAutosave}
               autosaveInterval={30_000}
               chapterId={activeChapterId ?? undefined}
+              novelId={novelId}
             />
           </div>
         </div>

@@ -102,19 +102,25 @@ class WritingContextAssembler:
         word_target: int | None = None,
         user_preferences: str = "",
         avoidance_patterns: str = "",
+        mode: str | None = None,
     ) -> WritingContext:
         """Assemble writing context with budget enforcement.
 
         All data is provided by the caller — no I/O happens here.
         The method is ``async`` to match the protocol but performs
         only synchronous data transformation internally.
+
+        Args:
+            mode: Generation mode string (e.g. ``"extend"``,
+                ``"extend_chapter"``).  When set, adjusts budget
+                allocation to prioritise immediate context.
         """
         recent = recent_chapters or []
         entities = kb_entities or []
         is_first = len(recent) == 0
         is_sparse = len(entities) < 3
 
-        budgets = self._budget_manager.allocate(first_chapter=is_first)
+        budgets = self._budget_manager.allocate(first_chapter=is_first, mode=mode)
         ref_ids = self._extract_frontmatter_references(chapter_frontmatter)
 
         # Classify entities (with optional connection-based promotion)

@@ -464,7 +464,22 @@ Phase 5 (current):
         Output-Limits via Token-Profile, Budget-Tier-Override, WS-Timeout in Config,
         mem0 Embedding-Modell via Settings. SET-005 feature doc created.
 
-Next focus: WRITE-003 (extend chapter), WRITE-004 (rewrite selection), E2E tests.
+11. 🔄 WRITE-003: Extend Chapter — Implementation in progress (Core pipeline + prompts, Backend API, Frontend AIAnnotation infrastructure)
+
+Next focus: INFRA-004 (Embedding Store), KB-002 (Assisted Creation), KB-005/INFRA-009 (merged: Proactive Context), KB-007 (Extraction). All designed, implementation pending.
+
+---
+
+## Design Decisions (2026-05-24)
+
+| Decision | Details |
+|----------|---------|
+| KB-005 + INFRA-009 merged | Identical 3-stage pipeline and scoring formula. Core: `ProactiveContextService`, API: `KBSuggestService` thin wrapper. |
+| INFRA-004: Generic embeddings table | Not KB-only. `embeddings` table with `source_type` (kb_entry, chapter, chapter_summary, note) + `source_id`. HNSW index. Background generation via TaskIQ. Hybrid search (0.5 similarity + 0.3 usage + 0.2 recency). Two-phase model migration. |
+| KB-002: Assisted Creation (not chat) | Template-guided creation flow. Spectrum: manual → AI-suggest → interview → auto-generate. Single KBAgent with Union output. REST + SSE. ProactiveContextService for world context. Redis session with 30min TTL. |
+| KB-007: Simple review panel | ExtractionAgent (separate from KBAgent). Simple endorse/reject panel. REST endpoint, no SSE needed. Two-stage extraction (rule-based + AI). |
+| RULE-20: No half-implementations | Added to CONSTRAINTS.md. Every feature must be complete and correct. No "Phase 1 only" without full infrastructure. |
+| Embedding Store: full implementation required | No keyword-search fallback. Build pgvector store from the start. |
 
 ---
 
@@ -584,6 +599,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 | CR-08 Feature Doc | SET-005 — Configurable Token Limits erstellt |
 | CR-08 Nice-to-have Spec | CR-08-NTH — Cost Estimation, Retry Config, Model Registry |
 | KB dependencies bug | Bereits behoben — alle dependencies.py nutzen SessionDep |
+| WRITE-003: Core pipeline | GenerationMode.EXTEND, WritingPipeline._extend() (direct LLM call, no WritingGraph), extend-specific context budget (50/15/20/10/5), extend prompts (en/de/fr) |
+| WRITE-003: Backend API | ExtendService (separate from DraftService per RULE-04), ExtendRequest schema (text_before, text_after, length, tone, language), POST /extend SSE-direct endpoint, ExtendServiceProtocol contract, integration tests |
+| WRITE-003: Frontend AIAnnotation | AIAnnotation Mark (ai-generated) + AIAnnotationTracker Plugin (modify detection, single-pending constraint), AIAnnotationActions floating UI, ContinueButton with length selector, extend command in CommandPalette, AIAnnotationApi standalone functions (insert/append/finalize/accept/reject), Clean Save integration (Autosave removes pending marks) |
 
 ---
 
@@ -640,7 +658,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 ## Next Session Should Start With
 
 **Phase 5 (current):**
-1. WRITE-003: Extend Chapter — OpenSpec proposal ready, prompt templates needed
+1. WRITE-003: Extend Chapter — remaining: Task 2.4 (promptfoo eval baseline), Task 8.3-8.4 (architecture validation + test suite), E2E tests
 2. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
 3. E2E tests with Playwright
 

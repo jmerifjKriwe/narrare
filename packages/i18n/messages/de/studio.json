@@ -1347,5 +1347,21 @@
     "tierEmerging": "Entstehend",
     "tierGrowing": "Wachsend",
     "tierEstablished": "Etabliert"
+  },
+  "annotation": {
+    "aiContinuation": "KI-Fortsetzung",
+    "aiRewrite": "KI-Umschreibung",
+    "aiSuggestion": "KI-Vorschlag",
+    "keep": "Behalten",
+    "undo": "Rückgängig",
+    "aiWords": "{count} Wörter",
+    "continueWriting": "Weiter schreiben",
+    "selectLength": "Länge wählen",
+    "stop": "Stopp",
+    "length": {
+      "short": "Kurz (~150 Wörter)",
+      "medium": "Mittel (~400 Wörter)",
+      "long": "Lang (~750 Wörter)"
+    }
   }
 }

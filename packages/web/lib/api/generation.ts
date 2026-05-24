@@ -126,6 +126,114 @@ export interface ContextMeta {
   total_budget_tokens: number;
 }
 
+// ---------------------------------------------------------------------------
+// Extend (WRITE-003)
+// ---------------------------------------------------------------------------
+
+export type ExtendLength = "short" | "medium" | "long";
+
+export interface ExtendRequest {
+  text_before: string;
+  text_after?: string | null;
+  length?: ExtendLength;
+  tone?: string;
+  language?: string;
+}
+
+export interface ExtendStreamEvent {
+  type?: "request_info" | "text" | "done";
+  request_id?: string;
+  text?: string;
+  is_final?: boolean;
+  usage?: TokenUsage;
+}
+
+/** Stream extend SSE directly from POST /extend endpoint. */
+export async function streamExtend(
+  chapterId: string,
+  novelId: string,
+  request: ExtendRequest,
+  callbacks: {
+    onRequestInfo?: (requestId: string) => void;
+    onChunk: (text: string) => void;
+    onComplete?: () => void;
+    onError?: (error: Error) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+  };
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  try {
+    const response = await fetch(
+      `/api/v1/writing/chapters/${chapterId}/extend?novel_id=${novelId}`,
+      {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify(request),
+        signal,
+      },
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+          if (data === "[DONE]") {
+            callbacks.onComplete?.();
+            return;
+          }
+          try {
+            const parsed = JSON.parse(data) as ExtendStreamEvent;
+
+            if (parsed.type === "request_info" && parsed.request_id) {
+              callbacks.onRequestInfo?.(parsed.request_id);
+              continue;
+            }
+
+            if (parsed.text) {
+              callbacks.onChunk(parsed.text);
+            }
+            if (parsed.is_final) {
+              callbacks.onComplete?.();
+              return;
+            }
+          } catch {
+            /* skip malformed JSON */
+          }
+        }
+      }
+    }
+    // Stream ended without [DONE] — still complete
+    callbacks.onComplete?.();
+  } catch (error) {
+    const isAbort =
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError");
+    if (isAbort) return;
+    callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
 export async function streamGeneration(
   requestId: string,
   onChunk: (chunk: GenerationChunk) => void,

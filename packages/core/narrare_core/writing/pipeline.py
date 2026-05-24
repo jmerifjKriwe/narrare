@@ -2,6 +2,7 @@
 
 MODES:
     - ``full_draft``          Generate a complete chapter via WritingGraph.
+    - ``extend``              Seamless continuation from cursor position (direct LLM).
     - ``scene_by_scene``      Delegates to pipeline_scene module.
     - ``interview_assisted``  Delegates to pipeline_interview module.
     - ``interactive_session`` Handled via WebSocket (raises ValueError here).
@@ -167,6 +168,7 @@ class WritingPipeline:
             word_target=request.word_target,
             user_preferences=user_preferences,
             avoidance_patterns=avoidance_patterns,
+            mode=str(request.mode),
         )
 
         # CR-07: Send context metadata as first chunk (Context Inspector)
@@ -181,6 +183,17 @@ class WritingPipeline:
                     config,
                     api_key=api_key,
                     base_url=base_url,
+                ):
+                    yield chunk
+
+            elif request.mode == GenerationMode.EXTEND:
+                async for chunk in self._extend(
+                    request,
+                    context,
+                    config,
+                    api_key=api_key,
+                    base_url=base_url,
+                    custom_tone_instructions=custom_tone_instructions,
                 ):
                     yield chunk
 
@@ -252,6 +265,34 @@ class WritingPipeline:
             context_assembler=self._context_assembler,
             api_key=api_key,
             base_url=base_url,
+        ):
+            yield chunk
+
+    # ------------------------------------------------------------------
+    # Mode: Extend (direct LLM call — no WritingGraph)
+    # ------------------------------------------------------------------
+
+    async def _extend(
+        self,
+        request: GenerationRequest,
+        context: WritingContext,
+        config: ResolvedModelConfig,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        custom_tone_instructions: str | None = None,
+    ) -> AsyncIterator[StreamChunk]:
+        """Generate a seamless continuation from the cursor position."""
+        from narrare_core.writing.pipeline_extend import stream_extend
+
+        async for chunk in stream_extend(
+            self,
+            request,
+            context,
+            config,
+            api_key=api_key,
+            base_url=base_url,
+            custom_tone_instructions=custom_tone_instructions,
         ):
             yield chunk
 

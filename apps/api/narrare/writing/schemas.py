@@ -12,9 +12,18 @@ class GenerationModeEnum(StrEnum):
     """Supported generation modes."""
 
     FULL_DRAFT = "full_draft"
+    EXTEND = "extend"
     SCENE_BY_SCENE = "scene_by_scene"
     INTERVIEW_ASSISTED = "interview_assisted"
     INTERACTIVE_SESSION = "interactive_session"
+
+
+class ExtendLength(StrEnum):
+    """Target length for chapter extension."""
+
+    SHORT = "short"
+    MEDIUM = "medium"
+    LONG = "long"
 
 
 class GenerationStatusEnum(StrEnum):
@@ -144,6 +153,31 @@ class InlineSuggestResponse(BaseModel):
 
     text: str
     is_final: bool = False
+
+
+class ExtendRequest(BaseModel):
+    """Request for chapter extension — insert AI text at cursor position.
+
+    The frontend splits the document at the cursor and sends the text
+    segments.  The backend never receives a numeric offset (design.md D3).
+    """
+
+    text_before: str = Field(
+        ...,
+        max_length=10000,
+        description="Text before cursor position — style anchor for continuation",
+    )
+    text_after: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Text after cursor (if any) — provides forward context",
+    )
+    length: ExtendLength = Field(
+        default=ExtendLength.MEDIUM,
+        description="Target length for the extension",
+    )
+    tone: str = Field("balanced", min_length=1, max_length=100)
+    language: str = Field("en", min_length=2, max_length=5)
 
 
 class ContextMetaResponse(BaseModel):
