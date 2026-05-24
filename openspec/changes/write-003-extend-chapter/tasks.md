@@ -11,7 +11,7 @@
 - [x] 2.1 Create `packages/core/narrare_core/prompts/_bundled/writing/en/extend_chapter/system.md` — prompt specialized for seamless continuation: reads pre-text verbatim, marks `[CONTINUE FROM HERE]`, includes style analysis from pre-text, scene state, KB context, voice profiles, preferences
 - [x] 2.2 Create `packages/core/narrare_core/prompts/_bundled/writing/de/extend_chapter/system.md` — German translation
 - [x] 2.3 Create `packages/core/narrare_core/prompts/_bundled/writing/fr/extend_chapter/system.md` — French translation
-- [ ] 2.4 Write promptfoo eval baseline for extend (3 test cases: short continuation, medium with dialogue, long scene advancement) — DEFERRED: evals/ directory exists but baseline can be added in a follow-up session
+- [x] 2.4 Write promptfoo eval baseline for extend (3 test cases: short continuation, medium with dialogue, long scene advancement)
 
 ## 3. Backend: Extend API
 

@@ -1,0 +1,157 @@
+# Writing extend prompt evaluation
+# Tests the quality of chapter continuation (extend mode)
+# Covers: short continuation, medium with dialogue, long scene advancement
+description: "Writing Extend — Chapter Continuation Quality"
+
+prompts:
+  - id: "writing-extend"
+    raw: |
+      You are a skilled creative writing assistant helping an author continue their text seamlessly. Your task is to pick up exactly where the author left off and produce prose that is indistinguishable from the existing text — matching voice, tense, pacing, and narrative register.
+
+      ### Context
+
+      - Project: {{project_title}}
+      - Genre: {{genre}}
+      - Language: {{language}}
+
+      ### Existing Content
+
+      Below is the text surrounding the continuation point. The marker `[CONTINUE FROM HERE]` shows exactly where you must resume writing. Study the style, rhythm, and voice of the pre-text carefully.
+
+      {{existing_content}}
+
+      ### Instructions
+
+      Continue the text from the `[CONTINUE FROM HERE]` marker. Follow these guidelines:
+
+      1. **Seamless continuation**: The first sentence you write must flow naturally from the last sentence before the marker — no repetition, no summary, no meta-commentary
+      2. **Style matching**: Replicate the author's sentence length, rhythm, diction, and narrative distance exactly
+      3. **Plot continuity**: Maintain consistency with established characters, locations, and ongoing scenes
+      4. **Natural dialogue**: Use each character's established voice patterns
+      5. **Pacing**: Maintain the current scene's momentum — do not artificially escalate or deflate tension
+
+      Word target: approximately {{extend_length}} words
+      Tone: {{tone_instructions}}
+
+      ### Constraints
+
+      - Write in {{language}}
+      - Do NOT repeat or rephrase the text before the marker
+      - Do NOT add meta-commentary (e.g., "Here is the continuation:", "Continuing from where we left off:")
+      - Do NOT introduce new major characters not referenced in the existing text
+      - Do NOT contradict established facts from the pre-text
+
+providers:
+  - "openai:gpt-4o-mini"
+
+tests:
+  # Test Case 1: Short continuation (~150 words)
+  # Evaluates: seamless style matching, no repetition of pre-text
+  - vars:
+      project_title: "The Lighthouse Keeper"
+      genre: "literary fiction"
+      language: "English"
+      tone_instructions: "contemplative, atmospheric"
+      extend_length: "150"
+      existing_content: |
+        The last boat left the harbor at dusk, its engine coughing like an old man with a grudge. Maren watched from the lighthouse gallery, one hand resting on the cold iron rail. Below, the sea shifted between copper and charcoal, unsure which evening wanted it more.
+
+        She had been keeper here for eleven years now — long enough to know which storms were bluster and which meant business. This one rolling in from the southwest had the silence about it that meant business. The barometer hadn't moved in two days, and that stillness itself was a kind of warning.
+
+        [CONTINUE FROM HERE]
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on these criteria:
+          1. Does the first sentence flow naturally from "that stillness itself was a kind of warning" without repeating or rephrasing it?
+          2. Does it match the contemplative, atmospheric tone?
+          3. Does it maintain the same sentence rhythm (short observations, longer reflections)?
+          4. Does it avoid meta-commentary like "Here is the continuation"?
+          5. Does it stay in the same narrative voice (third-person, close to Maren)?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+      - type: not-contains
+        value: "Continuing from"
+      - type: not-contains
+        value: "kind of warning"  # must not repeat pre-text ending
+
+  # Test Case 2: Medium continuation with dialogue (~400 words)
+  # Evaluates: character voice consistency, dialogue quality, scene continuation
+  - vars:
+      project_title: "The Ruby Protocol"
+      genre: "thriller"
+      language: "English"
+      tone_instructions: "tense, sharp"
+      extend_length: "400"
+      existing_content: |
+        The diner was three quarters empty, which was how Kira liked it. She took the booth by the window where she could watch the parking lot and the road beyond. The coffee arrived before she had to ask — Manny always knew.
+
+        "You look like hell," Manny said, setting down the mug without a coaster. He never used coasters. It drove his wife crazy.
+
+        "Haven't slept." She wrapped both hands around the ceramic. "Volkov's people were at the warehouse again. Third time this week."
+
+        "Same crew?"
+
+        "New faces. Same car." She pulled a folded napkin from her jacket pocket and slid it across the table. Three license plate numbers, handwritten. Manny studied them like they were scripture.
+
+        [CONTINUE FROM HERE]
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on these criteria:
+          1. Does the first sentence flow naturally from the last line about license plates?
+          2. Does Kira's dialogue maintain her terse, clipped style (short sentences, no wasted words)?
+          3. Does Manny's dialogue stay distinct — more relaxed, observational?
+          4. Does the tension escalate naturally without melodrama?
+          5. Does the continuation include dialogue that advances the scene?
+          6. Does it avoid giving characters new speech patterns not established in the pre-text?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+      - type: not-contains
+        value: "same car"  # must not repeat pre-text ending
+
+  # Test Case 3: Long scene advancement (~750 words)
+  # Evaluates: sustained narrative quality, tension building, bridging to post-text
+  - vars:
+      project_title: "Ember Tide"
+      genre: "fantasy"
+      language: "English"
+      tone_instructions: "immersive, building tension"
+      extend_length: "750"
+      existing_content: |
+        The runes on the cavern wall pulsed like a heartbeat, each flash casting Renna's shadow in different directions. She pressed her palm against the stone and felt warmth — not the warmth of a fire, but something older, something that remembered when the mountain itself was young.
+
+        "It's responding to you," Thale whispered, his voice barely louder than the rune-light. He stood three paces behind her, close enough to grab her arm if needed, far enough to run if things went wrong. It was the sensible distance for a skeptic near something he didn't understand.
+
+        She could feel the pattern now. The runes weren't random — they were a sequence, a sentence written in a language her fingers understood before her mind could. Left ring, right fork, left ring again. The warmth spread up her arm.
+
+        [CONTINUE FROM HERE]
+
+        By dawn they were back at camp, and the others would never know what had happened beneath the mountain. That was the way of things — the surface world had its own concerns, its own small wars, its own reasons to forget. But Renna carried the warmth in her palm for days after, and sometimes, in the quiet moments before sleep, she would press her hand against the rough bark of the old oak and feel it pulse in answer.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on these criteria:
+          1. Does the first sentence flow naturally from "The warmth spread up her arm"?
+          2. Does the continuation build tension and escalate the scene's stakes?
+          3. Does it maintain Renna's character (curious, tactile, instinct-driven)?
+          4. Does it maintain Thale's character (cautious, practical, protective)?
+          5. Does the continuation bridge naturally to the post-text starting with "By dawn they were back at camp"?
+          6. Is the scene advancement substantial enough for a ~750-word target?
+          7. Does it avoid introducing new major characters not referenced?
+          8. Does it maintain the immersive, atmospheric tone?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+      - type: not-contains
+        value: "spread up her arm"  # must not repeat pre-text ending
+      - type: not-contains
+        value: "By dawn they were"  # must not copy the post-text bridge

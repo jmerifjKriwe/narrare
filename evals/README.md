@@ -41,6 +41,7 @@ npx promptfoo eval -c evals/testcases/name-generation.yaml
 npx promptfoo eval -c evals/testcases/summarization.yaml
 npx promptfoo eval -c evals/testcases/interview.yaml
 npx promptfoo eval -c evals/testcases/rewrite.yaml
+npx promptfoo eval -c evals/testcases/writing-extend.yaml
 
 # Open the Web-UI to view results visually
 npx promptfoo view
@@ -57,7 +58,8 @@ evals/
 │   ├── name-generation.yaml
 │   ├── summarization.yaml
 │   ├── interview.yaml
-│   └── rewrite.yaml
+│   ├── rewrite.yaml
+│   └── writing-extend.yaml
 ├── baselines/                ← Golden outputs for regression comparison
 │   └── README.md
 └── results/                  ← Output directory (gitignored)
