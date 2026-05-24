@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { LearningStatus } from "@/components/studio/learning/LearningStatus";
 import {
+  type ContextMeta,
   type GenerateRequest,
   type GenerationMode,
   streamGeneration,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/api/generation";
 import { useMemoryStatus, useRecordFeedback } from "@/lib/hooks/useMemory";
 import type { FeedbackRequest, TokenUsage } from "@/types";
+import { ContextInspector } from "./ContextInspector";
 import { GenerationConfig } from "./GenerationConfig";
 import { GenerationDraft } from "./GenerationDraft";
 import { RatingPrompt } from "./RatingPrompt";
@@ -61,6 +63,7 @@ export function GenerationPanel({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [connectionLost, setConnectionLost] = useState(false);
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
+  const [contextMeta, setContextMeta] = useState<ContextMeta | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const lastParamsRef = useRef<GenerateRequest | null>(null);
@@ -112,6 +115,7 @@ export function GenerationPanel({
       setConnectionLost(false);
       setShowRating(null);
       originalTextRef.current = "";
+      setContextMeta(null);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -141,6 +145,9 @@ export function GenerationPanel({
         controller.signal,
         (usage) => {
           setTokenUsage(usage);
+        },
+        (meta) => {
+          setContextMeta(meta);
         },
       );
     },
@@ -231,6 +238,7 @@ export function GenerationPanel({
       setRequestId(null);
       setShowRating(null);
       originalTextRef.current = "";
+      setContextMeta(null);
     },
     [showRating, draftText, requestId, mode, novelId, chapterId, recordFeedback],
   );
@@ -240,6 +248,7 @@ export function GenerationPanel({
     setDraftText("");
     setRequestId(null);
     setPhase("config");
+    setContextMeta(null);
     if (lastParamsRef.current) {
       startMutation.mutate(lastParamsRef.current);
     }
@@ -309,6 +318,7 @@ export function GenerationPanel({
         {/* Streaming / Review phase */}
         {(phase === "streaming" || phase === "review") && (
           <>
+            <ContextInspector meta={contextMeta} />
             <GenerationDraft
               phase={phase}
               draftText={draftText}

@@ -65,6 +65,8 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Focus mode exit: ESC key handler + floating Minimize2 button (semi-transparent)
 - Demo project metadata.json files (author, logline, pov, tags) for all 3 starters
 
+- **Context Inspector (CR-07)**: Shows authors what context was assembled for the LLM before text generation. Entity counts, names, tone, budget allocation displayed in expandable panel in GenerationPanel. SSE protocol extended with `context_meta` event. ([CR-AUFG-07-01])
+
 - CR-03 Feature-Adoption audit (token enforcement + context enrichment)
   - `cap_to_budget()` lightweight token utility in `core/writing/budget.py` — truncates text at word boundaries to a token budget
   - Name generator: existing names list capped at 500 tokens to prevent context overflow

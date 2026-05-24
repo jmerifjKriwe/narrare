@@ -658,6 +658,20 @@
     "tokensPrompt": "Prompt",
     "tokensCompletion": "Completion"
   },
+  "contextInspector": {
+    "toggle": "Kontextdetails",
+    "characters": "Charaktere",
+    "locations": "Orte",
+    "factions": "Fraktionen",
+    "recentChapters": "Letzte Kap.",
+    "noContext": "Kein Kontext zusammengestellt",
+    "more": "mehr...",
+    "preferencesActive": "Präferenzen aktiv",
+    "firstChapter": "Erstes Kapitel",
+    "tone": "Ton",
+    "budget": "Budget",
+    "budgetK": "{value}k"
+  },
   "sessionPanel": {
     "title": "Interaktive Session",
     "close": "Session schließen",

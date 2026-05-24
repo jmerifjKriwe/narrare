@@ -144,3 +144,22 @@ class InlineSuggestResponse(BaseModel):
 
     text: str
     is_final: bool = False
+
+
+class ContextMetaResponse(BaseModel):
+    """Context metadata sent as first SSE event before text streaming (CR-07)."""
+
+    type: str = "context_meta"
+    kb_characters_count: int = 0
+    kb_locations_count: int = 0
+    kb_factions_count: int = 0
+    kb_suggested_count: int = 0
+    kb_pinned_count: int = 0
+    recent_chapter_count: int = 0
+    character_names: list[str] = []
+    location_names: list[str] = []
+    faction_names: list[str] = []
+    is_first_chapter: bool = False
+    has_user_preferences: bool = False
+    tone: str = "balanced"
+    total_budget_tokens: int = 0

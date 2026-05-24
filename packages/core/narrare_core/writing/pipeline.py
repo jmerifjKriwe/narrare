@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import WritingError
 from narrare_core.writing._enums import GenerationMode
@@ -26,7 +27,6 @@ if TYPE_CHECKING:
 
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
-    from narrare_core.llm.result import StreamChunk
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.context_models import KBEntity, RecentChapter
@@ -168,6 +168,10 @@ class WritingPipeline:
             user_preferences=user_preferences,
             avoidance_patterns=avoidance_patterns,
         )
+
+        # CR-07: Send context metadata as first chunk (Context Inspector)
+        meta_dict = context.to_metadata().to_dict()
+        yield StreamChunk(text="", context_meta=meta_dict)
 
         try:
             if request.mode == GenerationMode.FULL_DRAFT:

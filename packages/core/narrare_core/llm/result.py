@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +49,7 @@ class StreamChunk:
     text: str
     is_final: bool = False
     usage: TokenUsage | None = None  # only on final chunk
+    context_meta: dict[str, Any] | None = None  # CR-07: context metadata for first chunk
 
 
 # Type alias for streaming responses

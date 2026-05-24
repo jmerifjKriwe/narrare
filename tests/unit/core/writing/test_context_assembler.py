@@ -310,3 +310,29 @@ class TestVoiceProfilesInAssembly:
         assert ctx.character_voice_profiles != ""
         assert "**Alice**" in ctx.character_voice_profiles
         assert "dialect: Southern" in ctx.character_voice_profiles
+
+
+class TestMetadataPopulation:
+    """Assembler populates entity names and total_budget_tokens."""
+
+    @pytest.mark.asyncio
+    async def test_assemble_populates_entity_names(self) -> None:
+        """Assembler extracts character/location/faction names for metadata."""
+        assembler = WritingContextAssembler(total_budget=8000)
+        entities = [
+            _entity("1", "character", "Anna", "Brave girl"),
+            _entity("2", "character", "Johann", "Old forester"),
+            _entity("3", "location", "Försterhaus", "A cabin"),
+            _entity("4", "faction", "Waldfreunde", "Forest friends"),
+        ]
+        ctx = await assembler.assemble(kb_entities=entities)
+        assert ctx.character_names == ["Anna", "Johann"]
+        assert ctx.location_names == ["Försterhaus"]
+        assert ctx.faction_names == ["Waldfreunde"]
+
+    @pytest.mark.asyncio
+    async def test_assemble_populates_total_budget(self) -> None:
+        """Assembler forwards total_budget_tokens to WritingContext."""
+        assembler = WritingContextAssembler(total_budget=12000)
+        ctx = await assembler.assemble()
+        assert ctx.total_budget_tokens == 12000

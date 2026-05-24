@@ -108,6 +108,24 @@ export interface GenerationChunk {
   usage?: TokenUsage;
 }
 
+/** Context metadata sent as first SSE event (CR-07 Context Inspector). */
+export interface ContextMeta {
+  type: "context_meta";
+  kb_characters_count: number;
+  kb_locations_count: number;
+  kb_factions_count: number;
+  kb_suggested_count: number;
+  kb_pinned_count: number;
+  recent_chapter_count: number;
+  character_names: string[];
+  location_names: string[];
+  faction_names: string[];
+  is_first_chapter: boolean;
+  has_user_preferences: boolean;
+  tone: string;
+  total_budget_tokens: number;
+}
+
 export async function streamGeneration(
   requestId: string,
   onChunk: (chunk: GenerationChunk) => void,
@@ -115,6 +133,7 @@ export async function streamGeneration(
   onError?: (error: Error) => void,
   signal?: AbortSignal,
   onUsage?: (usage: TokenUsage) => void,
+  onContextMeta?: (meta: ContextMeta) => void,
 ): Promise<void> {
   const headers: Record<string, string> = { Accept: "text/event-stream" };
   const token = getAccessToken();
@@ -150,7 +169,15 @@ export async function streamGeneration(
             return;
           }
           try {
-            const chunk = JSON.parse(data) as GenerationChunk;
+            const parsed = JSON.parse(data);
+
+            // Context metadata event (CR-07: first event before text)
+            if (parsed.type === "context_meta") {
+              onContextMeta?.(parsed as ContextMeta);
+              continue;
+            }
+
+            const chunk = parsed as GenerationChunk;
             if (chunk.is_final && chunk.usage) {
               onUsage?.(chunk.usage);
             }

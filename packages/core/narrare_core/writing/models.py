@@ -16,6 +16,7 @@ from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
     from narrare_core.writing._enums import GenerationMode
+    from narrare_core.writing.context_models import ContextMetadata
 
 # ---------------------------------------------------------------------------
 # Context
@@ -66,9 +67,35 @@ class WritingContext:
     user_preferences: str = ""
     avoidance_patterns: str = ""
 
+    # Context metadata (populated by assembler)
+    character_names: list[str] = field(default_factory=lambda: [])
+    location_names: list[str] = field(default_factory=lambda: [])
+    faction_names: list[str] = field(default_factory=lambda: [])
+    total_budget_tokens: int = 0
+
     # Flags
     is_first_chapter: bool = False
     is_sparse_kb: bool = False
+
+    def to_metadata(self) -> ContextMetadata:
+        """Extract a lightweight metadata summary for client display."""
+        from narrare_core.writing.context_models import ContextMetadata
+
+        return ContextMetadata(
+            kb_characters_count=self.kb_characters.count("### ") if self.kb_characters else 0,
+            kb_locations_count=self.kb_locations.count("### ") if self.kb_locations else 0,
+            kb_factions_count=self.kb_factions.count("### ") if self.kb_factions else 0,
+            kb_suggested_count=self.kb_suggested.count("### ") if self.kb_suggested else 0,
+            kb_pinned_count=self.kb_pinned.count("### ") if self.kb_pinned else 0,
+            recent_chapter_count=self.recent_chapter_count,
+            character_names=list(self.character_names),
+            location_names=list(self.location_names),
+            faction_names=list(self.faction_names),
+            is_first_chapter=self.is_first_chapter,
+            has_user_preferences=bool(self.user_preferences.strip()),
+            tone=self.tone,
+            total_budget_tokens=self.total_budget_tokens,
+        )
 
     def to_prompt_variables(self) -> dict[str, str]:
         """Map writing context to prompt template variables.

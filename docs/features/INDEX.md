@@ -59,6 +59,7 @@
 | [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | 📋 | ❌ |
 | [WRITE-011](writing/WRITE-011-volume-management.md) | Volume Management | ✅ | ✅ |
 | [WRITE-012](writing/WRITE-012-chapter-summary.md) | Chapter Summary | ✅ | ❌ |
+| [WRITE-014](writing/WRITE-014-context-inspector.md) | Context Inspector | ✅ | ❌ |
 
 ### Knowledge Base
 | ID | Feature | Status | MVP |
@@ -142,6 +143,7 @@
 | [SET-001](settings/SET-001-user-settings.md) | User Settings | ✅ | ✅ |
 | [SET-002](settings/SET-002-project-settings.md) | Project Settings | ✅ | ✅ |
 | [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | ✅ | ✅ |
+| [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | 📋 | ❌ |
 
 ### Analytics & Cost
 | ID | Feature | Status | MVP |
@@ -226,5 +228,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-23 — CR-03 audit: INFRA-003 technical section updated (entity connection promotion, cap_to_budget utility). WRITE-002 and GEN-001 updated with token enforcement notes. No status changes.
+> Last updated: 2026-05-24 — CR-07 audit: WRITE-014 Context Inspector added (stable). Shows authors assembled context before AI generation.
 > Features are specified before they are implemented — never after

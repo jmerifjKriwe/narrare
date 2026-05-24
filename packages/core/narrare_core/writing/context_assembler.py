@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from narrare_core.shared.frontmatter import parse_frontmatter
+from narrare_core.writing._classify import classify_entities
 from narrare_core.writing._voice_profiles import extract_voice_profiles
 from narrare_core.writing.budget import TokenBudgetManager
 from narrare_core.writing.models import WritingContext
@@ -76,6 +77,7 @@ class WritingContextAssembler:
         total_budget: int = TokenBudgetManager.DEFAULT_TOTAL_BUDGET,
         token_counter: Callable[[str], int] | None = None,
     ) -> None:
+        self._total_budget = total_budget
         self._budget_manager = TokenBudgetManager(total_budget)
         self._count_tokens = token_counter or _default_token_counter
 
@@ -117,7 +119,7 @@ class WritingContextAssembler:
 
         # Classify entities (with optional connection-based promotion)
         connections = entity_connections or {}
-        pinned, referenced, connected, suggested = self._classify_entities(
+        pinned, referenced, connected, suggested = classify_entities(
             entities,
             ref_ids,
             connections,
@@ -158,6 +160,12 @@ class WritingContextAssembler:
         # Extract character voice profiles from character entities
         character_voice_profiles = extract_voice_profiles(entities)
 
+        # Extract entity names for metadata
+        all_classified = pinned + referenced + connected + suggested
+        char_names = [e.name for e in all_classified if e.entity_type == "character"]
+        loc_names = [e.name for e in all_classified if e.entity_type == "location"]
+        fac_names = [e.name for e in all_classified if e.entity_type == "faction"]
+
         return WritingContext(
             chapter_content=content,
             chapter_frontmatter=chapter_frontmatter,
@@ -180,6 +188,10 @@ class WritingContextAssembler:
             avoidance_patterns=avoidance_patterns,
             is_first_chapter=is_first,
             is_sparse_kb=is_sparse,
+            character_names=char_names,
+            location_names=loc_names,
+            faction_names=fac_names,
+            total_budget_tokens=self._total_budget,
         )
 
     # ------------------------------------------------------------------
@@ -332,37 +344,6 @@ class WritingContextAssembler:
             else:
                 ids.add(str(value))  # pyright: ignore[reportUnknownArgumentType]
         return ids
-
-    def _classify_entities(
-        self,
-        entities: list[KBEntity],
-        ref_ids: set[str],
-        connections: dict[str, set[str]],
-    ) -> tuple[list[KBEntity], list[KBEntity], list[KBEntity], list[KBEntity]]:
-        """Classify entities into pinned, referenced, connected, suggested."""
-        pinned = [e for e in entities if e.is_pinned]
-        referenced = [
-            e for e in entities if not e.is_pinned and (e.entity_id in ref_ids or e.is_referenced)
-        ]
-        referenced_ids = {e.entity_id for e in referenced}
-        # First-degree connections of referenced entities
-        connected_ids: set[str] = set()
-        for ref_id in referenced_ids:
-            connected_ids.update(connections.get(ref_id, set()))
-        connected_ids -= referenced_ids | {e.entity_id for e in pinned}
-        connected = [e for e in entities if not e.is_pinned and e.entity_id in connected_ids]
-        suggested = sorted(
-            [
-                e
-                for e in entities
-                if not e.is_pinned
-                and e.entity_id not in referenced_ids
-                and e.entity_id not in connected_ids
-            ],
-            key=lambda e: e.relevance_score,
-            reverse=True,
-        )
-        return pinned, referenced, connected, suggested
 
     def _format_entities(self, entities: list[KBEntity]) -> str:
         """Format entities as a readable text block."""

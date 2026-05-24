@@ -5,7 +5,7 @@ Covers:
 2. Referenced + connected both in Tier 3 output fields
 3. is_referenced flag triggers connection promotion
 4. Budget limits respected even with promoted entities
-5. _classify_entities helper method
+5. classify_entities module-level function
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from __future__ import annotations
 import pytest
 import yaml
 
+from narrare_core.writing._classify import classify_entities
 from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.context_models import KBEntity
 
@@ -186,7 +187,7 @@ class TestBudgetWithConnections:
 
 
 class TestClassifyEntitiesHelper:
-    """Direct tests for _classify_entities internal method."""
+    """Direct tests for classify_entities module-level function."""
 
     def test_pinned_excluded_from_connected_and_suggested(
         self,
@@ -198,7 +199,7 @@ class TestClassifyEntitiesHelper:
             _entity("r-1", "character", "Referenced", "R.", is_referenced=True),
             _entity("s-1", "character", "Suggested", "S."),
         ]
-        pinned, referenced, connected, suggested = assembler._classify_entities(
+        pinned, referenced, connected, suggested = classify_entities(
             entities,
             ref_ids=set(),
             connections={"r-1": {"p-1"}},
@@ -221,7 +222,7 @@ class TestClassifyEntitiesHelper:
             _entity("r-1", "character", "Referenced", "R.", is_referenced=True),
             _entity("s-1", "character", "Suggested", "S."),
         ]
-        _pinned, referenced, connected, suggested = assembler._classify_entities(
+        _pinned, referenced, connected, suggested = classify_entities(
             entities,
             ref_ids=set(),
             connections={},

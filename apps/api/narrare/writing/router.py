@@ -63,6 +63,14 @@ async def stream_generation(
 
     async def event_stream():
         async for chunk in service.stream_generation(request_id, user_id):
+            # Context metadata event (CR-07: sent as first event before text)
+            if chunk.context_meta is not None:
+                meta_data: dict[str, Any] = {"type": "context_meta"}
+                meta_data.update(chunk.context_meta)
+                yield f"data: {json.dumps(meta_data)}\n\n"
+                continue
+
+            # Normal text chunk
             data: dict[str, Any] = {"text": chunk.text}
             if chunk.is_final:
                 data["is_final"] = True

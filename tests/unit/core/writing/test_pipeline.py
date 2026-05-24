@@ -269,9 +269,10 @@ class TestInterviewAssisted:
             pipeline.generate(request, config=_config()),
         )
 
-        assert len(chunks) == 2
-        assert "protagonist" in chunks[0].text
-        assert chunks[1].is_final
+        assert len(chunks) == 3  # context_meta + questions + final
+        assert chunks[0].context_meta is not None  # CR-07: first chunk is metadata
+        assert "protagonist" in chunks[1].text
+        assert chunks[2].is_final
 
     @pytest.mark.asyncio
     async def test_uses_chat_intent(
