@@ -1,7 +1,7 @@
 ---
 id: INFRA-004
 title: "Embedding Store"
-status: planned
+status: designed
 area: infra
 mvp: false
 
@@ -130,6 +130,60 @@ Most of this happens invisibly. You'll notice it in:
 - [KB-007](../kb/KB-007-extraction.md) — Fact extraction benefits from semantic search
 - [STATS-001](../analytics/STATS-001-writing-stats.md) — Background tasks manage embedding generation
 
+## Architecture Decisions (2026-05-24)
+
+### Generic embeddings table (not KB-only)
+
+Single `embeddings` table with `source_type` + `source_id` instead of
+KB-specific table. Supports kb_entry, chapter, chapter_summary, note.
+Avoids future table proliferation and enables cross-source search.
+
+### Schema
+
+```sql
+CREATE TABLE embeddings (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_type     TEXT NOT NULL,   -- "kb_entry" | "chapter" | "chapter_summary" | "note"
+    source_id       UUID NOT NULL,   -- FK to respective entity
+    content_hash    TEXT NOT NULL,   -- SHA256 for dirty detection (replaces embeddings_dirty flag)
+    embedding       vector(1536) NOT NULL,
+    model           TEXT NOT NULL,   -- "text-embedding-3-small"
+    dimension       INT NOT NULL,    -- 1536
+    generated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(source_type, source_id, model)
+);
+CREATE INDEX idx_embeddings_search ON embeddings USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_embeddings_source ON embeddings (source_type, source_id);
+```
+
+### Background generation via TaskIQ
+
+On content save: `content_hash` comparison → if stale, queue TaskIQ task.
+Priority: kb_entry > chapter > note. Retry with exponential backoff.
+No synchronous embedding generation (no latency penalty on save).
+
+### Hybrid search
+
+Scoring = 0.50 × similarity + 0.30 × usage + 0.20 × recency.
+`context_usage_events` table for accept/dismiss tracking.
+`kb_entries.last_referenced_at` + `usage_count` for recency and frequency.
+
+### Model change: Two-phase migration
+
+1. Add `embedding_new VECTOR(new_dim)` column (system runs on old column)
+2. Background: re-embed all sources with new model into new column
+3. Cleanup migration: drop old column, rename new column
+
+Queries filter on `model = $active_model` during transition.
+7 regression test scenarios for migration safety.
+
+### _scratch/ reference
+
+The `_scratch/api/narrare/embeddings/` implementation serves as architectural
+reference for queue design, batch processing, and retry logic. Not used as
+code — references `kg_nodes` table which no longer exists.
+
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-24` — Designed. Generic embeddings table. Hybrid search. TaskIQ background generation. Two-phase model migration. 7 regression scenarios defined.

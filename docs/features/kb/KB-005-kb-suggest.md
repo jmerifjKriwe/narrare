@@ -1,9 +1,10 @@
 ---
 id: KB-005
 title: "Proactive KB Suggestions"
-status: planned
+status: designed
 area: kb
 mvp: false
+merged_with: INFRA-009
 
 ui_tooltip: "AI suggests relevant KB entries as you write each chapter."
 ui_help_short: |
@@ -141,6 +142,39 @@ class KBEntrySuggestion:
 - [KB-001](KB-001-entity-management.md) — Source of suggested entries
 - [LEARN-001](../learning/LEARN-001-feedback-loop.md) — Learning from feedback
 
+## Architecture Decisions (2026-05-24)
+
+### Merged with INFRA-009 (Proactive Context Loading)
+
+KB-005 and INFRA-009 describe the same feature from different perspectives:
+KB-005 is the KB-surface view, INFRA-009 is the infrastructure view. They share
+the identical 3-stage pipeline and scoring formula. Merged into a single
+implementation:
+
+- **Core layer:** `ProactiveContextService` in `core/context/proactive_service.py`
+  — platform-independent, no HTTP/DB dependencies
+- **API layer:** `KBSuggestService` in `kb/suggest_service.py` — thin wrapper
+  that delegates to ProactiveContextService and returns API response
+- **Endpoint:** `GET /api/v1/kb/suggestions/{chapter_id}`
+
+### Embedding Store dependency (INFRA-004)
+
+Full embedding store required (no keyword-search fallback). See INFRA-004 for
+architecture: generic `embeddings` table with `source_type`, `source_id`,
+`content_hash`, `model`, HNSW index, background generation via TaskIQ.
+
+### Hybrid search required
+
+Scoring = 0.50 × similarity + 0.30 × usage + 0.20 × recency.
+`context_usage_events` table tracks accept/dismiss for learning.
+`kb_entries.last_referenced_at` + `usage_count` track recency and frequency.
+
+### Integration with WritingContextAssembler
+
+ProactiveContextService feeds the "KB Suggested" tier of WritingContextAssembler.
+When no embeddings exist, falls back to name + graph traversal (not keyword search).
+
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-24` — Designed. Merged with INFRA-009. Full embedding store required. Hybrid search with learning.

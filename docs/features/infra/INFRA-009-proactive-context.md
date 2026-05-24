@@ -1,9 +1,10 @@
 ---
 id: INFRA-009
 title: "Proactive Context Loading"
-status: planned
+status: designed
 area: infra
 mvp: false
+merged_into: KB-005
 
 ui_tooltip: "Automatically suggest relevant KB entries based on chapter content."
 ui_help_short: |
@@ -60,6 +61,26 @@ Uses a three-stage pipeline:
 - [INFRA-003](../infra/INFRA-003-context-assembly.md) — The core context assembly system
 - [INFRA-004](../infra/INFRA-004-embedding-store.md) — Used for semantic matching of entries
 
+## Architecture Decisions (2026-05-24)
+
+### Merged into KB-005
+
+INFRA-009 and KB-005 describe the same feature with identical 3-stage pipelines
+and scoring formulas. INFRA-009 is the infrastructure layer, KB-005 is the
+KB-surface layer. Merged into a single implementation:
+
+- **Core:** `ProactiveContextService` in `core/context/proactive_service.py`
+- **API:** `KBSuggestService` in `kb/suggest_service.py` (thin wrapper)
+- **Also feeds:** `WritingContextAssembler` (KB Suggested tier) and `KBCreationContextAssembly` (world context for KB-002)
+
+No separate INFRA-009 implementation. See KB-005 for full architecture.
+
+### Full embedding store required (INFRA-004)
+
+No keyword-search fallback. Hybrid search with pgvector embeddings,
+background generation via TaskIQ, and learning from accept/dismiss feedback.
+
 ## Status & History
 
 - `2026-05-19` — Added to registry
+- `2026-05-24` — Merged into KB-005. Full embedding dependency. Designed.

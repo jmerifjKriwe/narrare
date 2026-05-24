@@ -1,7 +1,7 @@
 ---
 id: KB-007
 title: "Entity Extraction from Chapters"
-status: planned
+status: designed
 area: kb
 mvp: false
 
@@ -156,6 +156,35 @@ class ExtractionResult:
 - [INFRA-004](../infra/INFRA-004-embedding-store.md) — Entity matching via embeddings
 - [WRITE-002](../writing/WRITE-002-new-chapter.md) — Chapter content source
 
+## Architecture Decisions (2026-05-24)
+
+### ExtractionAgent (separate from KBAgent)
+
+KB-007 uses a dedicated ExtractionAgent — different task, different input, different
+output from the KBAgent used in KB-002. The KBAgent works with templates and Q&A;
+the ExtractionAgent works with chapter text and structured output.
+
+### Review-Flow: Simple endorse/reject panel
+
+No session model needed for KB-007. The extraction runs as a single request
+(10-30s), results are presented in a review panel, and the user endorses or
+rejects each item. Simple REST endpoint, no SSE, no session persistence needed.
+
+Endpoint: `POST /api/v1/kb/extract/{chapter_id}` → `ExtractionResult[]`
+Sub-endpoint: `POST /api/v1/kb/extract/apply` → saves endorsed items via KB-001
+
+### Embedding Store dependency (INFRA-004)
+
+Dedup and matching use embedding similarity. The `ExtractionResult.confidence`
+score incorporates embedding distance between extracted and existing entries.
+
+### Rule-based + AI two-stage extraction
+
+Stage 1: Rule-based extraction from frontmatter and explicit statements (high confidence).
+Stage 2: AI-assisted extraction for implicit facts and relationships (medium confidence).
+Stage 3: Deduplication against existing KB entries via embedding similarity + name matching.
+
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-24` — Designed. ExtractionAgent separate from KBAgent. Simple review panel. Full embedding dependency.

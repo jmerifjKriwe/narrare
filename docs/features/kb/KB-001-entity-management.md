@@ -1,7 +1,7 @@
 ---
 id: KB-001
 title: "KB Entity Management"
-status: planned
+status: implemented
 area: kb
 mvp: true
 
@@ -164,3 +164,4 @@ class KBEntry:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-24` — Marked as implemented. CRUD, search, relationships, templates, @mentions, 8 entity types, frontend editor all present. AI Interview creation mode moves to KB-002.

@@ -1,7 +1,7 @@
 ---
 id: KB-002
-title: "Interactive KB Session"
-status: planned
+title: "Assisted KB Creation"
+status: designed
 area: kb
 mvp: false
 
@@ -144,6 +144,52 @@ class KBSession:
 - [WRITE-005](../writing/WRITE-005-interactive-session.md) — Interactive writing sessions
 - [INFRA-002](../infra/INFRA-002-prompt-system.md) — Interview prompts come from prompt system
 
+## Architecture Decisions (2026-05-24)
+
+### Assisted Form-Filling, not Chat
+
+KB-002 is NOT a chat/Interview in the traditional sense. It's a
+**template-guided assisted creation flow** where the user fills a template
+and can request AI suggestions, AI-generated answers, or world-derived
+context for any field at any time.
+
+The interaction is a spectrum, not a mode:
+- Full manual: User fills fields themselves
+- AI-assisted: User clicks "suggest" on individual fields
+- Interview mode: AI guides through fields sequentially
+- Auto-generate: AI fills the entire template from context
+
+### Session model: State machine, not chat
+
+`KBCreationSession` with `KBCreationField` per template field.
+Status: active → review → complete/abandoned.
+Each field tracks: question_asked, user_value, ai_suggested_value,
+ai_reasoning, context_entries_used, source (user/ai/world_derived/merged), final_value.
+
+### KBAgent: Single agent, Union output
+
+One agent with mode-aware prompts. The mode (interview/suggest/enhance/extract)
+is set via system prompt, not via different agents. Shared tools:
+KBQueryService (search_kb, get_entity, get_related).
+
+### API: REST + SSE (not WebSocket)
+
+REST endpoints for data operations (create session, answer field, accept suggestion).
+SSE for streaming AI responses (suggest, interview). Not a real-time chat —
+turn-based Q&A with optional streaming output.
+
+### World context: ProactiveContextService
+
+AI suggestions are grounded in the project's existing KB via
+ProactiveContextService (merged KB-005/INFRA-009). Advanced mode lets users
+choose which KB entries and chapters to include as context.
+
+### Session storage: Redis cache (30min TTL)
+
+Sessions are ephemeral creation flows, not persistent data. Redis with TTL
+is sufficient. Final entries are saved via KB-001.
+
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-24` — Redesigned. Renamed from "Interactive KB Session" to "Assisted KB Creation". Template-guided spectrum (manual ↔ interview ↔ auto). Single KBAgent. REST+SSE. ProactiveContext for world context.
