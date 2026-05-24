@@ -6,8 +6,12 @@ Siehe ADR-015 für die vollständige Modul-Architektur.
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
 from narrare_core.agents.draft_types import DraftConfig, DraftOutput
+from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
+from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.agents.graph_store import GraphStateStore
 from narrare_core.agents.kb_agent import KBAgent, KBDeps
+from narrare_core.agents.kb_assist_agent import KBAssistAgent, KBAssistDeps
+from narrare_core.agents.kb_assist_types import KBAssistOutput
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.outline_types import OutlineOutput
 from narrare_core.agents.preference_analysis_agent import (
@@ -36,8 +40,15 @@ __all__ = [
     "DraftConfig",
     "DraftDeps",
     "DraftOutput",
+    "ExtractionAgent",
+    "ExtractionDeps",
+    "ExtractionItem",
+    "ExtractionOutput",
     "GraphStateStore",
     "KBAgent",
+    "KBAssistAgent",
+    "KBAssistDeps",
+    "KBAssistOutput",
     "KBDeps",
     "NarrareAgent",
     "NeedsRevision",

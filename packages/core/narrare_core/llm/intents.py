@@ -56,6 +56,9 @@ class LLMIntent(StrEnum):
     KB_CREATE = "kb_create"  # Interactive KB entity creation
     KB_IMPROVE = "kb_improve"  # KB entry improvement
     KB_EXTRACT = "kb_extract"  # Extract entities from text
+    KB_INTERVIEW = "kb_interview"  # Ask questions about a KB template field
+    KB_SUGGEST = "kb_suggest"  # Suggest a value for a KB template field
+    KB_ENHANCE = "kb_enhance"  # Generate/expand a KB entity entry
 
     # Planning operations
     PLAN = "plan"  # Scene/structure planning
@@ -115,6 +118,9 @@ INTENT_CATEGORY_MAP: dict[LLMIntent, IntentCategory] = {
     LLMIntent.KB_CREATE: IntentCategory.KB,
     LLMIntent.KB_IMPROVE: IntentCategory.KB,
     LLMIntent.KB_EXTRACT: IntentCategory.KB,
+    LLMIntent.KB_INTERVIEW: IntentCategory.KB,
+    LLMIntent.KB_SUGGEST: IntentCategory.KB,
+    LLMIntent.KB_ENHANCE: IntentCategory.KB,
     # Planning
     LLMIntent.PLAN: IntentCategory.PLANNING,
     LLMIntent.SUMMARIZE: IntentCategory.PLANNING,
