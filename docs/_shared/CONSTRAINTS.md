@@ -529,7 +529,65 @@ TypeScript type must be updated in the same commit.**
 
 ---
 
-## 4. Future-Compatibility Rules
+## 4. Implementation Quality Rules
+
+### RULE-20 · No half-implementations. Build it properly or don't build it.
+
+Every feature must be implemented completely and correctly. Shortcuts, partial
+implementations, "Phase 1 only" without Phase 2, and "we'll add the real
+implementation later" are FORBIDDEN.
+
+**What this means in practice:**
+
+1. **No "good enough for now" architectures.** If the correct solution requires
+   an embedding store, build the embedding store — don't fake it with keyword
+   search and promise to add embeddings "later".
+
+2. **No stub implementations that pass tests.** If a service needs real logic,
+   write real logic. A function that returns a hardcoded list passes unit tests
+   but is not an implementation.
+
+3. **No missing error handling "for simplicity".** Every production path needs
+   proper error handling, retry logic, and graceful degradation from day one.
+
+4. **No skipped migrations.** Every schema change gets its migration, its tests,
+   and its rollback path in the same task.
+
+5. **No feature flags for incomplete features.** If a feature isn't complete
+   enough to use, don't ship it behind a flag and call it done.
+
+**The incremental path is acceptable**, but each increment must be a complete,
+working, tested subsystem — not a skeleton.
+
+| Approach | Verdict |
+|----------|---------|
+| Correct implementation now | ✅ REQUIRED |
+| Incremental path where each step is complete | ✅ ACCEPTABLE |
+| "Phase 1 only" with missing infrastructure | ❌ FORBIDDEN |
+| Stub that passes tests but lacks real logic | ❌ FORBIDDEN |
+| Feature flag hiding an incomplete feature | ❌ FORBIDDEN |
+| Missing error handling "will add later" | ❌ FORBIDDEN |
+
+**Why:** Every half-implementation becomes a permanent shortcut. The "later"
+never comes because the shortcut works "well enough" — until it breaks in
+production, or blocks the next feature, or creates coupling that can't be
+undone. Building it properly the first time is always cheaper than fixing a
+half-implementation while maintaining backward compatibility with its mistakes.
+
+**Examples:**
+
+| Half-Implementation (WRONG) | Proper Implementation (RIGHT) |
+|------------------------------|-------------------------------|
+| Keyword search "instead of" embeddings | Full embedding store with pgvector, background generation, hybrid ranking |
+| Session state in memory "for now" | Redis-backed session with TTL and persistence |
+| Hardcoded scoring weights | Configurable scoring with learning from feedback |
+| Skip migration, add column directly | Alembic migration + rollback test + schema regression test |
+| Single agent prompt "good enough" | Structured output with Union types, proper tool definitions, context assembly |
+| Mock embedding results in tests only | Real embedding pipeline with cascade resolver, fallback, and error recovery |
+
+---
+
+## 5. Future-Compatibility Rules
 
 ### RULE-12 · The Service Layer is the only public API.
 
@@ -568,7 +626,7 @@ same service methods without a parallel non-streaming implementation.
 
 ---
 
-## 5. Enforcement Summary
+## 6. Enforcement Summary
 
 | Rule | Enforced by |
 |------|-------------|
@@ -587,11 +645,12 @@ same service methods without a parallel non-streaming implementation.
 | RULE-17 API-Frontend contract | `test_prompt_contract.py` + PR review |
 | RULE-18 No hardcoded config in routers | `test_generation_router_contract.py` + PR review |
 | RULE-19 SessionDep in dependency factories | `check_architecture.py` — AST scan for bare AsyncSession |
+| RULE-20 No half-implementations | PR review by Architecture Agent + test coverage audit |
 | All rules | PR review by Architecture Agent |
 
 ---
 
-## 6. Approved Exceptions Register
+## 7. Approved Exceptions Register
 
 Current approved exceptions to the above rules.
 Each entry requires: rule, location, reason, approved-by, date.
