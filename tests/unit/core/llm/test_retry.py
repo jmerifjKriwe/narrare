@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from unittest.mock import patch
 
 import pytest
@@ -302,3 +303,79 @@ class TestWithRetryBackoff:
         config = RetryConfig(max_attempts=3, base_delay=0.001, jitter=False)
         result = await with_retry(operation, config, intent="write")
         assert result == "ok"
+
+
+class TestRetryConfigFromEnv:
+    """Tests for RetryConfig.from_env()."""
+
+    def test_uses_defaults_when_no_env_vars(self) -> None:
+        """Without env vars, from_env() uses current class defaults."""
+        config = RetryConfig.from_env(prefix="NARRARE_RETRY_TEST_X_")
+        assert config.max_attempts == 3
+        assert config.base_delay == 1.0
+        assert config.max_delay == 60.0
+        assert config.jitter is True
+
+    def test_overrides_from_env_vars(self) -> None:
+        """Env vars with the correct prefix override defaults."""
+        os.environ["NTH_TEST_MAX_ATTEMPTS"] = "5"
+        os.environ["NTH_TEST_BASE_DELAY"] = "2.5"
+        os.environ["NTH_TEST_MAX_DELAY"] = "30.0"
+        os.environ["NTH_TEST_JITTER"] = "false"
+        try:
+            config = RetryConfig.from_env(prefix="NTH_TEST_")
+            assert config.max_attempts == 5
+            assert config.base_delay == 2.5
+            assert config.max_delay == 30.0
+            assert config.jitter is False
+        finally:
+            for key in (
+                "NTH_TEST_MAX_ATTEMPTS",
+                "NTH_TEST_BASE_DELAY",
+                "NTH_TEST_MAX_DELAY",
+                "NTH_TEST_JITTER",
+            ):
+                os.environ.pop(key, None)
+
+    def test_partial_override_keeps_defaults(self) -> None:
+        """Only set env vars override; unset vars keep defaults."""
+        os.environ["NTH_PARTIAL_MAX_ATTEMPTS"] = "2"
+        try:
+            config = RetryConfig.from_env(prefix="NTH_PARTIAL_")
+            assert config.max_attempts == 2
+            assert config.base_delay == 1.0  # default
+            assert config.max_delay == 60.0  # default
+            assert config.jitter is True  # default
+        finally:
+            os.environ.pop("NTH_PARTIAL_MAX_ATTEMPTS", None)
+
+    def test_invalid_env_var_falls_back_to_default(self) -> None:
+        """Invalid int/float env var values log a warning and use defaults."""
+        os.environ["NTH_BAD_MAX_ATTEMPTS"] = "not_an_int"
+        os.environ["NTH_BAD_BASE_DELAY"] = "not_a_float"
+        try:
+            config = RetryConfig.from_env(prefix="NTH_BAD_")
+            assert config.max_attempts == 3  # default
+            assert config.base_delay == 1.0  # default
+        finally:
+            os.environ.pop("NTH_BAD_MAX_ATTEMPTS", None)
+            os.environ.pop("NTH_BAD_BASE_DELAY", None)
+
+    def test_jitter_true_values(self) -> None:
+        """Various truthy values for JITTER."""
+        for val in ("true", "True", "TRUE", "1", "yes"):
+            os.environ["NTH_JITTER_TRUE_JITTER"] = val
+            try:
+                config = RetryConfig.from_env(prefix="NTH_JITTER_TRUE_")
+                assert config.jitter is True, f"Expected True for '{val}'"
+            finally:
+                os.environ.pop("NTH_JITTER_TRUE_JITTER", None)
+
+    def test_default_prefix(self) -> None:
+        """Default prefix is NARRARE_RETRY_."""
+        os.environ["NARRARE_RETRY_MAX_ATTEMPTS"] = "7"
+        try:
+            config = RetryConfig.from_env()
+            assert config.max_attempts == 7
+        finally:
+            os.environ.pop("NARRARE_RETRY_MAX_ATTEMPTS", None)

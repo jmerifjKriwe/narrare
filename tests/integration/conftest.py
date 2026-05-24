@@ -12,6 +12,7 @@ import pytest_asyncio
 import sqlalchemy
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from narrare._app.database import get_async_session
 from narrare._app.main import create_app
@@ -40,11 +41,30 @@ def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ig
     monkeypatch.setenv("NARRARE_ENCRYPTION_KEY", Fernet.generate_key().decode())
 
 
+@pytest.fixture(autouse=True)
+def gc_after_test():
+    """Force garbage collection after each test to finalize asyncpg connections.
+
+    asyncpg closes connections asynchronously (Terminate message + socket close).
+    Without explicit GC, these pending closes can race with pytest's
+    ``collect_unraisable`` hook, producing false-positive ``ResourceWarning``
+    errors that the ``unraisableexception`` plugin escalates to test errors.
+
+    Calling ``gc.collect()`` after each test triggers ``__del__`` finalizers,
+    ensuring connections are fully cleaned up before the next test's teardown
+    validation runs.
+    """
+    import gc
+
+    yield
+    gc.collect()
+
+
 @pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
 async def check_db_available() -> None:
     """Skip all integration tests if database is not available, run migrations."""
     try:
-        engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+        engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
         async with engine.connect() as conn:
             await conn.execute(sqlalchemy.text("SELECT 1"))
         await engine.dispose()
@@ -98,8 +118,18 @@ async def _dispose_module_engine() -> AsyncGenerator[None]:  # pyright: ignore[r
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def test_engine() -> AsyncGenerator[AsyncEngine]:
-    """Session-scoped test engine."""
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=True)
+    """Session-scoped test engine.
+
+    Uses NullPool to prevent connection leaks that Python 3.14's
+    pytest unraisableexception plugin would escalate to test failures.
+    Each checkout creates a fresh connection that is immediately closed
+    on checkin — the standard approach for test engines.
+    """
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+        poolclass=NullPool,
+    )
     yield engine
     await engine.dispose()
 
@@ -122,13 +152,20 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
-    """Test HTTP client with DB session override."""
+    """Test HTTP client with DB session and memory client overrides."""
+    from narrare.memory.dependencies import get_memory_client
+    from narrare_core.memory.mem0_client import NullMemoryClient
+
     app = create_app()
 
     async def override_session():
         yield db_session
 
+    async def override_memory_client():
+        return NullMemoryClient()
+
     app.dependency_overrides[get_async_session] = override_session
+    app.dependency_overrides[get_memory_client] = override_memory_client
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c

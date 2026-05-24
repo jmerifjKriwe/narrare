@@ -51,6 +51,7 @@ class WritingSessionHandler:
         api_key: str | None = None,
         base_url: str | None = None,
         mode: str = "interactive_session",
+        ws_idle_timeout: int = 1800,
     ) -> None:
         self._session_manager = session_manager
         self._pipeline = pipeline
@@ -60,6 +61,7 @@ class WritingSessionHandler:
         self._api_key = api_key
         self._base_url = base_url
         self._mode = mode
+        self._ws_idle_timeout = ws_idle_timeout
 
     async def handle(
         self,
@@ -101,11 +103,11 @@ class WritingSessionHandler:
                     }
                 )
 
-            # Message loop with 30-minute idle timeout
+            # Message loop with configurable idle timeout
             while True:
                 data = await asyncio.wait_for(
                     websocket.receive_json(),
-                    timeout=30 * 60,
+                    timeout=self._ws_idle_timeout,
                 )
                 await self._route_message(websocket, session_id, data)
 

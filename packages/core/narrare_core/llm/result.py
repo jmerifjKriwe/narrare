@@ -9,20 +9,42 @@ from typing import Any
 
 @dataclass(frozen=True, slots=True)
 class TokenUsage:
-    """Token usage statistics from an LLM call."""
+    """Token usage statistics from an LLM call.
+
+    When ``provider`` and ``model`` are populated, ``cost_estimate_usd``
+    uses per-model pricing from models.dev. Otherwise falls back to a
+    blended rate of $3 per 1M tokens.
+    """
 
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
+    provider: str = ""
+    model: str = ""
 
     @property
     def cost_estimate_usd(self) -> float:
         """
-        Very rough cost estimate in USD.
-        Actual cost depends on provider and model.
-        Use this only for relative comparisons, not billing.
+        Cost estimate in USD based on per-model rates from models.dev.
+
+        Uses per-model pricing when ``provider`` and ``model`` are set,
+        with fallback to provider-level defaults and finally a blended
+        rate of $3 per 1M tokens.
+
+        Returns:
+            Estimated cost in USD (not for billing — rough comparison only).
         """
-        # Approximate: $3 per 1M tokens (blended input/output)
+        if self.provider and self.model:
+            # Lazy import to avoid circular dependency at module level
+            from narrare_core.llm.cost_rates import get_rates
+
+            rates = get_rates(self.provider, self.model)
+            if rates is not None:
+                input_cost = self.prompt_tokens * rates["input"] / 1_000_000
+                output_cost = self.completion_tokens * rates["output"] / 1_000_000
+                return input_cost + output_cost
+
+        # Fallback: blended rate of $3 per 1M tokens
         return self.total_tokens * 0.000003
 
 

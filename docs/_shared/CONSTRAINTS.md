@@ -350,6 +350,40 @@ defaults — and every user with a different provider gets a runtime crash.
 
 ---
 
+### RULE-19 · Dependency factories must use `SessionDep`, not bare `AsyncSession`.
+
+All FastAPI dependency factory functions in `**/dependencies.py` files must use
+`SessionDep` (which is `Annotated[AsyncSession, Depends(get_async_session)]`)
+for session parameters — never bare `AsyncSession`.
+
+**Forbidden:**
+```python
+# dependencies.py — bare AsyncSession causes 422 in production
+def get_kb_service(session: AsyncSession) -> KBService:
+    ...
+```
+
+**Required:**
+```python
+# dependencies.py — SessionDep includes Depends() marker
+from narrare._app.dependencies import SessionDep
+
+def get_kb_service(session: SessionDep) -> KBService:
+    ...
+```
+
+**Why:** FastAPI treats bare `AsyncSession` as a query parameter — the endpoint
+returns 422 "Field required" instead of injecting a database session. This bug
+has occurred multiple times (at least twice in KB and settings modules) because
+the difference between `AsyncSession` and `SessionDep` is invisible in unit tests
+(where sessions are manually provided) and only surfaces in production. The
+architecture checker now catches this automatically.
+
+**Enforcement:** `check_architecture.py` — AST scan for bare `AsyncSession` annotations
+in `dependencies.py` files under `apps/api/`.
+
+---
+
 ## 3. Quality Rules
 
 ### RULE-09 · Every public function has a type signature.
@@ -552,6 +586,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-16 i18n namespace registration | `i18n-namespace-registry.test.ts` + `validate-i18n.ts` |
 | RULE-17 API-Frontend contract | `test_prompt_contract.py` + PR review |
 | RULE-18 No hardcoded config in routers | `test_generation_router_contract.py` + PR review |
+| RULE-19 SessionDep in dependency factories | `check_architecture.py` — AST scan for bare AsyncSession |
 | All rules | PR review by Architecture Agent |
 
 ---

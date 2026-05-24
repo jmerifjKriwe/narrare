@@ -89,6 +89,54 @@ class Settings(BaseSettings):
     memory_embedding_model: str = "text-embedding-3-small"
 
     # ---------------------------------------------------------------------------
+    # Token Limits (Operator-Config)
+    # ---------------------------------------------------------------------------
+    default_max_tokens: int = Field(
+        default=4096,
+        alias="NARRARE_DEFAULT_MAX_TOKENS",
+    )
+    """Default output token limit for LLM calls.
+    Used as fallback when no token_limit_profile is set.
+    """
+
+    # ---------------------------------------------------------------------------
+    # WebSocket
+    # ---------------------------------------------------------------------------
+    ws_idle_timeout_seconds: int = Field(
+        default=1800,
+        alias="NARRARE_WS_IDLE_TIMEOUT_SECONDS",
+    )
+    """WebSocket connection idle timeout in seconds (default: 30 min).
+    """
+
+    # ---------------------------------------------------------------------------
+    # Retry (optional override — retry.py defaults used when unset)
+    # ---------------------------------------------------------------------------
+    retry_max_attempts: int = Field(
+        default=3,
+        alias="NARRARE_RETRY_MAX_ATTEMPTS",
+    )
+    """Default maximum retry attempts for LLM calls."""
+    retry_base_delay: float = Field(
+        default=1.0,
+        alias="NARRARE_RETRY_BASE_DELAY",
+    )
+    """Base delay in seconds for retry backoff."""
+
+    # ---------------------------------------------------------------------------
+    # Cost Estimation (optional override)
+    # ---------------------------------------------------------------------------
+    cost_rates_json: str = Field(
+        default="",
+        alias="NARRARE_COST_RATES_JSON",
+    )
+    """JSON string with per-provider cost rates.
+    Format: '{"openai": [10.0, 30.0], "anthropic": [8.0, 24.0]}'
+    Input rate, Output rate per 1M tokens.
+    Empty string = use code defaults.
+    """
+
+    # ---------------------------------------------------------------------------
     # Email
     # ---------------------------------------------------------------------------
     smtp_host: str = ""

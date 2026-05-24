@@ -59,8 +59,15 @@ async def get_writing_service(
         UUID(user_id),
         project_id,
     )
-    config = replace(resolved.config, temperature=0.7, max_tokens=4000)
+    profile = resolved.config.token_limit_profile or "balanced"
+    config = replace(
+        resolved.config,
+        temperature=0.7,
+        max_tokens=resolved.config.resolve_output_limit(profile),
+    )
     if intent == LLMIntent.SUGGEST:
+        # SUGGEST uses a fixed 60-token limit — inline suggestions must be short
+        # (UX constraint, not a profile concern).
         config = replace(config, temperature=0.3, max_tokens=60)
 
     registry = get_model_registry()

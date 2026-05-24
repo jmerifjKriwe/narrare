@@ -12,6 +12,19 @@ Tier allocation (default 6000-token budget):
 
 When ``first_chapter=True``, the recent tier budget (20%) is
 redistributed to KB tiers since there is no history.
+
+Configuration overrides
+-----------------------
+The ``tier_overrides`` parameter on ``__init__`` allows callers to
+adjust individual tier percentages at runtime.  Non-overridden tiers
+keep their default proportions, rescaled so the total sums to 1.0::
+
+    manager = TokenBudgetManager(
+        total_budget=8000,
+        tier_overrides={"immediate": 0.40},
+    )
+    budgets = manager.allocate()
+    # immediate → 40%, recent/KB/pinned → defaults (rescaled)
 """
 
 from __future__ import annotations
@@ -69,13 +82,97 @@ class TokenBudgetManager:
         "pinned": 0.10,
     }
 
-    def __init__(self, total_budget: int = DEFAULT_TOTAL_BUDGET) -> None:
+    def __init__(
+        self,
+        total_budget: int = DEFAULT_TOTAL_BUDGET,
+        tier_overrides: dict[str, float] | None = None,
+    ) -> None:
+        """Initialise the budget manager.
+
+        Args:
+            total_budget:
+                Total token budget across all tiers.
+            tier_overrides:
+                Optional per-tier percentage overrides.  Non-overridden
+                tiers keep their default proportions, rescaled so the
+                sum equals 1.0.
+        """
         self._total_budget = total_budget
+        self._tier_overrides = tier_overrides
+        if tier_overrides is not None:
+            self._validate_overrides(tier_overrides)
 
     @property
     def total_budget(self) -> int:
         """Total token budget across all tiers."""
         return self._total_budget
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _validate_overrides(overrides: dict[str, float]) -> None:
+        """Validate individual override values."""
+        for tier, val in overrides.items():
+            if val > 1.0:
+                raise ValueError(f"Override for '{tier}' is {val}, must not exceed 1.0")
+            if val < 0.0:
+                raise ValueError(f"Override for '{tier}' is {val}, must not be negative")
+
+    @staticmethod
+    def _validate_percentages(pcts: dict[str, float]) -> None:
+        """Validate that percentages sum to ~1.0 with 0.01 tolerance."""
+        total = sum(pcts.values())
+        if not (0.99 <= total <= 1.01):
+            raise ValueError(f"Percentages sum to {total}, expected ~1.0 (within 0.01 tolerance)")
+        for tier, val in pcts.items():
+            if val > 1.0:
+                raise ValueError(f"Percentage for '{tier}' is {val}, must not exceed 1.0")
+
+    def _compute_percentages(self, base: dict[str, float]) -> dict[str, float]:
+        """Merge *tier_overrides* with *base* and normalise to sum 1.0.
+
+        1. Start with base percentages.
+        2. Apply any user overrides — overridden tiers keep their value
+           exactly.
+        3. Non-overridden tiers are rescaled proportionally so the total
+           equals 1.0.
+        """
+        if not self._tier_overrides:
+            return base
+
+        result: dict[str, float] = {}
+        override_sum = 0.0
+        non_overridden: dict[str, float] = {}
+
+        for tier in self.TIER_ORDER:
+            if tier in self._tier_overrides:
+                val = self._tier_overrides[tier]
+                result[tier] = val
+                override_sum += val
+            else:
+                non_overridden[tier] = base[tier]
+
+        non_overridden_sum = sum(non_overridden.values())
+        remaining = 1.0 - override_sum
+
+        if remaining < 0:
+            # Overrides alone exceed 100% — scale everything down.
+            scale = 1.0 / override_sum
+            for tier in result:
+                result[tier] *= scale
+        elif non_overridden_sum > 0 and remaining >= 0:
+            # Scale non-overridden tiers to fill the remaining budget.
+            scale = remaining / non_overridden_sum
+            for tier, val in non_overridden.items():
+                result[tier] = val * scale
+
+        return result
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def allocate(
         self,
@@ -95,7 +192,9 @@ class TokenBudgetManager:
         dict[str, TierBudget]
             Mapping of tier name to its budget allocation.
         """
-        pcts = self._FIRST_CHAPTER_PERCENTAGES if first_chapter else self._BASE_PERCENTAGES
+        base = self._FIRST_CHAPTER_PERCENTAGES if first_chapter else self._BASE_PERCENTAGES
+        pcts = self._compute_percentages(base)
+        self._validate_percentages(pcts)
         return {
             name: TierBudget(
                 tier_name=name,

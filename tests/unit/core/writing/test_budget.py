@@ -73,6 +73,105 @@ class TestTokenBudgetManager:
         budgets = mgr.allocate()
         assert list(budgets.keys()) == list(TokenBudgetManager.TIER_ORDER)
 
+    # ------------------------------------------------------------------
+    # tier_overrides
+    # ------------------------------------------------------------------
+
+    def test_with_override_single_tier(self) -> None:
+        """Overridden tier gets specified percentage; others rescaled."""
+        mgr = TokenBudgetManager(8000, tier_overrides={"immediate": 0.40})
+        budgets = mgr.allocate()
+
+        # immediate is exactly 40%
+        assert budgets["immediate"].percentage == pytest.approx(0.40)
+        assert budgets["immediate"].token_limit == 3200
+
+        # Sum is still 1.0
+        total_pct = sum(b.percentage for b in budgets.values())
+        assert total_pct == pytest.approx(1.0)
+
+    def test_with_override_multiple_tiers(self) -> None:
+        """Multiple overrides work together."""
+        mgr = TokenBudgetManager(6000, tier_overrides={"immediate": 0.35, "pinned": 0.15})
+        budgets = mgr.allocate()
+
+        assert budgets["immediate"].percentage == pytest.approx(0.35)
+        assert budgets["pinned"].percentage == pytest.approx(0.15)
+        total_pct = sum(b.percentage for b in budgets.values())
+        assert total_pct == pytest.approx(1.0)
+
+    def test_with_override_first_chapter(self) -> None:
+        """Overrides work in first_chapter mode too (recent stays 0)."""
+        mgr = TokenBudgetManager(6000, tier_overrides={"immediate": 0.40})
+        budgets = mgr.allocate(first_chapter=True)
+
+        assert budgets["immediate"].percentage == pytest.approx(0.40)
+        assert budgets["recent"].percentage == pytest.approx(0.0)
+        total_pct = sum(b.percentage for b in budgets.values())
+        assert total_pct == pytest.approx(1.0)
+
+    def test_with_override_all_tiers(self) -> None:
+        """Overriding all tiers to sum 1.0 works directly."""
+        mgr = TokenBudgetManager(
+            6000,
+            tier_overrides={
+                "immediate": 0.25,
+                "recent": 0.20,
+                "kb_referenced": 0.20,
+                "kb_suggested": 0.20,
+                "pinned": 0.15,
+            },
+        )
+        budgets = mgr.allocate()
+        total_pct = sum(b.percentage for b in budgets.values())
+        assert total_pct == pytest.approx(1.0)
+        assert budgets["immediate"].percentage == pytest.approx(0.25)
+
+    def test_with_override_without_normalization_enforces_exact(self) -> None:
+        """Overrides that already sum to 1.0 keep exact values."""
+        mgr = TokenBudgetManager(
+            8000,
+            tier_overrides={
+                "immediate": 0.30,
+                "recent": 0.20,
+                "kb_referenced": 0.25,
+                "kb_suggested": 0.15,
+                "pinned": 0.10,
+            },
+        )
+        budgets = mgr.allocate()
+        assert budgets["immediate"].token_limit == 2400  # 30%
+        assert budgets["recent"].token_limit == 1600  # 20%
+
+    def test_with_override_preserves_tier_order(self) -> None:
+        """Tier order is preserved even with overrides."""
+        mgr = TokenBudgetManager(6000, tier_overrides={"immediate": 0.40})
+        budgets = mgr.allocate()
+        assert list(budgets.keys()) == list(TokenBudgetManager.TIER_ORDER)
+
+    def test_with_override_no_overrides_backward_compatible(self) -> None:
+        """No overrides = identical to original behaviour."""
+        mgr = TokenBudgetManager(6000)
+        old = TokenBudgetManager(6000)
+        assert mgr.allocate() == old.allocate()
+
+    def test_override_normalization_handles_overflow_gracefully(self) -> None:
+        """Overrides summing >1.0 get scaled down to sum 1.0."""
+        mgr = TokenBudgetManager(6000, tier_overrides={"immediate": 0.80, "recent": 0.40})
+        budgets = mgr.allocate()
+        total_pct = sum(b.percentage for b in budgets.values())
+        assert total_pct == pytest.approx(1.0)
+
+    def test_override_value_exceeds_one_raises(self) -> None:
+        """Single override >1.0 raises ValueError."""
+        with pytest.raises(ValueError, match=r"must not exceed 1.0"):
+            TokenBudgetManager(6000, tier_overrides={"immediate": 1.5})
+
+    def test_override_negative_value_raises(self) -> None:
+        """Negative override raises ValueError."""
+        with pytest.raises(ValueError, match="must not be negative"):
+            TokenBudgetManager(6000, tier_overrides={"immediate": -0.1})
+
 
 class TestCapToBudget:
     """Tests for the cap_to_budget utility function."""

@@ -412,6 +412,16 @@
         "maxTokens": "Max Tokens",
         "temperature": "Temperatur",
         "maxTokensWarning": "Wert {value} ist sehr hoch — könnte Modellgrenzen überschreiten"
+      },
+      "modelData": {
+        "title": "Modelldaten",
+        "description": "KI-Modellspezifikationen und Preise aus der von der Community gepflegten models.dev-Datenbank.",
+        "refreshButton": "Modelldaten aktualisieren",
+        "upToDate": "Modelldaten sind aktuell",
+        "newModels": "{count} neues/n Modelle gefunden",
+        "deprecatedModels": "{count} Modell(e) veraltet",
+        "refreshing": "Modelldaten werden aktualisiert...",
+        "error": "models.dev konnte nicht erreicht werden. Verwende zwischengespeicherte Daten."
       }
     },
     "prompts": {

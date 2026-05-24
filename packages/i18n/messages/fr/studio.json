@@ -412,6 +412,16 @@
         "maxTokens": "Max Tokens",
         "temperature": "Température",
         "maxTokensWarning": "La valeur {value} est très élevée — peut dépasser les limites du modèle"
+      },
+      "modelData": {
+        "title": "Données des modèles",
+        "description": "Spécifications et prix des modèles IA provenant de la base de données models.dev maintenue par la communauté.",
+        "refreshButton": "Actualiser les données",
+        "upToDate": "Les données des modèles sont à jour",
+        "newModels": "{count} nouveau/nouveaux modèle(s) trouvé(s)",
+        "deprecatedModels": "{count} modèle(s) obsolète(s)",
+        "refreshing": "Actualisation des données des modèles...",
+        "error": "Impossible d'atteindre models.dev. Utilisation des données en cache."
       }
     },
     "prompts": {

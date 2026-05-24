@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-23
+Date: 2026-05-24
 Updated by: NarrareDevCoordinator
-Session summary: CR-03 Feature-Adoption audit. `cap_to_budget()` token utility in core/writing/budget.py. Token enforcement: name service (500 tokens for existing names), interview draft (4000 tokens for transcripts). ReviewDeps extended with `writing_context: WritingContext` for enriched reviews with KB data. Entity connection promotion in WritingContextAssembler via `entity_connections` param. `RelationshipRepository.get_adjacency_map()` for adjacency data. 5 new test files. Feature docs updated (INFRA-003, WRITE-002, GEN-001).
+Session summary: CR-08 Hardcoded Values audit umgesetzt. FIND-006/009/010/011 behoben. TokenBudgetManager konfigurierbar (tier_overrides). ResolvedModelConfig.resolve_output_limit() mit quick/balanced/long Profilen. 6 neue Operator-Env-Vars in config.py. Backend-Deps nutzen resolve_output_limit() statt hardcoded max_tokens. WebSocket-Timeout aus Settings. mem0 Client-Erstellung mit Config-Werten. FIND-005 (KB Suggest) bereits gelöst — kein hardcoded max_entries mehr. SET-005 feature doc erstellt. CR-08-NTH spec für Nice-to-haves. 18 neue Tests (11 budget + 7 intents). Alle 2323 Tests grün.
 
 ---
 
@@ -460,6 +460,10 @@ Phase 5 (current):
 8. ✅ Test coverage uplift — 109 new tests (62 backend + 47 frontend)
 9. ✅ Integration test reactivation — 121 previously-skipped tests reactivated across 14 files (auth, settings, memory, generation, KB, seed, gateway). All green.
 
+10. ✅ CR-08 Hardcoded Values — FIND-006/009/010/011 implemented.
+        Output-Limits via Token-Profile, Budget-Tier-Override, WS-Timeout in Config,
+        mem0 Embedding-Modell via Settings. SET-005 feature doc created.
+
 Next focus: WRITE-003 (extend chapter), WRITE-004 (rewrite selection), E2E tests.
 
 ---
@@ -569,6 +573,16 @@ All demo content is complete — sufficient for testing through Phase 5.
 | CR-01 Prompt Quality Audit | RULE-02 compliance: 5 agents wired to PromptComposer, hardcoded system_prompt strings removed. XML encapsulation for prompt injection defense. Interview + interactive_session prompts enhanced with CoT, negative examples, output format. New bundled prompts: review, preferences, outline, rewrite_selection, story_suggest. User preferences added to generation/name prompts. 10 new de/fr translations. |
 | CR-02 System-Prompt Audit | Meta-prompt guardrails added (fiction content, conversation guardrails, avoidance_patterns) to all 4 variants. NarrareAgent.with_meta() factory for meta-prompt loading. ADR-019. 14 new guardrail tests. |
 | CR-03 Feature-Adoption Audit | `cap_to_budget()` token utility + token enforcement on name service (500) and interview draft (4000). ReviewDeps extended with `writing_context` for enriched review with KB data. Entity connection promotion in context assembly via `entity_connections` + `get_adjacency_map()`. 5 new test files. |
+| CR-04 Preference Wiring | WritingDeps.user_id + _base_context() user_id/project_id in extra + PromptComposer preference_service in dependencies.py. Review prompts (en/de/fr) have "respect preferences" directive. |
+| CR-04 Conflict Resolution | Meta-prompt (en/de/fr) has "outline wins over KB state" conflict resolution rule. Commit d1c0d8a. |
+| FIND-006 Output-Limits | Router/Deps nutzen resolve_output_limit() statt hardcoded 4000/1000/2000 |
+| FIND-009 Budget-Tier-Override | TokenBudgetManager akzeptiert tier_overrides per Constructor |
+| FIND-010 WS-Timeout | ws_handler liest settings.ws_idle_timeout_seconds |
+| FIND-011 mem0 Config | create_memory_client() mit memory_llm_model / memory_embedding_model aus Settings |
+| FIND-005 KB Suggest | Bereits gelöst — kein hardcoded max_entries mehr im KB-Modul |
+| CR-08 Config-Expansion | 6 neue Env-Vars: NARRARE_DEFAULT_MAX_TOKENS, WS_IDLE_TIMEOUT, RETRY_*, COST_RATES_JSON |
+| CR-08 Feature Doc | SET-005 — Configurable Token Limits erstellt |
+| CR-08 Nice-to-have Spec | CR-08-NTH — Cost Estimation, Retry Config, Model Registry |
 
 ---
 

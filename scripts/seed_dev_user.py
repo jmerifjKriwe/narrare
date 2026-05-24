@@ -24,6 +24,7 @@ async def seed() -> None:
     # Import here so path is set up first
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
 
     from narrare.auth.models import User
     from narrare.auth.security import hash_password
@@ -33,7 +34,7 @@ async def seed() -> None:
         "postgresql+asyncpg://narrare:narrare@localhost:5432/narrare_dev",
     )
 
-    engine = create_async_engine(database_url, echo=False)
+    engine = create_async_engine(database_url, echo=False, poolclass=NullPool)
     async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session_maker() as session:

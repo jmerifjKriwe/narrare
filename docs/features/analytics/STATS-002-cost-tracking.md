@@ -130,6 +130,8 @@ class UsageRecord:
 - Real-time cost updates
 - Historical pricing for past usage
 
+**Cost Data:** AI cost estimates use per-model pricing from [models.dev](https://models.dev). See [Model Data Reference](../../reference/model-data.md) for details on how pricing data is sourced and cached.
+
 **Budget enforcement:**
 - Check budget before each LLM call
 - Suspend if limit exceeded (configurable)

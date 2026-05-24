@@ -136,12 +136,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     _configure_logging()
     logger.info("narrare_api_starting")
 
-    # Auto-migrate database on startup — fail fast if migrations break
-    try:
-        await _run_pending_migrations()
-    except Exception:
-        logger.exception("db_migration_failed")
-        raise
+    from narrare._app.config import get_settings
+
+    settings = get_settings()
+
+    # Auto-migrate database on startup — skip in test environment where
+    # the test infrastructure (conftest check_db_available) handles this.
+    if not settings.is_test:
+        try:
+            await _run_pending_migrations()
+        except Exception:
+            logger.exception("db_migration_failed")
+            raise
 
     # TaskIQ broker startup (skip in worker process — it handles its own)
     try:
@@ -155,25 +161,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     # Event bus startup (graceful — won't block if Redis is unavailable)
     try:
-        from narrare._app.config import get_settings
         from narrare._app.events import init_event_bus
 
-        _settings = get_settings()
-        await init_event_bus(_settings.redis_url)
+        await init_event_bus(settings.redis_url)
         logger.info("event_bus_initialized")
     except Exception:
         logger.warning("event_bus_init_failed", exc_info=True)
 
-    # Startup cleanup: remove stale generation requests (must not block startup)
-    try:
-        count = await _run_stale_cleanup()
-        if count > 0:
-            logger.info("startup_cleanup", stale_cleaned=count)
-    except Exception:
-        logger.warning("startup_cleanup_failed", exc_info=True)
+    # Startup cleanup: remove stale generation requests — skip in test
+    # environment (no real data to clean, and it uses the module-level engine).
+    if not settings.is_test:
+        try:
+            count = await _run_stale_cleanup()
+            if count > 0:
+                logger.info("startup_cleanup", stale_cleaned=count)
+        except Exception:
+            logger.warning("startup_cleanup_failed", exc_info=True)
 
-    # Periodic background task — cleans up stale requests every 5 minutes
-    cleanup_task = asyncio.create_task(_periodic_cleanup_loop())
+    # Periodic background task — skip in test environment (no real data,
+    # and avoids creating long-lived asyncio tasks per test).
+    cleanup_task: asyncio.Task[None] | None = None
+    if not settings.is_test:
+        cleanup_task = asyncio.create_task(_periodic_cleanup_loop())
 
     logger.info("narrare_api_ready")
 
@@ -183,10 +192,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     logger.info("narrare_api_stopping")
 
     # Cancel periodic cleanup task
-    cleanup_task.cancel()
-    with suppress(asyncio.CancelledError):
-        await cleanup_task
-    logger.info("periodic_cleanup_cancelled")
+    if cleanup_task is not None:
+        cleanup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup_task
+        logger.info("periodic_cleanup_cancelled")
 
     # Event bus shutdown
     try:
@@ -204,14 +214,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except ImportError:
         pass
 
-    # Database engine shutdown — close all pooled connections
-    try:
-        from narrare._app.database import dispose_database
+    # Database engine shutdown — close all pooled connections.
+    # Skip in test environment: the test infrastructure handles cleanup
+    # via the session-scoped _dispose_module_engine fixture, and per-test
+    # disposal creates race conditions with asyncpg connection cleanup.
+    if not settings.is_test:
+        try:
+            from narrare._app.database import dispose_database
 
-        await dispose_database()
-        logger.info("database_engine_disposed_lifespan")
-    except Exception:
-        logger.warning("database_dispose_failed", exc_info=True)
+            await dispose_database()
+            logger.info("database_engine_disposed_lifespan")
+        except Exception:
+            logger.warning("database_dispose_failed", exc_info=True)
 
     logger.info("narrare_api_stopped")
 

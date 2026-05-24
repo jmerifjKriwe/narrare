@@ -8,6 +8,7 @@ Non-retryable: auth failure, context too large, invalid request.
 from __future__ import annotations
 
 import asyncio
+import os
 import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -59,6 +60,55 @@ class RetryConfig:
         if self.jitter:
             delay *= 0.5 + random.random() * 0.5  # nosec: B311
         return delay
+
+    @classmethod
+    def from_env(cls, prefix: str = "NARRARE_RETRY_") -> RetryConfig:
+        """Create RetryConfig from environment variables with fallback to defaults.
+
+        Environment variables (with configurable prefix):
+          {prefix}MAX_ATTEMPTS - int (default: current max_attempts)
+          {prefix}BASE_DELAY   - float (default: current base_delay)
+          {prefix}MAX_DELAY    - float (default: current max_delay)
+          {prefix}JITTER       - "true"/"false" (default: current jitter)
+
+        Args:
+            prefix: Environment variable prefix. Defaults to "NARRARE_RETRY_".
+
+        Returns:
+            RetryConfig with values from environment, falling back to defaults
+            when env vars are not set.
+        """
+
+        def _env_int(name: str, default: int) -> int:
+            val = os.environ.get(name)
+            if val is not None:
+                try:
+                    return int(val)
+                except ValueError:
+                    logger.warning("invalid_env_int", var=name, value=val)
+            return default
+
+        def _env_float(name: str, default: float) -> float:
+            val = os.environ.get(name)
+            if val is not None:
+                try:
+                    return float(val)
+                except ValueError:
+                    logger.warning("invalid_env_float", var=name, value=val)
+            return default
+
+        def _env_bool(name: str, default: bool) -> bool:
+            val = os.environ.get(name)
+            if val is not None:
+                return val.lower() in ("true", "1", "yes")
+            return default
+
+        return cls(
+            max_attempts=_env_int(f"{prefix}MAX_ATTEMPTS", 3),
+            base_delay=_env_float(f"{prefix}BASE_DELAY", 1.0),
+            max_delay=_env_float(f"{prefix}MAX_DELAY", 60.0),
+            jitter=_env_bool(f"{prefix}JITTER", True),
+        )
 
 
 # Standard retry configurations

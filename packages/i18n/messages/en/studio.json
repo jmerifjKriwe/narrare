@@ -412,6 +412,16 @@
         "maxTokens": "Max Tokens",
         "temperature": "Temperature",
         "maxTokensWarning": "Value of {value} is very high — may exceed model limits"
+      },
+      "modelData": {
+        "title": "Model Data",
+        "description": "AI model specifications and pricing from the community-maintained models.dev database.",
+        "refreshButton": "Refresh Model Data",
+        "upToDate": "Model data is up to date",
+        "newModels": "{count} new model(s) found",
+        "deprecatedModels": "{count} model(s) deprecated",
+        "refreshing": "Refreshing model data...",
+        "error": "Could not reach models.dev. Using cached data."
       }
     },
     "prompts": {

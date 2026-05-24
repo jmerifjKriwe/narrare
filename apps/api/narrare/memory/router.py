@@ -5,13 +5,14 @@ Analysis endpoint is in ``router_analysis.py`` for RULE-04 compliance.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare.memory.dependencies import get_memory_client
 from narrare.memory.schemas import (
     FeedbackRequest,
     FeedbackResponse,
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/memory", tags=["memory"])
 
 async def _get_feedback_service(
     session: AsyncSession = Depends(get_async_session),
+    mem0_client: Any = Depends(get_memory_client),
 ) -> MemoryFeedbackService:
     """Async factory for MemoryFeedbackService with event publishing."""
     from narrare.events.publisher import EventPublisher
@@ -36,11 +38,9 @@ async def _get_feedback_service(
     from narrare.memory.repository import FeedbackRepository
     from narrare.memory.service import MemoryFeedbackService
     from narrare_core.memory.feedback_service import FeedbackService
-    from narrare_core.memory.mem0_client import NullMemoryClient
     from narrare_core.memory.models import FeedbackEvent
 
     repo = FeedbackRepository(session)
-    null_client = NullMemoryClient()
 
     async def _persist_adapter(event: FeedbackEvent) -> None:
         """Adapt core FeedbackEvent to SQLAlchemy FeedbackEventModel for persistence."""
@@ -60,7 +60,7 @@ async def _get_feedback_service(
         await repo.create(model)
 
     core_feedback = FeedbackService(
-        mem0_client=null_client,
+        mem0_client=mem0_client,
         persist_fn=_persist_adapter,
     )
     publisher = EventPublisher()
@@ -73,16 +73,15 @@ async def _get_feedback_service(
 
 async def _get_preference_service(
     session: AsyncSession = Depends(get_async_session),
+    mem0_client: Any = Depends(get_memory_client),
 ) -> MemoryPreferenceService:
     """Async factory for MemoryPreferenceService."""
     from narrare.memory.repository import FeedbackRepository
     from narrare.memory.service import MemoryPreferenceService
-    from narrare_core.memory.mem0_client import NullMemoryClient
     from narrare_core.memory.preference_service import PreferenceService
 
     repo = FeedbackRepository(session)
-    null_client = NullMemoryClient()
-    core_preference = PreferenceService(mem0_client=null_client)
+    core_preference = PreferenceService(mem0_client=mem0_client)
     return MemoryPreferenceService(repository=repo, core_preference=core_preference)
 
 

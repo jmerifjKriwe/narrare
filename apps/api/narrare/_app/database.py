@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from narrare._app.config import get_settings
 
@@ -31,6 +32,16 @@ class Base(DeclarativeBase):
 
 def _create_engine() -> AsyncEngine:
     settings = get_settings()
+    if settings.is_test:
+        # NullPool prevents connection leaks in tests — each checkout creates
+        # a fresh connection that is immediately closed on checkin. This avoids
+        # the dispose/create cycles that accumulate unclosed connections across
+        # hundreds of lifespan start/stop cycles per test session.
+        return create_async_engine(
+            settings.active_database_url,
+            echo=settings.db_echo,
+            poolclass=NullPool,
+        )
     return create_async_engine(
         settings.active_database_url,
         pool_size=settings.db_pool_size,

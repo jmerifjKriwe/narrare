@@ -9,6 +9,7 @@ import type { ModelOverride, TokenLimitOverride, TokenLimitProfile } from "@/typ
 import { CategoryOverrides } from "./CategoryOverrides";
 import { CustomTokenLimits } from "./CustomTokenLimits";
 import { IntentOverrides } from "./IntentOverrides";
+import { ModelDataStatus } from "./ModelDataStatus";
 import { ProviderList } from "./ProviderList";
 
 // --- Token profile options ---
@@ -141,6 +142,9 @@ export function AiTab() {
       <div className="space-y-4">
         {/* Provider management */}
         <ProviderList providers={providers} isLoading={providersLoading} />
+
+        {/* Model data refresh */}
+        <ModelDataStatus />
 
         {/* Default model */}
         <div className="bg-card border border-border rounded-lg p-6">

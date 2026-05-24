@@ -1,6 +1,7 @@
 """LLM Gateway — the only path to any LLM provider. See CONSTRAINTS.md RULE-01."""
 
 from narrare_core.llm.contracts import ModelRegistryProtocol
+from narrare_core.llm.cost_rates import get_cached_data, get_rates, invalidate_cache, refresh_models
 from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.llm.intents import (
     INTENT_CATEGORY_MAP,
@@ -40,4 +41,8 @@ __all__ = [
     "StreamChunk",
     "TokenLimitOverride",
     "TokenUsage",
+    "get_cached_data",
+    "get_rates",
+    "invalidate_cache",
+    "refresh_models",
 ]

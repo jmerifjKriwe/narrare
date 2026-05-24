@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends
 
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare.settings.models_router import router as models_router
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.settings.router_ai import router as ai_router
 from narrare.settings.router_tones import router as tones_router
@@ -35,6 +36,9 @@ router.include_router(ai_router)
 
 # Include custom tones sub-router (no prefix - routes already have /settings/user/tones prefix)
 router.include_router(tones_router)
+
+# Include models sub-router (no prefix - routes already have /models/ prefix)
+router.include_router(models_router)
 
 
 # ---------------------------------------------------------------------------

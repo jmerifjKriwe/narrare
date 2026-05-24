@@ -339,6 +339,15 @@ export interface AvailableModelsResponse {
   models: { id: string; name: string; context_window?: number }[];
 }
 
+export interface ModelRefreshResponse {
+  status: "ok" | "error";
+  new_models: string[];
+  removed_models: string[];
+  total_models: number;
+  cached_at: string;
+  message?: string;
+}
+
 // --- AI Settings ---
 
 export const aiSettingsApi = {
@@ -377,6 +386,10 @@ export const aiSettingsApi = {
   // Live model retrieval (uses stored API key from DB)
   getProviderModels: (providerId: string) =>
     fetchApi<AvailableModelsResponse>(`/settings/ai/providers/${providerId}/models`),
+
+  // Refresh model data from models.dev
+  refreshModels: () =>
+    fetchApi<ModelRefreshResponse>("/settings/models/refresh", { method: "POST" }),
 };
 
 // --- Prompts ---

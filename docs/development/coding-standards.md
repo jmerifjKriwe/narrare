@@ -193,6 +193,32 @@ class ChapterWritingService:
 - This enables testing with fake repository and TestModel
 - If a dependency is missing, flag it — do not create a default inline
 
+### FastAPI Dependency Injection
+
+```python
+# ✅ Korrekt: SessionDep in dependency factories
+from narrare._app.dependencies import SessionDep
+
+def get_kb_service(session: SessionDep) -> KBService:
+    return KBService(
+        repo=KBRepository(session),
+        novel_repo=NovelRepository(session),
+    )
+
+# ❌ Verboten: bare AsyncSession — FastAPI interpretiert das als Query-Parameter!
+# Das verursacht 422 "Field required" in Production.
+def get_kb_service(session: AsyncSession) -> KBService:  # ← RULE-19 Verletzung
+    ...
+```
+
+**Why this matters:** `SessionDep = Annotated[AsyncSession, Depends(get_async_session)]`.
+The `Annotated` wrapper tells FastAPI to inject a session via DI. Without it,
+FastAPI sees a plain `AsyncSession` type and tries to parse it from the request
+as a query parameter. Unit tests don't catch this because they pass sessions
+directly — the bug only appears in production.
+
+**Rule:** RULE-19 — enforced by `check_architecture.py` in pre-commit and CI.
+
 ### Logging
 
 ```python

@@ -3111,6 +3111,31 @@
         }
       }
     },
+    "/api/v1/settings/models/refresh": {
+      "post": {
+        "tags": [
+          "settings",
+          "models"
+        ],
+        "summary": "Refresh Model Data",
+        "description": "Fetch latest model data from models.dev.\n\nInvalidates the local cache and fetches fresh data from models.dev.\nReturns a diff summary between the old and new model sets.\n\nThe response never carries a 500 status — on failure the endpoint\nreturns ``{\"status\": \"error\", \"message\": \"...\", \"cached_at\": \"...\"}``.\n\nReturns:\n    A dict with keys:\n    - ``status``: ``\"ok\"`` on success, ``\"error\"`` on failure.\n    - ``new_models``: list of model IDs new in the refresh.\n    - ``removed_models``: list of model IDs no longer present.\n    - ``total_models``: total count of models after refresh.\n    - ``cached_at``: ISO-8601 timestamp of the refresh.",
+        "operationId": "refresh_model_data_api_v1_settings_models_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Refresh Model Data Api V1 Settings Models Refresh Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/settings/user": {
       "get": {
         "tags": [

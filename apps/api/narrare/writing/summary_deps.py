@@ -54,7 +54,12 @@ async def get_summary_service(
         UUID(user_id),
         novel_id,
     )
-    config = replace(resolved.config, temperature=0.3, max_tokens=1000)
+    profile = resolved.config.token_limit_profile or "quick"
+    config = replace(
+        resolved.config,
+        temperature=0.3,
+        max_tokens=resolved.config.resolve_output_limit(profile),
+    )
 
     registry = get_model_registry()
     repo = ChapterRepository(session)

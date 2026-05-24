@@ -9,7 +9,13 @@ from uuid import UUID  # noqa: TC003 — needed at runtime for Pydantic ForwardR
 
 from fastapi import APIRouter, WebSocket
 
+from narrare._app.config import get_settings
 from narrare._app.dependencies import get_composer, get_model_registry
+
+# Balanced for interactive writing sessions — user can control the output
+# limit via token_limit_profile once ModelRoutingResolver is available
+# in the WS handler (future enhancement).
+_WRITE_SESSION_DEFAULT_OUTPUT_LIMIT: int = 2000
 
 router = APIRouter(tags=["writing"])
 
@@ -55,7 +61,7 @@ async def interactive_session(
         provider_name="default",
         model_id="default",
         temperature=0.7,
-        max_tokens=2000,
+        max_tokens=_WRITE_SESSION_DEFAULT_OUTPUT_LIMIT,
     )
     assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
@@ -66,6 +72,7 @@ async def interactive_session(
         draft_processor=draft_processor,
     )
 
+    settings = get_settings()
     handler = WritingSessionHandler(
         session_manager=session_manager,
         pipeline=pipeline,
@@ -73,5 +80,6 @@ async def interactive_session(
         composer=composer,
         config=config,
         mode=mode,
+        ws_idle_timeout=settings.ws_idle_timeout_seconds,
     )
     await handler.handle(websocket, chapter_id, user_id, project_id)

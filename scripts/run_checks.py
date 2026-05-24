@@ -116,6 +116,12 @@ def _build_steps() -> list[Step]:
                 (["uv", "run", "pip-audit"], None),
             ],
         ),
+        Step(
+            "Model Registry",
+            [
+                (["uv", "run", "python", "scripts/check_model_registry.py"], None),
+            ],
+        ),
     ]
 
     if web.is_dir() and (web / "package.json").exists():

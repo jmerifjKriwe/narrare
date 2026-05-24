@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from narrare_core.llm.intents import (
+    _PROFILE_OUTPUT_LIMITS,
     INTENT_CATEGORY_MAP,
     IntentCategory,
     LLMIntent,
@@ -83,7 +84,7 @@ class TestResolvedModelConfig:
         assert config.provider_name == "anthropic"
         assert config.model_id == "claude-sonnet-4-5-20251020"
         assert config.temperature == 0.7
-        assert config.max_tokens == 2000
+        assert config.max_tokens == 4096
         assert config.streams is False
 
     def test_creation_with_all_fields(self) -> None:
@@ -116,3 +117,65 @@ class TestResolvedModelConfig:
         a = ResolvedModelConfig(provider_name="anthropic", model_id="claude-sonnet-4-5-20251020")
         b = ResolvedModelConfig(provider_name="openai", model_id="gpt-4o")
         assert a != b
+
+    # ------------------------------------------------------------------
+    # resolve_output_limit
+    # ------------------------------------------------------------------
+
+    def test_resolve_output_limit_uses_profile_param(self) -> None:
+        """Explicit profile param takes priority."""
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+        )
+        assert config.resolve_output_limit(profile="long") == _PROFILE_OUTPUT_LIMITS["long"]
+
+    def test_resolve_output_limit_uses_quick_profile(self) -> None:
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+        )
+        assert config.resolve_output_limit(profile="quick") == _PROFILE_OUTPUT_LIMITS["quick"]
+
+    def test_resolve_output_limit_falls_back_to_max_tokens(self) -> None:
+        """When no profile is known, return max_tokens."""
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+        )
+        assert config.resolve_output_limit() == config.max_tokens
+
+    def test_resolve_output_limit_unknown_profile_falls_back(self) -> None:
+        """Unknown profile name falls back to max_tokens."""
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+        )
+        assert config.resolve_output_limit(profile="nonexistent") == config.max_tokens
+
+    def test_resolve_output_limit_uses_token_limit_profile_attr(self) -> None:
+        """Instance-level token_limit_profile is used when no arg given."""
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+            token_limit_profile="long",
+        )
+        assert config.resolve_output_limit() == _PROFILE_OUTPUT_LIMITS["long"]
+
+    def test_resolve_output_limit_profile_param_overrides_attr(self) -> None:
+        """Explicit profile param overrides token_limit_profile attr."""
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+            token_limit_profile="long",
+        )
+        assert config.resolve_output_limit(profile="quick") == _PROFILE_OUTPUT_LIMITS["quick"]
+
+    def test_resolve_output_limit_unknown_token_limit_profile_falls_back(self) -> None:
+        """Unknown token_limit_profile falls back to max_tokens."""
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+            token_limit_profile="bogus",
+        )
+        assert config.resolve_output_limit() == config.max_tokens

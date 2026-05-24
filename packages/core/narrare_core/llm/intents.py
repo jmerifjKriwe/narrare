@@ -19,6 +19,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+# ---------------------------------------------------------------------------
+# Output token limit profiles
+# ---------------------------------------------------------------------------
+
+_PROFILE_OUTPUT_LIMITS: dict[str, int] = {
+    "quick": 500,
+    "balanced": 2000,
+    "long": 8000,
+}
+"""Token limit presets referenced by :meth:`ResolvedModelConfig.resolve_output_limit`.
+
+The final output limit is determined by ``resolve_output_limit(profile)``.
+If a ``token_limit_profile`` is set on the config, it takes precedence
+over ``max_tokens`` when no explicit profile argument is supplied.
+"""
+
 
 class LLMIntent(StrEnum):
     """All possible LLM operation intents in Narrare."""
@@ -135,12 +151,39 @@ class ResolvedModelConfig:
     Replaces the old ``ModelConfig`` which had no ``provider_name``
     and relied on ``infer_provider()`` heuristics.
 
-    See: design.md D7
+    The final output token limit is determined by
+    :meth:`resolve_output_limit` — it delegates to the profile system
+    if ``token_limit_profile`` is set.
     """
 
     provider_name: str
     model_id: str
     temperature: float = 0.7
-    max_tokens: int = 2000
+    max_tokens: int = 4096
     streams: bool = False
     token_limit_profile: str | None = None
+
+    def resolve_output_limit(self, profile: str | None = None) -> int:
+        """Return the output token limit, optionally overridden by *profile*.
+
+        Resolution order:
+        1. If *profile* is a known key in ``_PROFILE_OUTPUT_LIMITS``,
+           return that limit.
+        2. If ``self.token_limit_profile`` is a known key, return its
+           limit.
+        3. Otherwise return ``self.max_tokens``.
+
+        Parameters
+        ----------
+        profile:
+            Optional explicit profile name (takes highest priority).
+
+        Returns
+        -------
+        int
+            The resolved output token limit.
+        """
+        effective = profile or self.token_limit_profile
+        if effective and effective in _PROFILE_OUTPUT_LIMITS:
+            return _PROFILE_OUTPUT_LIMITS[effective]
+        return self.max_tokens

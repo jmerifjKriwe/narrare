@@ -163,6 +163,7 @@ class ModelRegistry:
             The agent's output — either ``str`` (when ``output_type`` is
             ``None`` or ``str``) or an instance of the specified type ``T``.
         """
+        start = time.monotonic()
         model = await self.get_model(
             config, api_key=api_key, base_url=base_url, usage_limits=usage_limits
         )
@@ -175,6 +176,28 @@ class ModelRegistry:
             result = await agent.run(
                 prompt, deps=deps, usage_limits=usage_limits
             )  # narrare: allow-agent reason="ModelRegistry convenience run() (ADR-015)"
+
+            # Populate TokenUsage with provider/model for cost estimation
+            _usage = result.usage
+            token_usage = TokenUsage(
+                prompt_tokens=_usage.input_tokens or 0,
+                completion_tokens=_usage.output_tokens or 0,
+                total_tokens=_usage.total_tokens or 0,
+                provider=config.provider_name,
+                model=config.model_id,
+            )
+
+            elapsed = time.monotonic() - start
+            logger.info(
+                "model_registry_run_complete",
+                intent=intent.value,
+                model=config.model_id,
+                provider=config.provider_name,
+                tokens=token_usage.total_tokens,
+                duration_ms=round(elapsed * 1000),
+                cost_estimate=token_usage.cost_estimate_usd,
+            )
+
             return result.output
         except UsageLimitExceeded:
             # Phase 1: Wird in Phase 1.3 als user-visible error klassifiziert
@@ -228,12 +251,16 @@ class ModelRegistry:
                 prompt_tokens=usage.input_tokens or 0,
                 completion_tokens=usage.output_tokens or 0,
                 total_tokens=usage.total_tokens or 0,
+                provider=config.provider_name,
+                model=config.model_id,
             )
             logger.info(
                 "model_registry_stream_complete",
                 intent=intent.value,
                 model=config.model_id,
+                provider=config.provider_name,
                 tokens=token_usage.total_tokens,
                 duration_ms=round(elapsed * 1000),
+                cost_estimate=token_usage.cost_estimate_usd,
             )
             yield StreamChunk(text="", is_final=True, usage=token_usage)
