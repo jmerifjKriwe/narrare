@@ -1,7 +1,7 @@
 ---
 id: INFRA-009
 title: "Proactive Context Loading"
-status: designed
+status: implemented
 area: infra
 mvp: false
 merged_into: KB-005
@@ -84,3 +84,4 @@ background generation via TaskIQ, and learning from accept/dismiss feedback.
 
 - `2026-05-19` — Added to registry
 - `2026-05-24` — Merged into KB-005. Full embedding dependency. Designed.
+- `2026-05-25` — Implemented (via KB-005). ProactiveContextService + KBSuggestService + 54 tests.

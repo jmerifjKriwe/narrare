@@ -3,7 +3,7 @@
 Records accept/dismiss events in ``context_usage_events`` and updates
 ``kb_entries.usage_count`` / ``last_referenced_at`` on accept.
 
-Implements ``ContextUsageProtocol`` from ``contracts.py`` (RULE-03).
+Implements ``ContextUsageProtocol`` from ``usage_contracts.py`` (RULE-03).
 """
 
 from __future__ import annotations

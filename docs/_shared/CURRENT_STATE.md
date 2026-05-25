@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-24
+Date: 2026-05-25
 Updated by: NarrarePlatformSpecialist
-Session summary: INFRA-004 Embedding Store — validation and documentation tasks. Architecture check: 4 RULE-04 violations found (file size limits). Test suite: 294 passed, 1 E2E failure (pre-existing, requires running server). CURRENT_STATE.md updated with core embeddings, API embeddings, KB hooks. INFRA-004 feature spec status changed to "in progress".
+Session summary: KB-005 Proactive Context — Phase 3 validation and commit. Architecture check: clean (679 files, 73 approved exceptions). Test suite: 560 passed, 19 skipped, 1 E2E failure (pre-existing — connection refused). Fixed contracts.py double blank line (201→200 lines). Committed kb-005-proactive-context with 54 new tests, core ProactiveContextService + API KBSuggestService.
 
 ---
 
@@ -487,7 +487,9 @@ Phase 5 (current):
 
 12. 🔄 INFRA-004: Embedding Store — Implementation in progress (Core: store/hash/scoring, API: models/repo/service/router/tasks, KB hooks + usage tracking. Architecture violations pending: RULE-04 file size splits needed in repository.py, test files)
 
-Next focus: KB-002 (Assisted Creation), KB-005/INFRA-009 (merged: Proactive Context), KB-007 (Extraction). All designed, implementation pending.
+13. ✅ KB-005: Proactive Context — `ProactiveContextService` (core) 3-stage pipeline: name matching → embedding search → hybrid scoring. `KBSuggestService` (api) thin wrapper with chapter/entity resolution. `GET /novels/{novel_id}/kb/suggestions/{chapter_id}` endpoint. `match_entity_names()` regex extraction utility. `compute_hybrid_score()` extracted from `rank_candidates()`. 54 new tests (48 core + 6 API). INFRA-009 merged into KB-005.
+
+Next focus: KB-002 (Assisted Creation), KB-007 (Extraction). Both designed, implementation pending.
 
 ---
 
@@ -495,6 +497,7 @@ Next focus: KB-002 (Assisted Creation), KB-005/INFRA-009 (merged: Proactive Cont
 
 | Decision | Details |
 |----------|---------|
+| KB-005 ProactiveContextService design | 3-stage pipeline in core (name matching + embedding search + hybrid scoring). EntityMetadata passed from API layer. Name-match boost (+0.2 to similarity). compute_hybrid_score() extracted from rank_candidates() for Suggestion.relevance_score. |
 | KB-005 + INFRA-009 merged | Identical 3-stage pipeline and scoring formula. Core: `ProactiveContextService`, API: `KBSuggestService` thin wrapper. |
 | INFRA-004: Generic embeddings table | Not KB-only. `embeddings` table with `source_type` (kb_entry, chapter, chapter_summary, note) + `source_id`. HNSW index. Background generation via TaskIQ. Hybrid search (0.5 similarity + 0.3 usage + 0.2 recency). Two-phase model migration. |
 | KB-002: Assisted Creation (not chat) | Template-guided creation flow. Spectrum: manual → AI-suggest → interview → auto-generate. Single KBAgent with Union output. REST + SSE. ProactiveContextService for world context. Redis session with 30min TTL. |
@@ -685,7 +688,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 1. INFRA-004: Embedding Store — RULE-04 file size violations to fix: `embeddings/repository.py` (318→250), `test_embedding_service.py` (380→300), `test_embedding_repository.py` (453→400), `test_usage_service.py` RULE-TEST-01 bare MagicMock
 2. WRITE-003: Extend Chapter — remaining: Task 2.4 (promptfoo eval baseline), Task 8.3-8.4 (architecture validation + test suite), E2E tests
 3. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
-4. E2E tests with Playwright
+4. KB-002: Assisted Creation — designed, implementation pending
+5. KB-007: Extraction — designed, implementation pending
+6. E2E tests with Playwright
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)

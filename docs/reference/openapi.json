@@ -2670,6 +2670,81 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}": {
+      "get": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Get Suggestions",
+        "description": "Get proactive KB suggestions for a chapter.",
+        "operationId": "get_suggestions_api_v1_novels__novel_id__kb_suggestions__chapter_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "max_results",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Max Results"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/KBSuggestionResponse"
+                  },
+                  "title": "Response Get Suggestions Api V1 Novels  Novel Id  Kb Suggestions  Chapter Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/settings/ai/providers": {
       "get": {
         "tags": [
@@ -7325,6 +7400,68 @@
         ],
         "title": "KBRelationshipResponse",
         "description": "Full KB relationship representation with entry names."
+      },
+      "KBSuggestionResponse": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entry Id"
+          },
+          "entry_type": {
+            "type": "string",
+            "title": "Entry Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "relevance_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Relevance Score"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "similarity": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Similarity"
+          },
+          "usage_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Usage Count"
+          },
+          "last_referenced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Referenced At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_id",
+          "entry_type",
+          "name",
+          "relevance_score",
+          "reason",
+          "similarity",
+          "usage_count"
+        ],
+        "title": "KBSuggestionResponse",
+        "description": "Response model for a single KB suggestion."
       },
       "LoginRequest": {
         "properties": {

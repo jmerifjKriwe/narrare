@@ -165,3 +165,21 @@ class KBSearchRequest(BaseModel):
     tags: list[str] | None = Field(default=None)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=1, le=100)
+
+
+# ---------------------------------------------------------------------------
+# Suggestions
+# ---------------------------------------------------------------------------
+
+
+class KBSuggestionResponse(BaseModel):
+    """Response model for a single KB suggestion."""
+
+    entry_id: uuid.UUID
+    entry_type: str
+    name: str
+    relevance_score: float = Field(ge=0.0, le=1.0)
+    reason: str
+    similarity: float = Field(ge=0.0, le=1.0)
+    usage_count: int = Field(ge=0)
+    last_referenced_at: datetime | None = None

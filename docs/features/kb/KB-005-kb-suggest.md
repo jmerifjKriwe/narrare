@@ -1,7 +1,7 @@
 ---
 id: KB-005
 title: "Proactive KB Suggestions"
-status: designed
+status: implemented
 area: kb
 mvp: false
 merged_with: INFRA-009
@@ -178,3 +178,4 @@ When no embeddings exist, falls back to name + graph traversal (not keyword sear
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Designed. Merged with INFRA-009. Full embedding store required. Hybrid search with learning.
+- `2026-05-25` — Implemented. ProactiveContextService (core) + KBSuggestService (api) + 54 tests.

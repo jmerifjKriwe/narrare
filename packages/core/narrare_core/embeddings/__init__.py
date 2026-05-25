@@ -17,7 +17,12 @@ See: openspec/changes/infra-004-embedding-store/design.md (D7: Protocol in core)
 from __future__ import annotations
 
 from narrare_core.embeddings.hash import compute_content_hash
-from narrare_core.embeddings.scoring import ScoredCandidate, ScoringConfig, rank_candidates
+from narrare_core.embeddings.scoring import (
+    ScoredCandidate,
+    ScoringConfig,
+    compute_hybrid_score,
+    rank_candidates,
+)
 from narrare_core.embeddings.store import EmbeddingStats, EmbeddingStoreProtocol, SearchResult
 
 __all__ = [
@@ -27,5 +32,6 @@ __all__ = [
     "ScoringConfig",
     "SearchResult",
     "compute_content_hash",
+    "compute_hybrid_score",
     "rank_candidates",
 ]

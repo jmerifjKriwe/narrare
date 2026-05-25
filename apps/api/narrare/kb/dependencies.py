@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from narrare.kb.relationship_service import RelationshipService
     from narrare.kb.repository import KBRepository
     from narrare.kb.service import KBService
+    from narrare.kb.suggest_service import KBSuggestService
 
 
 def get_kb_repository(session: SessionDep) -> KBRepository:
@@ -56,4 +57,25 @@ def get_rel_service(session: SessionDep) -> RelationshipService:
     return RelationshipService(
         rel_repo=RelationshipRepository(session),
         entry_repo=KBRepository(session),
+    )
+
+
+def get_kb_suggest_service(session: SessionDep) -> KBSuggestService:
+    """Create a KBSuggestService with injected dependencies."""
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.embeddings.repository import EmbeddingRepository
+    from narrare.embeddings.service import EmbeddingService
+    from narrare.kb.repository import KBRepository
+    from narrare.kb.suggest_service import KBSuggestService
+    from narrare_core.context.proactive_service import ProactiveContextService
+
+    # EmbeddingService implements EmbeddingStoreProtocol (takes text, not vectors).
+    # LSP flags reprocess() return-type mismatch, but ProactiveContextService
+    # never calls reprocess — the four methods it uses are structurally compatible.
+    embedding_service = EmbeddingService(EmbeddingRepository(session))
+    proactive = ProactiveContextService(embedding_store=embedding_service)  # type: ignore[arg-type]
+    return KBSuggestService(
+        proactive_context=proactive,
+        chapter_repo=ChapterRepository(session),
+        kb_repo=KBRepository(session),
     )

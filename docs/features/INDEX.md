@@ -68,7 +68,7 @@
 | [KB-002](kb/KB-002-kb-session.md) | Interactive KB Session (AI-guided creation) | 📋 | ❌ |
 | [KB-003](kb/KB-003-kb-improve.md) | AI: Improve KB Entry | 📋 | ❌ |
 | [KB-004](kb/KB-004-kb-consistency.md) | AI: KB Consistency Check | 📋 | ❌ |
-| [KB-005](kb/KB-005-kb-suggest.md) | Proactive KB Suggestions | 📋 | ❌ |
+| [KB-005](kb/KB-005-kb-suggest.md) | Proactive KB Suggestions | ✅ | ✅ |
 | [KB-006](kb/KB-006-worldbuilding.md) | Worldbuilding Assistant | 📋 | ❌ |
 | [KB-007](kb/KB-007-extraction.md) | Entity Extraction from Chapters | 📋 | ❌ |
 | [KB-008](kb/KB-008-knowledge-graph.md) | Knowledge Graph | 📋 | ❌ |

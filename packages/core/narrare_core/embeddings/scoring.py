@@ -71,20 +71,26 @@ class ScoredCandidate:
 
 
 # ---------------------------------------------------------------------------
-# Ranking function
+# Scoring helper
 # ---------------------------------------------------------------------------
 
 _DEFAULT_CONFIG = ScoringConfig()
 
 
-def rank_candidates(
-    candidates: list[ScoredCandidate],
+def compute_hybrid_score(
+    candidate: ScoredCandidate,
+    *,
+    max_usage: int,
     config: ScoringConfig | None = None,
     now: datetime | None = None,
-) -> list[ScoredCandidate]:
-    """Rank candidates using hybrid scoring formula.
+) -> float:
+    """Compute the hybrid score for a single candidate.
 
-    The final score for each candidate is::
+    Applies the same formula as ``rank_candidates`` but returns the raw
+    float score instead of sorting. This enables callers to attach the
+    score to domain objects (e.g. Suggestion.relevance_score).
+
+    The score is::
 
         score = similarity_weight * similarity
               + usage_weight * usage_score
@@ -95,8 +101,48 @@ def rank_candidates(
         recency_score = 0.5 ** (days_since / half_life_days)
             or baseline_recency if never referenced.
 
-    Candidates are returned sorted by final score descending. Candidates
-    with identical scores maintain their original relative order (stable sort).
+    Args:
+        candidate: The candidate to score.
+        max_usage: Maximum usage count across all candidates (for normalization).
+        config: Scoring configuration. Uses defaults if None.
+        now: Reference time for recency. Defaults to ``datetime.now()``.
+
+    Returns:
+        Hybrid score as a float.
+    """
+    cfg = config or _DEFAULT_CONFIG
+    reference_time = now or datetime.now()
+
+    usage_score = min(candidate.usage_count / max(max_usage, 1), 1.0)
+
+    if candidate.last_referenced_at is not None:
+        days_since = (reference_time - candidate.last_referenced_at).days
+        recency_score = 0.5 ** (days_since / cfg.half_life_days)
+    else:
+        recency_score = cfg.baseline_recency
+
+    return (
+        cfg.similarity_weight * candidate.similarity
+        + cfg.usage_weight * usage_score
+        + cfg.recency_weight * recency_score
+    )
+
+
+# ---------------------------------------------------------------------------
+# Ranking function
+# ---------------------------------------------------------------------------
+
+
+def rank_candidates(
+    candidates: list[ScoredCandidate],
+    config: ScoringConfig | None = None,
+    now: datetime | None = None,
+) -> list[ScoredCandidate]:
+    """Rank candidates using hybrid scoring formula.
+
+    Delegates to ``compute_hybrid_score`` for each candidate and returns
+    the candidates sorted by score descending. Candidates with identical
+    scores maintain their original relative order (stable sort).
 
     Args:
         candidates: List of candidates to rank.
@@ -110,29 +156,13 @@ def rank_candidates(
     if not candidates:
         return []
 
-    cfg = config or _DEFAULT_CONFIG
-    reference_time = now or datetime.now()
-
-    # Compute max usage count for normalization
     max_usage = max(c.usage_count for c in candidates)
 
     # Compute final score for each candidate
     scored: list[tuple[float, ScoredCandidate]] = []
     for candidate in candidates:
-        usage_score = min(candidate.usage_count / max(max_usage, 1), 1.0)
-
-        if candidate.last_referenced_at is not None:
-            days_since = (reference_time - candidate.last_referenced_at).days
-            recency_score = 0.5 ** (days_since / cfg.half_life_days)
-        else:
-            recency_score = cfg.baseline_recency
-
-        final_score = (
-            cfg.similarity_weight * candidate.similarity
-            + cfg.usage_weight * usage_score
-            + cfg.recency_weight * recency_score
-        )
-        scored.append((final_score, candidate))
+        score = compute_hybrid_score(candidate, max_usage=max_usage, config=config, now=now)
+        scored.append((score, candidate))
 
     # Stable sort by score descending
     scored.sort(key=lambda pair: pair[0], reverse=True)
