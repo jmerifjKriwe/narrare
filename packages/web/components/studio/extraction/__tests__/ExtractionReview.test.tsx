@@ -135,7 +135,7 @@ describe("ExtractionReview", () => {
     );
 
     // Analysis notes section should be visible (collapsed by default)
-    expect(screen.getByText("AI Analysis Notes")).toBeDefined();
+    expect(screen.getByText("kb.extractionAnalysisNotes")).toBeDefined();
   });
 
   it("expands analysis notes on click", () => {
@@ -153,7 +153,7 @@ describe("ExtractionReview", () => {
     );
 
     // Click to expand notes
-    fireEvent.click(screen.getByText("AI Analysis Notes"));
+    fireEvent.click(screen.getByText("kb.extractionAnalysisNotes"));
 
     // Notes content should now be visible
     expect(screen.getByText(notes)).toBeDefined();
@@ -171,7 +171,7 @@ describe("ExtractionReview", () => {
       />,
     );
 
-    expect(screen.queryByText("AI Analysis Notes")).toBeNull();
+    expect(screen.queryByText("kb.extractionAnalysisNotes")).toBeNull();
   });
 
   it("renders no item cards when items array is empty", () => {

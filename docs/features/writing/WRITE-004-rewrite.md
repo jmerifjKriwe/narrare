@@ -1,7 +1,7 @@
 ---
 id: WRITE-004
 title: "AI: Rewrite Selection"
-status: in-progress
+status: stable
 area: writing
 mvp: false
 
@@ -59,9 +59,9 @@ ui_help_long: |
   content. Always review to ensure your intent is preserved.
 ui_available_in: [editor]
 
-service: writing/draft_service.py
-contract: writing/contracts.py#DraftServiceProtocol
-router: writing/router.py
+service: writing/rewrite_service.py
+contract: writing/contracts_rewrite.py#RewriteServiceProtocol
+router: writing/router_rewrite.py
 prompt: core/prompts/_bundled/writing/en/rewrite_selection
 requires: [INFRA-001, INFRA-002, KB-001]
 ---

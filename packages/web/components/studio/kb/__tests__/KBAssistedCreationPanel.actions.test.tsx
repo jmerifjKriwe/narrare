@@ -1,14 +1,11 @@
 /**
- * KBAssistedCreationPanel tests — Main container for AI-assisted KB entry creation.
+ * KBAssistedCreationPanel tests — Session actions.
  *
- * Tests the session lifecycle and view routing by mocking the hooks layer:
- * - Loading state during session creation
- * - Error state on creation failure
- * - Field list after successful creation
- * - Interview view
- * - Enhance review view
- * - Complete & Save
- * - Abandon with confirmation
+ * Tests the panel's session-level actions:
+ * - Abandon flow (confirm dialog, confirm, cancelling confirm)
+ * - Complete & Save flow
+ * - Cancel button
+ * - Abandoning pending state
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -20,8 +17,6 @@ import { KBAssistedCreationPanel } from "@/components/studio/kb/KBAssistedCreati
 // Mocks — hook layer
 // ---------------------------------------------------------------------------
 
-// Create mutable state objects that the mock will reference.
-// We update these before each test to control hook behavior.
 const mockHooks = {
   createSession: {
     mutate: vi.fn(),
@@ -69,7 +64,6 @@ vi.mock("@/lib/hooks/useKBSessions", () => ({
   useKBSessionEnhance: () => mockHooks.enhance,
 }));
 
-// Also mock sub-components to isolate panel logic
 vi.mock("@/components/studio/kb/KBInterviewView", () => ({
   KBInterviewView: ({
     onBack,
@@ -191,13 +185,12 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Tests — Session Actions
 // ---------------------------------------------------------------------------
 
-describe("KBAssistedCreationPanel", () => {
+describe("KBAssistedCreationPanel — Session Actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset mock state to default (loading → will resolve to session data)
     mockHooks.createSession = {
       mutate: vi.fn(
         (_entityType: string, options?: { onSuccess?: (s: typeof mockSessionData) => void }) => {
@@ -221,204 +214,6 @@ describe("KBAssistedCreationPanel", () => {
     cleanup();
   });
 
-  it("shows loading state while creating session", () => {
-    // Make session loading (no data yet, create not called)
-    mockHooks.session = { data: null, isLoading: true };
-    // Keep create as pending
-    mockHooks.createSession = {
-      mutate: vi.fn(),
-      isPending: true,
-      isError: false,
-      error: null,
-    };
-
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    // Should show the loading state with creating session text
-    expect(screen.getByText("kb.creatingSession")).toBeDefined();
-  });
-
-  it("shows field list after session created", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    // Should show the field list with AI-Assisted Creation title
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-
-    // Should show entity type
-    await waitFor(() => {
-      expect(screen.getByText("kb.characters")).toBeDefined();
-    });
-  });
-
-  it("shows session status badge", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.statusActive")).toBeDefined();
-    });
-  });
-
-  it("shows 'Complete & Save' button after session loaded", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.completeAndSave")).toBeDefined();
-    });
-  });
-
-  it("shows error state on creation failure", async () => {
-    mockHooks.createSession = {
-      mutate: vi.fn(),
-      isPending: false,
-      isError: true,
-      error: new Error("Failed to create session"),
-    };
-    mockHooks.session = { data: null, isLoading: false };
-
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Failed to create session")).toBeDefined();
-    });
-
-    // Cancel button should be visible in error state
-    expect(screen.getByText("kb.cancel")).toBeDefined();
-  });
-
-  it("'Cancel' button in error state calls onCancel", async () => {
-    const onCancel = vi.fn();
-    mockHooks.createSession = {
-      mutate: vi.fn(),
-      isPending: false,
-      isError: true,
-      error: new Error("Creation failed"),
-    };
-    mockHooks.session = { data: null, isLoading: false };
-
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} onCancel={onCancel} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Creation failed")).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByText("kb.cancel"));
-    expect(onCancel).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows progress bar in field list view", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      // Progress text appears in both header and field list
-      const progressTexts = screen.getAllByText("kb.sessionProgress");
-      expect(progressTexts.length).toBeGreaterThan(0);
-    });
-
-    // Progress bar should render (purple progress div)
-    const barElements = document.querySelectorAll(".bg-purple-500");
-    expect(barElements.length).toBeGreaterThan(0);
-  });
-
-  it("'Start Interview' switches to interview view", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-
-    // Click the first "Start Interview" button (field list section)
-    const interviewButtons = screen.getAllByText("kb.startInterview");
-    fireEvent.click(interviewButtons[0]);
-
-    // Should show interview mode (mocked sub-component)
-    await waitFor(() => {
-      expect(screen.getByTestId("interview-view")).toBeDefined();
-    });
-  });
-
-  it("footer 'Start Interview' switches to interview view", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-
-    // Click footer "Start Interview" (last one)
-    const interviewButtons = screen.getAllByText("kb.startInterview");
-    fireEvent.click(interviewButtons[interviewButtons.length - 1]);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("interview-view")).toBeDefined();
-    });
-  });
-
-  it("'Enhance All' switches to enhance view", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-
-    // Click the first "Enhance All" button (field list section)
-    const enhanceButtons = screen.getAllByText("kb.enhanceAll");
-    fireEvent.click(enhanceButtons[0]);
-
-    // Should show enhance view (mocked sub-component)
-    await waitFor(() => {
-      expect(screen.getByTestId("enhance-view")).toBeDefined();
-    });
-  });
-
-  it("'Back' from interview returns to field list", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-
-    // Go to interview
-    const interviewButtons = screen.getAllByText("kb.startInterview");
-    fireEvent.click(interviewButtons[0]);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("interview-view")).toBeDefined();
-    });
-
-    // Click Back in interview
-    fireEvent.click(screen.getByTestId("interview-back"));
-
-    // Should be back to field list view
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-  });
-
-  it("'Back' from enhance returns to field list", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-
-    // Go to enhance
-    const enhanceButtons = screen.getAllByText("kb.enhanceAll");
-    fireEvent.click(enhanceButtons[enhanceButtons.length - 1]);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("enhance-view")).toBeDefined();
-    });
-
-    // Click Back in enhance
-    fireEvent.click(screen.getByTestId("enhance-back"));
-
-    // Should be back to field list view
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-  });
-
   it("'Abandon' button shows confirm dialog on first click", async () => {
     renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
 
@@ -428,7 +223,6 @@ describe("KBAssistedCreationPanel", () => {
 
     fireEvent.click(screen.getByText("kb.abandon"));
 
-    // Should show confirm dialog
     expect(screen.getByText("kb.confirmAbandon")).toBeDefined();
     expect(screen.getByText("kb.confirm")).toBeDefined();
   });
@@ -440,26 +234,19 @@ describe("KBAssistedCreationPanel", () => {
       expect(screen.getByText("kb.abandon")).toBeDefined();
     });
 
-    // Show confirm
     fireEvent.click(screen.getByText("kb.abandon"));
     expect(screen.getByText("kb.confirmAbandon")).toBeDefined();
 
-    // Click cancel to dismiss (the cancel button inside the confirm dialog)
-    // The confirm dialog has "Cancel" and "Confirm" buttons
     const cancelButtons = screen.getAllByText("kb.cancel");
-    // The dialog cancel is the first cancel button rendered when confirm is shown
-    // It's in a specific div within the header
     const confirmCancel = cancelButtons.find(
       (btn) => btn.closest('[class*="gap-2 text-sm"]') !== null,
     );
     if (confirmCancel) {
       fireEvent.click(confirmCancel);
     } else {
-      // Fallback: click the abandon button again to toggle
       fireEvent.click(screen.getByText("kb.abandon"));
     }
 
-    // Should not show confirm anymore
     await waitFor(() => {
       expect(screen.queryByText("kb.confirmAbandon")).toBeNull();
     });
@@ -480,14 +267,11 @@ describe("KBAssistedCreationPanel", () => {
       expect(screen.getByText("kb.abandon")).toBeDefined();
     });
 
-    // Click abandon to show confirm
     fireEvent.click(screen.getByText("kb.abandon"));
     expect(screen.getByText("kb.confirmAbandon")).toBeDefined();
 
-    // Click confirm to abandon
     fireEvent.click(screen.getByText("kb.confirm"));
 
-    // Abandon succeeds and calls onCancel
     await waitFor(() => {
       expect(onCancel).toHaveBeenCalledTimes(1);
     });
@@ -511,14 +295,11 @@ describe("KBAssistedCreationPanel", () => {
       expect(screen.getByText("kb.completeAndSave")).toBeDefined();
     });
 
-    // Fill in entry name (required for button to be enabled)
     const nameInput = screen.getByLabelText("kb.entry_name") as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: "Test Character Name" } });
 
-    // Click Complete & Save
     fireEvent.click(screen.getByText("kb.completeAndSave"));
 
-    // Should complete and call onComplete with entry_id
     await waitFor(() => {
       expect(onComplete).toHaveBeenCalledTimes(1);
       expect(onComplete).toHaveBeenCalledWith(testEntryId);
@@ -526,11 +307,10 @@ describe("KBAssistedCreationPanel", () => {
   });
 
   it("'Complete & Save' is disabled when no fields filled", async () => {
-    // Session with all empty fields
     mockHooks.session = {
       data: {
         ...mockSessionData,
-        fields: [mockField()], // name field with no values
+        fields: [mockField()],
       },
       isLoading: false,
     };
@@ -543,18 +323,6 @@ describe("KBAssistedCreationPanel", () => {
     });
   });
 
-  it("renders entity icon for different entity types", async () => {
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} entityType="location" />);
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("kb.locations")).toBeDefined();
-    });
-  });
-
   it("handles cancel by calling onCancel", async () => {
     const onCancel = vi.fn();
     renderWithProviders(<KBAssistedCreationPanel {...defaultProps} onCancel={onCancel} />);
@@ -563,7 +331,6 @@ describe("KBAssistedCreationPanel", () => {
       expect(screen.getByText("kb.aiAssistedCreation")).toBeDefined();
     });
 
-    // Click the cancel button in the footer (last cancel button)
     const cancelButtons = screen.getAllByText("kb.cancel");
     const footerCancel = cancelButtons[cancelButtons.length - 1];
     fireEvent.click(footerCancel);
@@ -572,7 +339,6 @@ describe("KBAssistedCreationPanel", () => {
   });
 
   it("shows 'Abandoning...' state while abandoning", async () => {
-    // Set isPending to true so the confirm button shows "Abandoning..."
     mockHooks.abandonSession = {
       mutate: vi.fn(),
       isPending: true,
@@ -584,10 +350,8 @@ describe("KBAssistedCreationPanel", () => {
       expect(screen.getByText("kb.abandon")).toBeDefined();
     });
 
-    // Trigger confirm dialog
     fireEvent.click(screen.getByText("kb.abandon"));
 
-    // Since isPending is true, the confirm button shows "kb.abandoning" directly
     await waitFor(() => {
       expect(screen.getByText("kb.abandoning")).toBeDefined();
     });

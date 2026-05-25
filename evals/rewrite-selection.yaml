@@ -1,0 +1,279 @@
+# WRITE-004 Rewrite Selection — Promptfoo Eval Baseline
+#
+# Self-contained eval config for rewrite selection quality.
+# Run: npx promptfoo eval -c evals/rewrite-selection.yaml
+#
+# Evaluates:
+# 1. Rewrite produces coherent alternative text
+# 2. Rewrite respects mode (tone, style, voice, fix, custom)
+# 3. Rewrite preserves semantic meaning of original
+# 4. Multiple alternatives are distinct from each other
+# 5. Custom instructions are followed
+#
+# See also: evals/testcases/writing-rewrite.yaml (prompt-template-focused tests)
+
+description: "WRITE-004 Rewrite Selection — Eval Baseline"
+
+providers:
+  - id: "openai:gpt-4o-mini"
+    label: "rewrite-baseline"
+
+defaultTest:
+  options:
+    run: 3
+
+tests:
+  # -----------------------------------------------------------------------
+  # 1. Coherent alternative text
+  # -----------------------------------------------------------------------
+
+  - description: "Rewrite — produces coherent alternative for atmospheric prose"
+    vars:
+      selection_text: |
+        The old house stood at the end of the lane, its windows dark and unseeing. A cold wind blew through the broken shutters, carrying the smell of wet earth and something older — something that had been here long before the house was built.
+      context_before: "Maren pulled her coat tighter and started up the gravel path."
+      context_after: "She pushed the door open. The hinges screamed."
+    prompt: |
+      You are a precise text revision specialist. Rewrite the provided text selection while preserving the author's voice and the established atmosphere.
+
+      Text before selection:
+      {{context_before}}
+
+      Selection to rewrite:
+      {{selection_text}}
+
+      Text after selection:
+      {{context_after}}
+
+      Rewrite mode: Adjust the emotional language, pacing, and word choice to make the passage more dramatic. Build tension through heightened emotional stakes and vivid imagery while preserving the underlying meaning and narrative structure.
+
+      Word target: approximately the same length as the original.
+      Tone: dramatic, tense. Language: English.
+
+      Output the rewritten text wrapped in <alternative> tags:
+      <alternative label="Descriptive label for this version">
+      [Rewritten text here]
+      </alternative>
+
+      Rules:
+      - Do NOT add meta-commentary or explanations
+      - Do NOT repeat the surrounding context
+      - Match the rhythm and register of the surrounding text
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the rewritten text on these criteria:
+          1. Is it a coherent, well-written passage that could replace the original?
+          2. Does it maintain the same narrative perspective (third person)?
+          3. Does it avoid meta-commentary like "Here is the rewritten text"?
+          4. Is the prose quality comparable to the original?
+          5. Is it wrapped in an <alternative> tag?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  # -----------------------------------------------------------------------
+  # 2. Mode adherence — tone shift (dramatic)
+  # -----------------------------------------------------------------------
+
+  - description: "Rewrite — tone mode shifts to dramatic without changing content"
+    vars:
+      selection_text: |
+        She walked to the window and looked out. The rain was falling softly. She thought about the letter and what it meant for her future. Everything seemed uncertain now.
+    prompt: |
+      You are a precise text revision specialist. Rewrite the selection to be more dramatic.
+
+      Selection to rewrite:
+      {{selection_text}}
+
+      Rewrite mode: Adjust the emotional language, pacing, and word choice to make the passage more dramatic. Build tension through heightened emotional stakes and vivid imagery while preserving the underlying meaning.
+
+      Language: English. Output in <alternative> tags with a label.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the rewritten text:
+          1. Is the tone more dramatic than the original (which is flat and understated)?
+          2. Does it preserve the same events (walking to window, looking at rain, thinking about letter)?
+          3. Does it avoid changing the narrative perspective?
+          4. Is the emotional register heightened without becoming melodramatic?
+          5. Is it in <alternative> tags?
+        threshold: 0.7
+      - type: not-contains
+        value: "She walked to the window and looked out"
+
+  # -----------------------------------------------------------------------
+  # 3. Mode adherence — show-don't-tell fix
+  # -----------------------------------------------------------------------
+
+  - description: "Rewrite — fix mode converts telling into showing"
+    vars:
+      selection_text: |
+        She felt nervous about the meeting. The stranger had said noon, but it was already past that. She was worried he wouldn't come. She thought about leaving but decided to wait. The ale in front of her was getting warm.
+    prompt: |
+      You are a precise text revision specialist. Fix the selection using show-don't-tell techniques.
+
+      Selection to rewrite:
+      {{selection_text}}
+
+      Rewrite mode: Apply show-don't-tell techniques, remove redundancies, strengthen weak verbs, and fix awkward phrasing. Improve clarity and impact without changing the meaning.
+
+      Language: English. Output in <alternative> tags with a label.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the rewritten text:
+          1. Does it convert "felt nervous" and "was worried" into concrete actions or sensory details?
+          2. Does it replace weak verbs (was, felt, thought about) with stronger ones?
+          3. Does it show the character's anxiety through behavior rather than stating it?
+          4. Does it keep the same setting (waiting for someone, ale getting warm)?
+          5. Is it in <alternative> tags?
+        threshold: 0.7
+      - type: not-contains
+        value: "felt nervous"
+      - type: not-contains
+        value: "was worried"
+
+  # -----------------------------------------------------------------------
+  # 4. Mode adherence — style change (simplify)
+  # -----------------------------------------------------------------------
+
+  - description: "Rewrite — style mode simplifies ornate prose"
+    vars:
+      selection_text: |
+        The ballroom shimmered like the inside of a geode, every surface catching and fracturing the candlelight into a thousand prismatic fragments. Isabelle's gown — a deep burgundy silk that whispered against the marble floor with each step — drew glances like a lodestone draws iron filings.
+    prompt: |
+      You are a precise text revision specialist. Simplify the selection.
+
+      Selection to rewrite:
+      {{selection_text}}
+
+      Rewrite mode: Modify sentence structure and descriptive density to simplify the prose. Use shorter sentences and more direct language while keeping the content intact.
+
+      Language: English. Output in <alternative> tags with a label.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the rewritten text:
+          1. Is it noticeably simpler and more direct than the original ornate prose?
+          2. Does it still convey the same key information (ballroom, candlelight, Isabelle's gown)?
+          3. Are sentences generally shorter and less elaborate?
+          4. Does it avoid stripping away all description (still evocative, just less ornate)?
+          5. Is it in <alternative> tags?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  # -----------------------------------------------------------------------
+  # 5. Mode adherence — voice matching (character speech patterns)
+  # -----------------------------------------------------------------------
+
+  - description: "Rewrite — voice mode applies terse character voice"
+    vars:
+      selection_text: |
+        "I don't think we should proceed with this plan. It seems quite dangerous and I have concerns about our safety. Perhaps we should reconsider our approach and find an alternative solution."
+      character_profile: |
+        Kira — Speaks tersely, clipped sentences, uses contractions. Never hedges. Military background. Says what she means in the fewest words possible.
+    prompt: |
+      You are a precise text revision specialist. Rewrite the dialogue in the character's voice.
+
+      Selection to rewrite:
+      {{selection_text}}
+
+      Character voice profile:
+      {{character_profile}}
+
+      Rewrite mode: Rewrite using the character's established speech patterns. The rewritten dialogue should sound as if the character themselves spoke it.
+
+      Language: English. Output in <alternative> tags with a label.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the rewritten text:
+          1. Is the dialogue terse and clipped rather than formal and hedging?
+          2. Does it eliminate hedging phrases like "I think", "perhaps", "quite"?
+          3. Does it use contractions and short sentences?
+          4. Does it preserve the core meaning (objection to the plan due to danger)?
+          5. Is it in <alternative> tags?
+        threshold: 0.7
+      - type: not-contains
+        value: "Perhaps we should"
+      - type: not-contains
+        value: "I don't think we should proceed"
+
+  # -----------------------------------------------------------------------
+  # 6. Multiple alternatives are distinct
+  # -----------------------------------------------------------------------
+
+  - description: "Rewrite — produces 2 distinct alternatives"
+    vars:
+      selection_text: |
+        The sunset painted the sky in shades of orange and pink. Birds called to each other from the trees. The day was ending, and with it, the last chance to say what needed to be said.
+    prompt: |
+      You are a precise text revision specialist. Generate 2 distinct rewrites of the selection.
+
+      Selection to rewrite:
+      {{selection_text}}
+
+      Rewrite mode: Create two different rewrites. One should be more contemplative and introspective. The other should be more urgent and tense.
+
+      You MUST produce exactly 2 alternatives, each wrapped in <alternative> tags with a descriptive label:
+
+      <alternative label="Contemplative version">
+      [First rewrite here]
+      </alternative>
+      <alternative label="Urgent version">
+      [Second rewrite here]
+      </alternative>
+
+      Language: English.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the output:
+          1. Are there exactly 2 <alternative> blocks?
+          2. Are the two alternatives noticeably different in tone (one contemplative, one urgent)?
+          3. Do both preserve the same core events (sunset, birds, last chance)?
+          4. Do both maintain third-person perspective?
+          5. Does each have a descriptive label?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  # -----------------------------------------------------------------------
+  # 7. Semantic meaning preserved under custom instructions
+  # -----------------------------------------------------------------------
+
+  - description: "Rewrite — custom instructions followed while preserving meaning"
+    vars:
+      selection_text: |
+        The market was busy. Vendors shouted prices at anyone who walked past. The smell of spices mixed with the less pleasant odors of the livestock section. Elena moved through the crowd quickly, keeping one hand on her coin purse.
+    prompt: |
+      You are a precise text revision specialist. Rewrite the selection following the author's custom instructions.
+
+      Selection to rewrite:
+      {{selection_text}}
+
+      Custom instructions: Add more sensory details — focus on sounds and textures. Make the market feel more alive and chaotic. Keep the same events but enrich the sensory experience.
+
+      Language: English. Output in <alternative> tags with a label.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the rewritten text:
+          1. Does it include more sensory details (sounds, textures) than the original?
+          2. Does the market feel more alive and chaotic?
+          3. Does it preserve the same events (vendors shouting, spices, livestock, Elena with coin purse)?
+          4. Does it avoid changing the narrative perspective or adding new events?
+          5. Is it in <alternative> tags?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
