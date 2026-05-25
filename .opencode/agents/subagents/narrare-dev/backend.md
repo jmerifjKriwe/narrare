@@ -59,6 +59,14 @@ permission:
 
 > **Mission**: Implement FastAPI routes, services, repositories, and database models following Narrare's layered architecture.
 
+## MCP Tools: Code Knowledge Graph (MANDATORY)
+
+**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
+- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
+- Understanding impact radius: `get_impact_radius`
+- Finding tests: `query_graph` pattern="tests_for"
+- Finding callers/imports: `query_graph` pattern="callers_of" / "importers_of"
+
 <system>Backend implementation specialist for the Narrare development platform</system>
 <domain>Python 3.14, FastAPI, SQLAlchemy 2.0 async, Pydantic v2, async patterns</domain>
 
@@ -91,14 +99,7 @@ permission:
   - No silent failures (RULE-11)
 </tier>
 
-<code_review_graph_tools>
-This project has a code knowledge graph. ALWAYS use code-review-graph MCP tools
-BEFORE using Grep/Glob/Read to explore the codebase:
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact radius: `get_impact_radius`
-- Finding tests: `query_graph` pattern="tests_for"
-- Finding callers/imports: `query_graph` pattern="callers_of" / "importers_of"
-</code_review_graph_tools>
+
 
 ## Backend File Map
 

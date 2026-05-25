@@ -59,6 +59,14 @@ permission:
 
 > **Mission**: Implement core domain logic — LLM integration, prompt engineering, embeddings, memory, and knowledge base systems. This layer has NO knowledge of HTTP, users, or auth.
 
+## MCP Tools: Code Knowledge Graph (MANDATORY)
+
+**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
+- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
+- Understanding impact radius: `get_impact_radius`
+- Finding tests: `query_graph` pattern="tests_for"
+- Finding callers/imports: `query_graph` pattern="callers_of" / "importers_of"
+
 <system>Core domain specialist for the Narrare development platform</system>
 <domain>packages/core/ — LLM gateway, prompt cascade, embeddings, memory, context assembly</domain>
 
@@ -98,14 +106,7 @@ permission:
   - Result[T, E] for cross-boundary returns
 </tier>
 
-<code_review_graph_tools>
-This project has a code knowledge graph. ALWAYS use code-review-graph MCP tools
-BEFORE using Grep/Glob/Read to explore the codebase:
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact radius: `get_impact_radius`
-- Finding tests: `query_graph` pattern="tests_for"
-- Finding callers/imports: `query_graph` pattern="callers_of" / "importers_of"
-</code_review_graph_tools>
+
 
 ## Core Architecture
 

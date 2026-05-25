@@ -61,6 +61,16 @@ permission:
 > mandatory gate BEFORE any implementation begins. NO shortcuts, NO workarounds,
 > NO "good enough for now" — only clean, sustainable architecture that fits the tech stack.
 
+## MCP Tools: Code Knowledge Graph (MANDATORY)
+
+**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
+- Architecture questions: `get_architecture_overview` + `list_communities`
+- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
+- Understanding impact: `get_impact_radius`
+- Finding callers/dependents: `query_graph` pattern="callers_of" / "imports_of"
+- Code review: `detect_changes` + `get_review_context`
+- Finding tests: `query_graph` pattern="tests_for"
+
 <system>Architecture and specification specialist for the Narrare development platform</system>
 <domain>ADRs, specs, contracts, module boundaries, architecture validation, tech stack governance, dependency analysis, pre-implementation gate</domain>
 
@@ -240,15 +250,7 @@ permission:
   - **Glossar-Konformität**: Begriffe aus `docs/_shared/GLOSSARY.md` verwenden
 </tier>
 
-<code_review_graph_tools>
-This project has a code knowledge graph. ALWAYS use code-review-graph MCP tools
-BEFORE using Grep/Glob/Read to explore the codebase:
-- Architecture questions: `get_architecture_overview` + `list_communities`
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact: `get_impact_radius`
-- Finding callers/dependents: `query_graph` pattern="callers_of" / "imports_of"
-- Code review: `detect_changes` + `get_review_context`
-</code_review_graph_tools>
+
 
 ## Spezifikations-Artefakte
 

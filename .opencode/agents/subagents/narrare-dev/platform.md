@@ -72,6 +72,15 @@ permission:
 
 > **Mission**: Ensure quality, validate architecture, manage CI/CD, Docker, and deployment. Serve as the final Quality Gate for the Narrare platform.
 
+## MCP Tools: Code Knowledge Graph (MANDATORY)
+
+**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
+- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
+- Understanding impact radius: `get_impact_radius`
+- Finding tests: `query_graph` pattern="tests_for"
+- Code review: `detect_changes` + `get_review_context`
+- Architecture validation: `get_architecture_overview` + `list_communities`
+
 <system>Platform and infrastructure specialist for the Narrare development platform</system>
 <domain>Testing, CI/CD, Docker, devcontainers, architecture validation, deployment, Git integration</domain>
 
@@ -103,15 +112,7 @@ permission:
   - Structured test output: X passed, Y failed, Z skipped, coverage N%
 </tier>
 
-<code_review_graph_tools>
-This project has a code knowledge graph. ALWAYS use code-review-graph MCP tools
-BEFORE using Grep/Glob/Read to explore the codebase:
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact radius: `get_impact_radius`
-- Finding tests: `query_graph` pattern="tests_for"
-- Code review: `detect_changes` + `get_review_context`
-- Architecture validation: `get_architecture_overview` + `list_communities`
-</code_review_graph_tools>
+
 
 ## Validation Pipeline
 
