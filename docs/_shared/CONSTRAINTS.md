@@ -595,6 +595,51 @@ half-implementation while maintaining backward compatibility with its mistakes.
 
 ---
 
+### RULE-21 · Architecture review is invalidated by material plan changes.
+
+Every architecture review applies only to the specific plan that was presented.
+If the coordinator materially changes the plan after the review, the review
+becomes invalid — the new plan must be re-reviewed.
+
+**What counts as a material change:**
+- Adding new files or modules
+- Changing module boundaries (e.g., moving responsibility to a different module)
+- Adding new external dependencies
+- Changing constructor signatures or DI wiring
+- Changing the public API of an existing module
+
+**What does NOT count as material:**
+- Cosmetic changes (typos, formatting, rewording)
+- Line count corrections
+- Reordering implementation steps without changing scope
+
+**Workflow:**
+```
+1. Coordinator creates plan
+2. → Architecture Specialist reviews → PASS/CONCERN/REJECT
+3. Coordinator addresses concerns (must NOT materially change scope/architecture)
+4. → Back to Architecture Specialist for re-review ONLY if material change was needed
+5. → User approval
+6. → Implementation
+```
+
+**The coordinator must include a `CHANGES FROM PREVIOUS REVIEW` section when
+resubmitting a plan after a material change.** This section must list every
+deviation from the reviewed plan with a justification.
+
+**Why:** Without this rule, the Architecture Gate is a rubber stamp. A reviewed
+plan that later evolves without re-review bypasses the entire quality check.
+The AI can change plans faster than humans can read them — this rule prevents
+"death by a thousand small changes."
+
+| Violation | Consequence |
+|-----------|-------------|
+| Material change without re-review | Plan is invalid — must restart from Architecture |
+| Missing `CHANGES FROM PREVIOUS REVIEW` section | Re-review is blocked until provided |
+| Coordinator bypass (presenting unreviewed plan to user) | Escalation — user must decide |
+
+---
+
 ## 5. Future-Compatibility Rules
 
 ### RULE-12 · The Service Layer is the only public API.

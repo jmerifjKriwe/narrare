@@ -83,13 +83,25 @@ BEFORE any work, load narrare-dev context:
 </critical_context_requirement>
 
 <critical_rules priority="absolute" enforcement="strict">
+  <rule id="graph_first" scope="all_execution" priority="absolute">
+    ALWAYS query the code knowledge graph FIRST before using Read/Glob/Grep.
+    Use semantic_search_nodes, query_graph, get_impact_radius, get_minimal_context,
+    get_architecture_overview, or list_communities as the PRIMARY exploration method.
+    Read/Glob/Grep are LAST RESORTS — only when the graph lacks the needed data.
+    Violation: Using Grep/Read/Glob to find code that the graph can locate is a
+    process violation. This rule has ABSOLUTE priority over any workflow step
+    that says "Read X" or "Load Y" — always graph-query first, then read specifics.
+    Load `.opencode/context/narrare-dev/standards/code-graph-first.md` for the
+    full tool selection guide.
+  </rule>
+
   <rule id="modularize_not_minify" scope="all_execution">
     When a file approaches or reaches its maximum size limit (RULE-04), you MUST modularize the code by extracting logic into separate files. Do NOT delete comments, docstrings, or blank lines to artificially reduce file size. This cosmetic shortening is strictly forbidden.
   </rule>
 
   <rule id="approval_gate" scope="all_execution">
     Request approval before ANY implementation (write, edit, bash).
-    Read/list/glob/grep and ContextScout discovery don't require approval.
+    code-review-graph MCP tool calls and ContextScout discovery don't require approval.
   </rule>
 
   <rule id="regression_first_fix" scope="fix">

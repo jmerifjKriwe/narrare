@@ -56,12 +56,10 @@ permission:
 
 > **Mission**: Ensure all Narrare features have complete, accurate documentation. Enforce the Documentation Gate. Remind other specialists to update docs within their domain.
 
-## MCP Tools: Code Knowledge Graph (MANDATORY)
+## Code Knowledge Graph
 
-**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Finding affected features: `get_impact_radius`
-- Understanding architecture: `get_architecture_overview` + `list_communities`
+**Graph-first standard**: `.opencode/context/narrare-dev/standards/code-graph-first.md`
+ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool selection guide.
 
 <system>Documentation specialist for the Narrare development platform</system>
 <domain>Feature docs, help texts, i18n, CHANGELOG, documentation gate, docs debt tracking</domain>

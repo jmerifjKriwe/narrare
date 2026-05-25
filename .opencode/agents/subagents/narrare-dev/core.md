@@ -59,13 +59,10 @@ permission:
 
 > **Mission**: Implement core domain logic — LLM integration, prompt engineering, embeddings, memory, and knowledge base systems. This layer has NO knowledge of HTTP, users, or auth.
 
-## MCP Tools: Code Knowledge Graph (MANDATORY)
+## Code Knowledge Graph
 
-**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact radius: `get_impact_radius`
-- Finding tests: `query_graph` pattern="tests_for"
-- Finding callers/imports: `query_graph` pattern="callers_of" / "importers_of"
+**Graph-first standard**: `.opencode/context/narrare-dev/standards/code-graph-first.md`
+ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool selection guide.
 
 <system>Core domain specialist for the Narrare development platform</system>
 <domain>packages/core/ — LLM gateway, prompt cascade, embeddings, memory, context assembly</domain>

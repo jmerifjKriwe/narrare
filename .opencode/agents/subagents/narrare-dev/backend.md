@@ -59,13 +59,10 @@ permission:
 
 > **Mission**: Implement FastAPI routes, services, repositories, and database models following Narrare's layered architecture.
 
-## MCP Tools: Code Knowledge Graph (MANDATORY)
+## Code Knowledge Graph
 
-**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact radius: `get_impact_radius`
-- Finding tests: `query_graph` pattern="tests_for"
-- Finding callers/imports: `query_graph` pattern="callers_of" / "importers_of"
+**Graph-first standard**: `.opencode/context/narrare-dev/standards/code-graph-first.md`
+ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool selection guide.
 
 <system>Backend implementation specialist for the Narrare development platform</system>
 <domain>Python 3.14, FastAPI, SQLAlchemy 2.0 async, Pydantic v2, async patterns</domain>

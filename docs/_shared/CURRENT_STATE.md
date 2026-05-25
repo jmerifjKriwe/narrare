@@ -12,7 +12,7 @@
 
 Date: 2026-05-25
 Updated by: NarrareDevCoordinator
-Session summary: KB-002 Assisted Creation Backend committed (281df89). KBSessionService with Redis-backed store, KBAssistService orchestrator, 8 REST endpoints + SSE, template field extraction, 99 tests. Fixed import errors (schemas → assist_contracts), type fixes (model_copy, UUID params), RULE-04 compliance (test split, file size limits). Architecture check clean.
+Session summary: Alle 4 Restaufgaben erledigt. Task 3 (complete→save, 6ab7475): session_mapper.py erstellt KB-Entry aus Session-Feldern vor Status-Change. Task 2+2b (ModelRegistry+Redis, e8a5160): KBAssistService auf registry+config umgestellt, TestModel und InMemorySessionCache ersetzt. Task 1 (KB-007 Extraction API, 299620e): ExtractionService + Router für Kapitel→KB-Extraktion. RULE-21 eingeführt: Architecture Review bei materiellen Planänderungen ungültig. 366 Tests (147 KB + 23 cache + 196 core/api).
 
 ---
 

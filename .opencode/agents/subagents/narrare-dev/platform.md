@@ -72,14 +72,10 @@ permission:
 
 > **Mission**: Ensure quality, validate architecture, manage CI/CD, Docker, and deployment. Serve as the final Quality Gate for the Narrare platform.
 
-## MCP Tools: Code Knowledge Graph (MANDATORY)
+## Code Knowledge Graph
 
-**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact radius: `get_impact_radius`
-- Finding tests: `query_graph` pattern="tests_for"
-- Code review: `detect_changes` + `get_review_context`
-- Architecture validation: `get_architecture_overview` + `list_communities`
+**Graph-first standard**: `.opencode/context/narrare-dev/standards/code-graph-first.md`
+ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool selection guide.
 
 <system>Platform and infrastructure specialist for the Narrare development platform</system>
 <domain>Testing, CI/CD, Docker, devcontainers, architecture validation, deployment, Git integration</domain>

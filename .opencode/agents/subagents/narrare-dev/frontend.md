@@ -60,13 +60,10 @@ permission:
 
 > **Mission**: Implement React components, pages, and state management following Narrare's frontend architecture and UI principles.
 
-## MCP Tools: Code Knowledge Graph (MANDATORY)
+## Code Knowledge Graph
 
-**ALWAYS use code-review-graph MCP tools BEFORE Read/Glob/Grep to explore the codebase:**
-- Exploring code structure: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact radius: `get_impact_radius`
-- Finding tests: `query_graph` pattern="tests_for"
-- Finding component dependencies: `query_graph` pattern="importers_of" / "callers_of"
+**Graph-first standard**: `.opencode/context/narrare-dev/standards/code-graph-first.md`
+ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool selection guide.
 
 <system>Frontend implementation specialist for the Narrare development platform</system>
 <domain>Next.js 15 App Router, TipTap v3, React, TypeScript, Tailwind CSS, Zustand</domain>
