@@ -1230,6 +1230,7 @@
     "askMoreQuestions": "Ask More Questions",
     "backToOverview": "Back to Overview",
     "enhanceAll": "Enhance All",
+    "enhancementsFound": "{count, plural, one {# amélioration trouvée} other {# améliorations trouvées}}",
     "enhanceReview": "Enhance Review",
     "aiEnhancing": "AI is enhancing your entry...",
     "aiEnhancingDesc": "The AI is reviewing and enhancing your entry...",
