@@ -6,7 +6,7 @@
  * Shows search bar, "New Entry" button, and filtered entry cards.
  */
 
-import { ChevronRight, Plus, Search } from "lucide-react";
+import { ChevronRight, Plus, Search, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { KBEntityType, KBEntry } from "@/lib/api/kb";
@@ -21,6 +21,7 @@ interface KBEntryListProps {
   activeType: KBEntityType | null;
   onSelectEntry: (entryId: string) => void;
   onCreateNew: () => void;
+  onCreateAssisted: () => void;
 }
 
 export function KBEntryList({
@@ -31,6 +32,7 @@ export function KBEntryList({
   activeType,
   onSelectEntry,
   onCreateNew,
+  onCreateAssisted,
 }: KBEntryListProps) {
   const t = useTranslations("studio");
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,6 +57,14 @@ export function KBEntryList({
         >
           <Plus className="w-4 h-4" />
           <span>{t("kb.newEntry")}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onCreateAssisted}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 rounded-md hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors text-sm"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>{t("kb.newWithAI")}</span>
         </button>
         <div className="relative">
           <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
