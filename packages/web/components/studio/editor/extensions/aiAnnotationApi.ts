@@ -224,6 +224,74 @@ export function rejectMark(
   }
 }
 
+/** Replace an editor selection range with AI-generated text wrapped in a pending mark. */
+export function replaceSelectionWithAIContent(
+  editor: Editor,
+  requestId: string,
+  source: "extend" | "rewrite" | "unblock",
+  newText: string,
+  from: number,
+  to: number,
+): void {
+  if (editor.isDestroyed) return;
+
+  // Single-pending-mark constraint: resolve any existing pending mark first
+  resolveAllPendingMarks(editor, null);
+
+  const attrs: AIAnnotationAttrs = {
+    requestId,
+    source,
+    originalText: newText,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
+
+  const markType = editor.state.schema.marks.aiGenerated;
+  if (!markType) return;
+
+  const mark = markType.create(attrs);
+  const { tr } = editor.state;
+
+  // Single atomic transaction: delete range, insert new text with mark
+  tr.delete(from, to);
+  tr.insertText(newText, from);
+  tr.addMark(from, from + newText.length, mark);
+  editor.view.dispatch(tr);
+  editor.commands.setTextSelection(from + newText.length);
+}
+
+/** Insert AI content at a specific position (used for "Insert as new" action). */
+export function insertAIContentAt(
+  editor: Editor,
+  requestId: string,
+  source: "extend" | "rewrite" | "unblock",
+  text: string,
+  position: number,
+): void {
+  if (editor.isDestroyed) return;
+
+  // Single-pending-mark constraint: resolve any existing pending mark first
+  resolveAllPendingMarks(editor, null);
+
+  const attrs: AIAnnotationAttrs = {
+    requestId,
+    source,
+    originalText: text,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
+
+  const markType = editor.state.schema.marks.aiGenerated;
+  if (!markType) return;
+
+  const mark = markType.create(attrs);
+  const { tr } = editor.state;
+  tr.insertText(text, position);
+  tr.addMark(position, position + text.length, mark);
+  editor.view.dispatch(tr);
+  editor.commands.setTextSelection(position + text.length);
+}
+
 /** Check if there is a pending AI annotation mark. */
 export function hasPendingMark(editor: Editor): boolean {
   if (editor.isDestroyed) return false;

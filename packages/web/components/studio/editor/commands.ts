@@ -17,6 +17,8 @@ export interface CommandState {
   isGenerating: boolean;
   hasDraft: boolean;
   hasPendingAnnotation: boolean;
+  hasSelection: boolean;
+  selectionLength: number;
 }
 
 export interface CommandItem {
@@ -42,6 +44,7 @@ export interface CommandContext {
   rejectDraft: () => void;
   toggleGenerationPanel: () => void;
   startExtend: (length: "short" | "medium" | "long") => void;
+  startRewrite: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,5 +199,13 @@ export const builtInCommands: CommandItem[] = [
     category: "generation",
     isVisible: (state) => !state.isGenerating && !state.hasDraft && !state.hasPendingAnnotation,
     action: (_editor, ctx) => ctx.startExtend("long"),
+  },
+  {
+    id: "rewrite-selection",
+    label: "Rewrite Selection",
+    category: "generation",
+    isVisible: (state) =>
+      state.hasSelection && state.selectionLength >= 50 && state.selectionLength <= 2000,
+    action: (_editor, ctx) => ctx.startRewrite(),
   },
 ];

@@ -134,6 +134,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.volumes.router import router as volumes_router
     from narrare.writing.router import router as writing_router
     from narrare.writing.router_extend import router as writing_extend_router
+    from narrare.writing.router_rewrite import router as writing_rewrite_router
     from narrare.writing.router_sessions import router as writing_sessions_router
     from narrare.writing.router_stats import router as writing_stats_router
     from narrare.writing.summary_router import router as summary_router
@@ -165,6 +166,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(metrics_router)  # No prefix — /health, /ready
     app.include_router(writing_router, prefix=prefix)
     app.include_router(writing_extend_router, prefix=prefix)
+    app.include_router(writing_rewrite_router, prefix=prefix)
     app.include_router(writing_sessions_router, prefix=prefix)
     app.include_router(writing_stats_router, prefix=prefix)
     app.include_router(summary_router, prefix=prefix)

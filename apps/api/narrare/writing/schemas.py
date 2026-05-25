@@ -13,6 +13,7 @@ class GenerationModeEnum(StrEnum):
 
     FULL_DRAFT = "full_draft"
     EXTEND = "extend"
+    REWRITE = "rewrite"
     SCENE_BY_SCENE = "scene_by_scene"
     INTERVIEW_ASSISTED = "interview_assisted"
     INTERACTIVE_SESSION = "interactive_session"
@@ -178,22 +179,3 @@ class ExtendRequest(BaseModel):
     )
     tone: str = Field("balanced", min_length=1, max_length=100)
     language: str = Field("en", min_length=2, max_length=5)
-
-
-class ContextMetaResponse(BaseModel):
-    """Context metadata sent as first SSE event before text streaming (CR-07)."""
-
-    type: str = "context_meta"
-    kb_characters_count: int = 0
-    kb_locations_count: int = 0
-    kb_factions_count: int = 0
-    kb_suggested_count: int = 0
-    kb_pinned_count: int = 0
-    recent_chapter_count: int = 0
-    character_names: list[str] = []
-    location_names: list[str] = []
-    faction_names: list[str] = []
-    is_first_chapter: bool = False
-    has_user_preferences: bool = False
-    tone: str = "balanced"
-    total_budget_tokens: int = 0

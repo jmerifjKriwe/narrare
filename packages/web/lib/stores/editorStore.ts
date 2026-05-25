@@ -33,6 +33,9 @@ interface EditorState {
   sessionActive: boolean;
   generationPanelOpen: boolean;
 
+  // Extraction state
+  extractionPanelOpen: boolean;
+
   // Actions
   setActiveChapterId: (id: string | null) => void;
   setActiveVolumeId: (id: string | null) => void;
@@ -54,6 +57,7 @@ interface EditorState {
   setDraftText: (text: string) => void;
   setSessionActive: (value: boolean) => void;
   toggleGenerationPanel: () => void;
+  toggleExtractionPanel: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -73,6 +77,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   draftText: "",
   sessionActive: false,
   generationPanelOpen: false,
+  extractionPanelOpen: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
 
@@ -118,4 +123,11 @@ export const useEditorStore = create<EditorState>((set) => ({
   setSessionActive: (sessionActive) => set({ sessionActive }),
 
   toggleGenerationPanel: () => set((s) => ({ generationPanelOpen: !s.generationPanelOpen })),
+
+  toggleExtractionPanel: () =>
+    set((s) => ({
+      extractionPanelOpen: !s.extractionPanelOpen,
+      // Close generation panel when opening extraction panel
+      generationPanelOpen: s.extractionPanelOpen ? s.generationPanelOpen : false,
+    })),
 }));

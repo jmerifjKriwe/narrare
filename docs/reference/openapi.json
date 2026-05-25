@@ -2731,6 +2731,65 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/extract/apply": {
+      "post": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Apply Extraction",
+        "description": "Apply endorsed extraction items to the Knowledge Base.\n\nCreates new entities, updates existing ones, and creates relationships\nbased on the user's endorsement of extraction results.",
+        "operationId": "apply_extraction_api_v1_novels__novel_id__kb_extract_apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyExtractionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyExtractionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/sessions": {
       "post": {
         "tags": [
@@ -5973,6 +6032,73 @@
         }
       }
     },
+    "/api/v1/writing/chapters/{chapter_id}/rewrite": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Rewrite Chapter",
+        "description": "SSE stream for selection rewrite — create + stream in one call.\n\nAccepts a text selection with optional surrounding context and returns\nAI-generated rewrite alternatives streamed via SSE.  Each alternative\nis wrapped in ``<alternative>`` tags.  The final SSE event includes\n``request_id`` for use with accept/reject endpoints.\n\nUses ``LLMIntent.REWRITE`` for model routing.  The number of\nalternatives is controlled by ``request.count`` (1-3).",
+        "operationId": "rewrite_chapter_api_v1_writing_chapters__chapter_id__rewrite_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RewriteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/writing/generation/{request_id}/scene/next": {
       "post": {
         "tags": [
@@ -6361,6 +6487,156 @@
         ],
         "title": "AnswerFieldRequest",
         "description": "Request body for answering a field in a KB creation session."
+      },
+      "ApplyExtractionEntryResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "entity_type"
+        ],
+        "title": "ApplyExtractionEntryResult",
+        "description": "Result of a single created or updated KB entry.\n\nReturned to the frontend so the UI can update its state\nwith the new/updated entry IDs."
+      },
+      "ApplyExtractionItem": {
+        "properties": {
+          "item_type": {
+            "type": "string",
+            "enum": [
+              "new_entity",
+              "update_entity",
+              "relationship",
+              "conflict"
+            ],
+            "title": "Item Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "proposed_content": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Content"
+          },
+          "target_entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Entity Id"
+          },
+          "relationship_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Type"
+          },
+          "related_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Entity Name"
+          },
+          "source_text": {
+            "type": "string",
+            "title": "Source Text",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_type",
+          "name"
+        ],
+        "title": "ApplyExtractionItem",
+        "description": "A single endorsed extraction item to apply.\n\nCreated from the user's endorsement of an ExtractionItem in\nthe extraction review panel. Maps directly to what the frontend\nsends after the user reviews and endorses extraction results."
+      },
+      "ApplyExtractionRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ApplyExtractionItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ApplyExtractionRequest",
+        "description": "Request body for endorsing extraction results.\n\nContains the list of extraction items the user has reviewed\nand chosen to apply to their Knowledge Base."
+      },
+      "ApplyExtractionResponse": {
+        "properties": {
+          "created_entries": {
+            "items": {
+              "$ref": "#/components/schemas/ApplyExtractionEntryResult"
+            },
+            "type": "array",
+            "title": "Created Entries",
+            "default": []
+          },
+          "updated_entries": {
+            "items": {
+              "$ref": "#/components/schemas/ApplyExtractionEntryResult"
+            },
+            "type": "array",
+            "title": "Updated Entries",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "ApplyExtractionResponse",
+        "description": "Response after applying endorsed extraction items.\n\nReports which entries were created vs updated so the frontend\ncan refresh only the affected parts of the KB display."
       },
       "AvailableModelsResponse": {
         "properties": {
@@ -7466,6 +7742,7 @@
         "enum": [
           "full_draft",
           "extend",
+          "rewrite",
           "scene_by_scene",
           "interview_assisted",
           "interactive_session"
@@ -9147,6 +9424,131 @@
         ],
         "title": "ResolveReferencesResponse",
         "description": "Response with resolved @Name references."
+      },
+      "RewriteMode": {
+        "type": "string",
+        "enum": [
+          "tone",
+          "style",
+          "voice",
+          "fix",
+          "custom"
+        ],
+        "title": "RewriteMode",
+        "description": "Supported rewrite modes."
+      },
+      "RewriteRequest": {
+        "properties": {
+          "selection_text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 50,
+            "title": "Selection Text",
+            "description": "Text to rewrite"
+          },
+          "context_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Before",
+            "description": "Text before selection (up to 500 chars)"
+          },
+          "context_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context After",
+            "description": "Text after selection (up to 500 chars)"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/RewriteMode",
+            "description": "Rewrite mode (tone, style, voice, fix, custom)"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options",
+            "description": "Mode-specific settings"
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id",
+            "description": "Character ID for voice mode"
+          },
+          "custom_instructions": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Instructions",
+            "description": "Custom rewrite instructions"
+          },
+          "count": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "description": "Number of alternatives (1-3)",
+            "default": 1
+          },
+          "tone": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Tone",
+            "description": "Tone preference",
+            "default": "balanced"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 2,
+            "title": "Language",
+            "description": "Output language",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "selection_text",
+          "mode"
+        ],
+        "title": "RewriteRequest",
+        "description": "Request for rewriting a text selection with alternatives.\n\nThe frontend sends the selected text along with optional context\nbefore/after and a rewrite mode.  The backend streams one or more\nalternatives wrapped in ``<alternative>`` tags via SSE."
       },
       "SceneNextResponse": {
         "properties": {

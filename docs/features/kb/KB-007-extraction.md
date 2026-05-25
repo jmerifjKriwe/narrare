@@ -1,7 +1,7 @@
 ---
 id: KB-007
 title: "Entity Extraction from Chapters"
-status: designed
+status: implemented
 area: kb
 mvp: false
 
@@ -188,3 +188,4 @@ Stage 3: Deduplication against existing KB entries via embedding similarity + na
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Designed. ExtractionAgent separate from KBAgent. Simple review panel. Full embedding dependency.
+- 2026-05-25 — Implemented. ExtractionService + ExtractionApplyService (backend), ExtractionPanel review UI (frontend), 31 i18n keys, editor toolbar integration.

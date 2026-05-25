@@ -111,6 +111,7 @@ The continuation appears exactly where your cursor was, ready to edit.
 - `ContinueButton` — toolbar button with length selector dropdown (short/medium/long), triggers extend flow
 - `AIAnnotationActions` — floating accept/reject/rate UI positioned near pending mark
 - Standalone lifecycle functions: `insertAIContent()`, `appendToPendingMark()`, `finalizePendingMark()`, `acceptMark()`, `rejectMark()`
+- `replaceSelectionWithAIContent()` — atomic selection replacement added as part of WRITE-004 for rewrite support, extending the `aiAnnotationApi` with selection replacement capability. Swaps editor selection with AI content in a single transaction, preserving undo history. Shared by both Extend (replace pending mark content) and Rewrite (swap selected text with alternative).
 - Clean Save integration — Autosave removes pending marks before save, records implicit ACCEPT/MODIFY feedback
 
 **Prompt strategy:**

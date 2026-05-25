@@ -183,8 +183,3 @@ class KBSuggestionResponse(BaseModel):
     similarity: float = Field(ge=0.0, le=1.0)
     usage_count: int = Field(ge=0)
     last_referenced_at: datetime | None = None
-
-
-# ---------------------------------------------------------------------------
-# Assisted Creation
-# ---------------------------------------------------------------------------

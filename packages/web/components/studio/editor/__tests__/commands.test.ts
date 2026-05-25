@@ -16,8 +16,18 @@ function createContext() {
     createChapter: vi.fn(),
     toggleGenerationPanel: vi.fn(),
     startExtend: vi.fn(),
+    startRewrite: vi.fn(),
   };
 }
+
+/** Default CommandState for testing. */
+const defaultState = {
+  isGenerating: false,
+  hasDraft: false,
+  hasPendingAnnotation: false,
+  hasSelection: false,
+  selectionLength: 0,
+};
 
 describe("builtInCommands", () => {
   it("has all expected format commands", () => {
@@ -56,6 +66,7 @@ describe("builtInCommands", () => {
       "continue-writing",
       "continue-writing-short",
       "continue-writing-long",
+      "rewrite-selection",
     ]);
   });
 
@@ -74,49 +85,30 @@ describe("builtInCommands", () => {
         c.category === "generation" &&
         c.isVisible &&
         !c.id.includes("stop") &&
-        !c.id.includes("draft"),
+        !c.id.includes("draft") &&
+        !c.id.includes("rewrite"),
     );
     for (const cmd of startCommands) {
-      expect(
-        cmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
-      ).toBe(true);
-      expect(
-        cmd.isVisible!({ isGenerating: true, hasDraft: false, hasPendingAnnotation: false }),
-      ).toBe(false);
-      expect(
-        cmd.isVisible!({ isGenerating: false, hasDraft: true, hasPendingAnnotation: false }),
-      ).toBe(false);
+      expect(cmd.isVisible!({ ...defaultState, isGenerating: false, hasDraft: false })).toBe(true);
+      expect(cmd.isVisible!({ ...defaultState, isGenerating: true })).toBe(false);
+      expect(cmd.isVisible!({ ...defaultState, isGenerating: false, hasDraft: true })).toBe(false);
     }
   });
 
   it("stop-generation is only visible while generating", () => {
     const stopCmd = builtInCommands.find((c) => c.id === "stop-generation")!;
-    expect(
-      stopCmd.isVisible!({ isGenerating: true, hasDraft: false, hasPendingAnnotation: false }),
-    ).toBe(true);
-    expect(
-      stopCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
-    ).toBe(false);
-    expect(
-      stopCmd.isVisible!({ isGenerating: false, hasDraft: true, hasPendingAnnotation: false }),
-    ).toBe(false);
+    expect(stopCmd.isVisible!({ ...defaultState, isGenerating: true })).toBe(true);
+    expect(stopCmd.isVisible!({ ...defaultState })).toBe(false);
+    expect(stopCmd.isVisible!({ ...defaultState, hasDraft: true })).toBe(false);
   });
 
   it("accept-draft and reject-draft are only visible when draft exists", () => {
     const acceptCmd = builtInCommands.find((c) => c.id === "accept-draft")!;
     const rejectCmd = builtInCommands.find((c) => c.id === "reject-draft")!;
-    expect(
-      acceptCmd.isVisible!({ isGenerating: false, hasDraft: true, hasPendingAnnotation: false }),
-    ).toBe(true);
-    expect(
-      acceptCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
-    ).toBe(false);
-    expect(
-      rejectCmd.isVisible!({ isGenerating: false, hasDraft: true, hasPendingAnnotation: false }),
-    ).toBe(true);
-    expect(
-      rejectCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
-    ).toBe(false);
+    expect(acceptCmd.isVisible!({ ...defaultState, hasDraft: true })).toBe(true);
+    expect(acceptCmd.isVisible!({ ...defaultState })).toBe(false);
+    expect(rejectCmd.isVisible!({ ...defaultState, hasDraft: true })).toBe(true);
+    expect(rejectCmd.isVisible!({ ...defaultState })).toBe(false);
   });
 
   it("format commands call editor actions", () => {
@@ -271,14 +263,30 @@ describe("builtInCommands", () => {
 
   it("continue-writing commands are hidden when annotation is pending", () => {
     const continueCmd = builtInCommands.find((c) => c.id === "continue-writing")!;
+    expect(continueCmd.isVisible!({ ...defaultState })).toBe(true);
+    expect(continueCmd.isVisible!({ ...defaultState, hasPendingAnnotation: true })).toBe(false);
+    expect(continueCmd.isVisible!({ ...defaultState, isGenerating: true })).toBe(false);
+  });
+
+  it("rewrite-selection is only visible with valid selection length", () => {
+    const rewriteCmd = builtInCommands.find((c) => c.id === "rewrite-selection")!;
     expect(
-      continueCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: false }),
+      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 100 }),
     ).toBe(true);
     expect(
-      continueCmd.isVisible!({ isGenerating: false, hasDraft: false, hasPendingAnnotation: true }),
+      rewriteCmd.isVisible!({ ...defaultState, hasSelection: false, selectionLength: 0 }),
     ).toBe(false);
     expect(
-      continueCmd.isVisible!({ isGenerating: true, hasDraft: false, hasPendingAnnotation: false }),
+      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 30 }),
     ).toBe(false);
+    expect(
+      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 2500 }),
+    ).toBe(false);
+    expect(
+      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 50 }),
+    ).toBe(true);
+    expect(
+      rewriteCmd.isVisible!({ ...defaultState, hasSelection: true, selectionLength: 2000 }),
+    ).toBe(true);
   });
 });

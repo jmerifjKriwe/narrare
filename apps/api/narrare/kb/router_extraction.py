@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.kb.dependencies import get_extraction_service
 from narrare.kb.extraction_service import ExtractionService
+from narrare.kb.schemas_extraction import ApplyExtractionRequest, ApplyExtractionResponse
 
 logger = structlog.get_logger(__name__)
 
@@ -52,3 +53,29 @@ async def extract_chapter(
         "results": [item.model_dump(mode="json") for item in result.results],
         "analysis_notes": result.analysis_notes,
     }
+
+
+@router.post("/novels/{novel_id}/kb/extract/apply")
+async def apply_extraction(
+    novel_id: UUID,
+    body: ApplyExtractionRequest,
+    user_id: CurrentUserIdDep,
+    service: ExtractionService = Depends(get_extraction_service),
+) -> ApplyExtractionResponse:
+    """Apply endorsed extraction items to the Knowledge Base.
+
+    Creates new entities, updates existing ones, and creates relationships
+    based on the user's endorsement of extraction results.
+    """
+    try:
+        result = await service.apply_extraction(
+            novel_id=novel_id,
+            user_id=UUID(user_id),
+            items=body.items,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("apply_extraction_failed", error=str(exc), exc_info=True)
+        raise HTTPException(status_code=500, detail="Apply extraction failed") from exc

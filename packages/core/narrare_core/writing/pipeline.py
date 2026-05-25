@@ -130,6 +130,12 @@ class WritingPipeline:
         user_preferences: str = "",
         avoidance_patterns: str = "",
         custom_tone_instructions: str | None = None,
+        selection_text: str = "",
+        context_before: str = "",
+        context_after: str = "",
+        rewrite_mode: str = "tone",
+        custom_instructions: str = "",
+        rewrite_count: int = 1,
     ) -> AsyncIterator[StreamChunk]:
         """Stream generated text chunks for the given request.
 
@@ -152,6 +158,14 @@ class WritingPipeline:
             custom_tone_instructions: User-defined tone instructions
                 to override bundled tones. When provided, used directly
                 instead of looking up ``_TONE_INSTRUCTIONS``.
+            selection_text: Text selection to rewrite (REWRITE mode).
+            context_before: Text immediately before the selection.
+            context_after: Text immediately after the selection.
+            rewrite_mode: Rewrite strategy mode (tone/style/voice/
+                fix/custom).
+            custom_instructions: Author-defined rewrite instructions
+                (required when ``rewrite_mode`` is ``"custom"``).
+            rewrite_count: Number of alternatives to generate (1-3).
         """
         context = await self._context_assembler.assemble(
             chapter_content=chapter_content,
@@ -177,23 +191,49 @@ class WritingPipeline:
 
         try:
             if request.mode == GenerationMode.FULL_DRAFT:
-                async for chunk in self._full_draft(
+                from narrare_core.writing.pipeline_graph import stream_via_writing_graph
+
+                async for chunk in stream_via_writing_graph(
                     request,
                     context,
                     config,
+                    registry=self._registry,
+                    context_assembler=self._context_assembler,
                     api_key=api_key,
                     base_url=base_url,
                 ):
                     yield chunk
 
             elif request.mode == GenerationMode.EXTEND:
-                async for chunk in self._extend(
+                from narrare_core.writing.pipeline_extend import stream_extend
+
+                async for chunk in stream_extend(
+                    self,
                     request,
                     context,
                     config,
                     api_key=api_key,
                     base_url=base_url,
                     custom_tone_instructions=custom_tone_instructions,
+                ):
+                    yield chunk
+
+            elif request.mode == GenerationMode.REWRITE:
+                from narrare_core.writing.pipeline_rewrite import stream_rewrite
+
+                async for chunk in stream_rewrite(
+                    self,
+                    request,
+                    context,
+                    config,
+                    api_key=api_key,
+                    base_url=base_url,
+                    selection_text=selection_text,
+                    context_before=context_before,
+                    context_after=context_after,
+                    rewrite_mode=rewrite_mode,
+                    custom_instructions=custom_instructions,
+                    count=rewrite_count,
                 ):
                     yield chunk
 
@@ -240,61 +280,6 @@ class WritingPipeline:
 
     def _is_stopped(self, request_id: UUID) -> bool:
         return request_id in self._stop_signals
-
-    # ------------------------------------------------------------------
-    # Mode: Full Draft (always via WritingGraph)
-    # ------------------------------------------------------------------
-
-    async def _full_draft(
-        self,
-        request: GenerationRequest,
-        context: WritingContext,
-        config: ResolvedModelConfig,
-        *,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> AsyncIterator[StreamChunk]:
-        """Generate a complete chapter draft via WritingGraph."""
-        from narrare_core.writing.pipeline_graph import stream_via_writing_graph
-
-        async for chunk in stream_via_writing_graph(
-            request,
-            context,
-            config,
-            registry=self._registry,
-            context_assembler=self._context_assembler,
-            api_key=api_key,
-            base_url=base_url,
-        ):
-            yield chunk
-
-    # ------------------------------------------------------------------
-    # Mode: Extend (direct LLM call — no WritingGraph)
-    # ------------------------------------------------------------------
-
-    async def _extend(
-        self,
-        request: GenerationRequest,
-        context: WritingContext,
-        config: ResolvedModelConfig,
-        *,
-        api_key: str | None = None,
-        base_url: str | None = None,
-        custom_tone_instructions: str | None = None,
-    ) -> AsyncIterator[StreamChunk]:
-        """Generate a seamless continuation from the cursor position."""
-        from narrare_core.writing.pipeline_extend import stream_extend
-
-        async for chunk in stream_extend(
-            self,
-            request,
-            context,
-            config,
-            api_key=api_key,
-            base_url=base_url,
-            custom_tone_instructions=custom_tone_instructions,
-        ):
-            yield chunk
 
     # ------------------------------------------------------------------
     # Helpers (used by sub-modules via the pipeline instance)

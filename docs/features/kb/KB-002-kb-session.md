@@ -1,7 +1,7 @@
 ---
 id: KB-002
 title: "Assisted KB Creation"
-status: designed
+status: implemented
 area: kb
 mvp: false
 
@@ -59,8 +59,8 @@ ui_help_long: |
 ui_available_in: [kb]
 
 service: kb/session_service.py
-contract: kb/contracts.py#KBSessionProtocol
-router: kb/router.py
+contract: kb/assist_contracts.py#KBAssistProtocol
+router: kb/router_sessions.py
 prompt: core/prompts/_bundled/kb
 requires: [KB-001, INFRA-001]
 ---
@@ -193,3 +193,4 @@ is sufficient. Final entries are saved via KB-001.
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Redesigned. Renamed from "Interactive KB Session" to "Assisted KB Creation". Template-guided spectrum (manual ↔ interview ↔ auto). Single KBAgent. REST+SSE. ProactiveContext for world context.
+- `2026-05-25` — Status updated to implemented. Backend + Frontend complete. Backend: session_service, session_store, session_models, session_schemas, assist_service, assist_contracts, router_sessions, router_sessions_sse, router_sessions_complete. Frontend: KBAssistedCreationPanel, KBAssistedCreationFooter, KBSessionFieldList, KBFieldSuggestion, KBInterviewView, KBEnhanceReview. Integration in WorldBuilding and KBEntryList ("New with AI Interview"). 99 backend tests. i18n complete.

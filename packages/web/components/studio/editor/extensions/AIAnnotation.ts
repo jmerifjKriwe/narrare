@@ -50,7 +50,9 @@ export {
   getPendingModification,
   hasPendingMark,
   insertAIContent,
+  insertAIContentAt,
   rejectMark,
+  replaceSelectionWithAIContent,
   resolveAllPendingMarks,
 } from "./aiAnnotationApi";
 // Re-export types and functions for convenience

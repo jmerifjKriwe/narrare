@@ -17,6 +17,7 @@ class GenerationMode(StrEnum):
 
     FULL_DRAFT = "full_draft"
     EXTEND = "extend"
+    REWRITE = "rewrite"
     SCENE_BY_SCENE = "scene_by_scene"
     INTERVIEW_ASSISTED = "interview_assisted"
     INTERACTIVE_SESSION = "interactive_session"

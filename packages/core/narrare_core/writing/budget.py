@@ -17,6 +17,12 @@ When ``mode="extend"`` or ``mode="extend_chapter"``, the allocation
 shifts to prioritise immediate context (50/15/20/10/5) because the
 pre-text + marker + post-text is critical for seamless continuation.
 
+When ``mode="rewrite"`` or ``mode="rewrite_selection"``, the allocation
+balances selection context with KB entity emphasis (40/15/25/10/10)
+because the selection and its surrounding context need strong
+representation while KB entities (especially character voice profiles)
+are critical for mode-specific rewrites.
+
 Configuration overrides
 -----------------------
 The ``tier_overrides`` parameter on ``__init__`` allows callers to
@@ -92,6 +98,14 @@ class TokenBudgetManager:
         "kb_referenced": 0.20,
         "kb_suggested": 0.10,
         "pinned": 0.05,
+    }
+
+    _REWRITE_PERCENTAGES: ClassVar[dict[str, float]] = {
+        "immediate": 0.40,
+        "recent": 0.15,
+        "kb_referenced": 0.25,
+        "kb_suggested": 0.10,
+        "pinned": 0.10,
     }
 
     def __init__(
@@ -197,14 +211,16 @@ class TokenBudgetManager:
         Parameters
         ----------
         first_chapter:
-            When ``True`` and *mode* is not extend, the *recent* tier
-            receives 0 tokens and the KB tiers get the redistributed
-            budget.
+            When ``True`` and *mode* is not extend or rewrite, the
+            *recent* tier receives 0 tokens and the KB tiers get the
+            redistributed budget.
         mode:
             Generation mode string.  When ``"extend"`` or
             ``"extend_chapter"``, the extend-specific percentages are
-            used (50/15/20/10/5) regardless of *first_chapter*.  Overflow
-            handles the no-recent-chapters case naturally.
+            used (50/15/20/10/5) regardless of *first_chapter*.  When
+            ``"rewrite"`` or ``"rewrite_selection"``, the
+            rewrite-specific percentages are used (40/15/25/10/10).
+            Overflow handles the no-recent-chapters case naturally.
 
         Returns
         -------
@@ -213,6 +229,8 @@ class TokenBudgetManager:
         """
         if mode in ("extend", "extend_chapter"):
             base = self._EXTEND_PERCENTAGES
+        elif mode in ("rewrite", "rewrite_selection"):
+            base = self._REWRITE_PERCENTAGES
         elif first_chapter:
             base = self._FIRST_CHAPTER_PERCENTAGES
         else:

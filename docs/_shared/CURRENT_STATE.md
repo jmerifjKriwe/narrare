@@ -11,8 +11,8 @@
 ## Last Updated
 
 Date: 2026-05-25
-Updated by: NarrareDevCoordinator
-Session summary: Alle 4 Restaufgaben erledigt. Task 3 (complete→save, 6ab7475): session_mapper.py erstellt KB-Entry aus Session-Feldern vor Status-Change. Task 2+2b (ModelRegistry+Redis, e8a5160): KBAssistService auf registry+config umgestellt, TestModel und InMemorySessionCache ersetzt. Task 1 (KB-007 Extraction API, 299620e): ExtractionService + Router für Kapitel→KB-Extraktion. RULE-21 eingeführt: Architecture Review bei materiellen Planänderungen ungültig. 366 Tests (147 KB + 23 cache + 196 core/api).
+Updated by: NarrareDocsSpecialist
+Session summary: KB-007 extraction fully implemented (backend + frontend + i18n). KB-007 feature spec → implemented. KB-002 spec → implemented. INDEX.md + CURRENT_STATE.md updated.
 
 ---
 
@@ -265,6 +265,8 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `kb/suggest_service.py` — KBSuggestService (API wrapper for ProactiveContextService)
 - `kb/suggest_contracts.py` — KBSuggestProtocol (RULE-04 split)
 - `kb/usage_contracts.py` — ContextUsageProtocol (RULE-04 split)
+- `kb/extraction_apply_service.py` — ExtractionApplyService for applying endorsed extraction items
+- `kb/router_extraction.py` — Extraction routes (extract + apply endpoints)
 
 **Templates Module (`templates/`):**
 - Full CRUD: models (KBTemplate SQLAlchemy), repository, service, router, contracts, schemas
@@ -515,7 +517,9 @@ Phase 5 (current):
 
 15. ✅ kb-agents-and-prompts — Committed (481e370). KBAssistAgent (4-mode), ExtractionAgent, 4 English prompts, 78 tests.
 
-Next focus: KB-002 frontend (assisted creation UI), KB-007 Extraction API.
+16. 🔄 WRITE-004: Rewrite Selection — Implementation in progress. Backend: `RewriteService` in `writing/rewrite_service.py`, SSE-direct endpoint `POST /api/v1/writing/chapters/{chapter_id}/rewrite`, `_REWRITE_PERCENTAGES` budget (40/15/25/10/10). Frontend: `AlternativeParser` (client-side state machine for `<alternative>` structured output), `RewriteModeSelector` (tone/style/voice/fix/custom), `InlineDiff` (diff-match-patch inline diff highlighting), `replaceSelectionWithAIContent()` atomic selection replacement. Reuses existing BubbleMenu + AISuggestion modal with extensions. Voice mode uses `_voice_profiles.py` from KB infrastructure.
+
+Next focus: KB-002 frontend (assisted creation UI).
 
 ---
 
@@ -658,6 +662,8 @@ All demo content is complete — sufficient for testing through Phase 5.
 | KB-002 backend | KBAssistService + KBSessionService + Redis session store + 8 REST endpoints + SSE + template field extraction. 99 tests. Commit 281df89. |
 | KB-002 architecturesplits | schemas.py split (session_schemas.py, assist_contracts.py), test split (test_session_service.py, test_session_assist.py), contracts extraction (suggest_contracts.py, usage_contracts.py). RULE-04 compliance. |
 | KB-002 type fixes | model_copy() for kwargs, UUID type params in test fakes, PromptComposer for KBAssistService, allow-direct-llm + allow-agent markers. |
+| KB-007 Extraction Frontend | ExtractionPanel review UI + ExtractionApplyService (backend apply endpoint) + editor toolbar button + 31 i18n keys + 14 backend tests + frontend component tests |
+| KB-002 Spec Update | Feature spec status updated from designed → implemented. Backend + Frontend were already complete. |
 
 ---
 
@@ -718,7 +724,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 2. WRITE-003: Extend Chapter — remaining: Task 2.4 (promptfoo eval baseline), Task 8.3-8.4 (architecture validation + test suite), E2E tests
 3. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
 4. KB-002: Assisted Creation — designed, implementation pending
-5. KB-007: Extraction — designed, implementation pending
+5. KB-007: Extraction — ✅ implemented
 6. E2E tests with Playwright
 
 **Post-MVP (future):**

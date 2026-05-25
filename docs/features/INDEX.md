@@ -65,12 +65,12 @@
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
 | [KB-001](kb/KB-001-entity-management.md) | KB Entity CRUD | ✅ | ✅ |
-| [KB-002](kb/KB-002-kb-session.md) | Interactive KB Session (AI-guided creation) | 📋 | ❌ |
+| [KB-002](kb/KB-002-kb-session.md) | Assisted KB Creation (AI-guided creation) | ✅ | ❌ |
 | [KB-003](kb/KB-003-kb-improve.md) | AI: Improve KB Entry | 📋 | ❌ |
 | [KB-004](kb/KB-004-kb-consistency.md) | AI: KB Consistency Check | 📋 | ❌ |
 | [KB-005](kb/KB-005-kb-suggest.md) | Proactive KB Suggestions | ✅ | ✅ |
 | [KB-006](kb/KB-006-worldbuilding.md) | Worldbuilding Assistant | 📋 | ❌ |
-| [KB-007](kb/KB-007-extraction.md) | Entity Extraction from Chapters | 📋 | ❌ |
+| [KB-007](kb/KB-007-extraction.md) | Entity Extraction from Chapters | ✅ | ❌ |
 | [KB-008](kb/KB-008-knowledge-graph.md) | Knowledge Graph | 📋 | ❌ |
 
 ### Analysis
@@ -228,5 +228,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-24 — CR-07 audit: WRITE-014 Context Inspector added (stable). Shows authors assembled context before AI generation.
+> Last updated: 2026-05-25 — KB-002 status changed to implemented.
 > Features are specified before they are implemented — never after

@@ -127,6 +127,228 @@ export interface ContextMeta {
 }
 
 // ---------------------------------------------------------------------------
+// Rewrite (WRITE-004)
+// ---------------------------------------------------------------------------
+
+export type RewriteMode = "tone" | "style" | "voice" | "fix" | "custom";
+
+export interface RewriteRequest {
+  selection_text: string;
+  context_before?: string;
+  context_after?: string;
+  mode: RewriteMode;
+  options?: Record<string, string>;
+  character_id?: string;
+  custom_instructions?: string;
+  count?: number;
+  tone?: string;
+  language?: string;
+}
+
+export interface RewriteAlternative {
+  label: string;
+  text: string;
+}
+
+export interface RewriteConfig {
+  mode: RewriteMode;
+  option: string;
+  count: number;
+  customInstructions?: string;
+}
+
+/**
+ * Client-side state machine parser for `<alternative label="...">` tags.
+ *
+ * Buffers partial tags across SSE chunk boundaries. Only recognizes
+ * `<alternative` at line boundaries (start of line or after `</alternative>`).
+ * Returns RewriteAlternative[] with parsed label and text.
+ *
+ * Fallback: if no tags found, entire response = single alternative.
+ */
+export function parseAlternatives(fullText: string): RewriteAlternative[] {
+  const alternatives: RewriteAlternative[] = [];
+  const openTagRegex = /^<alternative\s+label="([^"]*)">/;
+  const closeTag = "</alternative>";
+
+  let i = 0;
+  let inAlternative = false;
+  let currentLabel = "";
+  let currentTextStart = 0;
+
+  while (i < fullText.length) {
+    if (!inAlternative) {
+      // Look for opening tag at line boundary (start of text or after newline/closing tag)
+      const remaining = fullText.slice(i);
+      const match = openTagRegex.exec(remaining);
+
+      if (match) {
+        // Verify this is at a valid boundary: start of text, or preceded by \n
+        if (
+          i === 0 ||
+          fullText[i - 1] === "\n" ||
+          fullText.slice(i - closeTag.length, i) === closeTag
+        ) {
+          currentLabel = match[1];
+          i += match[0].length;
+          currentTextStart = i;
+          inAlternative = true;
+          continue;
+        }
+      }
+      i++;
+    } else {
+      // Look for closing tag
+      const closeIdx = fullText.indexOf(closeTag, i);
+      if (closeIdx === -1) {
+        // No closing tag found — rest is part of this alternative (incomplete)
+        break;
+      }
+
+      const text = fullText.slice(currentTextStart, closeIdx);
+      alternatives.push({ label: currentLabel, text });
+      i = closeIdx + closeTag.length;
+      inAlternative = false;
+    }
+  }
+
+  // Fallback: if no tags found, entire response = single alternative
+  if (alternatives.length === 0 && fullText.trim().length > 0) {
+    alternatives.push({ label: "Rewritten text", text: fullText.trim() });
+  }
+
+  return alternatives;
+}
+
+/**
+ * Stream rewrite SSE directly from POST /rewrite endpoint.
+ *
+ * Accumulates stream text, calls parseAlternatives() as complete
+ * alternatives are detected, and emits callbacks for each one.
+ */
+export async function streamRewrite(
+  chapterId: string,
+  novelId: string,
+  request: RewriteRequest,
+  callbacks: {
+    onRequestInfo?: (requestId: string) => void;
+    onAlternative: (label: string, text: string) => void;
+    onAlternativeFinal?: (count: number) => void;
+    onError?: (error: Error) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+  };
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  try {
+    const response = await fetch(
+      `/api/v1/writing/chapters/${chapterId}/rewrite?novel_id=${novelId}`,
+      {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify(request),
+        signal,
+      },
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let accumulatedText = "";
+    let emittedCount = 0;
+    const closeTag = "</alternative>";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+          if (data === "[DONE]") {
+            // Final parse: emit any remaining alternatives
+            const allAlts = parseAlternatives(accumulatedText);
+            for (let i = emittedCount; i < allAlts.length; i++) {
+              callbacks.onAlternative(allAlts[i].label, allAlts[i].text);
+              emittedCount++;
+            }
+            callbacks.onAlternativeFinal?.(emittedCount);
+            return;
+          }
+          try {
+            const parsed = JSON.parse(data) as ExtendStreamEvent;
+
+            if (parsed.type === "request_info" && parsed.request_id) {
+              callbacks.onRequestInfo?.(parsed.request_id);
+              continue;
+            }
+
+            if (parsed.text) {
+              accumulatedText += parsed.text;
+
+              // Check if we have complete alternatives to emit
+              while (accumulatedText.includes(closeTag)) {
+                const closeIdx = accumulatedText.indexOf(closeTag);
+                const preceding = accumulatedText.slice(0, closeIdx + closeTag.length);
+
+                // Parse just this portion
+                const parsedAlts = parseAlternatives(preceding);
+                for (const alt of parsedAlts) {
+                  callbacks.onAlternative(alt.label, alt.text);
+                  emittedCount++;
+                }
+
+                // Remove the parsed portion from accumulated text
+                accumulatedText = accumulatedText.slice(closeIdx + closeTag.length);
+              }
+            }
+            if (parsed.is_final) {
+              // Final parse for any remaining text
+              const allAlts = parseAlternatives(accumulatedText);
+              for (let i = emittedCount; i < allAlts.length; i++) {
+                callbacks.onAlternative(allAlts[i].label, allAlts[i].text);
+                emittedCount++;
+              }
+              callbacks.onAlternativeFinal?.(emittedCount);
+              return;
+            }
+          } catch {
+            /* skip malformed JSON */
+          }
+        }
+      }
+    }
+
+    // Stream ended without [DONE] — still emit any remaining
+    const allAlts = parseAlternatives(accumulatedText);
+    for (let i = emittedCount; i < allAlts.length; i++) {
+      callbacks.onAlternative(allAlts[i].label, allAlts[i].text);
+      emittedCount++;
+    }
+    callbacks.onAlternativeFinal?.(emittedCount);
+  } catch (error) {
+    const isAbort =
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError");
+    if (isAbort) return;
+    callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Extend (WRITE-003)
 // ---------------------------------------------------------------------------
 

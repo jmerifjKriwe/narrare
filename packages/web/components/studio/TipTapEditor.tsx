@@ -4,10 +4,15 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
-import { Check, RotateCcw, Sparkles, X } from "lucide-react";
+import { Check, Loader2, Plus, RotateCcw, Sparkles, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { writingApi } from "@/lib/api/generation";
+import {
+  type RewriteAlternative,
+  type RewriteConfig,
+  streamRewrite,
+  writingApi,
+} from "@/lib/api/generation";
 import { createSseSuggestionFetcher } from "@/lib/api/suggest";
 import { useRecordFeedback } from "@/lib/hooks/useMemory";
 import { useEditorStore } from "@/lib/stores/editorStore";
@@ -15,12 +20,23 @@ import { markdownToHtml } from "@/lib/utils";
 import type { FeedbackRequest } from "@/types";
 import { BlockControls } from "./BlockControls";
 import { AIAnnotationActions } from "./editor/AIAnnotationActions";
-import { AIAnnotationExtension, AIAnnotationMark } from "./editor/extensions/AIAnnotation";
+import {
+  AIAnnotationExtension,
+  AIAnnotationMark,
+  insertAIContentAt,
+  replaceSelectionWithAIContent,
+} from "./editor/extensions/AIAnnotation";
 import { Autosave } from "./editor/extensions/Autosave";
 import { DialogueMark } from "./editor/extensions/DialogueMark";
 import { GhostText, simulateSuggestion } from "./editor/extensions/GhostText";
 import { NarrareDocument } from "./editor/extensions/NarrareDocument";
 import { SceneBreak } from "./editor/extensions/SceneBreak";
+import { InlineDiff } from "./editor/InlineDiff";
+import { RewriteModeSelector } from "./editor/RewriteModeSelector";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface TipTapEditorProps {
   content: string;
@@ -36,8 +52,20 @@ interface TipTapEditorProps {
 interface AISuggestion {
   original: string;
   suggestions: string[];
+  labels: string[];
   position: { from: number; to: number };
 }
+
+/** Rewrite phase state machine. */
+type RewritePhase = "idle" | "selecting-mode" | "streaming" | "showing-alternatives";
+
+// Minimum/maximum selection length for rewrite (characters)
+const MIN_SELECTION_LENGTH = 50;
+const MAX_SELECTION_LENGTH = 2000;
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export function TipTapEditor({
   content,
@@ -49,24 +77,35 @@ export function TipTapEditor({
 }: TipTapEditorProps) {
   const t = useTranslations("studio");
   const locale = useLocale();
+
+  // AI suggestion modal state
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectionInput, setShowRejectionInput] = useState(false);
 
+  // Rewrite flow state
+  const [rewritePhase, setRewritePhase] = useState<RewritePhase>("idle");
+  const [rewriteSelection, setRewriteSelection] = useState<{
+    text: string;
+    from: number;
+    to: number;
+    contextBefore: string;
+    contextAfter: string;
+  } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
   // Feedback hook for implicit accept on autosave
   const recordFeedback = useRecordFeedback(novelId ?? "");
 
   // Ref always holds the current saveFn — avoids stale closure in Autosave extension
-  // (useEditor freezes extensions at mount time, so a direct closure would never update)
   const saveFnRef = useRef(onAutosave ?? (async () => {}));
 
-  // Keep the ref synced whenever onAutosave changes
   useEffect(() => {
     saveFnRef.current = onAutosave ?? (async () => {});
   }, [onAutosave]);
 
-  // Stable config: the wrapper reads from the ref at call time, not closure capture time
+  // Stable config: reads from refs at call time
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // biome-ignore lint/correctness/useExhaustiveDependencies: ref-based pattern — onAutosave changes are synced via saveFnRef, not via useMemo recomputation
   const autosaveConfig = useMemo(
@@ -82,7 +121,6 @@ export function TipTapEditor({
             action: "accept" | "modify";
             currentText?: string;
           }) => {
-            // Record implicit feedback when pending marks are resolved on autosave
             const feedbackData: FeedbackRequest = {
               action: data.action,
               suggestion_id: data.requestId,
@@ -99,7 +137,6 @@ export function TipTapEditor({
               },
             });
 
-            // Also notify backend about the implicit accept
             writingApi.acceptDraft(data.requestId, data.currentText).catch(() => {
               /* Non-blocking */
             });
@@ -109,10 +146,7 @@ export function TipTapEditor({
     [autosaveInterval, novelId, chapterId, recordFeedback],
   );
 
-  // ── GhostText fetchSuggestion ref (same stale-closure pattern as Autosave) ──
-  // useEditor freezes extensions at mount time, so a direct closure over chapterId
-  // would never update. Instead we store the latest fetcher in a ref and read it
-  // at call time via the stable wrapper.
+  // ── GhostText fetchSuggestion ref ──
   const fetchSuggestionRef = useRef<
     | ((params: { textBefore: string; textAfter: string; signal: AbortSignal }) => Promise<string>)
     | undefined
@@ -124,7 +158,7 @@ export function TipTapEditor({
       : undefined;
   }, [chapterId, locale]);
 
-  // Stable config object — empty deps because all dynamic values are read from refs at call time
+  // Stable config object
   const ghostTextConfig = useMemo(
     () =>
       ({
@@ -176,52 +210,182 @@ export function TipTapEditor({
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      // Safety-net: ensure content is HTML before passing to TipTap
       const htmlContent = content.trim().startsWith("<") ? content : markdownToHtml(content);
       editor.commands.setContent(htmlContent);
     }
   }, [content, editor]);
 
-  // Sync editor instance to global store so EditorView toolbar can use it
+  // Sync editor instance to global store
   useEffect(() => {
     if (editor) {
       useEditorStore.getState().setEditor(editor);
-      // Expose on window for E2E testing — TipTap doesn't attach EditorView
-      // to the DOM element, so Playwright cannot access it via el.view
       if (typeof window !== "undefined") {
         (window as unknown as Window & { __narrareEditor: unknown }).__narrareEditor = editor;
       }
     }
   }, [editor]);
 
+  // ---------------------------------------------------------------------------
+  // AI Rewrite flow
+  // ---------------------------------------------------------------------------
+
+  /** Get context around a selection (200 tokens ~= ~800 chars on each side). */
+  const getSelectionContext = useCallback(
+    (from: number, to: number) => {
+      if (!editor) return { contextBefore: "", contextAfter: "" };
+      const contextRadius = 800;
+      const contextBefore = editor.state.doc.textBetween(
+        Math.max(0, from - contextRadius),
+        from,
+        " ",
+      );
+      const contextAfter = editor.state.doc.textBetween(
+        to,
+        Math.min(editor.state.doc.content.size, to + contextRadius),
+        " ",
+      );
+      return { contextBefore, contextAfter };
+    },
+    [editor],
+  );
+
+  /** Step 1: User clicks "AI Rewrite" in BubbleMenu → show mode selector. */
   const handleAIRewrite = useCallback(() => {
     if (!editor) return;
 
     const { from, to } = editor.state.selection;
     const selectedText = editor.state.doc.textBetween(from, to, " ");
+    const trimmedLength = selectedText.trim().length;
 
-    if (selectedText.trim()) {
-      const mockSuggestions = [
-        selectedText.split("").reverse().join(""),
-        selectedText.toUpperCase(),
-        `\u2728 ${selectedText} (\u00fcberarbeitet von KI)`,
-      ];
-
-      setAiSuggestion({
-        original: selectedText,
-        suggestions: mockSuggestions,
-        position: { from, to },
-      });
-      setSelectedSuggestion(0);
+    if (trimmedLength < MIN_SELECTION_LENGTH || trimmedLength > MAX_SELECTION_LENGTH) {
+      return;
     }
-  }, [editor]);
 
+    const { contextBefore, contextAfter } = getSelectionContext(from, to);
+
+    setRewriteSelection({
+      text: selectedText,
+      from,
+      to,
+      contextBefore,
+      contextAfter,
+    });
+    setRewritePhase("selecting-mode");
+  }, [editor, getSelectionContext]);
+
+  /** Step 2: User selects mode + options → start streaming. */
+  const handleRewriteGenerate = useCallback(
+    (config: RewriteConfig) => {
+      if (!editor || !rewriteSelection || !chapterId || !novelId) return;
+
+      setRewritePhase("streaming");
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const alternatives: RewriteAlternative[] = [];
+
+      streamRewrite(
+        chapterId,
+        novelId,
+        {
+          selection_text: rewriteSelection.text,
+          context_before: rewriteSelection.contextBefore,
+          context_after: rewriteSelection.contextAfter,
+          mode: config.mode,
+          options: config.mode !== "custom" ? { option: config.option } : undefined,
+          count: config.count,
+          custom_instructions: config.customInstructions,
+          language: locale,
+        },
+        {
+          onRequestInfo: () => {
+            // Request ID received
+          },
+          onAlternative: (label, text) => {
+            alternatives.push({ label, text });
+            // Show modal after first alternative arrives
+            if (alternatives.length === 1) {
+              setAiSuggestion({
+                original: rewriteSelection.text,
+                suggestions: alternatives.map((a) => a.text),
+                labels: alternatives.map((a) => a.label),
+                position: { from: rewriteSelection.from, to: rewriteSelection.to },
+              });
+              setSelectedSuggestion(0);
+            } else {
+              // Update with additional alternatives
+              setAiSuggestion((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      suggestions: alternatives.map((a) => a.text),
+                      labels: alternatives.map((a) => a.label),
+                    }
+                  : prev,
+              );
+            }
+            setRewritePhase("showing-alternatives");
+          },
+          onAlternativeFinal: () => {
+            abortRef.current = null;
+          },
+          onError: () => {
+            setRewritePhase("idle");
+            abortRef.current = null;
+          },
+        },
+        controller.signal,
+      );
+    },
+    [editor, rewriteSelection, chapterId, novelId, locale],
+  );
+
+  const handleRewriteCancel = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setRewritePhase("idle");
+    setRewriteSelection(null);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Accept/Reject actions for modal
+  // ---------------------------------------------------------------------------
+
+  /** Replace the original selection with the selected alternative (Rewrite: Replace). */
   const acceptSuggestion = useCallback(() => {
     if (!editor || !aiSuggestion) return;
 
-    editor.commands.setTextSelection(aiSuggestion.position);
-    editor.commands.insertContent(aiSuggestion.suggestions[selectedSuggestion]);
+    const selectedText = aiSuggestion.suggestions[selectedSuggestion];
+    const rid = `rewrite-${Date.now()}`;
+
+    replaceSelectionWithAIContent(
+      editor,
+      rid,
+      "rewrite",
+      selectedText,
+      aiSuggestion.position.from,
+      aiSuggestion.position.to,
+    );
+
     setAiSuggestion(null);
+    setRewritePhase("idle");
+    setRewriteSelection(null);
+    setShowRejectionInput(false);
+    setRejectionReason("");
+  }, [editor, aiSuggestion, selectedSuggestion]);
+
+  /** Insert the selected alternative after the original selection (Insert as new). */
+  const insertAsNew = useCallback(() => {
+    if (!editor || !aiSuggestion) return;
+
+    const selectedText = aiSuggestion.suggestions[selectedSuggestion];
+    const requestId = `rewrite-${Date.now()}`;
+
+    insertAIContentAt(editor, requestId, "rewrite", selectedText, aiSuggestion.position.to);
+
+    setAiSuggestion(null);
+    setRewritePhase("idle");
+    setRewriteSelection(null);
     setShowRejectionInput(false);
     setRejectionReason("");
   }, [editor, aiSuggestion, selectedSuggestion]);
@@ -231,14 +395,33 @@ export function TipTapEditor({
       setAiSuggestion(null);
       setShowRejectionInput(false);
       setRejectionReason("");
+      setRewritePhase("idle");
+      setRewriteSelection(null);
     } else {
       setShowRejectionInput(true);
     }
   }, [rejectionReason]);
 
+  // ---------------------------------------------------------------------------
+  // Selection validation for BubbleMenu rewrite button
+  // ---------------------------------------------------------------------------
+
+  const getSelectionLength = useCallback(() => {
+    if (!editor) return 0;
+    const { from, to } = editor.state.selection;
+    if (from === to) return 0;
+    return editor.state.doc.textBetween(from, to, " ").trim().length;
+  }, [editor]);
+
+  const selectionLength = getSelectionLength();
+  const isRewriteEnabled =
+    selectionLength >= MIN_SELECTION_LENGTH && selectionLength <= MAX_SELECTION_LENGTH;
+
   if (!editor) {
     return null;
   }
+
+  const isRewriteStreaming = rewritePhase === "streaming";
 
   return (
     <div className="relative flex-1">
@@ -246,9 +429,7 @@ export function TipTapEditor({
         editor={editor}
         className="bubble-menu bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
         shouldShow={({ state }) => {
-          // Don't show during drag operations
           if (useEditorStore.getState().isDragging) return false;
-          // Only show when there's an actual text selection
           const { from, to } = state.selection;
           return from !== to;
         }}
@@ -275,9 +456,23 @@ export function TipTapEditor({
           <button
             type="button"
             onClick={handleAIRewrite}
-            className="px-3 py-2 hover:bg-accent transition-colors flex items-center gap-1.5 text-sm text-primary"
+            disabled={!isRewriteEnabled}
+            title={
+              !isRewriteEnabled && selectionLength > 0
+                ? selectionLength < MIN_SELECTION_LENGTH
+                  ? t("rewrite.selectionTooShort", { min: MIN_SELECTION_LENGTH })
+                  : t("rewrite.selectionTooLong", { max: MAX_SELECTION_LENGTH })
+                : undefined
+            }
+            className={`px-3 py-2 hover:bg-accent transition-colors flex items-center gap-1.5 text-sm text-primary ${
+              !isRewriteEnabled ? "opacity-40 cursor-not-allowed" : ""
+            }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            {isRewriteStreaming ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
             <span>{t("bubble.aiRewrite")}</span>
           </button>
         </div>
@@ -291,7 +486,16 @@ export function TipTapEditor({
         <AIAnnotationActions editor={editor} projectId={novelId} chapterId={chapterId} />
       )}
 
-      {/* AI Suggestion Modal */}
+      {/* Rewrite Mode Selector (shown before streaming starts) */}
+      {rewritePhase === "selecting-mode" && rewriteSelection && (
+        <RewriteModeSelector
+          selectionLength={rewriteSelection.text.trim().length}
+          onGenerate={handleRewriteGenerate}
+          onCancel={handleRewriteCancel}
+        />
+      )}
+
+      {/* AI Suggestion Modal (reused for rewrite alternatives) */}
       {aiSuggestion && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
@@ -306,7 +510,7 @@ export function TipTapEditor({
               </p>
             </div>
 
-            {/* Suggestion list */}
+            {/* Suggestion list with inline diffs */}
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-3">
                 {aiSuggestion.suggestions.map((suggestion, index) => (
@@ -320,8 +524,16 @@ export function TipTapEditor({
                         : "border-border hover:border-primary/50"
                     }`}
                   >
+                    {/* Label header */}
+                    {aiSuggestion.labels[index] && (
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        {aiSuggestion.labels[index]}
+                      </p>
+                    )}
                     <div className="flex items-start justify-between gap-3">
-                      <p className="flex-1">{suggestion}</p>
+                      <div className="flex-1">
+                        <InlineDiff original={aiSuggestion.original} alternative={suggestion} />
+                      </div>
                       {selectedSuggestion === index && (
                         <Check className="w-5 h-5 text-primary flex-shrink-0" />
                       )}
@@ -329,6 +541,12 @@ export function TipTapEditor({
                   </button>
                 ))}
               </div>
+              {isRewriteStreaming && (
+                <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{t("rewrite.streaming")}</span>
+                </div>
+              )}
             </div>
 
             {/* Rejection reason input */}
@@ -361,6 +579,15 @@ export function TipTapEditor({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={insertAsNew}
+                  className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+                  title={t("rewrite.insertAsNew")}
+                >
+                  <Plus className="w-4 h-4" />
+                  {t("rewrite.insertAsNew")}
+                </button>
+                <button
+                  type="button"
                   onClick={handleAIRewrite}
                   className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
                 >
@@ -373,7 +600,7 @@ export function TipTapEditor({
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
                 >
                   <Check className="w-4 h-4" />
-                  {t("aiModal.accept")}
+                  {t("rewrite.replace")}
                 </button>
               </div>
             </div>

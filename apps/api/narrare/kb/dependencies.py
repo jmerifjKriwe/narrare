@@ -67,11 +67,16 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
 
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, and ChapterRepository + KBRepository for data.
+
+    Also injects KBService and RelationshipRepository for the apply
+    extraction step (KB-007).
     """
     from narrare._app.dependencies import get_composer, get_model_registry
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.extraction_service import ExtractionService
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
+    from narrare.kb.service import KBService
     from narrare_core.llm.intents import ResolvedModelConfig
 
     registry = get_model_registry()
@@ -89,6 +94,12 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
         chapter_repo=ChapterRepository(session),
         kb_repo=KBRepository(session),
         composer=composer,
+        kb_service=KBService(
+            repo=KBRepository(session),
+            novel_repo=None,
+            embedding_hooks=None,
+        ),
+        rel_repo=RelationshipRepository(session),
     )
 
 

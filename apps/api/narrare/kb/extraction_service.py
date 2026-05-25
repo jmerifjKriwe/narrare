@@ -7,6 +7,9 @@ Manages the full extraction flow:
 4. Run ExtractionAgent over the chapter text
 5. Return structured ExtractionOutput
 
+Also provides ``apply_extraction()`` that delegates to
+ExtractionApplyService for the apply step (KB-007).
+
 Uses ModelRegistry + PromptComposer (RULE-01b, RULE-02).
 """
 
@@ -23,6 +26,9 @@ if TYPE_CHECKING:
 
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionResponse
+    from narrare.kb.service import KBService
     from narrare_core.agents.extraction_types import ExtractionOutput
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import ResolvedModelConfig
@@ -60,6 +66,8 @@ class ExtractionService:
         chapter_repo: Chapter repository for reading chapter content.
         kb_repo: KB repository for fetching existing entity names (dedup).
         composer: PromptComposer for bundled system prompts (RULE-02).
+        kb_service: KBService for the apply step (optional, needed for apply).
+        rel_repo: RelationshipRepository for the apply step (optional).
     """
 
     def __init__(
@@ -69,12 +77,16 @@ class ExtractionService:
         chapter_repo: ChapterRepositoryProtocol,
         kb_repo: KBRepositoryProtocol,
         composer: PromptComposer,
+        kb_service: KBService | None = None,
+        rel_repo: RelationshipRepository | None = None,
     ) -> None:
         self._registry = registry
         self._config = config
         self._chapter_repo = chapter_repo
         self._kb_repo = kb_repo
         self._composer = composer
+        self._kb_service = kb_service
+        self._rel_repo = rel_repo
 
     async def extract_from_chapter(
         self,
@@ -135,6 +147,45 @@ class ExtractionService:
         )
 
         return result
+
+    async def apply_extraction(
+        self,
+        novel_id: UUID,
+        user_id: UUID,
+        items: list[ApplyExtractionItem],
+    ) -> ApplyExtractionResponse:
+        """Apply endorsed extraction items to the Knowledge Base.
+
+        Delegates to ExtractionApplyService for per-item handling.
+
+        Args:
+            novel_id: Novel to apply items to.
+            user_id: Requesting user.
+            items: Endorsed extraction items to apply.
+
+        Returns:
+            ApplyExtractionResponse with created and updated entries.
+
+        Raises:
+            ValueError: If required dependencies not configured.
+        """
+        if self._kb_service is None or self._rel_repo is None:
+            raise ValueError(
+                "KBService and RelationshipRepository must be configured for apply_extraction"
+            )
+
+        from narrare.kb.extraction_apply_service import ExtractionApplyService
+
+        apply_service = ExtractionApplyService(
+            kb_service=self._kb_service,
+            rel_repo=self._rel_repo,
+            kb_repo=self._kb_repo,
+        )
+        return await apply_service.apply(
+            novel_id=novel_id,
+            user_id=user_id,
+            items=items,
+        )
 
     async def _get_existing_entity_names(
         self,

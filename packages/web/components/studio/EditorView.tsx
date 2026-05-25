@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, LayoutGrid, PanelRight, Save, Sparkles, Wand2 } from "lucide-react";
+import { Clock, Database, LayoutGrid, PanelRight, Save, Sparkles, Wand2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chaptersApi, volumesApi } from "@/lib/api/client";
@@ -14,6 +14,7 @@ import { GenerationPanel } from "./editor/GenerationPanel";
 import { GhostTextConfig } from "./editor/GhostTextConfig";
 import { MetadataSidebar } from "./editor/MetadataSidebar";
 import { SessionPanel } from "./editor/SessionPanel";
+import { ExtractionPanel } from "./extraction/ExtractionPanel";
 import { NameGeneratorModal } from "./generation/NameGeneratorModal";
 import { StoryboardPanel } from "./planning/StoryboardPanel";
 import { TipTapEditor } from "./TipTapEditor";
@@ -56,6 +57,10 @@ export function EditorView({ novelId }: EditorViewProps) {
   const setDraftText = useEditorStore((s) => s.setDraftText);
   const setSessionActive = useEditorStore((s) => s.setSessionActive);
   const toggleGenerationPanel = useEditorStore((s) => s.toggleGenerationPanel);
+
+  // Extraction state
+  const extractionPanelOpen = useEditorStore((s) => s.extractionPanelOpen);
+  const toggleExtractionPanel = useEditorStore((s) => s.toggleExtractionPanel);
 
   // Compute writing graph status steps from current editor state
   const writingSteps: Array<{ id: WritingStep; status: StepStatus }> = useMemo(() => {
@@ -304,6 +309,9 @@ export function EditorView({ novelId }: EditorViewProps) {
       startExtend: (_length: "short" | "medium" | "long") => {
         // TODO: Wire to extend flow (ContinueButton handles this directly)
       },
+      startRewrite: () => {
+        // TODO: Wire to rewrite flow (TipTapEditor handles this directly via BubbleMenu)
+      },
     }),
     [
       toggleSidebar,
@@ -324,6 +332,8 @@ export function EditorView({ novelId }: EditorViewProps) {
       isGenerating,
       hasDraft: draftText.length > 0,
       hasPendingAnnotation: false, // TODO: Wire to hasPendingMark(editor)
+      hasSelection: false, // TODO: Wire to editor selection state
+      selectionLength: 0, // TODO: Wire to editor selection length
     }),
     [isGenerating, draftText],
   );
@@ -511,6 +521,18 @@ export function EditorView({ novelId }: EditorViewProps) {
             <span>{t("editor.generate")}</span>
           </button>
           <div className="w-px h-5 bg-border mx-1" />
+          <button
+            type="button"
+            onClick={toggleExtractionPanel}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-accent transition-colors text-sm text-primary ${
+              extractionPanelOpen ? "bg-accent" : ""
+            }`}
+            title={t("kb.extract")}
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span>{t("kb.extract")}</span>
+          </button>
+          <div className="w-px h-5 bg-border mx-1" />
           <GhostTextConfig editor={editor} />
         </div>
       )}
@@ -575,6 +597,19 @@ export function EditorView({ novelId }: EditorViewProps) {
         isOpen={nameGeneratorOpen}
         onClose={() => setNameGeneratorOpen(false)}
       />
+
+      {/* Extraction panel — modal overlay */}
+      {extractionPanelOpen && activeChapterId && (
+        <ExtractionPanel
+          novelId={novelId}
+          chapterId={activeChapterId}
+          onClose={toggleExtractionPanel}
+          onApplied={() => {
+            // Invalidate KB queries so the KB panel refreshes
+            void queryClient.invalidateQueries({ queryKey: ["kb", novelId] });
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -149,7 +149,26 @@ class RewriteRequest:
 - [ANAL-008](../analysis/ANAL-008-voice-character.md) — Voice analysis
 - [KB-001](../kb/KB-001-entity-management.md) — Character voice profiles
 
+## Technical Implementation
+
+**SSE-direct endpoint:** `POST /api/v1/writing/chapters/{chapter_id}/rewrite` — same endpoint starts and streams. No two-step start/stream; the endpoint returns an SSE stream immediately.
+
+**Service:** `RewriteService` in `writing/rewrite_service.py` (separate from DraftService per RULE-04). Orchestrates prompt composition, LLM call via Gateway, and streaming response.
+
+**Token budget (`_REWRITE_PERCENTAGES`):** 40/15/25/10/10 — 40% immediate context (selection + surrounding text), 15% recent chapters, 25% KB referenced entities, 10% KB suggested entities, 10% pinned KB entries.
+
+**Structured output format:** Uses `<alternative>` XML tags to delimit each rewrite alternative within the streamed response. The frontend `AlternativeParser` (client-side state machine parser) incrementally parses SSE chunks, extracting individual alternatives as they stream in without waiting for the full response.
+
+**Frontend integration:**
+- Reuses existing `BubbleMenu` + `AISuggestion` modal with extensions for rewrite-specific UI (mode selector, alternative preview)
+- `RewriteModeSelector` component — tone/style/voice/fix/custom mode picker with sub-options
+- `InlineDiff` component — uses `diff-match-patch` for inline diff highlighting between original selection and proposed alternative
+- `replaceSelectionWithAIContent()` — atomic selection replacement function that swaps the editor selection with the chosen alternative content in a single transaction, preserving undo history
+
+**Voice mode:** Uses `_voice_profiles.py` from existing KB infrastructure (character_voice_profiles from KBEntity metadata) — same voice extraction pipeline shared with WRITE-003 extend and WRITE-002 draft.
+
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
 - `cr-01-audit` — Dedicated rewrite prompt template created with CoT, negative examples, and scratchpad pattern
+- `2026-05-25` — Implementation: RewriteService, SSE-direct endpoint, AlternativeParser, RewriteModeSelector, InlineDiff, replaceSelectionWithAIContent()
