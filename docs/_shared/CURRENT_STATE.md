@@ -11,8 +11,8 @@
 ## Last Updated
 
 Date: 2026-05-25
-Updated by: NarrarePlatformSpecialist
-Session summary: KB-005 Proactive Context — Phase 3 validation and commit. Architecture check: clean (679 files, 73 approved exceptions). Test suite: 560 passed, 19 skipped, 1 E2E failure (pre-existing — connection refused). Fixed contracts.py double blank line (201→200 lines). Committed kb-005-proactive-context with 54 new tests, core ProactiveContextService + API KBSuggestService.
+Updated by: NarrareDevCoordinator
+Session summary: KB-002 Assisted Creation Backend committed (281df89). KBSessionService with Redis-backed store, KBAssistService orchestrator, 8 REST endpoints + SSE, template field extraction, 99 tests. Fixed import errors (schemas → assist_contracts), type fixes (model_copy, UUID params), RULE-04 compliance (test split, file size limits). Architecture check clean.
 
 ---
 
@@ -122,6 +122,12 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 **Stub Modules (interfaces only):**
 - `context/`, `cache/`, `schemas/`
 
+**Context Layer (`context/`):**
+- `proactive_service.py` — ProactiveContextService (3-stage pipeline: name match → embedding search → hybrid scoring)
+- `name_matching.py` — match_entity_names() with regex word boundaries
+- `suggestion.py` — Suggestion + EntityMetadata dataclasses
+- `contracts.py` — ProactiveContextProtocol
+
 **Writing Layer (`writing/`):**
 - `models.py` — GenerationMode, GenerationStatus, WritingContext, GenerationRequest, SessionState, SceneState
 - `context_models.py` — KBEntity, RecentChapter dataclasses
@@ -154,6 +160,10 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `writing_graph.py` — WritingGraph with 6 steps: plan_outline → write_draft → review_draft → {approved→finalize, needs_revision→revise_draft→write_draft} → generate_summary → end
   - `generate_summary` step runs after `finalize`, calls ChapterSummaryAgent, stores result in `ctx.state.summary`, sets `WritingStatus.SUMMARIZED`
 - `test_writing_graph_summary.py` — Unit tests for WritingGraph's generate_summary step
+- `kb_assist_agent.py` — KBAssistAgent (4-mode: question, suggest, draft, complete) with KBAssistDeps
+- `kb_assist_types.py` — KBAssistOutput (discriminated union output type)
+- `extraction_agent.py` — ExtractionAgent for structured KB extraction
+- `extraction_types.py` — ExtractionOutput + ExtractionItem
 
 **Planning Layer (`planning/`):**
 - `models.py` — ChapterOutlineData, SyncStatus enum (5 levels), StageAssignment dataclass
@@ -243,6 +253,18 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `kb/models.py` — Added `last_referenced_at`, `usage_count` columns for hybrid search scoring
 - 8 entity types: character, location, faction, object, system, timeline, concept, setting
 - Migration 0011 — expands CHECK constraints for concept + setting entity types
+- `kb/assist_service.py` — KBAssistService (orchestrates KBAgent + PromptComposer + ProactiveContext)
+- `kb/assist_contracts.py` — KBAssistProtocol, KBAssistEnhancementResponse, KBAssistQuestionResponse, KBAssistSuggestionResponse
+- `kb/session_service.py` — KBSessionService (lifecycle: create, answer, suggest, interview, enhance, complete, abandon)
+- `kb/session_store.py` — KBCreationSessionStore (Redis-backed via SessionCacheProtocol, 30min TTL)
+- `kb/session_models.py` — KBCreationField (provenance tracking), KBCreationSession
+- `kb/session_schemas.py` — CreateSessionRequest, AnswerFieldRequest (RULE-04 split from schemas.py)
+- `kb/template_fields.py` — get_template_fields() from KB schema registry
+- `kb/router_sessions.py` — 8 REST endpoints for KB creation session lifecycle
+- `kb/router_sessions_sse.py` — SSE endpoint for streaming AI responses
+- `kb/suggest_service.py` — KBSuggestService (API wrapper for ProactiveContextService)
+- `kb/suggest_contracts.py` — KBSuggestProtocol (RULE-04 split)
+- `kb/usage_contracts.py` — ContextUsageProtocol (RULE-04 split)
 
 **Templates Module (`templates/`):**
 - Full CRUD: models (KBTemplate SQLAlchemy), repository, service, router, contracts, schemas
@@ -402,7 +424,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 #### `tests/` — Test Suite
 
 **Unit tests (31 files):**
-- 2113 tests total (backend)
+- 2655 tests total (backend)
 - `core/llm/` — gateway, intents, retry, providers_registry, embeddings (5 files)
 - `core/prompts/` — registry, composer, variable_engine, meta, variable_engine_hypothesis (5 files)
 - `core/shared/` — frontmatter, result, errors, file_utils, result_hypothesis, frontmatter_hypothesis (6 files)
@@ -485,11 +507,15 @@ Phase 5 (current):
 
 11. 🔄 WRITE-003: Extend Chapter — Implementation in progress (Core pipeline + prompts, Backend API, Frontend AIAnnotation infrastructure)
 
-12. 🔄 INFRA-004: Embedding Store — Implementation in progress (Core: store/hash/scoring, API: models/repo/service/router/tasks, KB hooks + usage tracking. Architecture violations pending: RULE-04 file size splits needed in repository.py, test files)
+12. ✅ INFRA-004: Embedding Store — Complete. 47 files, 5763 insertions. EmbeddingStoreProtocol, SearchResult, EmbeddingStats in core/. API models/repo/service/router/tasks. KB hooks + usage tracking. Architecture check clean.
 
 13. ✅ KB-005: Proactive Context — `ProactiveContextService` (core) 3-stage pipeline: name matching → embedding search → hybrid scoring. `KBSuggestService` (api) thin wrapper with chapter/entity resolution. `GET /novels/{novel_id}/kb/suggestions/{chapter_id}` endpoint. `match_entity_names()` regex extraction utility. `compute_hybrid_score()` extracted from `rank_candidates()`. 54 new tests (48 core + 6 API). INFRA-009 merged into KB-005.
 
-Next focus: KB-002 (Assisted Creation), KB-007 (Extraction). Both designed, implementation pending.
+14. ✅ KB-002: Assisted Creation Backend — Committed (281df89). KBSessionService + KBAssistService, Redis-backed session store, 8 REST endpoints + SSE, template field extraction, 99 tests.
+
+15. ✅ kb-agents-and-prompts — Committed (481e370). KBAssistAgent (4-mode), ExtractionAgent, 4 English prompts, 78 tests.
+
+Next focus: KB-002 frontend (assisted creation UI), KB-007 Extraction API.
 
 ---
 
@@ -629,6 +655,9 @@ All demo content is complete — sufficient for testing through Phase 5.
 | INFRA-004: Core embeddings module | `packages/core/narrare_core/embeddings/` — store.py (EmbeddingStoreProtocol, SearchResult, EmbeddingStats), hash.py (compute_content_hash SHA-256), scoring.py (hybrid search scoring 0.5/0.3/0.2) |
 | INFRA-004: API embeddings module | `apps/api/narrare/embeddings/` — models, repository, service, router, dependencies, tasks, contracts, schemas. Full embedding CRUD + search + TaskIQ background generation |
 | INFRA-004: KB embedding hooks | `kb/embedding_hooks.py` — EmbeddingHookManager for content hash + task dispatch on KB changes; `kb/usage_service.py` — ContextUsageService for accept/dismiss tracking; `kb/models.py` — added last_referenced_at, usage_count columns |
+| KB-002 backend | KBAssistService + KBSessionService + Redis session store + 8 REST endpoints + SSE + template field extraction. 99 tests. Commit 281df89. |
+| KB-002 architecturesplits | schemas.py split (session_schemas.py, assist_contracts.py), test split (test_session_service.py, test_session_assist.py), contracts extraction (suggest_contracts.py, usage_contracts.py). RULE-04 compliance. |
+| KB-002 type fixes | model_copy() for kwargs, UUID type params in test fakes, PromptComposer for KBAssistService, allow-direct-llm + allow-agent markers. |
 
 ---
 
