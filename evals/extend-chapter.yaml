@@ -1,0 +1,356 @@
+# WRITE-003 Extend Chapter — Promptfoo Eval Baseline
+#
+# Self-contained eval config for chapter continuation quality.
+# Run: npx promptfoo eval -c evals/extend-chapter.yaml
+#
+# Evaluates:
+# 1. Coherent continuation from pre-text
+# 2. Length setting adherence (short/medium/long)
+# 3. Style consistency with pre-text
+# 4. KB context inclusion when relevant entities are mentioned
+#
+# See also: evals/testcases/writing-extend.yaml (prompt-template-focused tests)
+
+description: "WRITE-003 Extend Chapter — Eval Baseline"
+
+providers:
+  - id: "openai:gpt-4o-mini"
+    label: "extend-baseline"
+
+defaultTest:
+  options:
+    run: 3
+
+tests:
+  # -----------------------------------------------------------------------
+  # 1. Coherent continuation from pre-text
+  # -----------------------------------------------------------------------
+
+  - description: "Extend — coherent continuation from atmospheric pre-text"
+    vars:
+      existing_content: |
+        The last boat left the harbor at dusk, its engine coughing like an old man with a grudge. Maren watched from the lighthouse gallery, one hand resting on the cold iron rail. Below, the sea shifted between copper and charcoal, unsure which evening wanted it more.
+
+        She had been keeper here for eleven years now — long enough to know which storms were bluster and which meant business. This one rolling in from the southwest had the silence about it that meant business. The barometer hadn't moved in two days, and that stillness itself was a kind of warning.
+
+        [CONTINUE FROM HERE]
+    prompt: |
+      You are a creative writing assistant. Continue the text seamlessly from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Word target: ~150 words. Tone: contemplative, atmospheric. Language: English.
+
+      Rules:
+      - Do NOT repeat or rephrase text before the marker
+      - Do NOT add meta-commentary
+      - Match the author's sentence rhythm and narrative distance
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Does the first sentence flow naturally from "that stillness itself was a kind of warning" without repeating it?
+          2. Does it maintain the contemplative, atmospheric tone?
+          3. Does it keep third-person close narrative distance (Maren's POV)?
+          4. Does it avoid meta-commentary ("Here is the continuation")?
+          5. Is the prose quality comparable to the pre-text?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+      - type: not-contains
+        value: "Continuing from"
+      - type: not-contains
+        value: "kind of warning"
+
+  - description: "Extend — coherent continuation with dialogue pre-text"
+    vars:
+      existing_content: |
+        The diner was three quarters empty, which was how Kira liked it. She took the booth by the window where she could watch the parking lot and the road beyond.
+
+        "You look like hell," Manny said, setting down the mug without a coaster.
+
+        "Haven't slept." She wrapped both hands around the ceramic. "Volkov's people were at the warehouse again. Third time this week."
+
+        "Same crew?"
+
+        "New faces. Same car." She pulled a folded napkin from her jacket pocket and slid it across the table. Three license plate numbers, handwritten.
+
+        [CONTINUE FROM HERE]
+    prompt: |
+      You are a creative writing assistant. Continue the text seamlessly from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Word target: ~400 words. Tone: tense, sharp. Language: English.
+
+      Rules:
+      - Maintain each character's established voice (Kira: terse, clipped; Manny: more relaxed)
+      - Advance the scene through dialogue and action
+      - Do NOT repeat the pre-text
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Does the first sentence flow naturally from the license plate detail?
+          2. Does Kira's dialogue stay terse and clipped?
+          3. Does Manny's dialogue stay distinct (more relaxed, observational)?
+          4. Does tension escalate naturally without melodrama?
+          5. Does the continuation include dialogue that advances the scene?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+      - type: not-contains
+        value: "same car"
+
+  # -----------------------------------------------------------------------
+  # 2. Length setting adherence
+  # -----------------------------------------------------------------------
+
+  - description: "Extend — short length (~150 words, tight)"
+    vars:
+      existing_content: |
+        The cat sat on the windowsill, watching the rain streak the glass. Outside, the garden was drowning — roses bent under the weight of water, the birdbath overflowed, and the old oak's branches scraped the gutters with each gust.
+
+        [CONTINUE FROM HERE]
+    prompt: |
+      You are a creative writing assistant. Continue the text from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Word target: ~150 words. Tone: balanced. Language: English.
+
+      Produce approximately 150 words. Do NOT repeat the pre-text.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Is the word count roughly 100-200 words (short length)?
+          2. Does it feel like a paragraph or two, not a full scene?
+          3. Does it maintain the quiet, observational tone?
+          4. Is it self-contained enough to work as a quick addition?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  - description: "Extend — medium length (~400 words, scene development)"
+    vars:
+      existing_content: |
+        Professor Aldridge closed the lecture hall doors behind her, the sound echoing in the empty corridor. Her heels clicked against the linoleum — a rhythm she'd perfected over twenty years of academic life. Friday afternoon, and the building was already emptying. She liked it this way.
+
+        In her office, the stack of ungraded papers had grown to threatening proportions. She set her bag down, made tea in the electric kettle she kept hidden behind the Norton Anthology, and opened the first essay.
+
+        [CONTINUE FROM HERE]
+    prompt: |
+      You are a creative writing assistant. Continue the text from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Word target: ~400 words. Tone: balanced, literary. Language: English.
+
+      Produce approximately 400 words. Do NOT repeat the pre-text.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Is the word count roughly 300-500 words (medium length)?
+          2. Does it develop the scene — adding detail, character depth, or events?
+          3. Does it maintain the academic, literary tone?
+          4. Is the pacing appropriate for a scene extension (not too rushed, not too slow)?
+          5. Does it feel like a natural middle-length addition to the chapter?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  - description: "Extend — long length (~750 words, substantial advancement)"
+    vars:
+      existing_content: |
+        The runes on the cavern wall pulsed like a heartbeat, each flash casting Renna's shadow in different directions. She pressed her palm against the stone and felt warmth — not the warmth of a fire, but something older, something that remembered when the mountain itself was young.
+
+        "It's responding to you," Thale whispered, his voice barely louder than the rune-light. He stood three paces behind her, close enough to grab her arm if needed, far enough to run if things went wrong.
+
+        [CONTINUE FROM HERE]
+    prompt: |
+      You are a creative writing assistant. Continue the text from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Word target: ~750 words. Tone: immersive, building tension. Language: English.
+
+      Produce approximately 750 words. Advance the scene substantially. Do NOT repeat the pre-text.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Is the word count roughly 500-1000 words (long length)?
+          2. Does it substantially advance the scene — not just add description?
+          3. Does it build tension and escalate the stakes?
+          4. Does it maintain Renna's character (curious, tactile, instinct-driven)?
+          5. Does it maintain Thale's character (cautious, practical)?
+          6. Is the scene advancement substantial enough for a ~750-word target?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+      - type: not-contains
+        value: "spread up her arm"
+
+  # -----------------------------------------------------------------------
+  # 3. Style consistency with pre-text
+  # -----------------------------------------------------------------------
+
+  - description: "Extend — style matching for Hemingway-esque sparse prose"
+    vars:
+      existing_content: |
+        The river was cold. He stepped in anyway. The water came up to his knees, then his waist. He held the rod in both hands. The line went out straight. He watched it.
+
+        Nothing happened for a long time. A heron landed on the far bank. It stood still. He stood still. The morning was gray and quiet.
+
+        [CONTINUE FROM HERE]
+    prompt: |
+      You are a creative writing assistant. Continue the text from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Word target: ~200 words. Tone: sparse, minimalist. Language: English.
+
+      CRITICAL: Match the exact style — short sentences, simple words, no adverbs, no figurative language. Hemingway-esque.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Does it match the sparse, minimalist style exactly (short sentences, simple words)?
+          2. Does it avoid adverbs, flowery language, and figurative speech?
+          3. Does it use the same rhythm (short declarative sentences, some fragments)?
+          4. Does the prose feel like the same author wrote it?
+          5. Does it avoid stylistic drift (becoming more elaborate or literary)?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  - description: "Extend — style matching for lush, descriptive prose"
+    vars:
+      existing_content: |
+        The ballroom shimmered like the inside of a geode, every surface catching and fracturing the candlelight into a thousand prismatic fragments. Isabelle's gown — a deep burgundy silk that whispered against the marble floor with each step — drew glances like a lodestone draws iron filings. She moved through the crowd with the practiced ease of someone who had learned, long ago, that the most powerful thing a woman could do in a room full of powerful men was to appear utterly at ease.
+
+        [CONTINUE FROM HERE]
+    prompt: |
+      You are a creative writing assistant. Continue the text from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Word target: ~300 words. Tone: ornate, descriptive. Language: English.
+
+      CRITICAL: Match the exact style — rich metaphors, similes, long flowing sentences, sensory detail.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Does it match the lush, ornate style (rich metaphors, similes, flowing sentences)?
+          2. Does it maintain the same density of sensory detail?
+          3. Does it use the same sophisticated vocabulary level?
+          4. Does the prose feel like the same author wrote it?
+          5. Does it avoid stylistic drift (becoming simpler or plainer)?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  # -----------------------------------------------------------------------
+  # 4. KB context inclusion when entities are mentioned
+  # -----------------------------------------------------------------------
+
+  - description: "Extend — KB character details reflected in continuation"
+    vars:
+      existing_content: |
+        Maren stood at the edge of the cliff, the wind pulling at her coat. Below, the waves crashed against rocks that had been there since before the lighthouse, before the town, before any name was given to this stretch of coast.
+
+        Thale was supposed to meet her here. He was late, as usual — the man treated clocks as suggestions rather than obligations. But he'd sounded urgent on the phone, and Thale never sounded urgent about anything.
+
+        [CONTINUE FROM HERE]
+      kb_characters: |
+        Thale — A retired cartographer in his late 60s. Walks with a limp from an old climbing accident. Speaks precisely, chooses words carefully. Has an obsessive habit of correcting other people's directions. Was married to Maren's mother before she disappeared. Carries a worn leather satchel everywhere with old maps.
+    prompt: |
+      You are a creative writing assistant. Continue the text from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Character reference (from Knowledge Base):
+      {{kb_characters}}
+
+      Word target: ~300 words. Tone: atmospheric, tense. Language: English.
+
+      Use the character details from the KB to make the continuation consistent with established character traits.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Does it reflect Thale's character traits from the KB (precise speech, limp, satchel, cartographer background)?
+          2. Does it maintain narrative consistency with the established scene?
+          3. Does it avoid contradicting KB details (e.g., making Thale young or athletic)?
+          4. Does it use at least one specific KB detail naturally (not shoehorned)?
+          5. Does it feel like the author knows these characters well?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  - description: "Extend — KB location details used for world-building"
+    vars:
+      existing_content: |
+        Renna pushed through the tavern door and stepped into the warmth. The common room was half-full — merchants nursing their evening ale, a bard tuning a lute in the corner, two Cloaks at a table near the hearth, their faces hidden by their hoods as always.
+
+        She ordered cider and found a seat where she could watch both doors. Old habits.
+
+        [CONTINUE FROM HERE]
+      kb_characters: |
+        Renna — A former scout for the Northern Rangers. Late twenties. Quick reflexes, suspicious nature. Has a scar across her left palm from a training accident.
+      kb_locations: |
+        The Copper Kettle (tavern) — Located in the lower district of Ashenmere. Known for its spiced cider and discreet back rooms. The owner, Maeve, is sympathetic to the resistance. A hidden passage behind the wine barrels leads to the sewer network.
+    prompt: |
+      You are a creative writing assistant. Continue the text from the [CONTINUE FROM HERE] marker.
+
+      Existing content:
+      {{existing_content}}
+
+      Character reference: {{kb_characters}}
+
+      Location reference: {{kb_locations}}
+
+      Word target: ~400 words. Tone: tense, atmospheric. Language: English.
+
+      Use the KB location details to enrich the continuation naturally.
+    assert:
+      - type: llm-rubric
+        value: |
+          Rate the continuation on:
+          1. Does it incorporate location details from the KB (Copper Kettle, spiced cider, back rooms, Maeve, hidden passage)?
+          2. Are KB details woven naturally into the prose (not listed or info-dumped)?
+          3. Does it maintain the fantasy atmosphere established in the pre-text?
+          4. Does Renna's character stay consistent (suspicious, watchful, former scout)?
+          5. Does the scene advance while building on the established world?
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"

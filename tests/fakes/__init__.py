@@ -17,6 +17,7 @@ Usage:
 
 from tests.fakes.fake_auth_repository import FakeAuthRepository
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
+from tests.fakes.fake_embedding_repo import FakeEmbeddingRepository
 from tests.fakes.fake_llm_gateway import FakeLLMGateway, FakeModelRegistry
 from tests.fakes.fake_novel_repo import FakeNovelRepository
 from tests.fakes.fake_outline_repo import FakeOutlineRepository
@@ -31,6 +32,7 @@ __all__ = [
     "FakeAuthRepository",
     "FakeChapterRepository",
     "FakeDemoLoader",
+    "FakeEmbeddingRepository",
     "FakeLLMGateway",
     "FakeModelRegistry",
     "FakeNovelRepository",

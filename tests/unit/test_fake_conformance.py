@@ -84,3 +84,21 @@ class TestFakeConformance:
         from tests.fakes import FakeDemoLoader
 
         assert_implements_protocol(FakeDemoLoader, DemoLoaderProtocol)
+
+    def test_fake_embedding_repo(self) -> None:
+        """FakeEmbeddingRepository implements EmbeddingRepositoryProtocol."""
+        from narrare.embeddings.contracts import EmbeddingRepositoryProtocol
+        from tests.fakes import FakeEmbeddingRepository
+
+        assert_implements_protocol(FakeEmbeddingRepository, EmbeddingRepositoryProtocol)
+
+    def test_fake_embedding_repo_isinstance(self) -> None:
+        """FakeEmbeddingRepository passes isinstance() check for runtime_checkable Protocol."""
+        from narrare.embeddings.contracts import EmbeddingRepositoryProtocol
+        from tests.fakes import FakeEmbeddingRepository
+
+        fake = FakeEmbeddingRepository()
+        assert isinstance(fake, EmbeddingRepositoryProtocol), (
+            f"{FakeEmbeddingRepository.__name__} does not satisfy "
+            f"{EmbeddingRepositoryProtocol.__name__} isinstance check"
+        )

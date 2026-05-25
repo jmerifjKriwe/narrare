@@ -13,8 +13,7 @@ import pytest
 
 from narrare.embeddings.service import EmbeddingService  # noqa: TC001
 from narrare_core.shared.errors import EmbeddingError
-
-from .conftest import FakeEmbeddingRepository  # noqa: TC001
+from tests.fakes import FakeEmbeddingRepository  # noqa: TC001
 
 
 class TestGenerate:

@@ -10,8 +10,7 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 from narrare.embeddings.service import EmbeddingService  # noqa: TC001
-
-from .conftest import FakeEmbeddingRepository  # noqa: TC001
+from tests.fakes import FakeEmbeddingRepository  # noqa: TC001
 
 
 class TestDelete:
