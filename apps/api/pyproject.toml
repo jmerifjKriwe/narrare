@@ -33,7 +33,7 @@ dependencies = [
   "redis==7.4.0",
 
   # Auth
-  "PyJWT==2.12.1",
+  "PyJWT==2.13.0",
   "argon2-cffi>=25.1.0",
 
   # HTTP client
