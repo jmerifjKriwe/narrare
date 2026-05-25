@@ -494,26 +494,34 @@ describe("KBAssistedCreationPanel", () => {
   });
 
   it("'Complete & Save' completes session", async () => {
-    const onCancel = vi.fn();
+    const onComplete = vi.fn();
+    const testEntryId = "kb-entry-test-123";
     mockHooks.completeSession = {
-      mutate: vi.fn((_args: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.();
-      }),
+      mutate: vi.fn(
+        (_args: unknown, options?: { onSuccess?: (data: { entry_id: string }) => void }) => {
+          options?.onSuccess?.({ entry_id: testEntryId });
+        },
+      ),
       isPending: false,
     };
 
-    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} onCancel={onCancel} />);
+    renderWithProviders(<KBAssistedCreationPanel {...defaultProps} onComplete={onComplete} />);
 
     await waitFor(() => {
       expect(screen.getByText("kb.completeAndSave")).toBeDefined();
     });
 
+    // Fill in entry name (required for button to be enabled)
+    const nameInput = screen.getByLabelText("kb.entry_name") as HTMLInputElement;
+    fireEvent.change(nameInput, { target: { value: "Test Character Name" } });
+
     // Click Complete & Save
     fireEvent.click(screen.getByText("kb.completeAndSave"));
 
-    // Should complete and call onCancel
+    // Should complete and call onComplete with entry_id
     await waitFor(() => {
-      expect(onCancel).toHaveBeenCalledTimes(1);
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(onComplete).toHaveBeenCalledWith(testEntryId);
     });
   });
 

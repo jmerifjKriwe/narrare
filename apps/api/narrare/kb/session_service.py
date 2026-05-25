@@ -12,11 +12,13 @@ from uuid import UUID, uuid4
 
 import structlog
 
+from narrare.kb.session_mapper import map_session_to_entry
 from narrare.kb.session_models import KBCreationSession
 from narrare.kb.template_fields import get_template_fields
 
 if TYPE_CHECKING:
     from narrare.kb.assist_contracts import KBAssistProtocol
+    from narrare.kb.contracts import KBServiceProtocol
     from narrare.kb.session_store import KBCreationSessionStore
 
 logger = structlog.get_logger(__name__)
@@ -28,15 +30,18 @@ class KBSessionService:
     Args:
         session_store: Redis-backed ephemeral storage.
         assist_service: KB assisted creation service (AI orchestration).
+        kb_service: KB entry service — used to persist completed sessions.
     """
 
     def __init__(
         self,
         session_store: KBCreationSessionStore,
         assist_service: KBAssistProtocol,
+        kb_service: KBServiceProtocol | None = None,
     ) -> None:
         self._store = session_store
         self._assist = assist_service
+        self._kb_service = kb_service
 
     async def create_session(
         self,
@@ -187,8 +192,23 @@ class KBSessionService:
             "context_used": enhancement.context_used,
         }
 
-    async def complete_session(self, session_id: UUID) -> KBCreationSession:
-        """Mark session as complete."""
+    async def complete_session(
+        self,
+        session_id: UUID,
+    ) -> tuple[KBCreationSession, UUID]:
+        """Complete session and create KB entry.
+
+        Creates the KB entry from session fields BEFORE marking the
+        session as complete. If entry creation fails, the session
+        stays in its previous state (active/review) — the user can
+        retry or fix the issue.
+
+        Returns:
+            Tuple of (updated session, created entry ID).
+
+        Raises:
+            ValueError: Session not found, invalid status, or name missing.
+        """
         session = await self._get_or_raise(session_id)
         self._validate_status(session, "active", "review")
 
@@ -197,10 +217,30 @@ class KBSessionService:
             if field.final_value is None:
                 field.final_value = field.user_value or field.ai_suggested_value
 
+        # STEP 1: Create KB entry (can fail → session stays unchanged)
+        if self._kb_service is None:
+            raise ValueError("KB service not configured — cannot create entry from session")
+
+        entry_data = map_session_to_entry(session)
+        entry = await self._kb_service.create(
+            novel_id=session.novel_id,
+            user_id=session.user_id,
+            data=entry_data,
+        )
+
+        # STEP 2: Only after successful entry creation, mark session complete
         session.status = "complete"
         session.updated_at = datetime.now(UTC)
         await self._store.update(session)
-        return session
+
+        logger.info(
+            "kb_session_completed_with_entry",
+            session_id=str(session.id),
+            entry_id=str(entry.id),
+            entity_type=session.entity_type,
+        )
+
+        return session, entry.id
 
     async def abandon_session(self, session_id: UUID) -> None:
         """Mark session as abandoned and delete from store."""

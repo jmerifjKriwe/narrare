@@ -1246,6 +1246,8 @@
     "willApply": "Will apply",
     "skipped": "Skipped",
     "backToFieldList": "Back to Field List",
+    "entry_name": "Nom de l'entrée",
+    "entry_name_placeholder": "Entrez un nom pour votre entrée",
     "completeAndSave": "Complete & Save",
     "abandon": "Abandon",
     "confirmAbandon": "Are you sure? All progress will be lost.",

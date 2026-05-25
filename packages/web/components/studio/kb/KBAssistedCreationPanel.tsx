@@ -13,9 +13,9 @@
  * interaction logic delegated to sub-components.
  */
 
-import { Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Sparkles, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KBEntityType } from "@/lib/api/kb";
 import type { KBEnhancementResult, KBInterviewResult } from "@/lib/api/kb-sessions";
 import {
@@ -29,11 +29,12 @@ import {
   useKBSessionSuggest,
 } from "@/lib/hooks/useKBSessions";
 import { TYPE_ICONS } from "./constants";
+import { KBAssistedCreationFooter } from "./KBAssistedCreationFooter";
 import { KBEnhanceReview } from "./KBEnhanceReview";
 import { KBInterviewView } from "./KBInterviewView";
 import { KBSessionFieldList } from "./KBSessionFieldList";
 
-type AssistedView = "fields" | "interview" | "enhance";
+export type AssistedView = "fields" | "interview" | "enhance";
 
 interface KBAssistedCreationPanelProps {
   novelId: string;
@@ -45,7 +46,7 @@ interface KBAssistedCreationPanelProps {
 export function KBAssistedCreationPanel({
   novelId,
   entityType,
-  onComplete: _onComplete,
+  onComplete,
   onCancel,
 }: KBAssistedCreationPanelProps) {
   const t = useTranslations("studio");
@@ -53,6 +54,7 @@ export function KBAssistedCreationPanel({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [suggestingFieldKey, setSuggestingFieldKey] = useState<string | null>(null);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
+  const [entryName, setEntryName] = useState("");
 
   // --- Session mutations ---
   const createSessionMutation = useCreateKBSession(novelId);
@@ -78,6 +80,18 @@ export function KBAssistedCreationPanel({
       });
     }
   }, [entityType, sessionId, createSessionMutation]);
+
+  // --- Reset entry name when a new session is loaded ---
+  // Use ref to track which session we've initialized the name for,
+  // so we don't overwrite user input when session updates poll.
+  const initializedSessionId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (session && session.id !== initializedSessionId.current) {
+      setEntryName(session.name || "");
+      initializedSessionId.current = session.id;
+    }
+  }, [session]);
 
   // --- Calculate progress ---
   const totalFields = session?.fields.length ?? 0;
@@ -151,12 +165,11 @@ export function KBAssistedCreationPanel({
 
   function handleCompleteAndSave() {
     if (!sessionId) return;
+    if (!entryName.trim()) return;
+
     completeSessionMutation.mutate(undefined, {
-      onSuccess: (_completedSession) => {
-        // Note: Backend returns the completed session, but we need the new KB entry ID
-        // For now, just call onCancel since we don't have the entry ID yet
-        // TODO: Update backend to return entry_id, then use: onComplete(entryId)
-        onCancel();
+      onSuccess: (response) => {
+        onComplete(response.entry_id);
       },
     });
   }
@@ -341,49 +354,18 @@ export function KBAssistedCreationPanel({
         </div>
       </div>
 
-      {/* Footer actions */}
-      <div className="border-t border-border bg-card p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setView("interview")}
-              className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors text-sm"
-            >
-              <Sparkles className="w-4 h-4" />
-              {t("kb.startInterview")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("enhance")}
-              disabled={filledFields === 0}
-              className="flex items-center gap-2 px-4 py-2 border border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 rounded-md hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors text-sm disabled:opacity-50"
-            >
-              <Wand2 className="w-4 h-4" />
-              {t("kb.enhanceAll")}
-            </button>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              {t("kb.cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={handleCompleteAndSave}
-              disabled={filledFields === 0 || completeSessionMutation.isPending}
-              className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 text-sm font-medium"
-            >
-              {completeSessionMutation.isPending
-                ? t("kb.sessionSaving") || "Saving entry..."
-                : t("kb.completeAndSave")}
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Footer: name input + actions */}
+      <KBAssistedCreationFooter
+        session={session}
+        entryName={entryName}
+        setEntryName={setEntryName}
+        view={view}
+        setView={setView}
+        filledFields={filledFields}
+        completePending={completeSessionMutation.isPending}
+        onCancel={onCancel}
+        onCompleteAndSave={handleCompleteAndSave}
+      />
     </div>
   );
 }

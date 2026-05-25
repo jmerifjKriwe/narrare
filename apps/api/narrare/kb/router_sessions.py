@@ -117,21 +117,6 @@ async def request_enhancement(
     return {"session": _session_to_response(session), "enhancement": enhancement}
 
 
-@router.post("/novels/{novel_id}/kb/sessions/{session_id}/complete")
-async def complete_session(
-    novel_id: UUID,
-    session_id: UUID,
-    user_id: CurrentUserIdDep,
-    service: KBSessionService = Depends(get_kb_session_service),
-) -> dict[str, object]:
-    """Mark session as complete."""
-    try:
-        session = await service.complete_session(session_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _session_to_response(session)
-
-
 @router.delete(
     "/novels/{novel_id}/kb/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT
 )

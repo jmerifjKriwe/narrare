@@ -42,6 +42,7 @@ class KBCreationSession(BaseModel):
     novel_id: UUID
     user_id: UUID
     entity_type: str
+    name: str | None = None  # KB entry title — required before completion
     status: Literal["active", "review", "complete", "abandoned"] = "active"
     fields: list[KBCreationField] = Field(default_factory=list[KBCreationField])
     context_entries: list[str] = Field(default_factory=list)

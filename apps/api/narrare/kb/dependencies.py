@@ -136,7 +136,10 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
         prompt_composer=composer,
     )
 
+    kb_service = get_kb_service(session)
+
     return KBSessionService(
         session_store=session_store,
         assist_service=assist_service,
+        kb_service=kb_service,
     )

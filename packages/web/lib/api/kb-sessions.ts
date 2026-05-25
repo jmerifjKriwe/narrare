@@ -36,11 +36,18 @@ export interface KBCreationSession {
   novel_id: string;
   user_id: string;
   entity_type: string;
+  name?: string;
   status: KBCreationSessionStatus;
   fields: KBCreationField[];
   context_entries: string[];
   created_at: string;
   updated_at: string;
+}
+
+/** Response from completing a session — includes the new KB entry ID. */
+export interface KBSessionCompleteResponse {
+  session: KBCreationSession;
+  entry_id: string;
 }
 
 // --- SSE Response types ---
@@ -96,7 +103,7 @@ export const kbSessionApi = {
 
   /** Mark session as complete and create the KB entry. */
   completeSession: (novelId: string, sessionId: string) =>
-    fetchApi<KBCreationSession>(`/novels/${novelId}/kb/sessions/${sessionId}/complete`, {
+    fetchApi<KBSessionCompleteResponse>(`/novels/${novelId}/kb/sessions/${sessionId}/complete`, {
       method: "POST",
     }),
 

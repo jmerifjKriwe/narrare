@@ -3120,7 +3120,7 @@
           "kb-sessions"
         ],
         "summary": "Complete Session",
-        "description": "Mark session as complete.",
+        "description": "Complete a KB creation session and create the KB entry.\n\nCreates a KB entry from the session's collected fields and marks\nthe session as complete. Returns the updated session and the\nnew entry's ID.",
         "operationId": "complete_session_api_v1_novels__novel_id__kb_sessions__session_id__complete_post",
         "security": [
           {
@@ -3155,9 +3155,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Complete Session Api V1 Novels  Novel Id  Kb Sessions  Session Id  Complete Post"
+                  "$ref": "#/components/schemas/KBSessionCompleteResponse"
                 }
               }
             }
@@ -7993,6 +7991,26 @@
         ],
         "title": "KBRelationshipResponse",
         "description": "Full KB relationship representation with entry names."
+      },
+      "KBSessionCompleteResponse": {
+        "properties": {
+          "session": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Session"
+          },
+          "entry_id": {
+            "type": "string",
+            "title": "Entry Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session",
+          "entry_id"
+        ],
+        "title": "KBSessionCompleteResponse",
+        "description": "Response after completing a session and creating the KB entry."
       },
       "KBSuggestionResponse": {
         "properties": {

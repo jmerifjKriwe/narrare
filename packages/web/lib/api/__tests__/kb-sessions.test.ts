@@ -180,7 +180,8 @@ describe("kbSessionApi (REST)", () => {
     it("POST /novels/:novelId/kb/sessions/:sessionId/complete", async () => {
       const result = await kbSessionApi.completeSession("novel-1", "session-1");
 
-      expect(result.status).toBe("complete");
+      expect(result.session.status).toBe("complete");
+      expect(result.entry_id).toBeDefined();
     });
 
     it("throws on server error", async () => {

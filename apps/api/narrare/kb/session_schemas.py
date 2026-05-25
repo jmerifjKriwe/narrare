@@ -19,3 +19,13 @@ class AnswerFieldRequest(BaseModel):
     """Request body for answering a field in a KB creation session."""
 
     value: str = Field(min_length=1)
+
+
+class KBSessionCompleteResponse(BaseModel):
+    """Response after completing a session and creating the KB entry."""
+
+    session: dict[str, object]
+    """Serialized KBCreationSession after completion."""
+
+    entry_id: str
+    """UUID of the newly created KB entry."""

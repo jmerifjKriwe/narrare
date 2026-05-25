@@ -1366,15 +1366,18 @@ export const handlers = [
 
   http.post("*/api/v1/novels/:novelId/kb/sessions/:sessionId/complete", async () => {
     return HttpResponse.json({
-      id: "kb-session-1",
-      novel_id: "novel-1",
-      user_id: "test-user-id",
-      entity_type: "character",
-      status: "complete",
-      fields: [],
-      context_entries: [],
-      created_at: "2026-06-01T00:00:00Z",
-      updated_at: "2026-06-01T00:15:00Z",
+      session: {
+        id: "kb-session-1",
+        novel_id: "novel-1",
+        user_id: "test-user-id",
+        entity_type: "character",
+        status: "complete",
+        fields: [],
+        context_entries: [],
+        created_at: "2026-06-01T00:00:00Z",
+        updated_at: "2026-06-01T00:15:00Z",
+      },
+      entry_id: "kb-entry-new-123",
     });
   }),
 

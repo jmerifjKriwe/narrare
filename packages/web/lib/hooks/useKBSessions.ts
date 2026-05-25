@@ -11,6 +11,7 @@ import { type UseQueryOptions, useMutation, useQuery, useQueryClient } from "@ta
 import { useCallback, useState } from "react";
 import {
   type KBCreationSession,
+  type KBSessionCompleteResponse,
   kbSessionApi,
   requestEnhance,
   requestInterview,
@@ -78,12 +79,12 @@ export function useAnswerField(novelId: string, sessionId: string) {
   });
 }
 
-/** Complete a session and create the KB entry. */
+/** Complete a session and create the KB entry. Returns the entry_id via onSuccess. */
 export function useCompleteKBSession(novelId: string, sessionId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => kbSessionApi.completeSession(novelId, sessionId),
-    onSuccess: () => {
+    onSuccess: (_data: KBSessionCompleteResponse) => {
       // Invalidate KB entries list to show the new entry
       void queryClient.invalidateQueries({ queryKey: ["kb", novelId, "entries"] });
       // Remove session from cache
