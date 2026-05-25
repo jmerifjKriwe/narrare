@@ -19,18 +19,19 @@ from __future__ import annotations
 
 import pytest
 
-from tests.e2e.test_auth_flow import TestAuthFlow
-from tests.e2e.test_editor_autosave import TestEditorAutosave
-from tests.e2e.test_setup_wizard import TestSetupWizard
-
 
 # Keep the original class name and structure for compatibility
 @pytest.mark.e2e
-class TestHeroFlow(TestAuthFlow, TestSetupWizard, TestEditorAutosave):  # type: ignore[misc]
+class TestHeroFlow:  # type: ignore[misc]
     """Combined test class covering the complete MVP user journey.
 
-    This class now inherits from the individual test modules to maintain
-    the original test structure while keeping code organized in focused files.
+    NOTE: Individual test cases are now in focused modules:
+    - test_auth_flow.py: Authentication flow
+    - test_setup_wizard.py: Setup wizard tests
+    - test_editor_autosave.py: Editor autosave tests
+
+    This class is kept for compatibility. Run individual test modules
+    directly for precise test selection.
     """
 
-    pass  # All methods are inherited from the parent test classes
+    pass

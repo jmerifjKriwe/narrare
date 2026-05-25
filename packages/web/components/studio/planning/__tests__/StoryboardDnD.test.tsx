@@ -20,7 +20,6 @@ const mockMutate = vi.fn();
 
 // Polyfill ResizeObserver for jsdom
 class MockResizeObserver {
-  constructor(_callback: ResizeObserverCallback) {}
   observe() {}
   unobserve() {}
   disconnect() {}

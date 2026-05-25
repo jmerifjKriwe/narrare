@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { novelsApi, tonesApi } from "@/lib/api/client";
 import { GENRE_SUGGESTIONS } from "@/lib/constants/genres";
 import { BUNDLED_TONES } from "@/lib/constants/tones";
-import type { CustomTone, Novel, StoryStructure, StoryTone } from "@/types";
+import type { CustomTone, Novel, StoryStructure } from "@/types";
 import { StructureChangeDialog } from "../planning/StructureChangeDialog";
 
 // --- Static option configs ---

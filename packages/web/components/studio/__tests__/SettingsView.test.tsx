@@ -25,6 +25,11 @@ vi.mock("@/lib/api/client", () => ({
     updateProvider: vi.fn(),
     deleteProvider: vi.fn(),
   },
+  tokenLimitsApi: {
+    getResolved: vi.fn(),
+    updateUser: vi.fn(),
+    updateProject: vi.fn(),
+  },
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => ({

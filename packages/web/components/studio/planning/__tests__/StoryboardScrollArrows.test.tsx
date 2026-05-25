@@ -14,7 +14,6 @@ import { StoryboardScrollArrows } from "@/components/studio/planning/StoryboardS
 
 // Polyfill ResizeObserver for jsdom
 class MockResizeObserver {
-  constructor(_callback: ResizeObserverCallback) {}
   observe() {}
   unobserve() {}
   disconnect() {}
