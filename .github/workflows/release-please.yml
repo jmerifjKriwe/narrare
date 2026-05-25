@@ -107,7 +107,7 @@ jobs:
           cd /tmp && zip -r /tmp/narrare-${{ steps.meta.outputs.VERSION }}.zip bundle/
 
       - name: Upload release bundle
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: /tmp/narrare-${{ steps.meta.outputs.VERSION }}.zip
