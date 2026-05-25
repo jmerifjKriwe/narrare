@@ -24,12 +24,15 @@ from .template_fields import get_template_fields
 if TYPE_CHECKING:
     from uuid import UUID
 
+    # narrare: allow-direct-llm reason="TYPE_CHECKING only — return type of _get_model()"
     from pydantic_ai.models import (
         Model,
-    )  # narrare: allow-direct-llm reason="TYPE_CHECKING only — model injected via DI"
+    )
 
     from narrare_core.agents.kb_assist_types import KBAssistOutput
     from narrare_core.context.contracts import ProactiveContextProtocol
+    from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
@@ -51,8 +54,12 @@ class KBAssistService:
     - KB template registry (field structure)
     - PromptComposer (bundled system prompts via RULE-02)
 
+    Uses ModelRegistry + ResolvedModelConfig for lazy model resolution,
+    following the new gateway pattern (ADR-015).
+
     Args:
-        model: LLM model for KBAssistAgent.
+        registry: ModelRegistry for lazy model resolution.
+        config: Resolved model configuration (provider, model, params).
         proactive_context: Service for suggesting relevant KB entries.
         prompt_composer: PromptComposer for bundling system prompts.
         kb_agent: Optional KBAgent for toolset composition.
@@ -60,14 +67,16 @@ class KBAssistService:
 
     def __init__(
         self,
-        model: Model,
+        registry: ModelRegistry,
+        config: ResolvedModelConfig,
         proactive_context: ProactiveContextProtocol,
         prompt_composer: PromptComposer,
         kb_agent: object | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
-        self._model = model
+        self._registry = registry
+        self._config = config
         self._proactive_context = proactive_context
         self._prompt_composer = prompt_composer
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
@@ -138,6 +147,15 @@ class KBAssistService:
         composed = await self._prompt_composer.build(intent, ctx)
         return composed.system
 
+    async def _get_model(self) -> Model:
+        """Resolve the LLM model lazily from the registry.
+
+        Uses the injected ``ResolvedModelConfig`` to obtain a configured
+        ``Model`` instance.  This allows the service to be instantiated
+        before provider credentials are available (e.g. during app startup).
+        """
+        return await self._registry.get_model(self._config)
+
     async def _run_agent(
         self,
         user_prompt: str,
@@ -145,8 +163,9 @@ class KBAssistService:
         system_prompt: str,
     ) -> KBAssistOutput:
         """Run KBAssistAgent with composed system prompt and user prompt."""
+        model = await self._get_model()
         agent = KBAssistAgent(
-            model=self._model,
+            model=model,
             kb_agent=self._kb_agent,
             system_prompt=system_prompt,
         )
