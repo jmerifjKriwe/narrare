@@ -556,6 +556,12 @@ implementation later" are FORBIDDEN.
 5. **No feature flags for incomplete features.** If a feature isn't complete
    enough to use, don't ship it behind a flag and call it done.
 
+6. **No deferred streaming.** If the backend has SSE streaming infrastructure
+   for an AI feature, the frontend MUST use SSE too. REST-only "for now" with
+   "SSE later" is a half-implementation — the SSE endpoint already exists,
+   the `connectSSE()` client already exists, and not using them is dead code.
+   Streaming is not an upgrade; it's the core UX pattern for AI interaction.
+
 **The incremental path is acceptable**, but each increment must be a complete,
 working, tested subsystem — not a skeleton.
 
@@ -584,6 +590,8 @@ half-implementation while maintaining backward compatibility with its mistakes.
 | Skip migration, add column directly | Alembic migration + rollback test + schema regression test |
 | Single agent prompt "good enough" | Structured output with Union types, proper tool definitions, context assembly |
 | Mock embedding results in tests only | Real embedding pipeline with cascade resolver, fallback, and error recovery |
+| REST-only frontend for SSE-capable backend | Full SSE streaming from day one — `connectSSE()` exists |
+| "Phase 1: REST, Phase 2: SSE" | Single implementation: REST for CRUD, SSE for AI streaming |
 
 ---
 
