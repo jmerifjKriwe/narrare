@@ -2670,6 +2670,67 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/extract/{chapter_id}": {
+      "post": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Extract Chapter",
+        "description": "Extract entities, facts, and relationships from a chapter into the KB.\n\nAnalyzes chapter text and extracts structured data:\n- New entities (characters, locations, factions, concepts, objects, systems)\n- Existing entity updates (new information about known entities)\n- Relationships between entities\n- Conflicts with existing KB data\n\nReturns ExtractionOutput with results and analysis notes.",
+        "operationId": "extract_chapter_api_v1_novels__novel_id__kb_extract__chapter_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Extract Chapter Api V1 Novels  Novel Id  Kb Extract  Chapter Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/sessions": {
       "post": {
         "tags": [

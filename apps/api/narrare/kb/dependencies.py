@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
 
 if TYPE_CHECKING:
+    from narrare.kb.extraction_service import ExtractionService
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.relationship_service import RelationshipService
     from narrare.kb.repository import KBRepository
@@ -58,6 +59,36 @@ def get_rel_service(session: SessionDep) -> RelationshipService:
     return RelationshipService(
         rel_repo=RelationshipRepository(session),
         entry_repo=KBRepository(session),
+    )
+
+
+def get_extraction_service(session: SessionDep) -> ExtractionService:
+    """Create an ExtractionService with injected dependencies.
+
+    Production wiring: uses ModelRegistry for LLM model, PromptComposer
+    for system prompts, and ChapterRepository + KBRepository for data.
+    """
+    from narrare._app.dependencies import get_composer, get_model_registry
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.extraction_service import ExtractionService
+    from narrare.kb.repository import KBRepository
+    from narrare_core.llm.intents import ResolvedModelConfig
+
+    registry = get_model_registry()
+    composer = get_composer()
+    config = ResolvedModelConfig(
+        provider_name="default",
+        model_id="default",
+        temperature=0.7,
+        max_tokens=4096,
+    )
+
+    return ExtractionService(
+        registry=registry,
+        config=config,
+        chapter_repo=ChapterRepository(session),
+        kb_repo=KBRepository(session),
+        composer=composer,
     )
 
 
