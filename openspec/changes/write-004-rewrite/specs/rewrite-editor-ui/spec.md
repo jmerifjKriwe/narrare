@@ -25,6 +25,20 @@ The system SHALL detect text selection in the TipTap editor and provide "AI Rewr
 - **WHEN** no text is selected in the editor
 - **THEN** the "AI Rewrite" button in the BubbleMenu SHALL be hidden or disabled
 
+### Requirement: Editor state preservation during streaming
+The system SHALL prevent document changes that would invalidate the selection range while rewrite alternatives are being streamed.
+
+#### Scenario: User edits during streaming
+- **WHEN** rewrite alternatives are being streamed and the user types or edits text in the editor
+- **THEN** the modal SHALL dismiss with a brief notification ("Generation cancelled — document changed")
+- **AND** no changes SHALL be applied to the document
+- **AND** the ongoing stream SHALL be aborted via AbortController
+
+#### Scenario: User scrolls during streaming
+- **WHEN** rewrite alternatives are being streamed and the user scrolls the editor
+- **THEN** streaming SHALL continue normally
+- **AND** the modal SHALL remain visible when scrolling stops
+
 ### Requirement: RewriteMode selector UI
 The system SHALL provide a mode selector component with 5 rewrite modes: Tone, Style, Voice, Fix, and Custom.
 
@@ -104,6 +118,21 @@ The frontend SHALL parse the SSE stream from the rewrite endpoint, splitting the
 - **WHEN** the entire SSE stream contains no `<alternative>` tags (LLM didn't follow format)
 - **THEN** the parser SHALL treat the entire response as a single alternative with label "Rewritten text"
 - **AND** the modal SHALL display it as a single card
+
+#### Scenario: Parser handles tag-like content within alternatives
+- **WHEN** the LLM produces text containing `<alternative` within the content of an alternative (not at a line boundary)
+- **THEN** the parser SHALL treat it as regular text content (not a tag boundary)
+- **AND** the parser SHALL only recognize `<alternative` as a tag opener when it appears at the start of a line or immediately after a closing `</alternative>` tag
+
+#### Scenario: LLM produces fewer alternatives than requested
+- **WHEN** the user requested `count=3` but the LLM only produces 2 complete `<alternative>` blocks
+- **THEN** the parser SHALL emit and display all 2 received alternatives
+- **AND** no error SHALL be raised — partial delivery is acceptable
+
+#### Scenario: LLM produces more alternatives than requested
+- **WHEN** the user requested `count=1` but the LLM produces 2 `<alternative>` blocks
+- **THEN** the parser SHALL use only the first `count` alternatives and discard the rest
+- **AND** the modal SHALL display only the requested number of alternatives
 
 ### Requirement: Rewrite integrates with AIAnnotation lifecycle
 The rewrite feature SHALL use the AIAnnotation infrastructure (marks, tracker, floating actions) with `source: "rewrite"` to distinguish from extend continuations.

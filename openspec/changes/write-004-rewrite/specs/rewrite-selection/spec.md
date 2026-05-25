@@ -89,6 +89,17 @@ The rewrite prompt templates SHALL produce structured output with `<alternative>
 - **WHEN** the rewrite mode is "voice" with a `character_id`
 - **THEN** the prompt SHALL include the character's speech patterns, personality traits, and vocabulary preferences from the KB
 
+#### Scenario: Prompt instructs LLM to avoid alternative tags in content
+- **WHEN** the rewrite prompt is composed
+- **THEN** it SHALL include an instruction that the LLM MUST NOT use `<alternative>` or `</alternative>` tags within the rewritten text content
+- **AND** the LLM SHALL only use these tags as structural delimiters between alternatives
+
+#### Scenario: Voice mode with character lacking speech metadata
+- **WHEN** voice mode is selected with a valid `character_id` but the character entity has no speech metadata in the KB
+- **THEN** the system SHALL proceed using the character's name and any available personality traits
+- **AND** the voice profile section in the prompt SHALL be empty (graceful degradation)
+- **AND** the rewrite SHALL still be produced, relying on the character's name and context rather than specific speech patterns
+
 ### Requirement: RewriteService with SSE streaming
 The system SHALL implement a `RewriteService` class (in `writing/rewrite_service.py`, separate from WritingService per RULE-04) with a `stream_rewrite()` method that creates the generation request AND streams alternatives in a single HTTP response.
 

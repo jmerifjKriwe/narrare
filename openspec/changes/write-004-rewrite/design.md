@@ -106,6 +106,17 @@ WRITE-004 (Rewrite Selection) is the second AI writing feature in Phase 6, follo
 - New popover/overlay component near selection — breaks consistency with existing pattern, adds a new positioning system
 - Side panel layout — too invasive for an operation that should feel quick and in-place
 
+### D9: diff-match-patch for inline diff highlighting
+
+**Decision:** Add `diff-match-patch` as a frontend dependency for computing inline diffs between original text and rewrite alternatives.
+
+**Alternatives evaluated:**
+- **`diff-match-patch` (Google):** Mature (43k stars), character-level diffs, sub-10KB gzipped, used by TipTap/VS Code. Best fit for inline word/character highlighting. **Chosen.**
+- **`diff` (npm):** Line-level diffs only. Too coarse for inline word highlighting — would highlight entire lines instead of individual words. Insufficient for our use case.
+- **Custom implementation:** Possible for simple word-level diffs in < 200 lines, but would not handle character-level diffs, Unicode edge cases, or diff optimization. Violates RULE-20 (no half-implementations) — we'd build a subset that breaks on edge cases.
+
+**Why:** Character-level diffs are essential for showing exactly which words changed in a rewrite. `diff-match-patch` is the industry standard, adds minimal bundle size, and handles all edge cases (Unicode, word boundaries, merge operations). A custom implementation would be a half-implementation.
+
 ## Risks / Trade-offs
 
 - **[Multi-alternative parsing]** LLMs may not always produce perfectly formatted `<alternative>` tags → Mitigation: Robust client-side parser with fallback (if tag parsing fails, treat entire response as single alternative). Server-side validation is not needed since parsing is client-side.
@@ -120,9 +131,9 @@ WRITE-004 (Rewrite Selection) is the second AI writing feature in Phase 6, follo
 
 ## Migration Plan
 
-1. **Phase 1 (this change):** Core pipeline + backend endpoint + streaming. Frontend gets the comparison UI and annotation integration.
-2. **Phase 2 (future):** Voice mode connects to KB character profiles for voice-specific rewrites.
-3. **Phase 3 (future):** Promptfoo eval baseline for rewrite quality.
+1. **Phase 1 (this change):** Core pipeline + backend endpoint + streaming + all 5 rewrite modes (tone, style, voice, fix, custom). Voice mode uses existing `_voice_profiles.py` infrastructure. Frontend reuses existing BubbleMenu + AISuggestion modal with extensions (mode selector, diff highlighting, replace/insert). Promptfoo eval baseline for rewrite quality.
+2. **Phase 2 (future):** Culture-matrix evals (same prompt across cultures/languages). Nightly CI threshold enforcement for rewrite quality.
+3. **Phase 3 (future):** Multi-draft comparison across sessions (WRITE-008 integration).
 
 No database migration needed — the rewrite request reuses the existing `generation_requests` table with `mode = "rewrite"`.
 
