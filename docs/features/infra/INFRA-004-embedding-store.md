@@ -1,7 +1,7 @@
 ---
 id: INFRA-004
 title: "Embedding Store"
-status: in progress
+status: stable
 area: infra
 mvp: false
 
@@ -187,3 +187,4 @@ code — references `kg_nodes` table which no longer exists.
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Designed. Generic embeddings table. Hybrid search. TaskIQ background generation. Two-phase model migration. 7 regression scenarios defined.
+- `2026-05-25` — RULE-04 test file splits: `test_embedding_migration.py` (349→2 files: coexistence 180, reembed 222). All original files replaced by focused companions.

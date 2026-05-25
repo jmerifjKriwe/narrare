@@ -33,7 +33,7 @@
 | [INFRA-001](infra/INFRA-001-llm-gateway.md) | LLM Gateway | ✅ | ✅ |
 | [INFRA-002](infra/INFRA-002-prompt-system.md) | Unified Prompt System | ✅ | ✅ |
 | [INFRA-003](infra/INFRA-003-context-assembly.md) | Context Assembly Pipeline | ✅ | ✅ |
-| [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | 📋 | ❌ |
+| [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | ✅ | ❌ |
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
 
 ### Setup & Onboarding
@@ -49,8 +49,8 @@
 |----|---------|--------|-----|
 | [WRITE-001](writing/WRITE-001-editor.md) | Writing Editor | ✅ | ✅ |
 | [WRITE-002](writing/WRITE-002-new-chapter.md) | AI: New Chapter Generation | ✅ | ✅ |
-| [WRITE-003](writing/WRITE-003-extend.md) | AI: Extend Chapter | 📋 | ❌ |
-| [WRITE-004](writing/WRITE-004-rewrite.md) | AI: Rewrite Selection | 🔨 | ❌ |
+| [WRITE-003](writing/WRITE-003-extend.md) | AI: Extend Chapter | ✅ | ❌ |
+| [WRITE-004](writing/WRITE-004-rewrite.md) | AI: Rewrite Selection | ✅ | ❌ |
 | [WRITE-005](writing/WRITE-005-interactive-session.md) | Interactive Writing Session | ✅ | ✅ |
 | [WRITE-006](writing/WRITE-006-co-author.md) | Co-Author Mode | 📋 | ❌ |
 | [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | 📋 | ❌ |
@@ -228,5 +228,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-25 — KB-002 status changed to implemented.
+> Last updated: 2026-05-25 — WRITE-003, WRITE-004, INFRA-004 status changed to stable.
 > Features are specified before they are implemented — never after

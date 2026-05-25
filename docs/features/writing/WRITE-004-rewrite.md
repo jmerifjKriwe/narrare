@@ -172,3 +172,4 @@ class RewriteRequest:
 - `project-init` — Added to registry as planned feature
 - `cr-01-audit` — Dedicated rewrite prompt template created with CoT, negative examples, and scratchpad pattern
 - `2026-05-25` — Implementation: RewriteService, SSE-direct endpoint, AlternativeParser, RewriteModeSelector, InlineDiff, replaceSelectionWithAIContent()
+- `2026-05-25` — **Complete.** 7 integration tests (SSE protocol, mode variations, stream errors). Promptfoo eval baseline: `evals/rewrite-selection.yaml` (279 lines, 7 test cases). Spec frontmatter corrected (service, contract, router paths).

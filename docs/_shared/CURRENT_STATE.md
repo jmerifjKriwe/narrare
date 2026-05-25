@@ -11,8 +11,8 @@
 ## Last Updated
 
 Date: 2026-05-25
-Updated by: NarrareDocsSpecialist
-Session summary: KB-007 extraction fully implemented (backend + frontend + i18n). KB-007 feature spec → implemented. KB-002 spec → implemented. INDEX.md + CURRENT_STATE.md updated.
+Updated by: NarrareDevCoordinator
+Session summary: 15 Knowledge-Graph-Testlücken geschlossen. 239 neue Tests (214 Hotspot + 25 Config). Core: BeatDef (35), classify_error (32), VariableMeta (33). Backend: ExtractionService (9), Embedding-Conformance (2), FakeEmbeddingRepository. Frontend: EditorView (13), TipTapEditor (9), KBSectionEditor (16), AiTab (7), VolumeManagement (7), NameGenerator (7), KBTemplateEditor (10), ContinueButton (12), AddRelationshipDialog (10). Config: Settings-Properties (25). Pyright- und i18n-Fixes. 2 Commits (ed21254, b5767e3).
 
 ---
 
@@ -420,13 +420,13 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 **Testing:**
 - Vitest 3.x + Testing Library + MSW
-- 646 tests across proxy, utils, stores, API client, UI components, wizard steps, generation panel, session panel, KB components
+- 975 tests across 108 test files: proxy, utils, stores, API client, UI components, wizard steps, generation panel, session panel, KB components
 - `npm run test` / `vitest run`
 
 #### `tests/` — Test Suite
 
 **Unit tests (31 files):**
-- 2655 tests total (backend)
+- 2655+ tests total (backend), 23 new (WRITE-003 validation + streaming), 7 new (WRITE-004 integration)
 - `core/llm/` — gateway, intents, retry, providers_registry, embeddings (5 files)
 - `core/prompts/` — registry, composer, variable_engine, meta, variable_engine_hypothesis (5 files)
 - `core/shared/` — frontmatter, result, errors, file_utils, result_hypothesis, frontmatter_hypothesis (6 files)
@@ -507,19 +507,21 @@ Phase 5 (current):
         Output-Limits via Token-Profile, Budget-Tier-Override, WS-Timeout in Config,
         mem0 Embedding-Modell via Settings. SET-005 feature doc created.
 
-11. 🔄 WRITE-003: Extend Chapter — Implementation in progress (Core pipeline + prompts, Backend API, Frontend AIAnnotation infrastructure)
+11. ✅ WRITE-003: Extend Chapter — Complete. Core pipeline + prompts (en/de/fr), Backend API (ExtendService, SSE-direct), Frontend AIAnnotation infrastructure. 23 unit tests (12 validation + 11 streaming). Promptfoo eval baseline (`evals/extend-chapter.yaml`, 356 lines, 9 test cases). Architecture validation clean.
 
-12. ✅ INFRA-004: Embedding Store — Complete. 47 files, 5763 insertions. EmbeddingStoreProtocol, SearchResult, EmbeddingStats in core/. API models/repo/service/router/tasks. KB hooks + usage tracking. Architecture check clean.
+12. ✅ INFRA-004: Embedding Store — Complete. 47 files, 5763 insertions. EmbeddingStoreProtocol, SearchResult, EmbeddingStats in core/. API models/repo/service/router/tasks. KB hooks + usage tracking. RULE-04 test splits applied. Architecture check clean.
 
 13. ✅ KB-005: Proactive Context — `ProactiveContextService` (core) 3-stage pipeline: name matching → embedding search → hybrid scoring. `KBSuggestService` (api) thin wrapper with chapter/entity resolution. `GET /novels/{novel_id}/kb/suggestions/{chapter_id}` endpoint. `match_entity_names()` regex extraction utility. `compute_hybrid_score()` extracted from `rank_candidates()`. 54 new tests (48 core + 6 API). INFRA-009 merged into KB-005.
 
-14. ✅ KB-002: Assisted Creation Backend — Committed (281df89). KBSessionService + KBAssistService, Redis-backed session store, 8 REST endpoints + SSE, template field extraction, 99 tests.
+14. ✅ KB-002: Assisted KB Creation — Complete. Frontend wiring verified (WorldBuilding → KBEntryList → KBAssistedCreationPanel → all sub-views). 3 minor non-blocking gaps noted (2 dead code components, 1 missing i18n key). Backend + Frontend fully operational.
 
 15. ✅ kb-agents-and-prompts — Committed (481e370). KBAssistAgent (4-mode), ExtractionAgent, 4 English prompts, 78 tests.
 
-16. 🔄 WRITE-004: Rewrite Selection — Implementation in progress. Backend: `RewriteService` in `writing/rewrite_service.py`, SSE-direct endpoint `POST /api/v1/writing/chapters/{chapter_id}/rewrite`, `_REWRITE_PERCENTAGES` budget (40/15/25/10/10). Frontend: `AlternativeParser` (client-side state machine for `<alternative>` structured output), `RewriteModeSelector` (tone/style/voice/fix/custom), `InlineDiff` (diff-match-patch inline diff highlighting), `replaceSelectionWithAIContent()` atomic selection replacement. Reuses existing BubbleMenu + AISuggestion modal with extensions. Voice mode uses `_voice_profiles.py` from KB infrastructure.
+ 16. ✅ WRITE-004: Rewrite Selection — Complete. `RewriteService` in `writing/rewrite_service.py`, SSE-direct endpoint, `AlternativeParser`, `RewriteModeSelector`, `InlineDiff`, `replaceSelectionWithAIContent()`. 7 integration tests (SSE protocol, mode variations, stream errors). Promptfoo eval baseline (`evals/rewrite-selection.yaml`, 279 lines, 7 test cases). Spec frontmatter corrected.
 
-Next focus: KB-002 frontend (assisted creation UI).
+17. ✅ Knowledge Graph Test Gaps — 239 new tests. Core (100), Backend (13 + FakeEmbeddingRepository + 25 Config), Frontend (91). All 15 untested hotspots covered. 4 config properties tested (safety-critical DB routing). Commits: ed21254, b5767e3.
+
+Next focus: E2E tests with Playwright, remaining RULE-04 frontend test splits.
 
 ---
 
@@ -664,6 +666,16 @@ All demo content is complete — sufficient for testing through Phase 5.
 | KB-002 type fixes | model_copy() for kwargs, UUID type params in test fakes, PromptComposer for KBAssistService, allow-direct-llm + allow-agent markers. |
 | KB-007 Extraction Frontend | ExtractionPanel review UI + ExtractionApplyService (backend apply endpoint) + editor toolbar button + 31 i18n keys + 14 backend tests + frontend component tests |
 | KB-002 Spec Update | Feature spec status updated from designed → implemented. Backend + Frontend were already complete. |
+| WRITE-003: Extend Chapter — Complete | 23 unit tests (12 validation + 11 streaming). Promptfoo eval baseline `evals/extend-chapter.yaml` (356 lines, 9 test cases). Architecture validation clean. Feature spec → stable. |
+| WRITE-004: Rewrite Selection — Complete | 7 integration tests (SSE protocol, mode variations, stream errors). Promptfoo eval baseline `evals/rewrite-selection.yaml` (279 lines, 7 test cases). Spec frontmatter corrected (service → rewrite_service.py, contract → contracts_rewrite.py, router → router_rewrite.py). Feature spec → stable. |
+| INFRA-004: Embedding Store — RULE-04 test splits | `test_embedding_migration.py` (349→2 files: coexistence 180, reembed 222). Feature spec → stable. |
+| KB-002: Assisted Creation — Verified | Frontend wiring verified: WorldBuilding → KBEntryList → KBAssistedCreationPanel → all sub-views. 3 minor non-blocking gaps found (2 dead code components, 1 missing i18n key). Feature confirmed complete. |
+| RULE-04 frontend test splits | `KBAssistedCreationPanel.test.tsx` (588→3: rendering 334, navigation 302, actions 359). `KBInterviewView.test.tsx` (492→2: rendering 270, interactions 286). `useKBSessions.test.tsx` (534→2: lifecycle 296, actions 332). |
+| KG Test Gaps — Core | BeatDef (35 tests), classify_error (32 tests, companion file per RULE-04), VariableMeta (33 tests + registry completeness). Commit ed21254. |
+| KG Test Gaps — Backend | ExtractionService error + edge case tests (9), FakeEmbeddingRepository + conformance tests (2). Embedding tests refactored to shared fake. Commit ed21254. |
+| KG Test Gaps — Frontend | EditorView (13), TipTapEditor (9), KBSectionEditor (16), AiTab (7), VolumeManagement (7), NameGenerator (7), KBTemplateEditor (10), ContinueButton (12), AddRelationshipDialog (10). 91 new frontend tests total. Commit ed21254. |
+| KG Test Gaps — Config | 25 tests for Settings.is_test/is_development/is_production/active_database_url. Verifies mode exclusivity and test-mode override safety. Commit ed21254. |
+| Test Fixes | Pyright: Settings(**defaults) → model_validate(defaults) in test_config.py. i18n: hardcoded English → i18n keys in ExtractionReview.test.tsx. Commit b5767e3. |
 
 ---
 
@@ -720,11 +732,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 ## Next Session Should Start With
 
 **Phase 5 (current):**
-1. INFRA-004: Embedding Store — RULE-04 file size violations to fix: `embeddings/repository.py` (318→250), `test_embedding_service.py` (380→300), `test_embedding_repository.py` (453→400), `test_usage_service.py` RULE-TEST-01 bare MagicMock
+1. INFRA-004: Embedding Store — RULE-04 file size violations to fix: `embeddings/repository.py` (318→250), `test_embedding_service.py` (380→300), `test_embedding_repository.py` (453→400)
 2. WRITE-003: Extend Chapter — remaining: Task 2.4 (promptfoo eval baseline), Task 8.3-8.4 (architecture validation + test suite), E2E tests
 3. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
-4. KB-002: Assisted Creation — designed, implementation pending
-5. KB-007: Extraction — ✅ implemented
+4. KB-002: Assisted Creation Frontend — backend complete, frontend UI pending
+5. KB-007: Extraction Review Frontend — backend complete, frontend review panel pending
 6. E2E tests with Playwright
 
 **Post-MVP (future):**

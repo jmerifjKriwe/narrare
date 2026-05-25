@@ -1,7 +1,7 @@
 ---
 id: WRITE-003
 title: "AI: Extend Chapter"
-status: in-progress
+status: stable
 area: writing
 mvp: false
 
@@ -150,3 +150,4 @@ The continuation appears exactly where your cursor was, ready to edit.
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Implementation started: Core pipeline (`_extend()`), extend prompts (en/de/fr), extend-specific context budget, Backend API (`ExtendService`, SSE-direct endpoint), Frontend AIAnnotation infrastructure (Mark + Tracker Plugin, ContinueButton, AIAnnotationActions, Clean Save integration)
+- `2026-05-25` — **Complete.** 23 new unit tests (12 validation + 11 streaming). Promptfoo eval baseline: `evals/extend-chapter.yaml` (356 lines, 9 test cases). Architecture validation clean.
