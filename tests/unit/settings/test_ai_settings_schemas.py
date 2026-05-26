@@ -49,15 +49,6 @@ class TestUpdateUserAiSettingsRequest:
         assert req.category_overrides is not None
         assert "writing" in req.category_overrides
 
-    def test_token_limit_profile_valid(self) -> None:
-        for profile in ["quick", "balanced", "long_texts", "custom"]:
-            req = UpdateUserAiSettingsRequest(token_limit_profile=profile)
-            assert req.token_limit_profile == profile
-
-    def test_token_limit_profile_invalid_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            UpdateUserAiSettingsRequest(token_limit_profile="invalid")
-
     def test_default_model_exceeds_max_length_raises(self) -> None:
         with pytest.raises(ValidationError):
             UpdateUserAiSettingsRequest(default_model="x" * 201)
@@ -78,7 +69,6 @@ class TestUpdateProjectAiSettingsRequest:
         req = UpdateProjectAiSettingsRequest(
             category_overrides={"writing": {"model_id": "gpt-4o"}},
             intent_overrides={"write": {"model_id": "claude-sonnet-4-5-20251020"}},
-            token_limit_overrides={"writing": {"max_tokens": 8000}},
         )
         assert req.category_overrides is not None
         assert "writing" in req.category_overrides

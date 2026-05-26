@@ -9118,11 +9118,6 @@
             "type": "object",
             "title": "Intent Overrides"
           },
-          "token_limit_overrides": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Token Limit Overrides"
-          },
           "updated_at": {
             "type": "string",
             "format": "date-time",
@@ -9134,7 +9129,6 @@
           "novel_id",
           "category_overrides",
           "intent_overrides",
-          "token_limit_overrides",
           "updated_at"
         ],
         "title": "ProjectAiSettingsResponse",
@@ -10665,18 +10659,6 @@
               }
             ],
             "title": "Intent Overrides"
-          },
-          "token_limit_overrides": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Token Limit Overrides"
           }
         },
         "type": "object",
@@ -10927,30 +10909,6 @@
             ],
             "title": "Intent Overrides"
           },
-          "token_limit_profile": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^(quick|balanced|long_texts|custom)$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Token Limit Profile"
-          },
-          "token_limit_overrides": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Token Limit Overrides"
-          },
           "embedding_provider": {
             "anyOf": [
               {
@@ -11128,15 +11086,6 @@
             "type": "object",
             "title": "Intent Overrides"
           },
-          "token_limit_profile": {
-            "type": "string",
-            "title": "Token Limit Profile"
-          },
-          "token_limit_overrides": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Token Limit Overrides"
-          },
           "embedding_provider": {
             "type": "string",
             "title": "Embedding Provider",
@@ -11177,8 +11126,6 @@
           "default_model",
           "category_overrides",
           "intent_overrides",
-          "token_limit_profile",
-          "token_limit_overrides",
           "updated_at"
         ],
         "title": "UserAiSettingsResponse",

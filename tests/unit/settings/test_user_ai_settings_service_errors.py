@@ -40,8 +40,6 @@ class FakeUserAiSettings:
     default_model: str = ""
     category_overrides: dict[str, Any] = field(default_factory=dict)
     intent_overrides: dict[str, Any] = field(default_factory=dict)
-    token_limit_profile: str = "balanced"
-    token_limit_overrides: dict[str, Any] = field(default_factory=dict)
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -157,34 +155,4 @@ class TestSetDefaultModelErrors:
         )
 
         with pytest.raises(ValidationError, match="Referenced provider not found"):
-            await service.update_settings(user_id, request)
-
-
-# ---------------------------------------------------------------------------
-# Tests - Error Cases for Token Limit Profile
-# ---------------------------------------------------------------------------
-
-
-class TestTokenLimitProfileErrors:
-    async def test_set_invalid_token_limit_profile_raises(
-        self,
-        service: UserAiSettingsService,
-        mock_ai_settings_repo: AsyncMock,
-        user_id: uuid.UUID,
-    ) -> None:
-        """Set token_limit_profile to invalid value -> Pydantic ValidationError."""
-        from pydantic import ValidationError as PydanticValidationError
-
-        updated = FakeUserAiSettings(user_id=user_id)
-        mock_ai_settings_repo.get = AsyncMock(return_value=updated)
-        mock_ai_settings_repo.update = AsyncMock(return_value=updated)
-
-        # Pydantic schema validates the pattern, so it raises at construction
-        with pytest.raises(
-            (PydanticValidationError, ValidationError),
-            match="token_limit_profile",
-        ):
-            request = UpdateUserAiSettingsRequest(
-                token_limit_profile="nonexistent",
-            )
             await service.update_settings(user_id, request)

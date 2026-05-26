@@ -15,8 +15,6 @@ class TestUserAiSettingsResponse:
             default_model="",
             category_overrides={},
             intent_overrides={},
-            token_limit_profile="balanced",
-            token_limit_overrides={},
             updated_at="2026-01-01T00:00:00Z",  # type: ignore[arg-type]
         )
         assert resp.embedding_provider == "auto"
@@ -32,8 +30,6 @@ class TestUserAiSettingsResponse:
             default_model="",
             category_overrides={},
             intent_overrides={},
-            token_limit_profile="balanced",
-            token_limit_overrides={},
             embedding_provider="openai",
             embedding_model="text-embedding-3-small",
             active_embedding_tier="openai",

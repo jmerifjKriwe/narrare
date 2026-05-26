@@ -1,11 +1,8 @@
-"""Project AI settings service — project-level overrides with source metadata.
+"""Project AI settings service — project-level overrides.
 
-Manages project-level model and token limit overrides. Project overrides
+Manages project-level model and intent overrides. Project overrides
 cascade over user-level settings — when a project has an override, it
 takes precedence regardless of the user's configuration.
-
-Returns effective settings with source information so the UI can show
-where each setting comes from.
 """
 
 from __future__ import annotations
@@ -22,7 +19,6 @@ if TYPE_CHECKING:
         ProjectAiSettingsResponse,
         UpdateProjectAiSettingsRequest,
     )
-    from narrare.settings.token_limits.service import TokenLimitsService
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
 
 logger = structlog.get_logger(__name__)
@@ -40,11 +36,9 @@ class ProjectAiSettingsService:
         self,
         project_ai_repo: ProjectAiSettingsRepository,
         user_ai_repo: UserAiSettingsRepository,
-        token_limits_service: TokenLimitsService | None = None,
     ) -> None:
         self._project_ai_repo = project_ai_repo
         self._user_ai_repo = user_ai_repo
-        self._token_limits_service = token_limits_service
 
     async def get_settings(
         self,
@@ -68,7 +62,6 @@ class ProjectAiSettingsService:
             novel_id=settings.novel_id,
             category_overrides=settings.category_overrides or {},
             intent_overrides=settings.intent_overrides or {},
-            token_limit_overrides=settings.token_limit_overrides or {},
             updated_at=settings.updated_at,
         )
 
@@ -90,18 +83,6 @@ class ProjectAiSettingsService:
         """
         updates = request.model_dump(exclude_none=True)
 
-        # Dual-write to TokenLimitsService (DEPRECATED — old columns)
-        if self._token_limits_service and "token_limit_overrides" in updates:
-            logger.warning(
-                "token_limit_overrides_write_deprecated",
-                user_id=str(user_id),
-                project_id=str(novel_id),
-            )
-            await self._token_limits_service.update_project_limits(
-                project_id=str(novel_id),
-                overrides={"legacy_per_category_overrides": updates["token_limit_overrides"]},
-            )
-
         if updates:
             settings = await self._project_ai_repo.update(novel_id, **updates)
         else:
@@ -120,6 +101,5 @@ class ProjectAiSettingsService:
             novel_id=settings.novel_id,
             category_overrides=settings.category_overrides or {},
             intent_overrides=settings.intent_overrides or {},
-            token_limit_overrides=settings.token_limit_overrides or {},
             updated_at=settings.updated_at,
         )

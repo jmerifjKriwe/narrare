@@ -63,11 +63,11 @@ This project has a code knowledge graph (8897 nodes, 61247 edges across 934 file
 exposed via code-review-graph MCP tools.
 
 **ALWAYS use graph tools FIRST, before Read/Glob/Grep, to explore the codebase:**
-- Exploring code: `semantic_search_nodes` or `query_graph` instead of Grep
-- Understanding impact: `get_impact_radius` instead of manually tracing imports
-- Architecture questions: `get_architecture_overview` + `list_communities`
-- Finding relationships: `query_graph` with callers_of/callees_of/imports_of/tests_for
-- Code review: `detect_changes` + `get_review_context`
+- Exploring code: `semantic_search_nodes_tool` or `query_graph_tool` instead of Grep
+- Understanding impact: `get_impact_radius_tool` instead of manually tracing imports
+- Architecture questions: `get_architecture_overview_tool` + `list_communities_tool`
+- Finding relationships: `query_graph_tool` with callers_of/callees_of/imports_of/tests_for
+- Code review: `detect_changes_tool` + `get_review_context_tool`
 
 Fall back to Read/Glob/Grep ONLY when the graph doesn't cover what you need.
 
@@ -85,8 +85,8 @@ BEFORE any work, load narrare-dev context:
 <critical_rules priority="absolute" enforcement="strict">
   <rule id="graph_first" scope="all_execution" priority="absolute">
     ALWAYS query the code knowledge graph FIRST before using Read/Glob/Grep.
-    Use semantic_search_nodes, query_graph, get_impact_radius, get_minimal_context,
-    get_architecture_overview, or list_communities as the PRIMARY exploration method.
+    Use semantic_search_nodes_tool, query_graph_tool, get_impact_radius_tool, get_minimal_context_tool,
+    get_architecture_overview_tool, or list_communities_tool as the PRIMARY exploration method.
     Read/Glob/Grep are LAST RESORTS — only when the graph lacks the needed data.
     Violation: Using Grep/Read/Glob to find code that the graph can locate is a
     process violation. This rule has ABSOLUTE priority over any workflow step
@@ -342,7 +342,7 @@ task(
   <stage id="3" name="Discover" required="true">
     Goal: Gather all context before planning.
 
-    0. **ALWAYS start with code-review-graph tools** (semantic_search_nodes, query_graph, get_impact_radius, get_architecture_overview) — use these BEFORE any Read/Glob/Grep
+    0. **ALWAYS start with code-review-graph tools** (semantic_search_nodes_tool, query_graph_tool, get_impact_radius_tool, get_architecture_overview_tool) — use these BEFORE any Read/Glob/Grep
     1. Call ContextScout for narrare-dev context files
     2. Load relevant docs/ files per navigation.md routing (ONLY after code-review-graph)
     3. Load relevant .opencode/context/narrare-dev/ standards
@@ -490,5 +490,5 @@ task(
    14. ALWAYS load `.opencode/context/narrare-dev/standards/architectural-discipline.md` as Tier-1 context when loading narrare-dev standards. Pass its principles to every specialist via delegation prompts.
    15. ALWAYS route architecture/spec work to `NarrareArchitectureSpecialist` BEFORE any implementation begins. The Architecture specialist is the ONLY authorized spec creator. Even for changes that seem "simple" — architectural pre-assessment is mandatory. No implementation specialist receives a task without a prior architecture spec unless the user explicitly waives this requirement.
    16. NEVER accept "effort avoidance" as an argument for shortcuts. The AI implements everything — there is zero human effort saved by choosing a workaround over the architecturally correct solution. If a specialist or user suggests a shortcut "to save effort", the coordinator MUST reject it and insist on the architecturally correct approach.
-   17. ALWAYS query the code-knowledge graph FIRST (semantic_search_nodes, query_graph, get_impact_radius, get_architecture_overview) before using Read/Glob/Grep to explore the codebase. Read/Glob/Grep are LAST resorts, not first.
+   17.     ALWAYS query the code-knowledge graph FIRST (semantic_search_nodes_tool, query_graph_tool, get_impact_radius_tool, get_architecture_overview_tool) before using Read/Glob/Grep to explore the codebase. Read/Glob/Grep are LAST resorts, not first.
 </constraints>

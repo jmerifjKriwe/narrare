@@ -253,11 +253,6 @@ export interface ModelOverride {
   model_id: string;
 }
 
-export interface TokenLimitOverride {
-  max_tokens: number;
-  temperature: number;
-}
-
 /** Tier names for context budget allocation. */
 export type ContextTier = "immediate" | "recent" | "kb_referenced" | "kb_suggested" | "pinned";
 
@@ -287,8 +282,6 @@ export interface UserAiSettings {
   default_model: string;
   category_overrides: Record<string, ModelOverride>;
   intent_overrides: Record<string, ModelOverride>;
-  token_limit_profile: TokenLimitProfile;
-  token_limit_overrides: Record<string, TokenLimitOverride>;
   updated_at: string;
 }
 
@@ -297,22 +290,18 @@ export interface UpdateUserAiSettingsRequest {
   default_model?: string;
   category_overrides?: Record<string, ModelOverride>;
   intent_overrides?: Record<string, ModelOverride>;
-  token_limit_profile?: TokenLimitProfile;
-  token_limit_overrides?: Record<string, TokenLimitOverride>;
 }
 
 export interface ProjectAiSettings {
   novel_id: string;
   category_overrides: Record<string, ModelOverride>;
   intent_overrides: Record<string, ModelOverride>;
-  token_limit_overrides: Record<string, TokenLimitOverride>;
   updated_at: string;
 }
 
 export interface UpdateProjectAiSettingsRequest {
   category_overrides?: Record<string, ModelOverride>;
   intent_overrides?: Record<string, ModelOverride>;
-  token_limit_overrides?: Record<string, TokenLimitOverride>;
 }
 
 export interface TokenUsage {

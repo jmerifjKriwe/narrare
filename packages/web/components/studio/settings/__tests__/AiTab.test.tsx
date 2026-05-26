@@ -7,8 +7,6 @@
  * 3. Renders token profile select with default value
  * 4. Token profile change triggers mutation
  * 5. Renders all section child components
- * 6. Shows custom token limits when profile is "custom"
- * 7. Does not show custom token limits when profile is "balanced"
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -135,10 +133,6 @@ vi.mock("../IntentOverrides", () => ({
   IntentOverrides: vi.fn(() => <div data-testid="intent-overrides">intent-overrides</div>),
 }));
 
-vi.mock("../CustomTokenLimits", () => ({
-  CustomTokenLimits: vi.fn(() => <div data-testid="custom-token-limits">custom-token-limits</div>),
-}));
-
 vi.mock("../ContextBudget", () => ({
   ContextBudget: vi.fn(() => <div data-testid="context-budget">context-budget</div>),
 }));
@@ -224,41 +218,5 @@ describe("AiTab", () => {
     expect(screen.getByTestId("intent-overrides")).toBeDefined();
     expect(screen.getByTestId("context-budget")).toBeDefined();
     expect(screen.getByTestId("system-timeouts")).toBeDefined();
-  });
-
-  it("shows custom token limits section when profile is custom", async () => {
-    mockGetUserSettings.mockResolvedValue({
-      ...mockAiSettings,
-      token_limit_profile: "custom",
-    });
-    mockGetResolved.mockResolvedValue({
-      ...mockTokenLimits,
-      token_profile: "custom",
-    });
-
-    renderWithProviders(<AiTab />);
-
-    // When profile is "custom", the token limits section is visible
-    await waitFor(() => {
-      expect(screen.getByText("settings.ai.tokenLimits.title")).toBeDefined();
-    });
-
-    // CustomTokenLimits is behind a toggle — click "advanced" to show it
-    const user = userEvent.setup();
-    await user.click(screen.getByText("settings.ai.intentOverrides.advanced"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("custom-token-limits")).toBeDefined();
-    });
-  });
-
-  it("does not show custom token limits when profile is balanced", async () => {
-    renderWithProviders(<AiTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("provider-list")).toBeDefined();
-    });
-
-    expect(screen.queryByTestId("custom-token-limits")).toBeNull();
   });
 });

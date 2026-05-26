@@ -25,6 +25,8 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   - `get_model_limits()` in `cost_rates.py` + `TokenLimitsService.get_model_limits()` for model-aware limits
   - Frontend `AiTab.tsx`: profile selector reads/writes via new `TokenLimitsApi`
   - i18n: EN/DE/FR keys for contextBudget and systemTimeouts
+- Backend: Removed deprecated `token_limit_profile` / `token_limit_overrides` from API schemas and services (Phase 2 cleanup)
+- Frontend: Removed `CustomTokenLimits` component, `TokenLimitOverride` type, and old field references (Phase 2 cleanup)
 
 - ADR-015 Phase 0: Agents as First-Class Citizens
   - ModelRegistry in core/llm/gateway.py (v2 entry point)

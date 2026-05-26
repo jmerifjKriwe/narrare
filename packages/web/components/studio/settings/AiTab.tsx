@@ -5,10 +5,9 @@ import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { aiSettingsApi, tokenLimitsApi } from "@/lib/api/client";
-import type { ContextTier, ModelOverride, TokenLimitOverride, TokenLimitProfile } from "@/types";
+import type { ContextTier, ModelOverride, TokenLimitProfile } from "@/types";
 import { CategoryOverrides } from "./CategoryOverrides";
 import { ContextBudget } from "./ContextBudget";
-import { CustomTokenLimits } from "./CustomTokenLimits";
 import { DefaultModelSection } from "./DefaultModelSection";
 import { IntentOverrides } from "./IntentOverrides";
 import { ModelDataStatus } from "./ModelDataStatus";
@@ -37,8 +36,6 @@ const DEFAULT_TIER_PERCENTAGES: Record<ContextTier, number> = {
 export function AiTab() {
   const t = useTranslations("studio");
   const queryClient = useQueryClient();
-
-  const [showCustomLimits, setShowCustomLimits] = useState(false);
 
   // Data fetching
   const { data: providers = [], isLoading: providersLoading } = useQuery({
@@ -129,12 +126,6 @@ export function AiTab() {
       }
     }
     updateAiSettingsMutation.mutate({ intent_overrides: intentOverrides });
-  }
-
-  function handleTokenLimitOverridesChange(
-    tokenLimitOverrides: Record<string, TokenLimitOverride>,
-  ) {
-    updateAiSettingsMutation.mutate({ token_limit_overrides: tokenLimitOverrides });
   }
 
   function handleTierPercentagesChange(tierPercentages: Record<ContextTier, number>) {
@@ -266,40 +257,6 @@ export function AiTab() {
             loadingModels={loadingModels}
           />
         </div>
-
-        {/* Custom Token Limits (only when profile is "custom") */}
-        {currentProfile === "custom" && (
-          <div className="bg-card border border-border rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                  <span className="text-lg">{"\uD83C\uDF9B\uFE0F"}</span>
-                </div>
-                <div>
-                  <h3 className="font-medium">{t("settings.ai.tokenLimits.title")}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {t("settings.ai.tokenLimits.description")}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCustomLimits(!showCustomLimits)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showCustomLimits
-                  ? t("settings.ai.intentOverrides.collapse")
-                  : t("settings.ai.intentOverrides.advanced")}
-              </button>
-            </div>
-            {showCustomLimits && (
-              <CustomTokenLimits
-                overrides={aiSettings?.token_limit_overrides ?? {}}
-                onChange={handleTokenLimitOverridesChange}
-              />
-            )}
-          </div>
-        )}
 
         {/* Context Budget */}
         <div className="bg-card border border-border rounded-lg p-6">

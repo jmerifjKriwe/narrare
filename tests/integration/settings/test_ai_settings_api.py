@@ -122,33 +122,6 @@ class TestUpdateUserAiSettings:
         data = response.json()
         assert "writing" in data["category_overrides"]
 
-    async def test_set_token_limit_profile(
-        self,
-        client: AsyncClient,
-        auth_headers: dict[str, str],
-    ) -> None:
-        """PATCH /settings/ai with token_limit_profile → 200."""
-        response = await client.patch(
-            "/api/v1/settings/ai",
-            json={"token_limit_profile": "quick"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-
-    async def test_set_invalid_token_limit_profile_returns_400(
-        self,
-        client: AsyncClient,
-        auth_headers: dict[str, str],
-    ) -> None:
-        """PATCH /settings/ai with invalid profile → 400."""
-        response = await client.patch(
-            "/api/v1/settings/ai",
-            json={"token_limit_profile": "nonexistent"},
-            headers=auth_headers,
-        )
-        # The schema validates this with a regex pattern, so it should be 422
-        assert response.status_code in (400, 422)
-
 
 class TestGetEffectiveSettings:
     async def test_get_settings_after_update_shows_values(

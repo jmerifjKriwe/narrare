@@ -121,8 +121,6 @@ class UserAiSettingsResponse(BaseModel):
     default_model: str
     category_overrides: dict[str, object]
     intent_overrides: dict[str, object]
-    token_limit_profile: str
-    token_limit_overrides: dict[str, object]
     embedding_provider: str = "auto"
     embedding_model: str | None = None
     active_embedding_tier: str | None = None
@@ -140,11 +138,6 @@ class UpdateUserAiSettingsRequest(BaseModel):
     default_model: str | None = Field(default=None, max_length=200)
     category_overrides: dict[str, object] | None = None
     intent_overrides: dict[str, object] | None = None
-    token_limit_profile: str | None = Field(
-        default=None,
-        pattern=r"^(quick|balanced|long_texts|custom)$",
-    )
-    token_limit_overrides: dict[str, object] | None = None
     embedding_provider: str | None = Field(
         default=None,
         max_length=20,
@@ -165,7 +158,6 @@ class ProjectAiSettingsResponse(BaseModel):
     novel_id: uuid.UUID
     category_overrides: dict[str, object]
     intent_overrides: dict[str, object]
-    token_limit_overrides: dict[str, object]
     updated_at: datetime
 
 
@@ -177,4 +169,3 @@ class UpdateProjectAiSettingsRequest(BaseModel):
 
     category_overrides: dict[str, object] | None = None
     intent_overrides: dict[str, object] | None = None
-    token_limit_overrides: dict[str, object] | None = None

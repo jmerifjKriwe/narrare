@@ -1,10 +1,9 @@
-"""User AI settings service — default model, overrides, token limits.
+"""User AI settings service — default model, overrides, providers.
 
 Manages user-level AI configuration:
 - Default provider + model selection
 - Category-level model overrides
 - Intent-level model overrides
-- Token limit profile and per-category/intent token overrides
 
 Validates that any referenced provider exists and is active before
 persisting changes.
@@ -16,7 +15,6 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.settings.token_profiles import VALID_TOKEN_LIMIT_PROFILES
 from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
@@ -26,7 +24,6 @@ if TYPE_CHECKING:
         UpdateUserAiSettingsRequest,
         UserAiSettingsResponse,
     )
-    from narrare.settings.token_limits.service import TokenLimitsService
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
     from narrare.settings.user_providers_repository import UserProvidersRepository
 
@@ -45,11 +42,9 @@ class UserAiSettingsService:
         self,
         ai_settings_repo: UserAiSettingsRepository,
         providers_repo: UserProvidersRepository,
-        token_limits_service: TokenLimitsService | None = None,
     ) -> None:
         self._ai_settings_repo = ai_settings_repo
         self._providers_repo = providers_repo
-        self._token_limits_service = token_limits_service
 
     async def get_settings(
         self,
@@ -122,8 +117,7 @@ class UserAiSettingsService:
             Updated AI settings response.
 
         Raises:
-            ValidationError: If a referenced provider doesn't exist or is inactive,
-                or if token_limit_profile is invalid.
+            ValidationError: If a referenced provider doesn't exist or is inactive.
         """
         updates = request.model_dump(exclude_none=True)
 
@@ -140,36 +134,6 @@ class UserAiSettingsService:
         # Validate intent_overrides providers if provided
         if "intent_overrides" in updates:
             await self._validate_override_providers(user_id, updates["intent_overrides"])
-
-        # Validate token_limit_profile if provided
-        if "token_limit_profile" in updates:
-            profile = updates["token_limit_profile"]
-            if profile not in VALID_TOKEN_LIMIT_PROFILES:
-                raise ValidationError(
-                    f"Invalid token limit profile: {profile}",
-                    code="INVALID_TOKEN_LIMIT_PROFILE",
-                )
-
-        # Dual-write to TokenLimitsService (DEPRECATED — old columns)
-        if self._token_limits_service and "token_limit_profile" in updates:
-            logger.warning(
-                "token_limit_profile_write_deprecated",
-                user_id=str(user_id),
-            )
-            await self._token_limits_service.update_user_limits(
-                user_id=str(user_id),
-                overrides={"token_profile": updates["token_limit_profile"]},
-            )
-
-        if self._token_limits_service and "token_limit_overrides" in updates:
-            logger.warning(
-                "token_limit_overrides_write_deprecated",
-                user_id=str(user_id),
-            )
-            await self._token_limits_service.update_user_limits(
-                user_id=str(user_id),
-                overrides={"legacy_per_category_overrides": updates["token_limit_overrides"]},
-            )
 
         settings = await self._ai_settings_repo.update(user_id, **updates)
 

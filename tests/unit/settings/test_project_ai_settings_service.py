@@ -29,7 +29,6 @@ class FakeProjectSettings:
     novel_id: uuid.UUID
     category_overrides: dict[str, Any] = field(default_factory=dict)
     intent_overrides: dict[str, Any] = field(default_factory=dict)
-    token_limit_overrides: dict[str, Any] = field(default_factory=dict)
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -40,7 +39,6 @@ class FakeUserAiSettings:
     default_model: str = ""
     category_overrides: dict[str, Any] = field(default_factory=dict)
     intent_overrides: dict[str, Any] = field(default_factory=dict)
-    token_limit_overrides: dict[str, Any] = field(default_factory=dict)
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -98,7 +96,6 @@ class TestGetProjectSettings:
             novel_id=novel_id,
             category_overrides={},
             intent_overrides={},
-            token_limit_overrides={},
         )
         mock_project_ai_repo.get = AsyncMock(return_value=settings)
 
@@ -108,7 +105,6 @@ class TestGetProjectSettings:
         assert result.novel_id == novel_id
         assert result.category_overrides == {}
         assert result.intent_overrides == {}
-        assert result.token_limit_overrides == {}
 
     async def test_get_project_settings_with_overrides(
         self,
@@ -149,7 +145,6 @@ class TestUpdateProjectSettings:
             novel_id=novel_id,
             category_overrides={"analysis": {"model_id": "gpt-4o"}},
             intent_overrides={},
-            token_limit_overrides={},
         )
         mock_project_ai_repo.update = AsyncMock(return_value=updated)
 
@@ -190,17 +185,14 @@ class TestUpdateProjectSettings:
             novel_id=novel_id,
             category_overrides={"writing": {"model_id": "m1"}},
             intent_overrides={"write": {"model_id": "m2"}},
-            token_limit_overrides={"writing": {"max_tokens": 8000}},
         )
         mock_project_ai_repo.update = AsyncMock(return_value=updated)
 
         request = UpdateProjectAiSettingsRequest(
             category_overrides={"writing": {"model_id": "m1"}},
             intent_overrides={"write": {"model_id": "m2"}},
-            token_limit_overrides={"writing": {"max_tokens": 8000}},
         )
         result = await service.update_settings(user_id, novel_id, request)
 
         assert "writing" in result.category_overrides
         assert "write" in result.intent_overrides
-        assert "writing" in result.token_limit_overrides

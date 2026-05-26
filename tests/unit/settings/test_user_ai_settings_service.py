@@ -42,8 +42,6 @@ class FakeUserAiSettings:
     default_model: str = ""
     category_overrides: dict[str, Any] = field(default_factory=dict)
     intent_overrides: dict[str, Any] = field(default_factory=dict)
-    token_limit_profile: str = "balanced"
-    token_limit_overrides: dict[str, Any] = field(default_factory=dict)
     embedding_provider: str = "auto"
     embedding_model: str | None = None
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -197,43 +195,3 @@ class TestCategoryOverrides:
         result = await service.update_settings(user_id, request)
 
         assert "writing" in result.category_overrides
-
-
-# ---------------------------------------------------------------------------
-# Tests - Token Limit Profile (happy path)
-# ---------------------------------------------------------------------------
-
-
-class TestTokenLimitProfile:
-    async def test_set_valid_token_limit_profile(
-        self,
-        service: UserAiSettingsService,
-        mock_ai_settings_repo: AsyncMock,
-        user_id: uuid.UUID,
-    ) -> None:
-        """Set token_limit_profile to 'quick' -> success."""
-        updated = FakeUserAiSettings(user_id=user_id)
-        mock_ai_settings_repo.get = AsyncMock(return_value=updated)
-        mock_ai_settings_repo.update = AsyncMock(return_value=updated)
-
-        request = UpdateUserAiSettingsRequest(token_limit_profile="quick")
-        await service.update_settings(user_id, request)
-
-        mock_ai_settings_repo.update.assert_called_once()
-
-    @pytest.mark.parametrize("profile", ["quick", "balanced", "long_texts", "custom"])
-    async def test_all_valid_profiles_accepted(
-        self,
-        service: UserAiSettingsService,
-        mock_ai_settings_repo: AsyncMock,
-        user_id: uuid.UUID,
-        profile: str,
-    ) -> None:
-        """Each valid profile name is accepted."""
-        updated = FakeUserAiSettings(user_id=user_id)
-        mock_ai_settings_repo.get = AsyncMock(return_value=updated)
-        mock_ai_settings_repo.update = AsyncMock(return_value=updated)
-
-        request = UpdateUserAiSettingsRequest(token_limit_profile=profile)
-        await service.update_settings(user_id, request)
-        mock_ai_settings_repo.update.assert_called_once()
