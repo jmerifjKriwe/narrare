@@ -47,6 +47,9 @@ class ConsistencyCategory(enum.StrEnum):
     SYSTEM_RULES = "system_rules"
     TIMELINE = "timeline"
     CHARACTER = "character"
+    # ── KB-004: Entry-internal and relationship asymmetry ──
+    ENTRY_INTERNAL = "entry_internal"  # Contradictions within a single entry
+    RELATIONSHIP_ASYMMETRY = "relationship_asymmetry"  # Asymmetric reciprocal relationships
 
 
 # ---------------------------------------------------------------------------

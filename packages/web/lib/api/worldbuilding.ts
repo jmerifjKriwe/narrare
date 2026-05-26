@@ -25,7 +25,9 @@ export type ConsistencyCategory =
   | "economics"
   | "system_rules"
   | "timeline"
-  | "character";
+  | "character"
+  | "entry_internal"
+  | "relationship_asymmetry";
 
 // --- Finding Types ---
 

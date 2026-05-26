@@ -227,6 +227,11 @@
     "resolution": "Suggested resolution",
     "relatedType": "Related type"
   },
+  "consistency": {
+    "checkButton": "Check Consistency",
+    "checking": "Checking consistency...",
+    "noIssues": "No consistency issues found!"
+  },
   "analysis": {
     "title": "Analysis & Statistics",
     "description": "AI-powered analyses help you improve your story",

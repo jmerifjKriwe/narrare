@@ -2411,6 +2411,65 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/consistency-check": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Run a consistency check on the project's KB",
+        "description": "Run a consistency check on the project's KB.\n\nCombines three analysis sources into a single report:\n- Entry-internal: contradictions within a single entry's fields (LLM)\n- Relationship asymmetry: inconsistent reciprocal relationships (algorithmic)\n- Cross-entity: contradictions between entity pairs (LLM via worldbuilding)\n\nResults are cached (10min TTL).  Use ``refresh=true`` to force a fresh check.",
+        "operationId": "check_consistency_api_v1_novels__novel_id__kb_consistency_check_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsistencyCheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/relationships": {
       "post": {
         "tags": [
@@ -7320,10 +7379,93 @@
           "economics",
           "system_rules",
           "timeline",
-          "character"
+          "character",
+          "entry_internal",
+          "relationship_asymmetry"
         ],
         "title": "ConsistencyCategory",
         "description": "Categories of consistency issues."
+      },
+      "ConsistencyCheckRequest": {
+        "properties": {
+          "entity_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Types"
+          },
+          "include_entry_internal": {
+            "type": "boolean",
+            "title": "Include Entry Internal",
+            "default": true
+          },
+          "include_asymmetry": {
+            "type": "boolean",
+            "title": "Include Asymmetry",
+            "default": true
+          },
+          "include_cross_entity": {
+            "type": "boolean",
+            "title": "Include Cross Entity",
+            "default": true
+          },
+          "refresh": {
+            "type": "boolean",
+            "title": "Refresh",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ConsistencyCheckRequest",
+        "description": "Request to run a consistency check.\n\nAttributes:\n    entity_types: Optional filter — check only specific entity types.\n        When None, checks all types present in the project.\n    include_entry_internal: Whether to check entry-internal consistency (LLM).\n    include_asymmetry: Whether to check relationship asymmetry (algorithmic).\n    include_cross_entity: Whether to check cross-entity consistency (LLM via KB-006b).\n    refresh: If True, bypass cache and force fresh analysis."
+      },
+      "ConsistencyCheckResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "title": "Novel Id"
+          },
+          "entity_count": {
+            "type": "integer",
+            "title": "Entity Count"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          },
+          "checked_at": {
+            "type": "string",
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "entity_count",
+          "issues",
+          "summary",
+          "checked_at"
+        ],
+        "title": "ConsistencyCheckResponse",
+        "description": "Response from a consistency check.\n\nAttributes:\n    novel_id: The project that was checked.\n    entity_count: How many entities were analyzed.\n    issues: All consistency issues found, sorted by severity (critical first).\n    summary: Breakdown counts by category.\n    checked_at: When the check was performed."
       },
       "ConsistencyIssue": {
         "properties": {

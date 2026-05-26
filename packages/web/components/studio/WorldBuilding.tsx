@@ -14,6 +14,7 @@
 import { useState } from "react";
 import type { KBEntityType } from "@/lib/api/kb";
 import { useKBEntries, useKBEntry, useKBRelationships } from "@/lib/hooks/useKB";
+import { ConsistencyCheckPanel } from "./kb/ConsistencyCheckPanel";
 import { KBAssistedCreationPanel } from "./kb/KBAssistedCreationPanel";
 import { KBCategorySidebar } from "./kb/KBCategorySidebar";
 import { KBDetailPanel } from "./kb/KBDetailPanel";
@@ -32,6 +33,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   const [isAssistedSession, setIsAssistedSession] = useState(false);
   const [assistedEntityType, setAssistedEntityType] = useState<KBEntityType | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showConsistency, setShowConsistency] = useState(false);
 
   // Data queries
   const { data: entriesData, isLoading: entriesLoading } = useKBEntries(novelId, {
@@ -48,6 +50,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setIsCreating(false);
     setIsAssistedSession(false);
     setShowAnalysis(false);
+    setShowConsistency(false);
   }
 
   function handleSelectEntry(entryId: string) {
@@ -55,6 +58,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setIsCreating(false);
     setIsAssistedSession(false);
     setShowAnalysis(false);
+    setShowConsistency(false);
   }
 
   function handleCreateNew() {
@@ -62,6 +66,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setSelectedEntryId(null);
     setIsAssistedSession(false);
     setShowAnalysis(false);
+    setShowConsistency(false);
   }
 
   function handleCreateAssisted() {
@@ -70,6 +75,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setIsCreating(false);
     setSelectedEntryId(null);
     setShowAnalysis(false);
+    setShowConsistency(false);
   }
 
   function handleCreateCancel() {
@@ -101,6 +107,15 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setSelectedEntryId(null);
     setIsCreating(false);
     setIsAssistedSession(false);
+    setShowConsistency(false);
+  }
+
+  function handleShowConsistency() {
+    setShowConsistency(true);
+    setSelectedEntryId(null);
+    setIsCreating(false);
+    setIsAssistedSession(false);
+    setShowAnalysis(false);
   }
 
   // Column 3: Assisted creation panel takes priority
@@ -112,6 +127,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           activeType={activeType}
           onTypeChange={handleTypeChange}
           onAnalyze={handleShowAnalysis}
+          onConsistencyCheck={handleShowConsistency}
         />
         <KBEntryList
           novelId={novelId}
@@ -142,6 +158,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           activeType={activeType}
           onTypeChange={handleTypeChange}
           onAnalyze={handleShowAnalysis}
+          onConsistencyCheck={handleShowConsistency}
         />
         <KBEntryList
           novelId={novelId}
@@ -158,6 +175,32 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     );
   }
 
+  // Consistency check mode: replaces column 3 with consistency panel
+  if (showConsistency) {
+    return (
+      <div className="flex-1 flex h-full">
+        <KBCategorySidebar
+          novelId={novelId}
+          activeType={activeType}
+          onTypeChange={handleTypeChange}
+          onAnalyze={handleShowAnalysis}
+          onConsistencyCheck={handleShowConsistency}
+        />
+        <KBEntryList
+          novelId={novelId}
+          entries={entries}
+          isLoading={entriesLoading}
+          selectedEntryId={selectedEntryId}
+          activeType={activeType}
+          onSelectEntry={handleSelectEntry}
+          onCreateNew={handleCreateNew}
+          onCreateAssisted={handleCreateAssisted}
+        />
+        <ConsistencyCheckPanel novelId={novelId} onClose={() => setShowConsistency(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex h-full">
       <KBCategorySidebar
@@ -165,6 +208,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
         activeType={activeType}
         onTypeChange={handleTypeChange}
         onAnalyze={handleShowAnalysis}
+        onConsistencyCheck={handleShowConsistency}
       />
       <KBEntryList
         novelId={novelId}

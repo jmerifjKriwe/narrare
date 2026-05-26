@@ -227,6 +227,11 @@
     "resolution": "Résolution suggérée",
     "relatedType": "Type associé"
   },
+  "consistency": {
+    "checkButton": "Vérifier la cohérence",
+    "checking": "Vérification de la cohérence…",
+    "noIssues": "Aucun problème de cohérence détecté !"
+  },
   "analysis": {
     "title": "Analyse et statistiques",
     "description": "Les analyses IA vous aident à améliorer votre histoire",

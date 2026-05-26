@@ -62,6 +62,7 @@ class LLMIntent(StrEnum):
     KB_WORLDBUILD = (
         "kb_worldbuild"  # Worldbuilding analysis (gap detection, connections, consistency)
     )
+    KB_CONSISTENCY = "kb_consistency"  # KB entry consistency checking
 
     # Planning operations
     PLAN = "plan"  # Scene/structure planning
@@ -125,6 +126,7 @@ INTENT_CATEGORY_MAP: dict[LLMIntent, IntentCategory] = {
     LLMIntent.KB_SUGGEST: IntentCategory.KB,
     LLMIntent.KB_ENHANCE: IntentCategory.KB,
     LLMIntent.KB_WORLDBUILD: IntentCategory.KB,
+    LLMIntent.KB_CONSISTENCY: IntentCategory.KB,
     # Planning
     LLMIntent.PLAN: IntentCategory.PLANNING,
     LLMIntent.SUMMARIZE: IntentCategory.PLANNING,

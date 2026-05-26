@@ -227,6 +227,11 @@
     "resolution": "Vorgeschlagene Lösung",
     "relatedType": "Verwandter Typ"
   },
+  "consistency": {
+    "checkButton": "Konsistenz prüfen",
+    "checking": "Konsistenz wird geprüft…",
+    "noIssues": "Keine Konsistenzprobleme gefunden!"
+  },
   "analysis": {
     "title": "Analyse & Statistiken",
     "description": "KI-gestützte Analysen helfen dir, deine Geschichte zu verbessern",
