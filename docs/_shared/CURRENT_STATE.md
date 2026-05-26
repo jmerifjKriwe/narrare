@@ -684,6 +684,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | PLAN-003 feature doc status | Feature file frontmatter corrected from `in-progress` to `stable`. Status & History entry added for 2026-05-26. Matches INDEX.md. |
 | PLAN-005 feature doc status | Feature file frontmatter corrected from `in-progress` to `stable`. Status & History entry added for 2026-05-26. Matches INDEX.md. |
 | SET-005: Configurable Token Limits — Phase 2 cleanup | Removed deprecated `token_limit_profile` / `token_limit_overrides` from API schemas and services. Removed `CustomTokenLimits` component, `TokenLimitOverride` type, and old field references. 3,272 tests passing, architecture validation clean. |
+| INFRA-010: Prompting Locally — Cascade Activation | Core cascade activated via workspace root DI wiring — PromptRegistry and MetaPromptLoader now receive project_root=BASE_DIR. ManagementService fallback path fixed (~/.narrare/ → user_config_dir/prompts/). All 5 cascade levels fully operational: DB template → project file → user-global → bundled → bundled EN fallback. Feature doc status: planned → stable. |
 
 ---
 

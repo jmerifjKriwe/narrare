@@ -250,7 +250,14 @@ class PromptManagementService:
     def _project_override_path(self, category: str, language: str, mode: str) -> Path:
         """Build the project-level override file path."""
         if self._registry.project_root is None:
-            return Path.home() / ".narrare" / "prompts" / category / language / mode / _SYSTEM_FILE
+            return (
+                self._registry.user_config_dir
+                / "prompts"
+                / category
+                / language
+                / mode
+                / _SYSTEM_FILE
+            )
         return (
             self._registry.project_root
             / ".narrare"

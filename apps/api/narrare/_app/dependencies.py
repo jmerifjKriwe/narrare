@@ -64,7 +64,11 @@ ModelRegistryDep = Annotated[ModelRegistry, Depends(get_model_registry)]
 
 @lru_cache
 def _get_prompt_registry_instance() -> PromptRegistry:
-    return PromptRegistry()
+    # Lazy import to keep BASE_DIR resolution unambiguous and avoid
+    # circular-import concerns with the module-level import of Settings.
+    from narrare._app.config import BASE_DIR
+
+    return PromptRegistry(project_root=BASE_DIR)
 
 
 def get_registry() -> PromptRegistry:
@@ -74,7 +78,11 @@ def get_registry() -> PromptRegistry:
 
 @lru_cache
 def _get_meta_loader_instance() -> MetaPromptLoader:
-    return MetaPromptLoader()
+    # Lazy import to keep BASE_DIR resolution unambiguous and avoid
+    # circular-import concerns with the module-level import of Settings.
+    from narrare._app.config import BASE_DIR
+
+    return MetaPromptLoader(project_root=BASE_DIR)
 
 
 @lru_cache

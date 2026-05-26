@@ -13,6 +13,12 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- **INFRA-010 — Prompting Locally (Cascade Activation)**
+  - Core: Activated project-level prompt cascade — PromptRegistry and MetaPromptLoader now receive workspace root (project_root=BASE_DIR)
+  - Core: Fixed fallback path inconsistency in ManagementService (~/.narrare/ → user_config_dir/prompts/)
+  - All 5 cascade levels now fully operational: DB template → project file → user-global → bundled → bundled EN fallback
+  - Docs: Status updated from planned → stable
+
 - **SET-005: Configurable Token Limits** — Full Phase 1 implementation
   - `token_limits/` module: contracts, models, schemas, repository, service, router
   - Migration 0021: `user_token_limits` + `project_token_limits` tables

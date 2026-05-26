@@ -1,7 +1,7 @@
 ---
 id: INFRA-010
 title: "Prompting Locally"
-status: planned
+status: stable
 area: infra
 mvp: false
 
@@ -44,10 +44,14 @@ Different novels require different AI tones, guidelines, and constraints. A hard
 **Contract:** `PromptManagerProtocol`
 **Streaming:** no
 
-The PromptManager uses a cascade resolution order:
-1. Project Level (`.narrare/prompts/`)
-2. Global Level (user config)
-3. Bundled Level (defaults)
+The PromptManager uses a cascade resolution order across all 5 levels:
+1. DB Template (user database prompt templates — highest priority)
+2. Project Level (`.narrare/prompts/` — the workspace root's `.narrare/` directory)
+3. Global Level (user config — `user_config_dir/prompts/`)
+4. Bundled Level (defaults — `core/prompts/_bundled/`)
+5. Bundled EN Fallback (English defaults when no localized prompt exists)
+
+The cascade resolution is now fully active across all 5 levels (DB template → project file → user-global → bundled → bundled EN fallback).
 
 ## Constraints & Edge Cases
 
@@ -62,3 +66,4 @@ The PromptManager uses a cascade resolution order:
 ## Status & History
 
 - `2026-05-19` — Added to registry
+- `2026-05-26` — Cascade activated via workspace root DI wiring. PromptRegistry and MetaPromptLoader now receive project_root=BASE_DIR. ManagementService fallback aligned with cascade path (bugfix: ~/.narrare/ → user_config_dir/prompts/). Status: planned → stable.
