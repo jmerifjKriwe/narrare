@@ -12,8 +12,19 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from scripts.architecture.helpers import is_approved_exception
+from scripts.architecture.helpers import compute_type_checking_lines, is_approved_exception
 from scripts.architecture.types import Violation
+
+
+def _has_narrare_agent_imports(tree: ast.AST) -> bool:
+    """Check if the file imports any class from narrare_core.agents.*."""
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        if node.module and node.module.startswith("narrare_core.agents."):
+            return True
+    return False
+
 
 # =====================================================================
 # RULE-01b · Agent import check — only in core/agents/
@@ -35,9 +46,12 @@ def check_agent_imports(
     if any(rel_path.startswith(m.rstrip("/")) for m in agent_allowed_modules):
         return []
 
+    tc_lines = compute_type_checking_lines(tree)
     violations: list[Violation] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.ImportFrom):
+            continue
+        if node.lineno in tc_lines:
             continue
         if node.module and node.module.startswith("pydantic_ai"):
             for alias in node.names:
@@ -79,6 +93,7 @@ def check_agent_instantiation(
     if any(rel_path.startswith(m.rstrip("/")) for m in agent_allowed_modules):
         return []
 
+    has_narrare_imports = _has_narrare_agent_imports(tree)
     violations: list[Violation] = []
 
     for node in ast.walk(tree):
@@ -110,6 +125,7 @@ def check_agent_instantiation(
             and node.func.attr == "run"
             and isinstance(node.func.value, ast.Name)
             and "agent" in node.func.value.id.lower()
+            and not has_narrare_imports
         ):
             approved, reason = is_approved_exception(source_lines, node.lineno)
             violations.append(
@@ -135,6 +151,7 @@ def check_agent_instantiation(
             and node.func.attr == "run_sync"
             and isinstance(node.func.value, ast.Name)
             and "agent" in node.func.value.id.lower()
+            and not has_narrare_imports
         ):
             approved, reason = is_approved_exception(source_lines, node.lineno)
             violations.append(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import tomllib
 from pathlib import Path
 
@@ -32,6 +33,29 @@ def is_approved_exception(source_lines: list[str], lineno: int) -> tuple[bool, s
                 reason = line[reason_start + 8 :].strip().strip('"').strip("'")
             return True, reason
     return False, ""
+
+
+def compute_type_checking_lines(tree: ast.AST) -> set[int]:
+    """Return line numbers inside ``if TYPE_CHECKING:`` blocks.
+
+    Handles both ``if TYPE_CHECKING:`` and
+    ``if typing.TYPE_CHECKING:`` forms.
+    """
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        if (isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING") or (
+            isinstance(node.test, ast.Attribute)
+            and isinstance(node.test.value, ast.Name)
+            and node.test.value.id == "typing"
+            and node.test.attr == "TYPE_CHECKING"
+        ):
+            for child in ast.walk(node):
+                lineno = getattr(child, "lineno", None)
+                if lineno is not None:
+                    lines.add(lineno)
+    return lines
 
 
 def relative_to_root(path: Path) -> str:

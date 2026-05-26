@@ -1,282 +1,235 @@
-"""Unit tests for setup/_model_fetchers.py — provider-specific model fetching."""
+"""Unit tests for setup/_model_fetchers.py — delegates to ModelCatalogClient."""
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
 
 from narrare.setup.base_schemas import AIProvider
 from narrare.setup.provider_schemas import ProviderModel
+from narrare_core.llm.model_listing import (
+    ModelCatalogClient,
+    ModelCatalogEntry,
+    ModelCatalogError,
+)
 
 
-def _make_mock_client(mock_response: MagicMock) -> MagicMock:
-    """Build a mock httpx.AsyncClient that returns *mock_response* on GET."""
-    # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
-    mock_client = MagicMock()
-    mock_client.get = AsyncMock(return_value=mock_response)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-    return mock_client
+def _make_entries(*entries: dict[str, Any]) -> list[ModelCatalogEntry]:
+    """Build a list of ModelCatalogEntry from dicts."""
+    return [ModelCatalogEntry(**e) for e in entries]
 
 
-def _make_mock_response(json_data: dict[str, object]) -> MagicMock:
-    """Build a mock httpx.Response with .json() returning *json_data*."""
-    # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
-    mock_response = MagicMock()
-    # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
-    mock_response.raise_for_status = MagicMock()
-    mock_response.json.return_value = json_data
-    return mock_response
+def _mock_catalog(return_value: list[ModelCatalogEntry]) -> MagicMock:
+    """Build a mock ModelCatalogClient whose list_models returns *return_value*."""
+    mock = MagicMock(spec=ModelCatalogClient)
+    mock.list_models = AsyncMock(return_value=return_value)
+    return mock
 
 
 # ---------------------------------------------------------------------------
-# Anthropic
+# Per-provider dispatch
 # ---------------------------------------------------------------------------
 
 
-async def test_fetch_anthropic_models() -> None:
-    from narrare.setup._model_fetchers import _fetch_anthropic_models
-
-    mock_response = _make_mock_response(
-        {
-            "data": [
-                {"id": "claude-3-opus", "display_name": "Claude 3 Opus", "context_window": 200000},
-                {"id": "some-other-model"},
-            ]
-        }
-    )
-    mock_client = _make_mock_client(mock_response)
-
-    result = await _fetch_anthropic_models(mock_client, "sk-test")
-    assert len(result) == 1
-    assert result[0].id == "claude-3-opus"
-    assert result[0].context_window == 200000
-
-
-# ---------------------------------------------------------------------------
-# OpenAI
-# ---------------------------------------------------------------------------
-
-
-async def test_fetch_openai_models() -> None:
-    from narrare.setup._model_fetchers import _fetch_openai_models
-
-    mock_response = _make_mock_response(
-        {
-            "data": [
-                {"id": "gpt-4o"},
-                {"id": "gpt-3.5-turbo"},
-                {"id": "o3-mini"},
-                {"id": "dall-e-3"},
-            ]
-        }
-    )
-    mock_client = _make_mock_client(mock_response)
-
-    result = await _fetch_openai_models(mock_client, "sk-test")
-    assert len(result) == 3
-
-
-# ---------------------------------------------------------------------------
-# Ollama
-# ---------------------------------------------------------------------------
-
-
-async def test_fetch_ollama_models() -> None:
-    from narrare.setup._model_fetchers import _fetch_ollama_models
-
-    mock_response = _make_mock_response(
-        {
-            "models": [
-                {"name": "llama3.2", "details": {"context_length": 128000}},
-                {"name": "mistral", "details": {}},
-            ]
-        }
-    )
-    mock_client = _make_mock_client(mock_response)
-
-    result = await _fetch_ollama_models(mock_client, "http://localhost:11434")
-    assert len(result) == 2
-    assert result[0].id == "llama3.2"
-    assert result[0].context_window == 128000
-
-
-# ---------------------------------------------------------------------------
-# OpenRouter
-# ---------------------------------------------------------------------------
-
-
-async def test_fetch_openrouter_models() -> None:
-    from narrare.setup._model_fetchers import _fetch_openrouter_models
-
-    models_data = [{"id": f"model-{i}", "name": f"Model {i}"} for i in range(50)]
-    mock_response = _make_mock_response({"data": models_data})
-    mock_client = _make_mock_client(mock_response)
-
-    result = await _fetch_openrouter_models(mock_client, "sk-test")
-    assert len(result) == 30  # Limited to 30
-
-
-# ---------------------------------------------------------------------------
-# Z.AI
-# ---------------------------------------------------------------------------
-
-
-async def test_fetch_zai_models() -> None:
-    from narrare.setup._model_fetchers import _fetch_zai_models
-
-    mock_response = _make_mock_response({"data": [{"id": "glm-4"}, {"id": "glm-z1"}]})
-    mock_client = _make_mock_client(mock_response)
-
-    result = await _fetch_zai_models(mock_client, "sk-test")
-    assert len(result) == 2
-
-
-# ---------------------------------------------------------------------------
-# Google
-# ---------------------------------------------------------------------------
-
-
-async def test_fetch_google_models() -> None:
-    """Google fetcher should strip 'models/' prefix and filter embeddings."""
-    from narrare.setup._model_fetchers import _fetch_google_models
-
-    mock_response = _make_mock_response(
-        {
-            "models": [
-                {
-                    "name": "models/gemini-2.0-flash",
-                    "displayName": "Gemini 2.0 Flash",
-                    "inputTokenLimit": 1000000,
-                    "supportedGenerationMethods": ["generateContent"],
-                },
-                {
-                    "name": "models/gemini-1.5-pro",
-                    "displayName": "Gemini 1.5 Pro",
-                    "inputTokenLimit": 2000000,
-                    "supportedGenerationMethods": ["generateContent"],
-                },
-                {
-                    "name": "models/text-embedding-004",
-                    "displayName": "Text Embedding",
-                    "supportedGenerationMethods": ["embedContent"],
-                },
-            ]
-        }
-    )
-    mock_client = _make_mock_client(mock_response)
-
-    result = await _fetch_google_models(mock_client, "fake-key")
-    assert len(result) == 2  # Embedding model filtered out
-    assert result[0].id == "gemini-2.0-flash"
-    assert result[0].name == "Gemini 2.0 Flash"
-    assert result[0].context_window == 1000000
-    assert result[1].id == "gemini-1.5-pro"
-    assert result[1].context_window == 2000000
-
-
-async def test_fetch_google_models_empty_response() -> None:
-    """Google fetcher should handle empty model list gracefully."""
-    from narrare.setup._model_fetchers import _fetch_google_models
-
-    mock_response = _make_mock_response({"models": []})
-    mock_client = _make_mock_client(mock_response)
-
-    result = await _fetch_google_models(mock_client, "fake-key")
-    assert result == []
-
-
-# ---------------------------------------------------------------------------
-# Groq
-# ---------------------------------------------------------------------------
-
-
-async def test_fetch_groq_models() -> None:
-    """Groq fetcher uses OpenAI-compatible endpoint."""
-    from narrare.setup._model_fetchers import _fetch_groq_models
-
-    mock_response = _make_mock_response(
-        {
-            "data": [
-                {"id": "llama-3.3-70b-versatile"},
-                {"id": "mixtral-8x7b-32768"},
-            ]
-        }
-    )
-    mock_client = _make_mock_client(mock_response)
-
-    result = await _fetch_groq_models(mock_client, "gsk_test")
-    assert len(result) == 2
-    assert result[0].id == "llama-3.3-70b-versatile"
-    assert result[1].id == "mixtral-8x7b-32768"
-
-
-# ---------------------------------------------------------------------------
-# Dispatcher (fetch_models)
-# ---------------------------------------------------------------------------
-
-
-async def test_fetch_models_dispatches_to_google() -> None:
-    """Dispatcher routes GOOGLE provider to _fetch_google_models."""
+async def test_fetch_models_anthropic() -> None:
+    """Anthropic provider dispatches correctly and maps entries."""
     from narrare.setup._model_fetchers import fetch_models
 
-    mock_response = _make_mock_response(
-        {
-            "models": [
-                {
-                    "name": "models/gemini-2.0-flash",
-                    "displayName": "Gemini 2.0 Flash",
-                    "inputTokenLimit": 1000000,
-                    "supportedGenerationMethods": ["generateContent"],
-                },
-            ]
-        }
+    entries = _make_entries(
+        {"id": "claude-3-opus", "name": "Claude 3 Opus", "context_window": 200000},
+        {"id": "claude-3-sonnet", "name": "Claude 3 Sonnet"},
     )
-    mock_client = _make_mock_client(mock_response)
+    mock = _mock_catalog(entries)
 
-    with patch("narrare.setup._model_fetchers.httpx.AsyncClient", return_value=mock_client):
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.ANTHROPIC, "sk-test", "", {})
+
+    assert len(result) == 2
+    assert result[0].id == "claude-3-opus"
+    assert result[0].name == "Claude 3 Opus"
+    assert result[0].context_window == 200000
+    assert result[1].id == "claude-3-sonnet"
+    mock.list_models.assert_awaited_once_with(
+        "anthropic",
+        api_key="sk-test",
+        base_url=None,
+    )
+
+
+async def test_fetch_models_openai() -> None:
+    """OpenAI provider dispatches correctly."""
+    from narrare.setup._model_fetchers import fetch_models
+
+    entries = _make_entries({"id": "gpt-4o", "name": "gpt-4o"})
+    mock = _mock_catalog(entries)
+
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.OPENAI, "sk-test", "", {})
+
+    assert len(result) == 1
+    assert result[0].id == "gpt-4o"
+    mock.list_models.assert_awaited_once_with(
+        "openai",
+        api_key="sk-test",
+        base_url=None,
+    )
+
+
+async def test_fetch_models_ollama_passes_base_url() -> None:
+    """Ollama provider passes base_url to catalog."""
+    from narrare.setup._model_fetchers import fetch_models
+
+    entries = _make_entries(
+        {"id": "llama3.2", "name": "llama3.2", "context_window": 128000},
+    )
+    mock = _mock_catalog(entries)
+
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(
+            AIProvider.OLLAMA,
+            "",
+            "http://custom:11434",
+            {},
+        )
+
+    assert len(result) == 1
+    assert result[0].context_window == 128000
+    mock.list_models.assert_awaited_once_with(
+        "ollama",
+        api_key=None,
+        base_url="http://custom:11434",
+    )
+
+
+async def test_fetch_models_openrouter() -> None:
+    """OpenRouter provider dispatches correctly."""
+    from narrare.setup._model_fetchers import fetch_models
+
+    entries = _make_entries({"id": "model-1", "name": "Model 1"})
+    mock = _mock_catalog(entries)
+
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.OPENROUTER, "sk-test", "", {})
+
+    assert len(result) == 1
+    mock.list_models.assert_awaited_once_with(
+        "openrouter",
+        api_key="sk-test",
+        base_url=None,
+    )
+
+
+async def test_fetch_models_google() -> None:
+    """Google provider dispatches correctly."""
+    from narrare.setup._model_fetchers import fetch_models
+
+    entries = _make_entries(
+        {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash", "context_window": 1000000},
+    )
+    mock = _mock_catalog(entries)
+
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.GOOGLE, "key", "", {})
 
     assert len(result) == 1
     assert result[0].id == "gemini-2.0-flash"
+    assert result[0].context_window == 1000000
 
 
-async def test_fetch_models_dispatches_to_groq() -> None:
-    """Dispatcher routes GROQ provider to _fetch_groq_models."""
+async def test_fetch_models_groq() -> None:
+    """Groq provider dispatches correctly."""
     from narrare.setup._model_fetchers import fetch_models
 
-    mock_response = _make_mock_response({"data": [{"id": "llama-3.3-70b-versatile"}]})
-    mock_client = _make_mock_client(mock_response)
+    entries = _make_entries(
+        {"id": "llama-3.3-70b-versatile", "name": "llama-3.3-70b-versatile"},
+    )
+    mock = _mock_catalog(entries)
 
-    with patch("narrare.setup._model_fetchers.httpx.AsyncClient", return_value=mock_client):
-        result = await fetch_models(AIProvider.GROQ, "key", "", {})
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.GROQ, "gsk_test", "", {})
 
     assert len(result) == 1
     assert result[0].id == "llama-3.3-70b-versatile"
 
 
-async def test_fetch_models_fallback_on_api_error() -> None:
-    """Service-level fallback is used when the provider API call fails."""
+async def test_fetch_models_zai() -> None:
+    """ZAI provider dispatches correctly."""
     from narrare.setup._model_fetchers import fetch_models
 
-    # narrare: allow  reason="Mocking httpx.AsyncClient infrastructure for provider API calls"
-    mock_client = MagicMock()
-    mock_client.get = AsyncMock(side_effect=Exception("API unreachable"))
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
+    entries = _make_entries({"id": "glm-4", "name": "glm-4"})
+    mock = _mock_catalog(entries)
+
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.ZAI, "sk-test", "", {})
+
+    assert len(result) == 1
+    assert result[0].id == "glm-4"
+
+
+# ---------------------------------------------------------------------------
+# Fallback behavior
+# ---------------------------------------------------------------------------
+
+
+async def test_fetch_models_fallback_on_api_error() -> None:
+    """Falls back to hardcoded models on generic API error."""
+    from narrare.setup._model_fetchers import fetch_models
+
+    mock = MagicMock(spec=ModelCatalogClient)
+    mock.list_models = AsyncMock(side_effect=Exception("API unreachable"))
 
     fallback_models = [ProviderModel(id="fallback-a", name="Fallback A")]
     fallback: dict[AIProvider, list[ProviderModel]] = {
         AIProvider.ANTHROPIC: fallback_models,
     }
 
-    with (
-        patch("narrare.setup._model_fetchers.httpx.AsyncClient", return_value=mock_client),
-        pytest.raises(Exception, match="API unreachable"),
-    ):
-        await fetch_models(AIProvider.ANTHROPIC, "key", "", fallback)
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.ANTHROPIC, "key", "", fallback)
 
-    # Note: fallback at the fetch_models level is only for providers without
-    # a fetcher route. API errors propagate to the service, which applies
-    # _FALLBACK_MODELS — tested in test_provider_service.py.
+    assert result == fallback_models
+    assert result[0].id == "fallback-a"
+
+
+async def test_fetch_models_fallback_on_catalog_error() -> None:
+    """Falls back on ModelCatalogError (HTTP error, unsupported provider)."""
+    from narrare.setup._model_fetchers import fetch_models
+
+    mock = MagicMock(spec=ModelCatalogClient)
+    mock.list_models = AsyncMock(
+        side_effect=ModelCatalogError("anthropic", "HTTP 401"),
+    )
+
+    fallback_models = [ProviderModel(id="fallback", name="Fallback")]
+    fallback: dict[AIProvider, list[ProviderModel]] = {
+        AIProvider.ANTHROPIC: fallback_models,
+    }
+
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.ANTHROPIC, "key", "", fallback)
+
+    assert result == fallback_models
+
+
+async def test_fetch_models_fallback_empty_when_no_entry() -> None:
+    """Returns empty list when provider has no fallback entry and catalog fails."""
+    from narrare.setup._model_fetchers import fetch_models
+
+    mock = MagicMock(spec=ModelCatalogClient)
+    mock.list_models = AsyncMock(side_effect=Exception("fail"))
+
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.ANTHROPIC, "key", "", {})
+
+    assert result == []
+
+
+async def test_fetch_models_empty_result() -> None:
+    """Returns empty list when provider returns no models."""
+    from narrare.setup._model_fetchers import fetch_models
+
+    mock = _mock_catalog([])
+
+    with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
+        result = await fetch_models(AIProvider.GOOGLE, "key", "", {})
+
+    assert result == []

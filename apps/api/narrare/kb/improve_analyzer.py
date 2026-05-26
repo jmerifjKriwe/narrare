@@ -28,7 +28,6 @@ from .template_fields import get_template_fields
 if TYPE_CHECKING:
     from uuid import UUID
 
-    # narrare: allow-direct-llm reason="TYPE_CHECKING only — return type of _get_model()"
     from pydantic_ai.models import Model
 
     from narrare.kb.improve_cache import KBImproveCache
@@ -243,9 +242,7 @@ class KBImproveAnalyzer:
             "'" + str(entry_name) + "' "
             "and identify improvement opportunities."
         )
-        result: KBImproveOutput = await agent.run(
-            prompt=user_prompt, deps=deps
-        )  # narrare: allow-agent reason="KBImproveAnalyzer orchestrates entry improvement analysis"
+        result: KBImproveOutput = await agent.run(prompt=user_prompt, deps=deps)
 
         suggestions = [
             ImproveSuggestionResponse(

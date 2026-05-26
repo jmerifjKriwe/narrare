@@ -35,13 +35,10 @@ def _make_zai(
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> Model:
-    """
-    Create a Z.AI model using the General API endpoint.
+    """Create a Z.AI model using the General API endpoint.
 
     When ``api_key`` is provided, uses it directly. Otherwise falls back
     to the ``ZAI_API_KEY`` environment variable.
-
-    # narrare: allow-direct-llm  reason="Z.AI requires custom base_url — OpenAI-compatible"
 
     Args:
         model_id: Z.AI model identifier (e.g. "glm-z1-32b").
@@ -65,13 +62,10 @@ def make_zai_coding(
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> Model:
-    """
-    Create a Z.AI model using the Coding API endpoint.
+    """Create a Z.AI model using the Coding API endpoint.
 
     Used for code-generation intents. Not registered by default —
     call explicitly when needed.
-
-    # narrare: allow-direct-llm  reason="Z.AI coding endpoint requires custom base_url"
 
     Args:
         model_id: Z.AI model identifier.

@@ -131,7 +131,6 @@ class ChapterSummaryService:
                 max_sentences=max_sentences,
             )
 
-            # narrare: allow-agent reason="ChapterSummaryAgent orchestrates lifecycle"
             result = await agent.run(prompt=composed.user, deps=deps)
 
             # 4. Persist summary to chapter

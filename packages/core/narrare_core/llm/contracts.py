@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from pydantic_ai.usage import UsageLimits
 
     from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+    from narrare_core.llm.model_listing import ModelCatalogEntry
     from narrare_core.llm.result import StreamChunk
 
 
@@ -99,5 +100,54 @@ class ModelRegistryProtocol(Protocol):
         StreamChunk
             Text fragments during generation.  The final chunk has
             ``is_final=True`` and populated ``usage``.
+        """
+        ...
+
+
+@runtime_checkable
+class ModelCatalogProtocol(Protocol):
+    """Contract for listing available models from a provider's catalog API.
+
+    Separate from ``ModelRegistryProtocol`` (which handles LLM inference).
+    Catalog queries are read-only GET requests to provider REST APIs —
+    they do not invoke LLM inference.
+
+    RULE-08 compliance: provider catalog APIs are external integrations
+    abstracted behind this protocol.
+
+    See Also
+    --------
+    CONSTRAINTS.md RULE-08 — External integrations are abstracted.
+    CONSTRAINTS.md RULE-03 — Contracts before implementation.
+    """
+
+    async def list_models(
+        self,
+        provider: str,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> list[ModelCatalogEntry]:
+        """List available models for a given provider.
+
+        Parameters
+        ----------
+        provider:
+            Provider name (e.g. ``"anthropic"``, ``"openai"``, ``"ollama"``).
+            Passed as a plain string — core has no dependency on apps/.
+        api_key:
+            Provider API key.  Required for cloud providers.  ``None`` for Ollama.
+        base_url:
+            Optional base URL override (e.g. Ollama URL, custom endpoint).
+
+        Returns
+        -------
+        list[ModelCatalogEntry]
+            Available models from the provider's catalog.
+
+        Raises
+        ------
+        ModelCatalogError
+            If the provider API is unreachable or returns an error.
         """
         ...

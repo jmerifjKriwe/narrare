@@ -134,7 +134,6 @@ class ExtractionService:
             existing_entity_names=existing_names,
             chapter_title=chapter.title or "",
         )
-        # narrare: allow-agent reason="ExtractionAgent analyzes chapter text"
         result = await agent.run(
             prompt=chapter_content,
             deps=deps,

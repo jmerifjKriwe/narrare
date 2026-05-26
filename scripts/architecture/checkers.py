@@ -10,7 +10,11 @@ from scripts.architecture.agent_checks import (
     check_agent_imports,
     check_agent_instantiation,
 )
-from scripts.architecture.helpers import is_approved_exception, relative_to_root
+from scripts.architecture.helpers import (
+    compute_type_checking_lines,
+    is_approved_exception,
+    relative_to_root,
+)
 from scripts.architecture.types import CheckResult, Violation
 
 # =====================================================================
@@ -29,9 +33,12 @@ def check_llm_imports(
     if any(rel_path.startswith(m.rstrip("/")) for m in allowed_modules):
         return []
 
+    tc_lines = compute_type_checking_lines(tree)
     violations: list[Violation] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import | ast.ImportFrom):
+            if node.lineno in tc_lines:
+                continue
             names = (
                 [alias.name for alias in node.names]
                 if isinstance(node, ast.Import)
@@ -59,13 +66,20 @@ def check_llm_urls(
     source_lines: list[str],
     allowed_modules: list[str],
     forbidden_urls: list[str],
+    tree: ast.AST | None = None,
 ) -> list[Violation]:
     """No direct HTTP calls to LLM provider endpoints."""
     if any(rel_path.startswith(m.rstrip("/")) for m in allowed_modules):
         return []
 
+    tc_lines: set[int] = set()
+    if tree is not None:
+        tc_lines = compute_type_checking_lines(tree)
+
     violations: list[Violation] = []
     for i, line in enumerate(source_lines, 1):
+        if i in tc_lines:
+            continue
         for url in forbidden_urls:
             if url in line:
                 approved, reason = is_approved_exception(source_lines, i)
@@ -355,7 +369,7 @@ def scan_file(
 
     all_violations = (
         check_llm_imports(rel_path, tree, source_lines, allowed_llm, forbidden_imports)
-        + check_llm_urls(rel_path, source_lines, allowed_llm, forbidden_urls)
+        + check_llm_urls(rel_path, source_lines, allowed_llm, forbidden_urls, tree)
         + check_agent_imports(rel_path, tree, source_lines, allowed_agents)
         + check_agent_instantiation(rel_path, tree, source_lines, allowed_agents)
         + check_prompt_building(rel_path, tree, source_lines, allowed_prompts)

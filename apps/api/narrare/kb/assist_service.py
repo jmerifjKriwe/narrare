@@ -24,7 +24,6 @@ from .template_fields import get_template_fields
 if TYPE_CHECKING:
     from uuid import UUID
 
-    # narrare: allow-direct-llm reason="TYPE_CHECKING only — return type of _get_model()"
     from pydantic_ai.models import (
         Model,
     )
@@ -169,9 +168,7 @@ class KBAssistService:
             kb_agent=self._kb_agent,
             system_prompt=system_prompt,
         )
-        result = await agent.run(
-            prompt=user_prompt, deps=deps
-        )  # narrare: allow-agent reason="KBAssistAgent orchestrates assisted creation"
+        result = await agent.run(prompt=user_prompt, deps=deps)
         return result
 
     async def get_interview_question(

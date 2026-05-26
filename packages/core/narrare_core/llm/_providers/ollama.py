@@ -29,13 +29,10 @@ def _make_ollama(
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> Model:
-    """
-    Create an Ollama model via its OpenAI-compatible endpoint.
+    """Create an Ollama model via its OpenAI-compatible endpoint.
 
     When ``base_url`` is provided, uses it directly. Otherwise falls
     back to the ``OLLAMA_BASE_URL`` environment variable.
-
-    # narrare: allow-direct-llm  reason="Ollama requires custom base_url"
 
     Args:
         model_id: Model identifier (may include "ollama/" prefix).

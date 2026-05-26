@@ -224,7 +224,7 @@ class PreferenceAnalysisService:
         )
 
         try:
-            return await agent.run(  # narrare: allow-agent — PreferenceAnalysisAgent orchestration
+            return await agent.run(
                 prompt=composed.user,
                 deps=deps,
             )

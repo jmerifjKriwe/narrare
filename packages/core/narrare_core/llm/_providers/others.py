@@ -105,13 +105,10 @@ def _make_openrouter(
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> Model:
-    """
-    OpenRouter — access to many models via one API.
+    """OpenRouter — access to many models via one API.
 
     When ``api_key`` is provided, uses it directly. Otherwise falls back
     to the ``OPENROUTER_API_KEY`` environment variable.
-
-    # narrare: allow-direct-llm  reason="OpenRouter requires custom base_url"
 
     Args:
         model_id: Model identifier (may include "openrouter/" prefix).

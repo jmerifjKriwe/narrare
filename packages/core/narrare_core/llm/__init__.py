@@ -1,6 +1,6 @@
 """LLM Gateway — the only path to any LLM provider. See CONSTRAINTS.md RULE-01."""
 
-from narrare_core.llm.contracts import ModelRegistryProtocol
+from narrare_core.llm.contracts import ModelCatalogProtocol, ModelRegistryProtocol
 from narrare_core.llm.cost_rates import (
     ModelLimits,
     get_cached_data,
@@ -15,6 +15,11 @@ from narrare_core.llm.intents import (
     IntentCategory,
     LLMIntent,
     ResolvedModelConfig,
+)
+from narrare_core.llm.model_listing import (
+    ModelCatalogClient,
+    ModelCatalogEntry,
+    ModelCatalogError,
 )
 from narrare_core.llm.model_routing import ModelRoutingResolver, ResolvedModel
 from narrare_core.llm.observability import LLMObservability
@@ -39,6 +44,10 @@ __all__ = [
     "LLMObservability",
     "LLMResult",
     "LLMStream",
+    "ModelCatalogClient",
+    "ModelCatalogEntry",
+    "ModelCatalogError",
+    "ModelCatalogProtocol",
     "ModelLimits",
     "ModelRegistry",
     "ModelRegistryProtocol",
