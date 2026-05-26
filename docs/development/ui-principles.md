@@ -3,7 +3,7 @@
 > This document defines the visual and interaction design rules for Narrare's frontend.
 > All frontend work MUST follow these principles.
 >
-> **Last updated:** 2026-05-16
+> **Last updated:** 2026-05-26
 > **Source:** Design-first rebuild — all values extracted from production code
 > **Applies to:** `packages/web/` (Next.js App Router + TypeScript + Tailwind CSS v4)
 
@@ -699,7 +699,116 @@ All icons from `lucide-react`:
 
 ---
 
-## 13. File Size Limits
+## 14. Analysis Visualization Patterns
+
+Source: `components/studio/analysis/BetaReaderPanel.tsx`, `ScoreRadar.tsx`, `FeedbackCard.tsx`
+
+### Analysis Panel Pattern
+
+Analysis results display in a **collapsible panel within the editor view**. The panel slides in from the right (or bottom on mobile) and can be toggled via the sidebar Analysis button or a panel toggle in the editor toolbar.
+
+```
+┌──────────────────────────────────────────────────────┐
+│ Editor area (flex-1)          │ Analysis Panel (w-96) │
+│                               │                       │
+│ [Chapter content]             │ [Tabs: Overview | …] │
+│                               │ ┌───────────────────┐ │
+│                               │ │ Score Radar Chart │ │
+│                               │ └───────────────────┘ │
+│                               │ ┌───────────────────┐ │
+│                               │ │ Feedback Cards    │ │
+│                               │ │  · Strengths      │ │
+│                               │ │  · Issues         │ │
+│                               │ │  · Suggestions    │ │
+│                               │ └───────────────────┘ │
+└──────────────────────────────────────────────────────┘
+```
+
+**Panel structure:**
+- Container: `flex flex-col h-full bg-card border-l border-border`
+- Tab bar: `flex border-b border-border` with tab buttons using `flex-1 py-3 text-sm font-medium text-center`
+- Active tab: `border-b-2 border-primary text-primary`
+- Inactive tab: `text-muted-foreground hover:text-foreground`
+- Content area: `flex-1 overflow-y-auto p-4 space-y-4`
+
+### Chart Component Pattern (Recharts)
+
+All analysis visualizations use a reusable **`AnalysisChart`** pattern built on Recharts. Charts are responsive, themed via CSS variables, and support both light and dark modes.
+
+**ScoreRadar (multi-dimensional scores):**
+- Uses `<RadarChart>` from Recharts
+- Displays up to 6 dimensions on a hexagonal grid
+- Dimensions: Plot, Characters, Pacing, Prose, Engagement, Originality
+- Scores normalized to 0–10 scale
+- Colors via theme tokens: `--primary` for fill, `--primary-foreground` for stroke
+- Responsive via `<ResponsiveContainer width="100%" height={250>`
+
+**Styling rules for charts:**
+- Chart backgrounds: transparent (inherit from panel)
+- Grid lines: `var(--border)` color, dashed
+- Axis labels: `text-sm text-muted-foreground`
+- Data fills: `var(--primary)` with 20% opacity
+- Data strokes: `var(--primary)` with full opacity
+- Tooltips: `bg-card border border-border rounded-lg shadow-lg` with `text-sm`
+- Legend: below chart, `text-xs text-muted-foreground`
+
+**Future chart types (ANAL-002 through ANAL-011):**
+- **Line charts**: sentiment arc over chapter progression (time series)
+- **Bar charts**: readability score comparison across chapters
+- **Area charts**: cumulative theme density
+- All will follow the same `AnalysisChart` pattern and theming rules
+
+### Feedback Card Pattern
+
+Individual feedback items display in **FeedbackCard** components with severity badges, collapsible excerpts, and category badges.
+
+**Card structure:**
+```tsx
+<div className="bg-card border border-border rounded-lg overflow-hidden">
+  {/* Header row */}
+  <div className="flex items-center gap-2 p-3">
+    <SeverityBadge />       {/* Color-coded severity indicator */}
+    <CategoryBadge />       {/* Category label (Plot, Characters, etc.) */}
+    <span className="text-sm font-medium flex-1">{title}</span>
+    <ChevronIcon />         {/* Collapse toggle */}
+  </div>
+  {/* Collapsible detail */}
+  <div className="px-3 pb-3 text-sm text-muted-foreground">
+    {detail}
+    {excerpt && <blockquote>…</blockquote>}
+  </div>
+</div>
+```
+
+**Severity badges:**
+| Severity | Background              | Text                    | Border                |
+|----------|-------------------------|-------------------------|-----------------------|
+| Critical | `bg-destructive/10`     | `text-destructive`      | `border-destructive/20` |
+| Moderate | `bg-primary/10`         | `text-primary`          | `border-primary/20`   |
+| Minor    | `bg-muted`              | `text-muted-foreground` | `border-border`       |
+
+**Category badges:**
+- `bg-secondary text-secondary-foreground text-xs rounded-full px-2 py-0.5`
+- Categories: Plot, Characters, Pacing, Prose, Engagement
+
+**Collapsible excerpts:**
+- Quoted text from the chapter that the feedback refers to
+- Styled: `border-l-2 border-muted-foreground/30 pl-3 italic text-muted-foreground text-sm mt-2`
+- Excerpt text is truncated to 200 characters with "…" ellipsis
+
+### Extensibility
+
+ANAL-001 establishes the foundational patterns for the entire analysis suite (ANAL-002 through ANAL-011). Future analysis features will:
+
+1. **Reuse the analysis panel** — each analysis type adds a new tab
+2. **Reuse FeedbackCard** — all analysis types produce categorized, severity-rated feedback
+3. **Add chart types** to the AnalysisChart wrapper — new `<XChart>` components as needed
+4. **Share the same API module** — `apps/api/narrare/analysis/` handles all analysis endpoints
+5. **Follow the same i18n pattern** — `studio.json` under `analysis.*` namespace
+
+---
+
+## 15. File Size Limits
 
 | File type              | Hard limit |
 |------------------------|-----------|

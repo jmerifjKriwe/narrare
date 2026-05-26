@@ -1,7 +1,7 @@
 ---
 id: ANAL-001
 title: "Beta Reader Simulation"
-status: planned
+status: stable
 area: analysis
 mvp: false
 
@@ -162,3 +162,4 @@ class BetaReaderFeedback:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-26` — Fully implemented (commit 0b2fb6a): BetaReaderAgent (two-phase), analysis/ module, BetaReaderPanel, ScoreRadar (Recharts), 57 tests, i18n 3 locales

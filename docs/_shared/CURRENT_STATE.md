@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-25
-Updated by: NarrareDevCoordinator
-Session summary: 15 Knowledge-Graph-Testlücken geschlossen. 239 neue Tests (214 Hotspot + 25 Config). Core: BeatDef (35), classify_error (32), VariableMeta (33). Backend: ExtractionService (9), Embedding-Conformance (2), FakeEmbeddingRepository. Frontend: EditorView (13), TipTapEditor (9), KBSectionEditor (16), AiTab (7), VolumeManagement (7), NameGenerator (7), KBTemplateEditor (10), ContinueButton (12), AddRelationshipDialog (10). Config: Settings-Properties (25). Pyright- und i18n-Fixes. 2 Commits (ed21254, b5767e3).
+Date: 2026-05-26
+Updated by: NarrareDocsSpecialist
+Session summary: ANAL-001 Beta Reader Simulation documentation complete. Feature INDEX updated (ANAL-001, KB-004, KB-006, KB-008 → stable). TECH_STACK updated (Recharts added). ui-principles.md updated (analysis visualization patterns). CURRENT_STATE updated.
 
 ---
 
@@ -526,7 +526,9 @@ Phase 5 (current):
 
 18. ✅ Knowledge Graph Test Gaps — 239 new tests. Core (100), Backend (13 + FakeEmbeddingRepository + 25 Config), Frontend (91). All 15 untested hotspots covered. 4 config properties tested (safety-critical DB routing). Commits: ed21254, b5767e3.
 
-19. ✅ KB-006a: Worldbuilding View & Navigation — 3-column KB browser implemented. Category sidebar with entity type tabs + live counts, searchable entry list (debounced), detail/edit/create panel in Column 3, assisted creation panel (KB-002 reuse), sidebar navigation. KB-006b (AI gap detection, connection suggestions) remains planned.
+ 19. ✅ KB-006a: Worldbuilding View & Navigation — 3-column KB browser implemented. Category sidebar with entity type tabs + live counts, searchable entry list (debounced), detail/edit/create panel in Column 3, assisted creation panel (KB-002 reuse), sidebar navigation. KB-006b (AI gap detection, connection suggestions) remains planned.
+
+ 20. ✅ ANAL-001: Beta Reader Simulation — Complete. Two-phase AI chapter analysis (Phase 1: full feedback, Phase 2: deep-dive). BetaReaderAgent in core with 2 prompts. New analysis/ API module (contracts, schemas, errors, service, cache, context assembler, mapper, validation, DI, router). BetaReaderPanel with ScoreRadar (Recharts), FeedbackCard, 4 tabs, editor integration. i18n 3 locales. 57 tests. Recharts v3.8.1 installed for analysis visualization suite.
 
 Next focus: E2E tests with Playwright, remaining RULE-04 frontend test splits.
 

@@ -271,6 +271,12 @@ for FastAPI, HTTP, and database calls. Exports to any OTLP-compatible backend.
 **Role:** All API communication via `fetch` + `ReadableStream`. SSE via `connectSSE` utility in `lib/api/streaming.ts`.
 **Not:** `axios` (removed — native `fetch` is sufficient and lighter).
 
+### Recharts `~3.8`
+**Why:** Composable React charting library built on D3. Declarative, responsive, and well-typed.
+**Role:** Analysis visualization — radar charts for multi-dimensional scores (beta reader), line charts for time-series data, bar charts for categorical comparisons. Reusable `AnalysisChart` wrapper component.
+**Location:** `packages/web/components/studio/analysis/` (ScoreRadar, future chart components).
+**Not:** D3 directly (too low-level for our needs), Chart.js (imperative API, React integration is awkward), Nivo (smaller ecosystem).
+
 ---
 
 ## Developer Tooling
@@ -332,6 +338,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-05-21 — embedding cascade (ADR-017), sentence-transformers as optional dependency
+> Last updated: 2026-05-26 — Recharts ~3.8 added for analysis visualization suite (ANAL-001)
 > Maintained by: Architecture Agent
 > Changes require ADR
