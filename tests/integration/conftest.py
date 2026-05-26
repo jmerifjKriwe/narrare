@@ -20,6 +20,8 @@ from narrare._app.main import create_app
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from fastapi import FastAPI
+
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -151,8 +153,8 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
 
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
-    """Test HTTP client with DB session and memory client overrides."""
+async def app(db_session: AsyncSession) -> AsyncGenerator[FastAPI]:
+    """Create a FastAPI app with DB session and memory client overrides."""
     from narrare.memory.dependencies import get_memory_client
     from narrare_core.memory.mem0_client import NullMemoryClient
 
@@ -167,10 +169,16 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides[get_async_session] = override_session
     app.dependency_overrides[get_memory_client] = override_memory_client
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
+    yield app
 
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
+    """Test HTTP client backed by the test app."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
 
 
 @pytest_asyncio.fixture(loop_scope="session")

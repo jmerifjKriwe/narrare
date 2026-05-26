@@ -20,6 +20,7 @@ from narrare.kb.improve_contracts import (
 from narrare.kb.improve_service import KBImproveService
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
     from httpx import AsyncClient
 
 
@@ -87,6 +88,7 @@ class TestImproveEndpoint:
     async def test_improve_returns_200_with_suggestions(
         self,
         client: AsyncClient,
+        app: FastAPI,
         auth_headers: dict[str, str],
         mock_improve_service: MagicMock,
     ) -> None:
@@ -97,7 +99,7 @@ class TestImproveEndpoint:
         entry_id = uuid4()
 
         # Override the dependency
-        client.app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve",
@@ -121,6 +123,7 @@ class TestImproveEndpoint:
     async def test_improve_returns_401_without_auth(
         self,
         client: AsyncClient,
+        app: FastAPI,
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve returns 401 when no auth token is provided."""
@@ -129,7 +132,7 @@ class TestImproveEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        client.app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve",
@@ -140,13 +143,14 @@ class TestImproveEndpoint:
     async def test_improve_returns_422_with_invalid_novel_id(
         self,
         client: AsyncClient,
+        app: FastAPI,
         auth_headers: dict[str, str],
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve returns 422 when novel_id is not a valid UUID."""
         from narrare.kb.dependencies import get_kb_improve_service
 
-        client.app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
 
         resp = await client.post(
             "/api/v1/novels/not-a-uuid/kb/entities/not-a-uuid/improve",
@@ -167,6 +171,7 @@ class TestImproveApplyEndpoint:
     async def test_apply_returns_200(
         self,
         client: AsyncClient,
+        app: FastAPI,
         auth_headers: dict[str, str],
         mock_improve_service: MagicMock,
     ) -> None:
@@ -176,7 +181,7 @@ class TestImproveApplyEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        client.app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
@@ -193,6 +198,7 @@ class TestImproveApplyEndpoint:
     async def test_apply_returns_401_without_auth(
         self,
         client: AsyncClient,
+        app: FastAPI,
         mock_improve_service: MagicMock,
     ) -> None:
         """POST /improve/apply returns 401 when no auth token is provided."""
@@ -201,7 +207,7 @@ class TestImproveApplyEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        client.app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
@@ -213,6 +219,7 @@ class TestImproveApplyEndpoint:
     async def test_apply_returns_422_with_invalid_body(
         self,
         client: AsyncClient,
+        app: FastAPI,
         auth_headers: dict[str, str],
         mock_improve_service: MagicMock,
     ) -> None:
@@ -222,7 +229,7 @@ class TestImproveApplyEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        client.app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
 
         # Missing suggestion_ids field
         resp = await client.post(
@@ -236,6 +243,7 @@ class TestImproveApplyEndpoint:
     async def test_apply_returns_422_with_invalid_suggestion_ids_type(
         self,
         client: AsyncClient,
+        app: FastAPI,
         auth_headers: dict[str, str],
         mock_improve_service: MagicMock,
     ) -> None:
@@ -245,7 +253,7 @@ class TestImproveApplyEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        client.app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
 
         # suggestion_ids as string instead of list
         resp = await client.post(
