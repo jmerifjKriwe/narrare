@@ -1,7 +1,7 @@
 ---
 id: INFRA-003
 title: "Context Assembly Pipeline"
-status: in progress
+status: stable
 area: infra
 mvp: true
 
@@ -170,3 +170,4 @@ The writing pipeline uses `WritingContextAssembler` (`core/writing/context_assem
 - `2026-05-17` — Writing specialization implemented. `WritingContextAssembler` with 5-tier ranking (30/20/25/15/10 split), `TokenBudgetManager` for tier allocation with overflow handling, KB entity relevance ranking (50% similarity, 30% frequency, 20% recency). Core data models in `context_models.py` (`KBEntity`, `RecentChapter`).
 - `2026-05-23` — CR-03 audit: `cap_to_budget()` lightweight token utility for non-tier contexts. `entity_connections` parameter on `assemble()` promotes first-degree KB connections from suggested → referenced tier. `RelationshipRepository.get_adjacency_map()` provides adjacency data from KB relationships.
 - `2026-05-24` — Tier 4 (KB Suggested) will be populated by `ProactiveContextService` (merged KB-005/INFRA-009) once INFRA-004 (Embedding Store) is implemented. Currently uses name + graph traversal fallback. Full hybrid search (embedding + usage + recency) replaces heuristic ranking when embeddings are available.
+- `2026-05-26` — Status updated to stable. All 5 tiers implemented, entity_connections promotion active, ProactiveContextService populating Tier 4.

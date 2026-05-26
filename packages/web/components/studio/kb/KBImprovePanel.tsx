@@ -119,6 +119,7 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
       }
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
+      setState("error");
     }
   }
 

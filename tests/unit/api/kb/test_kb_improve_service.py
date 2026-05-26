@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 
+from narrare.kb.improve_analyzer import KBImproveAnalyzer
 from narrare.kb.improve_contracts import (
     ImproveSuggestionResponse,
     KBImproveAnalysisResponse,
@@ -146,15 +147,22 @@ def _make_service(
     config.temperature = 0.7
     config.max_tokens = 4096
 
-    service = KBImproveService(
+    analyzer = KBImproveAnalyzer(
         registry=registry,
         config=config,
         proactive_context=proactive_context,
         prompt_composer=prompt_composer,
         kb_repo=kb_repo,
+        rel_repo=rel_repo,
+        improve_cache=None,
+        kb_agent=None,
+    )
+
+    service = KBImproveService(
+        analyzer=analyzer,
+        kb_repo=kb_repo,
         kb_service=kb_service,
         rel_repo=rel_repo,
-        kb_agent=None,
     )
 
     mocks = {
@@ -184,7 +192,7 @@ class TestAnalyze:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        with patch("narrare.kb.improve_service.KBImproveAgent") as MockAgent:
+        with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
             mock_agent_instance = MockAgent.return_value
             mock_agent_instance.run = AsyncMock(return_value=mocks["agent_output"])
 
@@ -223,7 +231,7 @@ class TestAnalyze:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        with patch("narrare.kb.improve_service.KBImproveAgent") as MockAgent:
+        with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
             mock_agent_instance = MockAgent.return_value
             mock_agent_instance.run = AsyncMock(return_value=mocks["agent_output"])
 
@@ -244,7 +252,7 @@ class TestAnalyze:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        with patch("narrare.kb.improve_service.KBImproveAgent") as MockAgent:
+        with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
             mock_agent_instance = MockAgent.return_value
             mock_agent_instance.run = AsyncMock(return_value=mocks["agent_output"])
 
@@ -264,7 +272,7 @@ class TestAnalyze:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        with patch("narrare.kb.improve_service.KBImproveAgent") as MockAgent:
+        with patch("narrare.kb.improve_analyzer.KBImproveAgent") as MockAgent:
             mock_agent_instance = MockAgent.return_value
             mock_agent_instance.run = AsyncMock(return_value=mocks["agent_output"])
 

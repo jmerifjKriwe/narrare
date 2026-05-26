@@ -1,7 +1,7 @@
 ---
 id: PLAN-005
 title: "Storyboard View"
-status: in-progress
+status: stable
 area: planning
 mvp: false
 
@@ -202,3 +202,4 @@ Also benefits INFRA-003 Context Assembly (Tier 2 Recent History uses summaries i
 - `project-init` — Added to registry as planned feature
 - `2026-05-20` — Fully implemented: core structure adapters (5 types), backend service with 6 methods and 5 REST endpoints, frontend with 7 components + drag & drop + structure change workflow + i18n (3 locales). Status → in-progress.
 - `2026-05-21` — AI-powered remap implemented (AIRemapService with chapter summary analysis, configurable 50% coverage threshold). Enhanced sync COMPLETED detection uses summary presence. Integrated with WRITE-012 Chapter Summary. WritingGraphStatus component added to editor.
+- **2026-05-26:** Status updated to stable. Feature fully implemented and tested.

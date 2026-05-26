@@ -1,7 +1,7 @@
 ---
 id: WRITE-011
 title: "Volume Management"
-status: in progress
+status: stable
 area: writing
 mvp: true
 
@@ -118,4 +118,4 @@ Long-form fiction often spans multiple volumes — trilogies, series of arcs, or
 
 - **2026-05-16:** Feature spec created
 - **2026-05-17:** Implementation complete — backend enrichment, stats, reorder, frontend UI
-- **Status:** Implemented — backend enrichment, stats/reorder endpoints, frontend volume selector and management page
+- **2026-05-26:** Status updated to stable. Feature fully implemented and tested.

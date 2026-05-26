@@ -1,7 +1,7 @@
 ---
 id: PLAN-003
 title: "Story Structure Visualization"
-status: in-progress
+status: stable
 area: planning
 mvp: false
 
@@ -170,3 +170,4 @@ reassigns chapters to new stages.
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-20` — Core structure adapters implemented (5 adapters + registry in `core/planning/adapters/`). Merged with PLAN-005 storyboard — structure visualization is now part of the storyboard panel, not a separate view.
+- **2026-05-26:** Status updated to stable. Feature fully implemented as part of merged storyboard feature.

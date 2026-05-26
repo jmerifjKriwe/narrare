@@ -184,13 +184,18 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     Production wiring: uses ModelRegistry for LLM model, PromptComposer
     for system prompts, ProactiveContextService for world context,
     and KBRepository + KBService + RelationshipRepository for data access.
+    Uses Redis-backed KBImproveCache for 10min TTL on analysis results.
     """
+    from narrare._app.config import get_settings
     from narrare._app.dependencies import get_composer, get_model_registry
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.embeddings.service import EmbeddingService
+    from narrare.kb.improve_analyzer import KBImproveAnalyzer
+    from narrare.kb.improve_cache import KBImproveCache
     from narrare.kb.improve_service import KBImproveService
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
+    from narrare_core.cache.redis_client import RedisSessionCache
     from narrare_core.context.proactive_service import ProactiveContextService
     from narrare_core.llm.intents import ResolvedModelConfig
 
@@ -208,11 +213,24 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     proactive = ProactiveContextService(embedding_store=embedding_service)  # type: ignore[arg-type]
     kb_service = get_kb_service(session)
 
-    return KBImproveService(
+    # Redis-backed improve cache with 10min TTL
+    settings = get_settings()
+    redis_cache = RedisSessionCache(settings.redis_url)
+    improve_cache = KBImproveCache(redis_cache)
+
+    # Analyzer handles all LLM interaction + caching
+    analyzer = KBImproveAnalyzer(
         registry=registry,
         config=config,
         proactive_context=proactive,
         prompt_composer=composer,
+        kb_repo=kb_repo,
+        rel_repo=RelationshipRepository(session),
+        improve_cache=improve_cache,
+    )
+
+    return KBImproveService(
+        analyzer=analyzer,
         kb_repo=kb_repo,
         kb_service=kb_service,
         rel_repo=RelationshipRepository(session),
