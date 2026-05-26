@@ -1,7 +1,8 @@
 ---
 id: SET-005
 title: "Configurable Token Limits"
-status: planned
+status: stable
+phase: 1
 area: settings
 mvp: true
 
@@ -63,15 +64,15 @@ makes Narrare adaptable by its users.
 
 The feature uses the **Operator-Config → Core-Defaults** pattern from CR-08:
 
-### Three-Layer Resolution
+### Three-Layer Resolution (via `TokenLimitsService.get_resolved_limits()`)
 
 ```
-User override (DB: user_token_settings)
-  ↓优先级
-Project override (DB: project_token_settings)
-  ↓优先级
+User override (DB: user_token_limits table)
+  ↓
+Project override (DB: project_token_limits table)
+  ↓
 Operator env var (config.py / .env)
-  ↓优先级
+  ↓
 Code default (hardcoded in core/)
 ```
 
@@ -114,15 +115,24 @@ budget_tier_percentages: str = ""  # optional JSON: '{"immediate":30,"recent":20
 
 ### Backend Deps-Integration
 
-- `apps/api/narrare/writing/deps.py`: Uses `resolve_output_limit()` instead of `replace(config, max_tokens=4000)`
-- `apps/api/narrare/writing/summary_deps.py`: Same pattern
-- `apps/api/narrare/writing/router_sessions.py`: Uses `resolve_output_limit()`
+All writing deps now use `TokenLimitsService` instead of raw `resolve_output_limit()`:
+
+- `apps/api/narrare/writing/deps.py`: `get_writing_service()`, `get_extend_service()`, `get_rewrite_service()` resolve limits via `TokenLimitsService.get_resolved_limits()`
+- `apps/api/narrare/writing/summary_deps.py`: `get_summary_service()` uses `TokenLimitsService` instead of `resolve_output_limit()`
+- `apps/api/narrare/writing/router_sessions.py`: Resolves `output_limit` + `ws_timeout` dynamically via `TokenLimitsService.get_resolved_limits()` — no more hardcoded 2000
 - `apps/api/narrare/writing/ws_handler.py`: Reads `settings.ws_idle_timeout_seconds`
+
+### Dual-Write Mode
+
+The old columns (`user_ai_settings.token_limit_overrides`, `project_ai_settings.token_limit_profile`) still exist but are deprecated. Both `UserAiSettingsService` and `ProjectAiSettingsService` write to both old columns and the new `TokenLimitsService` tables. Writes through the old path emit a deprecation warning.
 
 ### Frontend
 
-- New `TokenLimitsSettings.tsx` component under `components/settings/`
-- Three collapsible sections: Output Limits, Context Budget, System
+- `ContextBudget.tsx` — Token budget distribution across 5 context tiers with auto-summing percentage sliders
+- `SystemTimeouts.tsx` — WebSocket idle timeout, API request timeout, retry configuration
+- `DefaultModelSection.tsx` — Model selection with token limit display from `get_model_limits()`
+- All components under `components/settings/`
+- Profile selector in `AiTab.tsx` reads/writes via `TokenLimitsApi`
 - Save-on-change with debounce
 - "Reset to defaults" button per section
 
@@ -141,6 +151,21 @@ budget_tier_percentages: str = ""  # optional JSON: '{"immediate":30,"recent":20
 - **Scope**: Sysadmin/env-var settings (retry, timeouts) are *read-only* in the UI — only visible, not editable by end users
 - **Feature interaction**: `token_limit_profile` from SET-003 (per-task model config) maps to the Output Limits profiles — the profile name selects the row in the table
 
+## Implementation
+
+See the [Data Migration & Deprecation Plan](../architecture/implementation-plans/SET-005-data-migration-plan.md) for detailed implementation steps and migration strategy.
+
+Phase 1 (SET-005) delivered:
+- `token_limits/` module: contracts, models, schemas, repository, service, router
+- Data migration from old columns → new tables (non-destructive, idempotent)
+- Three-layer resolution cascade
+- Writing deps integration (`get_writing_service`, `get_extend_service`, `get_rewrite_service`, `get_summary_service`)
+- WS handler integration
+- Dual-write in `UserAiSettingsService` + `ProjectAiSettingsService`
+- Profile name fix: `"long"` → `"long_texts"`
+- Model limits validation via `get_model_limits()`
+- Frontend profile read/write via `TokenLimitsApi`
+
 ## Related Features
 
 - [SET-001](SET-001-user-settings.md) — User settings base
@@ -151,3 +176,4 @@ budget_tier_percentages: str = ""  # optional JSON: '{"immediate":30,"recent":20
 ## Status & History
 
 - `2026-05-24` — Created from CR-08 audit findings
+| 2026-05-26 | Phase 1 implemented | Stable |

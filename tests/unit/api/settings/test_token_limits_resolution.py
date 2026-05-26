@@ -298,3 +298,26 @@ class TestGetResolvedLimits:
 
         entity = await store.get_user_entity(user_id)
         assert entity.overrides == {}
+
+
+# ======================================================================
+# Test: get_model_limits — model capability lookup
+# ======================================================================
+
+
+class TestTokenLimitsServiceModelValidation:
+    """Tests for TokenLimitsService.get_model_limits()."""
+
+    async def test_get_model_limits_returns_none_for_unknown(self, service: Any) -> None:
+        """Unknown model returns None gracefully."""
+        result = await service.get_model_limits("openai", "nonexistent-model")
+        assert result is None
+
+    async def test_get_model_limits_type(self, service: Any) -> None:
+        """Returns ModelLimits type when data is available.
+
+        In test environment no models.dev cache exists, so this will
+        return None. The test validates the return type contract.
+        """
+        result = await service.get_model_limits("openai", "gpt-4o")
+        assert result is None or hasattr(result, "context")

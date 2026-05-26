@@ -678,6 +678,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 | KG Test Gaps — Frontend | EditorView (13), TipTapEditor (9), KBSectionEditor (16), AiTab (7), VolumeManagement (7), NameGenerator (7), KBTemplateEditor (10), ContinueButton (12), AddRelationshipDialog (10). 91 new frontend tests total. Commit ed21254. |
 | KG Test Gaps — Config | 25 tests for Settings.is_test/is_development/is_production/active_database_url. Verifies mode exclusivity and test-mode override safety. Commit ed21254. |
 | Test Fixes | Pyright: Settings(**defaults) → model_validate(defaults) in test_config.py. i18n: hardcoded English → i18n keys in ExtractionReview.test.tsx. Commit b5767e3. |
+| SET-005: Configurable Token Limits — Phase 1 | Full Phase 1 implementation: `token_limits/` module with contracts/models/schemas/repository/service/router, migration 0021 + 0023 (non-destructive data migration), three-layer resolution cascade (User → Project → Env → Code defaults), writing deps switched to `TokenLimitsService.get_resolved_limits()`, WS handler dynamic limits, dual-write to old columns (deprecated), profile name fix `"long"` → `"long_texts"`, `get_model_limits()` for model-aware limits, frontend profile read/write via `TokenLimitsApi`, i18n EN/DE/FR keys. |
+| INFRA-003 feature doc status | INFRA-003-context-assembly.md frontmatter corrected to `status: stable`. History entry added for 2026-05-26. |
+| WRITE-011 feature doc status | Feature file frontmatter corrected from `in progress` to `stable`. Status & History entry added for 2026-05-26. Matches INDEX.md. |
+| PLAN-003 feature doc status | Feature file frontmatter corrected from `in-progress` to `stable`. Status & History entry added for 2026-05-26. Matches INDEX.md. |
+| PLAN-005 feature doc status | Feature file frontmatter corrected from `in-progress` to `stable`. Status & History entry added for 2026-05-26. Matches INDEX.md. |
 
 ---
 

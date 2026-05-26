@@ -49,6 +49,10 @@ class TokenLimitOverrides:
     """Maximum retry attempts for LLM calls."""
     retry_base_delay: float = 1.0
     """Base delay in seconds for retry backoff."""
+    legacy_per_category_overrides: dict[str, object] | None = None
+    """Temporary legacy field for SET-005 dual-write migration.
+    Stores old-format per-category overrides during transition.
+    Will be removed after migration is complete."""
 
 
 # ---------------------------------------------------------------------------

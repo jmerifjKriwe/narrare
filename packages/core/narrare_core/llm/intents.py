@@ -26,7 +26,7 @@ from enum import StrEnum
 _PROFILE_OUTPUT_LIMITS: dict[str, int] = {
     "quick": 500,
     "balanced": 2000,
-    "long": 8000,
+    "long_texts": 8000,
 }
 """Token limit presets referenced by :meth:`ResolvedModelConfig.resolve_output_limit`.
 

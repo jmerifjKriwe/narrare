@@ -13,6 +13,19 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- **SET-005: Configurable Token Limits** — Full Phase 1 implementation
+  - `token_limits/` module: contracts, models, schemas, repository, service, router
+  - Migration 0021: `user_token_limits` + `project_token_limits` tables
+  - Migration 0023: Data migration from old columns → new tables (non-destructive, idempotent)
+  - Three-layer resolution cascade: User-DB → Project-DB → Operator-Env → Code defaults
+  - Writing deps (`deps.py`, `summary_deps.py`): switched from `resolve_output_limit()` to `TokenLimitsService.get_resolved_limits()`
+  - WS handler (`router_sessions.py`): uses resolved limits for `output_limit` + `ws_timeout`
+  - Dual-write: `UserAiSettingsService` + `ProjectAiSettingsService` write to both old columns (deprecated) and new `TokenLimitsService`
+  - Profile name fix: `"long"` → `"long_texts"` in `core/llm/intents.py`
+  - `get_model_limits()` in `cost_rates.py` + `TokenLimitsService.get_model_limits()` for model-aware limits
+  - Frontend `AiTab.tsx`: profile selector reads/writes via new `TokenLimitsApi`
+  - i18n: EN/DE/FR keys for contextBudget and systemTimeouts
+
 - ADR-015 Phase 0: Agents as First-Class Citizens
   - ModelRegistry in core/llm/gateway.py (v2 entry point)
   - NarrareAgent base class in core/agents/base.py

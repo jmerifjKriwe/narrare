@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,24 @@ _DEFAULT_RATES: dict[str, dict[str, float]] = {
     "zai": {"input": 1.0, "output": 2.0},
     "openrouter": {"input": 5.0, "output": 15.0},
 }
+
+
+# ---------------------------------------------------------------------------
+# Public types
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class ModelLimits:
+    """Model token limits from models.dev.
+
+    Represents the context window and max output tokens for a model.
+    """
+
+    context: int
+    """Maximum context window size in tokens."""
+    output: int
+    """Maximum output tokens allowed."""
 
 
 # ---------------------------------------------------------------------------
@@ -191,6 +210,57 @@ def get_rates(provider: str, model_id: str) -> dict[str, float] | None:
         return fallback
 
     # 4. Nothing at all
+    return None
+
+
+def get_model_limits(provider: str, model_id: str) -> ModelLimits | None:
+    """Look up model token limits from models.dev.
+
+    Resolution order:
+    1. Load from local cache (or fetch if cache is missing/expired)
+    2. Look up ``model_id`` in the cached model data
+    3. If nothing found, return ``None``
+
+    Args:
+        provider: Provider name (e.g. "openai", "anthropic").
+        model_id: Model identifier (e.g. "gpt-4o", "claude-sonnet-4-5-20251020").
+
+    Returns:
+        A ``ModelLimits`` instance with ``context`` and ``output``,
+        or ``None`` if no limits could be determined.
+    """
+    # 1. Load cache (or fetch if stale/missing)
+    data = _load_cache()
+    if data is None:
+        try:
+            data = _fetch_models()
+            _save_cache(data)
+        except Exception as exc:
+            logger.warning(
+                "models_fetch_failed_limits_unavailable",
+                error=str(exc),
+                provider=provider,
+                model=model_id,
+            )
+            return None
+
+    # 2. Look up model_id in models.dev data
+    models: dict[str, Any] = data.get("models", {})  # type: ignore[assignment]
+    model_entry: dict[str, Any] = models.get(model_id, {})
+    limit: dict[str, Any] = model_entry.get("limit", {})
+
+    context_val = limit.get("context")
+    output_val = limit.get("output")
+    if context_val is not None and output_val is not None:
+        try:
+            return ModelLimits(
+                context=int(context_val),
+                output=int(output_val),
+            )
+        except TypeError, ValueError:
+            pass
+
+    # 3. Nothing found
     return None
 
 

@@ -128,7 +128,10 @@ class TestResolvedModelConfig:
             provider_name="anthropic",
             model_id="claude-sonnet-4-5-20251020",
         )
-        assert config.resolve_output_limit(profile="long") == _PROFILE_OUTPUT_LIMITS["long"]
+        assert (
+            config.resolve_output_limit(profile="long_texts")
+            == _PROFILE_OUTPUT_LIMITS["long_texts"]
+        )
 
     def test_resolve_output_limit_uses_quick_profile(self) -> None:
         config = ResolvedModelConfig(
@@ -158,16 +161,16 @@ class TestResolvedModelConfig:
         config = ResolvedModelConfig(
             provider_name="anthropic",
             model_id="claude-sonnet-4-5-20251020",
-            token_limit_profile="long",
+            token_limit_profile="long_texts",
         )
-        assert config.resolve_output_limit() == _PROFILE_OUTPUT_LIMITS["long"]
+        assert config.resolve_output_limit() == _PROFILE_OUTPUT_LIMITS["long_texts"]
 
     def test_resolve_output_limit_profile_param_overrides_attr(self) -> None:
         """Explicit profile param overrides token_limit_profile attr."""
         config = ResolvedModelConfig(
             provider_name="anthropic",
             model_id="claude-sonnet-4-5-20251020",
-            token_limit_profile="long",
+            token_limit_profile="long_texts",
         )
         assert config.resolve_output_limit(profile="quick") == _PROFILE_OUTPUT_LIMITS["quick"]
 

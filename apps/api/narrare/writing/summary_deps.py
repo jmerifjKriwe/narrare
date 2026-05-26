@@ -54,11 +54,26 @@ async def get_summary_service(
         UUID(user_id),
         novel_id,
     )
-    profile = resolved.config.token_limit_profile or "quick"
+    from narrare._app.config import get_settings
+    from narrare.settings.token_limits.repository import (
+        ProjectTokenLimitsRepository,
+        UserTokenLimitsRepository,
+    )
+    from narrare.settings.token_limits.service import TokenLimitsService
+
+    token_limits_service = TokenLimitsService(
+        user_repo=UserTokenLimitsRepository(session),
+        project_repo=ProjectTokenLimitsRepository(session),
+        config=get_settings(),
+    )
+    limits = await token_limits_service.get_resolved_limits(
+        user_id=user_id,
+        project_id=str(novel_id) if novel_id else None,
+    )
     config = replace(
         resolved.config,
         temperature=0.3,
-        max_tokens=resolved.config.resolve_output_limit(profile),
+        max_tokens=limits.output_limit,
     )
 
     registry = get_model_registry()

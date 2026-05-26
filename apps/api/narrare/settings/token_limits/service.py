@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.settings.token_limits.contracts import TokenLimitOverrides
+from narrare_core.llm.cost_rates import ModelLimits, get_model_limits
 from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
@@ -40,6 +41,9 @@ _VALID_OVERRIDE_FIELDS: set[str] = {
     "ws_timeout",
     "retry_max_attempts",
     "retry_base_delay",
+    # Legacy migration key — stores old-format per-category overrides
+    # during the SET-005 dual-write transition period.
+    "legacy_per_category_overrides",
 }
 
 
@@ -148,6 +152,25 @@ class TokenLimitsService:
             project_id=project_id,
             fields_updated=list(overrides.keys()),
         )
+
+    async def get_model_limits(
+        self,
+        provider: str,
+        model_id: str,
+    ) -> ModelLimits | None:
+        """Look up model token limits from models.dev.
+
+        Delegates to ``narrare_core.llm.cost_rates.get_model_limits()``.
+
+        Args:
+            provider: Provider name (e.g. "openai", "anthropic").
+            model_id: Model identifier (e.g. "gpt-4o").
+
+        Returns:
+            ``ModelLimits`` with ``context`` and ``output``, or ``None`` if
+            the model is not found in models.dev or the cache is unavailable.
+        """
+        return get_model_limits(provider, model_id)
 
     # ------------------------------------------------------------------
     # Private helpers

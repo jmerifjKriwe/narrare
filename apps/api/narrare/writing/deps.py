@@ -61,11 +61,26 @@ async def get_writing_service(
         UUID(user_id),
         project_id,
     )
-    profile = resolved.config.token_limit_profile or "balanced"
+    from narrare._app.config import get_settings
+    from narrare.settings.token_limits.repository import (
+        ProjectTokenLimitsRepository,
+        UserTokenLimitsRepository,
+    )
+    from narrare.settings.token_limits.service import TokenLimitsService
+
+    token_limits_service = TokenLimitsService(
+        user_repo=UserTokenLimitsRepository(session),
+        project_repo=ProjectTokenLimitsRepository(session),
+        config=get_settings(),
+    )
+    limits = await token_limits_service.get_resolved_limits(
+        user_id=user_id,
+        project_id=str(project_id) if project_id else None,
+    )
     config = replace(
         resolved.config,
         temperature=0.7,
-        max_tokens=resolved.config.resolve_output_limit(profile),
+        max_tokens=limits.output_limit,
     )
     if intent == LLMIntent.SUGGEST:
         # SUGGEST uses a fixed 60-token limit — inline suggestions must be short
@@ -130,11 +145,26 @@ async def get_extend_service(
         UUID(user_id),
         project_id,
     )
-    profile = resolved.config.token_limit_profile or "balanced"
+    from narrare._app.config import get_settings
+    from narrare.settings.token_limits.repository import (
+        ProjectTokenLimitsRepository,
+        UserTokenLimitsRepository,
+    )
+    from narrare.settings.token_limits.service import TokenLimitsService
+
+    token_limits_service = TokenLimitsService(
+        user_repo=UserTokenLimitsRepository(session),
+        project_repo=ProjectTokenLimitsRepository(session),
+        config=get_settings(),
+    )
+    limits = await token_limits_service.get_resolved_limits(
+        user_id=user_id,
+        project_id=str(project_id) if project_id else None,
+    )
     config = replace(
         resolved.config,
         temperature=0.7,
-        max_tokens=resolved.config.resolve_output_limit(profile),
+        max_tokens=limits.output_limit,
     )
 
     registry = get_model_registry()
@@ -179,9 +209,15 @@ async def get_rewrite_service(
     Returns:
         Configured RewriteService ready for use.
     """
+    from narrare._app.config import get_settings
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.settings.repository import UserSettingsRepository
+    from narrare.settings.token_limits.repository import (
+        ProjectTokenLimitsRepository,
+        UserTokenLimitsRepository,
+    )
+    from narrare.settings.token_limits.service import TokenLimitsService
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.rewrite_service import RewriteService
     from narrare_core.writing.context_assembler import WritingContextAssembler
@@ -195,11 +231,19 @@ async def get_rewrite_service(
         UUID(user_id),
         project_id,
     )
-    profile = resolved.config.token_limit_profile or "balanced"
+    token_limits_service = TokenLimitsService(
+        user_repo=UserTokenLimitsRepository(session),
+        project_repo=ProjectTokenLimitsRepository(session),
+        config=get_settings(),
+    )
+    limits = await token_limits_service.get_resolved_limits(
+        user_id=user_id,
+        project_id=str(project_id) if project_id else None,
+    )
     config = replace(
         resolved.config,
         temperature=0.7,
-        max_tokens=resolved.config.resolve_output_limit(profile),
+        max_tokens=limits.output_limit,
     )
 
     registry = get_model_registry()

@@ -69,6 +69,7 @@ const { mockProviders, mockAiSettings, mockModelsData, mockTokenLimits } = vi.ho
   },
 
   mockTokenLimits: {
+    token_profile: "balanced",
     tier_percentages: {
       immediate: 0.3,
       recent: 0.2,
@@ -205,8 +206,8 @@ describe("AiTab", () => {
 
     await waitFor(() => {
       // useMutation.mutate() passes a second argument with context
-      const callArgs = mockUpdateUserSettings.mock.calls[0];
-      expect(callArgs[0]).toEqual({ token_limit_profile: "quick" });
+      const callArgs = mockTokenLimitsUpdateUser.mock.calls[0];
+      expect(callArgs[0]).toEqual({ token_profile: "quick" });
     });
   });
 
@@ -229,6 +230,10 @@ describe("AiTab", () => {
     mockGetUserSettings.mockResolvedValue({
       ...mockAiSettings,
       token_limit_profile: "custom",
+    });
+    mockGetResolved.mockResolvedValue({
+      ...mockTokenLimits,
+      token_profile: "custom",
     });
 
     renderWithProviders(<AiTab />);

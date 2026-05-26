@@ -13,10 +13,12 @@ import pytest
 import narrare_core.llm.cost_rates as _cr
 from narrare_core.llm.cost_rates import (
     _DEFAULT_RATES,
+    ModelLimits,
     _ensure_cache_dir,
     _load_cache,
     _save_cache,
     get_cached_data,
+    get_model_limits,
     get_rates,
     invalidate_cache,
     refresh_models,
@@ -47,6 +49,29 @@ def sample_models_data() -> dict[str, object]:
             },
             "mixtral-8x7b-32768": {
                 "cost": {"input": 0.3, "output": 0.6},
+            },
+        }
+    }
+
+
+@pytest.fixture
+def sample_models_with_limits() -> dict[str, object]:
+    """models.dev-like response with limit data."""
+    return {
+        "models": {
+            "gpt-4o": {
+                "cost": {"input": 2.5, "output": 10.0},
+                "limit": {
+                    "context": 128000,
+                    "output": 16384,
+                },
+            },
+            "claude-sonnet-4-5-20251020": {
+                "cost": {"input": 3.0, "output": 15.0},
+                "limit": {
+                    "context": 200000,
+                    "output": 8192,
+                },
             },
         }
     }
@@ -234,3 +259,67 @@ class TestRefreshModels:
         ):
             result = refresh_models()
             assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# get_model_limits / ModelLimits
+# ---------------------------------------------------------------------------
+
+
+class TestGetModelLimits:
+    def test_returns_none_for_unknown_model(self) -> None:
+        """Unknown model returns None (graceful degradation)."""
+        result = get_model_limits("openai", "nonexistent-model-v42")
+        assert result is None
+
+    def test_model_limits_dataclass(self) -> None:
+        """ModelLimits dataclass stores context and output."""
+        limits = ModelLimits(context=128000, output=16384)
+        assert limits.context == 128000
+        assert limits.output == 16384
+
+    def test_model_limits_is_frozen(self) -> None:
+        """ModelLimits is immutable (frozen dataclass)."""
+        limits = ModelLimits(context=128000, output=16384)
+        with pytest.raises(AttributeError):
+            limits.context = 64000  # type: ignore[misc]
+
+    def test_returns_limits_from_cache(self, sample_models_with_limits: dict[str, object]) -> None:
+        """When cache has model with limits, return ModelLimits."""
+        _save_cache(sample_models_with_limits)
+        result = get_model_limits("openai", "gpt-4o")
+        assert result is not None
+        assert result.context == 128000
+        assert result.output == 16384
+
+    def test_returns_none_when_no_limits_in_data(
+        self, sample_models_data: dict[str, object]
+    ) -> None:
+        """When model has no 'limit' key, return None."""
+        _save_cache(sample_models_data)
+        result = get_model_limits("openai", "gpt-4o")
+        assert result is None
+
+    def test_fetches_and_caches_when_cache_missing(
+        self, sample_models_with_limits: dict[str, object]
+    ) -> None:
+        """When no cache exists, fetch then look up limits."""
+        with patch(
+            "narrare_core.llm.cost_rates._fetch_models",
+            return_value=sample_models_with_limits,
+        ):
+            result = get_model_limits("openai", "gpt-4o")
+
+        assert result is not None
+        assert result.context == 128000
+        assert result.output == 16384
+
+    def test_fetch_failure_returns_none(self) -> None:
+        """When models.dev is unreachable, return None (graceful degradation)."""
+        with patch(
+            "narrare_core.llm.cost_rates._fetch_models",
+            side_effect=Exception("Network error"),
+        ):
+            result = get_model_limits("openai", "gpt-4o")
+
+        assert result is None

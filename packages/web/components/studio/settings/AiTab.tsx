@@ -115,7 +115,7 @@ export function AiTab() {
   }
 
   function handleTokenProfileChange(profile: TokenLimitProfile) {
-    updateAiSettingsMutation.mutate({ token_limit_profile: profile });
+    updateTokenLimitsMutation.mutate({ token_profile: profile });
   }
 
   function handleCategoryOverridesChange(categoryOverrides: Record<string, ModelOverride>) {
@@ -173,7 +173,7 @@ export function AiTab() {
     );
   }
 
-  const currentProfile = aiSettings?.token_limit_profile ?? "balanced";
+  const currentProfile = tokenLimitsData?.token_profile ?? "balanced";
 
   return (
     <div>

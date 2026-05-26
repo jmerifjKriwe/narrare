@@ -9,13 +9,7 @@ from uuid import UUID  # noqa: TC003 — needed at runtime for Pydantic ForwardR
 
 from fastapi import APIRouter, WebSocket
 
-from narrare._app.config import get_settings
 from narrare._app.dependencies import get_composer, get_model_registry
-
-# Balanced for interactive writing sessions — user can control the output
-# limit via token_limit_profile once ModelRoutingResolver is available
-# in the WS handler (future enhancement).
-_WRITE_SESSION_DEFAULT_OUTPUT_LIMIT: int = 2000
 
 router = APIRouter(tags=["writing"])
 
@@ -57,11 +51,36 @@ async def interactive_session(
     session_manager = SessionManager(cache=cache)
     registry = get_model_registry()
     composer = get_composer()
+
+    # Resolve token limits from DB — replaces hardcoded defaults
+    from narrare._app.config import get_settings
+    from narrare._app.database import get_async_session
+    from narrare.settings.token_limits.repository import (
+        ProjectTokenLimitsRepository,
+        UserTokenLimitsRepository,
+    )
+    from narrare.settings.token_limits.service import TokenLimitsService
+
+    _session_gen = get_async_session()
+    session = await _session_gen.__anext__()
+    try:
+        token_limits_service = TokenLimitsService(
+            user_repo=UserTokenLimitsRepository(session),
+            project_repo=ProjectTokenLimitsRepository(session),
+            config=get_settings(),
+        )
+        limits = await token_limits_service.get_resolved_limits(
+            user_id=user_id,
+            project_id=str(project_id) if project_id else None,
+        )
+    finally:
+        await _session_gen.aclose()
+
     config = ResolvedModelConfig(
         provider_name="default",
         model_id="default",
         temperature=0.7,
-        max_tokens=_WRITE_SESSION_DEFAULT_OUTPUT_LIMIT,
+        max_tokens=limits.output_limit,
     )
     assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
@@ -72,7 +91,6 @@ async def interactive_session(
         draft_processor=draft_processor,
     )
 
-    settings = get_settings()
     handler = WritingSessionHandler(
         session_manager=session_manager,
         pipeline=pipeline,
@@ -80,6 +98,6 @@ async def interactive_session(
         composer=composer,
         config=config,
         mode=mode,
-        ws_idle_timeout=settings.ws_idle_timeout_seconds,
+        ws_idle_timeout=limits.ws_timeout,
     )
     await handler.handle(websocket, chapter_id, user_id, project_id)

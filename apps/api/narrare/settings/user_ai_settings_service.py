@@ -26,6 +26,7 @@ if TYPE_CHECKING:
         UpdateUserAiSettingsRequest,
         UserAiSettingsResponse,
     )
+    from narrare.settings.token_limits.service import TokenLimitsService
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
     from narrare.settings.user_providers_repository import UserProvidersRepository
 
@@ -44,9 +45,11 @@ class UserAiSettingsService:
         self,
         ai_settings_repo: UserAiSettingsRepository,
         providers_repo: UserProvidersRepository,
+        token_limits_service: TokenLimitsService | None = None,
     ) -> None:
         self._ai_settings_repo = ai_settings_repo
         self._providers_repo = providers_repo
+        self._token_limits_service = token_limits_service
 
     async def get_settings(
         self,
@@ -146,6 +149,27 @@ class UserAiSettingsService:
                     f"Invalid token limit profile: {profile}",
                     code="INVALID_TOKEN_LIMIT_PROFILE",
                 )
+
+        # Dual-write to TokenLimitsService (DEPRECATED — old columns)
+        if self._token_limits_service and "token_limit_profile" in updates:
+            logger.warning(
+                "token_limit_profile_write_deprecated",
+                user_id=str(user_id),
+            )
+            await self._token_limits_service.update_user_limits(
+                user_id=str(user_id),
+                overrides={"token_profile": updates["token_limit_profile"]},
+            )
+
+        if self._token_limits_service and "token_limit_overrides" in updates:
+            logger.warning(
+                "token_limit_overrides_write_deprecated",
+                user_id=str(user_id),
+            )
+            await self._token_limits_service.update_user_limits(
+                user_id=str(user_id),
+                overrides={"legacy_per_category_overrides": updates["token_limit_overrides"]},
+            )
 
         settings = await self._ai_settings_repo.update(user_id, **updates)
 

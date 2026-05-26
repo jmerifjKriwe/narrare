@@ -143,7 +143,7 @@
 | [SET-001](settings/SET-001-user-settings.md) | User Settings | ✅ | ✅ |
 | [SET-002](settings/SET-002-project-settings.md) | Project Settings | ✅ | ✅ |
 | [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | ✅ | ✅ |
-| [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | 📋 | ❌ |
+| [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | ✅ | ❌ |
 
 ### Analytics & Cost
 | ID | Feature | Status | MVP |
