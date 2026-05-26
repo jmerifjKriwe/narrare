@@ -7,8 +7,8 @@
  * Column 2: Entry list with search
  * Column 3: Detail/edit panel or create form or assisted creation panel
  *
- * Replaces the previous mock-data version with real API-backed data
- * via TanStack Query hooks.
+ * Supports an optional analysis mode that replaces the detail panel
+ * with the WorldbuildingAnalysisPanel.
  */
 
 import { useState } from "react";
@@ -18,6 +18,7 @@ import { KBAssistedCreationPanel } from "./kb/KBAssistedCreationPanel";
 import { KBCategorySidebar } from "./kb/KBCategorySidebar";
 import { KBDetailPanel } from "./kb/KBDetailPanel";
 import { KBEntryList } from "./kb/KBEntryList";
+import { WorldbuildingAnalysisPanel } from "./kb/WorldbuildingAnalysisPanel";
 
 interface WorldBuildingProps {
   novelId: string;
@@ -30,6 +31,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [isAssistedSession, setIsAssistedSession] = useState(false);
   const [assistedEntityType, setAssistedEntityType] = useState<KBEntityType | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   // Data queries
   const { data: entriesData, isLoading: entriesLoading } = useKBEntries(novelId, {
@@ -45,18 +47,21 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setSelectedEntryId(null);
     setIsCreating(false);
     setIsAssistedSession(false);
+    setShowAnalysis(false);
   }
 
   function handleSelectEntry(entryId: string) {
     setSelectedEntryId(entryId);
     setIsCreating(false);
     setIsAssistedSession(false);
+    setShowAnalysis(false);
   }
 
   function handleCreateNew() {
     setIsCreating(true);
     setSelectedEntryId(null);
     setIsAssistedSession(false);
+    setShowAnalysis(false);
   }
 
   function handleCreateAssisted() {
@@ -64,6 +69,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setAssistedEntityType(activeType ?? "character");
     setIsCreating(false);
     setSelectedEntryId(null);
+    setShowAnalysis(false);
   }
 
   function handleCreateCancel() {
@@ -90,6 +96,13 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setSelectedEntryId(null);
   }
 
+  function handleShowAnalysis() {
+    setShowAnalysis(true);
+    setSelectedEntryId(null);
+    setIsCreating(false);
+    setIsAssistedSession(false);
+  }
+
   // Column 3: Assisted creation panel takes priority
   if (isAssistedSession && assistedEntityType) {
     return (
@@ -98,6 +111,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           novelId={novelId}
           activeType={activeType}
           onTypeChange={handleTypeChange}
+          onAnalyze={handleShowAnalysis}
         />
         <KBEntryList
           novelId={novelId}
@@ -119,12 +133,38 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     );
   }
 
+  // Analysis mode: replaces column 3 with analysis panel
+  if (showAnalysis) {
+    return (
+      <div className="flex-1 flex h-full">
+        <KBCategorySidebar
+          novelId={novelId}
+          activeType={activeType}
+          onTypeChange={handleTypeChange}
+          onAnalyze={handleShowAnalysis}
+        />
+        <KBEntryList
+          novelId={novelId}
+          entries={entries}
+          isLoading={entriesLoading}
+          selectedEntryId={selectedEntryId}
+          activeType={activeType}
+          onSelectEntry={handleSelectEntry}
+          onCreateNew={handleCreateNew}
+          onCreateAssisted={handleCreateAssisted}
+        />
+        <WorldbuildingAnalysisPanel novelId={novelId} onClose={() => setShowAnalysis(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex h-full">
       <KBCategorySidebar
         novelId={novelId}
         activeType={activeType}
         onTypeChange={handleTypeChange}
+        onAnalyze={handleShowAnalysis}
       />
       <KBEntryList
         novelId={novelId}

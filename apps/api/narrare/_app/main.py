@@ -123,6 +123,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.kb.router_sessions_complete import router as kb_sessions_complete_router
     from narrare.kb.router_sessions_sse import router as kb_sessions_sse_router
     from narrare.kb.router_suggestions import router as kb_suggestions_router
+    from narrare.kb.router_worldbuilding import router as kb_worldbuilding_router
     from narrare.memory.router import router as memory_router
     from narrare.memory.router_analysis import router as memory_analysis_router
     from narrare.metrics.router import router as metrics_router
@@ -158,6 +159,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(kb_sessions_sse_router, prefix=prefix)
     app.include_router(kb_improve_router, prefix=prefix)
     app.include_router(kb_suggestions_router, prefix=prefix)
+    app.include_router(kb_worldbuilding_router, prefix=prefix)
     app.include_router(settings_router, prefix=prefix)
     app.include_router(memory_router, prefix=prefix)
     app.include_router(memory_analysis_router, prefix=prefix)

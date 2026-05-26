@@ -30,6 +30,16 @@ from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.agents.summary_types import SummaryOutput
+from narrare_core.agents.worldbuilding_agent import WorldbuildingAgent
+from narrare_core.agents.worldbuilding_types import (
+    Phase1ConnectionOutput,
+    Phase1EntitySummary,
+    Phase1GapOutput,
+    Phase2ConsistencyOutput,
+    WorldbuildingDeps,
+    WorldbuildingPhase1Output,
+    WorldbuildingPhase2Output,
+)
 from narrare_core.agents.writing_graph import (
     Approved,
     NeedsRevision,
@@ -66,6 +76,10 @@ __all__ = [
     "OutlineAgent",
     "OutlineDeps",
     "OutlineOutput",
+    "Phase1ConnectionOutput",
+    "Phase1EntitySummary",
+    "Phase1GapOutput",
+    "Phase2ConsistencyOutput",
     "PreferenceAnalysisAgent",
     "PreferenceAnalysisDeps",
     "PreferenceAnalysisOutput",
@@ -75,6 +89,10 @@ __all__ = [
     "SuggestionType",
     "SummaryDeps",
     "SummaryOutput",
+    "WorldbuildingAgent",
+    "WorldbuildingDeps",
+    "WorldbuildingPhase1Output",
+    "WorldbuildingPhase2Output",
     "WritingDeps",
     "WritingState",
     "WritingStatus",

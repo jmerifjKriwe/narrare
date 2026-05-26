@@ -59,6 +59,9 @@ class LLMIntent(StrEnum):
     KB_INTERVIEW = "kb_interview"  # Ask questions about a KB template field
     KB_SUGGEST = "kb_suggest"  # Suggest a value for a KB template field
     KB_ENHANCE = "kb_enhance"  # Generate/expand a KB entity entry
+    KB_WORLDBUILD = (
+        "kb_worldbuild"  # Worldbuilding analysis (gap detection, connections, consistency)
+    )
 
     # Planning operations
     PLAN = "plan"  # Scene/structure planning
@@ -121,6 +124,7 @@ INTENT_CATEGORY_MAP: dict[LLMIntent, IntentCategory] = {
     LLMIntent.KB_INTERVIEW: IntentCategory.KB,
     LLMIntent.KB_SUGGEST: IntentCategory.KB,
     LLMIntent.KB_ENHANCE: IntentCategory.KB,
+    LLMIntent.KB_WORLDBUILD: IntentCategory.KB,
     # Planning
     LLMIntent.PLAN: IntentCategory.PLANNING,
     LLMIntent.SUMMARIZE: IntentCategory.PLANNING,

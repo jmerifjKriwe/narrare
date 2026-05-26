@@ -3553,6 +3553,124 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/worldbuilding/analyze": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Analyze the project's worldbuilding health",
+        "description": "Analyze the project's worldbuilding health.\n\nRuns gap detection, connection suggestion, and/or consistency\nchecking based on request options. Results are cached (10min TTL).",
+        "operationId": "analyze_worldbuilding_api_v1_novels__novel_id__kb_worldbuilding_analyze_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorldbuildingAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldbuildingAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/worldbuilding/apply": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Apply selected connection suggestions as relationships",
+        "description": "Apply selected connection suggestions as KB relationships.\n\nThe client sends the finding indices and the full analysis response\n(previously obtained from ``/analyze``) so the service can look up\nentity IDs and relationship types.",
+        "operationId": "apply_worldbuilding_connections_api_v1_novels__novel_id__kb_worldbuilding_apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorldbuildingApplyRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldbuildingApplyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/settings/ai/providers": {
       "get": {
         "tags": [
@@ -7115,6 +7233,164 @@
         "title": "CompleteSetupResponse",
         "description": "Returned after successful setup completion."
       },
+      "ConnectionSuggestion": {
+        "properties": {
+          "finding_index": {
+            "type": "integer",
+            "title": "Finding Index"
+          },
+          "source_entity_id": {
+            "type": "string",
+            "title": "Source Entity Id"
+          },
+          "source_entity_name": {
+            "type": "string",
+            "title": "Source Entity Name"
+          },
+          "source_entity_type": {
+            "type": "string",
+            "title": "Source Entity Type"
+          },
+          "target_entity_id": {
+            "type": "string",
+            "title": "Target Entity Id"
+          },
+          "target_entity_name": {
+            "type": "string",
+            "title": "Target Entity Name"
+          },
+          "target_entity_type": {
+            "type": "string",
+            "title": "Target Entity Type"
+          },
+          "suggested_rel_type": {
+            "type": "string",
+            "title": "Suggested Rel Type"
+          },
+          "inverse_rel_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inverse Rel Type"
+          },
+          "reasoning": {
+            "type": "string",
+            "title": "Reasoning"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "story_relevance": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Story Relevance",
+            "default": 0.5
+          }
+        },
+        "type": "object",
+        "required": [
+          "finding_index",
+          "source_entity_id",
+          "source_entity_name",
+          "source_entity_type",
+          "target_entity_id",
+          "target_entity_name",
+          "target_entity_type",
+          "suggested_rel_type",
+          "reasoning",
+          "confidence"
+        ],
+        "title": "ConnectionSuggestion",
+        "description": "A suggested relationship between two existing entities."
+      },
+      "ConsistencyCategory": {
+        "type": "string",
+        "enum": [
+          "geography",
+          "politics",
+          "economics",
+          "system_rules",
+          "timeline",
+          "character"
+        ],
+        "title": "ConsistencyCategory",
+        "description": "Categories of consistency issues."
+      },
+      "ConsistencyIssue": {
+        "properties": {
+          "finding_index": {
+            "type": "integer",
+            "title": "Finding Index"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ConsistencyCategory"
+          },
+          "entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Ids"
+          },
+          "entity_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Names"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "contradiction": {
+            "type": "string",
+            "title": "Contradiction"
+          },
+          "suggested_resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Resolution"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/WorldbuildingSeverity",
+            "default": "major"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "finding_index",
+          "category",
+          "entity_ids",
+          "entity_names",
+          "description",
+          "contradiction",
+          "confidence"
+        ],
+        "title": "ConsistencyIssue",
+        "description": "A contradiction or inconsistency found in the worldbuilding."
+      },
       "CreateChapterRequest": {
         "properties": {
           "title": {
@@ -7705,6 +7981,102 @@
         ],
         "title": "FeedbackResponse",
         "description": "Response body after successfully recording feedback."
+      },
+      "GapFinding": {
+        "properties": {
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Name"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "gap_type": {
+            "$ref": "#/components/schemas/GapType"
+          },
+          "field_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Key"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "related_entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Entity Type"
+          },
+          "story_relevance": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Story Relevance",
+            "default": 0.5
+          },
+          "severity": {
+            "$ref": "#/components/schemas/WorldbuildingSeverity",
+            "default": "major"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gap_type",
+          "description"
+        ],
+        "title": "GapFinding",
+        "description": "A gap in the project's worldbuilding."
+      },
+      "GapType": {
+        "type": "string",
+        "enum": [
+          "missing_entity",
+          "missing_field",
+          "missing_connection",
+          "missing_body",
+          "undefined_type"
+        ],
+        "title": "GapType",
+        "description": "Types of gaps the detector can identify."
       },
       "GenderEnum": {
         "type": "string",
@@ -11475,6 +11847,186 @@
         ],
         "title": "WizardState",
         "description": "Complete wizard state collected across all 5 steps."
+      },
+      "WorldbuildingAnalysisRequest": {
+        "properties": {
+          "entity_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Types"
+          },
+          "include_gaps": {
+            "type": "boolean",
+            "title": "Include Gaps",
+            "default": true
+          },
+          "include_connections": {
+            "type": "boolean",
+            "title": "Include Connections",
+            "default": true
+          },
+          "include_consistency": {
+            "type": "boolean",
+            "title": "Include Consistency",
+            "default": true
+          },
+          "max_findings": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Max Findings",
+            "default": 50
+          },
+          "refresh": {
+            "type": "boolean",
+            "title": "Refresh",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "WorldbuildingAnalysisRequest",
+        "description": "Request to run a worldbuilding analysis."
+      },
+      "WorldbuildingAnalysisResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "title": "Novel Id"
+          },
+          "entity_count": {
+            "type": "integer",
+            "title": "Entity Count"
+          },
+          "gap_findings": {
+            "items": {
+              "$ref": "#/components/schemas/GapFinding"
+            },
+            "type": "array",
+            "title": "Gap Findings"
+          },
+          "connection_suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionSuggestion"
+            },
+            "type": "array",
+            "title": "Connection Suggestions"
+          },
+          "consistency_issues": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyIssue"
+            },
+            "type": "array",
+            "title": "Consistency Issues"
+          },
+          "worldbuilding_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Worldbuilding Score"
+          },
+          "overall_assessment": {
+            "type": "string",
+            "title": "Overall Assessment"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          },
+          "analyzed_at": {
+            "type": "string",
+            "title": "Analyzed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "entity_count",
+          "gap_findings",
+          "connection_suggestions",
+          "consistency_issues",
+          "worldbuilding_score",
+          "overall_assessment",
+          "summary",
+          "analyzed_at"
+        ],
+        "title": "WorldbuildingAnalysisResponse",
+        "description": "Complete worldbuilding analysis response."
+      },
+      "WorldbuildingApplyRequestBody": {
+        "properties": {
+          "finding_indices": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Finding Indices"
+          },
+          "analysis": {
+            "$ref": "#/components/schemas/WorldbuildingAnalysisResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "finding_indices",
+          "analysis"
+        ],
+        "title": "WorldbuildingApplyRequestBody",
+        "description": "Router-level request body for applying connections.\n\nCombines the finding indices with the full analysis response\nneeded by the service to look up entity IDs and relationship types."
+      },
+      "WorldbuildingApplyResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "created_count": {
+            "type": "integer",
+            "title": "Created Count"
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "created_count",
+          "failed_count"
+        ],
+        "title": "WorldbuildingApplyResponse",
+        "description": "Response after applying connection suggestions."
+      },
+      "WorldbuildingSeverity": {
+        "type": "string",
+        "enum": [
+          "critical",
+          "major",
+          "minor",
+          "info"
+        ],
+        "title": "WorldbuildingSeverity",
+        "description": "Severity level for worldbuilding findings."
       },
       "narrare__prompts__schemas__DiffResponse": {
         "properties": {

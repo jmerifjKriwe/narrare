@@ -367,7 +367,10 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 - `components/studio/settings/` — Template management in Settings
   - `KBTemplatesTab.tsx` — Template list with type filter, override/update status
   - `KBTemplateEditor.tsx` — Raw YAML editor with save/reset mutations
-- `components/studio/WorldBuilding.tsx` — Passes activeType as initialEntityType to KB panels
+- `components/studio/WorldBuilding.tsx` — 3-column worldbuilding browser (CategorySidebar, EntryList, DetailPanel). Routes entity type selection to KB panels. KB-006a entry point.
+- `components/studio/kb/KBCategorySidebar.tsx` — Entity type tabs with live counts (8 types)
+- `components/studio/kb/KBEntryList.tsx` — Searchable, filterable entry list with debounced query
+- `components/studio/kb/KBDetailPanel.tsx` — Detail/edit/create routing and display in Column 3
 - `components/studio/writing/` — Writing pipeline UI
   - `WritingGraphStatus.tsx` — Compact status panel showing current WritingGraph step (highlighted), completed steps (checkmark), and step labels; integrated in EditorView
 - `components/studio/planning/` — Storyboard UI
@@ -522,6 +525,8 @@ Phase 5 (current):
  17. ✅ WRITE-004: Rewrite Selection — Complete. `RewriteService` in `writing/rewrite_service.py`, SSE-direct endpoint, `AlternativeParser`, `RewriteModeSelector`, `InlineDiff`, `replaceSelectionWithAIContent()`. 7 integration tests (SSE protocol, mode variations, stream errors). Promptfoo eval baseline (`evals/rewrite-selection.yaml`, 279 lines, 7 test cases). Spec frontmatter corrected.
 
 18. ✅ Knowledge Graph Test Gaps — 239 new tests. Core (100), Backend (13 + FakeEmbeddingRepository + 25 Config), Frontend (91). All 15 untested hotspots covered. 4 config properties tested (safety-critical DB routing). Commits: ed21254, b5767e3.
+
+19. ✅ KB-006a: Worldbuilding View & Navigation — 3-column KB browser implemented. Category sidebar with entity type tabs + live counts, searchable entry list (debounced), detail/edit/create panel in Column 3, assisted creation panel (KB-002 reuse), sidebar navigation. KB-006b (AI gap detection, connection suggestions) remains planned.
 
 Next focus: E2E tests with Playwright, remaining RULE-04 frontend test splits.
 
@@ -679,6 +684,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | KG Test Gaps — Config | 25 tests for Settings.is_test/is_development/is_production/active_database_url. Verifies mode exclusivity and test-mode override safety. Commit ed21254. |
 | Test Fixes | Pyright: Settings(**defaults) → model_validate(defaults) in test_config.py. i18n: hardcoded English → i18n keys in ExtractionReview.test.tsx. Commit b5767e3. |
 | SET-005: Configurable Token Limits — Phase 1 | Full Phase 1 implementation: `token_limits/` module with contracts/models/schemas/repository/service/router, migration 0021 + 0023 (non-destructive data migration), three-layer resolution cascade (User → Project → Env → Code defaults), writing deps switched to `TokenLimitsService.get_resolved_limits()`, WS handler dynamic limits, dual-write to old columns (deprecated), profile name fix `"long"` → `"long_texts"`, `get_model_limits()` for model-aware limits, frontend profile read/write via `TokenLimitsApi`, i18n EN/DE/FR keys. |
+| KB-006a: Worldbuilding View & Navigation | 3-column KB browser implemented (CategorySidebar, EntryList, DetailPanel). Entity type filtering with live counts, debounced search, detail/edit/create routing, assisted creation panel (KB-002 reuse). KB-006b (AI Assistant) remains planned. |
 | INFRA-003 feature doc status | INFRA-003-context-assembly.md frontmatter corrected to `status: stable`. History entry added for 2026-05-26. |
 | WRITE-011 feature doc status | Feature file frontmatter corrected from `in progress` to `stable`. Status & History entry added for 2026-05-26. Matches INDEX.md. |
 | PLAN-003 feature doc status | Feature file frontmatter corrected from `in-progress` to `stable`. Status & History entry added for 2026-05-26. Matches INDEX.md. |

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from narrare.kb.service import KBService
     from narrare.kb.session_service import KBSessionService
     from narrare.kb.suggest_service import KBSuggestService
+    from narrare.kb.worldbuilding_service import WorldbuildingService
 
 
 def get_kb_repository(session: SessionDep) -> KBRepository:
@@ -234,4 +235,58 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
         kb_repo=kb_repo,
         kb_service=kb_service,
         rel_repo=RelationshipRepository(session),
+    )
+
+
+def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
+    """Create a WorldbuildingService with injected dependencies.
+
+    Production wiring: uses ModelRegistry for LLM model, PromptComposer
+    for system prompts, PromptRegistry for prompt resolution, and
+    KBRepository + RelationshipRepository for data access.
+    Uses Redis-backed WorldbuildingCache for 10min TTL on analysis results.
+    """
+    from narrare._app.config import get_settings
+    from narrare._app.dependencies import get_composer, get_model_registry, get_registry
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
+    from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
+    from narrare.kb.worldbuilding_cache import WorldbuildingCache
+    from narrare.kb.worldbuilding_service import WorldbuildingService
+    from narrare_core.cache.redis_client import RedisSessionCache
+    from narrare_core.llm.intents import ResolvedModelConfig
+
+    registry = get_model_registry()
+    composer = get_composer()
+    prompt_registry = get_registry()
+    config = ResolvedModelConfig(
+        provider_name="default",
+        model_id="default",
+        temperature=0.7,
+        max_tokens=4096,
+    )
+
+    kb_repo = KBRepository(session)
+    rel_repo = RelationshipRepository(session)
+
+    # Redis-backed worldbuilding cache with 10min TTL
+    settings = get_settings()
+    redis_cache = RedisSessionCache(settings.redis_url)
+    worldbuilding_cache = WorldbuildingCache(redis_cache)
+
+    # Analyzer handles all LLM interaction + caching
+    analyzer = WorldbuildingAnalyzer(
+        kb_repo=kb_repo,
+        rel_repo=rel_repo,
+        cache=worldbuilding_cache,
+        registry=registry,
+        config=config,
+        composer=composer,
+        prompt_registry=prompt_registry,
+    )
+
+    return WorldbuildingService(
+        analyzer=analyzer,
+        rel_repo=rel_repo,
+        cache=worldbuilding_cache,
     )

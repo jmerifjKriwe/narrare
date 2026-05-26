@@ -6,6 +6,7 @@
  * Shows entity type tabs with count badges and an "All" option.
  */
 
+import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { KBEntityType } from "@/lib/api/kb";
 import { useKBEntries } from "@/lib/hooks/useKB";
@@ -15,9 +16,15 @@ interface KBCategorySidebarProps {
   novelId: string;
   activeType: KBEntityType | null;
   onTypeChange: (type: KBEntityType | null) => void;
+  onAnalyze?: () => void;
 }
 
-export function KBCategorySidebar({ novelId, activeType, onTypeChange }: KBCategorySidebarProps) {
+export function KBCategorySidebar({
+  novelId,
+  activeType,
+  onTypeChange,
+  onAnalyze,
+}: KBCategorySidebarProps) {
   const t = useTranslations("studio");
 
   // Fetch counts for each entity type
@@ -65,6 +72,19 @@ export function KBCategorySidebar({ novelId, activeType, onTypeChange }: KBCateg
           ))}
         </div>
       </div>
+      {/* Analyze Worldbuilding button */}
+      {onAnalyze && (
+        <div className="p-2 border-t border-border">
+          <button
+            type="button"
+            onClick={onAnalyze}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-sm font-medium"
+          >
+            <Sparkles className="w-4 h-4" />
+            {t("worldbuilding.analyzeButton") || "Analyze Worldbuilding"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

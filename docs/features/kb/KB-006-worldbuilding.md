@@ -144,6 +144,29 @@ system affects politics, how geography influences trade routes, etc.
 - Large worlds (100+ entities) may have slower gap analysis
 - AI may suggest genre-inappropriate elements (user controls genre)
 
+## Implementation Status
+
+### KB-006a — Worldbuilding View & Navigation ✅
+- 3-column KB browser (CategorySidebar, EntryList, DetailPanel)
+- Entity type filtering with live counts (character, concept, faction, location, object, setting, system, timeline)
+- Search with debounced query support
+- AI-assisted creation panel (reuses KB-002 session system)
+- Detail/edit/create routing in Column 3
+- Sidebar navigation integrated
+- **Files:**
+  - `packages/web/components/studio/WorldBuilding.tsx`
+  - `packages/web/components/studio/kb/KBCategorySidebar.tsx`
+  - `packages/web/components/studio/kb/KBEntryList.tsx`
+  - `packages/web/components/studio/kb/KBDetailPanel.tsx`
+  - `packages/web/app/(studio)/novel/[id]/worldbuilding/page.tsx`
+
+### KB-006b — Worldbuilding AI Assistant 📋
+- Gap detection (analyze entities for missing connections)
+- Connection suggestions between entities
+- Consistency checking (geography, politics, economics, systems)
+- Specialized prompts per entity type
+- **Not yet implemented.**
+
 ## Related Features
 
 - [KB-001](KB-001-entity-management.md) — Base entity CRUD
@@ -154,3 +177,4 @@ system affects politics, how geography influences trade routes, etc.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-26` — KB-006a (View & Navigation) implemented: 3-column browser with category sidebar, entry list, detail panel, and search. KB-006b (AI Assistant) remains planned.
