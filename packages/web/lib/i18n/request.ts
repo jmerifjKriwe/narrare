@@ -14,6 +14,7 @@ const namespaces = [
   "settings-ai",
   "settings-appearance",
   "studio",
+  "analysis",
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import { create } from "zustand";
+import type { BetaReaderResponse } from "@/lib/api/analysis";
 import type { ChapterSummary, SaveStatus } from "@/types";
 
 interface EditorState {
@@ -36,6 +37,11 @@ interface EditorState {
   // Extraction state
   extractionPanelOpen: boolean;
 
+  // Beta reader analysis state
+  betaReaderPanelOpen: boolean;
+  betaReaderResult: BetaReaderResponse | null;
+  betaReaderLoading: boolean;
+
   // Actions
   setActiveChapterId: (id: string | null) => void;
   setActiveVolumeId: (id: string | null) => void;
@@ -58,6 +64,9 @@ interface EditorState {
   setSessionActive: (value: boolean) => void;
   toggleGenerationPanel: () => void;
   toggleExtractionPanel: () => void;
+  toggleBetaReaderPanel: () => void;
+  setBetaReaderResult: (result: BetaReaderResponse | null) => void;
+  setBetaReaderLoading: (loading: boolean) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -78,6 +87,9 @@ export const useEditorStore = create<EditorState>((set) => ({
   sessionActive: false,
   generationPanelOpen: false,
   extractionPanelOpen: false,
+  betaReaderPanelOpen: false,
+  betaReaderResult: null,
+  betaReaderLoading: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
 
@@ -130,4 +142,16 @@ export const useEditorStore = create<EditorState>((set) => ({
       // Close generation panel when opening extraction panel
       generationPanelOpen: s.extractionPanelOpen ? s.generationPanelOpen : false,
     })),
+
+  toggleBetaReaderPanel: () =>
+    set((s) => ({
+      betaReaderPanelOpen: !s.betaReaderPanelOpen,
+      // Close other right panels when opening beta reader panel
+      contextPanelOpen: s.betaReaderPanelOpen ? s.contextPanelOpen : false,
+      generationPanelOpen: s.betaReaderPanelOpen ? s.generationPanelOpen : false,
+    })),
+
+  setBetaReaderResult: (betaReaderResult) => set({ betaReaderResult }),
+
+  setBetaReaderLoading: (betaReaderLoading) => set({ betaReaderLoading }),
 }));

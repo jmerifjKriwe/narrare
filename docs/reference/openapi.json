@@ -1276,6 +1276,124 @@
         }
       }
     },
+    "/api/v1/analysis/beta-reader": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Run beta reader analysis on chapter(s)",
+        "description": "Run Phase 1 beta reader analysis on chapter(s).\n\nPhase 1: Comprehensive feedback across all categories.\nResults are cached for 30 minutes.",
+        "operationId": "analyze_chapter_api_v1_analysis_beta_reader_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaReaderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaReaderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/beta-reader/deep-dive": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Run Phase 2 deep-dive on a specific category",
+        "description": "Run Phase 2 deep-dive on a specific category.\n\nRequires a prior Phase 1 analysis (cache_key from Phase 1 response).",
+        "operationId": "deep_dive_category_api_v1_analysis_beta_reader_deep_dive_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaReaderDeepDiveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaReaderDeepDiveResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/embeddings/status/{novel_id}": {
       "get": {
         "tags": [
@@ -7169,6 +7287,389 @@
         "title": "BeatSchema",
         "description": "A single beat within a chapter outline."
       },
+      "BetaFeedbackItem": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FeedbackCategory"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/FeedbackSeverity"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "text_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Excerpt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "severity",
+          "title",
+          "description"
+        ],
+        "title": "BetaFeedbackItem",
+        "description": "A single feedback item from the beta reader.\n\nAttributes:\n    category: Which aspect of writing this feedback addresses.\n    severity: How impactful this issue is for readers.\n    location: Where in the chapter this applies (paragraph/section reference).\n    title: Short summary of the feedback (1-2 sentences).\n    description: Detailed explanation of what the issue is.\n    suggestion: Concrete actionable suggestion for improvement.\n    text_excerpt: The specific text passage this refers to (if applicable)."
+      },
+      "BetaReaderDeepDiveRequest": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Chapter Ids"
+          },
+          "category": {
+            "$ref": "#/components/schemas/FeedbackCategory"
+          },
+          "cache_key": {
+            "type": "string",
+            "title": "Cache Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chapter_ids",
+          "category",
+          "cache_key"
+        ],
+        "title": "BetaReaderDeepDiveRequest",
+        "description": "Request for Phase 2 deep-dive analysis.\n\nAttributes:\n    chapter_ids: Same chapters as Phase 1.\n    category: Which category to deep-dive.\n    cache_key: Cache key from Phase 1 response (for context)."
+      },
+      "BetaReaderDeepDiveResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "title": "Novel Id"
+          },
+          "category": {
+            "$ref": "#/components/schemas/FeedbackCategory"
+          },
+          "detailed_feedback": {
+            "items": {
+              "$ref": "#/components/schemas/BetaFeedbackItem"
+            },
+            "type": "array",
+            "title": "Detailed Feedback"
+          },
+          "revision_suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Revision Suggestions"
+          },
+          "category_score": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Category Score"
+          },
+          "analyzed_at": {
+            "type": "string",
+            "title": "Analyzed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "category",
+          "detailed_feedback",
+          "revision_suggestions",
+          "category_score",
+          "analyzed_at"
+        ],
+        "title": "BetaReaderDeepDiveResponse",
+        "description": "Response from Phase 2 deep-dive analysis.\n\nAttributes:\n    novel_id: The project being analyzed.\n    category: The category that was deep-dived.\n    detailed_feedback: More granular feedback with text-level references.\n    revision_suggestions: Concrete revision suggestions with before/after examples.\n    category_score: Detailed score breakdown for this category."
+      },
+      "BetaReaderOverallAssessment": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "reader_engagement": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Reader Engagement"
+          },
+          "emotional_impact": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Emotional Impact"
+          },
+          "pacing_score": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Pacing Score"
+          },
+          "prose_quality": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Prose Quality"
+          },
+          "plot_progression": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Plot Progression"
+          },
+          "character_development": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Character Development"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "reader_engagement",
+          "emotional_impact",
+          "pacing_score",
+          "prose_quality",
+          "plot_progression",
+          "character_development"
+        ],
+        "title": "BetaReaderOverallAssessment",
+        "description": "Overall assessment of the chapter from a reader's perspective.\n\nAttributes:\n    summary: 2-3 sentence overall impression.\n    reader_engagement: How engaging the chapter is (1-10).\n    emotional_impact: How emotionally resonant (1-10).\n    pacing_score: How well-paced the chapter is (1-10).\n    prose_quality: Clarity and style quality (1-10).\n    plot_progression: How well the plot advances (1-10).\n    character_development: How well characters are developed (1-10)."
+      },
+      "BetaReaderQuestion": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FeedbackCategory"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "question"
+        ],
+        "title": "BetaReaderQuestion",
+        "description": "A question a reader would ask while reading.\n\nAttributes:\n    category: Which aspect triggered the question.\n    location: Where in the chapter this question arises.\n    question: The question itself.\n    context: Why this question comes up (what triggered it)."
+      },
+      "BetaReaderRequest": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Chapter Ids"
+          },
+          "categories": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FeedbackCategory"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories"
+          },
+          "phase": {
+            "type": "string",
+            "pattern": "^(full|deepdive)$",
+            "title": "Phase",
+            "default": "full"
+          },
+          "deepdive_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refresh": {
+            "type": "boolean",
+            "title": "Refresh",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "chapter_ids"
+        ],
+        "title": "BetaReaderRequest",
+        "description": "Request to run a beta reader analysis.\n\nAttributes:\n    chapter_ids: Chapter(s) to analyze. At least one required.\n    categories: Filter to specific categories. None = all categories.\n    phase: Which phase to run. 'full' = Phase 1 only. 'deepdive' = Phase 2.\n    deepdive_category: Required when phase='deepdive'. Which category to deep-dive.\n    refresh: If True, bypass cache and force fresh analysis."
+      },
+      "BetaReaderResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "title": "Novel Id"
+          },
+          "chapter_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Chapter Ids"
+          },
+          "total_word_count": {
+            "type": "integer",
+            "title": "Total Word Count"
+          },
+          "strengths": {
+            "items": {
+              "$ref": "#/components/schemas/BetaReaderStrength"
+            },
+            "type": "array",
+            "title": "Strengths"
+          },
+          "feedback": {
+            "items": {
+              "$ref": "#/components/schemas/BetaFeedbackItem"
+            },
+            "type": "array",
+            "title": "Feedback"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/BetaReaderQuestion"
+            },
+            "type": "array",
+            "title": "Questions"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/BetaReaderOverallAssessment"
+          },
+          "analyzed_at": {
+            "type": "string",
+            "title": "Analyzed At"
+          },
+          "cache_key": {
+            "type": "string",
+            "title": "Cache Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "chapter_ids",
+          "total_word_count",
+          "strengths",
+          "feedback",
+          "questions",
+          "overall",
+          "analyzed_at",
+          "cache_key"
+        ],
+        "title": "BetaReaderResponse",
+        "description": "Complete beta reader analysis response.\n\nAttributes:\n    novel_id: The project being analyzed.\n    chapter_ids: Which chapters were analyzed.\n    total_word_count: Total words across analyzed chapters.\n    strengths: What works well.\n    feedback: Issues and suggestions, organized by category and severity.\n    questions: Questions a reader would ask.\n    overall: Overall chapter assessment with scores.\n    analyzed_at: When the analysis was performed.\n    cache_key: Cache key for potential Phase 2 deep-dive reference."
+      },
+      "BetaReaderStrength": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FeedbackCategory"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "text_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Excerpt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "title",
+          "description"
+        ],
+        "title": "BetaReaderStrength",
+        "description": "A strength identified by the beta reader.\n\nAttributes:\n    category: Which aspect of writing this strength relates to.\n    title: Short summary of the strength.\n    description: Why this works well.\n    text_excerpt: Supporting text passage (if applicable)."
+      },
       "CascadePathResponse": {
         "properties": {
           "level": {
@@ -8169,6 +8670,18 @@
         "title": "ExtendRequest",
         "description": "Request for chapter extension — insert AI text at cursor position.\n\nThe frontend splits the document at the cursor and sends the text\nsegments.  The backend never receives a numeric offset (design.md D3)."
       },
+      "FeedbackCategory": {
+        "type": "string",
+        "enum": [
+          "plot",
+          "character",
+          "prose",
+          "pacing",
+          "experience"
+        ],
+        "title": "FeedbackCategory",
+        "description": "Analysis feedback categories."
+      },
       "FeedbackRequest": {
         "properties": {
           "action": {
@@ -8305,6 +8818,16 @@
         ],
         "title": "FeedbackResponse",
         "description": "Response body after successfully recording feedback."
+      },
+      "FeedbackSeverity": {
+        "type": "string",
+        "enum": [
+          "critical",
+          "moderate",
+          "minor"
+        ],
+        "title": "FeedbackSeverity",
+        "description": "Severity level for analysis feedback."
       },
       "GapFinding": {
         "properties": {

@@ -4,6 +4,17 @@ Siehe ADR-015 für die vollständige Modul-Architektur.
 """
 
 from narrare_core.agents.base import NarrareAgent
+from narrare_core.agents.beta_reader_agent import BetaReaderAgent
+from narrare_core.agents.beta_reader_types import (
+    AgentDeepDiveFeedback,
+    AgentFeedbackItem,
+    AgentOverallAssessment,
+    AgentReaderQuestion,
+    AgentStrength,
+    BetaReaderDeps,
+    BetaReaderPhase1Output,
+    BetaReaderPhase2Output,
+)
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
 from narrare_core.agents.draft_types import DraftConfig, DraftOutput
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
@@ -51,7 +62,16 @@ from narrare_core.agents.writing_graph import (
 from narrare_core.agents.writing_graph_types import create_writing_graph
 
 __all__ = [
+    "AgentDeepDiveFeedback",
+    "AgentFeedbackItem",
+    "AgentOverallAssessment",
+    "AgentReaderQuestion",
+    "AgentStrength",
     "Approved",
+    "BetaReaderAgent",
+    "BetaReaderDeps",
+    "BetaReaderPhase1Output",
+    "BetaReaderPhase2Output",
     "ChapterSummaryAgent",
     "DraftAgent",
     "DraftConfig",

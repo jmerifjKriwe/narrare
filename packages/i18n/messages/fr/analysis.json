@@ -1,0 +1,57 @@
+{
+  "title": "Bêta-lecteur",
+  "trigger": "Bêta-lecteur",
+  "triggerTooltip": "Obtenir un retour IA comme d'un bêta-lecteur",
+  "loading": "Lecture de votre chapitre...",
+  "loadingSubtext": "Analyse de l'intrigue, des personnages, du rythme et de la prose",
+  "error": "L'analyse a échoué",
+  "retry": "Réessayer",
+  "refresh": "Actualiser l'analyse",
+  "close": "Fermer",
+  "deepDive": "Approfondir",
+  "deepDiveLoading": "Analyse détaillée de {category}...",
+  "tabs": {
+    "strengths": "Points forts",
+    "issues": "Problèmes",
+    "questions": "Questions",
+    "overall": "Global"
+  },
+  "severity": {
+    "critical": "Critique",
+    "moderate": "Modéré",
+    "minor": "Mineur"
+  },
+  "categories": {
+    "plot": "Intrigue",
+    "character": "Personnage",
+    "prose": "Prose",
+    "pacing": "Rythme",
+    "experience": "Expérience"
+  },
+  "overall": {
+    "summary": "Résumé",
+    "scores": "Scores",
+    "engagement": "Engagement du lecteur",
+    "emotionalImpact": "Impact émotionnel",
+    "pacing": "Rythme",
+    "proseQuality": "Qualité de la prose",
+    "plotProgression": "Progression de l'intrigue",
+    "characterDev": "Développement des personnages"
+  },
+  "validation": {
+    "tooShort": "Le chapitre est trop court pour une analyse significative (minimum 1 000 mots).",
+    "tooLong": "Les chapitre sélectionnés dépassent la limite d'analyse (maximum 10 000 mots). Essayez moins de chapitres.",
+    "noChapters": "Sélectionnez au moins un chapitre à analyser."
+  },
+  "empty": {
+    "strengths": "Aucun point fort identifié pour le moment.",
+    "issues": "Aucun problème trouvé. Excellent travail !",
+    "questions": "Aucune question de lecteur identifiée."
+  },
+  "excerpt": {
+    "show": "Afficher l'extrait",
+    "hide": "Masquer l'extrait"
+  },
+  "suggestion": "Suggestion",
+  "location": "Emplacement"
+}

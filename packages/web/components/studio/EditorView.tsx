@@ -8,6 +8,8 @@ import { chaptersApi, volumesApi } from "@/lib/api/client";
 import { writingApi } from "@/lib/api/generation";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
+import { BetaReaderPanel } from "./analysis/BetaReaderPanel";
+import { BetaReaderTrigger } from "./analysis/BetaReaderTrigger";
 import { CommandPalette } from "./editor/CommandPalette";
 import type { CommandContext, CommandState } from "./editor/commands";
 import { GenerationPanel } from "./editor/GenerationPanel";
@@ -61,6 +63,10 @@ export function EditorView({ novelId }: EditorViewProps) {
   // Extraction state
   const extractionPanelOpen = useEditorStore((s) => s.extractionPanelOpen);
   const toggleExtractionPanel = useEditorStore((s) => s.toggleExtractionPanel);
+
+  // Beta reader state
+  const betaReaderPanelOpen = useEditorStore((s) => s.betaReaderPanelOpen);
+  const toggleBetaReaderPanel = useEditorStore((s) => s.toggleBetaReaderPanel);
 
   // Compute writing graph status steps from current editor state
   const writingSteps: Array<{ id: WritingStep; status: StepStatus }> = useMemo(() => {
@@ -360,12 +366,15 @@ export function EditorView({ novelId }: EditorViewProps) {
   }, [handleSave]);
 
   // -------------------------------------------------------------------------
-  // Sidebar priority: SessionPanel > GenerationPanel > MetadataSidebar
+  // Sidebar priority: SessionPanel > GenerationPanel > BetaReaderPanel > MetadataSidebar
   // -------------------------------------------------------------------------
 
   const showSessionPanel = sessionActive && !!activeChapterId;
   const showGenerationPanel = generationPanelOpen && !!activeChapterId && !showSessionPanel;
-  const showMetadataSidebar = contextPanelOpen && !showSessionPanel && !showGenerationPanel;
+  const showBetaReaderPanel =
+    betaReaderPanelOpen && !!activeChapterId && !showSessionPanel && !showGenerationPanel;
+  const showMetadataSidebar =
+    contextPanelOpen && !showSessionPanel && !showGenerationPanel && !showBetaReaderPanel;
 
   // -------------------------------------------------------------------------
   // Render — no chapter selected
@@ -533,6 +542,8 @@ export function EditorView({ novelId }: EditorViewProps) {
             <span>{t("kb.extract")}</span>
           </button>
           <div className="w-px h-5 bg-border mx-1" />
+          <BetaReaderTrigger />
+          <div className="w-px h-5 bg-border mx-1" />
           <GhostTextConfig editor={editor} />
         </div>
       )}
@@ -578,6 +589,13 @@ export function EditorView({ novelId }: EditorViewProps) {
             chapters={chapters}
             sessionStartWordCount={sessionStartWordCount}
             activeVolumeStats={volumeStats ?? null}
+          />
+        )}
+        {showBetaReaderPanel && (
+          <BetaReaderPanel
+            novelId={novelId}
+            chapterIds={activeChapterId ? [activeChapterId] : []}
+            onClose={toggleBetaReaderPanel}
           />
         )}
       </div>

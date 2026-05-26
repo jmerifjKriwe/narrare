@@ -1,0 +1,57 @@
+{
+  "title": "Beta Reader",
+  "trigger": "Beta Reader",
+  "triggerTooltip": "Get AI-powered feedback as if from a beta reader",
+  "loading": "Reading your chapter...",
+  "loadingSubtext": "Analyzing plot, characters, pacing, and prose",
+  "error": "Analysis failed",
+  "retry": "Try Again",
+  "refresh": "Refresh Analysis",
+  "close": "Close",
+  "deepDive": "Deep Dive",
+  "deepDiveLoading": "Analyzing {category} in detail...",
+  "tabs": {
+    "strengths": "Strengths",
+    "issues": "Issues",
+    "questions": "Questions",
+    "overall": "Overall"
+  },
+  "severity": {
+    "critical": "Critical",
+    "moderate": "Moderate",
+    "minor": "Minor"
+  },
+  "categories": {
+    "plot": "Plot",
+    "character": "Character",
+    "prose": "Prose",
+    "pacing": "Pacing",
+    "experience": "Experience"
+  },
+  "overall": {
+    "summary": "Summary",
+    "scores": "Scores",
+    "engagement": "Reader Engagement",
+    "emotionalImpact": "Emotional Impact",
+    "pacing": "Pacing",
+    "proseQuality": "Prose Quality",
+    "plotProgression": "Plot Progression",
+    "characterDev": "Character Development"
+  },
+  "validation": {
+    "tooShort": "Chapter is too short for meaningful analysis (minimum 1,000 words).",
+    "tooLong": "Selected chapters exceed the analysis limit (maximum 10,000 words). Try fewer chapters.",
+    "noChapters": "Select at least one chapter to analyze."
+  },
+  "empty": {
+    "strengths": "No strengths identified yet.",
+    "issues": "No issues found. Great job!",
+    "questions": "No reader questions identified."
+  },
+  "excerpt": {
+    "show": "Show excerpt",
+    "hide": "Hide excerpt"
+  },
+  "suggestion": "Suggestion",
+  "location": "Location"
+}

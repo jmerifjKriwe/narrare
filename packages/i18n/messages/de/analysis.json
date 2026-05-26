@@ -1,0 +1,57 @@
+{
+  "title": "Beta-Leser",
+  "trigger": "Beta-Leser",
+  "triggerTooltip": "KI-gestütztes Feedback wie von einem Beta-Leser erhalten",
+  "loading": "Lese dein Kapitel...",
+  "loadingSubtext": "Analysiere Handlung, Charaktere, Tempo und Prosa",
+  "error": "Analyse fehlgeschlagen",
+  "retry": "Erneut versuchen",
+  "refresh": "Analyse aktualisieren",
+  "close": "Schließen",
+  "deepDive": "Tiefenanalyse",
+  "deepDiveLoading": "Analysiere {category} im Detail...",
+  "tabs": {
+    "strengths": "Stärken",
+    "issues": "Schwächen",
+    "questions": "Fragen",
+    "overall": "Gesamt"
+  },
+  "severity": {
+    "critical": "Kritisch",
+    "moderate": "Mittelschwer",
+    "minor": "Geringfügig"
+  },
+  "categories": {
+    "plot": "Handlung",
+    "character": "Charakter",
+    "prose": "Prosa",
+    "pacing": "Tempo",
+    "experience": "Erlebnis"
+  },
+  "overall": {
+    "summary": "Zusammenfassung",
+    "scores": "Bewertungen",
+    "engagement": "Leserbindung",
+    "emotionalImpact": "Emotionale Wirkung",
+    "pacing": "Tempo",
+    "proseQuality": "Prosaqualität",
+    "plotProgression": "Handlungsfortschritt",
+    "characterDev": "Charakterentwicklung"
+  },
+  "validation": {
+    "tooShort": "Kapitel ist zu kurz für eine aussagekräftige Analyse (mindestens 1.000 Wörter).",
+    "tooLong": "Ausgewählte Kapitel überschreiten das Analyselimit (maximal 10.000 Wörter). Weniger Kapitel auswählen.",
+    "noChapters": "Wähle mindestens ein Kapitel zur Analyse aus."
+  },
+  "empty": {
+    "strengths": "Noch keine Stärken identifiziert.",
+    "issues": "Keine Schwächen gefunden. Gut gemacht!",
+    "questions": "Keine Leserfragen identifiziert."
+  },
+  "excerpt": {
+    "show": "Textstelle anzeigen",
+    "hide": "Textstelle ausblenden"
+  },
+  "suggestion": "Vorschlag",
+  "location": "Stelle"
+}
