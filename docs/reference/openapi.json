@@ -3350,6 +3350,134 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Analyze a KB entry and return improvement suggestions",
+        "description": "Analyze a KB entry and return improvement suggestions.",
+        "operationId": "analyze_entry_api_v1_novels__novel_id__kb_entities__entry_id__improve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KBImproveAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Apply selected improvement suggestions to the entry",
+        "description": "Apply selected improvement suggestions to the entry.",
+        "operationId": "apply_improvements_api_v1_novels__novel_id__kb_entities__entry_id__improve_apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KBImproveApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KBImproveApplyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/suggestions/{chapter_id}": {
       "get": {
         "tags": [
@@ -7804,6 +7932,86 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "ImproveSuggestionResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "proposed_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Content"
+          },
+          "related_entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Entity Id"
+          },
+          "related_entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Entity Name"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning"
+          },
+          "suggestion_id": {
+            "type": "integer",
+            "title": "Suggestion Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "target",
+          "description",
+          "confidence",
+          "suggestion_id"
+        ],
+        "title": "ImproveSuggestionResponse",
+        "description": "A single improvement suggestion returned to the frontend."
+      },
       "InlineSuggestRequest": {
         "properties": {
           "text_before": {
@@ -8176,6 +8384,81 @@
         "type": "object",
         "title": "KBEntryUpdate",
         "description": "Request body for updating an existing KB entry.\n\nAll fields are optional — only provided fields are changed."
+      },
+      "KBImproveAnalysisResponse": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/ImproveSuggestionResponse"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          },
+          "overall_assessment": {
+            "type": "string",
+            "title": "Overall Assessment"
+          },
+          "completeness_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Completeness Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestions",
+          "overall_assessment",
+          "completeness_score"
+        ],
+        "title": "KBImproveAnalysisResponse",
+        "description": "Response from improve analysis."
+      },
+      "KBImproveApplyRequest": {
+        "properties": {
+          "suggestion_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Suggestion Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestion_ids"
+        ],
+        "title": "KBImproveApplyRequest",
+        "description": "Request to apply selected improvement suggestions."
+      },
+      "KBImproveApplyResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "entry_id": {
+            "type": "string",
+            "title": "Entry Id"
+          },
+          "applied_count": {
+            "type": "integer",
+            "title": "Applied Count"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "entry_id",
+          "applied_count",
+          "message"
+        ],
+        "title": "KBImproveApplyResponse",
+        "description": "Response after applying improvements."
       },
       "KBRelationshipCreate": {
         "properties": {

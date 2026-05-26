@@ -1,7 +1,7 @@
 ---
 id: KB-003
 title: "AI: Improve KB Entry"
-status: planned
+status: stable
 area: kb
 mvp: false
 
@@ -52,11 +52,11 @@ ui_help_long: |
   You're always in control — review each suggestion before applying.
 ui_available_in: [kb]
 
-service: kb/editor_service.py
-contract: kb/contracts.py#KBEditorProtocol
-router: kb/router.py
-prompt: core/prompts/_bundled/kb/en/improve
-requires: [KB-001]
+service: kb/improve_service.py
+contract: kb/improve_contracts.py#KBImproveProtocol
+router: kb/router_improve.py
+prompt: core/prompts/_bundled/kb/en/improve/system.md
+requires: [KB-001, KB-002, CORE-LLM, CORE-PROMPTS]
 ---
 
 # KB-003 — AI: Improve KB Entry
@@ -92,10 +92,11 @@ You can run Improve multiple times as your story evolves.
 
 ## How it works (Technical)
 
-**Entry point:** `kb/router.py` → `POST /api/v1/kb/entities/{id}/improve`
-**Service:** `KBEditorService.improve()` in `kb/editor_service.py`
-**Contract:** `KBEditorProtocol` in `kb/contracts.py`
-**LLM Intent:** `LLMIntent.KB_IMPROVE`
+**Service:** `KBImproveService.analyze()` + `KBImproveService.apply()` in `kb/improve_service.py`
+**Contract:** `KBImproveProtocol` in `kb/improve_contracts.py`
+**Router:** `POST /novels/{novel_id}/kb/entities/{entry_id}/improve` + `/improve/apply` in `kb/router_improve.py`
+**Agent:** `KBImproveAgent` in `core/agents/kb_improve_agent.py`
+**Frontend:** `KBImprovePanel` + "Improve with AI" button in `KBEntryDetail`
 
 **Analysis process:**
 1. Fetch entry with all relationships

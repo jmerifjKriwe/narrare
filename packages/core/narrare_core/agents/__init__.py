@@ -12,6 +12,13 @@ from narrare_core.agents.graph_store import GraphStateStore
 from narrare_core.agents.kb_agent import KBAgent, KBDeps
 from narrare_core.agents.kb_assist_agent import KBAssistAgent, KBAssistDeps
 from narrare_core.agents.kb_assist_types import KBAssistOutput
+from narrare_core.agents.kb_improve_agent import KBImproveAgent
+from narrare_core.agents.kb_improve_types import (
+    ImprovementSuggestion,
+    KBImproveDeps,
+    KBImproveOutput,
+    SuggestionType,
+)
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.outline_types import OutlineOutput
 from narrare_core.agents.preference_analysis_agent import (
@@ -45,11 +52,15 @@ __all__ = [
     "ExtractionItem",
     "ExtractionOutput",
     "GraphStateStore",
+    "ImprovementSuggestion",
     "KBAgent",
     "KBAssistAgent",
     "KBAssistDeps",
     "KBAssistOutput",
     "KBDeps",
+    "KBImproveAgent",
+    "KBImproveDeps",
+    "KBImproveOutput",
     "NarrareAgent",
     "NeedsRevision",
     "OutlineAgent",
@@ -61,6 +72,7 @@ __all__ = [
     "ReviewAgent",
     "ReviewDeps",
     "ReviewOutput",
+    "SuggestionType",
     "SummaryDeps",
     "SummaryOutput",
     "WritingDeps",

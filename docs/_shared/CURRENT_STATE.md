@@ -515,11 +515,13 @@ Phase 5 (current):
 
 14. ✅ KB-002: Assisted KB Creation — Complete. Frontend wiring verified (WorldBuilding → KBEntryList → KBAssistedCreationPanel → all sub-views). 3 minor non-blocking gaps noted (2 dead code components, 1 missing i18n key). Backend + Frontend fully operational.
 
-15. ✅ kb-agents-and-prompts — Committed (481e370). KBAssistAgent (4-mode), ExtractionAgent, 4 English prompts, 78 tests.
+15. ✅ KB-003: AI Improve KB Entry — Complete. `KBImproveService` (analyze + apply) in `kb/improve_service.py`, `KBImproveProtocol` in `kb/improve_contracts.py`, `router_improve.py` with POST /improve + /improve/apply endpoints. `KBImproveAgent` in `core/agents/kb_improve_agent.py`. Frontend: `KBImprovePanel` + "Improve with AI" button in `KBEntryDetail`.
 
- 16. ✅ WRITE-004: Rewrite Selection — Complete. `RewriteService` in `writing/rewrite_service.py`, SSE-direct endpoint, `AlternativeParser`, `RewriteModeSelector`, `InlineDiff`, `replaceSelectionWithAIContent()`. 7 integration tests (SSE protocol, mode variations, stream errors). Promptfoo eval baseline (`evals/rewrite-selection.yaml`, 279 lines, 7 test cases). Spec frontmatter corrected.
+16. ✅ kb-agents-and-prompts — Committed (481e370). KBAssistAgent (4-mode), ExtractionAgent, 4 English prompts, 78 tests.
 
-17. ✅ Knowledge Graph Test Gaps — 239 new tests. Core (100), Backend (13 + FakeEmbeddingRepository + 25 Config), Frontend (91). All 15 untested hotspots covered. 4 config properties tested (safety-critical DB routing). Commits: ed21254, b5767e3.
+ 17. ✅ WRITE-004: Rewrite Selection — Complete. `RewriteService` in `writing/rewrite_service.py`, SSE-direct endpoint, `AlternativeParser`, `RewriteModeSelector`, `InlineDiff`, `replaceSelectionWithAIContent()`. 7 integration tests (SSE protocol, mode variations, stream errors). Promptfoo eval baseline (`evals/rewrite-selection.yaml`, 279 lines, 7 test cases). Spec frontmatter corrected.
+
+18. ✅ Knowledge Graph Test Gaps — 239 new tests. Core (100), Backend (13 + FakeEmbeddingRepository + 25 Config), Frontend (91). All 15 untested hotspots covered. 4 config properties tested (safety-critical DB routing). Commits: ed21254, b5767e3.
 
 Next focus: E2E tests with Playwright, remaining RULE-04 frontend test splits.
 

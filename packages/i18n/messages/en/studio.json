@@ -1301,7 +1301,26 @@
     "extractionUpdateEntity": "Update Entity",
     "extractionValidationError": "Could not extract from this chapter. It may be too short or empty.",
      "extractionAnalysisNotes": "AI Analysis Notes",
-     "extractionViewSource": "View source text"
+     "extractionViewSource": "View source text",
+    "improveWithAI": "Improve with AI",
+    "improve": {
+      "title": "AI Suggestions",
+      "running": "Analyzing entry...",
+      "noSuggestions": "No improvement suggestions found.",
+      "entryLooksGood": "The entry looks comprehensive.",
+      "completeness": "Complete",
+      "selectedCount": "{count} of {total} selected",
+      "analysisError": "Analysis failed",
+      "back": "Back to Entry",
+      "applySuccess": "Improvements applied successfully!",
+      "applyError": "Failed to apply improvements.",
+      "type": {
+        "add_field": "Add Field",
+        "connect": "Connect",
+        "expand": "Expand",
+        "reorganize": "Reorganize"
+      }
+    }
   },
   "writingGraph": {
     "allComplete": "All steps complete",

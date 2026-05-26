@@ -45,8 +45,8 @@ class TestPipelineWritingGraph:
 
     @pytest.mark.asyncio
     async def test_pipeline_graph_path_selected(self) -> None:
-        """_full_draft delegiert an stream_via_writing_graph."""
-        from unittest.mock import patch
+        """generate() delegates FULL_DRAFT to stream_via_writing_graph."""
+        from unittest.mock import AsyncMock, patch
         from uuid import uuid4
 
         from narrare_core.llm.result import StreamChunk
@@ -54,6 +54,7 @@ class TestPipelineWritingGraph:
         from narrare_core.writing.models import GenerationRequest, WritingContext
 
         pipeline = _make_pipeline()
+        pipeline._context_assembler.assemble = AsyncMock(return_value=WritingContext())
 
         with patch(
             "narrare_core.writing.pipeline_graph.stream_via_writing_graph",
@@ -73,9 +74,13 @@ class TestPipelineWritingGraph:
 
             config = MagicMock(spec=ResolvedModelConfig)
             chunks: list[Any] = []
-            async for chunk in pipeline._full_draft(request, WritingContext(), config):
+            async for chunk in pipeline.generate(request, config=config):
                 chunks.append(chunk)
 
             mock_graph.assert_called_once()
-            assert len(chunks) == 1
-            assert chunks[0].text == "done"
+            # CR-07: first chunk is context metadata, second is from graph
+            assert len(chunks) == 2
+            assert chunks[0].text == ""
+            assert chunks[0].context_meta is not None
+            assert chunks[1].text == "done"
+            assert chunks[1].is_final

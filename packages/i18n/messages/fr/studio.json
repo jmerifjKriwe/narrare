@@ -1301,7 +1301,26 @@
     "extractionUpdateEntity": "Mettre à jour l'entité",
     "extractionValidationError": "Impossible d'extraire le contenu de ce chapitre. Il est peut-être trop court ou vide.",
     "extractionAnalysisNotes": "Notes d'analyse IA",
-    "extractionViewSource": "Voir le texte source"
+    "extractionViewSource": "Voir le texte source",
+    "improveWithAI": "Améliorer avec l'IA",
+    "improve": {
+      "title": "Suggestions IA",
+      "running": "Analyse de l'entrée...",
+      "noSuggestions": "Aucune suggestion d'amélioration trouvée.",
+      "entryLooksGood": "L'entrée semble complète.",
+      "completeness": "Complétude",
+      "selectedCount": "{count} sur {total} sélectionnés",
+      "analysisError": "Analyse échouée",
+      "back": "Retour à l'entrée",
+      "applySuccess": "Améliorations appliquées avec succès !",
+      "applyError": "Échec de l'application des améliorations.",
+      "type": {
+        "add_field": "Ajouter un champ",
+        "connect": "Connecter",
+        "expand": "Développer",
+        "reorganize": "Réorganiser"
+      }
+    }
   },
   "writingGraph": {
     "allComplete": "Toutes les étapes terminées",

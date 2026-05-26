@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import type { KBEntry, KBEntryStatus, KBRelationship } from "@/lib/api/kb";
@@ -10,6 +10,7 @@ import { getGroupIcon, getSectionIcon } from "./groupMaps";
 import { KBEntryHeader } from "./KBEntryHeader";
 import { KBFieldGroup } from "./KBFieldGroup";
 import { KBFlatEditor } from "./KBFlatEditor";
+import { KBImprovePanel } from "./KBImprovePanel";
 import { KBRelationshipSection } from "./KBRelationshipSection";
 import { KBSectionEditor } from "./KBSectionEditor";
 import { KBTagInput } from "./KBTagInput";
@@ -43,6 +44,7 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
   const [fieldValues, setFieldValues] = useState<Record<string, unknown>>(entry.metadata);
   const [sectionContents, setSectionContents] = useState<Record<string, string>>({});
   const [extraBody, setExtraBody] = useState("");
+  const [showImprovePanel, setShowImprovePanel] = useState(false);
 
   useEffect(() => {
     setName(entry.name);
@@ -242,6 +244,27 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
 
         <div className="pt-2">
           <KBRelationshipSection novelId={novelId} entry={entry} relationships={relationships} />
+        </div>
+
+        {/* AI Improve section */}
+        <div className="pt-4 border-t border-border/50">
+          {showImprovePanel ? (
+            <KBImprovePanel
+              novelId={novelId}
+              entryId={entry.id}
+              onClose={() => setShowImprovePanel(false)}
+              onApplied={() => setShowImprovePanel(false)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowImprovePanel(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors"
+            >
+              <Sparkles className="w-4 h-4 text-purple-500" />
+              {t("kb.improveWithAI")}
+            </button>
+          )}
         </div>
       </div>
     </div>

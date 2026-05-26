@@ -66,7 +66,7 @@
 |----|---------|--------|-----|
 | [KB-001](kb/KB-001-entity-management.md) | KB Entity CRUD | ✅ | ✅ |
 | [KB-002](kb/KB-002-kb-session.md) | Assisted KB Creation (AI-guided creation) | ✅ | ❌ |
-| [KB-003](kb/KB-003-kb-improve.md) | AI: Improve KB Entry | 📋 | ❌ |
+| [KB-003](kb/KB-003-kb-improve.md) | AI: Improve KB Entry | ✅ | ❌ |
 | [KB-004](kb/KB-004-kb-consistency.md) | AI: KB Consistency Check | 📋 | ❌ |
 | [KB-005](kb/KB-005-kb-suggest.md) | Proactive KB Suggestions | ✅ | ✅ |
 | [KB-006](kb/KB-006-worldbuilding.md) | Worldbuilding Assistant | 📋 | ❌ |
@@ -228,5 +228,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-25 — WRITE-003, WRITE-004, INFRA-004 status changed to stable.
+> Last updated: 2026-05-26 — KB-003 status changed to stable.
 > Features are specified before they are implemented — never after

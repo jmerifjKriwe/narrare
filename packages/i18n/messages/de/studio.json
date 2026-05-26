@@ -1301,7 +1301,26 @@
     "extractionUpdateEntity": "Eintrag aktualisieren",
     "extractionValidationError": "Aus diesem Kapitel konnte nichts extrahiert werden. Es könnte zu kurz oder leer sein.",
     "extractionAnalysisNotes": "KI-Analyse-Notizen",
-    "extractionViewSource": "Quelltext anzeigen"
+    "extractionViewSource": "Quelltext anzeigen",
+    "improveWithAI": "Mit KI verbessern",
+    "improve": {
+      "title": "KI-Vorschläge",
+      "running": "Analysiere Eintrag...",
+      "noSuggestions": "Keine Verbesserungsvorschläge gefunden.",
+      "entryLooksGood": "Der Eintrag wirkt vollständig.",
+      "completeness": "Vollständigkeit",
+      "selectedCount": "{count} von {total} ausgewählt",
+      "analysisError": "Analyse fehlgeschlagen",
+      "back": "Zurück zum Eintrag",
+      "applySuccess": "Verbesserungen erfolgreich übernommen!",
+      "applyError": "Fehler beim Übernehmen der Verbesserungen.",
+      "type": {
+        "add_field": "Feld hinzufügen",
+        "connect": "Verknüpfen",
+        "expand": "Erweitern",
+        "reorganize": "Neu organisieren"
+      }
+    }
   },
   "writingGraph": {
     "allComplete": "Alle Schritte abgeschlossen",

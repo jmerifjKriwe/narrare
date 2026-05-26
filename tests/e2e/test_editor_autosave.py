@@ -117,6 +117,17 @@ class TestEditorAutosave:
             if api_key_input.is_visible():
                 api_key_input.fill("sk-test-e2e-mock-key-not-real")
 
+                # Wait for loadModels() to complete and auto-select a model.
+                # The Next button is disabled while model === "" (WizardStep4.tsx
+                # line 214: disabled={validating || !model}).  Without this wait
+                # the click is silently swallowed by the browser and the wizard
+                # never advances to step 5.
+                page.wait_for_function(
+                    "document.querySelector('[data-testid=\"wizard-next\"]')"
+                    " && !document.querySelector('[data-testid=\"wizard-next\"]').disabled",
+                    timeout=10000,
+                )
+
             _click_next(page)
 
         # Wait for step 5 (confirmation) to render before looking for the complete button.
