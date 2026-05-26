@@ -1331,8 +1331,8 @@
     "extractionSourceText": "From text: \"{text}\"",
     "extractionUpdateEntity": "Update Entity",
     "extractionValidationError": "Could not extract from this chapter. It may be too short or empty.",
-     "extractionAnalysisNotes": "AI Analysis Notes",
-     "extractionViewSource": "View source text",
+    "extractionAnalysisNotes": "AI Analysis Notes",
+    "extractionViewSource": "View source text",
     "improveWithAI": "Improve with AI",
     "improve": {
       "title": "AI Suggestions",
@@ -1352,6 +1352,21 @@
         "reorganize": "Reorganize"
       }
     }
+  },
+  "graph": {
+    "title": "Graph",
+    "forceLayout": "Force-directed",
+    "hierarchicalLayout": "Hierarchical",
+    "concentricLayout": "Concentric",
+    "searchPlaceholder": "Search entities...",
+    "noEntities": "No entities in the knowledge base yet. Create entries to see them in the graph.",
+    "loading": "Loading graph...",
+    "isolated": "Isolated",
+    "pathFound": "Path found",
+    "noPath": "No path exists between these entities",
+    "findPath": "Find Path",
+    "layout": "Layout",
+    "filter": "Filter"
   },
   "writingGraph": {
     "allComplete": "All steps complete",

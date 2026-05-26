@@ -9,6 +9,7 @@ from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runt
 if TYPE_CHECKING:
     from narrare.kb.consistency_service import KBConsistencyService
     from narrare.kb.extraction_service import ExtractionService
+    from narrare.kb.graph_service import GraphService
     from narrare.kb.improve_service import KBImproveService
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.relationship_service import RelationshipService
@@ -290,6 +291,22 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
         analyzer=analyzer,
         rel_repo=rel_repo,
         cache=worldbuilding_cache,
+    )
+
+
+def get_graph_service(session: SessionDep) -> GraphService:
+    """Create a GraphService with injected dependencies.
+
+    Production wiring: uses KBRepository and RelationshipRepository
+    for data access. No LLM calls — pure data transformation.
+    """
+    from narrare.kb.graph_service import GraphService
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
+
+    return GraphService(
+        kb_repo=KBRepository(session),
+        rel_repo=RelationshipRepository(session),
     )
 
 

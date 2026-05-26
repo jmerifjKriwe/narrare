@@ -2470,6 +2470,188 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/graph": {
+      "get": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Get Graph",
+        "description": "Get the complete graph for a novel's KB.\n\nReturns nodes (KB entries), edges (relationships), and computed statistics.\nSupports optional filtering by entity types and relationship types.",
+        "operationId": "get_graph_api_v1_novels__novel_id__kb_graph_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entity_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated entity types to include",
+              "title": "Entity Types"
+            },
+            "description": "Comma-separated entity types to include"
+          },
+          {
+            "name": "rel_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated relationship types to include",
+              "title": "Rel Types"
+            },
+            "description": "Comma-separated relationship types to include"
+          },
+          {
+            "name": "max_nodes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Max Nodes"
+            }
+          },
+          {
+            "name": "max_edges",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 2000,
+              "title": "Max Edges"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/graph/shortest-path": {
+      "get": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Get Shortest Path",
+        "description": "Find the shortest path between two entities via BFS.\n\nReturns the ordered list of entity IDs forming the path,\nor null if no path exists.",
+        "operationId": "get_shortest_path_api_v1_novels__novel_id__kb_graph_shortest_path_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "source_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Source entity ID",
+              "title": "Source Id"
+            },
+            "description": "Source entity ID"
+          },
+          {
+            "name": "target_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Target entity ID",
+              "title": "Target Id"
+            },
+            "description": "Target entity ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortestPathResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/relationships": {
       "post": {
         "tags": [
@@ -8433,6 +8615,194 @@
         "title": "GenerationStatsResponse",
         "description": "Aggregated generation statistics."
       },
+      "GraphEdge": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "source": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Target"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "rel_type": {
+            "type": "string",
+            "title": "Rel Type"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction",
+            "default": "directed"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight",
+            "default": 1.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target",
+          "rel_type"
+        ],
+        "title": "GraphEdge",
+        "description": "A single relationship in the graph visualization.\n\nMaps 1:1 to a KBRelationship, but only includes fields needed for rendering."
+      },
+      "GraphNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "draft"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "degree": {
+            "type": "integer",
+            "title": "Degree",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "entity_type"
+        ],
+        "title": "GraphNode",
+        "description": "A single entity in the graph visualization.\n\nMaps 1:1 to a KBEntry, but only includes fields needed for rendering."
+      },
+      "GraphResponse": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdge"
+            },
+            "type": "array",
+            "title": "Edges"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/GraphStats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nodes",
+          "edges",
+          "stats"
+        ],
+        "title": "GraphResponse",
+        "description": "Full graph data response for visualization."
+      },
+      "GraphStats": {
+        "properties": {
+          "node_count": {
+            "type": "integer",
+            "title": "Node Count"
+          },
+          "edge_count": {
+            "type": "integer",
+            "title": "Edge Count"
+          },
+          "isolated_count": {
+            "type": "integer",
+            "title": "Isolated Count"
+          },
+          "connected_components": {
+            "type": "integer",
+            "title": "Connected Components"
+          },
+          "entity_type_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Entity Type Counts"
+          },
+          "rel_type_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Rel Type Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "node_count",
+          "edge_count",
+          "isolated_count",
+          "connected_components",
+          "entity_type_counts",
+          "rel_type_counts"
+        ],
+        "title": "GraphStats",
+        "description": "Computed statistics about the graph."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -10365,6 +10735,58 @@
         ],
         "title": "SceneNextResponse",
         "description": "Response for next scene generation."
+      },
+      "ShortestPathResponse": {
+        "properties": {
+          "path": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length"
+          },
+          "entity_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Names"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "length",
+          "entity_names"
+        ],
+        "title": "ShortestPathResponse",
+        "description": "Response for shortest path query."
       },
       "StarterContent": {
         "type": "string",

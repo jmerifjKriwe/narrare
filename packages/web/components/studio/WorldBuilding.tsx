@@ -19,6 +19,7 @@ import { KBAssistedCreationPanel } from "./kb/KBAssistedCreationPanel";
 import { KBCategorySidebar } from "./kb/KBCategorySidebar";
 import { KBDetailPanel } from "./kb/KBDetailPanel";
 import { KBEntryList } from "./kb/KBEntryList";
+import { KnowledgeGraphView } from "./kb/KnowledgeGraphView";
 import { WorldbuildingAnalysisPanel } from "./kb/WorldbuildingAnalysisPanel";
 
 interface WorldBuildingProps {
@@ -34,6 +35,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   const [assistedEntityType, setAssistedEntityType] = useState<KBEntityType | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showConsistency, setShowConsistency] = useState(false);
+  const [showGraph, setShowGraph] = useState(false);
 
   // Data queries
   const { data: entriesData, isLoading: entriesLoading } = useKBEntries(novelId, {
@@ -51,6 +53,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setIsAssistedSession(false);
     setShowAnalysis(false);
     setShowConsistency(false);
+    setShowGraph(false);
   }
 
   function handleSelectEntry(entryId: string) {
@@ -118,6 +121,15 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setShowAnalysis(false);
   }
 
+  function handleShowGraph() {
+    setShowGraph(true);
+    setSelectedEntryId(null);
+    setIsCreating(false);
+    setIsAssistedSession(false);
+    setShowAnalysis(false);
+    setShowConsistency(false);
+  }
+
   // Column 3: Assisted creation panel takes priority
   if (isAssistedSession && assistedEntityType) {
     return (
@@ -128,6 +140,8 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           onTypeChange={handleTypeChange}
           onAnalyze={handleShowAnalysis}
           onConsistencyCheck={handleShowConsistency}
+          onShowGraph={handleShowGraph}
+          showGraph={showGraph}
         />
         <KBEntryList
           novelId={novelId}
@@ -159,6 +173,8 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           onTypeChange={handleTypeChange}
           onAnalyze={handleShowAnalysis}
           onConsistencyCheck={handleShowConsistency}
+          onShowGraph={handleShowGraph}
+          showGraph={showGraph}
         />
         <KBEntryList
           novelId={novelId}
@@ -185,6 +201,8 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           onTypeChange={handleTypeChange}
           onAnalyze={handleShowAnalysis}
           onConsistencyCheck={handleShowConsistency}
+          onShowGraph={handleShowGraph}
+          showGraph={showGraph}
         />
         <KBEntryList
           novelId={novelId}
@@ -201,6 +219,24 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     );
   }
 
+  // Graph mode: replaces columns 2+3 with graph visualization
+  if (showGraph) {
+    return (
+      <div className="flex-1 flex h-full">
+        <KBCategorySidebar
+          novelId={novelId}
+          activeType={activeType}
+          onTypeChange={handleTypeChange}
+          onAnalyze={handleShowAnalysis}
+          onConsistencyCheck={handleShowConsistency}
+          onShowGraph={handleShowGraph}
+          showGraph={showGraph}
+        />
+        <KnowledgeGraphView novelId={novelId} onSelectEntry={handleSelectEntry} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex h-full">
       <KBCategorySidebar
@@ -209,6 +245,8 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
         onTypeChange={handleTypeChange}
         onAnalyze={handleShowAnalysis}
         onConsistencyCheck={handleShowConsistency}
+        onShowGraph={handleShowGraph}
+        showGraph={showGraph}
       />
       <KBEntryList
         novelId={novelId}

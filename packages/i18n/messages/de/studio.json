@@ -1353,6 +1353,21 @@
       }
     }
   },
+  "graph": {
+    "title": "Graph",
+    "forceLayout": "Kraftgerichtet",
+    "hierarchicalLayout": "Hierarchisch",
+    "concentricLayout": "Konzentrisch",
+    "searchPlaceholder": "Entitäten suchen...",
+    "noEntities": "Noch keine Entitäten in der Wissensdatenbank. Erstelle Einträge, um sie im Graph zu sehen.",
+    "loading": "Graph wird geladen...",
+    "isolated": "Isoliert",
+    "pathFound": "Pfad gefunden",
+    "noPath": "Kein Pfad zwischen diesen Entitäten vorhanden",
+    "findPath": "Pfad finden",
+    "layout": "Layout",
+    "filter": "Filter"
+  },
   "writingGraph": {
     "allComplete": "Alle Schritte abgeschlossen",
     "progress": "Schritt {current}/{total}: {label}",

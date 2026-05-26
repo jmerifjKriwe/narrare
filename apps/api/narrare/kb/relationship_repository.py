@@ -82,6 +82,30 @@ class RelationshipRepository(BaseRepository):
         )
         return result.scalar_one() > 0
 
+    async def list_all_for_novel(
+        self,
+        novel_id: uuid.UUID,
+    ) -> list[KBRelationship]:
+        """List all relationships for a novel in a single query.
+
+        Used by GraphService to build edges efficiently.
+
+        Args:
+            novel_id: The novel to query relationships for.
+
+        Returns:
+            List of all relationships for the novel.
+        """
+        from narrare.kb.models import KBEntry
+
+        result = await self._session.execute(
+            select(KBRelationship)
+            .join(KBEntry, KBEntry.id == KBRelationship.source_id)
+            .where(KBEntry.novel_id == novel_id)
+            .order_by(KBRelationship.created_at.desc())
+        )
+        return list(result.scalars())
+
     async def get_adjacency_map(
         self,
         novel_id: uuid.UUID,

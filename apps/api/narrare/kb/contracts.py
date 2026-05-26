@@ -126,6 +126,16 @@ class RelationshipRepositoryProtocol(Protocol):
     ) -> list[KBRelationship]: ...
     async def delete(self, rel: KBRelationship) -> None: ...
     async def exists(self, source_id: uuid.UUID, target_id: uuid.UUID, rel_type: str) -> bool: ...
+    async def list_all_for_novel(
+        self,
+        novel_id: uuid.UUID,
+    ) -> list[KBRelationship]:
+        """List all relationships for a novel in a single query.
+
+        Used by GraphService to build edges efficiently.
+        """
+        ...
+
     async def get_adjacency_map(
         self,
         novel_id: uuid.UUID,

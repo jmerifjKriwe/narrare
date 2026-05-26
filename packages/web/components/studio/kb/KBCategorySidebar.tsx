@@ -6,7 +6,7 @@
  * Shows entity type tabs with count badges and an "All" option.
  */
 
-import { ShieldCheck, Sparkles } from "lucide-react";
+import { Network, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { KBEntityType } from "@/lib/api/kb";
 import { useKBEntries } from "@/lib/hooks/useKB";
@@ -18,6 +18,8 @@ interface KBCategorySidebarProps {
   onTypeChange: (type: KBEntityType | null) => void;
   onAnalyze?: () => void;
   onConsistencyCheck?: () => void;
+  onShowGraph?: () => void;
+  showGraph?: boolean;
 }
 
 export function KBCategorySidebar({
@@ -26,6 +28,8 @@ export function KBCategorySidebar({
   onTypeChange,
   onAnalyze,
   onConsistencyCheck,
+  onShowGraph,
+  showGraph,
 }: KBCategorySidebarProps) {
   const t = useTranslations("studio");
 
@@ -47,7 +51,7 @@ export function KBCategorySidebar({
             type="button"
             onClick={() => onTypeChange(null)}
             className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md transition-all text-sm ${
-              activeType === null
+              activeType === null && !showGraph
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "hover:bg-accent text-foreground"
             }`}
@@ -55,12 +59,32 @@ export function KBCategorySidebar({
             <span>{t("kb.allTypes")}</span>
             <span
               className={`text-xs px-1.5 py-0.5 rounded ${
-                activeType === null ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
+                activeType === null && !showGraph
+                  ? "bg-primary-foreground/20"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               {totalCount}
             </span>
           </button>
+
+          {/* "Graph" tab */}
+          {onShowGraph && (
+            <button
+              type="button"
+              onClick={onShowGraph}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md transition-all text-sm ${
+                showGraph
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "hover:bg-accent text-foreground"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <Network className="w-4 h-4" />
+                <span>{t("graph.title")}</span>
+              </span>
+            </button>
+          )}
 
           {/* Per-type tabs */}
           {ENTITY_TYPES.map((type) => (
