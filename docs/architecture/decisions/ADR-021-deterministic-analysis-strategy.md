@@ -62,7 +62,7 @@ Deterministic sentiment and NER via forward pass through fixed model weights.
 
 Deterministic NLP pipeline with fixed models and lexicon-based scoring.
 
-- **Dependency:** ~175MB (spaCy + 3 language models for DE/EN/FR)
+- **Dependency:** ~182MB (spaCy + 3 md language models for DE/EN/FR)
 - **Python 3.14:** MORE LIKELY — spaCy uses Thinc (numpy-backed), not PyTorch
 - **Existing project data:** `german_pronouns.py` (1333 lines of German pronoun data in `_scratch/`)
 
@@ -77,7 +77,7 @@ Deterministic NLP pipeline with fixed models and lexicon-based scoring.
 **Cons:**
 - Lexicon-based sentiment is word-level — misses context, irony, subtext, metaphor
 - spaCy coref quality for DE/FR is lower than EN — needs language-specific pronoun rules
-- ~175MB new dependency (spaCy + 3 language models)
+- ~182MB new dependency (spaCy + 3 md language models)
 - NRC EmoLex is CC BY-SA 3.0 (data license, not code)
 
 **Verdict: ACCEPTED as deterministic NLP backbone.**
@@ -180,7 +180,7 @@ The tiering follows a clear principle:
 
 ### Negative / Tradeoffs
 
-- **~175MB new dependency** — spaCy (~50MB) + 3 language models (~40MB each for DE/EN/FR)
+- **~182MB new dependency** — spaCy (~50MB) + 3 md language models (~44MB avg for DE/EN/FR)
 - **Lexicon-based sentiment is less nuanced than LLM** — misses irony, subtext, metaphor. Acceptable for measurement (we're honest about limitations) but some users may expect LLM-quality interpretation from all features
 - **spaCy coref quality for DE/FR is lower than EN** — needs language-specific pronoun rules as primary resolver, with spaCy NER as supplementary signal
 - **NRC EmoLex is CC BY-SA 3.0** — this is a data license, not a code license. Acceptable for our MIT project (we ship the data, not derivative works of it), but requires attribution
@@ -270,16 +270,18 @@ No circular dependencies. `core/nlp/` never imports from `core/analysis/`. `core
 nlp = ["spacy>=3.8"]
 
 # Language models installed via post-install script or justfile command:
-# python -m spacy download de_core_news_sm   (~40MB)
-# python -m spacy download en_core_web_sm   (~12MB)
-# python -m spacy download fr_core_news_sm  (~40MB)
+# python -m spacy download de_core_news_md   (~45MB)
+# python -m spacy download en_core_web_md    (~43MB)
+# python -m spacy download fr_core_news_md   (~44MB)
 ```
 
 - spaCy >=3.8 (~50MB, MIT license)
-- 3 language models (~40MB each, CC BY-SA for model data)
-- **Total: ~175MB**
+- 3 language models (md size: ~43–45MB each, CC BY-SA for model data)
+- **Total: ~182MB** (spaCy ~50MB + models ~132MB)
 - **NO PyTorch dependency** — spaCy uses Thinc/numpy for its neural network backend
 - Optional dependency: `pip install narrare-core[nlp]` — graceful degradation if not installed
+
+**Why md (medium) models over sm (small):** The md models include 20k-dimensional word vectors, which provide significantly better POS tagging, NER, and entity boundary detection. This is critical for literary text: French `sm` misclassifies passé simple tense; English `sm` misses proper-name entities like "Anna"; German `sm` incorrectly tags "Annas Arm" as a PER entity. The ~90MB increase over sm models (~90MB total for all three) is well within acceptable range and enables future similarity/clustering features needed for CONS-001 and ANAL-005.
 
 ### NLPProvider Contract (core/nlp/contracts.py)
 
