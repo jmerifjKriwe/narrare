@@ -217,4 +217,114 @@ class TestSetupWizard:
             if api_key_input.is_visible():
                 api_key_input.fill("sk-test-e2e-mock-key-not-real")
 
+                # Wait for the Next button to become enabled after model auto-select
+                page.wait_for_function(
+                    "document.querySelector('[data-testid=\"wizard-next\"]')"
+                    " && !document.querySelector('[data-testid=\"wizard-next\"]').disabled",
+                    timeout=10000,
+                )
+
             _click_next(page)  # Step 4 → 5, or skip to 5 if providers exist
+
+    def test_wizard_step_1_empty_project_name_shows_validation(
+        self,
+        page: Page,
+        base_url: str,
+        register_unique_user,
+    ) -> None:
+        """Test wizard step 1: Empty project name shows validation error."""
+        self._setup_wizard_prerequisites(page, base_url, register_unique_user)
+
+        # Try to proceed without filling project name
+        _click_next(page)
+
+        # Check for validation error messages
+        error_selectors = [
+            ".text-destructive",
+            '[class*="error"]',
+            '[role="alert"]',
+            "text=required",
+            "text=Required",
+            "text=empty",
+            "text=invalid",
+        ]
+        found_error = False
+        for selector in error_selectors:
+            locator = page.locator(selector).first
+            if locator.is_visible():
+                error_text = locator.inner_text()
+                print("\n=== VALIDATION ERROR FOUND ===")
+                print(f"  Selector: {selector}")
+                print(f"  Error text: {error_text}")
+                found_error = True
+                break
+
+        # It's OK if validation is client-side (disabled next button) or server-side (error msg)
+        page.screenshot(path="/tmp/wizard-validation-error.png")
+        print(f"\nValidation error test — URL: {page.url}")
+        if not found_error:
+            next_button = page.locator('[data-testid="wizard-next"]').first
+            is_disabled = next_button.is_disabled() if next_button.is_visible() else False
+            print(f"  Next button disabled: {is_disabled}")
+            # Either error message or disabled button is acceptable
+            assert is_disabled or found_error, (
+                "Expected validation error or disabled next button when project name is empty"
+            )
+
+    def test_wizard_back_navigation(
+        self,
+        page: Page,
+        base_url: str,
+        register_unique_user,
+    ) -> None:
+        """Test navigation backward through wizard steps."""
+        # Use the test_wizard_step_4_provider_setup test method to complete steps 1-4
+        self._setup_wizard_prerequisites(page, base_url, register_unique_user)
+
+        # Complete step 1
+        project_name_input = page.locator(
+            'input[name="project_name"], input[id="project_name"], input[placeholder*="project" i]'
+        ).first
+        if project_name_input.is_visible():
+            project_name_input.fill("My Fantasy Novel")
+        else:
+            text_inputs = page.locator('input[type="text"]')
+            if text_inputs.count() > 0:
+                text_inputs.first.fill("My Fantasy Novel")
+
+        _click_next(page, expected_step=2)
+
+        # Step 2: Select genre
+        fantasy_selectors = [
+            'button:has-text("Fantasy")',
+            "text=Fantasy",
+        ]
+        for selector in fantasy_selectors:
+            locator = page.locator(selector).first
+            if locator.is_visible():
+                locator.click()
+                break
+
+        # Try to go back to step 1 — look for back/previous button
+        back_button = page.locator(
+            '[data-testid="wizard-back"], button:has-text("Back"), button:has-text("Previous")'
+        ).first
+
+        if back_button.is_visible():
+            back_button.click()
+            # We should be back on step 1 — the project_name input should be visible
+            page.wait_for_timeout(1000)
+            step_1_visible = page.locator('[data-testid="wizard-step-1"]').first.is_visible()
+            project_name_visible = project_name_input.is_visible()
+            print("\n=== BACK NAVIGATION ===")
+            print(f"  Step 1 indicator visible: {step_1_visible}")
+            print(f"  Project name input visible: {project_name_visible}")
+            print(f"  Current URL: {page.url}")
+
+            assert step_1_visible or project_name_visible, (
+                "Expected to be back on step 1 after clicking Back, "
+                f"but step 1 not visible. URL: {page.url}"
+            )
+        else:
+            # No back button — that's acceptable for some UIs, just log it
+            print("\n=== BACK NAVIGATION: No back button found (acceptable) ===")

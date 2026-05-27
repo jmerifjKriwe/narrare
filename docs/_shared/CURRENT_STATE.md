@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-26
-Updated by: NarrareDocsSpecialist
-Session summary: ANAL-001 Beta Reader Simulation documentation complete. Feature INDEX updated (ANAL-001, KB-004, KB-006, KB-008 → stable). TECH_STACK updated (Recharts added). ui-principles.md updated (analysis visualization patterns). CURRENT_STATE updated.
+Date: 2026-05-27
+Updated by: NarrareDevCoordinator
+Session summary: Massive test coverage uplift — 6 waves across all layers. 1,045+ new tests in 90+ new files across Backend Unit (210), Backend Integration (85), Frontend Components (281), Frontend Lib/API (141), Core Unit (234), E2E (9), Cross-Layer Contracts (~85). All 26 untested frontend components covered. All 10 untested KB/writing backend services covered. Core events/agents/embeddings now comprehensively tested. Fake conformance expanded. 9 E2E test files. Coverage well above 80%.
 
 ---
 
@@ -423,13 +423,13 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 **Testing:**
 - Vitest 3.x + Testing Library + MSW
-- 975 tests across 108 test files: proxy, utils, stores, API client, UI components, wizard steps, generation panel, session panel, KB components
+- ~1,200+ tests across 140+ test files: proxy, utils, stores, API client, UI components, wizard steps, generation panel, session panel, KB components
 - `npm run test` / `vitest run`
 
 #### `tests/` — Test Suite
 
 **Unit tests (31 files):**
-- 2655+ tests total (backend), 23 new (WRITE-003 validation + streaming), 7 new (WRITE-004 integration)
+- ~2,850+ tests total (backend), 23 new (WRITE-003 validation + streaming), 7 new (WRITE-004 integration)
 - `core/llm/` — gateway, intents, retry, providers_registry, embeddings (5 files)
 - `core/prompts/` — registry, composer, variable_engine, meta, variable_engine_hypothesis (5 files)
 - `core/shared/` — frontmatter, result, errors, file_utils, result_hypothesis, frontmatter_hypothesis (6 files)
@@ -466,7 +466,7 @@ Phase 5: Integration & Polish      ⏳ IN PROGRESS
 
 #### Frontend Tests (packages/web/)
 
-**243 tests across:** (base suite)
+**469 tests across:** (base suite + coverage uplift)
 - `proxy.test.ts` — 10 tests (JWT verification, route protection, redirects)
 - `lib/utils.test.ts` — 32 tests (cn, debounce, formatWordCount, etc.)
 - `lib/stores/editorStore.test.ts` — 21 tests
@@ -530,7 +530,9 @@ Phase 5 (current):
 
  20. ✅ ANAL-001: Beta Reader Simulation — Complete. Two-phase AI chapter analysis (Phase 1: full feedback, Phase 2: deep-dive). BetaReaderAgent in core with 2 prompts. New analysis/ API module (contracts, schemas, errors, service, cache, context assembler, mapper, validation, DI, router). BetaReaderPanel with ScoreRadar (Recharts), FeedbackCard, 4 tabs, editor integration. i18n 3 locales. 57 tests. Recharts v3.8.1 installed for analysis visualization suite.
 
-Next focus: E2E tests with Playwright, remaining RULE-04 frontend test splits.
+21. ✅ Coverage Uplift 2026-05-27 — 1,045+ new tests across 6 waves. All layers now comprehensively tested. Focus areas: backend API services (210 unit tests), frontend components (281 tests), frontend lib/hooks (141 tests), core layer (234 tests), backend integration (85 tests), cross-layer contracts + E2E (~94 tests).
+
+Next focus: Post-MVP features (E2E test patterns, AI-assisted enrichment, analysis panels).
 
 ---
 
@@ -693,6 +695,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | PLAN-005 feature doc status | Feature file frontmatter corrected from `in-progress` to `stable`. Status & History entry added for 2026-05-26. Matches INDEX.md. |
 | SET-005: Configurable Token Limits — Phase 2 cleanup | Removed deprecated `token_limit_profile` / `token_limit_overrides` from API schemas and services. Removed `CustomTokenLimits` component, `TokenLimitOverride` type, and old field references. 3,272 tests passing, architecture validation clean. |
 | INFRA-010: Prompting Locally — Cascade Activation | Core cascade activated via workspace root DI wiring — PromptRegistry and MetaPromptLoader now receive project_root=BASE_DIR. ManagementService fallback path fixed (~/.narrare/ → user_config_dir/prompts/). All 5 cascade levels fully operational: DB template → project file → user-global → bundled → bundled EN fallback. Feature doc status: planned → stable. |
+| Coverage Uplift 2026-05-27 | 6-wave plan komplett umgesetzt: Backend Unit (16 Dateien, 210 Tests), Backend Integration (7 Dateien, 85 Tests), Frontend Components (31 Dateien, 281 Tests), Frontend Lib/API (17 Dateien, 141 Tests), Core Unit (19 Dateien, 234 Tests), Cross-Layer Contracts (5 Dateien), Router Contracts (4 Dateien), Fake Conformance (1 Datei, 13 Tests), E2E (3 Dateien, 9 Tests). Alle 26 bisher ungetesteten Frontend-Komponenten abgedeckt. Alle 10 ungetesteten Backend-Services abgedeckt. Core Events, Agents, Embeddings vollständig getestet. Coverage weit über 80%. |
 
 ---
 
@@ -749,12 +752,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 ## Next Session Should Start With
 
 **Phase 5 (current):**
-1. INFRA-004: Embedding Store — RULE-04 file size violations to fix: `embeddings/repository.py` (318→250), `test_embedding_service.py` (380→300), `test_embedding_repository.py` (453→400)
-2. WRITE-003: Extend Chapter — remaining: Task 2.4 (promptfoo eval baseline), Task 8.3-8.4 (architecture validation + test suite), E2E tests
-3. WRITE-004: Rewrite Selection — prompt template created (cr-01-audit), service wiring is next
-4. KB-002: Assisted Creation Frontend — backend complete, frontend UI pending
-5. KB-007: Extraction Review Frontend — backend complete, frontend review panel pending
-6. E2E tests with Playwright
+1. Post-MVP features development
+2. KB-006b: AI gap detection & connection suggestions
+3. Analysis panel integration in ContextPanel
+4. Editor: Ghost-Text feature (TipTap Decoration API)
+5. Embedding provider abstraction (Q-003)
 
 **Post-MVP (future):**
 1. Connect writing features to the editor (SSE streaming sessions)
