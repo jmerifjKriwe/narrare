@@ -96,6 +96,17 @@ class TestChapterManagement:
 
         page.wait_for_timeout(2000)
 
+        # Diagnostic: capture API response statuses during save
+        api_responses: list[tuple[str, int, str]] = []
+        page.on(
+            "response",
+            lambda resp: (
+                api_responses.append((resp.request.method, resp.status, resp.url))
+                if "/api/v1/" in resp.url
+                else None
+            ),
+        )
+
         # Find the chapter title input in the header
         title_input_selectors = [
             'input[data-testid="chapter-title-input"]',
@@ -119,14 +130,25 @@ class TestChapterManagement:
         title_input.fill(new_title)
         page.wait_for_timeout(500)
 
-        # Save
+        # Save — _save_editor waits for the API response internally
         _save_editor(page)
-        page.wait_for_timeout(2000)
 
-        # Verify sidebar shows new title
-        page.wait_for_timeout(1000)
-        body_text = page.inner_text("body")
-        assert new_title in body_text, f"Expected new title '{new_title}' in page text after rename"
+        # Wait for sidebar to reflect the new title (React Query invalidation → refetch)
+        try:
+            page.wait_for_function(
+                "(title) => document.body.innerText.includes(title)",
+                arg=new_title,
+                timeout=10000,
+            )
+        except Exception:
+            body_text = page.inner_text("body")[:500]
+            print("\n=== RENAME FAILURE DIAGNOSTICS ===")
+            print(f"  Expected title: {new_title}")
+            print(f"  Body text: {body_text}")
+            print("  API responses during save:")
+            for method, status, url in api_responses:
+                print(f"    {method} {status} {url}")
+            raise
 
         # Reload and verify persistence
         current_url = page.url
@@ -228,6 +250,17 @@ class TestChapterManagement:
 
         page.wait_for_timeout(2000)
 
+        # Diagnostic: capture API response statuses during save
+        api_responses: list[tuple[str, int, str]] = []
+        page.on(
+            "response",
+            lambda resp: (
+                api_responses.append((resp.request.method, resp.status, resp.url))
+                if "/api/v1/" in resp.url
+                else None
+            ),
+        )
+
         novel_id = result["novel_id"]
         access_token = result["access_token"]
         headers = {
@@ -259,7 +292,6 @@ class TestChapterManagement:
         insert_result = _insert_editor_text(page, text_a)
         assert insert_result == "ok", f"Insert failed: {insert_result}"
         _save_editor(page)
-        page.wait_for_timeout(2000)
 
         # Switch to second chapter
         # Click the second chapter in sidebar (index 1)
@@ -280,7 +312,6 @@ class TestChapterManagement:
         insert_result = _insert_editor_text(page, text_b)
         assert insert_result == "ok", f"Insert failed: {insert_result}"
         _save_editor(page)
-        page.wait_for_timeout(2000)
 
         # Switch back to first chapter
         _click_chapter_in_sidebar(page, index=0)

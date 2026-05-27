@@ -246,8 +246,25 @@ def _save_editor(page: Page, timeout: int = 10000) -> None:
         save_button = page.locator("button.bg-primary").first
 
     save_button.wait_for(state="visible", timeout=5000)
-    save_button.click()
-    page.wait_for_timeout(2000)
+
+    # Click save and wait for the actual API response (PATCH/PUT) instead of
+    # a fixed 2-second timeout.  The editor fires PATCH (meta) and PUT (content)
+    # in parallel — we wait for the first matching response.
+    with page.expect_response(
+        lambda resp: "/api/v1/novels/" in resp.url and resp.request.method in ("PATCH", "PUT"),
+        timeout=timeout,
+    ) as response_info:
+        save_button.click()
+
+    response = response_info.value
+    print(f"\n  [_save_editor] {response.request.method} {response.url} → {response.status}")
+    if response.status >= 400:
+        try:
+            body = response.text()
+        except Exception:
+            body = "(could not read body)"
+        print(f"  [_save_editor] ERROR: Save failed with status {response.status}")
+        print(f"  [_save_editor] Response body: {body[:500]}")
 
 
 # ---------------------------------------------------------------------------

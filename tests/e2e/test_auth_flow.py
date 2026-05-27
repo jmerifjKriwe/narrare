@@ -9,6 +9,7 @@ Runs against the full stack (API port 8000, Frontend port 3000).
 from __future__ import annotations
 
 import contextlib
+import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -205,12 +206,35 @@ class TestAuthFlow:
         page.click('button[type="submit"]')
         page.wait_for_url(f"{base_url}/", timeout=15000)
 
+        # Mock only POST /auth/refresh to prevent the Next.js dev proxy hang.
+        # Unlike setup_dashboard_api_mocks (which mocks both /auth/refresh AND
+        # /auth/me), this test needs a real /auth/me response because the user
+        # logged in via the UI and has a real session.  Returning the real token
+        # keeps the frontend auth store in sync.
+        page.route(
+            "**/api/v1/auth/refresh",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({"access_token": user["access_token"], "token_type": "bearer"}),
+            ),
+        )
+
         # Now logged in, navigate to dashboard to find logout button
-        page.goto(f"{base_url}/")
+        page.goto(f"{base_url}/", timeout=30000)
         page.wait_for_timeout(2000)
 
+        # Remove the refresh mock so the /login page after logout does NOT
+        # get re-authenticated via the mock.  Without this, the frontend's
+        # auth check on /login fires POST /auth/refresh → mock returns token
+        # → cookie is re-set → assertion fails.
+        page.unroute("**/api/v1/auth/refresh")
+
         # Find and click logout button
-        # The dashboard header has a logout button — try multiple selectors
+        # The dashboard header has a logout button — try multiple selectors.
+        # NOTE: The logout button is in a fixed header (position:sticky/fixed).
+        # Playwright's scroll-into-view check can hang on these elements, so
+        # we use force=True to bypass it while still dispatching proper events.
         logout_selectors = [
             'button[data-testid="logout-button"]',
             'button[aria-label*="logout" i]',
@@ -226,7 +250,7 @@ class TestAuthFlow:
         for selector in logout_selectors:
             locator = page.locator(selector).first
             if locator.is_visible():
-                locator.click()
+                locator.click(force=True)
                 logout_clicked = True
                 break
 
