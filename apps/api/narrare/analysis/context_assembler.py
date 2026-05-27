@@ -66,7 +66,7 @@ class ContextAssembler:
           2. Identify target chapters (by IDs) and validate
           3. Fetch previous chapter summaries (up to 3)
           4. Fetch KB entries (characters, locations)
-          5. Fetch novel metadata (genre)
+          5. Fetch novel metadata (genre + language)
           6. Build and return BetaReaderDeps
 
         Args:
@@ -100,8 +100,8 @@ class ContextAssembler:
         # Step 4: Fetch KB context
         characters, locations = await self._fetch_kb_context(novel_id)
 
-        # Step 5: Fetch genre from novel metadata
-        genre = await self._fetch_genre(novel_id, user_id)
+        # Step 5: Fetch novel metadata (genre + language)
+        genre, language = await self._fetch_novel_metadata(novel_id, user_id)
 
         # Step 6: Build BetaReaderDeps
         chapter_text = "\n\n---\n\n".join(c.content for c in target_chapters)
@@ -109,7 +109,7 @@ class ContextAssembler:
         word_count = sum(c.word_count for c in target_chapters)
 
         deps = BetaReaderDeps(
-            language="en",
+            language=language,
             chapter_text=chapter_text,
             chapter_titles=chapter_titles,
             word_count=word_count,
@@ -213,15 +213,21 @@ class ContextAssembler:
 
         return characters, locations
 
-    async def _fetch_genre(self, novel_id: UUID, user_id: UUID | None = None) -> str:
-        """Fetch genre from novel metadata.
+    async def _fetch_novel_metadata(
+        self, novel_id: UUID, user_id: UUID | None = None
+    ) -> tuple[str, str]:
+        """Fetch genre and language from novel metadata.
+
+        Returns both fields in a single DB call to avoid fetching the novel
+        twice for different metadata attributes.
 
         Args:
             novel_id: The novel to look up.
             user_id: Optional user ID for authorization.
 
         Returns:
-            Genre string, or empty string if not set.
+            Tuple of (genre, language). Either defaults to empty string / "en"
+            if the novel is not found or an error occurs.
         """
         try:
             if user_id is not None:
@@ -230,7 +236,9 @@ class ContextAssembler:
                 # Fallback: try without user_id (some repos may support it)
                 novel = await self._novel_repo.get_by_id(novel_id, UUID(int=0))  # type: ignore[call-arg]
             if novel is not None:
-                return novel.genre or ""
+                genre = novel.genre or ""
+                language = getattr(novel, "writing_language", "en") or "en"
+                return genre, language
         except Exception:
-            logger.warning("genre_fetch_failed", novel_id=str(novel_id))
-        return ""
+            logger.warning("novel_metadata_fetch_failed", novel_id=str(novel_id))
+        return "", "en"

@@ -53,5 +53,8 @@
     "hide": "Textstelle ausblenden"
   },
   "suggestion": "Vorschlag",
-  "location": "Stelle"
+  "location": "Stelle",
+  "betaReader": {
+    "aiDisclaimer": "KI-generierte Einschätzung \u00b7 Ergebnisse können abweichen"
+  }
 }

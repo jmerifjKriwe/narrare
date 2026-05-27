@@ -53,5 +53,8 @@
     "hide": "Masquer l'extrait"
   },
   "suggestion": "Suggestion",
-  "location": "Emplacement"
+  "location": "Emplacement",
+  "betaReader": {
+    "aiDisclaimer": "Analyses générées par IA \u00b7 Les résultats peuvent varier"
+  }
 }

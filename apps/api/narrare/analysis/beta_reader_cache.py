@@ -50,11 +50,15 @@ class BetaReaderCache:
         return f"{BETA_READER_KEY_PREFIX}{novel_id}:{chapter_ids_hash}"
 
     @staticmethod
-    def hash_chapter_ids(chapter_ids: list[str]) -> str:
-        """Create stable hash from sorted chapter IDs.
+    def hash_chapter_ids(chapter_ids: list[str], content_hash: str = "") -> str:
+        """Create stable hash from sorted chapter IDs and optional content.
+
+        When ``content_hash`` is provided, it is combined with the chapter IDs
+        so that edits to chapter text produce a different cache key (ADR-021).
 
         Args:
             chapter_ids: List of chapter UUID strings.
+            content_hash: Optional short hash of the chapter text content.
 
         Returns:
             12-character hex hash string.
@@ -62,19 +66,26 @@ class BetaReaderCache:
         import hashlib
 
         sorted_ids = ",".join(sorted(chapter_ids))
-        return hashlib.sha256(sorted_ids.encode()).hexdigest()[:12]
+        combined = f"{sorted_ids}:{content_hash}" if content_hash else sorted_ids
+        return hashlib.sha256(combined.encode()).hexdigest()[:12]
 
-    async def get(self, novel_id: str, chapter_ids: list[str]) -> str | None:
+    async def get(
+        self,
+        novel_id: str,
+        chapter_ids: list[str],
+        content_hash: str = "",
+    ) -> str | None:
         """Get cached analysis for a set of chapters.
 
         Args:
             novel_id: The novel UUID as a string.
             chapter_ids: The chapter IDs that were analyzed.
+            content_hash: Optional content hash for cache-key discrimination.
 
         Returns:
             The cached JSON string, or ``None`` if not found or unreachable.
         """
-        key = self._key(novel_id, self.hash_chapter_ids(chapter_ids))
+        key = self._key(novel_id, self.hash_chapter_ids(chapter_ids, content_hash))
         try:
             data = await self._cache.get(key)
         except Exception:
@@ -84,19 +95,31 @@ class BetaReaderCache:
             logger.debug("beta_reader_cache_hit", novel_id=novel_id)
         return data
 
-    async def set(self, novel_id: str, chapter_ids: list[str], value: str) -> None:
+    async def set(
+        self,
+        novel_id: str,
+        chapter_ids: list[str],
+        value: str,
+        content_hash: str = "",
+    ) -> None:
         """Cache analysis result with 30min TTL.
 
         Args:
             novel_id: The novel UUID as a string.
             chapter_ids: The chapter IDs that were analyzed.
             value: The JSON-serialised analysis response.
+            content_hash: Optional content hash for cache-key discrimination.
         """
-        key = self._key(novel_id, self.hash_chapter_ids(chapter_ids))
+        key = self._key(novel_id, self.hash_chapter_ids(chapter_ids, content_hash))
         await self._cache.set(key, value, ttl_seconds=BETA_READER_TTL)
         logger.debug("beta_reader_cache_set", novel_id=novel_id)
 
-    async def delete(self, novel_id: str, chapter_ids: list[str]) -> None:
+    async def delete(
+        self,
+        novel_id: str,
+        chapter_ids: list[str],
+        content_hash: str = "",
+    ) -> None:
         """Invalidate cached analysis.
 
         Succeeds silently even when the key does not exist.
@@ -104,7 +127,8 @@ class BetaReaderCache:
         Args:
             novel_id: The novel UUID as a string.
             chapter_ids: The chapter IDs that were analyzed.
+            content_hash: Optional content hash for cache-key discrimination.
         """
-        key = self._key(novel_id, self.hash_chapter_ids(chapter_ids))
+        key = self._key(novel_id, self.hash_chapter_ids(chapter_ids, content_hash))
         await self._cache.delete(key)
         logger.debug("beta_reader_cache_invalidated", novel_id=novel_id)

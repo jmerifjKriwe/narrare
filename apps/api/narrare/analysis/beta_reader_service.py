@@ -9,6 +9,7 @@ Follows the same pattern as worldbuilding_service.py and improve_service.py.
 
 from __future__ import annotations
 
+import hashlib
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -105,33 +106,43 @@ class BetaReaderService:
             refresh=request.refresh,
         )
 
-        # 1. Check cache (before expensive context assembly)
+        # 1. Assemble context (validates chapters exist)
+        deps = await self._assemble_context(novel_id, user_id, request.chapter_ids)
+
+        # 2. Compute content hash for cache-key discrimination (ADR-021)
+        content_hash = hashlib.sha256(deps.chapter_text.encode()).hexdigest()[:12]
+
+        # 3. Check cache with content hash (after assembly so we know content)
         if not request.refresh:
-            cached = await self._cache.get(str(novel_id), request.chapter_ids)
+            cached = await self._cache.get(
+                str(novel_id), request.chapter_ids, content_hash=content_hash
+            )
             if cached is not None:
                 logger.info("beta_reader_cache_hit", novel_id=str(novel_id))
                 return BetaReaderResponse.model_validate_json(cached)
 
-        # 2. Assemble context (validates chapters exist)
-        deps = await self._assemble_context(novel_id, user_id, request.chapter_ids)
-
-        # 3. Validate word count
+        # 4. Validate word count
         validate_word_count(deps.word_count)
 
-        # 4. Override focus categories from request
+        # 5. Override focus categories from request
         if request.categories:
             deps.focus_categories = [c.value for c in request.categories]
 
-        # 5. Compose prompt and run agent
+        # 6. Compose prompt and run agent
         composed = await self._compose_prompt(deps.language, "beta_reader")
         model = await self._registry.get_model(self._config)
         agent = BetaReaderAgent(model=model, system_prompt=composed.system)
         result = await self._run_agent_phase1(agent, deps)
 
-        # 6. Map to response and cache
+        # 7. Map to response and cache
         response = map_phase1_response(result, novel_id, request.chapter_ids, deps.word_count)
-        response.cache_key = BetaReaderCache.hash_chapter_ids(request.chapter_ids)
-        await self._cache.set(str(novel_id), request.chapter_ids, response.model_dump_json())
+        response.cache_key = BetaReaderCache.hash_chapter_ids(request.chapter_ids, content_hash)
+        await self._cache.set(
+            str(novel_id),
+            request.chapter_ids,
+            response.model_dump_json(),
+            content_hash=content_hash,
+        )
 
         logger.info(
             "beta_reader_analyze_complete",
@@ -169,15 +180,18 @@ class BetaReaderService:
             category=request.category.value,
         )
 
-        # 1. Retrieve Phase 1 from cache for context
-        phase1_json = await self._cache.get(str(novel_id), request.chapter_ids)
+        # 1. Assemble context first (needed to compute content_hash for Phase 1 lookup)
+        deps = await self._assemble_context(novel_id, user_id, request.chapter_ids)
+        content_hash = hashlib.sha256(deps.chapter_text.encode()).hexdigest()[:12]
+
+        # 2. Retrieve Phase 1 from cache for context (using content-aware key)
+        phase1_json = await self._cache.get(
+            str(novel_id), request.chapter_ids, content_hash=content_hash
+        )
         if phase1_json is None:
             raise CacheRetrievalError("Phase 1 analysis not found. Run full analysis first.")
 
         phase1 = BetaReaderResponse.model_validate_json(phase1_json)
-
-        # 2. Assemble context with Phase 1 summary
-        deps = await self._assemble_context(novel_id, user_id, request.chapter_ids)
         deps.deepdive_category = request.category.value
         deps.phase1_strengths_summary = "; ".join(s.title for s in phase1.strengths)
         deps.phase1_feedback_summary = "; ".join(f.title for f in phase1.feedback[:10])

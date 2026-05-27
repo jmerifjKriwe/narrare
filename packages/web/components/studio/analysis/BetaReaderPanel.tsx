@@ -9,7 +9,7 @@
  * Tab content extracted to BetaReaderPanelContent.tsx.
  */
 
-import { ArrowLeft, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Info, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type { BetaReaderResponse, FeedbackCategory } from "@/lib/api/analysis";
@@ -157,6 +157,14 @@ export function BetaReaderPanel({ novelId, chapterIds, onClose }: BetaReaderPane
             <X className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* AI disclaimer — always visible per ADR-021 */}
+      <div className="px-4 py-1.5 border-b border-border bg-muted/30">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Info className="w-3.5 h-3.5 flex-shrink-0" />
+          {t("betaReader.aiDisclaimer")}
+        </p>
       </div>
 
       {/* Tabs */}
