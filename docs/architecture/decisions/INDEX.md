@@ -44,6 +44,7 @@
 | [ADR-018](ADR-018-promptfoo-evals.md) | promptfoo Eval Framework for Prompt Quality | ✅ | 2026-05-23 | `evals/`, CI |
 | [ADR-019](019-system-prompt-consistency.md) | System-Prompt Consistency for pydantic-ai Agents | ✅ | 2026-05-23 | `core/agents/`, `core/prompts/`, RULE-02 |
 | [ADR-020](ADR-020-embedding-provider-abstraction.md) | Embedding Provider Abstraction | ✅ | 2026-05-27 | `core/llm/`, Q-003 |
+| [ADR-021](ADR-021-deterministic-analysis-strategy.md) | Deterministic Analysis Strategy (spaCy + tiered hybrid) | ✅ | 2026-05-27 | `core/nlp/`, `core/analysis/`, ANAL-001–011, CONS-001/002, STATS-001/002 |
 
 ---
 
