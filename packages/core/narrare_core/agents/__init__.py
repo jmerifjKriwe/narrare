@@ -28,6 +28,7 @@ from narrare_core.agents.kb_improve_types import (
     ImprovementSuggestion,
     KBImproveDeps,
     KBImproveOutput,
+    KBImproveSuggestion,  # backward-compat alias
     SuggestionType,
 )
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
@@ -91,6 +92,7 @@ __all__ = [
     "KBImproveAgent",
     "KBImproveDeps",
     "KBImproveOutput",
+    "KBImproveSuggestion",
     "NarrareAgent",
     "NeedsRevision",
     "OutlineAgent",

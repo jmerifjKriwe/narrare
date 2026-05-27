@@ -119,4 +119,4 @@ class RemapResponse(BaseModel):
 
     new_structure: str
     remapped: list[RemapPreviewItem]
-    confirmed: bool
+    confirmed: bool = False

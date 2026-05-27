@@ -100,7 +100,7 @@ class ProviderResponse(BaseModel):
     provider_name: str
     has_api_key: bool
     api_key_last4: str
-    base_url: str | None
+    base_url: str | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime

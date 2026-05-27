@@ -10783,7 +10783,6 @@
           "provider_name",
           "has_api_key",
           "api_key_last4",
-          "base_url",
           "is_active",
           "created_at",
           "updated_at"
@@ -10960,14 +10959,14 @@
           },
           "confirmed": {
             "type": "boolean",
-            "title": "Confirmed"
+            "title": "Confirmed",
+            "default": false
           }
         },
         "type": "object",
         "required": [
           "new_structure",
-          "remapped",
-          "confirmed"
+          "remapped"
         ],
         "title": "RemapResponse",
         "description": "Response for remap preview or confirmation."

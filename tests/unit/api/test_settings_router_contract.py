@@ -45,9 +45,6 @@ class TestSettingsRouterNoHardcodedProviderDefaults:
     """Settings routers should not hardcode default provider names."""
 
     def test_main_router_no_hardcoded_providers(self) -> None:
-        source = _get_source("narrare.settings.router.get_settings_router")
-        # get_settings_router is actually just `router = APIRouter(...)`, inspect
-        # the module-level source for the router definition.
         import narrare.settings.router as settings_router
 
         source = inspect.getsource(settings_router)

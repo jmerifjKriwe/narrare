@@ -143,7 +143,7 @@ class TestResolveReferencesResponseContract:
 
 def _get_constraints(field: object) -> dict[str, object]:
     """Extract Pydantic constraints from a FieldInfo as a dict."""
-    from pydantic import FieldInfo
+    from pydantic.fields import FieldInfo
 
     if not isinstance(field, FieldInfo):  # type: ignore[arg-type]
         return {}

@@ -58,7 +58,7 @@ class TestMapPhase1Response:
         fb = MagicMock(
             spec=AgentFeedbackItem,
             category="character",
-            severity="major",
+            severity="moderate",
             location="p1",
             title="Issue",
             description="Fix this",
@@ -91,12 +91,12 @@ class TestMapPhase1Response:
         output.overall = MagicMock(
             spec=AgentOverallAssessment,
             summary="",
-            reader_engagement=0,
-            emotional_impact=0,
-            pacing_score=0,
-            prose_quality=0,
-            plot_progression=0,
-            character_development=0,
+            reader_engagement=1,
+            emotional_impact=1,
+            pacing_score=1,
+            prose_quality=1,
+            plot_progression=1,
+            character_development=1,
         )
 
         result = map_phase1_response(output, novel_id, ["ch1", "ch2"], word_count=3000)
@@ -119,12 +119,12 @@ class TestMapPhase2Response:
         )
         output.detailed_feedback = [detail]
         output.revision_suggestions = ["Shorten scene"]
-        output.category_score = 6.5
+        output.category_score = 6
 
         result = map_phase2_response(output, uuid4(), FeedbackCategory.PACING)
         assert len(result.detailed_feedback) == 1
         assert result.category == FeedbackCategory.PACING
-        assert result.category_score == 6.5
+        assert result.category_score == 6
 
 
 class TestBuildUserPrompt:

@@ -93,3 +93,7 @@ class KBImproveDeps:
         self.existing_relationships = existing_relationships
         self.world_context = world_context
         self.adjacency_map = adjacency_map
+
+
+# Backward-compat alias — was renamed from KBImproveSuggestion to ImprovementSuggestion.
+KBImproveSuggestion = ImprovementSuggestion

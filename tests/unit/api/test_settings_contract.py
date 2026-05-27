@@ -190,6 +190,8 @@ class TestCreateProviderRequestContract:
         from narrare.settings.schemas import CreateProviderRequest
 
         field = CreateProviderRequest.model_fields["api_key"]
-        assert hasattr(field, "min_length") and field.min_length == 1, (  # type: ignore[arg-type]
-            "Expected api_key min_length 1"
-        )
+        # Pydantic v2 stores constraints in metadata, not as direct attributes
+        assert any(
+            hasattr(meta, "min_length") and meta.min_length == 1  # type: ignore[arg-type]
+            for meta in field.metadata
+        ), "Expected api_key min_length 1"
