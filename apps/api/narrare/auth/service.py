@@ -45,7 +45,7 @@ class AuthService:
             ConflictError: If email is already registered.
         """
         existing = await self._repo.get_by_email(request.email)
-        if existing:
+        if existing is not None:
             raise ConflictError("Email already registered")
 
         hashed = hash_password(request.password)
@@ -74,7 +74,7 @@ class AuthService:
         user = await self._repo.get_by_email(request.email)
 
         # Constant-time comparison to prevent timing attacks
-        if not user or not verify_password(request.password, user.hashed_password):
+        if user is None or not verify_password(request.password, user.hashed_password):
             raise AuthenticationError("Invalid email or password")
 
         if not user.is_active:
@@ -118,7 +118,7 @@ class AuthService:
         from uuid import UUID
 
         user = await self._repo.get_by_id(UUID(user_id))
-        if not user or not user.is_active:
+        if user is None or not user.is_active:
             raise AuthenticationError("User not found or inactive")
 
         return self._create_tokens(user_id)

@@ -203,3 +203,68 @@ class TestAuthServiceCreateTokens:
             )
 
         assert result.expires_in == _FakeSettings.access_token_expire_minutes * 60
+
+
+# ---------------------------------------------------------------------------
+# Regression: explicit None checks (Bug 2 — DetachedInstanceError)
+# ---------------------------------------------------------------------------
+
+
+class _UserWithBrokenBool:
+    """A User-like object whose ``__bool__`` would raise.
+
+    Simulates a detached SQLAlchemy instance where truthiness checks
+    trigger attribute access on an expired session.  The fix (using
+    ``is not None`` instead of ``if existing:``) must never call
+    ``__bool__`` on this object.
+    """
+
+    id = uuid.uuid4()
+    email = "taken@example.com"
+    hashed_password = "$2b$12$fakehash"
+    is_active = True
+
+    def __bool__(self) -> bool:
+        raise RuntimeError("DetachedInstanceError simulation — __bool__ must not be called")
+
+
+class TestAuthServiceExplicitNoneChecks:
+    async def test_register_uses_is_not_none_avoiding_bool(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
+        """register() must detect existing users via ``is not None``,
+        not via truthiness — avoiding DetachedInstanceError on detached
+        ORM instances.
+        """
+        broken_user = _UserWithBrokenBool()
+
+        # Inject the broken user directly — FakeAuthRepository.get_by_email
+        # checks by email, so store it at the expected key.
+        fake_repo._by_email["taken@example.com"] = broken_user  # type: ignore[attr-defined]
+
+        with pytest.raises(ConflictError) as exc:
+            await service.register(RegisterRequest(email="taken@example.com", password="secret123"))
+        assert "already registered" in str(exc.value)
+
+    async def test_login_uses_is_none_for_user_check(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
+        """login() must check ``user is None`` instead of ``not user``,
+        so a detached-like user object doesn't trigger DetachedInstanceError
+        during the falsy path (unknown email).
+        """
+        # Unknown email → repo returns None → should raise AuthenticationError
+        with pytest.raises(AuthenticationError):
+            await service.login(LoginRequest(email="nobody@example.com", password="secret"))
+
+    async def test_refresh_uses_is_none_for_user_check(
+        self, service: AuthService, fake_repo: FakeAuthRepository
+    ) -> None:
+        """refresh() must check ``user is None`` instead of ``not user``."""
+        payload = {"sub": str(uuid.uuid4()), "type": "refresh"}
+
+        with (
+            patch("narrare.auth.service.verify_refresh_token", return_value=payload),
+            pytest.raises(AuthenticationError),
+        ):
+            await service.refresh("valid-token")
