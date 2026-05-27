@@ -19,6 +19,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from narrare._app.database import Base
 
 
+def _template_scope_values(members: type[TemplateScope]) -> list[str]:
+    """Extract values from TemplateScope members for SQLAlchemy Enum."""
+    return [m.value for m in members]
+
+
 class TemplateScope(StrEnum):
     """Scope of a template override — determines cascade priority."""
 
@@ -45,7 +50,7 @@ class KBTemplate(Base):
     )
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
     scope: Mapped[TemplateScope] = mapped_column(
-        Enum(TemplateScope),
+        Enum(TemplateScope, values_callable=_template_scope_values),
         nullable=False,
     )
     scope_id: Mapped[uuid.UUID | None] = mapped_column(

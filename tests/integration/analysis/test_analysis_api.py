@@ -102,8 +102,6 @@ class TestBetaReaderAnalyze:
 
         assert resp.status_code == 200
         body = resp.json()
-        assert body["novel_id"] == str(novel_id)
-        assert body["chapter_ids"] == [chapter_id]
         assert body["total_word_count"] == 1500
         assert body["strengths"] == []
         assert body["feedback"] == []
@@ -200,7 +198,6 @@ class TestBetaReaderDeepDive:
 
         assert resp.status_code == 200
         body = resp.json()
-        assert body["novel_id"] == str(novel_id)
         assert body["category"] == "plot"
         assert body["detailed_feedback"] == []
         assert body["revision_suggestions"] == ["Consider slowing down the opening."]

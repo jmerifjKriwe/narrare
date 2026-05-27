@@ -3029,6 +3029,65 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/extract/apply": {
+      "post": {
+        "tags": [
+          "kb-extraction"
+        ],
+        "summary": "Apply Extraction",
+        "description": "Apply endorsed extraction items to the Knowledge Base.\n\nCreates new entities, updates existing ones, and creates relationships\nbased on the user's endorsement of extraction results.",
+        "operationId": "apply_extraction_api_v1_novels__novel_id__kb_extract_apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyExtractionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyExtractionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/extract/{chapter_id}": {
       "post": {
         "tags": [
@@ -3073,65 +3132,6 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Extract Chapter Api V1 Novels  Novel Id  Kb Extract  Chapter Id  Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/novels/{novel_id}/kb/extract/apply": {
-      "post": {
-        "tags": [
-          "kb-extraction"
-        ],
-        "summary": "Apply Extraction",
-        "description": "Apply endorsed extraction items to the Knowledge Base.\n\nCreates new entities, updates existing ones, and creates relationships\nbased on the user's endorsement of extraction results.",
-        "operationId": "apply_extraction_api_v1_novels__novel_id__kb_extract_apply_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "novel_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Novel Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApplyExtractionRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApplyExtractionResponse"
                 }
               }
             }
