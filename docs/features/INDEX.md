@@ -70,7 +70,7 @@
 | [KB-003](kb/KB-003-kb-improve.md) | AI: Improve KB Entry | ✅ | ❌ |
 | [KB-004](kb/KB-004-kb-consistency.md) | AI: KB Consistency Check | ✅ | ❌ |
 | [KB-005](kb/KB-005-kb-suggest.md) | Proactive KB Suggestions | ✅ | ✅ |
-| [KB-006](kb/KB-006-worldbuilding.md) | Worldbuilding Assistant (View ✅, AI 📋) | ✅ | ❌ |
+| [KB-006](kb/KB-006-worldbuilding.md) | Worldbuilding Assistant | ✅ | ❌ |
 | [KB-007](kb/KB-007-extraction.md) | Entity Extraction from Chapters | ✅ | ❌ |
 | [KB-008](kb/KB-008-knowledge-graph.md) | Knowledge Graph | ✅ | ❌ |
 
@@ -229,5 +229,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-26 — ANAL-001 status changed to stable (beta reader simulation implemented). KB-004, KB-006, KB-008 status updated to stable.
+> Last updated: 2026-05-27 — KB-006b (Worldbuilding AI Assistant) implemented. KB-006 status updated to stable.
 > Features are specified before they are implemented — never after

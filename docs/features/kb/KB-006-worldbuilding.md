@@ -1,7 +1,7 @@
 ---
 id: KB-006
 title: "Worldbuilding Assistant"
-status: in progress
+status: stable
 area: kb
 mvp: false
 
@@ -160,12 +160,24 @@ system affects politics, how geography influences trade routes, etc.
   - `packages/web/components/studio/kb/KBDetailPanel.tsx`
   - `packages/web/app/(studio)/novel/[id]/worldbuilding/page.tsx`
 
-### KB-006b — Worldbuilding AI Assistant 📋
+### KB-006b — Worldbuilding AI Assistant ✅
 - Gap detection (analyze entities for missing connections)
 - Connection suggestions between entities
 - Consistency checking (geography, politics, economics, systems)
 - Specialized prompts per entity type
-- **Not yet implemented.**
+- **Status: Implemented with WorldbuildingAgent (Phase 1 + Phase 2)**
+- **Files:**
+  - `packages/core/narrare_core/agents/worldbuilding_agent.py`
+  - `packages/core/narrare_core/agents/worldbuilding_types.py`
+  - `packages/core/narrare_core/prompts/_bundled/kb/en/worldbuilding/phase1/system.md`
+  - `packages/core/narrare_core/prompts/_bundled/kb/en/worldbuilding/phase2/system.md`
+  - `apps/api/narrare/kb/worldbuilding_analyzer.py`
+  - `apps/api/narrare/kb/worldbuilding_service.py`
+  - `apps/api/narrare/kb/worldbuilding_cache.py`
+  - `apps/api/narrare/kb/worldbuilding_contracts.py`
+  - `apps/api/narrare/kb/router_worldbuilding.py`
+  - `packages/web/components/studio/kb/WorldbuildingAnalysisPanel.tsx`
+  - `packages/web/components/studio/kb/WorldbuildingAnalysisCards.tsx`
 
 ## Related Features
 
@@ -177,4 +189,5 @@ system affects politics, how geography influences trade routes, etc.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
-- `2026-05-26` — KB-006a (View & Navigation) implemented: 3-column browser with category sidebar, entry list, detail panel, and search. KB-006b (AI Assistant) remains planned.
+- `2026-05-26` — KB-006a (View & Navigation) implemented: 3-column browser with category sidebar, entry list, detail panel, and search
+- `2026-05-27` — KB-006b (AI Assistant) implemented with full gap detection, connection suggestions, and consistency checking pipeline
