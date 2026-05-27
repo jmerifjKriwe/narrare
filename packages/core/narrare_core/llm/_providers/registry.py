@@ -16,6 +16,7 @@ per-user credentials from the database.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -118,6 +119,23 @@ def get(name: str) -> ProviderFactory:
             f"Unknown provider '{name}'. Available: {available}. "
             "Register new providers in llm/_providers/registry.py."
         )
+
+    # E2E test mode: override all providers with TestModel
+    # (no real LLM calls — prevents 401 errors from unset API keys).
+    if os.environ.get("NARRARE_E2E_TEST"):
+        from pydantic_ai.models.test import TestModel
+
+        def _test_model_factory(
+            model_id: str,
+            *,
+            api_key: str | None = None,
+            base_url: str | None = None,
+        ) -> Model:
+            """Return TestModel — no real LLM calls during E2E tests."""
+            return TestModel()
+
+        return _test_model_factory
+
     return _REGISTRY[name]
 
 

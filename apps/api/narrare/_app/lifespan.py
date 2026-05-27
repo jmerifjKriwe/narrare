@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -139,6 +140,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from narrare._app.config import get_settings
 
     settings = get_settings()
+
+    # Log E2E test mode if active
+    if os.environ.get("NARRARE_E2E_TEST"):
+        logger.info(
+            "e2e_test_mode_active",
+            message="ALL LLM providers returning TestModel — no real API calls will be made.",
+        )
 
     # Auto-migrate database on startup — skip in test environment where
     # the test infrastructure (conftest check_db_available) handles this.

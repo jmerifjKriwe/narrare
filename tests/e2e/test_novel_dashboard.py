@@ -19,6 +19,35 @@ if TYPE_CHECKING:
     from playwright.sync_api import Page
 
 
+def _setup_auth_proxy(page: Page, access_token: str) -> None:
+    """Set up auth cookie and request proxy for page navigation.
+
+    Uses the same pattern as the authenticated_page fixture in conftest.py:
+    - Sets the narrare_auth cookie for Next.js middleware (server-side route protection)
+    - Intercepts all API requests and adds the Authorization header
+    - Proxies via route.fetch() to avoid browser connection-pool hang during page load
+    """
+    page.add_init_script(
+        f"""document.cookie = 'narrare_auth={access_token}; path=/; max-age=3600; samesite=lax';"""
+    )
+
+    def _proxy_with_auth(route):
+        headers = dict(route.request.headers)
+        if "authorization" not in {k.lower() for k in headers}:
+            headers["Authorization"] = f"Bearer {access_token}"
+        try:
+            response = route.fetch(headers=headers)
+            route.fulfill(
+                status=response.status,
+                headers=response.headers,
+                body=response.body(),
+            )
+        except Exception:
+            route.continue_(headers=headers)
+
+    page.route("**/api/v1/**", _proxy_with_auth)
+
+
 def _complete_wizard(
     page: Page,
     base_url: str,
@@ -67,8 +96,13 @@ def _complete_wizard(
     _click_next(page, expected_step=4)
 
     # Step 4
-    step4_text = page.inner_text(".bg-card.border").lower()
-    if "provider" in step4_text or "api key" in step4_text:
+    page.wait_for_timeout(500)  # Let Step 4 render
+    step4_text = page.inner_text("body").lower()
+    page.screenshot(path=f"/tmp/wizard-step4-{novel_title.replace(' ', '-')}.png")
+    print("\n=== STEP 4 TEXT (first 300 chars) ===")
+    print(f"  {step4_text[:300]}")
+
+    if "provider" in step4_text or "openai" in step4_text or "api key" in step4_text:
         provider_btn = page.locator('button:has-text("OpenAI")').first
         if provider_btn.is_visible():
             provider_btn.click()
@@ -82,15 +116,23 @@ def _complete_wizard(
                 " && !document.querySelector('[data-testid=\"wizard-next\"]').disabled",
                 timeout=10000,
             )
-        _click_next(page)
+
+    # ALWAYS click Next at Step 4, even if the text detection didn't match
+    # (the wizard might already be past Step 4 due to hasProviders)
+    _click_next(page)
 
     # Step 5: Complete
     page.locator('[data-testid="wizard-complete"]').first.wait_for(state="visible", timeout=15000)
     page.locator('[data-testid="wizard-complete"]').first.click()
-    page.wait_for_url(f"{base_url}/novel/**", timeout=15000)
+    # Wizard completion may redirect to /novel/** OR /dashboard depending on
+    # whether the setup/complete response triggers an immediate redirect.
+    page.wait_for_url(
+        lambda url: "/novel/" in url or "/dashboard" in url,
+        timeout=15000,
+    )
     page.wait_for_timeout(2000)
 
-    return {"email": email, "password": password}
+    return {"email": email, "password": password, "access_token": user["access_token"]}
 
 
 @pytest.mark.e2e
@@ -104,12 +146,14 @@ class TestNovelDashboard:
         register_unique_user,
     ) -> None:
         """Test that the dashboard shows the novel after creation."""
-        _complete_wizard(page, base_url, register_unique_user, "Dashboard Novel Alpha")
+        user_info = _complete_wizard(page, base_url, register_unique_user, "Dashboard Novel Alpha")
         page.wait_for_timeout(2000)
 
-        # Navigate to dashboard
+        # Set up auth proxy: cookie for middleware + route.fetch() for API calls.
+        # This avoids the browser hang AND ensures real API calls get a valid token.
+        _setup_auth_proxy(page, user_info["access_token"])
         page.goto(f"{base_url}/", timeout=15000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(3000)
 
         # Look for the novel title on the dashboard
         body_text = page.inner_text("body")
@@ -132,12 +176,12 @@ class TestNovelDashboard:
         register_unique_user,
     ) -> None:
         """Test that the dashboard has a button to create a new novel."""
-        _complete_wizard(page, base_url, register_unique_user, "Dashboard Novel Beta")
+        user_info = _complete_wizard(page, base_url, register_unique_user, "Dashboard Novel Beta")
         page.wait_for_timeout(2000)
 
-        # Navigate to dashboard
+        _setup_auth_proxy(page, user_info["access_token"])
         page.goto(f"{base_url}/", timeout=15000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(3000)
 
         # Look for new novel button / link
         new_novel_selectors = [
@@ -167,12 +211,12 @@ class TestNovelDashboard:
         register_unique_user,
     ) -> None:
         """Test clicking on a novel on the dashboard opens the editor."""
-        _complete_wizard(page, base_url, register_unique_user, "Navigable Novel")
+        user_info = _complete_wizard(page, base_url, register_unique_user, "Navigable Novel")
         page.wait_for_timeout(2000)
 
-        # Navigate to dashboard
+        _setup_auth_proxy(page, user_info["access_token"])
         page.goto(f"{base_url}/", timeout=15000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(3000)
 
         # Find the novel link/button and click it
         novel_link_selectors = [

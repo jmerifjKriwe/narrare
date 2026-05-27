@@ -4,6 +4,15 @@ Playwright E2E tests run against the full stack (API + Frontend + PostgreSQL + R
 They are NOT part of the default test run — use: pytest tests/e2e/ -v -m e2e
 
 All LLM responses are mocked via page.route() — no real API tokens are consumed.
+
+KNOWN ISSUES / WORKAROUNDS:
+- API calls through the Next.js proxy during browser page load can hang
+  (concurrent fetch requests at +0.4s that include a POST with no body).
+  Fixed: all authenticated_page fixtures use route.fetch() which bypasses
+  the browser's network stack and avoids the hang.
+- The first API database connection can take ~30s (asyncpg connection pool
+  cold start). Fixed: warmup_api() fixture makes a health-check request
+  before any test begins.
 """
 
 from __future__ import annotations
@@ -13,6 +22,7 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 import pytest
+import requests as http_requests
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -30,6 +40,30 @@ API_URL = os.environ.get("E2E_API_URL", "http://localhost:8000")
 # Dev user credentials (seeded by scripts/seed_dev_user.py)
 DEV_EMAIL = "dev@narrare.dev"
 DEV_PASSWORD = "narrare-dev"
+
+
+# ---------------------------------------------------------------------------
+# Session-scoped warmup (cold-start database connection pool)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session", autouse=True)
+def warmup_api() -> None:
+    """Make a warmup API request to initialize the database connection pool.
+
+    The first API call after a cold start can take ~30s because asyncpg
+    establishes its initial connection pool. This fixture runs automatically
+    before any test, pre-warming the pool so test requests are fast.
+
+    Uses contextlib.suppress per RULE-11: the warmup is advisory, not
+    required — the health endpoint might not exist.
+    """
+    import contextlib
+
+    # Non-blocking warmup — the health endpoint might not exist.
+    # Using suppress per RULE-11: the warmup is advisory, not required.
+    with contextlib.suppress(Exception):
+        http_requests.get(f"{API_URL}/health", timeout=60)
 
 
 # ---------------------------------------------------------------------------
@@ -78,16 +112,20 @@ def fresh_page(browser: Browser, browser_context_args: dict[str, Any]) -> Genera
 def authenticated_page(browser: Browser, browser_context_args: dict[str, Any]) -> Generator[Page]:
     """Browser page with a valid JWT session via the dev user.
 
-    Logs in via the API, then sets the access token in the browser's
-    execution context so the frontend auth store picks it up.
+    Logs in via the API, then uses page.route() to:
+    1. Add the Authorization header to all API requests
+    2. Proxy via route.fetch() (Playwright's network) to avoid browser
+       connection pool hangs during page load.
+
+    The narrare_auth cookie is also set so Next.js middleware (server-side
+    route protection) works correctly.
     """
     context = browser.new_context(**browser_context_args)  # type: ignore[arg-type]
     page = context.new_page()
 
-    # Navigate to the app first so we have a JS context
-    page.goto(BASE_URL)
-
-    # Login via API (synchronous request through the Next.js rewrite proxy)
+    # -----------------------------------------------------------------------
+    # Step 1: Log in via the API (direct HTTP, not through the browser).
+    # -----------------------------------------------------------------------
     login_response = page.request.post(
         f"{BASE_URL}/api/v1/auth/login",
         data={"email": DEV_EMAIL, "password": DEV_PASSWORD},
@@ -103,42 +141,53 @@ def authenticated_page(browser: Browser, browser_context_args: dict[str, Any]) -
     tokens = login_response.json()
     access_token = tokens["access_token"]
 
-    # Inject token into the frontend's auth store via page.evaluate
-    # The frontend stores the token in memory via setAccessToken()
-    page.evaluate(
-        """(token) => {
-            // Set the token in the API client's in-memory store
-            // by dispatching through the zustand store or direct injection
-            window.__E2E_ACCESS_TOKEN__ = token;
+    # -----------------------------------------------------------------------
+    # Step 2: Set up route handlers BEFORE any page navigation.
+    # This is critical — the route handler must intercept API requests
+    # from the very first page load, not just subsequent navigations.
+    # -----------------------------------------------------------------------
 
-            // Use the auth store to set the token properly
-            // This works because the store is globally accessible via zustand
-            const stores = document.querySelectorAll('[data-store]');
-            if (stores.length > 0) {
-                // zustand store found, use the API directly
-            }
-        }""",
-        access_token,
+    # Set the narrare_auth cookie so Next.js middleware (server-side route
+    # protection) works on the initial page load.
+    # We embed the token directly in the script string because
+    # add_init_script does not accept runtime arguments.
+    page.add_init_script(
+        f"""document.cookie = 'narrare_auth={access_token}; path=/; max-age=3600; samesite=lax';"""
     )
 
-    # Set the narrare_auth cookie for Next.js middleware (server-side route protection)
-    # This mirrors what setAccessToken() does in packages/web/lib/api/client.ts
-    page.evaluate(
-        """(token) => {
-            document.cookie = `narrare_auth=${token}; path=/; max-age=3600; samesite=lax`;
-        }""",
-        access_token,
-    )
+    def _proxy_with_auth(route):
+        """Intercept API requests: add auth header, proxy via Playwright network.
 
-    # Intercept all /api/v1/ requests and add the Authorization header
-    def _add_auth_header(route):
-        headers = {
-            **route.request.headers,
-            "Authorization": f"Bearer {access_token}",
-        }
-        route.continue_(headers=headers)
+        Uses route.fetch() (Playwright's HTTP client) instead of
+        route.continue_() to avoid the browser connection-pool hang
+        that occurs when the app fires fetch requests concurrently at
+        +0.4s during page load.
+        """
+        headers = dict(route.request.headers)
+        # Add the auth header if not already present
+        if "authorization" not in {k.lower() for k in headers}:
+            headers["Authorization"] = f"Bearer {access_token}"
+        try:
+            response = route.fetch(headers=headers)
+            route.fulfill(
+                status=response.status,
+                headers=response.headers,
+                body=response.body(),
+            )
+        except Exception:
+            route.continue_(headers=headers)
 
-    page.route("**/api/v1/**", _add_auth_header)
+    page.route("**/api/v1/**", _proxy_with_auth)
+
+    # -----------------------------------------------------------------------
+    # Step 3: Now navigate to the app. The route handler is already active,
+    # so the initial fetch requests will be intercepted and proxied via
+    # Playwright's network stack (no browser connection-pool hang).
+    # -----------------------------------------------------------------------
+    page.goto(BASE_URL)
+
+    # Wait for the auth store to initialize (loadUser completes)
+    page.wait_for_timeout(1000)
 
     yield page
     context.close()

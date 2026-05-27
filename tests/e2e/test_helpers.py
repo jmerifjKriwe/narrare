@@ -5,6 +5,7 @@ Shared utilities used across multiple E2E test modules to avoid code duplication
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -75,3 +76,74 @@ def _click_next(page: Page, expected_step: int | None = None) -> None:
 def _wait_for_wizard_ready(page: Page, timeout: int = 15000) -> None:
     """Wait for the wizard to fully load (step 1 indicator visible)."""
     page.locator('[data-testid="wizard-step-1"]').first.wait_for(state="visible", timeout=timeout)
+
+
+# ---------------------------------------------------------------------------
+# Dashboard API mocks
+# ---------------------------------------------------------------------------
+# These make dashboard navigation fast and deterministic in E2E tests,
+# avoiding the real API's cold-start (~30s) and the POST /auth/refresh
+# hanging issue during page load. Only call before page.goto(…"/"…).
+# ---------------------------------------------------------------------------
+
+
+def setup_dashboard_api_mocks(page: Page, *, mock_novels: bool = False) -> None:
+    """Mock the API endpoints called during dashboard page load.
+
+    The dashboard triggers these requests on page load:
+      1. POST /api/v1/auth/refresh — refresh httpOnly cookie → new access_token
+      2. GET  /api/v1/auth/me      — fetch current user
+      3. GET  /api/v1/novels       — list novels for the dashboard
+
+    Mocks (1) and (2) are **always** set up — they prevent the POST
+    /auth/refresh hanging issue during page load (no-body POST through the
+    Next.js dev proxy).
+
+    Mock (3) is optional — pass ``mock_novels=True`` to return an empty
+    novels list. Use this for tests that only check UI structure (buttons,
+    navigation) and don't need real novel data.
+
+    Must be called **before** ``page.goto`` so the route is registered in time.
+    """
+    _setup_auth_mocks(page)
+    if mock_novels:
+        _setup_novels_mock(page)
+
+
+def _setup_auth_mocks(page: Page) -> None:
+    """Mock POST /auth/refresh and GET /auth/me."""
+    page.route(
+        "**/api/v1/auth/refresh",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"access_token": "e2e-mock-access-token", "token_type": "bearer"}),
+        ),
+    )
+    page.route(
+        "**/api/v1/auth/me",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps(
+                {
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "email": "dashboard-mock@example.com",
+                    "display_name": "Dashboard Mock User",
+                    "is_active": True,
+                }
+            ),
+        ),
+    )
+
+
+def _setup_novels_mock(page: Page) -> None:
+    """Mock GET /novels to return an empty list."""
+    page.route(
+        "**/api/v1/novels**",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps([]),
+        ),
+    )

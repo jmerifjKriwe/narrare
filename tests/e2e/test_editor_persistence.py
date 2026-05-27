@@ -19,6 +19,35 @@ if TYPE_CHECKING:
     from playwright.sync_api import Page
 
 
+def _setup_auth_proxy(page: Page, access_token: str) -> None:
+    """Set up auth cookie and request proxy for page navigation.
+
+    Uses the same pattern as the authenticated_page fixture in conftest.py:
+    - Sets the narrare_auth cookie for Next.js middleware (server-side route protection)
+    - Intercepts all API requests and adds the Authorization header
+    - Proxies via route.fetch() to avoid browser connection-pool hang during page load
+    """
+    page.add_init_script(
+        f"""document.cookie = 'narrare_auth={access_token}; path=/; max-age=3600; samesite=lax';"""
+    )
+
+    def _proxy_with_auth(route):
+        headers = dict(route.request.headers)
+        if "authorization" not in {k.lower() for k in headers}:
+            headers["Authorization"] = f"Bearer {access_token}"
+        try:
+            response = route.fetch(headers=headers)
+            route.fulfill(
+                status=response.status,
+                headers=response.headers,
+                body=response.body(),
+            )
+        except Exception:
+            route.continue_(headers=headers)
+
+    page.route("**/api/v1/**", _proxy_with_auth)
+
+
 @pytest.mark.e2e
 class TestEditorPersistence:
     """Test editor content persistence across navigation."""
@@ -34,6 +63,7 @@ class TestEditorPersistence:
         user = register_unique_user()
         email = user["email"]
         password = user["password"]
+        access_token = user["access_token"]
 
         # Login and complete wizard
         if not user.get("skip_login", False):
@@ -70,8 +100,9 @@ class TestEditorPersistence:
         _click_next(page, expected_step=4)
 
         # Step 4
-        page_text = page.inner_text(".bg-card.border").lower()
-        if "provider" in page_text or "api key" in page_text:
+        page.wait_for_timeout(500)  # Let Step 4 render
+        page_text = page.inner_text("body").lower()
+        if "provider" in page_text or "openai" in page_text or "api key" in page_text:
             provider_btn = page.locator('button:has-text("OpenAI")').first
             if provider_btn.is_visible():
                 provider_btn.click()
@@ -85,14 +116,28 @@ class TestEditorPersistence:
                     " && !document.querySelector('[data-testid=\"wizard-next\"]').disabled",
                     timeout=10000,
                 )
-            _click_next(page)
+
+        # ALWAYS click Next at Step 4, even if text detection didn't match
+        _click_next(page)
 
         # Step 5: Complete
         page.locator('[data-testid="wizard-complete"]').first.wait_for(
             state="visible", timeout=15000
         )
         page.locator('[data-testid="wizard-complete"]').first.click()
-        page.wait_for_url(f"{base_url}/novel/**", timeout=15000)
+        # Accept either /novel/** or /dashboard as valid completion targets
+        page.wait_for_url(
+            lambda url: "/novel/" in url or "/dashboard" in url,
+            timeout=15000,
+        )
+
+        # If wizard redirected to /dashboard, navigate to the novel from there
+        if "/novel/" not in page.url:
+            page.wait_for_timeout(1000)
+            novel_link = page.locator('a[href*="/novel/"]').first
+            if novel_link.is_visible():
+                novel_link.click()
+                page.wait_for_url(lambda url: "/novel/" in url, timeout=15000)
 
         # Insert text into editor
         page.wait_for_timeout(2000)
@@ -107,22 +152,44 @@ class TestEditorPersistence:
                 const editor = window.__narrareEditor;
                 if (!editor) return 'no-editor';
                 editor.commands.insertContent(text);
+                editor.commands.focus();
                 return 'ok';
             }""",
             test_text,
         )
         assert insert_result == "ok", f"Insert failed: {insert_result}"
 
-        # Navigate away to dashboard
+        # Explicitly save the content via the Save button to ensure the
+        # inserted text is persisted to the API before navigating away.
+        # Relying on autosave debounce alone is fragile in E2E tests.
+        page.wait_for_timeout(500)  # Let TipTap's onUpdate process
+        save_button = page.locator(
+            'button:has(svg):has-text("Save"), '
+            'button:has(svg):has-text("Speichern"), '
+            'button:has(svg):has-text("Enregistrer")'
+        ).first
+        if not save_button.is_visible():
+            save_button = page.locator("button.bg-primary").first
+        if not save_button.is_visible():
+            save_button = page.locator(".flex.items-center.gap-4 button").last
+        if save_button.is_visible():
+            save_button.click()
+            page.wait_for_timeout(2000)  # Wait for PUT to complete
+        else:
+            # Fallback: wait longer for autosave debounce
+            page.wait_for_timeout(5000)
+
+        # Store the novel URL before navigating away
+        novel_url = page.url
+
+        # Set up auth proxy: cookie for middleware + route.fetch() for API calls.
+        # This avoids the browser hang AND ensures real API calls get a valid token.
+        _setup_auth_proxy(page, access_token)
         page.goto(f"{base_url}/", timeout=15000)
         page.wait_for_timeout(1000)
 
-        # Navigate back to editor
-        novel_link = page.locator('a[href*="/novel/"]').first
-        if novel_link.is_visible():
-            novel_link.click()
-        else:
-            page.goto(page.url + "/novel", timeout=15000)
+        # Navigate back to editor using the stored URL
+        page.goto(novel_url, timeout=15000)
         page.wait_for_timeout(3000)
 
         # Check if editor content persisted

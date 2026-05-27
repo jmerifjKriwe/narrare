@@ -104,6 +104,32 @@ generate-secret:
 # Development servers
 # ---------------------------------------------------------------------------
 
+# Start API in E2E test mode (no real LLM calls) + frontend
+dev-e2e:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Starting all services in E2E TEST MODE (no real LLM calls)..."
+    just _ensure-services
+
+    mkdir -p logs
+    > logs/dev.log
+
+    cleanup() {
+        echo ""
+        echo "⏹  Shutting down..."
+        for pid in $(jobs -p); do
+            kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+        done
+        wait 2>/dev/null || true
+        echo "⏹  Stopped."
+        exit 0
+    }
+    trap cleanup INT TERM
+
+    NARRARE_E2E_TEST=1 just dev-api &
+    just dev-frontend &
+    wait
+
 # Start all services (API + frontend)
 dev:
     #!/usr/bin/env bash

@@ -85,11 +85,15 @@ async function refreshAccessToken(): Promise<void> {
   _isRefreshing = true;
   _refreshPromise = (async () => {
     try {
+      // IMPORTANT: Must include Content-Type + empty body. The Next.js dev
+      // proxy can hang on POST requests without Content-Type during page load
+      // when the response takes more than a few seconds (e.g. cold DB start).
+      // The httpOnly refresh cookie is sent via credentials: "include".
       const res = await fetch("/api/v1/auth/refresh", {
         method: "POST",
         credentials: "include",
-        // No Content-Type header — no body. The httpOnly cookie is sent
-        // automatically via credentials: "include".
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
       });
       if (!res.ok) throw new Error("Refresh failed");
       const data: TokenResponse = await res.json();
