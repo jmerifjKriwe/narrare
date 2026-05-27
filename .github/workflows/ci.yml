@@ -170,6 +170,20 @@ jobs:
           badge-title: "Coverage"
           hide-emoji: true
           report-only-changed-files: true
+          remove-links-to-files: true
+          remove-links-to-lines: true
+          xml-skip-covered: true
+
+      - name: Upload coverage artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-artifacts
+          path: |
+            coverage.xml
+            pytest-coverage.txt
+            pytest.xml
+          retention-days: 1
 
   # -------------------------------------------------------------------------
   # Integration tests (< 5 min, with Docker)
@@ -242,24 +256,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@v7
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
         with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --all-packages --group dev
-
-      - name: Run unit tests
-        env:
-          ANTHROPIC_API_KEY: sk-test-dummy
-          OPENAI_API_KEY: sk-test-dummy
-        run: |
-          set -o pipefail
-          uv run pytest tests/unit/ \
-            --cov \
-            --cov-report=term-missing:skip-covered \
-            --junitxml=pytest.xml \
-            -v | tee pytest-coverage.txt
+          name: coverage-artifacts
 
       - name: Pytest coverage comment
         id: coverage
