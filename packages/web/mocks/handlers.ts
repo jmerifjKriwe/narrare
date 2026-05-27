@@ -120,15 +120,10 @@ export const handlers = [
     });
   }),
 
-  http.post("*/api/v1/auth/refresh", async ({ request }) => {
-    // Simulate production behavior: refresh requires credentials: "include"
-    // so the httpOnly cookie is sent. In tests we verify the request was
-    // made without a body (cookie-based, not JSON body-based).
-    const contentType = request.headers.get("Content-Type");
-    // Cookie-based refresh should NOT send Content-Type (no body)
-    if (contentType) {
-      return HttpResponse.json({ detail: "Unexpected body" }, { status: 400 });
-    }
+  http.post("*/api/v1/auth/refresh", async () => {
+    // Simulate successful cookie-based refresh.
+    // The client sends Content-Type: application/json with an empty body
+    // to avoid Next.js dev proxy hangs — the handler accepts this.
     return HttpResponse.json({
       access_token: "refreshed-access-token",
       refresh_token: "refreshed-refresh-token",

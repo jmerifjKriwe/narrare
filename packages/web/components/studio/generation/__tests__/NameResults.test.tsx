@@ -12,8 +12,8 @@
  * 8. Renders Save to KB button for each name
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { NameResults } from "@/components/studio/generation/NameResults";
 import type { NameGenerateResponse } from "@/types";
 

@@ -184,8 +184,7 @@ describe("analysisApi", () => {
 
       server.use(
         http.post("*/api/v1/analysis/beta-reader/deep-dive", async ({ request }) => {
-          capturedUrl =
-            new URL(request.url).pathname + "?" + new URL(request.url).searchParams.toString();
+          capturedUrl = `${new URL(request.url).pathname}?${new URL(request.url).searchParams.toString()}`;
           capturedBody = (await request.json()) as Record<string, unknown>;
           return HttpResponse.json(mockDeepDiveResponse);
         }),

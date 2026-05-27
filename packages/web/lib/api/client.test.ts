@@ -184,7 +184,7 @@ describe("API Client", () => {
       clearAccessToken();
     });
 
-    it("should send refresh request without Content-Type header", async () => {
+    it("should successfully refresh via cookie", async () => {
       // Calling restoreSession when no access token exists triggers refresh
       const result = await restoreSession();
 
