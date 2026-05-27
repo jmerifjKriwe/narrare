@@ -413,6 +413,7 @@ export function EditorView({ novelId }: EditorViewProps) {
       <div className="border-b border-border px-8 py-4 flex items-center justify-between bg-card">
         <input
           type="text"
+          data-testid="chapter-title-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="bg-transparent border-none outline-none flex-1 mr-4 text-lg font-medium"
@@ -443,6 +444,7 @@ export function EditorView({ novelId }: EditorViewProps) {
           </button>
           <button
             type="button"
+            data-testid="save-button"
             onClick={handleSave}
             className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity shadow-sm"
           >

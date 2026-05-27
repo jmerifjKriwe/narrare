@@ -144,6 +144,7 @@ export function DashboardView() {
               {novels.map((novel: NovelSummary) => (
                 <div
                   key={novel.id}
+                  data-testid="novel-card"
                   className="group bg-card border border-border rounded-lg p-6 hover:shadow-md transition-shadow relative"
                 >
                   {/* Edit button */}
@@ -162,6 +163,7 @@ export function DashboardView() {
                   {/* Delete button */}
                   <button
                     type="button"
+                    data-testid="delete-novel-btn"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteNovel(novel.id, novel.title);
@@ -196,6 +198,7 @@ export function DashboardView() {
               {/* New novel card */}
               <button
                 type="button"
+                data-testid="new-novel-btn"
                 onClick={handleNewNovel}
                 className="flex flex-col items-center justify-center bg-card border-2 border-dashed border-border rounded-lg p-6 hover:border-primary/50 hover:bg-accent transition-colors min-h-[180px]"
               >

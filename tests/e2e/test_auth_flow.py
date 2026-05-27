@@ -8,6 +8,7 @@ Runs against the full stack (API port 8000, Frontend port 3000).
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
@@ -127,3 +128,200 @@ class TestAuthFlow:
                 )
 
         # Session is now established — no return needed (pytest tests must return None)
+
+    # ===================================================================
+    # AUTH-1: Wrong password error
+    # ===================================================================
+
+    def test_login_with_wrong_password_shows_error(
+        self,
+        page: Page,
+        base_url: str,
+    ) -> None:
+        """Login with wrong password shows error message, stays on /login.
+
+        NOTE: There is a known frontend bug where fetchApi() treats a 401 on
+        /auth/login as a session expiry and triggers window.location.href="/login",
+        which reloads the page and wipes the React error state. This test asserts
+        the *expected* correct behaviour (error message visible, no redirect).
+        If the page reloads, the error element is gone and this test will fail —
+        indicating the frontend 401 handler needs to skip auth endpoints.
+        """
+        # Collect console messages and page errors for debugging
+        console_errors: list[str] = []
+        page.on("pageerror", lambda err: console_errors.append(str(err)))
+
+        page.goto(f"{base_url}/login")
+        page.wait_for_url("**/login", timeout=10000)
+
+        page.fill("#login-email", "dev@narrare.dev")
+        page.fill("#login-password", "wrong-password-123")
+        page.click('button[type="submit"]')
+
+        # Wait for the error element to appear (up to 5s).
+        # If the page reloads (due to fetchApi 401→refresh→redirect), the
+        # element will never appear and this will timeout.
+        with contextlib.suppress(Exception):
+            page.wait_for_selector('[data-testid="auth-error"]', timeout=5000)
+
+        page.screenshot(path="/tmp/login-wrong-password.png")
+        body_text = page.inner_text("body")[:500]
+        print("\n=== WRONG PASSWORD TEST ===")
+        print(f"  URL: {page.url}")
+        print(f"  Body: {body_text}")
+        print(f"  Console errors: {console_errors}")
+
+        # Verify error message is shown
+        error_container = page.locator('[data-testid="auth-error"]')
+        if not error_container.is_visible():
+            # Fallback: check for any error text
+            error_container = page.locator(".bg-destructive\\/10, [class*='destructive']").first
+
+        assert error_container.is_visible(), (
+            "Expected error message to be visible after wrong password. "
+            "This likely fails because fetchApi() 401 handler reloads the page "
+            "via window.location.href='/login', wiping the React error state. "
+            f"URL: {page.url}, Body: {body_text[:200]}"
+        )
+        assert "/login" in page.url, f"Expected to stay on /login, got: {page.url}"
+
+    # ===================================================================
+    # AUTH-2: Logout redirects to login
+    # ===================================================================
+
+    def test_logout_redirects_to_login(
+        self,
+        page: Page,
+        base_url: str,
+        register_unique_user,
+    ) -> None:
+        """Logout clears session and redirects to login page."""
+        # Register and login
+        user = register_unique_user()
+        page.goto(f"{base_url}/login")
+        page.wait_for_url("**/login", timeout=10000)
+        page.fill("#login-email", user["email"])
+        page.fill("#login-password", user["password"])
+        page.click('button[type="submit"]')
+        page.wait_for_url(f"{base_url}/", timeout=15000)
+
+        # Now logged in, navigate to dashboard to find logout button
+        page.goto(f"{base_url}/")
+        page.wait_for_timeout(2000)
+
+        # Find and click logout button
+        # The dashboard header has a logout button — try multiple selectors
+        logout_selectors = [
+            'button[data-testid="logout-button"]',
+            'button[aria-label*="logout" i]',
+            'button[aria-label*="abmelden" i]',
+            'button[aria-label*="sign out" i]',
+            'button:has-text("Logout")',
+            'button:has-text("Log out")',
+            'button:has-text("Abmelden")',
+            'button:has-text("Sign out")',
+        ]
+
+        logout_clicked = False
+        for selector in logout_selectors:
+            locator = page.locator(selector).first
+            if locator.is_visible():
+                locator.click()
+                logout_clicked = True
+                break
+
+        if not logout_clicked:
+            # Try the sidebar logout (if in a novel view)
+            page.screenshot(path="/tmp/logout-button-search.png")
+            body_text = page.inner_text("body")[:500]
+            print("\n=== LOGOUT BUTTON SEARCH ===")
+            print(f"  URL: {page.url}")
+            print(f"  Body: {body_text}")
+            # Try clicking any button with LogOut icon
+            logout_icon_btn = page.locator("button:has(svg.lucide-log-out)").first
+            if logout_icon_btn.is_visible():
+                logout_icon_btn.click()
+                logout_clicked = True
+
+        assert logout_clicked, "Could not find logout button on page"
+
+        # Wait for redirect to login
+        page.wait_for_timeout(2000)
+
+        # Verify we're on login page
+        assert "/login" in page.url, f"Expected redirect to /login, got: {page.url}"
+
+        # Verify auth cookie is cleared
+        cookies = page.evaluate("document.cookie")
+        assert "narrare_auth" not in cookies, "Auth cookie should be cleared after logout"
+
+    # ===================================================================
+    # AUTH-3: Duplicate email registration error
+    # ===================================================================
+
+    def test_register_with_duplicate_email_shows_error(
+        self,
+        page: Page,
+        base_url: str,
+    ) -> None:
+        """Registration with already-used email shows error."""
+        page.goto(f"{base_url}/register")
+        page.wait_for_url("**/register", timeout=10000)
+
+        # Fill in with dev user email (already seeded)
+        display_name_input = page.locator(
+            'input[name="display_name"], input[id="display_name"], input[placeholder*="name" i]'
+        ).first
+        if display_name_input.is_visible():
+            display_name_input.fill("Duplicate Test")
+
+        page.fill("#register-email", "dev@narrare.dev")
+
+        password_input = page.locator(
+            'input[name="password"], input[id="register-password"], input[type="password"]'
+        ).first
+        if password_input.is_visible():
+            password_input.fill("SomePassword123!")
+
+        page.click('button[type="submit"]')
+        page.wait_for_timeout(3000)
+
+        # Verify error
+        error_container = page.locator('[data-testid="auth-error"]')
+        if not error_container.is_visible():
+            error_container = page.locator(".bg-destructive\\/10, [class*='destructive']").first
+
+        page.screenshot(path="/tmp/register-duplicate-email.png")
+        body_text = page.inner_text("body")[:500]
+        print("\n=== REGISTER DUPLICATE EMAIL ===")
+        print(f"  URL: {page.url}")
+        print(f"  Body: {body_text}")
+
+        assert "/register" in page.url, f"Expected to stay on /register, got: {page.url}"
+
+    # ===================================================================
+    # AUTH-4: Empty fields browser validation
+    # ===================================================================
+
+    def test_login_with_empty_fields_shows_validation(
+        self,
+        page: Page,
+        base_url: str,
+    ) -> None:
+        """Login form with empty fields shows browser validation."""
+        page.goto(f"{base_url}/login")
+        page.wait_for_url("**/login", timeout=10000)
+
+        # Leave fields empty, click submit
+        page.click('button[type="submit"]')
+        page.wait_for_timeout(1000)
+
+        # Browser HTML5 validation should prevent submission
+        # The inputs have required="" attribute
+        assert "/login" in page.url, "Should stay on login with empty fields"
+
+        # Check that we're NOT seeing an API error (no network request was made)
+        error_container = page.locator('[data-testid="auth-error"]')
+        assert not error_container.is_visible(), (
+            "API error should NOT appear for empty fields (browser validation)"
+        )

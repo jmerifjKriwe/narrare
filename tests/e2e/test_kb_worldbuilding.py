@@ -12,85 +12,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.e2e.mocks.llm_responses import setup_llm_mocks
-from tests.e2e.test_helpers import _click_next, _wait_for_wizard_ready
+from tests.e2e.test_helpers import (
+    _complete_wizard_to_editor,
+    _setup_auth_proxy,
+)
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
-
-
-def _complete_wizard_to_novel(
-    page: Page,
-    base_url: str,
-    register_unique_user,
-) -> dict[str, str]:
-    """Register, login, complete wizard, and return user info."""
-    setup_llm_mocks(page)
-    user = register_unique_user()
-    email = user["email"]
-    password = user["password"]
-
-    if not user.get("skip_login", False):
-        page.goto(f"{base_url}/login")
-        page.wait_for_url("**/login", timeout=10000)
-        page.fill("#login-email", email)
-        page.fill("#login-password", password)
-        page.click('button[type="submit"]')
-        page.wait_for_url(f"{base_url}/", timeout=15000)
-
-    page.goto(f"{base_url}/wizard")
-    _wait_for_wizard_ready(page)
-
-    # Step 1: Project name
-    project_input = page.locator(
-        'input[name="project_name"], input[id="project_name"], input[placeholder*="project" i]'
-    ).first
-    if project_input.is_visible():
-        project_input.fill("KB E2E Test Novel")
-    else:
-        text_inputs = page.locator('input[type="text"]')
-        if text_inputs.count() > 0:
-            text_inputs.first.fill("KB E2E Test Novel")
-    _click_next(page, expected_step=2)
-
-    # Step 2: Genre
-    fantasy_btn = page.locator('button:has-text("Fantasy")').first
-    if fantasy_btn.is_visible():
-        fantasy_btn.click()
-    _click_next(page, expected_step=3)
-
-    # Step 3: Title
-    title_input = page.locator(
-        'input[name="title"], input[id="title"], input[placeholder*="title" i]'
-    ).first
-    if title_input.is_visible():
-        title_input.fill("Worldbuilding E2E")
-    _click_next(page, expected_step=4)
-
-    # Step 4: Provider
-    step4_text = page.inner_text(".bg-card.border").lower()
-    if "provider" in step4_text or "api key" in step4_text:
-        provider_btn = page.locator('button:has-text("OpenAI")').first
-        if provider_btn.is_visible():
-            provider_btn.click()
-        api_key_input = page.locator(
-            'input[name="api_key"], input[id="api_key"], input[type="password"]'
-        ).first
-        if api_key_input.is_visible():
-            api_key_input.fill("sk-test-e2e-mock-key-not-real")
-            page.wait_for_function(
-                "document.querySelector('[data-testid=\"wizard-next\"]')"
-                " && !document.querySelector('[data-testid=\"wizard-next\"]').disabled",
-                timeout=10000,
-            )
-        _click_next(page)
-
-    # Step 5: Complete
-    page.locator('[data-testid="wizard-complete"]').first.wait_for(state="visible", timeout=15000)
-    page.locator('[data-testid="wizard-complete"]').first.click()
-    page.wait_for_url(f"{base_url}/novel/**", timeout=15000)
-
-    return {"email": email, "password": password}
 
 
 @pytest.mark.e2e
@@ -104,7 +32,8 @@ class TestKBWorldbuilding:
         register_unique_user,
     ) -> None:
         """Verify that the novel editor loads after wizard completion."""
-        _complete_wizard_to_novel(page, base_url, register_unique_user)
+        result = _complete_wizard_to_editor(page, base_url, register_unique_user)
+        _setup_auth_proxy(page, result["access_token"])
         page.wait_for_timeout(2000)
 
         # Check that we are on the novel editor URL
@@ -135,7 +64,8 @@ class TestKBWorldbuilding:
         register_unique_user,
     ) -> None:
         """Test navigating from the novel editor to the worldbuilding/KB view."""
-        _complete_wizard_to_novel(page, base_url, register_unique_user)
+        result = _complete_wizard_to_editor(page, base_url, register_unique_user)
+        _setup_auth_proxy(page, result["access_token"])
         page.wait_for_timeout(2000)
 
         # Look for a worldbuilding/KB navigation link or tab
@@ -193,7 +123,8 @@ class TestKBWorldbuilding:
         register_unique_user,
     ) -> None:
         """Test that KB entries are visible in the side panel or KB view."""
-        _complete_wizard_to_novel(page, base_url, register_unique_user)
+        result = _complete_wizard_to_editor(page, base_url, register_unique_user)
+        _setup_auth_proxy(page, result["access_token"])
         page.wait_for_timeout(2000)
 
         # Look for KB-related content in the UI

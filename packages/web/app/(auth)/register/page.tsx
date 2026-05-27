@@ -49,7 +49,10 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && (
-            <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm border-l-2 border-l-destructive">
+            <div
+              data-testid="auth-error"
+              className="bg-destructive/10 text-destructive rounded-md p-3 text-sm border-l-2 border-l-destructive"
+            >
               {error}
             </div>
           )}

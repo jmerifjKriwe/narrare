@@ -130,6 +130,7 @@ export function SettingsView({ novelId }: SettingsViewProps) {
               <button
                 type="button"
                 key={cat.id}
+                data-testid={`settings-tab-${cat.id}`}
                 onClick={() => setActiveCategory(cat.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all text-sm ${
                   isActive

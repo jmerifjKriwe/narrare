@@ -964,12 +964,121 @@ These test that functions handle arbitrary input correctly.
 
 ## E2E Tests
 
-E2E tests use **Playwright** with route mocking for LLM responses.
+> **Location:** `tests/e2e/`
+> **Tool:** Playwright (Python sync API)
+> **CI:** Main branch only — full stack (API + Frontend + PostgreSQL + Redis)
+> **Run time target:** < 5 minutes total
+> **Current status:** 16 tests passing, implemented in Phase 5
 
-**Location:** `tests/e2e/`
-**Status:** Implemented in Phase 5. Uses Playwright with route mocking for LLM responses.
-**CI:** Run only on main branch with full stack. LLM provider responses are mocked via Playwright route interception — no real LLM API calls.
-**Run time target:** < 5 minutes total.
+### Infrastructure — `NARRARE_E2E_TEST` Mode
+
+The environment variable `NARRARE_E2E_TEST=1` overrides **all** LLM provider factories in
+`registry.py` to return `pydantic_ai.TestModel()`. This prevents server-side LLM calls from
+hitting real providers with invalid API keys.
+
+| Aspect | Detail |
+|--------|--------|
+| Env var | `NARRARE_E2E_TEST=1` |
+| Effect | All `get_*_model()` factories return `TestModel()` |
+| Local start | `just dev-e2e` — starts API with the env var set |
+| CI | `NARRARE_E2E_TEST` is set in the `test-e2e` job environment |
+| Scope | Server-side only — does **not** affect browser-side requests |
+
+**Why Playwright route mocks alone aren't enough:** `page.route()` intercepts browser-side
+requests only. Server-side calls (API → LLM provider) bypass the browser entirely, so the
+env var override is essential.
+
+### Key Patterns
+
+#### Auth Proxy Pattern (`authenticated_page` fixture)
+
+Do **not** use `page.route()` mocks that return fake tokens — fake tokens cause `401` on
+subsequent real API calls. Instead, proxy API requests with a real `Authorization` header:
+
+```python
+# conftest.py — authenticated_page fixture (simplified)
+def _api_route_handler(real_token: str):
+    async def handle(route: Route):
+        headers = {**route.request.headers, "Authorization": f"Bearer {real_token}"}
+        response = await route.fetch(headers=headers)
+        await route.fulfill(response=response)
+    return handle
+
+page.route("**/api/v1/**", _api_route_handler(token))
+```
+
+Additionally, the `narrare_auth` cookie must be set via `page.add_init_script()` for
+Next.js middleware (server-side route protection).
+
+#### Wizard Step 4 Robustness
+
+Step 4 requires careful handling due to dynamic content:
+
+| Issue | Solution |
+|-------|----------|
+| Text detection fails | Use `page.inner_text("body")` — not `.bg-card.border` selector |
+| Button state unknown | Always call `_click_next()` **outside** conditional blocks at Step 4 |
+| Partial text match | Check for `"provider"`, `"openai"`, AND `"api key"` in step text |
+| Button not ready | Wait for Next button enabled via `wait_for_function` before clicking |
+
+The `_click_next()` call is **idempotent** — safe to call unconditionally at Step 4.
+
+#### Editor Content Persistence
+
+Programmatic `editor.commands.insertContent()` does **not** reliably trigger TipTap's
+autosave debounce. For deterministic persistence:
+
+1. Use the explicit **Save button** click instead of relying on autosave.
+2. **Store the novel URL** before navigating away.
+3. Use the stored URL for back-navigation — don't search for links on what might be the
+   login page.
+
+This follows **RULE-04** (hard limits enforce decomposition) and **RULE-06** (one
+responsibility) — editor helpers are in `test_helpers.py`, not inline in tests.
+
+#### Warmup Fixture
+
+`warmup_api()` is a session-scoped fixture that pre-warms the asyncpg connection pool
+(~30 s cold start). Per **RULE-11**, it uses `contextlib.suppress(Exception)` instead of
+bare `except Exception: pass`:
+
+```python
+@pytest.fixture(scope="session")
+def warmup_api():
+    with contextlib.suppress(Exception):
+        requests.get(f"{API_BASE}/healthz", timeout=60)
+```
+
+### File Structure
+
+```
+tests/e2e/
+├── conftest.py           ← Fixtures: fresh_page, authenticated_page, warmup_api, register_unique_user
+├── test_helpers.py       ← Shared helpers: _click_next, _wait_for_wizard_ready, setup_dashboard_api_mocks
+├── mocks/
+│   └── llm_responses.py  ← Canned LLM responses + Playwright route handlers
+├── test_auth_flow.py          ← Registration + login
+├── test_setup_wizard.py       ← Wizard steps 1-4
+├── test_wizard_completion.py  ← Wizard completion + redirect
+├── test_editor_autosave.py    ← Editor autosave
+├── test_editor_persistence.py ← Editor content persistence
+├── test_novel_dashboard.py    ← Dashboard display + navigation
+├── test_kb_worldbuilding.py   ← KB + worldbuilding
+└── test_hero_flow.py          ← End-to-end hero flow
+```
+
+### Running E2E Tests
+
+```bash
+# Start stack in E2E mode (API uses TestModel for all LLM calls)
+just dev-e2e
+
+# Run all E2E tests
+just test-e2e
+
+# Run specific test
+uv run pytest tests/e2e/test_auth_flow.py -v -m e2e --timeout=60
+```
 
 ---
 

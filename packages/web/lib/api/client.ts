@@ -150,6 +150,18 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
       }
       throw new Error("Session expired");
     }
+    // Auth endpoints: 401 means "wrong credentials", not "session expired"
+    if (endpoint === "/auth/login" || endpoint === "/auth/register") {
+      const err = await response.json().catch(() => ({ detail: response.statusText }));
+      if (typeof err.detail === "string") {
+        throw new Error(err.detail);
+      }
+      if (Array.isArray(err.detail)) {
+        const messages = err.detail.map((e: { msg?: string }) => e.msg).filter(Boolean);
+        throw new Error(messages.join("; ") || `HTTP ${response.status}`);
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
     try {
       await refreshAccessToken();
       headers.Authorization = `Bearer ${_accessToken}`;

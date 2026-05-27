@@ -248,6 +248,7 @@ export function Sidebar() {
                   <button
                     type="button"
                     key={chapter.id}
+                    data-testid="chapter-item"
                     onClick={() => setActiveChapterId(chapter.id)}
                     className={`w-full text-left px-4 py-3 rounded-md transition-all ${
                       isActive
@@ -268,6 +269,7 @@ export function Sidebar() {
           <div className="p-4 border-t border-border">
             <button
               type="button"
+              data-testid="new-chapter-btn"
               onClick={() => createChapterMutation.mutate()}
               disabled={createChapterMutation.isPending}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50"
