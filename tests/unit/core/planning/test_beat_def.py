@@ -113,6 +113,11 @@ class TestBeatDefImmutability:
         with pytest.raises(AttributeError):
             beat.extra = "unexpected"  # type: ignore[attr-defined]
 
+    def test_has_no_dict_attribute(self) -> None:
+        """Slots=True means no __dict__ — memory-efficient and prevents dynamic attrs."""
+        beat = BeatDef(title="Opening", description="Status quo")
+        assert not hasattr(beat, "__dict__")
+
 
 class TestBeatDefRepr:
     """Test BeatDef string representation."""
@@ -240,6 +245,13 @@ class TestStageDefImmutability:
         )
         with pytest.raises(AttributeError):
             stage.extra = "unexpected"  # type: ignore[attr-defined]
+
+    def test_has_no_dict_attribute(self) -> None:
+        """Slots=True means no __dict__ — memory-efficient and prevents dynamic attrs."""
+        stage = StageDef(
+            id="act-1", name="Act I", description="Setup", position=1, expected_beat_count=3
+        )
+        assert not hasattr(stage, "__dict__")
 
 
 # =====================================================================

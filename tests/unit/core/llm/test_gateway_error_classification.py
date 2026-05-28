@@ -117,6 +117,12 @@ class TestClassifyErrorLayered:
     # --- Layer 2: Standard library exceptions ---
 
     def test_asyncio_timeout_classifies_as_timeout(self) -> None:
+        """asyncio.TimeoutError is classified as LLMTimeoutError (L2).
+
+        In Python 3.11+, asyncio.TimeoutError IS TimeoutError.
+        Testing explicitly for documentation clarity.
+        """
+
         result = classify_error(TimeoutError())
         assert isinstance(result, LLMTimeoutError)
 

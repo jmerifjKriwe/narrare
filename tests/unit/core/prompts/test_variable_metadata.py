@@ -132,6 +132,11 @@ class TestVariableMetaImmutability:
         with pytest.raises(AttributeError):
             meta.extra = "unexpected"  # type: ignore[attr-defined]
 
+    def test_has_no_dict_attribute(self) -> None:
+        """Slots=True means no __dict__ — memory-efficient and prevents dynamic attrs."""
+        meta = VariableMeta(name="language", description="ISO code", variable_type="text")
+        assert not hasattr(meta, "__dict__")
+
 
 class TestVariableMetaRepr:
     """Test VariableMeta string representation."""
