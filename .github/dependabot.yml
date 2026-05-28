@@ -1,6 +1,8 @@
 version: 2
 updates:
-  # Python — root workspace
+  # =============================================================================
+  # Python — root workspace (dev tools only)
+  # =============================================================================
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -20,6 +22,7 @@ updates:
           - "fastapi"
           - "uvicorn"
           - "starlette"
+          - "python-multipart"
       sqlalchemy:
         patterns:
           - "sqlalchemy"
@@ -29,16 +32,33 @@ updates:
       taskiq:
         patterns:
           - "taskiq*"
-      ai:
+      llm-ecosystem:
         patterns:
-          - "pydantic-ai"
+          - "pydantic-ai*"
           - "openai"
           - "anthropic"
+          - "mem0ai"
+          - "langfuse"
+      opentelemetry:
+        patterns:
+          - "opentelemetry*"
+      auth:
+        patterns:
+          - "PyJWT"
+          - "argon2-cffi"
+      testing:
+        patterns:
+          - "pytest*"
+          - "playwright*"
+          - "hypothesis"
+          - "pip-audit"
       major-updates:
         update-types:
           - "version-update:semver-major"
 
-  # Python — API package
+  # =============================================================================
+  # Python — API package (~30 deps)
+  # =============================================================================
   - package-ecosystem: "pip"
     directory: "/apps/api"
     schedule:
@@ -50,8 +70,53 @@ updates:
       - "dependencies"
       - "python"
       - "api"
+    groups:
+      pydantic:
+        patterns:
+          - "pydantic*"
+      fastapi:
+        patterns:
+          - "fastapi"
+          - "uvicorn"
+          - "starlette"
+          - "python-multipart"
+          - "fastapi-limiter"
+      sqlalchemy:
+        patterns:
+          - "sqlalchemy"
+          - "alembic"
+          - "asyncpg"
+          - "pgvector"
+          - "psycopg*"
+      taskiq:
+        patterns:
+          - "taskiq*"
+      llm-ecosystem:
+        patterns:
+          - "pydantic-ai*"
+          - "openai"
+          - "anthropic"
+          - "mem0ai"
+          - "langfuse"
+      opentelemetry:
+        patterns:
+          - "opentelemetry*"
+      auth:
+        patterns:
+          - "PyJWT"
+          - "argon2-cffi"
+      testing:
+        patterns:
+          - "pytest*"
+          - "playwright*"
+          - "hypothesis"
+      major-updates:
+        update-types:
+          - "version-update:semver-major"
 
-  # Python — core package
+  # =============================================================================
+  # Python — core package (shared domain logic, no HTTP/DB)
+  # =============================================================================
   - package-ecosystem: "pip"
     directory: "/packages/core"
     schedule:
@@ -63,8 +128,22 @@ updates:
       - "dependencies"
       - "python"
       - "core"
+    groups:
+      pydantic:
+        patterns:
+          - "pydantic*"
+      llm-ecosystem:
+        patterns:
+          - "pydantic-ai*"
+          - "langfuse"
+          - "mem0ai"
+      major-updates:
+        update-types:
+          - "version-update:semver-major"
 
-  # Python — i18n package
+  # =============================================================================
+  # Python — i18n package (single dep: pydantic, no groups needed)
+  # =============================================================================
   - package-ecosystem: "pip"
     directory: "/packages/i18n"
     schedule:
@@ -77,7 +156,23 @@ updates:
       - "python"
       - "i18n"
 
-  # TypeScript — Frontend
+  # =============================================================================
+  # npm — root workspace (dev scripts: ts-morph, tsx)
+  # =============================================================================
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "npm"
+
+  # =============================================================================
+  # npm — Frontend (Next.js 16, React 19, TipTap 3, ~50 deps)
+  # =============================================================================
   - package-ecosystem: "npm"
     directory: "/packages/web"
     schedule:
@@ -90,24 +185,84 @@ updates:
       - "npm"
       - "frontend"
     groups:
+      # Next.js only — React has independent release cycles, separate group
       nextjs:
         patterns:
           - "next"
+      # React ecosystem — separate from Next.js to avoid major-version surprises
+      react:
+        patterns:
           - "react"
           - "react-dom"
-          - "@types/react*"
+          - "@types/react"
+          - "@types/react-dom"
+      # TipTap editor
       tiptap:
         patterns:
           - "@tiptap*"
+      # Tailwind CSS + PostCSS plugin
       tailwind:
         patterns:
           - "tailwindcss"
           - "@tailwindcss*"
+          - "tw-animate-css"
+      # Frontend testing: vitest, testing-library, playwright, msw
+      testing-frontend:
+        patterns:
+          - "vitest"
+          - "@vitest*"
+          - "@testing-library*"
+          - "@playwright/test"
+          - "jsdom"
+          - "msw"
+      # UI libraries: dnd, animation, icons, charts, graph, styling utils
+      ui-libs:
+        patterns:
+          - "@dnd-kit*"
+          - "@base-ui*"
+          - "motion"
+          - "lucide-react"
+          - "recharts"
+          - "cytoscape*"
+          - "class-variance-authority"
+          - "clsx"
+          - "tailwind-merge"
+          - "shadcn"
       major-updates:
         update-types:
           - "version-update:semver-major"
 
-  # GitHub Actions
+  # =============================================================================
+  # Docker — production image (python:3.14-slim-bookworm + node:24-slim-bookworm)
+  # =============================================================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # =============================================================================
+  # Docker — devcontainer image (mcr.microsoft.com/devcontainers/python)
+  # =============================================================================
+  - package-ecosystem: "docker"
+    directory: "/.devcontainer"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # =============================================================================
+  # GitHub Actions — all workflows in .github/workflows/
+  # =============================================================================
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
