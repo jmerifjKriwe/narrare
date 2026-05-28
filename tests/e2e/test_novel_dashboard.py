@@ -155,7 +155,7 @@ class TestNovelDashboard:
         # hang during page load.  Auth mocks match first (Playwright route order).
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, user_info["access_token"])
-        page.goto(f"{base_url}/", timeout=15000)
+        page.goto(f"{base_url}/", timeout=15000, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
 
         # Look for the novel title on the dashboard
@@ -184,7 +184,7 @@ class TestNovelDashboard:
 
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, user_info["access_token"])
-        page.goto(f"{base_url}/", timeout=15000)
+        page.goto(f"{base_url}/", timeout=15000, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
 
         # Look for new novel button / link
@@ -220,7 +220,7 @@ class TestNovelDashboard:
 
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, user_info["access_token"])
-        page.goto(f"{base_url}/", timeout=15000)
+        page.goto(f"{base_url}/", timeout=15000, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
 
         # Find the novel link/button and click it
@@ -280,7 +280,7 @@ class TestNovelDashboard:
         _setup_auth_proxy(page, result["access_token"])
 
         # Go to dashboard, click a novel card
-        page.goto(f"{base_url}/")
+        page.goto(f"{base_url}/", wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
 
         # Use data-testid selectors matching DashboardView.tsx
@@ -312,7 +312,7 @@ class TestNovelDashboard:
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, result["access_token"])
 
-        page.goto(f"{base_url}/")
+        page.goto(f"{base_url}/", wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
 
         # Find novel card and hover to reveal delete button

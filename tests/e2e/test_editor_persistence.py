@@ -188,11 +188,11 @@ class TestEditorPersistence:
         # hang during page load.  Auth mocks match first (Playwright route order).
         setup_dashboard_api_mocks(page)
         _setup_auth_proxy(page, access_token)
-        page.goto(f"{base_url}/", timeout=15000)
+        page.goto(f"{base_url}/", timeout=15000, wait_until="domcontentloaded")
         page.wait_for_timeout(1000)
 
         # Navigate back to editor using the stored URL
-        page.goto(novel_url, timeout=15000)
+        page.goto(novel_url, timeout=15000, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
 
         # Check if editor content persisted

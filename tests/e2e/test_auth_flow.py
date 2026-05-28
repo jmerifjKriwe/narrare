@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.e2e.mocks.llm_responses import setup_llm_mocks
+from tests.e2e.test_helpers import _setup_auth_proxy
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -220,8 +221,13 @@ class TestAuthFlow:
             ),
         )
 
+        # Intercept all other API calls via Playwright's route.fetch() to prevent
+        # browser connection-pool hang during page load. The auth/refresh mock
+        # (registered above) takes precedence since it was registered first.
+        _setup_auth_proxy(page, user["access_token"])
+
         # Now logged in, navigate to dashboard to find logout button
-        page.goto(f"{base_url}/", timeout=30000)
+        page.goto(f"{base_url}/", timeout=30000, wait_until="domcontentloaded")
         page.wait_for_timeout(2000)
 
         # Remove the refresh mock so the /login page after logout does NOT
