@@ -8,6 +8,7 @@ from narrare._app.dependencies import SessionDep  # noqa: TC001 — needed at ru
 
 if TYPE_CHECKING:
     from narrare.analysis.beta_reader_service import BetaReaderService
+    from narrare.analysis.services.sentiment_service import ChapterSentimentService
 
 
 def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
@@ -62,4 +63,32 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
         registry=registry,
         config=config,
         composer=composer,
+    )
+
+
+def get_sentiment_service(session: SessionDep) -> ChapterSentimentService:
+    """Create a ChapterSentimentService with injected dependencies.
+
+    Production wiring:
+    - ChapterRepository for chapter content fetching.
+    - NovelRepository for novel access control + language resolution.
+    - SpacyNLPProvider for sentence splitting and linguistic features.
+
+    Unlike ``get_beta_reader_service``, this factory does **not** require
+    model registry, prompt composer, or cache — sentiment analysis is a
+    purely deterministic computation (ADR-021) with no LLM calls.
+    """
+    from narrare.analysis.services.sentiment_service import ChapterSentimentService
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
+    from narrare_core.nlp.provider_spacy import SpacyNLPProvider
+
+    chapter_repo = ChapterRepository(session)
+    novel_repo = NovelRepository(session)
+    nlp_provider = SpacyNLPProvider()
+
+    return ChapterSentimentService(
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
+        nlp_provider=nlp_provider,
     )

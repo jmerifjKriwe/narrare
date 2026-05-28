@@ -1,6 +1,7 @@
-"""Analysis module — beta reader simulation and future analysis features.
+"""Analysis module — AI-powered chapter analysis and scoring.
 
-The analysis module provides AI-powered chapter analysis tools.
-ANAL-001 (Beta Reader) is the first feature; future features
-(ANAL-002 through ANAL-011) will follow the same pattern.
+Provides deterministic and AI-powered analysis tools for chapters.
+- ANAL-001 (Beta Reader): AI-powered feedback across categories.
+- ANAL-002 (Sentiment): Deterministic VAD + emotion + arc scoring.
+- ANAL-003 through ANAL-011: Future analysis features.
 """

@@ -1394,6 +1394,69 @@
         }
       }
     },
+    "/api/v1/analysis/sentiment": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Analyze chapter(s) sentiment — deterministic VAD + emotion + arc",
+        "description": "Analyze sentiment for one or more chapters.\n\nUses deterministic VAD (Valence-Arousal-Dominance) + emotion scoring\nplus optional narrative arc detection (ADR-021).\n\nResults are **deterministic** — same text always produces the same\nscores. No LLM calls are involved in the measurement step.\n\nArgs:\n    novel_id: The novel containing the chapters.\n    request: Chapter IDs + analysis options (language, arc detection).\n\nReturns:\n    List of ``SentimentOverview`` (one per chapter, same order as\n    the request's ``chapter_ids``).",
+        "operationId": "analyze_sentiment_api_v1_analysis_sentiment_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SentimentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SentimentOverview"
+                  },
+                  "title": "Response Analyze Sentiment Api V1 Analysis Sentiment Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/embeddings/status/{novel_id}": {
       "get": {
         "tags": [
@@ -8612,6 +8675,63 @@
         "title": "EmbeddingStatsResponse",
         "description": "Response model for embedding status endpoint."
       },
+      "EmotionScores": {
+        "properties": {
+          "anger": {
+            "type": "number",
+            "title": "Anger",
+            "default": 0.0
+          },
+          "anticipation": {
+            "type": "number",
+            "title": "Anticipation",
+            "default": 0.0
+          },
+          "disgust": {
+            "type": "number",
+            "title": "Disgust",
+            "default": 0.0
+          },
+          "fear": {
+            "type": "number",
+            "title": "Fear",
+            "default": 0.0
+          },
+          "joy": {
+            "type": "number",
+            "title": "Joy",
+            "default": 0.0
+          },
+          "sadness": {
+            "type": "number",
+            "title": "Sadness",
+            "default": 0.0
+          },
+          "surprise": {
+            "type": "number",
+            "title": "Surprise",
+            "default": 0.0
+          },
+          "trust": {
+            "type": "number",
+            "title": "Trust",
+            "default": 0.0
+          },
+          "positive": {
+            "type": "number",
+            "title": "Positive",
+            "default": 0.0
+          },
+          "negative": {
+            "type": "number",
+            "title": "Negative",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "EmotionScores",
+        "description": "Emotion category scores for a text unit.\n\nEach emotion has a float score (0.0 to 1.0) representing the\nproportion of words in this text unit that evoke that emotion."
+      },
       "ExtendLength": {
         "type": "string",
         "enum": [
@@ -10235,6 +10355,37 @@
         "title": "NameType",
         "description": "Types of names that can be generated."
       },
+      "NarrativeArc": {
+        "properties": {
+          "arc_type": {
+            "type": "string",
+            "title": "Arc Type",
+            "default": "unknown"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "default": 0.0
+          },
+          "segments": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Segments",
+            "default": []
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "NarrativeArc",
+        "description": "Detected narrative arc from sentiment progression.\n\nAttributes:\n    arc_type: The detected narrative arc type.\n    confidence: How well the text matches this arc (0.0 to 1.0).\n    segments: List of arc segments (e.g. ``\"exposition\"``,\n        ``\"rising_action\"``, ``\"climax\"``, ``\"falling_action\"``,\n        ``\"resolution\"``) with VAD per segment.\n    explanation: Human-readable description of why this arc was detected."
+      },
       "NovelResponse": {
         "properties": {
           "id": {
@@ -11257,6 +11408,136 @@
         ],
         "title": "SceneNextResponse",
         "description": "Response for next scene generation."
+      },
+      "SentenceSentiment": {
+        "properties": {
+          "sentence": {
+            "type": "string",
+            "title": "Sentence"
+          },
+          "sentence_index": {
+            "type": "integer",
+            "title": "Sentence Index"
+          },
+          "vad": {
+            "$ref": "#/components/schemas/VADScores"
+          },
+          "emotions": {
+            "$ref": "#/components/schemas/EmotionScores"
+          },
+          "word_count": {
+            "type": "integer",
+            "title": "Word Count"
+          },
+          "is_dialogue": {
+            "type": "boolean",
+            "title": "Is Dialogue",
+            "default": false
+          },
+          "dominant_emotion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dominant Emotion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sentence",
+          "sentence_index",
+          "vad",
+          "emotions",
+          "word_count"
+        ],
+        "title": "SentenceSentiment",
+        "description": "Sentiment analysis for a single sentence.\n\nAttributes:\n    sentence: The sentence text.\n    sentence_index: 0-based index in the text's sentence list.\n    vad: Valence-Arousal-Dominance scores.\n    emotions: Emotion category scores.\n    word_count: Number of tokens in this sentence.\n    is_dialogue: Whether this sentence contains dialogue.\n    dominant_emotion: The emotion category with the highest score."
+      },
+      "SentimentOverview": {
+        "properties": {
+          "sentence_count": {
+            "type": "integer",
+            "title": "Sentence Count"
+          },
+          "average_vad": {
+            "$ref": "#/components/schemas/VADScores"
+          },
+          "overall_emotions": {
+            "$ref": "#/components/schemas/EmotionScores"
+          },
+          "narrative_arc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NarrativeArc"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/SentenceSentiment"
+            },
+            "type": "array",
+            "title": "Sentences",
+            "default": []
+          },
+          "dominant_emotions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dominant Emotions",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "sentence_count",
+          "average_vad",
+          "overall_emotions"
+        ],
+        "title": "SentimentOverview",
+        "description": "Aggregate sentiment analysis for an entire text (chapter).\n\nAttributes:\n    sentence_count: Number of sentences analyzed.\n    average_vad: Mean VAD scores across all sentences.\n    overall_emotions: Aggregate emotion scores across all sentences.\n    narrative_arc: Detected narrative arc (if enough sentences).\n    sentences: Per-sentence sentiment breakdown.\n    dominant_emotions: Top emotion categories across the text."
+      },
+      "SentimentRequest": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Chapter Ids"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "detect_arc": {
+            "type": "boolean",
+            "title": "Detect Arc",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "chapter_ids"
+        ],
+        "title": "SentimentRequest",
+        "description": "Request to analyze chapter sentiment.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze.\n    language: Optional language override. If omitted, uses novel's\n        ``writing_language`` setting.\n    detect_arc: Whether to attempt narrative arc detection.\n        Defaults to ``True``. Set to ``False`` for short texts."
       },
       "ShortestPathResponse": {
         "properties": {
@@ -12676,6 +12957,30 @@
           "updated_at"
         ],
         "title": "UserSettingsResponse"
+      },
+      "VADScores": {
+        "properties": {
+          "valence": {
+            "type": "number",
+            "title": "Valence"
+          },
+          "arousal": {
+            "type": "number",
+            "title": "Arousal"
+          },
+          "dominance": {
+            "type": "number",
+            "title": "Dominance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valence",
+          "arousal",
+          "dominance"
+        ],
+        "title": "VADScores",
+        "description": "Valence-Arousal-Dominance scores for a text unit.\n\nAttributes:\n    valence: Pleasantness ( -1 = unpleasant, +1 = pleasant).\n    arousal: Intensity ( -1 = calm, +1 = excited).\n    dominance: Control ( -1 = submissive, +1 = dominant)."
       },
       "ValidationError": {
         "properties": {

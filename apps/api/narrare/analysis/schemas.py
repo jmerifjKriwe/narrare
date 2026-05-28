@@ -6,6 +6,8 @@ Contains all Pydantic BaseModel definitions for the analysis module.
 
 from __future__ import annotations
 
+from uuid import UUID  # noqa: TC003 — Pydantic needs UUID at runtime for validation
+
 from pydantic import BaseModel, Field
 
 from narrare.analysis.contracts import (  # noqa: TC001 — needed at runtime by Pydantic
@@ -174,3 +176,24 @@ class BetaReaderDeepDiveResponse(BaseModel):
     revision_suggestions: list[str]
     category_score: int = Field(ge=1, le=10)
     analyzed_at: str
+
+
+# ---------------------------------------------------------------------------
+# ANAL-002: Sentiment Analysis — Request/Response
+# ---------------------------------------------------------------------------
+
+
+class SentimentRequest(BaseModel):
+    """Request to analyze chapter sentiment.
+
+    Attributes:
+        chapter_ids: One or more chapter UUIDs to analyze.
+        language: Optional language override. If omitted, uses novel's
+            ``writing_language`` setting.
+        detect_arc: Whether to attempt narrative arc detection.
+            Defaults to ``True``. Set to ``False`` for short texts.
+    """
+
+    chapter_ids: list[UUID]
+    language: str | None = None
+    detect_arc: bool = True

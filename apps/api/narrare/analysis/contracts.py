@@ -19,6 +19,7 @@ if TYPE_CHECKING:
         BetaReaderRequest,
         BetaReaderResponse,
     )
+    from narrare_core.analysis.types import SentimentOverview
 
 
 # ---------------------------------------------------------------------------
@@ -103,5 +104,74 @@ class BetaReaderProtocol(Protocol):
 
         Returns:
             Detailed category-specific feedback with revision suggestions.
+        """
+        ...
+
+
+# ---------------------------------------------------------------------------
+# ANAL-002: Sentiment Analysis — Service Protocol
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class SentimentService(Protocol):
+    """Protocol for sentiment analysis services.
+
+    The service layer fetches chapter content, resolves language, calls
+    the deterministic ``LexiconSentimentAnalyzer`` (core/analysis/), and
+    maps results to API response models.
+
+    All sentiment results are **deterministic** — same text always produces
+    the same scores (ADR-021).
+    """
+
+    async def analyze_chapter(
+        self,
+        *,
+        novel_id: UUID,
+        chapter_id: UUID,
+        user_id: UUID,
+        language: str | None = None,
+        detect_arc: bool = True,
+    ) -> SentimentOverview:
+        """Analyze sentiment for a single chapter.
+
+        Fetches chapter content, resolves language from novel metadata
+        (or from the ``language`` override), and runs deterministic
+        sentiment analysis.
+
+        Args:
+            novel_id: The project/novel containing the chapter.
+            chapter_id: The chapter to analyze.
+            user_id: The user requesting analysis (for access control).
+            language: Optional language override. If ``None``, uses
+                the novel's ``writing_language`` setting.
+            detect_arc: Whether to detect narrative arc. Default ``True``.
+
+        Returns:
+            A ``SentimentOverview`` with per-sentence breakdown and
+            aggregate scores.
+
+        Raises:
+            narrare_core.shared.errors.NotFoundError: If chapter or novel
+                does not exist.
+            narrare_core.shared.errors.ForbiddenError: If user does not
+                have access.
+        """
+        ...
+
+    async def analyze_chapters(
+        self,
+        *,
+        novel_id: UUID,
+        chapter_ids: list[UUID],
+        user_id: UUID,
+        language: str | None = None,
+        detect_arc: bool = True,
+    ) -> list[SentimentOverview]:
+        """Analyze sentiment for multiple chapters.
+
+        Processes each chapter independently. Results are returned in
+        the same order as ``chapter_ids``.
         """
         ...
