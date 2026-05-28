@@ -12,7 +12,7 @@
 
 Date: 2026-05-28
 Updated by: NarrareDocsSpecialist
-Session summary: ANAL-002 Sentiment Analysis and CONS-001 Consistency Checker status updated to in_progress. CHANGELOG updated. CURRENT_STATE and INDEX.md synced. Core NLP module (`core/nlp/`) and analysis module (`core/analysis/`) added with deterministic sentiment scoring, emotion lexicon, and arc detection.
+Session summary: ANAL-002 Sentiment Analysis and CONS-001 Consistency Checker backlog items fully implemented (spec-complete). Cross-chapter arc trajectory, word count warnings, chart export, hover tooltips, issue actions, KB pre-check, scope selector, fact deduplication all done. 38 new tests (8 warning + 30 rule + 22 rule helper + 6 service). Docs synced.
 
 ---
 
@@ -532,9 +532,9 @@ Phase 5 (current):
 
  21. ✅ Coverage Uplift 2026-05-27 — 1,045+ new tests across 6 waves. All layers now comprehensively tested. Focus areas: backend API services (210 unit tests), frontend components (281 tests), frontend lib/hooks (141 tests), core layer (234 tests), backend integration (85 tests), cross-layer contracts + E2E (~94 tests).
 
- 22. 🔨 ANAL-002: Sentiment Analysis — In progress. Core NLP module (`core/nlp/`) with NLPProvider Protocol, SpacyNLPProvider, emotion lexicon (650+ words, EN/DE/FR), pronouns (278+ entries), syllable counting, dialogue extraction. Core analysis module (`core/analysis/`) with SentimentAnalyzer Protocol, LexiconSentimentAnalyzer (deterministic VAD + emotion scoring), narrative arc detection (Freytag, Man in Hole, Comedy, Tragedy, Reversal). ADR-021. API: `POST /analysis/sentiment`. Frontend: SentimentPanel with VAD gauges + emotion chart (Recharts). Tests pending.
+ 22. ✅ ANAL-002: Sentiment Analysis — Spec-complete. All backlog items implemented: cross-chapter arc trajectory line graph, word count + arc minimum warnings, chart export (PNG via html-to-image), hover tooltips on emotion chart + arc graph. LLMIntent.SENTIMENT confirmed. 8 warning tests + 30 rule tests. Core NLP module (`core/nlp/`) + analysis module (`core/analysis/`) with LexiconSentimentAnalyzer (deterministic VAD + emotion scoring + arc detection). ADR-021.
 
- 23. 🔨 CONS-001: Consistency Checker — In progress. Cross-chapter and cross-entity consistency checking via LLM agent. Core: `ConsistencyAgent` (pydantic-ai). API: `POST /consistency/check`, `POST /consistency/chapters/{id}/check`. Frontend: ConsistencyPanel with severity badges + filterable issue list. Tests pending.
+ 23. ✅ CONS-001: Consistency Checker — Spec-complete. All backlog items implemented: issue actions (dismiss/mark intentional/copy), loading progress with elapsed timer, rule-based KB pre-check (deterministic, confidence=1.0), scope selector (current/selected/all), fact deduplication. LLMIntent.CONSISTENCY confirmed. 22 rule helper tests + 6 service tests. ConsistencyAgent (pydantic-ai) + API endpoints + ConsistencyPanel.
 
 Next focus: Post-MVP features (E2E test patterns, AI-assisted enrichment, analysis panels).
 

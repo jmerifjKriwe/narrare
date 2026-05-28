@@ -78,7 +78,7 @@
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
 | [ANAL-001](analysis/ANAL-001-beta-reader.md) | Beta Reader Simulation | ✅ | ❌ |
-| [ANAL-002](analysis/ANAL-002-sentiment.md) | Sentiment Analysis | 🔨 | ❌ |
+| [ANAL-002](analysis/ANAL-002-sentiment.md) | Sentiment Analysis | ✅ | ❌ |
 | [ANAL-003](analysis/ANAL-003-readability.md) | Readability Analysis | 📋 | ❌ |
 | [ANAL-004](analysis/ANAL-004-pov.md) | POV Analysis | 📋 | ❌ |
 | [ANAL-005](analysis/ANAL-005-coreference.md) | Coreference Analysis | 📋 | ❌ |
@@ -116,7 +116,7 @@
 ### Consistency
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [CONS-001](consistency/CONS-001-checker.md) | Consistency Checker | 🔨 | ❌ |
+| [CONS-001](consistency/CONS-001-checker.md) | Consistency Checker | ✅ | ❌ |
 | [CONS-002](consistency/CONS-002-rules.md) | Custom Consistency Rules | 📋 | ❌ |
 
 ### Learning & Adaptation
@@ -229,5 +229,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-28 — ANAL-002 (Sentiment Analysis) and CONS-001 (Consistency Checker) moved to in_progress.
+> Last updated: 2026-05-28 — ANAL-002 (Sentiment Analysis) and CONS-001 (Consistency Checker) spec-complete (all backlog items implemented).
 > Features are specified before they are implemented — never after

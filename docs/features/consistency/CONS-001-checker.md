@@ -160,3 +160,4 @@ class ConsistencyIssue:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-28` — Moved to `in_progress`. Full implementation: ConsistencyAgent (pydantic-ai) with core types, API endpoints, frontend panel. All spec requirements implemented: issue actions (dismiss/mark intentional/copy), loading progress with elapsed timer, rule-based KB pre-check (deterministic, confidence=1.0), scope selector (current/selected/all), fact deduplication. LLMIntent.CONSISTENCY confirmed in intents.py. 22 rule helper tests + 6 service tests.

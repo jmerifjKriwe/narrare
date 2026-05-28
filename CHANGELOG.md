@@ -119,6 +119,10 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Core NLP module (`core/nlp/`) with NLPProvider Protocol, SpacyNLPProvider, emotion lexicon (650+ words, EN/DE/FR), pronouns (278+ entries), syllable counting, dialogue extraction.
 - Core analysis module (`core/analysis/`) with SentimentAnalyzer Protocol, LexiconSentimentAnalyzer, narrative arc detection (Freytag, Man in Hole, Comedy, Tragedy, Reversal).
 
+- **ANAL-002**: Cross-chapter arc trajectory line graph, word count warnings, arc detection minimum warnings, chart export (PNG), hover tooltips. Spec-complete.
+- **CONS-001**: Issue actions (dismiss/mark intentional/copy), loading progress indicator, rule-based KB pre-check, scope selector, fact deduplication. Spec-complete.
+- 38 new tests (8 sentiment warnings + 30 arc/rule tests + 22 rule helpers + 6 service tests).
+
 ### Fixed
 
 - JWT secret fallback chain in `proxy.ts`: added `process.env.SECRET_KEY` as second fallback (matching backend's env var). Previously only checked `AUTH_JWT_SECRET`, causing verification failures on protected routes when only `SECRET_KEY` was set.
