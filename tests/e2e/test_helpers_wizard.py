@@ -102,9 +102,8 @@ def _complete_wizard_to_editor(
     _click_next(page, expected_step=3)
 
     # Step 3: Title
-    title_input = page.locator(
-        'input[name="title"], input[id="title"], input[placeholder*="title" i]'
-    ).first
+    title_input = page.locator("#novel_title").first
+    title_input.wait_for(state="visible", timeout=5000)
     if title_input.is_visible():
         title_input.fill(novel_title)
     _click_next(page, expected_step=4)

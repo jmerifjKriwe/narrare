@@ -260,7 +260,6 @@ class TestSetupWizard:
                 break
 
         # It's OK if validation is client-side (disabled next button) or server-side (error msg)
-        page.screenshot(path="/tmp/wizard-validation-error.png")
         print(f"\nValidation error test — URL: {page.url}")
         if not found_error:
             next_button = page.locator('[data-testid="wizard-next"]').first

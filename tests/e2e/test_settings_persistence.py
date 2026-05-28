@@ -42,13 +42,6 @@ class TestSettingsPersistence:
         page.goto(f"{base_url}/novel/{novel_id}/settings")
         page.wait_for_timeout(2000)
 
-        # Take screenshot to see what's on the settings page
-        page.screenshot(path="/tmp/settings-page.png")
-        body_text = page.inner_text("body")[:500]
-        print("\n=== SETTINGS PAGE ===")
-        print(f"  URL: {page.url}")
-        print(f"  Body: {body_text}")
-
         # The default tab is "novel-details" so the title input should
         # already be visible.  Use the actual selector from
         # NovelDetailsTab.tsx: id="novel-title".
@@ -77,7 +70,6 @@ class TestSettingsPersistence:
                         f"placeholder={inp.get_attribute('placeholder')}, "
                         f"value={inp.input_value()[:50]}"
                     )
-            page.screenshot(path="/tmp/settings-no-title-input.png")
             pytest.skip("Could not find title input on settings page — may need different selector")
 
         # Change the title
@@ -161,5 +153,3 @@ class TestSettingsPersistence:
                 tab.click()
                 page.wait_for_timeout(500)
                 print(f"  Tab '{tab_text}': content loaded OK")
-
-        page.screenshot(path="/tmp/settings-tabs.png")

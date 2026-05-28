@@ -124,7 +124,6 @@ class TestWizardCompletion:
             print(f"  Error: {setup_complete_log['error']}")
 
         # Take screenshot immediately after click
-        page.screenshot(path="/tmp/after-complete-click.png")
         print(f"\n=== POST-COMPLETE: Current URL = {page.url}")
         print(f"Page title: {page.title()}")
         print("Screenshot saved to /tmp/after-complete-click.png")
@@ -150,8 +149,6 @@ class TestWizardCompletion:
                 }
             except Exception:
                 print(f"NOT on dashboard either. Current URL: {page.url}")
-                page.screenshot(path="/tmp/no-redirect-state.png")
-                print("Screenshot saved to /tmp/no-redirect-state.png")
 
                 # Check if we're still on /wizard
                 if "/wizard" in page.url:

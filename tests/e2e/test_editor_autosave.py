@@ -206,10 +206,6 @@ class TestEditorAutosave:
         page_text = page.inner_text("body")[:500]
         print(f"Page text: {page_text}")
 
-        # Take screenshot for debugging
-        page.screenshot(path="/tmp/editor-state.png")
-        print("Screenshot saved to /tmp/editor-state.png")
-
         # Look for the editor area
         editor_area = page.locator(
             '.tiptap, [data-testid="editor"], .ProseMirror, [contenteditable="true"]'
@@ -288,10 +284,6 @@ class TestEditorAutosave:
             f"Editor HTML (first 500 chars): {editor_html[:500]}"
         )
 
-        # Screenshot right before save attempt — shows editor state at save time
-        page.screenshot(path="/tmp/before-save.png")
-        print("Screenshot before save saved to /tmp/before-save.png")
-
         # Click the Save button directly — more reliable than keyboard shortcuts
         # in headless mode where Meta/Ctrl key mapping is inconsistent.
         # The Save button is in the header bar with bg-primary styling and a Save icon.
@@ -355,13 +347,10 @@ class TestEditorAutosave:
                 if captured_requests
                 else "(none captured)"
             )
-            # Take a screenshot after timeout too
-            page.screenshot(path="/tmp/after-save-timeout.png")
             raise AssertionError(
                 f"Autosave did not fire after clicking Save (timeout 15s).\n"
                 f"Save button was visible: {save_button.is_visible()}\n"
                 f"Editor URL: {page.url}\n"
-                f"Screenshot after timeout: /tmp/after-save-timeout.png\n"
                 f"All captured requests ({len(captured_requests)}):\n  {request_log}"
             )
 

@@ -17,6 +17,7 @@ KNOWN ISSUES / WORKAROUNDS:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import uuid
 from typing import TYPE_CHECKING, Any
@@ -64,6 +65,42 @@ def warmup_api() -> None:
     # Using suppress per RULE-11: the warmup is advisory, not required.
     with contextlib.suppress(Exception):
         http_requests.get(f"{API_URL}/health", timeout=60)
+
+
+# ---------------------------------------------------------------------------
+# Screenshot-on-failure (replaces all manual page.screenshot() calls)
+# ---------------------------------------------------------------------------
+
+_SCREENSHOT_DIR = "test-results"
+
+
+@pytest.fixture(autouse=True)
+def screenshot_on_failure(request, page: Page) -> Generator[None]:
+    """Automatically capture a screenshot when an E2E test fails.
+
+    Replaces all manual ``page.screenshot()`` debug calls. Screenshots are
+    saved to ``test-results/<test_name>.png`` and can be uploaded as CI
+    artifacts.
+
+    Uses ``contextlib.suppress`` per RULE-11: the screenshot is advisory —
+    it must never raise and mask the original test failure.
+    """
+    yield
+    if hasattr(request.node, "rep_call") and request.node.rep_call.failed:
+        test_name = request.node.nodeid.replace("::", "_").replace("/", "_")
+        screenshot_path = os.path.join(_SCREENSHOT_DIR, f"{test_name}.png")
+        with contextlib.suppress(Exception):
+            os.makedirs(_SCREENSHOT_DIR, exist_ok=True)
+            page.screenshot(path=screenshot_path)
+            print(f"\n  [screenshot-on-failure] {screenshot_path}")
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Store test result in item for screenshot_on_failure fixture."""
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, f"rep_{rep.when}", rep)
 
 
 # ---------------------------------------------------------------------------

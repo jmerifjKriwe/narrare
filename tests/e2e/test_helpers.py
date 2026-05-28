@@ -5,6 +5,7 @@ Shared utilities used across multiple E2E test modules to avoid code duplication
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from typing import TYPE_CHECKING
@@ -52,21 +53,27 @@ def _click_next(page: Page, expected_step: int | None = None) -> None:
                 continue
         if not clicked:
             # Debug: take screenshot and print page state
-            page.screenshot(path="/tmp/e2e-click-next-failure.png")
+            # Screenshot is advisory — never let it raise (RULE-11)
+            with contextlib.suppress(Exception):
+                page.screenshot(path="/tmp/e2e-click-next-failure.png")
             body_text = page.inner_text("body")[:500]
             print("\n=== _click_next FAILURE DEBUG ===")
             print(f"  URL: {page.url}")
             print(f"  Body text (first 500): {body_text}")
             page.locator("form button").last.click()
 
-    # If expected_step is provided, wait for the step indicator
+    # If expected_step is provided, wait for the step indicator to become active.
+    # All step indicators are always visible (rendered by WizardShell.tsx), so
+    # checking visibility alone doesn't verify the wizard actually advanced.
+    # WizardShell.tsx sets aria-current="step" on the ACTIVE step indicator.
     if expected_step is not None:
-        step_selector = f'[data-testid="wizard-step-{expected_step}"]'
+        active_step_selector = f'[data-testid="wizard-step-{expected_step}"][aria-current="step"]'
         try:
-            page.locator(step_selector).first.wait_for(state="visible", timeout=15000)
+            page.locator(active_step_selector).first.wait_for(state="visible", timeout=15000)
         except Exception:
-            # Fallback to aria-current selector for backwards compat
-            page.screenshot(path=f"/tmp/e2e-step-{expected_step}-timeout.png")
+            # Fallback debug — screenshot is advisory, never let it raise (RULE-11)
+            with contextlib.suppress(Exception):
+                page.screenshot(path=f"/tmp/e2e-step-{expected_step}-timeout.png")
             body_text = page.inner_text("body")[:500]
             active_steps = page.locator('[aria-current="step"]')
             active_text = active_steps.first.inner_text() if active_steps.count() > 0 else "none"

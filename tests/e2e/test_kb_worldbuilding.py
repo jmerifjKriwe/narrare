@@ -53,7 +53,6 @@ class TestKBWorldbuilding:
                 print(f"\n=== EDITOR ELEMENT FOUND: {selector} ===")
                 break
 
-        page.screenshot(path="/tmp/novel-editor-loaded.png")
         print(f"\nNovel editor URL: {page.url}")
         assert found_any, f"No editor elements found on novel page. URL: {page.url}"
 
@@ -95,7 +94,6 @@ class TestKBWorldbuilding:
                 if "worldbuilding" in sidebar_text.lower() or "kb" in sidebar_text.lower():
                     print("  KB/Worldbuilding found in sidebar text")
 
-            page.screenshot(path="/tmp/worldbuilding-nav-attempt.png")
             # Not failing — the UI may use a different navigation pattern
             print("\nWorldbuilding navigation not found (UI may use different pattern)")
             return
@@ -143,7 +141,6 @@ class TestKBWorldbuilding:
                 found_kb_ui = True
                 break
 
-        page.screenshot(path="/tmp/kb-panel-state.png")
         body_text = page.inner_text("body")[:500]
         print("\n=== KB PANEL CHECK ===")
         print(f"  Body text: {body_text[:300]}")

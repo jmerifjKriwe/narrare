@@ -88,9 +88,8 @@ def _complete_wizard(
     _click_next(page, expected_step=3)
 
     # Step 3
-    title_input = page.locator(
-        'input[name="title"], input[id="title"], input[placeholder*="title" i]'
-    ).first
+    title_input = page.locator("#novel_title").first
+    title_input.wait_for(state="visible", timeout=5000)
     if title_input.is_visible():
         title_input.fill(novel_title)
     _click_next(page, expected_step=4)
@@ -98,7 +97,6 @@ def _complete_wizard(
     # Step 4
     page.wait_for_timeout(500)  # Let Step 4 render
     step4_text = page.inner_text("body").lower()
-    page.screenshot(path=f"/tmp/wizard-step4-{novel_title.replace(' ', '-')}.png")
     print("\n=== STEP 4 TEXT (first 300 chars) ===")
     print(f"  {step4_text[:300]}")
 
@@ -160,7 +158,6 @@ class TestNovelDashboard:
 
         # Look for the novel title on the dashboard
         body_text = page.inner_text("body")
-        page.screenshot(path="/tmp/dashboard-novel-listing.png", timeout=5000)
         print("\n=== DASHBOARD ===")
         print(f"  URL: {page.url}")
         print(f"  Body text (first 500 chars): {body_text[:500]}")
@@ -204,7 +201,6 @@ class TestNovelDashboard:
                 found_button = True
                 break
 
-        page.screenshot(path="/tmp/dashboard-new-novel.png", timeout=5000)
         print(f"\nNew novel button visible: {found_button}")
         assert found_button, "New novel/Create button not found on dashboard."
 
@@ -252,7 +248,6 @@ class TestNovelDashboard:
         # Should now be on the novel editor page
         print("\n=== AFTER NAVIGATION ===")
         print(f"  URL: {page.url}")
-        page.screenshot(path="/tmp/navigate-to-novel.png")
 
         assert clicked, "Could not find any novel link on dashboard"
 
@@ -333,7 +328,6 @@ class TestNovelDashboard:
                 page.wait_for_timeout(3000)
 
                 # Verify card is gone
-                page.screenshot(path="/tmp/dashboard-after-delete.png", timeout=5000)
                 print("\n  Delete completed")
             else:
                 print("\n  Delete button not visible after hover — may need different approach")

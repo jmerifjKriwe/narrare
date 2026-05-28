@@ -68,10 +68,6 @@ class TestAuthFlow:
         print(f"  Current URL:  {current_url}")
         print(f"  Page title:   {page_title}")
 
-        # Take a screenshot to see what the browser actually rendered
-        page.screenshot(path="/tmp/login-page-state.png")
-        print("  Screenshot saved to /tmp/login-page-state.png")
-
         # Check if we were redirected away from /login (e.g. already logged in)
         if "/login" not in current_url:
             print(f"  NOT on /login — redirected to {current_url}")
@@ -165,7 +161,6 @@ class TestAuthFlow:
         with contextlib.suppress(Exception):
             page.wait_for_selector('[data-testid="auth-error"]', timeout=5000)
 
-        page.screenshot(path="/tmp/login-wrong-password.png")
         body_text = page.inner_text("body")[:500]
         print("\n=== WRONG PASSWORD TEST ===")
         print(f"  URL: {page.url}")
@@ -279,7 +274,6 @@ class TestAuthFlow:
 
         if not logout_clicked:
             # Try the sidebar logout (if in a novel view)
-            page.screenshot(path="/tmp/logout-button-search.png")
             body_text = page.inner_text("body")[:500]
             print("\n=== LOGOUT BUTTON SEARCH ===")
             print(f"  URL: {page.url}")
@@ -338,7 +332,6 @@ class TestAuthFlow:
         if not error_container.is_visible():
             error_container = page.locator(".bg-destructive\\/10, [class*='destructive']").first
 
-        page.screenshot(path="/tmp/register-duplicate-email.png")
         body_text = page.inner_text("body")[:500]
         print("\n=== REGISTER DUPLICATE EMAIL ===")
         print(f"  URL: {page.url}")
