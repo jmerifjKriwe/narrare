@@ -105,14 +105,19 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - **Context Inspector (CR-07)**: Shows authors what context was assembled for the LLM before text generation. Entity counts, names, tone, budget allocation displayed in expandable panel in GenerationPanel. SSE protocol extended with `context_meta` event. ([CR-AUFG-07-01])
 
 - CR-03 Feature-Adoption audit (token enforcement + context enrichment)
-  - `cap_to_budget()` lightweight token utility in `core/writing/budget.py` — truncates text at word boundaries to a token budget
-  - Name generator: existing names list capped at 500 tokens to prevent context overflow
-  - Interview draft: transcripts capped at 4000 tokens for interview-assisted mode
-  - ReviewAgent: `ReviewDeps` extended with optional `writing_context: WritingContext` for enriched reviews with KB entities, recent chapters, and user preferences
-  - Review prompt enriched with KB data via `writing_graph_prompts.py`
-  - `WritingContextAssembler.assemble()` accepts `entity_connections` adjacency map — first-degree connections of referenced entities promoted from suggested to referenced tier
-  - `RelationshipRepository.get_adjacency_map()` — builds adjacency map from KB relationship edges
-  - 5 new test files: name service budget, relationship repository, writing graph review context, context assembler connections (happy path + edge cases)
+   - `cap_to_budget()` lightweight token utility in `core/writing/budget.py` — truncates text at word boundaries to a token budget
+   - Name generator: existing names list capped at 500 tokens to prevent context overflow
+   - Interview draft: transcripts capped at 4000 tokens for interview-assisted mode
+   - ReviewAgent: `ReviewDeps` extended with optional `writing_context: WritingContext` for enriched reviews with KB entities, recent chapters, and user preferences
+   - Review prompt enriched with KB data via `writing_graph_prompts.py`
+   - `WritingContextAssembler.assemble()` accepts `entity_connections` adjacency map — first-degree connections of referenced entities promoted from suggested to referenced tier
+   - `RelationshipRepository.get_adjacency_map()` — builds adjacency map from KB relationship edges
+   - 5 new test files: name service budget, relationship repository, writing graph review context, context assembler connections (happy path + edge cases)
+
+- **ANAL-002 Sentiment Analysis** — Deterministic VAD (Valence-Arousal-Dominance) + emotion scoring + narrative arc detection (ADR-021). Core: `core/analysis/sentiment.py` (LexiconSentimentAnalyzer). API: `POST /analysis/sentiment`. Frontend: SentimentPanel with VAD gauges + emotion chart (Recharts).
+- **CONS-001 Consistency Checker** — Cross-chapter and cross-entity consistency checking via LLM agent. Core: `ConsistencyAgent` (pydantic-ai). API: `POST /consistency/check`, `POST /consistency/chapters/{id}/check`. Frontend: ConsistencyPanel with severity badges + filterable issue list.
+- Core NLP module (`core/nlp/`) with NLPProvider Protocol, SpacyNLPProvider, emotion lexicon (650+ words, EN/DE/FR), pronouns (278+ entries), syllable counting, dialogue extraction.
+- Core analysis module (`core/analysis/`) with SentimentAnalyzer Protocol, LexiconSentimentAnalyzer, narrative arc detection (Freytag, Man in Hole, Comedy, Tragedy, Reversal).
 
 ### Fixed
 

@@ -1,7 +1,7 @@
 ---
 id: ANAL-002
 title: "Sentiment Analysis"
-status: planned
+status: in_progress
 area: analysis
 mvp: false
 
@@ -163,3 +163,4 @@ class SentimentVisualization:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-05-28` — Moved to `in_progress`. Core NLP module (`core/nlp/`) and analysis module (`core/analysis/`) implemented. LexiconSentimentAnalyzer with deterministic VAD + emotion scoring + narrative arc detection. API and frontend implemented (tests pending).

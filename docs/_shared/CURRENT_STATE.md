@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-27
-Updated by: NarrareDevCoordinator
-Session summary: Massive test coverage uplift — 6 waves across all layers. 1,045+ new tests in 90+ new files across Backend Unit (210), Backend Integration (85), Frontend Components (281), Frontend Lib/API (141), Core Unit (234), E2E (9), Cross-Layer Contracts (~85). All 26 untested frontend components covered. All 10 untested KB/writing backend services covered. Core events/agents/embeddings now comprehensively tested. Fake conformance expanded. 9 E2E test files. Coverage well above 80%.
+Date: 2026-05-28
+Updated by: NarrareDocsSpecialist
+Session summary: ANAL-002 Sentiment Analysis and CONS-001 Consistency Checker status updated to in_progress. CHANGELOG updated. CURRENT_STATE and INDEX.md synced. Core NLP module (`core/nlp/`) and analysis module (`core/analysis/`) added with deterministic sentiment scoring, emotion lexicon, and arc detection.
 
 ---
 
@@ -530,7 +530,11 @@ Phase 5 (current):
 
  20. ✅ ANAL-001: Beta Reader Simulation — Complete. Two-phase AI chapter analysis (Phase 1: full feedback, Phase 2: deep-dive). BetaReaderAgent in core with 2 prompts. New analysis/ API module (contracts, schemas, errors, service, cache, context assembler, mapper, validation, DI, router). BetaReaderPanel with ScoreRadar (Recharts), FeedbackCard, 4 tabs, editor integration. i18n 3 locales. 57 tests. Recharts v3.8.1 installed for analysis visualization suite.
 
-21. ✅ Coverage Uplift 2026-05-27 — 1,045+ new tests across 6 waves. All layers now comprehensively tested. Focus areas: backend API services (210 unit tests), frontend components (281 tests), frontend lib/hooks (141 tests), core layer (234 tests), backend integration (85 tests), cross-layer contracts + E2E (~94 tests).
+ 21. ✅ Coverage Uplift 2026-05-27 — 1,045+ new tests across 6 waves. All layers now comprehensively tested. Focus areas: backend API services (210 unit tests), frontend components (281 tests), frontend lib/hooks (141 tests), core layer (234 tests), backend integration (85 tests), cross-layer contracts + E2E (~94 tests).
+
+ 22. 🔨 ANAL-002: Sentiment Analysis — In progress. Core NLP module (`core/nlp/`) with NLPProvider Protocol, SpacyNLPProvider, emotion lexicon (650+ words, EN/DE/FR), pronouns (278+ entries), syllable counting, dialogue extraction. Core analysis module (`core/analysis/`) with SentimentAnalyzer Protocol, LexiconSentimentAnalyzer (deterministic VAD + emotion scoring), narrative arc detection (Freytag, Man in Hole, Comedy, Tragedy, Reversal). ADR-021. API: `POST /analysis/sentiment`. Frontend: SentimentPanel with VAD gauges + emotion chart (Recharts). Tests pending.
+
+ 23. 🔨 CONS-001: Consistency Checker — In progress. Cross-chapter and cross-entity consistency checking via LLM agent. Core: `ConsistencyAgent` (pydantic-ai). API: `POST /consistency/check`, `POST /consistency/chapters/{id}/check`. Frontend: ConsistencyPanel with severity badges + filterable issue list. Tests pending.
 
 Next focus: Post-MVP features (E2E test patterns, AI-assisted enrichment, analysis panels).
 
