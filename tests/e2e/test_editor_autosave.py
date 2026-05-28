@@ -101,15 +101,16 @@ class TestEditorAutosave:
 
         _click_next(page, expected_step=4)
 
-        # Provider setup
-        page_text = page.inner_text(".bg-card.border").lower()
+        # Step 4: Provider setup.
+        # Wait for the step to render before checking text content — the card
+        # may not be in the DOM immediately after the step indicator appears.
+        page.wait_for_timeout(500)
+        page_text = page.inner_text("body").lower()
+
         if "provider" in page_text or "openai" in page_text or "api key" in page_text:
-            provider_selectors = ['button:has-text("OpenAI")']
-            for selector in provider_selectors:
-                locator = page.locator(selector).first
-                if locator.is_visible():
-                    locator.click()
-                    break
+            provider_btn = page.locator('button:has-text("OpenAI")').first
+            if provider_btn.is_visible():
+                provider_btn.click()
 
             api_key_input = page.locator(
                 'input[name="api_key"], input[id="api_key"], input[type="password"]'
@@ -128,11 +129,11 @@ class TestEditorAutosave:
                     timeout=10000,
                 )
 
-            _click_next(page)
+        # ALWAYS click Next at Step 4, even if the text detection didn't match
+        # (the wizard might already be past Step 4 due to hasProviders)
+        _click_next(page)
 
-        # Wait for step 5 (confirmation) to render before looking for the complete button.
-        # Without this wait, the test immediately checks is_visible() on selectors that
-        # haven't rendered yet, silently skips the loop, and wait_for_url times out.
+        # Step 5: Wait for complete button
         page.locator('[data-testid="wizard-complete"]').first.wait_for(
             state="visible", timeout=15000
         )
