@@ -7,13 +7,13 @@ This project has a code knowledge graph via code-review-graph MCP tools.
 
 | Need | Use | NOT |
 |------|-----|-----|
-| Find code | `semantic_search_nodes_tool` | Grep |
-| Who calls X? | `query_graph_tool callers_of` | Read + scan |
-| Impact analysis | `get_impact_radius_tool` | Manual tracing |
-| Architecture | `get_architecture_overview_tool` | Directory listing |
-| Review changes | `detect_changes_tool` | Reading full files |
-| Tests for X | `query_graph_tool tests_for` | Glob |
-| Quick context | `get_minimal_context_tool` | Multiple reads |
+| Find code | `code-review-graph_semantic_search_nodes_tool` | Grep |
+| Who calls X? | `code-review-graph_query_graph_tool callers_of` | Read + scan |
+| Impact analysis | `code-review-graph_get_impact_radius_tool` | Manual tracing |
+| Architecture | `code-review-graph_get_architecture_overview_tool` | Directory listing |
+| Review changes | `code-review-graph_detect_changes_tool` | Reading full files |
+| Tests for X | `code-review-graph_query_graph_tool tests_for` | Glob |
+| Quick context | `code-review-graph_get_minimal_context_tool` | Multiple reads |
 
 Read/Glob/Grep are LAST RESORTS — only when the graph lacks the data.
 
@@ -259,11 +259,11 @@ scanning cannot.
 
 ### When to use graph tools FIRST
 
-- **Exploring code**: `semantic_search_nodes_tool` or `query_graph_tool` instead of Grep
-- **Understanding impact**: `get_impact_radius_tool` instead of manually tracing imports
-- **Code review**: `detect_changes_tool` + `get_review_context_tool` instead of reading entire files
-- **Finding relationships**: `query_graph_tool` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview_tool` + `list_communities_tool`
+- **Exploring code**: `code-review-graph_semantic_search_nodes_tool` or `code-review-graph_query_graph_tool` instead of Grep
+- **Understanding impact**: `code-review-graph_get_impact_radius_tool` instead of manually tracing imports
+- **Code review**: `code-review-graph_detect_changes_tool` + `code-review-graph_get_review_context_tool` instead of reading entire files
+- **Finding relationships**: `code-review-graph_query_graph_tool` with callers_of/callees_of/imports_of/tests_for
+- **Architecture questions**: `code-review-graph_get_architecture_overview_tool` + `code-review-graph_list_communities_tool`
 
 Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 
@@ -271,18 +271,19 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 
 | Tool | Use when |
 | ------ | ---------- |
-| `detect_changes_tool` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context_tool` | Need source snippets for review — token-efficient |
-| `get_impact_radius_tool` | Understanding blast radius of a change |
-| `get_affected_flows_tool` | Finding which execution paths are impacted |
-| `query_graph_tool` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes_tool` | Finding functions/classes by name or keyword |
-| `get_architecture_overview_tool` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
+| `code-review-graph_detect_changes_tool` | Reviewing code changes — gives risk-scored analysis |
+| `code-review-graph_get_review_context_tool` | Need source snippets for review — token-efficient |
+| `code-review-graph_get_impact_radius_tool` | Understanding blast radius of a change |
+| `code-review-graph_get_affected_flows_tool` | Finding which execution paths are impacted |
+| `code-review-graph_query_graph_tool` | Tracing callers, callees, imports, tests, dependencies |
+| `code-review-graph_semantic_search_nodes_tool` | Finding functions/classes by name or keyword |
+| `code-review-graph_get_architecture_overview_tool` | Understanding high-level codebase structure |
+| `code-review-graph_refactor_tool` | Planning renames, finding dead code |
 
 ### Workflow
 
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes_tool` for code review.
-3. Use `get_affected_flows_tool` to understand impact.
-4. Use `query_graph_tool` pattern="tests_for" to check coverage.
+1. The graph does NOT auto-updates on file changes. You MUST run `code-review-graph_build_or_update_graph_tool` or
+`code-review-graph_detect_changes_tool` to update the graph with recent edits before querying it.
+2. Use `code-review-graph_detect_changes_tool` for code review.
+3. Use `code-review-graph_get_affected_flows_tool` to understand impact.
+4. Use `code-review-graph_query_graph_tool` pattern="tests_for" to check coverage.
