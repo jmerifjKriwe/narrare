@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.e2e.mocks.llm_responses import setup_llm_mocks
-from tests.e2e.test_helpers import _setup_auth_proxy
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -221,10 +220,28 @@ class TestAuthFlow:
             ),
         )
 
-        # Intercept all other API calls via Playwright's route.fetch() to prevent
-        # browser connection-pool hang during page load. The auth/refresh mock
+        # Intercept remaining API calls via Playwright's route.fetch() to prevent
+        # browser connection-pool hang during page load.  The auth/refresh mock
         # (registered above) takes precedence since it was registered first.
-        _setup_auth_proxy(page, user["access_token"])
+        # NOTE: We do NOT use _setup_auth_proxy() here because its add_init_script
+        # re-sets the narrare_auth cookie on every navigation, which would break
+        # the logout cookie-clearing assertion at the end of this test.  The cookie
+        # is already set from the UI login above — no init script needed.
+        def _proxy_with_auth(route):
+            headers = dict(route.request.headers)
+            if "authorization" not in {k.lower() for k in headers}:
+                headers["Authorization"] = f"Bearer {user['access_token']}"
+            try:
+                response = route.fetch(headers=headers)
+                route.fulfill(
+                    status=response.status,
+                    headers=response.headers,
+                    body=response.body(),
+                )
+            except Exception:
+                route.continue_(headers=headers)
+
+        page.route("**/api/v1/**", _proxy_with_auth)
 
         # Now logged in, navigate to dashboard to find logout button
         page.goto(f"{base_url}/", timeout=30000, wait_until="domcontentloaded")
