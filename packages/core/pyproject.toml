@@ -16,6 +16,7 @@ dependencies = [
   "mem0ai>=1.0",
   "prometheus-client>=0.20.0",
   "psycopg[binary]>=3.0",
+  "pyphen>=0.17",
   "narrare-i18n",
 ]
 
@@ -24,6 +25,7 @@ narrare-i18n = { workspace = true }
 
 [project.optional-dependencies]
 embeddings = ["sentence-transformers>=3.0"]
+nlp = ["spacy>=3.8"]
 
 [build-system]
 requires = ["hatchling"]

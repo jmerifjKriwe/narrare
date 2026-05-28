@@ -190,3 +190,12 @@ class AuthenticationError(NarrareError):
 
     def __init__(self, message: str = "Authentication required") -> None:
         super().__init__(message, code="AUTHENTICATION_ERROR")
+
+
+# ---------------------------------------------------------------------------
+# NLP errors
+# ---------------------------------------------------------------------------
+
+
+class NLPProviderError(NarrareError):
+    """Raised when the NLP provider fails (model not found, processing error)."""
