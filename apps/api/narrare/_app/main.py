@@ -101,6 +101,10 @@ def create_app() -> FastAPI:
             content={"detail": "Internal server error"},
         )
 
+    # --- Ensure all SQLAlchemy models are registered with Base.metadata ---
+    # Must happen before any DB operation (some models have cross-module FKs).
+    import narrare._app.models  # noqa: F401  # pyright: ignore[reportUnusedImport]
+
     # --- Routers ---
     _register_routers(app)
 
