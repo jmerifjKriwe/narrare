@@ -56,5 +56,59 @@
   "location": "Stelle",
   "betaReader": {
     "aiDisclaimer": "KI-generierte Einschätzung \u00b7 Ergebnisse können abweichen"
+  },
+  "sentiment": {
+    "title": "Stimmungsanalyse",
+    "trigger": "Stimmung",
+    "triggerTooltip": "Emotionalen Ton und Stimmung des Textes analysieren",
+    "loading": "Analysiere Stimmung...",
+    "loadingSubtext": "Verarbeite VAD-Scores, Emotionen und Erzählbogen",
+    "disclaimer": "Deterministische Analyse \u00b7 Keine KI-Generierung verwendet",
+    "chapter": "Kapitel {number}",
+    "vad": {
+      "title": "Durchschnittliche VAD-Scores",
+      "valence": "Valenz",
+      "arousal": "Aktivierung",
+      "dominance": "Dominanz",
+      "valenceShort": "V:",
+      "arousalShort": "A:",
+      "dominanceShort": "D:"
+    },
+    "emotionChart": "Emotions-Scores",
+    "arc": {
+      "title": "Erzählbogen",
+      "confidence": "{value}% Konfidenz"
+    },
+    "sentences": "Satz-Aufschlüsselung ({count})",
+    "dialogue": "Dialog",
+    "wordCount": "{count} Wörter",
+    "noDominantEmotion": "Neutral"
+  },
+  "consistency": {
+    "title": "Konsistenzprüfung",
+    "trigger": "Konsistenz",
+    "triggerTooltip": "Text auf Charakter-, Zeitachsen-, Welt- und Handlungswidersprüche prüfen",
+    "loading": "Prüfe Konsistenz...",
+    "loadingSubtext": "Analysiere Charaktere, Zeitachse, Weltregeln und Handlungslogik",
+    "aiDisclaimer": "KI-gestützte Analyse \u00b7 Falschpositive sind möglich",
+    "triggerAriaLabel": "Konsistenzprüfung öffnen",
+    "overallAssessment": "Gesamteinschätzung",
+    "issues": "Probleme ({count})",
+    "noIssues": "Keine Probleme gefunden, die den aktuellen Filtern entsprechen.",
+    "filterByType": "Nach Prüftyp filtern",
+    "filterBySeverity": "Nach Schweregrad filtern",
+    "allTypes": "Alle Typen",
+    "allSeverities": "Alle Schweregrade",
+    "issueCount": "{count} von {total} Problemen",
+    "detailsShow": "Details anzeigen",
+    "detailsHide": "Details ausblenden",
+    "locations": "Stellen",
+    "conflictingFacts": "Widersprüchliche Fakten",
+    "suggestion": "Vorschlag",
+    "severity": {
+      "error": "Fehler",
+      "warning": "Warnung",
+      "info": "Info"
+    }
   }
 }

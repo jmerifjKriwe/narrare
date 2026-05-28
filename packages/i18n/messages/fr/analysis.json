@@ -56,5 +56,59 @@
   "location": "Emplacement",
   "betaReader": {
     "aiDisclaimer": "Analyses générées par IA \u00b7 Les résultats peuvent varier"
+  },
+  "sentiment": {
+    "title": "Analyse de sentiment",
+    "trigger": "Sentiment",
+    "triggerTooltip": "Analyser le ton émotionnel et le sentiment du texte",
+    "loading": "Analyse du sentiment...",
+    "loadingSubtext": "Traitement des scores VAD, émotions et arc narratif",
+    "disclaimer": "Analyse déterministe \u00b7 Aucune génération IA utilisée",
+    "chapter": "Chapitre {number}",
+    "vad": {
+      "title": "Scores VAD moyens",
+      "valence": "Valence",
+      "arousal": "Éveil",
+      "dominance": "Dominance",
+      "valenceShort": "V:",
+      "arousalShort": "A:",
+      "dominanceShort": "D:"
+    },
+    "emotionChart": "Scores d'émotion",
+    "arc": {
+      "title": "Arc narratif",
+      "confidence": "{value}% de confiance"
+    },
+    "sentences": "Analyse par phrase ({count})",
+    "dialogue": "Dialogue",
+    "wordCount": "{count} mots",
+    "noDominantEmotion": "Neutre"
+  },
+  "consistency": {
+    "title": "Vérification de cohérence",
+    "trigger": "Cohérence",
+    "triggerTooltip": "Vérifier les incohérences de personnages, chronologie, monde et intrigue",
+    "loading": "Vérification de la cohérence...",
+    "loadingSubtext": "Analyse des personnages, chronologie, règles du monde et logique de l'intrigue",
+    "aiDisclaimer": "Analyse par IA \u00b7 Les faux positifs sont possibles",
+    "triggerAriaLabel": "Ouvrir le vérificateur de cohérence",
+    "overallAssessment": "Évaluation globale",
+    "issues": "Problèmes ({count})",
+    "noIssues": "Aucun problème ne correspond aux filtres actuels.",
+    "filterByType": "Filtrer par type de vérification",
+    "filterBySeverity": "Filtrer par sévérité",
+    "allTypes": "Tous les types",
+    "allSeverities": "Toutes les sévérités",
+    "issueCount": "{count} sur {total} problèmes",
+    "detailsShow": "Afficher les détails",
+    "detailsHide": "Masquer les détails",
+    "locations": "Emplacements",
+    "conflictingFacts": "Faits contradictoires",
+    "suggestion": "Suggestion",
+    "severity": {
+      "error": "Erreur",
+      "warning": "Avertissement",
+      "info": "Info"
+    }
   }
 }

@@ -56,5 +56,59 @@
   "location": "Location",
   "betaReader": {
     "aiDisclaimer": "AI-generated insights \u00b7 Results may vary"
+  },
+  "sentiment": {
+    "title": "Sentiment Analysis",
+    "trigger": "Sentiment",
+    "triggerTooltip": "Analyze emotional tone and sentiment of your text",
+    "loading": "Analyzing sentiment...",
+    "loadingSubtext": "Processing VAD scores, emotions, and narrative arc",
+    "disclaimer": "Deterministic analysis \u00b7 No AI generation used",
+    "chapter": "Chapter {number}",
+    "vad": {
+      "title": "Average VAD Scores",
+      "valence": "Valence",
+      "arousal": "Arousal",
+      "dominance": "Dominance",
+      "valenceShort": "V:",
+      "arousalShort": "A:",
+      "dominanceShort": "D:"
+    },
+    "emotionChart": "Emotion Scores",
+    "arc": {
+      "title": "Narrative Arc",
+      "confidence": "{value}% confidence"
+    },
+    "sentences": "Sentence Breakdown ({count})",
+    "dialogue": "Dialogue",
+    "wordCount": "{count} words",
+    "noDominantEmotion": "Neutral"
+  },
+  "consistency": {
+    "title": "Consistency Check",
+    "trigger": "Consistency",
+    "triggerTooltip": "Check your text for character, timeline, world, and plot inconsistencies",
+    "loading": "Checking consistency...",
+    "loadingSubtext": "Analyzing characters, timeline, world rules, and plot logic",
+    "aiDisclaimer": "AI-powered analysis \u00b7 False positives are possible",
+    "triggerAriaLabel": "Open consistency checker",
+    "overallAssessment": "Overall Assessment",
+    "issues": "Issues ({count})",
+    "noIssues": "No issues found matching the current filters.",
+    "filterByType": "Filter by check type",
+    "filterBySeverity": "Filter by severity",
+    "allTypes": "All types",
+    "allSeverities": "All severities",
+    "issueCount": "{count} of {total} issues",
+    "detailsShow": "Show details",
+    "detailsHide": "Hide details",
+    "locations": "Locations",
+    "conflictingFacts": "Conflicting Facts",
+    "suggestion": "Suggestion",
+    "severity": {
+      "error": "Error",
+      "warning": "Warning",
+      "info": "Info"
+    }
   }
 }

@@ -1,6 +1,10 @@
 import type { Editor } from "@tiptap/react";
 import { create } from "zustand";
-import type { BetaReaderResponse } from "@/lib/api/analysis";
+import type {
+  BetaReaderResponse,
+  ConsistencyResponse,
+  SentimentOverview,
+} from "@/lib/api/analysis";
 import type { ChapterSummary, SaveStatus } from "@/types";
 
 interface EditorState {
@@ -42,6 +46,16 @@ interface EditorState {
   betaReaderResult: BetaReaderResponse | null;
   betaReaderLoading: boolean;
 
+  // Sentiment analysis state
+  sentimentPanelOpen: boolean;
+  sentimentResult: SentimentOverview[] | null;
+  sentimentLoading: boolean;
+
+  // Consistency checker state
+  consistencyPanelOpen: boolean;
+  consistencyResult: ConsistencyResponse | null;
+  consistencyLoading: boolean;
+
   // Actions
   setActiveChapterId: (id: string | null) => void;
   setActiveVolumeId: (id: string | null) => void;
@@ -67,6 +81,12 @@ interface EditorState {
   toggleBetaReaderPanel: () => void;
   setBetaReaderResult: (result: BetaReaderResponse | null) => void;
   setBetaReaderLoading: (loading: boolean) => void;
+  toggleSentimentPanel: () => void;
+  setSentimentResult: (result: SentimentOverview[] | null) => void;
+  setSentimentLoading: (loading: boolean) => void;
+  toggleConsistencyPanel: () => void;
+  setConsistencyResult: (result: ConsistencyResponse | null) => void;
+  setConsistencyLoading: (loading: boolean) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -90,6 +110,12 @@ export const useEditorStore = create<EditorState>((set) => ({
   betaReaderPanelOpen: false,
   betaReaderResult: null,
   betaReaderLoading: false,
+  sentimentPanelOpen: false,
+  sentimentResult: null,
+  sentimentLoading: false,
+  consistencyPanelOpen: false,
+  consistencyResult: null,
+  consistencyLoading: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
 
@@ -149,9 +175,39 @@ export const useEditorStore = create<EditorState>((set) => ({
       // Close other right panels when opening beta reader panel
       contextPanelOpen: s.betaReaderPanelOpen ? s.contextPanelOpen : false,
       generationPanelOpen: s.betaReaderPanelOpen ? s.generationPanelOpen : false,
+      sentimentPanelOpen: s.betaReaderPanelOpen ? s.sentimentPanelOpen : false,
+      consistencyPanelOpen: s.betaReaderPanelOpen ? s.consistencyPanelOpen : false,
     })),
 
   setBetaReaderResult: (betaReaderResult) => set({ betaReaderResult }),
 
   setBetaReaderLoading: (betaReaderLoading) => set({ betaReaderLoading }),
+
+  toggleSentimentPanel: () =>
+    set((s) => ({
+      sentimentPanelOpen: !s.sentimentPanelOpen,
+      // Close other right panels when opening sentiment panel
+      contextPanelOpen: s.sentimentPanelOpen ? s.contextPanelOpen : false,
+      generationPanelOpen: s.sentimentPanelOpen ? s.generationPanelOpen : false,
+      betaReaderPanelOpen: s.sentimentPanelOpen ? s.betaReaderPanelOpen : false,
+      consistencyPanelOpen: s.sentimentPanelOpen ? s.consistencyPanelOpen : false,
+    })),
+
+  setSentimentResult: (sentimentResult) => set({ sentimentResult }),
+
+  setSentimentLoading: (sentimentLoading) => set({ sentimentLoading }),
+
+  toggleConsistencyPanel: () =>
+    set((s) => ({
+      consistencyPanelOpen: !s.consistencyPanelOpen,
+      // Close other right panels when opening consistency panel
+      contextPanelOpen: s.consistencyPanelOpen ? s.contextPanelOpen : false,
+      generationPanelOpen: s.consistencyPanelOpen ? s.generationPanelOpen : false,
+      betaReaderPanelOpen: s.consistencyPanelOpen ? s.betaReaderPanelOpen : false,
+      sentimentPanelOpen: s.consistencyPanelOpen ? s.sentimentPanelOpen : false,
+    })),
+
+  setConsistencyResult: (consistencyResult) => set({ consistencyResult }),
+
+  setConsistencyLoading: (consistencyLoading) => set({ consistencyLoading }),
 }));

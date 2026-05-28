@@ -90,6 +90,95 @@ export interface BetaReaderDeepDiveResponse {
 
 // --- API functions ---
 
+// --- ANAL-002: Sentiment Analysis Types ---
+
+export interface VADScores {
+  valence: number;
+  arousal: number;
+  dominance: number;
+}
+
+export interface EmotionScores {
+  anger: number;
+  anticipation: number;
+  disgust: number;
+  fear: number;
+  joy: number;
+  sadness: number;
+  surprise: number;
+  trust: number;
+  positive: number;
+  negative: number;
+}
+
+export interface SentenceSentiment {
+  sentence: string;
+  sentence_index: number;
+  vad: VADScores;
+  emotions: EmotionScores;
+  word_count: number;
+  is_dialogue: boolean;
+  dominant_emotion: string | null;
+}
+
+export interface NarrativeArc {
+  arc_type: string;
+  confidence: number;
+  segments: Array<Record<string, unknown>>;
+  explanation: string;
+}
+
+export interface SentimentOverview {
+  sentence_count: number;
+  average_vad: VADScores;
+  overall_emotions: EmotionScores;
+  narrative_arc: NarrativeArc | null;
+  sentences: SentenceSentiment[];
+  dominant_emotions: string[];
+}
+
+export interface SentimentRequest {
+  chapter_ids: string[];
+  language?: string | null;
+  detect_arc: boolean;
+}
+
+// --- CONS-001: Consistency Checker Types ---
+
+export type ConsistencyCheckType = "character" | "timeline" | "world" | "plot";
+export type ConsistencySeverity = "error" | "warning" | "info";
+
+export interface ConsistencyIssue {
+  check_type: ConsistencyCheckType;
+  severity: ConsistencySeverity;
+  description: string;
+  locations: string[];
+  conflicting_facts: string[];
+  suggestion: string | null;
+  confidence: number;
+}
+
+export interface ConsistencyRequest {
+  chapter_ids: string[];
+  check_types: ConsistencyCheckType[];
+  include_kb: boolean;
+}
+
+export interface ConsistencyResponse {
+  novel_id: string;
+  chapter_ids: string[];
+  check_types: ConsistencyCheckType[];
+  issues: ConsistencyIssue[];
+  error_count: number;
+  warning_count: number;
+  info_count: number;
+  total_issues: number;
+  overall_assessment: string;
+  analyzed_at: string;
+}
+
+// --- API functions ---
+
 export const analysisApi = {
   /**
    * Run Phase 1 beta reader analysis.
@@ -111,6 +200,41 @@ export const analysisApi = {
    */
   deepDive: (novelId: string, request: BetaReaderDeepDiveRequest) =>
     fetchApi<BetaReaderDeepDiveResponse>(`/analysis/beta-reader/deep-dive?novel_id=${novelId}`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+
+  // --- ANAL-002: Sentiment ---
+
+  /**
+   * Run deterministic sentiment analysis on chapter(s).
+   * POST /analysis/sentiment?novel_id={novelId}
+   * Returns VAD + emotion + arc data per chapter.
+   */
+  sentiment: (novelId: string, request: SentimentRequest) =>
+    fetchApi<SentimentOverview[]>(`/analysis/sentiment?novel_id=${novelId}`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+
+  // --- CONS-001: Consistency ---
+
+  /**
+   * Run cross-chapter consistency check.
+   * POST /consistency/check?novel_id={novelId}
+   */
+  consistencyCheck: (novelId: string, request: ConsistencyRequest) =>
+    fetchApi<ConsistencyResponse>(`/consistency/check?novel_id=${novelId}`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+
+  /**
+   * Run single-chapter consistency check.
+   * POST /consistency/chapters/{chapterId}/check?novel_id={novelId}
+   */
+  consistencyCheckChapter: (novelId: string, chapterId: string, request: ConsistencyRequest) =>
+    fetchApi<ConsistencyResponse>(`/consistency/chapters/${chapterId}/check?novel_id=${novelId}`, {
       method: "POST",
       body: JSON.stringify(request),
     }),
