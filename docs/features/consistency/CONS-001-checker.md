@@ -1,7 +1,7 @@
 ---
 id: CONS-001
 title: "Consistency Checker"
-status: planned
+status: in_progress
 area: consistency
 mvp: false
 

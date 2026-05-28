@@ -15,6 +15,14 @@ from narrare_core.agents.beta_reader_types import (
     BetaReaderPhase1Output,
     BetaReaderPhase2Output,
 )
+from narrare_core.agents.consistency_agent import ConsistencyAgent
+from narrare_core.agents.consistency_types import (
+    ConsistencyCheckType,
+    ConsistencyDeps,
+    ConsistencyIssue,
+    ConsistencyOutput,
+    ConsistencySeverity,
+)
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
 from narrare_core.agents.draft_types import DraftConfig, DraftOutput
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
@@ -74,6 +82,12 @@ __all__ = [
     "BetaReaderPhase1Output",
     "BetaReaderPhase2Output",
     "ChapterSummaryAgent",
+    "ConsistencyAgent",
+    "ConsistencyCheckType",
+    "ConsistencyDeps",
+    "ConsistencyIssue",
+    "ConsistencyOutput",
+    "ConsistencySeverity",
     "DraftAgent",
     "DraftConfig",
     "DraftDeps",
