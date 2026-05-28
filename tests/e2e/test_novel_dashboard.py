@@ -160,7 +160,7 @@ class TestNovelDashboard:
 
         # Look for the novel title on the dashboard
         body_text = page.inner_text("body")
-        page.screenshot(path="/tmp/dashboard-novel-listing.png")
+        page.screenshot(path="/tmp/dashboard-novel-listing.png", timeout=5000)
         print("\n=== DASHBOARD ===")
         print(f"  URL: {page.url}")
         print(f"  Body text (first 500 chars): {body_text[:500]}")
@@ -204,7 +204,7 @@ class TestNovelDashboard:
                 found_button = True
                 break
 
-        page.screenshot(path="/tmp/dashboard-new-novel.png")
+        page.screenshot(path="/tmp/dashboard-new-novel.png", timeout=5000)
         print(f"\nNew novel button visible: {found_button}")
         assert found_button, "New novel/Create button not found on dashboard."
 
@@ -333,7 +333,7 @@ class TestNovelDashboard:
                 page.wait_for_timeout(3000)
 
                 # Verify card is gone
-                page.screenshot(path="/tmp/dashboard-after-delete.png")
+                page.screenshot(path="/tmp/dashboard-after-delete.png", timeout=5000)
                 print("\n  Delete completed")
             else:
                 print("\n  Delete button not visible after hover — may need different approach")
