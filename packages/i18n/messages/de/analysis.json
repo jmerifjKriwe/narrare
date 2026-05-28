@@ -82,13 +82,17 @@
     "sentences": "Satz-Aufschlüsselung ({count})",
     "dialogue": "Dialog",
     "wordCount": "{count} Wörter",
-    "noDominantEmotion": "Neutral"
+    "noDominantEmotion": "Neutral",
+    "arcTrajectory": "Bogen-Trajektorie",
+    "exportChart": "Exportieren",
+    "warnings": "Hinweise"
   },
   "consistency": {
     "title": "Konsistenzprüfung",
     "trigger": "Konsistenz",
     "triggerTooltip": "Text auf Charakter-, Zeitachsen-, Welt- und Handlungswidersprüche prüfen",
     "loading": "Prüfe Konsistenz...",
+    "loadingElapsed": "Prüfe Konsistenz... ({seconds}s)",
     "loadingSubtext": "Analysiere Charaktere, Zeitachse, Weltregeln und Handlungslogik",
     "aiDisclaimer": "KI-gestützte Analyse \u00b7 Falschpositive sind möglich",
     "triggerAriaLabel": "Konsistenzprüfung öffnen",
@@ -109,6 +113,25 @@
       "error": "Fehler",
       "warning": "Warnung",
       "info": "Info"
-    }
+    },
+    "scope": {
+      "label": "Prüfungsumfang",
+      "current": "Aktuelles Kapitel",
+      "selected": "Ausgewählte Kapitel",
+      "all": "Gesamter Roman"
+    },
+    "actions": {
+      "dismiss": "Ausblenden",
+      "markIntentional": "Beabsichtigt",
+      "copied": "Kopiert!",
+      "copySuggestion": "Vorschlag kopieren"
+    },
+    "progress": {
+      "collecting": "Sammle Kapitel-Daten...",
+      "loading": "Lade KB-Entitäten...",
+      "analyzing": "Führe Konsistenzanalyse durch...",
+      "finishing": "Fast fertig..."
+    },
+    "intentional": "Beabsichtigt"
   }
 }

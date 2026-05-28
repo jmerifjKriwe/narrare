@@ -18,6 +18,7 @@ from narrare.consistency.prompt_builder import (
     MAX_KB_ENTRIES,
     build_user_prompt,
 )
+from narrare.consistency.rule_helpers import deduplicate_issues, rule_based_check
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
 from narrare_core.agents.consistency_agent import ConsistencyAgent
 from narrare_core.agents.consistency_types import (
@@ -120,35 +121,43 @@ class ConsistencyCheckerService:
         if request.include_kb:
             kb_summaries = await self._fetch_kb_summaries(novel_id)
 
-        # 4. Resolve language and check types
+        # 4. Rule-based pre-check (deterministic, no LLM needed)
+        rule_issues = rule_based_check(kb_summaries)
+
+        # 5. Resolve language and check types
         language = novel.writing_language or "en"
         check_types = request.check_types or list(ConsistencyCheckType)
 
-        # 5. Build ConsistencyDeps
+        # 6. Build ConsistencyDeps
         deps = ConsistencyDeps(
             language=language,
             novel_id=str(novel_id),
             chapter_texts=chapter_texts,
             kb_entity_summaries=kb_summaries,
             check_types=check_types,
+            existing_issue_count=len(rule_issues),
         )
 
-        # 6. Compose system prompt (PromptComposer with inline fallback)
+        # 7. Compose system prompt (PromptComposer with inline fallback)
         system_prompt = await self._resolve_system_prompt(language)
 
-        # 7. Run ConsistencyAgent
+        # 8. Run ConsistencyAgent
         model = await self._registry.get_model(self._config)
         agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
         user_prompt = build_user_prompt(deps, check_types)
         result = await agent.run(prompt=user_prompt, deps=deps)
 
-        # 8. Map to response (severity counts auto-computed via model_post_init)
+        # 9. Combine rule-based (confidence=1.0) + LLM issues, then deduplicate
+        all_issues = rule_issues + result.issues
+        deduped_issues = deduplicate_issues(all_issues)
+
+        # 10. Map to response (severity counts auto-computed via model_post_init)
         now = datetime.now(tz=UTC).isoformat()
         response = ConsistencyResponse(
             novel_id=novel_id,
             chapter_ids=resolved_ids,
             check_types=result.checked_types,
-            issues=result.issues,
+            issues=deduped_issues,
             overall_assessment=result.overall_assessment,
             analyzed_at=now,
         )

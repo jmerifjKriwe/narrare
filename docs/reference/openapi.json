@@ -11494,6 +11494,14 @@
             "type": "array",
             "title": "Dominant Emotions",
             "default": []
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "default": []
           }
         },
         "type": "object",
@@ -11503,7 +11511,7 @@
           "overall_emotions"
         ],
         "title": "SentimentOverview",
-        "description": "Aggregate sentiment analysis for an entire text (chapter).\n\nAttributes:\n    sentence_count: Number of sentences analyzed.\n    average_vad: Mean VAD scores across all sentences.\n    overall_emotions: Aggregate emotion scores across all sentences.\n    narrative_arc: Detected narrative arc (if enough sentences).\n    sentences: Per-sentence sentiment breakdown.\n    dominant_emotions: Top emotion categories across the text."
+        "description": "Aggregate sentiment analysis for an entire text (chapter).\n\nAttributes:\n    sentence_count: Number of sentences analyzed.\n    average_vad: Mean VAD scores across all sentences.\n    overall_emotions: Aggregate emotion scores across all sentences.\n    narrative_arc: Detected narrative arc (if enough sentences).\n    sentences: Per-sentence sentiment breakdown.\n    dominant_emotions: Top emotion categories across the text.\n    warnings: Data-quality warnings (e.g. low word count, arc limits)."
       },
       "SentimentRequest": {
         "properties": {

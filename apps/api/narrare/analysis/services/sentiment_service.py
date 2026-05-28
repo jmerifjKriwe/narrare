@@ -74,8 +74,10 @@ class ChapterSentimentService:
         1. Fetch novel for access control and language resolution.
         2. Fetch chapter content.
         3. Resolve effective language (override → novel default → ``"en"``).
-        4. Run deterministic sentiment analysis via core.
-        5. Return ``SentimentOverview``.
+        4. Collect data-quality warnings (word count < 500, arc detection
+           on single chapter).
+        5. Run deterministic sentiment analysis via core.
+        6. Return ``SentimentOverview`` with any warnings attached.
 
         Args:
             novel_id: The project containing the chapter.
@@ -84,10 +86,12 @@ class ChapterSentimentService:
             language: Optional language override. If ``None``, uses
                 the novel's ``writing_language`` (fallback ``"en"``).
             detect_arc: Whether to detect narrative arc. Default ``True``.
+                Automatically disabled for single-chapter analysis with
+                a warning (ANAL-002: requires 3+ chapters).
 
         Returns:
-            A ``SentimentOverview`` with per-sentence breakdown and
-            aggregate scores.
+            A ``SentimentOverview`` with per-sentence breakdown,
+            aggregate scores, and any data-quality ``warnings``.
 
         Raises:
             NotFoundError: If the novel or chapter does not exist or
@@ -108,13 +112,41 @@ class ChapterSentimentService:
         # 3. Resolve effective language
         effective_language = language or novel.writing_language or "en"
 
-        # 4. Run deterministic analysis
+        # 4. Data-quality warnings
+        warnings: list[str] = []
+
+        word_count = len(chapter.content.split())
+        if word_count < 500:
+            msg = (
+                f"Chapter has {word_count} words; analysis may be "
+                "unreliable with fewer than 500 words."
+            )
+            warnings.append(msg)
+            logger.warning(
+                "chapter_word_count_low",
+                chapter_id=str(chapter_id),
+                word_count=word_count,
+                minimum=500,
+            )
+
+        effective_detect_arc = detect_arc
+        if detect_arc:
+            msg = "Arc detection requires 3+ chapters; disabled for single-chapter analysis."
+            warnings.append(msg)
+            effective_detect_arc = False
+            logger.warning(
+                "arc_detection_disabled",
+                chapter_id=str(chapter_id),
+                reason="single_chapter",
+            )
+
+        # 5. Run deterministic analysis
         analyzer = self._get_analyzer()
         try:
             result = await analyzer.analyze(
                 text=chapter.content,
                 language=effective_language,
-                detect_arc=detect_arc,
+                detect_arc=effective_detect_arc,
             )
         except Exception as exc:
             logger.error(
@@ -127,12 +159,17 @@ class ChapterSentimentService:
             )
             raise
 
+        # 6. Attach warnings to result
+        if warnings:
+            result.warnings = warnings
+
         logger.info(
             "sentiment_analyzed",
             novel_id=str(novel_id),
             chapter_id=str(chapter_id),
             language=effective_language,
             sentence_count=result.sentence_count,
+            warning_count=len(warnings),
         )
 
         return result

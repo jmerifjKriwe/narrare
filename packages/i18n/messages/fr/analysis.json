@@ -82,13 +82,17 @@
     "sentences": "Analyse par phrase ({count})",
     "dialogue": "Dialogue",
     "wordCount": "{count} mots",
-    "noDominantEmotion": "Neutre"
+    "noDominantEmotion": "Neutre",
+    "arcTrajectory": "Trajectoire de l\u2019arc",
+    "exportChart": "Exporter",
+    "warnings": "Avertissements"
   },
   "consistency": {
     "title": "Vérification de cohérence",
     "trigger": "Cohérence",
     "triggerTooltip": "Vérifier les incohérences de personnages, chronologie, monde et intrigue",
     "loading": "Vérification de la cohérence...",
+    "loadingElapsed": "Vérification de la cohérence... ({seconds}s)",
     "loadingSubtext": "Analyse des personnages, chronologie, règles du monde et logique de l'intrigue",
     "aiDisclaimer": "Analyse par IA \u00b7 Les faux positifs sont possibles",
     "triggerAriaLabel": "Ouvrir le vérificateur de cohérence",
@@ -109,6 +113,25 @@
       "error": "Erreur",
       "warning": "Avertissement",
       "info": "Info"
-    }
+    },
+    "scope": {
+      "label": "Portée de la vérification",
+      "current": "Chapitre actuel",
+      "selected": "Chapitres sélectionnés",
+      "all": "Roman entier"
+    },
+    "actions": {
+      "dismiss": "Ignorer",
+      "markIntentional": "Intentionnel",
+      "copied": "Copié !",
+      "copySuggestion": "Copier la suggestion"
+    },
+    "progress": {
+      "collecting": "Collecte des données du chapitre...",
+      "loading": "Chargement des entités KB...",
+      "analyzing": "Analyse de cohérence en cours...",
+      "finishing": "Presque terminé..."
+    },
+    "intentional": "Intentionnel"
   }
 }

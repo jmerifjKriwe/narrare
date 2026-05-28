@@ -82,13 +82,17 @@
     "sentences": "Sentence Breakdown ({count})",
     "dialogue": "Dialogue",
     "wordCount": "{count} words",
-    "noDominantEmotion": "Neutral"
+    "noDominantEmotion": "Neutral",
+    "arcTrajectory": "Arc Trajectory",
+    "exportChart": "Export",
+    "warnings": "Warnings"
   },
   "consistency": {
     "title": "Consistency Check",
     "trigger": "Consistency",
     "triggerTooltip": "Check your text for character, timeline, world, and plot inconsistencies",
     "loading": "Checking consistency...",
+    "loadingElapsed": "Checking consistency... ({seconds}s)",
     "loadingSubtext": "Analyzing characters, timeline, world rules, and plot logic",
     "aiDisclaimer": "AI-powered analysis \u00b7 False positives are possible",
     "triggerAriaLabel": "Open consistency checker",
@@ -109,6 +113,25 @@
       "error": "Error",
       "warning": "Warning",
       "info": "Info"
-    }
+    },
+    "scope": {
+      "label": "Check scope",
+      "current": "Current Chapter",
+      "selected": "Selected Chapters",
+      "all": "Entire Novel"
+    },
+    "actions": {
+      "dismiss": "Dismiss",
+      "markIntentional": "Intentional",
+      "copied": "Copied!",
+      "copySuggestion": "Copy suggestion"
+    },
+    "progress": {
+      "collecting": "Collecting chapter data...",
+      "loading": "Loading KB entities...",
+      "analyzing": "Running consistency analysis...",
+      "finishing": "Almost done..."
+    },
+    "intentional": "Intentional"
   }
 }

@@ -9,13 +9,16 @@
 
 import { AlertTriangle, ArrowLeft, Info, Loader2, RefreshCw, Shield, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConsistencyResponse } from "@/lib/api/analysis";
 import { useConsistencyCheck } from "@/lib/hooks/useConsistency";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { ConsistencyIssueList } from "./ConsistencyIssueList";
 
 // --- Types ---
+
+/** Scope controls which chapters are included in the check. */
+type Scope = "current" | "selected" | "all";
 
 interface ConsistencyPanelProps {
   novelId: string;
@@ -49,25 +52,39 @@ function SeverityBadge({
 export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPanelProps) {
   const t = useTranslations("analysis");
 
+  const [scope, setScope] = useState<Scope>("selected");
   const [viewState, setViewState] = useState<"idle" | "loading" | "results" | "error">("idle");
   const [result, setResult] = useState<ConsistencyResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const checkMutation = useConsistencyCheck(novelId);
   const setConsistencyResult = useEditorStore((s) => s.setConsistencyResult);
   const setConsistencyLoading = useEditorStore((s) => s.setConsistencyLoading);
+  const activeChapterId = useEditorStore((s) => s.activeChapterId);
+
+  // --- Scope → chapter IDs mapping ---
+
+  const getChapterIds = useCallback((): string[] => {
+    if (scope === "current") return activeChapterId ? [activeChapterId] : chapterIds.slice(0, 1);
+    if (scope === "all") return [];
+    return chapterIds;
+  }, [scope, activeChapterId, chapterIds]);
 
   // --- Run consistency check ---
 
   const runCheck = useCallback(async () => {
-    if (chapterIds.length === 0) return;
+    const ids = getChapterIds();
+    // Allow empty ids only for "all" scope (backend fetches all chapters)
+    if (ids.length === 0 && scope !== "all") return;
     setViewState("loading");
     setConsistencyLoading(true);
     setError(null);
 
     try {
       const res = await checkMutation.mutateAsync({
-        chapter_ids: chapterIds,
+        chapter_ids: ids,
         check_types: ["character", "timeline", "world", "plot"],
         include_kb: true,
       });
@@ -80,7 +97,7 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
     } finally {
       setConsistencyLoading(false);
     }
-  }, [chapterIds, checkMutation, setConsistencyResult, setConsistencyLoading]);
+  }, [getChapterIds, scope, checkMutation, setConsistencyResult, setConsistencyLoading]);
 
   // Auto-trigger on mount
   // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount
@@ -88,6 +105,27 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
     if (viewState !== "idle") return;
     void runCheck();
   }, []);
+
+  // --- Elapsed timer for loading progress ---
+  useEffect(() => {
+    if (viewState !== "loading") {
+      setElapsed(0);
+      return;
+    }
+    elapsedRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => {
+      if (elapsedRef.current) clearInterval(elapsedRef.current);
+    };
+  }, [viewState]);
+
+  const loadingStep =
+    elapsed < 5
+      ? "collecting"
+      : elapsed < 15
+        ? "loading"
+        : elapsed < 35
+          ? "analyzing"
+          : "finishing";
 
   // --- i18n adapter ---
 
@@ -149,6 +187,32 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
         </p>
       </div>
 
+      {/* Scope selector */}
+      {viewState !== "loading" && (
+        <div className="px-4 py-2.5 border-b border-border bg-muted/20">
+          <p className="text-xs font-medium text-muted-foreground mb-1.5">
+            {t("consistency.scope.label")}
+          </p>
+          <div className="flex gap-1">
+            {(["current", "selected", "all"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setScope(option)}
+                className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                  scope === option
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+                aria-pressed={scope === option}
+              >
+                {t(`consistency.scope.${option}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Content area */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto p-6 space-y-4">
@@ -160,8 +224,12 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
                   <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
                 </div>
               </div>
-              <p className="text-lg font-medium mb-2">{t("consistency.loading")}</p>
-              <p className="text-sm text-muted-foreground">{t("consistency.loadingSubtext")}</p>
+              <p className="text-lg font-medium mb-2">
+                {t("consistency.loadingElapsed", { seconds: elapsed })}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t(`consistency.progress.${loadingStep}`)}
+              </p>
             </div>
           )}
 

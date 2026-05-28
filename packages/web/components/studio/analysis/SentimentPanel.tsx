@@ -8,12 +8,14 @@
  * Multi-chapter support via chapter selector tabs.
  */
 
-import { ArrowLeft, Info, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
+import { toPng } from "html-to-image";
+import { ArrowLeft, Download, Info, Loader2, RefreshCw, TrendingUp, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SentimentOverview } from "@/lib/api/analysis";
 import { useSentimentAnalyze } from "@/lib/hooks/useSentiment";
 import { useEditorStore } from "@/lib/stores/editorStore";
+import { SentimentArcGraph } from "./SentimentArcGraph";
 import { SentimentChart } from "./SentimentChart";
 
 // --- Types ---
@@ -106,6 +108,24 @@ export function SentimentPanel({ novelId, chapterIds, onClose }: SentimentPanelP
   const analyzeMutation = useSentimentAnalyze(novelId);
   const setSentimentResult = useEditorStore((s) => s.setSentimentResult);
   const setSentimentLoading = useEditorStore((s) => s.setSentimentLoading);
+
+  // --- Chart export (ANAL-002 #4) ---
+
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  const handleExportChart = useCallback(async () => {
+    if (!chartRef.current) return;
+    try {
+      const dataUrl = await toPng(chartRef.current, { backgroundColor: "#fff" });
+      const link = document.createElement("a");
+      link.download = "sentiment-chart.png";
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      // Export failure is non-critical — silently ignore
+      console.error("Chart export failed:", err);
+    }
+  }, []);
 
   // --- Run analysis ---
 
@@ -266,6 +286,9 @@ export function SentimentPanel({ novelId, chapterIds, onClose }: SentimentPanelP
                 </div>
               )}
 
+              {/* Cross-chapter arc trajectory (ANAL-002 #1) */}
+              {results.length >= 2 && <SentimentArcGraph results={results} />}
+
               {/* Average VAD */}
               <section>
                 <h4 className="text-sm font-medium mb-3">{t("sentiment.vad.title")}</h4>
@@ -290,8 +313,21 @@ export function SentimentPanel({ novelId, chapterIds, onClose }: SentimentPanelP
 
               {/* Emotion chart */}
               <section>
-                <h4 className="text-sm font-medium mb-3">{t("sentiment.emotionChart")}</h4>
-                <SentimentChart emotions={activeResult.overall_emotions} />
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium">{t("sentiment.emotionChart")}</h4>
+                  <button
+                    type="button"
+                    onClick={() => void handleExportChart()}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground border border-border rounded-md hover:bg-muted transition-colors"
+                    aria-label={t("sentiment.exportChart")}
+                  >
+                    <Download className="w-3 h-3" />
+                    {t("sentiment.exportChart")}
+                  </button>
+                </div>
+                <div ref={chartRef} className="bg-background p-2 rounded-lg">
+                  <SentimentChart emotions={activeResult.overall_emotions} />
+                </div>
               </section>
 
               {/* Narrative arc */}

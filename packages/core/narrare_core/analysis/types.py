@@ -96,6 +96,7 @@ class SentimentOverview(BaseModel):
         narrative_arc: Detected narrative arc (if enough sentences).
         sentences: Per-sentence sentiment breakdown.
         dominant_emotions: Top emotion categories across the text.
+        warnings: Data-quality warnings (e.g. low word count, arc limits).
     """
 
     sentence_count: int
@@ -104,3 +105,4 @@ class SentimentOverview(BaseModel):
     narrative_arc: NarrativeArc | None = None
     sentences: list[SentenceSentiment] = []
     dominant_emotions: list[str] = []
+    warnings: list[str] = []

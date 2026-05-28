@@ -42,6 +42,7 @@
     "cytoscape-dagre": "^3.0.0",
     "dagre": "^0.8.5",
     "diff-match-patch": "^1.0.5",
+    "html-to-image": "^1.11.13",
     "jose": "^6.2.3",
     "lucide-react": "^1.14.0",
     "motion": "^12.38.0",

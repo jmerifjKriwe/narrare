@@ -5,7 +5,7 @@
  *
  * Extracted from SentimentPanel to keep it under RULE-04 limit.
  * Uses Recharts BarChart for SVG-based, responsive rendering.
- * Shows emotion scores as horizontal bars.
+ * Shows emotion scores as horizontal bars with detailed hover tooltips.
  */
 
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -39,6 +39,44 @@ interface SentimentChartProps {
   emotions: EmotionScores;
 }
 
+interface EmotionTooltipPayloadEntry {
+  value: number;
+  payload: { name: string; fill: string };
+}
+
+interface EmotionTooltipContentProps {
+  active?: boolean;
+  payload?: EmotionTooltipPayloadEntry[];
+}
+
+// --- Custom Tooltip (ANAL-002 #5) ---
+
+function EmotionTooltipContent({ active, payload }: EmotionTooltipContentProps) {
+  if (!active || !payload?.length) return null;
+
+  const entry = payload[0];
+  const emotionName = entry.payload.name;
+  const score = Number(entry.value);
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-2.5 shadow-md" role="tooltip">
+      <p className="text-xs font-semibold mb-1">{emotionName}</p>
+      <div className="flex items-center gap-2">
+        <div
+          className="h-2 rounded-full"
+          style={{
+            backgroundColor: entry.payload.fill,
+            width: `${Math.max(score * 100, 4)}%`,
+            minWidth: "4px",
+            maxWidth: "100px",
+          }}
+        />
+        <span className="text-xs text-muted-foreground font-mono">{score.toFixed(3)}</span>
+      </div>
+    </div>
+  );
+}
+
 // --- Component ---
 
 export function SentimentChart({ emotions }: SentimentChartProps) {
@@ -64,15 +102,7 @@ export function SentimentChart({ emotions }: SentimentChartProps) {
             width={80}
             tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
           />
-          <Tooltip
-            formatter={(value) => [Number(value).toFixed(3), "Score"]}
-            contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              borderColor: "hsl(var(--border))",
-              borderRadius: "6px",
-              fontSize: "12px",
-            }}
-          />
+          <Tooltip content={<EmotionTooltipContent />} />
           <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
             {data.map((entry) => (
               <rect key={entry.name} fill={entry.fill} />

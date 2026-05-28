@@ -7,8 +7,8 @@
  * Filters issues by check type and severity, renders as cards.
  */
 
-import { ChevronDown, ChevronUp, Lightbulb, MapPin } from "lucide-react";
-import { useState } from "react";
+import { Check, ChevronDown, ChevronUp, Copy, Lightbulb, MapPin, X } from "lucide-react";
+import { useCallback, useState } from "react";
 import type {
   ConsistencyCheckType,
   ConsistencyIssue,
@@ -51,7 +51,23 @@ const CHECK_TYPE_STYLES: Record<ConsistencyCheckType, string> = {
   plot: "bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
 };
 
+// --- Deterministic issue key for dismiss/intentional tracking ---
+
+function issueKey(issue: ConsistencyIssue): string {
+  return `${issue.description}::${issue.locations.join(",")}`;
+}
+
 // --- Types ---
+
+interface IssueCardProps {
+  issue: ConsistencyIssue;
+  t: (key: string) => string;
+  isIntentional: boolean;
+  isCopied: boolean;
+  onDismiss: () => void;
+  onMarkIntentional: () => void;
+  onCopySuggestion: () => void;
+}
 
 interface ConsistencyIssueListProps {
   issues: ConsistencyIssue[];
@@ -60,15 +76,23 @@ interface ConsistencyIssueListProps {
 
 // --- Single issue card ---
 
-function IssueCard({ issue, t }: { issue: ConsistencyIssue; t: (key: string) => string }) {
+function IssueCard({
+  issue,
+  t,
+  isIntentional,
+  isCopied,
+  onDismiss,
+  onMarkIntentional,
+  onCopySuggestion,
+}: IssueCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <div
       className={`rounded-lg border border-border border-l-2 p-4 ${SEVERITY_BORDER[issue.severity]}`}
     >
-      {/* Header: severity + check type badges */}
-      <div className="flex items-start gap-2 mb-2">
+      {/* Header: severity + check type + intentional badge */}
+      <div className="flex items-start gap-2 mb-2 flex-wrap">
         <span
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${SEVERITY_STYLES[issue.severity]}`}
         >
@@ -80,6 +104,12 @@ function IssueCard({ issue, t }: { issue: ConsistencyIssue; t: (key: string) => 
         >
           {CHECK_TYPE_LABELS[issue.check_type]}
         </span>
+        {isIntentional && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400">
+            <Check className="w-3 h-3" />
+            {t("consistency.intentional")}
+          </span>
+        )}
       </div>
 
       {/* Description */}
@@ -141,6 +171,43 @@ function IssueCard({ issue, t }: { issue: ConsistencyIssue; t: (key: string) => 
           )}
         </div>
       )}
+
+      {/* Action footer */}
+      <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border">
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-muted transition-colors"
+          aria-label={t("consistency.actions.dismiss")}
+        >
+          <X className="w-3 h-3" />
+          {t("consistency.actions.dismiss")}
+        </button>
+        <button
+          type="button"
+          onClick={onMarkIntentional}
+          className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+            isIntentional
+              ? "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/20"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}
+          aria-label={t("consistency.actions.markIntentional")}
+        >
+          <Check className="w-3 h-3" />
+          {isIntentional ? t("consistency.intentional") : t("consistency.actions.markIntentional")}
+        </button>
+        {issue.suggestion && (
+          <button
+            type="button"
+            onClick={onCopySuggestion}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-muted transition-colors"
+            aria-label={t("consistency.actions.copySuggestion")}
+          >
+            <Copy className="w-3 h-3" />
+            {isCopied ? t("consistency.actions.copied") : t("consistency.actions.copySuggestion")}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -151,11 +218,27 @@ export function ConsistencyIssueList({ issues, t }: ConsistencyIssueListProps) {
   const [filterType, setFilterType] = useState<ConsistencyCheckType | "all">("all");
   const [filterSeverity, setFilterSeverity] = useState<ConsistencySeverity | "all">("all");
 
-  const filteredIssues = issues.filter((issue) => {
+  // --- Issue action state (client-side only, reset on re-check) ---
+  const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(new Set());
+  const [intentionalKeys, setIntentionalKeys] = useState<Set<string>>(new Set());
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Filter out dismissed issues first
+  const visibleIssues = issues.filter((i) => !dismissedKeys.has(issueKey(i)));
+
+  // Then apply type/severity filters
+  const filteredIssues = visibleIssues.filter((issue) => {
     if (filterType !== "all" && issue.check_type !== filterType) return false;
     if (filterSeverity !== "all" && issue.severity !== filterSeverity) return false;
     return true;
   });
+
+  // --- Copy suggestion handler ---
+  const handleCopy = useCallback(async (key: string, text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  }, []);
 
   return (
     <div className="space-y-3">
@@ -190,20 +273,44 @@ export function ConsistencyIssueList({ issues, t }: ConsistencyIssueListProps) {
         </select>
 
         <span className="text-xs text-muted-foreground">
-          {t("consistency.issueCount", { count: filteredIssues.length, total: issues.length })}
+          {t("consistency.issueCount", {
+            count: filteredIssues.length,
+            total: visibleIssues.length,
+          })}
         </span>
       </div>
 
       {/* Issue cards */}
       {filteredIssues.length > 0 ? (
         <div className="space-y-3">
-          {filteredIssues.map((issue) => (
-            <IssueCard
-              key={`issue-${issue.check_type}-${issue.severity}-${issue.description.slice(0, 30)}`}
-              issue={issue}
-              t={t}
-            />
-          ))}
+          {filteredIssues.map((issue) => {
+            const key = issueKey(issue);
+            return (
+              <IssueCard
+                key={`issue-${issue.check_type}-${issue.severity}-${issue.description.slice(0, 30)}`}
+                issue={issue}
+                t={t}
+                isIntentional={intentionalKeys.has(key)}
+                isCopied={copiedKey === key}
+                onDismiss={() =>
+                  setDismissedKeys((prev) => {
+                    const next = new Set(prev);
+                    next.add(key);
+                    return next;
+                  })
+                }
+                onMarkIntentional={() =>
+                  setIntentionalKeys((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(key)) next.delete(key);
+                    else next.add(key);
+                    return next;
+                  })
+                }
+                onCopySuggestion={() => void handleCopy(key, issue.suggestion ?? "")}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-8 text-center">
