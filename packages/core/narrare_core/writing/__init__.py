@@ -21,13 +21,9 @@ from narrare_core.writing.contracts import (
     WritingPipelineProtocol,
 )
 from narrare_core.writing.draft_processor import DraftProcessor
-from narrare_core.writing.models import (
-    GenerationRequest,
-    SceneState,
-    SessionState,
-    WritingContext,
-)
+from narrare_core.writing.models import WritingContext
 from narrare_core.writing.pipeline import WritingPipeline
+from narrare_core.writing.requests import GenerationRequest, SceneState, SessionState
 from narrare_core.writing.session_manager import SessionManager
 
 __all__ = [

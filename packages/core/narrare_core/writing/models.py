@@ -2,6 +2,7 @@
 
 Defines dataclasses used across the writing pipeline.
 Enums live in ``_enums.py`` (RULE-04).
+Request/session/scene types live in ``requests.py`` (RULE-04).
 
 These are pure data containers — no I/O, no side-effects, no knowledge
 of HTTP, users, or database sessions.
@@ -10,13 +11,26 @@ of HTTP, users, or database sessions.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
-    from narrare_core.writing._enums import GenerationMode
     from narrare_core.writing.context_models import ContextMetadata
+
+# Backward-compatible re-exports (RULE-04 extraction from this file).
+# Consumers importing ``GenerationRequest``, ``SessionState``, or ``SceneState``
+# from ``narrare_core.writing.models`` continue to work without changes.
+from narrare_core.writing.requests import (
+    GenerationRequest,
+    SceneState,
+    SessionState,
+)
+
+__all__ = [
+    "GenerationRequest",
+    "SceneState",
+    "SessionState",
+    "WritingContext",
+]
 
 # ---------------------------------------------------------------------------
 # Context
@@ -73,6 +87,10 @@ class WritingContext:
     faction_names: list[str] = field(default_factory=lambda: [])
     total_budget_tokens: int = 0
 
+    # Wiki summary tracking
+    wiki_summaries_count: int = 0
+    wiki_summaries_stale: int = 0
+
     # Flags
     is_first_chapter: bool = False
     is_sparse_kb: bool = False
@@ -94,6 +112,8 @@ class WritingContext:
             is_first_chapter=self.is_first_chapter,
             has_user_preferences=bool(self.user_preferences.strip()),
             tone=self.tone,
+            wiki_summaries_count=self.wiki_summaries_count,
+            wiki_summaries_stale=self.wiki_summaries_stale,
             total_budget_tokens=self.total_budget_tokens,
         )
 
@@ -126,73 +146,3 @@ class WritingContext:
             "is_first_chapter": str(self.is_first_chapter).lower(),
             "is_sparse_kb": str(self.is_sparse_kb).lower(),
         }
-
-
-# ---------------------------------------------------------------------------
-# Request / Response
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class GenerationRequest:
-    """Input for a generation request.
-
-    ``id`` is auto-generated but can be overridden for replay / testing.
-    """
-
-    chapter_id: UUID
-    project_id: UUID
-    user_id: UUID
-    mode: GenerationMode
-    outline: str | None = None
-    prompt: str | None = None
-    auto_continue: bool = False
-    word_target: int | None = None
-    tone: str = "balanced"
-    writing_language: str = "en"
-    id: UUID = field(default_factory=uuid4)
-
-
-# ---------------------------------------------------------------------------
-# Session
-# ---------------------------------------------------------------------------
-
-
-@dataclass(slots=True)
-class SessionState:
-    """State of an interactive writing session.
-
-    Tracks the conversation history and accumulated prose buffer for a
-    single ``interactive_session`` or ``interview_assisted`` writing flow.
-    """
-
-    session_id: UUID
-    chapter_id: UUID
-    project_id: UUID
-    user_id: UUID
-    conversation_history: list[dict[str, str]] = field(
-        default_factory=list[dict[str, str]],
-    )
-    prose_buffer: str = ""
-    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    last_activity: datetime = field(default_factory=lambda: datetime.now(UTC))
-    is_active: bool = True
-
-
-# ---------------------------------------------------------------------------
-# Scene
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class SceneState:
-    """State of a single scene in scene-by-scene mode.
-
-    ``generated_text`` is empty until the scene is produced.  Once the
-    user accepts the scene, ``is_accepted`` is set to ``True``.
-    """
-
-    scene_number: int
-    outline: str
-    generated_text: str = ""
-    is_accepted: bool = False

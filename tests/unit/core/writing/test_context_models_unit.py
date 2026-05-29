@@ -165,6 +165,8 @@ class TestContextMetadata:
             "is_first_chapter",
             "has_user_preferences",
             "tone",
+            "wiki_summaries_count",
+            "wiki_summaries_stale",
             "total_budget_tokens",
         }
         assert set(d.keys()) == expected_keys

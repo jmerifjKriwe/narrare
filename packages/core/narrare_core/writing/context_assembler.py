@@ -11,44 +11,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from narrare_core.shared.frontmatter import parse_frontmatter
 from narrare_core.writing._classify import classify_entities
+from narrare_core.writing._helpers import extract_frontmatter_references, format_entities
+from narrare_core.writing._token_utils import default_token_counter
 from narrare_core.writing._voice_profiles import extract_voice_profiles
 from narrare_core.writing.budget import TokenBudgetManager
+from narrare_core.writing.context_wiki import format_entities_with_wiki
 from narrare_core.writing.models import WritingContext
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from narrare_core.wiki.types import WikiSummaryData
     from narrare_core.writing.context_models import KBEntity, RecentChapter
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-
-_REFERENCE_KEYS: frozenset[str] = frozenset(
-    {
-        "pov_character",
-        "characters",
-        "location",
-        "locations",
-        "faction",
-        "factions",
-    }
-)
-
-
-def _default_token_counter(text: str) -> int:
-    """Approximate token count: words x 1.3.
-
-    Avoids a tiktoken dependency in core.  The API layer can inject a
-    more accurate counter via the constructor.
-    """
-    if not text:
-        return 0
-    return round(len(text.split()) * 1.3)
-
 
 # ---------------------------------------------------------------------------
 # Assembler
@@ -79,7 +54,7 @@ class WritingContextAssembler:
     ) -> None:
         self._total_budget = total_budget
         self._budget_manager = TokenBudgetManager(total_budget)
-        self._count_tokens = token_counter or _default_token_counter
+        self._count_tokens = token_counter or default_token_counter
 
     # ------------------------------------------------------------------
     # Public API
@@ -94,6 +69,7 @@ class WritingContextAssembler:
         recent_chapters: list[RecentChapter] | None = None,
         kb_entities: list[KBEntity] | None = None,
         entity_connections: dict[str, set[str]] | None = None,
+        wiki_summaries: dict[str, WikiSummaryData] | None = None,
         project_title: str = "",
         genre: str = "",
         language: str = "en",
@@ -111,6 +87,11 @@ class WritingContextAssembler:
         only synchronous data transformation internally.
 
         Args:
+            wiki_summaries:
+                Precomputed wiki summaries keyed by entity ID.  When
+                provided, Tier 3 prefers wiki summaries (~40 tokens/entity)
+                over raw KB content (~200 tokens/entity) with stale/pending
+                fallback.
             mode: Generation mode string (e.g. ``"extend"``,
                 ``"extend_chapter"``).  When set, adjusts budget
                 allocation to prioritise immediate context.
@@ -120,8 +101,12 @@ class WritingContextAssembler:
         is_first = len(recent) == 0
         is_sparse = len(entities) < 3
 
-        budgets = self._budget_manager.allocate(first_chapter=is_first, mode=mode)
-        ref_ids = self._extract_frontmatter_references(chapter_frontmatter)
+        budgets = self._budget_manager.allocate(
+            first_chapter=is_first,
+            mode=mode,
+            wiki_optimized=bool(wiki_summaries),
+        )
+        ref_ids = extract_frontmatter_references(chapter_frontmatter)
 
         # Classify entities (with optional connection-based promotion)
         connections = entity_connections or {}
@@ -150,18 +135,17 @@ class WritingContextAssembler:
         # Tier 3: KB Referenced + connected entities (split by entity type)
         t3_limit = budgets["kb_referenced"].token_limit + overflow
         tier3_entities = referenced + connected
-        chars_text, locs_text, factions_text, overflow = self._apply_tier3(
-            tier3_entities,
-            t3_limit,
+        chars_text, locs_text, factions_text, overflow, wiki_fresh, wiki_stale = self._apply_tier3(
+            tier3_entities, t3_limit, wiki_summaries
         )
 
         # Tier 4: KB Suggested
         t4_limit = budgets["kb_suggested"].token_limit + overflow
-        suggested_raw = self._format_entities(suggested)
+        suggested_raw = format_entities(suggested)
         suggested_text, overflow = self._enforce_budget(suggested_raw, t4_limit)
 
         # Tier 5: Pinned (bypass — always included)
-        pinned_text = self._format_entities(pinned)
+        pinned_text = format_entities(pinned)
 
         # Extract character voice profiles from character entities
         character_voice_profiles = extract_voice_profiles(entities)
@@ -194,6 +178,8 @@ class WritingContextAssembler:
             avoidance_patterns=avoidance_patterns,
             is_first_chapter=is_first,
             is_sparse_kb=is_sparse,
+            wiki_summaries_count=wiki_fresh,
+            wiki_summaries_stale=wiki_stale,
             character_names=char_names,
             location_names=loc_names,
             faction_names=fac_names,
@@ -265,19 +251,28 @@ class WritingContextAssembler:
         self,
         entities: list[KBEntity],
         limit: int,
-    ) -> tuple[str, str, str, int]:
+        wiki_summaries: dict[str, WikiSummaryData] | None = None,
+    ) -> tuple[str, str, str, int, int, int]:
         """Build tier 3 (referenced KB) by entity type.
 
+        Prefers wiki summaries over raw KB content when a fresh wiki
+        summary is available (graceful fallback when stale/pending).
+
         Priority order for truncation: factions > locations > characters.
-        Returns (characters_text, locations_text, factions_text, overflow).
+
+        Returns:
+            (characters_text, locations_text, factions_text, overflow,
+             wiki_fresh_count, wiki_stale_count)
         """
         chars = [e for e in entities if e.entity_type == "character"]
         locs = [e for e in entities if e.entity_type == "location"]
         facs = [e for e in entities if e.entity_type == "faction"]
 
-        chars_text = self._format_entities(chars)
-        locs_text = self._format_entities(locs)
-        facs_text = self._format_entities(facs)
+        chars_text, chars_fresh, chars_stale = format_entities_with_wiki(chars, wiki_summaries)
+        locs_text, locs_fresh, locs_stale = format_entities_with_wiki(locs, wiki_summaries)
+        facs_text, facs_fresh, facs_stale = format_entities_with_wiki(facs, wiki_summaries)
+        wiki_fresh = chars_fresh + locs_fresh + facs_fresh
+        wiki_stale = chars_stale + locs_stale + facs_stale
 
         chars_tokens = self._count_tokens(chars_text)
         locs_tokens = self._count_tokens(locs_text)
@@ -285,7 +280,7 @@ class WritingContextAssembler:
         total = chars_tokens + locs_tokens + facs_tokens
 
         if total <= limit:
-            return chars_text, locs_text, facs_text, limit - total
+            return chars_text, locs_text, facs_text, limit - total, wiki_fresh, wiki_stale
 
         # Truncate by priority: factions first, then locations, then characters
         remaining = limit
@@ -318,48 +313,11 @@ class WritingContextAssembler:
                 max(0, after_locs_facs),
             )
 
-        return chars_text, locs_text, facs_text, 0
+        return chars_text, locs_text, facs_text, 0, wiki_fresh, wiki_stale
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _extract_frontmatter_references(self, frontmatter: str) -> set[str]:
-        """Extract entity IDs referenced in chapter frontmatter.
-
-        Looks for keys: ``pov_character``, ``characters``, ``location``,
-        ``locations``, ``faction``, ``factions``.  Returns a set of entity
-        ID strings.  Returns an empty set for empty or unparsable input.
-        """
-        if not frontmatter.strip():
-            return set()
-
-        parsed = parse_frontmatter(frontmatter)
-        if not parsed.has_frontmatter:
-            return set()
-
-        ids: set[str] = set()
-        for key in _REFERENCE_KEYS:
-            value = parsed.metadata.get(key)
-            if value is None:
-                continue
-            if isinstance(value, list):
-                for item in value:  # pyright: ignore[reportUnknownVariableType]
-                    if item is not None:
-                        ids.add(str(item))  # pyright: ignore[reportUnknownArgumentType]
-            else:
-                ids.add(str(value))  # pyright: ignore[reportUnknownArgumentType]
-        return ids
-
-    def _format_entities(self, entities: list[KBEntity]) -> str:
-        """Format entities as a readable text block."""
-        if not entities:
-            return ""
-        parts: list[str] = []
-        for entity in entities:
-            header = f"### {entity.entity_type.title()}: {entity.name}"
-            parts.append(f"{header}\n{entity.content}")
-        return "\n\n".join(parts)
 
     def _truncate_to_budget(self, text: str, token_limit: int) -> str:
         """Truncate text to fit within token budget.

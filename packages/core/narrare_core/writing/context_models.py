@@ -34,6 +34,8 @@ class KBEntity:
     is_referenced: bool = False
     is_pinned: bool = False
     metadata: dict[str, Any] | None = None  # structured entity metadata (speech, personality)
+    wiki_summary: str | None = None  # precomputed narrative summary if available
+    wiki_status: str | None = None  # "fresh" | "stale" | "pending" | None
 
     @property
     def relevance_score(self) -> float:
@@ -85,6 +87,10 @@ class ContextMetadata:
     has_user_preferences: bool = False
     tone: str = "balanced"
 
+    # Wiki summary tracking
+    wiki_summaries_count: int = 0  # entities with fresh wiki summaries used
+    wiki_summaries_stale: int = 0  # entities where wiki was stale/fallback
+
     # Token budget info
     total_budget_tokens: int = 0
 
@@ -103,5 +109,7 @@ class ContextMetadata:
             "is_first_chapter": self.is_first_chapter,
             "has_user_preferences": self.has_user_preferences,
             "tone": self.tone,
+            "wiki_summaries_count": self.wiki_summaries_count,
+            "wiki_summaries_stale": self.wiki_summaries_stale,
             "total_budget_tokens": self.total_budget_tokens,
         }

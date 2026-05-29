@@ -40,10 +40,11 @@ keep their default proportions, rescaled so the total sums to 1.0::
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
+from narrare_core.writing._token_utils import (
+    cap_to_budget as cap_to_budget,  # noqa: RUF100 — backward-compatible re-export
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +206,7 @@ class TokenBudgetManager:
         *,
         first_chapter: bool = False,
         mode: str | None = None,
+        wiki_optimized: bool = False,
     ) -> dict[str, TierBudget]:
         """Calculate token limits for each tier.
 
@@ -221,6 +223,13 @@ class TokenBudgetManager:
             ``"rewrite"`` or ``"rewrite_selection"``, the
             rewrite-specific percentages are used (40/15/25/10/10).
             Overflow handles the no-recent-chapters case naturally.
+        wiki_optimized:
+            When ``True``, shifts 5 percentage points from
+            ``kb_referenced`` to ``immediate``.  Wiki summaries are
+            ~40 tokens/entity vs ~200 for raw content, so the
+            ``kb_referenced`` tier needs less budget and the
+            immediate chapter content gets more room.  Applied
+            on top of *mode* and *first_chapter* adjustments.
 
         Returns
         -------
@@ -236,6 +245,10 @@ class TokenBudgetManager:
         else:
             base = self._BASE_PERCENTAGES
         pcts = self._compute_percentages(base)
+        if wiki_optimized:
+            pcts = dict(pcts)
+            pcts["immediate"] = round(pcts["immediate"] + 0.05, 4)
+            pcts["kb_referenced"] = round(pcts["kb_referenced"] - 0.05, 4)
         self._validate_percentages(pcts)
         return {
             name: TierBudget(
@@ -248,57 +261,4 @@ class TokenBudgetManager:
         }
 
 
-# ---------------------------------------------------------------------------
-# Lightweight token-budget utility
-# ---------------------------------------------------------------------------
-
-_APPROX_TOKEN_FACTOR = 1.3
-"""Multiplier applied to word count to approximate BPE token length."""
-
-
-def _default_token_counter(text: str) -> int:
-    """Approximate token count: words * 1.3.
-
-    Avoids a tiktoken dependency in core.  Consumers that need an
-    accurate count (e.g. the API layer) can inject their own counter
-    via the ``token_counter`` parameter of :func:`cap_to_budget`.
-    """
-    if not text:
-        return 0
-    return round(len(text.split()) * _APPROX_TOKEN_FACTOR)
-
-
-def cap_to_budget(
-    text: str,
-    max_tokens: int,
-    token_counter: Callable[[str], int] | None = None,
-) -> str:
-    """Cap text to a token budget, truncating from the end if needed.
-
-    Lightweight utility for services that need simple token enforcement
-    without the full 5-tier allocation system.
-
-    Args:
-        text: The text to potentially truncate.
-        max_tokens: Maximum allowed tokens.
-        token_counter: Optional token counting function.
-            Defaults to word-count * 1.3 approximation.
-
-    Returns:
-        Original text if within budget, otherwise truncated text.
-        Returns empty string if *max_tokens* <= 0.
-    """
-    if max_tokens <= 0:
-        return ""
-
-    count = token_counter or _default_token_counter
-
-    if count(text) <= max_tokens:
-        return text
-
-    # Truncate at word boundaries by progressively removing trailing words.
-    words = text.split()
-    while words and count(" ".join(words)) > max_tokens:
-        words.pop()
-
-    return " ".join(words)
+__all__ = ["TierBudget", "TokenBudgetManager", "cap_to_budget"]
