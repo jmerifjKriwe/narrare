@@ -33,7 +33,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Frontend tests: ~5,000 across 165 test files (Vitest + MSW)
 - Total tests: ~9,200+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
-- ADRs: 22 (ADR-001 through ADR-022, inkl. ADR-022 LLM Wiki — Proposed)
+- ADRs: 22 (ADR-001 through ADR-022, inkl. ADR-022 LLM Wiki — Accepted)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 8 (Q-001 through Q-008)
 
@@ -64,10 +64,10 @@ Alembic migrations 0001 through ~0023
 
 - `_shared/`: CONSTRAINTS.md (22 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: 22 ADRs + 2 implementation plans (inkl. ADR-022 LLM Wiki — Proposed) (INDEX.md)
+- `architecture/decisions/`: 22 ADRs + 2 implementation plans (inkl. ADR-022 LLM Wiki — Accepted) (INDEX.md)
 - `architecture/questions/`: 8 questions in 5 files (INDEX.md)
 - `features/`: 76 feature spec files (INDEX.md with status tracking)
-- **WIKI-001** — LLM Wiki (Precomputed Context Layer, planned)
+- **WIKI-001** — LLM Wiki (Precomputed Context Layer, backend implemented, frontend pending)
 - `mvp/`: Product roadmap (Phases 0–6 + Post-MVP)
 
 ### Infrastructure
@@ -105,17 +105,18 @@ Completed in Phase 6 so far:
 19. ✅ ADR-019: System-Prompt Consistency — Accepted
 20. ✅ ADR-020: Embedding Provider Abstraction — Accepted
 21. ✅ ADR-021: Deterministic Analysis Strategy — Accepted
-22. ✅ ADR-022: LLM Wiki — Precomputed Context Layer (Core layer: contracts, agent, service, prompt_loader, types)
+22. ✅ ADR-022: LLM Wiki — Precomputed Context Layer (Core: contracts, agent, service, prompt_loader, types; Backend: models, migration, repository (9 methods), schemas (6), API service, router (6 endpoints), tasks (4), listeners (4), DI wiring; Context assembler wiki integration, budget wiki optimization; 35 core + 9 backend unit tests)
 
 ---
 
 ## What's Next
 
 1. ADR-016 Phase 0: AgentRegistry implementation (`core/agents/registry.py`)
-2. ANAL-003 or ANAL-004: Readability / POV Analysis
-3. WRITE-006: Co-Author Mode
-4. Q-003: Embedding provider abstraction
-5. E2E test patterns
+2. WIKI-001 frontend: Wiki UI — entity detail view, manual refresh, wiki overview (Tasks 19-20)
+3. ANAL-003 or ANAL-004: Readability / POV Analysis
+4. WRITE-006: Co-Author Mode
+5. Q-003: Embedding provider abstraction
+6. E2E test patterns
 
 ---
 
@@ -144,7 +145,7 @@ Completed in Phase 6 so far:
 | ADR-019 | System-Prompt Consistency for Agents | ✅ Accepted |
 | ADR-020 | Embedding Provider Abstraction | ✅ Accepted |
 | ADR-021 | Deterministic Analysis Strategy | ✅ Accepted |
-| ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ Modul, TaskIQ-generierte WikiSummaries, Prompt-Versionierung, stale/fresh/pending. WIKI-001 Feature Spec. | ✅ Accepted (Core layer implemented) |
+| ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Accepted (Full backend implemented, frontend pending) |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

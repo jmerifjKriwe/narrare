@@ -1,7 +1,8 @@
 # ADR-022: LLM Wiki — Precomputed Context Layer
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-05-29
+**Implemented**: 2026-05-29
 **Decision Maker**: Architecture Agent
 
 ## Context
@@ -368,7 +369,25 @@ Kein Write-Call wird blocked. Das Wiki ist ein Optimierungs-Layer, keine harte D
 - [ ] Wenn pydantic-ai Agents als Alternative zu TaskIQ für Background-Generierung evaluiert werden sollen
 - [ ] Nach 3 Monaten Produktion: Ist die Token-Einsparung die zusätzliche LLM-Komplexität wert?
 
-## Glossary Entries (proposed)
+## Implementation Notes
+
+The following implementation decisions were made during the backend build (commits 8ba62f3, 2e72f61):
+
+1. **REPLACE strategy confirmed.** Architecture evaluation concluded that merge semantics are unnecessary for a KB-derived cache layer. WikiSummaries are always regenerated whole — `REPLACE` on conflict is correct and simpler than merge.
+
+2. **Cross-entity staleness via JSONB containment.** The `depends_on` column uses PostgreSQL's `@>` operator to detect staleness across entity relationships. When an entity changes, a single query finds all WikiSummaries whose `depends_on` JSONB contains a reference to that entity. Inspired by Karpathy's approach to dependency tracking.
+
+3. **system_mode flag for background task ownership.** Background tasks (TaskIQ workers) operate without a user session. A `system_mode` boolean on service calls bypasses ownership checks, allowing the wiki service to regenerate summaries for any entity regardless of the user context.
+
+4. **ChapterWikiService extracted (RULE-04).** The initial service grew beyond the file-size limit. `ChapterWikiService` was extracted from `WikiService` to handle all chapter-summary operations independently, keeping each file under 300 lines.
+
+5. **WikiSystemAccessors mixin.** A mixin class provides system-level repository access for background tasks. This avoids duplicating ownership-bypass logic across the wiki tasks and listeners.
+
+6. **WikiIndexResponse schema.** A dedicated response schema for the wiki overview endpoint returns entity counts, staleness ratios, and generation status — supporting the future Wiki UI dashboard without requiring per-entity queries.
+
+7. **TokenBudgetManager wiki_optimized allocation.** The token budget manager gained a `wiki_optimized` allocation strategy that shifts 5% from `kb_referenced` to `immediate` tier, reflecting the reduced token footprint when WikiSummaries replace raw KB data in the context.
+
+## Glossary Entries
 
 **WikiSummary**: Eine LLM-generierte, präcomputierte narrative Zusammenfassung einer KB-Entity. Enthält 2-3 Sätze Beschreibung, Rolle in der Story, Schlüsselattribute und Beziehungen. Status: fresh, stale, oder pending.
 

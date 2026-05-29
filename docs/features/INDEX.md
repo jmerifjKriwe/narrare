@@ -73,7 +73,7 @@
 | [KB-006](kb/KB-006-worldbuilding.md) | Worldbuilding Assistant | ✅ | ❌ |
 | [KB-007](kb/KB-007-extraction.md) | Entity Extraction from Chapters | ✅ | ❌ |
 | [KB-008](kb/KB-008-knowledge-graph.md) | Knowledge Graph | ✅ | ❌ |
-| [WIKI-001](kb/WIKI-001-llm-wiki.md) | LLM Wiki — Precomputed Context Layer | 📋 | ❌ |
+| [WIKI-001](kb/WIKI-001-llm-wiki.md) | LLM Wiki — Precomputed Context Layer | 🔨 | ❌ |
 
 ### Analysis
 | ID | Feature | Status | MVP |
@@ -230,5 +230,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-29 — WRITE-007 (Inline AI Suggestions) fully implemented across all layers. Feature → stable.
+> Last updated: 2026-05-29 — WIKI-001 (LLM Wiki) backend fully implemented. Frontend pending. Status: in-progress.
 > Features are specified before they are implemented — never after

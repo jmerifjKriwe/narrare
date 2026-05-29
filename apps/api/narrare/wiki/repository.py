@@ -6,11 +6,10 @@ Handles persistence and staleness tracking for ``WikiSummary`` and
 
 from __future__ import annotations
 
-import json
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import cast, delete, func, select, update
+from sqlalchemy import delete, func, select, type_coerce, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -176,12 +175,12 @@ class WikiRepository(BaseRepository):
         (JSONB containment ``@>`` on ``relationships`` array).
         Returns the number of rows updated.
         """
-        entity_ref = json.dumps([{"entity_id": str(entity_id)}])
+        entity_ref = [{"entity_id": str(entity_id)}]
         result = await self._session.execute(
             update(WikiSummary)
             .where(
                 WikiSummary.relationships.isnot(None),
-                WikiSummary.relationships.op("@>")(cast(entity_ref, JSONB)),
+                WikiSummary.relationships.op("@>")(type_coerce(entity_ref, JSONB)),
             )
             .values(status="stale")
         )

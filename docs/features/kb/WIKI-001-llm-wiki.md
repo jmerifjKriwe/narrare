@@ -1,7 +1,7 @@
 ---
 id: WIKI-001
 title: "LLM Wiki — Precomputed Context Layer"
-status: planned
+status: in-progress
 area: kb
 mvp: false
 
@@ -58,6 +58,13 @@ requires: [INFRA-001, INFRA-002, INFRA-003, INFRA-005, KB-001, ADR-007, ADR-012,
 ---
 
 # WIKI-001 — LLM Wiki: Precomputed Context Layer
+
+> **Implementation Status (2026-05-29):** Full backend implemented (commits
+> 8ba62f3, 2e72f61). Core layer: types, contracts, agent, service,
+> prompt_loader (35 unit tests). Backend layer: models, migration, repository
+> (9 methods), schemas (6), API service, router (6 endpoints), tasks (4),
+> listeners (4), DI wiring. Context assembler wiki integration, budget wiki
+> optimization. **Frontend (Tasks 19-20) pending.**
 
 ## What it does
 
@@ -264,26 +271,26 @@ N Kapiteln referenzierten Entities vorgeladen.
 
 ## Definition of Done
 
-- [ ] ADR-022 approved and documented
-- [ ] `core/wiki/contracts.py` definiert WikiServiceProtocol, WikiGenerationAgentProtocol
-- [ ] `core/wiki/types.py` definiert WikiSummary, WikiChapterSummary, WikiSummaryStatus
-- [ ] `core/wiki/agent.py` implementiert WikiGenerationAgent (Entity + Chapter)
-- [ ] `core/wiki/service.py` implementiert WikiService (generate, get, refresh, mark_stale)
-- [ ] `apps/api/narrare/wiki/repository.py` implementiert WikiRepository
-- [ ] `apps/api/narrare/wiki/tasks.py` TaskIQ-Tasks: wiki_generate_entity, wiki_generate_chapter, wiki_mark_all_stale
-- [ ] `apps/api/narrare/wiki/listeners.py` Event-Listener: kb.entry.updated, chapter.finalized, wiki.prompt.changed
-- [ ] `apps/api/narrare/kb/embedding_hooks.py` erweitert: Event-Publishing für Wiki-Trigger
-- [ ] `core/writing/context_assembler.py` erweitert: WikiSummary-Lookup + Fallback in Tier 3
+- [x] ADR-022 approved and documented
+- [x] `core/wiki/contracts.py` definiert WikiServiceProtocol, WikiGenerationAgentProtocol
+- [x] `core/wiki/types.py` definiert WikiSummary, WikiChapterSummary, WikiSummaryStatus
+- [x] `core/wiki/agent.py` implementiert WikiGenerationAgent (Entity + Chapter)
+- [x] `core/wiki/service.py` implementiert WikiService (generate, get, refresh, mark_stale)
+- [x] `apps/api/narrare/wiki/repository.py` implementiert WikiRepository
+- [x] `apps/api/narrare/wiki/tasks.py` TaskIQ-Tasks: wiki_generate_entity, wiki_generate_chapter, wiki_mark_all_stale
+- [x] `apps/api/narrare/wiki/listeners.py` Event-Listener: kb.entry.updated, chapter.finalized, wiki.prompt.changed
+- [x] `apps/api/narrare/kb/embedding_hooks.py` erweitert: Event-Publishing fuer Wiki-Trigger
+- [x] `core/writing/context_assembler.py` erweitert: WikiSummary-Lookup + Fallback in Tier 3
 - [ ] Wiki-Prompts in `core/prompts/_bundled/wiki/` (en, de, fr)
-- [ ] Migration: `wiki_summaries` + `wiki_chapter_summaries` Tabellen
-- [ ] Event-Typ `WIKI_PROMPT_CHANGED` in `core/events/types.py` registriert
-- [ ] Event-Listener in `apps/api/narrare/events/listeners.py` registriert
+- [x] Migration: `wiki_summaries` + `wiki_chapter_summaries` Tabellen
+- [x] Event-Typ `WIKI_PROMPT_CHANGED` in `core/events/types.py` registriert
+- [x] Event-Listener in `apps/api/narrare/events/listeners.py` registriert
 - [ ] Prompt-Versionierung in Wiki-Prompt-Frontmatter
 - [ ] Wiki-UI: Entity-Detail-Ansicht zeigt WikiSummary ("How the AI sees this character")
 - [ ] Wiki-UI: Manueller Refresh-Button im Entity-Detail
-- [ ] Graceful Degradation: Fallback auf Rohdaten bei stale/pending
-- [ ] Tests: Unit-Tests für Service + Agent (TestModel), Integration-Tests für Repository + Router
-- [ ] RULE-XX Compliance Matrix erfüllt
+- [x] Graceful Degradation: Fallback auf Rohdaten bei stale/pending
+- [x] Tests: Unit-Tests fuer Service + Agent (TestModel), Integration-Tests fuer Repository + Router
+- [x] RULE-XX Compliance Matrix erfuellt
 
 ## RULE-XX Compliance
 
@@ -307,4 +314,5 @@ N Kapiteln referenzierten Entities vorgeladen.
 
 ## Status & History
 
+- `2026-05-29` — ADR-022 Accepted. Full backend implemented (core + api layers, 35+9 unit tests, commits 8ba62f3 and 2e72f61). Status: in-progress (frontend pending).
 - `2026-05-29` — ADR-022 proposed. Feature Spec created. Status: planned.
