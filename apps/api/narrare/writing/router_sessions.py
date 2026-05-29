@@ -5,7 +5,7 @@ Extracted from ``router.py`` for RULE-04 compliance (max 150 lines).
 
 from __future__ import annotations
 
-from uuid import UUID  # noqa: TC003 — needed at runtime for Pydantic ForwardRef resolution
+from uuid import UUID
 
 from fastapi import APIRouter, WebSocket
 
@@ -30,7 +30,6 @@ async def interactive_session(
     """
     from narrare.writing._ws_cache import InMemorySessionCache
     from narrare.writing.ws_handler import WritingSessionHandler
-    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.draft_processor import DraftProcessor
     from narrare_core.writing.pipeline import WritingPipeline
@@ -73,15 +72,26 @@ async def interactive_session(
             user_id=user_id,
             project_id=str(project_id) if project_id else None,
         )
+
+        # Resolve model config per-user via routing resolver (RULE-18)
+        from dataclasses import replace as dataclass_replace
+
+        from narrare._app.dependencies import get_model_routing_resolver
+        from narrare_core.llm.intents import LLMIntent
+
+        resolver = get_model_routing_resolver(session)
+        resolved = await resolver.resolve(
+            LLMIntent.WRITE,
+            UUID(user_id),
+            project_id,
+        )
+        config = dataclass_replace(
+            resolved.config,
+            temperature=0.7,
+            max_tokens=limits.output_limit,
+        )
     finally:
         await _session_gen.aclose()
-
-    config = ResolvedModelConfig(
-        provider_name="default",
-        model_id="default",
-        temperature=0.7,
-        max_tokens=limits.output_limit,
-    )
     assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
     pipeline = WritingPipeline(

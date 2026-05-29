@@ -21,7 +21,11 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
     - RedisSessionCache for result caching (30min TTL)
     """
     from narrare._app.config import get_settings
-    from narrare._app.dependencies import get_composer, get_model_registry
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_composer,
+        get_model_registry,
+    )
     from narrare.analysis.beta_reader_cache import BetaReaderCache
     from narrare.analysis.beta_reader_service import BetaReaderService
     from narrare.analysis.context_assembler import ContextAssembler
@@ -29,16 +33,10 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.cache.redis_client import RedisSessionCache
-    from narrare_core.llm.intents import ResolvedModelConfig
 
     registry = get_model_registry()
     composer = get_composer()
-    config = ResolvedModelConfig(
-        provider_name="default",
-        model_id="default",
-        temperature=0.7,
-        max_tokens=4096,
-    )
+    config = build_system_default_config("analysis")
 
     # Repositories
     chapter_repo = ChapterRepository(session)

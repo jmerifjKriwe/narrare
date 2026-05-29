@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from narrare.templates.cascade_resolver import CascadeResolver
     from narrare.templates.repository import TemplateRepository
     from narrare.templates.service import TemplateApiService
+    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.memory.protocols import PreferenceProvider
 
 logger = structlog.get_logger(__name__)
@@ -300,3 +301,44 @@ def get_graph_state_store(session: SessionDep) -> PostgresGraphStateStore:
 
 
 GraphStateStoreDep = Annotated[PostgresGraphStateStore, Depends(get_graph_state_store)]
+
+
+# ---------------------------------------------------------------------------
+# System-default model config (no user context)
+# ---------------------------------------------------------------------------
+
+
+def build_system_default_config(
+    category: str = "writing",
+    temperature: float = 0.7,
+    max_tokens: int = 4096,
+) -> ResolvedModelConfig:
+    """Build a ResolvedModelConfig from system defaults (Settings).
+
+    For use in startup/background tasks that have no user context.
+    Uses ``Settings.default_writing_model`` or ``Settings.default_analysis_model``
+    and resolves the provider via ``infer_provider()``.
+
+    Args:
+        category: "writing" or "analysis" — selects which Settings default to use.
+        temperature: Generation temperature.
+        max_tokens: Maximum output tokens.
+
+    Returns:
+        Fully resolved ResolvedModelConfig with valid provider_name.
+    """
+    from narrare_core.llm._providers.registry import infer_provider
+    from narrare_core.llm.intents import ResolvedModelConfig
+
+    settings = get_settings()
+    model_id = (
+        settings.default_writing_model if category == "writing" else settings.default_analysis_model
+    )
+    provider_name = infer_provider(model_id)
+
+    return ResolvedModelConfig(
+        provider_name=provider_name,
+        model_id=model_id,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )

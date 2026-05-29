@@ -187,13 +187,11 @@ class PreferenceAnalysisService:
             PreferenceAnalysisDeps,
         )
         from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
-        from narrare_core.llm.intents import ResolvedModelConfig
 
         try:
-            config = ResolvedModelConfig(
-                provider_name="openai",
-                model_id="gpt-4.1-nano",
-            )
+            from narrare._app.dependencies import build_system_default_config
+
+            config = build_system_default_config("analysis")
             model = await self._registry.get_model(config)
         except Exception:
             logger.warning("agent_model_unavailable", exc_info=True)

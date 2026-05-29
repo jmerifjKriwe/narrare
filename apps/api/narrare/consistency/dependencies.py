@@ -20,21 +20,19 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     - NovelRepository for novel access control + language resolution
     - KBRepository for KB entity summaries
     """
-    from narrare._app.dependencies import get_composer, get_model_registry
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_composer,
+        get_model_registry,
+    )
     from narrare.chapters.repository import ChapterRepository
     from narrare.consistency.checker_service import ConsistencyCheckerService
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
-    from narrare_core.llm.intents import ResolvedModelConfig
 
     registry = get_model_registry()
     composer = get_composer()
-    config = ResolvedModelConfig(
-        provider_name="default",
-        model_id="default",
-        temperature=0.3,
-        max_tokens=4096,
-    )
+    config = build_system_default_config("analysis", temperature=0.3)
 
     # Repositories
     chapter_repo = ChapterRepository(session)

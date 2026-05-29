@@ -75,22 +75,20 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
     Also injects KBService and RelationshipRepository for the apply
     extraction step (KB-007).
     """
-    from narrare._app.dependencies import get_composer, get_model_registry
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_composer,
+        get_model_registry,
+    )
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.extraction_service import ExtractionService
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.service import KBService
-    from narrare_core.llm.intents import ResolvedModelConfig
 
     registry = get_model_registry()
     composer = get_composer()
-    config = ResolvedModelConfig(
-        provider_name="default",
-        model_id="default",
-        temperature=0.7,
-        max_tokens=4096,
-    )
+    config = build_system_default_config("analysis")
 
     return ExtractionService(
         registry=registry,
@@ -136,7 +134,11 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
     For session storage, uses RedisSessionCache for persistence with TTL.
     """
     from narrare._app.config import get_settings
-    from narrare._app.dependencies import get_composer, get_model_registry
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_composer,
+        get_model_registry,
+    )
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.embeddings.service import EmbeddingService
     from narrare.kb.assist_service import KBAssistService
@@ -144,7 +146,6 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
     from narrare.kb.session_store import KBCreationSessionStore
     from narrare_core.cache.redis_client import RedisSessionCache
     from narrare_core.context.proactive_service import ProactiveContextService
-    from narrare_core.llm.intents import ResolvedModelConfig
 
     # Session storage: Redis-backed with 30min TTL.
     settings = get_settings()
@@ -158,12 +159,7 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
     # KBAssistService with real ModelRegistry + PromptComposer.
     registry = get_model_registry()
     composer = get_composer()
-    config = ResolvedModelConfig(
-        provider_name="default",
-        model_id="default",
-        temperature=0.7,
-        max_tokens=4096,
-    )
+    config = build_system_default_config("analysis")
 
     assist_service = KBAssistService(
         registry=registry,
@@ -190,7 +186,11 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     Uses Redis-backed KBImproveCache for 10min TTL on analysis results.
     """
     from narrare._app.config import get_settings
-    from narrare._app.dependencies import get_composer, get_model_registry
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_composer,
+        get_model_registry,
+    )
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.embeddings.service import EmbeddingService
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
@@ -200,16 +200,10 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     from narrare.kb.repository import KBRepository
     from narrare_core.cache.redis_client import RedisSessionCache
     from narrare_core.context.proactive_service import ProactiveContextService
-    from narrare_core.llm.intents import ResolvedModelConfig
 
     registry = get_model_registry()
     composer = get_composer()
-    config = ResolvedModelConfig(
-        provider_name="default",
-        model_id="default",
-        temperature=0.7,
-        max_tokens=4096,
-    )
+    config = build_system_default_config("analysis")
 
     kb_repo = KBRepository(session)
     embedding_service = EmbeddingService(EmbeddingRepository(session))
@@ -249,24 +243,23 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
     Uses Redis-backed WorldbuildingCache for 10min TTL on analysis results.
     """
     from narrare._app.config import get_settings
-    from narrare._app.dependencies import get_composer, get_model_registry, get_registry
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_composer,
+        get_model_registry,
+        get_registry,
+    )
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
     from narrare.kb.worldbuilding_service import WorldbuildingService
     from narrare_core.cache.redis_client import RedisSessionCache
-    from narrare_core.llm.intents import ResolvedModelConfig
 
     registry = get_model_registry()
     composer = get_composer()
     prompt_registry = get_registry()
-    config = ResolvedModelConfig(
-        provider_name="default",
-        model_id="default",
-        temperature=0.7,
-        max_tokens=4096,
-    )
+    config = build_system_default_config("analysis")
 
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
@@ -320,7 +313,12 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     Uses Redis-backed ConsistencyCache for 10min TTL on results.
     """
     from narrare._app.config import get_settings
-    from narrare._app.dependencies import get_composer, get_model_registry, get_registry
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_composer,
+        get_model_registry,
+        get_registry,
+    )
     from narrare.kb.consistency_analyzer import KBConsistencyAnalyzer
     from narrare.kb.consistency_cache import ConsistencyCache
     from narrare.kb.consistency_service import KBConsistencyService
@@ -330,17 +328,11 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
     from narrare_core.cache.redis_client import RedisSessionCache
-    from narrare_core.llm.intents import ResolvedModelConfig
 
     registry = get_model_registry()
     composer = get_composer()
     prompt_registry = get_registry()
-    config = ResolvedModelConfig(
-        provider_name="default",
-        model_id="default",
-        temperature=0.7,
-        max_tokens=4096,
-    )
+    config = build_system_default_config("analysis")
 
     kb_repo = KBRepository(session)
     rel_repo = RelationshipRepository(session)
