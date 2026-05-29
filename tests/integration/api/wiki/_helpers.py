@@ -1,7 +1,8 @@
-"""Shared seed helpers and data builders for wiki repository tests.
+"""Shared seed helpers and data builders for wiki integration tests.
 
-Provides DB seeding functions (insert users, novels, KB entries, chapters)
-and factory helpers for WikiSummaryData, WikiEntityOutput, etc.
+Provides DB seeding functions (insert users, novels, KB entries, chapters),
+factory helpers for WikiSummaryData, WikiEntityOutput, etc., and
+APIWikiService builder with mocked core service.
 """
 
 from __future__ import annotations
@@ -11,6 +12,11 @@ from typing import TYPE_CHECKING, Any
 
 import sqlalchemy
 
+from narrare.kb.relationship_repository import RelationshipRepository
+from narrare.kb.repository import KBRepository
+from narrare.novels.repository import NovelRepository
+from narrare.wiki.repository import WikiRepository
+from narrare.wiki.service import APIWikiService
 from narrare_core.wiki.types import (
     WikiChapterOutput,
     WikiChapterSummaryData,
@@ -21,6 +27,13 @@ from narrare_core.wiki.types import (
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
+SYSTEM_USER = uuid.UUID("00000000-0000-0000-0000-000000000000")
+
+
+# ======================================================================
+# DB seeding helpers
+# ======================================================================
 
 
 async def seed_user_and_novel(
@@ -87,6 +100,11 @@ async def seed_chapter(
     )
     await db_session.flush()
     return chapter_id
+
+
+# ======================================================================
+# Data factory helpers
+# ======================================================================
 
 
 def make_summary_data(
@@ -158,4 +176,31 @@ def make_chapter_output() -> WikiChapterOutput:
         entities_involved=[{"entity_id": str(uuid.uuid4()), "role": "protagonist"}],
         themes=["courage", "nature"],
         emotional_arc="tense to relieved",
+    )
+
+
+# ======================================================================
+# Service builder
+# ======================================================================
+
+
+def build_wiki_service(
+    db_session: AsyncSession,
+    *,
+    core_wiki_service: Any,
+    system_mode: bool = True,
+) -> APIWikiService:
+    """Build APIWikiService with real repos and mocked core service.
+
+    Uses real DB-backed repositories for KB, novel, and relationship
+    operations. Only the core ``WikiServiceProtocol`` (LLM layer) is mocked.
+    """
+    return APIWikiService(
+        session=db_session,
+        wiki_repo=WikiRepository(db_session),
+        kb_repo=KBRepository(db_session),
+        novel_repo=NovelRepository(db_session),
+        relationship_repo=RelationshipRepository(db_session),
+        core_wiki_service=core_wiki_service,
+        system_mode=system_mode,
     )
