@@ -134,6 +134,7 @@ class InlineSuggestRequest(BaseModel):
 
     text_before: str = Field(
         ...,
+        min_length=1,
         max_length=5000,
         description="Text before cursor position — used as the prompt for completion",
     )

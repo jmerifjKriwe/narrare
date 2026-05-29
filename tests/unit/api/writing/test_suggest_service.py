@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from narrare.chapters.repository import ChapterRepository
 from narrare.writing.suggest_service import InlineSuggestService
 from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.llm.intents import ResolvedModelConfig
@@ -65,9 +66,21 @@ def suggest_config() -> ResolvedModelConfig:
 
 
 @pytest.fixture
+def mock_chapter_repo() -> MagicMock:
+    """Mock ChapterRepository."""
+    chapter = MagicMock(spec=["title", "pov_character_id"])
+    chapter.title = "Test Chapter"
+    chapter.pov_character_id = None
+    repo = MagicMock(spec=ChapterRepository)
+    repo.get = AsyncMock(return_value=chapter)
+    return repo
+
+
+@pytest.fixture
 def suggest_service(
     mock_composer: MagicMock,
     mock_registry: MagicMock,
+    mock_chapter_repo: MagicMock,
     suggest_config: ResolvedModelConfig,
 ) -> InlineSuggestService:
     """InlineSuggestService with mocked dependencies."""
@@ -75,6 +88,7 @@ def suggest_service(
         registry=mock_registry,
         composer=mock_composer,
         config=suggest_config,
+        chapter_repo=mock_chapter_repo,
     )
 
 

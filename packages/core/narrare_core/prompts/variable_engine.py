@@ -41,6 +41,10 @@ _USER_CONTENT_VARS: frozenset[str] = frozenset(
         "style_constraints",
         "character_voice_profiles",
         "feedback_text",
+        # Inline suggest context (WRITE-007)
+        "text_before",
+        "text_after",
+        "chapter_context",
     }
 )
 

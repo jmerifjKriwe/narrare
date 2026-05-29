@@ -6413,63 +6413,6 @@
         }
       }
     },
-    "/api/v1/writing/chapters/{chapter_id}/suggest": {
-      "post": {
-        "tags": [
-          "writing"
-        ],
-        "summary": "Suggest Inline",
-        "description": "SSE stream for inline ghost text suggestions (Phase 3).\n\nAccepts the user's current text context and returns a short (1-3\nsentence) completion via SSE.  Uses ``LLMIntent.SUGGEST`` for a\nlightweight, low-latency model.  Maximum 60 tokens per suggestion.",
-        "operationId": "suggest_inline_api_v1_writing_chapters__chapter_id__suggest_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "chapter_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Chapter Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InlineSuggestRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/writing/generation/{request_id}": {
       "delete": {
         "tags": [
@@ -6907,6 +6850,63 @@
                 "schema": {
                   "$ref": "#/components/schemas/GenerationStatsResponse"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/writing/chapters/{chapter_id}/suggest": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Suggest Inline",
+        "description": "SSE stream for inline ghost text suggestions.\n\nAccepts the user's current text context (split at cursor) and\nreturns a short (1-3 sentence) completion streamed via SSE.\nUses ``LLMIntent.SUGGEST`` for a lightweight, low-latency model.\nMaximum ~60 tokens per suggestion.\n\nPre-validates chapter access before starting the SSE stream to\navoid RuntimeError when validation errors fire after headers\nare sent.",
+        "operationId": "suggest_inline_api_v1_writing_chapters__chapter_id__suggest_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InlineSuggestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -9544,6 +9544,7 @@
           "text_before": {
             "type": "string",
             "maxLength": 5000,
+            "minLength": 1,
             "title": "Text Before",
             "description": "Text before cursor position — used as the prompt for completion"
           },

@@ -279,9 +279,9 @@ async def get_suggest_service(
     project_id: UUID | None = None,
 ) -> InlineSuggestService:
     """Factory for InlineSuggestService — resolves model config for SUGGEST."""
+    from narrare.chapters.repository import ChapterRepository
     from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
     from narrare.writing.suggest_service import InlineSuggestService
-    from narrare_core.llm.intents import LLMIntent
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -294,11 +294,13 @@ async def get_suggest_service(
 
     registry = get_model_registry()
     composer = get_composer()
+    chapter_repo = ChapterRepository(session)
 
     return InlineSuggestService(
         registry=registry,
         composer=composer,
         config=config,
+        chapter_repo=chapter_repo,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
     )

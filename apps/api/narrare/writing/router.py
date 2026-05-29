@@ -14,17 +14,15 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
-from narrare.writing.deps import get_suggest_service, get_writing_service
+from narrare.writing.deps import get_writing_service
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
     from typing import Any
 
 from narrare.writing.schemas import (
     AcceptResponse,
     GenerateRequest,
     GenerateResponse,
-    InlineSuggestRequest,
     RejectResponse,
     StopResponse,
 )
@@ -81,34 +79,6 @@ async def stream_generation(
                     "total_tokens": chunk.usage.total_tokens,
                 }
             yield f"data: {json.dumps(data)}\n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
-
-
-@router.post("/chapters/{chapter_id}/suggest")
-async def suggest_inline(
-    chapter_id: uuid.UUID,
-    request: InlineSuggestRequest,
-    user_id: CurrentUserIdDep,
-    session: SessionDep,
-) -> StreamingResponse:
-    """SSE stream for inline ghost text suggestions (Phase 3).
-
-    Accepts the user's current text context and returns a short (1-3
-    sentence) completion via SSE.  Uses ``LLMIntent.SUGGEST`` for a
-    lightweight, low-latency model.  Maximum 60 tokens per suggestion.
-    """
-    suggest_service = await get_suggest_service(
-        session,
-        user_id,
-        project_id=None,
-    )
-
-    async def event_stream() -> AsyncIterator[str]:
-        async for chunk in suggest_service.suggest_inline(chapter_id, user_id, request):
-            data = json.dumps({"text": chunk.text, "is_final": chunk.is_final})
-            yield f"data: {data}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

@@ -1,6 +1,6 @@
 # ADR-016 — Prompt Caching Strategy
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Accepted
 > **Date:** 2026-05-20
 > **Deciders:** Architecture Agent, Narrare Dev Coordinator
 > **Supersedes:** —
@@ -136,22 +136,31 @@ Option A bietet maximale Kontrolle, aber Narrare nutzt pydantic-ai als Abstrakti
 
 ---
 
-## Implementation Notes
+## Implementation Plan
 
-Siehe [Implementation Plan](/workspace/docs/architecture/decisions/ADR-016-implementation-plan.md).
+Siehe [ADR-016-implementation-plan.md](ADR-016-implementation-plan.md).
 
-Wichtige technische Hinweise:
+Zusammenfassung:
+- **Phase 0** (~2-3 Tage): `AgentRegistry` Singleton Cache in `core/agents/registry.py`
+- **Phase 1** (~3-4 Tage): `CacheSettings` in `ResolvedModelConfig` + provider-spezifische ModelSettings
+- **Phase 2** (~2-3 Tage): Cache-Hit Observability (Prometheus + Langfuse)
+- **Phase 3** (~3-4 Tage): WritingGraph Integration (Agent-Reuse über Steps)
+
+---
+
+## Technical Notes
 
 - **Keine echten LLM-Calls in Tests** — `TestModel` für Unit-Tests
-- **Provider-Cache-Features sind pydantic-ai-Version-spezifisch** — v1.97.0 prüfen
+- **Provider-Cache-Features sind pydantic-ai-Version-spezifisch** — v1.97.0+ prüfen
 - **Agent-Singletons müssen immutable sein nach Erstellung** — keine Mutation von model, tools, system_prompt nach Instanziierung
-- **Memory-Management** — AgentRegistry sollte nicht unendlich wachsen. Überlege ein `max_size` oder TTL-basiertes Cleanup
-- Anthropic hat ein Limit von **4 `cache_control` blocks** — cache nur system+tools, nicht messages
+- **Memory-Management** — `AgentRegistry` hat `max_size=50` + TTL-basiertes Cleanup (5min)
+- **Anthropic** hat ein Limit von **4 `cache_control` blocks** — cache nur system+tools, nicht messages
 
 ---
 
 ## Review Trigger
 
-- [ ] Nach pydantic-ai v2 Release: Verträgt sich mit neuen Caching-Features?
-- [ ] Wenn Google Context Caching in pydantic-ai integriert wird
-- [ ] Wenn produktive User da sind: Cache-Hit-Rate messen
+- [ ] Nach pydantic-ai v2 Release: Kompatibilität mit neuen Caching-Features prüfen. pydantic-ai könnte native Agent-Caching oder erweiterte ModelSettings anbieten, die `build_model_settings()` vereinfachen.
+- [ ] Wenn produktive User eintreffen: Cache-Hit-Rate via `narrare_llm_cache_hit_total` / `narrare_llm_cache_miss_total` messen. Ziel: >80% Cache-Hit-Rate bei WritingGraph-Workflows. Wenn Ziel nicht erreicht: Cache-Key-Strategie oder TTL anpassen.
+- [ ] Nach AgentRegistry-Implementation: Memory-Usage via `AgentRegistry.size`-Property überwachen. Bei dauerhaft >30 Einträgen: max_size oder TTL anpassen.
+- [ ] Wenn Google Context Caching in pydantic-ai integriert wird: `build_model_settings()` für Google-Provider aktivieren (aktuell No-Op).

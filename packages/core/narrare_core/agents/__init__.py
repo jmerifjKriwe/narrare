@@ -28,6 +28,8 @@ from narrare_core.agents.draft_types import DraftConfig, DraftOutput
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.agents.graph_store import GraphStateStore
+from narrare_core.agents.inline_suggest_agent import InlineSuggestAgent
+from narrare_core.agents.inline_suggest_types import InlineSuggestDeps
 from narrare_core.agents.kb_agent import KBAgent, KBDeps
 from narrare_core.agents.kb_assist_agent import KBAssistAgent, KBAssistDeps
 from narrare_core.agents.kb_assist_types import KBAssistOutput
@@ -98,6 +100,8 @@ __all__ = [
     "ExtractionOutput",
     "GraphStateStore",
     "ImprovementSuggestion",
+    "InlineSuggestAgent",
+    "InlineSuggestDeps",
     "KBAgent",
     "KBAssistAgent",
     "KBAssistDeps",

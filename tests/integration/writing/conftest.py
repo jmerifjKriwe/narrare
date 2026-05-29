@@ -5,10 +5,11 @@ FastAPI ``Depends``).  This function internally resolves model routing
 from the DB, which requires user AI provider settings that don't exist
 for the test user.
 
-This conftest patches ``get_writing_service`` and ``get_extend_service``
-at their import sites in the router modules so that:
+This conftest patches ``get_writing_service``, ``get_extend_service``,
+``get_rewrite_service``, and ``get_suggest_service`` at their import
+sites in the router modules so that:
 - The **real** ``GenerationRepository`` is used (DB integration).
-- A **fake** ``WritingPipeline`` replaces LLM calls.
+- A **fake** ``WritingPipeline`` / ``FakeModelRegistry`` replaces LLM calls.
 - All other service logic runs unmodified.
 """
 
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from narrare.writing.extend_service import ExtendService
     from narrare.writing.rewrite_service import RewriteService
     from narrare.writing.service import WritingService
+    from narrare.writing.suggest_service import InlineSuggestService
 
 
 async def _make_writing_service(
@@ -155,6 +157,42 @@ async def _make_rewrite_service(
     )
 
 
+async def _make_suggest_service(
+    session: AsyncSession,
+    user_id: str,
+    project_id: object = None,
+) -> InlineSuggestService:
+    """Build an InlineSuggestService with real chapter repo + fake registry."""
+    from narrare._app.dependencies import get_composer
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.writing.suggest_service import InlineSuggestService
+    from narrare_core.llm.intents import ResolvedModelConfig
+    from tests.fakes.fake_llm_gateway import FakeModelRegistry
+
+    fake_registry = FakeModelRegistry()
+    # Queue a default short stream response for suggest tests.
+    fake_registry.returns_stream(
+        [
+            "his footsteps echoing through the empty corridor.",
+        ]
+    )
+    config = ResolvedModelConfig(
+        provider_name="test",
+        model_id="test-model",
+        temperature=0.3,
+        max_tokens=60,
+    )
+
+    chapter_repo = ChapterRepository(session)
+
+    return InlineSuggestService(
+        registry=fake_registry,
+        composer=get_composer(),
+        config=config,
+        chapter_repo=chapter_repo,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _patch_writing_service() -> object:  # pyright: ignore[reportUnusedFunction]
     """Patch service factories in all writing router modules."""
@@ -174,6 +212,10 @@ def _patch_writing_service() -> object:  # pyright: ignore[reportUnusedFunction]
         patch(
             "narrare.writing.router_stats.get_writing_service",
             new=_make_writing_service,
+        ),
+        patch(
+            "narrare.writing.router_suggest.get_suggest_service",
+            new=_make_suggest_service,
         ),
     ):
         yield
