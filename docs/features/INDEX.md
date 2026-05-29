@@ -54,7 +54,7 @@
 | [WRITE-004](writing/WRITE-004-rewrite.md) | AI: Rewrite Selection | ✅ | ❌ |
 | [WRITE-005](writing/WRITE-005-interactive-session.md) | Interactive Writing Session | ✅ | ✅ |
 | [WRITE-006](writing/WRITE-006-co-author.md) | Co-Author Mode | 📋 | ❌ |
-| [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | 📋 | ❌ |
+| [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | ✅ | ❌ |
 | [WRITE-008](writing/WRITE-008-multi-draft.md) | Multi-Draft Generation | 📋 | ❌ |
 | [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Block Tools | 📋 | ❌ |
 | [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | 📋 | ❌ |
@@ -229,5 +229,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-28 — ANAL-002 (Sentiment Analysis) and CONS-001 (Consistency Checker) spec-complete (all backlog items implemented).
+> Last updated: 2026-05-29 — WRITE-007 (Inline AI Suggestions) fully implemented across all layers. Feature → stable.
 > Features are specified before they are implemented — never after

@@ -1,7 +1,7 @@
 ---
 id: WRITE-007
 title: "Inline AI Suggestions"
-status: planned
+status: stable
 area: writing
 mvp: false
 
@@ -62,10 +62,10 @@ ui_help_long: |
   Note: Requires internet connection for AI inference.
 ui_available_in: [editor]
 
-service: writing/draft_service.py
-contract: writing/contracts.py#DraftServiceProtocol
-router: writing/router.py
-prompt: core/prompts/_bundled/writing/en/inline_suggest
+service: writing/suggest_service.py
+contract: writing/contracts.py#SuggestServiceProtocol
+router: writing/router_suggest.py
+prompt: core/prompts/_bundled/writing/en/inline_suggest/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003]
 ---
 
@@ -98,39 +98,58 @@ writing style.
 
 ## How it works (Technical)
 
-**Entry point:** `writing/router.py` → `WebSocket /api/v1/writing/suggest/{chapter_id}`
-**Service:** `DraftService.suggest_inline()` in `writing/draft_service.py`
-**Contract:** `DraftServiceProtocol` in `writing/contracts.py`
-**LLM Intent:** `LLMIntent.SUGGEST`
-**Protocol:** WebSocket for low-latency streaming
+**Core layer:**
+- **Agent:** `InlineSuggestAgent` (NarrareAgent subclass) in `packages/core/narrare_core/agents/inline_suggest_agent.py`
+- **Deps:** `InlineSuggestDeps` in `packages/core/narrare_core/agents/inline_suggest_types.py`
+- **Prompts:** 3 locale templates (en/de/fr) in `core/prompts/_bundled/writing/{locale}/inline_suggest/system.md`
+- **Variable engine:** `text_before`, `text_after`, `chapter_context` variables
+- **LLM Intent:** `LLMIntent.SUGGEST`
+
+**Backend layer:**
+- **Entry point:** `POST /api/v1/writing/chapters/{chapter_id}/suggest` (SSE endpoint)
+- **Service:** `InlineSuggestService` in `writing/suggest_service.py` — chapter validation, rate limiting, minimal context assembly
+- **Contract:** `SuggestServiceProtocol` in `writing/contracts.py`
+- **Router:** `writing/router_suggest.py` (dedicated per RULE-04)
+- **Dependencies:** `writing/deps.py` → `get_suggest_service()`
+- **Protocol:** Server-Sent Events (SSE) for low-latency streaming
 
 **Triggering:**
 - Suggestions requested after N words (configurable, default 5)
-- Debounced 300ms after last keystroke
+- Debounced 300ms after last keystroke (configurable via GhostTextConfig)
 - Not triggered if user is actively typing (prevents distraction)
 
 **Context for suggestions:**
-- Last 200 tokens of user's text
-- Chapter frontmatter (POV, location)
-- Recent chapters (last 1 for continuity)
+- `text_before`: text before cursor position
+- `text_after`: text after cursor position
+- Chapter context (frontmatter, POV, location)
 - KB entries (if entities mentioned)
 
 **Suggestion generation:**
 - Model predicts next 10-20 tokens
-- Streaming generates suggestion progressively
+- Streaming generates suggestion progressively via SSE
 - Suggestion truncated at sentence end
 - Maximum 3 sentences per suggestion
 
-**Frontend behavior:**
-- Ghost text rendered in editor
+**Frontend layer:**
+- **Extension:** `GhostText.ts` TipTap extension (ProseMirror Decoration.widget) — streaming, accept/reject/word-accept, prefix cache, analytics
+- **Settings:** `GhostTextConfig.tsx` — enable/disable toggle + delay slider
+- **API client:** `createSseSuggestionFetcher()` in `lib/api/suggest.ts` — real SSE integration
+- **Styles:** CSS in `styles/editor.css`
+- Ghost text rendered as ProseMirror Decoration.widget
 - Disappears if user types a character not matching suggestion
 - Tab key accepts entire suggestion
 - Escape key dismisses suggestion
+- Word-level accept via ArrowRight
 
 **Performance:**
 - Target: < 500ms from trigger to display
 - Suggestion cached for identical context (reduces API calls)
 - Lazy loading after scroll pauses
+
+**Testing:**
+- Core: 12 unit tests for InlineSuggestAgent
+- Backend: 11 integration tests for suggest endpoint
+- Frontend: GhostTextConfig.test.tsx, suggest.test.ts, mocks in EditorView/TipTapEditor tests
 
 ## Constraints & Edge Cases
 
@@ -153,3 +172,4 @@ writing style.
 
 - `project-init` — Added to registry as planned feature
 - `cr-01-audit` — Inline suggest prompt enhanced with negative examples, user preferences, and avoidance patterns
+- `2026-05-29` — Full implementation: InlineSuggestAgent (core) + SSE endpoint (backend) + GhostText TipTap extension (frontend). 23 backend tests, frontend tests. ADR-016 accepted. Feature → stable.

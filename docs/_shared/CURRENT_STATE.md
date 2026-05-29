@@ -10,9 +10,9 @@
 
 ## Last Updated
 
-Date: 2026-05-28
+Date: 2026-05-29
 Updated by: NarrareDocsSpecialist
-Session summary: ANAL-002 Sentiment Analysis and CONS-001 Consistency Checker backlog items fully implemented (spec-complete). Cross-chapter arc trajectory, word count warnings, chart export, hover tooltips, issue actions, KB pre-check, scope selector, fact deduplication all done. 38 new tests (8 warning + 30 rule + 22 rule helper + 6 service). Docs synced.
+Session summary: WRITE-007 (Inline AI Suggestions) fully implemented across all layers. InlineSuggestAgent + 3 prompts (core), SSE endpoint + suggest_service (backend), GhostText TipTap extension + SSE integration + settings UI (frontend). ADR-016 Prompt Caching accepted. 23 backend tests + existing frontend tests. Feature doc → stable.
 
 ---
 
@@ -536,6 +536,8 @@ Phase 5 (current):
 
  23. ✅ CONS-001: Consistency Checker — Spec-complete. All backlog items implemented: issue actions (dismiss/mark intentional/copy), loading progress with elapsed timer, rule-based KB pre-check (deterministic, confidence=1.0), scope selector (current/selected/all), fact deduplication. LLMIntent.CONSISTENCY confirmed. 22 rule helper tests + 6 service tests. ConsistencyAgent (pydantic-ai) + API endpoints + ConsistencyPanel.
 
+ 24. ✅ WRITE-007: Inline AI Suggestions — Complete. InlineSuggestAgent (core), POST /chapters/{id}/suggest SSE endpoint (backend), GhostText TipTap extension with Decoration.widget, accept/reject/word-accept, prefix cache, GhostTextConfig settings, createSseSuggestionFetcher SSE integration (frontend). 23 backend tests. Feature doc → stable.
+
 Next focus: Post-MVP features (E2E test patterns, AI-assisted enrichment, analysis panels).
 
 ---
@@ -700,6 +702,8 @@ All demo content is complete — sufficient for testing through Phase 5.
 | SET-005: Configurable Token Limits — Phase 2 cleanup | Removed deprecated `token_limit_profile` / `token_limit_overrides` from API schemas and services. Removed `CustomTokenLimits` component, `TokenLimitOverride` type, and old field references. 3,272 tests passing, architecture validation clean. |
 | INFRA-010: Prompting Locally — Cascade Activation | Core cascade activated via workspace root DI wiring — PromptRegistry and MetaPromptLoader now receive project_root=BASE_DIR. ManagementService fallback path fixed (~/.narrare/ → user_config_dir/prompts/). All 5 cascade levels fully operational: DB template → project file → user-global → bundled → bundled EN fallback. Feature doc status: planned → stable. |
 | Coverage Uplift 2026-05-27 | 6-wave plan komplett umgesetzt: Backend Unit (16 Dateien, 210 Tests), Backend Integration (7 Dateien, 85 Tests), Frontend Components (31 Dateien, 281 Tests), Frontend Lib/API (17 Dateien, 141 Tests), Core Unit (19 Dateien, 234 Tests), Cross-Layer Contracts (5 Dateien), Router Contracts (4 Dateien), Fake Conformance (1 Datei, 13 Tests), E2E (3 Dateien, 9 Tests). Alle 26 bisher ungetesteten Frontend-Komponenten abgedeckt. Alle 10 ungetesteten Backend-Services abgedeckt. Core Events, Agents, Embeddings vollständig getestet. Coverage weit über 80%. |
+| WRITE-007: Inline AI Suggestions | InlineSuggestAgent + SSE endpoint + GhostText TipTap extension + settings UI. Feature → stable. |
+| ADR-016: Prompt Caching | Status → Accepted. 4-phase implementation plan with AgentRegistry, CacheSettings, observability, WritingGraph integration. |
 
 ---
 
@@ -721,7 +725,7 @@ All demo content is complete — sufficient for testing through Phase 5.
 | ADR-013 | Internationalization Architecture | ✅ Implemented |
 | ADR-014 | RULE-14: Model-Migration Consistency | ✅ Enforced |
 | ADR-015 | Pydantic-AI Agents as First-Class Citizens | 🔄 Proposed |
-| ADR-016 | Prompt Caching Strategy | 🔄 Proposed |
+| ADR-016 | Prompt Caching Strategy | ✅ Accepted | 4-phase plan: AgentRegistry, CacheSettings, observability, WritingGraph integration |
 | ADR-017 | Embedding Cascade for mem0 | ✅ Implemented in `core/memory/embedding_cascade.py` |
 | ADR-018 | Promptfoo Eval Framework for Prompt Quality | ✅ | evals/, CI |
 | ADR-019 | System-Prompt Consistency for pydantic-ai Agents | ✅ Accepted | `core/agents/`, `core/prompts/`, RULE-02 |
@@ -755,11 +759,11 @@ All demo content is complete — sufficient for testing through Phase 5.
 
 ## Next Session Should Start With
 
-**Phase 5 (current):**
+**Phase 6 (current):**
 1. Post-MVP features development
-2. KB-006b: AI gap detection & connection suggestions
-3. Analysis panel integration in ContextPanel
-4. Editor: Ghost-Text feature (TipTap Decoration API)
+2. ADR-016 Phase 0: AgentRegistry implementation
+3. Analysis panel integration in ContextPanel (ANAL-003 or ANAL-004)
+4. Editor: Ghost Text production polish (word-level accept via ArrowRight, suggestion diversity)
 5. Embedding provider abstraction (Q-003)
 
 **Post-MVP (future):**
