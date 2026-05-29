@@ -215,6 +215,9 @@ for other agents — never executed directly (`output_type=None`). Exposes
 and `get_related_entities()`. Defined in `core/agents/kb_agent.py`.
 Part of ADR-015 Phase 3.
 
+**LLM Wiki**
+Siehe *Wiki (LLM Wiki)*.
+
 **KB (Knowledge Base)**
 The project-level structured knowledge store — characters, locations, world facts,
 relationships. Distinct from the Knowledge Graph (which is derived from chapter
@@ -303,6 +306,9 @@ instead of the legacy `DraftProcessor` pipeline path. Defined inline in
 
 ## P
 
+**Precomputed Context Layer**
+Ein Architekturpattern, bei dem Daten vorverarbeitet (precomputed) und als optimierte, LLM-lesbare Zusammenfassungen gespeichert werden — statt Rohdaten bei jedem LLM-Call live zu laden. Ermöglicht deterministischen, token-effizienten Context Assembly. In Narrare implementiert als LLM Wiki (WIKI-001, ADR-022).
+
 **Prompt Context (`PromptContext`)**
 A typed dataclass carrying all variables needed to render a prompt:
 project metadata, language, mode, KB context bundle, style profile, etc.
@@ -356,6 +362,9 @@ The utility in `packages/web/lib/api/streaming.ts` that handles Server-Sent Even
 Uses native `fetch` + `ReadableStream` (axios cannot do SSE). Parses SSE `data:` lines,
 handles `[DONE]` sentinel, and supports `AbortSignal` for cancellation.
 Every streaming AI response in the frontend uses this client.
+
+**Stale (WikiSummary)**
+Der Status eines WikiSummary, dessen Abhängigkeiten (Prompt-Version, Entity-Content, Template-Version) sich seit der Generierung geändert haben. Ein stale Summary löst einen Lazy-Refresh beim nächsten Zugriff aus — der Write-Call fällt dabei auf Rohdaten zurück. Siehe *WikiSummary*.
 
 **shadcn/ui**
 A collection of copy-paste React component primitives built on Radix UI.
@@ -423,6 +432,15 @@ style profile, flagging deviations in tone, sentence structure, vocabulary, etc.
 ---
 
 ## W
+
+**Wiki (LLM Wiki)**
+Ein System aus vorberechneten, LLM-generierten Zusammenfassungen von KB-Entities und Kapiteln. Dient als Precomputed Context Layer für das Context Assembly System (INFRA-003). WikiSummaries (~40 Tokens) ersetzen Rohdaten (~200 Tokens) im Writing-Context. Jedes Summary hat einen `depends_on`-Tracker für Prompt-Versionierung und Stale-Erkennung. Betrieben via TaskIQ-Background-Jobs bei Entity-Änderung. Feature: WIKI-001.
+
+**WikiChapterSummary**
+Eine erweiterte Kapitelzusammenfassung, die über das ChapterSummary (WRITE-012) hinausgeht: enthält Key-Events, beteiligte Entitäten und Themes. Wird beim Finalisieren eines Kapitels generiert. Siehe *Wiki (LLM Wiki)*.
+
+**WikiSummary**
+Eine LLM-generierte, präcomputierte narrative Zusammenfassung einer KB-Entity (2-3 Sätze). Enthält: narrative Beschreibung, Rolle in der Story, Schlüsselattribute, Beziehungen und Kapitel-Referenzen. Status: fresh | stale | pending. Siehe *Wiki (LLM Wiki)*.
 
 **Writing Language**
 The language in which the AI generates creative text (prose, dialogue, narration).

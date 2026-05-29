@@ -37,6 +37,10 @@ class EventType(StrEnum):
     # Version events
     CHAPTER_VERSION_RESTORED = "chapter.version.restored"
 
+    # Wiki events (WIKI-001)
+    WIKI_PROMPT_CHANGED = "wiki.prompt.changed"
+    WIKI_SYNC_REQUESTED = "wiki.sync.requested"
+
 
 @dataclass(frozen=True, slots=True)
 class DomainEvent:

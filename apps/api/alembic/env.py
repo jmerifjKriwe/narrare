@@ -22,6 +22,7 @@ import narrare.settings.models
 import narrare.settings.token_limits.models
 import narrare.templates.models
 import narrare.volumes.models
+import narrare.wiki.models
 import narrare.writing.models  # noqa: F401
 from alembic import context
 
