@@ -50,6 +50,15 @@ class WikiServiceProtocol(Protocol):
         """Mark all novel's summaries stale. Published via EventBus."""
         ...
 
+    async def generate_chapter(
+        self,
+        deps: WikiGenerationDeps,
+        *,
+        stream: bool = False,
+    ) -> WikiChapterOutput | None:
+        """Generate wiki summary for a chapter. Graceful: returns None on failure."""
+        ...
+
 
 @runtime_checkable
 class WikiAgentProtocol(Protocol):

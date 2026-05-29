@@ -16,6 +16,11 @@ if TYPE_CHECKING:
 
 
 class NovelRepository(BaseRepository):
+    async def get(self, novel_id: uuid.UUID) -> Novel | None:
+        """Load a novel by ID without ownership check (system-level access)."""
+        result = await self._session.execute(select(Novel).where(Novel.id == novel_id))
+        return result.scalar_one_or_none()
+
     async def get_by_id(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel | None:
         result = await self._session.execute(
             select(Novel).where(Novel.id == novel_id, Novel.user_id == user_id)

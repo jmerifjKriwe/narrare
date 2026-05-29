@@ -2,6 +2,8 @@
 
 Provides a simple in-process event bus for publishing domain events.
 Events are dispatched to registered handlers synchronously.
+Supports both broadcast handlers (receive all events) and typed
+handlers (receive events of a specific type only).
 For TaskIQ integration, handlers forward events to task workers.
 """
 
@@ -12,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from uuid import UUID
 
 logger = structlog.get_logger(__name__)
@@ -20,8 +23,10 @@ logger = structlog.get_logger(__name__)
 class EventPublisher:
     """Simple in-process event publisher for domain events.
 
-    Handlers are registered via ``add_handler()``. When an event is
-    published, all registered handlers are called in order.
+    Handlers are registered via ``add_handler()`` (broadcast — receives
+    all events) or ``subscribe()`` (typed — receives only matching events).
+    When an event is published, typed handlers are called first, then
+    broadcast handlers.
 
     For TaskIQ integration, a handler is registered that forwards
     events to the appropriate TaskIQ task.
@@ -29,14 +34,27 @@ class EventPublisher:
 
     def __init__(self) -> None:
         self._handlers: list[Any] = []
+        self._typed_handlers: dict[str, list[Any]] = {}
 
     def add_handler(self, handler: Any) -> None:
-        """Register an event handler callable.
+        """Register a broadcast handler (receives all events).
 
         Args:
             handler: A callable that accepts domain events.
         """
         self._handlers.append(handler)
+
+    def subscribe(self, event_type: str, handler: Callable[..., Any]) -> None:
+        """Register a handler for a specific event type.
+
+        The handler is called only when the dispatched event's
+        ``event_type`` matches ``event_type``.
+
+        Args:
+            event_type: Event type string (e.g. ``"kb.entry.updated"``).
+            handler: Async callable accepting a single DomainEvent.
+        """
+        self._typed_handlers.setdefault(event_type, []).append(handler)
 
     async def publish_feedback_recorded(
         self,
@@ -85,13 +103,29 @@ class EventPublisher:
     async def _dispatch(self, event: Any) -> None:
         """Dispatch an event to all registered handlers.
 
-        Handler failures are logged but do not prevent other handlers
-        from running (RULE-11: no silent failures, but no cascading
-        failures either).
+        Typed handlers matching the event's ``event_type`` are called
+        first, then broadcast handlers.  Handler failures are logged but
+        do not prevent other handlers from running (RULE-11: no silent
+        failures, but no cascading failures either).
 
         Args:
             event: The domain event to dispatch.
         """
+        event_type_str = str(getattr(event, "event_type", ""))
+
+        # Typed handlers (specific event type)
+        for handler in self._typed_handlers.get(event_type_str, []):
+            try:
+                await handler(event)
+            except Exception:
+                logger.warning(
+                    "typed_event_handler_failed",
+                    handler=handler.__class__.__name__,
+                    event_type=event_type_str,
+                    exc_info=True,
+                )
+
+        # Broadcast handlers (all events)
         for handler in self._handlers:
             try:
                 await handler(event)

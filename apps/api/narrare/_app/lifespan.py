@@ -176,6 +176,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except Exception:
         logger.warning("event_bus_init_failed", exc_info=True)
 
+    # Wiki event listeners — register typed handlers on a global EventPublisher
+    try:
+        from narrare.events.publisher import EventPublisher
+        from narrare.wiki.dependencies import build_core_wiki_service, make_system_wiki_factory
+        from narrare.wiki.listeners import WikiEventListener
+
+        core_wiki_service = await build_core_wiki_service()
+        system_factory = make_system_wiki_factory(core_wiki_service)
+        listener = WikiEventListener(wiki_service_factory=system_factory)
+
+        publisher = EventPublisher()
+        publisher.subscribe("kb.entry.updated", listener.on_kb_entry_updated)
+        publisher.subscribe("chapter.finalized", listener.on_chapter_finalized)
+        publisher.subscribe("wiki.prompt.changed", listener.on_wiki_prompt_changed)
+        publisher.subscribe("wiki.sync.requested", listener.on_wiki_sync_requested)
+
+        # Store on app.state for access from other modules if needed
+        app.state.wiki_event_publisher = publisher
+        logger.info("wiki_event_listeners_registered")
+    except Exception:
+        logger.warning("wiki_listeners_init_failed", exc_info=True)
+
     # Startup cleanup: remove stale generation requests — skip in test
     # environment (no real data to clean, and it uses the module-level engine).
     if not settings.is_test:

@@ -125,18 +125,13 @@ class WikiRepository(BaseRepository):
         ).scalar_one_or_none()
 
     async def get_summaries(
-        self, entity_ids: Sequence[uuid.UUID], novel_id: uuid.UUID
+        self, entity_ids: Sequence[uuid.UUID] | None, novel_id: uuid.UUID
     ) -> list[WikiSummary]:
-        """Fetch multiple WikiSummaries for the given entities in a novel."""
-        return list(
-            (
-                await self._session.execute(
-                    select(WikiSummary).where(
-                        WikiSummary.novel_id == novel_id, WikiSummary.entity_id.in_(entity_ids)
-                    )
-                )
-            ).scalars()
-        )
+        """Fetch WikiSummaries for a novel, optionally filtered by entity IDs."""
+        stmt = select(WikiSummary).where(WikiSummary.novel_id == novel_id)
+        if entity_ids:
+            stmt = stmt.where(WikiSummary.entity_id.in_(entity_ids))
+        return list((await self._session.execute(stmt)).scalars())
 
     async def get_chapter_summary(self, chapter_id: uuid.UUID) -> WikiChapterSummary | None:
         """Fetch a single WikiChapterSummary by ``chapter_id``."""

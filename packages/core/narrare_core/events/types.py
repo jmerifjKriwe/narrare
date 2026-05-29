@@ -34,7 +34,8 @@ class EventType(StrEnum):
     NOVEL_CREATED = "novel.created"
     NOVEL_SETTINGS_CHANGED = "novel.settings.changed"
 
-    # Version events
+    # Chapter lifecycle
+    CHAPTER_FINALIZED = "chapter.finalized"
     CHAPTER_VERSION_RESTORED = "chapter.version.restored"
 
     # Wiki events (WIKI-001)

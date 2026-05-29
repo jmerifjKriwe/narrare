@@ -7005,6 +7005,371 @@
           }
         }
       }
+    },
+    "/api/v1/novels/{novel_id}/wiki/summaries": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "List Summaries",
+        "description": "List all wiki summaries for a novel.",
+        "operationId": "list_summaries_api_v1_novels__novel_id__wiki_summaries_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entity_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated entity UUIDs to filter by",
+              "title": "Entity Ids"
+            },
+            "description": "Comma-separated entity UUIDs to filter by"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiSummaryListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/wiki/summaries/{entity_id}": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Get Summary",
+        "description": "Get a single wiki summary for an entity.",
+        "operationId": "get_summary_api_v1_novels__novel_id__wiki_summaries__entity_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/wiki/chapters/{chapter_id}/summary": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Get Chapter Summary",
+        "description": "Get a chapter-level wiki summary.",
+        "operationId": "get_chapter_summary_api_v1_novels__novel_id__wiki_chapters__chapter_id__summary_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiChapterSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/wiki/summaries/{entity_id}/refresh": {
+      "post": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Refresh Summary",
+        "description": "Force-refresh a wiki summary for an entity.",
+        "operationId": "refresh_summary_api_v1_novels__novel_id__wiki_summaries__entity_id__refresh_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiRefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiRefreshResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/wiki/index": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Get Wiki Index",
+        "description": "Get wiki overview and health status for a novel.",
+        "operationId": "get_wiki_index_api_v1_novels__novel_id__wiki_index_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiIndexResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/wiki/mark-stale": {
+      "post": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Mark All Stale",
+        "description": "Mark all wiki summaries as stale for a novel.",
+        "operationId": "mark_all_stale_api_v1_novels__novel_id__wiki_mark_stale_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_mark_all_stale_api_v1_novels__novel_id__wiki_mark_stale_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Mark All Stale Api V1 Novels  Novel Id  Wiki Mark Stale Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7732,6 +8097,23 @@
         ],
         "title": "BetaReaderStrength",
         "description": "A strength identified by the beta reader.\n\nAttributes:\n    category: Which aspect of writing this strength relates to.\n    title: Short summary of the strength.\n    description: Why this works well.\n    text_excerpt: Supporting text passage (if applicable)."
+      },
+      "Body_mark_all_stale_api_v1_novels__novel_id__wiki_mark_stale_post": {
+        "properties": {
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          }
+        },
+        "type": "object",
+        "title": "Body_mark_all_stale_api_v1_novels__novel_id__wiki_mark_stale_post"
       },
       "CascadePathResponse": {
         "properties": {
@@ -13150,6 +13532,377 @@
         ],
         "title": "VolumeStatsResponse",
         "description": "Aggregated stats for a single volume."
+      },
+      "WikiChapterSummaryResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "chapter_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Chapter Id"
+          },
+          "narrative_summary": {
+            "type": "string",
+            "title": "Narrative Summary"
+          },
+          "key_events": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Events"
+          },
+          "entities_involved": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entities Involved"
+          },
+          "themes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Themes"
+          },
+          "emotional_arc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emotional Arc"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "chapter_id",
+          "narrative_summary",
+          "key_events",
+          "entities_involved",
+          "themes",
+          "emotional_arc",
+          "status",
+          "version"
+        ],
+        "title": "WikiChapterSummaryResponse",
+        "description": "Chapter-level wiki summary."
+      },
+      "WikiIndexResponse": {
+        "properties": {
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "total_summaries": {
+            "type": "integer",
+            "title": "Total Summaries"
+          },
+          "fresh_count": {
+            "type": "integer",
+            "title": "Fresh Count"
+          },
+          "stale_count": {
+            "type": "integer",
+            "title": "Stale Count"
+          },
+          "pending_count": {
+            "type": "integer",
+            "title": "Pending Count"
+          },
+          "last_generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "novel_id",
+          "total_summaries",
+          "fresh_count",
+          "stale_count",
+          "pending_count"
+        ],
+        "title": "WikiIndexResponse",
+        "description": "Karpathy-inspired wiki index metadata for the overview page."
+      },
+      "WikiRefreshRequest": {
+        "properties": {
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id",
+            "description": "Target entity; omit to refresh all stale summaries."
+          },
+          "force": {
+            "type": "boolean",
+            "title": "Force",
+            "description": "Force refresh even if status is FRESH.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "WikiRefreshRequest",
+        "description": "Manual refresh trigger for wiki summaries.\n\nIf entity_id is omitted, all stale summaries for the novel are refreshed.\nSet force=True to refresh even FRESH summaries."
+      },
+      "WikiRefreshResponse": {
+        "properties": {
+          "summary_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "WikiRefreshResponse",
+        "description": "Result of a wiki summary refresh operation."
+      },
+      "WikiSummaryListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WikiSummaryResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "WikiSummaryListResponse",
+        "description": "Paginated list of wiki summaries."
+      },
+      "WikiSummaryResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "novel_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Novel Id"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Entity Id"
+          },
+          "narrative_summary": {
+            "type": "string",
+            "title": "Narrative Summary"
+          },
+          "role_in_story": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role In Story"
+          },
+          "key_attributes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Attributes"
+          },
+          "relationships": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationships"
+          },
+          "chapter_references": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter References"
+          },
+          "character_arc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Arc"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "refreshed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "novel_id",
+          "entity_id",
+          "narrative_summary",
+          "role_in_story",
+          "key_attributes",
+          "relationships",
+          "chapter_references",
+          "character_arc",
+          "status",
+          "version",
+          "generated_at",
+          "refreshed_at"
+        ],
+        "title": "WikiSummaryResponse",
+        "description": "Full wiki summary for a single KB entity."
       },
       "WizardState": {
         "properties": {

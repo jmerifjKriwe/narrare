@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from narrare_core.events.bus import EventBus
     from narrare_core.wiki.contracts import WikiAgentProtocol
     from narrare_core.wiki.types import (
+        WikiChapterOutput,
         WikiEntityOutput,
         WikiGenerationDeps,
         WikiSummaryData,
@@ -196,6 +197,39 @@ class WikiService:
             prompt_version=prompt_version,
         )
         return 0  # Actual count handled by API layer
+
+    async def generate_chapter(
+        self,
+        deps: WikiGenerationDeps,
+        *,
+        stream: bool = False,
+    ) -> WikiChapterOutput | None:
+        """Generate a wiki summary for a single chapter.
+
+        Delegates to the WikiGenerationAgent's chapter generation path.
+        Graceful degradation: returns None on failure (RULE-11).
+
+        Args:
+            deps: Generation dependencies with chapter context.
+            stream: If True, use streaming generation.
+
+        Returns:
+            The generated chapter summary, or None on failure.
+        """
+        try:
+            result = await self._agent.generate_chapter(deps=deps, stream=stream)
+            logger.info(
+                "wiki_chapter_summary_generated",
+                entity_type=deps.entity_type,
+                entity_name=deps.entity_name,
+            )
+            return result
+        except Exception:
+            logger.exception(
+                "wiki_chapter_summary_generation_failed",
+                entity_name=deps.entity_name,
+            )
+            return None
 
     # ------------------------------------------------------------------
     # Internal helpers
