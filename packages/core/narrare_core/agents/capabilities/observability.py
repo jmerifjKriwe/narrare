@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai.capabilities import AbstractCapability
 
-from narrare_core.llm.metrics import record_failure, record_success
+from narrare_core.llm.metrics import record_cache_usage, record_failure, record_success
 from narrare_core.llm.result import TokenUsage
 
 if TYPE_CHECKING:
@@ -63,8 +63,6 @@ class NarrareObservability(AbstractCapability):
 
         return obs
 
-        return obs
-
     async def before_model_request(
         self,
         ctx: RunContext[Any],
@@ -84,12 +82,23 @@ class NarrareObservability(AbstractCapability):
         """Success loggen: Dauer, Token-Verbrauch."""
         elapsed = time.monotonic() - self._start_time
 
+        # Extract cache statistics from usage details
+        raw_details = getattr(ctx.usage, "details", None)
+        if isinstance(raw_details, dict):
+            details = cast("dict[str, Any]", raw_details)
+        else:
+            details: dict[str, Any] = {}
+        cache_read = int(details.get("cache_read_input_tokens", 0) or 0)
+        cache_creation = int(details.get("cache_creation_input_tokens", 0) or 0)
+
         # Aus ctx.usage die Token extrahieren
         # ctx.usage is always populated (RunUsage, not Optional)
         token_usage = TokenUsage(
             prompt_tokens=ctx.usage.input_tokens or 0,
             completion_tokens=ctx.usage.output_tokens or 0,
             total_tokens=ctx.usage.total_tokens or 0,
+            cache_read_tokens=cache_read,
+            cache_creation_tokens=cache_creation,
         )
 
         record_success(
@@ -99,6 +108,17 @@ class NarrareObservability(AbstractCapability):
             usage=token_usage,
             duration_seconds=elapsed,
         )
+
+        # Record cache metrics
+        if cache_read > 0 or cache_creation > 0:
+            record_cache_usage(
+                intent=self._intent or "unknown",
+                model=self._model_id or "unknown",
+                provider=self._provider_name or "unknown",
+                cache_read_tokens=cache_read,
+                cache_creation_tokens=cache_creation,
+            )
+
         return response
 
     async def on_model_request_error(

@@ -21,6 +21,8 @@ class TokenUsage:
     total_tokens: int
     provider: str = ""
     model: str = ""
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
 
     @property
     def cost_estimate_usd(self) -> float:

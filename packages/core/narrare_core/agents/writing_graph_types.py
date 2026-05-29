@@ -68,6 +68,7 @@ class WritingDeps:
     store: Any = None  # GraphStateStore (Any zur Vermeidung von Zirkelimporten)
     run_id: str = ""
     user_id: str = ""  # User identity for preference auto-injection
+    agent_registry: Any = None  # AgentRegistry (optional, ADR-016 Phase 3)
 
 
 # ---------------------------------------------------------------------------

@@ -151,6 +151,22 @@ model routing cascade.
 
 
 @dataclass(frozen=True, slots=True)
+class CacheSettings:
+    """Prompt caching configuration for a resolved model.
+
+    Provider-specific behavior:
+    - Anthropic: Enables cache_control blocks on system prompt + tools.
+    - OpenAI / Z.AI / Groq: Ignored (automatic server-side caching).
+    - Google: Triggers explicit cached_contents creation.
+    - Ollama: Ignored (no caching support).
+    """
+
+    enabled: bool = True
+    ttl_seconds: int = 300  # Anthropic minimum: 300 (5min)
+    max_cache_points: int = 4  # Anthropic limit: 4
+
+
+@dataclass(frozen=True, slots=True)
 class ResolvedModelConfig:
     """Fully resolved model configuration ready for the gateway.
 
@@ -174,6 +190,7 @@ class ResolvedModelConfig:
     max_tokens: int = 4096
     streams: bool = False
     token_limit_profile: str | None = None
+    cache: CacheSettings | None = None
 
     def resolve_output_limit(self, profile: str | None = None) -> int:
         """Return the output token limit, optionally overridden by *profile*.

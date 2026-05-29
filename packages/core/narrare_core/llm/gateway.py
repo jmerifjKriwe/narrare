@@ -123,6 +123,15 @@ class ModelRegistry:
         factory = get_provider(config.provider_name)
         return factory(config.model_id, api_key=api_key, base_url=base_url)
 
+    def get_cache_settings(self, config: ResolvedModelConfig) -> dict[str, Any]:
+        """Build provider-specific ModelSettings for prompt caching.
+
+        Returned as kwargs dict for Agent.run(model_settings=...).
+        """
+        from narrare_core.llm._providers.cache_settings import build_model_settings
+
+        return build_model_settings(config.provider_name, config.cache)
+
     async def run(
         self,
         intent: LLMIntent,

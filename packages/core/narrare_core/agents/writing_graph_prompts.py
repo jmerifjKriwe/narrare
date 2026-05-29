@@ -49,6 +49,28 @@ async def get_model(deps: WritingDeps) -> Any:
     )
 
 
+async def get_or_create_agent(
+    deps: WritingDeps,
+    agent_type: type,
+    model: Any,
+    system_prompt: str | None = None,
+    **kwargs: Any,
+) -> Any:
+    """Get agent from AgentRegistry if available, else create directly.
+
+    Provides backward compatibility: if agent_registry is None,
+    falls back to direct instantiation.
+    """
+    if deps.agent_registry is not None:
+        return await deps.agent_registry.get_or_create(
+            agent_type,
+            model,
+            system_prompt=system_prompt,
+            **kwargs,
+        )
+    return agent_type(model=model, system_prompt=system_prompt, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Prompt context builder
 # ---------------------------------------------------------------------------

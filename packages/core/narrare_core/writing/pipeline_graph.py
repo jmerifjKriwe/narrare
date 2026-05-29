@@ -33,6 +33,7 @@ async def stream_via_writing_graph(
     *,
     registry: object,
     context_assembler: object,
+    agent_registry: object | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> AsyncIterator[StreamChunk]:
@@ -51,6 +52,7 @@ async def stream_via_writing_graph(
 
     deps = WritingDeps(
         registry=registry,
+        agent_registry=agent_registry,
         context_assembler=context_assembler,
         model_config=config,
         api_key=api_key,
@@ -82,6 +84,7 @@ async def run_with_persistence(
     *,
     registry: object,
     context_assembler: object,
+    agent_registry: object | None = None,
     store: GraphStateStore | None = None,
     run_id: str | None = None,
     api_key: str | None = None,
@@ -117,6 +120,7 @@ async def run_with_persistence(
 
     deps = WritingDeps(
         registry=registry,
+        agent_registry=agent_registry,
         context_assembler=context_assembler,
         model_config=config,
         api_key=api_key,

@@ -19,6 +19,7 @@ from narrare_core.agents.writing_graph_prompts import (
     add_edges,
     get_draft_prompt,
     get_model,
+    get_or_create_agent,
     get_outline_prompt,
     get_review_prompt,
     get_revise_prompt,
@@ -67,7 +68,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             ctx.deps,
             ctx.state,
         )
-        agent = OutlineAgent(model=model, system_prompt=system_prompt or None)
+        agent = await get_or_create_agent(
+            ctx.deps,
+            OutlineAgent,
+            model,
+            system_prompt=system_prompt or None,
+        )
         deps = OutlineDeps(genre=ctx.deps.genre, tone=ctx.deps.tone, language=ctx.deps.language)
         result = await agent.run(prompt=user_prompt, deps=deps)
         ctx.state.outline = result.outline_text or result.chapter_title
@@ -83,10 +89,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             ctx.deps,
             ctx.state,
         )
-        agent = DraftAgent(
-            model=model,
-            word_target=ctx.deps.word_target,
+        agent = await get_or_create_agent(
+            ctx.deps,
+            DraftAgent,
+            model,
             system_prompt=system_prompt or None,
+            word_target=ctx.deps.word_target,
         )
         deps = DraftDeps(context_assembler=ctx.deps.context_assembler)
         result = await agent.run(prompt=user_prompt, deps=deps)
@@ -120,7 +128,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             ctx.state,
             word_count,
         )
-        agent = ReviewAgent(model=model, system_prompt=system_prompt or None)
+        agent = await get_or_create_agent(
+            ctx.deps,
+            ReviewAgent,
+            model,
+            system_prompt=system_prompt or None,
+        )
         rdeps = ReviewDeps(word_target=target, writing_context=writing_context)
         result = await agent.run(prompt=user_prompt, deps=rdeps)
 
@@ -147,10 +160,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             ctx.deps,
             ctx.state,
         )
-        agent = DraftAgent(
-            model=model,
-            word_target=ctx.deps.word_target,
+        agent = await get_or_create_agent(
+            ctx.deps,
+            DraftAgent,
+            model,
             system_prompt=system_prompt or None,
+            word_target=ctx.deps.word_target,
         )
         deps = DraftDeps(context_assembler=ctx.deps.context_assembler)
         result = await agent.run(prompt=user_prompt, deps=deps)
@@ -184,7 +199,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             ctx.deps,
             ctx.state,
         )
-        agent = ChapterSummaryAgent(model=model, system_prompt=system_prompt or None)
+        agent = await get_or_create_agent(
+            ctx.deps,
+            ChapterSummaryAgent,
+            model,
+            system_prompt=system_prompt or None,
+        )
         deps = SummaryDeps(
             language=ctx.deps.language,
             genre=ctx.deps.genre,

@@ -51,6 +51,30 @@ llm_retry_attempts_total = Counter(
     ["intent", "error_type"],
 )
 
+llm_cache_read_tokens_total = Counter(
+    "narrare_llm_cache_read_tokens_total",
+    "Total tokens served from cache (cache hits)",
+    ["intent", "model", "provider"],
+)
+
+llm_cache_creation_tokens_total = Counter(
+    "narrare_llm_cache_creation_tokens_total",
+    "Total tokens written to cache (cache writes)",
+    ["intent", "model", "provider"],
+)
+
+llm_cache_hit_total = Counter(
+    "narrare_llm_cache_hit_total",
+    "Total LLM requests that had cache hits",
+    ["intent", "model", "provider"],
+)
+
+llm_cache_miss_total = Counter(
+    "narrare_llm_cache_miss_total",
+    "Total LLM requests with no cache hits",
+    ["intent", "model", "provider"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Recording functions — called by the gateway
@@ -98,3 +122,25 @@ def record_failure(
 def record_retry(*, intent: str, error_type: str) -> None:
     """Record a retry attempt."""
     llm_retry_attempts_total.labels(intent=intent, error_type=error_type).inc()
+
+
+def record_cache_usage(
+    *,
+    intent: str,
+    model: str,
+    provider: str,
+    cache_read_tokens: int,
+    cache_creation_tokens: int,
+) -> None:
+    """Record cache hit/miss statistics from an LLM call."""
+    if cache_read_tokens > 0:
+        llm_cache_hit_total.labels(intent=intent, model=model, provider=provider).inc()
+        llm_cache_read_tokens_total.labels(intent=intent, model=model, provider=provider).inc(
+            cache_read_tokens
+        )
+    if cache_creation_tokens > 0:
+        llm_cache_creation_tokens_total.labels(intent=intent, model=model, provider=provider).inc(
+            cache_creation_tokens
+        )
+    if cache_read_tokens == 0 and cache_creation_tokens == 0:
+        llm_cache_miss_total.labels(intent=intent, model=model, provider=provider).inc()
