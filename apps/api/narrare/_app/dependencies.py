@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from narrare._app.config import Settings, get_settings
 from narrare._app.database import get_async_session
+from narrare_core.agents.registry import AgentRegistry
 from narrare_core.llm import ModelRegistry
 from narrare_core.prompts import MetaPromptLoader, PromptComposer, PromptRegistry
 
@@ -56,6 +57,28 @@ def get_model_registry() -> ModelRegistry:
 
 
 ModelRegistryDep = Annotated[ModelRegistry, Depends(get_model_registry)]
+
+# ---------------------------------------------------------------------------
+# Agent Registry (singleton — module-level, NOT @lru_cache)
+# ---------------------------------------------------------------------------
+
+_agent_registry: AgentRegistry | None = None
+
+
+def get_agent_registry() -> AgentRegistry:
+    """Provide the shared AgentRegistry singleton.
+
+    AgentRegistry is mutable (has async state), so ``@lru_cache`` is not
+    appropriate.  The module-level singleton pattern ensures a single
+    instance across the application lifecycle.
+    """
+    global _agent_registry
+    if _agent_registry is None:
+        _agent_registry = AgentRegistry(max_size=50, ttl_seconds=300.0)
+    return _agent_registry
+
+
+AgentRegistryDep = Annotated[AgentRegistry, Depends(get_agent_registry)]
 
 # ---------------------------------------------------------------------------
 # Prompt system (singletons)

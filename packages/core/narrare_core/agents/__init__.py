@@ -23,6 +23,7 @@ from narrare_core.agents.consistency_types import (
     ConsistencyOutput,
     ConsistencySeverity,
 )
+from narrare_core.agents.contracts import AgentRegistryProtocol
 from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
 from narrare_core.agents.draft_types import DraftConfig, DraftOutput
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
@@ -48,6 +49,7 @@ from narrare_core.agents.preference_analysis_agent import (
     PreferenceAnalysisDeps,
 )
 from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
+from narrare_core.agents.registry import AgentRegistry
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
@@ -77,6 +79,8 @@ __all__ = [
     "AgentFeedbackItem",
     "AgentOverallAssessment",
     "AgentReaderQuestion",
+    "AgentRegistry",
+    "AgentRegistryProtocol",
     "AgentStrength",
     "Approved",
     "BetaReaderAgent",
