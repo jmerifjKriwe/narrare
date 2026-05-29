@@ -161,7 +161,7 @@ packages/core/narrare_core/
 │
 ├── tasks/                      ← Background task infrastructure
 │   ├── __init__.py
-│   └── worker.py               ← Celery app (only place Celery is configured)
+│   └── worker.py               ← TaskIQ broker (only place TaskIQ is configured)
 │
 ├── init/                       ← Project initialization logic
 │   ├── __init__.py
@@ -200,7 +200,7 @@ packages/web/
 ├── app/                            ← Next.js App Router pages
 │   ├── layout.tsx                  ← Root layout (QueryProvider, NextIntlClientProvider)
 │   ├── page.tsx                    ← Root redirect
-│   ├── middleware.ts               ← Auth guard (JWT exp check via jose)
+│   ├── proxy.ts                    ← Route protection (JWT exp check via jose)
 │   ├── global-error.tsx            ← Last-resort error boundary
 │   ├── error.tsx                   ← General error fallback
 │   ├── (auth)/                     ← Public auth route group
@@ -503,7 +503,7 @@ apps/api/narrare/
 │   ├── contracts.py
 │   ├── schemas.py
 │   ├── service.py              ← Queue status, reprocessing management
-│   ├── tasks.py                ← Celery tasks (imports from core/tasks/)
+│   ├── tasks.py                ← TaskIQ tasks (embedding generation)
 │   └── router.py
 │
 ├── prompts/
@@ -779,7 +779,7 @@ When a file needs to grow beyond its limit, **split into a new module** — neve
 | Schema (response) | `<Name>Response` | `ChapterResponse` |
 | Schema (internal) | `<Name>` | `PromptContext`, `LLMResult` |
 | Test file | `test_<source_file>.py` | `test_draft_service.py` |
-| Celery task | `<verb>_<noun>_task` | `embed_chapter_task` |
+| TaskIQ task | `<verb>_<noun>_task` | `embed_chapter_task` |
 
 ---
 
