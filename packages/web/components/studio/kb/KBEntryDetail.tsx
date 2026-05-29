@@ -16,6 +16,7 @@ import { KBSectionEditor } from "./KBSectionEditor";
 import { KBTagInput } from "./KBTagInput";
 import { KBTypeField } from "./KBTypeField";
 import { buildBodyFromSections, parseSectionsFromBody } from "./kbBodyUtils";
+import { WikiSummaryPanel } from "./WikiSummaryPanel";
 
 interface KBEntryDetailProps {
   novelId: string;
@@ -245,6 +246,14 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
         <div className="pt-2">
           <KBRelationshipSection novelId={novelId} entry={entry} relationships={relationships} />
         </div>
+
+        {/* AI Wiki Summary */}
+        <WikiSummaryPanel
+          novelId={novelId}
+          entityId={entry.id}
+          entityName={entry.name}
+          entityType={entry.entity_type}
+        />
 
         {/* AI Improve section */}
         <div className="pt-4 border-t border-border/50">
