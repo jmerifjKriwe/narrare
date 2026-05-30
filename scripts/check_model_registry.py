@@ -321,18 +321,23 @@ def main() -> int:
     warnings = compare(registry, modelsdev, deprecated)
 
     # 5. Report results
-    all_warnings = warnings["missing"] + warnings["deprecated_in_registry"]
+    missing = warnings["missing"]
+    deprecated = warnings["deprecated_in_registry"]
 
-    if not all_warnings:
+    if not missing and not deprecated:
         print("  ✅ Modell-Registry ist aktuell (alle Modelle in models.dev registriert).\n")
         return 0
 
+    all_warnings = missing + deprecated
     print("  ── Warnungen ──\n")
     for warning in all_warnings:
         print(f"  {warning}")
     print()
 
-    return 1
+    # Only fail CI if there are deprecated models in the registry.
+    # "Missing" models (new on models.dev) are informational — the world
+    # moved forward, not a problem with our registry.
+    return 1 if deprecated else 0
 
 
 if __name__ == "__main__":
