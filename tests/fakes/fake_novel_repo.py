@@ -27,6 +27,14 @@ class FakeNovelRepository:
         for n in novels:
             self._store[(n.id, n.user_id)] = n
 
+    async def get(self, novel_id: uuid.UUID) -> Novel | None:
+        """Load a novel by ID without ownership check."""
+        self.calls.append(CallRecord("get", kwargs={"novel_id": novel_id}))
+        for n in self._store.values():
+            if n.id == novel_id:
+                return n
+        return None
+
     async def get_by_id(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel | None:
         self.calls.append(
             CallRecord("get_by_id", kwargs={"novel_id": novel_id, "user_id": user_id})

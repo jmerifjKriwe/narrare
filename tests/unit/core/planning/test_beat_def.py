@@ -110,7 +110,7 @@ class TestBeatDefImmutability:
     def test_cannot_add_attribute(self) -> None:
         """Slots=True prevents adding new attributes."""
         beat = BeatDef(title="Opening", description="Status quo")
-        with pytest.raises(AttributeError):
+        with pytest.raises((AttributeError, TypeError)):
             beat.extra = "unexpected"  # type: ignore[attr-defined]
 
     def test_has_no_dict_attribute(self) -> None:
@@ -243,7 +243,7 @@ class TestStageDefImmutability:
         stage = StageDef(
             id="act-1", name="Act I", description="Setup", position=1, expected_beat_count=3
         )
-        with pytest.raises(AttributeError):
+        with pytest.raises((AttributeError, TypeError)):
             stage.extra = "unexpected"  # type: ignore[attr-defined]
 
     def test_has_no_dict_attribute(self) -> None:

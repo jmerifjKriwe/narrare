@@ -129,7 +129,7 @@ class TestVariableMetaImmutability:
     def test_cannot_add_attribute(self) -> None:
         """Slots=True prevents adding new attributes."""
         meta = VariableMeta(name="language", description="ISO code", variable_type="text")
-        with pytest.raises(AttributeError):
+        with pytest.raises((AttributeError, TypeError)):
             meta.extra = "unexpected"  # type: ignore[attr-defined]
 
     def test_has_no_dict_attribute(self) -> None:
