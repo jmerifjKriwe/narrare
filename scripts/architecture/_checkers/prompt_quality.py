@@ -24,7 +24,6 @@ from scripts.architecture._checkers._prompt_quality_patterns import (
     has_second_person_role_sentence,
 )
 
-
 # ---------------------------------------------------------------------------
 # Types
 # ---------------------------------------------------------------------------
@@ -76,23 +75,21 @@ def check_prompt_content_quality(
     findings: list[QualityFinding] = []
 
     # --- Role assignment (exempt system.lite.md) ---
-    if filename != "system.lite.md":
-        if not _has_role(content, content_lower):
-            findings.append(
-                QualityFinding(
-                    detail=(
-                        "No role assignment found (expected 'You are', "
-                        "'Du bist', 'Tu es', or second-person sentence)"
-                    ),
+    if filename != "system.lite.md" and not _has_role(content, content_lower):
+        findings.append(
+            QualityFinding(
+                detail=(
+                    "No role assignment found (expected 'You are', "
+                    "'Du bist', 'Tu es', or second-person sentence)"
                 ),
-            )
+            ),
+        )
 
     # --- Output format (exempt meta prompts) ---
-    if prompt_type != "meta":
-        if not _has_output_format(content_lower):
-            findings.append(
-                QualityFinding(detail="No output format specification found"),
-            )
+    if prompt_type != "meta" and not _has_output_format(content_lower):
+        findings.append(
+            QualityFinding(detail="No output format specification found"),
+        )
 
     # --- Do-NOT rules ---
     do_not_count = count_do_not_rules(content, content_lower)
