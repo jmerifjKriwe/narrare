@@ -57,6 +57,7 @@ docker-compose.override.yml
 apps/api/alembic/versions/*.pyc
 
 # Project data (user projects live outside repo)
+data/
 .narrare/
 *.narrare
 
