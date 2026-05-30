@@ -603,3 +603,17 @@ export interface AnalyzeResponse {
   created_at: string;
   updated_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Chat SSE types (ADR-024 Free-Form Chat)
+// ---------------------------------------------------------------------------
+
+export interface ChatMetaEvent {
+  conversation_id: string;
+  request_id: string;
+}
+
+export interface ChatDoneEvent {
+  type: "done";
+  usage: TokenUsage;
+}
