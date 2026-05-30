@@ -6923,6 +6923,73 @@
         }
       }
     },
+    "/api/v1/writing/chapters/{chapter_id}/co-author": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Coauthor Chapter",
+        "description": "SSE stream for co-author revision — create + stream in one call.\n\nAccepts a text selection with optional surrounding context and\nimprovement focus areas (word_choice, sentence, dialogue, description).\nThe AI generates a revised version, then a server-side diff is computed\nvia :mod:`narrare_core.writing.change_engine`.  Change metadata is\nincluded in the final SSE event for the frontend to render diff controls.\n\nUses ``LLMIntent.CO_AUTHOR`` for model routing.\n\n**SSE Event Stream:**\n\n1. ``context_meta`` event (CR-07 pattern) with KB context data.\n2. Text chunks: ``{\"text\": \"...\"}``\n3. Final event (last text chunk):\n   - ``is_final: True``\n   - ``usage: {prompt_tokens, completion_tokens, total_tokens}``\n   - ``changes: [...]`` — list of change details\n   - ``total_changes: N``\n   - ``has_changes: True/False``\n4. ``data: [DONE]`` termination signal.",
+        "operationId": "coauthor_chapter_api_v1_writing_chapters__chapter_id__co_author_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoAuthorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/summary/chapters/{chapter_id}": {
       "post": {
         "tags": [
@@ -7354,6 +7421,147 @@
                     "type": "integer"
                   },
                   "title": "Response Mark All Stale Api V1 Novels  Novel Id  Wiki Mark Stale Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Chat",
+        "description": "Stream a chat response via Server-Sent Events (SSE).\n\nThe stream emits three event types:\n- ``meta``: Contains ``conversation_id`` and ``request_id``.\n- ``token``: A text fragment of the assistant's response.\n- ``done``: Signals completion with token usage stats.\n\nArgs:\n    request: The chat request (project_id, message, optional conversation_id).\n    user_id: Authenticated user extracted from JWT.\n    service: Injected ChatService instance.\n\nReturns:\n    SSE streaming response.",
+        "operationId": "chat_api_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/chat/history/{conversation_id}": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get History",
+        "description": "Get the full message history for a conversation.\n\nArgs:\n    conversation_id: UUID of the conversation to retrieve.\n    user_id: Authenticated user extracted from JWT.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatHistoryResponse with messages, timestamps, and project info.",
+        "operationId": "get_history_api_v1_chat_history__conversation_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Clear History",
+        "description": "Clear all messages in a conversation.\n\nArgs:\n    conversation_id: UUID of the conversation to clear.\n    user_id: Authenticated user extracted from JWT.\n    service: Injected ChatService instance.\n\nReturns:\n    ChatDeleteResponse confirming deletion.",
+        "operationId": "clear_history_api_v1_chat_history__conversation_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatDeleteResponse"
                 }
               }
             }
@@ -8382,6 +8590,212 @@
         ],
         "title": "ChapterVersionResponse",
         "description": "Single historical version of chapter content."
+      },
+      "ChatDeleteResponse": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id"
+        ],
+        "title": "ChatDeleteResponse",
+        "description": "Confirmation response after clearing conversation history."
+      },
+      "ChatHistoryResponse": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Project Id"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageSchema"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "default": ""
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "project_id",
+          "messages"
+        ],
+        "title": "ChatHistoryResponse",
+        "description": "Full conversation history returned by the API."
+      },
+      "ChatMessageSchema": {
+        "properties": {
+          "message_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Message Id"
+          },
+          "role": {
+            "type": "string",
+            "pattern": "^(user|assistant)$",
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "message_id",
+          "role",
+          "content"
+        ],
+        "title": "ChatMessageSchema",
+        "description": "A single chat message in API responses."
+      },
+      "ChatRequest": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Project Id"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Message",
+            "description": "The user's chat message (1-4000 characters)."
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id",
+            "description": "Existing conversation ID. Omit to start a new conversation."
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "message"
+        ],
+        "title": "ChatRequest",
+        "description": "Request to send a chat message.\n\nExtends the core ``ChatRequestSchema`` with FastAPI-specific validation."
+      },
+      "CoAuthorFocus": {
+        "type": "string",
+        "enum": [
+          "word_choice",
+          "sentence",
+          "dialogue",
+          "description"
+        ],
+        "title": "CoAuthorFocus",
+        "description": "Supported co-author improvement focus areas.\n\nEach focus area targets a specific aspect of the writing:\n* ``WORD_CHOICE`` — Stronger verbs, more precise nouns, remove redundancies\n* ``SENTENCE`` — Vary structure, fix phrasing, improve rhythm\n* ``DIALOGUE`` — More natural speech, better character voice, subtext\n* ``DESCRIPTION`` — Sensory details, show don't tell, vivid imagery"
+      },
+      "CoAuthorRequest": {
+        "properties": {
+          "selection_text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 50,
+            "title": "Selection Text",
+            "description": "Passage to improve (50-2000 characters)"
+          },
+          "context_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Before",
+            "description": "Text immediately before the selection (up to 500 chars)"
+          },
+          "context_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context After",
+            "description": "Text immediately after the selection (up to 500 chars)"
+          },
+          "focus": {
+            "items": {
+              "$ref": "#/components/schemas/CoAuthorFocus"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Focus",
+            "description": "Improvement focus areas (at least one required)"
+          },
+          "tone": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Tone",
+            "description": "Tone preference for the revision",
+            "default": "balanced"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 2,
+            "title": "Language",
+            "description": "Output language code",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "selection_text",
+          "focus"
+        ],
+        "title": "CoAuthorRequest",
+        "description": "Request for co-author revision of a text selection.\n\nThe frontend sends the selected passage with optional surrounding\ncontext and one or more improvement focus areas.  The backend streams\nthe revised text through the pipeline, then computes a server-side\ndiff and returns change metadata in the final SSE event."
       },
       "CompleteSetupRequest": {
         "properties": {
