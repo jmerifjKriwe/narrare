@@ -7,6 +7,7 @@ import {
   FileText,
   Library,
   LogOut,
+  MessageCircle,
   Package,
   Plus,
   Settings,
@@ -134,6 +135,12 @@ export function Sidebar() {
           key: "analysis",
         },
         {
+          href: `/novel/${novelId}/chat` as Route,
+          label: t("sidebar.chat"),
+          icon: MessageCircle,
+          key: "chat",
+        },
+        {
           href: `/novel/${novelId}/settings` as Route,
           label: t("sidebar.settings"),
           icon: Settings,
@@ -148,6 +155,7 @@ export function Sidebar() {
       hrefStr.startsWith("/novel/") &&
       !hrefStr.includes("/worldbuilding") &&
       !hrefStr.includes("/analysis") &&
+      !hrefStr.includes("/chat") &&
       !hrefStr.includes("/volumes") &&
       !hrefStr.includes("/settings")
     ) {

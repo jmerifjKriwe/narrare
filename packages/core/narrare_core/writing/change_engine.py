@@ -22,10 +22,8 @@ from __future__ import annotations
 
 import difflib
 
-from narrare_core.writing._change_classify import (
-    classify_groups,
-    group_by_sentence,
-)
+from narrare_core.writing._change_classify import classify_groups
+from narrare_core.writing._change_grouping import group_by_sentence
 from narrare_core.writing._change_types import DiffOp, DiffResult
 
 __all__: list[str] = [
