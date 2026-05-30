@@ -64,7 +64,9 @@ class TestEventTypeIsStrEnum:
 
     def test_iteration(self) -> None:
         all_values = list(EventType)
-        assert len(all_values) == 10
+        assert (
+            len(all_values) == 13
+        )  # 10 original + CHAPTER_FINALIZED + WIKI_PROMPT_CHANGED + WIKI_SYNC_REQUESTED
 
 
 # ---------------------------------------------------------------------------

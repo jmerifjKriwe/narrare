@@ -1593,5 +1593,32 @@
     "streaming": "Generiere Alternativen...",
     "selectionTooShort": "Mindestens {min} Zeichen auswählen",
     "selectionTooLong": "Auswahl zu lang (max. {max} Zeichen)"
+  },
+  "chatPanel": {
+    "title": "Schreib-Chat",
+    "connected": "Verbunden",
+    "disconnected": "Getrennt",
+    "newConversation": "Frag mich alles über dein Schreiben",
+    "streaming": "Denke nach...",
+    "inputPlaceholder": "Frag zum Schreiben...",
+    "send": "Senden",
+    "errorConnecting": "Verbindungsfehler",
+    "clearConversation": "Gespräch löschen"
+  },
+  "changeReview": {
+    "accepted": "Akzeptiert",
+    "rejected": "Abgelehnt",
+    "original": "Original",
+    "revised": "Überarbeitet"
+  },
+  "tokenSettings": {
+    "title": "Token-Einstellungen",
+    "profile": "Profil",
+    "profileQuick": "Schnell",
+    "profileBalanced": "Ausgeglichen",
+    "profileLong": "Lange Texte",
+    "profileCustom": "Benutzerdefiniert",
+    "outputLimit": "Ausgabelimit",
+    "max": "16K"
   }
 }

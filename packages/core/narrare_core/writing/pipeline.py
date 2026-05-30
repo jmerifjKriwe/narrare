@@ -136,6 +136,7 @@ class WritingPipeline:
         rewrite_mode: str = "tone",
         custom_instructions: str = "",
         rewrite_count: int = 1,
+        co_author_focus: list[str] | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream generated text chunks for the given request.
 
@@ -166,6 +167,9 @@ class WritingPipeline:
             custom_instructions: Author-defined rewrite instructions
                 (required when ``rewrite_mode`` is ``"custom"``).
             rewrite_count: Number of alternatives to generate (1-3).
+            co_author_focus: Focus areas for CO_AUTHOR mode (e.g.
+                ``["dialogue", "description"]``).  ``None`` means no
+                specific focus.
         """
         context = await self._context_assembler.assemble(
             chapter_content=chapter_content,
@@ -265,6 +269,24 @@ class WritingPipeline:
 
             elif request.mode == GenerationMode.INTERACTIVE_SESSION:
                 raise ValueError("Interactive session uses WebSocket, not pipeline.generate()")
+
+            elif request.mode == GenerationMode.CO_AUTHOR:
+                from narrare_core.writing.pipeline_coauthor import stream_coauthor
+
+                async for chunk in stream_coauthor(
+                    self,
+                    request,
+                    context,
+                    config,
+                    api_key=api_key,
+                    base_url=base_url,
+                    selection_text=selection_text,
+                    context_before=context_before,
+                    context_after=context_after,
+                    focus=co_author_focus,
+                ):
+                    yield chunk
+
             else:
                 raise WritingError(
                     f"Unsupported generation mode: {request.mode}",

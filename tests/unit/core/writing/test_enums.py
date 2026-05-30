@@ -33,7 +33,7 @@ class TestGenerationMode:
         assert GenerationMode.INTERACTIVE_SESSION == "interactive_session"
 
     def test_all_values_count(self) -> None:
-        assert len(list(GenerationMode)) == 6
+        assert len(list(GenerationMode)) == 7  # +CO_AUTHOR (b18d571)
 
     def test_values_are_strings(self) -> None:
         for mode in GenerationMode:

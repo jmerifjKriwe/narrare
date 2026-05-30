@@ -1593,5 +1593,32 @@
     "streaming": "Génération des alternatives...",
     "selectionTooShort": "Sélectionnez au moins {min} caractères",
     "selectionTooLong": "Sélection trop longue (max {max} caractères)"
+  },
+  "chatPanel": {
+    "title": "Chat d'écriture",
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "newConversation": "Posez-moi des questions sur votre écriture",
+    "streaming": "Réflexion...",
+    "inputPlaceholder": "Posez une question...",
+    "send": "Envoyer",
+    "errorConnecting": "Erreur de connexion",
+    "clearConversation": "Effacer la conversation"
+  },
+  "changeReview": {
+    "accepted": "Accepté",
+    "rejected": "Rejeté",
+    "original": "Original",
+    "revised": "Révisé"
+  },
+  "tokenSettings": {
+    "title": "Paramètres de tokens",
+    "profile": "Profil",
+    "profileQuick": "Rapide",
+    "profileBalanced": "Équilibré",
+    "profileLong": "Textes longs",
+    "profileCustom": "Personnalisé",
+    "outputLimit": "Limite de sortie",
+    "max": "16K"
   }
 }

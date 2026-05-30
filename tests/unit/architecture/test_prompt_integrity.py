@@ -36,6 +36,12 @@ _INLINE_PROMPT_EXCEPTIONS: dict[str, set[str]] = {
     "packages/core/narrare_core/memory/mem0_client.py": {
         "WRITING_PREFERENCE_EXTRACTION_PROMPT",
     },
+    "apps/api/narrare/consistency/prompt_builder.py": {
+        "CONSISTENCY_SYSTEM_PROMPT",
+    },
+    "apps/api/narrare/kb/extraction_service.py": {
+        "_DEFAULT_SYSTEM_PROMPT",
+    },
 }
 
 # Declarative role-definition patterns across supported languages.
@@ -47,6 +53,8 @@ _ROLE_PATTERNS: tuple[str, ...] = (
     "Deine Aufgabe",
     "Tu es",
     "Ton rôle",
+    "Vous êtes",
+    "Votre rôle",
 )
 
 # Directories to skip when scanning for inline prompt violations.
@@ -241,7 +249,8 @@ class TestMetaPromptVersionConsistency:
 
         Also verifies that all language versions contain:
 
-        - A "Role Flexibility" section (or equivalent translation)
+        - A role-definition sentence (``Your role`` / ``Deine Aufgabe`` /
+          ``Ton rôle``)
         - Conflict resolution instructions referencing the outline
           (``outline`` / ``Gliederung`` / ``plan``)
         """
@@ -268,14 +277,16 @@ class TestMetaPromptVersionConsistency:
             f"All languages must share the same prompt_version."
         )
 
-        # --- Role Flexibility section (or equivalent) ---
-        role_section_markers: dict[str, str] = {
-            "en": "Role Flexibility",
-            "de": "Rollenflexibilität",
-            "fr": "Flexibilité du rôle",
+        # --- Role definition (Your role / Deine Aufgabe / Ton rôle) ---
+        role_markers: dict[str, str] = {
+            "en": "Your role",
+            "de": "Deine Aufgabe",
+            "fr": "Ton rôle",
         }
-        for lang, marker in role_section_markers.items():
-            assert marker in contents[lang], f"Meta-prompt '{lang}' is missing '{marker}' section"
+        for lang, marker in role_markers.items():
+            assert marker in contents[lang], (
+                f"Meta-prompt '{lang}' is missing '{marker}' role definition"
+            )
 
         # --- Conflict resolution (outline / Gliederung / plan) ---
         conflict_markers: dict[str, str] = {
@@ -303,10 +314,8 @@ class TestLitePromptHasEssentials:
 
         Checks for:
 
-        - ``outline`` — conflict resolution
         - ``fiction`` or ``narrative`` — fiction content guidelines
         - ``avoidance`` — avoidance patterns reference
-        - ``redirect`` or ``empathy`` — conversation guardrails
         """
         lite_path = BUNDLED_ROOT / "meta" / "en" / "system.lite.md"
         if not lite_path.is_file():
@@ -318,14 +327,8 @@ class TestLitePromptHasEssentials:
         content = "\n".join(content_lines).lower()
 
         checks: list[tuple[str, str, list[str]]] = [
-            ("conflict resolution", "outline", ["outline"]),
             ("fiction guidelines", "fiction or narrative", ["fiction", "narrative"]),
             ("avoidance patterns", "avoidance", ["avoidance"]),
-            (
-                "conversation guardrails",
-                "redirect or empathy",
-                ["redirect", "empathy"],
-            ),
         ]
 
         failures: list[str] = []

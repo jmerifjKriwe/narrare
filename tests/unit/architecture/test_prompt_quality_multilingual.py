@@ -1,7 +1,7 @@
 """Regression tests for multilingual PROMPT-QUALITY patterns.
 
 Ensures the architecture checker at
-``scripts/architecture/_checkers/prompts.py`` correctly recognises
+``scripts/architecture/_checkers/prompt_quality.py`` correctly recognises
 role assignments, output format specs, and Do-NOT rules in EN/DE/FR
 bundled prompts, and correctly excludes fragment files (tones,
 name-styles) from content quality checks.
@@ -11,7 +11,7 @@ All tests are pure unit tests: no LLM, no DB, no network.
 
 from __future__ import annotations
 
-from scripts.architecture._checkers.prompts import check_prompt_content_quality
+from scripts.architecture._checkers.prompt_quality import check_prompt_content_quality
 
 
 class TestPromptContentQualityMultilingual:
