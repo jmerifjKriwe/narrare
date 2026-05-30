@@ -1,0 +1,1 @@
+"""Architecture integrity regression tests."""
