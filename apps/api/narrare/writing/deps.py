@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from narrare._app.dependencies import (
+    get_agent_registry,
     get_composer,
     get_model_registry,
     get_model_routing_resolver,
@@ -98,6 +99,7 @@ async def get_writing_service(
         composer=composer,
         context_assembler=assembler,
         draft_processor=draft_processor,
+        agent_registry=get_agent_registry(),
     )
     repo = GenerationRepository(session)
 
@@ -178,6 +180,7 @@ async def get_extend_service(
         composer=composer,
         context_assembler=assembler,
         draft_processor=draft_processor,
+        agent_registry=get_agent_registry(),
     )
     repo = GenerationRepository(session)
 
@@ -257,6 +260,7 @@ async def get_rewrite_service(
         composer=composer,
         context_assembler=assembler,
         draft_processor=draft_processor,
+        agent_registry=get_agent_registry(),
     )
     repo = GenerationRepository(session)
 
@@ -367,6 +371,7 @@ async def get_coauthor_service(
         composer=composer,
         context_assembler=assembler,
         draft_processor=draft_processor,
+        agent_registry=get_agent_registry(),
     )
     repo = GenerationRepository(session)
 

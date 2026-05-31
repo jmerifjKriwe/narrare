@@ -101,11 +101,13 @@ class WritingPipeline:
         composer: PromptComposer,
         context_assembler: WritingContextAssembler,
         draft_processor: DraftProcessor,
+        agent_registry: object | None = None,
     ) -> None:
         self._registry = registry
         self._composer = composer
         self._context_assembler = context_assembler
         self._draft_processor = draft_processor
+        self._agent_registry = agent_registry
         self._stop_signals: set[UUID] = set()
 
     # ------------------------------------------------------------------
@@ -205,6 +207,7 @@ class WritingPipeline:
                     context_assembler=self._context_assembler,
                     api_key=api_key,
                     base_url=base_url,
+                    agent_registry=self._agent_registry,
                 ):
                     yield chunk
 

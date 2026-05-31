@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, WebSocket
 
-from narrare._app.dependencies import get_composer, get_model_registry
+from narrare._app.dependencies import get_agent_registry, get_composer, get_model_registry
 
 router = APIRouter(tags=["writing"])
 
@@ -99,6 +99,7 @@ async def interactive_session(
         composer=composer,
         context_assembler=assembler,
         draft_processor=draft_processor,
+        agent_registry=get_agent_registry(),
     )
 
     handler = WritingSessionHandler(
