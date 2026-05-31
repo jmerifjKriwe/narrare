@@ -140,7 +140,7 @@ Der Umbau erfolgt in 4 Phasen:
 | 3 | KB-Tools + ToolSearch → ContextAssembler als Tool | 8–10 Tage |
 | 4 | Pydantic Graph für Writing-Workflows | 10–14 Tage |
 
-Details siehe [Implementation Plan](/workspace/docs/architecture/decisions/ADR-015-implementation-plan.md).
+Details siehe [Implementation Plan](ADR-015-implementation-plan.md).
 
 ---
 

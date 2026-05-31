@@ -191,7 +191,7 @@ repos:
 
       - id: validate-i18n
         name: i18n Validation
-        entry: bash -c 'cd /workspace && npx tsx scripts/validate-i18n.ts'
+        entry: bash -c 'npx tsx scripts/validate-i18n.ts'
         language: system
         types: [tsx]
         pass_filenames: false

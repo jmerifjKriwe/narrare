@@ -317,7 +317,7 @@ Ghost text content is **never saved** — it's a visual decoration. When the use
 **Goal:** Prove that a `DecorationSet`-based ghost text renders correctly in the TipTap editor without conflicts.
 
 **Deliverables:**
-- `/workspace/packages/web/components/studio/editor/extensions/GhostText.ts`
+- `packages/web/components/studio/editor/extensions/GhostText.ts`
   - Static suggestion: "The old house stood at the end of the lane…"
   - Appears after typing 5 characters + 1s pause
   - Rendered as gray italic text at cursor

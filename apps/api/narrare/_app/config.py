@@ -14,7 +14,7 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Berechnet den Pfad zum Projekt-Root (/workspace)
+# Berechnet den Pfad zum Projekt-Root
 # Geht von apps/api/narrare/_app/config.py fünf Ebenen hoch
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
 ENV_FILE = BASE_DIR / ".env"

@@ -144,7 +144,7 @@ Agents geben klare Handoffs an den nächsten Agent:
 ```
 HANDOFF: Implementation
 → Agent: narrare-implementation
-→ Contract: /workspace/packages/core/kb/contracts.py
+→ Contract: packages/core/kb/contracts.py
 → ADR: docs/architecture/decisions/012-kb-versioning.md
 → Task: Implement KBVersionRepository with methods: list(), diff(), restore()
 ```

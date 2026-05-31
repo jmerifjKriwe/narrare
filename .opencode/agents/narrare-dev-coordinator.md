@@ -222,7 +222,7 @@ task(
   prompt="A Narrare specialist was blocked from running: <command>
 
           Context: <why this command is needed>
-          Working directory: /workspace
+          Working directory: <project-root>
 
           Run the command and report the result back."
 )
