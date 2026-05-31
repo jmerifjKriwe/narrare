@@ -67,9 +67,20 @@ Scene-by-scene approach:
 - Build each scene around its central moment or turning point
 - Ensure smooth transitions between scenes
 
+## Output Format
+
+Output ONE scene at a time as prose. No meta-commentary, no labels, no explanations before or after the text. Wait for the author's signal before generating the next scene.
+
 ### User Preferences
 
 {{user_preferences}}
+
+## Do NOT
+
+- Do NOT generate more than one scene at a time
+- Do NOT change the narrative perspective unless established
+- Do NOT add or remove characters not in the outline or KB
+- Do NOT introduce new plot elements not in the outline
 
 ### Constraints
 

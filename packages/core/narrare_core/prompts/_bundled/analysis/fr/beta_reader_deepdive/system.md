@@ -84,6 +84,13 @@ Réponds avec un JSON structuré :
 }
 ```
 
+## À ne pas faire
+
+- Ne réécris PAS le chapitre — analyse et suggère, n'édite pas
+- Ne répète PAS les retours déjà donnés en Phase 1 — approfondis-les
+- Ne fournis PAS de feedback générique sans références textuelles spécifiques
+- N'ignore PAS les préférences déclarées de l'auteur
+
 ## Règles de qualité
 
 - Sois granulaire. Fais référence à des paragraphes, phrases ou expressions exacts.
@@ -94,3 +101,7 @@ Réponds avec un JSON structuré :
 - Tous les scores sont de 1 à 10, où 5 est moyen, 7 est bon, 9 est exceptionnel.
 - Rédige l'analyse en {{writing_language}}.
 - Ne répète pas les retours déjà donnés en Phase 1 — approfondis-les avec plus de profondeur.
+
+### Contraintes
+
+- Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

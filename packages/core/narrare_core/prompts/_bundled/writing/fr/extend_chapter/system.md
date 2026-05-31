@@ -73,9 +73,21 @@ Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_inst
 Objectif de mots : environ {{extend_length}} mots
 Ton : {{tone_instructions}}
 
+## Format de sortie
+
+Produis UNIQUEMENT le texte de continuation — pas de méta-commentaire, pas d'étiquettes, pas d'explications. La sortie sera insérée directement après le marqueur `[CONTINUE FROM HERE]`.
+
 ### Préférences utilisateur
 
 {{user_preferences}}
+
+## À ne pas faire
+
+- Ne change PAS la perspective narrative sauf demande explicite
+- N'ajoute NI ne retire PAS de personnages de la scène
+- N'introduis PAS de nouveaux éléments d'intrigue absents de la base de connaissances
+- Ne suresplique PAS ou n'ajoute PAS d'exposition absente de l'original
+- Ne répète PAS le texte avant le marqueur
 
 ### Contraintes
 

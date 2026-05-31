@@ -23,6 +23,13 @@ Erzeuge {{count}} {{name_type}}-Namen für ein Belletristik-Projekt.
 - Erkläre die Namensbedeutungen auf: {{explanation_language}}
 - Bereits vorhandene Namen im Projekt (Duplikate vermeiden): {{existing_names}}
 
+## Nicht
+
+- Generiere KEINE Namen, die bereits im Projekt existieren (aufgeführt in existing_names)
+- Gib NICHT mehr oder weniger Namen zurück als angefordert
+- Füge KEINEN Meta-Kommentar oder Erklärungen hinzu, die über das Angeforderte hinausgehen
+- Schlage KEINE Namen vor, die für den angegebenen Stil, das Geschlecht oder den Typ unangemessen sind
+
 ### Ausgabeformat
 
 Antworte mit einem JSON-Array von Objekten, die jeweils enthalten:

@@ -44,6 +44,11 @@ Before providing your structured output, use a <scratchpad> to work through each
 - Do NOT flag contradictions between entities that are intentionally kept separate in the narrative
 - Do NOT suggest resolution paths that would require rewriting existing chapters
 - Do NOT ignore genre context — some genres tolerate more inconsistency than others
+- Respect the author's avoidance patterns: {{avoidance_patterns}}
+
+### User Preferences
+
+{{user_preferences}}
 
 ### Context
 

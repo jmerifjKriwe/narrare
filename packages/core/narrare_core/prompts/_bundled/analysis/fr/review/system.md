@@ -34,6 +34,10 @@ Personnages :
 Lieux :
 {{kb_locations}}
 
+## Format de sortie
+
+Fournissez votre avis sous forme de sortie structurée selon le schéma décrit dans la section Structured Output ci-dessus.
+
 ### Structured Output
 
 Fournissez votre revue sous forme de sortie structurée avec les champs suivants :
@@ -64,3 +68,10 @@ L'auteur a délibérément choisi les préférences de style et de contenu suiva
 - Ne réécrivez pas le brouillon — fournissez des indications pour que l'auteur puisse réviser
 - N'introduisez pas de nouveaux éléments d'intrigue ou personnages absents du brouillon
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
+
+## À ne pas faire
+
+- Ne réécrivez PAS le brouillon — fournissez des indications pour que l'auteur révise
+- N'introduisez PAS de nouveaux éléments d'intrigue ou personnages absents du brouillon
+- Ne fournissez PAS de feedback générique sans références spécifiques
+- Ne suggérez PAS de modifications aux préférences déclarées de l'auteur (listées dans Préférences utilisateur)

@@ -73,9 +73,21 @@ Author instructions: <user_instructions>{{author_instructions}}</user_instructio
 Word target: approximately {{extend_length}} words
 Tone: {{tone_instructions}}
 
+## Output Format
+
+Output ONLY the continuation text — no meta-commentary, no labels, no explanations. The output will be inserted directly after the `[CONTINUE FROM HERE]` marker.
+
 ### User Preferences
 
 {{user_preferences}}
+
+## Do NOT
+
+- Do NOT change the narrative perspective unless explicitly asked
+- Do NOT add or remove characters from the scene
+- Do NOT introduce new plot elements not in the KB or recent chapters
+- Do NOT over-explain or add exposition not in the original
+- Do NOT repeat or rephrase the text before the marker
 
 ### Constraints
 

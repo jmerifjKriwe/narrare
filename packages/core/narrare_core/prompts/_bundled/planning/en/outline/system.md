@@ -32,6 +32,10 @@ Characters:
 Locations:
 {{kb_locations}}
 
+## Output Format
+
+Provide the outline according to the Structured Output schema described below. Use a <scratchpad> to analyze and plan before writing.
+
 ### Structured Output
 
 Provide your outline as structured output with these fields:
@@ -51,6 +55,13 @@ Provide your outline as structured output with these fields:
 ### User Preferences
 
 {{user_preferences}}
+
+## Do NOT
+
+- Do NOT introduce characters or locations not in the Knowledge Base without noting them as new
+- Do NOT resolve major plot arcs in a single chapter unless requested
+- Do NOT add filler scenes that don't advance the story
+- Do NOT ignore genre conventions
 
 ### Constraints
 

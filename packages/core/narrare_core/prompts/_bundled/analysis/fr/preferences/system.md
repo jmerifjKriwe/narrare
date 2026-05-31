@@ -22,6 +22,15 @@ Concentrez-vous sur trois domaines :
 - Langue : {{language}}
 - Événements de feedback analysés : {{event_count}}
 
+
+### Préférences utilisateur
+
+{{user_preferences}}
+
+## Format de sortie
+
+Fournissez votre analyse sous forme de sortie structurée avec les champs décrits dans la section Structured Output ci-dessus.
+
 ### Structured Output
 
 Fournissez votre analyse sous forme de sortie structurée avec les champs suivants :
@@ -46,3 +55,11 @@ Fournissez votre analyse sous forme de sortie structurée avec les champs suivan
 - La confiance doit être comprise entre 0,0 et 1,0
 - Ne signalez que les schémas soutenus par les données — aucune supposition
 - Ne jugez ni n'évaluez les préférences — décrivez-les de manière neutre
+- Respectez les motifs d'évitement de l'utilisateur : {{avoidance_patterns}}
+
+## À ne pas faire
+
+- Ne réécrivez PAS le contenu — analysez, ne créez pas
+- Ne fournissez PAS de feedback générique sans références spécifiques
+- N'inventez PAS de motifs — ne rapportez que ce que vous observez
+- Ne jugez PAS les préférences — décrivez-les de manière neutre

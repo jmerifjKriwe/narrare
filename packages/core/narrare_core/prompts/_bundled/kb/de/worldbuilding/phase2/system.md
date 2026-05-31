@@ -44,6 +44,11 @@ Bevor du deine strukturierte Ausgabe lieferst, verwende ein <scratchpad>, um jed
 - Markiere NICHT Widersprüche zwischen Entitäten, die in der Erzählung bewusst getrennt gehalten werden
 - Schlage NICHT Lösungswege vor, die das Umschreiben bestehender Kapitel erfordern würden
 - Ignoriere NICHT den Genre-Kontext — manche Genres tolerieren mehr Inkonsistenz als andere
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
+
+### Benutzereinstellungen
+
+{{user_preferences}}
 
 ### Kontext
 

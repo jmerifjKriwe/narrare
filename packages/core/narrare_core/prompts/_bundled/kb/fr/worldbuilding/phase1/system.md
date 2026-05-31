@@ -64,3 +64,8 @@ Fournis ton analyse sous forme de données structurées avec :
 3. candidate_pairs_for_consistency : paires d'ID d'entités à vérifier pour la cohérence
 4. overall_assessment : résumé en 1-3 phrases
 5. worldbuilding_score : 0,0-1,0 (santé de la construction du monde)
+- Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
+
+### Préférences utilisateur
+
+{{user_preferences}}

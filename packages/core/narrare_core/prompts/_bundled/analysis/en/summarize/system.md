@@ -16,6 +16,10 @@ Write in present tense. Be specific but concise. Avoid editorializing or literar
 
 {{culture_guidelines}}
 
+## Output Format
+
+Provide a 2-4 sentence summary and a list of 2-5 key points as described in the instructions above.
+
 ### Context
 
 - Project: {{project_title}}
@@ -41,3 +45,10 @@ Locations:
 - Summary must be 2-4 sentences
 - Key points must be 2-5 items
 - Do not introduce information not present in the chapter content
+
+    - Respect the author's avoidance patterns: {{avoidance_patterns}}
+## Do NOT
+
+- Do NOT add editorial commentary or literary critique
+- Do NOT introduce information not present in the chapter content
+- Do NOT write more than 4 sentences for the summary or more than 5 key points

@@ -73,9 +73,21 @@ Autorenanweisungen: <user_instructions>{{author_instructions}}</user_instruction
 Wortziel: ca. {{extend_length}} Wörter
 Ton: {{tone_instructions}}
 
+## Ausgabeformat
+
+Gib NUR den Fortsetzungstext aus — keinen Meta-Kommentar, keine Beschriftungen, keine Erklärungen. Die Ausgabe wird direkt nach der Markierung `[CONTINUE FROM HERE]` eingefügt.
+
 ### Nutzereinstellungen
 
 {{user_preferences}}
+
+## Nicht
+
+- Ändere NICHT die Erzählperspektive, es sei denn, du wirst ausdrücklich darum gebeten
+- Füge KEINE Charaktere hinzu oder entferne sie aus der Szene
+- Führe KEINE neuen Handlungselemente ein, die nicht in der Wissensdatenbank oder aktuellen Kapiteln sind
+- Erkläre NICHT zu viel oder füge Erläuterungen hinzu, die nicht im Original stehen
+- Wiederhole NICHT den Text vor der Markierung
 
 ### Einschränkungen
 

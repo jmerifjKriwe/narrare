@@ -44,6 +44,11 @@ Avant de fournir ta sortie structurée, utilise un <scratchpad> pour raisonner s
 - Ne signale PAS les contradictions entre entités volontairement séparées dans le récit
 - Ne suggère PAS de voies de résolution qui nécessiteraient de réécrire des chapitres existants
 - N'ignore PAS le contexte du genre — certains genres tolèrent plus d'incohérence que d'autres
+- Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
+
+### Préférences utilisateur
+
+{{user_preferences}}
 
 ### Contexte
 

@@ -64,3 +64,8 @@ Provide your analysis as structured data with:
 - Do NOT suggest generic entity types (e.g., "add more cities") without specific narrative reasons
 - Do NOT use sensitive or harmful worldbuilding tropes (e.g., cultural stereotypes, exploitative power dynamics)
 - Do NOT invent relationship types that are not in the available relationship types list
+- Respect the author's avoidance patterns: {{avoidance_patterns}}
+
+### User Preferences
+
+{{user_preferences}}

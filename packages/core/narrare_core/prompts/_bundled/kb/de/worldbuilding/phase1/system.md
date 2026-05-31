@@ -64,3 +64,8 @@ Gib deine Analyse als strukturierte Daten aus mit:
 3. candidate_pairs_for_consistency: Entitäts-ID-Paare, die auf Konsistenz geprüft werden sollten
 4. overall_assessment: 1-3 Sätze Zusammenfassung
 5. worldbuilding_score: 0,0-1,0 (wie gesund der Weltbau ist)
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
+
+### Benutzereinstellungen
+
+{{user_preferences}}

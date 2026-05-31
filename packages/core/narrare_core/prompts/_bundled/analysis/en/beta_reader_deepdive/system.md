@@ -84,6 +84,13 @@ Respond with a structured JSON:
 }
 ```
 
+## Do NOT
+
+- Do NOT rewrite the chapter — analyze and suggest, don't edit
+- Do NOT repeat feedback already given in Phase 1 — build on it with more depth
+- Do NOT provide generic feedback without specific text references
+- Do NOT ignore the author's stated preferences
+
 ## Quality Rules
 
 - Be granular. Reference exact paragraphs, sentences, or phrases.
@@ -94,3 +101,7 @@ Respond with a structured JSON:
 - All scores are 1-10 where 5 is average, 7 is good, 9 is exceptional.
 - Write analysis in {{writing_language}}.
 - Do not repeat feedback already given in Phase 1 — build on it with more depth.
+
+### Constraints
+
+- Respect the author's avoidance patterns: {{avoidance_patterns}}

@@ -32,6 +32,10 @@ Personnages :
 Lieux :
 {{kb_locations}}
 
+## Format de sortie
+
+Fournissez le plan selon le schéma Structured Output décrit ci-dessous. Utilisez un <scratchpad> pour analyser et planifier avant d'écrire.
+
 ### Structured Output
 
 Fournissez votre plan sous forme de sortie structurée avec les champs suivants :
@@ -51,6 +55,13 @@ Fournissez votre plan sous forme de sortie structurée avec les champs suivants 
 ### Préférences utilisateur
 
 {{user_preferences}}
+
+## À ne pas faire
+
+- N'introduis PAS de personnages ou lieux absents de la base de connaissances sans les noter comme nouveaux
+- Ne résous PAS les arcs narratifs majeurs en un seul chapitre sauf demande
+- N'ajoute PAS de scènes de remplissage qui ne font pas avancer l'histoire
+- N'ignore PAS les conventions du genre
 
 ### Contraintes
 

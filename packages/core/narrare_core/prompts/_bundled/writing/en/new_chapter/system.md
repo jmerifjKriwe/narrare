@@ -68,9 +68,20 @@ Author instructions: <user_instructions>{{author_instructions}}</user_instructio
 Word target: {{word_target}}
 Tone: {{tone_instructions}}
 
+## Output Format
+
+Output the complete chapter draft as prose. No meta-commentary, no labels, no explanations before or after the text.
+
 ### User Preferences
 
 {{user_preferences}}
+
+## Do NOT
+
+- Do NOT change the narrative perspective unless established
+- Do NOT add or remove characters not in the outline or KB
+- Do NOT introduce new plot elements not in the outline
+- Do NOT contradict established facts from recent chapters
 
 ### Constraints
 

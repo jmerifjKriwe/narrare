@@ -22,6 +22,15 @@ Focus on three areas:
 - Language: {{language}}
 - Feedback events analyzed: {{event_count}}
 
+
+### User Preferences
+
+{{user_preferences}}
+
+## Output Format
+
+Provide your analysis as structured output with the fields described in the Structured Output section above.
+
 ### Structured Output
 
 Provide your analysis as structured output with these fields:
@@ -46,3 +55,11 @@ Provide your analysis as structured output with these fields:
 - Confidence must be between 0.0 and 1.0
 - Only report patterns supported by the data — no assumptions
 - Do not judge or evaluate preferences — describe them neutrally
+- Respect the user's avoidance patterns: {{avoidance_patterns}}
+
+## Do NOT
+
+- Do NOT rewrite or edit the content — analyze, don't create
+- Do NOT provide generic feedback without specific references
+- Do NOT fabricate patterns — only report what you observe
+- Do NOT judge or evaluate preferences — describe them neutrally

@@ -68,9 +68,20 @@ Autorenanweisungen: <user_instructions>{{author_instructions}}</user_instruction
 Wortziel: {{word_target}}
 Ton: {{tone_instructions}}
 
+## Ausgabeformat
+
+Gib den vollständigen Kapitelentwurf als Prosa aus. Kein Meta-Kommentar, keine Beschriftungen, keine Erklärungen vor oder nach dem Text.
+
 ### Nutzereinstellungen
 
 {{user_preferences}}
+
+## Nicht
+
+- Ändere NICHT die Erzählperspektive, es sei denn, sie ist etabliert
+- Füge KEINE Charaktere hinzu oder entferne sie, die nicht im Outline oder der Wissensdatenbank sind
+- Führe KEINE neuen Handlungselemente ein, die nicht im Outline sind
+- Widersprich KEINEN etablierten Fakten aus den aktuellen Kapiteln
 
 ### Einschränkungen
 

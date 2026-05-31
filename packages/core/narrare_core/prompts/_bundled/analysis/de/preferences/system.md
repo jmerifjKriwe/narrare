@@ -22,6 +22,15 @@ Konzentriere dich auf drei Bereiche:
 - Sprache: {{language}}
 - Analysierte Feedback-Ereignisse: {{event_count}}
 
+
+### Benutzereinstellungen
+
+{{user_preferences}}
+
+## Ausgabeformat
+
+Gib deine Analyse als strukturierte Ausgabe mit den im Abschnitt Structured Output beschriebenen Feldern an.
+
 ### Structured Output
 
 Gib deine Analyse als strukturierte Ausgabe mit folgenden Feldern an:
@@ -46,3 +55,11 @@ Gib deine Analyse als strukturierte Ausgabe mit folgenden Feldern an:
 - Konfidenz muss zwischen 0,0 und 1,0 liegen
 - Berichte nur Muster, die durch die Daten gestützt werden — keine Annahmen
 - Bewerte oder bewerte Präferenzen nicht — beschreibe sie neutral
+- Respektiere die Vermeidungsmuster des Nutzers: {{avoidance_patterns}}
+
+## Nicht
+
+- Schreibe den Inhalt NICHT um oder bearbeite ihn — analysiere, erstelle nicht
+- Gib KEIN generisches Feedback ohne spezifische Referenzen
+- Erfinde KEINE Muster — berichte nur, was du beobachtest
+- Bewerte Präferenzen NICHT — beschreibe sie neutral

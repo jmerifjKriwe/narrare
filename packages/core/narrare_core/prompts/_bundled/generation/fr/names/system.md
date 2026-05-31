@@ -23,6 +23,13 @@ Générez {{count}} noms de type {{name_type}} pour un projet de fiction.
 - Expliquer les significations en : {{explanation_language}}
 - Noms existants dans le projet (éviter les doublons) : {{existing_names}}
 
+## À ne pas faire
+
+- Ne génère PAS de noms qui existent déjà dans le projet (listés dans existing_names)
+- Ne renvoie PAS plus ou moins de noms que demandé
+- N'ajoute PAS de méta-commentaire ou d'explications au-delà de ce qui est demandé
+- Ne suggère PAS de noms inappropriés pour le style, le genre ou le type spécifié
+
 ### Format de sortie
 
 Répondez avec un tableau JSON d'objets, contenant chacun :

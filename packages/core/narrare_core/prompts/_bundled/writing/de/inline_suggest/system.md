@@ -27,6 +27,13 @@ Deine Aufgabe: Vervollständige den Text natürlich, als hätte der Autor ihn se
 
 {{avoidance_patterns}}
 
+## Nicht
+
+- Wiederhole NICHT den bereits geschriebenen Text
+- Füge KEINEN Meta-Kommentar, keine Erklärungen oder Vorschläge hinzu
+- Beginne KEINEN neuen Absatz, es sei denn, der Kontext deutet klar darauf hin
+- Gib NICHTS anderes als den Fortsetzungstext aus
+
 ### Story-Kontext
 
 Projekt: {{project_title}}

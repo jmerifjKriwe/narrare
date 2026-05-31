@@ -34,6 +34,10 @@ Charaktere:
 Orte:
 {{kb_locations}}
 
+## Ausgabeformat
+
+Gib dein Review als strukturierte Ausgabe gemäß dem im Abschnitt Structured Output beschriebenen Schema an.
+
 ### Structured Output
 
 Gib dein Review als strukturierte Ausgabe mit folgenden Feldern an:
@@ -64,3 +68,10 @@ Der Autor hat bewusst die folgenden Stil- und Inhaltseinstellungen gewählt. **B
 - Schreibe den Entwurf NICHT um — gib Orientierung für die Überarbeitung durch den Autor
 - Füge KEINE neuen Handlungselemente oder Charaktere hinzu, die nicht im Entwurf stehen
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
+
+## Nicht
+
+- Schreibe den Entwurf NICHT um — gib Orientierung für die Überarbeitung durch den Autor
+- Führe KEINE neuen Handlungselemente oder Charaktere ein, die nicht im Entwurf stehen
+- Gib KEIN generisches Feedback ohne spezifische Referenzen
+- Schlage KEINE Änderungen an den angegebenen Präferenzen des Autors vor (aufgeführt in Benutzereinstellungen)

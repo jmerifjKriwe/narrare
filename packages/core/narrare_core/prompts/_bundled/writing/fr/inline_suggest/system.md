@@ -27,6 +27,13 @@ Votre tâche : Compléter le texte naturellement, comme si l'auteur l'avait écr
 
 {{avoidance_patterns}}
 
+## À ne pas faire
+
+- Ne répète PAS le texte déjà écrit
+- N'ajoute PAS de méta-commentaire, d'explications ou de suggestions
+- Ne commence PAS un nouveau paragraphe sauf si le contexte l'indique clairement
+- Ne produis RIEN d'autre que le texte de continuation
+
 ### Contexte de l'histoire
 
 Projet : {{project_title}}

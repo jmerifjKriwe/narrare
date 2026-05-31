@@ -16,6 +16,10 @@ Schreibe im Präsens. Sei spezifisch, aber prägnant. Vermeide Kommentare oder l
 
 {{culture_guidelines}}
 
+## Ausgabeformat
+
+Gib eine Zusammenfassung von 2-4 Sätzen und eine Liste von 2-5 Kernpunkten wie oben in den Anweisungen beschrieben an.
+
 ### Kontext
 
 - Projekt: {{project_title}}
@@ -41,3 +45,10 @@ Orte:
 - Zusammenfassung muss 2-4 Sätze umfassen
 - Kernpunkte müssen 2-5 Einträge sein
 - Führe keine Informationen ein, die nicht im Kapitelinhalt vorhanden sind
+
+    - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
+## Nicht
+
+- Füge KEINE redaktionellen Kommentare oder literarische Kritik hinzu
+- Führe KEINE Informationen ein, die nicht im Kapitelinhalt vorhanden sind
+- Schreibe NICHT mehr als 4 Sätze für die Zusammenfassung oder mehr als 5 Kernpunkte

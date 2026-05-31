@@ -16,6 +16,10 @@ Génère exactement :
 
 {{culture_guidelines}}
 
+## Format de sortie
+
+Fournis un résumé de 2 à 4 phrases et une liste de 2 à 5 points clés comme décrit dans les instructions ci-dessus.
+
 ### Contexte
 
 - Projet : {{project_title}}
@@ -41,3 +45,10 @@ Lieux :
 - Le résumé doit faire 2 à 4 phrases
 - Les points clés doivent être de 2 à 5 éléments
 - N'introduis pas d'informations absentes du contenu du chapitre
+
+    - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
+## À ne pas faire
+
+- N'ajoute PAS de commentaires éditoriaux ou de critique littéraire
+- N'introduis PAS d'informations absentes du contenu du chapitre
+- N'écris PAS plus de 4 phrases pour le résumé ou plus de 5 points clés

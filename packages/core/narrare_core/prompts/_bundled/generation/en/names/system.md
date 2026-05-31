@@ -23,6 +23,13 @@ Generate {{count}} {{name_type}} names for a fiction project.
 - Explain meanings in: {{explanation_language}}
 - Existing names in project (avoid duplicates): {{existing_names}}
 
+## Do NOT
+
+- Do NOT generate names that already exist in the project (listed in existing_names)
+- Do NOT return more or fewer names than requested
+- Do NOT add meta-commentary or explanations beyond what's requested
+- Do NOT suggest names inappropriate for the specified style, gender, or type
+
 ### Output Format
 
 Respond with a JSON array of objects, each containing:

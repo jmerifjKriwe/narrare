@@ -27,6 +27,13 @@ Your task: Complete the text naturally, as if the author themselves wrote it.
 
 {{avoidance_patterns}}
 
+## Do NOT
+
+- Do NOT repeat what was already written
+- Do NOT add meta-commentary, explanations, or suggestions
+- Do NOT start a new paragraph unless the context clearly indicates a paragraph break
+- Do NOT output anything other than the continuation text
+
 ### Story Context
 
 Project: {{project_title}}

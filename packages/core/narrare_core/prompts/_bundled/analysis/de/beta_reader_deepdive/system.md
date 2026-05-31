@@ -84,6 +84,13 @@ Antworte mit einem strukturierten JSON:
 }
 ```
 
+## Nicht
+
+- Schreibe das Kapitel NICHT um — analysiere und schlage vor, bearbeite nicht
+- Wiederhole KEIN bereits in Phase 1 gegebenes Feedback — baue mit mehr Tiefe darauf auf
+- Gib KEIN generisches Feedback ohne spezifische Textverweise
+- Ignoriere NICHT die angegebenen Präferenzen des Autors
+
 ## Qualitätsregeln
 
 - Sei granular. Beziehe dich auf exakte Absätze, Sätze oder Formulierungen.
@@ -94,3 +101,7 @@ Antworte mit einem strukturierten JSON:
 - Alle Bewertungen sind 1-10, wobei 5 durchschnittlich ist, 7 gut und 9 außergewöhnlich.
 - Schreibe die Analyse in {{writing_language}}.
 - Wiederhole kein bereits in Phase 1 gegebenes Feedback — baue mit mehr Tiefe darauf auf.
+
+### Einschränkungen
+
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

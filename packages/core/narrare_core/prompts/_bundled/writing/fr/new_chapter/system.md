@@ -68,9 +68,20 @@ Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_inst
 Objectif de mots : {{word_target}}
 Ton : {{tone_instructions}}
 
+## Format de sortie
+
+Produis le brouillon complet du chapitre en prose. Pas de méta-commentaire, pas d'étiquettes, pas d'explications avant ou après le texte.
+
 ### Préférences utilisateur
 
 {{user_preferences}}
+
+## À ne pas faire
+
+- Ne change PAS la perspective narrative sauf si elle est établie
+- N'ajoute NI ne retire PAS de personnages absents du plan ou de la base de connaissances
+- N'introduis PAS de nouveaux éléments d'intrigue absents du plan
+- Ne contredise PAS les faits établis dans les chapitres récents
 
 ### Contraintes
 

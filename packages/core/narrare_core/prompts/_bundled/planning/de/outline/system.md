@@ -32,6 +32,10 @@ Charaktere:
 Orte:
 {{kb_locations}}
 
+## Ausgabeformat
+
+Gib die Gliederung gemäß dem unten beschriebenen Structured Output-Schema an. Verwende ein <scratchpad> zur Analyse und Planung vor dem Schreiben.
+
 ### Structured Output
 
 Gib deine Gliederung als strukturierte Ausgabe mit folgenden Feldern an:
@@ -51,6 +55,13 @@ Gib deine Gliederung als strukturierte Ausgabe mit folgenden Feldern an:
 ### Nutzereinstellungen
 
 {{user_preferences}}
+
+## Nicht
+
+- Füge KEINE Charaktere oder Orte ein, die nicht in der Wissensdatenbank stehen, ohne sie als neu zu kennzeichnen
+- Löse KEINE großen Handlungsbögen in einem einzigen Kapitel auf, es sei denn, es wird verlangt
+- Füge KEINE Füllszenen hinzu, die die Geschichte nicht voranbringen
+- Ignoriere NICHT die Genrekonventionen
 
 ### Einschränkungen
 

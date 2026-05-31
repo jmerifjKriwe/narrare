@@ -67,9 +67,20 @@ Szene-für-Szene-Ansatz:
 - Baue jede Szene um ihren zentralen Moment oder Wendepunkt
 - Sorge für fließende Übergänge zwischen den Szenen
 
+## Ausgabeformat
+
+Gib jeweils EINE Szene als Prosa aus. Kein Meta-Kommentar, keine Beschriftungen, keine Erklärungen vor oder nach dem Text. Warte auf das Signal des Autors, bevor du die nächste Szene generierst.
+
 ### Nutzereinstellungen
 
 {{user_preferences}}
+
+## Nicht
+
+- Generiere NICHT mehr als eine Szene auf einmal
+- Ändere NICHT die Erzählperspektive, es sei denn, sie ist etabliert
+- Füge KEINE Charaktere hinzu oder entferne sie, die nicht im Outline oder der Wissensdatenbank sind
+- Führe KEINE neuen Handlungselemente ein, die nicht im Outline sind
 
 ### Einschränkungen
 
