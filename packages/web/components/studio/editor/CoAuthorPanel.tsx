@@ -4,10 +4,13 @@ import { Check, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import {
+  applyChanges,
   type ChangeDetail,
   type CoAuthorFocus,
   type CoAuthorRevision,
+  recordFeedback,
   streamCoAuthor,
+  type TextChange,
 } from "@/lib/api/coauthor";
 import { ChangeReview } from "./ChangeReview";
 
@@ -139,22 +142,28 @@ function StreamingPhase({ streamedText, onStop }: { streamedText: string; onStop
 
 function ReviewPhase({
   changes,
-  acceptAllMode,
+  acceptance,
   reasoning,
+  onToggleChange,
   onAcceptAll,
   onRejectAll,
   onApply,
+  submitting,
   onClose,
 }: {
   changes: ChangeDetail[];
-  acceptAllMode: boolean;
+  acceptance: Record<string, boolean>;
   reasoning: string;
+  onToggleChange: (id: string) => void;
   onAcceptAll: () => void;
   onRejectAll: () => void;
   onApply: () => void;
+  submitting: boolean;
   onClose: () => void;
 }) {
   const t = useTranslations("studio");
+  const allAccepted = changes.length > 0 && changes.every((c) => acceptance[c.id] !== false);
+  const allRejected = changes.length > 0 && changes.every((c) => acceptance[c.id] === false);
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
@@ -168,14 +177,14 @@ function ReviewPhase({
           <button
             type="button"
             onClick={onAcceptAll}
-            className={`${btnSm} ${acceptAllMode ? "bg-primary text-primary-foreground shadow-sm" : "border border-border hover:bg-accent"}`}
+            className={`${btnSm} ${allAccepted ? "bg-primary text-primary-foreground shadow-sm" : "border border-border hover:bg-accent"}`}
           >
             {t("coAuthor.acceptAll")}
           </button>
           <button
             type="button"
             onClick={onRejectAll}
-            className={`${btnSm} ${!acceptAllMode ? "bg-destructive/10 text-destructive border border-destructive/30" : "border border-border hover:bg-accent"}`}
+            className={`${btnSm} ${allRejected ? "bg-destructive/10 text-destructive border border-destructive/30" : "border border-border hover:bg-accent"}`}
           >
             {t("coAuthor.rejectAll")}
           </button>
@@ -193,7 +202,12 @@ function ReviewPhase({
       )}
       <div className="space-y-3 max-h-80 overflow-y-auto">
         {changes.map((c) => (
-          <ChangeReview key={c.id} change={c} isAccepted readOnly />
+          <ChangeReview
+            key={c.id}
+            change={c}
+            isAccepted={acceptance[c.id] !== false}
+            onToggle={onToggleChange}
+          />
         ))}
       </div>
       <div className="flex items-center gap-2 pt-2">
@@ -203,10 +217,15 @@ function ReviewPhase({
         <button
           type="button"
           onClick={onApply}
-          className={`${btnPrimary} flex-1 flex items-center justify-center gap-2`}
+          disabled={submitting}
+          className={`${btnPrimary} flex-1 flex items-center justify-center gap-2 disabled:opacity-50`}
         >
-          <Check className="w-4 h-4" />
-          <span>{acceptAllMode ? t("coAuthor.acceptAll") : t("coAuthor.applySelected")}</span>
+          {submitting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Check className="w-4 h-4" />
+          )}
+          <span>{allAccepted ? t("coAuthor.acceptAll") : t("coAuthor.applySelected")}</span>
         </button>
       </div>
     </div>
@@ -250,8 +269,10 @@ export function CoAuthorPanel({
   const [selectedFocus, setSelectedFocus] = useState<CoAuthorFocus[]>(["word_choice"]);
   const [streamedText, setStreamedText] = useState("");
   const [changes, setChanges] = useState<ChangeDetail[]>([]);
-  const [acceptAllMode, setAcceptAllMode] = useState(true);
   const [reasoning, setReasoning] = useState("");
+  const [requestId, setRequestId] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [acceptance, setAcceptance] = useState<Record<string, boolean>>({});
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -270,6 +291,9 @@ export function CoAuthorPanel({
     setReasoning("");
     setErrorMsg(null);
 
+    // Generate correlation UUID for apply/feedback
+    setRequestId(crypto.randomUUID());
+
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -287,6 +311,14 @@ export function CoAuthorPanel({
         onComplete: (revision: CoAuthorRevision) => {
           setChanges(revision.changes);
           setReasoning(revision.reasoning);
+          // Use backend-generated request_id if available
+          if (revision.request_id) setRequestId(revision.request_id);
+          // Init acceptance: all changes accepted by default
+          const initial: Record<string, boolean> = {};
+          revision.changes.forEach((c) => {
+            initial[c.id] = true;
+          });
+          setAcceptance(initial);
           setPhase(revision.changes.length > 0 ? "review" : "done");
           abortRef.current = null;
         },
@@ -301,12 +333,87 @@ export function CoAuthorPanel({
     );
   }, [selectedFocus, chapterId, novelId, selectionText, contextBefore, contextAfter, t]);
 
-  const handleAcceptAll = useCallback(() => setAcceptAllMode(true), []);
-  const handleRejectAll = useCallback(() => setAcceptAllMode(false), []);
-  const handleApply = useCallback(() => {
-    onAccept(acceptAllMode ? streamedText : selectionText);
-    setPhase("done");
-  }, [acceptAllMode, streamedText, selectionText, onAccept]);
+  const handleAcceptAll = useCallback(() => {
+    const all: Record<string, boolean> = {};
+    changes.forEach((c) => {
+      all[c.id] = true;
+    });
+    setAcceptance(all);
+  }, [changes]);
+
+  const handleRejectAll = useCallback(() => {
+    const all: Record<string, boolean> = {};
+    changes.forEach((c) => {
+      all[c.id] = false;
+    });
+    setAcceptance(all);
+  }, [changes]);
+
+  const handleToggleChange = useCallback((id: string) => {
+    setAcceptance((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+
+  const handleApply = useCallback(async () => {
+    const allAccepted = changes.length === 0 || changes.every((c) => acceptance[c.id] !== false);
+
+    if (allAccepted) {
+      // Full apply — no API call needed, text is already complete
+      onAccept(streamedText);
+      setPhase("done");
+      return;
+    }
+
+    // Partial apply — only accepted changes via API (SET-005)
+    setSubmitting(true);
+    try {
+      const acceptedChanges: TextChange[] = changes
+        .filter((c) => acceptance[c.id] !== false)
+        .map((c) => ({ original_text: c.original_text, revised_text: c.revised_text }));
+      const rejectedChanges: TextChange[] = changes
+        .filter((c) => acceptance[c.id] === false)
+        .map((c) => ({ original_text: c.original_text, revised_text: c.revised_text }));
+
+      const result = await applyChanges(chapterId, novelId, {
+        request_id: requestId || crypto.randomUUID(),
+        original: selectionText,
+        accepted: acceptedChanges,
+        rejected: rejectedChanges,
+      });
+
+      // Fire-and-forget feedback (LEARN-001) — best-effort for preference learning
+      const feedback = changes.map((c) => ({
+        change_id: c.id,
+        action: (acceptance[c.id] !== false ? "accepted" : "rejected") as "accepted" | "rejected",
+        focus: c.change_type,
+        original: c.original_text,
+        revised: acceptance[c.id] !== false ? c.revised_text : "",
+      }));
+      recordFeedback(chapterId, novelId, {
+        request_id: requestId || crypto.randomUUID(),
+        feedback,
+      }).catch(() => {
+        /* silent — feedback is best-effort */
+      });
+
+      onAccept(result.content);
+      setPhase("done");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : t("coAuthor.errorGeneric"));
+      setPhase("error");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [
+    acceptance,
+    changes,
+    chapterId,
+    novelId,
+    selectionText,
+    streamedText,
+    requestId,
+    onAccept,
+    t,
+  ]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -365,11 +472,13 @@ export function CoAuthorPanel({
           {phase === "review" && (
             <ReviewPhase
               changes={changes}
-              acceptAllMode={acceptAllMode}
+              acceptance={acceptance}
               reasoning={reasoning}
+              onToggleChange={handleToggleChange}
               onAcceptAll={handleAcceptAll}
               onRejectAll={handleRejectAll}
               onApply={handleApply}
+              submitting={submitting}
               onClose={handleCancel}
             />
           )}

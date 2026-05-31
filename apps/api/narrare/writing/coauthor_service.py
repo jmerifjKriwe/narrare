@@ -107,6 +107,17 @@ class CoAuthorService:
         if active is not None:
             raise ConflictError(f"Generation already active for chapter {chapter_id}")
 
+        # SET-005 Cascade: user → project → default (2000 words)
+        # TODO: Resolve from UserSettings/ProjectSettings when a generic
+        #       settings cascade infrastructure exists.
+        word_count = len(request.selection_text.split())
+        max_words = 2000
+        if word_count > max_words:
+            raise ValidationError(
+                f"Selection exceeds {max_words} words (got {word_count})",
+                code="SELECTION_TOO_LONG",
+            )
+
     async def stream_coauthor(
         self,
         chapter_id: UUID,
@@ -214,6 +225,10 @@ class CoAuthorService:
                 co_author_focus=focus_list,
             ):
                 if chunk.is_final:
+                    # Inject request_id into context_meta for feedback
+                    # correlation (LEARN-001).
+                    if chunk.context_meta:
+                        chunk.context_meta["request_id"] = str(request_id)
                     raw_text = "".join(accumulated) + chunk.text
                     cleaned = self._draft_processor.process(raw_text)
                     word_count = len(cleaned.split())

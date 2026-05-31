@@ -123,6 +123,14 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - **CONS-001**: Issue actions (dismiss/mark intentional/copy), loading progress indicator, rule-based KB pre-check, scope selector, fact deduplication. Spec-complete.
 - 38 new tests (8 sentiment warnings + 30 arc/rule tests + 22 rule helpers + 6 service tests).
 
+- **ADR-023 — Co-Author Change Engine (Rest-Implementierung)**
+  - Backend: `POST .../chapters/{id}/co-author/apply` endpoint for applying selected changes (stateless text-segment design)
+  - Backend: `POST .../chapters/{id}/co-author/feedback` endpoint for batch accept/reject feedback (LEARN-001)
+  - Backend: `coauthor_apply_service.py` — post-stream apply + feedback operations, separate from streaming service (RULE-04)
+  - Backend: `request_id` in SSE events for feedback correlation between stream, apply, and feedback endpoints
+  - Core: `text_reconstructor.py` — pure function for stateless text reconstruction from original + accepted changes
+  - Settings: Word-count validation for co-author selection text via `validate_coauthor()` (SET-005 cascade pattern, default 2000 words)
+
 ### Fixed
 
 - JWT secret fallback chain in `proxy.ts`: added `process.env.SECRET_KEY` as second fallback (matching backend's env var). Previously only checked `AUTH_JWT_SECRET`, causing verification failures on protected routes when only `SECRET_KEY` was set.
@@ -137,6 +145,15 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Demo loader reads metadata from files instead of hardcoded data
 - EditorSurface refactored to use Autosave TipTap extension
 - editorStore now holds TipTap editor ref (set by EditorSurface, read by CommandPalette)
+
+- **ADR-023 — Co-Author Schema Alignment**
+  - Co-Author: `CoAuthorPanel` now supports per-change accept/reject toggle (partial apply instead of all-or-nothing)
+  - Co-Author: `selection_text.max_length` increased from 2000 to 10000 chars
+  - Co-Author: `validate_coauthor()` enforces max 2000 words via SET-005 settings cascade pattern
+  - Co-Author: Schema alignments — `type` → `change_type`, `original` → `original_text`, `revised` → `revised_text`, `position` → `index` (simplified), `aggregate_reasoning` → `reasoning`
+  - Co-Author: `ChangeDetail.id` type changed from `str` to `uuid.UUID`
+  - Co-Author: `FLOW` focus area removed from `CoAuthorFocus` enum (not implemented)
+  - Co-Author: `character_id` removed from `CoAuthorRequest` (deferred for future KB context assembly)
 
 ---
 

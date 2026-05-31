@@ -20,6 +20,7 @@ from narrare_core.llm.intents import LLMIntent
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare.writing.coauthor_apply_service import CoAuthorApplyService
     from narrare.writing.coauthor_service import CoAuthorService
     from narrare.writing.extend_service import ExtendService
     from narrare.writing.rewrite_service import RewriteService
@@ -376,4 +377,18 @@ async def get_coauthor_service(
         config=config,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
+    )
+
+
+async def get_coauthor_apply_service(
+    session: AsyncSession,
+) -> CoAuthorApplyService:
+    """Lightweight factory — repos only, no pipeline or model config."""
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.writing.coauthor_apply_service import CoAuthorApplyService
+    from narrare.writing.repository import GenerationRepository
+
+    return CoAuthorApplyService(
+        repo=GenerationRepository(session),
+        chapter_repo=ChapterRepository(session),
     )

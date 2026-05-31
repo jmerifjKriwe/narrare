@@ -6990,6 +6990,137 @@
         }
       }
     },
+    "/api/v1/writing/chapters/{chapter_id}/co-author/apply": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Apply Coauthor Changes",
+        "description": "Apply accepted co-author changes to chapter content.\n\nReconstructs the chapter text from original + accepted changes\nusing :func:`narrare_core.writing.text_reconstructor.reconstruct_text`.\nPersists the updated content and records feedback for rejected changes.",
+        "operationId": "apply_coauthor_changes_api_v1_writing_chapters__chapter_id__co_author_apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyChangesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChapterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/writing/chapters/{chapter_id}/co-author/feedback": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Record Coauthor Feedback",
+        "description": "Record batch feedback for co-author changes (LEARN-001).\n\nAccepts per-change accept/reject feedback and persists via\nthe ``FeedbackCollector`` for preference learning.",
+        "operationId": "record_coauthor_feedback_api_v1_writing_chapters__chapter_id__co_author_feedback_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoAuthorFeedbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/summary/chapters/{chapter_id}": {
       "post": {
         "tags": [
@@ -7729,6 +7860,45 @@
         "title": "AnswerFieldRequest",
         "description": "Request body for answering a field in a KB creation session."
       },
+      "ApplyChangesRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id",
+            "description": "Generation request ID for feedback tracking"
+          },
+          "original": {
+            "type": "string",
+            "title": "Original",
+            "description": "Full original selection text"
+          },
+          "accepted": {
+            "items": {
+              "$ref": "#/components/schemas/TextChange"
+            },
+            "type": "array",
+            "title": "Accepted",
+            "description": "Accepted changes to apply"
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/TextChange"
+            },
+            "type": "array",
+            "title": "Rejected",
+            "description": "Rejected changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "original",
+          "accepted"
+        ],
+        "title": "ApplyChangesRequest",
+        "description": "Apply selected changes to chapter content.\n\nFrontend sendet die Textsegmente direkt (keine Change-IDs),\ndamit der Backend-Zustand irrelevant ist — nur original + accepted\nwerden zur Rekonstruktion gebraucht."
+      },
       "ApplyExtractionEntryResult": {
         "properties": {
           "id": {
@@ -8347,6 +8517,45 @@
         "title": "CascadePathResponse",
         "description": "A single level in the prompt cascade."
       },
+      "ChangeFeedback": {
+        "properties": {
+          "change_id": {
+            "type": "string",
+            "title": "Change Id",
+            "description": "Client-side change identifier"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "description": "'accepted' or 'rejected'"
+          },
+          "focus": {
+            "type": "string",
+            "title": "Focus",
+            "description": "Change type / focus area",
+            "default": "word_choice"
+          },
+          "original": {
+            "type": "string",
+            "title": "Original",
+            "description": "Original text segment"
+          },
+          "revised": {
+            "type": "string",
+            "title": "Revised",
+            "description": "Revised text segment (or empty for reject)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "change_id",
+          "action",
+          "original",
+          "revised"
+        ],
+        "title": "ChangeFeedback",
+        "description": "Feedback for a single change."
+      },
       "ChapterInStoryboard": {
         "properties": {
           "chapter_id": {
@@ -8717,6 +8926,31 @@
         "title": "ChatRequest",
         "description": "Request to send a chat message.\n\nExtends the core ``ChatRequestSchema`` with FastAPI-specific validation."
       },
+      "CoAuthorFeedbackRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id",
+            "description": "Generation request ID"
+          },
+          "feedback": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeFeedback"
+            },
+            "type": "array",
+            "title": "Feedback",
+            "description": "Per-change feedback items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "feedback"
+        ],
+        "title": "CoAuthorFeedbackRequest",
+        "description": "Batch feedback for co-author changes (LEARN-001)."
+      },
       "CoAuthorFocus": {
         "type": "string",
         "enum": [
@@ -8732,10 +8966,10 @@
         "properties": {
           "selection_text": {
             "type": "string",
-            "maxLength": 2000,
+            "maxLength": 10000,
             "minLength": 50,
             "title": "Selection Text",
-            "description": "Passage to improve (50-2000 characters)"
+            "description": "Passage to improve (50-10000 characters)"
           },
           "context_before": {
             "anyOf": [
@@ -12918,6 +13152,27 @@
         ],
         "title": "TemplateInfoResponse",
         "description": "Metadata summary for a single template override."
+      },
+      "TextChange": {
+        "properties": {
+          "original_text": {
+            "type": "string",
+            "title": "Original Text",
+            "description": "Original text segment"
+          },
+          "revised_text": {
+            "type": "string",
+            "title": "Revised Text",
+            "description": "Revised text segment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "original_text",
+          "revised_text"
+        ],
+        "title": "TextChange",
+        "description": "Ein Textsegment-Change für zustandsloses Apply.\n\nFrontend sendet original+revised Textsegmente (keine Change-IDs),\ndamit der Backend-Zustand irrelevant ist — nur original + accepted\nwerden zur Rekonstruktion gebraucht."
       },
       "TokenLimitOverridesResponse": {
         "properties": {

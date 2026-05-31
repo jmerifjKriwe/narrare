@@ -12,7 +12,12 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
-    from narrare.writing.schemas_coauthor import CoAuthorRequest
+    from narrare.chapters.models import Chapter
+    from narrare.writing.schemas_coauthor import (
+        ApplyChangesRequest,
+        ChangeFeedback,
+        CoAuthorRequest,
+    )
     from narrare_core.llm.result import StreamChunk
 
 
@@ -75,5 +80,54 @@ class CoAuthorServiceProtocol(Protocol):
             StreamChunk instances with incremental text.  The final
             chunk has ``is_final=True``, ``usage``, and diff data in
             ``context_meta`` (changes, total_changes, has_changes).
+        """
+        ...
+
+    async def apply_changes(
+        self,
+        chapter_id: UUID,
+        novel_id: UUID,
+        user_id: str,
+        request: ApplyChangesRequest,
+    ) -> Chapter:
+        """Apply accepted co-author changes to chapter content.
+
+        Uses :func:`~narrare_core.writing.text_reconstructor.reconstruct_text`
+        to rebuild the chapter text from original + accepted changes.
+        Persists via ChapterRepository and records feedback for rejected
+        changes via the FeedbackCollector.
+
+        Args:
+            chapter_id: Chapter to apply changes to.
+            novel_id: Novel the chapter belongs to.
+            user_id: Authenticated user identifier.
+            request: Contains original selection text, accepted changes,
+                rejected changes, and the generation request ID.
+
+        Returns:
+            Updated ``Chapter`` ORM model with reconstructed content.
+
+        Raises:
+            NotFoundError: If the chapter does not exist.
+        """
+        ...
+
+    async def record_feedback(
+        self,
+        request_id: UUID,
+        feedback: list[ChangeFeedback],
+    ) -> None:
+        """Record batch per-change feedback for co-author (LEARN-001).
+
+        Creates individual ``FeedbackEvent`` entries for each change
+        feedback item.  Silently no-ops when no ``FeedbackCollector``
+        is configured.
+
+        Args:
+            request_id: The generation request ID these changes belong to.
+            feedback: Per-change feedback items with action and metadata.
+
+        Raises:
+            NotFoundError: If the generation request does not exist.
         """
         ...

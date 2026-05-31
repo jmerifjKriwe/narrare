@@ -18,8 +18,13 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
-from narrare.writing.deps import get_coauthor_service
-from narrare.writing.schemas_coauthor import CoAuthorRequest
+from narrare.chapters.schemas import ChapterResponse
+from narrare.writing.deps import get_coauthor_apply_service, get_coauthor_service
+from narrare.writing.schemas_coauthor import (
+    ApplyChangesRequest,
+    CoAuthorFeedbackRequest,
+    CoAuthorRequest,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -85,7 +90,13 @@ async def coauthor_chapter(
                 data["is_final"] = True
                 # Co-author diff metadata from pipeline_coauthor
                 if chunk.context_meta is not None:
-                    for key in ("changes", "total_changes", "has_changes", "reasoning"):
+                    for key in (
+                        "changes",
+                        "total_changes",
+                        "has_changes",
+                        "reasoning",
+                        "request_id",
+                    ):
                         if key in chunk.context_meta:
                             data[key] = chunk.context_meta[key]
             if chunk.usage is not None:
@@ -98,3 +109,39 @@ async def coauthor_chapter(
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.post("/chapters/{chapter_id}/co-author/apply")
+async def apply_coauthor_changes(
+    chapter_id: uuid.UUID,
+    novel_id: uuid.UUID,
+    request: ApplyChangesRequest,
+    user_id: CurrentUserIdDep,
+    session: SessionDep,
+) -> ChapterResponse:
+    """Apply accepted co-author changes to chapter content.
+
+    Reconstructs the chapter text from original + accepted changes
+    using :func:`narrare_core.writing.text_reconstructor.reconstruct_text`.
+    Persists the updated content and records feedback for rejected changes.
+    """
+    service = await get_coauthor_apply_service(session)
+    chapter = await service.apply_changes(chapter_id, novel_id, user_id, request)
+    return ChapterResponse.model_validate(chapter)
+
+
+@router.post("/chapters/{chapter_id}/co-author/feedback", status_code=204)
+async def record_coauthor_feedback(
+    chapter_id: uuid.UUID,
+    novel_id: uuid.UUID,
+    request: CoAuthorFeedbackRequest,
+    user_id: CurrentUserIdDep,
+    session: SessionDep,
+) -> None:
+    """Record batch feedback for co-author changes (LEARN-001).
+
+    Accepts per-change accept/reject feedback and persists via
+    the ``FeedbackCollector`` for preference learning.
+    """
+    service = await get_coauthor_apply_service(session)
+    await service.record_feedback(request.request_id, request.feedback)

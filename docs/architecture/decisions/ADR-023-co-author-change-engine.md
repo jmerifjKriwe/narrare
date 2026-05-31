@@ -685,3 +685,159 @@ Uses the same 3-layer cascade as token limits: user → project → system defau
       Option B — may enable reliable per-change XML without the reliability concerns.
 - [ ] When Co-Author is extended with per-change reasoning: ensure the `ChangeDetail`
       schema has an optional `reasoning` field that can be populated when available.
+
+---
+
+## Implementation Status (2026-05-31)
+
+This section documents the current state of the ADR-023 implementation after
+the Rest-Implementierung (apply_changes, record_feedback, SET-005). It covers
+what was built, where the code diverges from the original ADR, and why.
+
+### ✅ Fully Implemented
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Server-side diff (Option A+) | ✅ | `change_engine.py` with `difflib.SequenceMatcher` |
+| Sentence grouping | ✅ | `_change_grouping.py` (split from `change_engine.py` per RULE-04) |
+| Change classification by focus area | ✅ | `_change_classify.py` (split per RULE-04) |
+| `GenerationMode.CO_AUTHOR` | ✅ | Added to `_enums.py` |
+| SSE streaming + diff in final event | ✅ | `pipeline_coauthor.py` + `router_coauthor.py` |
+| Per-change feedback batching | ✅ | `POST .../co-author/feedback` endpoint + `CoAuthorApplyService.record_feedback()` |
+| Apply changes to chapter content | ✅ | `POST .../co-author/apply` endpoint + `text_reconstructor.py` |
+| `CoAuthorFocus` enum | ✅ | `WORD_CHOICE`, `SENTENCE`, `DIALOGUE`, `DESCRIPTION` (4 of 5 areas) |
+| `CoAuthorRequest` schema | ✅ | Selection text with context + focus + tone + language |
+| SET-005 word-count validation | ✅ | `validate_coauthor()` with 2000-word default |
+| `request_id` SSE correlation | ✅ | `request_id` injected into final SSE event context_meta |
+| Frontend API client | ✅ | `coauthor.ts` with `streamCoAuthor()`, `applyChanges()`, `recordFeedback()` |
+| Partial apply (per-change toggle) | ✅ | Frontend `CoAuthorPanel.tsx` accept/reject per change |
+
+### 🔄 Schema Drifts (ADR → Code)
+
+The following table documents every field-level difference between the ADR
+schemas and the actual implementation. These are **accepted drifts** — each
+was a deliberate decision during implementation.
+
+#### `ChangeDetail`
+
+| ADR Field | ADR Type | Code Field | Code Type | Drift Reason |
+|-----------|----------|------------|-----------|--------------|
+| `id` | `str` ("ch-1") | `id` | `uuid.UUID` | UUIDs prevent collision in concurrent editing; auto-generated via `uuid.uuid4()` |
+| `type` | `CoAuthorFocus` | `change_type` | `str` | Renamed for clarity (avoids shadowing Python `type()`); type relaxed to `str` for flexibility; validated at ingress |
+| `original` | `str` | `original_text` | `str` | Renamed for readability; consistent with `TextChange.original_text` |
+| `revised` | `str` | `revised_text` | `str` | Renamed for readability; consistent with `TextChange.revised_text` |
+| `reasoning` | `str` | *(removed)* | — | Per-change reasoning moved to `CoAuthorRevision.reasoning` (aggregate); not stored per-change |
+| `position` | `ChangePosition(start, end)` | `index` | `int` | Simplified: `ChangePosition` required tracking character offsets across full text; `index` (0-based position in change sequence) is sufficient for frontend ordering |
+
+#### `CoAuthorRevision`
+
+| ADR Field | ADR Type | Code Field | Code Type | Drift Reason |
+|-----------|----------|------------|-----------|--------------|
+| `aggregate_reasoning` | `str` | `reasoning` | `str` | Renamed for brevity; same semantics |
+
+#### `CoAuthorRequest`
+
+| ADR Field | ADR Type | Code Field | Code Type | Drift Reason |
+|-----------|----------|------------|-----------|--------------|
+| `chapter_id` | `UUID` | *(removed)* | — | Moved to URL path parameter (`/chapters/{chapter_id}/co-author`) — REST convention |
+| `character_id` | `UUID \| None` | *(removed)* | — | Not implemented; character voice context deferred — will be provided via KB context assembly in a future iteration |
+| `tone` | *(not in ADR)* | — | `str` | Added during implementation; matches the tone preference pattern used in other writing endpoints |
+| `language` | *(not in ADR)* | — | `str` | Added during implementation; matches language parameter pattern from rewrite/suggest endpoints |
+
+#### `CoAuthorFocus`
+
+| ADR Value | Code Value | Status |
+|-----------|------------|--------|
+| `WORD_CHOICE` | ✅ `"word_choice"` | Implemented |
+| `SENTENCE` | ✅ `"sentence"` | Implemented |
+| `DIALOGUE` | ✅ `"dialogue"` | Implemented |
+| `DESCRIPTION` | ✅ `"description"` | Implemented |
+| `FLOW = "flow"` | ❌ *not in enum* | Not implemented. Pacing/transitions/coherence focus was considered but deferred — requires a different prompt approach and may conflict with the existing sentence-grouping heuristic. Can be added in a future iteration without breaking changes. |
+
+#### `ApplyChangesRequest`
+
+| ADR Design | Code Design | Rationale |
+|------------|-------------|-----------|
+| `accepted_change_ids: list[str]` | `original: str` + `accepted: list[TextChange]` (with `original_text` + `revised_text`) | **Stateless design**: The ADR assumed change IDs persisted server-side. The code uses a **stateless text-segment approach** — the frontend sends the original text and the text segments to accept/reject. No server-side state is needed beyond the chapter content. This avoids synchronization issues when multiple tabs or sessions interact with the same chapter. |
+| `rejected_change_ids: list[str]` | `rejected: list[TextChange]` (same structure, for feedback tracking) | Text-segment approach gives richer feedback data (exact original+revised pair is preserved). |
+
+#### `ChangePosition`
+
+The ADR defines `ChangePosition(start: int, end: int)` for character-offset
+positioning in the original text. The code **does not implement this** —
+it uses `ChangeDetail.index: int` instead (0-based position in the change
+sequence).
+
+**Why:** Character-offset tracking was complex and error-prone:
+- Offsets change after each applied change (a change at position 0 shifts all later offsets)
+- Sentence grouping produces non-contiguous position ranges
+- The frontend orders changes sequentially anyway — `index` is sufficient
+
+#### Service Architecture
+
+| ADR | Code | Rationale |
+|-----|------|-----------|
+| `CoAuthorService.apply_changes()` | `CoAuthorApplyService.apply_changes()` | **Split per RULE-04**: `CoAuthorService` handles streaming (LLM calls, pipeline); `CoAuthorApplyService` handles post-stream operations (apply, feedback) with lighter dependencies — no pipeline, no model config. |
+| `CoAuthorService.record_feedback()` | `CoAuthorApplyService.record_feedback()` | Same split rationale. |
+
+#### SSE Event Stream
+
+| ADR Event Sequence | Code Event Sequence | Difference |
+|--------------------|---------------------|------------|
+| 1. `request_id` | *(merged into first event)* | `request_id` is injected into the final event's `context_meta`; no separate `request_id` SSE event |
+| 2. `context_meta` | → context_meta via `{"type": "context_meta"}` | Same pattern |
+| 3–5. `text` chunks | → `{"text": "..."}` | Same pattern |
+| 6. `changes` event | *(merged)* | Changes data is embedded in the final `text` event (`is_final: true`) alongside `usage`, `reasoning`, and `request_id` — not a separate SSE event |
+| 7. `[DONE]` | → `data: [DONE]` | Same |
+
+**Rationale for merged final event:** The ADR described `changes` as a separate
+SSE event after `done`. In practice, bundling everything into one final event
+simplifies frontend consumption — the SSE client handles one final payload
+instead of two consecutive events. No information is lost.
+
+#### Feedback Flow
+
+| ADR Design | Code Design | Difference |
+|------------|-------------|------------|
+| Feedback buffered in frontend, sent on "Done" or `beforeunload` | `POST .../co-author/apply` records rejected changes as feedback atomically with text reconstruction | **Atomic apply+reject**: Feedback is only recorded when apply succeeds — prevents data loss. Standalone `POST .../co-author/feedback` endpoint available for feedback-only scenarios. |
+| Uses existing `context: dict` on `FeedbackService.record()` | Uses `record_batch_feedback()` helper with structured `ChangeFeedback` items | Functionally equivalent; structured batch is cleaner for per-change metadata. |
+
+### 📦 New Modules (not in original ADR)
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `text_reconstructor.py` | `packages/core/narrare_core/writing/text_reconstructor.py` | Pure function for stateless text reconstruction from original + accepted changes |
+| `coauthor_apply_service.py` | `apps/api/narrare/writing/coauthor_apply_service.py` | Post-stream apply + feedback operations (RULE-04 split) |
+| `_change_types.py` | `packages/core/narrare_core/writing/_change_types.py` | Shared dataclasses (`DiffOp`, `ChangeGroup`, `DiffResult`) — extracted from `change_engine.py` to avoid circular imports |
+| `_change_grouping.py` | `packages/core/narrare_core/writing/_change_grouping.py` | Sentence-splitting and grouping heuristics — extracted from `change_engine.py` per RULE-04 |
+| `_change_classify.py` | `packages/core/narrare_core/writing/_change_classify.py` | Change classification by focus area — extracted from `change_engine.py` per RULE-04 |
+
+### ⚠️ Known Gaps
+
+| Gap | Status | Impact |
+|-----|--------|--------|
+| `FLOW` focus area | Not implemented | Users cannot select flow/pacing/transitions as a revision focus |
+| `character_id` on request | Not implemented | Character voice consistency for dialogue revisions is not available |
+| Full SET-005 settings cascade | Partial — hardcoded 2000-word default | `validate_coauthor()` has a `TODO` for resolving from `UserSettings`/`ProjectSettings` when a generic settings cascade infrastructure exists |
+| `ChangePosition` | Replaced by `index` | Frontend cannot show character-offset positioning in original text; not needed for current UX |
+| Per-change reasoning | Not implemented (stated trade-off in ADR) | Per-change reasons not available from LLM; aggregate reasoning only |
+| `pipeline_coauthor.py` filename | Module exists but may be called through `WritingPipeline.generate()` | The ADR described a top-level `stream_coauthor()` function; the code integrates it via the existing `WritingPipeline` interface |
+
+### 📝 Summary
+
+The implementation covers **all core ADR-023 decisions**:
+
+- ✅ **Option A+** — Server-side `difflib`-based diff engine
+- ✅ **Holistic streaming** — Single LLM call, diff computed post-stream
+- ✅ **New core module** — `change_engine.py` (plus sub-modules per RULE-04)
+- ✅ **Co-Author pipeline** — `pipeline_coauthor.py` integrated via `WritingPipeline`
+- ✅ **`GenerationMode.CO_AUTHOR`** — Added to `_enums.py`
+- ✅ **Per-change feedback batching** — `POST .../feedback` endpoint
+- ✅ **SET-005 max selection length** — 2000-word default (partial cascade)
+- ✅ **Focus-area scoping** — Prompt constrains LLM to selected areas
+
+Deviations from the ADR are **deliberate improvements**, not regressions:
+stateless apply/feedback, simplified `index` positioning, merged SSE events,
+and RULE-04 service splitting. The core architectural decisions — deterministic
+server-side diff, holistic streaming, focus-area scoping, and feedback
+batching — are faithfully implemented.

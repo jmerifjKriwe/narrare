@@ -10,9 +10,43 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from narrare.writing.models import GenerationRequest
     from narrare.writing.schemas import GenerateRequest
+    from narrare.writing.schemas_coauthor import ChangeFeedback
     from narrare_core.memory.protocols import FeedbackCollector
 
+from narrare_core.memory.models import FeedbackAction, FeedbackEvent
 from narrare_core.shared.errors import ValidationError
+
+
+async def record_batch_feedback(
+    feedback_service: FeedbackCollector | None,
+    request_model: GenerationRequest,
+    feedback: list[ChangeFeedback],
+) -> None:
+    """Record batch per-change feedback for co-author (LEARN-001).
+
+    Args:
+        feedback_service: Optional feedback collector (no-op if None).
+        request_model: The generation request these changes belong to.
+        feedback: Per-change feedback items with action and metadata.
+    """
+    if feedback_service is None:
+        return
+
+    for fb in feedback:
+        event = FeedbackEvent(
+            user_id=request_model.user_id,
+            project_id=request_model.novel_id,
+            suggestion_id=request_model.id,
+            action=FeedbackAction(fb.action),
+            intent="write",
+            suggestion_text=fb.original,
+            context={
+                "change_id": fb.change_id,
+                "focus": fb.focus,
+                "revised": fb.revised,
+            },
+        )
+        await feedback_service.record(event)
 
 
 def validate_generation_input(request: GenerateRequest) -> None:

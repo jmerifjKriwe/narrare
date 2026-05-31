@@ -40,8 +40,8 @@ class CoAuthorRequest(BaseModel):
     selection_text: str = Field(
         ...,
         min_length=50,
-        max_length=2000,
-        description="Passage to improve (50-2000 characters)",
+        max_length=10000,  # Erhöht: Netz gegen absurd große Payloads
+        description="Passage to improve (50-10000 characters)",
     )
     context_before: str | None = Field(
         default=None,
@@ -118,3 +118,46 @@ class CoAuthorRevision(BaseModel):
         default_factory=lambda: [], description="Individual changes with diff details"
     )
     reasoning: str = Field(default="", description="AI reasoning for the suggested changes")
+
+
+class TextChange(BaseModel):
+    """Ein Textsegment-Change für zustandsloses Apply.
+
+    Frontend sendet original+revised Textsegmente (keine Change-IDs),
+    damit der Backend-Zustand irrelevant ist — nur original + accepted
+    werden zur Rekonstruktion gebraucht.
+    """
+
+    original_text: str = Field(..., description="Original text segment")
+    revised_text: str = Field(..., description="Revised text segment")
+
+
+class ApplyChangesRequest(BaseModel):
+    """Apply selected changes to chapter content.
+
+    Frontend sendet die Textsegmente direkt (keine Change-IDs),
+    damit der Backend-Zustand irrelevant ist — nur original + accepted
+    werden zur Rekonstruktion gebraucht.
+    """
+
+    request_id: uuid.UUID = Field(..., description="Generation request ID for feedback tracking")
+    original: str = Field(..., description="Full original selection text")
+    accepted: list[TextChange] = Field(..., description="Accepted changes to apply")
+    rejected: list[TextChange] = Field(default_factory=lambda: [], description="Rejected changes")
+
+
+class ChangeFeedback(BaseModel):
+    """Feedback for a single change."""
+
+    change_id: str = Field(..., description="Client-side change identifier")
+    action: str = Field(..., description="'accepted' or 'rejected'")
+    focus: str = Field(default="word_choice", description="Change type / focus area")
+    original: str = Field(..., description="Original text segment")
+    revised: str = Field(..., description="Revised text segment (or empty for reject)")
+
+
+class CoAuthorFeedbackRequest(BaseModel):
+    """Batch feedback for co-author changes (LEARN-001)."""
+
+    request_id: uuid.UUID = Field(..., description="Generation request ID")
+    feedback: list[ChangeFeedback] = Field(..., description="Per-change feedback items")
