@@ -22,9 +22,7 @@ Problèmes identifiés :
 
 ## Texte du chapitre
 
-<user_provided_text>
-{{chapter_text}}
-</user_provided_text>
+<user_provided_text>{{chapter_text}}</user_provided_text>
 
 ### Contexte de la base de connaissances
 

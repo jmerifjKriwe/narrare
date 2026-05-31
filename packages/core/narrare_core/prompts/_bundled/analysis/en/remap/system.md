@@ -12,4 +12,10 @@ Given a {{structure_type}} story structure, which stage does this chapter belong
 
 Summary: {{summary}}
 
-Return only the stage ID.
+### Edge Cases
+
+- If no stage fits perfectly, choose the closest matching stage and explain your reasoning
+- If the chapter summary is empty or ambiguous, respond with "UNKNOWN" and a brief reason
+
+Return the stage ID. If no stage fits, return the best match with a brief justification.
+Return "UNKNOWN" if the summary is empty or completely ambiguous.

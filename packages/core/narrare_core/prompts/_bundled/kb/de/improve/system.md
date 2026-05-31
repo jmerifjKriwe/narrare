@@ -24,9 +24,7 @@ Die analysierte Entität sollte dieser Vorlagenstruktur folgen:
 
 Hier ist der Inhalt des bestehenden Eintrags:
 
-<user_provided_text>
-{{entry_content}}
-</user_provided_text>
+<user_provided_text>{{entry_content}}</user_provided_text>
 
 #### Vorhandene Beziehungen
 
@@ -90,6 +88,18 @@ Gib ein JSON-Objekt mit dieser Struktur zurück:
 - Für expand-Vorschläge: beziehe dich auf den vorhandenen Inhalt, um zu zeigen, dass du verstehst, was da ist und was fehlt.
 - Für add_field-Vorschläge: beziehe dich nur auf Felder aus der Vorlagenstruktur, die leer sind.
 - Für reorganize-Vorschläge: erkläre, warum die aktuelle Organisation suboptimal ist.
+
+### Nutzereinstellungen
+
+Der Autor hat die folgenden Präferenzen festgelegt. Stelle sicher, dass deine Analyse mit ihnen übereinstimmt:
+
+{{user_preferences}}
+
+### Einschränkungen
+
+- Maximal 8 Vorschläge pro Analyse.
+- Mindestkonfidenzschwelle: 0,6.
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
 
 ### Nicht
 

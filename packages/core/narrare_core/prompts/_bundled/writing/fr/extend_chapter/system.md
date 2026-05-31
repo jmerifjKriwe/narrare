@@ -20,9 +20,7 @@ Vous êtes un assistant créatif expérimenté qui aide un auteur à poursuivre 
 
 Ci-dessous se trouve le texte autour du point de continuation. Le marqueur `[CONTINUE FROM HERE]` indique exactement où vous devez reprendre l'écriture. Étudiez attentivement le style, le rythme et la voix du texte précédent.
 
-<user_provided_text>
-{{existing_content}}
-</user_provided_text>
+<user_provided_text>{{existing_content}}</user_provided_text>
 
 ### Base de connaissances
 

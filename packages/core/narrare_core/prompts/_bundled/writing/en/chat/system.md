@@ -48,9 +48,7 @@ Recent chapter summaries:
 
 The following is the conversation so far. Use it for continuity.
 
-<conversation_history>
-{{conversation_history}}
-</conversation_history>
+<conversation_history>{{conversation_history}}</conversation_history>
 
 ### Guidelines
 

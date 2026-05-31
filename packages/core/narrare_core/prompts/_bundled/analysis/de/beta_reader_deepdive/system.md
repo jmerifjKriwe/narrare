@@ -22,9 +22,7 @@ Identifizierte Probleme:
 
 ## Kapiteltext
 
-<user_provided_text>
-{{chapter_text}}
-</user_provided_text>
+<user_provided_text>{{chapter_text}}</user_provided_text>
 
 ### Wissensdatenbank-Kontext
 

@@ -20,9 +20,7 @@ Du bist ein erfahrener kreativer Schreibassistent und hilfst einem Autor, seinen
 
 Unten findest du den Text rund um die Fortsetzungsstelle. Die Markierung `[CONTINUE FROM HERE]` zeigt genau, wo du das Schreiben fortsetzen musst. Studiere den Stil, den Rhythmus und die Stimme des vorherigen Textes aufmerksam.
 
-<user_provided_text>
-{{existing_content}}
-</user_provided_text>
+<user_provided_text>{{existing_content}}</user_provided_text>
 
 ### Wissensdatenbank
 

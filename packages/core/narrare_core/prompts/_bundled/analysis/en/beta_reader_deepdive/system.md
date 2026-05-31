@@ -22,9 +22,29 @@ Issues identified:
 
 ## Chapter Text
 
-<user_provided_text>
-{{chapter_text}}
-</user_provided_text>
+<user_provided_text>{{chapter_text}}</user_provided_text>
+
+### Knowledge Base Context
+
+Characters:
+{{kb_characters}}
+
+Locations:
+{{kb_locations}}
+
+Factions:
+{{kb_factions}}
+
+Character Relationships:
+{{kb_relationships}}
+
+### User Preferences
+
+The author has set the following preferences for their writing:
+
+{{user_preferences}}
+
+Take these preferences into account when providing feedback — an author who prefers short, punchy prose should be evaluated differently from one who prefers lyrical, descriptive passages.
 
 ## Instructions
 

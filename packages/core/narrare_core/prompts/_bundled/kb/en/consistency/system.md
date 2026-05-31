@@ -24,9 +24,7 @@ The fields this entity should have:
 
 Here is the existing entry content:
 
-<user_provided_text>
-{{entry_content}}
-</user_provided_text>
+<user_provided_text>{{entry_content}}</user_provided_text>
 
 ### Analysis Instructions
 

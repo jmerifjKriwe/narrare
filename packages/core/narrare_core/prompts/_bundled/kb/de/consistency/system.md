@@ -24,9 +24,7 @@ Die Felder, die diese Entität haben sollte:
 
 Hier ist der Inhalt des bestehenden Eintrags:
 
-<user_provided_text>
-{{entry_content}}
-</user_provided_text>
+<user_provided_text>{{entry_content}}</user_provided_text>
 
 ### Analyseanweisungen
 
@@ -76,6 +74,16 @@ Gib ein JSON-Objekt zurück:
 - severity "minor" = subtile Inkonsistenz, die vielleicht beabsichtigt ist
 - Markiere niemals absichtlich vage oder mysteriöse Felder — Autoren lassen Dinge bewusst offen.
 - Schlage keine Verbesserungen vor — markiere nur Widersprüche.
+
+### Nutzereinstellungen
+
+Der Autor hat die folgenden Präferenzen festgelegt. Stelle sicher, dass deine Analyse mit ihnen übereinstimmt:
+
+{{user_preferences}}
+
+### Einschränkungen
+
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
 
 ### Nicht
 

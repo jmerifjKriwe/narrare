@@ -37,9 +37,9 @@ class TestLLMObservabilityCache:
         mock_create: MagicMock,
     ) -> None:
         """finish_trace sends cache_read/cache_creation in the usage dict."""
-        mock_client = MagicMock(spec=object)
-        mock_trace = MagicMock(spec=object)
-        mock_generation = MagicMock(spec=object)
+        mock_client = MagicMock(spec=["trace"])
+        mock_trace = MagicMock(spec=["generation"])
+        mock_generation = MagicMock(spec=["end"])
         mock_client.trace.return_value = mock_trace
         mock_trace.generation.return_value = mock_generation
         mock_create.return_value = mock_client
@@ -67,8 +67,8 @@ class TestLLMObservabilityCache:
         mock_create: MagicMock,
     ) -> None:
         """finish_trace computes cache_savings_pct = cache_read / prompt_tokens."""
-        mock_client = MagicMock(spec=object)
-        mock_gen = MagicMock(spec=object)
+        mock_client = MagicMock(spec=["trace"])
+        mock_gen = MagicMock(spec=["end"])
         mock_client.trace.return_value.generation.return_value = mock_gen
         mock_create.return_value = mock_client
 
@@ -97,8 +97,8 @@ class TestLLMObservabilityCache:
         mock_create: MagicMock,
     ) -> None:
         """cache_savings_pct is 0 when cache_read_tokens is 0."""
-        mock_client = MagicMock(spec=object)
-        mock_gen = MagicMock(spec=object)
+        mock_client = MagicMock(spec=["trace"])
+        mock_gen = MagicMock(spec=["end"])
         mock_client.trace.return_value.generation.return_value = mock_gen
         mock_create.return_value = mock_client
 

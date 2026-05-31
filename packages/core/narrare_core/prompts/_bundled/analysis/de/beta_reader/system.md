@@ -58,9 +58,7 @@ Analysiere das Kapitel in diesen Kategorien:
 
 ### Kapiteltext
 
-<user_provided_text>
-{{chapter_text}}
-</user_provided_text>
+<user_provided_text>{{chapter_text}}</user_provided_text>
 
 ### Kapiteltitel
 

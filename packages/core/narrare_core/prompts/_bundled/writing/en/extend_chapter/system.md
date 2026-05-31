@@ -20,9 +20,7 @@ You are a skilled creative writing assistant helping an author continue their te
 
 Below is the text surrounding the continuation point. The marker `[CONTINUE FROM HERE]` shows exactly where you must resume writing. Study the style, rhythm, and voice of the pre-text carefully.
 
-<user_provided_text>
-{{existing_content}}
-</user_provided_text>
+<user_provided_text>{{existing_content}}</user_provided_text>
 
 ### Knowledge Base
 

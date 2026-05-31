@@ -76,7 +76,55 @@ class TestWikiSummariesSchema:
         self, db_session: AsyncSession
     ) -> None:
         """wiki_summaries should accept all valid status values (pending, fresh, stale)."""
-        for status in ("pending", "fresh", "stale"):
+        from datetime import UTC, datetime
+
+        # Satisfy FK chain: users → novels → kb_entries → wiki_summaries
+        now = datetime.now(UTC)
+        user_id = str(uuid.uuid4())
+        novel_id = str(uuid.uuid4())
+        await db_session.execute(
+            sqlalchemy.text(
+                "INSERT INTO users (id, email, hashed_password, created_at, updated_at) "
+                "VALUES (:id, :email, :pwd, :now, :now)"
+            ),
+            {
+                "id": user_id,
+                "email": f"wiki-{uuid.uuid4().hex[:8]}@test.com",
+                "pwd": "n/a",
+                "now": now,
+            },
+        )
+        await db_session.execute(
+            sqlalchemy.text(
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, :now, :now)"
+            ),
+            {
+                "id": novel_id,
+                "user_id": user_id,
+                "title": "Test Novel",
+                "now": now,
+            },
+        )
+
+        for i, status in enumerate(("pending", "fresh", "stale"), start=1):
+            entity_id = str(uuid.uuid4())
+            await db_session.execute(
+                sqlalchemy.text(
+                    "INSERT INTO kb_entries ("
+                    "id, novel_id, entity_type, name, slug, created_at, updated_at"
+                    ") "
+                    "VALUES (:id, :novel_id, :type, :name, :slug, :now, :now)"
+                ),
+                {
+                    "id": entity_id,
+                    "novel_id": novel_id,
+                    "type": "character",
+                    "name": f"Test Entity {i}",
+                    "slug": f"test-entity-{i}",
+                    "now": now,
+                },
+            )
             stmt = sqlalchemy.text(
                 "INSERT INTO wiki_summaries (id, novel_id, entity_id, narrative_summary, status) "
                 "VALUES (:id, :novel_id, :entity_id, :summary, :status)"
@@ -85,8 +133,8 @@ class TestWikiSummariesSchema:
                 stmt,
                 {
                     "id": str(uuid.uuid4()),
-                    "novel_id": str(uuid.uuid4()),
-                    "entity_id": str(uuid.uuid4()),
+                    "novel_id": novel_id,
+                    "entity_id": entity_id,
                     "summary": "test",
                     "status": status,
                 },
@@ -94,6 +142,54 @@ class TestWikiSummariesSchema:
 
     async def test_wiki_summaries_rejects_invalid_status(self, db_session: AsyncSession) -> None:
         """wiki_summaries status check constraint should reject invalid values."""
+        from datetime import UTC, datetime
+
+        # Satisfy FK chain: users → novels → kb_entries → wiki_summaries
+        now = datetime.now(UTC)
+        user_id = str(uuid.uuid4())
+        novel_id = str(uuid.uuid4())
+        entity_id = str(uuid.uuid4())
+        await db_session.execute(
+            sqlalchemy.text(
+                "INSERT INTO users (id, email, hashed_password, created_at, updated_at) "
+                "VALUES (:id, :email, :pwd, :now, :now)"
+            ),
+            {
+                "id": user_id,
+                "email": f"wiki-{uuid.uuid4().hex[:8]}@test.com",
+                "pwd": "n/a",
+                "now": now,
+            },
+        )
+        await db_session.execute(
+            sqlalchemy.text(
+                "INSERT INTO novels (id, user_id, title, created_at, updated_at) "
+                "VALUES (:id, :user_id, :title, :now, :now)"
+            ),
+            {
+                "id": novel_id,
+                "user_id": user_id,
+                "title": "Test Novel",
+                "now": now,
+            },
+        )
+        await db_session.execute(
+            sqlalchemy.text(
+                "INSERT INTO kb_entries ("
+                "id, novel_id, entity_type, name, slug, created_at, updated_at"
+                ") "
+                "VALUES (:id, :novel_id, :type, :name, :slug, :now, :now)"
+            ),
+            {
+                "id": entity_id,
+                "novel_id": novel_id,
+                "type": "character",
+                "name": "Test Entity",
+                "slug": "test-entity",
+                "now": now,
+            },
+        )
+
         stmt = sqlalchemy.text(
             "INSERT INTO wiki_summaries (id, novel_id, entity_id, narrative_summary, status) "
             "VALUES (:id, :novel_id, :entity_id, :summary, :status)"
@@ -103,8 +199,8 @@ class TestWikiSummariesSchema:
                 stmt,
                 {
                     "id": str(uuid.uuid4()),
-                    "novel_id": str(uuid.uuid4()),
-                    "entity_id": str(uuid.uuid4()),
+                    "novel_id": novel_id,
+                    "entity_id": entity_id,
                     "summary": "test",
                     "status": "invalid_status",
                 },

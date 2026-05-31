@@ -58,9 +58,7 @@ Analyze the chapter across these categories:
 
 ### Chapter Text
 
-<user_provided_text>
-{{chapter_text}}
-</user_provided_text>
+<user_provided_text>{{chapter_text}}</user_provided_text>
 
 ### Chapter Titles
 
@@ -82,9 +80,31 @@ Analyze the chapter across these categories:
 
 {{kb_locations}}
 
+### Known Factions (from Knowledge Base)
+
+{{kb_factions}}
+
+### Character Relationships
+
+{{kb_relationships}}
+
 ### Genre
 
 {{genre}}
+
+### Genre-Sensitive Assessment
+
+Adjust your analysis based on the genre:
+
+- **Action/Thriller**: Prioritize pacing, tension, and stakes. Character depth is secondary to momentum.
+- **Literary Fiction**: Prioritize prose quality, character interiority, and thematic resonance. Pacing should be contemplative.
+- **Fantasy/Sci-Fi**: Prioritize worldbuilding consistency, system logic, and immersion. Exposition pacing matters.
+- **Romance**: Prioritize character chemistry, emotional arc, and relationship tension. External plot supports the love story.
+- **Mystery**: Prioritize fair clues, red herring distribution, and resolution satisfaction. Pacing can be deliberately slow.
+- **Historical Fiction**: Prioritize period accuracy, sensory authenticity, and social context. Anachronisms are critical flaws.
+- **Horror**: Prioritize atmosphere, threat buildup, and threat consistency. Prose should serve tension over beauty.
+
+When scoring in the overall section, adjust expectations to genre conventions. A 7 in pacing means different things for a thriller vs. literary fiction.
 
 ### Focus Categories
 

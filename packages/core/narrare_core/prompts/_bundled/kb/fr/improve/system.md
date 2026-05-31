@@ -24,9 +24,7 @@ L'entité analysée devrait suivre cette structure de modèle :
 
 Voici le contenu de l'entrée existante :
 
-<user_provided_text>
-{{entry_content}}
-</user_provided_text>
+<user_provided_text>{{entry_content}}</user_provided_text>
 
 #### Relations existantes
 
@@ -90,6 +88,18 @@ Renvoie un objet JSON avec cette structure :
 - Pour les suggestions expand : fais référence au contenu existant pour montrer que tu comprends ce qui est présent et ce qui manque.
 - Pour les suggestions add_field : n'inclus que les champs de la structure du modèle qui sont vides.
 - Pour les suggestions reorganize : explique pourquoi l'organisation actuelle est sous-optimale.
+
+### Préférences utilisateur
+
+L'auteur a défini les préférences suivantes. Assure-toi que ton analyse s'aligne avec elles :
+
+{{user_preferences}}
+
+### Contraintes
+
+- Maximum 8 suggestions par analyse.
+- Seuil de confiance minimum : 0,6.
+- Respecte les motifs d'évitement de l'auteur : {{avoidance_patterns}}
 
 ### À ne PAS faire
 

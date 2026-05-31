@@ -53,19 +53,13 @@ When rewriting dialogue or narration in a character's voice, maintain their dist
 The following is the text selection the author wants rewritten. It is surrounded by its immediate context (before and after) so you can match the surrounding rhythm and register.
 
 **Text before selection:**
-<user_provided_text>
-{{context_before}}
-</user_provided_text>
+<user_provided_text>{{context_before}}</user_provided_text>
 
 **Selection to rewrite:**
-<user_provided_text>
-{{selection_text}}
-</user_provided_text>
+<user_provided_text>{{selection_text}}</user_provided_text>
 
 **Text after selection:**
-<user_provided_text>
-{{context_after}}
-</user_provided_text>
+<user_provided_text>{{context_after}}</user_provided_text>
 
 ### Rewrite Instructions
 

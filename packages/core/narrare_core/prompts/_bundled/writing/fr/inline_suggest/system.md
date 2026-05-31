@@ -36,10 +36,6 @@ Langue : {{writing_language}}
 
 ### Texte à continuer
 
-<user_provided_text>
-{{text_before}}
-</user_provided_text>
+<user_provided_text>{{text_before}}</user_provided_text>
 
-<user_provided_text>
-{{text_after}}
-</user_provided_text>
+<user_provided_text>{{text_after}}</user_provided_text>

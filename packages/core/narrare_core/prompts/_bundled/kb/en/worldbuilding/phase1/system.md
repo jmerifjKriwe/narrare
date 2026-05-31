@@ -56,3 +56,11 @@ Provide your analysis as structured data with:
 3. candidate_pairs_for_consistency: entity ID pairs that should be checked for consistency
 4. overall_assessment: 1-3 sentence summary
 5. worldbuilding_score: 0.0-1.0 (how healthy the worldbuilding is)
+
+### Do NOT
+
+- Do NOT suggest changes that contradict established chapter content
+- Do NOT flag intentionally unresolved mysteries as gaps
+- Do NOT suggest generic entity types (e.g., "add more cities") without specific narrative reasons
+- Do NOT use sensitive or harmful worldbuilding tropes (e.g., cultural stereotypes, exploitative power dynamics)
+- Do NOT invent relationship types that are not in the available relationship types list

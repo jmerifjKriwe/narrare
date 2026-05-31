@@ -109,9 +109,16 @@ Renvoie un objet JSON correspondant au schéma ExtractionOutput :
 - N'extrais PAS de relations sans identifier les deux entités participantes.
 - Ne confonds PAS l'incertitude narrative (un personnage ment) avec l'incertitude d'extraction — extrais ce que le texte dit, pas ce qui est vrai dans le monde de l'histoire.
 
+### Préférences utilisateur
+
+L'auteur a défini les préférences suivantes. Assure-toi que ton analyse s'aligne avec elles :
+
+{{user_preferences}}
+
 ### Contraintes
 
 - Chaque extraction doit inclure une citation `source_text` exacte.
 - Les scores de confiance doivent suivre strictement l'échelle de calibrage.
 - Filtre tout élément avec une confiance inférieure à 0,3 avant de renvoyer.
 - Inclus les observations générales dans `analysis_notes`.
+- Respecte les motifs d'évitement de l'auteur : {{avoidance_patterns}}

@@ -58,9 +58,7 @@ Analyse le chapitre à travers ces catégories :
 
 ### Texte du chapitre
 
-<user_provided_text>
-{{chapter_text}}
-</user_provided_text>
+<user_provided_text>{{chapter_text}}</user_provided_text>
 
 ### Titres des chapitres
 

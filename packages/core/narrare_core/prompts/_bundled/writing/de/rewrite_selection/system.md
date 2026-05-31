@@ -53,19 +53,13 @@ Wenn du Dialoge oder Erzählung in der Stimme eines Charakters umschreibst, beha
 Der folgende Textauszug soll vom Autor umgeschrieben werden. Er wird von seinem unmittelbaren Kontext (davor und danach) umgeben, damit du den umgebenden Rhythmus und das Register treffen kannst.
 
 **Text vor der Auswahl:**
-<user_provided_text>
-{{context_before}}
-</user_provided_text>
+<user_provided_text>{{context_before}}</user_provided_text>
 
 **Auszug zum Umschreiben:**
-<user_provided_text>
-{{selection_text}}
-</user_provided_text>
+<user_provided_text>{{selection_text}}</user_provided_text>
 
 **Text nach der Auswahl:**
-<user_provided_text>
-{{context_after}}
-</user_provided_text>
+<user_provided_text>{{context_after}}</user_provided_text>
 
 ### Überarbeitungsanweisungen
 

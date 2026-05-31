@@ -24,9 +24,7 @@ The entity being analyzed should follow this template structure:
 
 Here is the existing entry content:
 
-<user_provided_text>
-{{entry_content}}
-</user_provided_text>
+<user_provided_text>{{entry_content}}</user_provided_text>
 
 #### Existing Relationships
 

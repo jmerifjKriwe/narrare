@@ -22,9 +22,7 @@ The entity being built follows this template structure:
 
 ### Already Answered Fields
 
-<user_provided_data>
-{{existing_answers}}
-</user_provided_data>
+<user_provided_data>{{existing_answers}}</user_provided_data>
 
 ### World Context
 

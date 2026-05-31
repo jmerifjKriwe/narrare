@@ -109,9 +109,16 @@ Gib ein JSON-Objekt zurück, das dem ExtractionOutput-Schema entspricht:
 - Extrahiere NICHT Beziehungen, ohne beide beteiligten Entitäten zu identifizieren.
 - Verwechsle NICHT narrative Unsicherheit (ein Charakter lügt) mit Extraktionsunsicherheit — extrahiere, was der Text sagt, nicht was in der Geschichte wahr ist.
 
+### Nutzereinstellungen
+
+Der Autor hat die folgenden Präferenzen festgelegt. Stelle sicher, dass deine Extraktion mit ihnen übereinstimmt:
+
+{{user_preferences}}
+
 ### Einschränkungen
 
 - Jede Extraktion muss ein exaktes `source_text`-Zitat enthalten.
 - Konfidenzwerte müssen strikt der Kalibrierungsskala folgen.
 - Filtere vor der Rückgabe alle Einträge mit Konfidenz unter 0,3 heraus.
 - Füge Gesamtbeobachtungen in `analysis_notes` ein.
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

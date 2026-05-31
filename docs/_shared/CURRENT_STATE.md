@@ -8,7 +8,7 @@
 ## Last Updated
 
 Date: 2026-05-31
-Session: ADR-023 co-author change engine lifecycle (apply_changes, batch feedback, SET-005 cascade)
+Session: ADR-016 Phase 3 — Backend AgentRegistry Wiring (WritingGraph Integration)
 
 ---
 
@@ -99,7 +99,7 @@ Completed in Phase 6 so far:
 13. ✅ SET-005: Configurable Token Limits — 3-layer resolution cascade
 14. ✅ CR-01 through CR-04: Prompt quality audits + preference wiring + meta-prompt guardrails
 15. ✅ Coverage Uplift: 1,045+ new tests across all layers
-16. ✅ ADR-016: Prompt Caching — Accepted, 4-phase implementation plan
+16. ✅ ADR-016: Prompt Caching — Implemented across all 4 phases (Phase 0: AgentRegistry, Phase 1: CacheSettings+ModelSettings, Phase 2: Cache Observability, Phase 3: WritingGraph Backend DI)
 17. ✅ ADR-017: Embedding Cascade — Implemented
 18. ✅ ADR-018: Promptfoo Eval Framework — Implemented
 19. ✅ ADR-019: System-Prompt Consistency — Accepted
@@ -112,8 +112,7 @@ Completed in Phase 6 so far:
 
 ## What's Next
 
-1. ADR-016 Phase 0: AgentRegistry implementation (`core/agents/registry.py`)
-2. WIKI-001 frontend: Wiki UI — entity detail view, manual refresh, wiki overview (Tasks 19-20)
+1. WIKI-001 frontend: Wiki UI — entity detail view, manual refresh, wiki overview (Tasks 19-20)
 3. ANAL-003 or ANAL-004: Readability / POV Analysis
 4. Q-003: Embedding provider abstraction
 5. E2E test patterns
@@ -139,7 +138,7 @@ Completed in Phase 6 so far:
 | ADR-013 | Internationalization | ✅ Implemented |
 | ADR-014 | RULE-14: Model-Migration Consistency | ✅ Enforced |
 | ADR-015 | Pydantic-AI Agents as First-Class Citizens | ✅ Accepted |
-| ADR-016 | Prompt Caching Strategy | ✅ Accepted (4-phase plan) |
+| ADR-016 | Prompt Caching Strategy | ✅ Implemented (all 4 phases) |
 | ADR-017 | Embedding Cascade for mem0 | ✅ Implemented |
 | ADR-018 | Promptfoo Eval Framework | ✅ Implemented |
 | ADR-019 | System-Prompt Consistency for Agents | ✅ Accepted |

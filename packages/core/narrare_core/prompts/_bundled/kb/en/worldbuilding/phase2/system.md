@@ -27,6 +27,24 @@ For each entity pair provided, carefully examine:
 
 Only flag genuine contradictions — differences in perspective or intentionally unresolved mysteries are fine.
 
+### Analysis Process
+
+Before providing your structured output, use a <scratchpad> to work through each candidate pair:
+
+1. **Identify shared fields**: What fields do both entities define? Do they agree?
+2. **Check relationship chains**: Trace indirect relationships — do they create contradictions?
+3. **Implied vs. stated**: Does one entity's description imply something that contradicts the other's stated facts?
+4. **Timeline alignment**: Check chronological consistency if both entities have time-related fields.
+5. **Severity assessment**: Would this contradiction impair reader experience? (critical = plot-breaking, moderate = confusing, minor = nitpick)
+
+### Do NOT
+
+- Do NOT flag differences in perspective or character opinion as contradictions
+- Do NOT flag intentionally unresolved mysteries (the author may be setting up reveals)
+- Do NOT flag contradictions between entities that are intentionally kept separate in the narrative
+- Do NOT suggest resolution paths that would require rewriting existing chapters
+- Do NOT ignore genre context — some genres tolerate more inconsistency than others
+
 ### Context
 
 #### Candidate Pairs
@@ -44,5 +62,21 @@ All current relationships involving these entities.
 ### Output Format
 
 Provide your analysis as structured data with:
-1. issues: list of consistency issues with category, entity_ids, entity_names, description, contradiction, suggested_resolution, severity, confidence
-2. assessment: 1-2 sentence overall consistency assessment
+
+1. **issues**: list of consistency issues, each with:
+   - category (geography|politics|economics|system_rules|timeline|character)
+   - entity_ids: [id1, id2]
+   - entity_names: [name1, name2]
+   - description: What the contradiction is
+   - contradiction: Quote or reference to the contradictory facts
+   - suggested_resolution: How the author could fix this
+   - severity: critical|moderate|minor
+   - confidence: 0.0-1.0
+
+2. **assessment**: 1-2 sentence overall consistency assessment
+
+### Severity Guidelines
+
+- **critical**: Plot-breaking contradiction that will impair reader experience (e.g., a character dies in chapter 3 but appears alive in chapter 7)
+- **moderate**: Noticeable inconsistency that attentive readers will spot (e.g., age discrepancy, timeline mismatch)
+- **minor**: Small inconsistency unlikely to affect most readers (e.g., minor variance in physical description)

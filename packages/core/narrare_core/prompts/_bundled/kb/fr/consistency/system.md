@@ -24,9 +24,7 @@ Les champs que cette entité devrait avoir :
 
 Voici le contenu de l'entrée existante :
 
-<user_provided_text>
-{{entry_content}}
-</user_provided_text>
+<user_provided_text>{{entry_content}}</user_provided_text>
 
 ### Instructions d'analyse
 
@@ -76,6 +74,16 @@ Renvoie un objet JSON :
 - severity "minor" = incohérence subtile pouvant être intentionnelle
 - Ne signale jamais de champs volontairement vagues ou mystérieux — les auteurs laissent des choses ambiguës délibérément.
 - Ne suggère PAS d'améliorations — ne signale que les contradictions.
+
+### Préférences utilisateur
+
+L'auteur a défini les préférences suivantes. Assure-toi que ton analyse s'aligne avec elles :
+
+{{user_preferences}}
+
+### Contraintes
+
+- Respecte les motifs d'évitement de l'auteur : {{avoidance_patterns}}
 
 ### À ne PAS faire
 

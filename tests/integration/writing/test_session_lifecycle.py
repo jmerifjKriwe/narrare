@@ -69,7 +69,15 @@ def ws_env():
 
 
 def _register_user(client: TestClient) -> tuple[str, dict[str, str]]:
-    """Register a user and return (user_id, auth_headers)."""
+    """Register a user and return (user_id, auth_headers).
+
+    The ``TokenResponse`` schema does not include ``user_id`` in the response
+    body, so we decode it from the JWT access token's ``sub`` claim instead.
+    """
+    import jwt as _jwt
+
+    from narrare._app.config import get_settings
+
     email = f"ws-test-{uuid4().hex[:8]}@example.com"
     resp = client.post(
         "/api/v1/auth/register",
@@ -81,9 +89,46 @@ def _register_user(client: TestClient) -> tuple[str, dict[str, str]]:
     )
     assert resp.status_code == 201, f"Registration failed: {resp.text}"
     data = resp.json()
-    return data.get("user_id", str(uuid4())), {
-        "Authorization": f"Bearer {data['access_token']}",
-    }
+
+    # Decode user_id from JWT — TokenResponse doesn't include user_id
+    settings = get_settings()
+    payload = _jwt.decode(
+        data["access_token"],
+        settings.secret_key,
+        algorithms=["HS256"],
+    )
+    user_id = payload["sub"]
+    assert user_id, "JWT sub claim must not be empty"
+
+    auth_headers = {"Authorization": f"Bearer {data['access_token']}"}
+
+    # Create a fake AI provider + set it as default so the model routing
+    # resolver doesn't fail with ConfigurationError when the WebSocket
+    # handler resolves LLM config.
+    # Full path: /api/v1 + /settings (router.py) + /ai/providers (router_ai_providers.py)
+    provider_resp = client.post(
+        "/api/v1/settings/ai/providers",
+        json={
+            "provider_name": "test-provider",
+            "api_key": "sk-test-key",
+        },
+        headers=auth_headers,
+    )
+    assert provider_resp.status_code == 201, f"Provider creation failed: {provider_resp.text}"
+    provider_id = provider_resp.json()["id"]
+
+    # Set the test provider as default so model routing succeeds
+    settings_resp = client.patch(
+        "/api/v1/settings/ai",
+        json={
+            "default_provider_id": provider_id,
+            "default_model": "test-model",
+        },
+        headers=auth_headers,
+    )
+    assert settings_resp.status_code == 200, f"AI settings update failed: {settings_resp.text}"
+
+    return user_id, auth_headers
 
 
 def _create_novel_and_chapter(
