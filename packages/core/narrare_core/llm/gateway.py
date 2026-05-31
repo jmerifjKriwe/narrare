@@ -15,7 +15,7 @@ See CONSTRAINTS.md RULE-01b and ADR-015.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import structlog
 
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from pydantic_ai.models import Model
+    from pydantic_ai.settings import ModelSettings
 
     from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 
@@ -123,14 +124,14 @@ class ModelRegistry:
         factory = get_provider(config.provider_name)
         return factory(config.model_id, api_key=api_key, base_url=base_url)
 
-    def get_cache_settings(self, config: ResolvedModelConfig) -> dict[str, Any]:
+    def get_cache_settings(self, config: ResolvedModelConfig) -> ModelSettings:
         """Build provider-specific ModelSettings for prompt caching.
 
         Returned as kwargs dict for Agent.run(model_settings=...).
         """
         from narrare_core.llm._providers.cache_settings import build_model_settings
 
-        return build_model_settings(config.provider_name, config.cache)
+        return cast("ModelSettings", build_model_settings(config.provider_name, config.cache))
 
     async def run(
         self,
@@ -182,9 +183,14 @@ class ModelRegistry:
             output_type=output_type or str,
         )
         try:
+            model_settings = self.get_cache_settings(config) or None
+            # narrare: allow-agent reason="ModelRegistry run() passes model_settings (ADR-016)"
             result = await agent.run(
-                prompt, deps=deps, usage_limits=usage_limits
-            )  # narrare: allow-agent reason="ModelRegistry convenience run() (ADR-015)"
+                prompt,
+                deps=deps,
+                usage_limits=usage_limits,
+                model_settings=model_settings,
+            )
 
             # Populate TokenUsage with provider/model for cost estimation
             _usage = result.usage
@@ -250,7 +256,8 @@ class ModelRegistry:
         start = time.monotonic()
 
         # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
-        async with agent.run_stream(user_prompt) as stream_result:
+        model_settings = self.get_cache_settings(config) or None
+        async with agent.run_stream(user_prompt, model_settings=model_settings) as stream_result:
             async for text in stream_result.stream_text(delta=True):
                 yield StreamChunk(text=text)
 

@@ -167,3 +167,133 @@ class TestTokenLimitProfile:
         result = ModelRegistry._profile_to_limits("long_texts")
         assert result is not None
         assert result.total_tokens_limit == 128000
+
+
+class TestModelRegistryPassesCacheSettings:
+    """ModelRegistry.run/stream gibt model_settings an Agent.run/run_stream weiter."""
+
+    async def test_run_without_cache_does_not_pass_model_settings(
+        self,
+        registry_with_test_model: ModelRegistry,
+        write_config: ResolvedModelConfig,
+    ) -> None:
+        """write_config (cache=None) → model_settings=None an Agent.run."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from pydantic_ai import Agent
+        from pydantic_ai.agent import AgentRunResult
+        from pydantic_ai.usage import RunUsage
+
+        mock_result = MagicMock(
+            spec=AgentRunResult,
+            output="mocked",
+            usage=MagicMock(spec=RunUsage, input_tokens=0, output_tokens=0, total_tokens=0),
+        )
+        mock_run = AsyncMock(return_value=mock_result)
+
+        with patch.object(Agent, "run", mock_run):
+            await registry_with_test_model.run(
+                LLMIntent.WRITE,
+                prompt="Write.",
+                config=write_config,
+            )
+
+        mock_run.assert_called_once()
+        _args, kwargs = mock_run.call_args
+        assert kwargs.get("model_settings") is None
+
+    async def test_run_with_anthropic_cache_passes_model_settings(
+        self,
+        registry_with_test_model: ModelRegistry,
+    ) -> None:
+        """Anthropic CacheSettings → model_settings={"cache_control": True}."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from pydantic_ai import Agent
+        from pydantic_ai.agent import AgentRunResult
+        from pydantic_ai.usage import RunUsage
+
+        from narrare_core.llm.intents import CacheSettings
+
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+            temperature=0.8,
+            max_tokens=4096,
+            streams=True,
+            cache=CacheSettings(),
+        )
+
+        mock_result = MagicMock(
+            spec=AgentRunResult,
+            output="mocked",
+            usage=MagicMock(spec=RunUsage, input_tokens=0, output_tokens=0, total_tokens=0),
+        )
+        mock_run = AsyncMock(return_value=mock_result)
+
+        with patch.object(Agent, "run", mock_run):
+            await registry_with_test_model.run(
+                LLMIntent.WRITE,
+                prompt="Write with cache.",
+                config=config,
+            )
+
+        mock_run.assert_called_once()
+        _args, kwargs = mock_run.call_args
+        assert kwargs.get("model_settings") == {"cache_control": True}
+
+    async def test_stream_with_anthropic_cache_passes_model_settings(
+        self,
+        registry_with_test_model: ModelRegistry,
+    ) -> None:
+        """Anthropic CacheSettings → model_settings an agent.run_stream."""
+        from contextlib import AbstractAsyncContextManager
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from pydantic_ai import Agent
+        from pydantic_ai.result import StreamedRunResult
+        from pydantic_ai.usage import RunUsage
+
+        from narrare_core.llm.intents import CacheSettings
+
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+            temperature=0.8,
+            max_tokens=4096,
+            streams=True,
+            cache=CacheSettings(),
+        )
+
+        async def mock_stream_text(delta=True):  # type: ignore[no-untyped-def]
+            for _ in range(0):  # empty — yields nothing
+                yield ""
+
+        mock_stream_result = MagicMock(spec=StreamedRunResult)
+        mock_stream_result.stream_text = mock_stream_text
+        mock_stream_result.usage = MagicMock(
+            spec=RunUsage,
+            input_tokens=10,
+            output_tokens=10,
+            total_tokens=20,
+        )
+
+        # Async context manager for agent.run_stream() return value
+        mock_context = MagicMock(spec=AbstractAsyncContextManager)
+        mock_context.__aenter__ = AsyncMock(return_value=mock_stream_result)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+
+        mock_run_stream = MagicMock(spec=Agent.run_stream, return_value=mock_context)
+
+        with patch.object(Agent, "run_stream", mock_run_stream):
+            async for _chunk in registry_with_test_model.stream(
+                intent=LLMIntent.WRITE,
+                system_prompt="System.",
+                user_prompt="Write with cache.",
+                config=config,
+            ):
+                pass
+
+        mock_run_stream.assert_called_once()
+        _args, kwargs = mock_run_stream.call_args
+        assert kwargs.get("model_settings") == {"cache_control": True}
