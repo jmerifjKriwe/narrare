@@ -22,7 +22,9 @@ Issues identified:
 
 ## Chapter Text
 
+<user_provided_text>
 {{chapter_text}}
+</user_provided_text>
 
 ## Instructions
 
@@ -70,5 +72,5 @@ Respond with a structured JSON:
 - Provide 3-6 revision suggestions with concrete guidance.
 - Score reflects this category only, not the overall chapter.
 - All scores are 1-10 where 5 is average, 7 is good, 9 is exceptional.
-- Write analysis in {{language}}.
+- Write analysis in {{writing_language}}.
 - Do not repeat feedback already given in Phase 1 — build on it with more depth.

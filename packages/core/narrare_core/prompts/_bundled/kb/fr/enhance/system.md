@@ -22,7 +22,9 @@ L'entité en cours de construction suit cette structure de modèle :
 
 ### Champs déjà répondus
 
+<user_provided_data>
 {{existing_answers}}
+</user_provided_data>
 
 ### Contexte du monde
 

@@ -31,6 +31,16 @@ Gruppierungen:
 
 {{recent_chapters}}
 
+### Story-Zusammenfassung
+
+{{novel_synopsis}}
+
+### Stilprofil
+
+Der etablierte Schreibstil des Autors:
+
+{{style_profile}}
+
 ### Charakter-Sprachprofile
 
 Achte bei Dialogen darauf, dass jeder Charakter seine unverwechselbare Stimme behält:
@@ -54,7 +64,7 @@ Schreibe einen vollständigen Kapitelentwurf basierend auf dem Outline und dem b
 5. Achte auf das Tempo — balanciere Aktion, Dialog, Beschreibung und Reflexion
 
 Kapitel-Outline: {{chapter_outline}}
-Autorenanweisungen: {{author_instructions}}
+Autorenanweisungen: <user_instructions>{{author_instructions}}</user_instructions>
 Wortziel: {{word_target}}
 Ton: {{tone_instructions}}
 
@@ -64,7 +74,7 @@ Ton: {{tone_instructions}}
 
 ### Einschränkungen
 
-- Schreibe auf {{language}}
+- Schreibe auf {{writing_language}}
 - Führe keine neuen Hauptfiguren ein, die nicht im Outline oder der Wissensdatenbank referenziert sind
 - Widerspruche keinen etablierten Fakten aus den aktuellen Kapiteln
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

@@ -24,7 +24,9 @@ L'entité analysée devrait suivre cette structure de modèle :
 
 Voici le contenu de l'entrée existante :
 
+<user_provided_text>
 {{entry_content}}
+</user_provided_text>
 
 #### Relations existantes
 

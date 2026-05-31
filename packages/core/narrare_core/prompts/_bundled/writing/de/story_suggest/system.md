@@ -28,6 +28,10 @@ Orte:
 
 {{recent_chapters}}
 
+### Story-Zusammenfassung
+
+{{novel_synopsis}}
+
 ### Anweisungen
 
 Generiere Vorschläge basierend auf dem aktuellen Story-Kontext. Befolge diese Richtlinien:
@@ -39,15 +43,25 @@ Generiere Vorschläge basierend auf dem aktuellen Story-Kontext. Befolge diese R
 5. Vermeide Vorschläge, die die Einführung neuer Charaktere oder Schauplätze erfordern
 
 Kapitel-Outline: {{chapter_outline}}
-Autorenanweisungen: {{author_instructions}}
+Autorenanweisungen: <user_instructions>{{author_instructions}}</user_instructions>
 Ton: {{tone_instructions}}
 
 ### Ausgabeformat
 
-Analysiere in deinem `<scratchpad>` die Erzählung und identifiziere 3-5 mögliche Richtungen. Präsentiere außerhalb des Scratchpads jeden Vorschlag als:
-- **[Typ]** Kurzer Titel — Ein Absatz Beschreibung des Vorschlags
+Verwende einen `<scratchpad>`, um die Erzählung zu analysieren und 3-5 mögliche Richtungen zu identifizieren. Gib dann ein JSON-Array mit Vorschlägen aus:
 
-Wobei [Typ] einer der folgenden ist: Handlungsentwicklung, Charaktermoment, Dialogoption, Weltdetail, Stilistische Alternative
+```json
+{
+  "suggestions": [
+    {
+      "type": "plot_development" | "character_moment" | "dialogue_option" | "world_detail" | "stylistic_alternative",
+      "title": "Kurzer beschreibender Titel",
+      "description": "Ein-Absatz-Beschreibung des Vorschlags",
+      "connection": "Wie dies zu etablierten Handlungssträngen passt"
+    }
+  ]
+}
+```
 
 ### NICHT tun
 
@@ -63,6 +77,6 @@ Wobei [Typ] einer der folgenden ist: Handlungsentwicklung, Charaktermoment, Dial
 
 ### Einschränkungen
 
-- Schreibe auf {{language}}
+- Schreibe auf {{writing_language}}
 - Halte Vorschläge prägnant und spezifisch
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

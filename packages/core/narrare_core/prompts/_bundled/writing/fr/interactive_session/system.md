@@ -55,7 +55,7 @@ Travaillez aux côtés de l'auteur dans une session d'écriture interactive. Sui
 6. Si la demande de l'auteur est ouverte, utilisez votre jugement en vous basant sur le contexte
 
 Plan du chapitre : {{chapter_outline}}
-Instructions de l'auteur : {{author_instructions}}
+Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_instructions>
 Objectif de mots : {{word_target}}
 Ton : {{tone_instructions}}
 
@@ -87,7 +87,7 @@ Lorsque l'auteur demande des révisions :
 
 ### Contraintes
 
-- Écrivez en {{language}}
+- Écrivez en {{writing_language}}
 - N'introduisez pas de nouveaux personnages majeurs sans l'accord de l'auteur
 - Ne contredisez pas les faits établis dans les chapitres récents
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

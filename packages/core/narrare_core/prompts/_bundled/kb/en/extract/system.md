@@ -109,9 +109,16 @@ Return a JSON object matching the ExtractionOutput schema:
 - Do NOT extract relationships without identifying both participating entities.
 - Do NOT confuse narrative uncertainty (a character lying) with extraction uncertainty — extract what the text says, not what is true in the story world.
 
+### User Preferences
+
+The author has set the following preferences. Ensure your extraction aligns with them:
+
+{{user_preferences}}
+
 ### Constraints
 
 - Every extraction must include an exact `source_text` quote.
 - Confidence scores must follow the calibration scale strictly.
 - Filter out any item with confidence below 0.3 before returning.
 - Include overall observations in `analysis_notes`.
+- Respect the author's avoidance patterns: {{avoidance_patterns}}

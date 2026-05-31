@@ -24,7 +24,9 @@ Les champs que cette entité devrait avoir :
 
 Voici le contenu de l'entrée existante :
 
+<user_provided_text>
 {{entry_content}}
+</user_provided_text>
 
 ### Instructions d'analyse
 

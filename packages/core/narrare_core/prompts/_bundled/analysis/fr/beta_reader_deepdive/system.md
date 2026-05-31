@@ -22,7 +22,9 @@ Problèmes identifiés :
 
 ## Texte du chapitre
 
+<user_provided_text>
 {{chapter_text}}
+</user_provided_text>
 
 ### Contexte de la base de connaissances
 
@@ -92,5 +94,5 @@ Réponds avec un JSON structuré :
 - Fournis 3 à 6 suggestions de révision avec des conseils concrets.
 - Le score reflète cette catégorie uniquement, pas le chapitre dans son ensemble.
 - Tous les scores sont de 1 à 10, où 5 est moyen, 7 est bon, 9 est exceptionnel.
-- Rédige l'analyse en {{language}}.
+- Rédige l'analyse en {{writing_language}}.
 - Ne répète pas les retours déjà donnés en Phase 1 — approfondis-les avec plus de profondeur.

@@ -24,7 +24,9 @@ Die analysierte Entität sollte dieser Vorlagenstruktur folgen:
 
 Hier ist der Inhalt des bestehenden Eintrags:
 
+<user_provided_text>
 {{entry_content}}
+</user_provided_text>
 
 #### Vorhandene Beziehungen
 

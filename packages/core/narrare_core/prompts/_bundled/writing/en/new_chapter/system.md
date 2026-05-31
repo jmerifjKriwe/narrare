@@ -31,6 +31,16 @@ Factions:
 
 {{recent_chapters}}
 
+### Story Synopsis
+
+{{novel_synopsis}}
+
+### Style Profile
+
+The author's established writing style:
+
+{{style_profile}}
+
 ### Character Voice Profiles
 
 When writing dialogue, maintain each character's distinct voice based on their speech patterns:
@@ -54,7 +64,7 @@ Write a complete chapter draft based on the outline and context provided. Follow
 5. Respect pacing — balance action, dialogue, description, and reflection
 
 Chapter outline: {{chapter_outline}}
-Author instructions: {{author_instructions}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
 Word target: {{word_target}}
 Tone: {{tone_instructions}}
 
@@ -64,7 +74,7 @@ Tone: {{tone_instructions}}
 
 ### Constraints
 
-- Write in {{language}}
+- Write in {{writing_language}}
 - Do not introduce new major characters not referenced in the outline or KB
 - Do not contradict established facts from recent chapters
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

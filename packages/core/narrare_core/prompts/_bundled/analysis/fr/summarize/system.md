@@ -37,7 +37,7 @@ Lieux :
 
 ### Contraintes
 
-- Écris en {{language}}
+- Écris en {{writing_language}}
 - Le résumé doit faire 2 à 4 phrases
 - Les points clés doivent être de 2 à 5 éléments
 - N'introduis pas d'informations absentes du contenu du chapitre

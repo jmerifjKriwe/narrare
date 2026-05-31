@@ -31,6 +31,16 @@ Factions :
 
 {{recent_chapters}}
 
+### Synopsis de l'histoire
+
+{{novel_synopsis}}
+
+### Profil de style
+
+Le style d'écriture établi de l'auteur :
+
+{{style_profile}}
+
 ### Profils vocaux des personnages
 
 Lorsque vous écrivez des dialogues, maintenez la voix distincte de chaque personnage :
@@ -54,7 +64,7 @@ Rédigez un brouillon complet de chapitre basé sur le plan et le contexte fourn
 5. Respectez le rythme — équilibrez action, dialogue, description et réflexion
 
 Plan du chapitre : {{chapter_outline}}
-Instructions de l'auteur : {{author_instructions}}
+Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_instructions>
 Objectif de mots : {{word_target}}
 Ton : {{tone_instructions}}
 
@@ -64,7 +74,7 @@ Ton : {{tone_instructions}}
 
 ### Contraintes
 
-- Écrivez en {{language}}
+- Écrivez en {{writing_language}}
 - N'introduisez pas de nouveaux personnages majeurs non référencés dans le plan ou la base de connaissances
 - Ne contredisez pas les faits établis dans les chapitres récents
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

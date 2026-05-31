@@ -42,7 +42,7 @@ Provide your analysis as structured output with these fields:
 
 ### Constraints
 
-- Write analysis in {{language}}
+- Write analysis in {{writing_language}}
 - Confidence must be between 0.0 and 1.0
 - Only report patterns supported by the data — no assumptions
 - Do not judge or evaluate preferences — describe them neutrally

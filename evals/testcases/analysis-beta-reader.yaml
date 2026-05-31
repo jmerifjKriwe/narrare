@@ -1,0 +1,197 @@
+# Analysis Beta Reader prompt evaluation
+# Tests quality of beta reader feedback on chapter text
+# Prompt source: packages/core/narrare_core/prompts/_bundled/analysis/en/beta_reader/system.md
+# NOTE: Keep inline prompt in sync with the production bundled prompt.
+description: "Analysis Beta Reader — Structured Feedback Quality"
+
+prompts:
+  - id: "analysis-beta-reader"
+    raw: |
+      You are an experienced beta reader providing honest, constructive feedback on creative writing. You read chapters from a reader's perspective, noting what works, what doesn't, and what would improve the reading experience.
+
+      You are NOT a grammar checker. You evaluate story-level quality: plot coherence, character believability, prose effectiveness, pacing, and reader engagement.
+
+      ## Analysis Framework
+
+      Analyze the chapter across these categories:
+      - **Plot**: Clear goals, conflicts, progression, cliffhangers, plot holes.
+      - **Character**: Believability, motivation clarity, emotional depth, dialogue, agency.
+      - **Prose**: Clarity, show-vs-tell, description effectiveness, sentence variety, word choice.
+      - **Pacing**: Scene rhythm, tension build/release, dragging sections, rushed moments.
+      - **Reader Experience**: Engagement, confusion points, emotional resonance, immersion.
+
+      ## Severity Guidelines
+
+      - **critical**: Will significantly impair reader experience. Must address.
+      - **moderate**: Noticeable issue that some readers will find distracting. Should address.
+      - **minor**: Small improvement opportunity. Nice to address.
+
+      ## Output Format
+
+      Respond with a structured JSON object containing:
+
+      ```json
+      {
+        "strengths": [
+          {
+            "category": "plot|character|prose|pacing|experience",
+            "title": "Short title",
+            "description": "Why this works well",
+            "text_excerpt": "Relevant passage (if applicable)"
+          }
+        ],
+        "feedback": [
+          {
+            "category": "plot|character|prose|pacing|experience",
+            "severity": "critical|moderate|minor",
+            "location": "Where in the chapter",
+            "title": "Short title",
+            "description": "What the issue is and why it matters",
+            "suggestion": "Concrete actionable suggestion"
+          }
+        ],
+        "questions": [
+          {
+            "category": "plot|character|prose|pacing|experience",
+            "location": "Where the question arises",
+            "question": "What a reader would wonder",
+            "context": "What triggered this question"
+          }
+        ],
+        "overall": {
+          "summary": "2-3 sentence overall impression",
+          "reader_engagement": 1-10,
+          "emotional_impact": 1-10,
+          "pacing_score": 1-10,
+          "prose_quality": 1-10,
+          "plot_progression": 1-10,
+          "character_development": 1-10
+        }
+      }
+      ```
+
+      ### Quality Rules
+
+      - Be specific. Reference actual text passages when identifying issues or strengths.
+      - Give actionable suggestions the author can implement immediately.
+      - Balance honesty with encouragement.
+      - Provide 3-7 strengths, 5-12 feedback items, and 2-5 reader questions.
+      - All scores are 1-10 where 5 is average, 7 is good, 9 is exceptional.
+
+providers:
+  - "openai:gpt-4o-mini"
+
+tests:
+  # Test Case 1: Fantasy chapter with clear strengths and issues
+  # Evaluates: structured feedback, severity calibration, actionable suggestions, scoring
+  - vars:
+      chapter_text: |
+        The runes on the cavern wall pulsed like a heartbeat, each flash casting Renna's shadow in different directions. She pressed her palm against the stone and felt warmth — not the warmth of a fire, but something older, something that remembered when the mountain itself was young.
+
+        "It's responding to you," Thale whispered, his voice barely louder than the rune-light. He stood three paces behind her, close enough to grab her arm if needed, far enough to run if things went wrong. It was the sensible distance for a skeptic near something he didn't understand.
+
+        She could feel the pattern now. The runes weren't random — they were a sequence, a sentence written in a language her fingers understood before her mind could. Left ring, right fork, left ring again. The warmth spread up her arm.
+
+        And then she heard it. A voice, not in her ears but in the warmth itself, like a memory of sound. "At last." The words settled into her bones.
+
+        Renna stumbled back from the wall, gasping. The rune-light dimmed. Thale caught her elbow — he'd moved closer, the sensible distance forgotten.
+
+        "What did it say?" he demanded.
+
+        She couldn't tell him. Not because she didn't want to, but because she wasn't sure the words had been words at all. It had felt more like recognition, like meeting someone you'd never seen but somehow knew. The warmth in her palm pulsed once, twice, then faded to a memory of itself.
+
+        "I don't know," she lied. It was the first time she'd lied to Thale, and she hated how easy it was.
+
+        By dawn they were back at camp. The others would never know what had happened beneath the mountain.
+      chapter_titles: "Chapter 4: The Voice in the Stone"
+      word_count: "320"
+      previous_summaries: "Ch 1: Renna discovers her ability to sense magic in stone. Ch 2: She joins Thale's expedition into the Ironpeak Mountains. Ch 3: The party enters an ancient cavern system."
+      kb_characters: |
+        Renna — Protagonist, has an innate connection to stone magic
+        Thale — Expedition leader, skeptic about magic, protective
+      kb_locations: |
+        Ironpeak Mountains — Remote mountain range
+        The Cavern — Ancient underground chamber with runic inscriptions
+      genre: "fantasy"
+      focus_categories: "character, prose, pacing"
+      user_preferences: "Atmospheric, character-driven fantasy"
+      avoidance_patterns: "None"
+      language: "English"
+    assert:
+      - type: llm-rubric
+        value: |
+          The beta reader feedback should:
+          1. Return valid JSON with "strengths", "feedback", "questions", and "overall" keys
+          2. Identify the opening paragraph's sensory detail as a strength (prose category)
+          3. Identify the subtle character development — Renna lying to Thale for the first time — as a strength (character category)
+          4. Flag the pacing issue of the abrupt time jump from "By dawn they were back at camp" — it feels rushed after such an intense scene
+          5. Provide feedback with severity classifications: critical, moderate, or minor
+          6. Each feedback item should have category, severity, location, title, description, and suggestion
+          7. All overall scores should be integers 1-10
+          8. Provide 3-7 strengths and 5-12 feedback items (within quality rules range)
+          9. Include actionable suggestions, not generic "improve this" advice
+          10. NOT focus on grammar/spelling — this is story-level feedback
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  # Test Case 2: Thriller chapter with dialogue-heavy scene
+  # Evaluates: dialogue quality assessment, tension analysis, reader questions
+  - vars:
+      chapter_text: |
+        The diner was three quarters empty, which was how Kira liked it. She took the booth by the window where she could watch the parking lot and the road beyond. The coffee arrived before she had to ask — Manny always knew.
+
+        "You look like hell," Manny said, setting down the mug without a coaster. He never used coasters. It drove his wife crazy.
+
+        "Haven't slept." She wrapped both hands around the ceramic. "Volkov's people were at the warehouse again. Third time this week."
+
+        "Same crew?"
+
+        "New faces. Same car." She pulled a folded napkin from her jacket pocket and slid it across the table. Three license plate numbers, handwritten. Manny studied them like they were scripture.
+
+        He looked up. "One of these is a diplomatic plate."
+
+        "I know what it is."
+
+        Manny leaned back. The booth creaked. "Kira, if Volkov's bringing in diplomatic cover, this isn't a surveillance operation anymore. This is escalation."
+
+        She took a long drink of coffee. It was bitter and too hot, exactly what she needed. "I need the safe house in Battersea. Two weeks. Can you arrange it?"
+
+        "I can arrange anything. Whether you'll survive to use it is a different question." He slid the napkin into his shirt pocket. "I'll make calls tonight. But Kira — if you're wrong about this, if it's not what you think it is..."
+
+        "I'm not wrong." She stood, leaving the coffee half-finished. "I'm never wrong about Volkov."
+      chapter_titles: "Chapter 8: The Diner"
+      word_count: "280"
+      previous_summaries: "Ch 6: Kira discovered Volkov's connection to the port authority. Ch 7: She broke into the warehouse and found diplomatic shipping manifests."
+      kb_characters: |
+        Kira — Former intelligence analyst, investigating Volkov
+        Manny — Diner owner, underground contact, reliable
+        Volkov — Arms dealer, primary antagonist
+      kb_locations: |
+        The Diner — Kira and Manny's regular meeting spot
+        The Warehouse — Volkov's suspected operation center
+      genre: "thriller"
+      focus_categories: "character, pacing, plot"
+      user_preferences: "Tight, dialogue-driven thriller"
+      avoidance_patterns: "None"
+      language: "English"
+    assert:
+      - type: llm-rubric
+        value: |
+          The beta reader feedback should:
+          1. Return valid JSON with "strengths", "feedback", "questions", and "overall" keys
+          2. Identify the dialogue quality as a strength — Kira's terse lines and Manny's more relaxed speech create distinct voices
+          3. Identify the tension building as a strength — escalating stakes through the diplomatic plate reveal
+          4. Flag that the chapter has minimal physical description of the characters — this is fine for thriller pacing but worth noting
+          5. Ask reader questions like "What is Kira's real relationship with Volkov?" or "Why is she so certain she's not wrong?"
+          6. Note the effective use of props (coffee mug, napkin) to ground dialogue
+          7. Overall scores should reflect a well-executed thriller scene — moderate-to-high scores
+          8. Feedback should reference specific passages, not be generic
+          9. All scores should be integers 1-10
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"

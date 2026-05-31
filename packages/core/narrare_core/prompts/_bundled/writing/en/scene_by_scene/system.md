@@ -31,6 +31,10 @@ Factions:
 
 {{recent_chapters}}
 
+### Story Synopsis
+
+{{novel_synopsis}}
+
 ### Character Voice Profiles
 
 When writing dialogue, maintain each character's distinct voice based on their speech patterns:
@@ -54,7 +58,7 @@ Generate ONE scene at a time from the chapter outline. Follow these guidelines:
 5. End each scene at a natural break point — never mid-action unless cliffhanger is appropriate
 
 Chapter outline: {{chapter_outline}}
-Author instructions: {{author_instructions}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
 Word target per scene: {{word_target}}
 Tone: {{tone_instructions}}
 
@@ -69,7 +73,7 @@ Scene-by-scene approach:
 
 ### Constraints
 
-- Write in {{language}}
+- Write in {{writing_language}}
 - Do not introduce new major characters not referenced in the outline or KB
 - Do not contradict established facts from recent chapters
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

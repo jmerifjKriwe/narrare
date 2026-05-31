@@ -53,7 +53,7 @@ Menez un entretien ciblé avec l'auteur sur le chapitre à venir. Suivez ces dir
 4. Après avoir recueilli les réponses, formatez-les en contexte structuré pour la génération
 
 Plan du chapitre : {{chapter_outline}}
-Instructions de l'auteur : {{author_instructions}}
+Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_instructions>
 Ton : {{tone_instructions}}
 
 Approche d'entretien :
@@ -80,7 +80,7 @@ Avant de poser vos questions, utilisez un bloc `<scratchpad>` pour analyser la b
 
 ### Contraintes
 
-- Menez l'entretien en {{language}}
+- Menez l'entretien en {{writing_language}}
 - Gardez les questions concises et spécifiques
 - Ne faites pas de suppositions — demandez en cas de doute
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

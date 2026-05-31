@@ -60,7 +60,7 @@ The author has deliberately chosen the following style and content preferences. 
 
 ### Constraints
 
-- Write feedback in {{language}}
+- Write feedback in {{writing_language}}
 - Do not rewrite the draft — provide guidance for the author to revise
 - Do not introduce new plot elements or characters not in the draft
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

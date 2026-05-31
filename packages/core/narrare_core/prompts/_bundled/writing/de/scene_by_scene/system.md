@@ -31,6 +31,10 @@ Gruppierungen:
 
 {{recent_chapters}}
 
+### Story-Zusammenfassung
+
+{{novel_synopsis}}
+
 ### Charakter-Sprachprofile
 
 Achte bei Dialogen darauf, dass jeder Charakter seine unverwechselbare Stimme behält:
@@ -54,7 +58,7 @@ Generiere jeweils EINE Szene aus dem Kapitel-Outline. Befolge diese Richtlinien:
 5. Beende jede Szene an einem natürlichen Haltepunkt — nie mitten in der Aktion, es sei denn, ein Cliffhanger ist angemessen
 
 Kapitel-Outline: {{chapter_outline}}
-Autorenanweisungen: {{author_instructions}}
+Autorenanweisungen: <user_instructions>{{author_instructions}}</user_instructions>
 Wortziel pro Szene: {{word_target}}
 Ton: {{tone_instructions}}
 
@@ -69,7 +73,7 @@ Szene-für-Szene-Ansatz:
 
 ### Einschränkungen
 
-- Schreibe auf {{language}}
+- Schreibe auf {{writing_language}}
 - Führe keine neuen Hauptfiguren ein, die nicht im Outline oder der Wissensdatenbank referenziert sind
 - Widerspruche keinen etablierten Fakten aus den aktuellen Kapiteln
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

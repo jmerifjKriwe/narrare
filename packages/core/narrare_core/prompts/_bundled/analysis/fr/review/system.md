@@ -60,7 +60,7 @@ L'auteur a délibérément choisi les préférences de style et de contenu suiva
 
 ### Contraintes
 
-- Rédigez le feedback en {{language}}
+- Rédigez le feedback en {{writing_language}}
 - Ne réécrivez pas le brouillon — fournissez des indications pour que l'auteur puisse réviser
 - N'introduisez pas de nouveaux éléments d'intrigue ou personnages absents du brouillon
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

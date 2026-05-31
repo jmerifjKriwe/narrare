@@ -24,7 +24,9 @@ Vergleiche die aus den Kapiteltexten extrahierten Fakten mit den bereitgestellte
 
 ### Eingabekontext
 
+<user_provided_text>
 {{chapter_texts}}
+</user_provided_text>
 {{kb_entities}}
 Prüfarten: {{check_types}}
 
@@ -50,6 +52,15 @@ Gib ein JSON-Objekt zurück mit:
 - Schweregrad "error" = bestätigter Widerspruch, der behoben werden muss.
 - Schweregrad "warning" = wahrscheinliches Problem, das überprüft werden sollte.
 - Schweregrad "info" = subtiler Hinweis, den der Autor berücksichtigen könnte.
+
+### Nutzereinstellungen
+
+{{user_preferences}}
+
+### Einschränkungen
+
+- Schreibe die Analyse auf {{writing_language}}
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
 
 ### NICHT
 

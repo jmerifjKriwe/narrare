@@ -60,7 +60,7 @@ Der Autor hat bewusst die folgenden Stil- und Inhaltseinstellungen gewählt. **B
 
 ### Einschränkungen
 
-- Schreibe Feedback auf {{language}}
+- Schreibe Feedback auf {{writing_language}}
 - Schreibe den Entwurf NICHT um — gib Orientierung für die Überarbeitung durch den Autor
 - Füge KEINE neuen Handlungselemente oder Charaktere hinzu, die nicht im Entwurf stehen
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

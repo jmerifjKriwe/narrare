@@ -18,7 +18,9 @@ The entity being built follows this template structure:
 
 ### Already Answered Fields
 
+<user_provided_data>
 {{existing_answers}}
+</user_provided_data>
 
 ### World Context
 
@@ -72,9 +74,16 @@ Return a JSON object matching the KBAssistOutput schema:
 - Do NOT reference entities that do not exist in the world context.
 - Do NOT skip required or important fields in favor of minor detail fields.
 
+### User Preferences
+
+The author has set the following preferences. Ensure your question is compatible:
+
+{{user_preferences}}
+
 ### Constraints
 
 - Ask exactly one question per response.
 - Always reference the specific field_key from the template.
 - Prioritize unanswered fields over partially-answered ones.
 - Respect the field priority order when multiple fields are unanswered.
+- Respect the author's avoidance patterns: {{avoidance_patterns}}

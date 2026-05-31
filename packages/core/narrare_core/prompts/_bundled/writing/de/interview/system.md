@@ -53,7 +53,7 @@ Führe ein fokussiertes Interview mit dem Autor über das kommende Kapitel. Befo
 4. Formatiere die gesammelten Antworten als strukturierten Kontext für die Generierung
 
 Kapitel-Outline: {{chapter_outline}}
-Autorenanweisungen: {{author_instructions}}
+Autorenanweisungen: <user_instructions>{{author_instructions}}</user_instructions>
 Ton: {{tone_instructions}}
 
 Interview-Ansatz:
@@ -80,7 +80,7 @@ Verwende vor deinen Fragen einen `<scratchpad>`-Block, um die aktuelle Wissensda
 
 ### Einschränkungen
 
-- Führe das Interview auf {{language}}
+- Führe das Interview auf {{writing_language}}
 - Halte Fragen prägnant und spezifisch
 - Triff keine Annahmen — frage nach, wenn du unsicher bist
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

@@ -22,7 +22,9 @@ Die aufgebaute Entität folgt dieser Vorlagenstruktur:
 
 ### Bereits beantwortete Felder
 
+<user_provided_data>
 {{existing_answers}}
+</user_provided_data>
 
 ### Weltkontext
 

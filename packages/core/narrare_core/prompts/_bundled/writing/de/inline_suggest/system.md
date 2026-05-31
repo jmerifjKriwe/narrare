@@ -31,11 +31,15 @@ Deine Aufgabe: Vervollständige den Text natürlich, als hätte der Autor ihn se
 
 Projekt: {{project_title}}
 Genre: {{genre}}
-Sprache: {{language}}
+Sprache: {{writing_language}}
 {{chapter_context}}
 
 ### Fortzusetzender Text
 
+<user_provided_text>
 {{text_before}}
+</user_provided_text>
 
+<user_provided_text>
 {{text_after}}
+</user_provided_text>

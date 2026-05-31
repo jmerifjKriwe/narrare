@@ -24,7 +24,9 @@ The fields this entity should have:
 
 Here is the existing entry content:
 
+<user_provided_text>
 {{entry_content}}
+</user_provided_text>
 
 ### Analysis Instructions
 
@@ -74,6 +76,16 @@ Return a JSON object:
 - severity "minor" = subtle inconsistency that might be intentional
 - Never flag intentionally vague or mysterious fields — writers leave things ambiguous on purpose.
 - Do NOT suggest improvements — only flag contradictions.
+
+### User Preferences
+
+The author has set the following preferences. Ensure your analysis aligns with them:
+
+{{user_preferences}}
+
+### Constraints
+
+- Respect the author's avoidance patterns: {{avoidance_patterns}}
 
 ### Do NOT
 

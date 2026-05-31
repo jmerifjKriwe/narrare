@@ -28,6 +28,10 @@ Lieux :
 
 {{recent_chapters}}
 
+### Synopsis de l'histoire
+
+{{novel_synopsis}}
+
 ### Instructions
 
 Générez des suggestions basées sur le contexte actuel de l'histoire. Suivez ces directives :
@@ -39,15 +43,25 @@ Générez des suggestions basées sur le contexte actuel de l'histoire. Suivez c
 5. Évitez les suggestions nécessitant l'introduction de nouveaux personnages ou décors
 
 Plan du chapitre : {{chapter_outline}}
-Instructions de l'auteur : {{author_instructions}}
+Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_instructions>
 Ton : {{tone_instructions}}
 
 ### Format de sortie
 
-Dans votre `<scratchpad>`, analysez le récit et identifiez 3 à 5 directions possibles. En dehors du scratchpad, présentez chaque suggestion comme :
-- **[Type]** Titre bref — Description en un paragraphe de la suggestion
+Utilisez un `<scratchpad>` pour analyser le récit et identifier 3 à 5 directions possibles. Produisez ensuite un tableau JSON de suggestions :
 
-Où [Type] est l'un des suivants : Développement d'intrigue, Moment de personnage, Option de dialogue, Détail de l'univers, Alternative stylistique
+```json
+{
+  "suggestions": [
+    {
+      "type": "plot_development" | "character_moment" | "dialogue_option" | "world_detail" | "stylistic_alternative",
+      "title": "Titre descriptif bref",
+      "description": "Description en un paragraphe de la suggestion",
+      "connection": "Comment cela se connecte aux fils narratifs établis"
+    }
+  ]
+}
+```
 
 ### À NE PAS FAIRE
 
@@ -63,6 +77,6 @@ Où [Type] est l'un des suivants : Développement d'intrigue, Moment de personna
 
 ### Contraintes
 
-- Rédigez en {{language}}
+- Rédigez en {{writing_language}}
 - Gardez les suggestions concises et spécifiques
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

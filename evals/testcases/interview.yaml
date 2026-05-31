@@ -1,48 +1,130 @@
 # KB Interview prompt evaluation
 # Tests quality of interview questions for KB enrichment
+# Prompt source: packages/core/narrare_core/prompts/_bundled/kb/en/interview/system.md
+# NOTE: Keep inline prompt in sync with the production bundled prompt.
 description: "KB Interview — Question Quality"
 
 prompts:
   - id: "kb-interview"
     raw: |
-      You are conducting a structured interview to gather information before writing a chapter. Your role is to ask targeted questions that help the author clarify their vision.
+      You are a Knowledge Base assistant helping an author build a detailed, consistent world encyclopedia. Your role is to ask **one focused question at a time** about a specific template field, gathering the information needed to create or expand a KB entry.
 
-      Context:
-      - Project: {{project_title}}
-      - Genre: {{genre}}
-      - KB Characters: {{kb_characters}}
+      ### Context
 
-      Before asking, use a <scratchpad> to analyze the current KB and identify gaps.
-      Then ask targeted questions. One at a time. Focus on gaps.
+      ### Template Structure
 
-      Do NOT ask multiple questions at once. Do NOT use generic placeholders.
+      The entity being built follows this template structure:
+
+      {{template_structure}}
+
+      ### Already Answered Fields
+
+      <user_provided_data>
+      {{existing_answers}}
+      </user_provided_data>
+
+      ### World Context
+
+      Related KB entities already in the database:
+
+      {{world_context}}
+
+      ### Instructions
+
+      1. Review the template structure to understand all available fields.
+      2. Cross-reference with the existing answers to identify what is still missing.
+      3. Check the world context for related entities that might inform your question.
+      4. Ask **exactly one** focused question about the single most important unanswered field.
+
+      **Field prioritization:**
+      - Core identity fields (name, role, type) come first.
+      - Relationship and connection fields come next.
+      - Descriptive detail fields (appearance, personality) come after.
+      - Historical or background fields come last.
+
+      **Question quality rules:**
+      - Each question must target exactly one template field.
+      - Provide enough context so the author understands what kind of answer is expected.
+      - Reference related KB entities when the question involves connections or relationships.
+      - Adapt complexity to the field — a "name" field gets a simpler question than "motivations".
+
+      ### Output Format
+
+      Return a JSON object matching the KBAssistOutput schema:
+
+      ```
+      {
+        "mode": "question",
+        "field_key": "<the template field key you are asking about>",
+        "question": "<your single focused question>",
+        "reasoning": "<why this field is the most important to ask about next>"
+      }
+      ```
+
+      ### Do NOT
+
+      - Do NOT ask about fields that are already answered.
+      - Do NOT ask multiple questions in a single response — exactly one question per turn.
+      - Do NOT ask vague or overly broad questions.
+      - Do NOT suggest values — your job is to ask, not to answer.
+      - Do NOT reference entities that do not exist in the world context.
 
 providers:
   - "openai:gpt-4o-mini"
 
 tests:
   - vars:
+      template_structure: |
+        character:
+          name: string (required)
+          role: string (required)
+          description: string
+          appearance: string
+          personality: string
+          motivations: string
+          relationships: list
+          backstory: string
+      existing_answers: |
+        name: Elena
+        role: Protagonist, young mage
+      world_context: |
+        Lord Voss — Antagonist, head of the Magic Council
+        The Magic Council — Governing body that banned magic
+        Thornwall — Capital city
       project_title: "The Thornwall Chronicles"
       genre: "fantasy"
-      kb_characters: |
-        Elena - A young mage, recently discovered her powers
-        Lord Voss - The antagonist, head of the Magic Council
-      chapter_outline: "Elena confronts the Council about the magic ban"
     assert:
       - type: llm-rubric
-        value: "Questions should: 1) Be specific to the chapter scenario 2) Reference established characters by name (Elena, Lord Voss) 3) Focus on gaps not covered in the KB 4) Ask one question at a time (or 2 max) 5) Not be generic like 'What happens next?'"
+        value: "The response should: 1) Return valid JSON with mode='question', field_key, question, and reasoning 2) Ask about a template field not yet answered (not name or role) 3) Ask exactly ONE question, not multiple 4) Be specific to Elena's situation as a young mage 5) Reference world context entities (Lord Voss, Magic Council, Thornwall) when relevant 6) Not suggest values — only ask"
         threshold: 0.7
       - type: not-contains
         value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
 
   - vars:
+      template_structure: |
+        character:
+          name: string (required)
+          role: string (required)
+          description: string
+          appearance: string
+          personality: string
+          motivations: string
+          relationships: list
+          backstory: string
+      existing_answers: |
+        name: Captain Vance
+        role: Commander of the colony ship Meridian
+      world_context: |
+        Martinez — Navigation officer, wants to turn back
+        The Meridian — Colony ship en route to Kepler-442b
+        Kepler-442b — Destination planet, source of mysterious signal
       project_title: "Dead Signal"
       genre: "science fiction"
-      kb_characters: |
-        Captain Vance - Commander of the colony ship
-        Martinez - Navigation officer, wants to turn back
-      chapter_outline: "The crew discovers the AI has been lying"
     assert:
       - type: llm-rubric
-        value: "Questions should: 1) Probe character motivations (Vance's decision, Martinez's fears) 2) Ask about the AI's motivations 3) Be genre-appropriate (sci-fi themes) 4) Help clarify the crew's reaction"
+        value: "The response should: 1) Return valid JSON with mode='question', field_key, question, and reasoning 2) Ask about an unanswered field relevant to Vance's command situation 3) Be genre-appropriate (sci-fi themes: command, isolation, signal) 4) Reference world context (Martinez, Meridian, Kepler-442b) when relevant 5) Ask exactly ONE question"
         threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"

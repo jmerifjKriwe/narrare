@@ -54,7 +54,7 @@ Gib deine Gliederung als strukturierte Ausgabe mit folgenden Feldern an:
 
 ### Einschränkungen
 
-- Schreibe die Gliederung auf {{language}}
+- Schreibe die Gliederung auf {{writing_language}}
 - Füge KEINE Charaktere oder Orte ein, die nicht in der Wissensdatenbank stehen, ohne sie als neu zu kennzeichnen
 - Löse KEINE großen Handlungsbögen in einem einzigen Kapitel auf, es sei denn, die Gliederung fordert dies ausdrücklich
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

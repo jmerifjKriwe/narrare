@@ -55,7 +55,7 @@ Work alongside the author in an interactive writing session. Follow these guidel
 6. If the author's request is open-ended, use your judgment based on the context
 
 Chapter outline: {{chapter_outline}}
-Author instructions: {{author_instructions}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
 Word target: {{word_target}}
 Tone: {{tone_instructions}}
 
@@ -87,7 +87,7 @@ When the author requests revisions:
 
 ### Constraints
 
-- Write in {{language}}
+- Write in {{writing_language}}
 - Do not introduce new major characters without the author's approval
 - Do not contradict established facts from recent chapters
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

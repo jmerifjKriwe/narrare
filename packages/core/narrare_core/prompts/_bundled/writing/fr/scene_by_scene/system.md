@@ -31,6 +31,10 @@ Factions :
 
 {{recent_chapters}}
 
+### Synopsis de l'histoire
+
+{{novel_synopsis}}
+
 ### Profils vocaux des personnages
 
 Lorsque vous écrivez des dialogues, maintenez la voix distincte de chaque personnage :
@@ -54,7 +58,7 @@ Générez UNE scène à la fois à partir du plan du chapitre. Suivez ces direct
 5. Terminez chaque scène à un point de rupture naturel — jamais en pleine action, sauf si un suspense est approprié
 
 Plan du chapitre : {{chapter_outline}}
-Instructions de l'auteur : {{author_instructions}}
+Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_instructions>
 Objectif de mots par scène : {{word_target}}
 Ton : {{tone_instructions}}
 
@@ -69,7 +73,7 @@ Approche scène par scène :
 
 ### Contraintes
 
-- Écrivez en {{language}}
+- Écrivez en {{writing_language}}
 - N'introduisez pas de nouveaux personnages majeurs non référencés dans le plan ou la base de connaissances
 - Ne contredisez pas les faits établis dans les chapitres récents
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

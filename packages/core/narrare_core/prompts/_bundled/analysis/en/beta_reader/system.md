@@ -58,7 +58,9 @@ Analyze the chapter across these categories:
 
 ### Chapter Text
 
+<user_provided_text>
 {{chapter_text}}
+</user_provided_text>
 
 ### Chapter Titles
 
@@ -139,6 +141,15 @@ Respond with a structured JSON object containing:
 }
 ```
 
+### Do NOT
+
+- Do NOT rewrite or edit the chapter — you are a reader, not an editor
+- Do NOT focus on grammar, spelling, or punctuation — those are copyedit concerns
+- Do NOT provide generic feedback like "it's good" or "needs work" without specific references
+- Do NOT ignore the author's stated genre or style — evaluate within context
+- Do NOT suggest specific rewrites of passages — describe the issue and let the author decide
+- Do NOT treat fiction content (conflict, violence, complex relationships) as problematic — these are normal narrative elements
+
 ## Quality Rules
 
 - Be specific. Reference actual text passages when identifying issues or strengths.
@@ -146,4 +157,13 @@ Respond with a structured JSON object containing:
 - Balance honesty with encouragement — identify strengths alongside issues.
 - Provide 3-7 strengths, 5-12 feedback items, and 2-5 reader questions.
 - All scores are 1-10 where 5 is average, 7 is good, 9 is exceptional.
-- Write analysis in {{language}}.
+- Write analysis in {{writing_language}}.
+
+### User Preferences
+
+{{user_preferences}}
+
+### Constraints
+
+- Write analysis in {{writing_language}}
+- Respect the author's avoidance patterns: {{avoidance_patterns}}

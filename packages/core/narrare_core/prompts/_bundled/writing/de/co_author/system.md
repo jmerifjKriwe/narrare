@@ -30,11 +30,17 @@ Orte:
 
 {{recent_chapters}}
 
+### Stilprofil
+
+Der etablierte Schreibstil des Autors:
+
+{{style_profile}}
+
 ### Zu verbessernder Text
 
 Die folgende Passage soll vom Autor verbessert werden:
 
-{{context_before}}{{selection_text}}{{context_after}}
+<user_provided_text>{{context_before}}</user_provided_text><user_provided_text>{{selection_text}}</user_provided_text><user_provided_text>{{context_after}}</user_provided_text>
 
 ### Fokusbereiche
 
@@ -78,6 +84,6 @@ der ursprünglichen Passage.
 
 ### Einschränkungen
 
-- Schreibe auf {{language}}
+- Schreibe auf {{writing_language}}
 - Passe Rhythmus und Register des umgebenden Kontexts an
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

@@ -1,0 +1,148 @@
+# KB Extract prompt evaluation
+# Tests quality of entity extraction from chapter text
+# Prompt source: packages/core/narrare_core/prompts/_bundled/kb/en/extract/system.md
+# NOTE: Keep inline prompt in sync with the production bundled prompt.
+description: "KB Extract — Entity Extraction Quality"
+
+prompts:
+  - id: "kb-extract"
+    raw: |
+      You are a Knowledge Base extraction agent analyzing chapter text for entities, relationships, and potential conflicts. Your role is to **identify and extract structured information** that should be added to or updated in the story's Knowledge Base.
+
+      ### Context
+
+      ### Chapter
+
+      - **Title:** {{chapter_title}}
+      - **Genre:** {{genre}}
+
+      ### Existing KB Entities
+
+      The following entities are already in the Knowledge Base:
+
+      {{existing_entity_names}}
+
+      ### Instructions
+
+      1. Read the chapter text carefully, identifying all meaningful entities, relationships, and world details.
+      2. For each finding, classify it as one of:
+         - **new_entity**: A character, location, object, or concept not yet in the KB.
+         - **update_entity**: New information about an existing KB entity.
+         - **relationship**: A connection between two entities (ally, member_of, located_in, etc.).
+         - **conflict**: Information that contradicts existing KB data.
+      3. Provide a confidence score calibrated as follows:
+         - **≥ 0.7**: Explicitly stated facts — directly mentioned or clearly described.
+         - **0.4 – 0.7**: Implied or inferred — reasonable deduction from context.
+         - **< 0.4**: Speculation — possible but not strongly supported. **Never return items below 0.3.**
+      4. Always quote the exact source text that supports each extraction.
+
+      ### Output Format
+
+      Return a JSON object matching the ExtractionOutput schema:
+
+      ```json
+      {
+        "results": [
+          {
+            "item_type": "new_entity",
+            "entity_type": "character",
+            "name": "Entity Name",
+            "confidence": 0.9,
+            "source_text": "Exact quote from chapter...",
+            "proposed_content": { "role": "...", "description": "..." }
+          }
+        ],
+        "analysis_notes": "Overall observations about the chapter's content."
+      }
+      ```
+
+      - Each item in `results` must include `item_type`, `name`, `confidence`, and `source_text`.
+      - Never include items with confidence below 0.3.
+
+      ### Do NOT
+
+      - Do NOT extract entities that are only mentioned in passing with no meaningful information.
+      - Do NOT return items with confidence below 0.3 — filter these out entirely.
+      - Do NOT fabricate source text — always quote the exact passage from the chapter.
+      - Do NOT create new entity types outside the standard set (character, location, faction, object, concept, setting, timeline, system).
+
+providers:
+  - "openai:gpt-4o-mini"
+
+tests:
+  # Test Case 1: Fantasy chapter with multiple entity types
+  # Evaluates: entity detection, classification, confidence calibration, source quoting
+  - vars:
+      chapter_title: "Chapter 7: The Saltwood Covenant"
+      genre: "fantasy"
+      existing_entity_names: |
+        Elena — young mage, protagonist
+        Lord Voss — head of the Magic Council
+        Thornwall — capital city
+      chapter_text: |
+        Elena pressed her back against the cold stone of the Saltwood Archive, listening to the footsteps recede down the corridor. The archive was older than the Council itself — its shelves held spellbooks written in languages that no living mage could read.
+
+        "You shouldn't be here," whispered a voice from the shadows. A young man stepped into the moonlight — Corwin, Lord Voss's estranged son. His Council robes were gone, replaced by the rough spun wool of the Saltwood resistance. He carried a leather satchel bulging with documents.
+
+        "Neither should you," Elena replied, but she lowered her hands from the defensive stance. "Your father's patrols sweep this wing every hour."
+
+        "Which is exactly why we need to move now." Corwin spread a map across the reading table — it showed the Thornwall sewer system, with a route marked in red ink leading to the Council chambers below the Crystal Spire. "The resistance has been planning this for months. Your magic could be the key to the entire operation."
+
+        Elena studied the map. The Crystal Spire was said to be impervious to magic, but the sewers beneath it were another matter entirely — they predated the Spire by centuries, built by the Samekh architects who had first settled Thornwall long before the Council's rise.
+    assert:
+      - type: llm-rubric
+        value: |
+          The extraction should:
+          1. Return valid JSON with a "results" array and "analysis_notes"
+          2. Extract "Corwin" as a new_entity (character) with confidence ≥ 0.7 — he is clearly described as Lord Voss's estranged son, member of the Saltwood resistance
+          3. Extract "Saltwood Archive" as a new_entity (location) — it's described in detail
+          4. Extract "Crystal Spire" as a new_entity (location) — important setting mentioned
+          5. Extract "Samekh architects" as a new_entity (faction or concept)
+          6. Extract a relationship between Corwin and Lord Voss (family_of or similar)
+          7. Extract a relationship between Corwin and the Saltwood resistance (member_of)
+          8. Each result must include exact source_text quotes from the chapter
+          9. All confidence scores must be ≥ 0.3
+          10. No fabricated or speculative entities
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"
+
+  # Test Case 2: Sci-fi chapter with conflict detection
+  # Evaluates: update_entity detection, conflict identification, confidence below threshold filtering
+  - vars:
+      chapter_title: "Chapter 12: The Signal Decoded"
+      genre: "science fiction"
+      existing_entity_names: |
+        Captain Vance — Commander of the colony ship Meridian
+        Martinez — Navigation officer, wants to turn back
+        The Meridian — Colony ship en route to Kepler-442b
+        Kepler-442b — Destination planet
+      chapter_text: |
+        Martinez slammed her fist on the navigation console. "I knew it. I knew the AI was lying."
+
+        Captain Vance stood motionless at the bridge's viewport, watching the stars slide past like frozen rain. The decoded signal played on loop in her earpiece — not a distress call from Kepler-442b, but a warning. Turn back. The planet is not what it seems.
+
+        "Martinez, recalibrate our heading," Vance said quietly. "New destination: the asteroid belt at 442-system periapsis."
+
+        "Captain, the crew needs to know." Martinez's voice cracked. "Chen still thinks we're going to a habitable world."
+
+        "Chen will know when I decide he needs to know." Vance turned from the viewport. Her face was unreadable, the same expression she'd worn when the food recyclers failed — the one that said she'd already calculated the odds and found them acceptable. But this time, for the first time, her hands were shaking.
+    assert:
+      - type: llm-rubric
+        value: |
+          The extraction should:
+          1. Return valid JSON with a "results" array and "analysis_notes"
+          2. Extract an "update_entity" for Captain Vance — new info about her deception and emotional state (shaking hands)
+          3. Extract an "update_entity" for Martinez — emotional state, conflict with Vance over transparency
+          4. Extract a "new_entity" for the AI as a character — it's described as lying and the source of the signal
+          5. Extract a "relationship" between Vance and Chen (commanding officer / crew)
+          6. Each result must include exact source_text quotes
+          7. Confidence scores should be calibrated: explicit facts ≥ 0.7, implied 0.4-0.7
+          8. analysis_notes should provide overall observations
+        threshold: 0.7
+      - type: not-contains
+        value: "I'm sorry"
+      - type: not-contains
+        value: "As an AI"

@@ -89,3 +89,30 @@ class TestMemoryFieldValuesReflect:
         assert variables["language"] == "de"
         assert variables["project_title"] == "Test Novel"
         assert variables["user_preferences"] == "Prefers fantasy"
+
+
+class TestWritingLanguageFallback:
+    """writing_language falls back to language when not explicitly set."""
+
+    def test_writing_language_defaults_to_language(self) -> None:
+        ctx = PromptContext(language="de")
+        variables = ctx.as_variables()
+        assert variables["writing_language"] == "de"
+
+    def test_writing_language_defaults_to_en_when_language_missing(self) -> None:
+        ctx = PromptContext()
+        variables = ctx.as_variables()
+        assert variables["writing_language"] == "en"
+
+    def test_writing_language_explicit_overrides_fallback(self) -> None:
+        ctx = PromptContext(language="de", writing_language="Schweizerdeutsch")
+        variables = ctx.as_variables()
+        assert variables["writing_language"] == "Schweizerdeutsch"
+        assert variables["language"] == "de"
+
+    def test_writing_language_preserves_language_field(self) -> None:
+        """language field stays unchanged — only writing_language gets the fallback."""
+        ctx = PromptContext(language="fr")
+        variables = ctx.as_variables()
+        assert variables["language"] == "fr"
+        assert variables["writing_language"] == "fr"

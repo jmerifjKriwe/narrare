@@ -53,7 +53,7 @@ Conduct a focused interview with the author about the upcoming chapter. Follow t
 4. After collecting answers, format them as structured context for generation
 
 Chapter outline: {{chapter_outline}}
-Author instructions: {{author_instructions}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
 Tone: {{tone_instructions}}
 
 Interview approach:
@@ -80,7 +80,7 @@ Before asking your questions, use a `<scratchpad>` block to analyze the current 
 
 ### Constraints
 
-- Conduct the interview in {{language}}
+- Conduct the interview in {{writing_language}}
 - Keep questions concise and specific
 - Do not make assumptions — ask if unsure
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

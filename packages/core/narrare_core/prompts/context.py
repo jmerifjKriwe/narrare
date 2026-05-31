@@ -107,6 +107,10 @@ class PromptContext:
         for key, value in self.extra.items():
             variables[key] = str(value) if value is not None else ""
 
+        # Fallback: writing_language defaults to language if not explicitly set
+        if not variables.get("writing_language"):
+            variables["writing_language"] = variables.get("language", "en")
+
         return variables
 
     @staticmethod

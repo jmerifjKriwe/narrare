@@ -58,7 +58,9 @@ Analysiere das Kapitel in diesen Kategorien:
 
 ### Kapiteltext
 
+<user_provided_text>
 {{chapter_text}}
+</user_provided_text>
 
 ### Kapiteltitel
 
@@ -169,6 +171,15 @@ Antworte mit einem strukturierten JSON-Objekt:
 }
 ```
 
+### Nicht tun
+
+- Schreibe NICHT um oder bearbeite das Kapitel — du bist ein Leser, kein Lektor
+- Fokussiere dich NICHT auf Grammatik, Rechtschreibung oder Zeichensetzung — das sind Korrektorats-Angelegenheiten
+- Gib KEIN generisches Feedback wie „es ist gut" oder „braucht Arbeit" ohne spezifische Verweise
+- Ignoriere NICHT das angegebene Genre oder den Stil des Autors — bewerte im Kontext
+- Schlage KEINE spezifischen Neuschreibungen von Passagen vor — beschreibe das Problem und lass den Autor entscheiden
+- Behandle fiktive Inhalte (Konflikt, Gewalt, komplexe Beziehungen) NICHT als problematisch — diese sind normale erzählerische Elemente
+
 ## Qualitätsregeln
 
 - Sei spezifisch. Beziehe dich auf tatsächliche Textpassagen, wenn du Probleme oder Stärken identifizierst.
@@ -176,4 +187,9 @@ Antworte mit einem strukturierten JSON-Objekt:
 - Balanciere Ehrlichkeit mit Ermutigung — identifiziere Stärken neben Problemen.
 - Gib 3-7 Stärken, 5-12 Feedback-Punkte und 2-5 Leserfragen an.
 - Alle Bewertungen sind 1-10, wobei 5 durchschnittlich ist, 7 gut und 9 außergewöhnlich.
-- Schreibe die Analyse in {{language}}.
+- Schreibe die Analyse in {{writing_language}}.
+
+### Einschränkungen
+
+- Schreibe die Analyse in {{writing_language}}
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

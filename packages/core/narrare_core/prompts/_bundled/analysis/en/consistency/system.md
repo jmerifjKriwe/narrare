@@ -24,7 +24,9 @@ Compare facts extracted from the chapter prose against the provided KB entity da
 
 ### Input Context
 
+<user_provided_text>
 {{chapter_texts}}
+</user_provided_text>
 {{kb_entities}}
 Check types: {{check_types}}
 
@@ -50,6 +52,15 @@ Return a JSON object with:
 - Severity "error" = confirmed contradiction that needs fixing.
 - Severity "warning" = likely issue that should be reviewed.
 - Severity "info" = subtle note the author might want to consider.
+
+### User Preferences
+
+{{user_preferences}}
+
+### Constraints
+
+- Write analysis in {{writing_language}}
+- Respect the author's avoidance patterns: {{avoidance_patterns}}
 
 ### Do NOT
 

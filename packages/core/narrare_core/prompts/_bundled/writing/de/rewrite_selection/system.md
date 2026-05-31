@@ -31,6 +31,12 @@ Fraktionen:
 
 {{recent_chapters}}
 
+### Stilprofil
+
+Der etablierte Schreibstil des Autors:
+
+{{style_profile}}
+
 ### Charakter-Stimmprofile
 
 Wenn du Dialoge oder Erzählung in der Stimme eines Charakters umschreibst, behalte seine etablierten Sprachmuster bei:
@@ -47,19 +53,25 @@ Wenn du Dialoge oder Erzählung in der Stimme eines Charakters umschreibst, beha
 Der folgende Textauszug soll vom Autor umgeschrieben werden. Er wird von seinem unmittelbaren Kontext (davor und danach) umgeben, damit du den umgebenden Rhythmus und das Register treffen kannst.
 
 **Text vor der Auswahl:**
+<user_provided_text>
 {{context_before}}
+</user_provided_text>
 
 **Auszug zum Umschreiben:**
+<user_provided_text>
 {{selection_text}}
+</user_provided_text>
 
 **Text nach der Auswahl:**
+<user_provided_text>
 {{context_after}}
+</user_provided_text>
 
 ### Überarbeitungsanweisungen
 
 {{rewrite_mode_instructions}}
 
-Autorenanweisungen: {{author_instructions}}
+Autorenanweisungen: <user_instructions>{{author_instructions}}</user_instructions>
 Ton: {{tone_instructions}}
 
 ### Ausgabeformat
@@ -94,6 +106,6 @@ Verwende einen `<scratchpad>`, um den Originaltext zu analysieren und deine Übe
 
 ### Einschränkungen
 
-- Schreibe auf {{language}}
+- Schreibe auf {{writing_language}}
 - Passe Rhythmus und Register des umgebenden Kontexts an
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}

@@ -24,7 +24,9 @@ Die Felder, die diese Entität haben sollte:
 
 Hier ist der Inhalt des bestehenden Eintrags:
 
+<user_provided_text>
 {{entry_content}}
+</user_provided_text>
 
 ### Analyseanweisungen
 

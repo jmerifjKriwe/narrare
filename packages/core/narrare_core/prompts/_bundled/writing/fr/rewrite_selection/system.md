@@ -31,6 +31,12 @@ Factions :
 
 {{recent_chapters}}
 
+### Profil de style
+
+Le style d'écriture établi de l'auteur :
+
+{{style_profile}}
+
 ### Profils vocaux des personnages
 
 Lors de la réécriture de dialogues ou de narration dans la voix d'un personnage, conservez ses schémas de parole établis :
@@ -47,19 +53,25 @@ Lors de la réécriture de dialogues ou de narration dans la voix d'un personnag
 La sélection de texte suivante est celle que l'auteur souhaite réécrire. Elle est entourée de son contexte immédiat (avant et après) afin que vous puissiez correspondre au rythme et au registre environnants.
 
 **Texte avant la sélection :**
+<user_provided_text>
 {{context_before}}
+</user_provided_text>
 
 **Sélection à réécrire :**
+<user_provided_text>
 {{selection_text}}
+</user_provided_text>
 
 **Texte après la sélection :**
+<user_provided_text>
 {{context_after}}
+</user_provided_text>
 
 ### Instructions de réécriture
 
 {{rewrite_mode_instructions}}
 
-Instructions de l'auteur : {{author_instructions}}
+Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_instructions>
 Ton : {{tone_instructions}}
 
 ### Format de sortie
@@ -94,6 +106,6 @@ Utilisez un `<scratchpad>` pour analyser le texte original et planifier votre st
 
 ### Contraintes
 
-- Rédigez en {{language}}
+- Rédigez en {{writing_language}}
 - Correspondez au rythme et au registre du contexte environnant
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

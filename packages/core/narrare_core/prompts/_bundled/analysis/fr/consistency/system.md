@@ -24,7 +24,9 @@ Comparez les faits extraits du texte des chapitres avec les données d'entités 
 
 ### Contexte d'entrée
 
+<user_provided_text>
 {{chapter_texts}}
+</user_provided_text>
 {{kb_entities}}
 Types de vérification : {{check_types}}
 
@@ -50,6 +52,15 @@ Retournez un objet JSON avec :
 - Sévérité « error » = contradiction confirmée nécessitant une correction.
 - Sévérité « warning » = problème probable devant être réexaminé.
 - Sévérité « info » = note subtile que l'auteur pourrait souhaiter considérer.
+
+### Préférences utilisateur
+
+{{user_preferences}}
+
+### Contraintes
+
+- Rédigez l'analyse en {{writing_language}}
+- Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
 
 ### À NE PAS FAIRE
 

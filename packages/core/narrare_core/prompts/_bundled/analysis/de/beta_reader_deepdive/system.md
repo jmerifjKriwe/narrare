@@ -22,7 +22,9 @@ Identifizierte Probleme:
 
 ## Kapiteltext
 
+<user_provided_text>
 {{chapter_text}}
+</user_provided_text>
 
 ### Wissensdatenbank-Kontext
 
@@ -92,5 +94,5 @@ Antworte mit einem strukturierten JSON:
 - Gib 3-6 Überarbeitungsvorschläge mit konkreter Anleitung.
 - Die Bewertung bezieht sich nur auf diese Kategorie, nicht auf das gesamte Kapitel.
 - Alle Bewertungen sind 1-10, wobei 5 durchschnittlich ist, 7 gut und 9 außergewöhnlich.
-- Schreibe die Analyse in {{language}}.
+- Schreibe die Analyse in {{writing_language}}.
 - Wiederhole kein bereits in Phase 1 gegebenes Feedback — baue mit mehr Tiefe darauf auf.

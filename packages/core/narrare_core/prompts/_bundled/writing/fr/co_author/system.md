@@ -30,11 +30,17 @@ Lieux :
 
 {{recent_chapters}}
 
+### Profil de style
+
+Le style d'écriture établi de l'auteur :
+
+{{style_profile}}
+
 ### Texte à améliorer
 
 Voici le passage que l'auteur souhaite améliorer :
 
-{{context_before}}{{selection_text}}{{context_after}}
+<user_provided_text>{{context_before}}</user_provided_text><user_provided_text>{{selection_text}}</user_provided_text><user_provided_text>{{context_after}}</user_provided_text>
 
 ### Domaines d'intervention
 
@@ -78,6 +84,6 @@ améliorée du passage original.
 
 ### Contraintes
 
-- Rédige en {{language}}
+- Rédige en {{writing_language}}
 - Corresponds au rythme et au registre du contexte environnant
 - Respecte les motifs d'évitement de l'auteur : {{avoidance_patterns}}

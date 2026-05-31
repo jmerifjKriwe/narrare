@@ -54,7 +54,7 @@ Provide your outline as structured output with these fields:
 
 ### Constraints
 
-- Write outline in {{language}}
+- Write outline in {{writing_language}}
 - Do not introduce characters or locations not in the Knowledge Base without noting them as new
 - Do not resolve major plot arcs in a single chapter unless the outline explicitly requests it
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

@@ -37,7 +37,7 @@ Locations:
 
 ### Constraints
 
-- Write in {{language}}
+- Write in {{writing_language}}
 - Summary must be 2-4 sentences
 - Key points must be 2-5 items
 - Do not introduce information not present in the chapter content

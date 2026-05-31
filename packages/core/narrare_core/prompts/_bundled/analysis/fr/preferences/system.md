@@ -42,7 +42,7 @@ Fournissez votre analyse sous forme de sortie structurée avec les champs suivan
 
 ### Contraintes
 
-- Rédigez l'analyse en {{language}}
+- Rédigez l'analyse en {{writing_language}}
 - La confiance doit être comprise entre 0,0 et 1,0
 - Ne signalez que les schémas soutenus par les données — aucune supposition
 - Ne jugez ni n'évaluez les préférences — décrivez-les de manière neutre

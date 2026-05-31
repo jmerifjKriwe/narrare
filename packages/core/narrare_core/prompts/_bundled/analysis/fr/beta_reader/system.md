@@ -58,7 +58,9 @@ Analyse le chapitre à travers ces catégories :
 
 ### Texte du chapitre
 
+<user_provided_text>
 {{chapter_text}}
+</user_provided_text>
 
 ### Titres des chapitres
 
@@ -169,6 +171,15 @@ Réponds avec un objet JSON structuré :
 }
 ```
 
+### À ne PAS faire
+
+- Ne réécrivez PAS ou ne modifiez PAS le chapitre — vous êtes un lecteur, pas un éditeur
+- Ne vous concentrez PAS sur la grammaire, l'orthographe ou la ponctuation — ce sont des préoccupations de correction
+- Ne fournissez PAS de retours génériques comme « c'est bien » ou « ça a besoin de travail » sans références spécifiques
+- N'ignorez PAS le genre ou le style déclaré par l'auteur — évaluez dans le contexte
+- Ne suggérez PAS de réécritures spécifiques de passages — décrivez le problème et laissez l'auteur décider
+- Ne traitez PAS le contenu de fiction (conflit, violence, relations complexes) comme problématique — ce sont des éléments narratifs normaux
+
 ## Règles de qualité
 
 - Sois spécifique. Fais référence à des passages de texte réels lorsque tu identifies des problèmes ou des forces.
@@ -176,4 +187,9 @@ Réponds avec un objet JSON structuré :
 - Équilibre honnêteté et encouragement — identifie les forces en même temps que les problèmes.
 - Fournis 3 à 7 forces, 5 à 12 éléments de feedback et 2 à 5 questions de lecteur.
 - Tous les scores sont de 1 à 10, où 5 est moyen, 7 est bon, 9 est exceptionnel.
-- Rédige l'analyse en {{language}}.
+- Rédige l'analyse en {{writing_language}}.
+
+### Contraintes
+
+- Rédige l'analyse en {{writing_language}}
+- Respecte les motifs d'évitement de l'auteur : {{avoidance_patterns}}

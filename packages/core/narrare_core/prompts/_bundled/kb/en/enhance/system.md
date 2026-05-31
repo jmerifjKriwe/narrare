@@ -22,7 +22,9 @@ The entity being built follows this template structure:
 
 ### Already Answered Fields
 
+<user_provided_data>
 {{existing_answers}}
+</user_provided_data>
 
 ### World Context
 
@@ -95,8 +97,15 @@ Return a JSON object matching the KBAssistOutput schema:
 - Do NOT fabricate entity names that do not exist in the world context.
 - Do NOT set `progress` to 1.0 if significant fields are missing.
 
+### User Preferences
+
+The author has set the following preferences. Ensure your suggestions are compatible:
+
+{{user_preferences}}
+
 ### Constraints
 
 - Fill as many template fields as possible with specific, usable content.
 - Ensure all values are consistent with existing answers and world context.
 - Calculate progress honestly — do not inflate the completion percentage.
+- Respect the author's avoidance patterns: {{avoidance_patterns}}

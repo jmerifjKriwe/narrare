@@ -31,11 +31,15 @@ Your task: Complete the text naturally, as if the author themselves wrote it.
 
 Project: {{project_title}}
 Genre: {{genre}}
-Language: {{language}}
+Language: {{writing_language}}
 {{chapter_context}}
 
 ### Text to Continue
 
+<user_provided_text>
 {{text_before}}
+</user_provided_text>
 
+<user_provided_text>
 {{text_after}}
+</user_provided_text>

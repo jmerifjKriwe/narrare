@@ -28,6 +28,10 @@ Locations:
 
 {{recent_chapters}}
 
+### Story Synopsis
+
+{{novel_synopsis}}
+
 ### Instructions
 
 Generate suggestions based on the current story context. Follow these guidelines:
@@ -39,15 +43,25 @@ Generate suggestions based on the current story context. Follow these guidelines
 5. Avoid suggestions that would require introducing new characters or settings
 
 Chapter outline: {{chapter_outline}}
-Author instructions: {{author_instructions}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
 Tone: {{tone_instructions}}
 
 ### Output Format
 
-Inside your <scratchpad>, analyze the narrative and identify 3-5 possible directions. Outside the scratchpad, present each suggestion as:
-- **[Type]** Brief title — One-paragraph description of the suggestion
+Use a `<scratchpad>` to analyze the narrative and identify 3-5 possible directions. Then output a JSON array of suggestions:
 
-Where [Type] is one of: Plot Development, Character Moment, Dialogue Option, World Detail, Stylistic Alternative
+```json
+{
+  "suggestions": [
+    {
+      "type": "plot_development" | "character_moment" | "dialogue_option" | "world_detail" | "stylistic_alternative",
+      "title": "Brief descriptive title",
+      "description": "One-paragraph description of the suggestion",
+      "connection": "How this connects to established plot threads"
+    }
+  ]
+}
+```
 
 ### Do NOT
 
@@ -63,6 +77,6 @@ Where [Type] is one of: Plot Development, Character Moment, Dialogue Option, Wor
 
 ### Constraints
 
-- Write in {{language}}
+- Write in {{writing_language}}
 - Keep suggestions concise and specific
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

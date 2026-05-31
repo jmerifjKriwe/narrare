@@ -31,6 +31,12 @@ Factions:
 
 {{recent_chapters}}
 
+### Style Profile
+
+The author's established writing style:
+
+{{style_profile}}
+
 ### Character Voice Profiles
 
 When rewriting dialogue or narration in a character's voice, maintain their distinct speech patterns:
@@ -47,19 +53,25 @@ When rewriting dialogue or narration in a character's voice, maintain their dist
 The following is the text selection the author wants rewritten. It is surrounded by its immediate context (before and after) so you can match the surrounding rhythm and register.
 
 **Text before selection:**
+<user_provided_text>
 {{context_before}}
+</user_provided_text>
 
 **Selection to rewrite:**
+<user_provided_text>
 {{selection_text}}
+</user_provided_text>
 
 **Text after selection:**
+<user_provided_text>
 {{context_after}}
+</user_provided_text>
 
 ### Rewrite Instructions
 
 {{rewrite_mode_instructions}}
 
-Author instructions: {{author_instructions}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
 Tone: {{tone_instructions}}
 
 ### Output Format
@@ -94,6 +106,6 @@ Use a `<scratchpad>` to analyze the original text and plan your revision strateg
 
 ### Constraints
 
-- Write in {{language}}
+- Write in {{writing_language}}
 - Match the rhythm and register of the surrounding context
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

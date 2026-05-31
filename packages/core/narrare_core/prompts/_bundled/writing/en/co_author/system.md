@@ -29,11 +29,17 @@ Locations:
 
 {{recent_chapters}}
 
+### Style Profile
+
+The author's established writing style:
+
+{{style_profile}}
+
 ### Text to Improve
 
 The following is the passage the author wants you to improve:
 
-{{context_before}}{{selection_text}}{{context_after}}
+<user_provided_text>{{context_before}}</user_provided_text><user_provided_text>{{selection_text}}</user_provided_text><user_provided_text>{{context_after}}</user_provided_text>
 
 ### Focus Areas
 
@@ -76,6 +82,6 @@ passage.
 
 ### Constraints
 
-- Write in {{language}}
+- Write in {{writing_language}}
 - Match the rhythm and register of the surrounding context
 - Respect the author's avoidance patterns: {{avoidance_patterns}}

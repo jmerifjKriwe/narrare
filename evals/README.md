@@ -36,12 +36,19 @@ npx promptfoo eval
 npx promptfoo eval
 
 # Run a specific test case
+npx promptfoo eval -c evals/testcases/interview.yaml
+npx promptfoo eval -c evals/testcases/kb-extract.yaml
+npx promptfoo eval -c evals/testcases/kb-improve.yaml
+npx promptfoo eval -c evals/testcases/analysis-consistency.yaml
+npx promptfoo eval -c evals/testcases/analysis-beta-reader.yaml
+npx promptfoo eval -c evals/testcases/writing-story-suggest.yaml
+npx promptfoo eval -c evals/testcases/writing-chat.yaml
 npx promptfoo eval -c evals/testcases/writing-generation.yaml
+npx promptfoo eval -c evals/testcases/writing-extend.yaml
+npx promptfoo eval -c evals/testcases/writing-rewrite.yaml
 npx promptfoo eval -c evals/testcases/name-generation.yaml
 npx promptfoo eval -c evals/testcases/summarization.yaml
-npx promptfoo eval -c evals/testcases/interview.yaml
 npx promptfoo eval -c evals/testcases/rewrite.yaml
-npx promptfoo eval -c evals/testcases/writing-extend.yaml
 
 # Open the Web-UI to view results visually
 npx promptfoo view
@@ -54,16 +61,63 @@ evals/
 ├── README.md                 ← This file
 ├── promptfooconfig.yaml      ← Global config (providers, defaults)
 ├── testcases/                ← YAML test case definitions
-│   ├── writing-generation.yaml
-│   ├── name-generation.yaml
-│   ├── summarization.yaml
-│   ├── interview.yaml
-│   ├── rewrite.yaml
-│   └── writing-extend.yaml
+│   ├── interview.yaml            KB interview question quality
+│   ├── kb-extract.yaml           KB entity extraction from chapter text
+│   ├── kb-improve.yaml           KB entry improvement analysis
+│   ├── analysis-consistency.yaml Cross-chapter contradiction detection
+│   ├── analysis-beta-reader.yaml Beta reader structured feedback
+│   ├── writing-story-suggest.yaml Story direction suggestions
+│   ├── writing-chat.yaml         Chat scope compliance & craft quality
+│   ├── writing-generation.yaml   Full draft mode quality
+│   ├── writing-extend.yaml       Chapter continuation quality
+│   ├── writing-rewrite.yaml      Selection rewrite quality
+│   ├── name-generation.yaml      Culture-specific name generation
+│   ├── summarization.yaml        Chapter summarization quality
+│   └── rewrite.yaml              Basic rewrite quality
 ├── baselines/                ← Golden outputs for regression comparison
 │   └── README.md
 └── results/                  ← Output directory (gitignored)
 ```
+
+## Test case overview
+
+### KB (Knowledge Base) Prompts
+
+| Test case | Production prompt | What it tests |
+|-----------|------------------|---------------|
+| `interview.yaml` | `kb/en/interview/system.md` | Single focused questions for KB entry building |
+| `kb-extract.yaml` | `kb/en/extract/system.md` | Entity/relationship/conflict extraction from chapter text |
+| `kb-improve.yaml` | `kb/en/improve/system.md` | Identifying gaps and improvement opportunities in KB entries |
+
+### Analysis Prompts
+
+| Test case | Production prompt | What it tests |
+|-----------|------------------|---------------|
+| `analysis-consistency.yaml` | `analysis/en/consistency/system.md` | Cross-chapter contradiction and timeline checking |
+| `analysis-beta-reader.yaml` | `analysis/en/beta_reader/system.md` | Structured reader-perspective feedback with scoring |
+
+### Writing Prompts
+
+| Test case | Production prompt | What it tests |
+|-----------|------------------|---------------|
+| `writing-story-suggest.yaml` | `writing/en/story_suggest/system.md` | 3-5 narrative direction suggestions |
+| `writing-chat.yaml` | `writing/en/chat/system.md` | Scope compliance (writing scope in, other topics out) |
+| `writing-generation.yaml` | (general) | Full narrative draft quality |
+| `writing-extend.yaml` | (general) | Seamless chapter continuation |
+| `writing-rewrite.yaml` | (general) | Selection rewriting with voice matching |
+| `name-generation.yaml` | `generation/en/names/system.md` | Culture-specific name diversity |
+| `summarization.yaml` | `analysis/en/summarize/system.md` | Chapter summary conciseness |
+| `rewrite.yaml` | (general) | Basic text rewriting quality |
+
+### Relationship to Prompt Engineering Standard
+
+Each inline prompt in the test cases is derived from the corresponding production
+prompt in `packages/core/narrare_core/prompts/_bundled/`. The YAML frontmatter
+and `{{variable}}` references are preserved to match production behavior.
+
+When bundled prompts are updated, the corresponding eval test cases should be
+reviewed and updated to stay in sync. Each test file header contains a comment
+with the production prompt path for traceability.
 
 ## Baseline strategy
 

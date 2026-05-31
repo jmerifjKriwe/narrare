@@ -54,7 +54,7 @@ Fournissez votre plan sous forme de sortie structurée avec les champs suivants 
 
 ### Contraintes
 
-- Rédigez le plan en {{language}}
+- Rédigez le plan en {{writing_language}}
 - N'introduisez pas de personnages ou lieux absents de la base de connaissances sans les noter comme nouveaux
 - Ne résolvez pas les arcs narratifs majeurs en un seul chapitre sauf si le plan le demande explicitement
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}

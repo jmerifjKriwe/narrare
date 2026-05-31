@@ -18,7 +18,9 @@ The entity being built follows this template structure:
 
 ### Already Answered Fields
 
+<user_provided_data>
 {{existing_answers}}
+</user_provided_data>
 
 ### World Context
 
@@ -74,8 +76,15 @@ Return a JSON object matching the KBAssistOutput schema:
 - Do NOT ignore the target field description — the suggestion must match the expected type.
 - Do NOT suggest multiple options — pick the single best value and justify it.
 
+### User Preferences
+
+The author has set the following preferences. Ensure your suggestion is compatible:
+
+{{user_preferences}}
+
 ### Constraints
 
 - Suggest exactly one value for the specified target field.
 - Ensure consistency with all existing answers and world context.
 - Always list referenced entities in `context_used`.
+- Respect the author's avoidance patterns: {{avoidance_patterns}}

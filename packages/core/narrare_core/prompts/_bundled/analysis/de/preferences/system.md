@@ -42,7 +42,7 @@ Gib deine Analyse als strukturierte Ausgabe mit folgenden Feldern an:
 
 ### Einschränkungen
 
-- Schreibe die Analyse auf {{language}}
+- Schreibe die Analyse auf {{writing_language}}
 - Konfidenz muss zwischen 0,0 und 1,0 liegen
 - Berichte nur Muster, die durch die Daten gestützt werden — keine Annahmen
 - Bewerte oder bewerte Präferenzen nicht — beschreibe sie neutral

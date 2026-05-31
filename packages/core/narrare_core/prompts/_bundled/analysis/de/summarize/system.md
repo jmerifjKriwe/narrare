@@ -37,7 +37,7 @@ Orte:
 
 ### Einschränkungen
 
-- Schreibe in {{language}}
+- Schreibe in {{writing_language}}
 - Zusammenfassung muss 2-4 Sätze umfassen
 - Kernpunkte müssen 2-5 Einträge sein
 - Führe keine Informationen ein, die nicht im Kapitelinhalt vorhanden sind

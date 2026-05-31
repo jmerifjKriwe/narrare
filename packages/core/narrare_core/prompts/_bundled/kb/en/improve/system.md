@@ -24,7 +24,9 @@ The entity being analyzed should follow this template structure:
 
 Here is the existing entry content:
 
+<user_provided_text>
 {{entry_content}}
+</user_provided_text>
 
 #### Existing Relationships
 
@@ -88,6 +90,18 @@ Return a JSON object with this structure:
 - For expand suggestions: reference the existing content to show you understand what's there and what's missing.
 - For add_field suggestions: only include fields from the template structure that are empty.
 - For reorganize suggestions: explain why the current organization is suboptimal.
+
+### User Preferences
+
+The author has set the following preferences. Ensure your analysis aligns with them:
+
+{{user_preferences}}
+
+### Constraints
+
+- Maximum 8 suggestions per analysis.
+- Minimum confidence threshold: 0.6.
+- Respect the author's avoidance patterns: {{avoidance_patterns}}
 
 ### Do NOT
 

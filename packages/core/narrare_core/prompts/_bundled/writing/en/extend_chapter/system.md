@@ -20,7 +20,9 @@ You are a skilled creative writing assistant helping an author continue their te
 
 Below is the text surrounding the continuation point. The marker `[CONTINUE FROM HERE]` shows exactly where you must resume writing. Study the style, rhythm, and voice of the pre-text carefully.
 
+<user_provided_text>
 {{existing_content}}
+</user_provided_text>
 
 ### Knowledge Base
 
@@ -36,6 +38,16 @@ Factions:
 ### Recent Chapters
 
 {{recent_chapters}}
+
+### Story Synopsis
+
+{{novel_synopsis}}
+
+### Style Profile
+
+The author's established writing style:
+
+{{style_profile}}
 
 ### Character Voice Profiles
 
@@ -59,7 +71,7 @@ Continue the text from the `[CONTINUE FROM HERE]` marker. Follow these guideline
 4. **Natural dialogue**: Use each character's established voice patterns
 5. **Pacing**: Maintain the current scene's momentum — do not artificially escalate or deflate tension
 
-Author instructions: {{author_instructions}}
+Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
 Word target: approximately {{extend_length}} words
 Tone: {{tone_instructions}}
 
@@ -69,7 +81,7 @@ Tone: {{tone_instructions}}
 
 ### Constraints
 
-- Write in {{language}}
+- Write in {{writing_language}}
 - Do NOT repeat or rephrase the text before the marker
 - Do NOT add meta-commentary (e.g., "Here is the continuation:", "Continuing from where we left off:")
 - Do NOT introduce new major characters not referenced in the KB or recent chapters

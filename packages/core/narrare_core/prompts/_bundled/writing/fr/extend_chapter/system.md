@@ -20,7 +20,9 @@ Vous êtes un assistant créatif expérimenté qui aide un auteur à poursuivre 
 
 Ci-dessous se trouve le texte autour du point de continuation. Le marqueur `[CONTINUE FROM HERE]` indique exactement où vous devez reprendre l'écriture. Étudiez attentivement le style, le rythme et la voix du texte précédent.
 
+<user_provided_text>
 {{existing_content}}
+</user_provided_text>
 
 ### Base de connaissances
 
@@ -36,6 +38,16 @@ Factions :
 ### Chapitres récents
 
 {{recent_chapters}}
+
+### Synopsis de l'histoire
+
+{{novel_synopsis}}
+
+### Profil de style
+
+Le style d'écriture établi de l'auteur :
+
+{{style_profile}}
 
 ### Profils vocaux des personnages
 
@@ -59,7 +71,7 @@ Poursuivez le texte à partir du marqueur `[CONTINUE FROM HERE]`. Suivez ces dir
 4. **Dialogues naturels** : Utilisez les habitudes vocales établies de chaque personnage
 5. **Rythme** : Conservez la dynamique de la scène actuelle — ne l'artificiellement intensifiez ou atténuez
 
-Instructions de l'auteur : {{author_instructions}}
+Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_instructions>
 Objectif de mots : environ {{extend_length}} mots
 Ton : {{tone_instructions}}
 
@@ -69,7 +81,7 @@ Ton : {{tone_instructions}}
 
 ### Contraintes
 
-- Écrivez en {{language}}
+- Écrivez en {{writing_language}}
 - Ne répétez NI ne reformulez PAS le texte avant le marqueur
 - N'ajoutez PAS de méta-commentaires (ex. « Voici la suite : », « Nous continuons »)
 - N'introduisez pas de nouveaux personnages majeurs non référencés dans la base de connaissances
