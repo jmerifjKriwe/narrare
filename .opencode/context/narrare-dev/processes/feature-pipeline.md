@@ -1,0 +1,142 @@
+<!-- Context: narrare-dev/processes/feature-pipeline | Priority: high | Source: .opencode/agents/subagents/narrare-dev/architecture.md + AGENTS.md | Updated: 2026-05-31 -->
+
+# Feature Development Pipeline
+
+How a feature goes from idea to committed code. Each stage has a defined owner, required artifacts, and handoff criteria.
+
+---
+
+## Stage 1: Idea → Architecture Pre-Assessment
+
+**Owner**: Architecture Specialist
+**Input**: User request or feature idea
+**Artifacts**: Decision to proceed (with or without ADR)
+
+| Trigger | Action |
+|---------|--------|
+| New module or structural change | Write ADR → ADR review |
+| New feature within existing module | Skip to Stage 2 |
+| Tech stack change | ADR + TECH_STACK.md update |
+| RULE-XX exception request | ADR + CONSTRAINTS.md exception entry |
+
+**Gate**: Architecture Specialist confirms scope is clear. If unclear → back to user for clarification (Thinking Partner mode).
+
+---
+
+## Stage 2: Architecture → Specification
+
+**Owner**: Architecture Specialist
+**Input**: Scoped feature request
+**Artifacts**: Feature spec (in `docs/features/`)
+
+Spec must include:
+- Feature ID, Name, Status
+- Scope (what is IN and OUT)
+- Root Cause / Motivation
+- Layer breakdown (Core / Backend / Frontend)
+- Module Boundaries (exact file paths per layer)
+- Contracts (`Protocol` signatures)
+- Data Model (Pydantic schemas, SQLAlchemy models)
+- RULE-XX Compliance Matrix
+- Definition of Done per layer
+
+**Phases within this stage** (Architecture Specialist workflow):
+1. **Analyze** — Understand requirements, check existing patterns
+2. **Root Cause** — Identify the underlying problem (ask "why" 2x)
+3. **Options** — Evaluate minimum 2 alternatives
+4. **Specify** — Create the spec artifact
+5. **Validate** — Check against all RULE-XX
+6. **Handoff** — Document which specialist implements what
+
+**Gate**: Spec passes Architecture Validation Checklist (all RULE-XX checked).
+
+---
+
+## Stage 3: Spec → Implementation
+
+**Owner**: Implementation Specialist (per layer)
+**Input**: Validated feature spec
+**Artifacts**: Production code + tests
+
+**Layer order** (dependencies flow downward):
+
+| Order | Layer | Location | What gets built |
+|-------|-------|----------|----------------|
+| 1 | **Core** | `packages/core/narrare_core/` | Domain logic, contracts, LLM agents, prompts |
+| 2 | **Backend** | `apps/api/narrare/` | Service, repository, router, schemas, models |
+| 3 | **Frontend** | `packages/web/` | Components, stores, API client, i18n |
+
+Each layer handoff includes:
+- What was implemented
+- What tests were written
+- Any deviations from spec (with rationale)
+- Risks or remaining work
+
+---
+
+## Stage 4: Implementation → Validation
+
+**Owner**: Testing Specialist
+**Input**: Implemented code
+**Artifacts**: Test results, coverage report
+
+Must pass all quality gates (see `processes/quality-gates.md`):
+- Unit tests with coverage minimums
+- Integration tests (if DB/router changes)
+- Cross-layer contract tests (if API changes)
+- Architecture constraint check
+- Fake conformance (if new Fakes added)
+- Type checking (`mypy --strict`)
+
+**Gate**: All quality gates pass. No coverage gaps below minimums.
+
+---
+
+## Stage 5: Validation → Documentation Gate
+
+**Owner**: Documentation Specialist
+**Input**: Validated implementation
+**Artifacts**: Updated documentation
+
+Documentation Gate checklist (14 items):
+- `ui_tooltip`, `ui_help_short`, `ui_help_long`
+- i18n strings extracted
+- Feature file frontmatter accurate
+- CHANGELOG entry (if needed)
+- Cross-references correct
+- No TODO/FIXME placeholders
+- API schemas documented
+- Failure-state documentation
+
+**Gate**: Documentation Gate passed. Feature file status updated.
+
+---
+
+## Stage 6: Documentation → Commit
+
+**Owner**: Coordinator (orchestrator)
+**Input**: All gates passed
+**Artifacts**: Git commit
+
+Before committing:
+1. Verify all gates passed
+2. Stage only intended files
+3. Verify no secrets in diff
+4. Commit with conventional message
+
+---
+
+## Specialist Ownership Summary
+
+| Specialist | Owns Stages | Key Artifacts |
+|-----------|-------------|---------------|
+| Architecture | 1, 2 | ADR, Feature Spec, Contracts |
+| Implementation | 3 | Production code (per layer) |
+| Testing | 4 | Tests, coverage report |
+| Documentation | 5 | Feature docs, i18n, CHANGELOG |
+| Coordinator | 6 (oversight) | Git commit |
+
+---
+
+**Reference**: `.opencode/agents/subagents/narrare-dev/architecture.md`, `AGENTS.md`
+**Related**: narrare-dev/processes/quality-gates · narrare-dev/processes/adr-process · narrare-dev/templates/feature-scaffold
