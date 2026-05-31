@@ -240,7 +240,8 @@ class TestGetReviewPromptWithContext:
             state=state,
             word_count=5,
         )
-        assert sys_prompt == ""
+        assert sys_prompt != ""  # ADR-019: meta-prompt loaded via MetaPromptLoader
+        assert "Narrare" in sys_prompt
         assert "A brave hero sets out." in user_prompt
         assert writing_ctx is None
 

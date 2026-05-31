@@ -11,6 +11,8 @@ Checks:
   3. Variable consistency across locales
   4. Security: user-content variables must be wrapped in XML tags
   5. File size check (max 300 lines per prompt file)
+  6. Locale coverage (all modes should exist in EN, DE, FR)
+  7. Meta-prompt guardrails (ADR-019 mandatory elements)
 
 Exit codes:
   0: All checks pass (warnings OK)
@@ -39,6 +41,10 @@ from prompt_checks import (
     check_required_sections,
     check_security,
     check_variable_consistency,
+)
+from prompt_checks_crossfile import (
+    check_locale_coverage,
+    check_meta_guardrails,
     discover_prompts,
 )
 
@@ -160,6 +166,10 @@ def main() -> int:
 
     # Cross-file check: variable consistency.
     check_variable_consistency(prompts, issues)
+
+    # Cross-file checks: locale coverage and meta-prompt guardrails.
+    check_locale_coverage(prompts, issues)
+    check_meta_guardrails(prompts, issues)
 
     # Report.
     return print_report(total, system_count, issues, args.strict)

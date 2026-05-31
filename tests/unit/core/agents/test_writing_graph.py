@@ -141,7 +141,13 @@ class TestPlanOutline:
             MockAgent.return_value = mock_instance
             ctx = StepContext(state=state, deps=deps, inputs=None)
             await node.call(ctx)
-            MockAgent.assert_called_once_with(model="mock_model", system_prompt=None)
+            MockAgent.assert_called_once()
+            call_kwargs = MockAgent.call_args[1]
+            assert call_kwargs["model"] == "mock_model"
+            # ADR-019: system_prompt now loads meta-prompt via MetaPromptLoader
+            # (was previously empty string when composer is None)
+            assert call_kwargs["system_prompt"] is not None
+            assert "Narrare" in call_kwargs["system_prompt"]
             mock_instance.run.assert_called_once()
             prompt_arg = mock_instance.run.call_args[1]["prompt"]
             assert "ch-05" in prompt_arg

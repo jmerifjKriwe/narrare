@@ -9,6 +9,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 if TYPE_CHECKING:
     from narrare_core.agents.consistency_types import (
         ConsistencyCheckType,
@@ -59,6 +63,38 @@ Return a JSON object with:
 Be thorough but fair. Not every difference is an inconsistency — allow for \
 intentional ambiguity, character development, and unreliable narration.
 """
+
+
+async def get_system_prompt_with_meta(language: str = "en") -> str:
+    """Get CONSISTENCY_SYSTEM_PROMPT with meta-prompt prepended.
+
+    Attempts to load the Narrare meta-prompt via MetaPromptLoader and
+    prepends it to the inline consistency prompt.  Falls back to
+    ``CONSISTENCY_SYSTEM_PROMPT`` alone if meta-prompt loading fails.
+
+    This ensures ADR-019 compliance: every agent path includes the
+    Narrare identity meta-prompt, even when PromptComposer is unavailable.
+
+    Args:
+        language: ISO 639-1 language code (default ``"en"``).
+
+    Returns:
+        System prompt string with meta-prompt prepended when available.
+    """
+    try:
+        from narrare_core.prompts.meta import MetaPromptLoader
+
+        loader = MetaPromptLoader()
+        meta = await loader.load(language)
+        if meta:
+            return meta + "\n\n" + CONSISTENCY_SYSTEM_PROMPT
+    except Exception as exc:
+        logger.warning(
+            "meta_prompt_load_failed",
+            error=str(exc),
+            language=language,
+        )
+    return CONSISTENCY_SYSTEM_PROMPT
 
 
 def build_user_prompt(

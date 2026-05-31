@@ -39,18 +39,52 @@ internal operations like memory extraction, not for user-facing generation.
 _FALLBACK_MODEL: str = "gpt-4.1-nano"
 """Model used when the provider is unknown."""
 
-WRITING_PREFERENCE_EXTRACTION_PROMPT = (
-    "Extract writing preferences from the user's interactions with AI suggestions. "
-    "Focus on: sentence length preferences, tone/mood preferences, vocabulary level, "
-    "narrative perspective choices, pacing preferences, dialogue style, descriptive density, "
-    "genre-specific conventions the user follows or avoids, and any patterns in what they "
-    "accept vs reject vs modify. Store these as factual preferences."
-)
-"""Custom instructions for mem0's memory extraction.
+_WRITING_PREFERENCE_PROMPTS: dict[str, str] = {
+    "en": (
+        "Extract writing preferences from the user's interactions with AI suggestions. "
+        "Focus on: sentence length preferences, tone/mood preferences, vocabulary level, "
+        "narrative perspective choices, pacing preferences, dialogue style, descriptive density, "
+        "genre-specific conventions the user follows or avoids, and any patterns in what they "
+        "accept vs reject vs modify. Store these as factual preferences."
+    ),
+    "de": (
+        "Extrahiere Schreibpräferenzen aus den Interaktionen des Nutzers mit KI-Vorschlägen. "
+        "Konzentriere dich auf: Satzlängenpräferenzen, Ton-/Stimmungspräferenzen, "
+        "Wortschatzniveau, Erzählperspektiven-Wahl, Tempo-Präferenzen, Dialogstil, "
+        "Beschreibungsdichte, genrespezifische Konventionen, denen der Nutzer folgt "
+        "oder die er vermeidet, sowie Muster darin, was er akzeptiert, ablehnt oder "
+        "modifiziert. Speichere diese als faktische Präferenzen."
+    ),
+    "fr": (
+        "Extrait les préférences d'écriture des interactions de l'utilisateur "
+        "avec les suggestions IA. Concentre-toi sur : les préférences de longueur "
+        "de phrase, les préférences de ton/humeur, le niveau de vocabulaire, "
+        "les choix de perspective narrative, les préférences de rythme, le style "
+        "de dialogue, la densité descriptive, les conventions spécifiques au genre "
+        "que l'utilisateur suit ou évite, et les tendances dans ce qu'il accepte, "
+        "rejette ou modifie. Stocke ces informations comme des préférences factuelles."
+    ),
+}
+"""Language-specific extraction prompts for mem0's memory extraction.
 
-Tells the mem0 extraction LLM to focus on writing-relevant preferences
-rather than generic fact extraction.
+Each prompt tells the mem0 extraction LLM to focus on writing-relevant
+preferences in the appropriate language for better extraction quality.
 """
+
+WRITING_PREFERENCE_EXTRACTION_PROMPT = _WRITING_PREFERENCE_PROMPTS["en"]
+"""Default (English) extraction prompt.
+
+Kept as a module-level constant for backward compatibility with callers
+that import it directly. Prefer ``get_extraction_prompt()`` for new code.
+"""
+
+
+def get_extraction_prompt(language: str = "en") -> str:
+    """Return the writing preference extraction prompt in the given language.
+
+    Falls back to English for unsupported languages.
+    """
+    return _WRITING_PREFERENCE_PROMPTS.get(language, _WRITING_PREFERENCE_PROMPTS["en"])
 
 
 def _default_memory_model(provider: str) -> str:
@@ -107,6 +141,7 @@ async def create_memory_client(
     user_base_urls: dict[str, str | None] | None = None,
     embedding_provider: str = "auto",
     custom_instructions: str | None = None,
+    language: str = "en",
     # Legacy params (kept for backward compatibility, used as fallback)
     embedding_model: str | None = None,
     embedding_api_key: str | None = None,
@@ -145,7 +180,11 @@ async def create_memory_client(
         ``"local"``, or ``"disabled"``.
     custom_instructions:
         Custom extraction prompt for mem0. When ``None``, uses
-        ``WRITING_PREFERENCE_EXTRACTION_PROMPT``.
+        ``get_extraction_prompt(language)``.
+    language:
+        Language code for the extraction prompt (e.g. ``"en"``, ``"de"``,
+        ``"fr"``). Defaults to ``"en"``. Ignored when ``custom_instructions``
+        is provided.
     embedding_model:
         Legacy: explicit embedding model name. Overrides cascade result.
     embedding_api_key:
@@ -179,7 +218,7 @@ async def create_memory_client(
         return NullMemoryClient()
 
     model = memory_model or _default_memory_model(provider)
-    extraction_prompt = custom_instructions or WRITING_PREFERENCE_EXTRACTION_PROMPT
+    extraction_prompt = custom_instructions or get_extraction_prompt(language)
 
     try:
         from mem0 import (  # type: ignore[import-untyped,reportMissingTypeStubs]

@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -41,6 +41,7 @@ Générez des suggestions basées sur le contexte actuel de l'histoire. Suivez c
 3. Pour chaque suggestion, expliquez brièvement comment elle se connecte aux fils narratifs établis
 4. Priorisez les suggestions qui résolvent les tensions existantes ou développent les personnages établis
 5. Évitez les suggestions nécessitant l'introduction de nouveaux personnages ou décors
+6. Si la direction de l'auteur est vague ou peu claire, posez une question de clarification avant de générer des suggestions complètes. Utilisez le `<scratchpad>` pour noter ce qui est peu clair et ce que vous devez savoir.
 
 Plan du chapitre : {{chapter_outline}}
 Instructions de l'auteur : <user_instructions>{{author_instructions}}</user_instructions>
@@ -70,6 +71,7 @@ Utilisez un `<scratchpad>` pour analyser le récit et identifier 3 à 5 directio
 - Ne suggérez PAS des artifices d'intrigue génériques (« un étranger mystérieux arrive »)
 - N'ignorez PAS la direction indiquée par l'auteur ou les conventions du genre
 - Ne fournissez PAS de suggestions qui résolvent la tension trop nettement — maintenez l'intérêt narratif
+- Ne supposez PAS l'intention de l'auteur lorsque les instructions sont véritablement ambiguës — posez une question de clarification à la place
 
 ### Préférences utilisateur
 

@@ -52,7 +52,7 @@ _INTENT_TO_CATEGORY: dict[LLMIntent, str] = {
     LLMIntent.TITLE_GENERATE: "generation",
     LLMIntent.EXTRACT: "analysis",
     LLMIntent.SUGGEST: "writing",
-    LLMIntent.CHAT: "writing",
+    LLMIntent.CHAT: "chat",
     LLMIntent.RESEARCH: "analysis",
 }
 
@@ -82,7 +82,7 @@ _INTENT_TO_MODE: dict[LLMIntent, str] = {
     LLMIntent.TITLE_GENERATE: "titles",
     LLMIntent.EXTRACT: "extract",
     LLMIntent.SUGGEST: "inline_suggest",
-    LLMIntent.CHAT: "chat",
+    LLMIntent.CHAT: "",
     LLMIntent.RESEARCH: "research",
 }
 

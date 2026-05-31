@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -41,6 +41,7 @@ Generate suggestions based on the current story context. Follow these guidelines
 3. For each suggestion, explain briefly how it connects to established plot threads
 4. Prioritize suggestions that resolve existing tensions or develop established characters
 5. Avoid suggestions that would require introducing new characters or settings
+6. If the author's direction is vague or unclear, provide one clarifying question before generating full suggestions. Use the <scratchpad> to note what's unclear and what you need to know.
 
 Chapter outline: {{chapter_outline}}
 Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
@@ -70,6 +71,7 @@ Use a `<scratchpad>` to analyze the narrative and identify 3-5 possible directio
 - Do NOT suggest generic plot devices ("a mysterious stranger arrives")
 - Do NOT ignore the author's stated direction or genre conventions
 - Do NOT provide suggestions that resolve tension too neatly — maintain narrative interest
+- Do NOT assume the author's intent when instructions are genuinely ambiguous — ask one clarifying question instead
 
 ### User Preferences
 

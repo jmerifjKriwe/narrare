@@ -61,8 +61,11 @@ All variables containing user-provided text MUST be listed in `_USER_CONTENT_VAR
 - [ ] `{{user_preferences}}` included (if content generation)
 - [ ] `{{avoidance_patterns}}` in Constraints (if content generation)
 - [ ] Length/scope defined
-- [ ] i18n: DE and FR versions updated (or EN-only documented)
+- [ ] i18n: DE and FR versions created alongside EN (run `check_prompt_structure.py` for locale coverage)
 - [ ] Frontmatter version bumped
+- [ ] Meta-persona compatibility: Role definition compatible with Narrare identity (meta-prompt Role Flexibility)
+- [ ] Fallback audit: No inline fallback that bypasses PromptComposer/MetaPromptLoader
+- [ ] `check_prompt_structure.py --strict` passes for all locales
 
 ## Exemplary vs Weak
 

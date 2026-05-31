@@ -14,9 +14,9 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.consistency.prompt_builder import (
-    CONSISTENCY_SYSTEM_PROMPT,
     MAX_KB_ENTRIES,
     build_user_prompt,
+    get_system_prompt_with_meta,
 )
 from narrare.consistency.rule_helpers import deduplicate_issues, rule_based_check
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
@@ -294,4 +294,4 @@ class ConsistencyCheckerService:
                 "consistency_using_inline_prompt",
                 language=language,
             )
-            return CONSISTENCY_SYSTEM_PROMPT
+            return await get_system_prompt_with_meta(language)

@@ -62,6 +62,11 @@
 | [WRITE-012](writing/WRITE-012-chapter-summary.md) | Chapter Summary | ✅ | ❌ |
 | [WRITE-014](writing/WRITE-014-context-inspector.md) | Context Inspector | ✅ | ❌ |
 
+### Chat
+| ID | Feature | Status | MVP |
+|----|---------|--------|-----|
+| [CHAT-001](chat/CHAT-001-free-form-chat.md) | Free-Form Chat | 📋 | ❌ |
+
 ### Knowledge Base
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
@@ -106,7 +111,9 @@
 |----|---------|--------|-----|
 | [ASSIST-001](ai_assist/ASSIST-001-plot-check.md) | Plot Consistency Check | 📋 | ❌ |
 | [ASSIST-002](ai_assist/ASSIST-002-title-suggest.md) | Title Suggestions | 📋 | ❌ |
-| [ASSIST-003](ai_assist/ASSIST-003-chat.md) | Story Chat Assistant | 📋 | ❌ |
+| ~~ASSIST-003~~ | ~~Story Chat Assistant~~ | ⛔ | ❌ |
+
+> **Note:** ASSIST-003 (Story Chat Assistant) has been superseded by [CHAT-001](chat/CHAT-001-free-form-chat.md) with a scoped, architecturally grounded design. See the new spec for details.
 
 ### Generation
 | ID | Feature | Status | MVP |
@@ -230,5 +237,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-29 — WIKI-001 (LLM Wiki) backend fully implemented. Frontend pending. Status: in-progress.
+> Last updated: 2026-05-31 — CHAT-001 (Free-Form Chat) spec created. ASSIST-003 superseded.
 > Features are specified before they are implemented — never after

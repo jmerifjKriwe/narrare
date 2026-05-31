@@ -18,6 +18,7 @@ import structlog
 from narrare_core.agents.writing_graph_types import Approved, NeedsRevision
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
+from narrare_core.prompts.meta import MetaPromptLoader
 
 if TYPE_CHECKING:
     from pydantic_graph import StepContext
@@ -27,6 +28,30 @@ if TYPE_CHECKING:
     from narrare_core.writing.models import WritingContext
 
 logger = structlog.get_logger(__name__)
+
+# Module-level lazy meta loader for fallback paths (ADR-019 compliance).
+# When PromptComposer is unavailable (e.g. tests, bare-bones setups),
+# this ensures agents still get the Narrare identity meta-prompt.
+_meta_loader: MetaPromptLoader | None = None
+_cached_meta: dict[str, str] = {}
+
+
+async def _get_fallback_meta(language: str = "en") -> str:
+    """Get meta-prompt for fallback paths (when PromptComposer unavailable).
+
+    Lazy-loads and caches the meta-prompt per language via MetaPromptLoader.
+    Returns empty string if loading fails (graceful degradation).
+    """
+    global _meta_loader, _cached_meta
+    if language not in _cached_meta:
+        try:
+            if _meta_loader is None:
+                _meta_loader = MetaPromptLoader()
+            _cached_meta[language] = await _meta_loader.load(language)
+        except Exception:
+            logger.warning("fallback_meta_load_failed", language=language)
+            _cached_meta[language] = ""
+    return _cached_meta[language]
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +137,8 @@ async def get_outline_prompt(
         )
         if deps.chapter_content:
             instruction += f"Existing content context:\n{deps.chapter_content[:500]}\n"
-        return ("", instruction)
+        meta = await _get_fallback_meta(deps.language)
+        return (meta, instruction)
 
     context = _base_context(deps, state)
     context.mode = "outline"
@@ -139,7 +165,8 @@ async def get_draft_prompt(
             parts.append("Outline:\n" + state.outline)
         if deps.chapter_content:
             parts.append("Existing content:\n" + deps.chapter_content)
-        return ("", "\n".join(parts))
+        meta = await _get_fallback_meta(deps.language)
+        return (meta, "\n".join(parts))
 
     context = _base_context(deps, state)
     context.mode = "new_chapter"
@@ -254,7 +281,8 @@ async def get_review_prompt(
                 writing_context,
             )
         review_prompt += f"\nDraft:\n{draft_text}\n"
-        return ("", review_prompt, writing_context)
+        meta = await _get_fallback_meta(deps.language)
+        return (meta, review_prompt, writing_context)
 
     context = _base_context(deps, state)
     context.mode = "review"
@@ -283,7 +311,8 @@ async def get_revise_prompt(
     revise_content = "Revise based on feedback: " + state.feedback + "\n\n" + state.draft
 
     if composer is None:
-        return ("", revise_content)
+        meta = await _get_fallback_meta(deps.language)
+        return (meta, revise_content)
 
     context = _base_context(deps, state)
     context.mode = "new_chapter"
@@ -317,7 +346,8 @@ async def get_summary_prompt(
             f"Chapter title: {chapter_title}\n\n"
             f"Content:\n{content[:3000]}\n"
         )
-        return ("", instruction)
+        meta = await _get_fallback_meta(deps.language)
+        return (meta, instruction)
 
     context = _base_context(deps, state)
     context.mode = "summarize"

@@ -22,6 +22,7 @@ VALID_PROMPT_TYPES = {
     "planning",
     "generation",
     "wiki",
+    "chat",
 }
 VALID_LANGUAGES = {"en", "de", "fr"}
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -53,6 +54,7 @@ REQUIRED_VARS_BY_CATEGORY: dict[str, set[str]] = {
     "analysis": {"user_preferences", "avoidance_patterns"},
     "planning": {"user_preferences", "avoidance_patterns"},
     "generation": {"user_preferences", "avoidance_patterns"},
+    "chat": {"user_preferences", "avoidance_patterns"},
 }
 CULTURE_GUIDELINES_CATEGORIES = {"writing", "planning"}
 RAW_OUTPUT_TYPES = {"meta"}
@@ -386,14 +388,3 @@ def check_file_size(pf: PromptFile, issues: list[Issue]) -> None:
                 f"— split into smaller modules (RULE-04)",
             )
         )
-
-
-# ── Discovery ──────────────────────────────────────────────────
-
-
-def discover_prompts(bundled_dir: Path) -> list[PromptFile]:
-    """Discover all .md files in the bundled prompts directory."""
-    prompts: list[PromptFile] = []
-    for md_file in sorted(bundled_dir.rglob("*.md")):
-        prompts.append(parse_prompt_file(md_file, bundled_dir))
-    return prompts
