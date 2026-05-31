@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-05-29
-Session: Full rewrite after accuracy audit — 782 → ~220 lines
+Date: 2026-05-31
+Session: ADR-023 co-author change engine lifecycle (apply_changes, batch feedback, SET-005 cascade)
 
 ---
 
@@ -33,7 +33,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Frontend tests: ~5,000 across 165 test files (Vitest + MSW)
 - Total tests: ~9,200+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
-- ADRs: 22 (ADR-001 through ADR-022, inkl. ADR-022 LLM Wiki — Accepted)
+- ADRs: 23 (ADR-001 through ADR-023, inkl. ADR-022 LLM Wiki — Accepted, ADR-023 Co-Author Change Engine — Implemented)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 8 (Q-001 through Q-008)
 
@@ -106,6 +106,7 @@ Completed in Phase 6 so far:
 20. ✅ ADR-020: Embedding Provider Abstraction — Accepted
 21. ✅ ADR-021: Deterministic Analysis Strategy — Accepted
 22. ✅ ADR-022: LLM Wiki — Precomputed Context Layer (Core: contracts, agent, service, prompt_loader, types; Backend: models, migration, repository (9 methods), schemas (6), API service, router (6 endpoints), tasks (4), listeners (4), DI wiring; Context assembler wiki integration, budget wiki optimization; 35 core + 9 backend unit tests)
+23. ✅ WRITE-006 / ADR-023: Co-Author Change Engine — apply_changes (stateless text reconstruction), batch feedback (LEARN-001), SET-005 cascade (word-count validation), per-change accept/reject UI, 34 new tests
 
 ---
 
@@ -114,9 +115,8 @@ Completed in Phase 6 so far:
 1. ADR-016 Phase 0: AgentRegistry implementation (`core/agents/registry.py`)
 2. WIKI-001 frontend: Wiki UI — entity detail view, manual refresh, wiki overview (Tasks 19-20)
 3. ANAL-003 or ANAL-004: Readability / POV Analysis
-4. WRITE-006: Co-Author Mode
-5. Q-003: Embedding provider abstraction
-6. E2E test patterns
+4. Q-003: Embedding provider abstraction
+5. E2E test patterns
 
 ---
 
@@ -146,6 +146,7 @@ Completed in Phase 6 so far:
 | ADR-020 | Embedding Provider Abstraction | ✅ Accepted |
 | ADR-021 | Deterministic Analysis Strategy | ✅ Accepted |
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Accepted (Full backend implemented, frontend pending) |
+| ADR-023 | Co-Author Change Engine | ✅ Implemented |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
