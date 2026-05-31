@@ -117,3 +117,56 @@ class TestNarrareObservability:
 
         # Kein model_config in deps → Werte bleiben unverändert (leer)
         assert fresh._provider_name == ""
+
+    # ------------------------------------------------------------------
+    # Cache-Extraktion (ADR-016 Phase 2.4)
+    # ------------------------------------------------------------------
+
+    @patch("narrare_core.agents.capabilities.observability.record_cache_usage")
+    @patch("narrare_core.agents.capabilities.observability.record_success")
+    async def test_after_model_request_extracts_cache_stats(
+        self,
+        mock_record_success: AsyncMock,
+        mock_record_cache: AsyncMock,
+    ) -> None:
+        """after_model_request extrahiert cache_read/creation aus usage.details."""
+        obs = NarrareObservability()
+        obs._start_time = 0.0
+        obs._intent = "write"
+        obs._model_id = "claude-sonnet-4-5-20251020"
+        obs._provider_name = "anthropic"
+
+        class FakeUsage:
+            input_tokens = 100
+            output_tokens = 50
+            total_tokens = 150
+
+            def __init__(self) -> None:
+                self.details: dict[str, int] = {
+                    "cache_read_input_tokens": 500,
+                    "cache_creation_input_tokens": 200,
+                }
+
+        class FakeCtx:
+            usage = FakeUsage()
+
+        await obs.after_model_request(
+            FakeCtx(),  # type: ignore[arg-type]
+            request_context=None,  # type: ignore[arg-type]
+            response=None,  # type: ignore[arg-type]
+        )
+
+        # record_cache_usage wurde mit extrahierten Werten aufgerufen
+        mock_record_cache.assert_called_once_with(
+            intent="write",
+            model="claude-sonnet-4-5-20251020",
+            provider="anthropic",
+            cache_read_tokens=500,
+            cache_creation_tokens=200,
+        )
+
+        # TokenUsage in record_success enthält Cache-Felder
+        call_kwargs = mock_record_success.call_args.kwargs
+        token_usage = call_kwargs["usage"]
+        assert token_usage.cache_read_tokens == 500
+        assert token_usage.cache_creation_tokens == 200

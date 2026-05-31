@@ -132,8 +132,17 @@ class LLMObservability:
                     "input": usage.prompt_tokens,
                     "output": usage.completion_tokens,
                     "total": usage.total_tokens,
+                    "cache_read": usage.cache_read_tokens,
+                    "cache_creation": usage.cache_creation_tokens,
                 },
-                metadata={"duration_ms": duration_ms},
+                metadata={
+                    "duration_ms": duration_ms,
+                    "cache_savings_pct": (
+                        round(usage.cache_read_tokens / max(usage.prompt_tokens, 1) * 100, 1)
+                        if usage.cache_read_tokens > 0
+                        else 0
+                    ),
+                },
             )
             # Flush in background — never block the response
             self._client.flush_async()  # type: ignore[union-attr]
