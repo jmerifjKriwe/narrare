@@ -4,13 +4,20 @@ This module is a pure data transformation.  No I/O, no database, no LLM
 calls.  The API layer provides all data; this class organizes it by tier
 and enforces token budgets.
 
+Inherits from ``ContextAssembler`` (ADR-025 Decision 3) so all
+feature-specific assemblers share the same budget enforcement base.
+
 See CONSTRAINTS.md RULE-02: No prompt building outside ``core/prompts/``.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from narrare_core.context.assembler import ContextAssembler
+
+if TYPE_CHECKING:
+    from narrare_core.context.types import TierBudget
 from narrare_core.writing._classify import classify_entities
 from narrare_core.writing._helpers import extract_frontmatter_references, format_entities
 from narrare_core.writing._token_utils import default_token_counter
@@ -30,12 +37,15 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class WritingContextAssembler:
+class WritingContextAssembler(ContextAssembler[WritingContext]):
     """Assembles writing context from 5 tiers of information.
 
     This is a pure data transformation — no I/O, no DB, no LLM calls.
     The API layer provides all data; this class organizes it by tier
     and enforces token budgets.
+
+    Inherits from :class:`ContextAssembler` so all feature-specific
+    assemblers share the same budget enforcement contract.
 
     Usage::
 
@@ -52,9 +62,21 @@ class WritingContextAssembler:
         total_budget: int = TokenBudgetManager.DEFAULT_TOTAL_BUDGET,
         token_counter: Callable[[str], int] | None = None,
     ) -> None:
-        self._total_budget = total_budget
+        super().__init__(total_budget)
         self._budget_manager = TokenBudgetManager(total_budget)
         self._count_tokens = token_counter or default_token_counter
+
+    # ------------------------------------------------------------------
+    # ContextAssembler contract
+    # ------------------------------------------------------------------
+
+    def get_tier_allocation(self, **kwargs: Any) -> dict[str, TierBudget]:
+        """Return tier allocation for this assembler's configuration.
+
+        Accepts the same keyword arguments as
+        :meth:`TokenBudgetManager.allocate`.
+        """
+        return self._budget_manager.allocate(**kwargs)
 
     # ------------------------------------------------------------------
     # Public API
@@ -70,6 +92,7 @@ class WritingContextAssembler:
         kb_entities: list[KBEntity] | None = None,
         entity_connections: dict[str, set[str]] | None = None,
         wiki_summaries: dict[str, WikiSummaryData] | None = None,
+        kb_relationships: str = "",
         project_title: str = "",
         genre: str = "",
         language: str = "en",
@@ -79,6 +102,7 @@ class WritingContextAssembler:
         user_preferences: str = "",
         avoidance_patterns: str = "",
         mode: str | None = None,
+        **_extra: Any,  # absorb unknown kwargs for ABC compatibility
     ) -> WritingContext:
         """Assemble writing context with budget enforcement.
 
@@ -92,6 +116,11 @@ class WritingContextAssembler:
                 provided, Tier 3 prefers wiki summaries (~40 tokens/entity)
                 over raw KB content (~200 tokens/entity) with stale/pending
                 fallback.
+            kb_relationships:
+                Pre-formatted relationship text from the API layer
+                (e.g. ``"Aria → [ally of] → Marcus"``).  Passed through
+                to :class:`WritingContext` for ``{{kb_relationships}}``
+                prompt injection.  FIND-009.
             mode: Generation mode string (e.g. ``"extend"``,
                 ``"extend_chapter"``).  When set, adjusts budget
                 allocation to prioritise immediate context.
@@ -166,6 +195,7 @@ class WritingContextAssembler:
             kb_characters=chars_text,
             kb_locations=locs_text,
             kb_factions=factions_text,
+            kb_relationships=kb_relationships,
             kb_suggested=suggested_text,
             kb_pinned=pinned_text,
             project_title=project_title,

@@ -156,6 +156,7 @@ class TestContextMetadata:
             "kb_characters_count",
             "kb_locations_count",
             "kb_factions_count",
+            "kb_relationships_count",
             "kb_suggested_count",
             "kb_pinned_count",
             "recent_chapter_count",

@@ -1,17 +1,19 @@
 """Context assembly contracts — Protocol definitions.
 
-Defines the interface for proactive context suggestion services.
+Defines the interface for proactive context suggestion services and
+the generic ContextAssembler protocol (ADR-025 Decision 3).
 Contracts are written before implementation (RULE-03).
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare_core.context.suggestion import EntityMetadata, Suggestion
+    from narrare_core.context.types import TierBudget
 
 
 @runtime_checkable
@@ -46,5 +48,41 @@ class ProactiveContextProtocol(Protocol):
 
         Returns:
             Ranked list of Suggestions sorted by relevance_score descending.
+        """
+        ...
+
+
+@runtime_checkable
+class ContextAssemblerProtocol(Protocol):
+    """Protocol for generic context assembly with token budgets.
+
+    Defines the contract that all feature-specific assemblers must
+    implement.  Each assembler owns its tier schema and context sources
+    but shares ``TokenBudgetManager`` for budget enforcement.
+
+    Per ADR-025 Decision 3: ``core/context/`` owns the abstraction;
+    feature modules (``core/writing/``, ``core/analysis/``) own the
+    concrete implementations.
+    """
+
+    async def assemble(self, **kwargs: Any) -> dict[str, str]:
+        """Assemble context into prompt variables dict.
+
+        Returns:
+            Flat dictionary of prompt variable names to their text
+            values, ready for template substitution.
+        """
+        ...
+
+    @property
+    def total_budget(self) -> int:
+        """Total token budget for context assembly."""
+        ...
+
+    def get_tier_allocation(self, **kwargs: Any) -> dict[str, TierBudget]:
+        """Return tier allocation for this assembler's configuration.
+
+        Returns:
+            Mapping of tier name to its budget allocation.
         """
         ...

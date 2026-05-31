@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 from scripts.architecture._checkers.exceptions import check_bare_except
 from scripts.architecture._checkers.file_size import check_file_size
+from scripts.architecture._checkers.inline_prompts import check_inline_prompts
 from scripts.architecture._checkers.llm import check_llm_imports, check_llm_urls
 from scripts.architecture._checkers.model_config import check_hardcoded_model_config
 from scripts.architecture._checkers.prompts import check_prompt_building
@@ -32,6 +33,7 @@ __all__ = [
     "check_bare_magic_mock",
     "check_file_size",
     "check_hardcoded_model_config",
+    "check_inline_prompts",
     "check_llm_imports",
     "check_llm_urls",
     "check_prompt_building",
@@ -86,6 +88,7 @@ def scan_file(
         + check_agent_imports(rel_path, tree, source_lines, allowed_agents)
         + check_agent_instantiation(rel_path, tree, source_lines, allowed_agents)
         + check_prompt_building(rel_path, tree, source_lines, allowed_prompts)
+        + check_inline_prompts(rel_path, tree, source_lines)
         + check_bare_except(rel_path, tree)
         + check_file_size(rel_path, source_lines, size_limits)
         + check_bare_magic_mock(rel_path, tree, source_lines)

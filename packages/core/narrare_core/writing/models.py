@@ -59,6 +59,7 @@ class WritingContext:
     kb_characters: str = ""
     kb_locations: str = ""
     kb_factions: str = ""
+    kb_relationships: str = ""  # pre-formatted relationship text (FIND-009)
 
     # Tier 4 — KB entities via similarity suggestion (15 % budget)
     kb_suggested: str = ""
@@ -103,6 +104,9 @@ class WritingContext:
             kb_characters_count=self.kb_characters.count("### ") if self.kb_characters else 0,
             kb_locations_count=self.kb_locations.count("### ") if self.kb_locations else 0,
             kb_factions_count=self.kb_factions.count("### ") if self.kb_factions else 0,
+            kb_relationships_count=(
+                self.kb_relationships.count("→") if self.kb_relationships else 0
+            ),
             kb_suggested_count=self.kb_suggested.count("### ") if self.kb_suggested else 0,
             kb_pinned_count=self.kb_pinned.count("### ") if self.kb_pinned else 0,
             recent_chapter_count=self.recent_chapter_count,
@@ -133,6 +137,7 @@ class WritingContext:
             "kb_characters": self.kb_characters,
             "kb_locations": self.kb_locations,
             "kb_factions": self.kb_factions,
+            "kb_relationships": self.kb_relationships,
             "kb_suggested": self.kb_suggested,
             "kb_pinned": self.kb_pinned,
             "character_voice_profiles": self.character_voice_profiles,

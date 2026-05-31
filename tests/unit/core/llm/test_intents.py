@@ -5,11 +5,13 @@ from __future__ import annotations
 import pytest
 
 from narrare_core.llm.intents import (
+    _INTENT_PROFILE_DEFAULTS,
     _PROFILE_OUTPUT_LIMITS,
     INTENT_CATEGORY_MAP,
     IntentCategory,
     LLMIntent,
     ResolvedModelConfig,
+    get_default_profile_for_intent,
 )
 
 
@@ -182,3 +184,38 @@ class TestResolvedModelConfig:
             token_limit_profile="bogus",
         )
         assert config.resolve_output_limit() == config.max_tokens
+
+
+class TestIntentProfileDefaults:
+    """Tests for _INTENT_PROFILE_DEFAULTS and get_default_profile_for_intent."""
+
+    def test_beta_read_defaults_to_long_texts(self) -> None:
+        """Beta-reader analysis needs higher output limit."""
+        assert _INTENT_PROFILE_DEFAULTS[LLMIntent.BETA_READ] == "long_texts"
+        assert get_default_profile_for_intent(LLMIntent.BETA_READ) == "long_texts"
+
+    def test_name_generate_defaults_to_quick(self) -> None:
+        """Name generation is lightweight — use quick profile."""
+        assert _INTENT_PROFILE_DEFAULTS[LLMIntent.NAME_GENERATE] == "quick"
+        assert get_default_profile_for_intent(LLMIntent.NAME_GENERATE) == "quick"
+
+    def test_unmapped_intent_returns_none(self) -> None:
+        """Intents without explicit defaults return None."""
+        assert get_default_profile_for_intent(LLMIntent.WRITE) is None
+        assert get_default_profile_for_intent(LLMIntent.CHAT) is None
+
+    def test_all_defaults_reference_valid_profiles(self) -> None:
+        """Every profile name in _INTENT_PROFILE_DEFAULTS must exist in _PROFILE_OUTPUT_LIMITS."""
+        for intent, profile in _INTENT_PROFILE_DEFAULTS.items():
+            assert profile in _PROFILE_OUTPUT_LIMITS, (
+                f"Intent {intent.name!r} maps to unknown profile {profile!r}"
+            )
+
+    def test_resolver_sets_profile_on_config(self) -> None:
+        """ResolvedModelConfig with token_limit_profile resolves correctly."""
+        config = ResolvedModelConfig(
+            provider_name="anthropic",
+            model_id="claude-sonnet-4-5-20251020",
+            token_limit_profile="long_texts",
+        )
+        assert config.resolve_output_limit() == _PROFILE_OUTPUT_LIMITS["long_texts"]

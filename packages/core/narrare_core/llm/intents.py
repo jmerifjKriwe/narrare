@@ -87,6 +87,40 @@ class LLMIntent(StrEnum):
     EMBED = "embed"  # Text embedding (not routed via gateway)
 
 
+_INTENT_PROFILE_DEFAULTS: dict[LLMIntent, str] = {
+    LLMIntent.BETA_READ: "long_texts",
+    LLMIntent.NAME_GENERATE: "quick",
+}
+"""Default token-limit profiles per intent.
+
+When the model routing resolver builds a ``ResolvedModelConfig``, it
+should consult this mapping to set ``token_limit_profile`` unless the
+user/project already provides one.  Intents not listed here fall back
+to the global default (``"balanced"``).
+"""
+
+
+def get_default_profile_for_intent(intent: LLMIntent) -> str | None:
+    """Return the default token-limit profile for *intent*, or ``None``.
+
+    Callers (typically the model routing resolver) use this to seed
+    ``ResolvedModelConfig.token_limit_profile`` when no user/project
+    override exists.
+
+    Parameters
+    ----------
+    intent:
+        The LLM intent to look up.
+
+    Returns
+    -------
+    str | None
+        Profile name (e.g. ``"long_texts"``) if a default is defined,
+        otherwise ``None``.
+    """
+    return _INTENT_PROFILE_DEFAULTS.get(intent)
+
+
 class IntentCategory(StrEnum):
     """Categories grouping related LLM intents for manageable UX.
 

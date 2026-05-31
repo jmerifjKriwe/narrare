@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare_core.writing._token_utils import cap_to_budget
+
 logger = structlog.get_logger(__name__)
 
 if TYPE_CHECKING:
@@ -21,6 +23,11 @@ if TYPE_CHECKING:
 
 # Maximum KB entries to include in a single check (token budget protection).
 MAX_KB_ENTRIES = 100
+
+# Token budget per chapter preview in consistency checks.
+# This is a TOKEN limit (not character limit) — ensures language-independent
+# context sizing regardless of script density (Latin vs CJK vs Arabic).
+MAX_CONSISTENCY_CONTEXT_TOKENS = 2000
 
 # ---------------------------------------------------------------------------
 # Inline system prompt — MVP approach (Option B from CONS-001 task).
@@ -121,8 +128,8 @@ def build_user_prompt(
     ch_count = len(deps.chapter_texts)
     parts.append(f"## Chapters ({ch_count} total)\n")
     for ch_id, text in deps.chapter_texts.items():
-        # Truncate individual chapters to limit token usage
-        preview = text[:2000] if len(text) > 2000 else text
+        # Truncate individual chapters to token budget (not character limit).
+        preview = cap_to_budget(text, MAX_CONSISTENCY_CONTEXT_TOKENS)
         parts.append(f"### Chapter {ch_id}\n{preview}\n")
 
     # KB entity context

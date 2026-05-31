@@ -24,6 +24,12 @@ Charaktere:
 Orte:
 {{kb_locations}}
 
+Fraktionen:
+{{kb_factions}}
+
+Beziehungen:
+{{kb_relationships}}
+
 ### Aktuelle Kapitel
 
 {{recent_chapters}}

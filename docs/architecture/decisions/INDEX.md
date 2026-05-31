@@ -46,6 +46,9 @@
 | [ADR-020](ADR-020-embedding-provider-abstraction.md) | Embedding Provider Abstraction | ✅ | 2026-05-27 | `core/llm/`, Q-003 |
 | [ADR-021](ADR-021-deterministic-analysis-strategy.md) | Deterministic Analysis Strategy (spaCy + tiered hybrid) | ✅ | 2026-05-27 | `core/nlp/`, `core/analysis/`, ANAL-001–011, CONS-001/002, STATS-001/002 |
 | [ADR-022](ADR-022-llm-wiki.md) | LLM Wiki — Precomputed Context Layer | ✅ | 2026-05-29 | `core/wiki/`, `apps/api/wiki/`, WIKI-001, INFRA-003 |
+| [ADR-023]() | (reserved) | — | — | — |
+| [ADR-024]() | (reserved) | — | — | — |
+| [ADR-025](025-feature-adoption-infrastructure.md) | Feature Adoption Infrastructure (registry, context variables, assembler centralization, inline policy, adoption score) | 🔄 | 2026-05-31 | `scripts/architecture/`, `core/context/`, CR-03 |
 
 ---
 

@@ -6,6 +6,43 @@ from unittest.mock import MagicMock, patch
 
 from narrare_core.memory.mem0_client import NullMemoryClient, create_memory_client
 
+# ---------------------------------------------------------------------------
+# Test helpers — structured mocks for the mem0 module
+# ---------------------------------------------------------------------------
+# mem0 may not be installed, so we cannot use spec=mem0.AsyncMemory.
+# These helpers document the expected interface and satisfy RULE-TEST-01
+# by using explicit spec lists instead of bare MagicMock().
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_client() -> MagicMock:
+    """Create a mock mem0 AsyncMemory client instance.
+
+    Uses ``spec=[]`` so attribute access raises ``AttributeError`` for
+    unknown attributes — matching real-object behaviour.
+    """
+    return MagicMock(spec=[])
+
+
+def _make_mock_mem0_module(
+    from_config_return_value: MagicMock | None = None,
+    from_config_side_effect: Exception | None = None,
+) -> MagicMock:
+    """Create a mock mem0 module with the expected AsyncMemory interface.
+
+    Pre-configures ``module.AsyncMemory.from_config`` to return the given
+    client or raise the given exception.  Avoids bare ``MagicMock()``
+    (RULE-TEST-01) by declaring the known interface via ``spec``.
+    """
+    mock_async_memory = MagicMock(spec=["from_config"])
+    if from_config_side_effect is not None:
+        mock_async_memory.from_config.side_effect = from_config_side_effect
+    else:
+        mock_async_memory.from_config.return_value = from_config_return_value or _make_mock_client()
+    mock_module = MagicMock(spec=["AsyncMemory"])
+    mock_module.AsyncMemory = mock_async_memory
+    return mock_module
+
 
 class TestCreateMemoryClientImportError:
     """When mem0 is not installed, returns NullMemoryClient."""
@@ -23,10 +60,9 @@ class TestCreateMemoryClientCreationFailure:
     """When mem0 raises during client creation, returns NullMemoryClient."""
 
     async def test_returns_null_client_on_creation_error(self) -> None:
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.side_effect = RuntimeError("config error")
+        mock_mem0 = _make_mock_mem0_module(
+            from_config_side_effect=RuntimeError("config error"),
+        )
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             result = await create_memory_client(
@@ -40,11 +76,8 @@ class TestCreateMemoryClientSuccess:
     """When mem0 creates a client successfully, returns it."""
 
     async def test_returns_client_on_success(self) -> None:
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             result = await create_memory_client(
@@ -56,11 +89,8 @@ class TestCreateMemoryClientSuccess:
         assert result is mock_client
 
     async def test_uses_default_model_when_none_provided(self) -> None:
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             await create_memory_client(
@@ -73,11 +103,8 @@ class TestCreateMemoryClientSuccess:
         assert config["llm"]["model"] == "claude-haiku-4-20250414"
 
     async def test_uses_custom_model_when_provided(self) -> None:
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             await create_memory_client(
@@ -91,11 +118,8 @@ class TestCreateMemoryClientSuccess:
         assert config["llm"]["model"] == "gpt-4o-mini"
 
     async def test_passes_base_url_to_llm_config(self) -> None:
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             await create_memory_client(
@@ -109,11 +133,8 @@ class TestCreateMemoryClientSuccess:
         assert config["llm"]["base_url"] == "https://custom.api.com/v1"
 
     async def test_includes_vector_store_when_db_url_provided(self) -> None:
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             await create_memory_client(
@@ -128,11 +149,8 @@ class TestCreateMemoryClientSuccess:
         assert config["vector_store"]["provider"] == "pgvector"
 
     async def test_no_vector_store_when_db_url_empty(self) -> None:
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             await create_memory_client(
@@ -146,11 +164,8 @@ class TestCreateMemoryClientSuccess:
         assert "vector_store" not in config
 
     async def test_embedding_api_key_defaults_to_llm_key(self) -> None:
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             await create_memory_client(
@@ -163,11 +178,8 @@ class TestCreateMemoryClientSuccess:
         assert config["embedder"]["config"]["api_key"] == "llm-key-123"
 
     async def test_custom_embedding_params(self) -> None:
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             await create_memory_client(
@@ -193,11 +205,8 @@ class TestCreateMemoryClientCascade:
 
     async def test_zai_user_gets_local_embeddings(self) -> None:
         """z.ai user (no embedding API) → Tier 3 local sentence-transformers."""
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             result = await create_memory_client(
@@ -216,11 +225,8 @@ class TestCreateMemoryClientCascade:
 
     async def test_openai_user_gets_openai_embeddings(self) -> None:
         """OpenAI user → Tier 1 OpenAI embeddings."""
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             result = await create_memory_client(
@@ -239,11 +245,8 @@ class TestCreateMemoryClientCascade:
 
     async def test_anthropic_user_gets_local_embeddings(self) -> None:
         """Anthropic user (no embedding API) → Tier 3 local."""
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             result = await create_memory_client(
@@ -269,11 +272,8 @@ class TestCreateMemoryClientCascade:
 
     async def test_custom_instructions_in_config(self) -> None:
         """Custom instructions are passed to mem0 config."""
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         custom_prompt = "Extract only dialogue preferences."
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
@@ -289,11 +289,8 @@ class TestCreateMemoryClientCascade:
 
     async def test_default_custom_instructions_in_config(self) -> None:
         """Default WRITING_PREFERENCE_EXTRACTION_PROMPT used when no custom."""
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         from narrare_core.memory.mem0_client import WRITING_PREFERENCE_EXTRACTION_PROMPT
 
@@ -309,11 +306,8 @@ class TestCreateMemoryClientCascade:
 
     async def test_legacy_embedding_params_override_cascade(self) -> None:
         """Legacy embedding_model/api_key/base_url params override cascade."""
-        mock_client = MagicMock()  # narrare: allow reason="Mocking mem0 AsyncMemory client"
-        mock_mem0 = (
-            MagicMock()
-        )  # narrare: allow reason="Mocking mem0 module for sys.modules injection"
-        mock_mem0.AsyncMemory.from_config.return_value = mock_client
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
 
         with patch.dict("sys.modules", {"mem0": mock_mem0}):
             await create_memory_client(

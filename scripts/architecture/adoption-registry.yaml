@@ -1,0 +1,258 @@
+# =============================================================================
+# Narrare Feature Adoption Registry
+# =============================================================================
+# Machine-readable definition of which features MUST adopt which core infrastructure.
+# Loaded by: scripts/check_adoption.py, scripts/check_prompt_structure.py
+# Spec: docs/architecture/decisions/025-feature-adoption-infrastructure.md
+# =============================================================================
+
+version: "1.0.0"
+
+# ── Feature Categories ────────────────────────────────────────────────────────
+# Each category maps to a _bundled/{category}/ directory.
+# Modes map to subdirectories under _bundled/{category}/{locale}/.
+# Infrastructure levels: required | partial | optional
+# Context variable tiers: must (FAIL if missing) | should (WARN if missing)
+
+features:
+  writing:
+    modes:
+      - new_chapter
+      - extend_chapter
+      - rewrite_selection
+      - inline_suggest
+      - story_suggest
+      - interactive_session
+      - interview
+      - scene_by_scene
+      - chat
+      - co_author
+    required_infrastructure:
+      token_budget: required
+      prompt_composer: required
+      mem0_preferences: required
+      kb_entities: required
+      kb_relationships: required   # ← catches the missing {{kb_relationships}} gap
+      injection_defense: required
+      meta_prompt: required
+      i18n: required
+    context_variables:
+      must:
+        - user_preferences
+        - avoidance_patterns
+        - kb_characters
+        - kb_locations
+        - kb_factions
+        - kb_relationships
+        - culture_guidelines
+      should:
+        - character_voice_profiles
+        - kb_suggested
+
+  analysis:
+    modes:
+      - beta_reader
+      - beta_reader_deepdive
+      - review
+      - preferences
+      - summarize
+      - remap
+      - consistency
+    required_infrastructure:
+      token_budget: required
+      prompt_composer: required
+      mem0_preferences: required
+      kb_entities: partial         # context-dependent
+      kb_relationships: partial    # context-dependent
+      injection_defense: required
+      meta_prompt: required
+      i18n: required
+    context_variables:
+      must:
+        - user_preferences
+        - avoidance_patterns
+      should:
+        - kb_characters
+        - kb_locations
+        - kb_factions
+        - kb_relationships
+
+  kb:
+    modes:
+      - consistency
+      - worldbuilding/phase1
+      - worldbuilding/phase2
+      - improve
+      - suggest
+      - interview
+      - extract
+      - enhance
+    required_infrastructure:
+      token_budget: partial         # extract/interview need it, simple CRUD doesn't
+      prompt_composer: required
+      mem0_preferences: partial     # preference-aware modes only
+      kb_entities: required
+      injection_defense: required
+      meta_prompt: required
+      i18n: required                # currently EN only — known gap
+    context_variables:
+      must:
+        - user_preferences
+        - avoidance_patterns
+      should:
+        - world_context
+
+  planning:
+    modes:
+      - outline
+    required_infrastructure:
+      token_budget: partial
+      prompt_composer: required
+      meta_prompt: required
+      i18n: required
+    context_variables:
+      must:
+        - user_preferences
+        - avoidance_patterns
+        - culture_guidelines
+      should: []
+
+  generation:
+    modes:
+      - names
+    required_infrastructure:
+      prompt_composer: required
+      meta_prompt: required
+      i18n: required
+    context_variables:
+      must:
+        - user_preferences
+        - avoidance_patterns
+      should: []
+
+  chat:
+    modes: []                       # free-form chat — no mode subdirectories
+    required_infrastructure:
+      prompt_composer: required
+      mem0_preferences: required
+      meta_prompt: required
+      i18n: required
+    context_variables:
+      must:
+        - user_preferences
+        - avoidance_patterns
+      should: []
+
+# ── Infrastructure Definitions ────────────────────────────────────────────────
+# Canonical descriptions and evidence criteria for each infrastructure type.
+# Used by check_adoption.py to verify adoption.
+
+infrastructure_definitions:
+  token_budget:
+    description: "TokenBudgetManager with tier-based allocation"
+    evidence: "uses TokenBudgetManager or ContextAssembler with budget parameter"
+  prompt_composer:
+    description: "PromptComposer.build() for system prompt assembly"
+    evidence: "calls composer.build() or uses bundled prompt file via cascade"
+  mem0_preferences:
+    description: "User preferences injected from memory layer (mem0)"
+    evidence: "includes {{user_preferences}} and {{avoidance_patterns}} variables"
+  kb_entities:
+    description: "KB entity context injection (characters, locations, factions)"
+    evidence: "includes {{kb_characters}}, {{kb_locations}}, and/or {{kb_factions}} variables"
+  kb_relationships:
+    description: "KB relationship graph injection"
+    evidence: "includes {{kb_relationships}} variable in prompt"
+  injection_defense:
+    description: "User content wrapped in XML tags to prevent prompt injection"
+    evidence: "all UNSAFE_USER_VARS wrapped in <tag>...</tag> in prompt templates"
+  meta_prompt:
+    description: "Narrare identity meta-prompt prepended to all system prompts"
+    evidence: "uses PromptComposer (includes meta automatically) or with_meta() or MetaPromptLoader"
+  i18n:
+    description: "Bundled prompt exists in en, de, and fr locale directories"
+    evidence: "system.md present in _bundled/{category}/en/, de/, and fr/"
+
+# ── Inline Fallbacks ─────────────────────────────────────────────────────────
+# Registered inline prompts that bypass PromptComposer (ADR-025 Decision 4).
+# Each has a migration target for eventual elimination.
+# Unregistered inline prompts >100 chars cause CI FAIL.
+
+inline_fallbacks:
+  - file: "apps/api/narrare/consistency/prompt_builder.py"
+    lines: "33-65"
+    variable: "CONSISTENCY_SYSTEM_PROMPT"
+    status: registered
+    migration_target: "_bundled/kb/en/consistency/system.md"
+    reason: "Consistency bundled prompt already exists at migration target"
+
+  - file: "apps/api/narrare/kb/extraction_service.py"
+    lines: "40-57"
+    variable: "_DEFAULT_SYSTEM_PROMPT"
+    status: registered
+    migration_target: "_bundled/kb/en/extract/system.md"
+    reason: "Extraction bundled prompt already exists at migration target"
+
+  - file: "packages/core/narrare_core/agents/writing_graph_prompts.py"
+    lines: "multiple"
+    variable: "fallback when composer=None"
+    status: registered
+    migration_target: "Test ergonomics — not a production path"
+    reason: "Fallback for test/dev when no PromptComposer available; not used in production"
+
+# ── Feature Templates ─────────────────────────────────────────────────────────
+# Reference templates for new feature development (ADR-025 Decision 7).
+# These define the required files, infrastructure, and checklist for each type.
+
+feature_templates:
+  writing_feature:
+    extends: writing
+    required_files:
+      - "packages/core/narrare_core/prompts/_bundled/writing/{lang}/{mode}/system.md"
+      - "packages/core/narrare_core/writing/{feature}/contracts.py"
+      - "packages/core/narrare_core/writing/{feature}/assembler.py"
+      - "apps/api/narrare/writing/{feature}_service.py"
+    must_use:
+      - "WritingContextAssembler (or ContextAssembler subclass)"
+      - "PromptComposer.build()"
+      - "TokenBudgetManager"
+    checklist:
+      - "Register in adoption-registry.yaml under writing.modes"
+      - "Create bundled prompt in _bundled/writing/{lang}/{mode}/system.md for en, de, fr"
+      - "Include all context variables from writing.must list"
+      - "Wrap all UNSAFE_USER_VARS in XML tags"
+      - "Add unit tests with >90% coverage"
+      - "Verify check_adoption.py scores >= 0.85"
+
+  analysis_feature:
+    extends: analysis
+    required_files:
+      - "packages/core/narrare_core/prompts/_bundled/analysis/{lang}/{mode}/system.md"
+      - "packages/core/narrare_core/analysis/{feature}/contracts.py"
+      - "apps/api/narrare/analysis/{feature}_service.py"
+    must_use:
+      - "PromptComposer.build()"
+      - "TokenBudgetManager (or AnalysisContextAssembler when available)"
+    checklist:
+      - "Register in adoption-registry.yaml under analysis.modes"
+      - "Create bundled prompt in _bundled/analysis/{lang}/{mode}/system.md for en, de, fr"
+      - "Include all context variables from analysis.must list"
+      - "Wrap all UNSAFE_USER_VARS in XML tags"
+      - "Add unit tests with >90% coverage"
+      - "Verify check_adoption.py scores >= 0.85"
+
+  kb_feature:
+    extends: kb
+    required_files:
+      - "packages/core/narrare_core/prompts/_bundled/kb/{lang}/{mode}/system.md"
+      - "apps/api/narrare/kb/{feature}_service.py"
+    must_use:
+      - "PromptComposer.build()"
+      - "TokenBudgetManager (for extract/interview modes)"
+    checklist:
+      - "Register in adoption-registry.yaml under kb.modes"
+      - "Create bundled prompt in _bundled/kb/{lang}/{mode}/system.md for en, de, fr"
+      - "Include all context variables from kb.must list"
+      - "Wrap all UNSAFE_USER_VARS in XML tags"
+      - "Add unit tests with >90% coverage"
+      - "Verify check_adoption.py scores >= 0.85"

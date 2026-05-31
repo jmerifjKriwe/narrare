@@ -12,6 +12,13 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path  # noqa: TC003
 
+from prompt_vars import (
+    MODE_REQUIRED_VARS,
+    REQUIRED_VARS_BY_CATEGORY,
+    SHOULD_VARS_BY_CATEGORY,
+    UNSAFE_USER_VARS,
+)
+
 # ── Constants ──────────────────────────────────────────────────
 
 VALID_PROMPT_TYPES = {
@@ -30,33 +37,6 @@ VARIABLE_RE = re.compile(r"\{\{(\w+)\}\}")
 HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE)
 MAX_LINES = 300
 
-# User-content variables that MUST be XML-wrapped for injection safety.
-UNSAFE_USER_VARS = frozenset(
-    {
-        "existing_content",
-        "chapter_text",
-        "entry_content",
-        "selection_text",
-        "context_before",
-        "context_after",
-        "text_before",
-        "text_after",
-        "author_instructions",
-        "conversation_history",
-        "existing_answers",
-    }
-)
-
-# Variables required per prompt_type category.
-REQUIRED_VARS_BY_CATEGORY: dict[str, set[str]] = {
-    "writing": {"user_preferences", "avoidance_patterns"},
-    "kb": {"user_preferences", "avoidance_patterns"},
-    "analysis": {"user_preferences", "avoidance_patterns"},
-    "planning": {"user_preferences", "avoidance_patterns"},
-    "generation": {"user_preferences", "avoidance_patterns"},
-    "chat": {"user_preferences", "avoidance_patterns"},
-}
-CULTURE_GUIDELINES_CATEGORIES = {"writing", "planning"}
 RAW_OUTPUT_TYPES = {"meta"}
 RAW_OUTPUT_MODES = {"inline_suggest"}
 META_EXEMPT_TYPES = {"meta"}
@@ -327,9 +307,10 @@ def check_variable_consistency(prompts: list[PromptFile], issues: list[Issue]) -
 
 
 def _check_required_vars(pf: PromptFile, group_key: str, issues: list[Issue]) -> None:
-    """Check category-specific required variables."""
+    """Check category-specific required, mode-specific, and should variables."""
     category = group_key.split("/")[0]
 
+    # 1. MUST: base category variables (WARN — existing behaviour).
     required = REQUIRED_VARS_BY_CATEGORY.get(category, set())
     for var in sorted(required):
         if var not in pf.variables:
@@ -341,14 +322,32 @@ def _check_required_vars(pf: PromptFile, group_key: str, issues: list[Issue]) ->
                 )
             )
 
-    if category in CULTURE_GUIDELINES_CATEGORIES and "culture_guidelines" not in pf.variables:
-        issues.append(
-            Issue(
-                "WARN",
-                pf.display_path,
-                f"Missing {{{{culture_guidelines}}}} (required for {category} category)",
+    # 2. MUST: mode-specific variables (FAIL — hard requirement per mode).
+    if pf.mode:
+        mode_vars = MODE_REQUIRED_VARS.get(category, {}).get(pf.mode, set())
+        for var in sorted(mode_vars):
+            if var not in pf.variables:
+                issues.append(
+                    Issue(
+                        "FAIL",
+                        pf.display_path,
+                        f"Missing mode-required variable {{{{{var}}}}} "
+                        f"for mode '{pf.mode}' in '{category}'",
+                    )
+                )
+
+    # 3. SHOULD: recommended variables (WARN — not blocking).
+    should_vars = SHOULD_VARS_BY_CATEGORY.get(category, set())
+    for var in sorted(should_vars):
+        if var not in pf.variables:
+            issues.append(
+                Issue(
+                    "WARN",
+                    pf.display_path,
+                    f"Missing recommended variable {{{{{var}}}}} "
+                    f"for category '{category}' (SHOULD)",
+                )
             )
-        )
 
 
 def check_security(pf: PromptFile, issues: list[Issue]) -> None:

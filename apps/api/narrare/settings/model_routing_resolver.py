@@ -20,7 +20,12 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.crypto import decrypt
-from narrare_core.llm.intents import INTENT_CATEGORY_MAP, LLMIntent, ResolvedModelConfig
+from narrare_core.llm.intents import (
+    INTENT_CATEGORY_MAP,
+    LLMIntent,
+    ResolvedModelConfig,
+    get_default_profile_for_intent,
+)
 from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.shared.errors import ConfigurationError
 
@@ -95,7 +100,7 @@ class ModelRoutingResolverImpl:
             intent_overrides: dict[str, object] = project_settings.intent_overrides or {}
             if intent_name in intent_overrides:
                 result = await self._resolve_override(
-                    user_id, intent_overrides[intent_name], "project_intent"
+                    user_id, intent_overrides[intent_name], intent, "project_intent"
                 )
                 if result is not None:
                     return result
@@ -105,7 +110,7 @@ class ModelRoutingResolverImpl:
                 cat_overrides: dict[str, object] = project_settings.category_overrides or {}
                 if category_name in cat_overrides:
                     result = await self._resolve_override(
-                        user_id, cat_overrides[category_name], "project_category"
+                        user_id, cat_overrides[category_name], intent, "project_category"
                     )
                     if result is not None:
                         return result
@@ -117,7 +122,7 @@ class ModelRoutingResolverImpl:
         user_intent_overrides: dict[str, object] = user_settings.intent_overrides or {}
         if intent_name in user_intent_overrides:
             result = await self._resolve_override(
-                user_id, user_intent_overrides[intent_name], "user_intent"
+                user_id, user_intent_overrides[intent_name], intent, "user_intent"
             )
             if result is not None:
                 return result
@@ -127,7 +132,7 @@ class ModelRoutingResolverImpl:
             user_cat_overrides: dict[str, object] = user_settings.category_overrides or {}
             if category_name in user_cat_overrides:
                 result = await self._resolve_override(
-                    user_id, user_cat_overrides[category_name], "user_category"
+                    user_id, user_cat_overrides[category_name], intent, "user_category"
                 )
                 if result is not None:
                     return result
@@ -137,10 +142,12 @@ class ModelRoutingResolverImpl:
             provider = await self._providers_repo.get(user_settings.default_provider_id)
             if provider is not None and provider.is_active:
                 api_key = self._decrypt_key(provider.api_key_encrypted)
+                profile = get_default_profile_for_intent(intent)
                 return ResolvedModel(
                     config=ResolvedModelConfig(
                         provider_name=provider.provider_name,
                         model_id=user_settings.default_model,
+                        token_limit_profile=profile,
                     ),
                     api_key=api_key,
                     base_url=provider.base_url,
@@ -157,6 +164,7 @@ class ModelRoutingResolverImpl:
         self,
         user_id: UUID,
         override_data: object,
+        intent: LLMIntent,
         source: str,
     ) -> ResolvedModel | None:
         """Resolve a single override entry to a ResolvedModel.
@@ -164,6 +172,7 @@ class ModelRoutingResolverImpl:
         Args:
             user_id: User who owns the providers.
             override_data: Dict with provider_id and model_id.
+            intent: The LLM intent (used for default profile lookup).
             source: Source label for the result metadata.
 
         Returns:
@@ -201,10 +210,12 @@ class ModelRoutingResolverImpl:
             return None
 
         api_key = self._decrypt_key(provider.api_key_encrypted)
+        profile = get_default_profile_for_intent(intent)
         return ResolvedModel(
             config=ResolvedModelConfig(
                 provider_name=provider.provider_name,
                 model_id=str(model_id),  # type: ignore[arg-type]
+                token_limit_profile=profile,
             ),
             api_key=api_key,
             base_url=provider.base_url,

@@ -93,5 +93,120 @@ just test-single    # Single-threaded for debugging
 pnpm test           # Frontend tests
 ```
 
+---
+
+## Gate 8: Feature Adoption Gate
+
+Runs `scripts/check_adoption.py` in CI.
+
+Reads the adoption registry at `scripts/architecture/adoption-registry.yaml` and validates that every registered feature adopts its required core infrastructure. Computes a weighted adoption score per feature and overall.
+
+### Thresholds
+
+| Score | Result | CI Behavior |
+|-------|--------|-------------|
+| ≥ 0.85 | PASS | CI continues |
+| 0.70 – 0.85 | WARN | CI continues, but reports gaps in output |
+| < 0.70 | FAIL | CI stops |
+| (new, unregistered feature) | WARN | Automatic WARN until registered in the adoption registry |
+
+### Scoring Weights
+
+| Item | Weight | Notes |
+|------|--------|-------|
+| `required` infrastructure | 1.0 | FAIL-level if missing |
+| `partial` infrastructure | 0.5 | 0.5 credit if missing, 1.0 if present |
+| `should` context variables | 0.3 | Warned, not failed |
+| `must` context variables | 1.0 | FAIL-level if missing |
+| Registered inline fallback | -0.1 each | Slight penalty per registered fallback |
+
+### When adding a new feature
+
+1. Register it in `scripts/architecture/adoption-registry.yaml` under the correct feature category
+2. Include all required infrastructure entries
+3. List all `must` and `should` context variables
+4. Verify `check_adoption.py` scores ≥ 0.85
+5. If the feature uses an inline prompt fallback, register it under `inline_fallbacks` with a migration target
+
+### CI Pipeline Position
+
+```
+1. ruff format + lint
+2. check_architecture.py        (RULE enforcement)
+3. check_adoption.py             ← Gate 8: adoption score
+4. check_prompt_structure.py     (prompt variable validation)
+5. mypy --strict + pyright
+6. pytest -m unit
+7. pytest -m integration
+8. pnpm test
+9. bandit
+```
+
+### Validated by
+
+`scripts/check_adoption.py` — reads registry, scans bundled prompts for variable presence, scans service files for infrastructure usage via import analysis, computes per-feature and overall scores, outputs JSON + human-readable summary, exits 0/1/2 based on thresholds.
+
+**Spec**: `docs/architecture/decisions/025-feature-adoption-infrastructure.md` (Decision 5)
+
+---
+
+## Gate 9: AI Content Review Gate
+
+Applies to features that involve prompt engineering, LLM interaction, or user-facing AI output. This gate supplements the technical architecture gates (Gates 3–7) with content-specific quality checks.
+
+### Checklist (per feature)
+
+- [ ] **Prompt uses PromptComposer** — not inline, unless registered in `adoption-registry.yaml` under `inline_fallbacks` (ADR-025 Decision 4)
+- [ ] **All MUST variables present** — `check_prompt_structure.py --strict` passes for the feature's category
+- [ ] **Meta-prompt included** — Narrare identity meta-prompt prepended via PromptComposer, `with_meta()`, or MetaPromptLoader (ADR-019)
+- [ ] **Injection defense: user content XML-wrapped** — all UNSAFE_USER_VARS wrapped in `<tag>...</tag>` in prompt templates
+- [ ] **i18n: prompt files in en/de/fr** — `system.md` exists in all three locale directories under `_bundled/{category}/`
+- [ ] **Token budget enforced** — ContextAssembler (or WritingContextAssembler) used with TokenBudgetManager
+- [ ] **Memory layer included** — `{{user_preferences}}` and `{{avoidance_patterns}}` variables present
+- [ ] **Error handling: LLM failures don't crash** — proper exception handling per RULE-11 (no bare except, no silent failures)
+- [ ] **Streaming: SSE where backend supports it** — SSE used for AI features with streaming capability per RULE-13
+
+### Automation Status
+
+| Checklist Item | Automated? | Tool |
+|----------------|------------|------|
+| PromptComposer usage | Yes | `check_adoption.py` |
+| MUST variables | Yes | `check_prompt_structure.py` |
+| Meta-prompt | Yes | `check_adoption.py` + `check_prompt_structure.py` |
+| Injection defense | Yes | `check_prompt_structure.py` |
+| i18n locales | Yes | `check_adoption.py` (i18n evidence check) |
+| Token budget | Yes | `check_adoption.py` (import analysis) |
+| Memory layer | Yes | `check_prompt_structure.py` (variable check) |
+| Error handling | Partial | `check_architecture.py` (RULE-11 enforcement) |
+| Streaming | Manual | Requires architectural review — no static check yet |
+
+### Validated by
+
+`check_adoption.py` + `check_prompt_structure.py` + `check_architecture.py` together enforce items 1–7. Items 8–9 are validated by existing architecture checks and manual review.
+
+**Spec**: `docs/architecture/decisions/025-feature-adoption-infrastructure.md` (Decision 6)
+
+---
+
+## Relationship: Gates 8–9 vs. Existing Gates
+
+Gates 8 and 9 are **additive** — they do not replace Gates 1–7. The relationship is:
+
+| Gate | Scope | What it catches |
+|------|-------|-----------------|
+| 1–2 | Test quality | Missing tests, low coverage |
+| 3 | Architecture rules | RULE-01b through RULE-19 violations |
+| 4 | Fake conformance | Protocol violations in test doubles |
+| 5 | Cross-layer contracts | API drift, i18n namespace gaps |
+| 6 | Type safety | Untyped code, `Any` misuse |
+| 7 | CI pipeline | Orchestrates all gates |
+| **8** | **Feature adoption** | **Missing infrastructure: no TokenBudget, no PromptComposer, no KB entities** |
+| **9** | **AI content quality** | **Missing prompt variables, no injection defense, no i18n, no streaming** |
+
+A feature must pass ALL gates (1–9) to reach `status: stable`.
+
+---
+
 **Reference**: `docs/development/testing-standards.md` (1224 lines)
 **Related**: narrare-dev/guides/testing · narrare-dev/examples/testing-patterns · narrare-dev/constraints/rules
+**Adoption Spec**: `docs/architecture/decisions/025-feature-adoption-infrastructure.md`

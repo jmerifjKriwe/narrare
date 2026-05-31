@@ -73,6 +73,7 @@ class ContextMetadata:
     kb_characters_count: int = 0
     kb_locations_count: int = 0
     kb_factions_count: int = 0
+    kb_relationships_count: int = 0
     kb_suggested_count: int = 0
     kb_pinned_count: int = 0
     recent_chapter_count: int = 0
@@ -100,6 +101,7 @@ class ContextMetadata:
             "kb_characters_count": self.kb_characters_count,
             "kb_locations_count": self.kb_locations_count,
             "kb_factions_count": self.kb_factions_count,
+            "kb_relationships_count": self.kb_relationships_count,
             "kb_suggested_count": self.kb_suggested_count,
             "kb_pinned_count": self.kb_pinned_count,
             "recent_chapter_count": self.recent_chapter_count,
