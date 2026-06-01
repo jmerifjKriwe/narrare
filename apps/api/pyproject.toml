@@ -53,7 +53,7 @@ dependencies = [
   "fastapi-limiter>=0.2.0",
 
   # Email
-  "aiosmtplib==5.1.0",
+  "aiosmtplib==5.1.1",
 
   # Templates
   "jinja2==3.1.6",
