@@ -123,31 +123,31 @@ print_step() {
 normalize_and_validate_path() {
     local input_path="$1"
     local normalized_path
-    
+
     # Handle empty path
     if [ -z "$input_path" ]; then
         echo ""
         return 1
     fi
-    
+
     # Expand tilde to $HOME (works on Linux, macOS, Windows Git Bash)
     if [[ $input_path == ~* ]]; then
         normalized_path="${HOME}${input_path:1}"
     else
         normalized_path="$input_path"
     fi
-    
+
     # Convert backslashes to forward slashes (Windows compatibility)
     normalized_path="${normalized_path//\\//}"
-    
+
     # Remove trailing slashes
     normalized_path="${normalized_path%/}"
-    
+
     # If path is relative, make it absolute based on current directory
     if [[ ! "$normalized_path" = /* ]] && [[ ! "$normalized_path" =~ ^[A-Za-z]: ]]; then
         normalized_path="$(pwd)/${normalized_path}"
     fi
-    
+
     echo "$normalized_path"
     return 0
 }
@@ -155,28 +155,28 @@ normalize_and_validate_path() {
 validate_install_path() {
     local path="$1"
     local parent_dir
-    
+
     # Get parent directory
     parent_dir="$(dirname "$path")"
-    
+
     # Check if parent directory exists
     if [ ! -d "$parent_dir" ]; then
         print_error "Parent directory does not exist: $parent_dir"
         return 1
     fi
-    
+
     # Check if parent directory is writable
     if [ ! -w "$parent_dir" ]; then
         print_error "No write permission for directory: $parent_dir"
         return 1
     fi
-    
+
     # If target directory exists, check if it's writable
     if [ -d "$path" ] && [ ! -w "$path" ]; then
         print_error "No write permission for directory: $path"
         return 1
     fi
-    
+
     return 0
 }
 
@@ -221,17 +221,17 @@ check_bash_version() {
 
 check_dependencies() {
     print_step "Checking dependencies..."
-    
+
     local missing_deps=()
-    
+
     if ! command -v curl &> /dev/null; then
         missing_deps+=("curl")
     fi
-    
+
     if ! command -v jq &> /dev/null; then
         missing_deps+=("jq")
     fi
-    
+
     if [ ${#missing_deps[@]} -ne 0 ]; then
         print_error "Missing required dependencies: ${missing_deps[*]}"
         echo ""
@@ -256,7 +256,7 @@ check_dependencies() {
         esac
         exit 1
     fi
-    
+
     print_success "All dependencies found"
 }
 
@@ -266,9 +266,9 @@ check_dependencies() {
 
 fetch_registry() {
     print_step "Fetching component registry..."
-    
+
     mkdir -p "$TEMP_DIR"
-    
+
     # Handle local file:// URLs
     if [[ "$REGISTRY_URL" == file://* ]]; then
         local local_path="${REGISTRY_URL#file://}"
@@ -297,7 +297,7 @@ get_profile_components() {
 get_component_info() {
     local component_id=$1
     local component_type=$2
-    
+
     if [ "$component_type" = "context" ] && [[ "$component_id" == */* ]]; then
         jq_exec "first(.components.contexts[]? | select(.path == \".opencode/context/${component_id}.md\"))" "$TEMP_DIR/registry.json"
         return
@@ -421,15 +421,15 @@ resolve_dependencies() {
     local component=$1
     local type="${component%%:*}"
     local id="${component##*:}"
-    
+
     # Get the correct registry key (handles singular/plural)
     local registry_key
     registry_key=$(get_registry_key "$type")
-    
+
     # Get dependencies for this component
     local deps
     deps=$(jq_exec ".components.${registry_key}[] | select(.id == \"${id}\" or (.aliases // [] | index(\"${id}\"))) | .dependencies[]?" "$TEMP_DIR/registry.json" 2>/dev/null || echo "")
-    
+
     if [ -n "$deps" ]; then
         for dep in $deps; do
             if [[ "$dep" == *"*"* ]]; then
@@ -512,13 +512,13 @@ check_interactive_mode() {
 
 show_install_location_menu() {
     check_interactive_mode
-    
+
     clear
     print_header
-    
+
     local global_path
     global_path=$(get_global_install_path)
-    
+
     echo -e "${BOLD}Choose installation location:${NC}\n"
     echo -e "  ${GREEN}1) Local${NC} - Install to ${CYAN}.opencode/${NC} in current directory"
     echo "     (Best for project-specific agents)"
@@ -540,7 +540,7 @@ show_install_location_menu() {
     echo "  4) Back / Exit"
     echo ""
     read -r -p "Enter your choice [1-4]: " location_choice
-    
+
     case $location_choice in
         1)
             INSTALL_DIR=".opencode"
@@ -555,24 +555,24 @@ show_install_location_menu() {
         3)
             echo ""
             read -r -p "Enter installation path: " custom_path
-            
+
             if [ -z "$custom_path" ]; then
                 print_error "No path entered"
                 sleep 2
                 show_install_location_menu
                 return
             fi
-            
+
             local normalized_path
             normalized_path=$(normalize_and_validate_path "$custom_path")
-            
+
             if ! normalize_and_validate_path "$custom_path" > /dev/null; then
                 print_error "Invalid path"
                 sleep 2
                 show_install_location_menu
                 return
             fi
-            
+
             if ! validate_install_path "$normalized_path"; then
                 echo ""
                 read -r -p "Continue anyway? [y/N]: " continue_choice
@@ -581,7 +581,7 @@ show_install_location_menu() {
                     return
                 fi
             fi
-            
+
             INSTALL_DIR="$normalized_path"
             print_success "Installing to custom directory: $INSTALL_DIR"
             sleep 1
@@ -600,10 +600,10 @@ show_install_location_menu() {
 
 show_main_menu() {
     check_interactive_mode
-    
+
     clear
     print_header
-    
+
     echo -e "${BOLD}Choose installation mode:${NC}\n"
     echo "  1) Quick Install (Choose a profile)"
     echo "  2) Custom Install (Pick individual components)"
@@ -611,7 +611,7 @@ show_main_menu() {
     echo "  4) Exit"
     echo ""
     read -r -p "Enter your choice [1-4]: " choice
-    
+
     case $choice in
         1) INSTALL_MODE="profile" ;;
         2) INSTALL_MODE="custom" ;;
@@ -628,9 +628,9 @@ show_main_menu() {
 show_profile_menu() {
     clear
     print_header
-    
+
     echo -e "${BOLD}Available Installation Profiles:${NC}\n"
-    
+
     # Essential profile
     local essential_name
     essential_name=$(jq_exec '.profiles.essential.name' "$TEMP_DIR/registry.json")
@@ -641,7 +641,7 @@ show_profile_menu() {
     echo -e "  ${GREEN}1) ${essential_name}${NC}"
     echo -e "     ${essential_desc}"
     echo -e "     Components: ${essential_count}\n"
-    
+
     # Developer profile
     local dev_desc
     dev_desc=$(jq_exec '.profiles.developer.description' "$TEMP_DIR/registry.json")
@@ -656,7 +656,7 @@ show_profile_menu() {
     fi
     echo -e "     ${dev_desc}"
     echo -e "     Components: ${dev_count}\n"
-    
+
     # Business profile
     local business_name
     business_name=$(jq_exec '.profiles.business.name' "$TEMP_DIR/registry.json")
@@ -667,7 +667,7 @@ show_profile_menu() {
     echo -e "  ${CYAN}3) ${business_name}${NC}"
     echo -e "     ${business_desc}"
     echo -e "     Components: ${business_count}\n"
-    
+
     # Full profile
     local full_name
     full_name=$(jq_exec '.profiles.full.name' "$TEMP_DIR/registry.json")
@@ -678,7 +678,7 @@ show_profile_menu() {
     echo -e "  ${MAGENTA}4) ${full_name}${NC}"
     echo -e "     ${full_desc}"
     echo -e "     Components: ${full_count}\n"
-    
+
     # Advanced profile
     local adv_name
     adv_name=$(jq_exec '.profiles.advanced.name' "$TEMP_DIR/registry.json")
@@ -689,11 +689,11 @@ show_profile_menu() {
     echo -e "  ${YELLOW}5) ${adv_name}${NC}"
     echo -e "     ${adv_desc}"
     echo -e "     Components: ${adv_count}\n"
-    
+
     echo "  6) Back to main menu"
     echo ""
     read -r -p "Enter your choice [1-6]: " choice
-    
+
     case $choice in
         1) PROFILE="essential" ;;
         2) PROFILE="developer" ;;
@@ -703,7 +703,7 @@ show_profile_menu() {
         6) show_main_menu; return ;;
         *) print_error "Invalid choice"; sleep 2; show_profile_menu; return ;;
     esac
-    
+
     # Load profile components (compatible with bash 3.2+)
     SELECTED_COMPONENTS=()
     local temp_file="$TEMP_DIR/components.tmp"
@@ -713,20 +713,20 @@ show_profile_menu() {
     done < "$temp_file"
 
     expand_selected_components
-    
+
     # Resolve dependencies for profile installs
     print_step "Resolving dependencies..."
     local original_count=${#SELECTED_COMPONENTS[@]}
     for comp in "${SELECTED_COMPONENTS[@]}"; do
         resolve_dependencies "$comp"
     done
-    
+
     local new_count=${#SELECTED_COMPONENTS[@]}
     if [ "$new_count" -gt "$original_count" ]; then
         local added=$((new_count - original_count))
         print_info "Added $added dependencies"
     fi
-    
+
     show_installation_preview
 }
 
@@ -737,14 +737,14 @@ show_profile_menu() {
 show_custom_menu() {
     clear
     print_header
-    
+
     echo -e "${BOLD}Select component categories to install:${NC}\n"
     echo "Use space to toggle, Enter to continue"
     echo ""
-    
+
     local categories=("agents" "subagents" "commands" "tools" "plugins" "skills" "contexts" "config")
     local selected_categories=()
-    
+
     # Simple selection (for now, we'll make it interactive later)
     echo "Available categories:"
     for i in "${!categories[@]}"; do
@@ -759,9 +759,9 @@ show_custom_menu() {
     echo "  $((${#categories[@]}+2))) Continue to component selection"
     echo "  $((${#categories[@]}+3))) Back to main menu"
     echo ""
-    
+
     read -r -p "Enter category numbers (space-separated) or option: " -a selections
-    
+
     for sel in "${selections[@]}"; do
         if [ "$sel" -eq $((${#categories[@]}+1)) ]; then
             selected_categories=("${categories[@]}")
@@ -775,14 +775,14 @@ show_custom_menu() {
             selected_categories+=("${categories[$((sel-1))]}")
         fi
     done
-    
+
     if [ ${#selected_categories[@]} -eq 0 ]; then
         print_warning "No categories selected"
         sleep 2
         show_custom_menu
         return
     fi
-    
+
     show_component_selection "${selected_categories[@]}"
 }
 
@@ -790,42 +790,42 @@ show_component_selection() {
     local categories=("$@")
     clear
     print_header
-    
+
     echo -e "${BOLD}Select components to install:${NC}\n"
-    
+
     local all_components=()
     local component_details=()
-    
+
     for category in "${categories[@]}"; do
         local cat_display
         cat_display=$(echo "$category" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
         echo -e "${CYAN}${BOLD}${cat_display}:${NC}"
-        
+
         local components
         components=$(jq_exec ".components.${category}[]? | .id" "$TEMP_DIR/registry.json")
-        
+
         local idx=1
         while IFS= read -r comp_id; do
             local comp_name
             comp_name=$(jq_exec ".components.${category}[]? | select(.id == \"${comp_id}\") | .name" "$TEMP_DIR/registry.json")
             local comp_desc
             comp_desc=$(jq_exec ".components.${category}[]? | select(.id == \"${comp_id}\") | .description" "$TEMP_DIR/registry.json")
-            
+
             echo "  ${idx}) ${comp_name}"
             echo "     ${comp_desc}"
-            
+
             all_components+=("${category}:${comp_id}")
             component_details+=("${comp_name}|${comp_desc}")
-            
+
             idx=$((idx+1))
         done <<< "$components"
-        
+
         echo ""
     done
-    
+
     echo "Enter component numbers (space-separated), 'all' for all, or 'done' to continue:"
     read -r -a selections
-    
+
     for sel in "${selections[@]}"; do
         if [ "$sel" = "all" ]; then
             SELECTED_COMPONENTS=("${all_components[@]}")
@@ -836,25 +836,25 @@ show_component_selection() {
             SELECTED_COMPONENTS+=("${all_components[$((sel-1))]}")
         fi
     done
-    
+
     if [ ${#SELECTED_COMPONENTS[@]} -eq 0 ]; then
         print_warning "No components selected"
         sleep 2
         show_custom_menu
         return
     fi
-    
+
     # Resolve dependencies
     print_step "Resolving dependencies..."
     local original_count=${#SELECTED_COMPONENTS[@]}
     for comp in "${SELECTED_COMPONENTS[@]}"; do
         resolve_dependencies "$comp"
     done
-    
+
     if [ ${#SELECTED_COMPONENTS[@]} -gt "$original_count" ]; then
         print_info "Added $((${#SELECTED_COMPONENTS[@]} - original_count)) dependencies"
     fi
-    
+
     show_installation_preview
 }
 
@@ -868,19 +868,19 @@ show_installation_preview() {
         clear
     fi
     print_header
-    
+
     echo -e "${BOLD}Installation Preview${NC}\n"
-    
+
     if [ -n "$PROFILE" ]; then
         echo -e "Profile: ${GREEN}${PROFILE}${NC}"
     else
         echo -e "Mode: ${GREEN}Custom${NC}"
     fi
-    
+
     echo -e "Installation directory: ${CYAN}${INSTALL_DIR}${NC}"
-    
+
     echo -e "\nComponents to install (${#SELECTED_COMPONENTS[@]} total):\n"
-    
+
     # Group by type
     local agents=()
     local subagents=()
@@ -890,7 +890,7 @@ show_installation_preview() {
     local skills=()
     local contexts=()
     local configs=()
-    
+
     for comp in "${SELECTED_COMPONENTS[@]}"; do
         local type="${comp%%:*}"
         case $type in
@@ -904,7 +904,7 @@ show_installation_preview() {
             config) configs+=("$comp") ;;
         esac
     done
-    
+
     [ ${#agents[@]} -gt 0 ] && echo -e "${CYAN}Agents (${#agents[@]}):${NC} ${agents[*]##*:}"
     [ ${#subagents[@]} -gt 0 ] && echo -e "${CYAN}Subagents (${#subagents[@]}):${NC} ${subagents[*]##*:}"
     [ ${#commands[@]} -gt 0 ] && echo -e "${CYAN}Commands (${#commands[@]}):${NC} ${commands[*]##*:}"
@@ -913,21 +913,21 @@ show_installation_preview() {
     [ ${#skills[@]} -gt 0 ] && echo -e "${CYAN}Skills (${#skills[@]}):${NC} ${skills[*]##*:}"
     [ ${#contexts[@]} -gt 0 ] && echo -e "${CYAN}Contexts (${#contexts[@]}):${NC} ${contexts[*]##*:}"
     [ ${#configs[@]} -gt 0 ] && echo -e "${CYAN}Config (${#configs[@]}):${NC} ${configs[*]##*:}"
-    
+
     echo ""
-    
+
     # Skip confirmation if profile was provided via command line
     if [ "$NON_INTERACTIVE" = true ]; then
         print_info "Installing automatically (profile specified)..."
         perform_installation
     else
         read -r -p "Proceed with installation? [Y/n]: " confirm
-        
+
         if [[ $confirm =~ ^[Nn] ]]; then
             print_info "Installation cancelled"
             cleanup_and_exit 0
         fi
-        
+
         perform_installation
     fi
 }
@@ -940,11 +940,11 @@ show_collision_report() {
     local collision_count=$1
     shift
     local collisions=("$@")
-    
+
     echo ""
     print_warning "Found ${collision_count} file collision(s):"
     echo ""
-    
+
     # Group by type
     local agents=()
     local subagents=()
@@ -954,11 +954,11 @@ show_collision_report() {
     local skills=()
     local contexts=()
     local configs=()
-    
+
     for file in "${collisions[@]}"; do
         # Skip empty entries
         [ -z "$file" ] && continue
-        
+
         if [[ $file == *"/agent/subagents/"* ]]; then
             subagents+=("$file")
         elif [[ $file == *"/agent/"* ]]; then
@@ -977,7 +977,7 @@ show_collision_report() {
             configs+=("$file")
         fi
     done
-    
+
     # Display grouped collisions
     [ ${#agents[@]} -gt 0 ] && echo -e "${YELLOW}  Agents (${#agents[@]}):${NC}" && printf '    %s\n' "${agents[@]}"
     [ ${#subagents[@]} -gt 0 ] && echo -e "${YELLOW}  Subagents (${#subagents[@]}):${NC}" && printf '    %s\n' "${subagents[@]}"
@@ -987,7 +987,7 @@ show_collision_report() {
     [ ${#skills[@]} -gt 0 ] && echo -e "${YELLOW}  Skills (${#skills[@]}):${NC}" && printf '    %s\n' "${skills[@]}"
     [ ${#contexts[@]} -gt 0 ] && echo -e "${YELLOW}  Context (${#contexts[@]}):${NC}" && printf '    %s\n' "${contexts[@]}"
     [ ${#configs[@]} -gt 0 ] && echo -e "${YELLOW}  Config (${#configs[@]}):${NC}" && printf '    %s\n' "${configs[@]}"
-    
+
     echo ""
 }
 
@@ -999,10 +999,10 @@ get_install_strategy() {
     echo "  4) ${RED}Cancel${NC} - Exit without making changes" >&2
     echo "" >&2
     read -r -p "Enter your choice [1-4]: " strategy_choice
-    
+
     case $strategy_choice in
         1) echo "skip" ;;
-        2) 
+        2)
             echo "" >&2
             print_warning "This will overwrite existing files. Your changes will be lost!"
             read -r -p "Are you sure? Type 'yes' to confirm: " confirm
@@ -1024,10 +1024,10 @@ get_install_strategy() {
 
 perform_installation() {
     print_step "Preparing installation..."
-    
+
     # Create base directory only - subdirectories created on-demand when files are installed
     mkdir -p "$INSTALL_DIR"
-    
+
     # Check for collisions
     local collisions=()
     for comp in "${SELECTED_COMPONENTS[@]}"; do
@@ -1037,7 +1037,7 @@ perform_installation() {
         registry_key=$(get_registry_key "$type")
         local path
         path=$(resolve_component_path "$type" "$id")
-        
+
         if [ -n "$path" ] && [ "$path" != "null" ]; then
             local install_path
             install_path=$(get_install_path "$path")
@@ -1046,10 +1046,10 @@ perform_installation() {
             fi
         fi
     done
-    
+
     # Determine installation strategy
     local install_strategy="fresh"
-    
+
     if [ ${#collisions[@]} -gt 0 ]; then
         # In non-interactive mode, use default strategy (skip existing files)
         if [ "$NON_INTERACTIVE" = true ]; then
@@ -1059,19 +1059,19 @@ perform_installation() {
         else
             show_collision_report ${#collisions[@]} "${collisions[@]}"
             install_strategy=$(get_install_strategy)
-            
+
             if [ "$install_strategy" = "cancel" ]; then
                 print_info "Installation cancelled by user"
                 cleanup_and_exit 0
             fi
         fi
-        
+
         # Handle backup strategy
         if [ "$install_strategy" = "backup" ]; then
             local backup_dir
             backup_dir="${INSTALL_DIR}.backup.$(date +%Y%m%d-%H%M%S)"
             print_step "Creating backup..."
-            
+
             # Only backup files that will be overwritten
             local backup_count=0
             for file in "${collisions[@]}"; do
@@ -1085,7 +1085,7 @@ perform_installation() {
                     fi
                 fi
             done
-            
+
             if [ $backup_count -gt 0 ]; then
                 print_success "Backed up ${backup_count} file(s) to $backup_dir"
                 install_strategy="overwrite"  # Now we can overwrite
@@ -1095,56 +1095,56 @@ perform_installation() {
             fi
         fi
     fi
-    
+
     # Perform installation
     print_step "Installing components..."
-    
+
     local installed=0
     local skipped=0
     local failed=0
-    
+
     for comp in "${SELECTED_COMPONENTS[@]}"; do
         local type="${comp%%:*}"
         local id="${comp##*:}"
-        
+
         # Get the correct registry key (handles singular/plural)
         local registry_key
         registry_key=$(get_registry_key "$type")
-        
+
         # Get component path
         local path
         path=$(resolve_component_path "$type" "$id")
-        
+
         if [ -z "$path" ] || [ "$path" = "null" ]; then
             print_warning "Could not find path for ${comp}"
             failed=$((failed + 1))
             continue
         fi
-        
+
         # Check if component has additional files (for skills)
         local files_array
         files_array=$(jq_exec ".components.${registry_key}[]? | select(.id == \"${id}\") | .files[]?" "$TEMP_DIR/registry.json")
-        
+
         if [ -n "$files_array" ]; then
             # Component has multiple files - download all of them
             local component_installed=0
             local component_failed=0
-            
+
             while IFS= read -r file_path; do
                 [ -z "$file_path" ] && continue
-                
+
                 local dest
                 dest=$(get_install_path "$file_path")
-                
+
                 # Check if file exists and we're in skip mode
                 if [ -f "$dest" ] && [ "$install_strategy" = "skip" ]; then
                     continue
                 fi
-                
+
                 # Download file
                 local url="${RAW_URL}/${file_path}"
                 mkdir -p "$(dirname "$dest")"
-                
+
                 if curl -fsSL "$url" -o "$dest"; then
                     # Transform paths for global installation
                     if [[ "$INSTALL_DIR" != ".opencode" ]] && [[ "$INSTALL_DIR" != *"/.opencode" ]]; then
@@ -1158,7 +1158,7 @@ perform_installation() {
                     component_failed=$((component_failed + 1))
                 fi
             done <<< "$files_array"
-            
+
             if [ $component_failed -eq 0 ]; then
                 print_success "Installed ${type}: ${id} (${component_installed} files)"
                 installed=$((installed + 1))
@@ -1170,26 +1170,26 @@ perform_installation() {
             # Single file component - original logic
             local dest
             dest=$(get_install_path "$path")
-            
+
             # Check if file exists before we install (for proper messaging)
             local file_existed=false
             if [ -f "$dest" ]; then
                 file_existed=true
             fi
-            
+
             # Check if file exists and we're in skip mode
             if [ "$file_existed" = true ] && [ "$install_strategy" = "skip" ]; then
                 print_info "Skipped existing: ${type}:${id}"
                 skipped=$((skipped + 1))
                 continue
             fi
-            
+
             # Download component
             local url="${RAW_URL}/${path}"
-            
+
             # Create parent directory if needed
             mkdir -p "$(dirname "$dest")"
-            
+
             if curl -fsSL "$url" -o "$dest"; then
                 # Transform paths for global installation (any non-local path)
                 # Local paths: .opencode or */.opencode
@@ -1201,7 +1201,7 @@ perform_installation() {
                                -e "s|\.opencode/context|${expanded_path}/context|g" "$dest" 2>/dev/null || true
                     rm -f "${dest}.bak" 2>/dev/null || true
                 fi
-                
+
                 # Show appropriate message based on whether file existed before
                 if [ "$file_existed" = true ]; then
                     print_success "Updated ${type}: ${id}"
@@ -1215,7 +1215,7 @@ perform_installation() {
             fi
         fi
     done
-    
+
     # Handle additional paths for advanced profile
     if [ "$PROFILE" = "advanced" ]; then
         local additional_paths
@@ -1229,13 +1229,13 @@ perform_installation() {
             done <<< "$additional_paths"
         fi
     fi
-    
+
     echo ""
     print_success "Installation complete!"
     echo -e "  Installed: ${GREEN}${installed}${NC}"
     [ $skipped -gt 0 ] && echo -e "  Skipped: ${CYAN}${skipped}${NC}"
     [ $failed -gt 0 ] && echo -e "  Failed: ${RED}${failed}${NC}"
-    
+
     show_post_install
 }
 
@@ -1246,9 +1246,9 @@ perform_installation() {
 show_post_install() {
     echo ""
     print_step "Next Steps"
-    
+
     echo "1. Review the installed components in ${CYAN}${INSTALL_DIR}/${NC}"
-    
+
     # Check if env.example was installed
     if [ -f "${INSTALL_DIR}/env.example" ] || [ -f "env.example" ]; then
         echo "2. Copy env.example to .env and configure:"
@@ -1259,10 +1259,10 @@ show_post_install() {
     fi
     echo -e "   ${CYAN}opencode${NC}"
     echo ""
-    
+
     # Show installation location info
     print_info "Installation directory: ${CYAN}${INSTALL_DIR}${NC}"
-    
+
     # Check for backup directories
     local has_backup=0
     local backup_dir
@@ -1281,10 +1281,10 @@ show_post_install() {
     if [ "$has_backup" -eq 1 ]; then
         print_info "Backup created - you can restore files from ${INSTALL_DIR}.backup.* if needed"
     fi
-    
+
     print_info "Documentation: ${REPO_URL}"
     echo ""
-    
+
     cleanup_and_exit 0
 }
 
@@ -1295,24 +1295,24 @@ show_post_install() {
 list_components() {
     clear || true
     print_header
-    
+
     echo -e "${BOLD}Available Components${NC}\n"
-    
+
     local categories=("agents" "subagents" "commands" "tools" "plugins" "skills" "contexts")
-    
+
     for category in "${categories[@]}"; do
         local cat_display
         cat_display=$(echo "$category" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
         echo -e "${CYAN}${BOLD}${cat_display}:${NC}"
-        
+
         local components
         components=$(jq_exec ".components.${category}[]? | \"\(.id)|\(.name)|\(.description)\"" "$TEMP_DIR/registry.json")
-        
+
         while IFS='|' read -r id name desc; do
             echo -e "  ${GREEN}${name}${NC} (${id})"
             echo -e "    ${desc}"
         done <<< "$components"
-        
+
         echo ""
     done
 }
@@ -1449,7 +1449,7 @@ main() {
                 ;;
         esac
     done
-    
+
     # Apply custom install directory if specified (CLI arg overrides env var)
     if [ -n "$CUSTOM_INSTALL_DIR" ]; then
         local normalized_path
@@ -1464,11 +1464,11 @@ main() {
             exit 1
         fi
     fi
-    
+
     check_bash_version
     check_dependencies
     fetch_registry
-    
+
     if [ -n "$PROFILE" ]; then
         # Non-interactive mode (compatible with bash 3.2+)
         SELECTED_COMPONENTS=()
@@ -1498,7 +1498,7 @@ main() {
         # Interactive mode - show location menu first
         show_install_location_menu
         show_main_menu
-        
+
         if [ "$INSTALL_MODE" = "profile" ]; then
             show_profile_menu
         elif [ "$INSTALL_MODE" = "custom" ]; then
