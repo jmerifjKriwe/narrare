@@ -12,8 +12,8 @@ import pytest
 
 from narrare.chapters.repository import ChapterRepository
 from narrare.writing.suggest_service import InlineSuggestService
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
-from narrare_core.llm.intents import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 
@@ -133,7 +133,7 @@ class TestSuggestInline:
         import uuid
 
         from narrare.writing.schemas import InlineSuggestRequest
-        from narrare_core.llm.intents import LLMIntent
+        from narrare_core.llm import LLMIntent
 
         chapter_id = uuid.uuid4()
         user_id = str(uuid.uuid4())

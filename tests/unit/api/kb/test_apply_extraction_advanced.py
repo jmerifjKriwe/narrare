@@ -21,7 +21,7 @@ import pytest
 from narrare.kb.extraction_apply_service import ExtractionApplyService
 from narrare.kb.extraction_service import ExtractionService
 from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionResponse
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 
 # Reuse fakes from the main test module
 from tests.unit.api.kb.test_apply_extraction import (

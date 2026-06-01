@@ -285,7 +285,7 @@ class TestRewriteStreamErrors:
             from narrare._app.dependencies import get_composer
             from narrare.writing.repository import GenerationRepository
             from narrare.writing.rewrite_service import RewriteService
-            from narrare_core.llm.intents import ResolvedModelConfig
+            from narrare_core.llm import ResolvedModelConfig
             from narrare_core.writing.context_assembler import WritingContextAssembler
             from narrare_core.writing.draft_processor import DraftProcessor
             from narrare_core.writing.pipeline import WritingPipeline

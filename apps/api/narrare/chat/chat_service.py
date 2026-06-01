@@ -29,8 +29,7 @@ from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
-    from narrare_core.llm import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.prompts import PromptComposer
 
 logger = structlog.get_logger(__name__)

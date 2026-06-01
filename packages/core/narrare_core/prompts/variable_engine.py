@@ -56,6 +56,9 @@ _USER_CONTENT_VARS: frozenset[str] = frozenset(
         "author_instructions",
         # Conversation history
         "conversation_history",
+        # KB entity content (user-authored in KB sessions)
+        "entity_name",
+        "entity_current_content",
     }
 )
 
@@ -71,11 +74,6 @@ _SYSTEM_VARS: frozenset[str] = frozenset(
         "kb_characters",
         "kb_locations",
         "kb_factions",
-        "kb_systems",
-        "kb_timelines",
-        "kb_objects",
-        "kb_concepts",
-        "kb_settings",
         "kb_relationships",
         "kb_entities",
         "existing_names",

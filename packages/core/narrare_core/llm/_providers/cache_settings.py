@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from narrare_core.llm.intents import CacheSettings
+    from narrare_core.llm.model_config import CacheSettings
 
 
 def build_model_settings(

@@ -26,8 +26,8 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.context_models import KBEntity, RecentChapter

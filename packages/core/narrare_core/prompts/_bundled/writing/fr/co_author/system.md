@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -17,6 +17,8 @@ préservant sa voix et son style.
 - Projet : {{project_title}}
 - Genre : {{genre}}
 - Langue : {{language}}
+- Chronologie : {{timeline_position}}
+- **Structure narrative** : {{story_structure}}
 
 ### Base de connaissances
 
@@ -93,3 +95,5 @@ améliorée du passage original.
 - Rédige en {{writing_language}}
 - Corresponds au rythme et au registre du contexte environnant
 - Respecte les motifs d'évitement de l'auteur : {{avoidance_patterns}}
+
+Les instructions de l'auteur prévalent sur les préférences en cas de conflit.

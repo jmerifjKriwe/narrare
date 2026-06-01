@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: de
-prompt_version: "2.0.0"
+prompt_version: "2.1.0"
 ---
 
 ## System Prompt
@@ -39,6 +39,8 @@ Deine Aufgabe: Vervollständige den Text natürlich, als hätte der Autor ihn se
 Projekt: {{project_title}}
 Genre: {{genre}}
 Sprache: {{writing_language}}
+Zeitlinie: {{timeline_position}}
+Erzählstruktur: {{story_structure}}
 {{chapter_context}}
 
 ### Fortzusetzender Text

@@ -52,6 +52,28 @@ Spec must include:
 
 ---
 
+### Stage 2.5: Architecture → Semantic Review (NEW)
+
+**Owner**: Architecture Specialist
+**Input**: Validated feature spec
+**Artifacts**: Semantic Review Checklist (signed off)
+
+Vor der Implementation prüft der Architecture Specialist die Cross-Feature-Kohärenz:
+
+- [ ] **Cross-Feature-Datenflüsse identifiziert?** — Welche Daten teilt das Feature mit anderen Features? (KB, Storyboard, Frontmatter, wiki, memory, settings, etc.)
+- [ ] **Integration Contract definiert?** — Was passiert bei shared-data Änderung/Löschung? (Siehe RULE-03 Integration Contracts)
+- [ ] **Intent-Semantik geprüft?** — Falls neuer LLMIntent: Scope-Beschreibung dokumentiert? Falls existierender Intent: gleiche Semantik?
+- [ ] **i18n-Parität geprüft?** — Prompts in en/de/fr oder EN-Fallback dokumentiert?
+- [ ] **Injection-Defense geprüft?** — Neue user-content Variablen in _USER_CONTENT_VARS? XML-Wrapping in Templates?
+- [ ] **Template-Variablen registriert?** — Neue Variablen in _SYSTEM_VARS oder WritingContext?
+- [ ] **KB-Status-Filtering beachtet?** — Falls KB-Daten: deprecated ausgeschlossen?
+- [ ] **Token-Budget definiert?** — String-Truncation oder echtes Token-Counting?
+- [ ] **RULE-22 Compliance?** — Cross-Feature Coherence Gate bestanden?
+
+**Gate**: Semantic Review bestanden → Stage 3 (Implementation) freigegeben.
+
+---
+
 ## Stage 3: Spec → Implementation
 
 **Owner**: Implementation Specialist (per layer)

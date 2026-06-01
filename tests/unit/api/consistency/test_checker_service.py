@@ -39,7 +39,7 @@ def _output(**kw) -> ConsistencyOutput:
 
 
 def _service(nr=None, cr=None, kb=None) -> ConsistencyCheckerService:
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
 
     kb = kb or AsyncMock(list_entries=AsyncMock(return_value=([], 0)))
     registry = MagicMock(spec=_RegistryProto)

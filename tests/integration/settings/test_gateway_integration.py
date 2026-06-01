@@ -13,7 +13,7 @@ import pytest
 
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
 from narrare.settings.models import UserAiSettings, UserProvider
-from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm import LLMIntent
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -183,7 +183,7 @@ class TestGatewayIntegration:
         from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
         from narrare.settings.user_providers_repository import UserProvidersRepository
         from narrare_core.crypto import encrypt
-        from narrare_core.llm.intents import ResolvedModelConfig
+        from narrare_core.llm import ResolvedModelConfig
         from narrare_core.llm.model_routing import ResolvedModel
 
         user_id = uuid.uuid4()

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from narrare_core.llm.intents import (
+from narrare_core.llm import LLMIntent
+from narrare_core.llm.intent_categories import (
     _INTENT_PROFILE_DEFAULTS,
-    _PROFILE_OUTPUT_LIMITS,
     INTENT_CATEGORY_MAP,
     IntentCategory,
-    LLMIntent,
-    ResolvedModelConfig,
     get_default_profile_for_intent,
 )
+from narrare_core.llm.model_config import _PROFILE_OUTPUT_LIMITS, ResolvedModelConfig
 
 
 class TestLLMIntent:

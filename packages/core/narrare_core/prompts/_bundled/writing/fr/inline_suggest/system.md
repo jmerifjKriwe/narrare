@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: fr
-prompt_version: "2.0.0"
+prompt_version: "2.1.0"
 ---
 
 ## System Prompt
@@ -39,6 +39,8 @@ Votre tâche : Compléter le texte naturellement, comme si l'auteur l'avait écr
 Projet : {{project_title}}
 Genre : {{genre}}
 Langue : {{writing_language}}
+Chronologie : {{timeline_position}}
+Structure narrative : {{story_structure}}
 {{chapter_context}}
 
 ### Texte à continuer

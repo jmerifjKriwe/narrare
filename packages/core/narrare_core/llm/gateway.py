@@ -33,7 +33,8 @@ if TYPE_CHECKING:
     from pydantic_ai.models import Model
     from pydantic_ai.settings import ModelSettings
 
-    from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.intents import LLMIntent
 
 logger = structlog.get_logger(__name__)
 

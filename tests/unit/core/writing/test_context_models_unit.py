@@ -131,6 +131,10 @@ class TestContextMetadata:
         assert meta.is_first_chapter is False
         assert meta.has_user_preferences is False
         assert meta.tone == "balanced"
+        assert meta.kb_systems_count == 0
+        assert meta.kb_timelines_count == 0
+        assert meta.story_structure == ""
+        assert meta.timeline_position == ""
         assert meta.total_budget_tokens == 0
 
     def test_to_dict(self) -> None:
@@ -166,8 +170,86 @@ class TestContextMetadata:
             "is_first_chapter",
             "has_user_preferences",
             "tone",
+            "kb_systems_count",
+            "kb_timelines_count",
+            "story_structure",
+            "timeline_position",
             "wiki_summaries_count",
             "wiki_summaries_stale",
             "total_budget_tokens",
         }
         assert set(d.keys()) == expected_keys
+
+    def test_custom_values_with_new_fields(self) -> None:
+        """ContextMetadata with CR-04 fields."""
+        meta = ContextMetadata(
+            kb_systems_count=2,
+            kb_timelines_count=1,
+            story_structure="3-Act Structure",
+            timeline_position="Day 5",
+        )
+        assert meta.kb_systems_count == 2
+        assert meta.kb_timelines_count == 1
+        assert meta.story_structure == "3-Act Structure"
+        assert meta.timeline_position == "Day 5"
+
+
+# ---------------------------------------------------------------------------
+# CR-04: KBEntity status and updated_at
+# ---------------------------------------------------------------------------
+
+
+class TestKBEntityStatus:
+    """KBEntity.status field (CR-04)."""
+
+    def test_status_defaults_to_draft(self) -> None:
+        entity = KBEntity(
+            entity_id="e1",
+            entity_type="character",
+            name="X",
+            content="X",
+        )
+        assert entity.status == "draft"
+
+    def test_status_can_be_set(self) -> None:
+        entity = KBEntity(
+            entity_id="e1",
+            entity_type="character",
+            name="X",
+            content="X",
+            status="reviewed",
+        )
+        assert entity.status == "reviewed"
+
+    def test_status_deprecated(self) -> None:
+        entity = KBEntity(
+            entity_id="e1",
+            entity_type="character",
+            name="X",
+            content="X",
+            status="deprecated",
+        )
+        assert entity.status == "deprecated"
+
+
+class TestKBEntityUpdatedAt:
+    """KBEntity.updated_at field (CR-04)."""
+
+    def test_updated_at_defaults_to_none(self) -> None:
+        entity = KBEntity(
+            entity_id="e1",
+            entity_type="character",
+            name="X",
+            content="X",
+        )
+        assert entity.updated_at is None
+
+    def test_updated_at_can_be_set(self) -> None:
+        entity = KBEntity(
+            entity_id="e1",
+            entity_type="character",
+            name="X",
+            content="X",
+            updated_at="2024-01-15T10:00:00Z",
+        )
+        assert entity.updated_at == "2024-01-15T10:00:00Z"

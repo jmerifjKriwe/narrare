@@ -76,7 +76,7 @@ def _make_service(
     composer.build = AsyncMock(return_value=composed)
 
     # Config — real instance instead of bare MagicMock (RULE-TEST-01)
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
 
     config = ResolvedModelConfig(
         provider_name="test",

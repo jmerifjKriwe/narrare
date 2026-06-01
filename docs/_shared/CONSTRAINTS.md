@@ -108,6 +108,18 @@ class ChapterWritingService:
     ...  # implements ChapterWriterProtocol implicitly
 ```
 
+**Cross-feature contracts:** When a feature consumes data from another feature
+(e.g., a writing feature reads KB entities), an Integration Contract MUST define
+the behaviour when the shared data is changed or deleted. The contract documents:
+- What data is shared and in which direction
+- What happens on data change (propagated, stale, blocked?)
+- What happens on data deletion (cascade, nullify, block?)
+- Which version/schema of the shared data is expected
+
+Integration Contracts live in the consumer feature's spec or in a dedicated
+`integration_contracts.py` file at the domain boundary. They are enforced during
+Stage 2.5 (Semantic Review).
+
 **Why:** In the previous codebase, 0 of ~60 services had defined contracts
 (`contract_defined: false` for all). This made mocking, testing, and
 client-switching (MCP, A2A, CLI) require rewriting calling code.
@@ -640,6 +652,46 @@ The AI can change plans faster than humans can read them — this rule prevents
 
 ---
 
+### RULE-22 · Cross-Feature Coherence Gate
+
+Every feature that shares data with other features must pass a cross-feature
+coherence check before merge.
+
+**Scope:** Any feature that reads, writes, or modifies data owned by another
+feature (KB, Storyboard, Frontmatter, wiki, memory/preferences, prompt registry,
+project settings, etc.).
+
+**Checklist (before merge):**
+
+1. **Shared data identification**: Identify all data sources this feature shares
+   with other features. List each source explicitly.
+2. **Change/deletion behaviour**: For each shared source, define what happens
+   when the shared data is changed or deleted. Is the change propagated? Cached?
+   Does it break the consuming feature?
+3. **Intent/prompt semantic check**: For any new `LLMIntent` or prompt mode:
+   verify no existing intent/prompt has the same ID with a different semantic
+   scope. If a match is found, reuse or rename.
+4. **Variable registration**: Register new template variables in
+   `_SYSTEM_VARS` or `_USER_CONTENT_VARS` in `variable_engine.py`. No unregistered
+   variables in prompt templates.
+5. **i18n parity**: Ensure all 3 language variants (en/de/fr) exist for every
+   new prompt file, or document EN-only with explicit rationale in the spec.
+6. **User-content variable registration**: Any new variable that contains
+   user-authored content MUST be added to `_USER_CONTENT_VARS` and wrapped
+   in XML tags in the prompt template.
+
+**Why:** Cross-feature data dependencies are invisible at the individual feature
+level. A new feature might read KB data, but only the KB feature knows its data
+model. When the KB changes its schema or deletion semantics, the consuming feature
+breaks silently. This rule forces explicit documentation of cross-feature contracts
+before the integration exists.
+
+**Enforcement:** Architecture Specialist during Stage 2 (Specification). The
+cross-feature coherence checklist is part of every feature spec that shares data
+with other features. The Semantic Review (Stage 2.5) verifies completion.
+
+---
+
 ## 5. Future-Compatibility Rules
 
 ### RULE-12 · The Service Layer is the only public API.
@@ -699,6 +751,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-18 No hardcoded config in routers | `test_generation_router_contract.py` + PR review |
 | RULE-19 SessionDep in dependency factories | `check_architecture.py` — AST scan for bare AsyncSession |
 | RULE-20 No half-implementations | PR review by Architecture Agent + test coverage audit |
+| RULE-22 Cross-Feature Coherence Gate | Stage 2.5 Semantic Review by Architecture Specialist |
 | All rules | PR review by Architecture Agent |
 
 ---

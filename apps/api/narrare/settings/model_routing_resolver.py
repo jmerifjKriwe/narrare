@@ -20,12 +20,8 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.crypto import decrypt
-from narrare_core.llm.intents import (
-    INTENT_CATEGORY_MAP,
-    LLMIntent,
-    ResolvedModelConfig,
-    get_default_profile_for_intent,
-)
+from narrare_core.llm.intent_categories import INTENT_CATEGORY_MAP, get_default_profile_for_intent
+from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.shared.errors import ConfigurationError
 
@@ -35,6 +31,7 @@ if TYPE_CHECKING:
     from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
     from narrare.settings.user_providers_repository import UserProvidersRepository
+    from narrare_core.llm import LLMIntent
 
 logger = structlog.get_logger(__name__)
 

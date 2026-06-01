@@ -28,7 +28,7 @@ class TestViolationDetected:
     def test_provider_name_default_flagged(self) -> None:
         """provider_name='default' → violation (the original bug)."""
         source = """\
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 
 config = ResolvedModelConfig(
     provider_name="default",
@@ -48,7 +48,7 @@ config = ResolvedModelConfig(
     def test_provider_name_anthropic_flagged(self) -> None:
         """provider_name='anthropic' → violation."""
         source = """\
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 
 config = ResolvedModelConfig(
     provider_name="anthropic",
@@ -116,7 +116,7 @@ config2 = ResolvedModelConfig(provider_name="openai", model_id="b")
     def test_correct_line_number_reported(self) -> None:
         """Violation reports the line of the ResolvedModelConfig() call."""
         source = """\
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 
 config = ResolvedModelConfig(
     provider_name="groq",
@@ -143,7 +143,7 @@ class TestNoViolation:
     def test_variable_reference_allowed(self) -> None:
         """provider_name=<variable> → no violation."""
         source = """\
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 
 settings = get_settings()
 config = ResolvedModelConfig(
@@ -270,7 +270,7 @@ class TestTypeCheckingExclusion:
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
 
     config = ResolvedModelConfig(provider_name="anthropic", model_id="a")
 """
@@ -311,7 +311,7 @@ class TestApprovedExceptions:
     def test_approval_marker_accepted(self) -> None:
         """# narrare: allow comment suppresses the violation."""
         source = """\
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 
 # narrare: allow reason="temporary fallback during migration"
 config = ResolvedModelConfig(provider_name="default", model_id="default")

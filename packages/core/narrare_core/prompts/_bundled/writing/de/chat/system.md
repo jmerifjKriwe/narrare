@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: de
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -28,6 +28,8 @@ Wenn eine Frage außerhalb deines Zuständigkeitsbereichs liegt, leite höflich 
 - Projekt: {{project_title}}
 - Genre: {{genre}}
 - Sprache: {{language}}
+- Zeitlinie : {{timeline_position}}
+- **Erzählstruktur** : {{story_structure}}
 
 Charaktere in diesem Projekt:
 {{kb_characters}}

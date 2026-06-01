@@ -24,6 +24,7 @@ def _entity(
     recency: float = 0.5,
     is_pinned: bool = False,
     is_referenced: bool = False,
+    status: str = "draft",
 ) -> KBEntity:
     return KBEntity(
         entity_id=entity_id,
@@ -35,6 +36,7 @@ def _entity(
         recency_score=recency,
         is_pinned=is_pinned,
         is_referenced=is_referenced,
+        status=status,
     )
 
 
@@ -171,3 +173,53 @@ class TestClassifyEntitiesSuggested:
         assert "e1" not in sugg_ids
         assert "e2" not in sugg_ids
         assert "e3" in sugg_ids
+
+
+class TestClassifyEntitiesDeprecated:
+    """Deprecated entities are excluded from all categories."""
+
+    def test_non_deprecated_still_included(self) -> None:
+        """Non-deprecated entities appear in their expected categories."""
+        entities = [
+            _entity("e1", is_pinned=True),
+            _entity("e2", is_referenced=True),
+            _entity("e3"),
+        ]
+        pinned, referenced, _connected, suggested = classify_entities(entities, set(), {})
+        assert len(pinned) == 1
+        assert pinned[0].entity_id == "e1"
+        assert len(referenced) == 1
+        assert referenced[0].entity_id == "e2"
+        assert len(suggested) == 1
+        assert suggested[0].entity_id == "e3"
+
+    def test_deprecated_excluded_from_all_categories(self) -> None:
+        """Deprecated entities are excluded from pinned/referenced/suggested."""
+        entities = [
+            _entity("e1", status="deprecated", is_pinned=True),
+            _entity("e2", status="deprecated", is_referenced=True),
+            _entity("e3", status="deprecated"),
+        ]
+        pinned, referenced, _connected, suggested = classify_entities(entities, set(), {})
+        assert pinned == []
+        assert referenced == []
+        assert _connected == []
+        assert suggested == []
+
+    def test_mixed_deprecated_and_active(self) -> None:
+        """Deprecated entities filtered out while active entities remain."""
+        entities = [
+            _entity("e1", status="deprecated", is_pinned=True),
+            _entity("e2", status="draft", is_pinned=True),
+            _entity("e3", status="deprecated", is_referenced=True),
+            _entity("e4", status="draft", is_referenced=True),
+            _entity("e5", status="deprecated"),
+            _entity("e6", status="draft"),
+        ]
+        pinned, referenced, _connected, suggested = classify_entities(entities, set(), {})
+        assert len(pinned) == 1
+        assert pinned[0].entity_id == "e2"
+        assert len(referenced) == 1
+        assert referenced[0].entity_id == "e4"
+        assert len(suggested) == 1
+        assert suggested[0].entity_id == "e6"

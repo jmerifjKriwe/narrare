@@ -33,8 +33,7 @@ if TYPE_CHECKING:
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
-    from narrare_core.llm import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.prompts import PromptComposer
 
 logger = structlog.get_logger(__name__)

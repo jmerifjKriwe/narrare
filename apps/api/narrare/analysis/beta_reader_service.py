@@ -32,7 +32,7 @@ from narrare.analysis.schemas import (
 from narrare.analysis.validation import validate_word_count
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
 from narrare_core.analysis.assembler import AnalysisContextAssembler
-from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:

@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.novels.repository import NovelRepository
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
 
 logger = structlog.get_logger(__name__)
 

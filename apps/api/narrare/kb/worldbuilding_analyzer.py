@@ -45,8 +45,8 @@ from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.registry import PromptRegistry
 

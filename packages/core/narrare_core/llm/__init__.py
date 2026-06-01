@@ -10,12 +10,9 @@ from narrare_core.llm.cost_rates import (
     refresh_models,
 )
 from narrare_core.llm.gateway import ModelRegistry
-from narrare_core.llm.intents import (
-    INTENT_CATEGORY_MAP,
-    IntentCategory,
-    LLMIntent,
-    ResolvedModelConfig,
-)
+from narrare_core.llm.intent_categories import INTENT_CATEGORY_MAP, IntentCategory
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.model_config import CacheSettings, ResolvedModelConfig
 from narrare_core.llm.model_listing import (
     ModelCatalogClient,
     ModelCatalogEntry,
@@ -37,6 +34,7 @@ __all__ = [
     "INTENT_CATEGORY_MAP",
     "NO_RETRY",
     "PATIENT_RETRY",
+    "CacheSettings",
     "CategoryOverride",
     "IntentCategory",
     "IntentOverride",

@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm import LLMIntent
 from narrare_core.llm.result import StreamChunk
 from narrare_core.writing.pipeline_coauthor import stream_coauthor
 from tests.unit.core.writing._coauthor_test_helpers import (

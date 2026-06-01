@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -15,6 +15,8 @@ You are a collaborative writing partner. Your role is to generate prose iterativ
 - Project: {{project_title}}
 - Genre: {{genre}}
 - Language: {{language}}
+- Timeline: {{timeline_position}}
+- **Story Structure**: {{story_structure}}
 
 ### Knowledge Base
 
@@ -91,6 +93,8 @@ Generate prose in response to the author's direction. Output only the prose cont
 ### User Preferences
 
 {{user_preferences}}
+
+The author's instructions take priority over preferences when they conflict.
 
 ## Do NOT
 

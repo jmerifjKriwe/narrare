@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -16,6 +16,8 @@ targeted improvements to the author's text while preserving their voice and styl
 - Project: {{project_title}}
 - Genre: {{genre}}
 - Language: {{language}}
+- Timeline: {{timeline_position}}
+- **Story Structure**: {{story_structure}}
 
 ### Knowledge Base
 
@@ -85,6 +87,8 @@ passage.
 ### User Preferences
 
 {{user_preferences}}
+
+The author's instructions take priority over preferences when they conflict.
 
 ### Constraints
 

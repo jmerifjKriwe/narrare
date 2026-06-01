@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from narrare.writing._interview_draft import InterviewDraftGenerator
 from narrare.writing._ws_cache import InMemorySessionCache
-from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.writing.session_manager import SessionManager

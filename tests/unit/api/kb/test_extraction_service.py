@@ -12,7 +12,7 @@ import pytest
 
 from narrare.kb.extraction_service import ExtractionService
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 
 # ---------------------------------------------------------------------------
 # Fake dependency classes (avoid bare MagicMock — RULE-TEST-01)

@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -28,6 +28,8 @@ Comparez les faits extraits du texte des chapitres avec les données d'entités 
 {{chapter_texts}}
 </user_provided_text>
 {{kb_entities}}
+Contexte chronologique : {{timeline_position}}
+Structure narrative : {{story_structure}}
 Types de vérification : {{check_types}}
 
 ### Format de sortie

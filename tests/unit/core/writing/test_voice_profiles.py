@@ -1,7 +1,7 @@
 """Tests for character voice profile extraction logic.
 
 Covers:
-1. extract_voice_profiles() — empty, partial, full metadata
+1. extract_voice_profiles() — empty, partial, full metadata, freshness
 2. WritingContext — character_voice_profiles field + to_prompt_variables()
 3. PromptContext — character_voice_profiles field + as_variables()
 
@@ -10,6 +10,7 @@ End-to-end assembler tests live in test_voice_profiles_assembly.py (RULE-04).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -34,6 +35,7 @@ def _entity(
     recency: float = 0.5,
     is_pinned: bool = False,
     is_referenced: bool = False,
+    updated_at: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> KBEntity:
     """Build a KBEntity with sensible defaults."""
@@ -47,6 +49,7 @@ def _entity(
         recency_score=recency,
         is_pinned=is_pinned,
         is_referenced=is_referenced,
+        updated_at=updated_at,
         metadata=metadata,
     )
 
@@ -75,8 +78,8 @@ class TestExtractVoiceProfiles:
     def test_extract_voice_profiles_empty(self) -> None:
         """No characters → empty string."""
         entities: list[KBEntity] = []
-        result = extract_voice_profiles(entities)
-        assert result == ""
+        result, _warnings = extract_voice_profiles(entities)
+        assert result == "" and _warnings == []
 
     def test_extract_voice_profiles_no_metadata(self) -> None:
         """Characters without metadata → empty string."""
@@ -84,8 +87,8 @@ class TestExtractVoiceProfiles:
             _entity("char-1", "character", "Alice", "A warrior."),
             _entity("char-2", "character", "Bob", "A mage."),
         ]
-        result = extract_voice_profiles(entities)
-        assert result == ""
+        result, _warnings = extract_voice_profiles(entities)
+        assert result == "" and _warnings == []
 
     def test_extract_voice_profiles_with_speech_metadata(self) -> None:
         """Characters with speech metadata → formatted profile."""
@@ -108,7 +111,7 @@ class TestExtractVoiceProfiles:
                 },
             ),
         ]
-        result = extract_voice_profiles(entities)
+        result, _warnings = extract_voice_profiles(entities)
         assert "**Alice**" in result
         assert "dialect: Southern" in result
         assert "vocabulary: archaic forms" in result
@@ -132,7 +135,7 @@ class TestExtractVoiceProfiles:
             _entity("loc-1", "location", "Castle", "An ancient fortress."),
             _entity("fac-1", "faction", "Rebels", "Freedom fighters."),
         ]
-        result = extract_voice_profiles(entities)
+        result, _warnings = extract_voice_profiles(entities)
         assert "**Alice**" in result
         assert "Castle" not in result
         assert "Rebels" not in result
@@ -150,7 +153,7 @@ class TestExtractVoiceProfiles:
                 },
             ),
         ]
-        result = extract_voice_profiles(entities)
+        result, _warnings = extract_voice_profiles(entities)
         assert "**Alice**" in result
         assert "dialect: Cockney" in result
         assert "vocabulary" not in result
@@ -169,8 +172,8 @@ class TestExtractVoiceProfiles:
                 },
             ),
         ]
-        result = extract_voice_profiles(entities)
-        assert result == ""
+        result, _warnings = extract_voice_profiles(entities)
+        assert result == "" and _warnings == []
 
     def test_extract_voice_profiles_multiple_characters(self) -> None:
         """Multiple characters with speech metadata → all included."""
@@ -194,7 +197,7 @@ class TestExtractVoiceProfiles:
                 },
             ),
         ]
-        result = extract_voice_profiles(entities)
+        result, _warnings = extract_voice_profiles(entities)
         assert "**Alice**" in result
         assert "**Bob**" in result
         assert "dialect: Southern" in result
@@ -215,10 +218,65 @@ class TestExtractVoiceProfiles:
                 },
             ),
         ]
-        result = extract_voice_profiles(entities)
+        result, _warnings = extract_voice_profiles(entities)
         assert "**Alice**" in result
         assert "personality traits" in result
         assert "brave, impulsive, loyal" in result
+
+    # ------------------------------------------------------------------
+    # Freshness tests
+    # ------------------------------------------------------------------
+
+    def test_extract_voice_profiles_updated_at_none_no_warnings(self) -> None:
+        """updated_at=None returns no warnings."""
+        entities = [
+            _entity(
+                "char-1",
+                "character",
+                "Alice",
+                "A warrior.",
+                updated_at=None,
+                metadata={"speech": {"dialect": "Southern"}},
+            ),
+        ]
+        result, warnings = extract_voice_profiles(entities)
+        assert "**Alice**" in result
+        assert warnings == []
+
+    def test_extract_voice_profiles_old_updated_at_produces_warning(self) -> None:
+        """updated_at older than max_age_days produces a warning."""
+        old_date = (datetime.now(UTC) - timedelta(days=60)).isoformat()
+        entities = [
+            _entity(
+                "char-1",
+                "character",
+                "Alice",
+                "A warrior.",
+                updated_at=old_date,
+                metadata={"speech": {"dialect": "Southern"}},
+            ),
+        ]
+        result, warnings = extract_voice_profiles(entities, max_age_days=30)
+        assert "**Alice**" in result
+        assert len(warnings) == 1
+        assert "Voice profile for 'Alice'" in warnings[0]
+
+    def test_extract_voice_profiles_fresh_updated_at_no_warning(self) -> None:
+        """Recent updated_at produces no warnings."""
+        recent = (datetime.now(UTC) - timedelta(days=5)).isoformat()
+        entities = [
+            _entity(
+                "char-1",
+                "character",
+                "Alice",
+                "A warrior.",
+                updated_at=recent,
+                metadata={"speech": {"dialect": "Southern"}},
+            ),
+        ]
+        result, warnings = extract_voice_profiles(entities, max_age_days=30)
+        assert "**Alice**" in result
+        assert warnings == []
 
 
 # ---------------------------------------------------------------------------

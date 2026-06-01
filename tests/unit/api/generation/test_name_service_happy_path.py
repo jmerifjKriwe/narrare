@@ -11,7 +11,7 @@ from tests.fakes.fake_llm_gateway import FakeModelRegistry
 if TYPE_CHECKING:
     from unittest.mock import AsyncMock
 
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
 
 from .conftest import (
     SAMPLE_ARRAY_RESPONSE,

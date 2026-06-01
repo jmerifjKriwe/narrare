@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from narrare_core.agents.graph_store import GraphStateStore
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.writing.models import GenerationRequest, WritingContext
 
 logger = structlog.get_logger(__name__)

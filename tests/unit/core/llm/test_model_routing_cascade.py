@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
-from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm import LLMIntent
 
 # ---------------------------------------------------------------------------
 # Fake repository objects (lightweight, no DB)

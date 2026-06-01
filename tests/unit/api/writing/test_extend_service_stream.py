@@ -19,7 +19,7 @@ import pytest
 
 from narrare.writing.extend_service import ExtendService
 from narrare.writing.schemas import ExtendLength, ExtendRequest
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 
 # ---------------------------------------------------------------------------

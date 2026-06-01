@@ -16,7 +16,7 @@ from uuid import uuid4
 
 import pytest
 
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk
 from narrare_core.shared.errors import WritingError
 from narrare_core.writing import GenerationMode

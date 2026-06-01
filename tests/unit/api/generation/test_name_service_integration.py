@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 from narrare.generation.name_service import NameGeneratorService
 from narrare.generation.schemas import GenderEnum, NameType
+from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
-from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 from narrare_core.prompts.composer import PromptComposer
 
 if TYPE_CHECKING:

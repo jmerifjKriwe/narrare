@@ -59,6 +59,8 @@ class WritingContext:
     kb_characters: str = ""
     kb_locations: str = ""
     kb_factions: str = ""
+    kb_systems: str = ""  # system rules (e.g. "Magic costs 10 mana")
+    kb_timelines: str = ""  # timeline entries
     kb_relationships: str = ""  # pre-formatted relationship text (FIND-009)
 
     # Tier 4 — KB entities via similarity suggestion (15 % budget)
@@ -74,6 +76,8 @@ class WritingContext:
     tone: str = "balanced"
     word_target: int | None = None
     writing_language: str = "en"  # output language (freetext)
+    story_structure: str = ""  # e.g. "3-Act Structure", "Hero's Journey"
+    timeline_position: str = ""  # diegetic time, e.g. "Day 5"
 
     # Character voice profiles (extracted from KB character speech metadata)
     character_voice_profiles: str = ""
@@ -92,6 +96,10 @@ class WritingContext:
     wiki_summaries_count: int = 0
     wiki_summaries_stale: int = 0
 
+    # Warnings (populated by assembler)
+    voice_profile_warnings: list[str] = field(default_factory=lambda: [])  # type: ignore[type-arg]
+    orphan_reference_warnings: list[str] = field(default_factory=lambda: [])  # type: ignore[type-arg]
+
     # Flags
     is_first_chapter: bool = False
     is_sparse_kb: bool = False
@@ -104,6 +112,8 @@ class WritingContext:
             kb_characters_count=self.kb_characters.count("### ") if self.kb_characters else 0,
             kb_locations_count=self.kb_locations.count("### ") if self.kb_locations else 0,
             kb_factions_count=self.kb_factions.count("### ") if self.kb_factions else 0,
+            kb_systems_count=self.kb_systems.count("### ") if self.kb_systems else 0,
+            kb_timelines_count=self.kb_timelines.count("### ") if self.kb_timelines else 0,
             kb_relationships_count=(
                 self.kb_relationships.count("→") if self.kb_relationships else 0
             ),
@@ -116,6 +126,8 @@ class WritingContext:
             is_first_chapter=self.is_first_chapter,
             has_user_preferences=bool(self.user_preferences.strip()),
             tone=self.tone,
+            story_structure=self.story_structure,
+            timeline_position=self.timeline_position,
             wiki_summaries_count=self.wiki_summaries_count,
             wiki_summaries_stale=self.wiki_summaries_stale,
             total_budget_tokens=self.total_budget_tokens,
@@ -137,6 +149,8 @@ class WritingContext:
             "kb_characters": self.kb_characters,
             "kb_locations": self.kb_locations,
             "kb_factions": self.kb_factions,
+            "kb_systems": self.kb_systems,
+            "kb_timelines": self.kb_timelines,
             "kb_relationships": self.kb_relationships,
             "kb_suggested": self.kb_suggested,
             "kb_pinned": self.kb_pinned,
@@ -150,4 +164,6 @@ class WritingContext:
             "avoidance_patterns": self.avoidance_patterns,
             "is_first_chapter": str(self.is_first_chapter).lower(),
             "is_sparse_kb": str(self.is_sparse_kb).lower(),
+            "story_structure": self.story_structure,
+            "timeline_position": self.timeline_position,
         }

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.repository import GenerationRepository
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.writing.draft_processor import DraftProcessor
     from narrare_core.writing.pipeline import WritingPipeline

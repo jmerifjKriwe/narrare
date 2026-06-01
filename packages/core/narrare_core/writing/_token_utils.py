@@ -62,3 +62,38 @@ def cap_to_budget(
         words.pop()
 
     return " ".join(words)
+
+
+def truncate_to_budget(
+    text: str,
+    token_limit: int,
+    token_counter: Callable[[str], int] | None = None,
+) -> str:
+    """Truncate text to fit within token budget using word-level truncation.
+
+    Uses a quick estimate (``token_limit / APPROX_TOKEN_FACTOR`` words)
+    rather than progressive removal.  Prefer :func:`cap_to_budget` for
+    precise enforcement.
+    """
+    if not text or token_limit <= 0:
+        return ""
+    count = token_counter or default_token_counter
+    current = count(text)
+    if current <= token_limit:
+        return text
+    max_words = int(token_limit / APPROX_TOKEN_FACTOR)
+    words = text.split()
+    return " ".join(words[:max_words])
+
+
+def enforce_budget(
+    text: str,
+    limit: int,
+    token_counter: Callable[[str], int] | None = None,
+) -> tuple[str, int]:
+    """Enforce token budget on text.  Returns (text, overflow)."""
+    count = token_counter or default_token_counter
+    tokens = count(text)
+    if tokens <= limit:
+        return text, limit - tokens
+    return cap_to_budget(text, limit, count), 0

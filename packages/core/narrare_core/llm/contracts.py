@@ -14,7 +14,8 @@ if TYPE_CHECKING:
 
     from pydantic_ai.usage import UsageLimits
 
-    from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.intents import LLMIntent
     from narrare_core.llm.model_listing import ModelCatalogEntry
     from narrare_core.llm.result import StreamChunk
 

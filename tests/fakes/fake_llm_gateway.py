@@ -20,7 +20,7 @@ from narrare_core.llm.result import LLMResult, StreamChunk, TokenUsage
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+    from narrare_core.llm import LLMIntent, ResolvedModelConfig
 
 
 @dataclass

@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: de
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -15,6 +15,8 @@ Du führst ein strukturiertes Interview durch, um Informationen zu sammeln, bevo
 - Projekt: {{project_title}}
 - Genre: {{genre}}
 - Sprache: {{language}}
+- Zeitlinie : {{timeline_position}}
+- **Erzählstruktur** : {{story_structure}}
 
 ### Wissensdatenbank
 
@@ -87,3 +89,5 @@ Verwende vor deinen Fragen einen `<scratchpad>`-Block, um die aktuelle Wissensda
 - Halte Fragen prägnant und spezifisch
 - Triff keine Annahmen — frage nach, wenn du unsicher bist
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
+
+Anweisungen des Autors haben Vorrang vor Präferenzen, wenn sie sich widersprechen.

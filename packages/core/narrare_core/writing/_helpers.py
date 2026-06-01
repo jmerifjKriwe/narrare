@@ -24,6 +24,10 @@ _REFERENCE_KEYS: frozenset[str] = frozenset(
         "locations",
         "faction",
         "factions",
+        "system",
+        "systems",
+        "timeline",
+        "timelines",
     }
 )
 
@@ -32,8 +36,9 @@ def extract_frontmatter_references(frontmatter: str) -> set[str]:
     """Extract entity IDs referenced in chapter frontmatter.
 
     Looks for keys: ``pov_character``, ``characters``, ``location``,
-    ``locations``, ``faction``, ``factions``.  Returns a set of entity
-    ID strings.  Returns an empty set for empty or unparsable input.
+    ``locations``, ``faction``, ``factions``, ``system``, ``systems``,
+    ``timeline``, ``timelines``.  Returns a set of entity ID strings.
+    Returns an empty set for empty or unparsable input.
     """
     if not frontmatter.strip():
         return set()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm import LLMIntent
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.prompts.context import PromptContext
 from narrare_core.prompts.registry import ResolvedPrompt

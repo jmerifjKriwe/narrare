@@ -9,7 +9,8 @@ Covers tasks 2.1-2.5 from generation-prompt-memory-foundation:
 
 from __future__ import annotations
 
-from narrare_core.llm.intents import INTENT_CATEGORY_MAP, IntentCategory, LLMIntent
+from narrare_core.llm import LLMIntent
+from narrare_core.llm.intent_categories import INTENT_CATEGORY_MAP, IntentCategory
 from narrare_core.prompts.composer import _INTENT_TO_CATEGORY, _INTENT_TO_MODE
 
 

@@ -10,7 +10,7 @@ import pytest
 
 from narrare._app.dependencies import _get_composer_instance
 from narrare.generation.name_service import NameGeneratorService
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 if TYPE_CHECKING:

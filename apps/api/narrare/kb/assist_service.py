@@ -30,8 +30,8 @@ if TYPE_CHECKING:
 
     from narrare_core.agents.kb_assist_types import KBAssistOutput
     from narrare_core.context.contracts import ProactiveContextProtocol
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)

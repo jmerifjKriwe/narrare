@@ -15,7 +15,7 @@ from narrare.generation.schemas import (
     NameGenerateRequest,
     NameType,
 )
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
 # ---------------------------------------------------------------------------

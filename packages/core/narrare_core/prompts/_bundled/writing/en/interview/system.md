@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -15,6 +15,8 @@ You are conducting a structured interview to gather information before writing a
 - Project: {{project_title}}
 - Genre: {{genre}}
 - Language: {{language}}
+- Timeline: {{timeline_position}}
+- **Story Structure**: {{story_structure}}
 
 ### Knowledge Base
 
@@ -80,6 +82,8 @@ Before asking your questions, use a `<scratchpad>` block to analyze the current 
 ### User Preferences
 
 {{user_preferences}}
+
+The author's instructions take priority over preferences when they conflict.
 
 ### Constraints
 

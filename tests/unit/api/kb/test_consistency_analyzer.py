@@ -21,8 +21,8 @@ from narrare.kb.worldbuilding_contracts import (
     ConsistencyCategory,
     WorldbuildingSeverity,
 )
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
-from narrare_core.llm.intents import ResolvedModelConfig
 
 # ---------------------------------------------------------------------------
 # Fake classes

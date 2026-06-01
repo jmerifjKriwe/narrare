@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -28,6 +28,8 @@ If a question is outside your scope, gently redirect: "I'm here to help with you
 - Project: {{project_title}}
 - Genre: {{genre}}
 - Language: {{language}}
+- Timeline: {{timeline_position}}
+- **Story Structure**: {{story_structure}}
 
 Characters in this project:
 {{kb_characters}}

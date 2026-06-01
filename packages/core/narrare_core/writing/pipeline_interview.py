@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import WritingError
@@ -19,6 +19,7 @@ from narrare_core.shared.errors import WritingError
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.writing.models import GenerationRequest, WritingContext
     from narrare_core.writing.pipeline import WritingPipeline
 

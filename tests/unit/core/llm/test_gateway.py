@@ -8,8 +8,8 @@ from unittest.mock import patch
 if TYPE_CHECKING:
     from narrare_core.llm.result import StreamChunk
 
+from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
-from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 
 
 class TestModelRegistryRun:
@@ -213,7 +213,7 @@ class TestModelRegistryPassesCacheSettings:
         from pydantic_ai.agent import AgentRunResult
         from pydantic_ai.usage import RunUsage
 
-        from narrare_core.llm.intents import CacheSettings
+        from narrare_core.llm import CacheSettings
 
         config = ResolvedModelConfig(
             provider_name="anthropic",
@@ -254,7 +254,7 @@ class TestModelRegistryPassesCacheSettings:
         from pydantic_ai.result import StreamedRunResult
         from pydantic_ai.usage import RunUsage
 
-        from narrare_core.llm.intents import CacheSettings
+        from narrare_core.llm import CacheSettings
 
         config = ResolvedModelConfig(
             provider_name="anthropic",

@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm import LLMIntent
 from narrare_core.memory.models import PreferenceProfile
 from narrare_core.prompts.composer import PromptComposer
 from narrare_core.prompts.context import PromptContext

@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 
 from narrare_core.prompts.variable_engine import (
+    _SYSTEM_VARS,
+    _USER_CONTENT_VARS,
     extract_variables,
     substitute,
     validate_variables,
@@ -158,3 +160,20 @@ class TestSubstituteNoAutoWrap:
         assert result == (
             "Author instructions: <user_instructions>Write in first person</user_instructions>"
         )
+
+
+class TestVariableConstants:
+    """Verify module-level variable classification constants."""
+
+    def test_entity_vars_in_user_content_vars(self) -> None:
+        """entity_name and entity_current_content are in _USER_CONTENT_VARS."""
+        assert "entity_name" in _USER_CONTENT_VARS
+        assert "entity_current_content" in _USER_CONTENT_VARS
+
+    def test_kb_vars_not_in_system_vars(self) -> None:
+        """KB collection vars are NOT in _SYSTEM_VARS (they are user-authored)."""
+        assert "kb_systems" not in _SYSTEM_VARS
+        assert "kb_timelines" not in _SYSTEM_VARS
+        assert "kb_objects" not in _SYSTEM_VARS
+        assert "kb_concepts" not in _SYSTEM_VARS
+        assert "kb_settings" not in _SYSTEM_VARS

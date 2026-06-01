@@ -8,10 +8,15 @@ and personality data from KB character entities.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+
+import structlog
 
 if TYPE_CHECKING:
     from narrare_core.writing.context_models import KBEntity
+
+logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Helpers (module-level to avoid pyright strict-mode noise with dict access)
@@ -77,28 +82,87 @@ def _extract_speech_parts(  # pyright: ignore[reportUnknownParameterType]
 
 
 # ---------------------------------------------------------------------------
+# Freshness helpers
+# ---------------------------------------------------------------------------
+
+
+def _is_stale(
+    updated_at: str | None,
+    max_age_days: int,
+) -> bool:
+    """Check if an ISO-8601 timestamp is older than ``max_age_days``.
+
+    Returns ``False`` when ``updated_at`` is ``None`` or unparsable
+    (graceful degradation — absence of timestamp does not trigger the
+    staleness warning).
+    """
+    if not updated_at:
+        return False
+    try:
+        if updated_at.endswith("Z"):
+            updated_at = updated_at[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(updated_at)
+        age = (datetime.now(UTC) - parsed).days
+        return age > max_age_days
+    except ValueError, TypeError:
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 
-def extract_voice_profiles(entities: list[KBEntity]) -> str:
+def extract_voice_profiles(
+    entities: list[KBEntity],
+    max_age_days: int = 30,
+) -> tuple[str, list[str]]:
     """Extract speech/voice data from character KB entities.
 
     Formats character speech patterns as a dedicated voice profile block
     for prompt injection.  Falls back gracefully when no speech metadata
     is available.
+
+    When a character's ``updated_at`` is older than ``max_age_days``, a
+    warning is appended to the returned warnings list.
+
+    Args:
+        entities: All KB entities to scan for character voice profiles.
+        max_age_days: Maximum age in days for a profile to be considered
+            current.  Default 30.
+
+    Returns:
+        Tuple of (formatted_voice_profiles_text, warning_list).
     """
     characters = [e for e in entities if e.entity_type == "character"]
     if not characters:
-        return ""
+        return "", []
 
     profiles: list[str] = []
+    warnings: list[str] = []
     for char in characters:
         speech_data = get_speech_data(char)
-        if speech_data:
-            profiles.append(f"**{char.name}**: {speech_data}")
+        if not speech_data:
+            continue
 
-    return "\n".join(profiles) if profiles else ""
+        # Check freshness
+        if _is_stale(char.updated_at, max_age_days):
+            warnings.append(
+                f"Voice profile for '{char.name}' last updated {char.updated_at} "
+                f"(>{max_age_days} days ago)"
+            )
+            logger.warning(
+                "voice_profile_stale",
+                entity_id=char.entity_id,
+                entity_name=char.name,
+                updated_at=char.updated_at,
+                max_age_days=max_age_days,
+            )
+            speech_data += f" [⚠️ last updated: {char.updated_at}]"
+
+        profiles.append(f"**{char.name}**: {speech_data}")
+
+    return "\n".join(profiles) if profiles else "", warnings
 
 
 def get_speech_data(entity: KBEntity) -> str:

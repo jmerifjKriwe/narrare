@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.2.0"
 ---
 
 ## System Prompt
@@ -15,6 +15,8 @@ You are a creative writing consultant. Your role is to generate targeted suggest
 - Project: {{project_title}}
 - Genre: {{genre}}
 - Language: {{language}}
+- Timeline: {{timeline_position}}
+- **Story Structure**: {{story_structure}}
 
 ### Knowledge Base
 
@@ -82,6 +84,8 @@ Use a `<scratchpad>` to analyze the narrative and identify 3-5 possible directio
 ### User Preferences
 
 {{user_preferences}}
+
+The author's instructions take priority over preferences when they conflict.
 
 ### Constraints
 

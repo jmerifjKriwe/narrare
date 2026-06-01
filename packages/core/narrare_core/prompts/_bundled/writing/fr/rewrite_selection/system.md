@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: fr
-prompt_version: "2.0.0"
+prompt_version: "2.1.0"
 ---
 
 ## System Prompt
@@ -15,6 +15,8 @@ Vous êtes un spécialiste précis de la révision de texte. Votre rôle est de 
 - Projet : {{project_title}}
 - Genre : {{genre}}
 - Langue : {{language}}
+- Chronologie : {{timeline_position}}
+- **Structure narrative** : {{story_structure}}
 
 ### Base de connaissances
 
@@ -106,3 +108,5 @@ Utilisez un `<scratchpad>` pour analyser le texte original et planifier votre st
 - Rédigez en {{writing_language}}
 - Correspondez au rythme et au registre du contexte environnant
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
+
+Les instructions de l'auteur prévalent sur les préférences en cas de conflit.

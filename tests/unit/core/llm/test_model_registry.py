@@ -22,7 +22,7 @@ from pydantic_ai.usage import UsageLimits
 if TYPE_CHECKING:
     from narrare_core.llm.gateway import ModelRegistry
 
-from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+from narrare_core.llm import LLMIntent, ResolvedModelConfig
 
 
 class TestModelRegistryGetModel:

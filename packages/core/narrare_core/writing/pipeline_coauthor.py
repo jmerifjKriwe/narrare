@@ -24,7 +24,7 @@ from narrare_core.prompts.context import PromptContext
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.writing.models import GenerationRequest, WritingContext
     from narrare_core.writing.pipeline import WritingPipeline
 

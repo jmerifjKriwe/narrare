@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from narrare.writing.summary_service import ChapterSummaryService
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.shared.errors import NotFoundError, WritingError
 
@@ -207,7 +207,7 @@ class TestSummarize:
     ) -> None:
         """Verify that the service uses PromptComposer to build prompts."""
         from narrare_core.agents.summary_types import SummaryOutput
-        from narrare_core.llm.intents import LLMIntent
+        from narrare_core.llm import LLMIntent
         from tests.factories import make_chapter
 
         chapter = make_chapter(content="Test content for chapter.", title="Test")

@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.scene_service import SceneService
     from narrare.writing.stats_service import StatsService
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.memory.protocols import FeedbackCollector
     from narrare_core.writing.draft_processor import DraftProcessor

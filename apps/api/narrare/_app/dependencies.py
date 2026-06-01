@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from narrare.templates.cascade_resolver import CascadeResolver
     from narrare.templates.repository import TemplateRepository
     from narrare.templates.service import TemplateApiService
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.memory.protocols import PreferenceProvider
 
 logger = structlog.get_logger(__name__)
@@ -327,8 +327,8 @@ def build_system_default_config(
     Returns:
         Fully resolved ResolvedModelConfig with valid provider_name.
     """
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm._providers.registry import infer_provider
-    from narrare_core.llm.intents import ResolvedModelConfig
 
     settings = get_settings()
     model_id = (

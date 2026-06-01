@@ -83,7 +83,7 @@ def _make_analyzer(
     kb_agent: object | None = None,
 ) -> tuple[Any, dict[str, Any]]:
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
 
     cache = _FakeImproveCache(data=cache_data)
     config = ResolvedModelConfig(provider_name="test", model_id="test-model")
@@ -118,7 +118,7 @@ class TestHasCachedAnalysis:
     @pytest.mark.asyncio
     async def test_returns_false_when_no_cache(self) -> None:
         from narrare.kb.improve_analyzer import KBImproveAnalyzer
-        from narrare_core.llm.intents import ResolvedModelConfig
+        from narrare_core.llm import ResolvedModelConfig
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(
@@ -148,7 +148,7 @@ class TestGetCachedAnalysis:
     @pytest.mark.asyncio
     async def test_returns_none_when_no_cache(self) -> None:
         from narrare.kb.improve_analyzer import KBImproveAnalyzer
-        from narrare_core.llm.intents import ResolvedModelConfig
+        from narrare_core.llm import ResolvedModelConfig
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(
@@ -175,7 +175,7 @@ class TestInvalidateCache:
     @pytest.mark.asyncio
     async def test_noop_when_no_cache(self) -> None:
         from narrare.kb.improve_analyzer import KBImproveAnalyzer
-        from narrare_core.llm.intents import ResolvedModelConfig
+        from narrare_core.llm import ResolvedModelConfig
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(

@@ -22,7 +22,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.llm.intents import LLMIntent
 
 
 @dataclass(frozen=True, slots=True)

@@ -9,7 +9,7 @@ import pytest
 
 from narrare.writing.contracts import GenerationRepositoryProtocol
 from narrare.writing.service import WritingService
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.writing.pipeline import WritingPipeline
 
 

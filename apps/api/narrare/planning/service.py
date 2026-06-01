@@ -41,8 +41,8 @@ if TYPE_CHECKING:
     from narrare.chapters.models import Chapter
     from narrare.novels.models import Novel
     from narrare.planning.contracts import OutlineRepositoryProtocol
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.planning.remap import AIRemapService
 
 logger = structlog.get_logger(__name__)

@@ -25,8 +25,8 @@ from narrare.kb.worldbuilding_contracts import (
     WorldbuildingAnalysisRequest,
     WorldbuildingSeverity,
 )
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
-from narrare_core.llm.intents import ResolvedModelConfig
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.prompts.registry import ResolvedPrompt
 

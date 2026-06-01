@@ -38,7 +38,7 @@ async def _make_writing_service(
     from narrare._app.dependencies import get_composer
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.service import WritingService
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.draft_processor import DraftProcessor
     from narrare_core.writing.pipeline import WritingPipeline
@@ -77,7 +77,7 @@ async def _make_extend_service(
     from narrare._app.dependencies import get_composer
     from narrare.writing.extend_service import ExtendService
     from narrare.writing.repository import GenerationRepository
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.draft_processor import DraftProcessor
     from narrare_core.writing.pipeline import WritingPipeline
@@ -118,7 +118,7 @@ async def _make_rewrite_service(
     from narrare._app.dependencies import get_composer
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.rewrite_service import RewriteService
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.draft_processor import DraftProcessor
     from narrare_core.writing.pipeline import WritingPipeline
@@ -166,7 +166,7 @@ async def _make_suggest_service(
     from narrare._app.dependencies import get_composer
     from narrare.chapters.repository import ChapterRepository
     from narrare.writing.suggest_service import InlineSuggestService
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
     from tests.fakes.fake_llm_gateway import FakeModelRegistry
 
     fake_registry = FakeModelRegistry()

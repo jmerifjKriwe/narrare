@@ -19,7 +19,7 @@ __all__: list[str] = [
 ]
 from uuid import uuid4
 
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.writing import GenerationMode
 from narrare_core.writing.models import GenerationRequest, WritingContext

@@ -21,6 +21,8 @@ _project_root = str(Path(__file__).parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+import argparse  # noqa: E402
+
 from scripts.architecture.checkers import scan_file  # noqa: E402
 from scripts.architecture.helpers import ROOT, load_config  # noqa: E402
 from scripts.architecture.types import CheckResult, Violation  # noqa: E402
@@ -54,7 +56,35 @@ def check_forbidden_files(result: CheckResult) -> None:
             )
 
 
+def run_prompt_integrity_checks(result: CheckResult) -> None:
+    """Run all prompt integrity checks (--prompt-integrity flag)."""
+    try:
+        from scripts.architecture._checkers.prompt_integrity import run_all_checks
+
+        run_all_checks(result)
+    except ImportError as exc:
+        result.approved_exceptions.append(
+            Violation(
+                file=Path("scripts/check_architecture.py"),
+                line=0,
+                rule="PROMPT-INTEGRITY",
+                detail=f"Prompt integrity checks not available (import error: {exc})",
+                approved=True,
+                approval_reason="Dependency not installed",
+            )
+        )
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Narrare Architecture Constraint Checker")
+    parser.add_argument(
+        "--prompt-integrity",
+        action="store_true",
+        help="Run additional prompt integrity checks (variable registration, "
+        "i18n parity, intent consistency, variable usage)",
+    )
+    args = parser.parse_args()
+
     config = load_config()
     result = CheckResult()
 
@@ -67,6 +97,10 @@ def main() -> int:
             continue
         for py_file in scan_root.rglob("*.py"):
             scan_file(py_file, config, result)
+
+    # Prompt integrity checks (--prompt-integrity flag)
+    if args.prompt_integrity:
+        run_prompt_integrity_checks(result)
 
     # Report approved exceptions (visible in CI for review)
     if result.approved_exceptions:

@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
     from narrare.chapters.repository import ChapterRepository
     from narrare.writing.schemas import InlineSuggestRequest
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.prompts.composer import PromptComposer
 

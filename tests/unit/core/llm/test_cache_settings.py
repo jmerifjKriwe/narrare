@@ -9,8 +9,8 @@ Covers:
 
 from __future__ import annotations
 
+from narrare_core.llm import CacheSettings, ResolvedModelConfig
 from narrare_core.llm._providers.cache_settings import build_model_settings
-from narrare_core.llm.intents import CacheSettings, ResolvedModelConfig
 
 # ---------------------------------------------------------------------------
 # CacheSettings defaults

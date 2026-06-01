@@ -18,7 +18,7 @@ from uuid import uuid4
 
 import pytest
 
-from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
+from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.writing import GenerationMode

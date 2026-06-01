@@ -33,6 +33,8 @@ class KBEntity:
     recency_score: float = 0.0
     is_referenced: bool = False
     is_pinned: bool = False
+    status: str = "draft"  # "draft" | "reviewed" | "canon" | "deprecated"
+    updated_at: str | None = None  # ISO-8601 timestamp of last update
     metadata: dict[str, Any] | None = None  # structured entity metadata (speech, personality)
     wiki_summary: str | None = None  # precomputed narrative summary if available
     wiki_status: str | None = None  # "fresh" | "stale" | "pending" | None
@@ -73,6 +75,8 @@ class ContextMetadata:
     kb_characters_count: int = 0
     kb_locations_count: int = 0
     kb_factions_count: int = 0
+    kb_systems_count: int = 0
+    kb_timelines_count: int = 0
     kb_relationships_count: int = 0
     kb_suggested_count: int = 0
     kb_pinned_count: int = 0
@@ -82,6 +86,10 @@ class ContextMetadata:
     character_names: list[str] = field(default_factory=lambda: [])
     location_names: list[str] = field(default_factory=lambda: [])
     faction_names: list[str] = field(default_factory=lambda: [])
+
+    # Story metadata
+    story_structure: str = ""
+    timeline_position: str = ""
 
     # Flags
     is_first_chapter: bool = False
@@ -101,6 +109,8 @@ class ContextMetadata:
             "kb_characters_count": self.kb_characters_count,
             "kb_locations_count": self.kb_locations_count,
             "kb_factions_count": self.kb_factions_count,
+            "kb_systems_count": self.kb_systems_count,
+            "kb_timelines_count": self.kb_timelines_count,
             "kb_relationships_count": self.kb_relationships_count,
             "kb_suggested_count": self.kb_suggested_count,
             "kb_pinned_count": self.kb_pinned_count,
@@ -111,6 +121,8 @@ class ContextMetadata:
             "is_first_chapter": self.is_first_chapter,
             "has_user_preferences": self.has_user_preferences,
             "tone": self.tone,
+            "story_structure": self.story_structure,
+            "timeline_position": self.timeline_position,
             "wiki_summaries_count": self.wiki_summaries_count,
             "wiki_summaries_stale": self.wiki_summaries_stale,
             "total_budget_tokens": self.total_budget_tokens,

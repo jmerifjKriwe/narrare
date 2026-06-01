@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -28,6 +28,8 @@ Si une question sort de votre champ de compétence, redirigez poliment : « Je s
 - Projet : {{project_title}}
 - Genre : {{genre}}
 - Langue : {{language}}
+- Chronologie : {{timeline_position}}
+- **Structure narrative** : {{story_structure}}
 
 Personnages dans ce projet :
 {{kb_characters}}

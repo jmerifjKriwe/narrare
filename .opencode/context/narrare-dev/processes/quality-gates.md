@@ -188,9 +188,64 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 
 ---
 
-## Relationship: Gates 8–9 vs. Existing Gates
+## Gate 10: Semantic Review Gate (NEW)
 
-Gates 8 and 9 are **additive** — they do not replace Gates 1–7. The relationship is:
+Applies to features that share data with other features. Supplements Gates 3–9
+with cross-feature coherence checks.
+
+### Owner
+
+Architecture Specialist during Stage 2.5 (Semantic Review).
+
+### Checklist (per feature)
+
+- [ ] **Cross-Feature data flows identified** — Shared data sources listed (KB, Storyboard, Frontmatter, wiki, memory/preferences, prompt registry, settings, etc.)
+- [ ] **Integration Contract defined** — For each shared source, behaviour on change and deletion is documented per RULE-03 Integration Contracts
+- [ ] **Intent semantic scope verified** — No existing intent/prompt has the same ID with different semantic scope. New intents have Scope/Input/Output/NOT documented
+- [ ] **i18n parity checked** — All prompt files exist in en/de/fr, or EN-only is documented with rationale
+- [ ] **Injection defence verified** — All user-content variables registered in `_USER_CONTENT_VARS` and wrapped in XML tags in prompt templates
+- [ ] **Template variables registered** — New variables added to `_SYSTEM_VARS` in `variable_engine.py`
+- [ ] **KB status filtering considered** — If feature reads KB data, deprecated/archived entities are excluded
+- [ ] **Token budget defined** — String-truncation limits or TokenBudgetManager usage defined
+- [ ] **RULE-22 compliance** — Cross-Feature Coherence Gate passed
+
+### Automation Status
+
+| Checklist Item | Automated? | Tool |
+|----------------|------------|------|
+| Data flows | Manual | Requires architectural review |
+| Integration Contract | Manual | Template in architecture-rules.md |
+| Intent semantics | Partial | `check_intent_consistency()` in prompt_integrity.py |
+| i18n parity | Partial | `check_i18n_parity()` in prompt_integrity.py |
+| Injection defence | Yes | `check_template_variables()` in prompt_integrity.py |
+| Variable registration | Yes | `check_variable_registration()` in prompt_integrity.py |
+| KB status filtering | Manual | Requires architectural review |
+| Token budget | Manual | Requires architectural review |
+| RULE-22 | Manual | Stage 2.5 checklist |
+
+### CI Pipeline Position
+
+```
+1. ruff format + lint
+2. check_architecture.py --prompt-integrity  (RULE enforcement + prompt integrity)
+3. check_adoption.py
+4. check_prompt_structure.py
+5. mypy --strict + pyright
+6. pytest -m unit
+7. pytest -m integration
+8. pnpm test
+9. bandit
+```
+
+### Validated by
+
+`check_architecture.py --prompt-integrity` + manual Stage 2.5 review by Architecture Specialist.
+
+---
+
+## Relationship: Gates 8–10 vs. Existing Gates
+
+Gates 8–10 are **additive** — they do not replace Gates 1–7. The relationship is:
 
 | Gate | Scope | What it catches |
 |------|-------|-----------------|
@@ -202,8 +257,9 @@ Gates 8 and 9 are **additive** — they do not replace Gates 1–7. The relation
 | 7 | CI pipeline | Orchestrates all gates |
 | **8** | **Feature adoption** | **Missing infrastructure: no TokenBudget, no PromptComposer, no KB entities** |
 | **9** | **AI content quality** | **Missing prompt variables, no injection defense, no i18n, no streaming** |
+| **10** | **Semantic Review** | **Cross-feature incoherence: missing Integration Contract, unregistered variables, unimplemented i18n, intent scope drift** |
 
-A feature must pass ALL gates (1–9) to reach `status: stable`.
+A feature must pass ALL gates (1–10) to reach `status: stable`.
 
 ---
 

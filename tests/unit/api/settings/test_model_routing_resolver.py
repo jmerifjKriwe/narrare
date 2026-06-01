@@ -14,7 +14,8 @@ from unittest.mock import patch
 import pytest
 
 from narrare.settings.model_routing_resolver import ModelRoutingResolverImpl
-from narrare_core.llm.intents import INTENT_CATEGORY_MAP, LLMIntent
+from narrare_core.llm import LLMIntent
+from narrare_core.llm.intent_categories import INTENT_CATEGORY_MAP
 from narrare_core.shared.errors import ConfigurationError
 
 # ---------------------------------------------------------------------------

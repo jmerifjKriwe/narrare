@@ -20,14 +20,14 @@ from pydantic_ai.models.test import (  # narrare: allow reason="test fixtures"
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
 
 
 @pytest.fixture
 def write_config() -> ResolvedModelConfig:
     """Default ResolvedModelConfig for gateway tests."""
-    from narrare_core.llm.intents import ResolvedModelConfig
+    from narrare_core.llm import ResolvedModelConfig
 
     return ResolvedModelConfig(
         provider_name="anthropic",

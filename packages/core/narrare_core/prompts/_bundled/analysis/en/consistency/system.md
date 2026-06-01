@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -29,6 +29,8 @@ Compare facts extracted from the chapter prose against the provided KB entity da
 </user_provided_text>
 {{kb_entities}}
 Check types: {{check_types}}
+Timeline context: {{timeline_position}}
+Story structure: {{story_structure}}
 
 ### Output Format
 

@@ -6,8 +6,8 @@ Covers:
 1. Malformed YAML frontmatter — no crash, empty references
 2. Frontmatter with only non-KB keys — empty references
 3. Frontmatter with empty YAML values — empty references
-4. ``_truncate_to_budget`` with zero/negative limit
-5. ``_enforce_budget`` with text within and over limit
+4. ``truncate_to_budget`` with zero/negative limit
+5. ``enforce_budget`` with text within and over limit
 """
 
 from __future__ import annotations
@@ -15,6 +15,11 @@ from __future__ import annotations
 import pytest
 import yaml
 
+from narrare_core.writing._token_utils import (
+    default_token_counter,
+    enforce_budget,
+    truncate_to_budget,
+)
 from narrare_core.writing.context_assembler import WritingContextAssembler
 
 
@@ -54,29 +59,24 @@ class TestFrontmatterEdgeCases:
 
 
 class TestTruncateToBudget:
-    """Edge cases for ``_truncate_to_budget`` and ``_enforce_budget``."""
+    """Edge cases for ``truncate_to_budget`` and ``enforce_budget``."""
 
     def test_zero_limit_returns_empty(self) -> None:
-        asm = WritingContextAssembler()
-        assert asm._truncate_to_budget("hello world", 0) == ""
+        assert truncate_to_budget("hello world", 0, default_token_counter) == ""
 
     def test_negative_limit_returns_empty(self) -> None:
-        asm = WritingContextAssembler()
-        assert asm._truncate_to_budget("hello world", -5) == ""
+        assert truncate_to_budget("hello world", -5, default_token_counter) == ""
 
     def test_within_budget_returns_text_unchanged(self) -> None:
-        asm = WritingContextAssembler()
-        assert asm._truncate_to_budget("hello", 100) == "hello"
+        assert truncate_to_budget("hello", 100, default_token_counter) == "hello"
 
     def test_enforce_budget_within_limit_returns_overflow(self) -> None:
-        asm = WritingContextAssembler()
-        result, overflow = asm._enforce_budget("hi", 100)
+        result, overflow = enforce_budget("hi", 100, default_token_counter)
         assert result == "hi"
         assert overflow > 0
 
     def test_enforce_budget_over_limit_truncates(self) -> None:
-        asm = WritingContextAssembler()
         # "hello world foo bar" = 5 tokens; limit=3 triggers truncation
-        result, overflow = asm._enforce_budget("hello world foo bar", 3)
+        result, overflow = enforce_budget("hello world foo bar", 3, default_token_counter)
         assert result != "hello world foo bar"
         assert overflow == 0

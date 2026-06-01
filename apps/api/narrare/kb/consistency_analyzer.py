@@ -33,8 +33,8 @@ if TYPE_CHECKING:
 
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.models import KBEntry
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)

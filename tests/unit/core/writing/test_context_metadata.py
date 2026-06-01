@@ -122,3 +122,31 @@ class TestWritingContextToMetadata:
         ctx = WritingContext(recent_chapter_count=3)
         meta = ctx.to_metadata()
         assert meta.recent_chapter_count == 3
+
+    # ------------------------------------------------------------------
+    # CR-04: New fields forwarded through to_metadata()
+    # ------------------------------------------------------------------
+
+    def test_story_structure_forwarded(self):
+        ctx = WritingContext(story_structure="Hero's Journey")
+        meta = ctx.to_metadata()
+        assert meta.story_structure == "Hero's Journey"
+
+    def test_timeline_position_forwarded(self):
+        ctx = WritingContext(timeline_position="Day 5")
+        meta = ctx.to_metadata()
+        assert meta.timeline_position == "Day 5"
+
+    def test_kb_systems_count_from_text(self):
+        ctx = WritingContext(
+            kb_systems="### System: Magic Rules\nMana costs 10.\n\n### System: Combat\nTurn-based."
+        )
+        meta = ctx.to_metadata()
+        assert meta.kb_systems_count == 2
+
+    def test_kb_timelines_count_from_text(self):
+        ctx = WritingContext(
+            kb_timelines="### Timeline: War of Ashes\nYear 1042.\n\n### Timeline: Founding\nYear 1."
+        )
+        meta = ctx.to_metadata()
+        assert meta.kb_timelines_count == 2

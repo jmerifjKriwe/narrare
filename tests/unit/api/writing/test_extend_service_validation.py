@@ -21,7 +21,7 @@ import pytest
 
 from narrare.writing.extend_service import _EXTEND_WORD_TARGETS, ExtendService
 from narrare.writing.schemas import ExtendLength, ExtendRequest, GenerateResponse
-from narrare_core.llm.intents import ResolvedModelConfig
+from narrare_core.llm import ResolvedModelConfig
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 
 # ---------------------------------------------------------------------------

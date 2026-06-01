@@ -33,6 +33,7 @@ Which rules are MOST relevant for which specialist layer.
 | RULE-19 (SessionDep not AsyncSession) | — | ✅ primary | — | — |
 | RULE-20 (No half-implementations) | ✅ all | ✅ all | ✅ all | ✅ all |
 | RULE-21 (Re-review on material changes) | ✅ all | ✅ all | ✅ all | ✅ all |
+| RULE-22 (Cross-Feature Coherence Gate) | ✅ primary | ✅ primary | ⚠️ aware | ⚠️ aware |
 
 **Roles**: ✅ primary = you own this rule; ⚠️ aware = you consume it; — = not directly applicable; ✅ all = applies to everyone; ✅ tests = relevant for test writing.
 
@@ -90,11 +91,70 @@ Which rules are MOST relevant for which specialist layer.
 | Mechanism | Rules Enforced |
 |-----------|---------------|
 | **check_architecture.py** (pre-commit + CI) | RULE-01b, 02, 04, 06, 09, 11, 15, 19 |
+| **check_adoption.py** + **check_prompt_structure.py** (CI) | RULE-22 (prompt variable checks) |
 | **Type system** (mypy --strict + pyright) | RULE-09 |
 | **Coverage gates** (pytest --cov) | RULE-10 |
 | **Contract tests** (backend-frontend field validation) | RULE-17 |
 | **PR review** (Architecture Agent) | All rules |
 | **Exceptions** (`# narrare: allow-*` inline comment) | Must be justified in PR |
+
+## 5. Cross-Feature Rules
+
+Rules that apply when a feature shares data with other features.
+
+### Integration Contract Template
+
+When Feature A consumes data from Feature B:
+
+```markdown
+### Integration Contract: Feature A ↔ Feature B
+
+**Shared data source:** [KB entities | Storyboard | Frontmatter | wiki | memory | settings | …]
+
+**Data direction:** Feature A → reads ← Feature B writes
+
+**On data change (Feature B updates an entity):**
+- [ ] Feature A sees the update immediately (direct DB read)
+- [ ] Feature A uses a cached snapshot (TTL: [N] seconds)
+- [ ] Feature A must be explicitly notified (via event bus)
+- [ ] Feature A is NOT affected (reads different subset)
+
+**On data deletion (Feature B deletes an entity):**
+- [ ] Feature A handles gracefully (shows "not found", skips, uses fallback)
+- [ ] Feature A crashes/errors — must be fixed in Feature A before deletion
+- [ ] Deletion is blocked until Feature A is updated
+
+**Expected schema/version:** [e.g., KB entity v2 with template_fields dict]
+```
+
+### Example: Storyboard ↔ KB Integration Contract
+
+```markdown
+### Integration Contract: Storyboard ↔ KB
+
+**Shared data source:** KB entities (characters, locations, factions)
+**Data direction:** Storyboard → reads ← KB writes
+
+**On data change** (KB entity updated):
+- Storyboard reads KB entities fresh on every access (no cache)
+- Storyboard shows current KB entity name + summary + status
+- If KB entity is status=archived, Storyboard shows "(archived)" suffix
+
+**On data deletion** (KB entity deleted):
+- Storyboard still shows the entity reference but with "(deleted)" marker
+- Storyboard does NOT cascade delete — keeps reference with tombstone
+
+**Expected schema:** KB entity v2 with: id, name, type, status, summary
+```
+
+### RULE-22 Quick Reference
+
+- **What**: Cross-Feature Coherence Gate — mandatory validation before merging
+  any feature that shares data with other features.
+- **Who**: Architecture Specialist (Stage 2.5 — Semantic Review)
+- **When**: During Stage 2 (Specification), before Stage 3 (Implementation)
+- **Enforcement**: Checklist in feature spec. Verified during Semantic Review.
+- **Source**: `docs/_shared/CONSTRAINTS.md` — RULE-22
 
 ## Related Files
 

@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: de
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -29,6 +29,8 @@ Vergleiche die aus den Kapiteltexten extrahierten Fakten mit den bereitgestellte
 </user_provided_text>
 {{kb_entities}}
 Prüfarten: {{check_types}}
+Zeitlinien-Kontext: {{timeline_position}}
+Erzählstruktur: {{story_structure}}
 
 ### Ausgabeformat
 

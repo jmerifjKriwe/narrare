@@ -24,8 +24,8 @@ import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
 if TYPE_CHECKING:
+    from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.llm.intents import ResolvedModelConfig
     from narrare_core.llm.result import StreamChunk
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.pipeline import WritingPipeline
