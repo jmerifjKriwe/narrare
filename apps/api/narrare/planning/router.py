@@ -1,6 +1,7 @@
-"""Planning routes — storyboard, outlines, and remap endpoints.
+"""Planning routes — storyboard, outlines, and structure remap endpoints.
 
 Thin routers that delegate immediately to StoryboardService (RULE-06).
+Timeline routes are in ``router_timeline.py`` and included here.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from fastapi import APIRouter
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.planning._character_arc_factory import get_character_arc_service
 from narrare.planning._service_factory import get_storyboard_service
-from narrare.planning._timeline_factory import get_timeline_service
+from narrare.planning.router_timeline import router as timeline_router
 from narrare.planning.schemas import (
     CharacterArcRequest,
     CharacterArcResponse,
@@ -22,10 +23,10 @@ from narrare.planning.schemas import (
     RemapResponse,
     StoryboardResponse,
     SyncStatusResponse,
-    TimelineResponse,
 )
 
 router = APIRouter(prefix="/planning", tags=["planning"])
+router.include_router(timeline_router)
 
 
 @router.get("/storyboard/{novel_id}", response_model=StoryboardResponse)
@@ -114,14 +115,3 @@ async def generate_character_arc(
     """Generate a character development arc for a character in a novel."""
     service = await get_character_arc_service(session=session, user_id=user_id, novel_id=novel_id)
     return await service.generate_character_arc(novel_id, uuid.UUID(user_id), request)
-
-
-@router.get("/timeline/{novel_id}", response_model=TimelineResponse)
-async def get_timeline(
-    novel_id: uuid.UUID,
-    user_id: CurrentUserIdDep,
-    session: SessionDep,
-) -> TimelineResponse:
-    """Generate a chronological timeline analysis for a novel."""
-    service = await get_timeline_service(session=session, user_id=user_id, novel_id=novel_id)
-    return await service.generate_timeline(novel_id, uuid.UUID(user_id))

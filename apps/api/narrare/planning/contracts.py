@@ -4,6 +4,9 @@ Defines interfaces for:
 - OutlineRepositoryProtocol: DB queries for chapter outlines
 - SyncCheckerProtocol: structural sync status calculation
 - StoryboardServiceProtocol: business logic for storyboard feature
+- TimelineEventRepositoryProtocol: DB queries for timeline events
+- TimelineEventServiceProtocol: CRUD operations for timeline events
+- TimelineAnalysisServiceProtocol: AI-powered timeline analysis
 """
 
 from __future__ import annotations
@@ -13,13 +16,19 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     import uuid
 
-    from narrare.planning.models import ChapterOutline
+    from narrare.planning.models import ChapterOutline, TimelineEvent
     from narrare.planning.schemas import (
         OutlineResponse,
         OutlineUpdateRequest,
         RemapResponse,
         StoryboardResponse,
         SyncStatusResponse,
+        TimelineResponse,
+    )
+    from narrare.planning.timeline_schemas import (
+        TimelineEventCreateRequest,
+        TimelineEventCRUDResponse,
+        TimelineEventUpdateRequest,
     )
 
 
@@ -96,12 +105,59 @@ class CharacterArcServiceProtocol(Protocol):
     ) -> object: ...  # CharacterArcResponse from schemas
 
 
-@runtime_checkable
-class TimelineServiceProtocol(Protocol):
-    """Protocol for timeline analysis."""
+# ---------------------------------------------------------------------------
+# Timeline protocols — Phase 1 (PLAN-004)
+# ---------------------------------------------------------------------------
 
-    async def generate_timeline(
+
+@runtime_checkable
+class TimelineEventRepositoryProtocol(Protocol):
+    """Protocol for timeline event persistence."""
+
+    async def get_by_id(self, event_id: uuid.UUID) -> TimelineEvent | None: ...
+    async def list_by_novel(
         self,
         novel_id: uuid.UUID,
-        user_id: uuid.UUID,
-    ) -> object: ...
+        *,
+        event_type: str | None = None,
+        chapter_id: uuid.UUID | None = None,
+        source: str | None = None,
+        is_confirmed: bool | None = None,
+    ) -> list[TimelineEvent]: ...
+    async def create(self, **fields: object) -> TimelineEvent: ...
+    async def update(self, event_id: uuid.UUID, **fields: object) -> TimelineEvent: ...
+    async def delete(self, event_id: uuid.UUID) -> bool: ...
+    async def bulk_create(self, events: list[dict[str, object]]) -> list[TimelineEvent]: ...
+
+
+@runtime_checkable
+class TimelineEventServiceProtocol(Protocol):
+    """Protocol for timeline event CRUD operations."""
+
+    async def create_event(
+        self, novel_id: uuid.UUID, user_id: uuid.UUID, request: TimelineEventCreateRequest
+    ) -> TimelineEventCRUDResponse: ...
+    async def list_events(
+        self, novel_id: uuid.UUID, user_id: uuid.UUID, **filters: object
+    ) -> list[TimelineEventCRUDResponse]: ...
+    async def get_event(
+        self, event_id: uuid.UUID, user_id: uuid.UUID
+    ) -> TimelineEventCRUDResponse: ...
+    async def update_event(
+        self, event_id: uuid.UUID, user_id: uuid.UUID, request: TimelineEventUpdateRequest
+    ) -> TimelineEventCRUDResponse: ...
+    async def delete_event(self, event_id: uuid.UUID, user_id: uuid.UUID) -> bool: ...
+
+
+@runtime_checkable
+class TimelineAnalysisServiceProtocol(Protocol):
+    """Protocol for AI-powered timeline analysis."""
+
+    async def generate_timeline(
+        self, novel_id: uuid.UUID, user_id: uuid.UUID
+    ) -> TimelineResponse: ...
+
+
+# Backward compatibility alias — existing code references TimelineServiceProtocol
+# for the analysis service. The protocol is renamed for clarity (AD-5).
+TimelineServiceProtocol = TimelineAnalysisServiceProtocol

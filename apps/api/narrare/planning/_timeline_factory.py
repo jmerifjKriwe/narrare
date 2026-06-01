@@ -1,8 +1,8 @@
-"""Service factory for timeline — wires TimelineService with model routing.
+"""Service factory for timeline CRUD — wires TimelineService with repository.
 
-Follows the same pattern as ``_service_factory.py``: resolves the user's
-configured provider/model for the PLAN intent, validates novel existence,
-and builds the service with proper DI.
+Provides ``get_timeline_crud_service`` for CRUD operations and keeps
+the existing ``get_timeline_service`` as a backward-compatible alias
+that wires the analysis service (AD-5).
 """
 
 from __future__ import annotations
@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare._app.dependencies import get_model_registry, get_model_routing_resolver
 from narrare.chapters.repository import ChapterRepository
 from narrare.novels.repository import NovelRepository
+from narrare.planning.timeline_repository import TimelineEventRepository
 from narrare.planning.timeline_service import TimelineService
-from narrare_core.shared.errors import ConfigurationError, NotFoundError
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,19 +24,14 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
-async def get_timeline_service(
+async def get_timeline_crud_service(
     session: AsyncSession,
     user_id: str,
     novel_id: uuid.UUID,
 ) -> TimelineService:
-    """Wire up TimelineService with model routing from user settings.
+    """Wire up TimelineService (CRUD) with repository and ownership checks.
 
-    Resolves the user's configured provider/model for the PLAN intent,
-    validates novel existence before calling the resolver to prevent
-    auto-creation of project_settings for nonexistent novels.
-
-    Gracefully degrades when no AI provider is configured — the service
-    will use the fallback model from ModelRegistry.
+    Validates novel existence before creating the service.
 
     Args:
         session: DB session.
@@ -44,40 +39,38 @@ async def get_timeline_service(
         novel_id: Target novel UUID.
 
     Returns:
-        Fully wired TimelineService.
+        Fully wired TimelineService for CRUD operations.
 
     Raises:
         NotFoundError: If the novel does not exist.
     """
-    from narrare_core.llm.intents import LLMIntent
-
     uid = uuid.UUID(user_id)
 
-    # Validate novel exists BEFORE resolver auto-creates project_settings.
+    # Validate novel exists
     novel_repo = NovelRepository(session)
     novel = await novel_repo.get_by_id(novel_id, uid)
     if novel is None:
         raise NotFoundError("Novel", identifier=str(novel_id))
 
-    # Resolve model config — gracefully handle missing AI provider.
-    registry = get_model_registry()
-    model_config = None
-    api_key = None
-    base_url = None
-    try:
-        resolver = get_model_routing_resolver(session)
-        resolved = await resolver.resolve(LLMIntent.PLAN, uid, novel_id)
-        model_config = resolved.config
-        api_key = resolved.api_key
-        base_url = resolved.base_url
-    except ConfigurationError:
-        logger.info("no_ai_provider_configured", novel_id=str(novel_id))
-
     return TimelineService(
+        event_repo=TimelineEventRepository(session),
         novel_repo=novel_repo,
         chapter_repo=ChapterRepository(session),
-        model_registry=registry,
-        model_config=model_config,
-        api_key=api_key,
-        base_url=base_url,
     )
+
+
+# Backward compatibility — existing code calls get_timeline_service
+# for AI analysis. Now delegates to the analysis factory.
+async def get_timeline_service(
+    session: AsyncSession,
+    user_id: str,
+    novel_id: uuid.UUID,
+) -> object:
+    """Backward-compatible factory — delegates to analysis service.
+
+    Existing router code calls this for the AI analysis endpoint.
+    Delegates to ``_timeline_analysis_factory``.
+    """
+    from narrare.planning._timeline_analysis_factory import get_timeline_analysis_service
+
+    return await get_timeline_analysis_service(session, user_id, novel_id)
