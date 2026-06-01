@@ -8,7 +8,7 @@
 ## Last Updated
 
 Date: 2026-06-01
-Session: Phase 6 extension — ANAL-003 (Readability), ANAL-004 (POV) full stack implemented, contracts modularized for RULE-04
+Session: Phase 6 extension — WIKI-001 frontend complete (WikiOverviewPanel, WikiChapterSummaryPanel, KBCategorySidebar wiki tab, WorldBuilding wiki mode, i18n, 16 tests)
 
 ---
 
@@ -67,7 +67,7 @@ Alembic migrations 0001 through ~0023
 - `architecture/decisions/`: 22 ADRs + 2 implementation plans (inkl. ADR-022 LLM Wiki — Accepted) (INDEX.md)
 - `architecture/questions/`: 8 questions in 5 files (INDEX.md)
 - `features/`: 76 feature spec files (INDEX.md with status tracking)
-- **WIKI-001** — LLM Wiki (Precomputed Context Layer, backend implemented, frontend pending)
+- **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
 - `mvp/`: Product roadmap (Phases 0–6 + Post-MVP)
 
 ### Infrastructure
@@ -116,15 +116,15 @@ Completed in Phase 6 so far:
 30. ✅ ANAL-003: Readability Analysis — FormulaReadabilityAnalyzer (Flesch/Kincaid/Fog) + ReadabilityAgent + ReadabilityService + POST /analysis/readability + ReadabilityPanel + i18n (3 locales)
 31. ✅ ANAL-004: POV Analysis — POVDetectionAgent + POVService + POST /analysis/pov + POVPanel + i18n (3 locales)
 32. ✅ Contracts modularized for RULE-04: contracts_readability.py, contracts_pov.py, schemas_readability.py, schemas_pov.py, pov_mapper.py
+33. ✅ WIKI-001 frontend: WikiOverviewPanel (entity summaries + status overview), WikiChapterSummaryPanel (chapter wiki in editor), KBCategorySidebar wiki tab, WorldBuilding wiki mode, 22 i18n keys (en/de/fr), 16 Vitest tests
 
 ---
 
 ## What's Next
 
-1. Editor integration: Wire ReadabilityPanel + POVPanel into editor sidebar analysis tray
-2. WIKI-001 frontend: Wiki overview page (entity list with wiki status)
-3. ANAL-005: Coreference Analysis
-4. E2E test patterns
+1. ANAL-005: Coreference Analysis
+2. E2E test patterns
+3. PLAN-004 UI: Timeline Management frontend
 
 ---
 
@@ -153,7 +153,7 @@ Completed in Phase 6 so far:
 | ADR-019 | System-Prompt Consistency for Agents | ✅ Accepted |
 | ADR-020 | Embedding Provider Abstraction | ✅ Accepted |
 | ADR-021 | Deterministic Analysis Strategy | ✅ Accepted |
-| ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Accepted (Full backend implemented, frontend pending) |
+| ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
 
 Full details: `docs/architecture/decisions/INDEX.md`

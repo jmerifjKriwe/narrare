@@ -59,12 +59,14 @@ requires: [INFRA-001, INFRA-002, INFRA-003, INFRA-005, KB-001, ADR-007, ADR-012,
 
 # WIKI-001 — LLM Wiki: Precomputed Context Layer
 
-> **Implementation Status (2026-06-01):** Complete implementation (core + api +
-> frontend). Core layer: types, contracts, agent, service, prompt_loader (35
-> unit tests). Backend layer: models, migration, repository (9 methods),
-> schemas (6), API service, router (6 endpoints), tasks (4), listeners (4), DI
-> wiring. Context assembler wiki integration, budget wiki optimization.
-> Frontend: WikiSummaryPanel UI, API client hooks, refresh button.
+> **Implementation Status (2026-06-01):** Complete full-stack implementation
+> (core + api + frontend). Core layer: types, contracts, agent, service,
+> prompt_loader (35 unit tests). Backend layer: models, migration, repository
+> (9 methods), schemas (6), API service, router (6 endpoints), tasks (4),
+> listeners (4), DI wiring. Context assembler wiki integration, budget wiki
+> optimization. Frontend: WikiOverviewPanel (entity summaries + status overview),
+> WikiChapterSummaryPanel (editor sidebar), KBCategorySidebar wiki tab,
+> WorldBuilding wiki mode, 22 i18n keys (en/de/fr), 16 Vitest tests.
 
 ## What it does
 
@@ -314,6 +316,7 @@ N Kapiteln referenzierten Entities vorgeladen.
 
 ## Status & History
 
+- `2026-06-01` — WIKI-001 frontend complete: WikiOverviewPanel (all summaries with status), WikiChapterSummaryPanel (editor sidebar), Wiki tab in KB sidebar, i18n (22 keys × 3 locales), 16 tests. Frontend fully implemented.
 - `2026-06-01` — WIKI-001 complete: WikiSummaryPanel UI, API client, hooks, wiki prompts (3 locales), prompt versioning. Status: stable.
 - `2026-05-29` — ADR-022 Accepted. Full backend implemented (core + api layers, 35+9 unit tests, commits 8ba62f3 and 2e72f61). Status: in-progress (frontend pending).
 - `2026-05-29` — ADR-022 proposed. Feature Spec created. Status: planned.
