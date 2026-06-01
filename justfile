@@ -244,10 +244,11 @@ test-cov:
     uv run pytest tests/ --cov --cov-report=term-missing --cov-report=html
     @echo "Coverage report: htmlcov/index.html"
 
-# Run a specific test file
+# Run one or more specific test files
 # Usage: just test-file tests/unit/core/llm/test_gateway.py
-test-file file:
-    uv run pytest {{file}} -v
+# Usage: just test-file tests/unit/core/llm/test_gateway.py tests/unit/core/llm/test_other.py
+test-file +files:
+    uv run pytest {{files}} -v
 
 # Run tests matching a pattern
 # Usage: just test-match "test_gateway"

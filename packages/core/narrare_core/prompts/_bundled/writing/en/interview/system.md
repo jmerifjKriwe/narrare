@@ -27,6 +27,9 @@ Locations:
 Factions:
 {{kb_factions}}
 
+Relationships:
+{{kb_relationships}}
+
 ### Recent Chapters
 
 {{recent_chapters}}

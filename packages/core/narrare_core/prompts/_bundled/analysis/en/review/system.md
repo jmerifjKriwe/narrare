@@ -34,6 +34,19 @@ Characters:
 Locations:
 {{kb_locations}}
 
+### User Preferences
+
+The author has deliberately chosen the following style and content preferences. **Treat these as intentional authorial choices, not issues to flag.** Do not suggest changing them unless they actively harm the narrative.
+
+{{user_preferences}}
+
+### Constraints
+
+- Write feedback in {{writing_language}}
+- Do not rewrite the draft — provide guidance for the author to revise
+- Do not introduce new plot elements or characters not in the draft
+- Respect the author's avoidance patterns: {{avoidance_patterns}}
+
 ## Output Format
 
 Provide your review as structured output according to the schema described in the Structured Output section above.
@@ -55,19 +68,6 @@ Provide your review as structured output with these fields:
 - Acknowledge what works well, not just what needs improvement
 - Consider genre conventions when evaluating pacing and style
 - If the draft meets the word target, note whether the length feels appropriate
-
-### User Preferences
-
-The author has deliberately chosen the following style and content preferences. **Treat these as intentional authorial choices, not issues to flag.** Do not suggest changing them unless they actively harm the narrative.
-
-{{user_preferences}}
-
-### Constraints
-
-- Write feedback in {{writing_language}}
-- Do not rewrite the draft — provide guidance for the author to revise
-- Do not introduce new plot elements or characters not in the draft
-- Respect the author's avoidance patterns: {{avoidance_patterns}}
 
 ## Do NOT
 

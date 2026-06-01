@@ -127,6 +127,7 @@ class WritingPipeline:
         recent_chapters: list[RecentChapter] | None = None,
         kb_entities: list[KBEntity] | None = None,
         entity_connections: dict[str, set[str]] | None = None,
+        kb_relationships: str = "",
         project_title: str = "",
         genre: str = "",
         user_preferences: str = "",
@@ -154,6 +155,11 @@ class WritingPipeline:
             kb_entities: Knowledge base entities for reference.
             entity_connections: Adjacency map of entity IDs to connected
                 entity IDs, used for KB entity classification.
+            kb_relationships: Pre-formatted relationship text for prompt
+                injection (e.g. ``"Aria → [ally of] → Marcus"``).
+                Produced by :func:`~narrare_core.writing._relationship_format.format_relationships`
+                in the API layer.  Passed through to
+                :class:`WritingContext` (FIND-009).
             project_title: Title of the project/novel.
             genre: Genre of the writing project.
             user_preferences: User's writing preference string.
@@ -180,6 +186,7 @@ class WritingPipeline:
             recent_chapters=recent_chapters,
             kb_entities=kb_entities,
             entity_connections=entity_connections,
+            kb_relationships=kb_relationships,
             project_title=project_title,
             genre=genre,
             language=request.writing_language,

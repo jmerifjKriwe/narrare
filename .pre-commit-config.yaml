@@ -10,6 +10,24 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Prompt structure validation — catches missing variables, locale gaps, security issues
+      - id: prompt-structure
+        name: Prompt Structure Check
+        entry: uv run python scripts/check_prompt_structure.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Feature adoption score — ensures all features adopt core infrastructure
+      - id: adoption-score
+        name: Feature Adoption Score
+        entry: uv run python scripts/check_adoption.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # OpenAPI spec auto-regeneration — keeps spec in sync with API surface
       - id: openapi-regenerate
         name: OpenAPI Spec (auto-regenerate)

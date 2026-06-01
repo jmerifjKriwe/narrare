@@ -16,6 +16,7 @@ from narrare._app.dependencies import (
     get_model_registry,
     get_model_routing_resolver,
 )
+from narrare.kb.relationship_repository import RelationshipRepository
 from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
@@ -102,10 +103,8 @@ async def get_writing_service(
         agent_registry=get_agent_registry(),
     )
     repo = GenerationRepository(session)
-
-    # Wire CustomToneService for custom tone resolution
-    settings_repo = UserSettingsRepository(session)
-    tone_service = CustomToneService(repo=settings_repo)
+    relationship_repo = RelationshipRepository(session)
+    tone_service = CustomToneService(repo=UserSettingsRepository(session))
 
     return WritingService(
         repo=repo,
@@ -115,6 +114,7 @@ async def get_writing_service(
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         tone_service=tone_service,
+        relationship_repo=relationship_repo,
     )
 
 
@@ -183,10 +183,8 @@ async def get_extend_service(
         agent_registry=get_agent_registry(),
     )
     repo = GenerationRepository(session)
-
-    # Wire CustomToneService for custom tone resolution
-    settings_repo = UserSettingsRepository(session)
-    tone_service = CustomToneService(repo=settings_repo)
+    relationship_repo = RelationshipRepository(session)
+    tone_service = CustomToneService(repo=UserSettingsRepository(session))
 
     return ExtendService(
         repo=repo,
@@ -196,6 +194,7 @@ async def get_extend_service(
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         tone_service=tone_service,
+        relationship_repo=relationship_repo,
     )
 
 
@@ -263,10 +262,8 @@ async def get_rewrite_service(
         agent_registry=get_agent_registry(),
     )
     repo = GenerationRepository(session)
-
-    # Wire CustomToneService for custom tone resolution
-    settings_repo = UserSettingsRepository(session)
-    tone_service = CustomToneService(repo=settings_repo)
+    relationship_repo = RelationshipRepository(session)
+    tone_service = CustomToneService(repo=UserSettingsRepository(session))
 
     return RewriteService(
         repo=repo,
@@ -276,6 +273,7 @@ async def get_rewrite_service(
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         tone_service=tone_service,
+        relationship_repo=relationship_repo,
     )
 
 
@@ -374,6 +372,7 @@ async def get_coauthor_service(
         agent_registry=get_agent_registry(),
     )
     repo = GenerationRepository(session)
+    relationship_repo = RelationshipRepository(session)
 
     return CoAuthorService(
         repo=repo,
@@ -382,6 +381,7 @@ async def get_coauthor_service(
         config=config,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
+        relationship_repo=relationship_repo,
     )
 
 

@@ -37,6 +37,7 @@ from narrare_core.shared.errors import ConflictError, NotFoundError
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.models import GenerationRequest
     from narrare.writing.repository import GenerationRepository
@@ -66,6 +67,7 @@ class WritingService:
         scene_service: SceneService | None = None,
         stats_service: StatsService | None = None,
         tone_service: CustomToneService | None = None,
+        relationship_repo: RelationshipRepository | None = None,
     ) -> None:
         self._repo = repo
         self._pipeline = pipeline
@@ -77,6 +79,7 @@ class WritingService:
         self._scene_service = scene_service
         self._stats_service = stats_service
         self._tone_service = tone_service
+        self._relationship_repo = relationship_repo
 
     # -- Generation lifecycle -------------------------------------------
 
@@ -92,7 +95,6 @@ class WritingService:
         active = await self._repo.get_active_for_chapter(chapter_id)
         if active is not None:
             raise ConflictError(f"Generation already active for chapter {chapter_id}")
-
         try:
             request_id = await self._repo.create(
                 chapter_id=chapter_id,
@@ -110,7 +112,6 @@ class WritingService:
             mode=request.mode.value,
             tone=request.tone,
         )
-
         return GenerateResponse(
             request_id=request_id,
             status="pending",
@@ -152,6 +153,14 @@ class WritingService:
             tone_service=self._tone_service,
         )
 
+        # Fetch and format KB relationships for prompt context (FIND-009)
+        from narrare.writing._relationship_helpers import fetch_formatted_relationships
+
+        kb_relationships = await fetch_formatted_relationships(
+            self._relationship_repo,
+            request_model.novel_id,
+        )
+
         accumulated: list[str] = []
         try:
             async for chunk in self._pipeline.generate(
@@ -160,6 +169,7 @@ class WritingService:
                 api_key=self._api_key,
                 base_url=self._base_url,
                 custom_tone_instructions=custom_tone_instructions,
+                kb_relationships=kb_relationships,
                 **context_kwargs,  # type: ignore[arg-type]
             ):
                 if chunk.is_final:
@@ -194,10 +204,8 @@ class WritingService:
         request_model = await self._get_validated_request(request_id, user_id)
         await self._pipeline.stop(request_id)
         word_count = request_model.word_count
-
         await self._repo.update_status(request_id, "stopped", completed_at=datetime.now(UTC))
         logger.info("generation_stopped", request_id=str(request_id), word_count=word_count)
-
         return StopResponse(request_id=request_id, word_count=word_count)
 
     # -- Draft accept / reject ------------------------------------------
@@ -212,7 +220,6 @@ class WritingService:
         request_model = await self._get_validated_request(request_id, user_id)
         await record_feedback(self._feedback, request_model, "accept", modified_text=modified_text)
         logger.info("draft_accepted", request_id=str(request_id))
-
         return AcceptResponse(
             request_id=request_id,
             chapter_id=request_model.chapter_id,
@@ -224,7 +231,6 @@ class WritingService:
         request_model = await self._get_validated_request(request_id, user_id)
         await record_feedback(self._feedback, request_model, "reject")
         logger.info("draft_rejected", request_id=str(request_id))
-
         return RejectResponse(request_id=request_id)
 
     # -- Scene-by-scene (delegates to SceneService) ---------------------
@@ -237,10 +243,7 @@ class WritingService:
         return SceneNextResponse(request_id=request_id, scene_number=1, status=request_model.status)
 
     async def accept_scene(
-        self,
-        request_id: UUID,
-        scene_number: int,
-        user_id: str,
+        self, request_id: UUID, scene_number: int, user_id: str
     ) -> AcceptResponse:
         """Accept a specific scene."""
         request_model = await self._get_validated_request(request_id, user_id)

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.kb.models import KBEntry, KBRelationship
+    from narrare.kb.relationship_repository import RelationshipEdgeRow
     from narrare.kb.schemas import (
         KBEntryCreate,
         KBEntryUpdate,
@@ -141,6 +142,17 @@ class RelationshipRepositoryProtocol(Protocol):
         novel_id: uuid.UUID,
         entity_ids: set[uuid.UUID] | None = None,
     ) -> dict[str, set[str]]: ...
+
+    async def get_relationships_with_names(
+        self,
+        novel_id: uuid.UUID,
+        entity_ids: set[uuid.UUID] | None = None,
+    ) -> list[RelationshipEdgeRow]:
+        """Fetch relationship edges with entity names.
+
+        Returns list of RelationshipEdgeRow namedtuples.
+        """
+        ...
 
 
 @runtime_checkable

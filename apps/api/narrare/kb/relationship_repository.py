@@ -5,15 +5,31 @@ Handles persistence of ``KBRelationship`` edges between KB entries.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from sqlalchemy import or_, select
+from sqlalchemy.orm import aliased as orm_aliased
 
 from narrare._app.base_repository import BaseRepository
 from narrare.kb.models import KBRelationship
 
 if TYPE_CHECKING:
     import uuid
+
+
+class RelationshipEdgeRow(NamedTuple):
+    """Row returned by :meth:`get_relationships_with_names`.
+
+    Mirrors :class:`~narrare_core.writing._relationship_format.RelationshipEdge`
+    so the API layer can pass rows directly to the formatter without
+    additional mapping.
+    """
+
+    source_name: str
+    rel_type: str
+    label: str | None
+    target_name: str
+    direction: str
 
 
 class RelationshipRepository(BaseRepository):
@@ -153,3 +169,56 @@ class RelationshipRepository(BaseRepository):
             adjacency.setdefault(tgt, set()).add(src)
 
         return adjacency
+
+    async def get_relationships_with_names(
+        self,
+        novel_id: uuid.UUID,
+        entity_ids: set[uuid.UUID] | None = None,
+    ) -> list[RelationshipEdgeRow]:
+        """Fetch relationship edges with entity names for prompt formatting.
+
+        Joins ``KBRelationship`` with ``KBEntry`` twice to resolve
+        source and target names in a single query.  Used by the writing
+        pipeline to build ``kb_relationships`` context (FIND-009).
+
+        Args:
+            novel_id: The novel to query relationships for.
+            entity_ids: Optional set of entity IDs to filter by.
+                When provided, only returns relationships where at
+                least one endpoint is in the set.
+
+        Returns:
+            List of :class:`RelationshipEdgeRow` namedtuples ready
+            for :func:`~narrare_core.writing._relationship_format.format_relationships`.
+        """
+        from narrare.kb.models import KBEntry
+
+        # Alias KBEntry for source and target name resolution
+        source_alias = orm_aliased(KBEntry, name="source_entry")
+        target_alias = orm_aliased(KBEntry, name="target_entry")
+
+        query = (
+            select(
+                source_alias.name.label("source_name"),
+                KBRelationship.rel_type,
+                KBRelationship.label,
+                target_alias.name.label("target_name"),
+                KBRelationship.direction,
+            )
+            .join(source_alias, source_alias.id == KBRelationship.source_id)
+            .join(target_alias, target_alias.id == KBRelationship.target_id)
+            .join(KBEntry, KBEntry.id == KBRelationship.source_id)
+            .where(KBEntry.novel_id == novel_id)
+            .order_by(source_alias.name, KBRelationship.rel_type, target_alias.name)
+        )
+
+        if entity_ids:
+            query = query.where(
+                or_(
+                    KBRelationship.source_id.in_(entity_ids),
+                    KBRelationship.target_id.in_(entity_ids),
+                )
+            )
+
+        result = await self._session.execute(query)
+        return [RelationshipEdgeRow(*row) for row in result.all()]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import text
@@ -17,6 +18,23 @@ from narrare.setup.schemas import (
 if TYPE_CHECKING:
     from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
+
+
+def _extract_user_id(auth_headers: dict[str, str]) -> uuid.UUID:
+    """Extract user_id from the Bearer token in auth headers.
+
+    The ``auth_headers`` fixture creates a JWT whose ``sub`` claim
+    is the user's UUID.  Decoding it avoids needing a separate
+    ``user_id`` fixture that would change the conftest contract.
+    """
+    import jwt as _jwt
+
+    from narrare._app.config import get_settings
+
+    token = auth_headers["Authorization"].removeprefix("Bearer ")
+    settings = get_settings()
+    payload = _jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+    return uuid.UUID(payload["sub"])
 
 
 class TestValidateStep1:
@@ -245,6 +263,8 @@ class TestCompleteSetup:
         self, client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
     ) -> None:
         """complete() creates a user_providers row with encrypted API key."""
+        user_id = _extract_user_id(auth_headers)
+
         response = await client.post(
             "/api/v1/setup/complete",
             json={
@@ -271,13 +291,13 @@ class TestCompleteSetup:
         )
         assert response.status_code == 200
 
-        # Verify user_providers row exists in DB
-        result = await db_session.execute(text("SELECT COUNT(*) FROM user_providers"))
-        count = result.scalar()
-        assert count is not None and count >= 1
-
+        # Verify user_providers row exists in DB for THIS user
         result = await db_session.execute(
-            text("SELECT provider_name, api_key_encrypted, base_url FROM user_providers LIMIT 1")
+            text(
+                "SELECT provider_name, api_key_encrypted, base_url "
+                "FROM user_providers WHERE user_id = :uid"
+            ),
+            {"uid": user_id},
         )
         row = result.fetchone()
         assert row is not None
@@ -290,6 +310,8 @@ class TestCompleteSetup:
         self, client: AsyncClient, auth_headers: dict[str, str], db_session: AsyncSession
     ) -> None:
         """complete() creates user_ai_settings with default model."""
+        user_id = _extract_user_id(auth_headers)
+
         response = await client.post(
             "/api/v1/setup/complete",
             json={
@@ -316,9 +338,10 @@ class TestCompleteSetup:
         )
         assert response.status_code == 200
 
-        # Verify user_ai_settings row exists with correct values
+        # Verify user_ai_settings row exists with correct values for THIS user
         result = await db_session.execute(
-            text("SELECT default_model FROM user_ai_settings LIMIT 1")
+            text("SELECT default_model FROM user_ai_settings WHERE user_id = :uid"),
+            {"uid": user_id},
         )
         row = result.fetchone()
         assert row is not None

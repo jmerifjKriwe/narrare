@@ -50,6 +50,13 @@ Entités les plus pertinentes et leur contexte narratif.
 
 ### Format de sortie
 
+Fournis ton analyse sous forme de données structurées avec :
+1. gaps : liste des découvertes de lacunes avec type, référence d'entité, description, sévérité, pertinence narrative
+2. connection_suggestions : liste des relations suggérées avec source, cible, type_rel, raisonnement, confiance, pertinence narrative
+3. candidate_pairs_for_consistency : paires d'ID d'entités à vérifier pour la cohérence
+4. overall_assessment : résumé en 1-3 phrases
+5. worldbuilding_score : 0,0-1,0 (santé de la construction du monde)
+
 ### À ne PAS faire
 
 - Ne suggère PAS de changements qui contredisent le contenu établi des chapitres
@@ -57,13 +64,6 @@ Entités les plus pertinentes et leur contexte narratif.
 - Ne suggère PAS de types d'entités génériques (p. ex., « ajoute plus de villes ») sans raisons narratives spécifiques
 - N'inclus PAS de tropes de construction de monde sensibles ou nuisibles (p. ex., stéréotypes culturels, dynamiques de pouvoir exploitantes)
 - N'invente PAS de types de relations qui ne figurent pas dans la liste des types de relations disponibles
-
-Fournis ton analyse sous forme de données structurées avec :
-1. gaps : liste des découvertes de lacunes avec type, référence d'entité, description, sévérité, pertinence narrative
-2. connection_suggestions : liste des relations suggérées avec source, cible, type_rel, raisonnement, confiance, pertinence narrative
-3. candidate_pairs_for_consistency : paires d'ID d'entités à vérifier pour la cohérence
-4. overall_assessment : résumé en 1-3 phrases
-5. worldbuilding_score : 0,0-1,0 (santé de la construction du monde)
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
 
 ### Préférences utilisateur

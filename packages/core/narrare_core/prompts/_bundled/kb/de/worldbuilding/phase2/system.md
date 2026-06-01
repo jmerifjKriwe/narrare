@@ -39,7 +39,7 @@ Bevor du deine strukturierte Ausgabe lieferst, verwende ein <scratchpad>, um jed
 
 ### Nicht
 
-- Markiere NICHT Unterschiede in Perspektive oder Charakterm einung als Widersprüche
+- Markiere NICHT Unterschiede in Perspektive oder Charaktermeinung als Widersprüche
 - Markiere NICHT absichtlich ungelöste Rätsel (der Autor könnte Enthüllungen vorbereiten)
 - Markiere NICHT Widersprüche zwischen Entitäten, die in der Erzählung bewusst getrennt gehalten werden
 - Schlage NICHT Lösungswege vor, die das Umschreiben bestehender Kapitel erfordern würden

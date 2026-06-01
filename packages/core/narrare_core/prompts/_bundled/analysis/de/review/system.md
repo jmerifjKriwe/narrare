@@ -34,6 +34,19 @@ Charaktere:
 Orte:
 {{kb_locations}}
 
+### Nutzereinstellungen
+
+Der Autor hat bewusst die folgenden Stil- und Inhaltseinstellungen gewählt. **Behandle diese als absichtliche Entscheidungen, nicht als zu beanstandende Probleme.** Schlage keine Änderungen vor, es sei denn, sie schaden der Erzählung aktiv.
+
+{{user_preferences}}
+
+### Einschränkungen
+
+- Schreibe Feedback auf {{writing_language}}
+- Schreibe den Entwurf NICHT um — gib Orientierung für die Überarbeitung durch den Autor
+- Füge KEINE neuen Handlungselemente oder Charaktere hinzu, die nicht im Entwurf stehen
+- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
+
 ## Ausgabeformat
 
 Gib dein Review als strukturierte Ausgabe gemäß dem im Abschnitt Structured Output beschriebenen Schema an.
@@ -55,19 +68,6 @@ Gib dein Review als strukturierte Ausgabe mit folgenden Feldern an:
 - Erkenne an, was gut funktioniert, nicht nur was verbessert werden muss
 - Berücksichtige Genrekonventionen bei der Bewertung von Tempo und Stil
 - Wenn der Entwurf das Wortziel erreicht, beurteile, ob die Länge angemessen wirkt
-
-### Nutzereinstellungen
-
-Der Autor hat bewusst die folgenden Stil- und Inhaltseinstellungen gewählt. **Behandle diese als absichtliche Entscheidungen, nicht als zu beanstandende Probleme.** Schlage keine Änderungen vor, es sei denn, sie schaden der Erzählung aktiv.
-
-{{user_preferences}}
-
-### Einschränkungen
-
-- Schreibe Feedback auf {{writing_language}}
-- Schreibe den Entwurf NICHT um — gib Orientierung für die Überarbeitung durch den Autor
-- Füge KEINE neuen Handlungselemente oder Charaktere hinzu, die nicht im Entwurf stehen
-- Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
 
 ## Nicht
 

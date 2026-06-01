@@ -29,6 +29,7 @@ from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationE
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.schemas_coauthor import CoAuthorRequest
     from narrare_core.llm.intents import ResolvedModelConfig
@@ -59,6 +60,7 @@ class CoAuthorService:
         feedback_service: FeedbackCollector | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        relationship_repo: RelationshipRepository | None = None,
     ) -> None:
         self._repo = repo
         self._pipeline = pipeline
@@ -67,6 +69,7 @@ class CoAuthorService:
         self._feedback = feedback_service
         self._api_key = api_key
         self._base_url = base_url
+        self._relationship_repo = relationship_repo
 
     # -- Public API ------------------------------------------------------------
 
@@ -208,6 +211,14 @@ class CoAuthorService:
         # Step 5: Convert focus areas to string list for the pipeline.
         focus_list = [f.value for f in request.focus]
 
+        # Step 5b: Fetch and format KB relationships for prompt context (FIND-009)
+        from narrare.writing._relationship_helpers import fetch_formatted_relationships
+
+        kb_relationships = await fetch_formatted_relationships(
+            self._relationship_repo,
+            novel_id,
+        )
+
         # Step 6: Stream via pipeline (RULE-01, RULE-02).
         # The pipeline_coauthor module handles diff computation internally
         # and sends change metadata in the final chunk's context_meta.
@@ -223,6 +234,7 @@ class CoAuthorService:
                 context_before=request.context_before or "",
                 context_after=request.context_after or "",
                 co_author_focus=focus_list,
+                kb_relationships=kb_relationships,
             ):
                 if chunk.is_final:
                     # Inject request_id into context_meta for feedback

@@ -50,6 +50,13 @@ Top-relevante Entitäten und ihr Geschichtskontext.
 
 ### Ausgabeformat
 
+Gib deine Analyse als strukturierte Daten aus mit:
+1. gaps: Liste der Lückenfundstellen mit Typ, Entitätsreferenz, Beschreibung, Schweregrad, Geschichtsrelevanz
+2. connection_suggestions: Liste vorgeschlagener Beziehungen mit Quelle, Ziel, Beziehungsart, Begründung, Konfidenz, Geschichtsrelevanz
+3. candidate_pairs_for_consistency: Entitäts-ID-Paare, die auf Konsistenz geprüft werden sollten
+4. overall_assessment: 1-3 Sätze Zusammenfassung
+5. worldbuilding_score: 0,0-1,0 (wie gesund der Weltbau ist)
+
 ### Nicht
 
 - Schlage NICHT Änderungen vor, die etablierten Kapitelinhalten widersprechen
@@ -57,13 +64,6 @@ Top-relevante Entitäten und ihr Geschichtskontext.
 - Schlage NICHT allgemeine Entitätstypen vor (z. B. „füge mehr Städte hinzu") ohne spezifische erzählerische Gründe
 - Verwende NICHT sensitive oder schädliche Worldbuilding-Tropen (z. B. kulturelle Stereotype, ausbeuterische Machtdynamiken)
 - Erfinde NICHT Beziehungstypen, die nicht in der Liste der verfügbaren Beziehungstypen enthalten sind
-
-Gib deine Analyse als strukturierte Daten aus mit:
-1. gaps: Liste der Lückenfundstellen mit Typ, Entitätsreferenz, Beschreibung, Schweregrad, Geschichtsrelevanz
-2. connection_suggestions: Liste vorgeschlagener Beziehungen mit Quelle, Ziel, Beziehungsart, Begründung, Konfidenz, Geschichtsrelevanz
-3. candidate_pairs_for_consistency: Entitäts-ID-Paare, die auf Konsistenz geprüft werden sollten
-4. overall_assessment: 1-3 Sätze Zusammenfassung
-5. worldbuilding_score: 0,0-1,0 (wie gesund der Weltbau ist)
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
 
 ### Benutzereinstellungen

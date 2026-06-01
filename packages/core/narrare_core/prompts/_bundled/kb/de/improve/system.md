@@ -44,7 +44,7 @@ Verwandte KB-Entitäten, die bereits in der Datenbank sind:
 
 2. **Tiefenanalyse**: Bewerte für ausgefüllte Felder die Qualität:
    - Ist der Inhalt konkret genug, damit ein Schreiber ihn direkt verwenden kann?
-   - Ruff er lebendige geistige Bilder hervor?
+   - Ruft er lebendige geistige Bilder hervor?
    - Gibt es Widersprüche oder Inkonsistenzen?
 
 3. **Verbindungsmöglichkeiten**: Querverweise zum Weltkontext:

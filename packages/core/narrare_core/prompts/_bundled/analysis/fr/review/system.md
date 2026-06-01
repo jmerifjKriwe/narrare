@@ -34,6 +34,19 @@ Personnages :
 Lieux :
 {{kb_locations}}
 
+### Préférences utilisateur
+
+L'auteur a délibérément choisi les préférences de style et de contenu suivantes. **Considérez-les comme des choix d'auteur intentionnels, et non comme des problèmes à signaler.** Ne suggérez pas de les modifier à moins qu'elles ne nuisent activement au récit.
+
+{{user_preferences}}
+
+### Contraintes
+
+- Rédigez le feedback en {{writing_language}}
+- Ne réécrivez pas le brouillon — fournissez des indications pour que l'auteur puisse réviser
+- N'introduisez pas de nouveaux éléments d'intrigue ou personnages absents du brouillon
+- Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
+
 ## Format de sortie
 
 Fournissez votre avis sous forme de sortie structurée selon le schéma décrit dans la section Structured Output ci-dessus.
@@ -55,19 +68,6 @@ Fournissez votre revue sous forme de sortie structurée avec les champs suivants
 - Reconnaissez ce qui fonctionne bien, pas seulement ce qui nécessite des améliorations
 - Tenez compte des conventions du genre lors de l'évaluation du rythme et du style
 - Si le brouillon atteint l'objectif de mots, indiquez si la longueur semble appropriée
-
-### Préférences utilisateur
-
-L'auteur a délibérément choisi les préférences de style et de contenu suivantes. **Considérez-les comme des choix d'auteur intentionnels, et non comme des problèmes à signaler.** Ne suggérez pas de les modifier à moins qu'elles ne nuisent activement au récit.
-
-{{user_preferences}}
-
-### Contraintes
-
-- Rédigez le feedback en {{writing_language}}
-- Ne réécrivez pas le brouillon — fournissez des indications pour que l'auteur puisse réviser
-- N'introduisez pas de nouveaux éléments d'intrigue ou personnages absents du brouillon
-- Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
 
 ## À ne pas faire
 

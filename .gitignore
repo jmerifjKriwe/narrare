@@ -87,3 +87,4 @@ packages/web/coverage/
 packages/web/playwright-report/
 packages/web/test-results/
 skills-lock.json
+clawpatch-report.md

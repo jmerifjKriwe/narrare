@@ -27,6 +27,7 @@ from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationE
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.settings.custom_tone_service import CustomToneService
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.schemas_rewrite import RewriteRequest
@@ -56,6 +57,7 @@ class RewriteService:
         api_key: str | None = None,
         base_url: str | None = None,
         tone_service: CustomToneService | None = None,
+        relationship_repo: RelationshipRepository | None = None,
     ) -> None:
         self._repo = repo
         self._pipeline = pipeline
@@ -64,6 +66,7 @@ class RewriteService:
         self._api_key = api_key
         self._base_url = base_url
         self._tone_service = tone_service
+        self._relationship_repo = relationship_repo
 
     # -- Public API --------------------------------------------------------
 
@@ -225,6 +228,14 @@ class RewriteService:
         rewrite_mode = request.mode.value
         custom_instructions = request.custom_instructions or ""
 
+        # Step 6b: Fetch and format KB relationships for prompt context (FIND-009)
+        from narrare.writing._relationship_helpers import fetch_formatted_relationships
+
+        kb_relationships = await fetch_formatted_relationships(
+            self._relationship_repo,
+            novel_id,
+        )
+
         # Step 7: Stream via pipeline (RULE-01, RULE-02).
         accumulated: list[str] = []
         try:
@@ -241,6 +252,7 @@ class RewriteService:
                 rewrite_mode=rewrite_mode,
                 custom_instructions=custom_instructions,
                 rewrite_count=request.count,
+                kb_relationships=kb_relationships,
             ):
                 if chunk.is_final:
                     raw_text = "".join(accumulated) + chunk.text

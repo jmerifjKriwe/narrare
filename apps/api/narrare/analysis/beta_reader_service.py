@@ -18,10 +18,10 @@ import structlog
 from narrare.analysis.beta_reader_cache import BetaReaderCache
 from narrare.analysis.beta_reader_mapper import (
     build_deepdive_prompt,
-    build_user_prompt,
     map_phase1_response,
     map_phase2_response,
 )
+from narrare.analysis.beta_reader_prompt import build_budgeted_prompt
 from narrare.analysis.errors import AnalysisError, CacheRetrievalError
 from narrare.analysis.schemas import (
     BetaReaderDeepDiveRequest,
@@ -31,6 +31,7 @@ from narrare.analysis.schemas import (
 )
 from narrare.analysis.validation import validate_word_count
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
+from narrare_core.analysis.assembler import AnalysisContextAssembler
 from narrare_core.llm.intents import LLMIntent, ResolvedModelConfig
 from narrare_core.prompts.context import PromptContext
 
@@ -70,12 +71,14 @@ class BetaReaderService:
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         composer: PromptComposer,
+        budget_assembler: AnalysisContextAssembler | None = None,
     ) -> None:
         self._assembler = context_assembler
         self._cache = cache
         self._registry = registry
         self._config = config
         self._composer = composer
+        self._budget_assembler = budget_assembler or AnalysisContextAssembler()
 
     async def analyze(
         self,
@@ -132,7 +135,8 @@ class BetaReaderService:
         composed = await self._compose_prompt(deps.language, "beta_reader")
         model = await self._registry.get_model(self._config)
         agent = BetaReaderAgent(model=model, system_prompt=composed.system)
-        result = await self._run_agent_phase1(agent, deps)
+        user_prompt = await build_budgeted_prompt(deps, self._budget_assembler)
+        result = await self._run_agent_phase1(agent, user_prompt, deps)
 
         # 7. Map to response and cache
         response = map_phase1_response(result, novel_id, request.chapter_ids, deps.word_count)
@@ -254,15 +258,20 @@ class BetaReaderService:
             raise AnalysisError("Failed to compose analysis prompt") from exc
 
     async def _run_agent_phase1(
-        self, agent: BetaReaderAgent, deps: BetaReaderDeps
+        self, agent: BetaReaderAgent, user_prompt: str, deps: BetaReaderDeps
     ) -> BetaReaderPhase1Output:
         """Run Phase 1 agent with error handling.
+
+        Args:
+            agent: The BetaReaderAgent instance.
+            user_prompt: Pre-built user prompt string (budget-enforced).
+            deps: BetaReaderDeps for agent structured output.
 
         Raises:
             AnalysisError: If agent execution fails.
         """
         try:
-            return await agent.run_phase1(build_user_prompt(deps), deps=deps)
+            return await agent.run_phase1(user_prompt, deps=deps)
         except AnalysisError:
             raise
         except Exception as exc:

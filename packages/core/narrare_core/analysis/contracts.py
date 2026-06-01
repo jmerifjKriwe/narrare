@@ -6,6 +6,7 @@ The API layer (``apps/api/analysis/``) consumes them via dependency injection.
 See Also
 --------
 ADR-021 — Deterministic Analysis Strategy.
+ADR-025 Decision 3 — ContextAssembler Centralization (Phase 5).
 CONSTRAINTS.md RULE-03 — Contracts before implementation.
 """
 
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
         SentenceSentiment,
         SentimentOverview,
     )
+    from narrare_core.context.types import TierBudget
     from narrare_core.nlp.contracts_types import LanguageCode
 
 
@@ -96,5 +98,59 @@ class SentimentAnalyzer(Protocol):
 
         Returns:
             Per-sentence :class:`SentenceSentiment` with VAD + emotions.
+        """
+        ...
+
+
+# ---------------------------------------------------------------------------
+# ADR-025 Phase 5: Analysis Context Assembly Protocol
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class AnalysisAssemblerProtocol(Protocol):
+    """Protocol for 3-tier analysis context assembly with token budgets.
+
+    Simpler than writing's 5-tier system — analysis features need
+    content + KB context + preferences, but no outline/frontmatter.
+
+    Tier allocation (default 6000-token budget):
+        content:      50% — chapter text / content to analyze
+        kb_context:   30% — KB entities (characters, locations, factions, relationships)
+        preferences:  20% — user preferences, avoidance patterns
+
+    Per ADR-025 Decision 3: ``core/analysis/`` owns the concrete
+    implementation; ``core/context/`` owns the abstract base.
+    """
+
+    async def assemble(
+        self,
+        *,
+        content: str = "",
+        kb_characters: str = "",
+        kb_locations: str = "",
+        kb_factions: str = "",
+        kb_relationships: str = "",
+        user_preferences: str = "",
+        avoidance_patterns: str = "",
+    ) -> dict[str, str]:
+        """Assemble analysis context with budget enforcement.
+
+        Returns:
+            Flat dictionary of prompt variable names to their
+            budget-enforced text values.
+        """
+        ...
+
+    @property
+    def total_budget(self) -> int:
+        """Total token budget for context assembly."""
+        ...
+
+    def get_tier_allocation(self) -> dict[str, TierBudget]:
+        """Return current tier allocation.
+
+        Returns:
+            Mapping of tier name to its budget allocation.
         """
         ...
