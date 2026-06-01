@@ -65,6 +65,7 @@ def mock_repo() -> AsyncMock:
     repo.chapter_exists = AsyncMock(return_value=True)
     repo.get_active_for_chapter = AsyncMock(return_value=None)
     repo.create = AsyncMock(return_value=uuid.uuid4())
+    repo.create_if_no_active = AsyncMock(return_value=uuid.uuid4())
     repo.update_status = AsyncMock()
     return repo
 

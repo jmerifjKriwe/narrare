@@ -57,6 +57,7 @@ def mock_repo() -> AsyncMock:
     repo = AsyncMock()
     repo.chapter_exists = AsyncMock(return_value=True)
     repo.get_active_for_chapter = AsyncMock(return_value=None)
+    repo.create_if_no_active = AsyncMock(return_value=uuid.uuid4())
     repo.create = AsyncMock(return_value=uuid.uuid4())
     repo.update_status = AsyncMock()
     return repo
@@ -138,8 +139,8 @@ class TestStartExtend:
 
         await service.start_extend(chapter_id, novel_id, user_id, req)
 
-        mock_repo.create.assert_called_once()
-        kw = mock_repo.create.call_args.kwargs
+        mock_repo.create_if_no_active.assert_called_once()
+        kw = mock_repo.create_if_no_active.call_args.kwargs
         assert kw["chapter_id"] == chapter_id
         assert kw["novel_id"] == novel_id
         assert kw["mode"] == "extend"

@@ -132,7 +132,7 @@ class ExtendService:
         await self.validate_extend(chapter_id, novel_id, request)
 
         try:
-            request_id = await self._repo.create(
+            request_id = await self._repo.create_if_no_active(
                 chapter_id=chapter_id,
                 novel_id=novel_id,
                 user_id=UUID(user_id),

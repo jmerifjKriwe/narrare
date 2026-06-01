@@ -32,7 +32,7 @@ from narrare.writing.schemas import (
     StopResponse,
 )
 from narrare.writing.tone_resolver import resolve_tone_instructions
-from narrare_core.shared.errors import ConflictError, NotFoundError
+from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -92,11 +92,8 @@ class WritingService:
     ) -> GenerateResponse:
         """Start a generation request. Raises ValidationError or ConflictError."""
         validate_generation_input(request)
-        active = await self._repo.get_active_for_chapter(chapter_id)
-        if active is not None:
-            raise ConflictError(f"Generation already active for chapter {chapter_id}")
         try:
-            request_id = await self._repo.create(
+            request_id = await self._repo.create_if_no_active(
                 chapter_id=chapter_id,
                 novel_id=novel_id,
                 user_id=UUID(user_id),

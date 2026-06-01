@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -65,7 +65,7 @@ class TestStartGeneration:
         assert response.status == "pending"
         assert response.mode == "full_draft"
         assert isinstance(response.request_id, uuid.UUID)
-        mock_repo.create.assert_called_once()
+        mock_repo.create_if_no_active.assert_called_once()
 
     async def test_start_generation_passes_tone_to_repo(
         self,
@@ -80,8 +80,8 @@ class TestStartGeneration:
 
         await service.start_generation(chapter_id, novel_id, user_id, request)
 
-        mock_repo.create.assert_called_once()
-        call_kwargs = mock_repo.create.call_args.kwargs
+        mock_repo.create_if_no_active.assert_called_once()
+        call_kwargs = mock_repo.create_if_no_active.call_args.kwargs
         assert call_kwargs["tone"] == "humorous"
 
     async def test_start_generation_default_tone_is_balanced(
@@ -97,7 +97,7 @@ class TestStartGeneration:
 
         await service.start_generation(chapter_id, novel_id, user_id, request)
 
-        call_kwargs = mock_repo.create.call_args.kwargs
+        call_kwargs = mock_repo.create_if_no_active.call_args.kwargs
         assert call_kwargs.get("tone", "balanced") == "balanced"
 
     async def test_start_generation_with_concurrent_request_raises_conflict(
@@ -106,7 +106,7 @@ class TestStartGeneration:
         mock_repo: AsyncMock,
     ) -> None:
         """start_generation() raises ConflictError when a request is active."""
-        mock_repo.get_active_for_chapter.return_value = MagicMock(spec=["id"])
+        mock_repo.create_if_no_active = AsyncMock(side_effect=ConflictError("already active"))
 
         with pytest.raises(ConflictError):
             await service.start_generation(
@@ -184,8 +184,7 @@ class TestStartGeneration:
         """
         from sqlalchemy.exc import IntegrityError
 
-        mock_repo.create = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
-        mock_repo.get_active_for_chapter.return_value = None
+        mock_repo.create_if_no_active = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
 
         with pytest.raises(NotFoundError):
             await service.start_generation(

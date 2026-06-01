@@ -13,6 +13,8 @@ from narrare.writing.models import GenerationRequest
 if TYPE_CHECKING:
     import uuid
 
+_ACTIVE_STATUSES = ("pending", "streaming")
+
 
 class GenerationRepository(BaseRepository):
     """DB queries for generation request tracking."""
@@ -30,6 +32,56 @@ class GenerationRepository(BaseRepository):
         Returns:
             The UUID of the newly created request.
         """
+        request = GenerationRequest(
+            chapter_id=chapter_id,
+            novel_id=novel_id,
+            user_id=user_id,
+            mode=mode,
+            tone=tone,
+            status="pending",
+        )
+        self._session.add(request)
+        await self._flush_and_refresh(request)
+        return request.id
+
+    async def create_if_no_active(
+        self,
+        chapter_id: uuid.UUID,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        mode: str,
+        tone: str = "balanced",
+    ) -> uuid.UUID:
+        """Atomically check for active requests and insert a new one.
+
+        Uses ``SELECT ... FOR UPDATE`` to lock any active row, preventing
+        the TOCTOU race where two concurrent requests both read no active
+        row and both INSERT.  Also protected by the partial unique index
+        ``uq_generation_requests_active_chapter`` as a database-level guard.
+
+        Returns:
+            The UUID of the newly created request.
+
+        Raises:
+            ConflictError: If an active generation already exists for the chapter.
+            IntegrityError: Propagated if the partial unique index is violated
+                (secondary defense against races).
+        """
+        result = await self._session.execute(
+            select(GenerationRequest)
+            .where(
+                GenerationRequest.chapter_id == chapter_id,
+                GenerationRequest.status.in_(_ACTIVE_STATUSES),
+            )
+            .with_for_update()
+        )
+        active = result.scalar_one_or_none()
+
+        if active is not None:
+            from narrare_core.shared.errors import ConflictError
+
+            raise ConflictError(f"Generation already active for chapter {chapter_id}")
+
         request = GenerationRequest(
             chapter_id=chapter_id,
             novel_id=novel_id,

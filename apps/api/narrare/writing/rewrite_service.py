@@ -127,7 +127,7 @@ class RewriteService:
         await self.validate_rewrite(chapter_id, novel_id, request)
 
         try:
-            request_id = await self._repo.create(
+            request_id = await self._repo.create_if_no_active(
                 chapter_id=chapter_id,
                 novel_id=novel_id,
                 user_id=UUID(user_id),

@@ -18,6 +18,7 @@ def mock_repo() -> AsyncMock:
     """Mock GenerationRepository."""
     repo = AsyncMock(spec=GenerationRepositoryProtocol)
     repo.create = AsyncMock(return_value=uuid.uuid4())
+    repo.create_if_no_active = AsyncMock(return_value=uuid.uuid4())
     repo.get_by_id = AsyncMock(return_value=None)
     repo.get_active_for_chapter = AsyncMock(return_value=None)
     repo.update_status = AsyncMock()
