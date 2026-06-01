@@ -135,6 +135,8 @@
     "intentional": "Beabsichtigt"
   },
   "readability": {
+    "trigger": "Lesbarkeit",
+    "triggerTooltip": "Textkomplexität analysieren und Lesbarkeits-Scores erhalten",
     "title": "Lesbarkeitsanalyse",
     "description": "Textkomplexität prüfen und KI-gestützte Vereinfachungsvorschläge erhalten",
     "disclaimer": "Deterministische Metriken + KI-Satzanalyse",
@@ -163,6 +165,8 @@
     "overallAssessment": "Gesamteinschätzung"
   },
   "pov": {
+    "trigger": "POV",
+    "triggerTooltip": "POV-Charakter erkennen, Head-Hopping und Wissensleckagen finden",
     "title": "POV-Analyse",
     "description": "POV-Charakter erkennen, Head-Hopping und Wissensleckagen finden",
     "analyzing": "Analysiere POV...",

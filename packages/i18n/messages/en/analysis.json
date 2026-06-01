@@ -135,6 +135,8 @@
     "intentional": "Intentional"
   },
   "readability": {
+    "trigger": "Readability",
+    "triggerTooltip": "Analyze text complexity and get readability scores",
     "title": "Readability Analysis",
     "description": "Check text complexity and get AI-powered simplification suggestions",
     "disclaimer": "Deterministic metrics + AI sentence analysis",
@@ -163,6 +165,8 @@
     "overallAssessment": "Overall Assessment"
   },
   "pov": {
+    "trigger": "POV",
+    "triggerTooltip": "Detect POV character, head-hopping, and knowledge leakage",
     "title": "POV Analysis",
     "description": "Detect POV character, head-hopping, and knowledge leakage",
     "analyzing": "Analyzing POV...",

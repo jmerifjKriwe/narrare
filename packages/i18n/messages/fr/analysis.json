@@ -135,6 +135,8 @@
     "intentional": "Intentionnel"
   },
   "readability": {
+    "trigger": "Lisibilité",
+    "triggerTooltip": "Analyser la complexité du texte et obtenir les scores de lisibilité",
     "title": "Analyse de lisibilité",
     "description": "Vérifier la complexité du texte et obtenir des suggestions de simplification par IA",
     "disclaimer": "Métriques déterministes + analyse IA des phrases",
@@ -163,6 +165,8 @@
     "overallAssessment": "Évaluation globale"
   },
   "pov": {
+    "trigger": "POV",
+    "triggerTooltip": "Détecter le personnage POV, les sauts de perspective et les fuites de connaissance",
     "title": "Analyse POV",
     "description": "Détecter le personnage POV, les sauts de perspective et les fuites de connaissance",
     "analyzing": "Analyse du POV...",

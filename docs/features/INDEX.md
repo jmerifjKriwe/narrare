@@ -86,8 +86,8 @@
 |----|---------|--------|-----|
 | [ANAL-001](analysis/ANAL-001-beta-reader.md) | Beta Reader Simulation | ✅ | ❌ |
 | [ANAL-002](analysis/ANAL-002-sentiment.md) | Sentiment Analysis | ✅ | ❌ |
-| [ANAL-003](analysis/ANAL-003-readability.md) | Readability Analysis | 📋 | ❌ |
-| [ANAL-004](analysis/ANAL-004-pov.md) | POV Analysis | 📋 | ❌ |
+| [ANAL-003](analysis/ANAL-003-readability.md) | Readability Analysis | ✅ | ❌ |
+| [ANAL-004](analysis/ANAL-004-pov.md) | POV Analysis | ✅ | ❌ |
 | [ANAL-005](analysis/ANAL-005-coreference.md) | Coreference Analysis | 📋 | ❌ |
 | [ANAL-006](analysis/ANAL-006-sensitivity.md) | Sensitivity Review | 📋 | ❌ |
 | [ANAL-007](analysis/ANAL-007-voice-author.md) | Author Voice Profiling | 📋 | ❌ |
@@ -239,5 +239,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-01 — PLAN-006 (Character Arc), KB-009 (KB Merge) added. PLAN-004 status updated to in-progress (TimelineAgent implemented).
+> Last updated: 2026-06-01 — ANAL-003 (Readability), ANAL-004 (POV) implemented. Status updated to stable.
 > Features are specified before they are implemented — never after

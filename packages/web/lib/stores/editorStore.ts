@@ -56,6 +56,12 @@ interface EditorState {
   consistencyResult: ConsistencyResponse | null;
   consistencyLoading: boolean;
 
+  // Readability analysis state
+  readabilityPanelOpen: boolean;
+
+  // POV analysis state
+  povPanelOpen: boolean;
+
   // Actions
   setActiveChapterId: (id: string | null) => void;
   setActiveVolumeId: (id: string | null) => void;
@@ -87,6 +93,8 @@ interface EditorState {
   toggleConsistencyPanel: () => void;
   setConsistencyResult: (result: ConsistencyResponse | null) => void;
   setConsistencyLoading: (loading: boolean) => void;
+  toggleReadabilityPanel: () => void;
+  togglePovPanel: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -116,6 +124,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   consistencyPanelOpen: false,
   consistencyResult: null,
   consistencyLoading: false,
+  readabilityPanelOpen: false,
+  povPanelOpen: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
 
@@ -177,6 +187,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       generationPanelOpen: s.betaReaderPanelOpen ? s.generationPanelOpen : false,
       sentimentPanelOpen: s.betaReaderPanelOpen ? s.sentimentPanelOpen : false,
       consistencyPanelOpen: s.betaReaderPanelOpen ? s.consistencyPanelOpen : false,
+      readabilityPanelOpen: s.betaReaderPanelOpen ? s.readabilityPanelOpen : false,
+      povPanelOpen: s.betaReaderPanelOpen ? s.povPanelOpen : false,
     })),
 
   setBetaReaderResult: (betaReaderResult) => set({ betaReaderResult }),
@@ -191,6 +203,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       generationPanelOpen: s.sentimentPanelOpen ? s.generationPanelOpen : false,
       betaReaderPanelOpen: s.sentimentPanelOpen ? s.betaReaderPanelOpen : false,
       consistencyPanelOpen: s.sentimentPanelOpen ? s.consistencyPanelOpen : false,
+      readabilityPanelOpen: s.sentimentPanelOpen ? s.readabilityPanelOpen : false,
+      povPanelOpen: s.sentimentPanelOpen ? s.povPanelOpen : false,
     })),
 
   setSentimentResult: (sentimentResult) => set({ sentimentResult }),
@@ -205,9 +219,35 @@ export const useEditorStore = create<EditorState>((set) => ({
       generationPanelOpen: s.consistencyPanelOpen ? s.generationPanelOpen : false,
       betaReaderPanelOpen: s.consistencyPanelOpen ? s.betaReaderPanelOpen : false,
       sentimentPanelOpen: s.consistencyPanelOpen ? s.sentimentPanelOpen : false,
+      readabilityPanelOpen: s.consistencyPanelOpen ? s.readabilityPanelOpen : false,
+      povPanelOpen: s.consistencyPanelOpen ? s.povPanelOpen : false,
     })),
 
   setConsistencyResult: (consistencyResult) => set({ consistencyResult }),
 
   setConsistencyLoading: (consistencyLoading) => set({ consistencyLoading }),
+
+  toggleReadabilityPanel: () =>
+    set((s) => ({
+      readabilityPanelOpen: !s.readabilityPanelOpen,
+      // Close other right panels when opening readability panel
+      contextPanelOpen: s.readabilityPanelOpen ? s.contextPanelOpen : false,
+      generationPanelOpen: s.readabilityPanelOpen ? s.generationPanelOpen : false,
+      betaReaderPanelOpen: s.readabilityPanelOpen ? s.betaReaderPanelOpen : false,
+      sentimentPanelOpen: s.readabilityPanelOpen ? s.sentimentPanelOpen : false,
+      consistencyPanelOpen: s.readabilityPanelOpen ? s.consistencyPanelOpen : false,
+      povPanelOpen: s.readabilityPanelOpen ? s.povPanelOpen : false,
+    })),
+
+  togglePovPanel: () =>
+    set((s) => ({
+      povPanelOpen: !s.povPanelOpen,
+      // Close other right panels when opening POV panel
+      contextPanelOpen: s.povPanelOpen ? s.contextPanelOpen : false,
+      generationPanelOpen: s.povPanelOpen ? s.generationPanelOpen : false,
+      betaReaderPanelOpen: s.povPanelOpen ? s.betaReaderPanelOpen : false,
+      sentimentPanelOpen: s.povPanelOpen ? s.sentimentPanelOpen : false,
+      consistencyPanelOpen: s.povPanelOpen ? s.consistencyPanelOpen : false,
+      readabilityPanelOpen: s.povPanelOpen ? s.readabilityPanelOpen : false,
+    })),
 }));

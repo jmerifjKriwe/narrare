@@ -8,7 +8,7 @@
 ## Last Updated
 
 Date: 2026-06-01
-Session: Phase 6 extension — Character Arc, Timeline Analysis, KB Merge, Planning prompt modes, CI integration
+Session: Phase 6 extension — ANAL-003 (Readability), ANAL-004 (POV) full stack implemented, contracts modularized for RULE-04
 
 ---
 
@@ -41,7 +41,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 17 submodules: agents, analysis, cache, context, embeddings, events, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, writing
 
-16 AI agents (pydantic-ai): beta_reader, character_arc, consistency, draft, extraction, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, preference_analysis, review, summary, timeline, worldbuilding
+18 AI agents (pydantic-ai): beta_reader, character_arc, consistency, draft, extraction, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, pov_detection, preference_analysis, readability, review, summary, timeline, worldbuilding
 
 ### Backend (`apps/api/narrare/`)
 
@@ -112,15 +112,19 @@ Completed in Phase 6 so far:
 26. ✅ KB-009: KB Entity Merge / Deduplication — KBMergeAgent, KBMergeService, `POST /novels/{novel_id}/kb/merge`, merge prompts in 3 locales
 27. ✅ Planning prompt extensions: outline (`{{variant_count}}`), character_arc (`{{character_name}}`, `{{character_current_state}}`, `{{character_goal_state}}`), timeline (`{{chapter_summaries}}`, `{{entity_events}}`)
 28. ✅ CI integration: Prompts step added to `just check` (strict mode), check-prompts-de added to `check-full`
+29. ✅ WIKI-001: LLM Wiki — Spec updated to stable (all DoD items complete)
+30. ✅ ANAL-003: Readability Analysis — FormulaReadabilityAnalyzer (Flesch/Kincaid/Fog) + ReadabilityAgent + ReadabilityService + POST /analysis/readability + ReadabilityPanel + i18n (3 locales)
+31. ✅ ANAL-004: POV Analysis — POVDetectionAgent + POVService + POST /analysis/pov + POVPanel + i18n (3 locales)
+32. ✅ Contracts modularized for RULE-04: contracts_readability.py, contracts_pov.py, schemas_readability.py, schemas_pov.py, pov_mapper.py
 
 ---
 
 ## What's Next
 
-1. WIKI-001 frontend: Wiki UI — entity detail view, manual refresh, wiki overview (Tasks 19-20)
-3. ANAL-003 or ANAL-004: Readability / POV Analysis
-4. Q-003: Embedding provider abstraction
-5. E2E test patterns
+1. Editor integration: Wire ReadabilityPanel + POVPanel into editor sidebar analysis tray
+2. WIKI-001 frontend: Wiki overview page (entity list with wiki status)
+3. ANAL-005: Coreference Analysis
+4. E2E test patterns
 
 ---
 

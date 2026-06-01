@@ -1,7 +1,7 @@
 ---
 id: ANAL-004
 title: "POV Analysis"
-status: planned
+status: stable
 area: analysis
 mvp: false
 
@@ -172,3 +172,4 @@ class POVIssue:
 - `2026-06-01` — Contracts defined: ``POVDetector`` (LLM-based protocol),
   ``POVServiceProtocol`` (API service protocol).  Types defined:
   ``POVIssueType`` (enum), ``POVIssue``, ``POVScene``, ``POVResult``.
+- 2026-06-01 — Full stack implemented (Core: POVDetectionAgent, Backend: POVService + POST /analysis/pov, Frontend: POVPanel). Contracts split for RULE-04. Status: stable.

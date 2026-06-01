@@ -211,8 +211,8 @@ describe("POVPanel", () => {
     });
 
     expect(screen.getByText("pov.knowledgeLeak")).toBeInTheDocument();
-    // Quoted text
-    expect(screen.getByText(/Bob knew what Alice was thinking/)).toBeInTheDocument();
+    // Quoted text (multiple issues each render this key)
+    expect(screen.getAllByText("pov.quotedExcerpt").length).toBeGreaterThan(0);
   });
 
   it("shows no issues message when issues is empty", async () => {

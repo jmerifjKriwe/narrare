@@ -1,7 +1,7 @@
 ---
 id: ANAL-003
 title: "Readability Analysis"
-status: planned
+status: stable
 area: analysis
 mvp: false
 
@@ -181,3 +181,4 @@ class SentenceAnalysis:
   ``ReadabilityAgentProtocol`` (LLM-based protocol), ``ReadabilityServiceProtocol``
   (API service protocol).  Types defined: ``ReadabilityMetrics``,
   ``SentenceAnalysis``, ``ReadabilityResult``.
+- 2026-06-01 — Full stack implemented (Core: FormulaReadabilityAnalyzer + ReadabilityAgent, Backend: ReadabilityService + POST /analysis/readability, Frontend: ReadabilityPanel). Contracts split for RULE-04. Status: stable.

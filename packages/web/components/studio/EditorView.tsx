@@ -10,6 +10,14 @@ import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
 import { BetaReaderPanel } from "./analysis/BetaReaderPanel";
 import { BetaReaderTrigger } from "./analysis/BetaReaderTrigger";
+import { ConsistencyPanel } from "./analysis/ConsistencyPanel";
+import { ConsistencyTrigger } from "./analysis/ConsistencyTrigger";
+import { POVPanel } from "./analysis/POVPanel";
+import { POVTrigger } from "./analysis/POVTrigger";
+import { ReadabilityPanel } from "./analysis/ReadabilityPanel";
+import { ReadabilityTrigger } from "./analysis/ReadabilityTrigger";
+import { SentimentPanel } from "./analysis/SentimentPanel";
+import { SentimentTrigger } from "./analysis/SentimentTrigger";
 import { CommandPalette } from "./editor/CommandPalette";
 import type { CommandContext, CommandState } from "./editor/commands";
 import { GenerationPanel } from "./editor/GenerationPanel";
@@ -67,6 +75,22 @@ export function EditorView({ novelId }: EditorViewProps) {
   // Beta reader state
   const betaReaderPanelOpen = useEditorStore((s) => s.betaReaderPanelOpen);
   const toggleBetaReaderPanel = useEditorStore((s) => s.toggleBetaReaderPanel);
+
+  // Sentiment state
+  const sentimentPanelOpen = useEditorStore((s) => s.sentimentPanelOpen);
+  const toggleSentimentPanel = useEditorStore((s) => s.toggleSentimentPanel);
+
+  // Consistency state
+  const consistencyPanelOpen = useEditorStore((s) => s.consistencyPanelOpen);
+  const toggleConsistencyPanel = useEditorStore((s) => s.toggleConsistencyPanel);
+
+  // Readability state
+  const readabilityPanelOpen = useEditorStore((s) => s.readabilityPanelOpen);
+  const toggleReadabilityPanel = useEditorStore((s) => s.toggleReadabilityPanel);
+
+  // POV state
+  const povPanelOpen = useEditorStore((s) => s.povPanelOpen);
+  const togglePovPanel = useEditorStore((s) => s.togglePovPanel);
 
   // Compute writing graph status steps from current editor state
   const writingSteps: Array<{ id: WritingStep; status: StepStatus }> = useMemo(() => {
@@ -366,15 +390,52 @@ export function EditorView({ novelId }: EditorViewProps) {
   }, [handleSave]);
 
   // -------------------------------------------------------------------------
-  // Sidebar priority: SessionPanel > GenerationPanel > BetaReaderPanel > MetadataSidebar
+  // Sidebar priority: SessionPanel > GenerationPanel > BetaReaderPanel > ReadabilityPanel > POVPanel > SentimentPanel > ConsistencyPanel > MetadataSidebar
   // -------------------------------------------------------------------------
 
   const showSessionPanel = sessionActive && !!activeChapterId;
   const showGenerationPanel = generationPanelOpen && !!activeChapterId && !showSessionPanel;
   const showBetaReaderPanel =
     betaReaderPanelOpen && !!activeChapterId && !showSessionPanel && !showGenerationPanel;
+  const showReadabilityPanel =
+    readabilityPanelOpen &&
+    !!activeChapterId &&
+    !showSessionPanel &&
+    !showGenerationPanel &&
+    !showBetaReaderPanel;
+  const showPOVPanel =
+    povPanelOpen &&
+    !!activeChapterId &&
+    !showSessionPanel &&
+    !showGenerationPanel &&
+    !showBetaReaderPanel &&
+    !showReadabilityPanel;
+  const showSentimentPanel =
+    sentimentPanelOpen &&
+    !!activeChapterId &&
+    !showSessionPanel &&
+    !showGenerationPanel &&
+    !showBetaReaderPanel &&
+    !showReadabilityPanel &&
+    !showPOVPanel;
+  const showConsistencyPanel =
+    consistencyPanelOpen &&
+    !!activeChapterId &&
+    !showSessionPanel &&
+    !showGenerationPanel &&
+    !showBetaReaderPanel &&
+    !showReadabilityPanel &&
+    !showPOVPanel &&
+    !showSentimentPanel;
   const showMetadataSidebar =
-    contextPanelOpen && !showSessionPanel && !showGenerationPanel && !showBetaReaderPanel;
+    contextPanelOpen &&
+    !showSessionPanel &&
+    !showGenerationPanel &&
+    !showBetaReaderPanel &&
+    !showReadabilityPanel &&
+    !showPOVPanel &&
+    !showSentimentPanel &&
+    !showConsistencyPanel;
 
   // -------------------------------------------------------------------------
   // Render — no chapter selected
@@ -545,6 +606,10 @@ export function EditorView({ novelId }: EditorViewProps) {
           </button>
           <div className="w-px h-5 bg-border mx-1" />
           <BetaReaderTrigger />
+          <SentimentTrigger />
+          <ConsistencyTrigger />
+          <ReadabilityTrigger />
+          <POVTrigger />
           <div className="w-px h-5 bg-border mx-1" />
           <GhostTextConfig editor={editor} />
         </div>
@@ -598,6 +663,34 @@ export function EditorView({ novelId }: EditorViewProps) {
             novelId={novelId}
             chapterIds={activeChapterId ? [activeChapterId] : []}
             onClose={toggleBetaReaderPanel}
+          />
+        )}
+        {showReadabilityPanel && (
+          <ReadabilityPanel
+            novelId={novelId}
+            chapterIds={activeChapterId ? [activeChapterId] : []}
+            onClose={toggleReadabilityPanel}
+          />
+        )}
+        {showPOVPanel && (
+          <POVPanel
+            novelId={novelId}
+            chapterIds={activeChapterId ? [activeChapterId] : []}
+            onClose={togglePovPanel}
+          />
+        )}
+        {showSentimentPanel && (
+          <SentimentPanel
+            novelId={novelId}
+            chapterIds={activeChapterId ? [activeChapterId] : []}
+            onClose={toggleSentimentPanel}
+          />
+        )}
+        {showConsistencyPanel && (
+          <ConsistencyPanel
+            novelId={novelId}
+            chapterIds={activeChapterId ? [activeChapterId] : []}
+            onClose={toggleConsistencyPanel}
           />
         )}
       </div>
