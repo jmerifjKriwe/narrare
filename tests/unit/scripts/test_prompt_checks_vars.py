@@ -105,8 +105,8 @@ class TestModeRequiredVars:
 
     def test_non_writing_category_has_no_mode_requirements(self) -> None:
         assert "analysis" not in prompt_vars.MODE_REQUIRED_VARS
-        assert "kb" not in prompt_vars.MODE_REQUIRED_VARS
-        assert "planning" not in prompt_vars.MODE_REQUIRED_VARS
+        assert "generation" not in prompt_vars.MODE_REQUIRED_VARS
+        assert "chat" not in prompt_vars.MODE_REQUIRED_VARS
 
 
 # =====================================================================
