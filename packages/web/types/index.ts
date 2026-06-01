@@ -617,3 +617,20 @@ export interface ChatDoneEvent {
   type: "done";
   usage: TokenUsage;
 }
+
+// ---------------------------------------------------------------------------
+// Timeline types (re-exported from dedicated module for convenience)
+// ---------------------------------------------------------------------------
+
+export type {
+  CharacterRef,
+  LocationRef,
+  TimelineAnalysis,
+  TimelineAnalysisEvent,
+  TimelineEvent,
+  TimelineEventCreateRequest,
+  TimelineEventSource,
+  TimelineEventType,
+  TimelineEventUpdateRequest,
+  TimelineFilters,
+} from "./timeline";

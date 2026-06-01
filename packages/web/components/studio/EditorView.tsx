@@ -27,7 +27,7 @@ import { SessionPanel } from "./editor/SessionPanel";
 import { ExtractionPanel } from "./extraction/ExtractionPanel";
 import { NameGeneratorModal } from "./generation/NameGeneratorModal";
 import { WikiChapterSummaryPanel } from "./kb/WikiChapterSummaryPanel";
-import { StoryboardPanel } from "./planning/StoryboardPanel";
+import { PlanningPanel } from "./planning/PlanningPanel";
 import { TipTapEditor } from "./TipTapEditor";
 import {
   type StepStatus,
@@ -465,8 +465,8 @@ export function EditorView({ novelId }: EditorViewProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-background">
-      {/* Storyboard panel — full-width, above toolbar */}
-      <StoryboardPanel novelId={novelId} />
+      {/* Planning panel — Storyboard + Timeline tabs */}
+      <PlanningPanel novelId={novelId} />
 
       {/* Writing graph pipeline — progress indicator */}
       <WritingGraphStatus steps={writingSteps} />

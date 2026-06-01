@@ -22,6 +22,9 @@ import { SyncStatusBadge } from "./SyncStatusBadge";
 
 interface StoryboardPanelProps {
   novelId: string;
+  /** When true, hides the collapse/expand header and border.
+   *  Used when embedded inside PlanningPanel which manages its own header. */
+  hideHeader?: boolean;
 }
 
 /** Find a chapter across all storyboard stages by its id. */
@@ -36,7 +39,7 @@ function findChapter(
   return undefined;
 }
 
-export function StoryboardPanel({ novelId }: StoryboardPanelProps) {
+export function StoryboardPanel({ novelId, hideHeader = false }: StoryboardPanelProps) {
   const t = useTranslations("studio");
 
   const storyboardOpen = useEditorStore((s) => s.storyboardOpen);
@@ -87,8 +90,8 @@ export function StoryboardPanel({ novelId }: StoryboardPanelProps) {
   const totalChapters =
     storyboard?.stages.reduce((sum, stage) => sum + stage.chapters.length, 0) ?? 0;
 
-  // Collapsed state
-  if (!storyboardOpen) {
+  // Collapsed state (skip when embedded in PlanningPanel)
+  if (!storyboardOpen && !hideHeader) {
     return (
       <button
         type="button"
@@ -109,22 +112,29 @@ export function StoryboardPanel({ novelId }: StoryboardPanelProps) {
     );
   }
 
+  // When embedded and collapsed, render nothing
+  if (!storyboardOpen && hideHeader) {
+    return null;
+  }
+
   // Expanded state
   return (
-    <div className="w-full border-b border-border bg-card">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-2 border-b border-border">
-        <LayoutGrid className="w-4 h-4 text-muted-foreground" />
-        <h3 className="text-sm font-medium flex-1">{t("storyboard.title")}</h3>
-        <button
-          type="button"
-          onClick={toggleStoryboard}
-          className="p-1 rounded hover:bg-accent transition-colors"
-          aria-label={t("storyboard.collapse")}
-        >
-          <ChevronUp className="w-4 h-4 text-muted-foreground" />
-        </button>
-      </div>
+    <div className={cn("w-full bg-card", !hideHeader && "border-b border-border")}>
+      {/* Header — hidden when embedded in PlanningPanel */}
+      {!hideHeader && (
+        <div className="flex items-center gap-3 px-6 py-2 border-b border-border">
+          <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium flex-1">{t("storyboard.title")}</h3>
+          <button
+            type="button"
+            onClick={toggleStoryboard}
+            className="p-1 rounded hover:bg-accent transition-colors"
+            aria-label={t("storyboard.collapse")}
+          >
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      )}
 
       {/* Stage columns */}
       {isLoading ? (

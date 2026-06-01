@@ -15,6 +15,7 @@ const namespaces = [
   "settings-appearance",
   "studio",
   "analysis",
+  "timeline",
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {
