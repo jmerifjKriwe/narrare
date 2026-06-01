@@ -177,6 +177,79 @@ export interface ConsistencyResponse {
   analyzed_at: string;
 }
 
+// --- ANAL-003: Readability Analysis Types ---
+
+export interface ReadabilityMetrics {
+  flesch_reading_ease: number;
+  flesch_kincaid_grade: number;
+  gunning_fog: number;
+  avg_sentence_length: number;
+  avg_syllables_per_word: number;
+  complex_word_ratio: number;
+  word_count: number;
+  sentence_count: number;
+}
+
+export interface SentenceAnalysis {
+  sentence: string;
+  sentence_index: number;
+  issues: string[];
+  readability_score: number;
+  suggestions: string[];
+}
+
+export interface ReadabilityResult {
+  metrics: ReadabilityMetrics;
+  sentence_analyses: SentenceAnalysis[];
+  genre_benchmarks: Record<string, ReadabilityMetrics>;
+  overall_assessment: string | null;
+}
+
+export interface ReadabilityRequest {
+  chapter_ids: string[];
+  language?: string;
+}
+
+// --- ANAL-004: POV Analysis Types ---
+
+export interface POVScene {
+  scene_index: number;
+  start_position: number;
+  end_position: number;
+  pov_character: string | null;
+  confidence: number;
+}
+
+export type POVIssueType =
+  | "head_hop"
+  | "knowledge_leak"
+  | "emotional_leak"
+  | "physical_impossibility";
+export type POVIssueSeverity = "error" | "warning";
+
+export interface POVIssue {
+  type: POVIssueType;
+  location: string;
+  text: string;
+  explanation: string;
+  suggestion: string;
+  severity: POVIssueSeverity;
+}
+
+export interface POVResult {
+  scenes: POVScene[];
+  issues: POVIssue[];
+  pov_distribution: Record<string, number>;
+  switch_count: number;
+  analysis_type: string;
+}
+
+export interface POVRequest {
+  chapter_ids: string[];
+  language?: string;
+  pov_type?: string;
+}
+
 // --- API functions ---
 
 export const analysisApi = {
@@ -235,6 +308,32 @@ export const analysisApi = {
    */
   consistencyCheckChapter: (novelId: string, chapterId: string, request: ConsistencyRequest) =>
     fetchApi<ConsistencyResponse>(`/consistency/chapters/${chapterId}/check?novel_id=${novelId}`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+
+  // --- ANAL-003: Readability ---
+
+  /**
+   * Run readability analysis on chapter(s).
+   * POST /analysis/readability?novel_id={novelId}
+   * Returns deterministic metrics + AI sentence analysis per chapter.
+   */
+  readability: (novelId: string, request: ReadabilityRequest) =>
+    fetchApi<ReadabilityResult[]>(`/analysis/readability?novel_id=${novelId}`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+
+  // --- ANAL-004: POV ---
+
+  /**
+   * Run POV analysis on chapter(s).
+   * POST /analysis/pov?novel_id={novelId}
+   * Returns scenes, issues, and distribution of POV characters.
+   */
+  analyzePOV: (novelId: string, request: POVRequest) =>
+    fetchApi<POVResult>(`/analysis/pov?novel_id=${novelId}`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

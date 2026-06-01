@@ -10,10 +10,7 @@ from uuid import UUID  # noqa: TC003 — Pydantic needs UUID at runtime for vali
 
 from pydantic import BaseModel, Field
 
-from narrare.analysis.contracts import (  # noqa: TC001 — needed at runtime by Pydantic
-    FeedbackCategory,
-    FeedbackSeverity,
-)
+from narrare.analysis.contracts import FeedbackCategory, FeedbackSeverity  # noqa: TC001
 
 # ---------------------------------------------------------------------------
 # ANAL-001: Beta Reader — Feedback Types

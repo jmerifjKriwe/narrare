@@ -77,10 +77,11 @@ ui_help_long: |
 ui_available_in: [analysis]
 
 service: analysis/pov_service.py
-contract: analysis/contracts.py#POVProtocol
+contract: analysis/contracts.py#POVDetector
+agent: core/analysis/pov_agent.py#POVDetectionAgent
 router: analysis/router.py
 prompt: core/prompts/_bundled/analysis/en/pov
-requires: [INFRA-001, KB-001]
+requires: [INFRA-001, INFRA-002, KB-001]
 ---
 
 # ANAL-004 — POV Analysis
@@ -168,3 +169,6 @@ class POVIssue:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-06-01` — Contracts defined: ``POVDetector`` (LLM-based protocol),
+  ``POVServiceProtocol`` (API service protocol).  Types defined:
+  ``POVIssueType`` (enum), ``POVIssue``, ``POVScene``, ``POVResult``.

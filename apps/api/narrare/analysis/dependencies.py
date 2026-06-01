@@ -8,6 +8,8 @@ from narrare._app.dependencies import SessionDep  # noqa: TC001 — needed at ru
 
 if TYPE_CHECKING:
     from narrare.analysis.beta_reader_service import BetaReaderService
+    from narrare.analysis.services.pov_service import POVService
+    from narrare.analysis.services.readability_service import ReadabilityService
     from narrare.analysis.services.sentiment_service import ChapterSentimentService
 
 
@@ -89,4 +91,74 @@ def get_sentiment_service(session: SessionDep) -> ChapterSentimentService:
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
         nlp_provider=nlp_provider,
+    )
+
+
+def get_readability_service(session: SessionDep) -> ReadabilityService:
+    """Create a ReadabilityService with injected dependencies.
+
+    Production wiring:
+    - ChapterRepository for chapter content fetching.
+    - NovelRepository for novel access control + language resolution.
+    - ModelRegistry + ResolvedModelConfig for the ReadabilityAgent
+      (AI-powered sentence analysis).
+
+    Phase 1 (deterministic metrics) requires no LLM calls.
+    Phase 2 (AI sentence analysis) uses the ReadabilityAgent via
+    ModelRegistry.
+    """
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_model_registry,
+    )
+    from narrare.analysis.services.readability_service import ReadabilityService
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.novels.repository import NovelRepository
+
+    registry = get_model_registry()
+    config = build_system_default_config("analysis")
+
+    chapter_repo = ChapterRepository(session)
+    novel_repo = NovelRepository(session)
+
+    return ReadabilityService(
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
+        model_registry=registry,
+        model_config=config,
+    )
+
+
+def get_pov_service(session: SessionDep) -> POVService:
+    """Create a POVService with injected dependencies.
+
+    Production wiring:
+    - ChapterRepository for chapter content fetching.
+    - NovelRepository for novel access control + language resolution.
+    - KBRepository for resolving known character names from KB.
+    - ModelRegistry + ResolvedModelConfig for the POVDetectionAgent
+      (AI-powered scene detection + violation analysis).
+    """
+    from narrare._app.dependencies import (
+        build_system_default_config,
+        get_model_registry,
+    )
+    from narrare.analysis.services.pov_service import POVService
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.kb.repository import KBRepository
+    from narrare.novels.repository import NovelRepository
+
+    registry = get_model_registry()
+    config = build_system_default_config("analysis")
+
+    chapter_repo = ChapterRepository(session)
+    novel_repo = NovelRepository(session)
+    kb_repo = KBRepository(session)
+
+    return POVService(
+        chapter_repo=chapter_repo,
+        novel_repo=novel_repo,
+        kb_repo=kb_repo,
+        model_registry=registry,
+        model_config=config,
     )

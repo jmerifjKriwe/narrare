@@ -1,7 +1,9 @@
 """Analysis API routes — thin delegation (RULE-06).
 
-All business logic is in beta_reader_service.py.
+All business logic is in service files.
 This router only handles HTTP request/response mapping.
+
+Readability routes live in ``router_readability.py`` (RULE-04: < 150 lines).
 """
 
 from __future__ import annotations

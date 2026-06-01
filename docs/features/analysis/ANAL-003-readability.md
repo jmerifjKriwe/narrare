@@ -77,10 +77,11 @@ ui_help_long: |
 ui_available_in: [editor, analysis]
 
 service: analysis/readability_service.py
-contract: analysis/contracts.py#ReadabilityProtocol
+contract: analysis/contracts.py#ReadabilityAnalyzer
+agent: core/analysis/readability_agent.py#ReadabilityAgent
 router: analysis/router.py
 prompt: core/prompts/_bundled/analysis/en/readability
-requires: [INFRA-001]
+requires: [INFRA-001, INFRA-002]
 ---
 
 # ANAL-003 — Readability Analysis
@@ -176,3 +177,7 @@ class SentenceAnalysis:
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-27` — TODO: Integrate deterministic readability metrics into Beta Reader (ANAL-001) as "Computed metrics" section. See ADR-021 hybrid feature pattern.
+- `2026-06-01` — Contracts defined: ``ReadabilityAnalyzer`` (deterministic protocol),
+  ``ReadabilityAgentProtocol`` (LLM-based protocol), ``ReadabilityServiceProtocol``
+  (API service protocol).  Types defined: ``ReadabilityMetrics``,
+  ``SentenceAnalysis``, ``ReadabilityResult``.

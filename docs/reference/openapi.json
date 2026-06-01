@@ -1565,6 +1565,128 @@
         }
       }
     },
+    "/api/v1/analysis/readability": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Analyze chapter(s) readability — deterministic metrics + AI sentence analysis",
+        "description": "Analyze readability for one or more chapters.\n\nPhase 1 (instant): Formula-based metrics (Flesch, Kincaid, Fog).\nPhase 2 (5-15s): AI sentence analysis with rewrite suggestions.\n\nResults combine deterministic scores with actionable AI feedback.\n\nArgs:\n    novel_id: The novel containing the chapters.\n    request: Chapter IDs + language setting.\n\nReturns:\n    List of ``ReadabilityResult`` (one per chapter, same order as\n    the request's ``chapter_ids``).",
+        "operationId": "analyze_readability_api_v1_analysis_readability_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadabilityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReadabilityResult"
+                  },
+                  "title": "Response Analyze Readability Api V1 Analysis Readability Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/pov": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Analyze POV consistency — scene detection + head-hopping + knowledge leakage",
+        "description": "Analyze POV consistency for one or more chapters.\n\nDetects POV character per scene, flags head-hopping, knowledge\nleakage, emotional leakage, and physical impossibility violations.\n\nArgs:\n    novel_id: The novel containing the chapters.\n    request: Chapter IDs + language + optional POV type hint.\n\nReturns:\n    ``POVResult`` with per-scene assignments, flagged violations,\n    and distribution statistics.",
+        "operationId": "analyze_pov_api_v1_analysis_pov_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/POVRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/POVResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/embeddings/status/{novel_id}": {
       "get": {
         "tags": [
@@ -11848,6 +11970,176 @@
         "title": "OutlineUpdateRequest",
         "description": "Request body for updating a chapter outline."
       },
+      "POVIssue": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/POVIssueType"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "suggestion": {
+            "type": "string",
+            "title": "Suggestion"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "location",
+          "text",
+          "explanation",
+          "suggestion",
+          "severity"
+        ],
+        "title": "POVIssue",
+        "description": "A single POV violation flagged during analysis.\n\nAttributes:\n    type: Category of POV violation.\n    location: Chapter / line reference for the problematic passage.\n    text: The excerpt containing the violation.\n    explanation: Human-readable description of what is wrong.\n    suggestion: Concrete suggestion for how to fix the issue.\n    severity: ``\"error\"`` (definite violation) or ``\"warning\"``\n        (potential issue requiring human review)."
+      },
+      "POVIssueType": {
+        "type": "string",
+        "enum": [
+          "head_hop",
+          "knowledge_leak",
+          "emotional_leak",
+          "physical_impossibility"
+        ],
+        "title": "POVIssueType",
+        "description": "Category of POV violation detected in the text.\n\nAttributes:\n    HEAD_HOP: Mid-scene POV switch without scene break.\n    KNOWLEDGE_LEAK: POV character knows something they couldn't have\n        learned.\n    EMOTIONAL_LEAK: Non-POV character's emotions are described\n        as felt (not observed).\n    PHYSICAL_IMPOSSIBILITY: POV character perceives something beyond\n        their sensory reach."
+      },
+      "POVRequest": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Chapter Ids"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 2,
+            "title": "Language",
+            "default": "en"
+          },
+          "pov_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pov Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chapter_ids"
+        ],
+        "title": "POVRequest",
+        "description": "Request for POV consistency analysis.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze (1-10).\n        Chapters are concatenated before analysis.\n    language: Language for analysis output. Defaults to ``\"en\"``.\n    pov_type: Optional POV type hint (``\"third_limited\"``,\n        ``\"first_person\"``, ``\"omniscient\"``).  If ``None``,\n        auto-detect from the text."
+      },
+      "POVResult": {
+        "properties": {
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/POVScene"
+            },
+            "type": "array",
+            "title": "Scenes"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/POVIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "pov_distribution": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Pov Distribution"
+          },
+          "switch_count": {
+            "type": "integer",
+            "title": "Switch Count"
+          },
+          "analysis_type": {
+            "type": "string",
+            "title": "Analysis Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scenes",
+          "issues",
+          "pov_distribution",
+          "switch_count",
+          "analysis_type"
+        ],
+        "title": "POVResult",
+        "description": "Complete POV analysis output.\n\nAttributes:\n    scenes: Per-scene POV character assignments.\n    issues: Flagged POV violations across the text.\n    pov_distribution: Fraction of the text attributed to each\n        character, as a mapping of character name → proportion\n        (0.0-1.0).\n    switch_count: Total number of POV switches detected.\n    analysis_type: The POV type that was analysed\n        (e.g. ``\"single_character\"``, ``\"omniscient\"``,\n        ``\"first_person\"``)."
+      },
+      "POVScene": {
+        "properties": {
+          "scene_index": {
+            "type": "integer",
+            "title": "Scene Index"
+          },
+          "start_position": {
+            "type": "integer",
+            "title": "Start Position"
+          },
+          "end_position": {
+            "type": "integer",
+            "title": "End Position"
+          },
+          "pov_character": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pov Character"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "scene_index",
+          "start_position",
+          "end_position"
+        ],
+        "title": "POVScene",
+        "description": "A single scene with its detected POV character.\n\nAttributes:\n    scene_index: 0-based index of the scene within the chapter.\n    start_position: Character offset where this scene begins.\n    end_position: Character offset where this scene ends.\n    pov_character: Name of the detected POV character, or ``None``\n        if the scene appears omniscient / unclear.\n    confidence: Confidence score for the POV assignment (0.0-1.0)."
+      },
       "PreferenceResponse": {
         "properties": {
           "user_id": {
@@ -12190,6 +12482,122 @@
         ],
         "title": "ProviderResponse",
         "description": "Provider entry with masked API key — never exposes the full key."
+      },
+      "ReadabilityMetrics": {
+        "properties": {
+          "flesch_reading_ease": {
+            "type": "number",
+            "title": "Flesch Reading Ease"
+          },
+          "flesch_kincaid_grade": {
+            "type": "number",
+            "title": "Flesch Kincaid Grade"
+          },
+          "gunning_fog": {
+            "type": "number",
+            "title": "Gunning Fog"
+          },
+          "avg_sentence_length": {
+            "type": "number",
+            "title": "Avg Sentence Length"
+          },
+          "avg_syllables_per_word": {
+            "type": "number",
+            "title": "Avg Syllables Per Word"
+          },
+          "complex_word_ratio": {
+            "type": "number",
+            "title": "Complex Word Ratio"
+          },
+          "word_count": {
+            "type": "integer",
+            "title": "Word Count"
+          },
+          "sentence_count": {
+            "type": "integer",
+            "title": "Sentence Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "flesch_reading_ease",
+          "flesch_kincaid_grade",
+          "gunning_fog",
+          "avg_sentence_length",
+          "avg_syllables_per_word",
+          "complex_word_ratio",
+          "word_count",
+          "sentence_count"
+        ],
+        "title": "ReadabilityMetrics",
+        "description": "Formula-based readability scores (deterministic per ADR-021).\n\nComputed purely from text statistics (syllables, words, sentences) —\nno LLM calls involved.\n\nAttributes:\n    flesch_reading_ease: Flesch Reading Ease score (0-100).\n        Higher values indicate easier readability.\n    flesch_kincaid_grade: Flesch-Kincaid Grade Level (0-18).\n        Approximate US school grade required for comprehension.\n    gunning_fog: Gunning Fog Index (0-20).\n        Estimated years of formal education needed.\n    avg_sentence_length: Mean words per sentence.\n    avg_syllables_per_word: Mean syllables per word.\n    complex_word_ratio: Proportion of words with ≥ 3 syllables.\n    word_count: Total word count in the analyzed text.\n    sentence_count: Total sentence count."
+      },
+      "ReadabilityRequest": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Chapter Ids"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 2,
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chapter_ids"
+        ],
+        "title": "ReadabilityRequest",
+        "description": "Request for readability analysis.\n\nAttributes:\n    chapter_ids: One or more chapter UUIDs to analyze (1-5).\n    language: Language for analysis output. Defaults to ``\"en\"``."
+      },
+      "ReadabilityResult": {
+        "properties": {
+          "metrics": {
+            "$ref": "#/components/schemas/ReadabilityMetrics"
+          },
+          "genre_benchmarks": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ReadabilityMetrics"
+            },
+            "type": "object",
+            "title": "Genre Benchmarks"
+          },
+          "sentence_analyses": {
+            "items": {
+              "$ref": "#/components/schemas/SentenceAnalysis"
+            },
+            "type": "array",
+            "title": "Sentence Analyses"
+          },
+          "overall_assessment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Assessment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metrics",
+          "genre_benchmarks",
+          "sentence_analyses"
+        ],
+        "title": "ReadabilityResult",
+        "description": "Complete readability analysis output for a text.\n\nCombines deterministic formula-based metrics with AI-powered\nsentence-level analysis and genre context.\n\nAttributes:\n    metrics: Formula-based readability scores (deterministic).\n    genre_benchmarks: Reference scores keyed by genre label\n        (e.g. ``\"young_adult\"``, ``\"commercial_fiction\"``).\n    sentence_analyses: Per-sentence AI analysis results.\n    overall_assessment: Free-text summary from the AI agent."
       },
       "ReferenceResolution": {
         "properties": {
@@ -12658,6 +13066,46 @@
         ],
         "title": "SceneNextResponse",
         "description": "Response for next scene generation."
+      },
+      "SentenceAnalysis": {
+        "properties": {
+          "sentence": {
+            "type": "string",
+            "title": "Sentence"
+          },
+          "sentence_index": {
+            "type": "integer",
+            "title": "Sentence Index"
+          },
+          "issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "readability_score": {
+            "type": "number",
+            "title": "Readability Score"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sentence",
+          "sentence_index",
+          "issues",
+          "readability_score",
+          "suggestions"
+        ],
+        "title": "SentenceAnalysis",
+        "description": "AI analysis of a single sentence's readability.\n\nProduced by the ``ReadabilityAgent`` via pydantic-ai.  Identifies\nproblematic sentences and provides actionable rewrite suggestions\nthat preserve the author's voice.\n\nAttributes:\n    sentence: The original sentence text.\n    sentence_index: 0-based position of this sentence in the text.\n    issues: List of readability problems detected (e.g. ``\"too long\"``,\n        ``\"complex vocabulary\"``).\n    readability_score: Normalised difficulty (0.0 = hardest,\n        1.0 = easiest).\n    suggestions: Two to three rewrite alternatives that preserve\n        meaning and voice."
       },
       "SentenceSentiment": {
         "properties": {

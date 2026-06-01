@@ -55,11 +55,23 @@ from narrare_core.agents.merge_types import (
 )
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.outline_types import OutlineOutput
+from narrare_core.agents.pov_agent import POVDeps, POVDetectionAgent
+from narrare_core.agents.pov_types import (
+    POVDetectedIssue,
+    POVDetectedScene,
+    POVDetectionOutput,
+)
 from narrare_core.agents.preference_analysis_agent import (
     PreferenceAnalysisAgent,
     PreferenceAnalysisDeps,
 )
 from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
+from narrare_core.agents.readability_agent import ReadabilityAgent, ReadabilityDeps
+from narrare_core.agents.readability_types import (
+    ReadabilityAgentOutput,
+    SentenceIssue,
+    SentenceSuggestion,
+)
 from narrare_core.agents.registry import AgentRegistry
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
@@ -145,6 +157,11 @@ __all__ = [
     "OutlineAgent",
     "OutlineDeps",
     "OutlineOutput",
+    "POVDeps",
+    "POVDetectedIssue",
+    "POVDetectedScene",
+    "POVDetectionAgent",
+    "POVDetectionOutput",
     "Phase1ConnectionOutput",
     "Phase1EntitySummary",
     "Phase1GapOutput",
@@ -152,9 +169,14 @@ __all__ = [
     "PreferenceAnalysisAgent",
     "PreferenceAnalysisDeps",
     "PreferenceAnalysisOutput",
+    "ReadabilityAgent",
+    "ReadabilityAgentOutput",
+    "ReadabilityDeps",
     "ReviewAgent",
     "ReviewDeps",
     "ReviewOutput",
+    "SentenceIssue",
+    "SentenceSuggestion",
     "SuggestionType",
     "SummaryDeps",
     "SummaryOutput",

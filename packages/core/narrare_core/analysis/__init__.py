@@ -16,10 +16,23 @@ from narrare_core.analysis.contracts import (
     NarrativeArcType,
     SentimentAnalyzer,
 )
+from narrare_core.analysis.contracts_pov import POVDetector
+from narrare_core.analysis.contracts_readability import (
+    ReadabilityAgentProtocol,
+    ReadabilityAnalyzer,
+)
+from narrare_core.analysis.readability import FormulaReadabilityAnalyzer
 from narrare_core.analysis.sentiment import LexiconSentimentAnalyzer
 from narrare_core.analysis.types import (
     EmotionScores,
     NarrativeArc,
+    POVIssue,
+    POVIssueType,
+    POVResult,
+    POVScene,
+    ReadabilityMetrics,
+    ReadabilityResult,
+    SentenceAnalysis,
     SentenceSentiment,
     SentimentOverview,
     VADScores,
@@ -30,9 +43,20 @@ __all__ = [
     "AnalysisBudgetManager",
     "AnalysisContextAssembler",
     "EmotionScores",
+    "FormulaReadabilityAnalyzer",
     "LexiconSentimentAnalyzer",
     "NarrativeArc",
     "NarrativeArcType",
+    "POVDetector",
+    "POVIssue",
+    "POVIssueType",
+    "POVResult",
+    "POVScene",
+    "ReadabilityAgentProtocol",
+    "ReadabilityAnalyzer",
+    "ReadabilityMetrics",
+    "ReadabilityResult",
+    "SentenceAnalysis",
     "SentenceSentiment",
     "SentimentAnalyzer",
     "SentimentOverview",

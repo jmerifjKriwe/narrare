@@ -15,6 +15,22 @@ from __future__ import annotations
 import enum
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+# Re-export from split contract modules for backward compatibility.
+# Consumers importing from ``contracts`` continue to work unchanged.
+from narrare_core.analysis.contracts_pov import POVDetector as POVDetector
+from narrare_core.analysis.contracts_readability import (
+    ReadabilityAgentProtocol as ReadabilityAgentProtocol,
+)
+from narrare_core.analysis.contracts_readability import (
+    ReadabilityAnalyzer as ReadabilityAnalyzer,
+)
+
+__all__ = [
+    "POVDetector",
+    "ReadabilityAgentProtocol",
+    "ReadabilityAnalyzer",
+]
+
 if TYPE_CHECKING:
     from narrare_core.analysis.types import (
         SentenceSentiment,
@@ -53,10 +69,10 @@ class SentimentAnalyzer(Protocol):
     Implementations use the NLPProvider (``core/nlp/``) plus emotion lexica
     to produce deterministic VAD and emotion scores for any text.
 
-    This is a deterministic computation — identical input always produces
+    This is a deterministic computation -- identical input always produces
     identical output (per ADR-021).
 
-    This is a ``@runtime_checkable`` protocol — use
+    This is a ``@runtime_checkable`` protocol -- use
     ``isinstance(analyzer, SentimentAnalyzer)`` for runtime type checks.
     """
 
@@ -111,13 +127,13 @@ class SentimentAnalyzer(Protocol):
 class AnalysisAssemblerProtocol(Protocol):
     """Protocol for 3-tier analysis context assembly with token budgets.
 
-    Simpler than writing's 5-tier system — analysis features need
+    Simpler than writing's 5-tier system -- analysis features need
     content + KB context + preferences, but no outline/frontmatter.
 
     Tier allocation (default 6000-token budget):
-        content:      50% — chapter text / content to analyze
-        kb_context:   30% — KB entities (characters, locations, factions, relationships)
-        preferences:  20% — user preferences, avoidance patterns
+        content:      50% -- chapter text / content to analyze
+        kb_context:   30% -- KB entities (characters, locations, factions, relationships)
+        preferences:  20% -- user preferences, avoidance patterns
 
     Per ADR-025 Decision 3: ``core/analysis/`` owns the concrete
     implementation; ``core/context/`` owns the abstract base.
