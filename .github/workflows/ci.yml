@@ -281,7 +281,43 @@ jobs:
 
       - name: Update README badge
         run: |
-          sed -i '/<!-- Pytest Coverage Comment:Begin -->/,/<!-- Pytest Coverage Comment:End -->/c\<!-- Pytest Coverage Comment:Begin -->\n${{ steps.coverage.outputs.coverageHtml }}\n<!-- Pytest Coverage Comment:End -->' ./README.md
+          python3 -c "
+          import re
+          coverage = int(float('${{ steps.coverage.outputs.coverage }}'))
+          if coverage >= 90:
+              color = 'brightgreen'
+          elif coverage >= 80:
+              color = 'green'
+          elif coverage >= 70:
+              color = 'yellow'
+          elif coverage >= 60:
+              color = 'orange'
+          else:
+              color = 'red'
+          badge = f'<a href=\"https://github.com/jmerifjKriwe/narrare/blob/main/README.md\"><img alt=\"Coverage\" src=\"https://img.shields.io/badge/Coverage-{coverage}%25-{color}.svg\" /></a>'
+          badge_block = f'<!-- Pytest Coverage Comment:Begin -->\n{badge}\n<!-- Pytest Coverage Comment:End -->'
+          with open('README.md', 'r') as f:
+              content = f.read()
+          pattern = r'<!-- Pytest Coverage Comment:Begin -->.*?<!-- Pytest Coverage Comment:End -->'
+          new_content, count = re.subn(pattern, badge_block, content, flags=re.DOTALL)
+          if count == 0:
+              lines = content.split('\n')
+              insert_idx = -1
+              for i, line in enumerate(lines):
+                  if 'img.shields.io/badge/' in line or '[![' in line:
+                      insert_idx = i
+              if insert_idx >= 0:
+                  lines.insert(insert_idx + 1, '')
+                  lines.insert(insert_idx + 2, badge_block)
+                  new_content = '\n'.join(lines)
+              else:
+                  lines.insert(1, '')
+                  lines.insert(2, badge_block)
+                  new_content = '\n'.join(lines)
+          with open('README.md', 'w') as f:
+              f.write(new_content)
+          print(f'Updated coverage badge: {coverage}% ({color})')
+          "
 
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v7
