@@ -34,6 +34,12 @@ Characters:
 Locations:
 {{kb_locations}}
 
+Factions:
+{{kb_factions}}
+
+Relationships:
+{{kb_relationships}}
+
 ### User Preferences
 
 The author has deliberately chosen the following style and content preferences. **Treat these as intentional authorial choices, not issues to flag.** Do not suggest changing them unless they actively harm the narrative.

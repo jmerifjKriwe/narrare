@@ -25,6 +25,12 @@ Characters:
 Locations:
 {{kb_locations}}
 
+Factions:
+{{kb_factions}}
+
+Relationships:
+{{kb_relationships}}
+
 ### Recent Chapters
 
 {{recent_chapters}}

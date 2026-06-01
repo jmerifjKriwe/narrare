@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path  # noqa: TC003
 
 from prompt_vars import (
+    MODE_EXEMPT_VARS,
     MODE_REQUIRED_VARS,
     REQUIRED_VARS_BY_CATEGORY,
     SHOULD_VARS_BY_CATEGORY,
@@ -310,9 +311,14 @@ def _check_required_vars(pf: PromptFile, group_key: str, issues: list[Issue]) ->
     """Check category-specific required, mode-specific, and should variables."""
     category = group_key.split("/")[0]
 
+    # Check if this mode has exempted variables.
+    exempt_vars = MODE_EXEMPT_VARS.get(category, {}).get(pf.mode, set())
+
     # 1. MUST: base category variables (WARN — existing behaviour).
     required = REQUIRED_VARS_BY_CATEGORY.get(category, set())
     for var in sorted(required):
+        if var in exempt_vars:
+            continue
         if var not in pf.variables:
             issues.append(
                 Issue(
@@ -339,6 +345,8 @@ def _check_required_vars(pf: PromptFile, group_key: str, issues: list[Issue]) ->
     # 3. SHOULD: recommended variables (WARN — not blocking).
     should_vars = SHOULD_VARS_BY_CATEGORY.get(category, set())
     for var in sorted(should_vars):
+        if var in exempt_vars:
+            continue
         if var not in pf.variables:
             issues.append(
                 Issue(

@@ -34,6 +34,12 @@ Personnages :
 Lieux :
 {{kb_locations}}
 
+Factions :
+{{kb_factions}}
+
+Relations :
+{{kb_relationships}}
+
 ### Préférences utilisateur
 
 L'auteur a délibérément choisi les préférences de style et de contenu suivantes. **Considérez-les comme des choix d'auteur intentionnels, et non comme des problèmes à signaler.** Ne suggérez pas de les modifier à moins qu'elles ne nuisent activement au récit.

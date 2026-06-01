@@ -43,9 +43,26 @@ MODE_REQUIRED_VARS: dict[str, dict[str, set[str]]] = {
     },
 }
 
+# ── EXEMPT: Modes that intentionally skip certain category-required vars ──
+# These modes have legitimate reasons to omit certain variables.
+# The validator will suppress WARN-level messages for exempted combinations.
+MODE_EXEMPT_VARS: dict[str, dict[str, set[str]]] = {
+    "writing": {
+        "inline_suggest": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
+    },
+    "analysis": {
+        "consistency": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
+        "preferences": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
+        "remap": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
+    },
+    "kb": {
+        "consistency": {"world_context"},
+    },
+}
+
 # ── SHOULD: Recommended variables (warn, don't fail) ───────────
 SHOULD_VARS_BY_CATEGORY: dict[str, set[str]] = {
-    "writing": {"character_voice_profiles", "kb_suggested"},
+    "writing": {"character_voice_profiles"},
     "analysis": {"kb_characters", "kb_locations", "kb_factions", "kb_relationships"},
     "kb": {"world_context"},
 }

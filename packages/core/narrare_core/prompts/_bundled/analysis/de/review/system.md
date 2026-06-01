@@ -14,7 +14,7 @@ Analysiere den Entwurf anhand dieser Dimensionen:
 2. **Charakterstimme**: Ist der Dialog unverwechselbar und konsistent pro Charakter? Klingen die Charaktere wie Individuen?
 3. **Dialogqualität**: Ist der Dialog natürlich, zielgerichtet und frei von Info-Dumps?
 4. **Beschreibungsqualität**: Sind Beschreibungen lebhaft und in die Erzählung integriert, oder wirken sie lose angehängt?
-5. **Handlungs kohärenz**: Ergibt die Handlung des Kapitels Sinn im Rahmen des größeren Erzählbogens?
+5. **Handlungskohärenz**: Ergibt die Handlung des Kapitels Sinn im Rahmen des größeren Erzählbogens?
 6. **Stilistische Konsistenz**: Passen der Sprachstil zum etablierten Genre und Tonfall?
 
 {{culture_guidelines}}
@@ -33,6 +33,12 @@ Charaktere:
 
 Orte:
 {{kb_locations}}
+
+Gruppierungen:
+{{kb_factions}}
+
+Beziehungen:
+{{kb_relationships}}
 
 ### Nutzereinstellungen
 
