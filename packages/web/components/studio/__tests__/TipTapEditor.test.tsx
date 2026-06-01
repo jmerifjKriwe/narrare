@@ -12,7 +12,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { TipTapEditor } from "@/components/studio/TipTapEditor";
 
 // ---------------------------------------------------------------------------
@@ -103,6 +103,20 @@ vi.mock("@/components/studio/editor/InlineDiff", () => ({
 vi.mock("@/components/studio/editor/RewriteModeSelector", () => ({
   RewriteModeSelector: vi.fn(() => <div data-testid="rewrite-mode-selector" />),
 }));
+
+// ---------------------------------------------------------------------------
+// JSDOM polyfills
+// ---------------------------------------------------------------------------
+
+beforeAll(() => {
+  // TipTap v3 placeholder viewport tracking calls document.elementFromPoint
+  // during editor mount. JSDOM does not implement this DOM API, so we
+  // polyfill it with the semantically correct return value (null = no element
+  // at the given coordinates, which is always true in a headless environment).
+  if (typeof document.elementFromPoint !== "function") {
+    document.elementFromPoint = vi.fn(() => null);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Tests

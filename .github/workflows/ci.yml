@@ -283,7 +283,7 @@ jobs:
         run: |
           python3 -c "
           import re
-          coverage = int(float('${{ steps.coverage.outputs.coverage }}'))
+          coverage = int(float('${{ steps.coverage.outputs.coverage }}'.strip('%')))
           if coverage >= 90:
               color = 'brightgreen'
           elif coverage >= 80:
