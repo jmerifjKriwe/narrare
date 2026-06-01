@@ -103,10 +103,12 @@ Utilisez un `<scratchpad>` pour analyser le texte original et planifier votre st
 
 {{user_preferences}}
 
+### Priorité
+
+Lorsque les instructions de l'auteur contredisent les préférences utilisateur, suivez toujours les instructions de l'auteur — elles représentent l'intention actuelle de l'auteur.
+
 ### Contraintes
 
 - Rédigez en {{writing_language}}
 - Correspondez au rythme et au registre du contexte environnant
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
-
-Les instructions de l'auteur prévalent sur les préférences en cas de conflit.

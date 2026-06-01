@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: fr
-prompt_version: "2.1.0"
+prompt_version: "2.2.0"
 ---
 
 ## System Prompt
@@ -42,6 +42,17 @@ Langue : {{writing_language}}
 Chronologie : {{timeline_position}}
 Structure narrative : {{story_structure}}
 {{chapter_context}}
+
+### Personnages
+
+{{kb_characters}}
+
+### Conscience du dialogue
+
+Si le texte avant le curseur est en plein dialogue :
+- Continuez dans la voix du même personnage
+- Utilisez les habitudes de parole établies si disponibles via {{character_voice_profiles}}
+- Ne changez pas de locuteur en milieu de citation
 
 ### Texte à continuer
 

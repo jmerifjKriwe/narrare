@@ -26,6 +26,7 @@ _VARIABLE_RE = re.compile(r"\{\{(\w+)\}\}")
 
 # User-authored content variables that require XML encapsulation
 # in prompt templates for prompt injection defense.
+# Keep in sync with scripts/prompt_vars.py UNSAFE_USER_VARS
 #
 # These variables contain text written by the end user (chapter prose,
 # interview answers, instructions, etc.) and MUST be wrapped in XML

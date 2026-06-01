@@ -103,7 +103,9 @@ Use a `<scratchpad>` to analyze the original text and plan your revision strateg
 
 {{user_preferences}}
 
-The author's instructions take priority over preferences when they conflict.
+### Priority
+
+When author instructions contradict user preferences, always follow the author instructions — they represent the author's current intent.
 
 ### Constraints
 

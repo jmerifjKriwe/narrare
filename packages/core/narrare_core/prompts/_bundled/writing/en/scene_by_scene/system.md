@@ -80,7 +80,9 @@ Output ONE scene at a time as prose. No meta-commentary, no labels, no explanati
 
 {{user_preferences}}
 
-The author's instructions take priority over preferences when they conflict.
+### Priority
+
+When author instructions contradict user preferences, always follow the author instructions — they represent the author's current intent.
 
 ## Do NOT
 

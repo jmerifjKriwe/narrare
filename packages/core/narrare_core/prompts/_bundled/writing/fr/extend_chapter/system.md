@@ -86,6 +86,10 @@ Produis UNIQUEMENT le texte de continuation — pas de méta-commentaire, pas d'
 
 {{user_preferences}}
 
+### Priorité
+
+Lorsque les instructions de l'auteur contredisent les préférences utilisateur, suivez toujours les instructions de l'auteur — elles représentent l'intention actuelle de l'auteur.
+
 ## À ne pas faire
 
 - Ne change PAS la perspective narrative sauf demande explicite
@@ -103,5 +107,3 @@ Produis UNIQUEMENT le texte de continuation — pas de méta-commentaire, pas d'
 - Ne contredisez pas les faits établis dans les chapitres récents
 - Si du texte suit le marqueur, votre continuation doit y mener naturellement
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
-
-Les instructions de l'auteur prévalent sur les préférences en cas de conflit.

@@ -202,14 +202,14 @@ class TestContextMetadata:
 class TestKBEntityStatus:
     """KBEntity.status field (CR-04)."""
 
-    def test_status_defaults_to_draft(self) -> None:
+    def test_status_defaults_to_canon(self) -> None:
         entity = KBEntity(
             entity_id="e1",
             entity_type="character",
             name="X",
             content="X",
         )
-        assert entity.status == "draft"
+        assert entity.status == "canon"
 
     def test_status_can_be_set(self) -> None:
         entity = KBEntity(

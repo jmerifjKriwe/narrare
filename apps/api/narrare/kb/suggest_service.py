@@ -22,6 +22,11 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
+# Default max results for KB suggestions.
+# Can be overridden by callers. Not yet tied to TokenBudgetManager —
+# that requires a larger refactor (FIND-005 Phase 2).
+DEFAULT_KB_SUGGEST_MAX_RESULTS: int = 20
+
 
 class KBSuggestService:
     """API service for KB suggestions.
@@ -49,7 +54,7 @@ class KBSuggestService:
         chapter_id: UUID,
         *,
         novel_id: UUID,
-        max_results: int = 20,
+        max_results: int = DEFAULT_KB_SUGGEST_MAX_RESULTS,
     ) -> list[KBSuggestionResponse]:
         """Get proactive KB suggestions for a chapter.
 

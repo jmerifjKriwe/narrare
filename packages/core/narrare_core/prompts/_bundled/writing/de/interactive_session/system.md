@@ -94,6 +94,10 @@ Generiere Prosa als Antwort auf die Richtung des Autors. Gib nur den Prosainhalt
 
 {{user_preferences}}
 
+### Priorität
+
+Wenn Autorenanweisungen den Nutzereinstellungen widersprechen, folgen Sie immer den Autorenanweisungen — sie repräsentieren die aktuelle Absicht des Autors.
+
 ## Nicht
 
 - Ändere NICHT die Erzählperspektive ohne Zustimmung des Autors
@@ -107,5 +111,3 @@ Generiere Prosa als Antwort auf die Richtung des Autors. Gib nur den Prosainhalt
 - Führe keine neuen Hauptfiguren ohne Zustimmung des Autors ein
 - Widersprich keinen etablierten Fakten aus den aktuellen Kapiteln
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
-
-Anweisungen des Autors haben Vorrang vor Präferenzen, wenn sie sich widersprechen.

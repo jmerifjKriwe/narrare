@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: de
-prompt_version: "2.1.0"
+prompt_version: "2.2.0"
 ---
 
 ## System Prompt
@@ -42,6 +42,17 @@ Sprache: {{writing_language}}
 Zeitlinie: {{timeline_position}}
 Erzählstruktur: {{story_structure}}
 {{chapter_context}}
+
+### Charaktere
+
+{{kb_characters}}
+
+### Dialog-Bewusstsein
+
+Wenn der Text vor dem Cursor mitten in einem Dialog steht:
+- Setze in derselben Charakterstimme fort
+- Nutze etablierte Sprechweisen, falls verfügbar über {{character_voice_profiles}}
+- Wechsle nicht den Sprecher innerhalb eines Zitats
 
 ### Fortzusetzender Text
 

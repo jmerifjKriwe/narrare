@@ -284,3 +284,6 @@ class TestGetSuggestionsMapsToResponse:
         assert result[0].name == "Aria"
         assert result[1].name == "Castle"
         assert result[2].name == "Sword"
+
+
+# TestDefaultMaxResultsConstant extracted to test_suggest_constant.py (RULE-04)

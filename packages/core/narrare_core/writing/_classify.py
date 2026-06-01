@@ -47,6 +47,10 @@ def classify_entities(
         else:
             active.append(e)
 
+    draft_count = sum(1 for e in active if e.status == "draft")
+    if draft_count:
+        logger.info("draft_entities_in_context", count=draft_count)
+
     pinned = [e for e in active if e.is_pinned]
     referenced = [
         e for e in active if not e.is_pinned and (e.entity_id in ref_ids or e.is_referenced)

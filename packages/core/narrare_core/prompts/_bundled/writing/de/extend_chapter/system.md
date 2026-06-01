@@ -86,6 +86,10 @@ Gib NUR den Fortsetzungstext aus — keinen Meta-Kommentar, keine Beschriftungen
 
 {{user_preferences}}
 
+### Priorität
+
+Wenn Autorenanweisungen den Nutzereinstellungen widersprechen, folgen Sie immer den Autorenanweisungen — sie repräsentieren die aktuelle Absicht des Autors.
+
 ## Nicht
 
 - Ändere NICHT die Erzählperspektive, es sei denn, du wirst ausdrücklich darum gebeten
@@ -103,5 +107,3 @@ Gib NUR den Fortsetzungstext aus — keinen Meta-Kommentar, keine Beschriftungen
 - Widerspriche keinen etablierten Fakten aus den aktuellen Kapiteln
 - Wenn nach der Markierung Text folgt, muss deine Fortsetzung natürlicherweise dorthin überleiten
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
-
-Anweisungen des Autors haben Vorrang vor Präferenzen, wenn sie sich widersprechen.

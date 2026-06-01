@@ -33,11 +33,11 @@ class KBEntity:
     recency_score: float = 0.0
     is_referenced: bool = False
     is_pinned: bool = False
-    status: str = "draft"  # "draft" | "reviewed" | "canon" | "deprecated"
     updated_at: str | None = None  # ISO-8601 timestamp of last update
     metadata: dict[str, Any] | None = None  # structured entity metadata (speech, personality)
     wiki_summary: str | None = None  # precomputed narrative summary if available
     wiki_status: str | None = None  # "fresh" | "stale" | "pending" | None
+    status: str = "canon"  # KB lifecycle: draft | reviewed | canon | deprecated
 
     @property
     def relevance_score(self) -> float:

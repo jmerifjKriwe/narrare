@@ -223,3 +223,38 @@ class TestClassifyEntitiesDeprecated:
         assert referenced[0].entity_id == "e4"
         assert len(suggested) == 1
         assert suggested[0].entity_id == "e6"
+
+
+class TestClassifyEntitiesDraftIncluded:
+    """Draft entities ARE included in context — just logged as informational."""
+
+    def test_draft_entities_included_in_all_tiers(self) -> None:
+        """Draft entities appear in pinned, referenced, connected, and suggested."""
+        entities = [
+            _entity("e1", status="draft", is_pinned=True),
+            _entity("e2", status="draft", is_referenced=True),
+            _entity("e3", status="draft"),  # suggested
+        ]
+        pinned, referenced, _connected, suggested = classify_entities(entities, set(), {})
+        assert len(pinned) == 1
+        assert pinned[0].entity_id == "e1"
+        assert len(referenced) == 1
+        assert referenced[0].entity_id == "e2"
+        assert len(suggested) == 1
+        assert suggested[0].entity_id == "e3"
+
+    def test_draft_entities_included_with_mixed_statuses(self) -> None:
+        """Draft and canon entities are both included; only deprecated excluded."""
+        entities = [
+            _entity("e1", status="draft", is_pinned=True),
+            _entity("e2", status="canon", is_pinned=True),
+            _entity("e3", status="deprecated", is_pinned=True),  # excluded
+            _entity("e4", status="reviewed"),
+        ]
+        pinned, _referenced, _connected, suggested = classify_entities(entities, set(), {})
+        assert len(pinned) == 2
+        pinned_ids = {e.entity_id for e in pinned}
+        assert "e1" in pinned_ids
+        assert "e2" in pinned_ids
+        assert len(suggested) == 1
+        assert suggested[0].entity_id == "e4"

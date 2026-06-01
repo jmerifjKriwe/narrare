@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.kb.dependencies import get_kb_suggest_service
 from narrare.kb.schemas import KBSuggestionResponse
-from narrare.kb.suggest_service import KBSuggestService
+from narrare.kb.suggest_service import DEFAULT_KB_SUGGEST_MAX_RESULTS, KBSuggestService
 
 router = APIRouter(tags=["kb"])
 
@@ -22,7 +22,7 @@ async def get_suggestions(
     novel_id: uuid.UUID,
     chapter_id: uuid.UUID,
     user_id: CurrentUserIdDep,
-    max_results: int = Query(default=20, ge=1, le=100),
+    max_results: int = Query(default=DEFAULT_KB_SUGGEST_MAX_RESULTS, ge=1, le=100),
     service: KBSuggestService = Depends(get_kb_suggest_service),
 ) -> list[KBSuggestionResponse]:
     """Get proactive KB suggestions for a chapter."""

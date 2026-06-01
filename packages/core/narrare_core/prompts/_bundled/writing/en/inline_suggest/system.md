@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "2.1.0"
+prompt_version: "2.2.0"
 ---
 
 ## System Prompt
@@ -42,6 +42,17 @@ Language: {{writing_language}}
 Timeline: {{timeline_position}}
 Story Structure: {{story_structure}}
 {{chapter_context}}
+
+### Characters
+
+{{kb_characters}}
+
+### Dialogue Awareness
+
+If the text before the cursor is mid-dialogue:
+- Continue in the same character's voice
+- Use established speech patterns if available via {{character_voice_profiles}}
+- Do not switch speakers mid-quotation
 
 ### Text to Continue
 

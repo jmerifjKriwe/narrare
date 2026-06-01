@@ -80,6 +80,10 @@ Produis UNE scène à la fois en prose. Pas de méta-commentaire, pas d'étiquet
 
 {{user_preferences}}
 
+### Priorité
+
+Lorsque les instructions de l'auteur contredisent les préférences utilisateur, suivez toujours les instructions de l'auteur — elles représentent l'intention actuelle de l'auteur.
+
 ## À ne pas faire
 
 - Ne génère PAS plus d'une scène à la fois
@@ -93,5 +97,3 @@ Produis UNE scène à la fois en prose. Pas de méta-commentaire, pas d'étiquet
 - N'introduisez pas de nouveaux personnages majeurs non référencés dans le plan ou la base de connaissances
 - Ne contredisez pas les faits établis dans les chapitres récents
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
-
-Les instructions de l'auteur prévalent sur les préférences en cas de conflit.

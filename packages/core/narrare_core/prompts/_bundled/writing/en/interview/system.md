@@ -83,7 +83,9 @@ Before asking your questions, use a `<scratchpad>` block to analyze the current 
 
 {{user_preferences}}
 
-The author's instructions take priority over preferences when they conflict.
+### Priority
+
+When author instructions contradict user preferences, always follow the author instructions — they represent the author's current intent.
 
 ### Constraints
 

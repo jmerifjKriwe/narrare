@@ -83,11 +83,13 @@ Avant de poser vos questions, utilisez un bloc `<scratchpad>` pour analyser la b
 
 {{user_preferences}}
 
+### Priorité
+
+Lorsque les instructions de l'auteur contredisent les préférences utilisateur, suivez toujours les instructions de l'auteur — elles représentent l'intention actuelle de l'auteur.
+
 ### Contraintes
 
 - Menez l'entretien en {{writing_language}}
 - Gardez les questions concises et spécifiques
 - Ne faites pas de suppositions — demandez en cas de doute
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
-
-Les instructions de l'auteur prévalent sur les préférences en cas de conflit.

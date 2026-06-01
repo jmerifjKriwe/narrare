@@ -40,6 +40,7 @@ MODE_REQUIRED_VARS: dict[str, dict[str, set[str]]] = {
         "extend_chapter": {"existing_content"},
         "extend": {"existing_content"},
         "rewrite_selection": {"selection_text", "context_before", "context_after"},
+        "inline_suggest": {"kb_characters"},
     },
     "planning": {
         "outline": {"variant_count"},
@@ -81,10 +82,12 @@ SHOULD_VARS_BY_CATEGORY: dict[str, set[str]] = {
 }
 
 # ── Security: User-content variables that MUST be XML-wrapped ──
+# Keep in sync with packages/core/narrare_core/prompts/variable_engine.py _USER_CONTENT_VARS
 UNSAFE_USER_VARS = frozenset(
     {
         "existing_content",
         "chapter_text",
+        "chapter_texts",
         "entry_content",
         "selection_text",
         "context_before",

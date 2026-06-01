@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from prompt_checks import Issue, PromptFile, parse_prompt_file
+from prompt_check_types import Issue, PromptFile, parse_prompt_file
 
 if TYPE_CHECKING:
     from pathlib import Path
