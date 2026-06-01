@@ -50,19 +50,19 @@ task(
   subagent_type="OpenFrontendSpecialist",
   description="Design {feature} UI",
   prompt="Design a {feature} following the 4-stage workflow:
-  
+
   Requirements:
   - {requirement 1}
   - {requirement 2}
-  
+
   Context: {what this UI is for}
-  
+
   Follow the design iteration workflow:
   1. Layout (ASCII wireframe)
   2. Theme (design system, colors)
   3. Animation (micro-interactions)
   4. Implementation (single HTML file)
-  
+
   Request approval between each stage."
 )
 ```

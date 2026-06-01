@@ -2,7 +2,7 @@
 
 # Guide: Adding a New Agent (Basics)
 
-**Prerequisites**: Load `core-concepts/agents.md` first  
+**Prerequisites**: Load `core-concepts/agents.md` first
 **Purpose**: Create and register a new agent in 4 steps
 
 ---

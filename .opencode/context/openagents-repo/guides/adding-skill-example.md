@@ -98,7 +98,7 @@ interface Task {
 
 async function main() {
   const command = process.argv[2] || 'help'
-  
+
   switch (command) {
     case 'status':
       await showStatus()

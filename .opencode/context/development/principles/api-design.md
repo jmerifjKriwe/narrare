@@ -2,8 +2,8 @@
 
 # API Design Patterns
 
-**Category**: development  
-**Purpose**: REST API design principles, GraphQL patterns, and API versioning strategies  
+**Category**: development
+**Purpose**: REST API design principles, GraphQL patterns, and API versioning strategies
 **Used by**: opencoder
 
 ---
@@ -209,22 +209,22 @@ const resolvers = {
       return dataSources.userAPI.getUsers({ filter, page, pageSize });
     }
   },
-  
+
   User: {
     posts: async (user, _, { dataSources }) => {
       // Use DataLoader to batch requests
       return dataSources.postAPI.getPostsByUserId(user.id);
     }
   },
-  
+
   Mutation: {
     createUser: async (_, { input }, { dataSources, user }) => {
       // Check authorization
       if (!user) throw new AuthenticationError('Not authenticated');
-      
+
       // Validate input
       const validatedInput = validateUserInput(input);
-      
+
       // Create user
       return dataSources.userAPI.createUser(validatedInput);
     }
@@ -242,7 +242,7 @@ const userLoader = new DataLoader(async (userIds) => {
   const users = await db.users.findMany({
     where: { id: { in: userIds } }
   });
-  
+
   // Return in same order as input
   return userIds.map(id => users.find(u => u.id === id));
 });
@@ -261,7 +261,7 @@ const user = await userLoader.load(userId);
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const apiClient = {
-  getUsers: (filters) => 
+  getUsers: (filters) =>
     fetch(`/api/v1/users?${new URLSearchParams(filters)}`).then(r => r.json())
 };
 
@@ -292,7 +292,7 @@ GET /v1/users
 GET /v2/users
 ```
 
-**Pros**: Clear, easy to route  
+**Pros**: Clear, easy to route
 **Cons**: URL changes, harder to maintain multiple versions
 
 ### 2. Header Versioning
@@ -303,7 +303,7 @@ GET /users
 Accept: application/vnd.myapi.v2+json
 ```
 
-**Pros**: Clean URLs, flexible  
+**Pros**: Clean URLs, flexible
 **Cons**: Less visible, harder to test
 
 ### 3. Deprecation Strategy
@@ -344,11 +344,11 @@ Link: <https://api.example.com/v2/users>; rel="successor-version"
 // Middleware
 function authenticateToken(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
-  
+
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
-  
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
@@ -368,19 +368,19 @@ function authorize(...roles) {
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
-    
+
     next();
   };
 }
 
 // Usage
-app.delete('/users/:id', 
-  authenticateToken, 
-  authorize('admin'), 
+app.delete('/users/:id',
+  authenticateToken,
+  authorize('admin'),
   deleteUser
 );
 ```

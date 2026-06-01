@@ -28,8 +28,8 @@ openagents-repo/quality/
 
 ## By Type
 
-**Quality Standards** → Standards for code quality  
-**Testing** → Testing requirements and patterns  
+**Quality Standards** → Standards for code quality
+**Testing** → Testing requirements and patterns
 **Validation** → Validation procedures
 
 ---

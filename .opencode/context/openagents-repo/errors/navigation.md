@@ -28,7 +28,7 @@ openagents-repo/errors/
 
 ## By Type
 
-**Errors** → Common errors and how to fix them  
+**Errors** → Common errors and how to fix them
 **Troubleshooting** → Solutions for common issues
 
 ---

@@ -2,7 +2,7 @@
 
 # Guide: OpenCode Skill Implementation
 
-**Prerequisites**: Load `adding-skill-basics.md` first  
+**Prerequisites**: Load `adding-skill-basics.md` first
 **Purpose**: CLI implementation, registry, and testing for OpenCode skills
 
 ---
@@ -22,7 +22,7 @@ interface Args {
 
 async function main() {
   const args = parseArgs()
-  
+
   switch (args.command) {
     case 'command1':
       await handleCommand1(args)

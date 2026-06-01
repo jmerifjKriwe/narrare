@@ -119,7 +119,7 @@ task(subagent_type="ContextScout", description="Find DevOps standards", prompt="
     - Cloud provider access verified
     - Deployment environment defined
   </pre_flight>
-  
+
   <post_flight>
     - Pipeline configs created + tested
     - Infrastructure code valid + documented

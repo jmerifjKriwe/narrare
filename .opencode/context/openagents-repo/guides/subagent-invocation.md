@@ -2,7 +2,7 @@
 
 # Guide: Subagent Invocation
 
-**Purpose**: How to correctly invoke subagents using the task tool  
+**Purpose**: How to correctly invoke subagents using the task tool
 **Priority**: HIGH - Critical for agent delegation
 
 ---
@@ -141,13 +141,13 @@ task(
   subagent_type="Task Manager",
   description="Break down complex feature",
   prompt="Break down the following feature into atomic subtasks:
-          
+
           Feature: {feature description}
-          
+
           Requirements:
           - {requirement 1}
           - {requirement 2}
-          
+
           Create subtask files in tasks/subtasks/{feature}/"
 )
 ```
@@ -159,11 +159,11 @@ task(
   subagent_type="Documentation",
   description="Update documentation for feature",
   prompt="Update documentation for {feature}:
-          
+
           What changed:
           - {change 1}
           - {change 2}
-          
+
           Files to update:
           - {doc 1}
           - {doc 2}"
@@ -177,11 +177,11 @@ task(
   subagent_type="TestEngineer",
   description="Write tests for feature",
   prompt="Write comprehensive tests for {feature}:
-          
+
           Files to test:
           - {file 1}
           - {file 2}
-          
+
           Test coverage:
           - Positive cases
           - Negative cases
@@ -196,11 +196,11 @@ task(
   subagent_type="Reviewer",
   description="Review implementation",
   prompt="Review the following implementation:
-          
+
           Files:
           - {file 1}
           - {file 2}
-          
+
           Focus areas:
           - Security
           - Performance
@@ -215,12 +215,12 @@ task(
   subagent_type="Coder Agent",
   description="Implement subtask",
   prompt="Implement the following subtask:
-          
+
           Subtask: {subtask description}
-          
+
           Files to create/modify:
           - {file 1}
-          
+
           Requirements:
           - {requirement 1}
           - {requirement 2}"
@@ -318,14 +318,14 @@ if subagent_type not in available_types:
 
 ## Best Practices
 
-✅ **Use exact names** - Match registry `name` field exactly  
-✅ **Check registry first** - Verify subagent exists before using  
-✅ **Test invocations** - Test delegation before committing  
-✅ **Document dependencies** - List required subagents in agent frontmatter  
+✅ **Use exact names** - Match registry `name` field exactly
+✅ **Check registry first** - Verify subagent exists before using
+✅ **Test invocations** - Test delegation before committing
+✅ **Document dependencies** - List required subagents in agent frontmatter
 
-❌ **Don't use paths** - Never use file paths as subagent_type  
-❌ **Don't use IDs** - Don't use kebab-case IDs  
-❌ **Don't assume** - Always verify subagent is registered  
+❌ **Don't use paths** - Never use file paths as subagent_type
+❌ **Don't use IDs** - Don't use kebab-case IDs
+❌ **Don't assume** - Always verify subagent is registered
 
 ---
 
@@ -369,5 +369,5 @@ if subagent_type not in available_types:
 
 ---
 
-**Last Updated**: 2025-12-29  
+**Last Updated**: 2025-12-29
 **Version**: 0.5.1

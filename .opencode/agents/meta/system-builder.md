@@ -84,7 +84,7 @@ temperature: 0.2
     </output>
     <checkpoint>Context discovered</checkpoint>
   </stage>
- 
+
   <stage id="2" name="RouteToDomainAnalyzer">
     <action>Route to DomainAnalyzer for deep domain analysis and agent identification</action>
     <prerequisites>Requirements document complete</prerequisites>
@@ -153,7 +153,7 @@ temperature: 0.2
           }
         </subagents>
       </agents>
-      
+
       <context_files>
         <navigation>
           <file path="context/navigation.md">Context organization index (REQUIRED)</file>
@@ -192,7 +192,7 @@ temperature: 0.2
           <estimated_lines>{50-150}</estimated_lines>
         </errors>
       </context_files>
-      
+
       <workflows>
         {for each workflow:
           <workflow>
@@ -203,7 +203,7 @@ temperature: 0.2
           </workflow>
         }
       </workflows>
-      
+
       <commands>
         {for each command:
           <command>
@@ -388,7 +388,7 @@ temperature: 0.2
         - File naming conventions followed
         - No missing components
       </structure_validation>
-      
+
       <agent_validation>
         - All agents use XML structure
         - Component ordering is optimal (context→role→task→instructions)
@@ -396,7 +396,7 @@ temperature: 0.2
         - Context levels specified for all routes
         - Workflows have clear stages
       </agent_validation>
-      
+
       <context_validation>
         - navigation.md exists and is complete
         - Files follow function-based organization (concepts/examples/guides/lookup/errors)
@@ -407,21 +407,21 @@ temperature: 0.2
         - All files include HTML frontmatter
         - Codebase references included where applicable
       </context_validation>
-      
+
       <workflow_validation>
         - Context dependencies listed
         - Success criteria defined
         - Prerequisites clear
         - Checkpoints included
       </workflow_validation>
-      
+
       <command_validation>
         - Agent routing specified
         - Syntax documented
         - Examples provided
         - Output format defined
       </command_validation>
-      
+
       <documentation_validation>
         - README is comprehensive
         - Architecture is clear
@@ -445,29 +445,29 @@ temperature: 0.2
     <prerequisites>Validation passed</prerequisites>
     <output_format>
       ## ✅ System Generation Complete!
-      
+
       **Domain**: {domain_name}
       **System Type**: {system_type}
       **Complexity**: {complexity_level}
-      
+
       ### 📊 Generation Summary
-      
+
       **Files Created**: {total_files}
       - Agent Files: {agent_count} (1 orchestrator + {subagent_count} subagents)
       - Context Files: {context_count} (1 navigation + {concept_files} concepts + {guide_files} guides + {lookup_files} lookup + {example_files} examples + {error_files} errors)
       - Workflow Files: {workflow_count}
       - Command Files: {command_count}
       - Documentation Files: {doc_count}
-      
+
       **Validation Scores**:
       - Agent Quality: {agent_score}/10
       - Context Organization: {context_score}/10
       - Workflow Completeness: {workflow_score}/10
       - Documentation Clarity: {doc_score}/10
       - **Overall**: {overall_score}/10 ✅
-      
+
       ### 📁 Directory Structure
-      
+
       ```
       .opencode/
       ├── agent/
@@ -505,60 +505,60 @@ temperature: 0.2
       ├── TESTING.md                            # Testing checklist
       └── QUICK-START.md                        # Usage examples
       ```
-      
+
       ### 🎯 Key Components
-      
+
       **Main Orchestrator**: `{domain}-orchestrator`
       - Analyzes request complexity
       - Routes to specialized subagents
       - Manages 3-level context allocation
       - Coordinates workflow execution
-      
+
       **Specialized Subagents**:
       {for each subagent:
         - `{subagent.name}`: {subagent.purpose}
           Triggers: {subagent.triggers}
           Context: {subagent.context_level}
       }
-      
+
       **Primary Workflows**:
       {for each workflow:
         - `{workflow.name}`: {workflow.description}
           Complexity: {workflow.complexity}
           Context Dependencies: {workflow.context_deps.length} files
       }
-      
+
       **Custom Commands**:
       {for each command:
         - `/{command.name}`: {command.description}
           Usage: {command.syntax}
       }
-      
+
       ### 🚀 Quick Start
-      
+
       **1. Review Your System**:
       ```bash
       # Read the main README (example: .opencode/navigation.md)
       cat .opencode/README.md
-      
+
       # Review your orchestrator
       cat .opencode/agent/{domain}-orchestrator.md
       ```
-      
+
       **2. Test Your First Command**:
       ```bash
       /{primary_command} "{example_input}"
       ```
-      
+
       **3. Try a Complete Workflow**:
       ```bash
       /{workflow_command} {example_parameters}
       ```
-      
+
       ### 🧪 Testing Checklist
-      
+
       Follow your testing guide (example: `.opencode/TESTING.md`) for complete testing:
-      
+
       - [ ] Test orchestrator with simple request
       - [ ] Test each subagent independently
       - [ ] Verify context files load correctly
@@ -567,48 +567,48 @@ temperature: 0.2
       - [ ] Validate error handling
       - [ ] Test edge cases
       - [ ] Verify integration points
-      
+
       ### 📚 Documentation
-      
+
       - **System Overview**: `.opencode/README.md`
       - **Architecture Guide**: (example: `.opencode/ARCHITECTURE.md`)
       - **Quick Start**: (example: `.opencode/QUICK-START.md`)
       - **Testing Guide**: (example: `.opencode/TESTING.md`)
       - **Context Organization**: `.opencode/context/`
       - **Workflow Guide**: (example: `.opencode/workflows/navigation.md`)
-      
+
       ### 💡 Optimization Tips
-      
+
       **Context Efficiency**:
       - 80% of tasks should use Level 1 context (isolation)
       - 20% of tasks use Level 2 context (filtered)
       - Level 3 context (windowed) is rare
-      
+
       **Performance Expectations**:
       - Routing Accuracy: +20% (LLM-based decisions)
       - Consistency: +25% (XML structure)
       - Context Efficiency: 80% reduction in overhead
       - Overall Performance: +17% improvement
-      
+
       **Best Practices**:
       - Keep context files focused (50-200 lines)
       - Use @ symbol for all subagent routing
       - Define clear success criteria for workflows
       - Add validation gates for critical operations
       - Document learnings and patterns
-      
+
       ### 🎉 Next Steps
-      
+
       1. **Customize Context**: Add your domain-specific knowledge to context files
       2. **Test Thoroughly**: Run through the testing checklist
       3. **Refine Workflows**: Adjust based on real usage patterns
       4. **Add Examples**: Improve agent performance with concrete examples
       5. **Monitor & Optimize**: Track performance and iterate
-      
+
       ---
-      
+
       **Your context-aware AI system is production-ready!**
-      
+
       Questions? Review the documentation or ask about specific components.
     </output_format>
     <checkpoint>System delivered with complete summary and usage guide</checkpoint>
@@ -622,7 +622,7 @@ temperature: 0.2
     <step_3>Determine generation strategy (template vs custom)</step_3>
     <step_4>Calculate system scale (files, agents, complexity)</step_4>
   </analyze_request>
-  
+
   <allocate_context>
     <level_1>
       <when>Routing to isolated tasks (command-creator, simple file generation)</when>
@@ -637,14 +637,14 @@ temperature: 0.2
       <context>N/A</context>
     </level_3>
   </allocate_context>
-  
+
   <execute_routing>
     <parallel_routes>
       When possible, execute independent subagent tasks concurrently:
       - agent-generator and context-organizer can run in parallel
       - workflow-designer and command-creator can run in parallel
     </parallel_routes>
-    
+
     <sequential_routes>
       Some tasks must complete before others:
       - domain-analyzer must complete before agent-generator
@@ -675,7 +675,7 @@ temperature: 0.2
       return "Level 1"; // Default to isolation
     }
   </determine_context_level>
-  
+
   <prepare_context>
     <level_1>
       Pass only the specific data needed for the task:
@@ -702,7 +702,7 @@ temperature: 0.2
     - @ symbol routing for subagents
     - Context level specification for all routes
   </xml_optimization>
-  
+
   <modular_organization>
     Context files must be modular and focused:
     - 50-200 lines per file
@@ -710,7 +710,7 @@ temperature: 0.2
     - Clear naming conventions
     - Documented dependencies
   </modular_organization>
-  
+
   <production_ready>
     Generated systems must be immediately usable:
     - Complete documentation
@@ -718,7 +718,7 @@ temperature: 0.2
     - Testing checklist
     - Clear next steps
   </production_ready>
-  
+
   <performance_optimized>
     Systems must implement efficiency patterns:
     - 3-level context allocation
@@ -735,14 +735,14 @@ temperature: 0.2
     - Domain is clearly defined
     - Use cases are specified
   </pre_flight>
-  
+
   <mid_flight>
     - Each subagent returns expected data
     - Generated files pass quality checks
     - No missing components
     - Dependencies are satisfied
   </mid_flight>
-  
+
   <post_flight>
     - All planned files exist
     - Validation scores are 8+/10
@@ -757,14 +757,14 @@ temperature: 0.2
     - Minimal context passing (80% Level 1, 20% Level 2)
     - Template reuse for standard patterns
   </generation_efficiency>
-  
+
   <output_quality>
     - Agent quality: 8+/10 (XML optimization)
     - Context organization: 8+/10 (modularity)
     - Workflow completeness: 8+/10 (all stages defined)
     - Documentation clarity: 8+/10 (comprehensive)
   </output_quality>
-  
+
   <system_performance>
     Generated systems achieve:
     - +20% routing accuracy (LLM-based decisions)
@@ -778,19 +778,19 @@ temperature: 0.2
   <coordinate_specialists>
     Use manager-worker pattern to delegate specialized tasks to expert subagents
   </coordinate_specialists>
-  
+
   <minimize_context>
     Pass only necessary context to each subagent (80% Level 1, 20% Level 2)
   </minimize_context>
-  
+
   <validate_continuously>
     Check quality at each stage before proceeding to next
   </validate_continuously>
-  
+
   <generate_complete_systems>
     Deliver production-ready systems with all components and documentation
   </generate_complete_systems>
-  
+
   <follow_research>
     Apply Stanford/Anthropic patterns for optimal performance
   </follow_research>

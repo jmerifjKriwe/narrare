@@ -21,14 +21,14 @@ task(
   subagent_type="OpenFrontendSpecialist",
   description="Design {feature} UI",
   prompt="Load context from .tmp/sessions/{session-id}/context.md
-  
+
   Design {feature} following 4-stage workflow:
   1. Stage 0: Create design plan file (MANDATORY FIRST)
   2. Stage 1: Layout (ASCII wireframe)
   3. Stage 2: Theme (design system, colors)
   4. Stage 3: Animation (micro-interactions)
   5. Stage 4: Implementation (single HTML file)
-  
+
   Request approval between stages."
 )
 ```
@@ -51,7 +51,7 @@ task(
   subagent_type="TestEngineer",
   description="Write tests for {feature}",
   prompt="Load context from .tmp/sessions/{session-id}/context.md
-  
+
   Write comprehensive tests for {feature}
   Files to test: {file list}
   Follow test coverage standards from context."
@@ -74,7 +74,7 @@ task(
   subagent_type="CodeReviewer",
   description="Review {feature}",
   prompt="Load context from .tmp/sessions/{session-id}/context.md
-  
+
   Review {feature} against standards
   Files: {file list}
   Focus: security, performance, maintainability"
@@ -96,7 +96,7 @@ task(
   subagent_type="CoderAgent",
   description="Implement {subtask}",
   prompt="Load context from .tmp/sessions/{session-id}/context.md
-  
+
   Implement subtask: {description}
   Follow implementation spec exactly.
   Mark subtask complete when done."

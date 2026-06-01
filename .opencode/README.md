@@ -8,13 +8,13 @@
 
 **AI agents that learn YOUR coding patterns and generate matching code every time.**
 
-🎯 **Pattern Control** - Define your patterns once, AI uses them forever  
-✋ **Approval Gates** - Review and approve before execution  
-🔁 **Repeatable Results** - Same patterns = Same quality code  
-📝 **Editable Agents** - Full control over AI behavior  
+🎯 **Pattern Control** - Define your patterns once, AI uses them forever
+✋ **Approval Gates** - Review and approve before execution
+🔁 **Repeatable Results** - Same patterns = Same quality code
+📝 **Editable Agents** - Full control over AI behavior
 👥 **Team-Ready** - Everyone uses the same patterns
 
-**Multi-language:** TypeScript • Python • Go • Rust  • C# • Any language*  
+**Multi-language:** TypeScript • Python • Go • Rust  • C# • Any language*
 **Model Agnostic:** Claude • GPT • Gemini • MiniMax • Local models
 
 
@@ -62,22 +62,22 @@ export async function POST(request: Request) {
 
 ### What Makes OAC Different
 
-**🎯 Context-Aware (Your Secret Weapon)**  
+**🎯 Context-Aware (Your Secret Weapon)**
 Agents load YOUR patterns before generating code. Code matches your project from the start. No refactoring needed.
 
-**📝 Editable Agents (Not Baked-In Plugins)**  
+**📝 Editable Agents (Not Baked-In Plugins)**
 Full control over agent behavior. Edit markdown files directly—no compilation, no vendor lock-in. Change workflows, add constraints, customize for your team.
 
-**✋ Approval Gates (Human-Guided AI)**  
+**✋ Approval Gates (Human-Guided AI)**
 Agents ALWAYS request approval before execution. Propose → Approve → Execute. You stay in control. No "oh no, what did the AI just do?" moments.
 
-**⚡ Token Efficient (MVI Principle)**  
+**⚡ Token Efficient (MVI Principle)**
 Minimal Viable Information design. Only load what's needed, when it's needed. Context files <200 lines, lazy loading, faster responses.
 
-**👥 Team-Ready (Repeatable Patterns)**  
+**👥 Team-Ready (Repeatable Patterns)**
 Store YOUR coding patterns once. Entire team uses same standards. Commit context to repo. New developers inherit team patterns automatically.
 
-**🔄 Model Agnostic**  
+**🔄 Model Agnostic**
 Use any AI model (Claude, GPT, Gemini, local). No vendor lock-in.
 
 **Full-stack development:** OAC handles both frontend and backend work. The agents coordinate to build complete features from UI to database.
@@ -290,8 +290,8 @@ git push
 
 ### The Core Idea
 
-**Most AI tools:** Generic code → You refactor  
-**OpenAgentsControl:** Your patterns → AI generates matching code  
+**Most AI tools:** Generic code → You refactor
+**OpenAgentsControl:** Your patterns → AI generates matching code
 
 ### The Workflow
 
@@ -313,27 +313,27 @@ git push
 
 ### Key Benefits
 
-**🎯 Context-Aware**  
+**🎯 Context-Aware**
 ContextScout discovers relevant patterns. Agents load YOUR standards before generating code. Code matches your project from the start.
 
-**🔁 Repeatable**  
+**🔁 Repeatable**
 Same patterns → Same results. Configure once, use forever. Perfect for teams.
 
-**⚡ Token Efficient (80% Reduction)**  
+**⚡ Token Efficient (80% Reduction)**
 MVI principle: Only load what's needed. 8,000 tokens → 750 tokens. Massive cost savings.
 
-**✋ Human-Guided**  
+**✋ Human-Guided**
 Agents propose plans, you approve before execution. Quality gates prevent mistakes. No auto-execution surprises.
 
-**📝 Transparent & Editable**  
+**📝 Transparent & Editable**
 Agents are markdown files you can edit. Change workflows, add constraints, customize behavior. No vendor lock-in.
 
 ### What Makes This Special
 
-**1. ContextScout - Smart Pattern Discovery**  
+**1. ContextScout - Smart Pattern Discovery**
 Before generating code, ContextScout discovers relevant patterns from your context files. Ranks by priority (Critical → High → Medium). Prevents wasted work.
 
-**2. Editable Agents - Full Control**  
+**2. Editable Agents - Full Control**
 Unlike Cursor/Copilot where behavior is baked into plugins, OAC agents are markdown files. Edit them directly:
 ```bash
 nano .opencode/agent/core/opencoder.md  # local project install
@@ -341,14 +341,14 @@ nano .opencode/agent/core/opencoder.md  # local project install
 # Add project rules, change workflows, customize behavior
 ```
 
-**3. ExternalScout - Live Documentation** 🆕  
+**3. ExternalScout - Live Documentation** 🆕
 Working with external libraries? ExternalScout fetches current documentation:
 - Gets live docs from official sources (npm, GitHub, docs sites)
 - No outdated training data - always current
 - Automatically triggered when agents detect external dependencies
 - Supports frameworks, APIs, libraries, and more
 
-**4. Approval Gates - No Surprises**  
+**4. Approval Gates - No Surprises**
 Agents ALWAYS request approval before:
 - Writing/editing files
 - Running bash commands
@@ -357,7 +357,7 @@ Agents ALWAYS request approval before:
 
 You stay in control. Review plans before execution.
 
-**5. MVI Principle - Token Efficiency**  
+**5. MVI Principle - Token Efficiency**
 Files designed for quick loading:
 - Concepts: <100 lines
 - Guides: <150 lines
@@ -365,7 +365,7 @@ Files designed for quick loading:
 
 Result: Lower token usage vs loading entire codebase.
 
-**6. Team Patterns - Repeatable Results**  
+**6. Team Patterns - Repeatable Results**
 Store patterns in `.opencode/context/project/`. Commit to repo. Entire team uses same standards. New developers inherit patterns automatically.
 
 ---
@@ -680,16 +680,16 @@ Build complete custom AI systems tailored to your domain in minutes. Interactive
 
 ### Getting Started
 
-**Q: Does this work on Windows?**  
+**Q: Does this work on Windows?**
 A: Yes! Use Git Bash (recommended) or WSL.
 
-**Q: What languages are supported?**  
+**Q: What languages are supported?**
 A: Agents are language-agnostic and adapt based on your project files. Primarily tested with TypeScript/Node.js. C# / .NET is now supported with dedicated context files. Python, Go, Rust, and other languages are supported but less battle-tested. The context system works with any language.
 
-**Q: Do I need to add context?**  
+**Q: Do I need to add context?**
 A: No, but it's highly recommended. Without context, agents write generic code. With context, they write YOUR code.
 
-**Q: Can I use this without customization?**  
+**Q: Can I use this without customization?**
 A: Yes, it works out of the box. But you'll get the most value after adding your patterns (10-15 minutes with `/add-context`).
 
 **Q: What models are supported?**
@@ -697,55 +697,55 @@ A: Any model from any provider (Claude, GPT, Gemini, MiniMax, local models). No 
 
 ### For Teams
 
-**Q: How do I share context with my team?**  
+**Q: How do I share context with my team?**
 A: Commit `.opencode/context/project/` to your repo. Team members automatically use same patterns.
 
-**Q: How do we ensure everyone follows the same standards?**  
+**Q: How do we ensure everyone follows the same standards?**
 A: Add team patterns to context once. All agents load them automatically. Consistent code across entire team.
 
-**Q: Can different projects have different patterns?**  
+**Q: Can different projects have different patterns?**
 A: Yes! Use project-specific context (`.opencode/` in project root) to override global patterns.
 
 ### Technical
 
-**Q: How does token efficiency work?**  
+**Q: How does token efficiency work?**
 A: MVI principle: Only load what's needed, when it's needed. Context files <200 lines (scannable in 30s). ContextScout discovers relevant patterns. Lazy loading prevents context bloat. 80% of tasks use isolation context (minimal overhead).
 
-**Q: What's ContextScout?**  
+**Q: What's ContextScout?**
 A: Smart pattern discovery agent. Finds relevant context files before code generation. Ranks by priority. Prevents wasted work.
 
-**Q: Can I edit agent behavior?**  
+**Q: Can I edit agent behavior?**
 A: Yes! Agents are markdown files. Edit them directly: `nano .opencode/agent/core/opencoder.md` (local) or `nano ~/.config/opencode/agent/core/opencoder.md` (global)
 
-**Q: How do approval gates work?**  
+**Q: How do approval gates work?**
 A: Agents ALWAYS request approval before execution (write/edit/bash). You review plans before implementation. No surprises.
 
-**Q: How do I update my context?**  
+**Q: How do I update my context?**
 A: Run `/add-context --update` anytime your patterns change. Agents automatically use updated patterns.
 
 ### Comparison
 
-**Q: How is this different from Cursor/Copilot?**  
+**Q: How is this different from Cursor/Copilot?**
 A: OAC has editable agents (not baked-in), approval gates (not auto-execute), context system (YOUR patterns), and MVI token efficiency.
 
-**Q: How is this different from Aider?**  
+**Q: How is this different from Aider?**
 A: OAC has team patterns, context system, approval workflow, and smart pattern discovery. Aider is file-based only.
 
-**Q: How does this compare to Oh My OpenCode?**  
+**Q: How does this compare to Oh My OpenCode?**
 A: Both are built on OpenCode. OAC focuses on **control & repeatability** (approval gates, pattern control, team standards). Oh My OpenCode focuses on **autonomy & speed** (parallel agents, auto-execution). [Read detailed comparison →](https://github.com/darrenhinde/OpenAgentsControl/discussions/116)
 
-**Q: When should I NOT use OAC?**  
+**Q: When should I NOT use OAC?**
 A: If you want fully autonomous execution without approval gates, or if you don't have established coding patterns yet.
 
 ### Setup
 
-**Q: What bash version do I need?**  
+**Q: What bash version do I need?**
 A: Bash 3.2+ (macOS default works). Run `bash scripts/tests/test-compatibility.sh` to check.
 
-**Q: Do I need to install plugins/tools?**  
+**Q: Do I need to install plugins/tools?**
 A: No, they're optional. Only install if you want Telegram notifications or Gemini AI features.
 
-**Q: Where should I install - globally or per-project?**  
+**Q: Where should I install - globally or per-project?**
 A: Local (`.opencode/` in your project) is recommended — patterns are committed to git and shared with your team. Global (`~/.config/opencode/`) is good for personal defaults across all projects. The installer asks you to choose. See [OpenCode Config Docs](https://opencode.ai/docs/config/) for how configs merge.
 
 ---
@@ -773,7 +773,7 @@ Check out our [**Project Board**](https://github.com/darrenhinde/OpenAgentsContr
 
 ### 💬 Have Ideas?
 
-We'd love to hear from you! 
+We'd love to hear from you!
 - 💡 [**Submit Feature Requests**](https://github.com/darrenhinde/OpenAgentsControl/issues/new?labels=enhancement)
 - 🐛 [**Report Bugs**](https://github.com/darrenhinde/OpenAgentsControl/issues/new?labels=bug)
 - 💬 [**Join Discussions**](https://github.com/darrenhinde/OpenAgentsControl/discussions)

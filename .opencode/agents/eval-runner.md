@@ -31,4 +31,3 @@ This file is **dynamically replaced** during test runs:
 - **Status**: Template - will be overwritten during test runs
 
 If you see this prompt during a test run, something went wrong with the test setup.
-

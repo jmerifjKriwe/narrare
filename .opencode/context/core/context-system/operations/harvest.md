@@ -20,14 +20,14 @@ AI agents create summary files (OVERVIEW.md, SESSION-*.md, SUMMARY.md) that cont
 
 <rule id="summary_patterns" enforcement="strict">
   Harvest automatically detects these patterns:
-  
+
   Filename patterns:
   - *OVERVIEW.md
   - *SUMMARY.md
   - SESSION-*.md
   - CONTEXT-*.md
   - *NOTES.md
-  
+
   Location patterns:
   - Files in .tmp/ directory
   - Files with "Summary", "Overview", "Session" in title
@@ -39,7 +39,7 @@ AI agents create summary files (OVERVIEW.md, SESSION-*.md, SUMMARY.md) that cont
 ## 6-Stage Workflow
 
 <workflow id="harvest" enforce="@critical_rules">
-  
+
 ### Stage 1: Scan
 **Action**: Find all summary files in workspace
 

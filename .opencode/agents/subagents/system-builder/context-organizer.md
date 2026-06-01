@@ -133,7 +133,7 @@ task(subagent_type="ContextScout", description="Find context system standards", 
     - use_cases are provided
     - Codebase structure discovered (Step 1)
   </pre_flight>
-  
+
   <post_flight>
     - All files have frontmatter
     - All files have codebase references

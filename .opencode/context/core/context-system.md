@@ -11,7 +11,7 @@
 ## Core Principles
 
 ### 1. Minimal Viable Information (MVI)
-Extract only core concepts (1-3 sentences), key points (3-5 bullets), minimal example, and reference link. 
+Extract only core concepts (1-3 sentences), key points (3-5 bullets), minimal example, and reference link.
 **Goal**: Scannable in <30 seconds. Reference full docs, don't duplicate them.
 
 ### 2. Concern-Based Structure
@@ -251,7 +251,7 @@ Location: `.opencode/context/core/standards/`
 
 **Used by**: All agents, all projects
 
-**Effect on other categories**: 
+**Effect on other categories**:
 - Other categories can reference these standards
 - Users can edit core standards to affect context flow globally
 - Development-specific standards go in `development/principles/`

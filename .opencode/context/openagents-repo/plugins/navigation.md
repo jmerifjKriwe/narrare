@@ -30,7 +30,7 @@ openagents-repo/plugins/
 
 ## By Type
 
-**Context Plugin** → Context system plugin documentation  
+**Context Plugin** → Context system plugin documentation
 **Plugin Architecture** → How plugins work in OpenAgents
 
 ---

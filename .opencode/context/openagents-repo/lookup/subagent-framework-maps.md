@@ -2,7 +2,7 @@
 
 # Lookup: Subagent Framework Maps
 
-**Purpose**: Quick reference for adding subagents to eval framework  
+**Purpose**: Quick reference for adding subagents to eval framework
 **Last Updated**: 2026-01-09
 
 ---
@@ -19,7 +19,7 @@ const subagentParentMap: Record<string, string> = {
   'contextscout': 'openagent',     // Core subagents → openagent
   'task-manager': 'openagent',
   'documentation': 'openagent',
-  
+
   'coder-agent': 'opencoder',      // Code subagents → opencoder
   'tester': 'opencoder',
   'reviewer': 'opencoder',

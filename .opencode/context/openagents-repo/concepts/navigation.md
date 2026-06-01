@@ -28,7 +28,7 @@ openagents-repo/concepts/
 
 ## By Type
 
-**Concepts** → Foundational concepts for OpenAgents  
+**Concepts** → Foundational concepts for OpenAgents
 **Core Concepts** → Deep dives into core ideas
 
 ---

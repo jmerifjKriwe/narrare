@@ -64,11 +64,11 @@ Related Files (cross-refs)
 ```markdown
 # JWT Authentication
 
-JSON Web Tokens (JWT) are an open standard (RFC 7519) that defines 
-a compact and self-contained way for securely transmitting information 
-between parties as a JSON object. This information can be verified and 
-trusted because it is digitally signed. JWTs can be signed using a 
-secret (with the HMAC algorithm) or a public/private key pair using RSA 
+JSON Web Tokens (JWT) are an open standard (RFC 7519) that defines
+a compact and self-contained way for securely transmitting information
+between parties as a JSON object. This information can be verified and
+trusted because it is digitally signed. JWTs can be signed using a
+secret (with the HMAC algorithm) or a public/private key pair using RSA
 or ECDSA.
 
 [... 400 more lines of explanation, examples, edge cases ...]
@@ -78,8 +78,8 @@ or ECDSA.
 ```markdown
 # Concept: JWT Authentication
 
-**Core Idea**: Stateless authentication using JSON Web Tokens signed 
-with a secret key. Token contains user data (payload) that server can 
+**Core Idea**: Stateless authentication using JSON Web Tokens signed
+with a secret key. Token contains user data (payload) that server can
 trust because signature is verified.
 
 **Key Points**:
@@ -93,8 +93,8 @@ trust because signature is verified.
 ```js
 // Sign token
 const token = jwt.sign(
-  { userId: 123, role: 'admin' }, 
-  SECRET_KEY, 
+  { userId: 123, role: 'admin' },
+  SECRET_KEY,
   { expiresIn: '1h' }
 )
 
@@ -105,7 +105,7 @@ console.log(decoded.userId) // 123
 
 **Reference**: https://jwt.io/introduction
 
-**Related**: 
+**Related**:
 - examples/jwt-auth-example.md
 - guides/implementing-jwt.md
 - errors/auth-errors.md

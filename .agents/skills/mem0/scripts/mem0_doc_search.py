@@ -100,9 +100,11 @@ def search_docs(query: str, section: str | None = None) -> dict:
             results = data["results"]
             if section and section in SECTION_MAP:
                 section_paths = SECTION_MAP[section]
-                results = [r for r in results if any(r.get("url", "").startswith(p) for p in section_paths)]
+                results = [
+                    r for r in results if any(r.get("url", "").startswith(p) for p in section_paths)
+                ]
             return {"source": "mintlify_search", "results": results}
-    except (json.JSONDecodeError, Exception):
+    except json.JSONDecodeError, Exception:
         pass
 
     # Fallback: search llms.txt index for matching URLs
@@ -139,7 +141,9 @@ def fetch_page(page_path: str) -> dict:
 def get_index() -> dict:
     """Fetch the full documentation index from llms.txt."""
     content = fetch_url(LLMS_INDEX)
-    urls = [line.strip() for line in content.splitlines() if line.strip() and not line.startswith("#")]
+    urls = [
+        line.strip() for line in content.splitlines() if line.strip() and not line.startswith("#")
+    ]
     return {"total_pages": len(urls), "urls": urls, "sections": list(SECTION_MAP.keys())}
 
 
@@ -156,7 +160,9 @@ def list_section(section: str) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Search Mem0 documentation on demand")
     parser.add_argument("--query", help="Search query for documentation")
-    parser.add_argument("--page", help="Fetch a specific page path (e.g., /platform/features/graph-memory)")
+    parser.add_argument(
+        "--page", help="Fetch a specific page path (e.g., /platform/features/graph-memory)"
+    )
     parser.add_argument("--index", action="store_true", help="Show full documentation index")
     parser.add_argument("--section", help="Filter by section or list section pages")
     parser.add_argument("--json", action="store_true", help="Output as JSON")

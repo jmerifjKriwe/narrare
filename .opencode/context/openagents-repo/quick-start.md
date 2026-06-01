@@ -167,5 +167,5 @@ opencode-agents/
 
 ---
 
-**Last Updated**: 2026-01-13  
+**Last Updated**: 2026-01-13
 **Version**: 0.5.1

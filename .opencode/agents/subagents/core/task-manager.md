@@ -60,7 +60,7 @@ WHY THIS MATTERS:
       - Your output (JSON files) is your primary communication channel.
     </with_meta_agent>
 
-  
+
   <with_working_agents>
     - You define the "Context Boundary" for them via TWO arrays in subtasks:
       - `context_files` = Standards paths ONLY (coding conventions, patterns, security rules). These come from the `## Context Files` section of the session context.md.
@@ -168,7 +168,7 @@ WHY THIS MATTERS:
 
              exit_criteria:
              - {specific completion criteria}
-             
+
              enhanced_fields (if available from planning agents):
              - bounded_context: {from ArchitectureAnalyzer}
              - module: {from ArchitectureAnalyzer}
@@ -239,9 +239,9 @@ WHY THIS MATTERS:
                 "related_adrs": ["{optional: ADRs relevant to this subtask}"]
               }
               ```
-  
+
               **RULE**: `context_files` = standards/conventions ONLY. `reference_files` = project source files ONLY. Never mix them.
-  
+
               **LINE-NUMBER PRECISION** (Enhanced Schema):
               For large files (>100 lines), use line-number precision to reduce cognitive load:
               ```json
@@ -258,25 +258,25 @@ WHY THIS MATTERS:
                 }
               ]
               ```
-              
+
               **Backward Compatibility**: Both formats are valid:
               - String format: (example: `".opencode/context/file.md"`) - read entire file
               - Object format: `{"path": "...", "lines": "10-50", "reason": "..."}` (read specific lines)
-              
+
               Agents MUST support both formats. Mix-and-match is allowed in the same array.
- 
+
               **AGENT FIELD SEMANTICS**:
              - `suggested_agent`: Recommendation from TaskManager during planning (e.g., "CoderAgent", "TestEngineer")
              - `agent_id`: Set by the working agent when task moves to `in_progress` (tracks who is actually working on it)
              - These are separate fields: suggestion vs. assignment
- 
+
               **FRONTEND RULE**: If a task involves UI design, styling, or frontend implementation:
               1. Set `suggested_agent`: "OpenFrontendSpecialist"
               2. Include `.opencode/context/ui/web/ui-styling-standards.md` and `.opencode/context/core/workflows/design-iteration-overview.md` in `context_files`.
               3. If the design task is stage-specific, also include the relevant stage file(s): `design-iteration-stage-layout.md`, `design-iteration-stage-theme.md`, `design-iteration-stage-animation.md`, `design-iteration-stage-implementation.md`.
               4. Ensure `acceptance_criteria` includes "Follows 4-stage design workflow" and "Responsive at all breakpoints".
               5. **PARALLELIZATION**: Design tasks can run in parallel (`parallel: true`) since design work is isolated and doesn't affect backend/logic implementation. Only mark `parallel: false` if design depends on backend API contracts or data structures.
- 
+
          4. Validate with CLI:
            ```bash
            npx ts-node --compiler-options '{"module":"commonjs"}' .opencode/skills/task-management/scripts/task-cli.ts validate {feature}

@@ -96,9 +96,9 @@ agent: ContextScout
 prompts:
   - text: |
       Search for context files related to: coding standards
-      
+
       Task type: code
-      
+
       Return:
       - Exact file paths
       - Priority order
@@ -135,5 +135,5 @@ tags:
 
 ---
 
-**Last Updated**: 2026-01-09  
+**Last Updated**: 2026-01-09
 **Version**: 1.0.0

@@ -2,8 +2,8 @@
 
 # React Patterns & Best Practices
 
-**Category**: development  
-**Purpose**: Modern React patterns, hooks usage, and component design principles  
+**Category**: development
+**Purpose**: Modern React patterns, hooks usage, and component design principles
 **Used by**: frontend-specialist
 
 ---
@@ -21,11 +21,11 @@ This guide covers modern React patterns using functional components, hooks, and 
 // Good
 function UserProfile({ userId }) {
   const [user, setUser] = useState(null);
-  
+
   useEffect(() => {
     fetchUser(userId).then(setUser);
   }, [userId]);
-  
+
   return <div>{user?.name}</div>;
 }
 ```
@@ -39,7 +39,7 @@ function useUser(userId) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   useEffect(() => {
     setLoading(true);
     fetchUser(userId)
@@ -47,14 +47,14 @@ function useUser(userId) {
       .catch(setError)
       .finally(() => setLoading(false));
   }, [userId]);
-  
+
   return { user, loading, error };
 }
 
 // Usage
 function UserProfile({ userId }) {
   const { user, loading, error } = useUser(userId);
-  
+
   if (loading) return <Spinner />;
   if (error) return <Error message={error.message} />;
   return <div>{user.name}</div>;
@@ -95,7 +95,7 @@ function Layout() {
 ```jsx
 function Tabs({ children }) {
   const [activeTab, setActiveTab] = useState(0);
-  
+
   return (
     <TabsContext.Provider value={{ activeTab, setActiveTab }}>
       {children}
@@ -110,7 +110,7 @@ Tabs.List = function TabsList({ children }) {
 Tabs.Tab = function Tab({ index, children }) {
   const { activeTab, setActiveTab } = useContext(TabsContext);
   return (
-    <button 
+    <button
       className={activeTab === index ? 'active' : ''}
       onClick={() => setActiveTab(index)}
     >
@@ -167,11 +167,11 @@ useEffect(() => {
 ```jsx
 function DataTable({ data, filters }) {
   const filteredData = useMemo(() => {
-    return data.filter(item => 
+    return data.filter(item =>
       filters.every(filter => filter(item))
     );
   }, [data, filters]);
-  
+
   return <Table data={filteredData} />;
 }
 ```
@@ -182,15 +182,15 @@ function DataTable({ data, filters }) {
 ```jsx
 function Parent() {
   const [count, setCount] = useState(0);
-  
+
   // Bad - New function on every render
   const handleClick = () => setCount(c => c + 1);
-  
+
   // Good - Stable function reference
   const handleClick = useCallback(() => {
     setCount(c => c + 1);
   }, []);
-  
+
   return <Child onClick={handleClick} />;
 }
 
@@ -244,7 +244,7 @@ function reducer(state, action) {
 
 function Counter() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  
+
   return (
     <>
       <button onClick={() => dispatch({ type: 'decrement' })}>-</button>
@@ -288,7 +288,7 @@ function VirtualList({ items }) {
   const Row = ({ index, style }) => (
     <div style={style}>{items[index].name}</div>
   );
-  
+
   return (
     <FixedSizeList
       height={600}

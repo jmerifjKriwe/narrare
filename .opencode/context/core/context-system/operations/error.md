@@ -53,10 +53,10 @@ Found 2 related errors:
 Options:
   [A] Add as new error to react-errors.md
       (Specific case: 'map' on undefined array)
-  
+
   [B] Update existing 'Cannot read property X' error
       (Add 'map' as common example)
-  
+
   [C] Skip (already covered sufficiently)
 
 Which framework/category?

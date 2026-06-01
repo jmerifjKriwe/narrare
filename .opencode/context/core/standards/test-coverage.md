@@ -33,10 +33,10 @@
 test('calculateTotal returns sum of item prices', () => {
   // Arrange - Set up test data
   const items = [{ price: 10 }, { price: 20 }, { price: 30 }];
-  
+
   // Act - Execute code
   const result = calculateTotal(items);
-  
+
   // Assert - Verify result
   expect(result).toBe(60);
 });
@@ -91,10 +91,10 @@ test('getUser retrieves from database', () => {
   const mockDb = {
     findById: jest.fn().mockReturnValue({ id: 1, name: 'John' })
   };
-  
+
   const service = createUserService(mockDb);
   const user = service.getUser(1);
-  
+
   expect(mockDb.findById).toHaveBeenCalledWith('users', 1);
   expect(user).toEqual({ id: 1, name: 'John' });
 });

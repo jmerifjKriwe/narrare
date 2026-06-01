@@ -2,7 +2,7 @@
 
 # Guide: Adding an OpenCode Skill (Basics)
 
-**Prerequisites**: Load `plugins/context/capabilities/events_skills.md` first  
+**Prerequisites**: Load `plugins/context/capabilities/events_skills.md` first
 **Purpose**: Create an OpenCode skill directory and SKILL.md file
 
 **Note**: This is for **OpenCode skills** (internal system). For **Claude Code Skills**, see `creating-skills.md`.

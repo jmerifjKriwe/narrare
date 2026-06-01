@@ -28,7 +28,7 @@ openagents-repo/lookup/
 
 ## By Type
 
-**Quick Reference** → Fast lookup tables and commands  
+**Quick Reference** → Fast lookup tables and commands
 **Checklists** → Verification and validation checklists
 
 ---

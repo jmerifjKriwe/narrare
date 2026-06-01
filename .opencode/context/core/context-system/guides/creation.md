@@ -22,7 +22,7 @@
 ## Creation Workflow
 
 ### 1. Determine Function
-Ask: Is this a concept, example, guide, lookup, or error?  
+Ask: Is this a concept, example, guide, lookup, or error?
 → Place in correct folder
 
 ### 2. Apply Template

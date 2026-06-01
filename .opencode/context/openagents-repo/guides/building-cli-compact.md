@@ -2,8 +2,8 @@
 
 # Building CLIs in OpenAgents Control: Compact Guide
 
-**Category**: guide  
-**Purpose**: Rapidly build, register, and deploy CLI tools for OpenAgents Control skills  
+**Category**: guide
+**Purpose**: Rapidly build, register, and deploy CLI tools for OpenAgents Control skills
 **Framework**: FAB (Features, Advantages, Benefits)
 
 ---
@@ -58,7 +58,7 @@ esac
 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
-  
+
   switch (command) {
     case 'action':
       await handleAction(args);

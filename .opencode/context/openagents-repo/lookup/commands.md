@@ -398,5 +398,5 @@ npm run lint
 
 ---
 
-**Last Updated**: 2025-12-10  
+**Last Updated**: 2025-12-10
 **Version**: 0.5.0

@@ -165,7 +165,7 @@ Status: in_progress
 
 {Specific, detailed instructions for the subagent}
 
-**IMPORTANT**: 
+**IMPORTANT**:
 1. Load ALL context files listed in "Relevant Standards" and "Repository-Specific Context" sections BEFORE starting work
 2. Follow ALL requirements from the loaded context
 3. Apply naming conventions and file structure requirements
@@ -223,9 +223,9 @@ Create a context bundle when:
       subagent_type="{SubagentName}",
       description="Brief description",
      prompt="Load context from .tmp/context/{session-id}/bundle.md before starting.
-             
+
              {Specific task instructions}
-             
+
              Follow all standards and requirements in the context bundle."
    )
    ```
@@ -253,5 +253,5 @@ See `.opencode/context/openagents-repo/examples/context-bundle-example.md` for a
 
 ---
 
-**Last Updated**: 2025-01-21  
+**Last Updated**: 2025-01-21
 **Version**: 1.0.0

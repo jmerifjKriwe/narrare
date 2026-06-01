@@ -91,7 +91,7 @@ task(
           Use cached context if available at .cache/"
 )
 
-// Task 2: Write component B (parallel)  
+// Task 2: Write component B (parallel)
 task(
   subagent_type="CoderAgent",
   description="Write component B",

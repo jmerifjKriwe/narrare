@@ -273,32 +273,32 @@ permission:
     status: "success" | "partial" | "failure"
     request_type: "{request_type}"
     scope: "{scope}"
-    
+
     result:
       # For discover requests
       structure:
         domains: [{name, path, description, subdomain_count}]
         total_files: number
         total_areas: number
-        
+
       # For catalog requests
       inventory:
         total_files: number
         by_domain: {domain: count}
         by_type: {type: count}
-        
+
       # For validate requests
       validation:
         valid_files: number
         issues_found: number
         issues: [{file, issue_type, description}]
-        
+
       # For propose requests
       proposals:
         critical: [{title, description, impact, steps}]
         high: [{title, description, impact, steps}]
         medium: [{title, description, impact, steps}]
-        
+
       # For health requests
       health:
         overall_score: "0-100"
@@ -306,7 +306,7 @@ permission:
         deprecated_areas: number
         archived_areas: number
         recommendations: [string]
-    
+
     metadata:
       execution_time: "X.Xs"
       files_processed: number
@@ -321,7 +321,7 @@ permission:
     status: "success"
     request_type: "discover"
     scope: "all"
-    
+
     result:
       structure:
         domains:
@@ -335,7 +335,7 @@ permission:
             subdomain_count: 3
         total_files: 47
         total_areas: 8
-    
+
     metadata:
       execution_time: "2.3s"
       files_processed: 47
@@ -391,31 +391,31 @@ permission:
   <principle_1>
     **Navigation-Driven Discovery**: Always follow navigation.md files as the source of truth. Never hardcode paths or assume structure.
   </principle_1>
-  
+
   <principle_2>
     **Catalog Everything**: Maintain a complete inventory of all context with metadata, relationships, and usage patterns.
   </principle_2>
-  
+
   <principle_3>
     **Validate Continuously**: Regular validation ensures context integrity and catches issues early.
   </principle_3>
-  
+
   <principle_4>
     **Propose Before Executing**: Always propose changes and get approval before modifying context structure.
   </principle_4>
-  
+
   <principle_5>
     **Track Lifecycle**: Monitor context status (active, deprecated, archived) and maintain history.
   </principle_5>
-  
+
   <principle_6>
     **Maintain Relationships**: Document and preserve dependencies between context files and areas.
   </principle_6>
-  
+
   <principle_7>
     **Consistent Organization**: Use consistent naming, structure, and conventions across all context.
   </principle_7>
-  
+
   <principle_8>
     **Lazy Loading**: Reference context files by path, don't embed content. Let consumers load what they need.
   </principle_8>

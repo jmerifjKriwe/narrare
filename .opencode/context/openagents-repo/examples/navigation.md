@@ -35,8 +35,8 @@ openagents-repo/examples/
 
 ## By Type
 
-**Hooks** → Hook implementation examples  
-**Skills** → Skill implementation examples  
+**Hooks** → Hook implementation examples
+**Skills** → Skill implementation examples
 **Subagents** → Subagent implementation examples
 
 ---

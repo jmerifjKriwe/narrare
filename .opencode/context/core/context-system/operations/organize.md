@@ -50,19 +50,19 @@ Organizing {category}/ (23 files, flat structure)
 Clear categorization (18 files):
   concepts/ (8):
     ✓ authentication.md → concepts/authentication.md
-  
+
   examples/ (5):
     ✓ jwt-example.md → examples/jwt-example.md
 
 Ambiguous files (5 - need your input):
-  
+
   [?] api-design.md (contains concepts AND steps)
       → [A] Split: concepts/api-design.md + guides/api-design-guide.md
       → [B] Keep as concepts/api-design.md
       → [C] Keep as guides/api-design.md
 
 Conflicts (2):
-  
+
   [!] authentication.md → concepts/auth.md
       Target already exists (120 lines)
       → [J] Merge into existing

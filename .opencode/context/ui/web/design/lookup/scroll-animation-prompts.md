@@ -25,13 +25,13 @@ Use these prompts with nano banana, Runway, Pika, or other AI tools to create im
 ### Product Hero Shot
 
 ```
-Ultra-premium product photography of [PRODUCT NAME] placed on a matte black 
-surface, minimalistic studio photoshoot. Deep black background (#050505) with 
-subtle gradient falloff, soft rim lighting outlining edges, controlled 
-reflections on smooth textures. Cinematic lighting, high contrast, luxury tech 
-aesthetic, sharp focus, shallow depth of field. No clutter, no text, no logos 
-emphasized. Shot with professional DSLR, 85mm lens, f/1.8, ultra-high 
-resolution, photorealistic, Apple-level product shoot, dramatic mood, modern 
+Ultra-premium product photography of [PRODUCT NAME] placed on a matte black
+surface, minimalistic studio photoshoot. Deep black background (#050505) with
+subtle gradient falloff, soft rim lighting outlining edges, controlled
+reflections on smooth textures. Cinematic lighting, high contrast, luxury tech
+aesthetic, sharp focus, shallow depth of field. No clutter, no text, no logos
+emphasized. Shot with professional DSLR, 85mm lens, f/1.8, ultra-high
+resolution, photorealistic, Apple-level product shoot, dramatic mood, modern
 and elegant.
 ```
 
@@ -57,19 +57,19 @@ and elegant.
 ### Exploded Technical View
 
 ```
-Exploded technical diagram view of [PRODUCT NAME], every component precisely 
-separated and floating in perfect alignment, suspended in mid-air against deep 
-black studio background (#050505). Visible internal structure including 
-[INTERNAL COMPONENTS], all parts evenly spaced showing assembly order. 
-Hyper-realistic product visualization, ultra-sharp focus, studio rim lighting 
-identical to hero shot, soft highlights tracing each component, controlled 
-reflections on matte and metal surfaces. Cinematic lighting, high contrast, 
-luxury engineering aesthetic, no labels, no annotations, no text. 
-Photorealistic, ultra-high resolution, Apple-style industrial design render, 
+Exploded technical diagram view of [PRODUCT NAME], every component precisely
+separated and floating in perfect alignment, suspended in mid-air against deep
+black studio background (#050505). Visible internal structure including
+[INTERNAL COMPONENTS], all parts evenly spaced showing assembly order.
+Hyper-realistic product visualization, ultra-sharp focus, studio rim lighting
+identical to hero shot, soft highlights tracing each component, controlled
+reflections on matte and metal surfaces. Cinematic lighting, high contrast,
+luxury engineering aesthetic, no labels, no annotations, no text.
+Photorealistic, ultra-high resolution, Apple-style industrial design render,
 dramatic and clean.
 ```
 
-**Variables**: 
+**Variables**:
 - [PRODUCT NAME]: Your product
 - [INTERNAL COMPONENTS]: Specific parts to show
 
@@ -92,9 +92,9 @@ dramatic and clean.
 ### For Runway/Pika
 
 ```
-Smoothly transition from fully assembled [PRODUCT] to exploded view. 
-Components separate slowly and precisely, maintaining perfect alignment. 
-Camera stays locked, product rotates slightly clockwise. Cinematic motion, 
+Smoothly transition from fully assembled [PRODUCT] to exploded view.
+Components separate slowly and precisely, maintaining perfect alignment.
+Camera stays locked, product rotates slightly clockwise. Cinematic motion,
 professional product animation, 4-5 seconds duration, 30fps.
 ```
 

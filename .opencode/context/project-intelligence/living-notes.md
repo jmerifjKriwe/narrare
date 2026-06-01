@@ -18,12 +18,12 @@
 
 ### Technical Debt Details
 
-**[Debt Item]**  
-*Priority*: [High/Med/Low]  
-*Impact*: [What happens if not addressed]  
-*Root Cause*: [Why this debt exists]  
-*Proposed Solution*: [How to fix it]  
-*Effort*: [Small/Medium/Large]  
+**[Debt Item]**
+*Priority*: [High/Med/Low]
+*Impact*: [What happens if not addressed]
+*Root Cause*: [Why this debt exists]
+*Proposed Solution*: [How to fix it]
+*Effort*: [Small/Medium/Large]
 *Status*: [Acknowledged | Scheduled | In Progress | Deferred]
 
 ## Open Questions
@@ -34,11 +34,11 @@
 
 ### Open Question Details
 
-**[Question]**  
-*Context*: [Why this question matters]  
-*Stakeholders*: [Who needs to be involved]  
-*Options*: [What are the possibilities]  
-*Timeline*: [When does this need resolution]  
+**[Question]**
+*Context*: [Why this question matters]
+*Stakeholders*: [Who needs to be involved]
+*Options*: [What are the possibilities]
+*Timeline*: [When does this need resolution]
 *Status*: [Open/In Progress/Blocked]
 
 ## Known Issues
@@ -49,13 +49,13 @@
 
 ### Issue Details
 
-**[Issue Title]**  
-*Severity*: [Critical/High/Med/Low]  
-*Impact*: [Who/what is affected]  
-*Reproduction*: [Steps to reproduce if applicable]  
-*Workaround*: [Temporary solution if exists]  
-*Root Cause*: [If known]  
-*Fix Plan*: [How to properly fix]  
+**[Issue Title]**
+*Severity*: [Critical/High/Med/Low]
+*Impact*: [Who/what is affected]
+*Reproduction*: [Steps to reproduce if applicable]
+*Workaround*: [Temporary solution if exists]
+*Root Cause*: [If known]
+*Fix Plan*: [How to properly fix]
 *Status*: [Known/In Progress/Fixed in vX.X]
 
 ## Insights & Lessons Learned

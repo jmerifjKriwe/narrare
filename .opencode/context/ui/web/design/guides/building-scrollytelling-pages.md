@@ -116,12 +116,12 @@ useEffect(() => {
         img.onload = () => resolve(img)
       })
     })
-    
+
     const loaded = await Promise.all(promises)
     setImages(loaded)
     setLoading(false)
   }
-  
+
   loadImages()
 }, [])
 ```
@@ -135,18 +135,18 @@ Draw current frame to canvas on every scroll update:
 ```tsx
 useEffect(() => {
   if (!canvasRef.current || !images.length) return
-  
+
   const canvas = canvasRef.current
   const ctx = canvas.getContext('2d')
   const img = images[Math.round(currentFrame)]
-  
+
   // Scale canvas to window
   canvas.width = window.innerWidth
   canvas.height = window.innerHeight
-  
+
   // Draw centered
-  ctx.drawImage(img, 
-    (canvas.width - img.width) / 2, 
+  ctx.drawImage(img,
+    (canvas.width - img.width) / 2,
     (canvas.height - img.height) / 2
   )
 }, [currentFrame, images])
@@ -161,7 +161,7 @@ Fade text in/out at specific scroll positions:
 ```tsx
 <motion.div
   style={{
-    opacity: useTransform(scrollYProgress, 
+    opacity: useTransform(scrollYProgress,
       [0.25, 0.30, 0.35], // Fade in 25-30%, out 35%
       [0, 1, 0]
     )
@@ -189,7 +189,7 @@ Fade text in/out at specific scroll positions:
 
 ```tsx
 // Add GPU hint
-<canvas 
+<canvas
   ref={canvasRef}
   className="sticky top-0 h-screen w-full"
   style={{ willChange: 'transform' }}

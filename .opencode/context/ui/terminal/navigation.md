@@ -80,7 +80,7 @@ This subcategory will contain patterns and best practices for building terminal 
 
 ## Status
 
-⏳ **Placeholder** - This subcategory is planned but not yet populated. 
+⏳ **Placeholder** - This subcategory is planned but not yet populated.
 
 To contribute content here, follow the MVI principles:
 1. Extract core concepts (1-3 sentences)

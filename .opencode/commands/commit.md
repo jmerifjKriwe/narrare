@@ -17,23 +17,23 @@ When the user runs this command, execute the following workflow:
    - Execute `pnpm lint` and report any issues
    - Execute `pnpm build` and ensure it succeeds
    - If either fails, ask user if they want to proceed anyway or fix issues first
-   
+
 3. **Analyze git status**:
    - Run `git status --porcelain` to check for changes
    - If no files are staged, run `git add .` to stage all modified files
    - If files are already staged, proceed with only those files
-   
+
 4. **Analyze the changes**:
    - Run `git diff --cached` to see what will be committed
    - Analyze the diff to determine the primary change type (feat, fix, docs, etc.)
    - Identify the main scope and purpose of the changes
-   
+
 5. **Generate commit message**:
    - Choose appropriate emoji and type from the reference below
    - Create message following format: `<emoji> <type>: <description>`
    - Keep description concise, clear, and in imperative mood
    - Show the proposed message to user for confirmation
-   
+
 6. **Execute the commit**:
    - Run `git commit -m "<generated message>"`
    - Display the commit hash and confirm success
@@ -144,7 +144,7 @@ Use these as examples when generating commit messages:
 
 Example commit sequence:
 - ✨ feat: add user authentication system
-- 🐛 fix: resolve memory leak in rendering process  
+- 🐛 fix: resolve memory leak in rendering process
 - 📝 docs: update API documentation with new endpoints
 - ♻️ refactor: simplify error handling logic in parser
 - 🚨 fix: resolve linter warnings in component files
@@ -152,7 +152,7 @@ Example commit sequence:
 
 ## Agent Behavior Notes
 
-- **Error handling**: If validation fails, give user option to proceed or fix issues first  
+- **Error handling**: If validation fails, give user option to proceed or fix issues first
 - **Auto-staging**: If no files are staged, automatically stage all changes with `git add .`
 - **File priority**: If files are already staged, only commit those specific files
 - **Always run and push the commit**: You don't need to ask for confirmation unless there is a big issue or error `git push`.

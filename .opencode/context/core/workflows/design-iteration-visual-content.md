@@ -18,15 +18,15 @@ task(
   description="Generate/edit visual content",
   prompt="Context to load:
           - .opencode/context/core/visual-development.md
-          
+
           Task: [Specific visual requirement]
-          
+
           Requirements:
           - [Visual style/aesthetic]
           - [Dimensions/format]
           - [Key elements to include]
           - [Color scheme/branding]
-          
+
           Output: [Expected deliverable]"
 )
 ```
@@ -44,7 +44,7 @@ task(
           - Database connections
           - Message queue (RabbitMQ)
           - External services (Stripe, SendGrid)
-          
+
           Style: Clean, professional, modern
           Format: PNG, 1920x1080"
 )
@@ -61,7 +61,7 @@ task(
           - 4 metric cards (Users, Revenue, Conversion, Retention)
           - Line chart showing trends
           - Data table below
-          
+
           Style: Modern, dark theme, professional
           Format: PNG, 1440x900"
 )
@@ -78,7 +78,7 @@ task(
           - Subtext: 'Work together, ship faster'
           - Brand colors: #6366f1 (primary), #1e293b (dark)
           - Include abstract collaboration visual
-          
+
           Format: PNG, 1200x630 (Twitter/LinkedIn)"
 )
 ```

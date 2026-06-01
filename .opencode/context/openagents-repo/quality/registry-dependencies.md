@@ -11,7 +11,7 @@ dependencies: []
 <!-- Context: quality/registry-dependencies | Priority: high | Version: 1.0 | Updated: 2026-01-06 -->
 # Registry Dependency Validation
 
-**Purpose**: Maintain registry quality through dependency validation and consistency checks  
+**Purpose**: Maintain registry quality through dependency validation and consistency checks
 **Audience**: Contributors, maintainers, CI/CD processes
 
 ---
@@ -213,7 +213,7 @@ Before committing changes to agents, commands, or context files:
 Uses but not declared:
 - context:core/standards/code (referenced 3 times)
   - Line 64: "Code tasks → .opencode/context/core/standards/code-quality.md"
-  
+
 Recommended fix:
 dependencies:
   - context:core/standards/code
@@ -520,10 +520,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Validate registry
         run: ./scripts/registry/validate-registry.sh
-      
+
       - name: Check context dependencies
         run: /check-context-deps
 ```

@@ -379,8 +379,8 @@ body {
 <!-- Input field -->
 <div class="space-y-2">
   <label class="block text-sm font-medium">Email</label>
-  <input 
-    type="email" 
+  <input
+    type="email"
     class="w-full px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
     placeholder="you@example.com"
   >
@@ -389,7 +389,7 @@ body {
 <!-- Textarea -->
 <div class="space-y-2">
   <label class="block text-sm font-medium">Message</label>
-  <textarea 
+  <textarea
     class="w-full px-4 py-2 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none"
     rows="4"
     placeholder="Your message..."
@@ -466,8 +466,8 @@ button:focus-visible {
 
 ```html
 <!-- Responsive images -->
-<img 
-  src="image-800.jpg" 
+<img
+  src="image-800.jpg"
   srcset="image-400.jpg 400w, image-800.jpg 800w, image-1200.jpg 1200w"
   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
   alt="Description"

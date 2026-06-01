@@ -2,7 +2,7 @@
 
 # Core Concept: Registry System
 
-**Purpose**: Understanding how component tracking and distribution works  
+**Purpose**: Understanding how component tracking and distribution works
 **Priority**: CRITICAL - Load this before working with registry
 
 ---
@@ -102,11 +102,11 @@ The auto-detect system scans `.opencode/` and automatically updates the registry
 
 ### What Gets Detected
 
-✅ **Agents** - `.opencode/agent/{category}/*.md`  
-✅ **Subagents** - `.opencode/agent/subagents/**/*.md`  
-✅ **Commands** - `.opencode/command/**/*.md`  
-✅ **Tools** - `.opencode/tool/**/index.ts`  
-✅ **Contexts** - `.opencode/context/**/*.md`  
+✅ **Agents** - `.opencode/agent/{category}/*.md`
+✅ **Subagents** - `.opencode/agent/subagents/**/*.md`
+✅ **Commands** - `.opencode/command/**/*.md`
+✅ **Tools** - `.opencode/tool/**/index.ts`
+✅ **Contexts** - `.opencode/context/**/*.md`
 
 ### Frontmatter Requirements
 
@@ -137,12 +137,12 @@ tags: ["tag1", "tag2"]     # Optional
 
 ### What Gets Validated
 
-✅ **Schema** - Correct JSON structure  
-✅ **Paths** - All paths exist  
-✅ **IDs** - Unique IDs  
-✅ **Categories** - Valid categories  
-✅ **Dependencies** - Dependencies exist  
-✅ **Versions** - Version consistency  
+✅ **Schema** - Correct JSON structure
+✅ **Paths** - All paths exist
+✅ **IDs** - Unique IDs
+✅ **Categories** - Valid categories
+✅ **Dependencies** - Dependencies exist
+✅ **Versions** - Version consistency
 
 ### Validation Errors
 
@@ -348,7 +348,7 @@ When installing components that already exist:
 
 ```bash
 File exists: .opencode/agent/core/openagent.md
-[S]kip, [O]verwrite, [B]ackup, [A]ll skip, [F]orce all? 
+[S]kip, [O]verwrite, [B]ackup, [A]ll skip, [F]orce all?
 ```
 
 ### Non-Interactive Mode
@@ -430,23 +430,23 @@ jq '.version = "0.X.Y"' registry.json > tmp && mv tmp registry.json
 
 ### Adding Components
 
-✅ **Add frontmatter** - Required for auto-detect  
-✅ **Run auto-detect** - Don't manually edit registry  
-✅ **Validate** - Always validate after changes  
-✅ **Test locally** - Use local registry for testing  
+✅ **Add frontmatter** - Required for auto-detect
+✅ **Run auto-detect** - Don't manually edit registry
+✅ **Validate** - Always validate after changes
+✅ **Test locally** - Use local registry for testing
 
 ### Maintaining Registry
 
-✅ **Auto-detect first** - Let scripts handle updates  
-✅ **Validate often** - Catch issues early  
-✅ **Version consistency** - Keep versions in sync  
-✅ **CI validation** - Automate validation in CI  
+✅ **Auto-detect first** - Let scripts handle updates
+✅ **Validate often** - Catch issues early
+✅ **Version consistency** - Keep versions in sync
+✅ **CI validation** - Automate validation in CI
 
 ### Dependencies
 
-✅ **Explicit dependencies** - List all dependencies  
-✅ **Test resolution** - Verify dependencies resolve  
-✅ **Avoid cycles** - No circular dependencies  
+✅ **Explicit dependencies** - List all dependencies
+✅ **Test resolution** - Verify dependencies resolve
+✅ **Avoid cycles** - No circular dependencies
 
 ---
 
@@ -454,27 +454,27 @@ jq '.version = "0.X.Y"' registry.json > tmp && mv tmp registry.json
 
 ### Path Not Found
 
-**Problem**: Registry references non-existent path  
+**Problem**: Registry references non-existent path
 **Solution**: Run auto-detect or fix path manually
 
 ### Duplicate ID
 
-**Problem**: Two components with same ID  
+**Problem**: Two components with same ID
 **Solution**: Rename one component
 
 ### Invalid Category
 
-**Problem**: Agent has invalid category  
+**Problem**: Agent has invalid category
 **Solution**: Use valid category (core, development, content, data, product, learning)
 
 ### Missing Dependency
 
-**Problem**: Dependency doesn't exist in registry  
+**Problem**: Dependency doesn't exist in registry
 **Solution**: Add dependency or remove reference
 
 ### Version Mismatch
 
-**Problem**: VERSION, package.json, registry.json don't match  
+**Problem**: VERSION, package.json, registry.json don't match
 **Solution**: Update all version files to match
 
 ---
@@ -487,5 +487,5 @@ jq '.version = "0.X.Y"' registry.json > tmp && mv tmp registry.json
 
 ---
 
-**Last Updated**: 2025-01-28  
+**Last Updated**: 2025-01-28
 **Version**: 0.5.2

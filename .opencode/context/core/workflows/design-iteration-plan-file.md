@@ -5,13 +5,13 @@
 
 **Location**: `.tmp/design-plans/{project-name}-{feature-name}.md`
 
-**Purpose**: 
+**Purpose**:
 - Preserve design decisions across stages
 - Allow user to review and edit the plan
 - Maintain context for subagent calls
 - Track design evolution and iterations
 
-**When to Create**: 
+**When to Create**:
 - BEFORE Stage 1 (Layout Design)
 - After understanding user requirements
 - Before any design work begins

@@ -454,7 +454,7 @@ React hooks allow you to use state and lifecycle features in functional componen
 1. useState - For managing component state
    - Syntax: const [state, setState] = useState(initialValue)
    - Example: const [count, setCount] = useState(0)
-   
+
 2. useEffect - For side effects
    [... continues with full documentation]
 ```

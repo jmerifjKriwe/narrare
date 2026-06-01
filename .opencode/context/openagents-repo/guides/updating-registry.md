@@ -2,7 +2,7 @@
 
 # Guide: Updating Registry
 
-**Prerequisites**: Load `core-concepts/registry.md` first  
+**Prerequisites**: Load `core-concepts/registry.md` first
 **Purpose**: How to update the component registry
 
 ---
@@ -214,11 +214,11 @@ Only edit `registry.json` manually if auto-detect doesn't work.
 
 ### What Gets Validated
 
-✅ **Schema** - Correct JSON structure  
-✅ **Paths** - All paths exist  
-✅ **IDs** - Unique IDs  
-✅ **Categories** - Valid categories  
-✅ **Dependencies** - Dependencies exist  
+✅ **Schema** - Correct JSON structure
+✅ **Paths** - All paths exist
+✅ **IDs** - Unique IDs
+✅ **Categories** - Valid categories
+✅ **Dependencies** - Dependencies exist
 
 ### Validation Errors
 
@@ -362,15 +362,15 @@ Registry can be auto-updated after merge:
 
 ## Best Practices
 
-✅ **Use frontmatter** - Add tags/dependencies to component files, not registry  
-✅ **Use auto-detect** - Don't manually edit registry  
-✅ **Validate often** - Catch issues early  
-✅ **Test locally** - Use local registry for testing  
-✅ **Dry run first** - See changes before applying  
-✅ **Version consistency** - Keep versions in sync  
-✅ **Multi-line arrays** - More readable than inline format  
-✅ **Meaningful tags** - Use descriptive, searchable tags  
-✅ **Declare dependencies** - Helps with component discovery and validation  
+✅ **Use frontmatter** - Add tags/dependencies to component files, not registry
+✅ **Use auto-detect** - Don't manually edit registry
+✅ **Validate often** - Catch issues early
+✅ **Test locally** - Use local registry for testing
+✅ **Dry run first** - See changes before applying
+✅ **Version consistency** - Keep versions in sync
+✅ **Multi-line arrays** - More readable than inline format
+✅ **Meaningful tags** - Use descriptive, searchable tags
+✅ **Declare dependencies** - Helps with component discovery and validation
 
 ---
 
@@ -401,7 +401,7 @@ Registry can be auto-updated after merge:
    tags:
      - tag1
      - tag2
-   
+
    # ❌ Invalid
    tags: tag1, tag2  # Missing brackets
    ```
@@ -410,7 +410,7 @@ Registry can be auto-updated after merge:
    ```yaml
    # ✅ Valid
    dependencies: [subagent:coder-agent, context:core/standards/code]
-   
+
    # ❌ Invalid
    dependencies: [coder-agent]  # Missing type prefix
    ```
@@ -479,5 +479,5 @@ Currently, aliases must be added **manually** to `registry.json` (auto-detect do
 
 ---
 
-**Last Updated**: 2025-01-06  
+**Last Updated**: 2025-01-06
 **Version**: 2.0.0

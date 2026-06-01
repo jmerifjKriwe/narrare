@@ -1,7 +1,7 @@
 <!-- Context: openagents-repo/core-concepts/agent-metadata | Priority: critical | Version: 1.0 | Updated: 2026-01-31 -->
 # Core Concept: Agent Metadata System
 
-**Purpose**: Understanding the centralized metadata system for OpenAgents Control  
+**Purpose**: Understanding the centralized metadata system for OpenAgents Control
 **Priority**: CRITICAL - Load this before working with agent metadata
 
 ---
@@ -260,7 +260,7 @@ if [ -f "$metadata_file" ] && command -v jq &> /dev/null; then
     # Try to find metadata for this agent ID
     local metadata_entry
     metadata_entry=$(jq -r ".agents[\"$id\"] // empty" "$metadata_file" 2>/dev/null)
-    
+
     if [ -n "$metadata_entry" ] && [ "$metadata_entry" != "null" ]; then
         # Merge name, tags, dependencies from metadata
         # ...
@@ -555,5 +555,5 @@ jq 'del(.components.agents[] | select(.id == "agent-id"))' registry.json > tmp.j
 
 ---
 
-**Last Updated**: 2026-01-31  
+**Last Updated**: 2026-01-31
 **Version**: 1.0.0

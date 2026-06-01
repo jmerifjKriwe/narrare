@@ -142,14 +142,14 @@ describe('Component', () => {
   it('should handle valid input', () => {
     // Arrange
     const input = validData;
-    
+
     // Act
     const result = component(input);
-    
+
     // Assert
     expect(result).toBe(expected);
   });
-  
+
   it('should handle invalid input', () => {
     // Test error cases
   });

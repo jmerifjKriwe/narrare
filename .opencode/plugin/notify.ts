@@ -6,7 +6,7 @@ const ENABLED = false
 export const Notify: Plugin = async ({ $ }) => {
   // Plugin disabled - set ENABLED = true to activate
   if (!ENABLED) return {}
-  
+
   return {
     async event(input) {
       if (input.event.type === "session.idle") {

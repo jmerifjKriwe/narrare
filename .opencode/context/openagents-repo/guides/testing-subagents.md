@@ -104,7 +104,7 @@ npm run eval:sdk -- --subagent=ContextScout --pattern="standalone/01-simple-disc
 ⚡ Standalone Test Mode
    Subagent: contextscout
    Mode: Forced to 'primary' for direct testing
-   
+
 Testing agent: contextscout  # ← Should show subagent name
 ```
 
@@ -176,7 +176,7 @@ cat evals/results/latest.json | jq '.tests[0].violations'
 }
 ```
 
-**Cause**: Agent prompt doesn't emphasize tool usage  
+**Cause**: Agent prompt doesn't emphasize tool usage
 **Fix**: Add critical rules section emphasizing tools (see `examples/subagent-prompt-structure.md`)
 
 ### Issue 2: Wrong Agent Running
@@ -184,7 +184,7 @@ cat evals/results/latest.json | jq '.tests[0].violations'
 Agent: OpenAgent
 ```
 
-**Cause**: Used `--agent` instead of `--subagent`  
+**Cause**: Used `--agent` instead of `--subagent`
 **Fix**: Use `--subagent=ContextScout`
 
 ### Issue 3: Tool Permission Denied
@@ -195,7 +195,7 @@ Agent: OpenAgent
 }
 ```
 
-**Cause**: Agent tried to use restricted tool  
+**Cause**: Agent tried to use restricted tool
 **Fix**: See `errors/tool-permission-errors.md`
 
 ---
@@ -254,10 +254,10 @@ prompts:
 prompts:
   - text: |
       Use the glob tool to find all markdown files in .opencode/context/core/
-      
+
       You MUST use the glob tool like this:
       glob(pattern="*.md", path=".opencode/context/core")
-      
+
       Then list the files you found.
 ```
 

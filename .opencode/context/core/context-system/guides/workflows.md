@@ -53,12 +53,12 @@ Select items to extract:
     ✓ [B] useEffect
     ✓ [C] useContext
     ... [D-L] (9 more)
-  
+
   Errors:
     ✓ [M] Hooks called conditionally
     ✓ [N] Hooks in loops
     ... [O-T] (6 more)
-  
+
   Guides:
     ✓ [U] Setting up custom hooks
     ✓ [V] Debugging hook issues
@@ -77,10 +77,10 @@ Agent: "Would create in development/:
   concepts/use-effect.md (52 lines)
   concepts/use-context.md (38 lines)
   ... (9 more concept files)
-  
+
   errors/react-hooks-errors.md (124 lines)
     - 8 errors grouped in one file
-  
+
   guides/custom-hooks.md (87 lines)
   guides/debugging-hooks.md (65 lines)
   guides/testing-hooks.md (72 lines)
@@ -133,18 +133,18 @@ Clear categorization (18 files):
     ✓ state-management.md → concepts/state-management.md
     ✓ caching.md → concepts/caching.md
     ... (5 more)
-  
+
   examples/ (5 files):
     ✓ jwt-example.md → examples/jwt-example.md
     ✓ hooks-example.md → examples/hooks-example.md
     ... (3 more)
-  
+
   guides/ (5 files):
     ✓ setting-up-auth.md → guides/setting-up-auth.md
     ... (4 more)
 
 Ambiguous files (5 - need your input):
-  
+
   [?] api-design.md (contains concepts AND step-by-step guide)
       Content: Explains REST principles (concept) + how to design endpoints (guide)
       → [A] Split into:
@@ -152,7 +152,7 @@ Ambiguous files (5 - need your input):
             guides/api-design-guide.md (how to design)
       → [B] Keep as concepts/api-design.md (primary: concepts)
       → [C] Keep as guides/api-design.md (primary: guide)
-  
+
   [?] error-handling.md (contains guide AND error examples)
       Content: How to handle errors (guide) + common error patterns (errors)
       → [D] Split into:
@@ -160,20 +160,20 @@ Ambiguous files (5 - need your input):
             errors/common-errors.md (error patterns)
       → [E] Keep as guides/error-handling.md
       → [F] Keep as errors/error-handling.md
-  
+
   [?] testing-patterns.md (contains concepts AND examples)
       → [G] Split into concepts/ + examples/
       → [H] Keep as concepts/testing-patterns.md
       → [I] Keep as examples/testing-patterns.md
 
 Conflicts (2):
-  
+
   [!] authentication.md → concepts/auth.md
       Target concepts/auth.md already exists (120 lines)
       → [J] Merge authentication.md into existing auth.md
       → [K] Rename to concepts/authentication-v2.md
       → [L] Skip (keep flat)
-  
+
   [!] jwt-example.md → examples/jwt.md
       Target examples/jwt.md already exists (65 lines)
       → [M] Merge jwt-example.md into existing jwt.md
@@ -205,11 +205,11 @@ SPLIT files (3):
   api-design.md →
     concepts/api-design.md (concepts section)
     guides/api-design-guide.md (guide section)
-  
+
   error-handling.md →
     guides/error-handling.md (guide section)
     errors/common-errors.md (error examples)
-  
+
   testing-patterns.md →
     concepts/testing-patterns.md (concepts)
     examples/testing-examples.md (examples)
@@ -301,7 +301,7 @@ Line 15:
 
 Line 42:
   + ## Metadata API (New in v15)
-  + 
+  +
   + Next.js 15 introduces new metadata API for SEO optimization.
   + Replaces Head component with metadata exports.
 
@@ -332,16 +332,16 @@ Line 45:
 
 Line 67:
   + ## Migration: Next.js 14 → 15
-  + 
+  +
   + **Breaking Changes**:
   + - App router is now default
   + - Pages router requires explicit opt-in
-  + 
+  +
   + **Migration Steps**:
   + 1. Update to Next.js 15: `npm install next@15`
   + 2. For pages router: Add `pages: true` to next.config.js
   + 3. Update metadata: Replace Head with metadata exports
-  + 
+  +
   + **Reference**: https://nextjs.org/docs/15/upgrade-guide
 
 ━━━ lookup/nextjs-commands.md ━━━
@@ -419,10 +419,10 @@ Found 2 related errors:
 Agent: "Options:
   [A] Add as new error to react-errors.md
       (Specific case: 'map' on undefined array)
-  
+
   [B] Update existing 'Cannot read property X' error
       (Add 'map' as common example)
-  
+
   [C] Skip (already covered sufficiently)
 
 Which framework/category?

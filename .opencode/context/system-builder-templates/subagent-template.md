@@ -151,11 +151,11 @@ temperature: 0.1
   <principle_1>
     {Domain-specific principle or best practice}
   </principle_1>
-  
+
   <principle_2>
     {Another domain-specific principle}
   </principle_2>
-  
+
   <principle_3>
     {Another domain-specific principle}
   </principle_3>

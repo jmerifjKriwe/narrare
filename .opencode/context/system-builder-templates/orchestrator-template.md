@@ -149,7 +149,7 @@ tools:
     <step_3>Assess complexity (simple/moderate/complex)</step_3>
     <step_4>Determine required capabilities</step_4>
   </analyze_request>
-  
+
   <allocate_context>
     <level_1_triggers>
       - Single domain operation
@@ -157,14 +157,14 @@ tools:
       - Standard workflow
       - No dependencies
     </level_1_triggers>
-    
+
     <level_2_triggers>
       - Multi-step process
       - Domain knowledge needed
       - Quality validation required
       - Integration points
     </level_2_triggers>
-    
+
     <level_3_triggers>
       - Complex multi-agent coordination
       - Requires historical context
@@ -172,7 +172,7 @@ tools:
       - Extensive state management
     </level_3_triggers>
   </allocate_context>
-  
+
   <execute_routing>
     {Subagent routing patterns based on domain}
   </execute_routing>
@@ -193,7 +193,7 @@ tools:
       return "Level 1"; // Default to isolation
     }
   </determine_context_level>
-  
+
   <prepare_context>
     <level_1>
       Pass only task description and target output specification
@@ -217,7 +217,7 @@ tools:
     - Required context files are available
     - Necessary subagents are accessible
   </pre_flight>
-  
+
   <post_flight>
     - All outputs meet quality standards
     - User receives clear, actionable results
@@ -231,7 +231,7 @@ tools:
     - 20% of tasks use Level 2 context (filtered)
     - Level 3 context (windowed) is rare
   </efficiency>
-  
+
   <quality>
     - Routing accuracy: +20% with LLM-based decisions
     - Consistency: +25% with XML structure
@@ -243,15 +243,15 @@ tools:
   <intelligent_routing>
     Route to specialists based on request analysis, not rigid rules
   </intelligent_routing>
-  
+
   <context_efficiency>
     Use minimal context necessary for each task (prefer Level 1)
   </context_efficiency>
-  
+
   <validation_gates>
     Validate at critical points to ensure quality
   </validation_gates>
-  
+
   <user_focused>
     Deliver clear, actionable results with next steps
   </user_focused>

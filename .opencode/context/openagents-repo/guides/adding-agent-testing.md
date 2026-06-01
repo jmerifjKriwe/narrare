@@ -2,7 +2,7 @@
 
 # Guide: Adding Agent Tests
 
-**Prerequisites**: Load `adding-agent-basics.md` first  
+**Prerequisites**: Load `adding-agent-basics.md` first
 **Purpose**: Additional test patterns for agents
 
 ---

@@ -19,23 +19,23 @@ Transform verbose explanations → core concepts following MVI principle.
 ## 5 Compression Techniques
 
 ### 1. Extract Core Concept
-**From**: Paragraphs → **To**: 1-3 sentences  
+**From**: Paragraphs → **To**: 1-3 sentences
 **Rule**: If you can't explain it in 3 sentences, simplify further.
 
 ### 2. Bulletize Key Points
-**From**: Long paragraphs → **To**: 3-5 bullet points  
+**From**: Long paragraphs → **To**: 3-5 bullet points
 **Rule**: Each bullet = one key fact. No sub-bullets.
 
 ### 3. Minimize Examples
-**From**: Full implementations → **To**: Smallest working example (<10 lines)  
+**From**: Full implementations → **To**: Smallest working example (<10 lines)
 **Rule**: Show the simplest case. Link to full examples.
 
 ### 4. Replace Repetition with References
-**From**: Same info repeated → **To**: Define once, reference with links  
+**From**: Same info repeated → **To**: Define once, reference with links
 **Rule**: Say it once in concepts/, reference everywhere else.
 
 ### 5. Convert Prose to Tables
-**From**: Paragraphs listing things → **To**: Scannable tables  
+**From**: Paragraphs listing things → **To**: Scannable tables
 **Rule**: If listing >3 items, use a table or bullets.
 
 ---

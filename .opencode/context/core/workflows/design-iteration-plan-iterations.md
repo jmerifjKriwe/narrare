@@ -17,7 +17,7 @@
 ```
 User: "I've updated the plan file - changed the color scheme to dark mode"
 
-Agent: 
+Agent:
 ✅ Read updated plan: .tmp/design-plans/saas-landing-page.md
 
 Changes detected:
@@ -107,14 +107,14 @@ task(
   subagent_type="OpenFrontendSpecialist",
   description="Implement Stage 4",
   prompt="Load design plan from .tmp/design-plans/saas-landing-page.md
-  
+
   Read the plan file for:
   - All approved decisions from Stages 1-3
   - User requirements and constraints
   - Design evolution and iterations
-  
+
   Implement Stage 4 (Implementation) following all approved decisions.
-  
+
   Update the plan file with:
   - Output file paths
   - Implementation status

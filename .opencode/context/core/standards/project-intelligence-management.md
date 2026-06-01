@@ -102,13 +102,13 @@ project-intelligence/
 2. Create `navigation.md` inside:
    ```html
    <!-- Context: project-intelligence/{name}/nav | Priority: medium | Version: 1.0 | Updated: {YYYY-MM-DD} -->
-   
+
    # {Name} Navigation
-   
+
    > Quick overview
-   
+
    ## Files
-   
+
    | File | Purpose |
    |------|---------|
    | `file-1.md` | [Desc] |

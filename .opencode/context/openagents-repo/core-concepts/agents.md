@@ -1,6 +1,6 @@
 # Core Concept: Agents
 
-**Purpose**: Understanding how agents work in OpenAgents Control  
+**Purpose**: Understanding how agents work in OpenAgents Control
 **Priority**: CRITICAL - Load this before working with agents
 
 ---
@@ -291,11 +291,11 @@ cd evals/framework && npm run eval:sdk -- --agent={category}/{agent-name}
 
 ### Agent Design
 
-✅ **Single responsibility** - One domain, one agent  
-✅ **Clear instructions** - Explicit workflows and constraints  
-✅ **Context-aware** - Load relevant context files  
-✅ **Testable** - Include eval tests  
-✅ **Well-documented** - Clear description and usage  
+✅ **Single responsibility** - One domain, one agent
+✅ **Clear instructions** - Explicit workflows and constraints
+✅ **Context-aware** - Load relevant context files
+✅ **Testable** - Include eval tests
+✅ **Well-documented** - Clear description and usage
 
 ### Naming Conventions
 
@@ -360,5 +360,5 @@ Before execution:
 
 ---
 
-**Last Updated**: 2026-01-13  
+**Last Updated**: 2026-01-13
 **Version**: 0.5.1

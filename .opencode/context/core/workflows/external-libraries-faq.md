@@ -25,8 +25,8 @@
 
 **DON'T rely on training data - it's outdated.**
 
-Example: You think "I know Next.js, I'll use pages/"  
-Reality: Next.js 15 uses app/  
+Example: You think "I know Next.js, I'll use pages/"
+Reality: Next.js 15 uses app/
 Result: Broken code ❌
 
 **Always fetch current docs, even if you "know" the library.**
@@ -51,7 +51,7 @@ Result: Broken code ❌
 // 1. ContextScout: Project standards
 task(subagent_type="ContextScout", ...)
 
-// 2. ExternalScout: Library docs  
+// 2. ExternalScout: Library docs
 task(subagent_type="ExternalScout", ...)
 
 // 3. Combine: Implement using both
@@ -77,11 +77,11 @@ task(
   subagent_type="ExternalScout",
   description="Fetch [Library] docs for [specific topic]",
   prompt="Fetch current documentation for [Library]: [specific question]
-  
+
   Focus on:
   - [What you need - be specific]
   - [Related features/APIs]
-  
+
   Context: [What you're building]"
 )
 ```

@@ -154,7 +154,7 @@ Create a new data analyst agent for the OpenAgents Control repository. This agen
 
 ## Instructions for Subagent
 
-**IMPORTANT**: 
+**IMPORTANT**:
 1. Load ALL context files listed in "Relevant Standards" and "Repository-Specific Context" sections BEFORE starting work
 2. Follow ALL requirements from the loaded context
 3. Apply naming conventions and file structure requirements

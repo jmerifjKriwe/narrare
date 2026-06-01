@@ -119,7 +119,7 @@ task(subagent_type="ContextScout", description="Find workflow design standards",
     - agent_specifications complete
     - context_files mapped
   </pre_flight>
-  
+
   <post_flight>
     - All workflows have clear stages with validation gates
     - Context dependencies documented per stage

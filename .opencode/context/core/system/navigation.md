@@ -28,7 +28,7 @@ core/system/
 
 ## By Type
 
-**System Guides** → Operational guides for core systems  
+**System Guides** → Operational guides for core systems
 **Paths** → System paths and directory structures
 
 ---

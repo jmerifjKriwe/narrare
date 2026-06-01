@@ -28,7 +28,7 @@ openagents-repo/templates/
 
 ## By Type
 
-**Templates** → Reusable template files  
+**Templates** → Reusable template files
 **Patterns** → Common patterns and structures
 
 ---

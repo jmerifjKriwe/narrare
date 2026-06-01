@@ -2,7 +2,7 @@
 
 # Guide: GitHub Issues and Project Board Workflow
 
-**Prerequisites**: Basic understanding of GitHub issues and projects  
+**Prerequisites**: Basic understanding of GitHub issues and projects
 **Purpose**: Step-by-step workflow for managing issues and project board
 
 ---
@@ -380,26 +380,26 @@ git commit -m "fix: resolve permission error (closes #140)"
 
 ### Issue Creation
 
-✅ **Clear titles** - Descriptive and specific  
-✅ **Detailed descriptions** - Include context and goals  
-✅ **Proper labels** - Use consistent labeling  
-✅ **Success criteria** - Define what "done" means  
-✅ **Link related issues** - Show dependencies  
+✅ **Clear titles** - Descriptive and specific
+✅ **Detailed descriptions** - Include context and goals
+✅ **Proper labels** - Use consistent labeling
+✅ **Success criteria** - Define what "done" means
+✅ **Link related issues** - Show dependencies
 
 ### Issue Management
 
-✅ **Regular triage** - Review and prioritize weekly  
-✅ **Keep updated** - Add comments on progress  
-✅ **Close stale issues** - Clean up old/irrelevant issues  
-✅ **Use milestones** - Group related issues  
-✅ **Assign owners** - Clear responsibility  
+✅ **Regular triage** - Review and prioritize weekly
+✅ **Keep updated** - Add comments on progress
+✅ **Close stale issues** - Clean up old/irrelevant issues
+✅ **Use milestones** - Group related issues
+✅ **Assign owners** - Clear responsibility
 
 ### Project Board
 
-✅ **Update status** - Keep board current  
-✅ **Limit WIP** - Don't overload "In Progress"  
-✅ **Review regularly** - Weekly board review  
-✅ **Archive completed** - Keep board clean  
+✅ **Update status** - Keep board current
+✅ **Limit WIP** - Don't overload "In Progress"
+✅ **Review regularly** - Weekly board review
+✅ **Archive completed** - Keep board clean
 
 ---
 
@@ -469,5 +469,5 @@ Before closing an issue:
 
 ---
 
-**Last Updated**: 2026-01-30  
+**Last Updated**: 2026-01-30
 **Version**: 0.5.2

@@ -2,8 +2,8 @@
 
 # Clean Code Principles
 
-**Category**: development  
-**Purpose**: Core coding standards and best practices for writing clean, maintainable code  
+**Category**: development
+**Purpose**: Core coding standards and best practices for writing clean, maintainable code
 **Used by**: frontend-specialist, devops-specialist, opencoder
 
 ---
@@ -83,7 +83,7 @@ function processOrder(order) {
   if (!order) return;
   if (order.items.length === 0) return;
   if (order.total <= 0) return;
-  
+
   // process order
 }
 ```

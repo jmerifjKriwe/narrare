@@ -397,5 +397,5 @@ REGISTRY_URL="file://$(pwd)/registry.json" ./install.sh --list
 
 ---
 
-**Last Updated**: 2025-12-10  
+**Last Updated**: 2025-12-10
 **Version**: 0.5.0

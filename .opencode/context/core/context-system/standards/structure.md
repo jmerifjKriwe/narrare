@@ -12,7 +12,7 @@
 
 <rule id="function_structure" enforcement="strict">
   ALWAYS organize by function (what info does), not just by topic.
-  
+
   Required folders:
   - concepts/  - Core ideas, definitions, "what is it?"
   - examples/  - Minimal working code
@@ -167,7 +167,7 @@
 
 ## Loading Strategy
 
-**For auth work**: 
+**For auth work**:
 1. Load concepts/auth.md
 2. Load examples/jwt.md
 3. Reference guides/setup-auth.md if needed

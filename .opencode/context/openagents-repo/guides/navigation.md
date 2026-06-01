@@ -31,8 +31,8 @@ openagents-repo/guides/
 
 ## By Type
 
-**Implementation Guides** → How to implement features  
-**Agent Guides** → How to work with agents  
+**Implementation Guides** → How to implement features
+**Agent Guides** → How to work with agents
 **Testing Guides** → How to test implementations
 
 ---

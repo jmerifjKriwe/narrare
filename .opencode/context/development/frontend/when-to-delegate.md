@@ -87,7 +87,7 @@ Present a plan to the user:
 
 **Approach**: Delegate to frontend-specialist subagent
 
-**Why**: 
+**Why**:
 - Requires design system implementation
 - Needs responsive layout across breakpoints
 - Includes animations and micro-interactions
@@ -117,24 +117,24 @@ task(
   - .opencode/context/ui/web/design-systems.md
   - .opencode/context/ui/web/ui-styling-standards.md
   - .opencode/context/ui/web/animation-basics.md
-  
+
   Task: Create a landing page with:
   - Hero section with headline, subheadline, CTA button
   - Features grid (3 columns on desktop, 1 on mobile)
   - Smooth scroll animations
-  
+
   Requirements:
   - Use Tailwind CSS + Flowbite
   - Mobile-first responsive design
   - Animations <400ms
   - Save to design_iterations/landing_1.html
-  
+
   Follow your staged workflow:
   1. Layout (ASCII wireframe)
   2. Theme (CSS theme file)
   3. Animation (micro-interactions)
   4. Implement (HTML file)
-  
+
   Request approval between each stage."
 )
 ```
@@ -235,24 +235,24 @@ You: [Read the CSS, fix the issue directly]
 
 ## Red Flags (Don't Delegate)
 
-❌ **User just wants a quick fix** → Handle directly  
-❌ **Task is backend/logic focused** → Wrong subagent (use coder-agent or handle directly)  
-❌ **Task is a single line change** → Handle directly  
-❌ **Task is content update** → Handle directly  
-❌ **Task is testing/validation** → Wrong subagent (use tester)  
-❌ **Task is code review** → Wrong subagent (use reviewer)  
+❌ **User just wants a quick fix** → Handle directly
+❌ **Task is backend/logic focused** → Wrong subagent (use coder-agent or handle directly)
+❌ **Task is a single line change** → Handle directly
+❌ **Task is content update** → Handle directly
+❌ **Task is testing/validation** → Wrong subagent (use tester)
+❌ **Task is code review** → Wrong subagent (use reviewer)
 
 ---
 
 ## Green Flags (Delegate)
 
-✅ **User wants a new UI design** → Delegate  
-✅ **Task involves design systems** → Delegate  
-✅ **Task requires responsive layouts** → Delegate  
-✅ **Task includes animations** → Delegate  
-✅ **Task needs UI library integration** → Delegate  
-✅ **Task benefits from staged workflow** → Delegate  
-✅ **Task requires design expertise** → Delegate  
+✅ **User wants a new UI design** → Delegate
+✅ **Task involves design systems** → Delegate
+✅ **Task requires responsive layouts** → Delegate
+✅ **Task includes animations** → Delegate
+✅ **Task needs UI library integration** → Delegate
+✅ **Task benefits from staged workflow** → Delegate
+✅ **Task requires design expertise** → Delegate
 
 ---
 
@@ -354,19 +354,19 @@ task(
   - .opencode/context/ui/web/design-systems.md
   - .opencode/context/ui/web/ui-styling-standards.md
   - .opencode/context/ui/web/animation-basics.md
-  
+
   Task: Create a SaaS landing page with:
   - Hero section (headline, subheadline, CTA)
   - Features section (3-column grid)
   - Pricing section (3 tiers)
   - Footer
-  
+
   Requirements:
   - Tailwind CSS + Flowbite
   - Mobile-first responsive
   - Smooth scroll animations
   - Modern design system
-  
+
   Follow staged workflow and request approval between stages."
 )
 ```
@@ -417,16 +417,16 @@ task(
   prompt="Context to load:
   - .opencode/context/ui/web/design-systems.md
   - .opencode/context/ui/web/ui-styling-standards.md
-  
+
   Task: Implement design system using Tailwind CSS and Shadcn/ui
-  
+
   Requirements:
   - Call ExternalScout for current Shadcn docs
   - Set up Tailwind config
   - Integrate Shadcn components
   - Create theme file with OKLCH colors
   - Document component usage
-  
+
   Follow staged workflow and request approval between stages."
 )
 ```

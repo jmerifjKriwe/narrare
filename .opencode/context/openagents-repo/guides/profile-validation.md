@@ -2,7 +2,7 @@
 
 # Guide: Profile Validation
 
-**Purpose**: Ensure installation profiles include all appropriate components  
+**Purpose**: Ensure installation profiles include all appropriate components
 **Priority**: HIGH - Check this when adding new agents or updating registry
 
 ---
@@ -157,13 +157,13 @@ agents=$(cat registry.json | jq -r '.components.agents[].id')
 for agent in $agents; do
   # Get agent category
   category=$(cat registry.json | jq -r ".components.agents[] | select(.id == \"$agent\") | .category")
-  
+
   # Check which profiles include this agent
   in_developer=$(cat registry.json | jq ".profiles.developer.components[] | select(. == \"agent:$agent\")" 2>/dev/null)
   in_business=$(cat registry.json | jq ".profiles.business.components[] | select(. == \"agent:$agent\")" 2>/dev/null)
   in_full=$(cat registry.json | jq ".profiles.full.components[] | select(. == \"agent:$agent\")" 2>/dev/null)
   in_advanced=$(cat registry.json | jq ".profiles.advanced.components[] | select(. == \"agent:$agent\")" 2>/dev/null)
-  
+
   # Validate based on category
   case $category in
     "development")
@@ -232,7 +232,7 @@ Save this as: `scripts/registry/validate-profile-coverage.sh`
    ```bash
    # Test developer profile
    REGISTRY_URL="file://$(pwd)/registry.json" ./install.sh --list
-   
+
    # Verify agent appears in profile
    REGISTRY_URL="file://$(pwd)/registry.json" ./install.sh --list | grep "your-agent"
    ```
@@ -243,7 +243,7 @@ Save this as: `scripts/registry/validate-profile-coverage.sh`
    mkdir -p /tmp/test-install
    cd /tmp/test-install
    REGISTRY_URL="file://$(pwd)/registry.json" bash <(curl -s https://raw.githubusercontent.com/darrenhinde/OpenAgentsControl/main/install.sh) developer
-   
+
    # Check if agent was installed
    ls .opencode/agent/category/your-agent.md
    ```
@@ -298,11 +298,11 @@ Save this as: `scripts/registry/validate-profile-coverage.sh`
 
 ## Best Practices
 
-✅ **Use auto-detect** - Adds to components automatically  
-✅ **Check all profiles** - Verify agent in correct profiles  
-✅ **Test locally** - Install and verify before pushing  
-✅ **Validate** - Run validation script after changes  
-✅ **Document** - Update CHANGELOG with profile changes  
+✅ **Use auto-detect** - Adds to components automatically
+✅ **Check all profiles** - Verify agent in correct profiles
+✅ **Test locally** - Install and verify before pushing
+✅ **Validate** - Run validation script after changes
+✅ **Document** - Update CHANGELOG with profile changes
 
 ---
 
@@ -366,5 +366,5 @@ Add profile validation to CI:
 
 ---
 
-**Last Updated**: 2025-01-28  
+**Last Updated**: 2025-01-28
 **Version**: 0.5.2

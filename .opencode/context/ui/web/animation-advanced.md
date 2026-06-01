@@ -99,7 +99,7 @@ aiMsg: 600ms bounce [Y+15→0, S0.95→1] +200ms
 typing: 1400ms ∞ [Y±8, α0.4→1] stagger+200ms
 status: 300ms ease-out [α0.6→1, S1→1.05→1]
 
-## Interface Transitions  
+## Interface Transitions
 sidebar: 350ms ease-out [X-280→0, α0→1]
 overlay: 300ms [α0→1, blur0→4px]
 input: 200ms [S1→1.01, shadow+ring] focus

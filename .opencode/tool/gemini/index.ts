@@ -60,31 +60,31 @@ function getDateBasedPath(baseDir?: string): string {
 
 async function getUniqueFilename(directory: string, baseName: string, extension: string, isEdit: boolean = false): Promise<string> {
   await ensureDirectoryExists(directory)
-  
+
   if (!isEdit) {
     // For generations, use timestamp if file exists
     const baseFilename = join(directory, `${baseName}${extension}`)
     const fileExists = await Bun.file(baseFilename).exists()
-    
+
     if (!fileExists) {
       return baseFilename
     }
-    
+
     // Add timestamp if file exists
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5) // Remove milliseconds and Z
     return join(directory, `${baseName}_${timestamp}${extension}`)
   }
-  
+
   // For edits, use incremental numbering
   let counter = 1
   let filename: string
-  
+
   do {
     const editSuffix = `_edit_${counter.toString().padStart(3, '0')}`
     filename = join(directory, `${baseName}${editSuffix}${extension}`)
     counter++
   } while (await Bun.file(filename).exists())
-  
+
   return filename
 }
 
@@ -100,7 +100,7 @@ export async function generateImage(prompt: string, config: ImageConfig = {}): P
       baseName = baseName.substring(0, baseName.lastIndexOf('.'))
     }
     const outputPath = await getUniqueFilename(generationsDir, baseName, ".png", false)
-    
+
     return `[TEST MODE] Would generate image: ${outputPath} for prompt: "${prompt.substring(0, 50)}..."`
   }
 
@@ -126,20 +126,20 @@ export async function generateImage(prompt: string, config: ImageConfig = {}): P
     const errorText = await res.text()
     throw new Error(`API error (${res.status}): ${errorText}`)
   }
-  
+
   const json = await res.json()
-  
+
   // Look for image data in the response
   const candidates = json?.candidates
   if (!candidates || candidates.length === 0) {
     throw new Error("No candidates in response")
   }
-  
+
   const parts = candidates[0]?.content?.parts
   if (!parts || parts.length === 0) {
     throw new Error("No parts in response")
   }
-  
+
   let b64 = null
   for (const part of parts) {
     if (part.inlineData?.data) {
@@ -147,7 +147,7 @@ export async function generateImage(prompt: string, config: ImageConfig = {}): P
       break
     }
   }
-  
+
   if (!b64) {
     throw new Error("No image data returned from Nano Banana model")
   }
@@ -155,7 +155,7 @@ export async function generateImage(prompt: string, config: ImageConfig = {}): P
   // Determine output path
   const baseDir = config.outputDir || getDateBasedPath()
   const generationsDir = join(baseDir, "generations")
-  
+
   // Generate filename (remove extension if already present)
   let baseName = config.customName || "generated"
   if (baseName.endsWith('.png') || baseName.endsWith('.jpg') || baseName.endsWith('.jpeg')) {
@@ -163,15 +163,15 @@ export async function generateImage(prompt: string, config: ImageConfig = {}): P
   }
   const extension = ".png"
   const outputPath = await getUniqueFilename(generationsDir, baseName, extension, false)
-  
+
   console.log(`Saving generated image to: ${outputPath}`)
   await Bun.write(outputPath, Buffer.from(b64, "base64"))
-  
+
   const fileExists = await Bun.file(outputPath).exists()
   if (!fileExists) {
     throw new Error(`Failed to save file to ${outputPath}`)
   }
-  
+
   const stats = await Bun.file(outputPath).stat()
   return `Generated image saved: ${outputPath} (${stats.size} bytes)`
 }
@@ -189,13 +189,13 @@ export async function editImage(imagePath: string, prompt: string, config: Image
       baseName = baseName.substring(0, baseName.lastIndexOf('.'))
     }
     const outputPath = await getUniqueFilename(editsDir, baseName, ".png", true)
-    
+
     return `[TEST MODE] Would edit image: ${imagePath} -> ${outputPath} with prompt: "${prompt.substring(0, 50)}..."`
   }
 
   // Parse the input image
   const { mime, base64 } = await parseImageInput(imagePath)
-  
+
   const body = {
     contents: [{
       parts: [
@@ -221,20 +221,20 @@ export async function editImage(imagePath: string, prompt: string, config: Image
     const errorText = await res.text()
     throw new Error(`API error (${res.status}): ${errorText}`)
   }
-  
+
   const json = await res.json()
-  
+
   // Look for image data in the response
   const candidates = json?.candidates
   if (!candidates || candidates.length === 0) {
     throw new Error("No candidates in response")
   }
-  
+
   const parts = candidates[0]?.content?.parts
   if (!parts || parts.length === 0) {
     throw new Error("No parts in response")
   }
-  
+
   let b64 = null
   for (const part of parts) {
     if (part.inlineData?.data) {
@@ -242,7 +242,7 @@ export async function editImage(imagePath: string, prompt: string, config: Image
       break
     }
   }
-  
+
   if (!b64) {
     throw new Error("No image data returned from Nano Banana model")
   }
@@ -250,7 +250,7 @@ export async function editImage(imagePath: string, prompt: string, config: Image
   // Determine output path
   const baseDir = config.outputDir || getDateBasedPath()
   const editsDir = join(baseDir, "edits")
-  
+
   // Extract original filename without extension
   const originalName = basename(imagePath, extname(imagePath))
   let baseName = config.customName || originalName
@@ -258,17 +258,17 @@ export async function editImage(imagePath: string, prompt: string, config: Image
     baseName = baseName.substring(0, baseName.lastIndexOf('.'))
   }
   const extension = ".png"
-  
+
   const outputPath = await getUniqueFilename(editsDir, baseName, extension, true)
-  
+
   console.log(`Saving edited image to: ${outputPath}`)
   await Bun.write(outputPath, Buffer.from(b64, "base64"))
-  
+
   const fileExists = await Bun.file(outputPath).exists()
   if (!fileExists) {
     throw new Error(`Failed to save file to ${outputPath}`)
   }
-  
+
   const stats = await Bun.file(outputPath).stat()
   return `Edited image saved: ${outputPath} (${stats.size} bytes)`
 }
@@ -282,7 +282,7 @@ export async function analyzeImage(imagePath: string, question: string): Promise
   }
 
   const { mime, base64 } = await parseImageInput(imagePath)
-  
+
   const res = await fetch(
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
     {
@@ -306,13 +306,13 @@ export async function analyzeImage(imagePath: string, question: string): Promise
     const errorText = await res.text()
     throw new Error(`API error (${res.status}): ${errorText}`)
   }
-  
+
   const json = await res.json()
   const text = json?.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) {
     throw new Error("No analysis returned")
   }
-  
+
   return text
 }
 

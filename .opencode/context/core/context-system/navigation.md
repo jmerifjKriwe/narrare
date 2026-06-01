@@ -39,9 +39,9 @@ core/context-system/
 
 ## By Type
 
-**Examples** → Working examples of navigation files  
-**Guides** → Step-by-step guides for working with context  
-**Operations** → How to operate and maintain the context system  
+**Examples** → Working examples of navigation files
+**Guides** → Step-by-step guides for working with context
+**Operations** → How to operate and maintain the context system
 **Standards** → Templates and standards for context files
 
 ---

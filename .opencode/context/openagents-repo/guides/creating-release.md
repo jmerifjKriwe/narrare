@@ -102,10 +102,10 @@ cat package.json | jq '.version'
 
 ### Tips
 
-✅ **Group by type** - Added, Changed, Fixed, Removed  
-✅ **User-focused** - Describe impact, not implementation  
-✅ **Link PRs** - Reference PR numbers  
-✅ **Breaking changes** - Clearly mark breaking changes  
+✅ **Group by type** - Added, Changed, Fixed, Removed
+✅ **User-focused** - Describe impact, not implementation
+✅ **Link PRs** - Reference PR numbers
+✅ **Breaking changes** - Clearly mark breaking changes
 
 ---
 
@@ -255,12 +255,12 @@ Before releasing:
 
 ### Version Mismatch
 
-**Problem**: VERSION and package.json don't match  
+**Problem**: VERSION and package.json don't match
 **Solution**: Update both to same version
 
 ### Tag Already Exists
 
-**Problem**: Tag already exists  
+**Problem**: Tag already exists
 **Solution**: Delete tag and recreate
 ```bash
 git tag -d v0.X.Y
@@ -269,7 +269,7 @@ git push origin :refs/tags/v0.X.Y
 
 ### Push Rejected
 
-**Problem**: Push rejected (not up to date)  
+**Problem**: Push rejected (not up to date)
 **Solution**: Pull latest changes first
 ```bash
 git pull origin main
@@ -287,5 +287,5 @@ git push origin v0.X.Y
 
 ---
 
-**Last Updated**: 2025-12-10  
+**Last Updated**: 2025-12-10
 **Version**: 0.5.0

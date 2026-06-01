@@ -63,11 +63,11 @@ const result = doSomething();
 ```javascript
 /**
  * Calculate total price including tax
- * 
+ *
  * @param {number} price - Base price
  * @param {number} taxRate - Tax rate (0-1)
  * @returns {number} Total with tax
- * 
+ *
  * @example
  * calculateTotal(100, 0.1) // 110
  */

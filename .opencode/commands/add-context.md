@@ -713,7 +713,7 @@ user_responses:
   naming_conventions: {files, components, functions, database}
   code_standards: string[]
   security_requirements: string[]
-  
+
 frontmatter:
   context: project-intelligence/technical
   priority: critical  # @priority_assignment (80% use cases)

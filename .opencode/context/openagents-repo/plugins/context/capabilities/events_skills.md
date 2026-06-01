@@ -595,4 +595,3 @@ const beforeHook = async (input, output) => {
 - **Skills Plugin Example**: `skills-plugin/example.ts`
 - **Hook Lifecycle**: `skills-plugin/hook-lifecycle-and-patterns.md`
 - **Implementation Pattern**: `skills-plugin/implementation-pattern.md`
-

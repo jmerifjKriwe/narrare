@@ -145,7 +145,7 @@ task(
           - Drizzle ORM: modular schema organization
           - Better Auth: Next.js integration
           - Next.js: App Router setup
-          
+
           Persist fetched docs to .tmp/external-context/
           Return file paths for each fetched document"
 )
@@ -256,18 +256,18 @@ task(
   prompt="Load context from .tmp/sessions/2026-01-28-drizzle-auth/context.md
 
           Read the context file for full requirements, standards, and external documentation.
-          
+
           Break down this feature into atomic subtasks:
           1. Drizzle schema setup with modular organization
           2. Better Auth configuration with Drizzle adapter
           3. Next.js App Router integration
           4. Test suite
-          
+
           For each subtask, include:
           - context_files: Standards from context.md
           - reference_files: Project files to understand
           - external_context: External docs to reference
-          
+
           Create subtask files in tasks/subtasks/drizzle-auth-integration/"
 )
 ```

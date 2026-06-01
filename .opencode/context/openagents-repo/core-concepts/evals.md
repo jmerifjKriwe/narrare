@@ -2,7 +2,7 @@
 
 # Core Concept: Eval Framework
 
-**Purpose**: Understanding how agent testing works  
+**Purpose**: Understanding how agent testing works
 **Priority**: CRITICAL - Load this before testing agents
 
 ---
@@ -438,25 +438,25 @@ Update agent prompt to:
 
 ### Test Coverage
 
-✅ **Smoke test** - Basic functionality  
-✅ **Approval gate test** - Verify approval workflow  
-✅ **Context loading test** - Verify context usage  
-✅ **Tool usage test** - Verify correct tools  
-✅ **Error handling test** - Verify stop on failure  
+✅ **Smoke test** - Basic functionality
+✅ **Approval gate test** - Verify approval workflow
+✅ **Context loading test** - Verify context usage
+✅ **Tool usage test** - Verify correct tools
+✅ **Error handling test** - Verify stop on failure
 
 ### Test Design
 
-✅ **Clear expectations** - Explicit what should happen  
-✅ **Realistic scenarios** - Test real-world usage  
-✅ **Isolated tests** - One concern per test  
-✅ **Fast execution** - Keep tests under 10 seconds  
+✅ **Clear expectations** - Explicit what should happen
+✅ **Realistic scenarios** - Test real-world usage
+✅ **Isolated tests** - One concern per test
+✅ **Fast execution** - Keep tests under 10 seconds
 
 ### Debugging
 
-✅ **Use debug mode** - See detailed output  
-✅ **Check sessions** - Analyze agent behavior  
-✅ **Review events** - Understand timeline  
-✅ **Iterate quickly** - Fix and re-test  
+✅ **Use debug mode** - See detailed output
+✅ **Check sessions** - Analyze agent behavior
+✅ **Review events** - Understand timeline
+✅ **Iterate quickly** - Fix and re-test
 
 ---
 
@@ -464,22 +464,22 @@ Update agent prompt to:
 
 ### Test Timeout
 
-**Problem**: Test exceeds timeout  
+**Problem**: Test exceeds timeout
 **Solution**: Increase timeout in config.yaml or optimize agent
 
 ### Approval Gate Violation
 
-**Problem**: Agent executes without approval  
+**Problem**: Agent executes without approval
 **Solution**: Add approval request in agent prompt
 
 ### Context Loading Violation
 
-**Problem**: Agent doesn't load required context  
+**Problem**: Agent doesn't load required context
 **Solution**: Add context loading logic in agent prompt
 
 ### Tool Usage Violation
 
-**Problem**: Agent uses wrong tools  
+**Problem**: Agent uses wrong tools
 **Solution**: Update agent to use correct tools (read, list, grep)
 
 ---
@@ -492,5 +492,5 @@ Update agent prompt to:
 
 ---
 
-**Last Updated**: 2025-12-10  
+**Last Updated**: 2025-12-10
 **Version**: 0.5.0

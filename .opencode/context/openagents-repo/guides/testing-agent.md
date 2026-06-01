@@ -2,7 +2,7 @@
 
 # Guide: Testing an Agent
 
-**Prerequisites**: Load `core-concepts/evals.md` first  
+**Prerequisites**: Load `core-concepts/evals.md` first
 **Purpose**: Step-by-step workflow for testing agents
 
 ---
@@ -143,7 +143,7 @@ npm run eval:sdk -- --agent={agent} --pattern="{test}" --debug
 ✓ Test: smoke-test.yaml
   Status: PASS
   Duration: 5.2s
-  
+
   Evaluators:
     ✓ Approval Gate: PASS
     ✓ Context Loading: PASS
@@ -158,7 +158,7 @@ npm run eval:sdk -- --agent={agent} --pattern="{test}" --debug
 ✗ Test: approval-gate.yaml
   Status: FAIL
   Duration: 4.8s
-  
+
   Evaluators:
     ✗ Approval Gate: FAIL
       Violation: Agent executed write tool without requesting approval
@@ -228,11 +228,11 @@ expectations:
 
 ### Best Practices
 
-✅ **Clear name** - Descriptive test name  
-✅ **Good description** - Explain what's being tested  
-✅ **Realistic scenario** - Test real-world usage  
-✅ **Specific expectations** - Clear pass/fail criteria  
-✅ **Fast execution** - Keep under 10 seconds  
+✅ **Clear name** - Descriptive test name
+✅ **Good description** - Explain what's being tested
+✅ **Realistic scenario** - Test real-world usage
+✅ **Specific expectations** - Clear pass/fail criteria
+✅ **Fast execution** - Keep under 10 seconds
 
 ---
 
@@ -301,5 +301,5 @@ Tests run automatically on:
 
 ---
 
-**Last Updated**: 2025-12-10  
+**Last Updated**: 2025-12-10
 **Version**: 0.5.0
