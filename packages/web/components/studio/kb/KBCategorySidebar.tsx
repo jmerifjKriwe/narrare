@@ -6,10 +6,11 @@
  * Shows entity type tabs with count badges and an "All" option.
  */
 
-import { Network, ShieldCheck, Sparkles } from "lucide-react";
+import { BookOpen, Network, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { KBEntityType } from "@/lib/api/kb";
 import { useKBEntries } from "@/lib/hooks/useKB";
+import { useWikiIndex } from "@/lib/hooks/useWiki";
 import { ENTITY_TYPES, TYPE_ICONS, TYPE_LABEL_KEYS } from "./constants";
 
 interface KBCategorySidebarProps {
@@ -19,7 +20,9 @@ interface KBCategorySidebarProps {
   onAnalyze?: () => void;
   onConsistencyCheck?: () => void;
   onShowGraph?: () => void;
+  onShowWiki?: () => void;
   showGraph?: boolean;
+  showWiki?: boolean;
 }
 
 export function KBCategorySidebar({
@@ -29,13 +32,19 @@ export function KBCategorySidebar({
   onAnalyze,
   onConsistencyCheck,
   onShowGraph,
+  onShowWiki,
   showGraph,
+  showWiki,
 }: KBCategorySidebarProps) {
   const t = useTranslations("studio");
 
   // Fetch counts for each entity type
   const { data: allData } = useKBEntries(novelId, { page_size: 1 });
   const totalCount = allData?.total ?? 0;
+
+  // Fetch wiki index for pending count badge
+  const { data: wikiIndex } = useWikiIndex(novelId);
+  const wikiPendingCount = wikiIndex?.pending_count ?? 0;
 
   return (
     <div className="w-56 border-r border-border bg-card flex flex-col">
@@ -83,6 +92,35 @@ export function KBCategorySidebar({
                 <Network className="w-4 h-4" />
                 <span>{t("graph.title")}</span>
               </span>
+            </button>
+          )}
+
+          {/* "Wiki" tab */}
+          {onShowWiki && (
+            <button
+              type="button"
+              onClick={onShowWiki}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md transition-all text-sm ${
+                showWiki
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "hover:bg-accent text-foreground"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <BookOpen className="w-4 h-4" />
+                <span>{t("kb.wiki.tabLabel")}</span>
+              </span>
+              {wikiPendingCount > 0 && (
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded ${
+                    showWiki
+                      ? "bg-primary-foreground/20"
+                      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  }`}
+                >
+                  {wikiPendingCount}
+                </span>
+              )}
             </button>
           )}
 

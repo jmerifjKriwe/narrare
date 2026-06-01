@@ -26,6 +26,7 @@ import { MetadataSidebar } from "./editor/MetadataSidebar";
 import { SessionPanel } from "./editor/SessionPanel";
 import { ExtractionPanel } from "./extraction/ExtractionPanel";
 import { NameGeneratorModal } from "./generation/NameGeneratorModal";
+import { WikiChapterSummaryPanel } from "./kb/WikiChapterSummaryPanel";
 import { StoryboardPanel } from "./planning/StoryboardPanel";
 import { TipTapEditor } from "./TipTapEditor";
 import {
@@ -648,15 +649,24 @@ export function EditorView({ novelId }: EditorViewProps) {
           />
         )}
         {showMetadataSidebar && (
-          <MetadataSidebar
-            wordCount={wordCount}
-            charCount={charCount}
-            paragraphCount={paragraphCount}
-            chapter={chapter ?? null}
-            chapters={chapters}
-            sessionStartWordCount={sessionStartWordCount}
-            activeVolumeStats={volumeStats ?? null}
-          />
+          <div className="w-80 border-l border-border bg-card overflow-y-auto">
+            <MetadataSidebar
+              wordCount={wordCount}
+              charCount={charCount}
+              paragraphCount={paragraphCount}
+              chapter={chapter ?? null}
+              chapters={chapters}
+              sessionStartWordCount={sessionStartWordCount}
+              activeVolumeStats={volumeStats ?? null}
+            />
+            <div className="px-4 pb-4">
+              <WikiChapterSummaryPanel
+                novelId={novelId}
+                chapterId={activeChapterId}
+                chapterTitle={chapter?.title}
+              />
+            </div>
+          </div>
         )}
         {showBetaReaderPanel && (
           <BetaReaderPanel

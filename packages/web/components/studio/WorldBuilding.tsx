@@ -20,6 +20,7 @@ import { KBCategorySidebar } from "./kb/KBCategorySidebar";
 import { KBDetailPanel } from "./kb/KBDetailPanel";
 import { KBEntryList } from "./kb/KBEntryList";
 import { KnowledgeGraphView } from "./kb/KnowledgeGraphView";
+import { WikiOverviewPanel } from "./kb/WikiOverviewPanel";
 import { WorldbuildingAnalysisPanel } from "./kb/WorldbuildingAnalysisPanel";
 
 interface WorldBuildingProps {
@@ -36,6 +37,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showConsistency, setShowConsistency] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
+  const [showWiki, setShowWiki] = useState(false);
 
   // Data queries
   const { data: entriesData, isLoading: entriesLoading } = useKBEntries(novelId, {
@@ -54,6 +56,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setShowAnalysis(false);
     setShowConsistency(false);
     setShowGraph(false);
+    setShowWiki(false);
   }
 
   function handleSelectEntry(entryId: string) {
@@ -128,6 +131,21 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
     setIsAssistedSession(false);
     setShowAnalysis(false);
     setShowConsistency(false);
+    setShowWiki(false);
+  }
+
+  function handleShowWiki() {
+    setShowWiki(true);
+    setSelectedEntryId(null);
+    setIsCreating(false);
+    setIsAssistedSession(false);
+    setShowAnalysis(false);
+    setShowConsistency(false);
+    setShowGraph(false);
+  }
+
+  function handleCloseWiki() {
+    setShowWiki(false);
   }
 
   // Column 3: Assisted creation panel takes priority
@@ -141,7 +159,9 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           onAnalyze={handleShowAnalysis}
           onConsistencyCheck={handleShowConsistency}
           onShowGraph={handleShowGraph}
+          onShowWiki={handleShowWiki}
           showGraph={showGraph}
+          showWiki={showWiki}
         />
         <KBEntryList
           novelId={novelId}
@@ -174,7 +194,9 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           onAnalyze={handleShowAnalysis}
           onConsistencyCheck={handleShowConsistency}
           onShowGraph={handleShowGraph}
+          onShowWiki={handleShowWiki}
           showGraph={showGraph}
+          showWiki={showWiki}
         />
         <KBEntryList
           novelId={novelId}
@@ -202,7 +224,9 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           onAnalyze={handleShowAnalysis}
           onConsistencyCheck={handleShowConsistency}
           onShowGraph={handleShowGraph}
+          onShowWiki={handleShowWiki}
           showGraph={showGraph}
+          showWiki={showWiki}
         />
         <KBEntryList
           novelId={novelId}
@@ -230,9 +254,31 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           onAnalyze={handleShowAnalysis}
           onConsistencyCheck={handleShowConsistency}
           onShowGraph={handleShowGraph}
+          onShowWiki={handleShowWiki}
           showGraph={showGraph}
+          showWiki={showWiki}
         />
         <KnowledgeGraphView novelId={novelId} onSelectEntry={handleSelectEntry} />
+      </div>
+    );
+  }
+
+  // Wiki mode: replaces columns 2+3 with wiki overview
+  if (showWiki) {
+    return (
+      <div className="flex-1 flex h-full">
+        <KBCategorySidebar
+          novelId={novelId}
+          activeType={activeType}
+          onTypeChange={handleTypeChange}
+          onAnalyze={handleShowAnalysis}
+          onConsistencyCheck={handleShowConsistency}
+          onShowGraph={handleShowGraph}
+          onShowWiki={handleShowWiki}
+          showGraph={showGraph}
+          showWiki={showWiki}
+        />
+        <WikiOverviewPanel novelId={novelId} onClose={handleCloseWiki} />
       </div>
     );
   }
@@ -246,7 +292,9 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
         onAnalyze={handleShowAnalysis}
         onConsistencyCheck={handleShowConsistency}
         onShowGraph={handleShowGraph}
+        onShowWiki={handleShowWiki}
         showGraph={showGraph}
+        showWiki={showWiki}
       />
       <KBEntryList
         novelId={novelId}
