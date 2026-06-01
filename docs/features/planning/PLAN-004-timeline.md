@@ -1,9 +1,10 @@
 ---
 id: PLAN-004
 title: "Timeline Management"
-status: in-progress
+status: architecture-review
 area: planning
 mvp: false
+architecture: PLAN-004-architecture.md
 
 ui_tooltip: "Track story time, character ages, and event chronology."
 ui_help_short: |
@@ -217,8 +218,22 @@ optional temporal metadata that future timeline features can build on.
 - Temporal consistency validation (impossible dates, age contradictions)
 - Timeline visualization (chronological, per-character, by-chapter views)
 
+## Architecture
+
+Full architecture spec: [PLAN-004-architecture.md](PLAN-004-architecture.md)
+
+Covers all 6 sub-features with phased implementation:
+- **Phase 1:** Foundation (DB model + CRUD + display)
+- **Phase 2:** AI features (auto-extraction + consistency)
+- **Phase 3:** Advanced (character ages + visualization)
+
+Key decisions: hybrid planning table with KB references, separate
+TemporalExtractionAgent, KB metadata for birth dates, split consistency
+engine (deterministic core + LLM backend).
+
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-20` — Updated: noted `timeline_position` integration point with storyboard (PLAN-005). Status changed to in-progress (integration point only).
 - `2026-05-31` — Phase 4 extension: AI-powered timeline analysis implemented (TimelineAgent, TimelineService, timeline prompts in 3 locales, `GET /planning/timeline/{novel_id}` endpoint). Frontmatter updated: service path corrected, router path corrected, core agent + prompts referenced. Status remains in-progress (analysis implemented, full timeline management still future work).
+- `2026-06-01` — Full architecture spec created (`PLAN-004-architecture.md`). Status changed to `architecture-review`. Covers all 6 sub-features across 3 phases. Key decisions: hybrid `timeline_events` table in planning module, separate `TemporalExtractionAgent`, KB `metadata_` for character birth dates, deterministic+LLM consistency engine following ADR-021.
