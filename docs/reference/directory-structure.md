@@ -377,6 +377,7 @@ apps/api/narrare/
 │   ├── __init__.py
 │   ├── contracts.py
 │   ├── schemas.py
+│   ├── schemas_merge.py         ← Merge schemas (RULE-04 split from schemas.py)
 │   ├── models.py
 │   │
 │   ├── management_service.py   ← CRUD: kb_add, kb_get, kb_update, kb_delete
@@ -385,13 +386,16 @@ apps/api/narrare/
 │   ├── suggest_service.py      ← Proactive KB suggestions
 │   ├── worldbuilding_service.py← Worldbuilding operations
 │   ├── extraction_service.py   ← Entity/fact extraction
+│   ├── merge_contracts.py      ← KBMergeServiceProtocol
+│   ├── merge_service.py        ← KBMergeService (calls KBMergeAgent)
 │   │
 │   ├── repository.py
 │   ├── context_builder.py      ← Builds KB summary for context injection
 │   │
 │   ├── router_management.py    ← Routes: CRUD
 │   ├── router_sessions.py      ← Routes: interactive sessions
-│   └── router_suggest.py       ← Routes: proactive suggestions
+│   ├── router_suggest.py       ← Routes: proactive suggestions
+│   └── router_merge.py         ← Routes: merge/deduplication
 │
 ├── analysis/                   ← All analysis features
 │   ├── __init__.py
@@ -432,6 +436,10 @@ apps/api/narrare/
 │   ├── models.py
 │   ├── repository.py
 │   ├── service.py
+│   ├── _character_arc_factory.py    ← Factory for CharacterArcService DI
+│   ├── _timeline_factory.py         ← Factory for TimelineService DI
+│   ├── character_arc_service.py     ← CharacterArcService (calls CharacterArcAgent)
+│   ├── timeline_service.py          ← TimelineService (calls TimelineAgent)
 │   └── router.py
 │
 ├── ai_assist/

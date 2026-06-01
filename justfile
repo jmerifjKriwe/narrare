@@ -481,5 +481,5 @@ hooks-update:
 # ---------------------------------------------------------------------------
 
 # Full pre-merge check (everything, strict mode)
-check-full: check check-prompts-strict check-locale-sync check-adoption check-models
+check-full: check check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models
     @echo "✅ All checks passed — ready to merge"

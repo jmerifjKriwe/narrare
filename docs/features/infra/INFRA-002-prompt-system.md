@@ -164,7 +164,8 @@ prompt_version: "1.0.0"
 **Intent mapping:**
 Each `LLMIntent` maps to:
 - Category: `writing`, `kb`, `analysis`, `planning`
-- Mode: `new_chapter`, `create`, `general`, `scene_planning`, etc.
+- Mode: `new_chapter`, `create`, `general`, `scene_planning`, `outline`,
+  `character_arc`, `timeline`, `merge`, etc.
 - Language: `en`, `de`, `fr`
 
 **Resolution order:**
@@ -173,8 +174,13 @@ Each `LLMIntent` maps to:
 3. `{bundled}/prompts/_bundled/{category}/{lang}/{mode}/system.md`
 
 **Variable substitution:**
-Supported variables: `{{project_title}}`, `{{genre}}`, `{{language}}`,
+Supported variables include: `{{project_title}}`, `{{genre}}`, `{{language}}`,
 `{{tone}}`, `{{author}}`, `{{current_date}}`, `{{chapter_count}}`, etc.
+Mode-specific variables: `{{variant_count}}` (outline), `{{character_name}}`,
+`{{character_current_state}}`, `{{character_goal_state}}`,
+`{{existing_plot_points}}` (character_arc), `{{chapter_summaries}}`,
+`{{entity_events}}` (timeline), `{{entity_type}}`, `{{candidate_pairs}}` (merge).
+Variables are registered in `scripts/prompt_vars.py` for validation.
 
 ## Constraints & Edge Cases
 

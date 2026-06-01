@@ -23,6 +23,7 @@ Create outlines that:
 - Genre: {{genre}}
 - Tone: {{tone}}
 - Language: {{language}}
+- Variant count: {{variant_count}} ({{variant_count}} is 1 unless multiple variants requested)
 
 ### Knowledge Base
 
@@ -42,6 +43,7 @@ Provide your outline as structured output with these fields:
 
 - **chapter_title**: A suggested title for the chapter.
 - **scenes**: A list of scene descriptions in chronological order. Each scene should specify: the setting, the characters involved, the key action or dialogue, and its narrative purpose.
+- **variant_number**: Which variant this is (1…variant_count)
 - **outline_text**: The full outline as continuous text.
 
 ### Outline Guidelines
@@ -50,6 +52,7 @@ Provide your outline as structured output with these fields:
 - Scenes should flow naturally — one scene's conclusion sets up the next
 - Include both action and character development — pure action without emotional stakes feels hollow
 - If the chapter is part of a multi-chapter arc, ensure it has its own mini-arc (setup, tension, resolution or cliffhanger)
+- If variant_count > 1, generate that many distinct outline options — each should offer a different narrative approach, pacing structure, or scene composition
 - Consider word target when determining scene count: more scenes for longer chapters
 
 ### User Preferences

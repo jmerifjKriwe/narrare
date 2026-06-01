@@ -78,6 +78,7 @@
 | [KB-006](kb/KB-006-worldbuilding.md) | Worldbuilding Assistant | ✅ | ❌ |
 | [KB-007](kb/KB-007-extraction.md) | Entity Extraction from Chapters | ✅ | ❌ |
 | [KB-008](kb/KB-008-knowledge-graph.md) | Knowledge Graph | ✅ | ❌ |
+| [KB-009](kb/KB-009-kb-merge.md) | KB Entity Merge / Deduplication | ✅ | ❌ |
 | [WIKI-001](kb/WIKI-001-llm-wiki.md) | LLM Wiki — Precomputed Context Layer | 🔨 | ❌ |
 
 ### Analysis
@@ -101,10 +102,11 @@
 | [PLAN-001](planning/PLAN-001-scene-planning.md) | Scene Planning | 📋 | ❌ |
 | [PLAN-002](planning/PLAN-002-gap-analysis.md) | Narrative Gap Analysis | 📋 | ❌ |
 | [PLAN-003](planning/PLAN-003-structure.md) | Story Structure Visualization | ✅ | ✅ |
-| [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | 📋 | ❌ |
+| [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | 🔨 | ❌ |
 | [PLAN-005](planning/PLAN-005-storyboard.md) | Storyboard View | ✅ | ✅ |
+| [PLAN-006](planning/PLAN-006-character-arc.md) | Character Arc Analysis | ✅ | ❌ |
 
-> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 has a partial integration point (`timeline_position` field) — full timeline management remains planned future work.
+> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 has a partial integration point (`timeline_position` field) and now AI-powered timeline analysis (TimelineAgent) — full timeline management (UI, date tracking, extraction) remains future work. PLAN-006 is backend-only with no UI yet.
 
 ### AI Assist (Standalone Operations)
 | ID | Feature | Status | MVP |
@@ -237,5 +239,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-05-31 — CHAT-001 (Free-Form Chat) spec created. ASSIST-003 superseded.
+> Last updated: 2026-06-01 — PLAN-006 (Character Arc), KB-009 (KB Merge) added. PLAN-004 status updated to in-progress (TimelineAgent implemented).
 > Features are specified before they are implemented — never after

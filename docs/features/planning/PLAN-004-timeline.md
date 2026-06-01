@@ -85,11 +85,13 @@ ui_help_long: |
   Available in Planning panel, KB editor, or via CLI.
 ui_available_in: [planning, kb]
 
-service: timeline/service.py
+service: planning/timeline_service.py
 contract: planning/contracts.py#TimelineServiceProtocol
-router: timeline/router.py
-prompt: ~
-requires: [KB-001]
+router: planning/router.py → GET /planning/timeline/{novel_id}
+prompt: prompts/_bundled/planning/{lang}/timeline/system.md
+requires: [KB-001, INFRA-001, INFRA-002]
+
+core_agent: agents/timeline_agent.py (TimelineAgent)
 ---
 
 # PLAN-004 — Timeline Management
@@ -132,35 +134,46 @@ timeline entries.
 
 ## How it works (Technical)
 
-**Entry point:** `timeline/router.py` → CRUD endpoints
-**Service:** `TimelineService` in `timeline/service.py`
+**Entry point:** `planning/router.py` → `GET /planning/timeline/{novel_id}`
+**Service:** `TimelineService` in `planning/timeline_service.py`
 **Contract:** `TimelineServiceProtocol` in `planning/contracts.py`
-**Storage:** KB timeline entries + chapter frontmatter
+**Core Agent:** `TimelineAgent` in `core/agents/timeline_agent.py`
+**Prompts:** `prompts/_bundled/planning/{lang}/timeline/system.md` (3 locales: en, de, fr)
+**Storage:** KB timeline entries + chapter frontmatter + chapter summaries
 
-**Timeline entry:**
+**Flow:**
+1. Router validates novel existence via `NovelRepository`
+2. Resolves model config via `ModelRoutingResolver` using `LLMIntent.PLAN`
+3. Instantiates `TimelineService` (in `planning/timeline_service.py`)
+4. Service gathers chapters with summaries from `ChapterRepository`
+5. Builds `TimelineDeps` with novel metadata (genre, language)
+6. Runs `TimelineAgent` (in `core/agents/timeline_agent.py`)
+7. Agent returns `TimelineOutput` with events, conflicts, and gaps
+8. Service maps output to `TimelineResponse` schema
+
+**Core Agent:** `TimelineAgent` — `NarrareAgent[TimelineDeps, TimelineOutput]`
+- Deps: `TimelineDeps` — `genre`, `language`, optional `context_assembler`
+- Output: `TimelineOutput` — list of `TimelineEvent`, `temporal_conflicts`, `coverage_gaps`, `overall_assessment`
+- Event: `TimelineEvent` — event_name, description, timestamp, chapter_reference, characters_involved, location, causes, consequences
+- Uses Output Function pattern (`_process_output`) for structured generation
+
+**Timeline output:**
 ```python
-class TimelineEntry:
-    id: UUID
-    date: str  # ISO date or relative
-    time: str | None  # Time of day
+class TimelineEvent(BaseModel):
+    event_name: str
     description: str
-    characters: list[UUID]  # Involved characters
-    chapter_id: UUID | None  # Where it appears
-    type: "story" | "backstory" | "world"
-    position: str  # For relative times
+    timestamp: str  # Relative or absolute time reference
+    chapter_reference: str  # Chapter name or number
+    characters_involved: list[str]
+    location: str
+    causes: list[str]
+    consequences: list[str]
 ```
 
-**Consistency checks:**
-- Age calculations: `(event_date - birth_date) / 365`
-- Event ordering: A before B vs B before A
-- Duration constraints: "three days later" must be ≥3 days
-- Character aliveness: Events before birth or after death
-
-**Extraction:**
-- Regex: temporal patterns ("March 15", "three days later", "in 1990")
-- Context: surrounding text for meaning
-- Validation: dates parse correctly, durations make sense
-- Confidence scores for ambiguous expressions
+**Consistency checks (AI-powered):**
+- Temporal conflicts: impossible ordering, contradictory time references
+- Coverage gaps: missing causal links, unexplained time jumps
+- Overall assessment: 1-2 sentence evaluation of timeline quality
 
 ## Constraints & Edge Cases
 
@@ -190,7 +203,13 @@ optional temporal metadata that future timeline features can build on.
 - `timeline_position` field in chapter data model (available for chronological context)
 - Storyboard (PLAN-005) uses chapter position for structure stage assignment
 
-**Full timeline management remains future work:**
+**Phase 4 implemented (AI timeline analysis):**
+- ✅ AI-powered timeline analysis via `TimelineAgent` — chronological ordering, temporal conflict detection, coverage gap analysis
+- ✅ Timeline prompts in 3 locales (`prompts/_bundled/planning/{lang}/timeline/system.md`)
+- ✅ `GET /planning/timeline/{novel_id}` endpoint in `planning/router.py`
+- ✅ TimelineService with chapter summary gathering + TimelineAgent invocation
+
+**Remaining future work:**
 - Date/time tracking on chapters and scenes
 - Auto-extraction of temporal expressions from chapter content
 - Character age tracking and consistency checking
@@ -198,10 +217,8 @@ optional temporal metadata that future timeline features can build on.
 - Temporal consistency validation (impossible dates, age contradictions)
 - Timeline visualization (chronological, per-character, by-chapter views)
 
-These features require dedicated timeline services, KB integration for temporal
-entities, and AI-powered extraction — not yet implemented.
-
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
-- `2026-05-20` — Updated: noted `timeline_position` integration point with storyboard (PLAN-005). Full timeline management features remain future work. Status changed to in-progress (integration point only).
+- `2026-05-20` — Updated: noted `timeline_position` integration point with storyboard (PLAN-005). Status changed to in-progress (integration point only).
+- `2026-05-31` — Phase 4 extension: AI-powered timeline analysis implemented (TimelineAgent, TimelineService, timeline prompts in 3 locales, `GET /planning/timeline/{novel_id}` endpoint). Frontmatter updated: service path corrected, router path corrected, core agent + prompts referenced. Status remains in-progress (analysis implemented, full timeline management still future work).

@@ -10,14 +10,19 @@ import uuid
 from fastapi import APIRouter
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare.planning._character_arc_factory import get_character_arc_service
 from narrare.planning._service_factory import get_storyboard_service
+from narrare.planning._timeline_factory import get_timeline_service
 from narrare.planning.schemas import (
+    CharacterArcRequest,
+    CharacterArcResponse,
     OutlineResponse,
     OutlineUpdateRequest,
     RemapRequest,
     RemapResponse,
     StoryboardResponse,
     SyncStatusResponse,
+    TimelineResponse,
 )
 
 router = APIRouter(prefix="/planning", tags=["planning"])
@@ -97,3 +102,26 @@ async def remap_storyboard(
     if request.confirm:
         return await service.confirm_remap(novel_id, request.new_structure, uid)
     return await service.preview_remap(novel_id, request.new_structure, uid)
+
+
+@router.post("/character-arc/{novel_id}", response_model=CharacterArcResponse)
+async def generate_character_arc(
+    novel_id: uuid.UUID,
+    request: CharacterArcRequest,
+    user_id: CurrentUserIdDep,
+    session: SessionDep,
+) -> CharacterArcResponse:
+    """Generate a character development arc for a character in a novel."""
+    service = await get_character_arc_service(session=session, user_id=user_id, novel_id=novel_id)
+    return await service.generate_character_arc(novel_id, uuid.UUID(user_id), request)
+
+
+@router.get("/timeline/{novel_id}", response_model=TimelineResponse)
+async def get_timeline(
+    novel_id: uuid.UUID,
+    user_id: CurrentUserIdDep,
+    session: SessionDep,
+) -> TimelineResponse:
+    """Generate a chronological timeline analysis for a novel."""
+    service = await get_timeline_service(session=session, user_id=user_id, novel_id=novel_id)
+    return await service.generate_timeline(novel_id, uuid.UUID(user_id))

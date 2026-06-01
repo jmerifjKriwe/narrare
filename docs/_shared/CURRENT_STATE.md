@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-05-31
-Session: ADR-016 Phase 3 — Backend AgentRegistry Wiring (WritingGraph Integration)
+Date: 2026-06-01
+Session: Phase 6 extension — Character Arc, Timeline Analysis, KB Merge, Planning prompt modes, CI integration
 
 ---
 
@@ -41,7 +41,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 17 submodules: agents, analysis, cache, context, embeddings, events, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, writing
 
-13 AI agents (pydantic-ai): beta_reader, consistency, draft, extraction, inline_suggest, kb, kb_assist, kb_improve, outline, preference_analysis, review, summary, worldbuilding
+16 AI agents (pydantic-ai): beta_reader, character_arc, consistency, draft, extraction, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, preference_analysis, review, summary, timeline, worldbuilding
 
 ### Backend (`apps/api/narrare/`)
 
@@ -107,6 +107,11 @@ Completed in Phase 6 so far:
 21. ✅ ADR-021: Deterministic Analysis Strategy — Accepted
 22. ✅ ADR-022: LLM Wiki — Precomputed Context Layer (Core: contracts, agent, service, prompt_loader, types; Backend: models, migration, repository (9 methods), schemas (6), API service, router (6 endpoints), tasks (4), listeners (4), DI wiring; Context assembler wiki integration, budget wiki optimization; 35 core + 9 backend unit tests)
 23. ✅ WRITE-006 / ADR-023: Co-Author Change Engine — apply_changes (stateless text reconstruction), batch feedback (LEARN-001), SET-005 cascade (word-count validation), per-change accept/reject UI, 34 new tests
+24. ✅ PLAN-006: Character Arc Analysis — CharacterArcAgent, CharacterArcService, `POST /planning/character-arc/{novel_id}`, prompts in 3 locales
+25. ✅ PLAN-004 Phase 4: Timeline Analysis — TimelineAgent, TimelineService, `GET /planning/timeline/{novel_id}`, timeline prompts in 3 locales, chapter summary gathering
+26. ✅ KB-009: KB Entity Merge / Deduplication — KBMergeAgent, KBMergeService, `POST /novels/{novel_id}/kb/merge`, merge prompts in 3 locales
+27. ✅ Planning prompt extensions: outline (`{{variant_count}}`), character_arc (`{{character_name}}`, `{{character_current_state}}`, `{{character_goal_state}}`), timeline (`{{chapter_summaries}}`, `{{entity_events}}`)
+28. ✅ CI integration: Prompts step added to `just check` (strict mode), check-prompts-de added to `check-full`
 
 ---
 

@@ -78,6 +78,14 @@ Common context variables by category (see §2 for full lists):
 | `{{chapter_text}}` | Full chapter content | Analysis |
 | `{{existing_content}}` | Text around cursor | Writing (extend/rewrite) |
 | `{{author_instructions}}` | User instructions | Writing |
+| `{{variant_count}}` | Number of variants to generate | Planning (outline) |
+| `{{character_name}}` | Character being analysed | Planning (character_arc) |
+| `{{character_current_state}}` | Character's starting state | Planning (character_arc) |
+| `{{character_goal_state}}` | Character's desired end state | Planning (character_arc) |
+| `{{chapter_summaries}}` | Chapter summaries for timeline | Planning (timeline) |
+| `{{entity_events}}` | KB entity events for timeline | Planning (timeline) |
+| `{{entity_type}}` | KB entity type for filtering | KB (merge) |
+| `{{candidate_pairs}}` | Candidate duplicate pairs | KB (merge) |
 
 ### Section 3 — Instructions
 
@@ -229,7 +237,7 @@ it can be omitted.
 ### KB Prompts
 
 **Prompt types:** interview, improve, suggest, enhance, extract, consistency,
-worldbuilding (phase1, phase2)
+worldbuilding (phase1, phase2), merge
 
 **Mandatory variables:**
 
@@ -245,6 +253,15 @@ worldbuilding (phase1, phase2)
 - Improve/suggest/enhance MUST reference the current entry content
 - Consistency prompts MUST have `{{world_context}}` for cross-entity checks
 - Worldbuilding phase2 MUST have phase1 results as input context
+- Merge prompts MUST include `{{world_context}}`, `{{entity_type}}`, and `{{candidate_pairs}}`
+
+**Merge mode variables:**
+
+| Variable | Purpose |
+|----------|---------|
+| `{{world_context}}` | Related KB entities for context |
+| `{{entity_type}}` | Type of entities being analysed (e.g. "character", "location") |
+| `{{candidate_pairs}}` | The candidate entity pairs to evaluate |
 
 ### Analysis Prompts
 
@@ -268,7 +285,7 @@ review, preferences, remap
 
 ### Planning Prompts
 
-**Prompt types:** outline
+**Prompt types:** outline, character_arc, timeline
 
 **Mandatory variables:**
 
@@ -278,6 +295,18 @@ review, preferences, remap
 | `{{avoidance_patterns}}` | Author's content boundaries |
 | `{{genre}}` | Genre for plot structure guidance |
 | `{{language}}` | Output language |
+
+**Mode-specific variables:**
+
+| Mode | Variable | Purpose |
+|------|----------|---------|
+| outline | `{{variant_count}}` | Number of outline variants to generate |
+| character_arc | `{{character_name}}` | Character being analysed |
+| character_arc | `{{character_current_state}}` | Starting emotional/situational state |
+| character_arc | `{{character_goal_state}}` | Desired end state |
+| character_arc | `{{existing_plot_points}}` | Existing plot events the arc must accommodate |
+| timeline | `{{chapter_summaries}}` | Chapter summaries for chronological analysis |
+| timeline | `{{entity_events}}` | KB entity events for timeline context |
 
 ### Meta Prompt
 

@@ -23,6 +23,7 @@ Erstelle Gliederungen, die:
 - Genre: {{genre}}
 - Tonfall: {{tone}}
 - Sprache: {{language}}
+- Anzahl Varianten: {{variant_count}}
 
 ### Wissensdatenbank
 
@@ -42,6 +43,7 @@ Gib deine Gliederung als strukturierte Ausgabe mit folgenden Feldern an:
 
 - **chapter_title**: Ein vorgeschlagener Titel für das Kapitel.
 - **scenes**: Eine Liste von Szenenbeschreibungen in chronologischer Reihenfolge. Jede Szene sollte angeben: das Setting, die beteiligten Charaktere, die zentrale Aktion oder den Dialog und ihren Erzählzweck.
+- **variant_number**: Um welche Variante es sich handelt (1…variant_count)
 - **outline_text**: Die vollständige Gliederung als fortlaufender Text.
 
 ### Gliederungs-Richtlinien
@@ -50,6 +52,7 @@ Gib deine Gliederung als strukturierte Ausgabe mit folgenden Feldern an:
 - Szenen sollten natürlich ineinander übergehen — das Ende einer Szene bereitet die nächste vor
 - Integriere sowohl Aktion als auch Charakterentwicklung — reine Aktion ohne emotionale Beteiligung wirkt hohl
 - Wenn das Kapitel Teil eines Mehrkapitel-Bogens ist, stelle sicher, dass es einen eigenen Mini-Bogen hat (Aufbau, Spannung, Auflösung oder Cliffhanger)
+- Wenn variant_count > 1, erstelle entsprechend viele unterschiedliche Gliederungsoptionen — jede sollte einen anderen narrativen Ansatz, eine andere Tempostruktur oder Szenenzusammenstellung bieten
 - Berücksichtige das Wortziel bei der Festlegung der Szenenanzahl: mehr Szenen für längere Kapitel
 
 ### Nutzereinstellungen

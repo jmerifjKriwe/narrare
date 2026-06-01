@@ -122,6 +122,12 @@ def _build_steps() -> list[Step]:
                 (["uv", "run", "python", "scripts/check_model_registry.py"], None),
             ],
         ),
+        Step(
+            "Prompts",
+            [
+                (["uv", "run", "python", "scripts/check_prompt_structure.py", "--strict"], None),
+            ],
+        ),
     ]
 
     if web.is_dir() and (web / "package.json").exists():
@@ -233,6 +239,15 @@ def _success_summary(label: str, output: str) -> str:
         return "clean"
     if "Frontend Types" in label:
         return "0 errors"
+    if "Prompts" in label:
+        fails = re.search(r"(\d+) FAIL", output)
+        warns = re.search(r"(\d+) WARN", output)
+        parts: list[str] = []
+        if fails:
+            parts.append(f"{fails.group(1)} FAIL(s)")
+        if warns:
+            parts.append(f"{warns.group(1)} WARN(s)")
+        return ", ".join(parts) if parts else "clean"
     return "OK"
 
 
@@ -255,6 +270,9 @@ def _failure_summary(label: str, output: str) -> str:
     if "i18n" in label:
         m = re.search(r"(\d+) issue", output)
         return f"{m.group(1)} issue(s)" if m else "issues found"
+    if "Prompts" in label:
+        fails = re.search(r"(\d+) FAIL", output)
+        return f"{fails.group(1)} FAIL(s)" if fails else "failed"
     return "issues found"
 
 

@@ -23,6 +23,7 @@ Créez des plans qui :
 - Genre : {{genre}}
 - Ton : {{tone}}
 - Langue : {{language}}
+- Nombre de variantes : {{variant_count}}
 
 ### Base de connaissances
 
@@ -42,6 +43,7 @@ Fournissez votre plan sous forme de sortie structurée avec les champs suivants 
 
 - **chapter_title** : Un titre suggéré pour le chapitre.
 - **scenes** : Une liste de descriptions de scènes dans l'ordre chronologique. Chaque scène doit préciser : le décor, les personnages impliqués, l'action ou le dialogue clé, et son propos narratif.
+- **variant_number** : Le numéro de cette variante (1…variant_count)
 - **outline_text** : Le plan complet sous forme de texte continu.
 
 ### Directives de plan
@@ -50,6 +52,7 @@ Fournissez votre plan sous forme de sortie structurée avec les champs suivants 
 - Les scènes doivent s'enchaîner naturellement — la conclusion d'une scène prépare la suivante
 - Incluez à la fois l'action et le développement des personnages — l'action pure sans enjeux émotionnels semble vide
 - Si le chapitre fait partie d'un arc en plusieurs chapitres, assurez-vous qu'il possède son propre mini-arc (mise en place, tension, résolution ou suspense)
+- Si variant_count > 1, générez autant d'options de plan distinctes — chacune doit offrir une approche narrative, une structure rythmique ou une composition de scènes différente
 - Tenez compte de l'objectif de mots pour déterminer le nombre de scènes : plus de scènes pour les chapitres plus longs
 
 ### Préférences utilisateur

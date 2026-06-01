@@ -120,3 +120,66 @@ class RemapResponse(BaseModel):
     new_structure: str
     remapped: list[RemapPreviewItem]
     confirmed: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Character arc schemas
+# ---------------------------------------------------------------------------
+
+
+class CharacterArcRequest(BaseModel):
+    """Request body for character arc generation."""
+
+    character_name: str = Field(min_length=1, max_length=200)
+    character_current_state: str = ""
+    character_goal_state: str = ""
+
+
+class ArcPhaseResponse(BaseModel):
+    """A single phase in a character arc."""
+
+    phase_name: str = ""
+    description: str = ""
+    emotional_state: str = ""
+    turning_point: str = ""
+    chapters_suggested: str = ""
+
+
+class CharacterArcResponse(BaseModel):
+    """Response with full character arc analysis."""
+
+    character_name: str = ""
+    starting_state: str = ""
+    ending_state: str = ""
+    arc_type: str = ""
+    phases: list[ArcPhaseResponse] = []
+    key_relationships: list[str] = []
+    internal_conflict: str = ""
+    resolution: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Timeline schemas
+# ---------------------------------------------------------------------------
+
+
+class TimelineEventResponse(BaseModel):
+    """A single event in the narrative timeline."""
+
+    event_name: str = ""
+    description: str = ""
+    timestamp: str = ""
+    chapter_reference: str = ""
+    characters_involved: list[str] = []
+    location: str = ""
+    causes: list[str] = []
+    consequences: list[str] = []
+
+
+class TimelineResponse(BaseModel):
+    """Response with full timeline analysis."""
+
+    timeline_events: list[TimelineEventResponse] = []
+    temporal_conflicts: list[str] = []
+    coverage_gaps: list[str] = []
+    overall_assessment: str = ""

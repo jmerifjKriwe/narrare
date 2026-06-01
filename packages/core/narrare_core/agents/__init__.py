@@ -15,6 +15,11 @@ from narrare_core.agents.beta_reader_types import (
     BetaReaderPhase1Output,
     BetaReaderPhase2Output,
 )
+from narrare_core.agents.character_arc_agent import CharacterArcAgent, CharacterArcDeps
+from narrare_core.agents.character_arc_types import (
+    ArcPhase,
+    CharacterArcOutput,
+)
 from narrare_core.agents.consistency_agent import ConsistencyAgent
 from narrare_core.agents.consistency_types import (
     ConsistencyCheckType,
@@ -42,6 +47,12 @@ from narrare_core.agents.kb_improve_types import (
     KBImproveSuggestion,  # backward-compat alias
     SuggestionType,
 )
+from narrare_core.agents.merge_agent import KBMergeAgent, KBMergeDeps
+from narrare_core.agents.merge_types import (
+    MergeDecision,
+    MergeOutput,
+    MergeStrategy,
+)
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.outline_types import OutlineOutput
 from narrare_core.agents.preference_analysis_agent import (
@@ -54,6 +65,11 @@ from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.agents.summary_types import SummaryOutput
+from narrare_core.agents.timeline_agent import TimelineAgent, TimelineDeps
+from narrare_core.agents.timeline_types import (
+    TimelineEvent,
+    TimelineOutput,
+)
 from narrare_core.agents.worldbuilding_agent import WorldbuildingAgent
 from narrare_core.agents.worldbuilding_types import (
     Phase1ConnectionOutput,
@@ -83,11 +99,15 @@ __all__ = [
     "AgentRegistryProtocol",
     "AgentStrength",
     "Approved",
+    "ArcPhase",
     "BetaReaderAgent",
     "BetaReaderDeps",
     "BetaReaderPhase1Output",
     "BetaReaderPhase2Output",
     "ChapterSummaryAgent",
+    "CharacterArcAgent",
+    "CharacterArcDeps",
+    "CharacterArcOutput",
     "ConsistencyAgent",
     "ConsistencyCheckType",
     "ConsistencyDeps",
@@ -115,6 +135,11 @@ __all__ = [
     "KBImproveDeps",
     "KBImproveOutput",
     "KBImproveSuggestion",
+    "KBMergeAgent",
+    "KBMergeDeps",
+    "MergeDecision",
+    "MergeOutput",
+    "MergeStrategy",
     "NarrareAgent",
     "NeedsRevision",
     "OutlineAgent",
@@ -133,6 +158,10 @@ __all__ = [
     "SuggestionType",
     "SummaryDeps",
     "SummaryOutput",
+    "TimelineAgent",
+    "TimelineDeps",
+    "TimelineEvent",
+    "TimelineOutput",
     "WorldbuildingAgent",
     "WorldbuildingDeps",
     "WorldbuildingPhase1Output",

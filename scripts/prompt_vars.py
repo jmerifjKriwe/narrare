@@ -41,6 +41,19 @@ MODE_REQUIRED_VARS: dict[str, dict[str, set[str]]] = {
         "extend": {"existing_content"},
         "rewrite_selection": {"selection_text", "context_before", "context_after"},
     },
+    "planning": {
+        "outline": {"variant_count"},
+        "character_arc": {
+            "character_name",
+            "character_current_state",
+            "character_goal_state",
+            "existing_plot_points",
+        },
+        "timeline": {"chapter_summaries", "entity_events"},
+    },
+    "kb": {
+        "merge": {"world_context", "entity_type", "candidate_pairs"},
+    },
 }
 
 # ── EXEMPT: Modes that intentionally skip certain category-required vars ──

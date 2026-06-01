@@ -719,6 +719,114 @@
         }
       }
     },
+    "/api/v1/planning/character-arc/{novel_id}": {
+      "post": {
+        "tags": [
+          "planning"
+        ],
+        "summary": "Generate Character Arc",
+        "description": "Generate a character development arc for a character in a novel.",
+        "operationId": "generate_character_arc_api_v1_planning_character_arc__novel_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterArcRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterArcResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planning/timeline/{novel_id}": {
+      "get": {
+        "tags": [
+          "planning"
+        ],
+        "summary": "Get Timeline",
+        "description": "Generate a chronological timeline analysis for a novel.",
+        "operationId": "get_timeline_api_v1_planning_timeline__novel_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/chapters": {
       "get": {
         "tags": [
@@ -8049,6 +8157,38 @@
         "title": "ApplyExtractionResponse",
         "description": "Response after applying endorsed extraction items.\n\nReports which entries were created vs updated so the frontend\ncan refresh only the affected parts of the KB display."
       },
+      "ArcPhaseResponse": {
+        "properties": {
+          "phase_name": {
+            "type": "string",
+            "title": "Phase Name",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "emotional_state": {
+            "type": "string",
+            "title": "Emotional State",
+            "default": ""
+          },
+          "turning_point": {
+            "type": "string",
+            "title": "Turning Point",
+            "default": ""
+          },
+          "chapters_suggested": {
+            "type": "string",
+            "title": "Chapters Suggested",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ArcPhaseResponse",
+        "description": "A single phase in a character arc."
+      },
       "AvailableModelsResponse": {
         "properties": {
           "provider": {
@@ -8799,6 +8939,85 @@
         ],
         "title": "ChapterVersionResponse",
         "description": "Single historical version of chapter content."
+      },
+      "CharacterArcRequest": {
+        "properties": {
+          "character_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Character Name"
+          },
+          "character_current_state": {
+            "type": "string",
+            "title": "Character Current State",
+            "default": ""
+          },
+          "character_goal_state": {
+            "type": "string",
+            "title": "Character Goal State",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "character_name"
+        ],
+        "title": "CharacterArcRequest",
+        "description": "Request body for character arc generation."
+      },
+      "CharacterArcResponse": {
+        "properties": {
+          "character_name": {
+            "type": "string",
+            "title": "Character Name",
+            "default": ""
+          },
+          "starting_state": {
+            "type": "string",
+            "title": "Starting State",
+            "default": ""
+          },
+          "ending_state": {
+            "type": "string",
+            "title": "Ending State",
+            "default": ""
+          },
+          "arc_type": {
+            "type": "string",
+            "title": "Arc Type",
+            "default": ""
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/ArcPhaseResponse"
+            },
+            "type": "array",
+            "title": "Phases",
+            "default": []
+          },
+          "key_relationships": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Key Relationships",
+            "default": []
+          },
+          "internal_conflict": {
+            "type": "string",
+            "title": "Internal Conflict",
+            "default": ""
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "CharacterArcResponse",
+        "description": "Response with full character arc analysis."
       },
       "ChatDeleteResponse": {
         "properties": {
@@ -13173,6 +13392,98 @@
         ],
         "title": "TextChange",
         "description": "Ein Textsegment-Change für zustandsloses Apply.\n\nFrontend sendet original+revised Textsegmente (keine Change-IDs),\ndamit der Backend-Zustand irrelevant ist — nur original + accepted\nwerden zur Rekonstruktion gebraucht."
+      },
+      "TimelineEventResponse": {
+        "properties": {
+          "event_name": {
+            "type": "string",
+            "title": "Event Name",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "default": ""
+          },
+          "chapter_reference": {
+            "type": "string",
+            "title": "Chapter Reference",
+            "default": ""
+          },
+          "characters_involved": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Characters Involved",
+            "default": []
+          },
+          "location": {
+            "type": "string",
+            "title": "Location",
+            "default": ""
+          },
+          "causes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Causes",
+            "default": []
+          },
+          "consequences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Consequences",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "TimelineEventResponse",
+        "description": "A single event in the narrative timeline."
+      },
+      "TimelineResponse": {
+        "properties": {
+          "timeline_events": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineEventResponse"
+            },
+            "type": "array",
+            "title": "Timeline Events",
+            "default": []
+          },
+          "temporal_conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Temporal Conflicts",
+            "default": []
+          },
+          "coverage_gaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Coverage Gaps",
+            "default": []
+          },
+          "overall_assessment": {
+            "type": "string",
+            "title": "Overall Assessment",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "TimelineResponse",
+        "description": "Response with full timeline analysis."
       },
       "TokenLimitOverridesResponse": {
         "properties": {

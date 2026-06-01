@@ -82,3 +82,26 @@ class StoryboardServiceProtocol(Protocol):
     async def confirm_remap(
         self, novel_id: uuid.UUID, new_structure: str, user_id: uuid.UUID
     ) -> RemapResponse: ...
+
+
+@runtime_checkable
+class CharacterArcServiceProtocol(Protocol):
+    """Protocol for character arc generation."""
+
+    async def generate_character_arc(
+        self,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        request: object,  # CharacterArcRequest from schemas
+    ) -> object: ...  # CharacterArcResponse from schemas
+
+
+@runtime_checkable
+class TimelineServiceProtocol(Protocol):
+    """Protocol for timeline analysis."""
+
+    async def generate_timeline(
+        self,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> object: ...

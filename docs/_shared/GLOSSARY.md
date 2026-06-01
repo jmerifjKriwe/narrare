@@ -259,9 +259,16 @@ A global persona/system prompt prepended to all feature-specific prompts.
 Defines the AI's overall character and writing philosophy.
 Loaded by `core/prompts/meta.py`. One implementation, used by all features.
 
-**Mode (Writing Mode)**
-The type of writing operation: `new_chapter`, `extend`, `rewrite`, `interactive`,
-`co_author`. Affects prompt selection, generation parameters, and context assembly.
+**Mode (Writing Mode / Prompt Mode)**
+The type of operation that determines which prompt file is selected and how
+context is assembled. Two related concepts:
+- **Writing mode**: The type of writing operation: `new_chapter`, `extend`,
+  `rewrite`, `interactive`, `co_author`. Affects prompt selection, generation
+  parameters, and context assembly.
+- **Prompt mode**: The mode key used in the prompt cascade path
+  `prompts/_bundled/{category}/{lang}/{mode}/system.md`. Includes writing modes
+  plus planning modes (`outline`, `character_arc`, `timeline`), KB modes
+  (`interview`, `improve`, `suggest`, `merge`, etc.), and analysis modes.
 
 **Modifier (Prompt Modifier)**
 An optional prompt fragment appended to a base prompt to adjust behavior.
@@ -473,6 +480,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-05-21 — Metadata-consistency change: Tone, Writing Language, UI Language, Prompt Language, Name Style, Explanation Language entries; Genre correction
+> Last updated: 2026-06-01 — Mode entry broadened to cover prompt modes (character_arc, timeline, merge, etc.)
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist
