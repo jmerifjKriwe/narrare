@@ -374,6 +374,11 @@ check-locale-sync-verbose:
     @echo "🌍 Checking locale sync (verbose)..."
     uv run python scripts/check_locale_sync.py --verbose
 
+# Check DE prompt translations for common quality issues (compounds, anglicisms)
+check-prompts-de:
+    @echo "🇩🇪 Checking DE prompt quality..."
+    uv run python scripts/prompt_quality_de.py
+
 # List all bundled prompt modes with locale coverage
 prompt-list:
     #!/usr/bin/env bash
