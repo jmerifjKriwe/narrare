@@ -327,6 +327,92 @@ check-frontend:
     @echo "✅ Frontend checks passed"
 
 # ---------------------------------------------------------------------------
+# Additional Checks
+# ---------------------------------------------------------------------------
+
+# Check feature adoption score (>= 0.85 PASS, 0.70-0.85 WARN, < 0.70 FAIL)
+check-adoption:
+    @echo "📈 Checking feature adoption score..."
+    uv run python scripts/check_adoption.py
+
+# Check model registry against models.dev
+check-models:
+    @echo "🤖 Checking model registry..."
+    uv run python scripts/check_model_registry.py
+
+# Validate a commit message (for hook/CI use)
+# Usage: just check-commit-msg "feat(core): add new prompt mode"
+check-commit-msg msg:
+    @echo "$$msg" | uv run python scripts/check_commit_message.py
+
+# Export OpenAPI schema to docs/
+export-openapi:
+    @echo "📤 Exporting OpenAPI schema..."
+    cd apps/api && uv run python ../../scripts/export_openapi.py
+
+# ---------------------------------------------------------------------------
+# Prompts
+# ---------------------------------------------------------------------------
+
+# Validate prompt file structure (frontmatter, variables, security, size)
+check-prompts:
+    @echo "📝 Checking prompt structure..."
+    uv run python scripts/check_prompt_structure.py
+
+# Same, but treat warnings as failures (CI mode)
+check-prompts-strict:
+    @echo "📝 Checking prompt structure (strict)..."
+    uv run python scripts/check_prompt_structure.py --strict
+
+# Check locale sync between EN/DE/FR prompt variants
+check-locale-sync:
+    @echo "🌍 Checking locale sync..."
+    uv run python scripts/check_locale_sync.py
+
+# Show locale sync with full details (all groups, including synced)
+check-locale-sync-verbose:
+    @echo "🌍 Checking locale sync (verbose)..."
+    uv run python scripts/check_locale_sync.py --verbose
+
+# List all bundled prompt modes with locale coverage
+prompt-list:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "📋 Bundled prompt modes:"
+    echo ""
+    for dir in $(find packages/core/narrare_core/prompts/_bundled/ -mindepth 2 -maxdepth 2 -type d \( -name "en" -o -name "de" -o -name "fr" \) | sort); do
+        mode=$(dirname "$dir" | sed 's|.*/_bundled/||')
+        locale=$(basename "$dir")
+        echo "  $mode [$locale]"
+    done | sort -u
+
+# Show prompt statistics (count per category, locale coverage, line counts)
+prompt-stats:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BUNDLED="packages/core/narrare_core/prompts/_bundled"
+    echo "📊 Prompt Statistics"
+    echo "==================="
+    echo ""
+    echo "Total .md files:  $(find "$BUNDLED" -name '*.md' | wc -l)"
+    echo "System prompts:   $(find "$BUNDLED" -name 'system.md' | wc -l)"
+    echo ""
+    echo "By category:"
+    for cat in analysis chat generation kb meta planning wiki writing; do
+        count=$(find "$BUNDLED/$cat" -name 'system.md' 2>/dev/null | wc -l)
+        [ "$count" -gt 0 ] && echo "  $cat: $count files"
+    done
+    echo ""
+    echo "By locale:"
+    for loc in en de fr; do
+        count=$(find "$BUNDLED" -path "*/$loc/*/system.md" -o -path "*/$loc/system.md" | wc -l)
+        echo "  $loc: $count prompts"
+    done
+    echo ""
+    echo "Largest prompts (by lines):"
+    find "$BUNDLED" -name 'system.md' -exec wc -l {} + | sort -rn | head -6
+
+# ---------------------------------------------------------------------------
 # Release
 # ---------------------------------------------------------------------------
 
@@ -384,3 +470,11 @@ deps-update:
 hooks-update:
     pre-commit autoupdate
     pre-commit install --install-hooks
+
+# ---------------------------------------------------------------------------
+# Full check
+# ---------------------------------------------------------------------------
+
+# Full pre-merge check (everything, strict mode)
+check-full: check check-prompts-strict check-locale-sync check-adoption check-models
+    @echo "✅ All checks passed — ready to merge"
