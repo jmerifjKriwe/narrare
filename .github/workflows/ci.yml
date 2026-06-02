@@ -53,6 +53,11 @@ jobs:
         continue-on-error: true
         run: uv run python scripts/check_locale_sync.py
 
+      - name: Check streaming compliance (RULE-20)
+        continue-on-error: true
+        run: |
+          uv run python scripts/check_streaming_compliance.py
+
   # -------------------------------------------------------------------------
   # Lint & format (< 60s)
   # -------------------------------------------------------------------------

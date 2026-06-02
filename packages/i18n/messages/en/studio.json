@@ -122,12 +122,7 @@
   },
   "aiModal": {
     "title": "AI Suggestions",
-    "original": "Original: \"{text}\"",
-    "reject": "Reject",
-    "newSuggestions": "New suggestions",
-    "accept": "Accept",
-    "rejectionLabel": "Why do you want to reject all suggestions?",
-    "rejectionPlaceholder": "Your feedback helps the AI make better suggestions..."
+    "original": "Original: \"{text}\""
   },
   "worldbuilding": {
     "categories": "CATEGORIES",
@@ -218,7 +213,6 @@
     "score": "Score",
     "entityCount": "{count} entities analyzed",
     "error": "Analysis failed",
-    "retry": "Retry",
     "success": "Analysis complete",
     "applied": "Applied {count} connections",
     "failed": "Failed to apply connections",
@@ -754,7 +748,6 @@
     "close": "Close session",
     "inputPlaceholder": "Type your direction...",
     "send": "Send",
-    "addToDraft": "Add to Draft",
     "addedToDraft": "Added ✓",
     "saveToChapter": "Save to Chapter",
     "endSession": "End Session",
@@ -1573,8 +1566,6 @@
     "resetting": "Resetting...",
     "confirmReset": "Yes, Reset",
     "cancelReset": "Cancel",
-    "rating": "Rate this suggestion",
-    "rejectReason": "Why did you reject this?",
     "submitRating": "Submit",
     "skipRating": "Skip",
     "ratingSubmitted": "Thanks for your feedback!",
@@ -1593,12 +1584,9 @@
     "aiContinuation": "AI Continuation",
     "aiRewrite": "AI Rewrite",
     "aiSuggestion": "AI Suggestion",
-    "keep": "Keep",
-    "undo": "Undo",
     "aiWords": "{count} words",
     "continueWriting": "Continue writing",
     "selectLength": "Select length",
-    "stop": "Stop",
     "length": {
       "short": "Short (~150 words)",
       "medium": "Medium (~400 words)",
@@ -1643,10 +1631,6 @@
     "count": "Alternatives",
     "generate": "Generate",
     "generating": "Generating...",
-    "cancel": "Cancel",
-    "replace": "Replace",
-    "insertAsNew": "Insert as new",
-    "streaming": "Generating alternatives...",
     "selectionTooShort": "Select at least {min} characters",
     "selectionTooLong": "Selection too long (max {max} characters)"
   },

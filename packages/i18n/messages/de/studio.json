@@ -122,12 +122,7 @@
   },
   "aiModal": {
     "title": "KI-Vorschläge",
-    "original": "Original: \"{text}\"",
-    "reject": "Ablehnen",
-    "newSuggestions": "Neue Vorschläge",
-    "accept": "Übernehmen",
-    "rejectionLabel": "Warum möchtest du alle Vorschläge ablehnen?",
-    "rejectionPlaceholder": "Dein Feedback hilft der KI, bessere Vorschläge zu machen..."
+    "original": "Original: \"{text}\""
   },
   "worldbuilding": {
     "categories": "KATEGORIEN",
@@ -218,7 +213,6 @@
     "score": "Ergebnis",
     "entityCount": "{count} Entitäten analysiert",
     "error": "Analyse fehlgeschlagen",
-    "retry": "Erneut versuchen",
     "success": "Analyse abgeschlossen",
     "applied": "{count} Verbindungen angewendet",
     "failed": "Verbindungen konnten nicht angewendet werden",
@@ -754,7 +748,6 @@
     "close": "Session schließen",
     "inputPlaceholder": "Gib deine Richtung ein...",
     "send": "Senden",
-    "addToDraft": "Zum Entwurf hinzufügen",
     "addedToDraft": "Hinzugefügt ✓",
     "saveToChapter": "In Kapitel speichern",
     "endSession": "Session beenden",
@@ -1573,8 +1566,6 @@
     "resetting": "Wird zurückgesetzt...",
     "confirmReset": "Ja, zurücksetzen",
     "cancelReset": "Abbrechen",
-    "rating": "Bewerte diesen Vorschlag",
-    "rejectReason": "Warum hast du das abgelehnt?",
     "submitRating": "Absenden",
     "skipRating": "Überspringen",
     "ratingSubmitted": "Danke für dein Feedback!",
@@ -1593,12 +1584,9 @@
     "aiContinuation": "KI-Fortsetzung",
     "aiRewrite": "KI-Umschreibung",
     "aiSuggestion": "KI-Vorschlag",
-    "keep": "Behalten",
-    "undo": "Rückgängig",
     "aiWords": "{count} Wörter",
     "continueWriting": "Weiter schreiben",
     "selectLength": "Länge wählen",
-    "stop": "Stopp",
     "length": {
       "short": "Kurz (~150 Wörter)",
       "medium": "Mittel (~400 Wörter)",
@@ -1643,10 +1631,6 @@
     "count": "Alternativen",
     "generate": "Generieren",
     "generating": "Generiere...",
-    "cancel": "Abbrechen",
-    "replace": "Ersetzen",
-    "insertAsNew": "Als neu einfügen",
-    "streaming": "Generiere Alternativen...",
     "selectionTooShort": "Mindestens {min} Zeichen auswählen",
     "selectionTooLong": "Auswahl zu lang (max. {max} Zeichen)"
   },

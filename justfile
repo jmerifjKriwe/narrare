@@ -340,6 +340,11 @@ check-models:
     @echo "🤖 Checking model registry..."
     uv run python scripts/check_model_registry.py
 
+# Check RULE-20 streaming compliance (SSE endpoints must use connectSSE in frontend)
+check-streaming:
+    @echo "📡 Checking RULE-20 streaming compliance..."
+    uv run python scripts/check_streaming_compliance.py
+
 # Validate a commit message (for hook/CI use)
 # Usage: just check-commit-msg "feat(core): add new prompt mode"
 check-commit-msg msg:
@@ -481,5 +486,5 @@ hooks-update:
 # ---------------------------------------------------------------------------
 
 # Full pre-merge check (everything, strict mode)
-check-full: check check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models
+check-full: check check-streaming check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models
     @echo "✅ All checks passed — ready to merge"

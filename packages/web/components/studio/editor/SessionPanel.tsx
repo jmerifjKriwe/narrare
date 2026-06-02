@@ -122,7 +122,7 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
 
   const hasAddedAny = useMemo(() => addedIds.size > 0, [addedIds]);
   const aiDraftBadge = t("sessionPanel.aiDraftBadge");
-  const addToDraftLabel = t("sessionPanel.addToDraft");
+  const addToDraftLabel = t("aiActions.addToDraft");
   const addedToDraftLabel = t("sessionPanel.addedToDraft");
 
   return (

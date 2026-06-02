@@ -122,12 +122,7 @@
   },
   "aiModal": {
     "title": "Suggestions IA",
-    "original": "Original : \"{text}\"",
-    "reject": "Refuser",
-    "newSuggestions": "Nouvelles suggestions",
-    "accept": "Accepter",
-    "rejectionLabel": "Pourquoi souhaitez-vous rejeter toutes les suggestions ?",
-    "rejectionPlaceholder": "Votre retour aide l'IA à faire de meilleures suggestions..."
+    "original": "Original : \"{text}\""
   },
   "worldbuilding": {
     "categories": "CATÉGORIES",
@@ -218,7 +213,6 @@
     "score": "Score",
     "entityCount": "{count} entités analysées",
     "error": "L'analyse a échoué",
-    "retry": "Réessayer",
     "success": "Analyse terminée",
     "applied": "{count} connexions appliquées",
     "failed": "Impossible d'appliquer les connexions",
@@ -754,7 +748,6 @@
     "close": "Fermer la session",
     "inputPlaceholder": "Tapez votre direction...",
     "send": "Envoyer",
-    "addToDraft": "Ajouter au brouillon",
     "addedToDraft": "Ajouté ✓",
     "saveToChapter": "Sauver dans le chapitre",
     "endSession": "Terminer la session",
@@ -1573,8 +1566,6 @@
     "resetting": "Réinitialisation...",
     "confirmReset": "Oui, réinitialiser",
     "cancelReset": "Annuler",
-    "rating": "Évaluez cette suggestion",
-    "rejectReason": "Pourquoi avez-vous rejeté ceci ?",
     "submitRating": "Soumettre",
     "skipRating": "Ignorer",
     "ratingSubmitted": "Merci pour votre retour !",
@@ -1593,12 +1584,9 @@
     "aiContinuation": "Continuation IA",
     "aiRewrite": "Réécriture IA",
     "aiSuggestion": "Suggestion IA",
-    "keep": "Conserver",
-    "undo": "Annuler",
     "aiWords": "{count} mots",
     "continueWriting": "Continuer l'écriture",
     "selectLength": "Choisir la longueur",
-    "stop": "Arrêter",
     "length": {
       "short": "Court (~150 mots)",
       "medium": "Moyen (~400 mots)",
@@ -1643,10 +1631,6 @@
     "count": "Alternatives",
     "generate": "Générer",
     "generating": "Génération...",
-    "cancel": "Annuler",
-    "replace": "Remplacer",
-    "insertAsNew": "Insérer comme nouveau",
-    "streaming": "Génération des alternatives...",
     "selectionTooShort": "Sélectionnez au moins {min} caractères",
     "selectionTooLong": "Sélection trop longue (max {max} caractères)"
   },

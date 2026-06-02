@@ -114,7 +114,7 @@ Automated versioning via **release-please**:
 
 | Job | Target | Commands |
 |-----|--------|----------|
-| `architecture-check` | <30s | `python scripts/check_architecture.py` |
+| `architecture-check` | <30s | `python scripts/check_architecture.py` + `check_adoption.py` + `check_streaming_compliance.py` (warning) |
 | `lint` | <60s | `ruff check` + `ruff format --check` (Python) |
 | `typecheck` | <2min | `pyright --strict` |
 | `test-unit` | <5min | `pytest tests/unit/` |
@@ -236,6 +236,37 @@ repos:
 - RULE-04: File size limits
 - RULE-06: Router purity
 - RULE-11: Silent failures
+
+## Streaming Compliance Checker
+
+`scripts/check_streaming_compliance.py` enforces **RULE-20** (no deferred streaming):
+
+- Discovers all backend SSE endpoints (StreamingResponse routes)
+- Checks that the frontend consumes them via `connectSSE()` (not REST calls)
+- Reports violations where `apiClient` is used instead of `connectSSE`
+
+### Usage
+
+```bash
+# Human-readable report
+just check-streaming
+
+# JSON output (for tooling)
+uv run python scripts/check_streaming_compliance.py --json
+```
+
+### CI Integration
+
+Currently runs as a **warning-only** step (`continue-on-error: true`) in the
+`architecture` job of `ci.yml`. After one sprint of clean runs, it will be
+promoted to a hard failure and added to the pre-commit hooks.
+
+### Promotion Checklist
+
+- [ ] All existing violations resolved
+- [ ] Sprint of clean CI runs confirmed
+- [ ] Remove `continue-on-error: true` from `ci.yml`
+- [ ] Add hook to `.pre-commit-config.yaml`
 
 ## Justfile Command Catalog
 
