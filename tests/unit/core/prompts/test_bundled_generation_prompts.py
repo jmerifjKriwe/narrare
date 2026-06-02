@@ -17,8 +17,8 @@ _BUNDLED_ROOT = Path(__file__).parent.parent.parent.parent.parent / (
     "packages/core/narrare_core/prompts/_bundled"
 )
 
-# Expected name generation language dirs
-_NAME_LANGUAGES = ("en", "de", "fr")
+# Expected name generation language dirs (EN only — DE/FR removed in Phase 5)
+_NAME_LANGUAGES = ("en",)
 
 # Expected culture IDs and languages
 _CULTURE_IDS = ("fantasy", "modern", "scifi")

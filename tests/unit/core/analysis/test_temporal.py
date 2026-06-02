@@ -314,7 +314,7 @@ class TestTemporalIssueModels:
 
 
 class TestTemporalConsistencyPromptExistence:
-    """temporal_consistency prompt files exist in all 3 locales."""
+    """temporal_consistency prompt files exist in EN (DE/FR removed in Phase 5)."""
 
     def _prompt_path(self, lang: str) -> Path:
         return PROMPTS_DIR / "planning" / lang / "temporal_consistency" / "system.md"
@@ -322,15 +322,8 @@ class TestTemporalConsistencyPromptExistence:
     def test_prompt_exists_en(self) -> None:
         assert self._prompt_path("en").is_file()
 
-    def test_prompt_exists_de(self) -> None:
-        assert self._prompt_path("de").is_file()
-
-    def test_prompt_exists_fr(self) -> None:
-        assert self._prompt_path("fr").is_file()
-
     def test_prompt_has_frontmatter(self) -> None:
-        for lang in ("en", "de", "fr"):
-            content = self._prompt_path(lang).read_text()
-            assert content.startswith("---"), f"{lang} prompt missing frontmatter"
-            assert "prompt_type: planning" in content, f"{lang} prompt missing prompt_type"
-            assert "prompt_language: " + lang in content, f"{lang} prompt has wrong language"
+        content = self._prompt_path("en").read_text()
+        assert content.startswith("---"), "en prompt missing frontmatter"
+        assert "prompt_type: planning" in content, "en prompt missing prompt_type"
+        assert "prompt_language: en" in content, "en prompt has wrong language"

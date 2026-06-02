@@ -19,8 +19,8 @@ _BUNDLED_ROOT = Path(__file__).parent.parent.parent.parent.parent / (
     "packages/core/narrare_core/prompts/_bundled"
 )
 
-# Expected writing prompt languages and modes
-_WRITING_LANGUAGES = ("en", "de", "fr")
+# Expected writing prompt languages and modes (EN only — DE/FR removed in Phase 5)
+_WRITING_LANGUAGES = ("en",)
 _WRITING_MODES = ("new_chapter", "scene_by_scene", "interview", "interactive_session")
 
 # Dynamically discover tone IDs from the filesystem
@@ -80,7 +80,7 @@ def _tone_path(tone_id: str) -> Path:
 
 
 class TestWritingPromptExistence:
-    """Verify all 12 writing prompt files exist (4 modes x 3 languages)."""
+    """Verify all 4 writing prompt files exist (4 modes x EN only)."""
 
     @pytest.mark.parametrize("language", _WRITING_LANGUAGES)
     @pytest.mark.parametrize("mode", _WRITING_MODES)
@@ -90,7 +90,7 @@ class TestWritingPromptExistence:
         assert path.exists(), f"Missing writing prompt: {path}"
 
     def test_total_prompt_file_count(self) -> None:
-        """Verify total expected count: 4 modes x 3 languages = 12 files."""
+        """Verify total expected count: 4 modes x 1 language = 4 files."""
         writing_dir = _BUNDLED_ROOT / "writing"
         prompt_files = []
         for lang_dir in writing_dir.iterdir():
@@ -100,8 +100,8 @@ class TestWritingPromptExistence:
                         system_file = mode_dir / "system.md"
                         if system_file.exists():
                             prompt_files.append(system_file)
-        assert len(prompt_files) == 12, (
-            f"Expected 12 writing prompt files, found {len(prompt_files)}: "
+        assert len(prompt_files) == 4, (
+            f"Expected 4 writing prompt files, found {len(prompt_files)}: "
             f"{[str(p) for p in prompt_files]}"
         )
 
@@ -248,19 +248,18 @@ class TestToneVariants:
 class TestWritingPromptRegistryIntegration:
     """Verify the PromptRegistry can resolve all writing modes."""
 
-    @pytest.mark.parametrize("language", _WRITING_LANGUAGES)
     @pytest.mark.parametrize("mode", _WRITING_MODES)
-    async def test_registry_resolves_writing_prompt(self, language: str, mode: str) -> None:
-        """PromptRegistry.resolve should find each writing prompt."""
+    async def test_registry_resolves_writing_prompt_en(self, mode: str) -> None:
+        """PromptRegistry.resolve should find each writing prompt in EN."""
         registry = PromptRegistry()
         result = await registry.resolve(
             category="writing",
-            language=language,
+            language="en",
             mode=mode,
         )
-        assert result.system_prompt, f"Empty system prompt for writing/{language}/{mode}"
-        assert result.source in ("bundled", "bundled_en"), (
-            f"Unexpected source '{result.source}' for writing/{language}/{mode}"
+        assert result.system_prompt, f"Empty system prompt for writing/en/{mode}"
+        assert result.source == "bundled", (
+            f"Unexpected source '{result.source}' for writing/en/{mode}"
         )
 
     async def test_cascade_resolves_en_new_chapter(self) -> None:

@@ -58,7 +58,10 @@ Adopt a hybrid approach with three distinct injection mechanisms, each aligned t
 |---|---|---|---|
 | **Guaranteed** (fiction guidelines, conflict resolution, injection defense) | `AbstractCapability.get_instructions()` | `core/prompts/_bundled/` (canonical) | Static per agent, always present |
 | **Customizable** (role, task, output format, mode-specific instructions) | PromptComposer cascade | `core/prompts/_bundled/` + user overrides | Per intent, user-configurable |
-| **Dynamic** (KB data, style profiles, voice profiles) | `@agent.instructions` or `Capability.for_run()` | Deps (runtime) | Per invocation, data-driven |
+| **Dynamic Instructions** (per-run behavioral adjustments, conditional rules) | `@agent.instructions` or `Capability.for_run()` | Deps (runtime) | Per invocation, behavioral |
+| **Dynamic Data** (KB entities, chapter content, preferences, style profiles) | Variable substitution via `PromptContext` | `PromptContext` fields + `extra` | Per invocation, structured context |
+
+**Key distinction:** Dynamic *instructions* change how the agent behaves (e.g., "focus on dialogue this chapter"). Dynamic *data* provides structured reference material the agent uses (e.g., character descriptions, location data). KB data, style profiles, and voice profiles are dynamic data — they remain as template variables.
 
 **Pros:**
 - Universal rules are architecturally guaranteed (cannot be forgotten)
@@ -220,9 +223,8 @@ The migration is phased to ensure each step is atomic and backward-compatible.
 | 1 | `NarrareUniversalRules` Capability + template cleanup | Low — additive, no existing paths change | ADR-026 approval | ✅ Complete |
 | 2 | PromptGuard reorientation | Low — PromptGuard validates Capability output | Phase 1 | ✅ Complete |
 | 3 | `NarrareMeta` Capability | Medium — meta-prompt moves from PromptComposer to Capability | Phase 1 | ✅ Complete |
-| 4 | KB-Context as `@agent.instructions` | Medium — changes how KB data is injected | Phase 3 | Pending |
-| 5 | Language optimization (EN-only templates) | Low — removes language variants from templates | Phase 3 | Pending |
-| 6 | TemplateStr evaluation (optional) | Low — template syntax modernization | Phase 5 | Pending |
+| 4 | ~~KB-Context as `@agent.instructions`~~ **Skipped** | — | — |
+| 5 | Language optimization (EN-only templates) | Low — removes language variants | Phase 3 |
 
 ### Phase 1: NarrareUniversalRules + Template Cleanup (Atomic)
 
@@ -246,33 +248,47 @@ The migration is phased to ensure each step is atomic and backward-compatible.
 3. Update `NarrareAgent.with_meta()` to use `NarrareMeta` Capability instead of manual prepending
 4. Simplify PromptComposer: it now only handles customizable content
 
-### Phase 4: KB-Context as @agent.instructions
+### Phase 4: Skipped — KB Context Remains as Variable Substitution
 
-1. Move KB context injection from PromptComposer to `@agent.instructions`
-2. Create `NarrareKBContext` Capability or use `@agent.instructions` directly
-3. Update `WritingDeps` and other Deps types to implement `PromptDeps` protocol
+**Decision:** Phase 4 was evaluated and **skipped**. KB context data (characters, locations, factions, relationships) will remain as template variables (`{{kb_characters}}`, etc.) rather than migrating to Capabilities or `@agent.instructions`.
 
-### Phase 5: Language Optimization
+**Rationale:**
+1. **No problem to solve** — Phases 1–3 fixed a real problem (forgotten universal rules). KB variable injection has zero known bugs.
+2. **KB data is structured context, not instructions** — `@agent.instructions` / `Capability.for_run()` is for behavioral guidance, not for structured reference data.
+3. **Massive refactoring for no architectural benefit** — 54 templates with 189 KB references, 25 Deps types needing per-agent KB string fields.
+4. **Would violate RULE-02** — KB formatting would migrate from templates to code (f-string construction).
+5. **`PromptContext.extra` is the correct abstraction** — designed for per-invocation data that doesn't warrant dedicated fields.
 
-1. Make templates EN-only with cascade overrides for other languages
-2. Remove language variants from feature-specific templates
-3. Keep language variants only for meta-prompt and universal rules (where language matters)
+This led to a refinement of the "Dynamic" category in the three-mechanism model.
 
-### Phase 6: TemplateStr Evaluation (Optional)
+### Phase 5: Language Optimization (In Progress)
 
-1. Evaluate switching from `{{variable}}` to `{variable}` (Python format strings) in templates
-2. Requires ADR if pursued
+**Goal:** Reduce template maintenance burden by making EN the default template language, with DE/FR available only as cascade overrides.
 
-### Completed Phases (1–3)
+**What changes:**
+- Delete all DE/FR template files under `_bundled/{writing,kb,analysis,planning,generation,chat,wiki}/de/` and `.../fr/`
+- Keep EN templates as the sole bundled variant
+- Keep all 3 languages for `_bundled/meta/` and `_bundled/universal/` (where language matters for persona/identity)
+- DE/FR users can still override via project-level cascade (`.narrare/prompts/{category}/de/`)
 
-Phases 1–3 were implemented in commit `45b7395`. Key outcomes:
+**Why this works:**
+- LLMs understand English system prompts and generate output in `{{writing_language}}` correctly
+- The `{{writing_language}}` variable controls output language, not the system prompt language
+- DE/FR templates were 1:1 translations with identical structure — maintenance burden with no quality gain
 
-- `NarrareUniversalRules` Capability injects fiction guidelines, conflict resolution, injection defense from `_bundled/universal/`
-- `NarrareMeta` Capability injects identity, role flexibility, guardrails from `_bundled/meta/`
-- Both auto-injected by `NarrareAgent.__init__` — architecturally guaranteed for every agent
-- `with_meta()` REMOVED completely — no longer needed
-- `PromptComposer` simplified: no `meta_loader`, no `include_meta`, no meta-prepending. Handles only customizable content
-- RULE-02a established: three content categories (Guaranteed / Customizable / Dynamic)
+**CI changes:**
+- `prompt_checks.py` cross-locale variable consistency check becomes EN-only
+- `prompt_vars.py` validation remains per-category (language-independent)
+
+### Completed Phases
+
+| Phase | Status | Commit |
+|-------|--------|--------|
+| 1 | ✅ Complete — `NarrareUniversalRules` Capability | d1432d1 |
+| 2 | ✅ Complete — PromptGuard reorientation | d1432d1 |
+| 3 | ✅ Complete — `NarrareMeta` Capability, `with_meta()` removed | 45b7395 |
+| 4 | ⏭️ Skipped — KB context stays as variable substitution | N/A |
+| 5 | 🔄 In Progress — Language optimization | — |
 
 ---
 
@@ -335,8 +351,8 @@ This avoids requiring all Deps types to implement a full protocol, while still p
 
 ## Review Trigger
 
-- [ ] After Phase 1 completion: Verify universal rules are present in all agent outputs
-- [ ] After Phase 3 completion: Verify meta-prompt identity is present regardless of PromptComposer usage
-- [ ] When pydantic-ai v2 is released: Verify `AbstractCapability.get_instructions()` contract is unchanged
-- [ ] After 3 months: Audit whether any production code bypasses Capability injection
+- [x] ~~Phase 1: Verify universal rules present in all agent outputs~~ (done — d1432d1)
+- [x] ~~Phase 3: Verify meta-prompt identity regardless of PromptComposer~~ (done — 45b7395)
+- [ ] Phase 5: Verify EN-only templates produce correct output in all writing languages
+- [ ] pydantic-ai v2: Verify `AbstractCapability.get_instructions()` contract unchanged
 - [ ] When adding a new agent: Verify it inherits `NarrareUniversalRules` via `NarrareAgent.__init__`
