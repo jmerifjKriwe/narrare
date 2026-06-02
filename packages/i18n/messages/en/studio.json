@@ -47,7 +47,8 @@
     "blockquote": "Quote",
     "addBlock": "Add block",
     "nameGenerator": "Name Generator",
-    "generate": "Generate"
+    "generate": "Generate",
+    "contentRecovered": "Unsaved changes restored"
   },
   "metadataSidebar": {
     "title": "Metadata",
@@ -507,7 +508,9 @@
       "generation": "Generation",
       "writing": "Writing",
       "analysis": "Analysis",
-      "kb": "Knowledge Base"
+      "kb": "Knowledge Base",
+      "preview": "Preview",
+      "edit": "Edit"
     },
     "shortcutsSection": {
       "title": "Keyboard shortcuts",
@@ -522,6 +525,14 @@
       "italicDescription": "Format selected text as italic",
       "aiRewrite": "AI rewrite",
       "aiRewriteDescription": "Select text and open AI menu",
+      "commandPalette": "Command Palette",
+      "commandPaletteDescription": "Open the command palette",
+      "ghostTextAccept": "Accept Ghost Text",
+      "ghostTextAcceptDescription": "Accept the full suggested text",
+      "ghostTextWord": "Ghost Text word-by-word",
+      "ghostTextWordDescription": "Accept the next word of the suggestion",
+      "ghostTextDismiss": "Dismiss Ghost Text",
+      "ghostTextDismissDescription": "Dismiss suggestion and continue writing",
       "selectText": "Select"
     },
     "aboutSection": {
@@ -714,6 +725,11 @@
     "unknownError": "An unknown error occurred",
     "connectionLost": "Connection lost",
     "validationMissingInput": "At least one of outline, prompt, or auto-continue must be provided.",
+    "contextTooLargeOutline": "Your outline is too long. Shorten it to a maximum of {max} characters or reduce the number of chapters.",
+    "contextTooLargePinned": "You have too many pinned KB entries. Pin only the most important ones.",
+    "contextTooLargeGeneric": "The context is too large for the AI. Reduce the outline or remove pinned KB entries.",
+    "contextInspectorAction": "Inspect Context",
+    "clearPinnedAction": "Clear Pinned",
     "outlineHelpScene": "Optional. Describe the scene structure, e.g.: \"Scene 1: Arrival at the castle. Scene 2: Negotiation with the king.\" Without an outline, the AI will interpret freely.",
     "tokensTotal": "Tokens total",
     "tokensPrompt": "Prompt",
@@ -1320,6 +1336,11 @@
     "extractionHideSource": "Hide source text",
     "extractionLoadingDesc": "AI is reading your chapter and identifying entities, facts, and relationships...",
     "extractionLoadingTitle": "Extracting Knowledge",
+    "extractionPhase": {
+      "analysing": "Analysing chapter text for entities and patterns...",
+      "extracting": "Extracting entities, relationships, and facts...",
+      "finalizing": "Finalizing extraction results..."
+    },
     "extractionNewEntity": "New Entity",
     "extractionProposedContent": "Proposed content",
     "extractionRelationship": "Relationship",
@@ -1334,6 +1355,15 @@
     "extractionValidationError": "Could not extract from this chapter. It may be too short or empty.",
     "extractionAnalysisNotes": "AI Analysis Notes",
     "extractionViewSource": "View source text",
+    "interview": {
+      "resumeTitle": "Resumed interview found",
+      "resumeDescription": "You have an incomplete interview. Would you like to continue it?",
+      "resumeAction": "Continue",
+      "startNew": "Start new interview",
+      "cancelConfirmTitle": "End interview?",
+      "cancelConfirmDescription": "Your progress will be saved. You can continue the interview later.",
+      "cancelConfirmAction": "End"
+    },
     "wiki": {
       "aiPerspective": "How the AI understands this {type}",
       "narrativeSummary": "Narrative Summary",
@@ -1646,5 +1676,65 @@
     "profileCustom": "Custom",
     "outputLimit": "Output limit",
     "max": "16K"
+  },
+  "ghostText": {
+    "onboardingHint": "Tab = Accept | → = Word-by-word | Esc = Dismiss"
+  },
+  "aiActions": {
+    "accept": "Accept",
+    "reject": "Reject",
+    "retry": "Retry",
+    "stop": "Stop",
+    "addToDraft": "Add to Draft",
+    "insertAsNew": "Insert as New",
+    "replace": "Replace",
+    "rating": "Rate this suggestion",
+    "rejectReason": "Why do you want to reject this?",
+    "rejectReasonPlaceholder": "Your feedback helps the AI make better suggestions...",
+    "submitRating": "Submit",
+    "skipRating": "Skip",
+    "ratingSubmitted": "Thanks for your feedback!",
+    "generating": "Generating...",
+    "aiThinking": "AI is thinking...",
+    "connectionLost": "Connection lost. Check your internet connection.",
+    "connectionLostRetry": "Reconnect",
+    "newSuggestions": "New Suggestions",
+    "original": "Original",
+    "suggested": "Suggested"
+  },
+  "tour": {
+    "step1": {
+      "title": "Writing Area",
+      "description": "This is where you write your novel. The editor supports formatting and chapter management."
+    },
+    "step2": {
+      "title": "Navigation",
+      "description": "Navigate between Editor, World & Characters, Analysis, and Settings."
+    },
+    "step3": {
+      "title": "AI Assistance",
+      "description": "AI assistance: Generate text, continue writing, or let the AI rewrite text."
+    },
+    "step4": {
+      "title": "Ghost Text",
+      "description": "As you write, gray suggestions may appear. Press Tab to accept them, or Esc to dismiss."
+    },
+    "step5": {
+      "title": "Worldbuilding",
+      "description": "Manage characters, locations, and other entities of your novel world."
+    },
+    "step6": {
+      "title": "Settings",
+      "description": "Customize AI settings, writing goals, and keyboard shortcuts."
+    },
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done"
+  },
+  "quickStart": {
+    "label": "Quick Start",
+    "creating": "Creating project…",
+    "defaultProjectName": "My Novel"
   }
 }

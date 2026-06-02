@@ -15,19 +15,20 @@ describe("ExtractionLoading", () => {
   it("renders loading title", () => {
     render(<ExtractionLoading />);
 
-    expect(screen.getByText("kb.extractionLoadingTitle")).toBeDefined();
+    expect(screen.getByText("aiThinking")).toBeDefined();
   });
 
-  it("renders loading description", () => {
+  it("renders loading phase description", () => {
     render(<ExtractionLoading />);
 
-    expect(screen.getByText("kb.extractionLoadingDesc")).toBeDefined();
+    // Initial phase is "analysing"
+    expect(screen.getByText("kb.extractionPhase.analysing")).toBeDefined();
   });
 
   it("renders with purple styling", () => {
     render(<ExtractionLoading />);
 
-    const title = screen.getByText("kb.extractionLoadingTitle");
+    const title = screen.getByText("aiThinking");
     expect(title.className).toContain("font-medium");
   });
 

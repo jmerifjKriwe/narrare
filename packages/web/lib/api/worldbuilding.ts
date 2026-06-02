@@ -121,10 +121,11 @@ export const worldbuildingApi = {
    * POST /novels/{novelId}/kb/worldbuilding/analyze
    * Returns gap findings, connection suggestions, and consistency issues.
    */
-  analyze: (novelId: string, request?: WorldbuildingAnalysisRequest) =>
+  analyze: (novelId: string, request?: WorldbuildingAnalysisRequest, signal?: AbortSignal) =>
     fetchApi<WorldbuildingAnalysisResponse>(`/novels/${novelId}/kb/worldbuilding/analyze`, {
       method: "POST",
       body: JSON.stringify(request ?? {}),
+      signal,
     }),
 
   /**
@@ -133,9 +134,10 @@ export const worldbuildingApi = {
    * POST /novels/{novelId}/kb/worldbuilding/apply
    * Requires the original analysis response for context.
    */
-  applyConnections: (novelId: string, body: WorldbuildingApplyRequestBody) =>
+  applyConnections: (novelId: string, body: WorldbuildingApplyRequestBody, signal?: AbortSignal) =>
     fetchApi<WorldbuildingApplyResponse>(`/novels/${novelId}/kb/worldbuilding/apply`, {
       method: "POST",
       body: JSON.stringify(body),
+      signal,
     }),
 };

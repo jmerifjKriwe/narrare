@@ -235,8 +235,8 @@ describe("ContinueButton", () => {
     await user.click(screen.getByLabelText("annotation.continueWriting"));
 
     // Should now show stop button with spinner
-    // The aria-label stays "annotation.continueWriting" but the text changes to "annotation.stop"
-    expect(screen.getByText("annotation.stop")).toBeDefined();
+    // The aria-label stays "annotation.continueWriting" but the text changes to "aiActions.stop"
+    expect(screen.getByText("aiActions.stop")).toBeDefined();
     // Chevron dropdown should be hidden during streaming
     expect(screen.queryByLabelText("annotation.selectLength")).toBeNull();
 
@@ -273,11 +273,11 @@ describe("ContinueButton", () => {
     renderContinueButton(editor);
 
     await user.click(screen.getByText("annotation.continueWriting"));
-    // The button text changes to "annotation.stop" during streaming
-    expect(screen.getByText("annotation.stop")).toBeDefined();
+    // The button text changes to "aiActions.stop" during streaming
+    expect(screen.getByText("aiActions.stop")).toBeDefined();
 
     // Click the stop button (same button, but now showing stop text)
-    await user.click(screen.getByText("annotation.stop"));
+    await user.click(screen.getByText("aiActions.stop"));
     expect(abortSpy).toHaveBeenCalled();
 
     // Button returns to idle — text reverts

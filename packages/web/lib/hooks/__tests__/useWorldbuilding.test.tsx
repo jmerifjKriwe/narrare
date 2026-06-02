@@ -114,7 +114,11 @@ describe("useWorldbuildingAnalyze", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockAnalyze).toHaveBeenCalledWith("novel-1", { include_gaps: true });
+    expect(mockAnalyze).toHaveBeenCalledWith(
+      "novel-1",
+      { include_gaps: true },
+      expect.any(AbortSignal),
+    );
     expect(result.current.data?.worldbuilding_score).toBe(0.5);
   });
 
@@ -200,7 +204,7 @@ describe("useWorldbuildingApply", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApplyConnections).toHaveBeenCalledWith("novel-1", body);
+    expect(mockApplyConnections).toHaveBeenCalledWith("novel-1", body, expect.any(AbortSignal));
     expect(result.current.data?.created_count).toBe(2);
   });
 

@@ -2,6 +2,8 @@
 
 import { Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useDeleteTimelineEvent } from "@/lib/hooks/useTimeline";
 import { cn, truncate } from "@/lib/utils";
 import type { TimelineEvent, TimelineEventSource, TimelineEventType } from "@/types/timeline";
@@ -37,11 +39,12 @@ const EVENT_TYPE_LABELS: Record<TimelineEventType, string> = {
 export function TimelineEventCard({ event, novelId, onEdit }: TimelineEventCardProps) {
   const t = useTranslations("timeline");
   const deleteMutation = useDeleteTimelineEvent(novelId);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingAction = useRef<(() => void) | null>(null);
 
   const handleDelete = () => {
-    if (window.confirm(t("deleteConfirm"))) {
-      deleteMutation.mutate(event.id);
-    }
+    pendingAction.current = () => deleteMutation.mutate(event.id);
+    setConfirmOpen(true);
   };
 
   const sourceLabel = event.source === "ai_analysis" ? "aiAnalysis" : event.source;
@@ -158,6 +161,21 @@ export function TimelineEventCard({ event, novelId, onEdit }: TimelineEventCardP
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={t("deleteEvent")}
+        description={t("deleteConfirm")}
+        confirmLabel={t("deleteEvent")}
+        variant="destructive"
+        onConfirm={() => {
+          pendingAction.current?.();
+          pendingAction.current = null;
+          setConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

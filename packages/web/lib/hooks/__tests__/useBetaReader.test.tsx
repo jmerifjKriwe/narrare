@@ -110,10 +110,14 @@ describe("useBetaReaderAnalyze", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockAnalyze).toHaveBeenCalledWith("novel-1", {
-      chapter_ids: ["ch-1"],
-      phase: "full",
-    });
+    expect(mockAnalyze).toHaveBeenCalledWith(
+      "novel-1",
+      {
+        chapter_ids: ["ch-1"],
+        phase: "full",
+      },
+      expect.any(AbortSignal),
+    );
     expect(result.current.data?.cache_key).toBe("cache-abc");
   });
 
@@ -205,11 +209,15 @@ describe("useBetaReaderDeepDive", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockDeepDive).toHaveBeenCalledWith("novel-1", {
-      chapter_ids: ["ch-1"],
-      category: "pacing",
-      cache_key: "cache-abc",
-    });
+    expect(mockDeepDive).toHaveBeenCalledWith(
+      "novel-1",
+      {
+        chapter_ids: ["ch-1"],
+        category: "pacing",
+        cache_key: "cache-abc",
+      },
+      expect.any(AbortSignal),
+    );
     expect(result.current.data?.category_score).toBe(4.5);
   });
 

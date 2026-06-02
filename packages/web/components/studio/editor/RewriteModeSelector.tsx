@@ -111,7 +111,7 @@ export function RewriteModeSelector({
             type="button"
             onClick={onCancel}
             className="p-1 rounded-md hover:bg-accent transition-colors"
-            aria-label={t("rewrite.cancel")}
+            aria-label={t("aiActions.stop")}
           >
             <X className="w-4 h-4" />
           </button>
@@ -262,7 +262,7 @@ export function RewriteModeSelector({
               onClick={onCancel}
               className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent transition-colors"
             >
-              {t("rewrite.cancel")}
+              {t("aiActions.stop")}
             </button>
             <button
               type="button"

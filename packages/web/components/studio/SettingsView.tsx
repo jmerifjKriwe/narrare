@@ -64,14 +64,19 @@ const SHORTCUTS: Array<
   | { keyKey: string; labelKey: string; descKey: string }
 > = [
   {
-    key: "Ctrl+S",
+    key: "Cmd+S",
     labelKey: "settings.shortcutsSection.save",
     descKey: "settings.shortcutsSection.saveDescription",
   },
   {
-    key: "Ctrl+N",
+    key: "Cmd+N",
     labelKey: "settings.shortcutsSection.newChapter",
     descKey: "settings.shortcutsSection.newChapterDescription",
+  },
+  {
+    key: "Cmd+K",
+    labelKey: "settings.shortcutsSection.commandPalette",
+    descKey: "settings.shortcutsSection.commandPaletteDescription",
   },
   {
     key: "Ctrl+B",
@@ -87,6 +92,21 @@ const SHORTCUTS: Array<
     keyKey: "settings.shortcutsSection.selectText",
     labelKey: "settings.shortcutsSection.aiRewrite",
     descKey: "settings.shortcutsSection.aiRewriteDescription",
+  },
+  {
+    key: "Tab",
+    labelKey: "settings.shortcutsSection.ghostTextAccept",
+    descKey: "settings.shortcutsSection.ghostTextAcceptDescription",
+  },
+  {
+    key: "→",
+    labelKey: "settings.shortcutsSection.ghostTextWord",
+    descKey: "settings.shortcutsSection.ghostTextWordDescription",
+  },
+  {
+    key: "Esc",
+    labelKey: "settings.shortcutsSection.ghostTextDismiss",
+    descKey: "settings.shortcutsSection.ghostTextDismissDescription",
   },
 ];
 

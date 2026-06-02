@@ -55,6 +55,71 @@ What does a writer feel before and after having this feature?]
 
 [Any additional technical detail that the Implementation Agent needs.]
 
+## UX Requirements
+
+> This section is MANDATORY for features involving AI interaction.
+> If the feature has NO AI component, replace with:
+> "Not applicable — this feature does not involve AI interaction."
+
+### AI Interaction Type
+- [ ] Generation — produces new content
+- [ ] Suggestion — inline ghost text
+- [ ] Analysis — structured feedback/report
+- [ ] Extraction — structured data from text
+- [ ] Transformation — rewrites existing content
+- [ ] Conversation — multi-turn AI session
+
+### Streaming
+| Question | Answer |
+|----------|--------|
+| Backend SSE endpoint exists? | yes / no |
+| Frontend uses SSE? | yes / no |
+| REST endpoint also needed? | yes / no |
+
+### User Controls
+| Control | Required? | i18n key |
+|---------|-----------|----------|
+| Cancel/Abort | yes / no | `studio.aiActions.stop` |
+| Accept | yes / no | `studio.aiActions.accept` |
+| Reject | yes / no | `studio.aiActions.reject` |
+| Retry | yes / no | `studio.aiActions.retry` |
+| Rating | yes / no | `studio.aiActions.rating` |
+
+### Loading States
+| Phase | Indicator | Within |
+|-------|-----------|--------|
+| Initial | [describe] | 200ms |
+| Progress | [describe] | continuous |
+| Connection lost | Banner + retry | immediate |
+| Complete | Accept/Reject buttons | immediate |
+
+### Error Handling
+| Scenario | User message (de) | User action |
+|----------|-------------------|-------------|
+| Context too large | | |
+| Timeout | | |
+| API error | | |
+| Invalid API key | | |
+| Rate limited | | |
+| No provider | | |
+| Connection lost | | |
+
+### Onboarding
+| Question | Answer |
+|----------|--------|
+| Discoverable from | |
+| Tooltip needed? | |
+| Tour step needed? | |
+| First-run guidance? | |
+
+### Accessibility
+| Requirement | Implemented? |
+|-------------|-------------|
+| aria-live for AI output | |
+| aria-label on AI buttons | |
+| Focus moves to output | |
+| Escape cancels | |
+
 ## Constraints & Edge Cases
 
 - What the feature cannot do

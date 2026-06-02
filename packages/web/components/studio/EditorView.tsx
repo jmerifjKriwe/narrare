@@ -4,8 +4,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, Database, LayoutGrid, PanelRight, Save, Sparkles, Wand2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { chaptersApi, volumesApi } from "@/lib/api/client";
 import { writingApi } from "@/lib/api/generation";
+import {
+  recoverIfNewer,
+  registerPreRedirectSave,
+  saveContent,
+} from "@/lib/hooks/use-content-recovery";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
 import { BetaReaderPanel } from "./analysis/BetaReaderPanel";
@@ -166,6 +172,26 @@ export function EditorView({ novelId }: EditorViewProps) {
       setContent(markdownToHtml(chapter.content || ""));
     }
   }, [chapter]);
+
+  // --- Pre-redirect save: save editor content before 401 redirect ---
+  useEffect(() => {
+    if (!activeChapterId || !editor) return;
+    const unregister = registerPreRedirectSave(() => {
+      saveContent(activeChapterId, editor.getHTML());
+    });
+    return unregister;
+  }, [activeChapterId, editor]);
+
+  // --- Content recovery: restore unsaved content after re-login ---
+  useEffect(() => {
+    if (!chapter || !activeChapterId || !editor) return;
+    const recovered = recoverIfNewer(activeChapterId, chapter.updated_at);
+    if (recovered) {
+      editor.commands.setContent(recovered.content);
+      setContent(recovered.content);
+      toast.success(t("editor.contentRecovered"));
+    }
+  }, [chapter, activeChapterId, editor, t]);
 
   // Track session start word count (resets only when chapter changes)
   useEffect(() => {

@@ -3,76 +3,90 @@
 /**
  * ConsistencyCheckPanel — KB consistency check results.
  *
- * Shows consistency issues grouped by category with severity badges.
- * Reuses ConsistencyCard from WorldbuildingAnalysisCards (RULE-04).
- * Auto-triggers check on mount.
+ * Auto-triggers check on mount. Shows issues grouped by category.
+ * Sub-components: ConsistencyLoading, ConsistencyError, ConsistencyResults.
+ *
+ * §16 compliance: AbortController cancel, useConnectionLost,
+ * studio.aiActions.* labels, actionable error messages.
  */
 
-import { AlertTriangle, ArrowLeft, Check, Loader2, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
 import type { ConsistencyCheckResponse } from "@/lib/api/consistency";
 import { consistencyApi } from "@/lib/api/consistency";
-import type { ConsistencyIssue } from "@/lib/api/worldbuilding";
-import { ConsistencyCard, groupByCategory } from "./WorldbuildingAnalysisCards";
-
-// --- Types ---
+import { useConnectionLost } from "@/lib/hooks/use-connection-lost";
+import { ConsistencyError } from "./ConsistencyError";
+import { ConsistencyLoading } from "./ConsistencyLoading";
+import { ConsistencyResults } from "./ConsistencyResults";
 
 type ViewState = "idle" | "loading" | "results" | "error";
 
 interface ConsistencyCheckPanelProps {
   novelId: string;
   onClose: () => void;
+  onEntityClick?: (entityId: string) => void;
 }
 
-// --- Severity sort order ---
-
-const SEVERITY_ORDER: Record<string, number> = {
-  critical: 0,
-  major: 1,
-  minor: 2,
-  info: 3,
-};
-
-export function ConsistencyCheckPanel({ novelId, onClose }: ConsistencyCheckPanelProps) {
+export function ConsistencyCheckPanel({
+  novelId,
+  onClose,
+  onEntityClick,
+}: ConsistencyCheckPanelProps) {
   const t = useTranslations("studio");
-
   const [state, setState] = useState<ViewState>("idle");
   const [result, setResult] = useState<ConsistencyCheckResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // --- Run check ---
+  const {
+    isConnectionLost,
+    markConnectionLost,
+    retry: retryConnection,
+  } = useConnectionLost({
+    onRetry: () => void runCheck(false),
+  });
 
   const runCheck = useCallback(
     async (refresh = false) => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
       setState("loading");
       setError(null);
-
       try {
-        const data = await consistencyApi.checkConsistency(novelId, { refresh });
+        const data = await consistencyApi.checkConsistency(
+          novelId,
+          { refresh },
+          abortRef.current.signal,
+        );
         setResult(data);
         setState("results");
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        markConnectionLost();
         setError(err instanceof Error ? err : new Error(String(err)));
         setState("error");
       }
     },
-    [novelId],
+    [novelId, markConnectionLost],
   );
 
-  // Auto-trigger on mount
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount
-  useEffect(() => {
-    if (state !== "idle") return;
-    void runCheck(false);
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setState("idle");
   }, []);
 
-  // --- Derived data ---
-
-  const issues = result?.issues ?? [];
-  const grouped = groupByCategory(issues);
-
-  // --- Render ---
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
+  useEffect(() => {
+    if (state === "idle") void runCheck(false);
+  }, []);
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-background">
@@ -114,6 +128,12 @@ export function ConsistencyCheckPanel({ novelId, onClose }: ConsistencyCheckPane
         </div>
       </div>
 
+      {isConnectionLost && (
+        <div className="p-4 pb-0">
+          <ConnectionLostBanner onRetry={retryConnection} />
+        </div>
+      )}
+
       {/* Summary header */}
       {state === "results" && result && (
         <div className="flex items-center gap-4 p-4 border-b border-border bg-muted/30">
@@ -141,89 +161,15 @@ export function ConsistencyCheckPanel({ novelId, onClose }: ConsistencyCheckPane
         </div>
       )}
 
-      {/* Content area */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto p-6 space-y-4">
-          {/* Loading state */}
-          {state === "loading" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                  <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-                </div>
-              </div>
-              <p className="text-lg font-medium mb-2">
-                {t("consistency.checking") || "Checking consistency..."}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t("worldbuilding.analyzingDesc") ||
-                  "The AI is reviewing your world for consistency issues..."}
-              </p>
-              <div className="w-64 h-1.5 bg-muted rounded-full overflow-hidden mt-6">
-                <div className="h-full bg-amber-500 animate-pulse" style={{ width: "60%" }} />
-              </div>
-            </div>
-          )}
-
-          {/* Error state */}
+          {state === "loading" && <ConsistencyLoading onCancel={handleCancel} />}
           {state === "error" && error && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-                <AlertTriangle className="w-6 h-6 text-red-500" />
-              </div>
-              <p className="text-lg font-medium mb-1">
-                {t("worldbuilding.error") || "Check failed"}
-              </p>
-              <p className="text-sm text-muted-foreground mb-4">{error.message}</p>
-              <button
-                type="button"
-                onClick={() => void runCheck(false)}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                {t("worldbuilding.retry") || "Retry"}
-              </button>
-            </div>
+            <ConsistencyError message={error.message} onRetry={() => void runCheck(false)} />
           )}
-
-          {/* No issues state */}
-          {state === "results" && issues.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
-                <Check className="w-6 h-6 text-green-500" />
-              </div>
-              <p className="text-lg font-medium mb-1">
-                {t("consistency.noIssues") || "No issues found!"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t("worldbuilding.noIssuesDesc") ||
-                  "Your worldbuilding looks comprehensive and consistent."}
-              </p>
-            </div>
-          )}
-
-          {/* Issues grouped by category */}
-          {state === "results" && issues.length > 0 && (
-            <div className="space-y-6">
-              {Object.entries(grouped).map(([category, categoryIssues]) => (
-                <div key={category}>
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                    {category.replace(/_/g, " ")}
-                    <span className="ml-2 text-xs">({categoryIssues.length})</span>
-                  </h4>
-                  <div className="space-y-3">
-                    {categoryIssues
-                      .sort(
-                        (a: ConsistencyIssue, b: ConsistencyIssue) =>
-                          (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99),
-                      )
-                      .map((issue: ConsistencyIssue) => (
-                        <ConsistencyCard key={issue.finding_index} issue={issue} t={t} />
-                      ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {state === "results" && result && (
+            <ConsistencyResults result={result} onEntityClick={onEntityClick} />
           )}
         </div>
       </div>

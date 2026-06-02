@@ -11,8 +11,11 @@
  * with the WorldbuildingAnalysisPanel.
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { KBEntityType } from "@/lib/api/kb";
+import { clearPendingInterview, getPendingInterview } from "@/lib/hooks/use-kb-interview-resume";
 import { useKBEntries, useKBEntry, useKBRelationships } from "@/lib/hooks/useKB";
 import { ConsistencyCheckPanel } from "./kb/ConsistencyCheckPanel";
 import { KBAssistedCreationPanel } from "./kb/KBAssistedCreationPanel";
@@ -28,12 +31,15 @@ interface WorldBuildingProps {
 }
 
 export function WorldBuilding({ novelId }: WorldBuildingProps) {
+  const t = useTranslations("studio");
   // UI state
   const [activeType, setActiveType] = useState<KBEntityType | null>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isAssistedSession, setIsAssistedSession] = useState(false);
   const [assistedEntityType, setAssistedEntityType] = useState<KBEntityType | null>(null);
+  const [resumeSessionId, setResumeSessionId] = useState<string | null>(null);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showConsistency, setShowConsistency] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
@@ -76,12 +82,44 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   }
 
   function handleCreateAssisted() {
+    // Check for a pending interview to resume
+    const pending = getPendingInterview(novelId);
+    if (pending) {
+      setShowResumeDialog(true);
+      return;
+    }
+    startNewAssistedSession();
+  }
+
+  function startNewAssistedSession() {
+    clearPendingInterview(novelId);
     setIsAssistedSession(true);
     setAssistedEntityType(activeType ?? "character");
+    setResumeSessionId(null);
     setIsCreating(false);
     setSelectedEntryId(null);
     setShowAnalysis(false);
     setShowConsistency(false);
+  }
+
+  function handleResumeInterview() {
+    const pending = getPendingInterview(novelId);
+    if (pending) {
+      setIsAssistedSession(true);
+      setAssistedEntityType(pending.entityType as KBEntityType);
+      setResumeSessionId(pending.sessionId);
+      setIsCreating(false);
+      setSelectedEntryId(null);
+      setShowAnalysis(false);
+      setShowConsistency(false);
+    }
+    setShowResumeDialog(false);
+  }
+
+  function handleDiscardResume() {
+    clearPendingInterview(novelId);
+    setShowResumeDialog(false);
+    startNewAssistedSession();
   }
 
   function handleCreateCancel() {
@@ -91,11 +129,13 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
   function handleAssistedCancel() {
     setIsAssistedSession(false);
     setAssistedEntityType(null);
+    setResumeSessionId(null);
   }
 
   function handleAssistedComplete(entryId: string) {
     setIsAssistedSession(false);
     setAssistedEntityType(null);
+    setResumeSessionId(null);
     setSelectedEntryId(entryId);
   }
 
@@ -178,6 +218,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           entityType={assistedEntityType}
           onComplete={handleAssistedComplete}
           onCancel={handleAssistedCancel}
+          resumeSessionId={resumeSessionId}
         />
       </div>
     );
@@ -238,7 +279,14 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           onCreateNew={handleCreateNew}
           onCreateAssisted={handleCreateAssisted}
         />
-        <ConsistencyCheckPanel novelId={novelId} onClose={() => setShowConsistency(false)} />
+        <ConsistencyCheckPanel
+          novelId={novelId}
+          onClose={() => setShowConsistency(false)}
+          onEntityClick={(entityId) => {
+            setSelectedEntryId(entityId);
+            setShowConsistency(false);
+          }}
+        />
       </div>
     );
   }
@@ -315,6 +363,23 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
         onCreateCancel={handleCreateCancel}
         onCreated={handleCreated}
         onDeleted={handleDeleted}
+      />
+
+      {/* Resume interview dialog */}
+      <ConfirmDialog
+        open={showResumeDialog}
+        onOpenChange={(open) => {
+          setShowResumeDialog(open);
+          if (!open) {
+            // Dialog closed without confirming — user wants a new interview
+            handleDiscardResume();
+          }
+        }}
+        title={t("kb.interview.resumeTitle")}
+        description={t("kb.interview.resumeDescription")}
+        confirmLabel={t("kb.interview.resumeAction")}
+        cancelLabel={t("kb.interview.startNew")}
+        onConfirm={handleResumeInterview}
       />
     </div>
   );

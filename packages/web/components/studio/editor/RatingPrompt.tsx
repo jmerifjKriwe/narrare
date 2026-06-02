@@ -42,7 +42,7 @@ export function RatingPrompt({ action, onSubmit, onDismiss }: RatingPromptProps)
     return (
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs">
         <span>✓</span>
-        <span>{t("learning.ratingSubmitted")}</span>
+        <span>{t("aiActions.ratingSubmitted")}</span>
       </div>
     );
   }
@@ -51,11 +51,11 @@ export function RatingPrompt({ action, onSubmit, onDismiss }: RatingPromptProps)
     <div className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-card">
       {/* Star rating */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">{t("learning.rating")}</span>
+        <span className="text-xs text-muted-foreground">{t("aiActions.rating")}</span>
         <div
           className="flex items-center gap-0.5"
           role="radiogroup"
-          aria-label={t("learning.rating")}
+          aria-label={t("aiActions.rating")}
         >
           {Array.from({ length: 5 }, (_, i) => {
             const starValue = i + 1;
@@ -88,7 +88,7 @@ export function RatingPrompt({ action, onSubmit, onDismiss }: RatingPromptProps)
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder={t("learning.rejectReason")}
+          placeholder={t("aiActions.rejectReason")}
           rows={2}
           className="w-full px-2 py-1.5 text-xs bg-muted/50 border border-border rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-primary"
         />
@@ -102,14 +102,14 @@ export function RatingPrompt({ action, onSubmit, onDismiss }: RatingPromptProps)
           disabled={rating === 0}
           className="px-3 py-1 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
         >
-          {t("learning.submitRating")}
+          {t("aiActions.submitRating")}
         </button>
         <button
           type="button"
           onClick={handleDismiss}
           className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          {t("learning.skipRating")}
+          {t("aiActions.skipRating")}
         </button>
       </div>
     </div>

@@ -6,6 +6,7 @@
   "loadingSubtext": "Analyzing plot, characters, pacing, and prose",
   "error": "Analysis failed",
   "retry": "Try Again",
+  "stop": "Stop",
   "refresh": "Refresh Analysis",
   "close": "Close",
   "deepDive": "Deep Dive",

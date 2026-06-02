@@ -101,7 +101,7 @@ describe("RewriteModeSelector", () => {
     render(<RewriteModeSelector {...defaultProps} />);
 
     // There are two cancel buttons — footer and header
-    const cancelButtons = screen.getAllByText("rewrite.cancel");
+    const cancelButtons = screen.getAllByText("aiActions.stop");
     fireEvent.click(cancelButtons[0]);
 
     expect(defaultProps.onCancel).toHaveBeenCalled();
@@ -110,7 +110,7 @@ describe("RewriteModeSelector", () => {
   it("calls onCancel when X button clicked", () => {
     render(<RewriteModeSelector {...defaultProps} />);
 
-    const closeButton = screen.getByLabelText("rewrite.cancel");
+    const closeButton = screen.getByLabelText("aiActions.stop");
     fireEvent.click(closeButton);
 
     expect(defaultProps.onCancel).toHaveBeenCalled();

@@ -2,9 +2,8 @@
 
 /**
  * BetaReaderPanelContent — tab content renderer for BetaReaderPanel.
- *
- * Extracted from BetaReaderPanel to keep it under 300 lines (RULE-04).
- * Renders the loading, error, and tab content based on view state.
+ * Extracted from BetaReaderPanel for RULE-04 compliance.
+ * Renders loading, error, and tab content based on view state.
  */
 
 import {
@@ -15,6 +14,7 @@ import {
   MessageCircle,
   RefreshCw,
   Star,
+  StopCircle,
 } from "lucide-react";
 
 import type { BetaReaderResponse, FeedbackSeverity } from "@/lib/api/analysis";
@@ -33,16 +33,11 @@ export interface BetaReaderPanelContentProps {
   error: Error | null;
   isPending: boolean;
   onRetry: () => void;
+  onCancel?: () => void;
   t: (key: string, params?: Record<string, unknown>) => string;
 }
 
-// --- Severity sort ---
-
-const SEVERITY_ORDER: Record<FeedbackSeverity, number> = {
-  critical: 0,
-  moderate: 1,
-  minor: 2,
-};
+const SEVERITY_ORDER: Record<FeedbackSeverity, number> = { critical: 0, moderate: 1, minor: 2 };
 
 // --- Empty state ---
 
@@ -72,6 +67,7 @@ export function BetaReaderPanelContent({
   result,
   error,
   onRetry,
+  onCancel,
   t,
 }: BetaReaderPanelContentProps) {
   // --- Loading ---
@@ -88,6 +84,16 @@ export function BetaReaderPanelContent({
         <div className="w-64 h-1.5 bg-muted rounded-full overflow-hidden mt-6">
           <div className="h-full bg-purple-500 animate-pulse" style={{ width: "60%" }} />
         </div>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mt-6 flex items-center gap-1.5 px-4 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
+          >
+            <StopCircle className="w-4 h-4" />
+            {t("stop")}
+          </button>
+        )}
       </div>
     );
   }

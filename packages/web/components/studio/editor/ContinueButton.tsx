@@ -134,7 +134,7 @@ export function ContinueButton({ editor, chapterId, novelId, tone }: ContinueBut
           {isStreaming ? (
             <>
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>{t("annotation.stop")}</span>
+              <span>{t("aiActions.stop")}</span>
             </>
           ) : (
             <>

@@ -155,6 +155,15 @@ export function GenerationPanel({
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("MISSING_INPUT") || msg.includes("At least one")) {
         setErrorMsg(t("generationPanel.validationMissingInput"));
+      } else if (msg.includes("CONTEXT_TOO_LARGE") || msg.includes("context_too_large")) {
+        // Provide actionable guidance based on what's too large
+        if (msg.includes("outline") || msg.includes("OUTLINE")) {
+          setErrorMsg(t("generationPanel.contextTooLargeOutline", { max: 8000 }));
+        } else if (msg.includes("pinned") || msg.includes("PINNED") || msg.includes("kb_entries")) {
+          setErrorMsg(t("generationPanel.contextTooLargePinned"));
+        } else {
+          setErrorMsg(t("generationPanel.contextTooLargeGeneric"));
+        }
       } else {
         setErrorMsg(msg || t("generationPanel.startFailed"));
       }
@@ -359,34 +368,45 @@ export function GenerationPanel({
             <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm" role="alert">
               {errorMsg || t("generationPanel.unknownError")}
             </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>{t("aiActions.retry")}</span>
+              </button>
+              {errorMsg?.includes(t("generationPanel.contextTooLargeGeneric").slice(0, 10)) && (
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors"
+                >
+                  {t("generationPanel.contextInspectorAction")}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Connection lost banner */}
+        {connectionLost && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-border bg-yellow-500/10">
+            <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              <span>{t("aiActions.connectionLost")}</span>
+            </div>
             <button
               type="button"
               onClick={handleRetry}
-              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+              className="px-3 py-1 text-xs font-medium rounded-md bg-yellow-600 text-white hover:bg-yellow-700 transition-colors"
             >
-              <RotateCcw className="w-4 h-4" />
-              <span>{t("generationPanel.retry")}</span>
+              {t("aiActions.connectionLostRetry")}
             </button>
           </div>
         )}
       </div>
-
-      {/* Connection lost banner */}
-      {connectionLost && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-border bg-yellow-500/10">
-          <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>{t("generationPanel.connectionLost")}</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleRetry}
-            className="px-3 py-1 text-xs font-medium rounded-md bg-yellow-600 text-white hover:bg-yellow-700 transition-colors"
-          >
-            {t("generationPanel.retry")}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

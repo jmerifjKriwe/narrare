@@ -6,9 +6,11 @@
  * Both endpoints are POST mutations — analysis results are ephemeral
  * and tied to the analysis request. The latest analysis is stored in
  * query cache for the apply flow to reference.
+ * Each hook manages its own AbortController for cancel support (§16.2).
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useRef } from "react";
 import {
   type WorldbuildingAnalysisRequest,
   type WorldbuildingAnalysisResponse,
@@ -34,17 +36,29 @@ export const worldbuildingKeys = {
  */
 export function useWorldbuildingAnalyze(novelId: string) {
   const queryClient = useQueryClient();
+  const abortRef = useRef<AbortController | null>(null);
 
-  return useMutation<
+  const mutation = useMutation<
     WorldbuildingAnalysisResponse,
     Error,
     WorldbuildingAnalysisRequest | undefined
   >({
-    mutationFn: (options) => worldbuildingApi.analyze(novelId, options),
+    mutationFn: (options) => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+      return worldbuildingApi.analyze(novelId, options, abortRef.current.signal);
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(worldbuildingKeys.analysis(novelId), data);
     },
   });
+
+  const abort = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
+
+  return { ...mutation, abort };
 }
 
 /**
@@ -55,9 +69,14 @@ export function useWorldbuildingAnalyze(novelId: string) {
  */
 export function useWorldbuildingApply(novelId: string) {
   const queryClient = useQueryClient();
+  const abortRef = useRef<AbortController | null>(null);
 
-  return useMutation<WorldbuildingApplyResponse, Error, WorldbuildingApplyRequestBody>({
-    mutationFn: (body) => worldbuildingApi.applyConnections(novelId, body),
+  const mutation = useMutation<WorldbuildingApplyResponse, Error, WorldbuildingApplyRequestBody>({
+    mutationFn: (body) => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+      return worldbuildingApi.applyConnections(novelId, body, abortRef.current.signal);
+    },
     onSuccess: () => {
       // Invalidate KB entries and relationships after applying connections
       void queryClient.invalidateQueries({ queryKey: ["kb", novelId] });
@@ -66,4 +85,11 @@ export function useWorldbuildingApply(novelId: string) {
       });
     },
   });
+
+  const abort = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
+
+  return { ...mutation, abort };
 }

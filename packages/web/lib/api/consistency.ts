@@ -36,9 +36,10 @@ export const consistencyApi = {
    * POST /novels/{novelId}/kb/consistency-check
    * Combines entry-internal, relationship asymmetry, and cross-entity analysis.
    */
-  checkConsistency: (novelId: string, request?: ConsistencyCheckRequest) =>
+  checkConsistency: (novelId: string, request?: ConsistencyCheckRequest, signal?: AbortSignal) =>
     fetchApi<ConsistencyCheckResponse>(`/novels/${novelId}/kb/consistency-check`, {
       method: "POST",
       body: JSON.stringify(request ?? {}),
+      signal,
     }),
 };

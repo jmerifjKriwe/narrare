@@ -6,6 +6,7 @@
   "loadingSubtext": "Analysiere Handlung, Charaktere, Tempo und Prosa",
   "error": "Analyse fehlgeschlagen",
   "retry": "Erneut versuchen",
+  "stop": "Stoppen",
   "refresh": "Analyse aktualisieren",
   "close": "Schließen",
   "deepDive": "Tiefenanalyse",

@@ -142,7 +142,7 @@ describe("ConsistencyCheckPanel", () => {
     renderWithProviders(<ConsistencyCheckPanel {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText("worldbuilding.retry")).toBeDefined();
+      expect(screen.getByText("retry")).toBeDefined();
     });
   });
 

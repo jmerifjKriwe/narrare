@@ -2,7 +2,8 @@
 
 import { Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { KBEntry, KBEntryStatus, KBRelationship } from "@/lib/api/kb";
 import { useDeleteKBEntry, useKBTemplate, useUpdateKBEntry } from "@/lib/hooks/useKB";
 import { TYPE_ICONS } from "./constants";
@@ -46,6 +47,8 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
   const [sectionContents, setSectionContents] = useState<Record<string, string>>({});
   const [extraBody, setExtraBody] = useState("");
   const [showImprovePanel, setShowImprovePanel] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingAction = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     setName(entry.name);
@@ -87,8 +90,8 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
   }
 
   function handleDelete() {
-    if (!window.confirm(t("kb.deleteConfirm"))) return;
-    deleteMutation.mutate(entry.id, { onSuccess: onDeleted });
+    pendingAction.current = () => deleteMutation.mutate(entry.id, { onSuccess: onDeleted });
+    setConfirmOpen(true);
   }
 
   const handleFieldChange = (fieldName: string, value: unknown) =>
@@ -276,6 +279,21 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
           )}
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={t("kb.deleteEntry")}
+        description={t("kb.deleteConfirm")}
+        confirmLabel={t("kb.deleteEntry")}
+        variant="destructive"
+        onConfirm={() => {
+          pendingAction.current?.();
+          pendingAction.current = null;
+          setConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

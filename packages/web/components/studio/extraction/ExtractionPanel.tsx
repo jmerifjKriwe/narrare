@@ -7,12 +7,17 @@
  * On mount: triggers extractChapter mutation.
  * On apply: calls applyExtraction with selected items.
  * On success: calls onApplied, auto-closes after 2s.
+ *
+ * §16 compliance: AbortController cancel, useConnectionLost,
+ * studio.aiActions.* labels, actionable error messages.
  */
 
 import { Database, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
 import type { ApplyExtractionItem } from "@/lib/api/extraction";
+import { useConnectionLost } from "@/lib/hooks/use-connection-lost";
 import { useApplyExtraction, useExtractChapter } from "@/lib/hooks/useExtraction";
 import { useExtractionSelection } from "@/lib/hooks/useExtractionSelection";
 import { ExtractionContent } from "./ExtractionContent";
@@ -37,14 +42,34 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
   const applyMutation = useApplyExtraction(novelId);
   const selection = useExtractionSelection();
 
+  const {
+    isConnectionLost,
+    markConnectionLost,
+    retry: retryConnection,
+  } = useConnectionLost({
+    onRetry: () => handleRetry(),
+  });
+
+  // Check for abort errors (user cancelled — not a real error)
+  const isAbortError = useCallback((err: unknown) => {
+    return err instanceof DOMException && err.name === "AbortError";
+  }, []);
+
   const onError = useCallback(
     (err: unknown) => {
+      if (isAbortError(err)) {
+        // User cancelled — return to review or close, not error state
+        if (phase === "loading") onClose();
+        return;
+      }
+      markConnectionLost();
       setErrorMsg(err instanceof Error ? err.message : t("kb.extractionFailed"));
       setPhase("error");
     },
-    [t],
+    [t, markConnectionLost, isAbortError, phase, onClose],
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only trigger
   useEffect(() => {
     extractMutation.mutate(undefined, {
       onSuccess: (output) => {
@@ -53,7 +78,6 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
       },
       onError,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selection.loadResults, onError, extractMutation.mutate]);
 
   useEffect(() => {
@@ -83,11 +107,12 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
         onApplied();
       },
       onError: (err) => {
+        if (isAbortError(err)) return;
         setErrorMsg(err instanceof Error ? err.message : t("kb.extractionApplyError"));
         setPhase("error");
       },
     });
-  }, [selection, applyMutation, onApplied, t]);
+  }, [selection, applyMutation, onApplied, t, isAbortError]);
 
   const handleRetry = useCallback(() => {
     setErrorMsg(null);
@@ -100,6 +125,11 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
       onError,
     });
   }, [extractMutation, selection, onError]);
+
+  const handleCancelExtraction = useCallback(() => {
+    extractMutation.abort();
+    onClose();
+  }, [extractMutation, onClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -120,6 +150,11 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
             <X className="w-4 h-4" />
           </button>
         </div>
+        {isConnectionLost && (
+          <div className="px-4 pt-4">
+            <ConnectionLostBanner onRetry={retryConnection} />
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-3xl mx-auto">
             <ExtractionContent
@@ -132,6 +167,7 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
               onSelectAll={selection.selectAll}
               onSelectNone={selection.selectNone}
               onRetry={handleRetry}
+              onCancel={phase === "loading" ? handleCancelExtraction : undefined}
             />
           </div>
         </div>

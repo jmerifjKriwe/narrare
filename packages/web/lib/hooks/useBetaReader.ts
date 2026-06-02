@@ -5,9 +5,11 @@
  *
  * All hooks accept novelId as the primary key parameter.
  * Query keys follow the pattern ["analysis", novelId, ...] for cache management.
+ * Each hook manages its own AbortController for cancel support (§16.2).
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useRef } from "react";
 import {
   analysisApi,
   type BetaReaderDeepDiveRequest,
@@ -34,13 +36,25 @@ const analysisKeys = {
  */
 export function useBetaReaderAnalyze(novelId: string) {
   const queryClient = useQueryClient();
+  const abortRef = useRef<AbortController | null>(null);
 
-  return useMutation<BetaReaderResponse, Error, BetaReaderRequest>({
-    mutationFn: (request) => analysisApi.analyze(novelId, request),
+  const mutation = useMutation<BetaReaderResponse, Error, BetaReaderRequest>({
+    mutationFn: (request) => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+      return analysisApi.analyze(novelId, request, abortRef.current.signal);
+    },
     onSuccess: (data, variables) => {
       queryClient.setQueryData(analysisKeys.betaReader(novelId, variables.chapter_ids), data);
     },
   });
+
+  const abort = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
+
+  return { ...mutation, abort };
 }
 
 /**
@@ -50,7 +64,20 @@ export function useBetaReaderAnalyze(novelId: string) {
  * if needed. The cache_key from Phase 1 is passed in the request body.
  */
 export function useBetaReaderDeepDive(novelId: string) {
-  return useMutation<BetaReaderDeepDiveResponse, Error, BetaReaderDeepDiveRequest>({
-    mutationFn: (request) => analysisApi.deepDive(novelId, request),
+  const abortRef = useRef<AbortController | null>(null);
+
+  const mutation = useMutation<BetaReaderDeepDiveResponse, Error, BetaReaderDeepDiveRequest>({
+    mutationFn: (request) => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+      return analysisApi.deepDive(novelId, request, abortRef.current.signal);
+    },
   });
+
+  const abort = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
+
+  return { ...mutation, abort };
 }

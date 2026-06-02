@@ -119,9 +119,10 @@ export function ConnectionCard({ connection, isSelected, onToggle, t }: Connecti
 interface ConsistencyCardProps {
   issue: ConsistencyIssue;
   t: (key: string) => string;
+  onEntityClick?: (entityId: string) => void;
 }
 
-export function ConsistencyCard({ issue, t }: ConsistencyCardProps) {
+export function ConsistencyCard({ issue, t, onEntityClick }: ConsistencyCardProps) {
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between p-3 bg-muted/30">
@@ -135,9 +136,31 @@ export function ConsistencyCard({ issue, t }: ConsistencyCardProps) {
             {Math.round(issue.confidence * 100)}% {t("worldbuilding.confidence") || "confidence"}
           </span>
         </div>
-        <span className="text-xs text-muted-foreground">
-          {issue.entity_names.length} {t("worldbuilding.entities") || "entities"}
-        </span>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {issue.entity_names.map((name, i) => {
+            const entityId = issue.entity_ids[i];
+            if (onEntityClick && entityId) {
+              return (
+                <button
+                  key={entityId}
+                  type="button"
+                  onClick={() => onEntityClick(entityId)}
+                  className="text-xs text-primary hover:underline cursor-pointer"
+                >
+                  {name}
+                </button>
+              );
+            }
+            return (
+              <span
+                key={`${name}-${issue.finding_index}`}
+                className="text-xs text-muted-foreground"
+              >
+                {name}
+              </span>
+            );
+          })}
+        </div>
       </div>
       <div className="p-3 space-y-2">
         <p className="text-sm">{issue.description}</p>

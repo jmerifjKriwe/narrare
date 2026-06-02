@@ -175,15 +175,15 @@ describe("GenerationPanel", () => {
 
     // Wait for review phase
     await waitFor(() => {
-      expect(screen.getByText("generationPanel.accept")).toBeDefined();
+      expect(screen.getByText("aiActions.accept")).toBeDefined();
     });
 
     // Accept the draft
-    fireEvent.click(screen.getByText("generationPanel.accept"));
+    fireEvent.click(screen.getByText("aiActions.accept"));
 
     // RatingPrompt should appear
     await waitFor(() => {
-      expect(screen.getByText("learning.rating")).toBeDefined();
+      expect(screen.getByText("aiActions.rating")).toBeDefined();
     });
   });
 
@@ -208,16 +208,16 @@ describe("GenerationPanel", () => {
     fireEvent.click(screen.getByText("generationPanel.generate"));
 
     await waitFor(() => {
-      expect(screen.getByText("generationPanel.reject")).toBeDefined();
+      expect(screen.getByText("aiActions.reject")).toBeDefined();
     });
 
     // Reject the draft
-    fireEvent.click(screen.getByText("generationPanel.reject"));
+    fireEvent.click(screen.getByText("aiActions.reject"));
 
     // RatingPrompt with reject reason textarea should appear
     await waitFor(() => {
-      expect(screen.getByText("learning.rating")).toBeDefined();
-      expect(screen.getByPlaceholderText("learning.rejectReason")).toBeDefined();
+      expect(screen.getByText("aiActions.rating")).toBeDefined();
+      expect(screen.getByPlaceholderText("aiActions.rejectReason")).toBeDefined();
     });
   });
 
@@ -241,19 +241,19 @@ describe("GenerationPanel", () => {
     fireEvent.click(screen.getByText("generationPanel.generate"));
 
     await waitFor(() => {
-      expect(screen.getByText("generationPanel.accept")).toBeDefined();
+      expect(screen.getByText("aiActions.accept")).toBeDefined();
     });
 
     // Accept
-    fireEvent.click(screen.getByText("generationPanel.accept"));
+    fireEvent.click(screen.getByText("aiActions.accept"));
 
     await waitFor(() => {
-      expect(screen.getByText("learning.rating")).toBeDefined();
+      expect(screen.getByText("aiActions.rating")).toBeDefined();
     });
 
     // Submit rating to trigger feedback
     fireEvent.click(screen.getByRole("button", { name: "5" }));
-    fireEvent.click(screen.getByText("learning.submitRating"));
+    fireEvent.click(screen.getByText("aiActions.submitRating"));
 
     // Feedback should have been recorded
     await waitFor(() => {
@@ -291,17 +291,17 @@ describe("GenerationPanel", () => {
     fireEvent.click(screen.getByText("generationPanel.generate"));
 
     await waitFor(() => {
-      expect(screen.getByText("generationPanel.reject")).toBeDefined();
+      expect(screen.getByText("aiActions.reject")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText("generationPanel.reject"));
+    fireEvent.click(screen.getByText("aiActions.reject"));
 
     await waitFor(() => {
-      expect(screen.getByText("learning.rating")).toBeDefined();
+      expect(screen.getByText("aiActions.rating")).toBeDefined();
     });
 
     // Dismiss rating (skip) — this triggers feedback
-    fireEvent.click(screen.getByText("learning.skipRating"));
+    fireEvent.click(screen.getByText("aiActions.skipRating"));
 
     await waitFor(() => {
       expect(mockRecordFeedbackMutate).toHaveBeenCalled();

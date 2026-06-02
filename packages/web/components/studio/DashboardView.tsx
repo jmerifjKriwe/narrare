@@ -5,6 +5,8 @@ import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { authApi, novelsApi } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import type { NovelSummary } from "@/types";
@@ -15,6 +17,9 @@ export function DashboardView() {
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
   const queryClient = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingTitle, setPendingTitle] = useState("");
+  const pendingAction = useRef<(() => void) | null>(null);
 
   const {
     data: user,
@@ -51,10 +56,9 @@ export function DashboardView() {
   }
 
   function handleDeleteNovel(novelId: string, title: string) {
-    const confirmed = window.confirm(t("dashboard.deleteConfirm", { title }));
-    if (confirmed) {
-      deleteMutation.mutate(novelId);
-    }
+    pendingAction.current = () => deleteMutation.mutate(novelId);
+    setPendingTitle(title);
+    setConfirmOpen(true);
   }
 
   if (isError) {
@@ -213,6 +217,21 @@ export function DashboardView() {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={t("dashboard.delete")}
+        description={t("dashboard.deleteConfirm", { title: pendingTitle })}
+        confirmLabel={t("dashboard.delete")}
+        variant="destructive"
+        onConfirm={() => {
+          pendingAction.current?.();
+          pendingAction.current = null;
+          setConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

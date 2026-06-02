@@ -59,15 +59,17 @@ export interface ApplyExtractionResponse {
 
 export const extractionApi = {
   /** Run extraction agent on a chapter. Returns structured results. */
-  extractChapter: (novelId: string, chapterId: string) =>
+  extractChapter: (novelId: string, chapterId: string, signal?: AbortSignal) =>
     fetchApi<ExtractionOutput>(`/novels/${novelId}/kb/extract/${chapterId}`, {
       method: "POST",
+      signal,
     }),
 
   /** Apply selected extraction items to the Knowledge Base. */
-  applyExtraction: (novelId: string, items: ApplyExtractionItem[]) =>
+  applyExtraction: (novelId: string, items: ApplyExtractionItem[], signal?: AbortSignal) =>
     fetchApi<ApplyExtractionResponse>(`/novels/${novelId}/kb/extract/apply`, {
       method: "POST",
       body: JSON.stringify({ items }),
+      signal,
     }),
 };

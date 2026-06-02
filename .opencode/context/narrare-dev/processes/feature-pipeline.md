@@ -96,6 +96,62 @@ Each layer handoff includes:
 
 ---
 
+## Stage 3.5: UX Review Gate
+
+**Owner**: Coordinator or Testing Specialist
+**Applies to**: Features with AI-powered interactions ONLY. Non-AI features skip.
+
+### Does this feature need UX Review?
+
+Answer YES if ANY apply:
+- Feature calls an LLM endpoint
+- Feature displays AI-generated content
+- Feature has stop/cancel/abort for async operation
+- Feature streams via SSE
+
+### Checklist (all must pass before merge)
+
+#### Streaming
+- [ ] SSE used where backend provides SSE endpoint (§16.1)
+- [ ] No REST-only fallback for SSE-capable endpoints
+
+#### User Controls
+- [ ] Cancel/Abort present for operations >2s (§16.2)
+- [ ] Accept/Reject flow from `studio.aiActions.*` (§16.4, §16.6)
+- [ ] No auto-apply without user confirmation
+- [ ] Undo available after accepting
+
+#### Loading
+- [ ] Visual feedback <200ms (§16.3)
+- [ ] Three-state lifecycle: Idle → Loading → Streaming → Complete
+
+#### Action Labels
+- [ ] Canonical `studio.aiActions.*` vocabulary used
+- [ ] No deprecated key references
+- [ ] 3-locale parity (de/en/fr)
+
+#### Error Handling
+- [ ] Actionable error messages (§16.5)
+- [ ] Retry available after errors
+
+#### Connection Resilience
+- [ ] Connection loss preserves partial output (§16.7)
+- [ ] Retry offered
+
+#### Onboarding
+- [ ] Feature discoverable from logical location
+- [ ] Tooltip present if non-obvious pattern
+- [ ] Keyboard shortcuts documented in SettingsView
+
+#### Accessibility
+- [ ] ARIA labels on AI indicators
+- [ ] Focus management after AI output
+
+**Gate**: All applicable items resolved. "N/A" items have written justification.
+**Escalation**: Unsatisfiable items require Architecture Specialist exception approval.
+
+---
+
 ## Stage 4: Implementation → Validation
 
 **Owner**: Testing Specialist

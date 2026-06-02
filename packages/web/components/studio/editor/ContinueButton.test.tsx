@@ -177,10 +177,10 @@ describe("ContinueButton (supplementary)", () => {
     await user.click(screen.getByText("annotation.continueWriting"));
 
     // Now the button shows "stop" — clicking it should stop, not extend
-    expect(screen.getByText("annotation.stop")).toBeInTheDocument();
+    expect(screen.getByText("aiActions.stop")).toBeInTheDocument();
 
     // Click the stop button
-    await user.click(screen.getByText("annotation.stop"));
+    await user.click(screen.getByText("aiActions.stop"));
 
     // streamExtend should have been called only once
     expect(mockStreamExtend).toHaveBeenCalledTimes(1);

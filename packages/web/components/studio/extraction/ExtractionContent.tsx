@@ -4,7 +4,7 @@
  * ExtractionContent — Phase-based content renderer for the extraction panel.
  *
  * Renders the appropriate sub-component based on the current phase.
- * Keeps ExtractionPanel under the 150-line RULE-04 limit.
+ * Keeps ExtractionPanel under the 200-line RULE-04 limit.
  */
 
 import type { ExtractionItem } from "@/lib/api/extraction";
@@ -25,6 +25,7 @@ interface ExtractionContentProps {
   onSelectAll: () => void;
   onSelectNone: () => void;
   onRetry: () => void;
+  onCancel?: () => void;
 }
 
 export function ExtractionContent({
@@ -37,8 +38,13 @@ export function ExtractionContent({
   onSelectAll,
   onSelectNone,
   onRetry,
+  onCancel,
 }: ExtractionContentProps) {
-  if (phase === "loading" || phase === "applying") {
+  if (phase === "loading") {
+    return <ExtractionLoading onCancel={onCancel} />;
+  }
+
+  if (phase === "applying") {
     return <ExtractionLoading />;
   }
 

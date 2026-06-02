@@ -3,8 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { TYPE_ICONS, TYPE_LABEL_KEYS } from "@/components/studio/kb/constants";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { templatesApi } from "@/lib/api/client";
 
 // --- Types ---
@@ -31,6 +32,8 @@ export function KBTemplateEditor({
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const pendingAction = useRef<(() => void) | null>(null);
 
   const {
     data: detail,
@@ -156,7 +159,8 @@ export function KBTemplateEditor({
           <button
             type="button"
             onClick={() => {
-              if (window.confirm(t("kb.resetToDefaultConfirm"))) resetMutation.mutate();
+              pendingAction.current = () => resetMutation.mutate();
+              setShowResetConfirm(true);
             }}
             disabled={!detail.is_overridden || resetMutation.isPending}
             className="px-4 py-2 text-sm text-destructive border border-destructive/30 rounded-md hover:bg-destructive/5 disabled:opacity-50"
@@ -174,6 +178,21 @@ export function KBTemplateEditor({
           </button>
         </div>
       </div>
+
+      {/* Reset confirmation */}
+      <ConfirmDialog
+        open={showResetConfirm}
+        onOpenChange={setShowResetConfirm}
+        title={t("kb.resetToDefault")}
+        description={t("kb.resetToDefaultConfirm")}
+        confirmLabel={t("kb.resetToDefault")}
+        variant="destructive"
+        onConfirm={() => {
+          pendingAction.current?.();
+          pendingAction.current = null;
+          setShowResetConfirm(false);
+        }}
+      />
     </div>
   );
 }

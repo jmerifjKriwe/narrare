@@ -103,7 +103,7 @@ export function GenerationDraft({
             className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors"
           >
             <StopCircle className="w-4 h-4" />
-            <span>{t("generationPanel.stop")}</span>
+            <span>{t("aiActions.stop")}</span>
           </button>
         )}
         {phase === "review" && (
@@ -114,7 +114,7 @@ export function GenerationDraft({
               disabled={isAcceptPending}
               className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {t("generationPanel.accept")}
+              {t("aiActions.accept")}
             </button>
             <button
               type="button"
@@ -122,7 +122,7 @@ export function GenerationDraft({
               disabled={isRejectPending}
               className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors"
             >
-              {t("generationPanel.reject")}
+              {t("aiActions.reject")}
             </button>
             <button
               type="button"
@@ -130,7 +130,7 @@ export function GenerationDraft({
               className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>{t("generationPanel.regenerate")}</span>
+              <span>{t("aiActions.retry")}</span>
             </button>
           </>
         )}

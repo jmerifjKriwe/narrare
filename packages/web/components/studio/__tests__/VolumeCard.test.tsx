@@ -278,14 +278,6 @@ describe("VolumeCard", () => {
   });
 
   describe("delete behavior", () => {
-    beforeAll(() => {
-      vi.spyOn(window, "confirm").mockReturnValue(true);
-    });
-
-    afterAll(() => {
-      vi.restoreAllMocks();
-    });
-
     it("calls onDelete for non-default volume after confirm", () => {
       const onDelete = vi.fn();
       render(
@@ -306,6 +298,13 @@ describe("VolumeCard", () => {
       );
       const deleteBtn = screen.getByLabelText("volumes.deleteVolume");
       fireEvent.click(deleteBtn);
+
+      // ConfirmDialog opens — click the confirm button
+      // The confirm button is in the dialog (the last one rendered)
+      const allConfirmBtns = screen.getAllByText("volumes.deleteVolume");
+      // The dialog confirm button is the last one (after the aria-label button)
+      fireEvent.click(allConfirmBtns[allConfirmBtns.length - 1]);
+
       expect(onDelete).toHaveBeenCalledWith("vol-1");
     });
 

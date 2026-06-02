@@ -68,8 +68,8 @@ describe("WritingGoalsTab", () => {
       renderWithProviders(<WritingGoalsTab novelId="novel-1" />);
 
       await waitFor(() => {
-        // 1500 + 2500 = 4000 words
-        expect(screen.getByText(/4,000/)).toBeInTheDocument();
+        // 1500 + 2500 = 4000 words — toLocaleString() varies by Node.js locale
+        expect(screen.getByText(/4[.,]000/)).toBeInTheDocument();
       });
     });
   });

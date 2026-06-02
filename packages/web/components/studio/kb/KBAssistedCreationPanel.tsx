@@ -16,8 +16,11 @@
 import { Sparkles, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { KBEntityType } from "@/lib/api/kb";
 import type { KBEnhancementResult, KBInterviewResult } from "@/lib/api/kb-sessions";
+import { clearPendingInterview, savePendingInterview } from "@/lib/hooks/use-kb-interview-resume";
 import {
   useAbandonKBSession,
   useAnswerField,
@@ -41,6 +44,8 @@ interface KBAssistedCreationPanelProps {
   entityType: KBEntityType;
   onComplete: (entryId: string) => void;
   onCancel: () => void;
+  /** If resuming, pass the existing session ID to skip creation. */
+  resumeSessionId?: string | null;
 }
 
 export function KBAssistedCreationPanel({
@@ -48,10 +53,11 @@ export function KBAssistedCreationPanel({
   entityType,
   onComplete,
   onCancel,
+  resumeSessionId,
 }: KBAssistedCreationPanelProps) {
   const t = useTranslations("studio");
   const [view, setView] = useState<AssistedView>("fields");
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(resumeSessionId ?? null);
   const [suggestingFieldKey, setSuggestingFieldKey] = useState<string | null>(null);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [entryName, setEntryName] = useState("");
@@ -70,7 +76,7 @@ export function KBAssistedCreationPanel({
   // --- Session query ---
   const { data: session, isLoading: sessionLoading } = useKBSession(novelId, sessionId);
 
-  // --- Create session on mount ---
+  // --- Create session on mount (skip if resuming) ---
   useEffect(() => {
     if (!sessionId && !createSessionMutation.isPending) {
       createSessionMutation.mutate(entityType, {
@@ -80,6 +86,16 @@ export function KBAssistedCreationPanel({
       });
     }
   }, [entityType, sessionId, createSessionMutation]);
+
+  // --- Clear pending interview on successful completion ---
+  useEffect(() => {
+    return () => {
+      // Cleanup on unmount — clear pending interview if we had a session
+      if (sessionId) {
+        clearPendingInterview(novelId);
+      }
+    };
+  }, [novelId, sessionId]);
 
   // --- Reset entry name when a new session is loaded ---
   // Use ref to track which session we've initialized the name for,
@@ -169,6 +185,8 @@ export function KBAssistedCreationPanel({
 
     completeSessionMutation.mutate(undefined, {
       onSuccess: (response) => {
+        clearPendingInterview(novelId);
+        toast.success(t("kb.sessionSaved") || "Session saved");
         onComplete(response.entry_id);
       },
     });
@@ -180,9 +198,28 @@ export function KBAssistedCreationPanel({
       return;
     }
 
+    // Save interview state before abandoning (so user can resume later)
     if (sessionId) {
+      savePendingInterview(novelId, sessionId, entityType);
       abandonSessionMutation.mutate(undefined, {
-        onSuccess: onCancel,
+        onSuccess: () => {
+          toast.success(t("kb.sessionAbandoned") || "Interview progress saved");
+          onCancel();
+        },
+      });
+    } else {
+      onCancel();
+    }
+  }
+
+  function handleConfirmAbandon() {
+    if (sessionId) {
+      savePendingInterview(novelId, sessionId, entityType);
+      abandonSessionMutation.mutate(undefined, {
+        onSuccess: () => {
+          toast.success(t("kb.sessionAbandoned") || "Interview progress saved");
+          onCancel();
+        },
       });
     } else {
       onCancel();
@@ -283,43 +320,14 @@ export function KBAssistedCreationPanel({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Confirm abandon dialog */}
-            {confirmAbandon ? (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-red-500">{t("kb.confirmAbandon")}</span>
-                <button
-                  type="button"
-                  onClick={() => setConfirmAbandon(false)}
-                  className="px-3 py-1.5 border border-border rounded-md hover:bg-muted transition-colors text-xs"
-                >
-                  {t("kb.cancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAbandon}
-                  disabled={abandonSessionMutation.isPending}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-xs disabled:opacity-50"
-                >
-                  {abandonSessionMutation.isPending ? (
-                    t("kb.abandoning") || "Abandoning..."
-                  ) : (
-                    <>
-                      <Trash2 className="w-3 h-3" />
-                      {t("kb.confirm") || "Confirm"}
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleAbandon}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                {t("kb.abandon")}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleAbandon}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              {t("kb.abandon")}
+            </button>
           </div>
         </div>
 
@@ -365,6 +373,17 @@ export function KBAssistedCreationPanel({
         completePending={completeSessionMutation.isPending}
         onCancel={onCancel}
         onCompleteAndSave={handleCompleteAndSave}
+      />
+
+      {/* Cancel confirmation dialog */}
+      <ConfirmDialog
+        open={confirmAbandon}
+        onOpenChange={setConfirmAbandon}
+        title={t("kb.interview.cancelConfirmTitle")}
+        description={t("kb.interview.cancelConfirmDescription")}
+        confirmLabel={t("kb.interview.cancelConfirmAction")}
+        onConfirm={handleConfirmAbandon}
+        variant="destructive"
       />
     </div>
   );

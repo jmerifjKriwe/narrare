@@ -47,7 +47,8 @@
     "blockquote": "Zitat",
     "addBlock": "Block hinzufügen",
     "nameGenerator": "Namensgenerator",
-    "generate": "Generieren"
+    "generate": "Generieren",
+    "contentRecovered": "Ungespeicherte Änderungen wiederhergestellt"
   },
   "metadataSidebar": {
     "title": "Metadaten",
@@ -507,7 +508,9 @@
       "generation": "Generierung",
       "writing": "Schreiben",
       "analysis": "Analyse",
-      "kb": "Wissensdatenbank"
+      "kb": "Wissensdatenbank",
+      "preview": "Vorschau",
+      "edit": "Bearbeiten"
     },
     "shortcutsSection": {
       "title": "Tastenkombinationen",
@@ -522,6 +525,14 @@
       "italicDescription": "Markierten Text kursiv formatieren",
       "aiRewrite": "KI-Umformulierung",
       "aiRewriteDescription": "Text markieren und KI-Menü öffnen",
+      "commandPalette": "Kommandopalette",
+      "commandPaletteDescription": "Befehlspalette öffnen",
+      "ghostTextAccept": "Ghost Text übernehmen",
+      "ghostTextAcceptDescription": "Vorgeschlagenen Text vollständig übernehmen",
+      "ghostTextWord": "Ghost Text wortweise",
+      "ghostTextWordDescription": "Nächstes Wort des Vorschlags übernehmen",
+      "ghostTextDismiss": "Ghost Text verwerfen",
+      "ghostTextDismissDescription": "Vorschlag verwerfen und weiter schreiben",
       "selectText": "Markieren"
     },
     "aboutSection": {
@@ -714,6 +725,11 @@
     "unknownError": "Ein unbekannter Fehler ist aufgetreten",
     "connectionLost": "Verbindung verloren",
     "validationMissingInput": "Mindestens eines der Felder Gliederung, Prompt oder automatisches Fortfahren muss ausgefüllt sein.",
+    "contextTooLargeOutline": "Deine Outline ist zu lang. Kürze sie auf maximal {max} Zeichen oder reduziere die Anzahl der Kapitel.",
+    "contextTooLargePinned": "Du hast zu viele angeheftete KB-Einträge. Hefte nur die wichtigsten an.",
+    "contextTooLargeGeneric": "Der Kontext ist zu groß für die KI. Reduziere die Outline oder entferne angeheftete KB-Einträge.",
+    "contextInspectorAction": "Kontext prüfen",
+    "clearPinnedAction": "Anheftungen entfernen",
     "outlineHelpScene": "Optional. Beschreibe die Szenen-Struktur, z.B.: »Szene 1: Ankunft am Schloss. Szene 2: Verhandlung mit dem König.« Ohne Gliederung wird die KI frei interpretieren.",
     "tokensTotal": "Tokens gesamt",
     "tokensPrompt": "Prompt",
@@ -1320,6 +1336,11 @@
     "extractionHideSource": "Quelltext ausblenden",
     "extractionLoadingDesc": "Die KI liest dein Kapitel und identifiziert Entitäten, Fakten und Beziehungen...",
     "extractionLoadingTitle": "Extrahiere Wissen",
+    "extractionPhase": {
+      "analysing": "Analysiere Kapiteltext nach Entitäten und Mustern...",
+      "extracting": "Extrahiere Entitäten, Beziehungen und Fakten...",
+      "finalizing": "Finalisiere Extraktionsergebnisse..."
+    },
     "extractionNewEntity": "Neuer Eintrag",
     "extractionProposedContent": "Vorgeschlagener Inhalt",
     "extractionRelationship": "Beziehung",
@@ -1334,6 +1355,15 @@
     "extractionValidationError": "Aus diesem Kapitel konnte nichts extrahiert werden. Es könnte zu kurz oder leer sein.",
     "extractionAnalysisNotes": "KI-Analyse-Notizen",
     "extractionViewSource": "Quelltext anzeigen",
+    "interview": {
+      "resumeTitle": "Unterbrochenes Interview gefunden",
+      "resumeDescription": "Du hast ein begonnenes Interview. Möchtest du es fortsetzen?",
+      "resumeAction": "Fortsetzen",
+      "startNew": "Neues Interview starten",
+      "cancelConfirmTitle": "Interview beenden?",
+      "cancelConfirmDescription": "Dein Fortschritt wird gespeichert. Du kannst das Interview später fortsetzen.",
+      "cancelConfirmAction": "Beenden"
+    },
     "wiki": {
       "aiPerspective": "Wie die KI dieses {type} versteht",
       "narrativeSummary": "Erzählerische Zusammenfassung",
@@ -1646,5 +1676,65 @@
     "profileCustom": "Benutzerdefiniert",
     "outputLimit": "Ausgabelimit",
     "max": "16K"
+  },
+  "ghostText": {
+    "onboardingHint": "Tab = Übernehmen | → = Wortweise | Esc = Verwerfen"
+  },
+  "aiActions": {
+    "accept": "Übernehmen",
+    "reject": "Verwerfen",
+    "retry": "Erneut versuchen",
+    "stop": "Stoppen",
+    "addToDraft": "Zum Entwurf hinzufügen",
+    "insertAsNew": "Als neu einfügen",
+    "replace": "Ersetzen",
+    "rating": "Bewerte diesen Vorschlag",
+    "rejectReason": "Warum möchtest du das verwerfen?",
+    "rejectReasonPlaceholder": "Dein Feedback hilft der KI, bessere Vorschläge zu machen...",
+    "submitRating": "Absenden",
+    "skipRating": "Überspringen",
+    "ratingSubmitted": "Danke für dein Feedback!",
+    "generating": "Generiere...",
+    "aiThinking": "KI denkt nach...",
+    "connectionLost": "Verbindung verloren. Prüfe deine Internetverbindung.",
+    "connectionLostRetry": "Erneut verbinden",
+    "newSuggestions": "Neue Vorschläge",
+    "original": "Original",
+    "suggested": "Vorschlag"
+  },
+  "tour": {
+    "step1": {
+      "title": "Schreibbereich",
+      "description": "Hier schreibst du deinen Roman. Der Editor unterstützt dich mit Formatierung und Kapitelverwaltung."
+    },
+    "step2": {
+      "title": "Navigation",
+      "description": "Navigiere zwischen Editor, Welt & Charaktere, Analyse und Einstellungen."
+    },
+    "step3": {
+      "title": "KI-Unterstützung",
+      "description": "KI-Unterstützung: Generiere Text, schreibe weiter, oder lass die KI Text umschreiben."
+    },
+    "step4": {
+      "title": "Ghost Text",
+      "description": "Wenn du schreibst, erscheinen manchmal graue Vorschläge. Mit Tab übernimmst du sie, mit Esc verwirfst du sie."
+    },
+    "step5": {
+      "title": "Worldbuilding",
+      "description": "Verwalte Charaktere, Orte und andere Entitäten deiner Romanwelt."
+    },
+    "step6": {
+      "title": "Einstellungen",
+      "description": "Hier kannst du KI-Einstellungen, Schreibziele und Tastenkürzel anpassen."
+    },
+    "skip": "Überspringen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "done": "Fertig"
+  },
+  "quickStart": {
+    "label": "Sofort loslegen",
+    "creating": "Projekt wird erstellt…",
+    "defaultProjectName": "Mein Roman"
   }
 }

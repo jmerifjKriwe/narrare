@@ -6,7 +6,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { Sidebar } from "@/components/studio/Sidebar";
+import { FeatureTour } from "@/components/ui/feature-tour";
+import { Toaster } from "@/components/ui/toaster";
 import { authApi } from "@/lib/api/client";
+import { FEATURE_TOUR_STEPS } from "@/lib/config/feature-tour-steps";
 
 export default function StudioLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("studio.sidebar");
@@ -41,6 +44,8 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
     <div className="size-full flex">
       <Sidebar />
       <main className="flex-1 min-h-0 min-w-0">{children}</main>
+      <Toaster />
+      <FeatureTour steps={FEATURE_TOUR_STEPS} />
     </div>
   );
 }

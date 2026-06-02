@@ -177,7 +177,7 @@ describe("WorldbuildingAnalysisPanel", () => {
     renderWithProviders(<WorldbuildingAnalysisPanel {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText("worldbuilding.retry")).toBeDefined();
+      expect(screen.getByText("retry")).toBeDefined();
     });
   });
 

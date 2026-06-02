@@ -321,19 +321,19 @@ export function AIAnnotationActions({ editor, projectId, chapterId }: AIAnnotati
             type="button"
             onClick={handleAccept}
             className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-            aria-label={t("annotation.keep")}
+            aria-label={t("aiActions.accept")}
           >
             <Check className="w-3 h-3" />
-            <span>{t("annotation.keep")}</span>
+            <span>{t("aiActions.accept")}</span>
           </button>
           <button
             type="button"
             onClick={handleReject}
             className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-border hover:bg-accent transition-colors"
-            aria-label={t("annotation.undo")}
+            aria-label={t("aiActions.reject")}
           >
             <Undo2 className="w-3 h-3" />
-            <span>{t("annotation.undo")}</span>
+            <span>{t("aiActions.reject")}</span>
           </button>
         </div>
       )}

@@ -223,8 +223,9 @@ describe("KBAssistedCreationPanel — Session Actions", () => {
 
     fireEvent.click(screen.getByText("kb.abandon"));
 
-    expect(screen.getByText("kb.confirmAbandon")).toBeDefined();
-    expect(screen.getByText("kb.confirm")).toBeDefined();
+    // ConfirmDialog renders with title and confirm action label
+    expect(screen.getByText("kb.interview.cancelConfirmTitle")).toBeDefined();
+    expect(screen.getByText("kb.interview.cancelConfirmAction")).toBeDefined();
   });
 
   it("'Cancel' in abandon confirm returns to normal state", async () => {
@@ -235,20 +236,19 @@ describe("KBAssistedCreationPanel — Session Actions", () => {
     });
 
     fireEvent.click(screen.getByText("kb.abandon"));
-    expect(screen.getByText("kb.confirmAbandon")).toBeDefined();
+    expect(screen.getByText("kb.interview.cancelConfirmTitle")).toBeDefined();
 
-    const cancelButtons = screen.getAllByText("kb.cancel");
-    const confirmCancel = cancelButtons.find(
-      (btn) => btn.closest('[class*="gap-2 text-sm"]') !== null,
+    // Cancel button in confirm dialog uses common.cancel → renders as "cancel"
+    const cancelButtons = screen.getAllByText("cancel");
+    const dialogCancel = cancelButtons.find(
+      (btn) => btn.closest('[class*="absolute"]') !== null || btn.closest("button") !== null,
     );
-    if (confirmCancel) {
-      fireEvent.click(confirmCancel);
-    } else {
-      fireEvent.click(screen.getByText("kb.abandon"));
+    if (dialogCancel) {
+      fireEvent.click(dialogCancel);
     }
 
     await waitFor(() => {
-      expect(screen.queryByText("kb.confirmAbandon")).toBeNull();
+      expect(screen.queryByText("kb.interview.cancelConfirmTitle")).toBeNull();
     });
   });
 
@@ -268,9 +268,10 @@ describe("KBAssistedCreationPanel — Session Actions", () => {
     });
 
     fireEvent.click(screen.getByText("kb.abandon"));
-    expect(screen.getByText("kb.confirmAbandon")).toBeDefined();
+    expect(screen.getByText("kb.interview.cancelConfirmTitle")).toBeDefined();
 
-    fireEvent.click(screen.getByText("kb.confirm"));
+    // Confirm button uses the confirmLabel: kb.interview.cancelConfirmAction
+    fireEvent.click(screen.getByText("kb.interview.cancelConfirmAction"));
 
     await waitFor(() => {
       expect(onCancel).toHaveBeenCalledTimes(1);
@@ -338,12 +339,7 @@ describe("KBAssistedCreationPanel — Session Actions", () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
-  it("shows 'Abandoning...' state while abandoning", async () => {
-    mockHooks.abandonSession = {
-      mutate: vi.fn(),
-      isPending: true,
-    };
-
+  it("shows confirm dialog when abandon is clicked", async () => {
     renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
 
     await waitFor(() => {
@@ -352,8 +348,10 @@ describe("KBAssistedCreationPanel — Session Actions", () => {
 
     fireEvent.click(screen.getByText("kb.abandon"));
 
+    // ConfirmDialog opens with title and confirm action
     await waitFor(() => {
-      expect(screen.getByText("kb.abandoning")).toBeDefined();
+      expect(screen.getByText("kb.interview.cancelConfirmTitle")).toBeDefined();
     });
+    expect(screen.getByText("kb.interview.cancelConfirmAction")).toBeDefined();
   });
 });

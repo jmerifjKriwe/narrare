@@ -8,6 +8,7 @@
  * Refresh token is in an httpOnly cookie (set by server).
  */
 
+import { saveBeforeRedirect } from "@/lib/hooks/use-content-recovery";
 import type {
   AIProvider,
   CascadePath,
@@ -148,6 +149,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     if (endpoint === "/auth/refresh") {
       clearAccessToken();
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        saveBeforeRedirect();
         window.location.href = "/login";
       }
       throw new Error("Session expired");
@@ -173,6 +175,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
       return retry.json() as Promise<T>;
     } catch {
       clearAccessToken();
+      saveBeforeRedirect();
       window.location.href = "/login";
       throw new Error("Session expired");
     }
@@ -480,10 +483,11 @@ export const templatesApi = {
 // --- Generation ---
 
 export const generationApi = {
-  generateNames: (request: NameGenerateRequest) =>
+  generateNames: (request: NameGenerateRequest, signal?: AbortSignal) =>
     fetchApi<NameGenerateResponse>("/generation/names", {
       method: "POST",
       body: JSON.stringify(request),
+      signal,
     }),
 };
 

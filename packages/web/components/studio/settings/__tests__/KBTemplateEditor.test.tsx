@@ -83,7 +83,6 @@ describe("KBTemplateEditor", () => {
     const user = userEvent.setup();
     const saveMutate = vi.fn();
     const resetMutate = vi.fn();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     // useMutation is called twice: save (call 1), reset (call 2)
     let callIdx = 0;
@@ -98,7 +97,15 @@ describe("KBTemplateEditor", () => {
 
     render(<KBTemplateEditor {...defaultProps} />);
 
+    // Click reset button (opens ConfirmDialog)
     await user.click(screen.getByText("kb.resetToDefault"));
+
+    // Confirm the reset in the dialog
+    // The confirm button also has text "kb.resetToDefault"
+    const resetButtons = screen.getAllByText("kb.resetToDefault");
+    // Click the last one (the confirm button in the dialog)
+    await user.click(resetButtons[resetButtons.length - 1]);
+
     expect(resetMutate).toHaveBeenCalledOnce();
 
     vi.restoreAllMocks();

@@ -120,7 +120,11 @@ describe("useExtractChapter", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockExtractChapter).toHaveBeenCalledWith("novel-1", "chapter-1");
+    expect(mockExtractChapter).toHaveBeenCalledWith(
+      "novel-1",
+      "chapter-1",
+      expect.any(AbortSignal),
+    );
     expect(result.current.data).toEqual(mockExtractionOutput);
   });
 
@@ -182,7 +186,11 @@ describe("useApplyExtraction", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApplyExtraction).toHaveBeenCalledWith("novel-1", mockApplyItems);
+    expect(mockApplyExtraction).toHaveBeenCalledWith(
+      "novel-1",
+      mockApplyItems,
+      expect.any(AbortSignal),
+    );
     expect(result.current.data).toEqual(mockApplyResponse);
   });
 

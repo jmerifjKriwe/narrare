@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { authApi, setupApi } from "@/lib/api/client";
+import { useQuickStart } from "@/lib/hooks/useQuickStart";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import { cn } from "@/lib/utils";
 import { WizardStep1 } from "./WizardStep1";
@@ -26,6 +27,7 @@ export function WizardShell() {
 
   const [hasProviders, setHasProviders] = useState(false);
   const [loadingProviders, setLoadingProviders] = useState(true);
+  const { isQuickStarting, handleQuickStart } = useQuickStart();
 
   // Check if user already has providers configured
   useEffect(() => {
@@ -102,6 +104,18 @@ export function WizardShell() {
   return (
     <div className="h-full overflow-y-auto bg-background flex items-start justify-center p-8 px-4">
       <div className="w-full max-w-2xl pt-8">
+        {/* Quick Start link */}
+        <div className="flex justify-end px-4">
+          <button
+            type="button"
+            onClick={() => handleQuickStart(t("quickStart.defaultProjectName"))}
+            disabled={isQuickStarting}
+            className="text-sm text-muted-foreground hover:text-foreground underline disabled:opacity-50"
+          >
+            {isQuickStarting ? t("quickStart.creating") : t("quickStart.label")}
+          </button>
+        </div>
+
         {/* Progress indicator */}
         <div className="flex items-center justify-center mb-10 px-4">
           <div className="flex items-center w-full max-w-[400px]">

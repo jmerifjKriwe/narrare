@@ -47,7 +47,8 @@
     "blockquote": "Citation",
     "addBlock": "Ajouter un bloc",
     "nameGenerator": "Générateur de noms",
-    "generate": "Générer"
+    "generate": "Générer",
+    "contentRecovered": "Modifications non enregistrées restaurées"
   },
   "metadataSidebar": {
     "title": "Métadonnées",
@@ -507,7 +508,9 @@
       "generation": "Génération",
       "writing": "Écriture",
       "analysis": "Analyse",
-      "kb": "Base de connaissances"
+      "kb": "Base de connaissances",
+      "preview": "Aperçu",
+      "edit": "Modifier"
     },
     "shortcutsSection": {
       "title": "Raccourcis clavier",
@@ -522,6 +525,14 @@
       "italicDescription": "Formater le texte sélectionné en italique",
       "aiRewrite": "Réécriture IA",
       "aiRewriteDescription": "Sélectionner le texte et ouvrir le menu IA",
+      "commandPalette": "Palette de commandes",
+      "commandPaletteDescription": "Ouvrir la palette de commandes",
+      "ghostTextAccept": "Accepter le Ghost Text",
+      "ghostTextAcceptDescription": "Accepter le texte suggéré en entier",
+      "ghostTextWord": "Ghost Text mot par mot",
+      "ghostTextWordDescription": "Accepter le mot suivant de la suggestion",
+      "ghostTextDismiss": "Rejeter le Ghost Text",
+      "ghostTextDismissDescription": "Rejeter la suggestion et continuer à écrire",
       "selectText": "Sélectionner"
     },
     "aboutSection": {
@@ -714,6 +725,11 @@
     "unknownError": "Une erreur inconnue est survenue",
     "connectionLost": "Connexion perdue",
     "validationMissingInput": "Au moins un des champs plan, consigne ou continuation automatique doit être rempli.",
+    "contextTooLargeOutline": "Votre plan est trop long. Réduisez-le à {max} caractères maximum ou réduisez le nombre de chapitres.",
+    "contextTooLargePinned": "Vous avez trop d'entrées KB épinglées. Épinglez uniquement les plus importantes.",
+    "contextTooLargeGeneric": "Le contexte est trop volumineux pour l'IA. Réduisez le plan ou supprimez les entrées KB épinglées.",
+    "contextInspectorAction": "Inspecter le contexte",
+    "clearPinnedAction": "Supprimer les épinglés",
     "outlineHelpScene": "Optionnel. Décrivez la structure des scènes, par ex. : « Scène 1 : Arrivée au château. Scène 2 : Négociation avec le roi. » Sans plan, l'IA interprétera librement.",
     "tokensTotal": "Tokens total",
     "tokensPrompt": "Prompt",
@@ -1320,6 +1336,11 @@
     "extractionHideSource": "Masquer le texte source",
     "extractionLoadingDesc": "L'IA lit votre chapitre et identifie les entités, faits et relations...",
     "extractionLoadingTitle": "Extraction des connaissances",
+    "extractionPhase": {
+      "analysing": "Analyse du texte du chapitre pour les entités et les motifs...",
+      "extracting": "Extraction des entités, relations et faits...",
+      "finalizing": "Finalisation des résultats d'extraction..."
+    },
     "extractionNewEntity": "Nouvelle entité",
     "extractionProposedContent": "Contenu proposé",
     "extractionRelationship": "Relation",
@@ -1334,6 +1355,15 @@
     "extractionValidationError": "Impossible d'extraire le contenu de ce chapitre. Il est peut-être trop court ou vide.",
     "extractionAnalysisNotes": "Notes d'analyse IA",
     "extractionViewSource": "Voir le texte source",
+    "interview": {
+      "resumeTitle": "Interview interrompue trouvée",
+      "resumeDescription": "Vous avez une interview inachevée. Souhaitez-vous la reprendre ?",
+      "resumeAction": "Reprendre",
+      "startNew": "Nouvelle interview",
+      "cancelConfirmTitle": "Terminer l'interview ?",
+      "cancelConfirmDescription": "Votre progression sera sauvegardée. Vous pourrez reprendre l'interview plus tard.",
+      "cancelConfirmAction": "Terminer"
+    },
     "wiki": {
       "aiPerspective": "Comment l'IA comprend ce {type}",
       "narrativeSummary": "Résumé narratif",
@@ -1646,5 +1676,65 @@
     "profileCustom": "Personnalisé",
     "outputLimit": "Limite de sortie",
     "max": "16K"
+  },
+  "ghostText": {
+    "onboardingHint": "Tab = Accepter | → = Mot par mot | Esc = Rejeter"
+  },
+  "aiActions": {
+    "accept": "Accepter",
+    "reject": "Rejeter",
+    "retry": "Réessayer",
+    "stop": "Arrêter",
+    "addToDraft": "Ajouter au brouillon",
+    "insertAsNew": "Insérer comme nouveau",
+    "replace": "Remplacer",
+    "rating": "Évaluer cette suggestion",
+    "rejectReason": "Pourquoi souhaitez-vous rejeter ceci ?",
+    "rejectReasonPlaceholder": "Votre retour aide l'IA à faire de meilleures suggestions...",
+    "submitRating": "Soumettre",
+    "skipRating": "Ignorer",
+    "ratingSubmitted": "Merci pour votre retour !",
+    "generating": "Génération...",
+    "aiThinking": "L'IA réfléchit...",
+    "connectionLost": "Connexion perdue. Vérifiez votre connexion internet.",
+    "connectionLostRetry": "Reconnecter",
+    "newSuggestions": "Nouvelles suggestions",
+    "original": "Original",
+    "suggested": "Suggestion"
+  },
+  "tour": {
+    "step1": {
+      "title": "Zone d'écriture",
+      "description": "C'est ici que vous écrivez votre roman. L'éditeur prend en charge la mise en forme et la gestion des chapitres."
+    },
+    "step2": {
+      "title": "Navigation",
+      "description": "Naviguez entre l'Éditeur, Monde et personnages, Analyse et Paramètres."
+    },
+    "step3": {
+      "title": "Assistance IA",
+      "description": "Assistance IA : Générez du texte, continuez à écrire, ou laissez l'IA réécrire du texte."
+    },
+    "step4": {
+      "title": "Ghost Text",
+      "description": "En écrivant, des suggestions grises peuvent apparaître. Appuyez sur Tab pour les accepter, ou Esc pour les rejeter."
+    },
+    "step5": {
+      "title": "Worldbuilding",
+      "description": "Gérez les personnages, lieux et autres entités de votre monde romanesque."
+    },
+    "step6": {
+      "title": "Paramètres",
+      "description": "Personnalisez les paramètres IA, les objectifs d'écriture et les raccourcis clavier."
+    },
+    "skip": "Ignorer",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé"
+  },
+  "quickStart": {
+    "label": "Démarrage rapide",
+    "creating": "Création du projet…",
+    "defaultProjectName": "Mon roman"
   }
 }

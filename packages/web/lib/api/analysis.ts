@@ -259,10 +259,11 @@ export const analysisApi = {
    * POST /analysis/beta-reader?novel_id={novelId}
    * Returns comprehensive feedback across all categories.
    */
-  analyze: (novelId: string, request: BetaReaderRequest) =>
+  analyze: (novelId: string, request: BetaReaderRequest, signal?: AbortSignal) =>
     fetchApi<BetaReaderResponse>(`/analysis/beta-reader?novel_id=${novelId}`, {
       method: "POST",
       body: JSON.stringify(request),
+      signal,
     }),
 
   /**
@@ -271,10 +272,11 @@ export const analysisApi = {
    * POST /analysis/beta-reader/deep-dive?novel_id={novelId}
    * Requires cache_key from Phase 1 response.
    */
-  deepDive: (novelId: string, request: BetaReaderDeepDiveRequest) =>
+  deepDive: (novelId: string, request: BetaReaderDeepDiveRequest, signal?: AbortSignal) =>
     fetchApi<BetaReaderDeepDiveResponse>(`/analysis/beta-reader/deep-dive?novel_id=${novelId}`, {
       method: "POST",
       body: JSON.stringify(request),
+      signal,
     }),
 
   // --- ANAL-002: Sentiment ---

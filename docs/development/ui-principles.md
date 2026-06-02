@@ -818,3 +818,146 @@ ANAL-001 establishes the foundational patterns for the entire analysis suite (AN
 | Store (`*Store.ts`)    | 150 lines  |
 
 Large components are a sign of mixed responsibilities. Split them per RULE-06.
+
+---
+
+## 16. AI-Interaction Standards
+
+> **Scope**: Every feature that invokes an LLM, displays AI-generated content, or
+> provides an AI-powered user action. Non-negotiable. These rules enforce RULE-20
+> (no half-implementations) at the UX layer.
+>
+> **Reference language**: German (de). All user-facing strings must use canonical
+> i18n keys from `studio.aiActions.*` (see §16.8).
+>
+> **Last updated**: 2026-06-02
+> **Source**: CR-07 UX Audit — systemic inconsistency in AI interaction patterns
+
+### 16.1 Streaming Rule
+
+RULE: Every AI-powered feature MUST use SSE streaming via `connectSSE()` if the backend provides an SSE endpoint. REST-only consumption is a RULE-20 violation.
+
+Rationale: Streaming is the core UX pattern for AI interaction. Users see output accumulate in real time.
+
+Existing infrastructure: `connectSSE()` in `packages/web/lib/api/streaming.ts`, `AbortController` pattern in all SSE consumers.
+
+Violation: Any `fetch()` or `apiClient.post()` call to an endpoint with a corresponding SSE router without using `connectSSE()`.
+
+### 16.2 Cancel Rule
+
+RULE: Every AI operation >2s MUST provide an AbortController-based cancel option visible to the user.
+
+Required implementation pattern:
+```typescript
+const abortRef = useRef<AbortController | null>(null);
+const handleStart = () => {
+  const controller = new AbortController();
+  abortRef.current = controller;
+  connectSSE({ signal: controller.signal, ... });
+};
+const handleStop = () => {
+  abortRef.current?.abort();
+  abortRef.current = null;
+};
+```
+
+Violation: AI operation without a stop/cancel button, or fetch without passing signal.
+
+### 16.3 Loading Rule
+
+RULE: Every AI operation MUST show immediate visual feedback within 200ms.
+
+Required states: Idle → Loading (immediate, <200ms) → Streaming → Complete
+
+Violation: No visual change after clicking AI button for >200ms.
+
+### 16.4 Action-Label Rule
+
+RULE: All AI output action buttons MUST use canonical Action Vocabulary from `studio.aiActions.*`.
+
+Violation: Any button on AI-generated output using a label NOT from `studio.aiActions.*`.
+
+### 16.5 Error-Message Rule
+
+RULE: AI error messages MUST be actionable — tell what happened AND what to do.
+
+Format: `[What happened] [What to do]`
+
+Examples table:
+| Error | Bad | Good |
+|-------|-----|------|
+| Timeout | "Timeout error" | "Die KI braucht zu lange. Versuche es mit weniger Kontext erneut." |
+| Context too large | "413 Payload Too Large" | "Der Text ist zu lang für die KI. Kürze die Auswahl auf maximal {max} Zeichen." |
+| API key invalid | "401 Unauthorized" | "Dein API-Schlüssel ist ungültig. Überprüfe deine KI-Einstellungen." |
+| Rate limit | "429 Too Many Requests" | "Du hast zu viele Anfragen gesendet. Warte einen Moment." |
+| Connection lost | "fetch failed" | "Verbindung verloren. Prüfe deine Internetverbindung." |
+
+Violation: Error stating what failed without what to do. Raw HTTP status visible.
+
+### 16.6 Feedback Rule
+
+RULE: Every AI interaction with visible output MUST offer accept/reject flow.
+
+Minimum flow: output → accept + reject → on accept: apply / on reject: discard + optional reason
+
+Violation: AI output applied without user confirmation.
+
+### 16.7 Connection-Lost Rule
+
+RULE: Every long-running AI operation MUST handle connection loss gracefully.
+
+Required: preserve partial output → show banner → offer retry
+
+Violation: Connection loss causes blank state, crash, or loss of partial output.
+
+### 16.8 Canonical AI-Action Vocabulary
+
+All AI action labels under `studio.aiActions` namespace:
+
+| i18n key | DE | EN | FR |
+|----------|----|----|----|
+| `aiActions.accept` | Übernehmen | Accept | Accepter |
+| `aiActions.reject` | Verwerfen | Reject | Rejeter |
+| `aiActions.retry` | Erneut versuchen | Retry | Réessayer |
+| `aiActions.stop` | Stoppen | Stop | Arrêter |
+| `aiActions.addToDraft` | Zum Entwurf hinzufügen | Add to Draft | Ajouter au brouillon |
+| `aiActions.insertAsNew` | Als neu einfügen | Insert as New | Insérer comme nouveau |
+| `aiActions.replace` | Ersetzen | Replace | Remplacer |
+| `aiActions.rating` | Bewerte diesen Vorschlag | Rate this suggestion | Évaluer cette suggestion |
+| `aiActions.rejectReason` | Warum möchtest du das verwerfen? | Why do you want to reject this? | Pourquoi souhaitez-vous rejeter ceci ? |
+| `aiActions.rejectReasonPlaceholder` | Dein Feedback hilft der KI... | Your feedback helps the AI... | Votre retour aide l'IA... |
+| `aiActions.submitRating` | Absenden | Submit | Soumettre |
+| `aiActions.skipRating` | Überspringen | Skip | Ignorer |
+| `aiActions.ratingSubmitted` | Danke für dein Feedback! | Thanks for your feedback! | Merci pour votre retour ! |
+| `aiActions.generating` | Generiere... | Generating... | Génération... |
+| `aiActions.aiThinking` | KI denkt nach... | AI is thinking... | L'IA réfléchit... |
+| `aiActions.connectionLost` | Verbindung verloren. Prüfe deine Internetverbindung. | Connection lost. Check your internet connection. | Connexion perdue. Vérifiez votre connexion internet. |
+| `aiActions.connectionLostRetry` | Erneut verbinden | Reconnect | Reconnecter |
+| `aiActions.newSuggestions` | Neue Vorschläge | New Suggestions | Nouvelles suggestions |
+| `aiActions.original` | Original | Original | Original |
+| `aiActions.suggested` | Vorschlag | Suggested | Suggestion |
+
+Deprecated keys (DO NOT use):
+- `aiModal.accept` → `aiActions.accept`
+- `aiModal.reject` → `aiActions.reject`
+- `generation.stop` → `aiActions.stop`
+- `generation.accept` → `aiActions.accept`
+- `generation.reject` → `aiActions.reject`
+- `annotation.keep` → `aiActions.accept`
+- `annotation.undo` → `aiActions.reject`
+- `rewrite.cancel` → `aiActions.stop`
+- `rewrite.replace` → `aiActions.replace`
+- `sessionPanel.addToDraft` → `aiActions.addToDraft`
+- `kb.sessions.accept` → `aiActions.accept`
+- `kb.sessions.reject` → `aiActions.reject`
+- `learning.rating` → `aiActions.rating`
+
+### 16.9 Machine-Checkability
+
+Checks that CAN and SHOULD be automated:
+- No feature-local AI action labels → grep deprecated keys in TSX
+- aiActions namespace registered → i18n test
+- 3-locale parity for aiActions → validate-i18n.ts
+- SSE usage for SSE-capable endpoints → compare fetch vs SSE routers
+- AbortController present on AI operations → static analysis
+- No hardcoded AI error messages → grep patterns

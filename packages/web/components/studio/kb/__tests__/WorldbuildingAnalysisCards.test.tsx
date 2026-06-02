@@ -248,8 +248,9 @@ describe("ConsistencyCard", () => {
   it("shows entity count", () => {
     render(<ConsistencyCard issue={createConsistencyIssue()} t={t} />);
 
-    const el = screen.getByText(/worldbuilding\.entities/);
-    expect(el.textContent).toContain("2");
+    // Entity names are rendered directly (Anna, Johann = 2 entities)
+    expect(screen.getByText("Anna")).toBeDefined();
+    expect(screen.getByText("Johann")).toBeDefined();
   });
 });
 

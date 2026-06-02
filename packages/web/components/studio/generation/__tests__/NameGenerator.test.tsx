@@ -199,9 +199,9 @@ describe("NameGenerator", () => {
 
     // During pending: button shows generating text and is disabled
     await waitFor(() => {
-      expect(screen.getByText("generation.generating")).toBeDefined();
+      expect(screen.getByText("generating")).toBeDefined();
     });
-    expect(screen.getByText("generation.generating").closest("button")).toBeDisabled();
+    expect(screen.getByText("generating").closest("button")).toBeDisabled();
     expect(screen.getByTestId("name-results").textContent).toBe("Loading...");
 
     // Resolve to clean up pending state

@@ -31,6 +31,7 @@ import { DialogueMark } from "./editor/extensions/DialogueMark";
 import { GhostText, simulateSuggestion } from "./editor/extensions/GhostText";
 import { NarrareDocument } from "./editor/extensions/NarrareDocument";
 import { SceneBreak } from "./editor/extensions/SceneBreak";
+import { GhostTextOnboarding, useGhostTextOnboarding } from "./editor/GhostTextOnboarding";
 import { InlineDiff } from "./editor/InlineDiff";
 import { RewriteModeSelector } from "./editor/RewriteModeSelector";
 
@@ -94,6 +95,10 @@ export function TipTapEditor({
     contextAfter: string;
   } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Ghost Text onboarding — show once on first ghost text appearance
+  const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useGhostTextOnboarding();
+  const [onboardingAnchor, setOnboardingAnchor] = useState<HTMLElement | null>(null);
 
   // Feedback hook for implicit accept on autosave
   const recordFeedback = useRecordFeedback(novelId ?? "");
@@ -225,9 +230,35 @@ export function TipTapEditor({
     }
   }, [editor]);
 
-  // ---------------------------------------------------------------------------
-  // AI Rewrite flow
-  // ---------------------------------------------------------------------------
+  // Ghost Text onboarding: detect first ghost text element and show hint
+  useEffect(() => {
+    if (!showOnboarding || !editor) return;
+
+    const checkForGhostText = () => {
+      const ghostEl = document.querySelector(".ghost-text-suggestion");
+      if (ghostEl && showOnboarding) {
+        setOnboardingAnchor(ghostEl as HTMLElement);
+      }
+    };
+
+    // Observe editor DOM for ghost text decorations
+    const observer = new MutationObserver(checkForGhostText);
+    const editorDom = editor.view.dom;
+    observer.observe(editorDom, { childList: true, subtree: true });
+
+    // Also check on editor updates
+    const handler = () => {
+      setTimeout(checkForGhostText, 50);
+    };
+    editor.on("update", handler);
+    editor.on("transaction", handler);
+
+    return () => {
+      observer.disconnect();
+      editor.off("update", handler);
+      editor.off("transaction", handler);
+    };
+  }, [editor, showOnboarding]);
 
   /** Get context around a selection (200 tokens ~= ~800 chars on each side). */
   const getSelectionContext = useCallback(
@@ -486,6 +517,11 @@ export function TipTapEditor({
         <AIAnnotationActions editor={editor} projectId={novelId} chapterId={chapterId} />
       )}
 
+      {/* Ghost Text onboarding hint — shown once */}
+      {showOnboarding && onboardingAnchor && (
+        <GhostTextOnboarding anchorElement={onboardingAnchor} onDismiss={dismissOnboarding} />
+      )}
+
       {/* Rewrite Mode Selector (shown before streaming starts) */}
       {rewritePhase === "selecting-mode" && rewriteSelection && (
         <RewriteModeSelector
@@ -544,7 +580,7 @@ export function TipTapEditor({
               {isRewriteStreaming && (
                 <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{t("rewrite.streaming")}</span>
+                  <span>{t("aiActions.generating")}</span>
                 </div>
               )}
             </div>
@@ -553,7 +589,7 @@ export function TipTapEditor({
             {showRejectionInput && (
               <div className="p-6 border-t border-border bg-muted/30">
                 <label htmlFor="rejection-reason" className="block text-sm mb-2">
-                  {t("aiModal.rejectionLabel")}
+                  {t("aiActions.rejectReason")}
                 </label>
                 <textarea
                   id="rejection-reason"
@@ -561,7 +597,7 @@ export function TipTapEditor({
                   onChange={(e) => setRejectionReason(e.target.value)}
                   className="w-full px-3 py-2 bg-input-background border border-border rounded-lg text-sm"
                   rows={3}
-                  placeholder={t("aiModal.rejectionPlaceholder")}
+                  placeholder={t("aiActions.rejectReasonPlaceholder")}
                 />
               </div>
             )}
@@ -574,17 +610,17 @@ export function TipTapEditor({
                 className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
               >
                 <X className="w-4 h-4" />
-                {t("aiModal.reject")}
+                {t("aiActions.reject")}
               </button>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={insertAsNew}
                   className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
-                  title={t("rewrite.insertAsNew")}
+                  title={t("aiActions.insertAsNew")}
                 >
                   <Plus className="w-4 h-4" />
-                  {t("rewrite.insertAsNew")}
+                  {t("aiActions.insertAsNew")}
                 </button>
                 <button
                   type="button"
@@ -592,7 +628,7 @@ export function TipTapEditor({
                   className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  {t("aiModal.newSuggestions")}
+                  {t("aiActions.newSuggestions")}
                 </button>
                 <button
                   type="button"
@@ -600,7 +636,7 @@ export function TipTapEditor({
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
                 >
                   <Check className="w-4 h-4" />
-                  {t("rewrite.replace")}
+                  {t("aiActions.replace")}
                 </button>
               </div>
             </div>

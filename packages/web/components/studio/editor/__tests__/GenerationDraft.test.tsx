@@ -24,7 +24,7 @@ describe("GenerationDraft", () => {
 
   it("shows stop button in streaming phase", () => {
     render(<GenerationDraft {...defaultProps} phase="streaming" />);
-    expect(screen.getByText("generationPanel.stop")).toBeDefined();
+    expect(screen.getByText("aiActions.stop")).toBeDefined();
   });
 
   it("shows waiting for text when draftText is empty", () => {
@@ -39,47 +39,47 @@ describe("GenerationDraft", () => {
 
   it("shows review buttons in review phase", () => {
     render(<GenerationDraft {...defaultProps} phase="review" />);
-    expect(screen.getByText("generationPanel.accept")).toBeDefined();
-    expect(screen.getByText("generationPanel.reject")).toBeDefined();
-    expect(screen.getByText("generationPanel.regenerate")).toBeDefined();
+    expect(screen.getByText("aiActions.accept")).toBeDefined();
+    expect(screen.getByText("aiActions.reject")).toBeDefined();
+    expect(screen.getByText("aiActions.retry")).toBeDefined();
   });
 
   it("does not show stop button in review phase", () => {
     render(<GenerationDraft {...defaultProps} phase="review" />);
-    expect(screen.queryByText("generationPanel.stop")).toBeNull();
+    expect(screen.queryByText("aiActions.stop")).toBeNull();
   });
 
   it("calls onStop when stop is clicked", () => {
     const onStop = vi.fn();
     render(<GenerationDraft {...defaultProps} onStop={onStop} />);
-    fireEvent.click(screen.getByText("generationPanel.stop"));
+    fireEvent.click(screen.getByText("aiActions.stop"));
     expect(onStop).toHaveBeenCalledOnce();
   });
 
   it("calls onAccept when accept is clicked", () => {
     const onAccept = vi.fn();
     render(<GenerationDraft {...defaultProps} phase="review" onAccept={onAccept} />);
-    fireEvent.click(screen.getByText("generationPanel.accept"));
+    fireEvent.click(screen.getByText("aiActions.accept"));
     expect(onAccept).toHaveBeenCalledOnce();
   });
 
   it("calls onReject when reject is clicked", () => {
     const onReject = vi.fn();
     render(<GenerationDraft {...defaultProps} phase="review" onReject={onReject} />);
-    fireEvent.click(screen.getByText("generationPanel.reject"));
+    fireEvent.click(screen.getByText("aiActions.reject"));
     expect(onReject).toHaveBeenCalledOnce();
   });
 
   it("calls onRegenerate when regenerate is clicked", () => {
     const onRegenerate = vi.fn();
     render(<GenerationDraft {...defaultProps} phase="review" onRegenerate={onRegenerate} />);
-    fireEvent.click(screen.getByText("generationPanel.regenerate"));
+    fireEvent.click(screen.getByText("aiActions.retry"));
     expect(onRegenerate).toHaveBeenCalledOnce();
   });
 
   it("disables accept button when isAcceptPending", () => {
     render(<GenerationDraft {...defaultProps} phase="review" isAcceptPending={true} />);
-    const button = screen.getByText("generationPanel.accept").closest("button");
+    const button = screen.getByText("aiActions.accept").closest("button");
     expect(button).not.toBeNull();
     expect(button!.disabled).toBe(true);
   });

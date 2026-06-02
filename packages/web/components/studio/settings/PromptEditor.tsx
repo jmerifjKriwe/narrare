@@ -4,9 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { promptsApi } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { PromptDiff } from "./PromptDiff";
+import { PromptPreview } from "./PromptPreview";
 
 // --- Types ---
 
@@ -24,6 +26,8 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
   const [editMode, setEditMode] = useState(false);
   const [editedContent, setEditedContent] = useState("");
   const [showDiff, setShowDiff] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -70,6 +74,7 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
       setEditedContent(prompt.content);
     }
     setEditMode(true);
+    setPreviewMode(false);
     setStatusMessage(null);
   };
 
@@ -78,9 +83,7 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
   };
 
   const handleReset = () => {
-    if (window.confirm(t("settings.prompts.confirmReset"))) {
-      resetMutation.mutate();
-    }
+    setShowResetConfirm(true);
   };
 
   // Diff view
@@ -222,14 +225,49 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
                 </>
               ) : (
                 <>
-                  <label htmlFor="prompt-viewer" className="block text-sm font-medium">
-                    {prompt.is_overridden
-                      ? t("settings.prompts.promptContent")
-                      : t("settings.prompts.baseContent")}
-                  </label>
-                  <div className="w-full min-h-[400px] px-4 py-3 border border-border rounded-md bg-background text-sm font-mono whitespace-pre-wrap overflow-auto">
-                    {prompt.content}
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="prompt-viewer" className="block text-sm font-medium">
+                      {prompt.is_overridden
+                        ? t("settings.prompts.promptContent")
+                        : t("settings.prompts.baseContent")}
+                    </label>
+                    {/* Preview / Edit toggle */}
+                    {prompt.variables.length > 0 && (
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewMode(false)}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                            !previewMode
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "bg-muted text-muted-foreground hover:bg-accent",
+                          )}
+                        >
+                          {t("settings.prompts.edit")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewMode(true)}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                            previewMode
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "bg-muted text-muted-foreground hover:bg-accent",
+                          )}
+                        >
+                          {t("settings.prompts.preview")}
+                        </button>
+                      </div>
+                    )}
                   </div>
+                  {previewMode ? (
+                    <PromptPreview content={prompt.content} variables={prompt.variables} />
+                  ) : (
+                    <div className="w-full min-h-[400px] px-4 py-3 border border-border rounded-md bg-background text-sm font-mono whitespace-pre-wrap overflow-auto">
+                      {prompt.content}
+                    </div>
+                  )}
                   <div className="flex justify-end gap-3">
                     <button
                       type="button"
@@ -274,6 +312,20 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
           </div>
         </div>
       </div>
+
+      {/* Reset confirmation dialog */}
+      <ConfirmDialog
+        open={showResetConfirm}
+        onOpenChange={setShowResetConfirm}
+        title={t("settings.prompts.resetToDefault")}
+        description={t("settings.prompts.confirmReset")}
+        confirmLabel={t("settings.prompts.resetToDefault")}
+        variant="destructive"
+        onConfirm={() => {
+          resetMutation.mutate();
+          setShowResetConfirm(false);
+        }}
+      />
     </div>
   );
 }

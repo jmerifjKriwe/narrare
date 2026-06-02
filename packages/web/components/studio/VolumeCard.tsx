@@ -2,7 +2,8 @@
 
 import { ChevronDown, ChevronUp, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { UpdateVolumeRequest, Volume, VolumeStats } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +40,8 @@ export function VolumeCard({
   isSaving,
 }: VolumeCardProps) {
   const t = useTranslations("studio");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingAction = useRef<(() => void) | null>(null);
 
   if (isEditing) {
     return (
@@ -103,9 +106,8 @@ export function VolumeCard({
             type="button"
             onClick={() => {
               if (volume.is_default) return;
-              if (window.confirm(t("volumes.deleteConfirm"))) {
-                onDelete(volume.id);
-              }
+              pendingAction.current = () => onDelete(volume.id);
+              setConfirmOpen(true);
             }}
             disabled={volume.is_default}
             className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-destructive disabled:opacity-30"
@@ -129,6 +131,21 @@ export function VolumeCard({
           )}
         </div>
       )}
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={t("volumes.deleteVolume")}
+        description={t("volumes.deleteConfirm")}
+        confirmLabel={t("volumes.deleteVolume")}
+        variant="destructive"
+        onConfirm={() => {
+          pendingAction.current?.();
+          pendingAction.current = null;
+          setConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@
   "loadingSubtext": "Analyse de l'intrigue, des personnages, du rythme et de la prose",
   "error": "L'analyse a échoué",
   "retry": "Réessayer",
+  "stop": "Arrêter",
   "refresh": "Actualiser l'analyse",
   "close": "Fermer",
   "deepDive": "Approfondir",

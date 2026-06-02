@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TimelineVisualization } from "@/components/studio/planning/timeline/TimelineVisualization";
 import type { TimelineEvent } from "@/types/timeline";
@@ -184,7 +184,7 @@ describe("TimelineVisualization", () => {
   it("shows loading state", () => {
     mockEventsLoading = true;
     render(<TimelineVisualization novelId="novel-1" />);
-    expect(screen.getByText("Loading visualization…")).toBeDefined();
+    expect(screen.getByText("loadingVisualization")).toBeDefined();
   });
 
   it("switches to chapter view on click", () => {

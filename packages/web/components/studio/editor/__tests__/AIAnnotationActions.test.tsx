@@ -91,8 +91,8 @@ vi.mock("next-intl", () => ({
     const translations: Record<string, string> = {
       "annotation.aiContinuation": "AI Continuation",
       "annotation.aiWords": `${key === "annotation.aiWords" ? "2" : ""} words`,
-      "annotation.keep": "Keep",
-      "annotation.undo": "Undo",
+      "aiActions.accept": "Accept",
+      "aiActions.reject": "Reject",
     };
     return translations[key] || key;
   },

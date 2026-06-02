@@ -44,7 +44,7 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
   // -------------------------------------------------------------------------
 
   const aiDraftBadge = t("sessionPanel.aiDraftBadge");
-  const addToDraftLabel = t("sessionPanel.addToDraft");
+  const addToDraftLabel = t("aiActions.addToDraft");
   const addedToDraftLabel = t("sessionPanel.addedToDraft");
 
   // -------------------------------------------------------------------------

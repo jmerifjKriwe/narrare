@@ -1,34 +1,19 @@
 "use client";
 
+/**
+ * NameGenerator — AI name generation with cancel support.
+ *
+ * Generates names based on user parameters using the generation API.
+ * §16 compliance: AbortController cancel, studio.aiActions.* labels.
+ */
+
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { generationApi, novelsApi } from "@/lib/api/client";
-import { NAME_STYLE_SUGGESTIONS } from "@/lib/constants/name-styles";
 import type { Gender, NameGenerateRequest, NameGenerateResponse, NameType } from "@/types";
+import { NameGeneratorForm } from "./NameGeneratorForm";
 import { NameResults } from "./NameResults";
-
-const NAME_STYLE_DATALIST_ID = "name-style-suggestions";
-
-const NAME_TYPES: { value: NameType; labelKey: string }[] = [
-  { value: "character", labelKey: "character" },
-  { value: "place", labelKey: "place" },
-  { value: "organization", labelKey: "organization" },
-  { value: "item", labelKey: "item" },
-];
-
-const GENDERS: { value: Gender; labelKey: string }[] = [
-  { value: "any", labelKey: "anyGender" },
-  { value: "male", labelKey: "male" },
-  { value: "female", labelKey: "female" },
-  { value: "neutral", labelKey: "neutral" },
-];
-
-const EXPLANATION_LANGUAGES = [
-  { value: "en", labelKey: "langEnglish" },
-  { value: "de", labelKey: "langGerman" },
-  { value: "fr", labelKey: "langFrench" },
-];
 
 interface NameGeneratorProps {
   readonly novelId: string;
@@ -36,6 +21,7 @@ interface NameGeneratorProps {
 
 export function NameGenerator({ novelId }: NameGeneratorProps) {
   const t = useTranslations("studio");
+  const tAction = useTranslations("studio.aiActions");
 
   const [nameType, setNameType] = useState<NameType>("character");
   const [nameStyle, setNameStyle] = useState("Fantasy");
@@ -45,13 +31,14 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
   const [results, setResults] = useState<NameGenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   // Fetch novel to determine default explanation_language from writing_language
   const { data: novel } = useQuery({
     queryKey: ["novels", novelId],
     queryFn: () => novelsApi.get(novelId),
   });
 
-  // Sync explanation_language from novel's writing_language — only once on first load
   const languageSynced = useRef(false);
   useEffect(() => {
     if (novel?.writing_language && !languageSynced.current) {
@@ -61,12 +48,17 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
   }, [novel?.writing_language]);
 
   const generateMutation = useMutation({
-    mutationFn: (request: NameGenerateRequest) => generationApi.generateNames(request),
+    mutationFn: (request: NameGenerateRequest) => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+      return generationApi.generateNames(request, abortRef.current.signal);
+    },
     onSuccess: (data) => {
       setResults(data);
       setError(null);
     },
     onError: (e: unknown) => {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setError(e instanceof Error ? e.message : t("generation.generationFailed"));
       setResults(null);
     },
@@ -74,7 +66,6 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
 
   const handleGenerate = () => {
     if (count < 1 || count > 50) return;
-
     generateMutation.mutate({
       project_id: novelId,
       name_type: nameType,
@@ -85,130 +76,34 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
     });
   };
 
-  const nameTypeOptions = NAME_TYPES.map((nt) => ({
-    value: nt.value,
-    label: t(`generation.${nt.labelKey}`),
-  }));
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
 
-  const genderOptions = GENDERS.map((g) => ({
-    value: g.value,
-    label: t(`generation.${g.labelKey}`),
-  }));
-
-  const languageOptions = EXPLANATION_LANGUAGES.map((l) => ({
-    value: l.value,
-    label: t(`generation.${l.labelKey}`),
-  }));
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-xl font-semibold text-foreground">{t("generation.nameGenerator")}</h2>
 
-      {/* Form */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="name-type"
-            className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground"
-          >
-            {t("generation.nameType")}
-          </label>
-          <select
-            id="name-type"
-            value={nameType}
-            onChange={(e) => setNameType(e.target.value as NameType)}
-            className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-[0.9375rem] transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-          >
-            {nameTypeOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="name-style"
-            className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground"
-          >
-            {t("generation.nameStyle")}
-          </label>
-          <input
-            id="name-style"
-            type="text"
-            list={NAME_STYLE_DATALIST_ID}
-            value={nameStyle}
-            onChange={(e) => setNameStyle(e.target.value)}
-            className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-[0.9375rem] transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-          />
-          <datalist id={NAME_STYLE_DATALIST_ID}>
-            {NAME_STYLE_SUGGESTIONS.map((suggestion) => (
-              <option key={suggestion} value={suggestion} />
-            ))}
-          </datalist>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="name-count"
-            className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground"
-          >
-            {t("generation.count")}
-          </label>
-          <input
-            id="name-count"
-            type="number"
-            min={1}
-            max={50}
-            value={count}
-            onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value))))}
-            className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-[0.9375rem] transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="name-gender"
-            className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground"
-          >
-            {t("generation.gender")}
-          </label>
-          <select
-            id="name-gender"
-            value={gender}
-            onChange={(e) => setGender(e.target.value as Gender)}
-            className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-[0.9375rem] transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-          >
-            {genderOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="name-explanation-language"
-            className="text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground"
-          >
-            {t("generation.explanationLanguage")}
-          </label>
-          <select
-            id="name-explanation-language"
-            value={explanationLanguage}
-            onChange={(e) => setExplanationLanguage(e.target.value)}
-            className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-[0.9375rem] transition-all duration-200 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-          >
-            {languageOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <NameGeneratorForm
+        nameType={nameType}
+        nameStyle={nameStyle}
+        count={count}
+        gender={gender}
+        explanationLanguage={explanationLanguage}
+        onNameTypeChange={setNameType}
+        onNameStyleChange={setNameStyle}
+        onCountChange={setCount}
+        onGenderChange={setGender}
+        onLanguageChange={setExplanationLanguage}
+      />
 
       {error && (
         <div
@@ -219,16 +114,26 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={handleGenerate}
-        disabled={generateMutation.isPending}
-        className="flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-lg text-[0.9375rem] font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {generateMutation.isPending ? t("generation.generating") : t("generation.generateNames")}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={generateMutation.isPending}
+          className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-lg text-[0.9375rem] font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {generateMutation.isPending ? tAction("generating") : t("generation.generateNames")}
+        </button>
+        {generateMutation.isPending && (
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-muted transition-colors"
+          >
+            {tAction("stop")}
+          </button>
+        )}
+      </div>
 
-      {/* Results */}
       <NameResults results={results} isLoading={generateMutation.isPending} />
     </div>
   );
