@@ -1,13 +1,15 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { TimelineAnalysisView } from "./TimelineAnalysisView";
+import { TimelineConsistencyPanel } from "./TimelineConsistencyPanel";
 import { TimelineEventList } from "./TimelineEventList";
+import { TimelineExtractionReview } from "./TimelineExtractionReview";
 
-type TimelineTab = "events" | "analysis";
+type TimelineTab = "events" | "analysis" | "consistency" | "extract";
 
 interface TimelinePanelProps {
   novelId: string;
@@ -22,6 +24,8 @@ export function TimelinePanel({ novelId, onClose }: TimelinePanelProps) {
   const tabs: { key: TimelineTab; label: string }[] = [
     { key: "events", label: t("eventsTab") },
     { key: "analysis", label: t("analysisTab") },
+    { key: "consistency", label: t("consistencyTab") },
+    { key: "extract", label: t("extractTab") },
   ];
 
   return (
@@ -36,7 +40,7 @@ export function TimelinePanel({ novelId, onClose }: TimelinePanelProps) {
             className="p-1 rounded hover:bg-[var(--color-bg-secondary)] transition-colors text-muted-foreground"
             aria-label={t("close")}
           >
-            <Loader2 className="w-4 h-4" />
+            <X className="w-4 h-4" />
           </button>
         )}
         <div className="flex rounded-md border border-border overflow-hidden">
@@ -62,6 +66,8 @@ export function TimelinePanel({ novelId, onClose }: TimelinePanelProps) {
       <div className="flex-1 overflow-auto">
         {activeTab === "events" && <TimelineEventList novelId={novelId} />}
         {activeTab === "analysis" && <TimelineAnalysisView novelId={novelId} />}
+        {activeTab === "consistency" && <TimelineConsistencyPanel novelId={novelId} />}
+        {activeTab === "extract" && <TimelineExtractionReview novelId={novelId} />}
       </div>
     </div>
   );

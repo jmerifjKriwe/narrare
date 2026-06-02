@@ -69,6 +69,7 @@ export interface TimelineEventCreateRequest {
   location_ref?: LocationRef | null;
   causes?: string;
   consequences?: string;
+  source?: TimelineEventSource;
 }
 
 export interface TimelineEventUpdateRequest {
@@ -102,6 +103,41 @@ export interface TimelineAnalysis {
   timeline_events: TimelineAnalysisEvent[];
   temporal_conflicts: string[];
   coverage_gaps: string[];
+  overall_assessment: string;
+}
+
+// --- Extraction (Phase 2: POST /planning/timeline/{novel_id}/extract) ---
+
+export interface ExtractedEvent {
+  id: string;
+  expression: string;
+  event_name: string;
+  timestamp_raw: string;
+  chapter_reference: string;
+  character_names: string[];
+  location_name: string;
+  confidence: number;
+  context: string;
+}
+
+export interface ExtractionRequest {
+  chapter_ids: string[];
+}
+
+// --- Consistency (Phase 2: GET /planning/timeline/{novel_id}/consistency) ---
+
+export interface TemporalIssue {
+  severity: "error" | "warning" | "info";
+  rule_id: string;
+  event_ids: string[];
+  description: string;
+  suggestion: string;
+  source: "deterministic" | "llm";
+}
+
+export interface TemporalConsistency {
+  issues: TemporalIssue[];
+  deterministic_pass: boolean;
   overall_assessment: string;
 }
 

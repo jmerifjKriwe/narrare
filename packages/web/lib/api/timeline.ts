@@ -7,6 +7,8 @@
  */
 
 import type {
+  ExtractedEvent,
+  TemporalConsistency,
   TimelineAnalysis,
   TimelineEvent,
   TimelineEventCreateRequest,
@@ -80,4 +82,21 @@ export const timelineApi = {
    * GET /planning/timeline/{novelId}
    */
   getAnalysis: (novelId: string) => fetchApi<TimelineAnalysis>(`/planning/timeline/${novelId}`),
+
+  /**
+   * Extract temporal expressions from selected chapters.
+   * POST /planning/timeline/{novelId}/extract
+   */
+  extractExpressions: (novelId: string, chapterIds: string[]) =>
+    fetchApi<ExtractedEvent[]>(`/planning/timeline/${novelId}/extract`, {
+      method: "POST",
+      body: JSON.stringify({ chapter_ids: chapterIds }),
+    }),
+
+  /**
+   * Check temporal consistency for a novel.
+   * GET /planning/timeline/{novelId}/consistency
+   */
+  checkConsistency: (novelId: string) =>
+    fetchApi<TemporalConsistency>(`/planning/timeline/${novelId}/consistency`),
 };

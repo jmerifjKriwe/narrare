@@ -11,6 +11,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { timelineApi } from "@/lib/api/timeline";
 import type {
+  ExtractedEvent,
+  TemporalConsistency,
   TimelineAnalysis,
   TimelineEvent,
   TimelineEventCreateRequest,
@@ -27,6 +29,7 @@ const timelineKeys = {
     [...timelineKeys.events(novelId), filters ?? {}] as const,
   event: (novelId: string, eventId: string) => [...timelineKeys.events(novelId), eventId] as const,
   analysis: (novelId: string) => [...timelineKeys.all(novelId), "analysis"] as const,
+  consistency: (novelId: string) => [...timelineKeys.all(novelId), "consistency"] as const,
 };
 
 // --- Query hooks ---
@@ -93,5 +96,27 @@ export function useDeleteTimelineEvent(novelId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: timelineKeys.events(novelId) });
     },
+  });
+}
+
+// --- Phase 2: Extraction & Consistency ---
+
+/** Extract temporal expressions from selected chapters. Mutation that invalidates events on success. */
+export function useTimelineExtraction(novelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<ExtractedEvent[], Error, string[]>({
+    mutationFn: (chapterIds) => timelineApi.extractExpressions(novelId, chapterIds),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: timelineKeys.events(novelId) });
+    },
+  });
+}
+
+/** Check temporal consistency for a novel. Query with auto-refetch. */
+export function useTimelineConsistency(novelId: string) {
+  return useQuery<TemporalConsistency>({
+    queryKey: timelineKeys.consistency(novelId),
+    queryFn: () => timelineApi.checkConsistency(novelId),
+    enabled: !!novelId,
   });
 }

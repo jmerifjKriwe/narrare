@@ -21,6 +21,30 @@ vi.mock("@/lib/hooks/useTimeline", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useTimelineConsistency: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useTimelineExtraction: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    data: undefined,
+    reset: vi.fn(),
+  }),
+  useCreateTimelineEvent: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}));
+
+// Mock chapters API for extraction component
+vi.mock("@/lib/api/client", () => ({
+  chaptersApi: {
+    list: vi.fn().mockResolvedValue([{ id: "ch-1", title: "Chapter 1" }]),
+  },
 }));
 
 describe("TimelinePanel", () => {
@@ -37,7 +61,6 @@ describe("TimelinePanel", () => {
     render(<TimelinePanel novelId="novel-1" />);
     const eventsTab = screen.getByText("eventsTab");
     expect(eventsTab).toBeDefined();
-    // Events tab should be active (has accent background)
     expect(eventsTab.closest("button")).toBeDefined();
   });
 
@@ -45,9 +68,31 @@ describe("TimelinePanel", () => {
     render(<TimelinePanel novelId="novel-1" />);
     const analysisTab = screen.getByText("analysisTab");
     fireEvent.click(analysisTab);
-    // After clicking, the analysis view should render
-    // Since mock returns null data, it shows "noAnalysis"
     expect(screen.getByText("noAnalysis")).toBeDefined();
+  });
+
+  it("switches to Consistency tab on click", () => {
+    render(<TimelinePanel novelId="novel-1" />);
+    const consistencyTab = screen.getByText("consistencyTab");
+    fireEvent.click(consistencyTab);
+    // Consistency panel renders with empty state
+    expect(screen.getByText("noIssues")).toBeDefined();
+  });
+
+  it("switches to Extract tab on click", async () => {
+    render(<TimelinePanel novelId="novel-1" />);
+    const extractTab = screen.getByText("extractTab");
+    fireEvent.click(extractTab);
+    // Extract panel renders with title
+    expect(screen.getByText("extractTitle")).toBeDefined();
+  });
+
+  it("shows all four tabs", () => {
+    render(<TimelinePanel novelId="novel-1" />);
+    expect(screen.getByText("eventsTab")).toBeDefined();
+    expect(screen.getByText("analysisTab")).toBeDefined();
+    expect(screen.getByText("consistencyTab")).toBeDefined();
+    expect(screen.getByText("extractTab")).toBeDefined();
   });
 
   it("shows loading state when analysis is loading", () => {
@@ -63,10 +108,26 @@ describe("TimelinePanel", () => {
         error: null,
         refetch: vi.fn(),
       }),
+      useTimelineConsistency: () => ({
+        data: null,
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      }),
+      useTimelineExtraction: () => ({
+        mutate: vi.fn(),
+        isPending: false,
+        isError: false,
+        data: undefined,
+        reset: vi.fn(),
+      }),
+      useCreateTimelineEvent: () => ({
+        mutate: vi.fn(),
+        isPending: false,
+      }),
     }));
 
     render(<TimelinePanel novelId="novel-1" />);
-    // Component renders successfully
     expect(screen.getByText("title")).toBeDefined();
   });
 });
