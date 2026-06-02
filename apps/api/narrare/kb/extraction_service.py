@@ -211,16 +211,17 @@ class ExtractionService:
             return []
 
     async def _build_system_prompt(self) -> str:
-        """Build system prompt via PromptComposer, falling back to MetaPromptLoader.
+        """Build system prompt via PromptComposer with inline fallback.
 
-        Three-tier cascade (ADR-019 compliance):
-        1. PromptComposer — full prompt with meta + extraction instructions
-        2. MetaPromptLoader — meta-prompt prepended to inline fallback
-        3. Inline fallback — extraction instructions only (last resort)
+        Two-tier approach:
+        1. PromptComposer — full extraction prompt from bundled templates
+        2. Inline fallback — default extraction instructions (last resort)
+
+        The Narrare meta-prompt is injected automatically by NarrareMeta
+        Capability (ADR-026) — no manual meta-prepending needed.
         """
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
-        from narrare_core.prompts.meta import MetaPromptLoader
         from narrare_core.shared.errors import PromptNotFoundError
 
         ctx = PromptContext(language="en", mode="extract")
@@ -228,16 +229,6 @@ class ExtractionService:
             composed = await self._composer.build(LLMIntent.KB_EXTRACT, ctx)
             return composed.system
         except PromptNotFoundError:
-            logger.info("no_bundled_extraction_prompt_trying_meta")
+            logger.info("no_bundled_extraction_prompt_using_default")
 
-        # Tier 2: MetaPromptLoader for Narrare identity
-        try:
-            loader = MetaPromptLoader()
-            meta = await loader.load("en")
-            if meta:
-                return meta + "\n\n" + _DEFAULT_SYSTEM_PROMPT
-        except Exception:
-            logger.warning("meta_prompt_load_failed_using_default", exc_info=True)
-
-        # Tier 3: Last resort — inline fallback without meta-prompt
         return _DEFAULT_SYSTEM_PROMPT

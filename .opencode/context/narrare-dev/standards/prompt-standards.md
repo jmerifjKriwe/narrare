@@ -4,7 +4,7 @@
 
 > **Full document**: `docs/development/prompt-standards.md`
 > **Enforcement**: `check_architecture.py` + promptfoo evals (ADR-018)
-> **Related**: RULE-02, ADR-002, ADR-019
+> **Related**: RULE-02, RULE-02a, ADR-002, ADR-019, ADR-026
 
 ---
 
@@ -39,8 +39,8 @@
 
 **Planning** (outline): `{{user_preferences}}`, `{{avoidance_patterns}}`
 
-**Meta**: Fiction Content Guidelines, Conversation Guardrails, `{{avoidance_patterns}}`,
-anti-injection instruction, conflict resolution rules
+**Meta**: Conversation Guardrails, `{{avoidance_patterns}}` (Fiction Content Guidelines and
+conflict resolution are now in `NarrareUniversalRules` Capability, not meta templates — ADR-026)
 
 ---
 

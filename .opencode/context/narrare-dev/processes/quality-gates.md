@@ -158,7 +158,7 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 
 - [ ] **Prompt uses PromptComposer** — not inline, unless registered in `adoption-registry.yaml` under `inline_fallbacks` (ADR-025 Decision 4)
 - [ ] **All MUST variables present** — `check_prompt_structure.py --strict` passes for the feature's category
-- [ ] **Meta-prompt included** — Narrare identity meta-prompt prepended via PromptComposer, `with_meta()`, or MetaPromptLoader (ADR-019)
+- [ ] **Meta-prompt included** — Narrare identity and universal rules are architecturally guaranteed via `NarrareMeta` and `NarrareUniversalRules` Capabilities (ADR-026). No manual loading needed.
 - [ ] **Injection defense: user content XML-wrapped** — all UNSAFE_USER_VARS wrapped in `<tag>...</tag>` in prompt templates
 - [ ] **i18n: prompt files in en/de/fr** — `system.md` exists in all three locale directories under `_bundled/{category}/`
 - [ ] **Token budget enforced** — ContextAssembler (or WritingContextAssembler) used with TokenBudgetManager

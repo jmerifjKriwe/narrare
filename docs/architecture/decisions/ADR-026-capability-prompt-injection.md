@@ -1,6 +1,6 @@
 # ADR-026 — Capability-Based Prompt Injection Pattern
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Accepted
 > **Date:** 2026-06-01
 > **Deciders:** Architecture Specialist
 > **Supersedes:** Partially supersedes ADR-019 (system-prompt consistency)
@@ -192,7 +192,7 @@ This is not "three ways to do the same thing" — it is three mechanisms for thr
 - Universal rules are architecturally guaranteed — impossible to forget
 - Templates become shorter and focused on customizable content
 - Language optimization becomes possible (EN-only templates with cascade overrides)
-- `with_meta()` becomes simpler (only handles customizable content)
+- `with_meta()` removed entirely — Capabilities replace it (Phases 1–3)
 - PromptComposer's role becomes clearer: it handles customizable content only
 - ADR-019's two-path problem is resolved — Capabilities are always present regardless of path
 - Follows pydantic-ai's native composition model (no parallel infrastructure)
@@ -205,9 +205,9 @@ This is not "three ways to do the same thing" — it is three mechanisms for thr
 - `NarrareUniversalRules` must load from `core/prompts/_bundled/` — this creates a dependency from `core/agents/capabilities/` to `core/prompts/`, but it is a read-only dependency that respects RULE-02 (no prompt assembly in capabilities)
 
 **Constraints introduced / updated:**
-- RULE-02 is amended to distinguish user-customizable, architecturally guaranteed, and dynamic prompt content
+- RULE-02 is amended to RULE-02a: distinguishes user-customizable, architecturally guaranteed, and dynamic prompt content
 - `check_architecture.py` should verify that no `get_instructions()` in `core/agents/capabilities/` assembles prompts via f-string or concatenation — it must load from `core/prompts/` or return static strings
-- ADR-019 is partially superseded: `with_meta()` remains for customizable content, but universal rules are now handled by Capabilities
+- ADR-019 is fully superseded: `with_meta()` has been removed, all prompt identity/rules are now via Capabilities
 
 ---
 
@@ -215,14 +215,14 @@ This is not "three ways to do the same thing" — it is three mechanisms for thr
 
 The migration is phased to ensure each step is atomic and backward-compatible.
 
-| Phase | Content | Risk | Depends On |
-|-------|---------|------|------------|
-| 1 | `NarrareUniversalRules` Capability + template cleanup | Low — additive, no existing paths change | ADR-026 approval |
-| 2 | PromptGuard reorientation | Low — PromptGuard validates Capability output | Phase 1 |
-| 3 | `NarrareMeta` Capability | Medium — meta-prompt moves from PromptComposer to Capability | Phase 1 |
-| 4 | KB-Context as `@agent.instructions` | Medium — changes how KB data is injected | Phase 3 |
-| 5 | Language optimization (EN-only templates) | Low — removes language variants from templates | Phase 3 |
-| 6 | TemplateStr evaluation (optional) | Low — template syntax modernization | Phase 5 |
+| Phase | Content | Risk | Depends On | Status |
+|-------|---------|------|------------|--------|
+| 1 | `NarrareUniversalRules` Capability + template cleanup | Low — additive, no existing paths change | ADR-026 approval | ✅ Complete |
+| 2 | PromptGuard reorientation | Low — PromptGuard validates Capability output | Phase 1 | ✅ Complete |
+| 3 | `NarrareMeta` Capability | Medium — meta-prompt moves from PromptComposer to Capability | Phase 1 | ✅ Complete |
+| 4 | KB-Context as `@agent.instructions` | Medium — changes how KB data is injected | Phase 3 | Pending |
+| 5 | Language optimization (EN-only templates) | Low — removes language variants from templates | Phase 3 | Pending |
+| 6 | TemplateStr evaluation (optional) | Low — template syntax modernization | Phase 5 | Pending |
 
 ### Phase 1: NarrareUniversalRules + Template Cleanup (Atomic)
 
@@ -262,6 +262,17 @@ The migration is phased to ensure each step is atomic and backward-compatible.
 
 1. Evaluate switching from `{{variable}}` to `{variable}` (Python format strings) in templates
 2. Requires ADR if pursued
+
+### Completed Phases (1–3)
+
+Phases 1–3 were implemented in commit `45b7395`. Key outcomes:
+
+- `NarrareUniversalRules` Capability injects fiction guidelines, conflict resolution, injection defense from `_bundled/universal/`
+- `NarrareMeta` Capability injects identity, role flexibility, guardrails from `_bundled/meta/`
+- Both auto-injected by `NarrareAgent.__init__` — architecturally guaranteed for every agent
+- `with_meta()` REMOVED completely — no longer needed
+- `PromptComposer` simplified: no `meta_loader`, no `include_meta`, no meta-prepending. Handles only customizable content
+- RULE-02a established: three content categories (Guaranteed / Customizable / Dynamic)
 
 ---
 

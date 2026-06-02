@@ -16,7 +16,7 @@ import structlog
 from narrare.consistency.prompt_builder import (
     MAX_KB_ENTRIES,
     build_user_prompt,
-    get_system_prompt_with_meta,
+    get_system_prompt,
 )
 from narrare.consistency.rule_helpers import deduplicate_issues, rule_based_check
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
@@ -293,4 +293,4 @@ class ConsistencyCheckerService:
                 "consistency_using_inline_prompt",
                 language=language,
             )
-            return await get_system_prompt_with_meta(language)
+            return get_system_prompt()

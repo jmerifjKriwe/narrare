@@ -42,6 +42,7 @@ class {Name}Agent(NarrareAgent[{Name}Deps, {Name}Output]):
 - `output_type=[self._process_output, {Name}Output]` — LLM calls `_process_output` with named params, which builds the typed output
 - `ctx.partial_output` → return minimal output during streaming
 - `run()` delegates to `self._agent.run()` and extracts `.output`
+- **Automatic Capabilities**: `NarrareAgent.__init__` injects `NarrareObservability`, `NarrareUniversalRules`, and `NarrareMeta` — every agent always has universal rules and meta-prompt identity (ADR-026). No `with_meta()` needed.
 
 ## Step 1: Define Types
 

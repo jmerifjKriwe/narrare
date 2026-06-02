@@ -57,6 +57,20 @@ Every service needs a `Protocol` in `contracts.py` **before** implementation. En
 - **Testing**: `TestModel` / `FunctionModel` for deterministic LLM responses
 - **Caching**: Prompt caching via agent singletons + `ModelSettings`
 
+### Prompt Injection Architecture (ADR-026)
+
+Three-mechanism model for prompt content:
+
+| Content Type | Mechanism | Guaranteed? |
+|---|---|---|
+| Universal rules (fiction guidelines, conflict resolution, injection defense) | `NarrareUniversalRules` Capability | ✅ Always |
+| Meta-prompt (identity, role flexibility, guardrails) | `NarrareMeta` Capability | ✅ Always |
+| Feature-specific (task, output format, mode) | `PromptComposer` cascade | Per intent |
+| Dynamic (KB data, style profiles) | Future: `@agent.instructions` | Per run |
+
+All three default Capabilities (`NarrareObservability`, `NarrareUniversalRules`, `NarrareMeta`)
+are injected by `NarrareAgent.__init__` and cannot be forgotten. `with_meta()` has been removed.
+
 ---
 
 ## Event-Driven Architecture

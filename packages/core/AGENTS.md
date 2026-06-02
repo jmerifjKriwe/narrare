@@ -59,26 +59,18 @@ result = await agent.run(prompt="Content...", deps=deps)
 
 **Meta-Prompt Integration:**
 
-All agents should receive the Narrare meta-prompt for persona consistency. Two paths:
+Meta-prompt and universal rules are architecturally guaranteed via Capabilities (ADR-026).
+Every `NarrareAgent` automatically injects `NarrareObservability`, `NarrareUniversalRules`,
+and `NarrareMeta` — no manual meta-prompt loading needed.
 
-1. **PromptComposer path** (production): Services use `PromptComposer.build()` which automatically
-   prepends the meta-prompt. The resulting `composed.system` is passed as `system_prompt` to the agent.
+| Content | Mechanism | Source |
+|---------|-----------|--------|
+| Observability | `NarrareObservability` Capability | auto-injected |
+| Universal rules (fiction, conflict, injection defense) | `NarrareUniversalRules` Capability | `_bundled/universal/` |
+| Meta-prompt (identity, role, guardrails) | `NarrareMeta` Capability | `_bundled/meta/` |
+| Feature-specific prompts | `PromptComposer` cascade | `_bundled/{category}/` |
 
-2. **with_meta() path** (direct agent use): When an agent is instantiated outside a service that
-   uses PromptComposer, use the `with_meta()` factory:
-
-```python
-from narrare_core.prompts.meta import MetaPromptLoader
-
-loader = MetaPromptLoader()
-agent = await ChapterSummaryAgent.with_meta(
-    model=model,
-    deps_type=SummaryDeps,
-    meta_loader=loader,
-    meta_variables={"language": "en", "genre": "Fantasy", "project_title": "My Novel"},
-)
-result = await agent.run(prompt="Content...", deps=deps)
-```
+**No `with_meta()` needed** — removed in ADR-026 Phase 3 (commit `45b7395`).
 
 **Neuen Agent hinzufügen:**
 1. Type-Datei `*_types.py` erstellen (Pydantic Output-Modell)
@@ -130,9 +122,13 @@ Backend-Services rufen Agents auf, nicht den Composer direkt.
 
 ```
 prompts/_bundled/
-├── meta/
-│   ├── en/system.md        ← Persona-Prompt Englisch
-│   ├── en/system.lite.md   ← Kurzvariante für knappe Token-Budgets
+├── meta/              ← Identity + role (loaded by NarrareMeta Capability)
+│   ├── en/system.md
+│   ├── en/system.lite.md
+│   ├── de/system.md
+│   └── fr/system.md
+├── universal/         ← Universal rules (loaded by NarrareUniversalRules Capability)
+│   ├── en/system.md
 │   ├── de/system.md
 │   └── fr/system.md
 ├── writing/

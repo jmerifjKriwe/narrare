@@ -7,6 +7,12 @@
 > **Superseded by:** ADR-026 (universal rules and meta-prompt identity now handled by Capabilities)
 > **Related:** ADR-002 (Unified Prompt System), ADR-015 (Agents as First-Class Citizens)
 
+> ⚠️ **NOTE:** This ADR's Option B (`with_meta()`) has been **fully replaced** by ADR-026
+> (Capability-Based Prompt Injection). `with_meta()` has been **removed**. Meta-prompt and
+> universal rules are now injected via Capabilities (`NarrareMeta`, `NarrareUniversalRules`),
+> making them architecturally guaranteed for every agent. No manual loading or factory method
+> is needed — `NarrareAgent.__init__` injects all three Capabilities automatically.
+
 ---
 
 ## Context
