@@ -64,7 +64,7 @@ class ConsistencyAgent(NarrareAgent[ConsistencyDeps, ConsistencyOutput]):
             model: LLM model from ModelRegistry.
             kb_agent: Optional KBAgent for KB entity lookup via ToolSearch/Toolset.
             system_prompt: Optional system prompt. Built by service layer when
-                using PromptComposer. Passed directly when using ``with_meta()``.
+                using PromptComposer. NarrareMeta Capability is always active.
         """
         capabilities: list[Any] = []
         if kb_agent is not None:

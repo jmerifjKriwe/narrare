@@ -19,7 +19,7 @@ from narrare._app.config import Settings, get_settings
 from narrare._app.database import get_async_session
 from narrare_core.agents.registry import AgentRegistry
 from narrare_core.llm import ModelRegistry
-from narrare_core.prompts import MetaPromptLoader, PromptComposer, PromptRegistry
+from narrare_core.prompts import PromptComposer, PromptRegistry
 
 if TYPE_CHECKING:
     from narrare.generation.graph_store import PostgresGraphStateStore
@@ -101,15 +101,6 @@ def get_registry() -> PromptRegistry:
 
 
 @lru_cache
-def _get_meta_loader_instance() -> MetaPromptLoader:
-    # Lazy import to keep BASE_DIR resolution unambiguous and avoid
-    # circular-import concerns with the module-level import of Settings.
-    from narrare._app.config import BASE_DIR
-
-    return MetaPromptLoader(project_root=BASE_DIR)
-
-
-@lru_cache
 def _get_preference_service_instance() -> PreferenceProvider | None:
     """Create a PreferenceService if mem0 is available, else None.
 
@@ -141,7 +132,6 @@ def _get_preference_service_instance() -> PreferenceProvider | None:
 def _get_composer_instance() -> PromptComposer:
     return PromptComposer(
         registry=_get_prompt_registry_instance(),
-        meta_loader=_get_meta_loader_instance(),
         preference_service=_get_preference_service_instance(),
     )
 

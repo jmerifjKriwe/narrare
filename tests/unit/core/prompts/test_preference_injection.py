@@ -59,22 +59,6 @@ class FakePromptRegistry:
         return ""
 
 
-class FakeMetaLoader:
-    """Minimal fake for MetaPromptLoader."""
-
-    def __init__(self, content: str = "") -> None:
-        self._content = content
-
-    async def load(
-        self,
-        language: str = "en",
-        *,
-        variables: dict[str, str] | None = None,
-        use_lite: bool = False,
-    ) -> str:
-        return self._content
-
-
 class FakePreferenceService:
     """Fake PreferenceProvider that returns a programmable profile."""
 
@@ -137,7 +121,7 @@ class TestPreferenceAutoInjection:
         registry = FakePromptRegistry(
             _make_resolved(system="Write for {{project_title}}. {{user_preferences}}")
         )
-        composer = PromptComposer(registry, FakeMetaLoader(), preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
 
         user_id = uuid4()
         project_id = uuid4()
@@ -160,7 +144,7 @@ class TestPreferenceAutoInjection:
         profile = _profile_with_preferences()
         pref_service = FakePreferenceService(profile)
         registry = FakePromptRegistry(_make_resolved(system="Write. {{user_preferences}}"))
-        composer = PromptComposer(registry, FakeMetaLoader(), preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
 
         ctx = PromptContext(
             language="en",
@@ -178,7 +162,7 @@ class TestPreferenceAutoInjection:
     async def test_no_service_backward_compatible(self) -> None:
         """When no PreferenceService configured: build proceeds normally."""
         registry = FakePromptRegistry()
-        composer = PromptComposer(registry, FakeMetaLoader())  # type: ignore[arg-type]
+        composer = PromptComposer(registry)  # type: ignore[arg-type]
 
         ctx = PromptContext(
             language="en",
@@ -195,7 +179,7 @@ class TestPreferenceAutoInjection:
         (warning logged)."""
         pref_service = FailingPreferenceService()
         registry = FakePromptRegistry(_make_resolved(system="Write. {{user_preferences}}"))
-        composer = PromptComposer(registry, FakeMetaLoader(), preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
 
         ctx = PromptContext(
             language="en",
@@ -214,7 +198,7 @@ class TestPreferenceAutoInjection:
         profile = _profile_with_preferences()
         pref_service = FakePreferenceService(profile)
         registry = FakePromptRegistry()
-        composer = PromptComposer(registry, FakeMetaLoader(), preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
 
         # No user_id or project_id
         ctx = PromptContext(language="en", extra={})
@@ -227,7 +211,7 @@ class TestPreferenceAutoInjection:
         profile = _profile_with_preferences()
         pref_service = FakePreferenceService(profile)
         registry = FakePromptRegistry()
-        composer = PromptComposer(registry, FakeMetaLoader(), preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
 
         ctx = PromptContext(language="en", extra={"user_id": str(uuid4())})
         _result = await composer.build(LLMIntent.WRITE, ctx)
@@ -244,7 +228,7 @@ class TestPreferenceAutoInjection:
         )
         pref_service = FakePreferenceService(empty_profile)
         registry = FakePromptRegistry(_make_resolved(system="Write. {{user_preferences}}"))
-        composer = PromptComposer(registry, FakeMetaLoader(), preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
 
         ctx = PromptContext(
             language="en",

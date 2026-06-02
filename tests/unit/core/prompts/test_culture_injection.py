@@ -64,32 +64,6 @@ class FakePromptRegistry:
         return self._culture_content
 
 
-class FakeMetaLoader:
-    """Minimal fake for MetaPromptLoader."""
-
-    def __init__(self, content: str = "") -> None:
-        self._content = content
-
-    async def load(
-        self,
-        language: str = "en",
-        *,
-        variables: dict[str, str] | None = None,
-        use_lite: bool = False,
-    ) -> str:
-        return self._content
-
-
-class FakePreferenceService:
-    """No-op preference service for culture tests."""
-
-    async def get_preferences(self, user_id: object, project_id: object) -> object:
-        return None
-
-    def reset(self, user_id: object, project_id: object) -> None:
-        pass
-
-
 class TestCultureInjection:
     """Task 7.6: Culture injection tests."""
 
@@ -101,7 +75,7 @@ class TestCultureInjection:
             resolved=_make_resolved(system="Write a chapter. {{culture_guidelines}}\nEnd."),
             culture_content=culture_text,
         )
-        composer = PromptComposer(registry, FakeMetaLoader())  # type: ignore[arg-type]
+        composer = PromptComposer(registry)  # type: ignore[arg-type]
 
         ctx = PromptContext(language="de", extra={"name_style": "german_literary"})
         result = await composer.build(LLMIntent.WRITE, ctx)
@@ -117,7 +91,7 @@ class TestCultureInjection:
         registry = FakePromptRegistry(
             resolved=_make_resolved(system="Write. {{culture_guidelines}}\nDone."),
         )
-        composer = PromptComposer(registry, FakeMetaLoader())  # type: ignore[arg-type]
+        composer = PromptComposer(registry)  # type: ignore[arg-type]
 
         ctx = PromptContext(language="en")
         result = await composer.build(LLMIntent.WRITE, ctx)
@@ -131,7 +105,7 @@ class TestCultureInjection:
         registry = FakePromptRegistry(
             resolved=_make_resolved(system="Write a chapter."),
         )
-        composer = PromptComposer(registry, FakeMetaLoader())  # type: ignore[arg-type]
+        composer = PromptComposer(registry)  # type: ignore[arg-type]
 
         ctx = PromptContext(language="en", extra={"name_style": "german_literary"})
         result = await composer.build(LLMIntent.WRITE, ctx)
@@ -147,7 +121,7 @@ class TestCultureInjection:
             resolved=_make_resolved(system="Write. {{culture_guidelines}}"),
             culture_content="French style.",
         )
-        composer = PromptComposer(registry, FakeMetaLoader())  # type: ignore[arg-type]
+        composer = PromptComposer(registry)  # type: ignore[arg-type]
 
         ctx = PromptContext(language="fr", extra={"name_style": "french_existential"})
         await composer.build(LLMIntent.WRITE, ctx)

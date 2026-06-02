@@ -4,6 +4,10 @@ Prompt Composer — assembles the final prompt for any LLM call.
 This is the ONLY place where prompts are assembled.
 Services pass a PromptContext; the composer handles everything else.
 
+The meta-prompt is no longer handled here — it is injected via the
+NarrareMeta Capability (ADR-026 Phase 3), which is automatically added
+to every NarrareAgent by NarrareAgent.__init__.
+
 See CONSTRAINTS.md RULE-02.
 See ADR-002 (unified prompt system).
 """
@@ -21,7 +25,6 @@ from narrare_core.prompts.variable_engine import substitute
 if TYPE_CHECKING:
     from narrare_core.memory.protocols import PreferenceProvider
     from narrare_core.prompts.context import PromptContext
-    from narrare_core.prompts.meta import MetaPromptLoader
     from narrare_core.prompts.registry import PromptRegistry
 
 logger = structlog.get_logger(__name__)
@@ -102,19 +105,18 @@ class PromptComposer:
 
     Injected into every service that makes LLM calls.
     Never instantiated locally inside a service method.
+
+    The meta-prompt is no longer prepended here — it is injected
+    automatically via the NarrareMeta Capability on every NarrareAgent.
     """
 
     def __init__(
         self,
         registry: PromptRegistry,
-        meta_loader: MetaPromptLoader,
         *,
-        include_meta: bool = True,
         preference_service: PreferenceProvider | None = None,
     ) -> None:
         self._registry = registry
-        self._meta_loader = meta_loader
-        self._include_meta = include_meta
         self._preference_service = preference_service
 
     async def build(
@@ -196,15 +198,6 @@ class PromptComposer:
         elif "{{culture_guidelines}}" in system:
             # No name_style specified — replace with empty string
             system = system.replace("{{culture_guidelines}}", "")
-
-        # Prepend meta-prompt if enabled
-        if self._include_meta:
-            meta = await self._meta_loader.load(
-                language=context.language,
-                variables=variables,
-            )
-            if meta:
-                system = f"{meta}\n\n{system}"
 
         # Determine user message
         if user_prompt:
