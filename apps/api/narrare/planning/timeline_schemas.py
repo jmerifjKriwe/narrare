@@ -75,3 +75,47 @@ class TimelineEventCRUDResponse(BaseModel):
     is_confirmed: bool
     created_at: datetime
     updated_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 schemas — extraction and consistency (PLAN-004)
+# ---------------------------------------------------------------------------
+
+
+class TemporalIssueResponse(BaseModel):
+    """A single temporal consistency issue."""
+
+    severity: str  # "error" | "warning" | "info"
+    rule_id: str
+    event_ids: list[str]
+    description: str
+    suggestion: str
+    source: str  # "deterministic" | "llm"
+
+
+class TemporalConsistencyResponse(BaseModel):
+    """Response from temporal consistency check."""
+
+    issues: list[TemporalIssueResponse]
+    deterministic_pass: bool
+    overall_assessment: str
+
+
+class ExtractedEventResponse(BaseModel):
+    """A single extracted temporal expression, pending user review."""
+
+    id: str  # Temporary ID for tracking
+    expression: str
+    event_name: str
+    timestamp_raw: str
+    chapter_reference: str
+    character_names: list[str]
+    location_name: str
+    confidence: float
+    context: str
+
+
+class ExtractionRequest(BaseModel):
+    """Request to extract temporal expressions from chapters."""
+
+    chapter_ids: list[uuid.UUID] = []  # If empty, extract from all chapters

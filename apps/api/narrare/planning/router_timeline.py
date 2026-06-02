@@ -1,8 +1,7 @@
-"""Timeline routes — CRUD endpoints and AI analysis for timeline events.
+"""Timeline CRUD routes — create, read, update, delete timeline events.
 
 Thin routers that delegate immediately to services (RULE-06).
-CRUD operations use ``TimelineService``, analysis uses
-``TimelineAnalysisService``.
+CRUD operations use ``TimelineService`` via ``_timeline_factory.py``.
 """
 
 from __future__ import annotations
@@ -12,9 +11,7 @@ import uuid
 from fastapi import APIRouter
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
-from narrare.planning._timeline_analysis_factory import get_timeline_analysis_service
 from narrare.planning._timeline_factory import get_timeline_crud_service
-from narrare.planning.schemas import TimelineResponse
 from narrare.planning.timeline_schemas import (
     TimelineEventCreateRequest,
     TimelineEventCRUDResponse,
@@ -97,17 +94,3 @@ async def delete_timeline_event(
     """Delete a timeline event."""
     service = await get_timeline_crud_service(session=session, user_id=user_id, novel_id=novel_id)
     await service.delete_event(event_id, uuid.UUID(user_id))
-
-
-# AI analysis endpoint — moved from router.py for backward compat
-@router.get("/{novel_id}", response_model=TimelineResponse)
-async def get_timeline_analysis(
-    novel_id: uuid.UUID,
-    user_id: CurrentUserIdDep,
-    session: SessionDep,
-) -> TimelineResponse:
-    """Generate a chronological timeline analysis for a novel."""
-    service = await get_timeline_analysis_service(
-        session=session, user_id=user_id, novel_id=novel_id
-    )
-    return await service.generate_timeline(novel_id, uuid.UUID(user_id))

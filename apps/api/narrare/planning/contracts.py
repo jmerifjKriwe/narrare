@@ -6,7 +6,8 @@ Defines interfaces for:
 - StoryboardServiceProtocol: business logic for storyboard feature
 - TimelineEventRepositoryProtocol: DB queries for timeline events
 - TimelineEventServiceProtocol: CRUD operations for timeline events
-- TimelineAnalysisServiceProtocol: AI-powered timeline analysis
+- TimelineAnalysisServiceProtocol: AI-powered timeline analysis + extraction
+- TemporalConsistencyServiceProtocol: temporal consistency checking
 """
 
 from __future__ import annotations
@@ -151,11 +152,32 @@ class TimelineEventServiceProtocol(Protocol):
 
 @runtime_checkable
 class TimelineAnalysisServiceProtocol(Protocol):
-    """Protocol for AI-powered timeline analysis."""
+    """Protocol for AI-powered timeline analysis and extraction."""
 
     async def generate_timeline(
         self, novel_id: uuid.UUID, user_id: uuid.UUID
     ) -> TimelineResponse: ...
+
+    async def extract_temporal_expressions(
+        self,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        chapter_ids: list[uuid.UUID] | None = None,
+    ) -> list[object]: ...
+
+    async def confirm_extracted_event(
+        self,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        extracted: object,
+    ) -> object: ...
+
+
+@runtime_checkable
+class TemporalConsistencyServiceProtocol(Protocol):
+    """Protocol for temporal consistency checking (PLAN-004 Phase 2)."""
+
+    async def check_consistency(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> object: ...
 
 
 # Backward compatibility alias — existing code references TimelineServiceProtocol

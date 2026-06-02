@@ -838,6 +838,120 @@
         }
       }
     },
+    "/api/v1/planning/timeline/{novel_id}/extract": {
+      "post": {
+        "tags": [
+          "planning",
+          "timeline"
+        ],
+        "summary": "Extract Temporal Expressions",
+        "description": "Extract temporal expressions from chapter content.",
+        "operationId": "extract_temporal_expressions_api_v1_planning_timeline__novel_id__extract_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExtractedEventResponse"
+                  },
+                  "title": "Response Extract Temporal Expressions Api V1 Planning Timeline  Novel Id  Extract Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planning/timeline/{novel_id}/consistency": {
+      "get": {
+        "tags": [
+          "planning",
+          "timeline"
+        ],
+        "summary": "Check Temporal Consistency",
+        "description": "Check temporal consistency of timeline events.",
+        "operationId": "check_temporal_consistency_api_v1_planning_timeline__novel_id__consistency_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporalConsistencyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/planning/storyboard/{novel_id}": {
       "get": {
         "tags": [
@@ -10518,6 +10632,79 @@
         "title": "ExtendRequest",
         "description": "Request for chapter extension — insert AI text at cursor position.\n\nThe frontend splits the document at the cursor and sends the text\nsegments.  The backend never receives a numeric offset (design.md D3)."
       },
+      "ExtractedEventResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "expression": {
+            "type": "string",
+            "title": "Expression"
+          },
+          "event_name": {
+            "type": "string",
+            "title": "Event Name"
+          },
+          "timestamp_raw": {
+            "type": "string",
+            "title": "Timestamp Raw"
+          },
+          "chapter_reference": {
+            "type": "string",
+            "title": "Chapter Reference"
+          },
+          "character_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Character Names"
+          },
+          "location_name": {
+            "type": "string",
+            "title": "Location Name"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "context": {
+            "type": "string",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "expression",
+          "event_name",
+          "timestamp_raw",
+          "chapter_reference",
+          "character_names",
+          "location_name",
+          "confidence",
+          "context"
+        ],
+        "title": "ExtractedEventResponse",
+        "description": "A single extracted temporal expression, pending user review."
+      },
+      "ExtractionRequest": {
+        "properties": {
+          "chapter_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Chapter Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "ExtractionRequest",
+        "description": "Request to extract temporal expressions from chapters."
+      },
       "FeedbackCategory": {
         "type": "string",
         "enum": [
@@ -14176,6 +14363,75 @@
         ],
         "title": "TemplateInfoResponse",
         "description": "Metadata summary for a single template override."
+      },
+      "TemporalConsistencyResponse": {
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/TemporalIssueResponse"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "deterministic_pass": {
+            "type": "boolean",
+            "title": "Deterministic Pass"
+          },
+          "overall_assessment": {
+            "type": "string",
+            "title": "Overall Assessment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issues",
+          "deterministic_pass",
+          "overall_assessment"
+        ],
+        "title": "TemporalConsistencyResponse",
+        "description": "Response from temporal consistency check."
+      },
+      "TemporalIssueResponse": {
+        "properties": {
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "event_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Event Ids"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "suggestion": {
+            "type": "string",
+            "title": "Suggestion"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "severity",
+          "rule_id",
+          "event_ids",
+          "description",
+          "suggestion",
+          "source"
+        ],
+        "title": "TemporalIssueResponse",
+        "description": "A single temporal consistency issue."
       },
       "TextChange": {
         "properties": {

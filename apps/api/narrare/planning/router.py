@@ -1,7 +1,8 @@
 """Planning routes — storyboard, outlines, and structure remap endpoints.
 
 Thin routers that delegate immediately to StoryboardService (RULE-06).
-Timeline routes are in ``router_timeline.py`` and included here.
+Timeline routes are in ``router_timeline.py`` (CRUD) and
+``router_timeline_analysis.py`` (analysis/extraction/consistency).
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.planning._character_arc_factory import get_character_arc_service
 from narrare.planning._service_factory import get_storyboard_service
 from narrare.planning.router_timeline import router as timeline_router
+from narrare.planning.router_timeline_analysis import router as timeline_analysis_router
 from narrare.planning.schemas import (
     CharacterArcRequest,
     CharacterArcResponse,
@@ -27,6 +29,7 @@ from narrare.planning.schemas import (
 
 router = APIRouter(prefix="/planning", tags=["planning"])
 router.include_router(timeline_router)
+router.include_router(timeline_analysis_router)
 
 
 @router.get("/storyboard/{novel_id}", response_model=StoryboardResponse)
