@@ -1,7 +1,7 @@
 ---
 id: PLAN-004
 title: "Timeline Management"
-status: architecture-review
+status: stable
 area: planning
 mvp: false
 architecture: PLAN-004-architecture.md
@@ -210,13 +210,10 @@ optional temporal metadata that future timeline features can build on.
 - ✅ `GET /planning/timeline/{novel_id}` endpoint in `planning/router.py`
 - ✅ TimelineService with chapter summary gathering + TimelineAgent invocation
 
-**Remaining future work:**
-- Date/time tracking on chapters and scenes
-- Auto-extraction of temporal expressions from chapter content
-- Character age tracking and consistency checking
-- Chronological vs narrative ordering (flashback/flashforward detection)
-- Temporal consistency validation (impossible dates, age contradictions)
-- Timeline visualization (chronological, per-character, by-chapter views)
+**All phases implemented ✅** — See [PLAN-004-architecture.md](PLAN-004-architecture.md) for full details of the 3-phase implementation.
+- Phase 1: TimelineEvent DB → CRUD endpoints → frontend display (TimelinePanel, EventList/Card/Form, AnalysisView)
+- Phase 2: TemporalExtractionAgent + prompts (3 locales) → deterministic consistency checks → extraction/consistency endpoints → frontend review UI
+- Phase 3: Character ages (KB metadata JSONB) → CSS timeline visualization (chronological, per-character, by-chapter) → cause→consequence links
 
 ## Architecture
 
@@ -236,4 +233,7 @@ engine (deterministic core + LLM backend).
 - `project-init` — Added to registry as planned feature
 - `2026-05-20` — Updated: noted `timeline_position` integration point with storyboard (PLAN-005). Status changed to in-progress (integration point only).
 - `2026-05-31` — Phase 4 extension: AI-powered timeline analysis implemented (TimelineAgent, TimelineService, timeline prompts in 3 locales, `GET /planning/timeline/{novel_id}` endpoint). Frontmatter updated: service path corrected, router path corrected, core agent + prompts referenced. Status remains in-progress (analysis implemented, full timeline management still future work).
+- `2026-06-01` — PLAN-004 Phase 3: Character age reading from KB metadata (JSONB, no migration), CharacterAgeCheck (deterministic), CSS timeline visualization with 3 views (chronological, by chapter, by character) with cause→consequence links. TimelineVisualization component + character ages panel. 59 tests.
+- `2026-06-01` — PLAN-004 Phase 2: TemporalExtractionAgent (core agent + 3-locale prompts), deterministic consistency checks (TemporalOrderingCheck, DuplicateEventCheck), extraction + consistency endpoints, frontend review UI (TimelineExtractionReview + TimelineConsistencyPanel). 75 backend + 50 frontend tests.
+- `2026-06-01` — PLAN-004 Phase 1: TimelineEvent DB model + Alembic migration, CRUD endpoints, frontend (TimelinePanel, EventList, EventCard, EventForm, AnalysisView), PlanningPanel tab in EditorView. 28 unit + 11 integration + 23 frontend tests.
 - `2026-06-01` — Full architecture spec created (`PLAN-004-architecture.md`). Status changed to `architecture-review`. Covers all 6 sub-features across 3 phases. Key decisions: hybrid `timeline_events` table in planning module, separate `TemporalExtractionAgent`, KB `metadata_` for character birth dates, deterministic+LLM consistency engine following ADR-021.

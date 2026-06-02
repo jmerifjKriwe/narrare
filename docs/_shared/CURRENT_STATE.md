@@ -8,7 +8,7 @@
 ## Last Updated
 
 Date: 2026-06-01
-Session: Phase 6 extension — WIKI-001 frontend complete (WikiOverviewPanel, WikiChapterSummaryPanel, KBCategorySidebar wiki tab, WorldBuilding wiki mode, i18n, 16 tests)
+Session: Phase 6 extension — PLAN-004 full stack: DB model → CRUD → AI analysis → extraction/consistency → character ages → timeline visualization (3 phases, 19 files, +4.6k lines, 159+ tests)
 
 ---
 
@@ -68,6 +68,7 @@ Alembic migrations 0001 through ~0023
 - `architecture/questions/`: 8 questions in 5 files (INDEX.md)
 - `features/`: 76 feature spec files (INDEX.md with status tracking)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
+- **PLAN-004** — Timeline Management (full stack: DB → CRUD → AI analysis → extraction → consistency → character ages → visualization) ✅
 - `mvp/`: Product roadmap (Phases 0–6 + Post-MVP)
 
 ### Infrastructure
@@ -117,6 +118,7 @@ Completed in Phase 6 so far:
 31. ✅ ANAL-004: POV Analysis — POVDetectionAgent + POVService + POST /analysis/pov + POVPanel + i18n (3 locales)
 32. ✅ Contracts modularized for RULE-04: contracts_readability.py, contracts_pov.py, schemas_readability.py, schemas_pov.py, pov_mapper.py
 33. ✅ WIKI-001 frontend: WikiOverviewPanel (entity summaries + status overview), WikiChapterSummaryPanel (chapter wiki in editor), KBCategorySidebar wiki tab, WorldBuilding wiki mode, 22 i18n keys (en/de/fr), 16 Vitest tests
+34. ✅ PLAN-004 full stack: DB model + Alembic migration + CRUD endpoints + AI analysis (existing). Frontend: TimelinePanel, EventList/Card/Form, AnalysisView, PlanningPanel tab. Phase 2: TemporalExtractionAgent + prompts (3 locales) + deterministic consistency checks (ordering, duplicates) + extraction/consistency endpoints + frontend review UI. Phase 3: Character age tracking (KB metadata JSONB) + CSS timeline visualization (3 views: chronological/by-chapter/by-character) + cause→consequence links. 19 files, +4.6k lines across all layers.
 
 ---
 
@@ -124,7 +126,6 @@ Completed in Phase 6 so far:
 
 1. ANAL-005: Coreference Analysis
 2. E2E test patterns
-3. PLAN-004 UI: Timeline Management frontend
 
 ---
 

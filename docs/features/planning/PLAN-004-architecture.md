@@ -1,6 +1,6 @@
 # PLAN-004 Architecture — Timeline Management
 
-> **Status:** draft
+> **Status:** implemented
 > **Date:** 2026-06-01
 > **Author:** Architecture Specialist (NarrareArchitectureSpecialist)
 > **Feature Spec:** `docs/features/planning/PLAN-004-timeline.md`
@@ -341,17 +341,17 @@ entities via their public exports.
 
 ## Phased Implementation Plan
 
-### Phase 1: Foundation (DB + CRUD + Display)
+### Phase 1: Foundation (DB + CRUD + Display) ✅
 
 **Goal:** Users can create, view, edit, and delete timeline events. The
 existing AI analysis is preserved and refactored into a separate service.
 
 **Pre-implementation requirements:**
-- [ ] Contracts defined in `contracts.py` before any service code
-- [ ] Alembic migration created alongside `models.py` changes (RULE-14)
-- [ ] `timeline_schemas.py` created before `timeline_service.py`
-- [ ] `router_timeline.py` created with all CRUD endpoints
-- [ ] Frontend types in `types/timeline.ts` match backend schemas (RULE-17)
+- [x] Contracts defined in `contracts.py` before any service code
+- [x] Alembic migration created alongside `models.py` changes (RULE-14)
+- [x] `timeline_schemas.py` created before `timeline_service.py`
+- [x] `router_timeline.py` created with all CRUD endpoints
+- [x] Frontend types in `types/timeline.ts` match backend schemas (RULE-17)
 
 **Backend tasks:**
 
@@ -382,29 +382,29 @@ existing AI analysis is preserved and refactored into a separate service.
 - Frontend: component rendering, hook behavior, API contract
 
 **Definition of Done — Phase 1:**
-- [ ] `POST /planning/timeline/{novel_id}/events` creates event (201)
-- [ ] `GET /planning/timeline/{novel_id}/events` lists events with filters
-- [ ] `GET /planning/timeline/{novel_id}/events/{id}` returns single event
-- [ ] `PUT /planning/timeline/{novel_id}/events/{id}` updates event
-- [ ] `DELETE /planning/timeline/{novel_id}/events/{id}` deletes event (204)
-- [ ] `GET /planning/timeline/{novel_id}` AI analysis still works (backward compat)
-- [ ] Frontend displays event list, supports create/edit/delete
-- [ ] Frontend displays AI analysis view
-- [ ] All 3 locales (en/de/fr) for timeline namespace
-- [ ] Migration up/down tested
-- [ ] Coverage: core 90%, api 80%
+- [x] `POST /planning/timeline/{novel_id}/events` creates event (201)
+- [x] `GET /planning/timeline/{novel_id}/events` lists events with filters
+- [x] `GET /planning/timeline/{novel_id}/events/{id}` returns single event
+- [x] `PUT /planning/timeline/{novel_id}/events/{id}` updates event
+- [x] `DELETE /planning/timeline/{novel_id}/events/{id}` deletes event (204)
+- [x] `GET /planning/timeline/{novel_id}` AI analysis still works (backward compat)
+- [x] Frontend displays event list, supports create/edit/delete
+- [x] Frontend displays AI analysis view
+- [x] All 3 locales (en/de/fr) for timeline namespace
+- [x] Migration up/down tested
+- [x] Coverage: core 90%, api 80%
 
-### Phase 2: AI Features (Auto-Extraction + Consistency)
+### Phase 2: AI Features (Auto-Extraction + Consistency) ✅
 
 **Goal:** AI extracts temporal expressions from chapter content; users review
 and accept/reject. Deterministic + LLM consistency checks flag issues.
 
 **Pre-implementation requirements:**
-- [ ] `TemporalExtractionAgent` types in `temporal_extraction_types.py`
-- [ ] `TemporalExtractionAgent` in `temporal_extraction_agent.py`
-- [ ] Extraction prompts in 3 locales
-- [ ] `core/analysis/temporal.py` deterministic rules with types
-- [ ] Consistency contracts in `contracts.py`
+- [x] `TemporalExtractionAgent` types in `temporal_extraction_types.py`
+- [x] `TemporalExtractionAgent` in `temporal_extraction_agent.py`
+- [x] Extraction prompts in 3 locales
+- [x] `core/analysis/temporal.py` deterministic rules with types
+- [x] Consistency contracts in `contracts.py`
 
 **Backend tasks:**
 
@@ -431,26 +431,26 @@ and accept/reject. Deterministic + LLM consistency checks flag issues.
 - Frontend: extraction review flow, consistency display
 
 **Definition of Done — Phase 2:**
-- [ ] `POST /planning/timeline/{novel_id}/extract` SSE streams extracted events
-- [ ] `POST /planning/timeline/{novel_id}/events/{id}/confirm` confirms extracted event
-- [ ] `DELETE /planning/timeline/{novel_id}/events/{id}` rejects extracted event
-- [ ] `GET /planning/timeline/{novel_id}/consistency` returns temporal issues
-- [ ] Deterministic checks: ordering violations, duration impossibilities, age contradictions
-- [ ] LLM checks: ambiguous expressions, causal consistency
-- [ ] Frontend extraction review with accept/reject
-- [ ] Frontend consistency panel with issue details
-- [ ] SSE streaming for extraction (RULE-20)
-- [ ] Extraction prompts in 3 locales
+- [x] `POST /planning/timeline/{novel_id}/extract` SSE streams extracted events
+- [x] `POST /planning/timeline/{novel_id}/events/{id}/confirm` confirms extracted event
+- [x] `DELETE /planning/timeline/{novel_id}/events/{id}` rejects extracted event
+- [x] `GET /planning/timeline/{novel_id}/consistency` returns temporal issues
+- [x] Deterministic checks: ordering violations, duration impossibilities, age contradictions
+- [x] LLM checks: ambiguous expressions, causal consistency
+- [x] Frontend extraction review with accept/reject
+- [x] Frontend consistency panel with issue details
+- [x] SSE streaming for extraction (RULE-20)
+- [x] Extraction prompts in 3 locales
 
-### Phase 3: Advanced (Character Ages + Visualization)
+### Phase 3: Advanced (Character Ages + Visualization) ✅
 
 **Goal:** Character birth dates integrated with KB; age calculations at story
 points; interactive timeline visualization.
 
 **Pre-implementation requirements:**
-- [ ] KB entity `metadata_` convention documented
-- [ ] Integration Contract with KB finalized
-- [ ] Visualization library evaluated (ADR if new dependency)
+- [x] KB entity `metadata_` convention documented
+- [x] Integration Contract with KB finalized
+- [x] Visualization library evaluated (CSS-based, no new dependency)
 
 **Backend tasks:**
 
@@ -477,13 +477,13 @@ Recommend Option A for MVP, evaluate B/C when events exceed display capacity.
 Requires ADR only if adding a new library dependency.
 
 **Definition of Done — Phase 3:**
-- [ ] Character birth dates stored in KB entity `metadata_`
-- [ ] Age calculations displayed at each timeline event
-- [ ] Age consistency violations flagged in consistency checks
-- [ ] Interactive timeline visualization with event ordering
-- [ ] Per-character timeline view
-- [ ] Chronological and by-chapter views
-- [ ] Cause → consequence visual connections
+- [x] Character birth dates stored in KB entity `metadata_`
+- [x] Age calculations displayed at each timeline event
+- [x] Age consistency violations flagged in consistency checks
+- [x] Interactive timeline visualization with event ordering
+- [x] Per-character timeline view
+- [x] Chronological and by-chapter views
+- [x] Cause → consequence visual connections
 
 ---
 
