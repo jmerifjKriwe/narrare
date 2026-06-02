@@ -103,10 +103,6 @@ Utilisez un `<scratchpad>` pour analyser le texte original et planifier votre st
 
 {{user_preferences}}
 
-### Priorité
-
-Lorsque les instructions de l'auteur contredisent les préférences utilisateur, suivez toujours les instructions de l'auteur — elles représentent l'intention actuelle de l'auteur.
-
 ### Contraintes
 
 - Rédigez en {{writing_language}}

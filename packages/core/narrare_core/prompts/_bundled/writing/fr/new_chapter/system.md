@@ -81,10 +81,6 @@ Produis le brouillon complet du chapitre en prose. Pas de méta-commentaire, pas
 
 {{user_preferences}}
 
-### Priorité
-
-Lorsque les instructions de l'auteur contredisent les préférences utilisateur, suivez toujours les instructions de l'auteur — elles représentent l'intention actuelle de l'auteur.
-
 ## À ne pas faire
 
 - Ne change PAS la perspective narrative sauf si elle est établie

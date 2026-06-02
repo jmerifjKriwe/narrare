@@ -161,14 +161,15 @@ class TestMetaPromptLoaderInvalidateCache:
 
 
 class TestMetaPromptGuardrails:
-    """Guardrails in bundled meta-prompt templates (CR-02 Phase 4)."""
+    """Guardrails in bundled meta-prompt templates (CR-02 Phase 4).
+
+    After ADR-026 Phase 1, fiction guidelines, conflict resolution, and
+    content security have been moved from the meta-prompt to
+    NarrareUniversalRules Capability. The meta-prompt now only contains
+    identity, role flexibility, and conversation guardrails.
+    """
 
     # --- English meta-prompt ---
-
-    async def test_en_contains_fiction_content_guidelines(self) -> None:
-        loader = MetaPromptLoader()
-        content = await loader.load("en")
-        assert "Fiction Content Guidelines" in content
 
     async def test_en_contains_conversation_guardrails(self) -> None:
         loader = MetaPromptLoader()
@@ -180,17 +181,25 @@ class TestMetaPromptGuardrails:
         content = await loader.load("en")
         assert "{{avoidance_patterns}}" in content
 
-    async def test_en_contains_fiction_tolerance_text(self) -> None:
+    async def test_en_no_longer_contains_fiction_guidelines(self) -> None:
+        """Fiction guidelines moved to NarrareUniversalRules (ADR-026)."""
         loader = MetaPromptLoader()
         content = await loader.load("en")
-        assert "normal narrative content" in content
+        assert "Fiction Content Guidelines" not in content
+
+    async def test_en_no_longer_contains_conflict_resolution(self) -> None:
+        """Conflict resolution moved to NarrareUniversalRules (ADR-026)."""
+        loader = MetaPromptLoader()
+        content = await loader.load("en")
+        assert "Conflict Resolution" not in content
+
+    async def test_en_no_longer_contains_content_security(self) -> None:
+        """Content security moved to NarrareUniversalRules (ADR-026)."""
+        loader = MetaPromptLoader()
+        content = await loader.load("en")
+        assert "Content Security" not in content
 
     # --- German meta-prompt ---
-
-    async def test_de_contains_fiction_guidelines(self) -> None:
-        loader = MetaPromptLoader()
-        content = await loader.load("de")
-        assert "Fiktionsinhalts-Richtlinien" in content
 
     async def test_de_contains_conversation_guardrails(self) -> None:
         loader = MetaPromptLoader()
@@ -202,12 +211,19 @@ class TestMetaPromptGuardrails:
         content = await loader.load("de")
         assert "{{avoidance_patterns}}" in content
 
-    # --- French meta-prompt ---
-
-    async def test_fr_contains_fiction_guidelines(self) -> None:
+    async def test_de_no_longer_contains_fiction_guidelines(self) -> None:
+        """Fiction guidelines moved to NarrareUniversalRules (ADR-026)."""
         loader = MetaPromptLoader()
-        content = await loader.load("fr")
-        assert "Directives sur le contenu de fiction" in content
+        content = await loader.load("de")
+        assert "Fiktionsinhalts-Richtlinien" not in content
+
+    async def test_de_no_longer_contains_conflict_resolution(self) -> None:
+        """Conflict resolution moved to NarrareUniversalRules (ADR-026)."""
+        loader = MetaPromptLoader()
+        content = await loader.load("de")
+        assert "Konfliktlösung" not in content
+
+    # --- French meta-prompt ---
 
     async def test_fr_contains_conversation_guardrails(self) -> None:
         loader = MetaPromptLoader()
@@ -219,17 +235,32 @@ class TestMetaPromptGuardrails:
         content = await loader.load("fr")
         assert "{{avoidance_patterns}}" in content
 
-    # --- Lite meta-prompt ---
-
-    async def test_lite_contains_fiction_reference(self) -> None:
+    async def test_fr_no_longer_contains_fiction_guidelines(self) -> None:
+        """Fiction guidelines moved to NarrareUniversalRules (ADR-026)."""
         loader = MetaPromptLoader()
-        content = await loader.load("en", use_lite=True)
-        assert "fiction" in content.lower()
+        content = await loader.load("fr")
+        assert "Directives sur le contenu de fiction" not in content
+
+    async def test_fr_no_longer_contains_conflict_resolution(self) -> None:
+        """Conflict resolution moved to NarrareUniversalRules (ADR-026)."""
+        loader = MetaPromptLoader()
+        content = await loader.load("fr")
+        assert "Résolution des conflits" not in content
+
+    # --- Lite meta-prompt ---
 
     async def test_lite_contains_avoidance_patterns_variable(self) -> None:
         loader = MetaPromptLoader()
         content = await loader.load("en", use_lite=True)
         assert "{{avoidance_patterns}}" in content
+
+    async def test_lite_no_longer_contains_fiction_reference(self) -> None:
+        """Fiction reference moved to NarrareUniversalRules (ADR-026)."""
+        loader = MetaPromptLoader()
+        content = await loader.load("en", use_lite=True)
+        # Lite meta no longer contains fiction guidelines
+        assert "fiction content" not in content.lower()
+        assert "normal narrative" not in content.lower()
 
     async def test_lite_is_significantly_shorter_than_full(self) -> None:
         loader = MetaPromptLoader()

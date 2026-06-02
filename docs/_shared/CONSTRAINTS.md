@@ -83,6 +83,94 @@ prompt = await composer.build(intent=LLMIntent.WRITE, context=ctx)
 previous codebase. A user override saved via the UI did not reliably reach
 the runtime resolver for the same feature. That must never happen again.
 
+#### RULE-02a · Prompt content categories and their injection mechanisms
+
+Prompt content falls into three categories, each with a distinct injection
+mechanism. Using the wrong mechanism for a content type is a RULE-02 violation.
+
+**1. User-customizable prompt content** — MUST go through `core/prompts/` cascade
+(templates, PromptComposer). This includes: role descriptions, task instructions,
+output format specifications, mode-specific instructions.
+
+These are content that users can override via the cascade (project-level,
+user-level, or bundled). The PromptComposer is the ONLY valid injection path.
+
+```python
+# CORRECT: User-customizable content via PromptComposer
+prompt = await composer.build(intent=LLMIntent.WRITE, context=ctx)
+
+# FORBIDDEN: Assembling user-customizable content outside core/prompts/
+system_prompt = f"You are a {role} assistant. Task: {task}..."
+```
+
+**2. Architecturally guaranteed prompt content** — MAY be injected via
+`AbstractCapability.get_instructions()` in `core/agents/capabilities/`. This
+includes: fiction guidelines, conflict resolution rules, injection defense rules,
+meta-prompt identity.
+
+These are content that must ALWAYS be present and must NEVER be user-customizable.
+Capabilities are attached at agent construction time and cannot be omitted.
+
+Conditions:
+- The content must always be present (no cascade override, no user override)
+- The content must not be user-customizable
+- The content must be loaded from a single canonical source (typically
+  `core/prompts/_bundled/`) — Capabilities MUST NOT assemble prompts via
+  f-string or concatenation
+
+```python
+# CORRECT: Guaranteed content via Capability loading from canonical source
+class NarrareUniversalRules(AbstractCapability):
+    async def get_instructions(self) -> str:
+        loader = UniversalRulesLoader()  # uses core/prompts/ cascade
+        return await loader.load(language=self._language)
+
+# FORBIDDEN: Assembling guaranteed content via f-string
+class NarrareUniversalRules(AbstractCapability):
+    async def get_instructions(self) -> str:
+        return f"Always follow these rules: {rules}..."
+```
+
+**3. Dynamic per-invocation content** — MAY be injected via `@agent.instructions`
+or `AbstractCapability.for_run()`. This includes: KB data, style profiles,
+voice profiles.
+
+These are content that varies per invocation (depends on Deps). They are data,
+not instructions (though they may contain formatting).
+
+Conditions:
+- The content varies per invocation (depends on Deps)
+- The content is data, not instructions (though it may contain formatting)
+- The content is assembled from runtime data, not from prompt templates
+
+```python
+# CORRECT: Dynamic content via @agent.instructions
+@agent.instructions
+async def kb_context(ctx: RunContext[WritingDeps]) -> str:
+    assembler = ctx.deps.context_assembler
+    if assembler is None:
+        return ""
+    return await assembler.build_context(ctx.deps)
+
+# CORRECT: Dynamic content via Capability.for_run()
+class NarrareKBContext(AbstractCapability):
+    async def for_run(self, ctx: RunContext[Any]) -> NarrareKBContext:
+        # Extract per-invocation data from deps
+        ...
+
+# FORBIDDEN: Hardcoding dynamic content in templates
+# (KB data should not be baked into prompt templates)
+```
+
+**Enforcement:** `check_architecture.py` should verify that:
+- No `get_instructions()` in `core/agents/capabilities/` assembles prompts via
+  f-string or concatenation — it must load from `core/prompts/` or return
+  static strings
+- No `@agent.instructions` function assembles prompts via f-string or
+  concatenation — it must use data from Deps or load from `core/prompts/`
+
+**See also:** ADR-026 (Capability-Based Prompt Injection Pattern)
+
 ---
 
 ### RULE-03 · Contracts before implementation.
@@ -739,6 +827,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-01b Agent instantiation | `check_architecture.py` — AST scan (Agent(), .run(), .run_sync()) |
 | RULE-01b LLM URLs | `check_architecture.py` — string scan |
 | RULE-02 Prompt building | `check_architecture.py` — AST scan |
+| RULE-02a Prompt content categories | `check_architecture.py` — AST scan (Capability f-string check) + PR review |
 | RULE-04 File size | `check_architecture.py` — line count |
 | RULE-06 Router purity | `check_architecture.py` — complexity heuristic |
 | RULE-09 Type signatures | `mypy --strict` in CI |
@@ -814,6 +903,6 @@ supports infrastructure-level calls with different routing rules.*
 
 ---
 
-> Last updated: 2026-05-20 — RULE-01→RULE-01b (agents first-class, ModelRegistry)
+> Last updated: 2026-06-01 — RULE-02a (prompt content categories and injection mechanisms)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

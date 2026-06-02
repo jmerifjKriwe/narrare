@@ -103,10 +103,6 @@ Verwende einen `<scratchpad>`, um den Originaltext zu analysieren und deine Übe
 
 {{user_preferences}}
 
-### Priorität
-
-Wenn Autorenanweisungen den Nutzereinstellungen widersprechen, folgen Sie immer den Autorenanweisungen — sie repräsentieren die aktuelle Absicht des Autors.
-
 ### Einschränkungen
 
 - Schreibe auf {{writing_language}}

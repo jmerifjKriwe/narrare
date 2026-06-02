@@ -1,9 +1,10 @@
 # ADR-019 — System-Prompt Consistency for pydantic-ai Agents
 
-> **Status:** ✅ Accepted
+> **Status:** ✅ Accepted (partially superseded by ADR-026)
 > **Date:** 2026-05-23
 > **Deciders:** Architecture Agent, Narrare Dev Coordinator
 > **Supersedes:** —
+> **Superseded by:** ADR-026 (universal rules and meta-prompt identity now handled by Capabilities)
 > **Related:** ADR-002 (Unified Prompt System), ADR-015 (Agents as First-Class Citizens)
 
 ---

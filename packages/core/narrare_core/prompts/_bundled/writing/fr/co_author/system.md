@@ -95,5 +95,3 @@ améliorée du passage original.
 - Rédige en {{writing_language}}
 - Corresponds au rythme et au registre du contexte environnant
 - Respecte les motifs d'évitement de l'auteur : {{avoidance_patterns}}
-
-Les instructions de l'auteur prévalent sur les préférences en cas de conflit.

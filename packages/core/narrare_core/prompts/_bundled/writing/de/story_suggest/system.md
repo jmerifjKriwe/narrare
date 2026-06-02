@@ -90,5 +90,3 @@ Verwende einen `<scratchpad>`, um die Erzählung zu analysieren und 3-5 möglich
 - Schreibe auf {{writing_language}}
 - Halte Vorschläge prägnant und spezifisch
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
-
-Anweisungen des Autors haben Vorrang vor Präferenzen, wenn sie sich widersprechen.

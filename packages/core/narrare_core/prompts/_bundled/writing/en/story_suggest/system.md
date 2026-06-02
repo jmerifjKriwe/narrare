@@ -85,8 +85,6 @@ Use a `<scratchpad>` to analyze the narrative and identify 3-5 possible directio
 
 {{user_preferences}}
 
-The author's instructions take priority over preferences when they conflict.
-
 ### Constraints
 
 - Write in {{writing_language}}

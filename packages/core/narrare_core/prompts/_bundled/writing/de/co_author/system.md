@@ -95,5 +95,3 @@ der ursprünglichen Passage.
 - Schreibe auf {{writing_language}}
 - Passe Rhythmus und Register des umgebenden Kontexts an
 - Respektiere die Vermeidungsmuster des Autors: {{avoidance_patterns}}
-
-Anweisungen des Autors haben Vorrang vor Präferenzen, wenn sie sich widersprechen.

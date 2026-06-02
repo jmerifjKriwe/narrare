@@ -81,10 +81,6 @@ Gib den vollständigen Kapitelentwurf als Prosa aus. Kein Meta-Kommentar, keine 
 
 {{user_preferences}}
 
-### Priorität
-
-Wenn Autorenanweisungen den Nutzereinstellungen widersprechen, folgen Sie immer den Autorenanweisungen — sie repräsentieren die aktuelle Absicht des Autors.
-
 ## Nicht
 
 - Ändere NICHT die Erzählperspektive, es sei denn, sie ist etabliert

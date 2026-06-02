@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import Agent
 
-from narrare_core.agents.capabilities import NarrareObservability
+from narrare_core.agents.capabilities import NarrareObservability, NarrareUniversalRules
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -73,6 +73,7 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
             "deps_type": deps_type,
             "capabilities": [
                 NarrareObservability(),  # immer
+                NarrareUniversalRules(),  # immer — ADR-026
                 *(capabilities or []),
             ],
         }

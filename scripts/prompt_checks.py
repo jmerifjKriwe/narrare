@@ -31,6 +31,7 @@ VALID_PROMPT_TYPES = {
     "generation",
     "wiki",
     "chat",
+    "universal",
 }
 VALID_LANGUAGES = {"en", "de", "fr"}
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -39,6 +40,7 @@ MAX_LINES = 300
 RAW_OUTPUT_TYPES = {"meta"}
 RAW_OUTPUT_MODES = {"inline_suggest"}
 META_EXEMPT_TYPES = {"meta"}
+UNIVERSAL_EXEMPT_TYPES = {"universal"}
 
 
 # ── Checks ─────────────────────────────────────────────────────
@@ -103,25 +105,31 @@ def check_required_sections(pf: PromptFile, issues: list[Issue]) -> None:
     headings_lower = [h.lower() for h in pf.headings]
 
     has_system = any("system prompt" in h or "system-prompt" in h for h in headings_lower)
-    if not has_system and pf.prompt_type not in META_EXEMPT_TYPES:
+    if (
+        not has_system
+        and pf.prompt_type not in META_EXEMPT_TYPES
+        and pf.prompt_type not in UNIVERSAL_EXEMPT_TYPES
+    ):
         issues.append(Issue("FAIL", pf.display_path, "Missing '## System Prompt' heading"))
 
     is_meta = pf.prompt_type in META_EXEMPT_TYPES
+    is_universal = pf.prompt_type in UNIVERSAL_EXEMPT_TYPES
     is_inline_suggest = pf.mode == "inline_suggest" or pf.path.parent.name == "inline_suggest"
 
-    # Output Format — exempt meta prompts and inline_suggest.
+    # Output Format — exempt meta prompts, universal rules, and inline_suggest.
     has_output = any(
         "output format" in h or "ausgabeformat" in h or "format de sortie" in h
         for h in headings_lower
     )
-    if not is_meta and not is_inline_suggest and not has_output:
+    if not is_meta and not is_universal and not is_inline_suggest and not has_output:
         issues.append(Issue("WARN", pf.display_path, "Missing 'Output Format' section"))
 
-    # Do NOT section — exempt meta prompts.
+    # Do NOT section — exempt meta prompts and universal rules.
     has_do_not = any("do not" in h or "nicht" in h or "ne pas" in h for h in headings_lower)
     # Also check heading text broadly (e.g., "### Do NOT", "## Nicht").
     if (
         not is_meta
+        and not is_universal
         and not has_do_not
         and not re.search(
             r"^#+\s+(?:Do\s+NOT|[Nn]icht|[ÀA]\s+ne\s+PAS)",

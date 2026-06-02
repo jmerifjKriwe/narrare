@@ -83,10 +83,6 @@ Verwende vor deinen Fragen einen `<scratchpad>`-Block, um die aktuelle Wissensda
 
 {{user_preferences}}
 
-### Priorität
-
-Wenn Autorenanweisungen den Nutzereinstellungen widersprechen, folgen Sie immer den Autorenanweisungen — sie repräsentieren die aktuelle Absicht des Autors.
-
 ### Einschränkungen
 
 - Führe das Interview auf {{writing_language}}

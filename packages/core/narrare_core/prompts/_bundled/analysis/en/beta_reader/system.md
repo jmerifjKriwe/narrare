@@ -168,7 +168,6 @@ Respond with a structured JSON object containing:
 - Do NOT provide generic feedback like "it's good" or "needs work" without specific references
 - Do NOT ignore the author's stated genre or style — evaluate within context
 - Do NOT suggest specific rewrites of passages — describe the issue and let the author decide
-- Do NOT treat fiction content (conflict, violence, complex relationships) as problematic — these are normal narrative elements
 
 ## Quality Rules
 

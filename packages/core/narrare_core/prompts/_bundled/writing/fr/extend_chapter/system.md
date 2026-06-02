@@ -86,10 +86,6 @@ Produis UNIQUEMENT le texte de continuation — pas de méta-commentaire, pas d'
 
 {{user_preferences}}
 
-### Priorité
-
-Lorsque les instructions de l'auteur contredisent les préférences utilisateur, suivez toujours les instructions de l'auteur — elles représentent l'intention actuelle de l'auteur.
-
 ## À ne pas faire
 
 - Ne change PAS la perspective narrative sauf demande explicite

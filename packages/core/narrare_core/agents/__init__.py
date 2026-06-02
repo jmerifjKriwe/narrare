@@ -77,6 +77,14 @@ from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.agents.summary_types import SummaryOutput
+from narrare_core.agents.temporal_extraction_agent import (
+    TemporalExtractionAgent,
+    TemporalExtractionDeps,
+)
+from narrare_core.agents.temporal_extraction_types import (
+    ExtractedTemporalExpression,
+    TemporalExtractionOutput,
+)
 from narrare_core.agents.timeline_agent import TimelineAgent, TimelineDeps
 from narrare_core.agents.timeline_types import (
     TimelineEvent,
@@ -130,6 +138,7 @@ __all__ = [
     "DraftConfig",
     "DraftDeps",
     "DraftOutput",
+    "ExtractedTemporalExpression",
     "ExtractionAgent",
     "ExtractionDeps",
     "ExtractionItem",
@@ -180,6 +189,9 @@ __all__ = [
     "SuggestionType",
     "SummaryDeps",
     "SummaryOutput",
+    "TemporalExtractionAgent",
+    "TemporalExtractionDeps",
+    "TemporalExtractionOutput",
     "TimelineAgent",
     "TimelineDeps",
     "TimelineEvent",

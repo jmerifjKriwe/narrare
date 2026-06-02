@@ -23,6 +23,15 @@ from narrare_core.analysis.contracts_readability import (
 )
 from narrare_core.analysis.readability import FormulaReadabilityAnalyzer
 from narrare_core.analysis.sentiment import LexiconSentimentAnalyzer
+from narrare_core.analysis.temporal import (
+    DuplicateEventCheck,
+    DurationImpossibilityCheck,
+    TemporalConsistencyResult,
+    TemporalIssue,
+    TemporalIssueSeverity,
+    TemporalOrderingCheck,
+    run_deterministic_checks,
+)
 from narrare_core.analysis.types import (
     EmotionScores,
     NarrativeArc,
@@ -42,6 +51,8 @@ __all__ = [
     "AnalysisAssemblerProtocol",
     "AnalysisBudgetManager",
     "AnalysisContextAssembler",
+    "DuplicateEventCheck",
+    "DurationImpossibilityCheck",
     "EmotionScores",
     "FormulaReadabilityAnalyzer",
     "LexiconSentimentAnalyzer",
@@ -60,5 +71,10 @@ __all__ = [
     "SentenceSentiment",
     "SentimentAnalyzer",
     "SentimentOverview",
+    "TemporalConsistencyResult",
+    "TemporalIssue",
+    "TemporalIssueSeverity",
+    "TemporalOrderingCheck",
     "VADScores",
+    "run_deterministic_checks",
 ]

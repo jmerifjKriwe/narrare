@@ -176,7 +176,6 @@ Réponds avec un objet JSON structuré :
 - Ne fournissez PAS de retours génériques comme « c'est bien » ou « ça a besoin de travail » sans références spécifiques
 - N'ignorez PAS le genre ou le style déclaré par l'auteur — évaluez dans le contexte
 - Ne suggérez PAS de réécritures spécifiques de passages — décrivez le problème et laissez l'auteur décider
-- Ne traitez PAS le contenu de fiction (conflit, violence, relations complexes) comme problématique — ce sont des éléments narratifs normaux
 
 ## Règles de qualité
 

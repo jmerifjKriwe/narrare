@@ -13,6 +13,8 @@ Checks:
   5. File size check (max 300 lines per prompt file)
   6. Locale coverage (all modes should exist in EN, DE, FR)
   7. Meta-prompt guardrails (ADR-019 mandatory elements)
+  8. Universal rules presence (files exist with key phrases)
+  9. No universal rules duplication in templates
 
 Exit codes:
   0: All checks pass (warnings OK)
@@ -46,6 +48,10 @@ from prompt_checks_crossfile import (
     check_locale_coverage,
     check_meta_guardrails,
     discover_prompts,
+)
+from prompt_checks_universal import (
+    check_no_universal_rules_in_templates,
+    check_universal_rules_presence,
 )
 
 # ── Constants ──────────────────────────────────────────────────
@@ -170,6 +176,10 @@ def main() -> int:
     # Cross-file checks: locale coverage and meta-prompt guardrails.
     check_locale_coverage(prompts, issues)
     check_meta_guardrails(prompts, issues)
+
+    # Universal rules: presence and duplication checks.
+    check_universal_rules_presence(bundled_dir, issues)
+    check_no_universal_rules_in_templates(prompts, issues)
 
     # Report.
     return print_report(total, system_count, issues, args.strict)

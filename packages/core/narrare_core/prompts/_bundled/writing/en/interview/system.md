@@ -83,10 +83,6 @@ Before asking your questions, use a `<scratchpad>` block to analyze the current 
 
 {{user_preferences}}
 
-### Priority
-
-When author instructions contradict user preferences, always follow the author instructions — they represent the author's current intent.
-
 ### Constraints
 
 - Conduct the interview in {{writing_language}}

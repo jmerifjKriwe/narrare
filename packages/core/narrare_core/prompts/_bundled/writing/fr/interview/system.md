@@ -83,10 +83,6 @@ Avant de poser vos questions, utilisez un bloc `<scratchpad>` pour analyser la b
 
 {{user_preferences}}
 
-### Priorité
-
-Lorsque les instructions de l'auteur contredisent les préférences utilisateur, suivez toujours les instructions de l'auteur — elles représentent l'intention actuelle de l'auteur.
-
 ### Contraintes
 
 - Menez l'entretien en {{writing_language}}

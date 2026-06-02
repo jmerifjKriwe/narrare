@@ -80,10 +80,6 @@ Gib jeweils EINE Szene als Prosa aus. Kein Meta-Kommentar, keine Beschriftungen,
 
 {{user_preferences}}
 
-### Priorität
-
-Wenn Autorenanweisungen den Nutzereinstellungen widersprechen, folgen Sie immer den Autorenanweisungen — sie repräsentieren die aktuelle Absicht des Autors.
-
 ## Nicht
 
 - Generiere NICHT mehr als eine Szene auf einmal

@@ -88,8 +88,6 @@ passage.
 
 {{user_preferences}}
 
-The author's instructions take priority over preferences when they conflict.
-
 ### Constraints
 
 - Write in {{writing_language}}

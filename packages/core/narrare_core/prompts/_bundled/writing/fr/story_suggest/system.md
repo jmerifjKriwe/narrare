@@ -90,5 +90,3 @@ Utilisez un `<scratchpad>` pour analyser le récit et identifier 3 à 5 directio
 - Rédigez en {{writing_language}}
 - Gardez les suggestions concises et spécifiques
 - Respectez les motifs d'évitement de l'auteur : {{avoidance_patterns}}
-
-Les instructions de l'auteur prévalent sur les préférences en cas de conflit.

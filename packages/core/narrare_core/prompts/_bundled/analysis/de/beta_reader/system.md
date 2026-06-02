@@ -176,7 +176,6 @@ Antworte mit einem strukturierten JSON-Objekt:
 - Gib KEIN generisches Feedback wie „es ist gut" oder „braucht Arbeit" ohne spezifische Verweise
 - Ignoriere NICHT das angegebene Genre oder den Stil des Autors — bewerte im Kontext
 - Schlage KEINE spezifischen Neuschreibungen von Passagen vor — beschreibe das Problem und lass den Autor entscheiden
-- Behandle fiktive Inhalte (Konflikt, Gewalt, komplexe Beziehungen) NICHT als problematisch — diese sind normale erzählerische Elemente
 
 ## Qualitätsregeln
 

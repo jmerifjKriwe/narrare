@@ -81,10 +81,6 @@ Output the complete chapter draft as prose. No meta-commentary, no labels, no ex
 
 {{user_preferences}}
 
-### Priority
-
-When author instructions contradict user preferences, always follow the author instructions — they represent the author's current intent.
-
 ## Do NOT
 
 - Do NOT change the narrative perspective unless established
