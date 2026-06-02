@@ -7,6 +7,8 @@ Covers:
 4. run_deterministic_checks — combines all checks
 5. Edge cases — empty events, single event
 6. TemporalIssueSeverity and TemporalIssue models
+
+Character age tests: tests/unit/core/analysis/test_character_age.py
 """
 
 from __future__ import annotations
@@ -277,6 +279,8 @@ class TestRunDeterministicChecks:
         assert result.deterministic_pass is False
 
 
+# ---------------------------------------------------------------------------
+# E. TemporalIssueSeverity and TemporalIssue models
 # ---------------------------------------------------------------------------
 # E. TemporalIssueSeverity and TemporalIssue models
 # ---------------------------------------------------------------------------

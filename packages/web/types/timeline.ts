@@ -141,6 +141,22 @@ export interface TemporalConsistency {
   overall_assessment: string;
 }
 
+// --- Character Ages (Phase 3: GET /planning/timeline/{novel_id}/character-ages) ---
+
+export interface CharacterAgeInfo {
+  character_name: string;
+  character_id: string | null;
+  birth_date: string | null;
+  birth_date_narrative: string | null;
+  age_available: boolean;
+}
+
+export interface CharacterAgeReport {
+  characters: CharacterAgeInfo[];
+  characters_with_age: number;
+  characters_without_age: number;
+}
+
 // --- Filters ---
 
 export interface TimelineFilters {

@@ -15,6 +15,7 @@ from narrare.planning._timeline_analysis_factory import get_timeline_analysis_se
 from narrare.planning._timeline_consistency_factory import get_timeline_consistency_service
 from narrare.planning.schemas import TimelineResponse
 from narrare.planning.timeline_schemas import (
+    CharacterAgeReport,
     ExtractedEventResponse,
     ExtractionRequest,
     TemporalConsistencyResponse,
@@ -81,3 +82,19 @@ async def check_temporal_consistency(
         session=session, user_id=user_id, novel_id=novel_id
     )
     return await service.check_consistency(novel_id, uuid.UUID(user_id))
+
+
+# Phase 3 endpoint — character ages (PLAN-004)
+
+
+@router.get("/{novel_id}/character-ages", response_model=CharacterAgeReport)
+async def get_character_ages(
+    novel_id: uuid.UUID,
+    user_id: CurrentUserIdDep,
+    session: SessionDep,
+) -> CharacterAgeReport:
+    """Get character age report based on KB metadata and timeline events."""
+    service = await get_timeline_consistency_service(
+        session=session, user_id=user_id, novel_id=novel_id
+    )
+    return await service.get_character_ages(novel_id, uuid.UUID(user_id))

@@ -7,6 +7,7 @@
  */
 
 import type {
+  CharacterAgeReport,
   ExtractedEvent,
   TemporalConsistency,
   TimelineAnalysis,
@@ -99,4 +100,11 @@ export const timelineApi = {
    */
   checkConsistency: (novelId: string) =>
     fetchApi<TemporalConsistency>(`/planning/timeline/${novelId}/consistency`),
+
+  /**
+   * Get character age report from KB metadata.
+   * GET /planning/timeline/{novelId}/character-ages
+   */
+  getCharacterAges: (novelId: string) =>
+    fetchApi<CharacterAgeReport>(`/planning/timeline/${novelId}/character-ages`),
 };

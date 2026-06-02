@@ -8,6 +8,7 @@ Defines interfaces for:
 - TimelineEventServiceProtocol: CRUD operations for timeline events
 - TimelineAnalysisServiceProtocol: AI-powered timeline analysis + extraction
 - TemporalConsistencyServiceProtocol: temporal consistency checking
+- CharacterAgeServiceProtocol: character age tracking via KB metadata
 """
 
 from __future__ import annotations
@@ -178,8 +179,22 @@ class TemporalConsistencyServiceProtocol(Protocol):
     """Protocol for temporal consistency checking (PLAN-004 Phase 2)."""
 
     async def check_consistency(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> object: ...
+    async def check_character_ages(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> object: ...
 
 
 # Backward compatibility alias — existing code references TimelineServiceProtocol
 # for the analysis service. The protocol is renamed for clarity (AD-5).
 TimelineServiceProtocol = TimelineAnalysisServiceProtocol
+
+
+# ---------------------------------------------------------------------------
+# Character age protocol — Phase 3 (PLAN-004)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class CharacterAgeServiceProtocol(Protocol):
+    """Protocol for character age tracking via KB metadata."""
+
+    async def get_character_ages(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> object: ...
+    async def load_birth_date_map(self, novel_id: uuid.UUID) -> dict[str, str | None]: ...

@@ -119,3 +119,26 @@ class ExtractionRequest(BaseModel):
     """Request to extract temporal expressions from chapters."""
 
     chapter_ids: list[uuid.UUID] = []  # If empty, extract from all chapters
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 schemas — character ages (PLAN-004)
+# ---------------------------------------------------------------------------
+
+
+class CharacterAgeInfo(BaseModel):
+    """Age info for a single character."""
+
+    character_name: str
+    character_id: str | None = None
+    birth_date: str | None = None
+    birth_date_narrative: str | None = None
+    age_available: bool = False
+
+
+class CharacterAgeReport(BaseModel):
+    """Report on character ages from KB metadata."""
+
+    characters: list[CharacterAgeInfo]
+    characters_with_age: int
+    characters_without_age: int

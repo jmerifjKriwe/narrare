@@ -49,6 +49,7 @@
   "extracted": "Extrait",
   "saving": "Enregistrement…",
   "loading": "Chargement…",
+  "loadingVisualization": "Chargement de la visualisation…",
   "errorLoading": "Impossible de charger les événements chronologiques.",
   "errorSaving": "Impossible d'enregistrer l'événement.",
   "errorDeleting": "Impossible de supprimer l'événement.",
@@ -86,5 +87,18 @@
   "sourceDeterministic": "Basé sur les règles",
   "sourceLlm": "Alimenté par l'IA",
   "errorExtract": "Impossible d'extraire les expressions temporelles.",
-  "errorConsistency": "La vérification de cohérence a échoué."
+  "errorConsistency": "La vérification de cohérence a échoué.",
+  "visualizationTab": "Visualisation",
+  "chronologicalView": "Chronologique",
+  "byChapterView": "Par chapitre",
+  "byCharacterView": "Par personnage",
+  "noEventsToVisualize": "Aucun événement à visualiser. Ajoutez d'abord des événements.",
+  "characterAges": "Âge des personnages",
+  "ageUnknown": "Âge inconnu",
+  "charactersWithAge": "{count} personnage(s) avec date de naissance",
+  "charactersWithoutAge": "{count} personnage(s) sans date de naissance",
+  "causedBy": "Causé par",
+  "leadsTo": "Conduit à",
+  "noChapters": "Aucune référence de chapitre dans les événements.",
+  "noCharacterRefs": "Aucune référence de personnage dans les événements."
 }

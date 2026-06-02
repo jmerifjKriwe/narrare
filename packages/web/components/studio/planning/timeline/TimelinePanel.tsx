@@ -8,8 +8,9 @@ import { TimelineAnalysisView } from "./TimelineAnalysisView";
 import { TimelineConsistencyPanel } from "./TimelineConsistencyPanel";
 import { TimelineEventList } from "./TimelineEventList";
 import { TimelineExtractionReview } from "./TimelineExtractionReview";
+import { TimelineVisualization } from "./TimelineVisualization";
 
-type TimelineTab = "events" | "analysis" | "consistency" | "extract";
+type TimelineTab = "events" | "analysis" | "consistency" | "extract" | "visualization";
 
 interface TimelinePanelProps {
   novelId: string;
@@ -26,6 +27,7 @@ export function TimelinePanel({ novelId, onClose }: TimelinePanelProps) {
     { key: "analysis", label: t("analysisTab") },
     { key: "consistency", label: t("consistencyTab") },
     { key: "extract", label: t("extractTab") },
+    { key: "visualization", label: t("visualizationTab") },
   ];
 
   return (
@@ -68,6 +70,7 @@ export function TimelinePanel({ novelId, onClose }: TimelinePanelProps) {
         {activeTab === "analysis" && <TimelineAnalysisView novelId={novelId} />}
         {activeTab === "consistency" && <TimelineConsistencyPanel novelId={novelId} />}
         {activeTab === "extract" && <TimelineExtractionReview novelId={novelId} />}
+        {activeTab === "visualization" && <TimelineVisualization novelId={novelId} />}
       </div>
     </div>
   );

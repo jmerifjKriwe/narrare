@@ -11,6 +11,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { timelineApi } from "@/lib/api/timeline";
 import type {
+  CharacterAgeReport,
   ExtractedEvent,
   TemporalConsistency,
   TimelineAnalysis,
@@ -30,6 +31,7 @@ const timelineKeys = {
   event: (novelId: string, eventId: string) => [...timelineKeys.events(novelId), eventId] as const,
   analysis: (novelId: string) => [...timelineKeys.all(novelId), "analysis"] as const,
   consistency: (novelId: string) => [...timelineKeys.all(novelId), "consistency"] as const,
+  characterAges: (novelId: string) => [...timelineKeys.all(novelId), "character-ages"] as const,
 };
 
 // --- Query hooks ---
@@ -117,6 +119,17 @@ export function useTimelineConsistency(novelId: string) {
   return useQuery<TemporalConsistency>({
     queryKey: timelineKeys.consistency(novelId),
     queryFn: () => timelineApi.checkConsistency(novelId),
+    enabled: !!novelId,
+  });
+}
+
+// --- Phase 3: Character Ages ---
+
+/** Fetch character age report from KB metadata. */
+export function useCharacterAges(novelId: string) {
+  return useQuery<CharacterAgeReport>({
+    queryKey: timelineKeys.characterAges(novelId),
+    queryFn: () => timelineApi.getCharacterAges(novelId),
     enabled: !!novelId,
   });
 }

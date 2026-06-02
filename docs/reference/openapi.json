@@ -952,6 +952,56 @@
         }
       }
     },
+    "/api/v1/planning/timeline/{novel_id}/character-ages": {
+      "get": {
+        "tags": [
+          "planning",
+          "timeline"
+        ],
+        "summary": "Get Character Ages",
+        "description": "Get character age report based on KB metadata and timeline events.",
+        "operationId": "get_character_ages_api_v1_planning_timeline__novel_id__character_ages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterAgeReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/planning/storyboard/{novel_id}": {
       "get": {
         "tags": [
@@ -9532,6 +9582,85 @@
         ],
         "title": "ChapterVersionResponse",
         "description": "Single historical version of chapter content."
+      },
+      "CharacterAgeInfo": {
+        "properties": {
+          "character_name": {
+            "type": "string",
+            "title": "Character Name"
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id"
+          },
+          "birth_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "birth_date_narrative": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date Narrative"
+          },
+          "age_available": {
+            "type": "boolean",
+            "title": "Age Available",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "character_name"
+        ],
+        "title": "CharacterAgeInfo",
+        "description": "Age info for a single character."
+      },
+      "CharacterAgeReport": {
+        "properties": {
+          "characters": {
+            "items": {
+              "$ref": "#/components/schemas/CharacterAgeInfo"
+            },
+            "type": "array",
+            "title": "Characters"
+          },
+          "characters_with_age": {
+            "type": "integer",
+            "title": "Characters With Age"
+          },
+          "characters_without_age": {
+            "type": "integer",
+            "title": "Characters Without Age"
+          }
+        },
+        "type": "object",
+        "required": [
+          "characters",
+          "characters_with_age",
+          "characters_without_age"
+        ],
+        "title": "CharacterAgeReport",
+        "description": "Report on character ages from KB metadata."
       },
       "CharacterArcRequest": {
         "properties": {

@@ -4,6 +4,7 @@ Follows the same pattern as ``_timeline_analysis_factory.py``: resolves the
 user's configured provider/model for the PLAN intent, validates novel existence,
 and builds the consistency service with proper DI.
 
+Phase 3 adds CharacterAgeService wiring for character age integration.
 LLM checks are optional — the service gracefully degrades when no AI provider
 is configured (deterministic-only mode).
 """
@@ -16,7 +17,9 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare._app.dependencies import get_model_registry, get_model_routing_resolver
+from narrare.kb.repository import KBRepository
 from narrare.novels.repository import NovelRepository
+from narrare.planning.character_age_service import CharacterAgeService
 from narrare.planning.timeline_consistency_service import TimelineConsistencyService
 from narrare.planning.timeline_repository import TimelineEventRepository
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
@@ -63,8 +66,6 @@ async def get_timeline_consistency_service(
         raise NotFoundError("Novel", identifier=str(novel_id))
 
     # Resolve model config — gracefully handle missing AI provider.
-    # Note: api_key and base_url are not needed by TimelineConsistencyService
-    # because the model is obtained via ModelRegistry.get_model(config).
     registry = get_model_registry()
     model_config = None
     try:
@@ -74,9 +75,16 @@ async def get_timeline_consistency_service(
     except ConfigurationError:
         logger.info("no_ai_provider_configured", novel_id=str(novel_id))
 
+    # Wire CharacterAgeService for KB character metadata reads.
+    character_age_service = CharacterAgeService(
+        novel_repo=novel_repo,
+        kb_repo=KBRepository(session),
+    )
+
     return TimelineConsistencyService(
         event_repo=TimelineEventRepository(session),
         novel_repo=novel_repo,
+        character_age_service=character_age_service,
         model_registry=registry,
         model_config=model_config,
     )

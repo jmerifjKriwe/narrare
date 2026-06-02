@@ -9,7 +9,10 @@ Follows ADR-021: deterministic analysis where possible, LLM where not.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 from pydantic import BaseModel
 
@@ -189,11 +192,69 @@ class DuplicateEventCheck:
         return issues
 
 
-def run_deterministic_checks(events: list[dict[str, Any]]) -> TemporalConsistencyResult:
+class CharacterAgeCheck:
+    """Detect age inconsistencies at event points.
+
+    Checks if character ages are plausible at each timeline event
+    based on birth_date in character metadata.
+    """
+
+    @staticmethod
+    def check(
+        events: list[dict[str, Any]],
+        character_ages: Mapping[str, str | None],
+    ) -> list[TemporalIssue]:
+        """Check for age inconsistencies.
+
+        Args:
+            events: List of event dicts with character_refs and timestamp_raw.
+            character_ages: Map of character name to age string (or None if
+                no birth_date).
+
+        Returns:
+            List of age inconsistency issues.
+        """
+        characters_without_age: set[str] = set()
+
+        for event in events:
+            raw_refs = event.get("character_refs", [])
+            refs = cast("list[dict[str, Any]]", raw_refs) if isinstance(raw_refs, list) else []
+            for ref in refs:
+                name = str(ref.get("name", ""))
+                if name and name not in character_ages:
+                    characters_without_age.add(name)
+
+        if not characters_without_age:
+            return []
+
+        return [
+            TemporalIssue(
+                severity=TemporalIssueSeverity.INFO,
+                rule_id="character_missing_birth_date",
+                event_ids=[],
+                description=(
+                    f"{len(characters_without_age)} character(s) referenced in "
+                    f"events have no birth date: "
+                    f"{', '.join(sorted(characters_without_age))}."
+                ),
+                suggestion=(
+                    "Add birth_date to character metadata in the "
+                    "Knowledge Base for age consistency checking."
+                ),
+            )
+        ]
+
+
+def run_deterministic_checks(
+    events: list[dict[str, Any]],
+    character_ages: Mapping[str, str | None] | None = None,
+) -> TemporalConsistencyResult:
     """Run all deterministic temporal consistency checks.
 
     Args:
         events: List of event dicts with all timeline event fields.
+        character_ages: Optional map of character name to birth date string
+            (or None if no birth_date). Used by CharacterAgeCheck.
 
     Returns:
         Combined result of all deterministic checks.
@@ -202,6 +263,9 @@ def run_deterministic_checks(events: list[dict[str, Any]]) -> TemporalConsistenc
     all_issues.extend(TemporalOrderingCheck.check(events))
     all_issues.extend(DurationImpossibilityCheck.check(events))
     all_issues.extend(DuplicateEventCheck.check(events))
+
+    if character_ages is not None:
+        all_issues.extend(CharacterAgeCheck.check(events, character_ages))
 
     errors = [i for i in all_issues if i.severity == TemporalIssueSeverity.ERROR]
     warnings = [i for i in all_issues if i.severity == TemporalIssueSeverity.WARNING]

@@ -49,6 +49,7 @@
   "extracted": "Extrahiert",
   "saving": "Speichern…",
   "loading": "Laden…",
+  "loadingVisualization": "Visualisierung wird geladen…",
   "errorLoading": "Zeitleisten-Ereignisse konnten nicht geladen werden.",
   "errorSaving": "Ereignis konnte nicht gespeichert werden.",
   "errorDeleting": "Ereignis konnte nicht gelöscht werden.",
@@ -86,5 +87,18 @@
   "sourceDeterministic": "Regelbasiert",
   "sourceLlm": "KI-gestützt",
   "errorExtract": "Zeitliche Ausdrücke konnten nicht extrahiert werden.",
-  "errorConsistency": "Konsistenzprüfung fehlgeschlagen."
+  "errorConsistency": "Konsistenzprüfung fehlgeschlagen.",
+  "visualizationTab": "Visualisierung",
+  "chronologicalView": "Chronologisch",
+  "byChapterView": "Nach Kapitel",
+  "byCharacterView": "Nach Charakter",
+  "noEventsToVisualize": "Keine Ereignisse zu visualisieren. Fügen Sie zunächst Zeitleisten-Ereignisse hinzu.",
+  "characterAges": "Charakteralter",
+  "ageUnknown": "Alter unbekannt",
+  "charactersWithAge": "{count} Charakter(e) mit Geburtsdatum",
+  "charactersWithoutAge": "{count} Charakter(e) ohne Geburtsdatum",
+  "causedBy": "Verursacht durch",
+  "leadsTo": "Führt zu",
+  "noChapters": "Keine Kapitelreferenzen in Ereignissen.",
+  "noCharacterRefs": "Keine Charakterreferenzen in Ereignissen."
 }

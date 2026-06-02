@@ -38,6 +38,11 @@ vi.mock("@/lib/hooks/useTimeline", () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
+  useCharacterAges: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 // Mock chapters API for extraction component
@@ -87,12 +92,13 @@ describe("TimelinePanel", () => {
     expect(screen.getByText("extractTitle")).toBeDefined();
   });
 
-  it("shows all four tabs", () => {
+  it("shows all five tabs", () => {
     render(<TimelinePanel novelId="novel-1" />);
     expect(screen.getByText("eventsTab")).toBeDefined();
     expect(screen.getByText("analysisTab")).toBeDefined();
     expect(screen.getByText("consistencyTab")).toBeDefined();
     expect(screen.getByText("extractTab")).toBeDefined();
+    expect(screen.getByText("visualizationTab")).toBeDefined();
   });
 
   it("shows loading state when analysis is loading", () => {
@@ -124,6 +130,11 @@ describe("TimelinePanel", () => {
       useCreateTimelineEvent: () => ({
         mutate: vi.fn(),
         isPending: false,
+      }),
+      useCharacterAges: () => ({
+        data: null,
+        isLoading: false,
+        error: null,
       }),
     }));
 
