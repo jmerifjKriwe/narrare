@@ -1230,7 +1230,7 @@ These are deferred-loaded (only used when the model needs them), minimizing cont
 | **RULE-19** | ✅ | `SessionDep` used in `dependencies.py` factory functions, not bare `AsyncSession`. |
 | **RULE-20** | ✅ | Complete implementation: proper agent with output types, deduplicated discovery via KBAgent, token-budget-managed context assembly, caching, error handling. No stubs. |
 | **ADR-015** | ✅ | Pydantic-ai Agent in `core/agents/`. Model from ModelRegistry. Capabilities (ToolSearch, Toolset) for KBAgent integration. |
-| **ADR-019** | ✅ | System prompt consistency: WorldbuildingAgent uses `PromptComposer.build()` for production or `with_meta()` for direct agent use. Meta-prompt integration path reserved. |
+| **ADR-019** | ✅ (superseded by ADR-026) | System prompt consistency: WorldbuildingAgent uses `PromptComposer.build()` for production. Meta-prompt and universal rules injected automatically via Capabilities (NarrareMeta, NarrareUniversalRules) per ADR-026. |
 
 ---
 

@@ -12,6 +12,26 @@
 - Node.js 20+
 - just (command runner)
 
+### Python Environment Setup
+
+The project uses `uv` with workspace members (`apps/api`, `packages/core`, `packages/i18n`). To set up the Python environment:
+
+```bash
+# Install all dependencies AND workspace member packages
+uv sync --all-packages
+```
+
+**Important:** `uv sync` alone does NOT install workspace member packages (narrare, narrare_core) in editable mode. You MUST use `--all-packages` to make workspace members importable. Without this:
+- Pre-commit hooks fail (OpenAPI spec regeneration: `No module named 'narrare'`)
+- Pyright reports thousands of unresolved imports
+- Running `uv run python` cannot import `narrare` or `narrare_core`
+
+**Verification:**
+
+```bash
+uv run python -c "import narrare_core; import narrare; print('OK')"
+```
+
 ### Local Services
 
 ```bash

@@ -225,6 +225,7 @@ The migration is phased to ensure each step is atomic and backward-compatible.
 | 3 | `NarrareMeta` Capability | Medium — meta-prompt moves from PromptComposer to Capability | Phase 1 | ✅ Complete |
 | 4 | ~~KB-Context as `@agent.instructions`~~ **Skipped** | — | — |
 | 5 | Language optimization (EN-only templates) | Low — removes language variants | Phase 3 |
+| 6 | ~~TemplateStr evaluation~~ **Not Adopted** | — | — |
 
 ### Phase 1: NarrareUniversalRules + Template Cleanup (Atomic)
 
@@ -280,6 +281,12 @@ This led to a refinement of the "Dynamic" category in the three-mechanism model.
 - `prompt_checks.py` cross-locale variable consistency check becomes EN-only
 - `prompt_vars.py` validation remains per-category (language-independent)
 
+### Phase 6: Not Adopted — TemplateStr Evaluation
+
+**Decision:** TemplateStr evaluation was considered but **not adopted**. The current `{{variable}}` syntax with `variable_engine.substitute()` works well and is consistent across all 64 EN templates. Migrating to Python format strings (`{variable}`) would require updating all templates and the variable engine simultaneously — a breaking change with no architectural benefit.
+
+The `substitute()` function provides `strict` mode for validation, supports the `PromptContext.extra` pattern for dynamic variables, and has mature CI validation (`prompt_vars.py`). This is sufficient.
+
 ### Completed Phases
 
 | Phase | Status | Commit |
@@ -289,6 +296,7 @@ This led to a refinement of the "Dynamic" category in the three-mechanism model.
 | 3 | ✅ Complete — `NarrareMeta` Capability, `with_meta()` removed | 45b7395 |
 | 4 | ⏭️ Skipped — KB context stays as variable substitution | N/A |
 | 5 | 🔄 In Progress — Language optimization | — |
+| 6 | ❌ Not Adopted — TemplateStr evaluation | N/A |
 
 ---
 

@@ -121,7 +121,7 @@ infrastructure_definitions:
     evidence: "all UNSAFE_USER_VARS wrapped in <tag>...</tag>"
   meta_prompt:
     description: "Narrare identity meta-prompt prepended"
-    evidence: "uses PromptComposer or with_meta() or MetaPromptLoader"
+    evidence: "uses PromptComposer or has agent inheriting NarrareAgent (Capabilities auto-injected per ADR-026)"
   i18n:
     description: "Bundled prompt exists in en/de/fr"
     evidence: "system.md in all 3 locale directories"
@@ -414,11 +414,11 @@ Three locations contain hardcoded inline prompts that bypass PromptComposer:
 
 | File | Lines | Pattern |
 |------|-------|---------|
-| `apps/api/narrare/consistency/prompt_builder.py` | 33–65 | `CONSISTENCY_SYSTEM_PROMPT` with `get_system_prompt_with_meta()` |
+| `apps/api/narrare/consistency/prompt_builder.py` | 33–65 | `CONSISTENCY_SYSTEM_PROMPT` with `get_system_prompt()` (meta injected by NarrareMeta Capability per ADR-026) |
 | `apps/api/narrare/kb/extraction_service.py` | 40–57 | `_DEFAULT_SYSTEM_PROMPT` with 3-tier cascade |
 | `packages/core/narrare_core/agents/writing_graph_prompts.py` | multiple | Fallback when `composer is None` |
 
-These follow a documented 3-tier cascade (ADR-019): PromptComposer → MetaPromptLoader → Inline.
+These follow a documented 2-tier approach: PromptComposer → Inline fallback. Meta-prompt is injected automatically by NarrareMeta Capability (ADR-026).
 
 ### Options Considered
 

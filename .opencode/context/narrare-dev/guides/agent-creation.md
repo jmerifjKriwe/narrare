@@ -44,6 +44,26 @@ class {Name}Agent(NarrareAgent[{Name}Deps, {Name}Output]):
 - `run()` delegates to `self._agent.run()` and extracts `.output`
 - **Automatic Capabilities**: `NarrareAgent.__init__` injects `NarrareObservability`, `NarrareUniversalRules`, and `NarrareMeta` — every agent always has universal rules and meta-prompt identity (ADR-026). No `with_meta()` needed.
 
+## ADR-026 Compliance — Required for Every Agent
+
+Every agent created via `NarrareAgent` automatically receives these Capabilities:
+
+| Capability | Injects | Source |
+|-----------|---------|--------|
+| `NarrareObservability` | Logging, spans, metrics | auto |
+| `NarrareUniversalRules` | Fiction guidelines, conflict resolution, injection defense | `_bundled/universal/` |
+| `NarrareMeta` | Narrare identity, role flexibility, conversation guardrails | `_bundled/meta/` |
+
+**No manual meta-prompt loading needed.** Do NOT use `MetaPromptLoader`, `with_meta()`, or manual meta-prepending — these are removed/obsolete (ADR-026 Phase 3).
+
+**Prompt content rules (RULE-02a):**
+- **Guaranteed content** (universal rules, identity): Capability — cannot be forgotten
+- **Customizable content** (task, output format, mode): PromptComposer cascade + template variables
+- **Dynamic data** (KB entities, preferences): Variable substitution via `PromptContext`
+- **Dynamic instructions** (per-run behavioral adjustments): `@agent.instructions` (future use)
+
+When adding a new agent, simply inherit `NarrareAgent` — Capabilities are automatic.
+
 ## Step 1: Define Types
 
 File: `agents/{name}_types.py`
