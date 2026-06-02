@@ -9,7 +9,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { timelineApi } from "@/lib/api/timeline";
+import { useCallback, useState } from "react";
+import { confirmExtractedEvent, extractExpressionsSSE, timelineApi } from "@/lib/api/timeline";
 import type {
   CharacterAgeReport,
   ExtractedEvent,
@@ -103,7 +104,78 @@ export function useDeleteTimelineEvent(novelId: string) {
 
 // --- Phase 2: Extraction & Consistency ---
 
-/** Extract temporal expressions from selected chapters. Mutation that invalidates events on success. */
+/**
+ * Extract temporal expressions from chapters via SSE streaming.
+ * Events are accumulated progressively as SSE chunks arrive.
+ * Invalidates the events list on completion.
+ *
+ * Returns control functions for managing extraction state.
+ */
+export function useSSEExtraction(novelId: string) {
+  const queryClient = useQueryClient();
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractedEvents, setExtractedEvents] = useState<ExtractedEvent[]>([]);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  const startExtraction = useCallback(
+    (chapterIds: string[]) => {
+      setIsExtracting(true);
+      setExtractedEvents([]);
+      setExtractError(null);
+
+      const abortController = new AbortController();
+
+      extractExpressionsSSE(
+        novelId,
+        chapterIds,
+        {
+          onEvent: (event) => {
+            setExtractedEvents((prev) => [...prev, event]);
+          },
+          onComplete: () => {
+            setIsExtracting(false);
+            void queryClient.invalidateQueries({ queryKey: timelineKeys.events(novelId) });
+          },
+          onError: (error) => {
+            setIsExtracting(false);
+            setExtractError(error.message);
+          },
+        },
+        abortController.signal,
+      );
+
+      return () => abortController.abort();
+    },
+    [novelId, queryClient],
+  );
+
+  const reset = useCallback(() => {
+    setExtractedEvents([]);
+    setExtractError(null);
+  }, []);
+
+  return { isExtracting, extractedEvents, extractError, startExtraction, reset };
+}
+
+/**
+ * Confirm an extracted expression and persist it as a timeline event.
+ * Preserves source='extracted', confidence, and is_confirmed metadata.
+ * Invalidates the events list on success.
+ */
+export function useConfirmExtractedEvent(novelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<TimelineEvent, Error, ExtractedEvent>({
+    mutationFn: (extracted) => confirmExtractedEvent(novelId, extracted),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: timelineKeys.events(novelId) });
+    },
+  });
+}
+
+/**
+ * @deprecated Use useSSEExtraction for progressive SSE streaming extraction.
+ * Kept for backward compatibility — remove once all callers migrate to SSE.
+ */
 export function useTimelineExtraction(novelId: string) {
   const queryClient = useQueryClient();
   return useMutation<ExtractedEvent[], Error, string[]>({

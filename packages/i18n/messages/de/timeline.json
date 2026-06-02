@@ -67,6 +67,7 @@
   "extractButton": "Extrahieren",
   "extracting": "Zeitliche Ausdrücke werden extrahiert…",
   "noExtractions": "Keine zeitlichen Ausdrücke in den ausgewählten Kapiteln gefunden.",
+  "extractedCount": "{count} zeitliche(r) Ausdruck/Ausdrücke extrahiert",
   "accept": "Akzeptieren",
   "reject": "Ablehnen",
   "accepted": "Akzeptiert",

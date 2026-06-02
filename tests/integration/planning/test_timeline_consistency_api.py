@@ -143,21 +143,30 @@ class TestConsistencyEndpoint:
         assert len(duplicate_issues) >= 1
 
 
-class TestExtractionEndpoint:
-    """Test POST /planning/timeline/{novel_id}/extract."""
+def _parse_sse_events(response_text: str) -> list[dict[str, object]]:
+    """Parse SSE event stream into a list of JSON event dicts."""
+    events: list[dict[str, object]] = []
+    for line in response_text.strip().split("\n"):
+        if line.startswith("data: ") and line != "data: [DONE]":
+            import json
 
-    async def test_extract_endpoint_exists(
+            events.append(json.loads(line[6:]))
+    return events
+
+
+class TestExtractionEndpoint:
+    """Test POST /planning/timeline/{novel_id}/extract (SSE streaming)."""
+
+    async def test_extract_endpoint_returns_sse(
         self,
         client: AsyncClient,
         auth_headers: dict[str, str],
         novel_with_events: dict[str, object],
     ) -> None:
-        """Extract endpoint should exist (not return 404).
+        """Extract endpoint should return SSE stream.
 
-        Note: The actual AI extraction requires a configured LLM provider.
-        In integration tests without AI, this returns 500 or 422 depending
-        on whether a provider is configured. The important thing is the
-        route exists and is accessible.
+        Without an AI provider configured, it returns a CONFIG_ERROR
+        event in-band rather than failing with an HTTP error code.
         """
         novel_id = novel_with_events["novel_id"]
 
@@ -166,15 +175,22 @@ class TestExtractionEndpoint:
             json={"chapter_ids": []},
             headers=auth_headers,
         )
-        # Should not be 404 — route exists
+        # Route exists — should not be 404
         assert resp.status_code != 404
+        # Should be SSE content type
+        assert resp.headers.get("content-type", "").startswith("text/event-stream")
 
-    async def test_extract_nonexistent_novel_returns_404(
+    async def test_extract_nonexistent_novel_returns_sse_with_error(
         self,
         client: AsyncClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """Extract for nonexistent novel should return 404."""
+        """Extract for nonexistent novel should return SSE with error event.
+
+        Since the factory validates novel existence before creating the
+        service, missing novels are caught as 404 during service creation
+        (before the SSE stream starts).
+        """
         import uuid
 
         resp = await client.post(
@@ -182,6 +198,7 @@ class TestExtractionEndpoint:
             json={"chapter_ids": []},
             headers=auth_headers,
         )
+        # Novel not found is caught during factory wiring → 404
         assert resp.status_code == 404
 
     async def test_extract_unauthenticated_returns_401(
@@ -198,13 +215,13 @@ class TestExtractionEndpoint:
         )
         assert resp.status_code == 401
 
-    async def test_extract_with_specific_chapter_ids(
+    async def test_extract_with_specific_chapter_ids_returns_sse(
         self,
         client: AsyncClient,
         auth_headers: dict[str, str],
         novel_with_events: dict[str, object],
     ) -> None:
-        """Extract with specific chapter_ids should not return 404."""
+        """Extract with specific chapter_ids should return SSE stream."""
         novel_id = novel_with_events["novel_id"]
         chapter_id = novel_with_events["chapter_id"]
 
@@ -213,5 +230,29 @@ class TestExtractionEndpoint:
             json={"chapter_ids": [chapter_id]},
             headers=auth_headers,
         )
-        # Should not be 404 — route exists
+        # Route exists — should not be 404
         assert resp.status_code != 404
+        # Should be SSE
+        assert resp.headers.get("content-type", "").startswith("text/event-stream")
+        # Parse events — without AI provider, expect CONFIG_ERROR
+        events = _parse_sse_events(resp.text)
+        if len(events) > 0:
+            assert events[0].get("code") == "CONFIG_ERROR"
+
+    async def test_extract_sse_ends_with_done(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        novel_with_events: dict[str, object],
+    ) -> None:
+        """SSE stream should always end with [DONE] marker."""
+        novel_id = novel_with_events["novel_id"]
+
+        resp = await client.post(
+            f"/api/v1/planning/timeline/{novel_id}/extract",
+            json={"chapter_ids": []},
+            headers=auth_headers,
+        )
+
+        lines = resp.text.strip().split("\n")
+        assert lines[-1] == "data: [DONE]"

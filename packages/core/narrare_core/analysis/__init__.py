@@ -9,6 +9,7 @@ ADR-021 — Deterministic Analysis Strategy.
 ADR-025 Decision 3 — ContextAssembler Centralization (Phase 5).
 """
 
+from narrare_core.analysis.age_check import CharacterAgeCheck
 from narrare_core.analysis.assembler import AnalysisContextAssembler
 from narrare_core.analysis.budget import AnalysisBudgetManager
 from narrare_core.analysis.contracts import (
@@ -21,16 +22,18 @@ from narrare_core.analysis.contracts_readability import (
     ReadabilityAgentProtocol,
     ReadabilityAnalyzer,
 )
+from narrare_core.analysis.duration_check import DurationImpossibilityCheck
 from narrare_core.analysis.readability import FormulaReadabilityAnalyzer
 from narrare_core.analysis.sentiment import LexiconSentimentAnalyzer
 from narrare_core.analysis.temporal import (
     DuplicateEventCheck,
-    DurationImpossibilityCheck,
+    TemporalOrderingCheck,
+    run_deterministic_checks,
+)
+from narrare_core.analysis.temporal_types import (
     TemporalConsistencyResult,
     TemporalIssue,
     TemporalIssueSeverity,
-    TemporalOrderingCheck,
-    run_deterministic_checks,
 )
 from narrare_core.analysis.types import (
     EmotionScores,
@@ -51,6 +54,7 @@ __all__ = [
     "AnalysisAssemblerProtocol",
     "AnalysisBudgetManager",
     "AnalysisContextAssembler",
+    "CharacterAgeCheck",
     "DuplicateEventCheck",
     "DurationImpossibilityCheck",
     "EmotionScores",

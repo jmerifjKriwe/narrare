@@ -34,11 +34,35 @@ vi.mock("@/lib/hooks/useTimeline", () => ({
     data: undefined,
     reset: vi.fn(),
   }),
+  useSSEExtraction: () => ({
+    isExtracting: false,
+    extractedEvents: [],
+    extractError: null,
+    startExtraction: vi.fn(),
+    reset: vi.fn(),
+  }),
+  useConfirmExtractedEvent: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useCreateTimelineEvent: () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
+  useUpdateTimelineEvent: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useDeleteTimelineEvent: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useCharacterAges: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
+  useTimelineEvent: () => ({
     data: null,
     isLoading: false,
     error: null,

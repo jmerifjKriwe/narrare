@@ -34,24 +34,30 @@ def _make_event(**overrides: object) -> MagicMock:
     defaults: dict[str, object] = {
         "id": overrides.get("id", uuid.uuid4()),
         "event_name": overrides.get("event_name", "Battle"),
+        "event_type": overrides.get("event_type", "plot_point"),
         "temporal_order": overrides.get("temporal_order", 1),
         "causes": overrides.get("causes", ""),
         "consequences": overrides.get("consequences", ""),
         "timestamp_raw": overrides.get("timestamp_raw", "Day 1"),
         "timestamp_normalized": overrides.get("timestamp_normalized", ""),
         "chapter_id": overrides.get("chapter_id"),
+        "character_refs": overrides.get("character_refs", []),
+        "location_ref": overrides.get("location_ref"),
     }
     defaults.update(overrides)
     event = MagicMock(
         spec=[
             "id",
             "event_name",
+            "event_type",
             "temporal_order",
             "causes",
             "consequences",
             "timestamp_raw",
             "timestamp_normalized",
             "chapter_id",
+            "character_refs",
+            "location_ref",
         ]
     )
     for k, v in defaults.items():

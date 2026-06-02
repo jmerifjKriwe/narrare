@@ -40,24 +40,28 @@ const mockExtractedEvents: ExtractedEvent[] = [
   },
 ];
 
-// Mutation mock state
-const mockMutate = vi.fn();
-let mockIsPending = false;
-let mockIsError = false;
-const mockCreateMutate = vi.fn();
-let mockCreateIsPending = false;
+// SSE extraction hook mock state
+let mockIsExtracting = false;
+let mockExtractedEventsState: ExtractedEvent[] = [];
+let mockExtractError: string | null = null;
+const mockStartExtraction = vi.fn();
+const mockResetExtraction = vi.fn();
+
+// Confirm mutation mock state
+const mockConfirmMutate = vi.fn();
+let mockConfirmIsPending = false;
 
 vi.mock("@/lib/hooks/useTimeline", () => ({
-  useTimelineExtraction: () => ({
-    mutate: mockMutate,
-    isPending: mockIsPending,
-    isError: mockIsError,
-    data: undefined,
-    reset: vi.fn(),
+  useSSEExtraction: () => ({
+    isExtracting: mockIsExtracting,
+    extractedEvents: mockExtractedEventsState,
+    extractError: mockExtractError,
+    startExtraction: mockStartExtraction,
+    reset: mockResetExtraction,
   }),
-  useCreateTimelineEvent: () => ({
-    mutate: mockCreateMutate,
-    isPending: mockCreateIsPending,
+  useConfirmExtractedEvent: () => ({
+    mutate: mockConfirmMutate,
+    isPending: mockConfirmIsPending,
   }),
 }));
 
@@ -75,9 +79,10 @@ vi.mock("@/lib/api/client", () => ({
 describe("TimelineExtractionReview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsPending = false;
-    mockIsError = false;
-    mockCreateIsPending = false;
+    mockIsExtracting = false;
+    mockExtractedEventsState = [];
+    mockExtractError = null;
+    mockConfirmIsPending = false;
   });
 
   it("renders extraction review with title", async () => {
@@ -118,7 +123,7 @@ describe("TimelineExtractionReview", () => {
     expect(extractButton.closest("button")?.disabled).toBe(false);
   });
 
-  it("triggers extraction mutation on extract click", async () => {
+  it("triggers SSE extraction on extract click", async () => {
     render(<TimelineExtractionReview novelId="novel-1" />);
 
     await waitFor(() => {
@@ -131,30 +136,46 @@ describe("TimelineExtractionReview", () => {
     // Click extract
     fireEvent.click(screen.getByText("extractButton"));
 
-    expect(mockMutate).toHaveBeenCalledWith(["ch-1"], expect.any(Object));
+    expect(mockStartExtraction).toHaveBeenCalledWith(["ch-1"]);
   });
 
   it("shows loading state while extracting", async () => {
-    mockIsPending = true;
+    mockIsExtracting = true;
     render(<TimelineExtractionReview novelId="novel-1" />);
 
     await waitFor(() => {
-      expect(screen.getByText("Chapter 1")).toBeDefined();
+      expect(screen.getByText("extracting")).toBeDefined();
     });
+  });
 
-    // Select and extract
-    fireEvent.click(screen.getByText("Chapter 1"));
-    fireEvent.click(screen.getByText("extracting"));
+  it("shows spinner when extracting with no events yet", async () => {
+    mockIsExtracting = true;
+    mockExtractedEventsState = [];
+    render(<TimelineExtractionReview novelId="novel-1" />);
 
-    expect(screen.getByText("extracting")).toBeDefined();
+    // Should show the spinner (Loader2 is in the DOM)
+    await waitFor(() => {
+      expect(screen.getByText("extracting")).toBeDefined();
+    });
+  });
+
+  it("shows extraction count during SSE streaming", async () => {
+    mockIsExtracting = true;
+    mockExtractedEventsState = [mockExtractedEvents[0]];
+    render(<TimelineExtractionReview novelId="novel-1" />);
+
+    // The extractedCount key uses {count} parameter
+    await waitFor(() => {
+      expect(screen.getByText("extractedCount")).toBeDefined();
+    });
   });
 
   it("shows error state when extraction fails", async () => {
-    mockIsError = true;
+    mockExtractError = "Failed to extract temporal expressions.";
     render(<TimelineExtractionReview novelId="novel-1" />);
 
     await waitFor(() => {
-      expect(screen.getByText("errorExtract")).toBeDefined();
+      expect(screen.getByText("Failed to extract temporal expressions.")).toBeDefined();
     });
   });
 
@@ -164,24 +185,16 @@ describe("TimelineExtractionReview", () => {
   });
 
   it("renders extracted events with accept/reject buttons", async () => {
-    // Simulate extraction success via onSuccess callback
-    mockMutate.mockImplementation((_chapterIds, options) => {
-      options?.onSuccess?.(mockExtractedEvents);
-    });
-
+    // Populate extracted events directly (simulates SSE progressive arrival)
+    mockExtractedEventsState = mockExtractedEvents;
     render(<TimelineExtractionReview novelId="novel-1" />);
 
     await waitFor(() => {
-      expect(screen.getByText("Chapter 1")).toBeDefined();
+      expect(screen.getByText(/Chapter 1/)).toBeDefined();
     });
 
-    // Select and extract
-    fireEvent.click(screen.getByText("Chapter 1"));
-    fireEvent.click(screen.getByText("extractButton"));
-
+    // Check extracted events are rendered
     await waitFor(() => {
-      // Check extracted events are rendered — use getAllByText since
-      // "three days later" appears in both the expression title and context
       expect(screen.getAllByText(/three days later/).length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText(/Arrival at the castle/)).toBeDefined();
       expect(screen.getByText("Aragorn")).toBeDefined();
@@ -195,19 +208,13 @@ describe("TimelineExtractionReview", () => {
     expect(rejectButtons.length).toBe(2);
   });
 
-  it("accepts an extracted event and creates timeline event", async () => {
-    mockMutate.mockImplementation((_chapterIds, options) => {
-      options?.onSuccess?.(mockExtractedEvents);
-    });
-
+  it("accepts an extracted event via confirm endpoint", async () => {
+    mockExtractedEventsState = mockExtractedEvents;
     render(<TimelineExtractionReview novelId="novel-1" />);
 
     await waitFor(() => {
-      expect(screen.getByText("Chapter 1")).toBeDefined();
+      expect(screen.getByText(/Chapter 1/)).toBeDefined();
     });
-
-    fireEvent.click(screen.getByText("Chapter 1"));
-    fireEvent.click(screen.getByText("extractButton"));
 
     await waitFor(() => {
       expect(screen.getAllByText("accept").length).toBe(2);
@@ -217,27 +224,17 @@ describe("TimelineExtractionReview", () => {
     const acceptButtons = screen.getAllByText("accept");
     fireEvent.click(acceptButtons[0]);
 
-    expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event_name: "Arrival at the castle",
-        source: "extracted",
-      }),
-    );
+    // Should call confirm mutation with the full ExtractedEvent
+    expect(mockConfirmMutate).toHaveBeenCalledWith(mockExtractedEvents[0]);
   });
 
   it("rejects an extracted event", async () => {
-    mockMutate.mockImplementation((_chapterIds, options) => {
-      options?.onSuccess?.(mockExtractedEvents);
-    });
-
+    mockExtractedEventsState = mockExtractedEvents;
     render(<TimelineExtractionReview novelId="novel-1" />);
 
     await waitFor(() => {
-      expect(screen.getByText("Chapter 1")).toBeDefined();
+      expect(screen.getByText(/Chapter 1/)).toBeDefined();
     });
-
-    fireEvent.click(screen.getByText("Chapter 1"));
-    fireEvent.click(screen.getByText("extractButton"));
 
     await waitFor(() => {
       expect(screen.getAllByText("reject").length).toBe(2);

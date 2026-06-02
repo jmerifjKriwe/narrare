@@ -2,9 +2,9 @@
 
 import { Check, Loader2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { chaptersApi } from "@/lib/api/client";
-import { useCreateTimelineEvent, useTimelineExtraction } from "@/lib/hooks/useTimeline";
+import { useConfirmExtractedEvent, useSSEExtraction } from "@/lib/hooks/useTimeline";
 import { cn } from "@/lib/utils";
 import type { ExtractedEvent } from "@/types/timeline";
 
@@ -16,31 +16,38 @@ interface TimelineExtractionReviewProps {
 /** Review and accept/reject extracted temporal expressions from chapters. */
 export function TimelineExtractionReview({ novelId, onClose }: TimelineExtractionReviewProps) {
   const t = useTranslations("timeline");
-  const extractMutation = useTimelineExtraction(novelId);
-  const createEventMutation = useCreateTimelineEvent(novelId);
+  const {
+    isExtracting,
+    extractedEvents,
+    extractError,
+    startExtraction,
+    reset: resetExtraction,
+  } = useSSEExtraction(novelId);
+  const confirmMutation = useConfirmExtractedEvent(novelId);
 
   const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
   const [chapters, setChapters] = useState<{ id: string; title: string }[]>([]);
   const [chaptersLoaded, setChaptersLoaded] = useState(false);
   const [chaptersError, setChaptersError] = useState(false);
 
-  const [extractedEvents, setExtractedEvents] = useState<ExtractedEvent[]>([]);
   const [decisions, setDecisions] = useState<Record<string, "accepted" | "rejected">>({});
 
   // Load chapters for selection on first render
-  if (!chaptersLoaded && !chaptersError) {
-    setChaptersLoaded(true);
-    chaptersApi
-      .list(novelId)
-      .then((result) => {
-        const items = (result as unknown as { id: string; title: string }[]).map((ch) => ({
-          id: ch.id,
-          title: ch.title,
-        }));
-        setChapters(items);
-      })
-      .catch(() => setChaptersError(true));
-  }
+  useEffect(() => {
+    if (!chaptersLoaded && !chaptersError) {
+      setChaptersLoaded(true);
+      chaptersApi
+        .list(novelId)
+        .then((result) => {
+          const items = (result as unknown as { id: string; title: string }[]).map((ch) => ({
+            id: ch.id,
+            title: ch.title,
+          }));
+          setChapters(items);
+        })
+        .catch(() => setChaptersError(true));
+    }
+  }, [novelId, chaptersLoaded, chaptersError]);
 
   const handleToggleChapter = (chapterId: string) => {
     setSelectedChapterIds((prev) => {
@@ -56,29 +63,20 @@ export function TimelineExtractionReview({ novelId, onClose }: TimelineExtractio
 
   const handleExtract = () => {
     const ids = Array.from(selectedChapterIds);
-    extractMutation.mutate(ids, {
-      onSuccess: (data) => {
-        setExtractedEvents(data);
-        setDecisions({});
-      },
-    });
+    resetExtraction();
+    setDecisions({});
+    startExtraction(ids);
   };
 
   const handleAccept = (event: ExtractedEvent) => {
     setDecisions((prev) => ({ ...prev, [event.id]: "accepted" }));
-    createEventMutation.mutate({
-      event_name: event.event_name,
-      description: event.context,
-      timestamp_raw: event.timestamp_raw,
-      source: "extracted",
-    });
+    confirmMutation.mutate(event);
   };
 
   const handleReject = (eventId: string) => {
     setDecisions((prev) => ({ ...prev, [eventId]: "rejected" }));
   };
 
-  const isExtracting = extractMutation.isPending;
   const hasSelection = selectedChapterIds.size > 0;
 
   return (
@@ -146,17 +144,28 @@ export function TimelineExtractionReview({ novelId, onClose }: TimelineExtractio
           )}
         </button>
 
-        {extractMutation.isError && (
-          <p className="text-xs text-[var(--color-error)] mt-2">{t("errorExtract")}</p>
-        )}
+        {extractError && <p className="text-xs text-[var(--color-error)] mt-2">{extractError}</p>}
       </div>
 
-      {/* Extracted events */}
+      {/* Extracted events — progressive SSE display */}
       <div className="flex-1 overflow-auto px-4 py-3">
+        {isExtracting && extractedEvents.length === 0 && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
         {extractedEvents.length === 0 && !isExtracting && (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
             {t("noExtractions")}
           </div>
+        )}
+
+        {/* Progress counter during SSE streaming */}
+        {isExtracting && extractedEvents.length > 0 && (
+          <p className="text-xs text-muted-foreground mb-3">
+            {t("extractedCount", { count: extractedEvents.length })}
+          </p>
         )}
 
         <div className="flex flex-col gap-3">
@@ -236,7 +245,7 @@ export function TimelineExtractionReview({ novelId, onClose }: TimelineExtractio
                       <button
                         type="button"
                         onClick={() => handleAccept(event)}
-                        disabled={createEventMutation.isPending}
+                        disabled={confirmMutation.isPending}
                         className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-green-300 text-green-700 hover:bg-green-50 transition-colors disabled:opacity-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950"
                       >
                         <Check className="w-3 h-3" />

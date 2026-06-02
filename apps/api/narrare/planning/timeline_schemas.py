@@ -9,8 +9,14 @@ from __future__ import annotations
 
 import uuid  # noqa: TC003 — needed at runtime for Pydantic model resolution
 from datetime import datetime  # noqa: TC003
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from narrare_core.agents.temporal_extraction_types import (
+        ExtractedTemporalExpression,
+    )
 
 
 class TimelineEventCreateRequest(BaseModel):
@@ -119,6 +125,39 @@ class ExtractionRequest(BaseModel):
     """Request to extract temporal expressions from chapters."""
 
     chapter_ids: list[uuid.UUID] = []  # If empty, extract from all chapters
+
+
+class ConfirmExtractionRequest(BaseModel):
+    """Request to confirm an extracted temporal expression as a timeline event."""
+
+    expression: str = ""
+    event_name: str = ""
+    timestamp_raw: str = ""
+    chapter_reference: str = ""
+    character_names: list[str] = []
+    location_name: str = ""
+    confidence: float = 0.0
+    context: str = ""
+
+    def to_extracted_expression(self) -> ExtractedTemporalExpression:
+        """Convert this request to an ExtractedTemporalExpression for service consumption.
+
+        Uses lazy import to avoid circular dependency on core types.
+        """
+        from narrare_core.agents.temporal_extraction_types import (
+            ExtractedTemporalExpression as _ExtractedTemporalExpression,
+        )
+
+        return _ExtractedTemporalExpression(
+            expression=self.expression,
+            event_name=self.event_name,
+            timestamp_raw=self.timestamp_raw,
+            chapter_reference=self.chapter_reference,
+            character_names=self.character_names,
+            location_name=self.location_name,
+            confidence=self.confidence,
+            context=self.context,
+        )
 
 
 # ---------------------------------------------------------------------------

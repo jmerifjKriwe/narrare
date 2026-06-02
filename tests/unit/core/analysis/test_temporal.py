@@ -2,26 +2,33 @@
 
 Covers:
 1. TemporalOrderingCheck — ordered events, missing order, duplicate order
-2. DurationImpossibilityCheck — placeholder (returns empty)
-3. DuplicateEventCheck — unique events, duplicate timestamp+chapter
-4. run_deterministic_checks — combines all checks
-5. Edge cases — empty events, single event
-6. TemporalIssueSeverity and TemporalIssue models
+2. DuplicateEventCheck — unique events, duplicate timestamp+chapter
+3. run_deterministic_checks — combines all checks
+4. Edge cases — empty events, single event
+5. TemporalIssueSeverity and TemporalIssue models
+6. Prompt file existence — temporal_consistency in all 3 locales
 
-Character age tests: tests/unit/core/analysis/test_character_age.py
+Moved to separate test files:
+- DurationImpossibilityCheck  → ``test_duration_check.py``
+- CharacterAgeCheck          → ``test_character_age.py``
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from narrare_core.analysis.temporal import (
     DuplicateEventCheck,
-    DurationImpossibilityCheck,
-    TemporalConsistencyResult,
-    TemporalIssue,
-    TemporalIssueSeverity,
     TemporalOrderingCheck,
     run_deterministic_checks,
 )
+from narrare_core.analysis.temporal_types import (
+    TemporalConsistencyResult,
+    TemporalIssue,
+    TemporalIssueSeverity,
+)
+
+PROMPTS_DIR = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
 
 # ---------------------------------------------------------------------------
 # A. TemporalOrderingCheck
@@ -38,7 +45,7 @@ class TestTemporalOrderingCheck:
             {"id": "2", "event_name": "Event B", "temporal_order": 2},
             {"id": "3", "event_name": "Event C", "temporal_order": 3},
         ]
-        issues = TemporalOrderingCheck.check(events)
+        issues = TemporalOrderingCheck.check(events)  # type: ignore[arg-type]
         # No ordering violations — only events without None temporal_order
         # Actually all have temporal_order, so no issues at all
         assert len(issues) == 0
@@ -50,7 +57,7 @@ class TestTemporalOrderingCheck:
             {"id": "2", "event_name": "Event B", "temporal_order": None},
             {"id": "3", "event_name": "Event C"},
         ]
-        issues = TemporalOrderingCheck.check(events)
+        issues = TemporalOrderingCheck.check(events)  # type: ignore[arg-type]
         info_issues = [i for i in issues if i.rule_id == "missing_temporal_order"]
         assert len(info_issues) == 1
         assert info_issues[0].severity == TemporalIssueSeverity.INFO
@@ -63,7 +70,7 @@ class TestTemporalOrderingCheck:
             {"id": "2", "event_name": "Event B", "temporal_order": 1},
             {"id": "3", "event_name": "Event C", "temporal_order": 2},
         ]
-        issues = TemporalOrderingCheck.check(events)
+        issues = TemporalOrderingCheck.check(events)  # type: ignore[arg-type]
         dup_issues = [i for i in issues if i.rule_id == "duplicate_temporal_order"]
         assert len(dup_issues) == 1
         assert dup_issues[0].severity == TemporalIssueSeverity.WARNING
@@ -79,7 +86,7 @@ class TestTemporalOrderingCheck:
         events = [
             {"id": "1", "event_name": "Only Event", "temporal_order": 1},
         ]
-        issues = TemporalOrderingCheck.check(events)
+        issues = TemporalOrderingCheck.check(events)  # type: ignore[arg-type]
         assert len(issues) == 0
 
     def test_all_events_missing_order(self) -> None:
@@ -88,37 +95,14 @@ class TestTemporalOrderingCheck:
             {"id": "1", "event_name": "Event A"},
             {"id": "2", "event_name": "Event B"},
         ]
-        issues = TemporalOrderingCheck.check(events)
+        issues = TemporalOrderingCheck.check(events)  # type: ignore[arg-type]
         info_issues = [i for i in issues if i.rule_id == "missing_temporal_order"]
         assert len(info_issues) == 1
         assert "2" in info_issues[0].description
 
 
 # ---------------------------------------------------------------------------
-# B. DurationImpossibilityCheck
-# ---------------------------------------------------------------------------
-
-
-class TestDurationImpossibilityCheck:
-    """DurationImpossibilityCheck is a placeholder (Phase 3)."""
-
-    def test_returns_empty_list(self) -> None:
-        """Placeholder check always returns empty list."""
-        events = [
-            {"id": "1", "event_name": "Event A", "timestamp_raw": "Day 1"},
-            {"id": "2", "event_name": "Event B", "timestamp_raw": "Day 2"},
-        ]
-        issues = DurationImpossibilityCheck.check(events)
-        assert issues == []
-
-    def test_empty_events_returns_empty(self) -> None:
-        """Empty events list returns empty list."""
-        issues = DurationImpossibilityCheck.check([])
-        assert issues == []
-
-
-# ---------------------------------------------------------------------------
-# C. DuplicateEventCheck
+# B. DuplicateEventCheck
 # ---------------------------------------------------------------------------
 
 
@@ -132,7 +116,7 @@ class TestDuplicateEventCheck:
             {"id": "2", "timestamp_raw": "Day 2", "chapter_reference": "Ch 1"},
             {"id": "3", "timestamp_raw": "Day 1", "chapter_reference": "Ch 2"},
         ]
-        issues = DuplicateEventCheck.check(events)
+        issues = DuplicateEventCheck.check(events)  # type: ignore[arg-type]
         assert len(issues) == 0
 
     def test_duplicate_timestamp_and_chapter_warning(self) -> None:
@@ -142,7 +126,7 @@ class TestDuplicateEventCheck:
             {"id": "2", "timestamp_raw": "that evening", "chapter_reference": "Chapter 5"},
             {"id": "3", "timestamp_raw": "the next day", "chapter_reference": "Chapter 5"},
         ]
-        issues = DuplicateEventCheck.check(events)
+        issues = DuplicateEventCheck.check(events)  # type: ignore[arg-type]
         dup_issues = [i for i in issues if i.rule_id == "duplicate_event"]
         assert len(dup_issues) == 1
         assert dup_issues[0].severity == TemporalIssueSeverity.WARNING
@@ -155,7 +139,7 @@ class TestDuplicateEventCheck:
             {"id": "1", "timestamp_raw": "that evening", "chapter_reference": "Chapter 1"},
             {"id": "2", "timestamp_raw": "that evening", "chapter_reference": "Chapter 5"},
         ]
-        issues = DuplicateEventCheck.check(events)
+        issues = DuplicateEventCheck.check(events)  # type: ignore[arg-type]
         assert len(issues) == 0
 
     def test_empty_events_no_issues(self) -> None:
@@ -171,13 +155,13 @@ class TestDuplicateEventCheck:
             {"id": "3", "timestamp_raw": "Day 5", "chapter_reference": "Ch 3"},
             {"id": "4", "timestamp_raw": "Day 5", "chapter_reference": "Ch 3"},
         ]
-        issues = DuplicateEventCheck.check(events)
+        issues = DuplicateEventCheck.check(events)  # type: ignore[arg-type]
         dup_issues = [i for i in issues if i.rule_id == "duplicate_event"]
         assert len(dup_issues) == 2
 
 
 # ---------------------------------------------------------------------------
-# D. run_deterministic_checks
+# C. run_deterministic_checks
 # ---------------------------------------------------------------------------
 
 
@@ -209,7 +193,7 @@ class TestRunDeterministicChecks:
                 "chapter_reference": "Ch 1",
             },
         ]
-        result = run_deterministic_checks(events)
+        result = run_deterministic_checks(events)  # type: ignore[arg-type]
         assert result.deterministic_pass is True
         assert len(result.issues) == 0
 
@@ -231,7 +215,7 @@ class TestRunDeterministicChecks:
                 "chapter_reference": "Ch 1",
             },
         ]
-        result = run_deterministic_checks(events)
+        result = run_deterministic_checks(events)  # type: ignore[arg-type]
         # Should have: 1 duplicate_temporal_order + 1 duplicate_event
         assert len(result.issues) >= 2
         rule_ids = {i.rule_id for i in result.issues}
@@ -256,7 +240,7 @@ class TestRunDeterministicChecks:
                 "chapter_reference": "Ch 1",
             },
         ]
-        result = run_deterministic_checks(events)
+        result = run_deterministic_checks(events)  # type: ignore[arg-type]
         # duplicate_temporal_order is a WARNING, not an ERROR
         assert result.deterministic_pass is True
         assert "warning" in result.overall_assessment.lower()
@@ -280,9 +264,7 @@ class TestRunDeterministicChecks:
 
 
 # ---------------------------------------------------------------------------
-# E. TemporalIssueSeverity and TemporalIssue models
-# ---------------------------------------------------------------------------
-# E. TemporalIssueSeverity and TemporalIssue models
+# D. TemporalIssueSeverity and TemporalIssue models
 # ---------------------------------------------------------------------------
 
 
@@ -324,3 +306,31 @@ class TestTemporalIssueModels:
         assert result.issues == []
         assert result.deterministic_pass is True
         assert result.overall_assessment == ""
+
+
+# ---------------------------------------------------------------------------
+# E. Prompt file existence — temporal_consistency
+# ---------------------------------------------------------------------------
+
+
+class TestTemporalConsistencyPromptExistence:
+    """temporal_consistency prompt files exist in all 3 locales."""
+
+    def _prompt_path(self, lang: str) -> Path:
+        return PROMPTS_DIR / "planning" / lang / "temporal_consistency" / "system.md"
+
+    def test_prompt_exists_en(self) -> None:
+        assert self._prompt_path("en").is_file()
+
+    def test_prompt_exists_de(self) -> None:
+        assert self._prompt_path("de").is_file()
+
+    def test_prompt_exists_fr(self) -> None:
+        assert self._prompt_path("fr").is_file()
+
+    def test_prompt_has_frontmatter(self) -> None:
+        for lang in ("en", "de", "fr"):
+            content = self._prompt_path(lang).read_text()
+            assert content.startswith("---"), f"{lang} prompt missing frontmatter"
+            assert "prompt_type: planning" in content, f"{lang} prompt missing prompt_type"
+            assert "prompt_language: " + lang in content, f"{lang} prompt has wrong language"

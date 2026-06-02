@@ -1,18 +1,22 @@
-"""Unit tests for timeline extraction methods in TimelineAnalysisService (PLAN-004 Phase 2).
+"""Unit tests for extract_temporal_expressions (REST variant).
 
-Tests extract_temporal_expressions with mocked TemporalExtractionAgent.
+Tests the REST endpoint of TimelineExtractionService which collects
+results from the internal stream.
 """
 
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from narrare.planning.timeline_analysis_service import TimelineAnalysisService
-from narrare_core.llm.model_config import ResolvedModelConfig
+from narrare.planning.timeline_schemas import ExtractedEventResponse
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
+
+if TYPE_CHECKING:
+    from narrare.planning.timeline_extraction_service import TimelineExtractionService
 
 
 def _make_novel(**overrides: object) -> MagicMock:
@@ -45,80 +49,12 @@ def _make_chapter(**overrides: object) -> MagicMock:
     return chapter
 
 
-@pytest.fixture
-def user_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
-def novel_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
-def mock_novel_repo() -> AsyncMock:
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_chapter_repo() -> AsyncMock:
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_event_repo() -> AsyncMock:
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_registry() -> AsyncMock:
-    return AsyncMock()
-
-
-@pytest.fixture
-def model_config() -> ResolvedModelConfig:
-    return ResolvedModelConfig(provider_name="test", model_id="test-model")
-
-
-@pytest.fixture
-def service_with_config(
-    mock_novel_repo: AsyncMock,
-    mock_chapter_repo: AsyncMock,
-    mock_registry: AsyncMock,
-    mock_event_repo: AsyncMock,
-    model_config: ResolvedModelConfig,
-) -> TimelineAnalysisService:
-    """Service with model config and event repo for extraction tests."""
-    return TimelineAnalysisService(
-        novel_repo=mock_novel_repo,
-        chapter_repo=mock_chapter_repo,
-        model_registry=mock_registry,
-        model_config=model_config,
-        event_repo=mock_event_repo,
-    )
-
-
-@pytest.fixture
-def service_no_config(
-    mock_novel_repo: AsyncMock,
-    mock_chapter_repo: AsyncMock,
-    mock_registry: AsyncMock,
-) -> TimelineAnalysisService:
-    """Service without model config — should raise ConfigurationError."""
-    return TimelineAnalysisService(
-        novel_repo=mock_novel_repo,
-        chapter_repo=mock_chapter_repo,
-        model_registry=mock_registry,
-        model_config=None,
-    )
-
-
 class TestExtractTemporalExpressions:
-    """Test extract_temporal_expressions method."""
+    """Test extract_temporal_expressions (REST variant — collects from stream)."""
 
     async def test_extract_with_all_chapters(
         self,
-        service_with_config: TimelineAnalysisService,
+        service_with_config: TimelineExtractionService,
         mock_novel_repo: AsyncMock,
         mock_chapter_repo: AsyncMock,
         mock_event_repo: AsyncMock,
@@ -132,11 +68,12 @@ class TestExtractTemporalExpressions:
             TemporalExtractionOutput,
         )
 
+        ch1_id = uuid.uuid4()
+
         novel = _make_novel(id=novel_id)
         mock_novel_repo.get_by_id.return_value = novel
         mock_chapter_repo.list_by_novel.return_value = [
-            _make_chapter(title="Ch 1", position=0, summary="First chapter"),
-            _make_chapter(title="Ch 2", position=1, summary="Second chapter"),
+            _make_chapter(id=ch1_id, title="Ch 1", position=0, summary="First chapter content"),
         ]
         mock_event_repo.list_by_novel.return_value = []
 
@@ -170,12 +107,13 @@ class TestExtractTemporalExpressions:
             result = await service_with_config.extract_temporal_expressions(novel_id, user_id)
 
         assert len(result) == 1
+        assert isinstance(result[0], ExtractedEventResponse)
         assert result[0].expression == "three days later"
         assert result[0].event_name == "Arrival"
 
     async def test_extract_with_specific_chapter_ids(
         self,
-        service_with_config: TimelineAnalysisService,
+        service_with_config: TimelineExtractionService,
         mock_novel_repo: AsyncMock,
         mock_chapter_repo: AsyncMock,
         mock_event_repo: AsyncMock,
@@ -200,7 +138,8 @@ class TestExtractTemporalExpressions:
         ]
         mock_event_repo.list_by_novel.return_value = []
 
-        fake_output = TemporalExtractionOutput(
+        # Only chapter 1 has results
+        output_ch1 = TemporalExtractionOutput(
             extracted=[
                 ExtractedTemporalExpression(
                     expression="that evening",
@@ -212,12 +151,71 @@ class TestExtractTemporalExpressions:
                 ),
             ],
         )
+        output_ch2 = TemporalExtractionOutput(extracted=[])
 
         mock_model = AsyncMock(spec=[])
         mock_registry.get_model.return_value = mock_model
 
         mock_agent_instance = AsyncMock()
-        mock_agent_instance.run.return_value = fake_output
+        # First call returns ch1 result, second call returns empty
+        mock_agent_instance.run.side_effect = [output_ch1, output_ch2]
+
+        with patch(
+            "narrare_core.agents.temporal_extraction_agent.TemporalExtractionAgent",
+            return_value=mock_agent_instance,
+        ):
+            result = await service_with_config.extract_temporal_expressions(
+                novel_id, user_id, chapter_ids=[ch1_id, ch2_id]
+            )
+
+        assert len(result) == 1
+        assert result[0].event_name == "Dinner"
+
+    async def test_extract_with_chapter_filter(
+        self,
+        service_with_config: TimelineExtractionService,
+        mock_novel_repo: AsyncMock,
+        mock_chapter_repo: AsyncMock,
+        mock_event_repo: AsyncMock,
+        mock_registry: AsyncMock,
+        user_id: uuid.UUID,
+        novel_id: uuid.UUID,
+    ) -> None:
+        """Only requested chapter IDs are processed."""
+        from narrare_core.agents.temporal_extraction_types import (
+            ExtractedTemporalExpression,
+            TemporalExtractionOutput,
+        )
+
+        ch1_id = uuid.uuid4()
+        ch2_id = uuid.uuid4()
+
+        novel = _make_novel(id=novel_id)
+        mock_novel_repo.get_by_id.return_value = novel
+        mock_chapter_repo.list_by_novel.return_value = [
+            _make_chapter(id=ch1_id, title="Ch 1", position=0, summary="First"),
+            _make_chapter(id=ch2_id, title="Ch 2", position=1, summary="Second"),
+        ]
+        mock_event_repo.list_by_novel.return_value = []
+
+        output_ch1 = TemporalExtractionOutput(
+            extracted=[
+                ExtractedTemporalExpression(
+                    expression="that evening",
+                    event_name="Dinner",
+                    timestamp_raw="Evening",
+                    chapter_reference="Ch 1",
+                    confidence=0.8,
+                    context="Dinner context.",
+                ),
+            ],
+        )
+
+        mock_model = AsyncMock(spec=[])
+        mock_registry.get_model.return_value = mock_model
+
+        mock_agent_instance = AsyncMock()
+        mock_agent_instance.run.return_value = output_ch1
 
         with patch(
             "narrare_core.agents.temporal_extraction_agent.TemporalExtractionAgent",
@@ -232,7 +230,7 @@ class TestExtractTemporalExpressions:
 
     async def test_extract_novel_not_found(
         self,
-        service_with_config: TimelineAnalysisService,
+        service_with_config: TimelineExtractionService,
         mock_novel_repo: AsyncMock,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
@@ -245,7 +243,7 @@ class TestExtractTemporalExpressions:
 
     async def test_extract_no_provider_raises_config_error(
         self,
-        service_no_config: TimelineAnalysisService,
+        service_no_config: TimelineExtractionService,
         mock_novel_repo: AsyncMock,
         user_id: uuid.UUID,
         novel_id: uuid.UUID,
@@ -258,7 +256,7 @@ class TestExtractTemporalExpressions:
 
     async def test_extract_passes_existing_event_names(
         self,
-        service_with_config: TimelineAnalysisService,
+        service_with_config: TimelineExtractionService,
         mock_novel_repo: AsyncMock,
         mock_chapter_repo: AsyncMock,
         mock_event_repo: AsyncMock,
@@ -269,10 +267,12 @@ class TestExtractTemporalExpressions:
         """Existing event names should be passed to the agent deps."""
         from narrare_core.agents.temporal_extraction_types import TemporalExtractionOutput
 
+        ch1_id = uuid.uuid4()
+
         novel = _make_novel(id=novel_id)
         mock_novel_repo.get_by_id.return_value = novel
         mock_chapter_repo.list_by_novel.return_value = [
-            _make_chapter(title="Ch 1", position=0, summary="Content"),
+            _make_chapter(id=ch1_id, title="Ch 1", position=0, summary="Content"),
         ]
 
         existing_event = MagicMock(spec=["event_name"])

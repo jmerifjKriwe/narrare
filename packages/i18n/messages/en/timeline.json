@@ -67,6 +67,7 @@
   "extractButton": "Extract",
   "extracting": "Extracting temporal expressions...",
   "noExtractions": "No temporal expressions found in the selected chapters.",
+  "extractedCount": "{count} temporal expression(s) extracted",
   "accept": "Accept",
   "reject": "Reject",
   "accepted": "Accepted",

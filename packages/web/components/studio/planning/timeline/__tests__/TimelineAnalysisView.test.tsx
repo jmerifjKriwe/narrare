@@ -21,6 +21,48 @@ vi.mock("@/lib/hooks/useTimeline", () => ({
     error: mockError,
     refetch: mockRefetch,
   }),
+  useTimelineEvents: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
+  useCreateTimelineEvent: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateTimelineEvent: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteTimelineEvent: () => ({ mutate: vi.fn(), isPending: false }),
+  useSSEExtraction: () => ({
+    isExtracting: false,
+    extractedEvents: [],
+    extractError: null,
+    startExtraction: vi.fn(),
+    reset: vi.fn(),
+  }),
+  useConfirmExtractedEvent: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useTimelineExtraction: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    data: undefined,
+    reset: vi.fn(),
+  }),
+  useTimelineConsistency: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useTimelineEvent: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
+  useCharacterAges: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 describe("TimelineAnalysisView", () => {

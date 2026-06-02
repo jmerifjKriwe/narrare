@@ -845,7 +845,7 @@
           "timeline"
         ],
         "summary": "Extract Temporal Expressions",
-        "description": "Extract temporal expressions from chapter content.",
+        "description": "Extract temporal expressions from chapters via SSE streaming.\n\nReturns a Server-Sent Events stream where each event is a JSON\nobject representing an extracted temporal expression. The stream\nends with a ``[DONE]`` event. Errors during streaming are\ncommunicated in-band as JSON error events (SSE does not support\nmid-stream status code changes).",
         "operationId": "extract_temporal_expressions_api_v1_planning_timeline__novel_id__extract_post",
         "security": [
           {
@@ -879,12 +879,66 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ExtractedEventResponse"
-                  },
-                  "title": "Response Extract Temporal Expressions Api V1 Planning Timeline  Novel Id  Extract Post"
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planning/timeline/{novel_id}/extract/confirm": {
+      "post": {
+        "tags": [
+          "planning",
+          "timeline"
+        ],
+        "summary": "Confirm Extracted Event",
+        "description": "Confirm an extracted expression and persist it as a timeline event.",
+        "operationId": "confirm_extracted_event_api_v1_planning_timeline__novel_id__extract_confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmExtractionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineEventCRUDResponse"
                 }
               }
             }
@@ -10009,6 +10063,56 @@
         "title": "CompleteSetupResponse",
         "description": "Returned after successful setup completion."
       },
+      "ConfirmExtractionRequest": {
+        "properties": {
+          "expression": {
+            "type": "string",
+            "title": "Expression",
+            "default": ""
+          },
+          "event_name": {
+            "type": "string",
+            "title": "Event Name",
+            "default": ""
+          },
+          "timestamp_raw": {
+            "type": "string",
+            "title": "Timestamp Raw",
+            "default": ""
+          },
+          "chapter_reference": {
+            "type": "string",
+            "title": "Chapter Reference",
+            "default": ""
+          },
+          "character_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Character Names",
+            "default": []
+          },
+          "location_name": {
+            "type": "string",
+            "title": "Location Name",
+            "default": ""
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "default": 0.0
+          },
+          "context": {
+            "type": "string",
+            "title": "Context",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ConfirmExtractionRequest",
+        "description": "Request to confirm an extracted temporal expression as a timeline event."
+      },
       "ConnectionSuggestion": {
         "properties": {
           "finding_index": {
@@ -10760,63 +10864,6 @@
         ],
         "title": "ExtendRequest",
         "description": "Request for chapter extension — insert AI text at cursor position.\n\nThe frontend splits the document at the cursor and sends the text\nsegments.  The backend never receives a numeric offset (design.md D3)."
-      },
-      "ExtractedEventResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "expression": {
-            "type": "string",
-            "title": "Expression"
-          },
-          "event_name": {
-            "type": "string",
-            "title": "Event Name"
-          },
-          "timestamp_raw": {
-            "type": "string",
-            "title": "Timestamp Raw"
-          },
-          "chapter_reference": {
-            "type": "string",
-            "title": "Chapter Reference"
-          },
-          "character_names": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Character Names"
-          },
-          "location_name": {
-            "type": "string",
-            "title": "Location Name"
-          },
-          "confidence": {
-            "type": "number",
-            "title": "Confidence"
-          },
-          "context": {
-            "type": "string",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "expression",
-          "event_name",
-          "timestamp_raw",
-          "chapter_reference",
-          "character_names",
-          "location_name",
-          "confidence",
-          "context"
-        ],
-        "title": "ExtractedEventResponse",
-        "description": "A single extracted temporal expression, pending user review."
       },
       "ExtractionRequest": {
         "properties": {

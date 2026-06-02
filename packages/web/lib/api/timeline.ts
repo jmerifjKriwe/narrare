@@ -17,6 +17,7 @@ import type {
   TimelineFilters,
 } from "@/types/timeline";
 import { fetchApi } from "./client";
+import { connectSSE } from "./streaming";
 
 // --- Query parameter builder ---
 
@@ -87,6 +88,8 @@ export const timelineApi = {
   /**
    * Extract temporal expressions from selected chapters.
    * POST /planning/timeline/{novelId}/extract
+   *
+   * @deprecated Use extractExpressionsSSE for progressive SSE streaming extraction.
    */
   extractExpressions: (novelId: string, chapterIds: string[]) =>
     fetchApi<ExtractedEvent[]>(`/planning/timeline/${novelId}/extract`, {
@@ -108,3 +111,60 @@ export const timelineApi = {
   getCharacterAges: (novelId: string) =>
     fetchApi<CharacterAgeReport>(`/planning/timeline/${novelId}/character-ages`),
 };
+
+// --- SSE Extraction & Confirm (Phase 2 — PLAN-004) ---
+
+/**
+ * Extract temporal expressions from chapters via SSE streaming.
+ * Events arrive progressively via onChunk callback as the backend processes them.
+ *
+ * POST /planning/timeline/{novelId}/extract (SSE)
+ *
+ * Stream format:
+ *   data: <ExtractedEvent JSON>\n\n
+ *   data: [DONE]\n\n
+ */
+export function extractExpressionsSSE(
+  novelId: string,
+  chapterIds: string[],
+  callbacks: {
+    onEvent: (event: ExtractedEvent) => void;
+    onComplete: () => void;
+    onError: (error: Error) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  return connectSSE<ExtractedEvent>({
+    url: `/planning/timeline/${novelId}/extract`,
+    body: { chapter_ids: chapterIds },
+    onChunk: callbacks.onEvent,
+    onComplete: () => callbacks.onComplete(),
+    onError: callbacks.onError,
+    signal,
+  });
+}
+
+/**
+ * Confirm an extracted temporal expression and persist it as a timeline event.
+ * Preserves source='extracted', confidence, and is_confirmed metadata.
+ *
+ * POST /planning/timeline/{novelId}/extract/confirm
+ */
+export function confirmExtractedEvent(
+  novelId: string,
+  extracted: ExtractedEvent,
+): Promise<TimelineEvent> {
+  return fetchApi<TimelineEvent>(`/planning/timeline/${novelId}/extract/confirm`, {
+    method: "POST",
+    body: JSON.stringify({
+      expression: extracted.expression,
+      event_name: extracted.event_name,
+      timestamp_raw: extracted.timestamp_raw,
+      chapter_reference: extracted.chapter_reference,
+      character_names: extracted.character_names,
+      location_name: extracted.location_name,
+      confidence: extracted.confidence,
+      context: extracted.context,
+    }),
+  });
+}

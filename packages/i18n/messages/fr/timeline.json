@@ -67,6 +67,7 @@
   "extractButton": "Extraire",
   "extracting": "Extraction des expressions temporelles…",
   "noExtractions": "Aucune expression temporelle trouvée dans les chapitres sélectionnés.",
+  "extractedCount": "{count} expression(s) temporelle(s) extraite(s)",
   "accept": "Accepter",
   "reject": "Rejeter",
   "accepted": "Accepté",

@@ -1,6 +1,6 @@
 """Timeline CRUD service — create, read, update, delete timeline events.
 
-Implements ``TimelineEventServiceProtocol`` from contracts.py.
+Implements ``TimelineEventServiceProtocol`` from timeline_contracts.py.
 Uses ``TimelineEventRepository`` for all DB queries and
 ``NovelRepository`` for ownership verification.
 

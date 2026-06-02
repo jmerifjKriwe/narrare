@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.planning._prompt_loader import load_temporal_consistency_prompt
 from narrare.planning.timeline_schemas import (
     CharacterAgeReport,
     TemporalConsistencyResponse,
@@ -167,7 +168,11 @@ class TimelineConsistencyService:
 
         The core analysis functions expect plain dicts with specific keys:
         id, event_name, temporal_order, causes, consequences,
-        timestamp_raw, chapter_reference, character_refs.
+        timestamp_raw, chapter_reference, character_refs,
+        location_ref, event_type.
+
+        ``location_ref`` comes from JSONB (dict or None).
+        ``event_type`` is a plain string field from the model.
         """
         result: list[dict[str, object]] = []
         for event in events:
@@ -182,6 +187,8 @@ class TimelineConsistencyService:
                     "timestamp_normalized": event.timestamp_normalized,
                     "chapter_reference": str(event.chapter_id) if event.chapter_id else "",
                     "character_refs": event.character_refs or [],
+                    "location_ref": event.location_ref or None,
+                    "event_type": event.event_type,
                 }
             )
         return result
@@ -207,6 +214,10 @@ class TimelineConsistencyService:
     ) -> list[TemporalIssueResponse]:
         """Run LLM-based consistency checks via TimelineAgent.
 
+        Loads the system prompt from the bundled prompt registry (RULE-02)
+        in the novel's writing language. Falls back to English when the
+        language-specific prompt is not available.
+
         Returns an empty list when LLM is not configured or when no
         events exist to check. LLM checks are supplementary — they
         find contextual issues that deterministic rules cannot detect.
@@ -223,26 +234,33 @@ class TimelineConsistencyService:
 
             model = await self._registry.get_model(self._config)
 
-            # Build a compact event context for the LLM
+            # Build a compact event context for the LLM (user prompt — data-driven)
             event_context = "\n".join(
                 f"- {e.event_name} (order: {e.temporal_order}, timestamp: {e.timestamp_raw})"
                 for e in events[:50]  # Limit context size
             )
 
+            novel_title = getattr(novel, "title", "Unknown")
+            genre = getattr(novel, "genre", "") or ""
+            language = getattr(novel, "writing_language", "") or "en"
+
+            # Load bundled prompt via importlib.resources (RULE-02 compliance)
+            system_prompt_text = load_temporal_consistency_prompt(
+                language=language,
+                novel_title=novel_title,
+                genre=genre,
+                language_code=language,
+            )
+
             deps = TimelineDeps(
-                genre=getattr(novel, "genre", "") or "",
-                language=getattr(novel, "writing_language", "") or "en",
+                genre=genre,
+                language=language,
             )
 
             agent = TimelineAgent(model=model)
             result = await agent.run(
-                prompt=(
-                    f"Check the temporal consistency of these events for "
-                    f"'{getattr(novel, 'title', 'Unknown')}':\n\n"
-                    f"{event_context}\n\n"
-                    f"Identify any temporal inconsistencies, causal chain "
-                    f"problems, or genre-inappropriate timelines."
-                ),
+                prompt=event_context,
+                system_prompt=system_prompt_text,
                 deps=deps,
             )
 

@@ -16,6 +16,7 @@ from narrare._app.dependencies import get_model_registry, get_model_routing_reso
 from narrare.chapters.repository import ChapterRepository
 from narrare.novels.repository import NovelRepository
 from narrare.planning.timeline_analysis_service import TimelineAnalysisService
+from narrare.planning.timeline_repository import TimelineEventRepository
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -78,6 +79,7 @@ async def get_timeline_analysis_service(
         chapter_repo=ChapterRepository(session),
         model_registry=registry,
         model_config=model_config,
+        event_repo=TimelineEventRepository(session),
         api_key=api_key,
         base_url=base_url,
     )

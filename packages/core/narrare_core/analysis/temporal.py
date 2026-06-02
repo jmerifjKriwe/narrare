@@ -4,61 +4,28 @@ Pure functions for detecting temporal inconsistencies in timeline data.
 No I/O, no DB access — fully testable in isolation.
 
 Follows ADR-021: deterministic analysis where possible, LLM where not.
+
+.. note::
+
+   * ``DurationImpossibilityCheck`` → :mod:`narrare_core.analysis.duration_check`
+   * ``CharacterAgeCheck`` → :mod:`narrare_core.analysis.age_check`
+   * Shared types (``TemporalIssue``, …) → :mod:`narrare_core.analysis.temporal_types`
 """
 
 from __future__ import annotations
 
-from enum import StrEnum
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-from pydantic import BaseModel
-
-
-class TemporalIssueSeverity(StrEnum):
-    """Severity level for temporal consistency issues."""
-
-    ERROR = "error"  # Definite inconsistency
-    WARNING = "warning"  # Likely inconsistency
-    INFO = "info"  # Possible concern
-
-
-class TemporalIssue(BaseModel):
-    """A single temporal consistency issue.
-
-    Attributes:
-        severity: How serious this issue is.
-        rule_id: Identifier for the check that found this issue
-            (e.g., ``"ordering_violation"``, ``"duplicate_event"``).
-        event_ids: UUIDs of affected events.
-        description: Human-readable explanation of the issue.
-        suggestion: How to fix the issue.
-        source: Whether this was found by deterministic rules or LLM.
-    """
-
-    severity: TemporalIssueSeverity
-    rule_id: str
-    event_ids: list[str] = []
-    description: str = ""
-    suggestion: str = ""
-    source: str = "deterministic"
-
-
-class TemporalConsistencyResult(BaseModel):
-    """Result of deterministic temporal consistency checks.
-
-    Attributes:
-        issues: All issues found by the checks.
-        deterministic_pass: Whether all deterministic checks passed
-            (no errors).
-        overall_assessment: Human-readable summary of the check results.
-    """
-
-    issues: list[TemporalIssue] = []
-    deterministic_pass: bool = True
-    overall_assessment: str = ""
+from narrare_core.analysis.age_check import CharacterAgeCheck
+from narrare_core.analysis.duration_check import DurationImpossibilityCheck
+from narrare_core.analysis.temporal_types import (
+    TemporalConsistencyResult,
+    TemporalIssue,
+    TemporalIssueSeverity,
+)
 
 
 class TemporalOrderingCheck:
@@ -69,7 +36,7 @@ class TemporalOrderingCheck:
     """
 
     @staticmethod
-    def check(events: list[dict[str, Any]]) -> list[TemporalIssue]:
+    def check(events: list[dict[str, object]]) -> list[TemporalIssue]:
         """Check for temporal ordering violations.
 
         Args:
@@ -123,29 +90,6 @@ class TemporalOrderingCheck:
         return issues
 
 
-class DurationImpossibilityCheck:
-    """Detect impossible durations between events.
-
-    Currently a placeholder for future rule-based duration checks.
-    Requires normalized timestamps to perform calculations.
-    """
-
-    @staticmethod
-    def check(events: list[dict[str, Any]]) -> list[TemporalIssue]:
-        """Check for duration impossibilities.
-
-        Args:
-            events: List of event dicts with keys: id, event_name,
-                    timestamp_raw, timestamp_normalized.
-
-        Returns:
-            List of duration impossibility issues.
-        """
-        # Placeholder — duration checks require timestamp normalization
-        # which will be added in Phase 3 with character age tracking
-        return []
-
-
 class DuplicateEventCheck:
     """Detect likely duplicate events.
 
@@ -154,7 +98,7 @@ class DuplicateEventCheck:
     """
 
     @staticmethod
-    def check(events: list[dict[str, Any]]) -> list[TemporalIssue]:
+    def check(events: list[dict[str, object]]) -> list[TemporalIssue]:
         """Check for duplicate events.
 
         Args:
@@ -192,61 +136,8 @@ class DuplicateEventCheck:
         return issues
 
 
-class CharacterAgeCheck:
-    """Detect age inconsistencies at event points.
-
-    Checks if character ages are plausible at each timeline event
-    based on birth_date in character metadata.
-    """
-
-    @staticmethod
-    def check(
-        events: list[dict[str, Any]],
-        character_ages: Mapping[str, str | None],
-    ) -> list[TemporalIssue]:
-        """Check for age inconsistencies.
-
-        Args:
-            events: List of event dicts with character_refs and timestamp_raw.
-            character_ages: Map of character name to age string (or None if
-                no birth_date).
-
-        Returns:
-            List of age inconsistency issues.
-        """
-        characters_without_age: set[str] = set()
-
-        for event in events:
-            raw_refs = event.get("character_refs", [])
-            refs = cast("list[dict[str, Any]]", raw_refs) if isinstance(raw_refs, list) else []
-            for ref in refs:
-                name = str(ref.get("name", ""))
-                if name and name not in character_ages:
-                    characters_without_age.add(name)
-
-        if not characters_without_age:
-            return []
-
-        return [
-            TemporalIssue(
-                severity=TemporalIssueSeverity.INFO,
-                rule_id="character_missing_birth_date",
-                event_ids=[],
-                description=(
-                    f"{len(characters_without_age)} character(s) referenced in "
-                    f"events have no birth date: "
-                    f"{', '.join(sorted(characters_without_age))}."
-                ),
-                suggestion=(
-                    "Add birth_date to character metadata in the "
-                    "Knowledge Base for age consistency checking."
-                ),
-            )
-        ]
-
-
 def run_deterministic_checks(
-    events: list[dict[str, Any]],
+    events: list[dict[str, object]],
     character_ages: Mapping[str, str | None] | None = None,
 ) -> TemporalConsistencyResult:
     """Run all deterministic temporal consistency checks.
