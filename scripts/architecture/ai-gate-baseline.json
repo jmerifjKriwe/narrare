@@ -141,13 +141,7 @@
     "packages/web/lib/stores/editorStore.ts | store | 150"
   ],
   "streaming_compliance_gaps": [
-    "chat/router has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/chat/router.py",
     "kb/router_sessions_sse has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/kb/router_sessions_sse.py",
-    "planning/router_timeline_analysis has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/planning/router_timeline_analysis.py",
-    "writing/router uses apiClient call instead of connectSSE | → packages/web/lib/api/generation.ts:473 | → Backend SSE: apps/api/narrare/writing/router.py",
-    "writing/router_coauthor has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/writing/router_coauthor.py",
-    "writing/router_extend has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/writing/router_extend.py",
-    "writing/router_rewrite has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/writing/router_rewrite.py",
-    "writing/router_suggest has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/writing/router_suggest.py"
+    "planning/router_timeline_analysis has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/planning/router_timeline_analysis.py"
   ]
 }

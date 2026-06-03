@@ -41,12 +41,12 @@
 | ADR-021 | Deterministic Analysis Strategy (spaCy + tiered hybrid) | ✅ | 2026-05-27 | `core/nlp/`, `core/analysis/`, ANAL-001–011, CONS-001/002, STATS-001/002 |
 | ADR-022 | LLM Wiki — Precomputed Context Layer | ✅ | 2026-05-29 | `core/wiki/`, `apps/api/wiki/`, WIKI-001, INFRA-003 |
 | ADR-023 | Co-Author Change Engine | ✅ | 2026-05-29 | `core/writing/`, `apps/api/narrare/writing/`, `packages/web/`, WRITE-006 |
-| ADR-024 | Free-Form Chat for Writing Craft | 🔄 | 2026-05-30 | `core/prompts/`, `core/llm/`, `apps/api/narrare/chat/`, `packages/web/`, FIND-019 |
+| ADR-024 | Free-Form Chat for Writing Craft | 🔄 | 2026-05-30 | `core/prompts/`, `core/llm/`, `apps/api/narrare/chat/`, `packages/web/`, FIND-019, CR-AUFG-02-03 |
 | ADR-025 | Feature Adoption Infrastructure (registry, context variables, assembler centralization, inline policy, adoption score) | 🔄 | 2026-05-31 | `scripts/architecture/`, `core/context/`, CR-03 |
 | ADR-026 | Capability-Based Prompt Injection Pattern | ✅ | 2026-06-01 | `core/agents/capabilities/`, `core/prompts/`, RULE-02 |
 | ADR-027 | AI Feature Stabilization Gates | ✅ | 2026-06-02 | `core/prompts/`, `packages/web/lib/api/streaming.ts`, quality gates |
 | ADR-028 | Architecture Exception Register: Single Source of Truth | ✅ | 2026-06-03 | `pyproject.toml`, `CONSTRAINTS.md §7`, `scripts/architecture/` |
-| ADR-029 | VM-First Setup Contract and Optional DevContainer Cleanup | 🔄 | 2026-06-03 | `.devcontainer/`, `justfile`, `.github/workflows/`, Docker/Compose |
+| ADR-029 | VM-First Setup Contract and Optional DevContainer Cleanup | ✅ | 2026-06-03 | `.devcontainer/`, `justfile`, `.github/workflows/`, Docker/Compose, release docs |
 
 ## Creating a New ADR
 

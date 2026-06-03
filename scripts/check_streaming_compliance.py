@@ -170,6 +170,31 @@ def _extract_url_patterns(source: str, filepath: Path) -> list[FrontendConsumer]
                         url_fragment=url,
                     )
                 )
+
+    # connectSSE url-parameter detection.
+    # connectSSE() always prepends /api/v1 to the url argument internally
+    # (see streaming.ts: fetch(`/api/v1${url}`)), so the source file only
+    # contains the short form (e.g. "/chat" or `/writing/chapters/${id}/...`).
+    # Extract these url: properties and construct the full route.
+    # Skip lines already covered by the generic patterns above to avoid
+    # duplicate PASS entries in the report.
+    if uses_sse:
+        covered_lines = {c.line for c in consumers}
+        for i, line in enumerate(source.split("\n")):
+            lineno = i + 1
+            if lineno in covered_lines:
+                continue
+            m = re.search(r'\burl:\s*[`"\'](/[^`"\']+)[`"\']', line)
+            if m:
+                consumers.append(
+                    FrontendConsumer(
+                        file=filepath,
+                        line=lineno,
+                        uses_sse=True,
+                        url_fragment=f"/api/v1{m.group(1)}",
+                    )
+                )
+
     return consumers
 
 
