@@ -36,12 +36,13 @@
 | [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | ✅ | ❌ |
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
 | [INFRA-010](infra/INFRA-010-prompting-locally.md) | Prompting Locally | ✅ | ❌ |
-| [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | 🔨 | ❌ |
+| [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | ✅ | ❌ |
 
-> **AI feature freeze:** New AI-feature implementation is paused until
-> INFRA-011 Core, Frontend, Platform, and Docs/Governance gates pass and the
-> freeze-lift review in ADR-027 is completed. Stabilization and bug-fix work
-> remain allowed.
+> **AI feature freeze lifted:** INFRA-011 gates passed and the ADR-027 freeze-lift
+> review completed on 2026-06-03. New AI-feature work may resume under ratcheted
+> governance: no new prompt/adoption warning growth, unapproved architecture
+> exceptions, frontend file-size violations, REST-only AI streaming paths, or
+> workaround implementations.
 
 ### Setup & Onboarding
 | ID | Feature | Status | MVP |
@@ -246,5 +247,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-03 — INFRA-011 stabilization ordering and AI feature freeze documented.
+> Last updated: 2026-06-03 — INFRA-011 marked stable; AI feature freeze lifted with ratcheted governance retained.
 > Features are specified before they are implemented — never after

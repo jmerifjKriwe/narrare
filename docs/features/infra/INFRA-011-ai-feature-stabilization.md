@@ -3,7 +3,7 @@
 ---
 id: INFRA-011
 title: "AI Feature Stabilization Program"
-status: in-progress
+status: stable
 area: infra
 mvp: false
 
@@ -11,9 +11,9 @@ ui_tooltip: "Stabilizes prompts, AI streaming, privacy, and architecture gates."
 ui_help_short: |
   Stabilizes Narrare's existing AI features before new AI capabilities are added.
 ui_help_long: |
-  This infrastructure program closes prompt-quality gaps, centralizes frontend SSE
-  handling, makes local AI-session persistence privacy-safe, harmonizes agent
-  documentation, and turns warning-only checks into explicit quality gates.
+  This infrastructure program closed prompt-quality gaps, centralized frontend SSE
+  handling, made local AI-session persistence privacy-safe, harmonized agent
+  documentation, and turned warning-only checks into explicit quality gates.
 ui_available_in: []
 
 service: scripts/architecture/check_adoption.py
@@ -61,7 +61,7 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 ### Decision Summary
 
-1. **AI Feature Freeze:** no new AI feature implementation starts until this spec's stabilization gates pass. Bug fixes and stabilization work remain allowed.
+1. **AI Feature Freeze:** lifted on 2026-06-03 after the freeze-lift review. New AI feature work may resume under ratcheted governance.
 2. **Prompt Gate Ratchet:** current WARN gaps are classified, baselined, then reduced monotonically. New WARNs are failures; classified legacy WARNs must have owners and target gates.
 3. **SSE Transport Contract:** frontend AI streaming uses one shared transport/parser abstraction; feature-specific modules only define request/response accumulation.
 4. **Documentation Source Governance:** `docs/_shared/CONSTRAINTS.md` and ADRs are authoritative. AGENTS/context files may summarize but must not weaken RULE-02/RULE-02a.
@@ -210,12 +210,27 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 ## Definition of Done
 
+### Freeze-Lift Review Result (2026-06-03)
+
+**Decision:** Full lift of the AI Feature Freeze.
+
+**Evidence:**
+
+- AUFG-02-01 backend unit failures resolved: `7 → 0`.
+- AUFG-02-03 frontend test speed stabilized under 120s: `112.43s`, `115.04s`, `111.95s`; all 186 frontend test files / 1,683 tests pass.
+- AUFG-03-01 prompt warnings reduced: `79 → 35`; governance baselines synced.
+- AUFG-03-02 KB adoption raised: `0.78 → 0.90 PASS`.
+- Frontend RULE-04 debt reduced from 53 to 38 violations; baseline synced at 38 with 0 new violations.
+- System Health remains `0.73 DEGRADED` due score-floor/baseline debt, but this is non-blocking for freeze status. `CRITICAL` remains blocking.
+
+**Post-freeze governance retained:** no growth in prompt/adoption warnings, architecture exceptions, frontend file-size violations, REST-only frontend paths for SSE-capable AI backend paths, or workaround implementations.
+
 ### Current Implementation Evidence (2026-06-03)
 
 - **Platform:** Ratchet/no-growth/frontend-size/streaming-compliance gates implemented; focused validation passed (37 tests).
 - **Core:** Meta/Universal/Lite prompt regressions fixed; KB adoption is PASS (`0.85`), overall adoption `0.90`; `check_prompt_structure.py` passes with classified legacy WARN debt and ratchet evidence (`0` new / `21` resolved).
 - **Frontend:** Shared `connectSSE` supports GET/POST with normalized errors; Generation/Rewrite/Extend/CoAuthor streams use shared transport; `generation.ts` split via `generation-streams.ts`; KB Interview Resume has 24h TTL, opt-out, privacy notice, and en/de/fr parity; focused Vitest passed (57 tests).
-- **Docs/Governance:** Current slice harmonizes AGENTS/context docs, MCP/A2A planned-scope wording, roadmap freeze language, and gate-command documentation before freeze-lift review.
+- **Docs/Governance:** AGENTS/context docs, MCP/A2A planned-scope wording, roadmap freeze language, and gate-command documentation are harmonized. Freeze-lift documentation records post-freeze governance.
 
 ### Program Gate
 
@@ -239,9 +254,9 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 ### Docs Gate
 
-- [ ] Agent instruction sources do not contradict RULE-02/RULE-02a.
-- [ ] MCP/A2A scope is documented as planned and blocked by Q-001/Q-002 decisions.
-- [ ] Feature/roadmap docs reflect AI feature freeze until stabilization passes.
+- [x] Agent instruction sources do not contradict RULE-02/RULE-02a.
+- [x] MCP/A2A scope is documented as planned and blocked by Q-001/Q-002 decisions.
+- [x] Feature/roadmap docs reflect that the AI feature freeze is lifted and ratcheted governance remains active.
 
 ### Platform Gate
 
@@ -257,7 +272,7 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 | Legacy prompt warnings hide different severities | Cleanup order may be wrong | Classify warnings into MUST-fail, SHOULD-ratchet, and documented exception before content edits. |
 | SSE migration changes event semantics | User-facing AI streams regress | Migrate by feature wrapper with tests for event ordering, abort, errors, and partial output. |
 | Docs drift returns after one-time cleanup | Future agents receive weaker rules | Add doc-drift/no-weaker-rule gate and source hierarchy. |
-| AI feature freeze blocks planned roadmap items | ANAL-005 and new AI ideas wait | This is intentional RULE-20 compliance; stabilization is the prerequisite for sustainable AI expansion. |
+| Post-freeze governance blocks regressions | New work that adds prompt/adoption warnings, file-size violations, REST-only AI streaming, or unapproved exceptions cannot proceed | Intentional ratchet: legacy debt may shrink only; new AI feature work must meet stabilized gates. |
 
 ## Handoff Order
 

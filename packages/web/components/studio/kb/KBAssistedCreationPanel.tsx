@@ -13,31 +13,14 @@
  * interaction logic delegated to sub-components.
  */
 
-import { Sparkles, Trash2 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { KBEntityType } from "@/lib/api/kb";
-import type { KBEnhancementResult, KBInterviewResult } from "@/lib/api/kb-sessions";
-import {
-  clearPendingInterview,
-  isInterviewResumePersistenceDisabled,
-  savePendingInterview,
-  setInterviewResumePersistenceDisabled,
-} from "@/lib/hooks/use-kb-interview-resume";
-import {
-  useAbandonKBSession,
-  useAnswerField,
-  useCompleteKBSession,
-  useCreateKBSession,
-  useKBSession,
-  useKBSessionEnhance,
-  useKBSessionInterview,
-  useKBSessionSuggest,
-} from "@/lib/hooks/useKBSessions";
 import { TYPE_ICONS } from "./constants";
+import { useKBAssistedCreationController } from "./KBAssistedCreationController";
 import { KBAssistedCreationFooter } from "./KBAssistedCreationFooter";
+import { KBAssistedCreationHeader } from "./KBAssistedCreationHeader";
 import { KBEnhanceReview } from "./KBEnhanceReview";
 import { KBInterviewView } from "./KBInterviewView";
 import { KBSessionFieldList } from "./KBSessionFieldList";
@@ -61,198 +44,20 @@ export function KBAssistedCreationPanel({
   resumeSessionId,
 }: KBAssistedCreationPanelProps) {
   const t = useTranslations("studio");
-  const [view, setView] = useState<AssistedView>("fields");
-  const [sessionId, setSessionId] = useState<string | null>(resumeSessionId ?? null);
-  const [suggestingFieldKey, setSuggestingFieldKey] = useState<string | null>(null);
-  const [confirmAbandon, setConfirmAbandon] = useState(false);
-  const [entryName, setEntryName] = useState("");
-  const [resumePersistenceEnabled, setResumePersistenceEnabled] = useState(
-    () => !isInterviewResumePersistenceDisabled(),
-  );
-
-  // --- Session mutations ---
-  const createSessionMutation = useCreateKBSession(novelId);
-  const answerFieldMutation = useAnswerField(novelId, sessionId ?? "");
-  const completeSessionMutation = useCompleteKBSession(novelId, sessionId ?? "");
-  const abandonSessionMutation = useAbandonKBSession(novelId, sessionId ?? "");
-
-  // --- AI operations (SSE-based) ---
-  const suggestMutation = useKBSessionSuggest(novelId, sessionId ?? "");
-  const interviewMutation = useKBSessionInterview(novelId, sessionId ?? "");
-  const enhanceMutation = useKBSessionEnhance(novelId, sessionId ?? "");
-
-  // --- Session query ---
-  const { data: session, isLoading: sessionLoading } = useKBSession(novelId, sessionId);
-
-  // --- Create session on mount (skip if resuming) ---
-  useEffect(() => {
-    if (!sessionId && !createSessionMutation.isPending) {
-      createSessionMutation.mutate(entityType, {
-        onSuccess: (newSession) => {
-          setSessionId(newSession.id);
-        },
-      });
-    }
-  }, [entityType, sessionId, createSessionMutation]);
-
-  // --- Clear pending interview on successful completion ---
-  useEffect(() => {
-    return () => {
-      // Cleanup on unmount — clear pending interview if we had a session
-      if (sessionId) {
-        clearPendingInterview(novelId);
-      }
-    };
-  }, [novelId, sessionId]);
-
-  // --- Reset entry name when a new session is loaded ---
-  // Use ref to track which session we've initialized the name for,
-  // so we don't overwrite user input when session updates poll.
-  const initializedSessionId = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (session && session.id !== initializedSessionId.current) {
-      setEntryName(session.name || "");
-      initializedSessionId.current = session.id;
-    }
-  }, [session]);
-
-  // --- Calculate progress ---
-  const totalFields = session?.fields.length ?? 0;
-  const filledFields =
-    session?.fields.filter((f) => f.final_value || f.user_value || f.ai_suggested_value).length ??
-    0;
-
-  // --- Event handlers ---
-
-  async function handleSuggest(fieldKey: string) {
-    if (!sessionId) return;
-    setSuggestingFieldKey(fieldKey);
-    suggestMutation.mutate(
-      { fieldKey },
-      {
-        onSettled: () => setSuggestingFieldKey(null),
-      },
-    );
-  }
-
-  function handleAnswer(fieldKey: string, value: string) {
-    if (!sessionId) return;
-    answerFieldMutation.mutate({ fieldKey, value });
-  }
-
-  function handleAcceptSuggestion(fieldKey: string, value: string) {
-    // Accepting a suggestion is just answering the field with the suggested value
-    handleAnswer(fieldKey, value);
-  }
-
-  function handleRejectSuggestion(_fieldKey: string) {
-    // Rejection currently just dismisses — could clear ai_suggested_value in future
-    // For now, do nothing as the user can just edit the field
-  }
-
-  async function handleRequestInterview(signal?: AbortSignal): Promise<KBInterviewResult> {
-    if (!sessionId) {
-      throw new Error("No active session");
-    }
-    return new Promise((resolve, reject) => {
-      interviewMutation.mutate(signal, {
-        onSuccess: resolve,
-        onError: reject,
-      });
-    });
-  }
-
-  async function handleSubmitInterviewAnswer(fieldKey: string, answer: string) {
-    handleAnswer(fieldKey, answer);
-  }
-
-  async function handleRequestEnhance(): Promise<KBEnhancementResult[]> {
-    if (!sessionId) {
-      throw new Error("No active session");
-    }
-    return new Promise((resolve, reject) => {
-      enhanceMutation.mutate(undefined, {
-        onSuccess: resolve,
-        onError: reject,
-      });
-    });
-  }
-
-  function handleAcceptEnhancement(fieldKey: string, value: string) {
-    handleAnswer(fieldKey, value);
-  }
-
-  function handleApplySelectedEnhancements() {
-    setView("fields");
-  }
-
-  function handleCompleteAndSave() {
-    if (!sessionId) return;
-    if (!entryName.trim()) return;
-
-    completeSessionMutation.mutate(undefined, {
-      onSuccess: (response) => {
-        clearPendingInterview(novelId);
-        toast.success(t("kb.sessionSaved") || "Session saved");
-        onComplete(response.entry_id);
-      },
-    });
-  }
-
-  function handleAbandon() {
-    if (!confirmAbandon) {
-      setConfirmAbandon(true);
-      return;
-    }
-
-    // Save interview state before abandoning (so user can resume later)
-    if (sessionId) {
-      savePendingInterview(novelId, sessionId, entityType);
-      abandonSessionMutation.mutate(undefined, {
-        onSuccess: () => {
-          toast.success(
-            resumePersistenceEnabled
-              ? t("kb.sessionAbandoned")
-              : t("kb.sessionAbandonedWithoutSave"),
-          );
-          onCancel();
-        },
-      });
-    } else {
-      onCancel();
-    }
-  }
-
-  function handleConfirmAbandon() {
-    if (sessionId) {
-      savePendingInterview(novelId, sessionId, entityType);
-      abandonSessionMutation.mutate(undefined, {
-        onSuccess: () => {
-          toast.success(
-            resumePersistenceEnabled
-              ? t("kb.sessionAbandoned")
-              : t("kb.sessionAbandonedWithoutSave"),
-          );
-          onCancel();
-        },
-      });
-    } else {
-      onCancel();
-    }
-  }
-
-  function handleResumePersistenceChange(enabled: boolean): void {
-    setResumePersistenceEnabled(enabled);
-    setInterviewResumePersistenceDisabled(!enabled);
-    if (!enabled) clearPendingInterview(novelId);
-  }
+  const controller = useKBAssistedCreationController({
+    novelId,
+    entityType,
+    resumeSessionId,
+    onComplete,
+    onCancel,
+    t,
+  });
 
   // --- Get icon for entity type ---
   const EntityIcon = TYPE_ICONS[entityType] || Sparkles;
 
   // --- Loading state ---
-  if (createSessionMutation.isPending || sessionLoading) {
+  if (controller.isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-background">
         <div className="text-center">
@@ -266,14 +71,12 @@ export function KBAssistedCreationPanel({
   }
 
   // --- Error state ---
-  if (createSessionMutation.isError || !session) {
+  if (controller.isError || !controller.session) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-background">
         <div className="text-center max-w-md">
           <p className="text-red-500 mb-4">
-            {createSessionMutation.error?.message ||
-              t("kb.sessionCreateFailed") ||
-              "Failed to create session"}
+            {controller.errorMessage || t("kb.sessionCreateFailed") || "Failed to create session"}
           </p>
           <button
             type="button"
@@ -288,28 +91,28 @@ export function KBAssistedCreationPanel({
   }
 
   // --- Interview view ---
-  if (view === "interview") {
+  if (controller.view === "interview") {
     return (
       <KBInterviewView
         novelId={novelId}
-        sessionId={sessionId ?? ""}
-        session={session}
-        onRequestQuestion={handleRequestInterview}
-        onSubmitAnswer={handleSubmitInterviewAnswer}
-        onBack={() => setView("fields")}
+        sessionId={controller.sessionId ?? ""}
+        session={controller.session}
+        onRequestQuestion={controller.handleRequestInterview}
+        onSubmitAnswer={controller.handleSubmitInterviewAnswer}
+        onBack={() => controller.setView("fields")}
       />
     );
   }
 
   // --- Enhance review view ---
-  if (view === "enhance") {
+  if (controller.view === "enhance") {
     return (
       <KBEnhanceReview
-        session={session}
-        onRequestEnhance={handleRequestEnhance}
-        onAcceptEnhancement={handleAcceptEnhancement}
-        onApplySelected={handleApplySelectedEnhancements}
-        onBack={() => setView("fields")}
+        session={controller.session}
+        onRequestEnhance={controller.handleRequestEnhance}
+        onAcceptEnhancement={controller.handleAcceptEnhancement}
+        onApplySelected={controller.handleApplySelectedEnhancements}
+        onBack={() => controller.setView("fields")}
       />
     );
   }
@@ -317,108 +120,59 @@ export function KBAssistedCreationPanel({
   // --- Main: Field list view ---
   return (
     <div className="flex-1 flex flex-col bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <h2 className="font-medium">
-                {t("kb.aiAssistedCreation") || "AI-Assisted Creation"}
-              </h2>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <EntityIcon className="w-3.5 h-3.5" />
-                <span>{t(`kb.${entityType}s`) || entityType}</span>
-                <span className="text-xs px-2 py-0.5 rounded bg-muted">
-                  {session.status === "active"
-                    ? t("kb.statusActive") || "Active"
-                    : session.status === "review"
-                      ? t("kb.statusReview") || "Review"
-                      : session.status}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={resumePersistenceEnabled}
-                onChange={(event) => handleResumePersistenceChange(event.target.checked)}
-                className="h-4 w-4 rounded border-border"
-                aria-label={t("kb.interview.resumePersistenceToggle")}
-              />
-              <span>{t("kb.interview.resumePersistenceToggle")}</span>
-            </label>
-            <button
-              type="button"
-              onClick={handleAbandon}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              {t("kb.abandon")}
-            </button>
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-          <span>{t("kb.sessionProgress", { filled: filledFields, total: totalFields })}</span>
-          <span>
-            {totalFields > 0 ? `${Math.round((filledFields / totalFields) * 100)}%` : "0%"}
-          </span>
-        </div>
-        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-purple-500 transition-all duration-300"
-            style={{ width: totalFields > 0 ? `${(filledFields / totalFields) * 100}%` : "0%" }}
-          />
-        </div>
-      </div>
+      <KBAssistedCreationHeader
+        entityType={entityType}
+        EntityIcon={EntityIcon}
+        session={controller.session}
+        filledFields={controller.filledFields}
+        totalFields={controller.totalFields}
+        resumePersistenceEnabled={controller.resumePersistenceEnabled}
+        onResumePersistenceChange={controller.handleResumePersistenceChange}
+        onAbandon={controller.handleAbandon}
+        t={t}
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto">
           <KBSessionFieldList
-            session={session}
-            onSuggest={handleSuggest}
-            onAnswer={handleAnswer}
-            onAcceptSuggestion={handleAcceptSuggestion}
-            onRejectSuggestion={handleRejectSuggestion}
-            onStartInterview={() => setView("interview")}
-            onEnhance={() => setView("enhance")}
-            suggestingFieldKey={suggestingFieldKey}
+            session={controller.session}
+            onSuggest={controller.handleSuggest}
+            onAnswer={controller.handleAnswer}
+            onAcceptSuggestion={controller.handleAcceptSuggestion}
+            onRejectSuggestion={controller.handleRejectSuggestion}
+            onStartInterview={() => controller.setView("interview")}
+            onEnhance={() => controller.setView("enhance")}
+            suggestingFieldKey={controller.suggestingFieldKey}
           />
         </div>
       </div>
 
       {/* Footer: name input + actions */}
       <KBAssistedCreationFooter
-        session={session}
-        entryName={entryName}
-        setEntryName={setEntryName}
-        view={view}
-        setView={setView}
-        filledFields={filledFields}
-        completePending={completeSessionMutation.isPending}
+        session={controller.session}
+        entryName={controller.entryName}
+        setEntryName={controller.setEntryName}
+        view={controller.view}
+        setView={controller.setView}
+        filledFields={controller.filledFields}
+        completePending={controller.completePending}
         onCancel={onCancel}
-        onCompleteAndSave={handleCompleteAndSave}
+        onCompleteAndSave={controller.handleCompleteAndSave}
       />
 
       {/* Cancel confirmation dialog */}
       <ConfirmDialog
-        open={confirmAbandon}
-        onOpenChange={setConfirmAbandon}
+        open={controller.confirmAbandon}
+        onOpenChange={controller.setConfirmAbandon}
         title={t("kb.interview.cancelConfirmTitle")}
         description={
-          resumePersistenceEnabled
+          controller.resumePersistenceEnabled
             ? t("kb.interview.cancelConfirmDescription")
             : t("kb.interview.cancelConfirmNoSaveDescription")
         }
         confirmLabel={t("kb.interview.cancelConfirmAction")}
-        onConfirm={handleConfirmAbandon}
+        onConfirm={controller.handleConfirmAbandon}
         variant="destructive"
       />
     </div>

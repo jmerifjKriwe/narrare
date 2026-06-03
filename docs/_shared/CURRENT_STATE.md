@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-03 (Session 2)
-Session: Audit Review-05 Umsetzung — 9 Tasks aus Review-05-Release in 4 Wellen abgeschlossen. CI-Permissions minimiert (read-only Defaults). SSOT-Hierarchie in CONSTRAINTS.md §8 etabliert. Gate-Konformitäts-Audit (check_locale_sync blocking, check_streaming schon blocking). System-Health-Metrik (0.73 DEGRADED). Release-SBOM generiert. Observability-Trace-Kette dokumentiert + 22 Integration-Tests. Q-011 Distribution-Strategie dokumentiert. Ausnahmen-Sync CONSTRAINTS.md ↔ pyproject.toml.
+Date: 2026-06-03 (Session 3)
+Session: AI Feature Freeze vollständig aufgehoben. INFRA-011 Stabilisierung abgeschlossen; post-freeze ratcheted governance bleibt aktiv. AUFG-02-01, AUFG-02-03, AUFG-03-01 und AUFG-03-02 sind gelöst; Frontend RULE-04 Debt ist von 53 auf 38 ratcheted Legacy-Verstöße reduziert. System Health bleibt 0.73 DEGRADED wegen Score-Floor/Baseline-Artefakt, ist aber nicht freeze-blocking; CRITICAL bleibt blockierend.
 
 ---
 
@@ -28,10 +28,10 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ### Stats (verified 2026-06-03)
 
-- Knowledge Graph: 15,407 nodes, 112,382 edges, risk medium
+- Knowledge Graph: 15,527 nodes, 112,368 edges, risk medium
 - Backend tests: 4,273 (3,750 unit + 495 integration) across 396 test files
-- Frontend tests: ~5,000 across 165 test files (Vitest + MSW)
-- Total tests: ~9,200+
+- Frontend tests: 1,683 across 186 test files (Vitest + MSW)
+- Total tests: ~5,900+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
 - ADRs: 24+ (ADR-001 through ADR-023, plus ADR-027 AI Feature Stabilization Gates)
 - Feature specs: 75 individual files + INDEX.md
@@ -83,6 +83,14 @@ Alembic migrations 0001 through ~0023
 - OpenTelemetry + Langfuse for LLM observability
 - promptfoo eval framework (`evals/`) for prompt quality regression
 
+### AI Feature Freeze / Post-Freeze Governance
+
+- **Status:** Freeze fully lifted after Architecture freeze-lift review (2026-06-03).
+- **Resolved blockers:** AUFG-02-01 backend unit failures `7 → 0`; AUFG-02-03 frontend tests stable under 120s (`112.43s`, `115.04s`, `111.95s`); AUFG-03-01 prompt warnings `79 → 35`; AUFG-03-02 KB adoption `0.78 → 0.90 PASS`.
+- **Remaining governed debt:** frontend RULE-04 legacy file-size debt is ratcheted at 38 violations (`53 → 38`, 15 resolved, 0 new). This is not a freeze blocker.
+- **Still blocked by governance:** new prompt/adoption warning growth, new architecture exceptions without ADR/user approval, new frontend file-size violations, REST-only frontend paths for SSE-capable AI backends, and workaround/quick-fix implementations.
+- **Health note:** System Health `0.73 DEGRADED` reflects the metric floor while baseline debt remains. DEGRADED is warning-only for freeze status; CRITICAL blocks.
+
 ---
 
 ## Phase 6 — In Progress
@@ -128,13 +136,14 @@ Completed in Phase 6 so far:
 
 ## What's Next
 
-1. ❌ **Backend-Unit-Failures beheben (AUFG-02-01)** — 7 Test-Failures in Prompt-Integrity und Streaming-Compliance müssen vor dem Freeze-Lift behoben werden.
-2. ❌ **Prompt-Warnungen abbauen (AUFG-03-01)** — 79 Prompt-Structure-Warnungen auf dem Weg zu Score ≥0.85.
-3. ❌ **KB-Adoption über 0.85 (AUFG-03-02)** — KB-Score von 0.78 auf ≥0.85 heben.
-4. ❌ **Frontend-Hubs modularisieren (AUFG-01-02)** — EditorView, TipTapEditor, GhostText, API-Clients.
-5. ❌ **Frontend-Tests beschleunigen (AUFG-02-03)** — Vitest von 213s auf <120s.
-6. ⏳ **E2E test patterns**
-7. ⏳ **ANAL-005: Coreference Analysis** — resumes only after INFRA-011 stabilization gates pass or an explicit Architecture-reviewed exception is approved.
+1. ✅ **AI Feature Freeze lifted** — new AI feature work may resume under ratcheted governance.
+2. ✅ **Backend-Unit-Failures behoben (AUFG-02-01)** — 7 Failures → 0.
+3. ✅ **Prompt-Warnungen reduziert (AUFG-03-01)** — 79 → 35; no-growth ratchet aktiv.
+4. ✅ **KB-Adoption über 0.85 (AUFG-03-02)** — 0.78 → 0.90 PASS.
+5. ✅ **Frontend-Tests beschleunigt (AUFG-02-03)** — Vitest stabil <120s.
+6. ⏳ **Frontend-Hubs weiter modularisieren (AUFG-01-02)** — 38 ratcheted legacy RULE-04 violations remain; no new violations allowed.
+7. ⏳ **E2E test patterns**
+8. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
 
 ---
 
@@ -165,7 +174,7 @@ Completed in Phase 6 so far:
 | ADR-021 | Deterministic Analysis Strategy | ✅ Accepted |
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
-| ADR-027 | AI Feature Stabilization Gates | ✅ Accepted — new AI features frozen until INFRA-011 gates pass and freeze-lift review completes |
+| ADR-027 | AI Feature Stabilization Gates | ✅ Completed — freeze lifted; ratcheted post-freeze governance retained |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -198,8 +207,8 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Python 3.14 missing type stubs | Low | Documented in pyproject.toml |
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
-| System Health Score 0.73 (DEGRADED) | Medium | CI-Check (warning-only bei DEGRADED, fail bei CRITICAL). Baseline-Items abbauen für ≥0.85 |
-| 6 offene Audit-Tasks (AUFG-02-01, -03-01, -03-02, -01-02, -02-03) | Medium | Blockieren Freeze-Lift. Separate Sprints nötig |
+| System Health Score 0.73 (DEGRADED) | Medium | Non-blocking metric-floor/baseline artifact. CI remains warning-only for DEGRADED and fails on CRITICAL. Baseline debt must keep shrinking for ≥0.85. |
+| 38 frontend RULE-04 legacy violations | Medium | Ratcheted baseline: no new violations; reductions only unless ADR/user-approved exception. |
 
 ---
 

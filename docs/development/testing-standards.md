@@ -779,7 +779,7 @@ asserting anything passes coverage. We check assertion quality in PR review.
 ## Frontend Tests — packages/web/
 
 **Runner:** Vitest 3.x
-**Environment:** jsdom
+**Environment:** happy-dom
 **Component Testing:** `@testing-library/react` + `@testing-library/user-event`
 **API Mocking:** MSW v2.14.6 (Mock Service Worker)
 **State Testing:** Direct Zustand store testing
@@ -794,6 +794,17 @@ asserting anything passes coverage. We check assertion quality in PR review.
 **MSW Handlers:** `packages/web/mocks/handlers.ts`
 **Test Data:** `packages/web/mocks/data.ts`
 **Setup:** `packages/web/setupTests.ts`
+
+### Runtime Baseline and Vitest Configuration
+
+Frontend tests are expected to complete in **<120 seconds** for the full suite.
+The current stable baseline is 186 test files / 1,683 tests passing in
+`112.43s`, `115.04s`, and `111.95s` across three consecutive runs.
+
+Vitest uses `happy-dom`, `pool: threads`, and `maxWorkers: 6` to keep the browser-like
+environment lightweight while preserving parallelism. Do not switch back to heavier
+DOM environments or single-threaded execution unless a specific test requires it and
+the runtime baseline is revalidated.
 
 ### What Gets Tested
 

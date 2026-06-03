@@ -7,21 +7,18 @@
  * Column 2: Entry list with search
  * Column 3: Detail/edit panel or create form or assisted creation panel
  *
- * Supports an optional analysis mode that replaces the detail panel
- * with the WorldbuildingAnalysisPanel.
+ * Supports optional analysis, consistency, graph, and wiki modes
+ * that replace the detail panel.
  */
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import type { KBEntityType } from "@/lib/api/kb";
-import { clearPendingInterview, getPendingInterview } from "@/lib/hooks/use-kb-interview-resume";
 import { useKBEntries, useKBEntry, useKBRelationships } from "@/lib/hooks/useKB";
+import { WorldBuildingLayout } from "./_components/WorldBuildingLayout";
+import { useWorldBuildingState } from "./_components/worldBuildingState";
 import { ConsistencyCheckPanel } from "./kb/ConsistencyCheckPanel";
 import { KBAssistedCreationPanel } from "./kb/KBAssistedCreationPanel";
-import { KBCategorySidebar } from "./kb/KBCategorySidebar";
 import { KBDetailPanel } from "./kb/KBDetailPanel";
-import { KBEntryList } from "./kb/KBEntryList";
 import { KnowledgeGraphView } from "./kb/KnowledgeGraphView";
 import { WikiOverviewPanel } from "./kb/WikiOverviewPanel";
 import { WorldbuildingAnalysisPanel } from "./kb/WorldbuildingAnalysisPanel";
@@ -32,355 +29,119 @@ interface WorldBuildingProps {
 
 export function WorldBuilding({ novelId }: WorldBuildingProps) {
   const t = useTranslations("studio");
-  // UI state
-  const [activeType, setActiveType] = useState<KBEntityType | null>(null);
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isAssistedSession, setIsAssistedSession] = useState(false);
-  const [assistedEntityType, setAssistedEntityType] = useState<KBEntityType | null>(null);
-  const [resumeSessionId, setResumeSessionId] = useState<string | null>(null);
-  const [showResumeDialog, setShowResumeDialog] = useState(false);
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [showConsistency, setShowConsistency] = useState(false);
-  const [showGraph, setShowGraph] = useState(false);
-  const [showWiki, setShowWiki] = useState(false);
+  const state = useWorldBuildingState(novelId);
 
-  // Data queries
   const { data: entriesData, isLoading: entriesLoading } = useKBEntries(novelId, {
-    entity_type: activeType ?? undefined,
+    entity_type: state.activeType ?? undefined,
   });
-  const { data: selectedEntry } = useKBEntry(novelId, selectedEntryId);
-  const { data: relationships = [] } = useKBRelationships(novelId, selectedEntryId);
+  const { data: selectedEntry } = useKBEntry(novelId, state.selectedEntryId);
+  const { data: relationships = [] } = useKBRelationships(novelId, state.selectedEntryId);
 
   const entries = entriesData?.items ?? [];
 
-  function handleTypeChange(type: KBEntityType | null) {
-    setActiveType(type);
-    setSelectedEntryId(null);
-    setIsCreating(false);
-    setIsAssistedSession(false);
-    setShowAnalysis(false);
-    setShowConsistency(false);
-    setShowGraph(false);
-    setShowWiki(false);
-  }
+  // --- Shared layout props ---
 
-  function handleSelectEntry(entryId: string) {
-    setSelectedEntryId(entryId);
-    setIsCreating(false);
-    setIsAssistedSession(false);
-    setShowAnalysis(false);
-    setShowConsistency(false);
-  }
+  const layoutProps = {
+    novelId,
+    activeType: state.activeType,
+    entries,
+    entriesLoading,
+    selectedEntryId: state.selectedEntryId,
+    onSelectEntry: state.handleSelectEntry,
+    onCreateNew: state.handleCreateNew,
+    onCreateAssisted: state.handleCreateAssisted,
+    onTypeChange: state.handleTypeChange,
+    onAnalyze: state.handleShowAnalysis,
+    onConsistencyCheck: state.handleShowConsistency,
+    onShowGraph: state.handleShowGraph,
+    onShowWiki: state.handleShowWiki,
+    showGraph: state.showGraph,
+    showWiki: state.showWiki,
+  };
 
-  function handleCreateNew() {
-    setIsCreating(true);
-    setSelectedEntryId(null);
-    setIsAssistedSession(false);
-    setShowAnalysis(false);
-    setShowConsistency(false);
-  }
+  // --- Third-column rendering ---
 
-  function handleCreateAssisted() {
-    // Check for a pending interview to resume
-    const pending = getPendingInterview(novelId);
-    if (pending) {
-      setShowResumeDialog(true);
-      return;
-    }
-    startNewAssistedSession();
-  }
-
-  function startNewAssistedSession() {
-    clearPendingInterview(novelId);
-    setIsAssistedSession(true);
-    setAssistedEntityType(activeType ?? "character");
-    setResumeSessionId(null);
-    setIsCreating(false);
-    setSelectedEntryId(null);
-    setShowAnalysis(false);
-    setShowConsistency(false);
-  }
-
-  function handleResumeInterview() {
-    const pending = getPendingInterview(novelId);
-    if (pending) {
-      setIsAssistedSession(true);
-      setAssistedEntityType(pending.entityType as KBEntityType);
-      setResumeSessionId(pending.sessionId);
-      setIsCreating(false);
-      setSelectedEntryId(null);
-      setShowAnalysis(false);
-      setShowConsistency(false);
-    }
-    setShowResumeDialog(false);
-  }
-
-  function handleDiscardResume() {
-    clearPendingInterview(novelId);
-    setShowResumeDialog(false);
-    startNewAssistedSession();
-  }
-
-  function handleCreateCancel() {
-    setIsCreating(false);
-  }
-
-  function handleAssistedCancel() {
-    setIsAssistedSession(false);
-    setAssistedEntityType(null);
-    setResumeSessionId(null);
-  }
-
-  function handleAssistedComplete(entryId: string) {
-    setIsAssistedSession(false);
-    setAssistedEntityType(null);
-    setResumeSessionId(null);
-    setSelectedEntryId(entryId);
-  }
-
-  function handleCreated(entryId: string) {
-    setIsCreating(false);
-    setSelectedEntryId(entryId);
-  }
-
-  function handleDeleted() {
-    setSelectedEntryId(null);
-  }
-
-  function handleShowAnalysis() {
-    setShowAnalysis(true);
-    setSelectedEntryId(null);
-    setIsCreating(false);
-    setIsAssistedSession(false);
-    setShowConsistency(false);
-  }
-
-  function handleShowConsistency() {
-    setShowConsistency(true);
-    setSelectedEntryId(null);
-    setIsCreating(false);
-    setIsAssistedSession(false);
-    setShowAnalysis(false);
-  }
-
-  function handleShowGraph() {
-    setShowGraph(true);
-    setSelectedEntryId(null);
-    setIsCreating(false);
-    setIsAssistedSession(false);
-    setShowAnalysis(false);
-    setShowConsistency(false);
-    setShowWiki(false);
-  }
-
-  function handleShowWiki() {
-    setShowWiki(true);
-    setSelectedEntryId(null);
-    setIsCreating(false);
-    setIsAssistedSession(false);
-    setShowAnalysis(false);
-    setShowConsistency(false);
-    setShowGraph(false);
-  }
-
-  function handleCloseWiki() {
-    setShowWiki(false);
-  }
-
-  // Column 3: Assisted creation panel takes priority
-  if (isAssistedSession && assistedEntityType) {
+  if (state.isAssistedSession && state.assistedEntityType) {
     return (
-      <div className="flex-1 flex h-full">
-        <KBCategorySidebar
-          novelId={novelId}
-          activeType={activeType}
-          onTypeChange={handleTypeChange}
-          onAnalyze={handleShowAnalysis}
-          onConsistencyCheck={handleShowConsistency}
-          onShowGraph={handleShowGraph}
-          onShowWiki={handleShowWiki}
-          showGraph={showGraph}
-          showWiki={showWiki}
-        />
-        <KBEntryList
-          novelId={novelId}
-          entries={entries}
-          isLoading={entriesLoading}
-          selectedEntryId={selectedEntryId}
-          activeType={activeType}
-          onSelectEntry={handleSelectEntry}
-          onCreateNew={handleCreateNew}
-          onCreateAssisted={handleCreateAssisted}
-        />
+      <WorldBuildingLayout {...layoutProps}>
         <KBAssistedCreationPanel
           novelId={novelId}
-          entityType={assistedEntityType}
-          onComplete={handleAssistedComplete}
-          onCancel={handleAssistedCancel}
-          resumeSessionId={resumeSessionId}
+          entityType={state.assistedEntityType}
+          onComplete={state.handleAssistedComplete}
+          onCancel={state.handleAssistedCancel}
+          resumeSessionId={state.resumeSessionId}
         />
-      </div>
+      </WorldBuildingLayout>
     );
   }
 
-  // Analysis mode: replaces column 3 with analysis panel
-  if (showAnalysis) {
+  if (state.showAnalysis) {
     return (
-      <div className="flex-1 flex h-full">
-        <KBCategorySidebar
+      <WorldBuildingLayout {...layoutProps}>
+        <WorldbuildingAnalysisPanel
           novelId={novelId}
-          activeType={activeType}
-          onTypeChange={handleTypeChange}
-          onAnalyze={handleShowAnalysis}
-          onConsistencyCheck={handleShowConsistency}
-          onShowGraph={handleShowGraph}
-          onShowWiki={handleShowWiki}
-          showGraph={showGraph}
-          showWiki={showWiki}
+          onClose={() => state.setShowAnalysis(false)}
         />
-        <KBEntryList
-          novelId={novelId}
-          entries={entries}
-          isLoading={entriesLoading}
-          selectedEntryId={selectedEntryId}
-          activeType={activeType}
-          onSelectEntry={handleSelectEntry}
-          onCreateNew={handleCreateNew}
-          onCreateAssisted={handleCreateAssisted}
-        />
-        <WorldbuildingAnalysisPanel novelId={novelId} onClose={() => setShowAnalysis(false)} />
-      </div>
+      </WorldBuildingLayout>
     );
   }
 
-  // Consistency check mode: replaces column 3 with consistency panel
-  if (showConsistency) {
+  if (state.showConsistency) {
     return (
-      <div className="flex-1 flex h-full">
-        <KBCategorySidebar
-          novelId={novelId}
-          activeType={activeType}
-          onTypeChange={handleTypeChange}
-          onAnalyze={handleShowAnalysis}
-          onConsistencyCheck={handleShowConsistency}
-          onShowGraph={handleShowGraph}
-          onShowWiki={handleShowWiki}
-          showGraph={showGraph}
-          showWiki={showWiki}
-        />
-        <KBEntryList
-          novelId={novelId}
-          entries={entries}
-          isLoading={entriesLoading}
-          selectedEntryId={selectedEntryId}
-          activeType={activeType}
-          onSelectEntry={handleSelectEntry}
-          onCreateNew={handleCreateNew}
-          onCreateAssisted={handleCreateAssisted}
-        />
+      <WorldBuildingLayout {...layoutProps}>
         <ConsistencyCheckPanel
           novelId={novelId}
-          onClose={() => setShowConsistency(false)}
+          onClose={() => state.setShowConsistency(false)}
           onEntityClick={(entityId) => {
-            setSelectedEntryId(entityId);
-            setShowConsistency(false);
+            state.handleSelectEntry(entityId);
+            state.setShowConsistency(false);
           }}
         />
-      </div>
+      </WorldBuildingLayout>
     );
   }
 
-  // Graph mode: replaces columns 2+3 with graph visualization
-  if (showGraph) {
+  if (state.showGraph) {
     return (
-      <div className="flex-1 flex h-full">
-        <KBCategorySidebar
-          novelId={novelId}
-          activeType={activeType}
-          onTypeChange={handleTypeChange}
-          onAnalyze={handleShowAnalysis}
-          onConsistencyCheck={handleShowConsistency}
-          onShowGraph={handleShowGraph}
-          onShowWiki={handleShowWiki}
-          showGraph={showGraph}
-          showWiki={showWiki}
-        />
-        <KnowledgeGraphView novelId={novelId} onSelectEntry={handleSelectEntry} />
-      </div>
+      <WorldBuildingLayout {...layoutProps}>
+        <KnowledgeGraphView novelId={novelId} onSelectEntry={state.handleSelectEntry} />
+      </WorldBuildingLayout>
     );
   }
 
-  // Wiki mode: replaces columns 2+3 with wiki overview
-  if (showWiki) {
+  if (state.showWiki) {
     return (
-      <div className="flex-1 flex h-full">
-        <KBCategorySidebar
-          novelId={novelId}
-          activeType={activeType}
-          onTypeChange={handleTypeChange}
-          onAnalyze={handleShowAnalysis}
-          onConsistencyCheck={handleShowConsistency}
-          onShowGraph={handleShowGraph}
-          onShowWiki={handleShowWiki}
-          showGraph={showGraph}
-          showWiki={showWiki}
-        />
-        <WikiOverviewPanel novelId={novelId} onClose={handleCloseWiki} />
-      </div>
+      <WorldBuildingLayout {...layoutProps}>
+        <WikiOverviewPanel novelId={novelId} onClose={state.handleCloseWiki} />
+      </WorldBuildingLayout>
     );
   }
 
+  // Default: detail panel + resume dialog
   return (
-    <div className="flex-1 flex h-full">
-      <KBCategorySidebar
-        novelId={novelId}
-        activeType={activeType}
-        onTypeChange={handleTypeChange}
-        onAnalyze={handleShowAnalysis}
-        onConsistencyCheck={handleShowConsistency}
-        onShowGraph={handleShowGraph}
-        onShowWiki={handleShowWiki}
-        showGraph={showGraph}
-        showWiki={showWiki}
-      />
-      <KBEntryList
-        novelId={novelId}
-        entries={entries}
-        isLoading={entriesLoading}
-        selectedEntryId={selectedEntryId}
-        activeType={activeType}
-        onSelectEntry={handleSelectEntry}
-        onCreateNew={handleCreateNew}
-        onCreateAssisted={handleCreateAssisted}
-      />
+    <WorldBuildingLayout {...layoutProps}>
       <KBDetailPanel
         novelId={novelId}
         entry={selectedEntry ?? null}
         relationships={relationships}
-        isCreating={isCreating}
-        initialEntityType={activeType ?? undefined}
-        onCreateCancel={handleCreateCancel}
-        onCreated={handleCreated}
-        onDeleted={handleDeleted}
+        isCreating={state.isCreating}
+        initialEntityType={state.activeType ?? undefined}
+        onCreateCancel={state.handleCreateCancel}
+        onCreated={state.handleCreated}
+        onDeleted={state.handleDeleted}
       />
-
-      {/* Resume interview dialog */}
       <ConfirmDialog
-        open={showResumeDialog}
+        open={state.showResumeDialog}
         onOpenChange={(open) => {
-          setShowResumeDialog(open);
-          if (!open) {
-            // Dialog closed without confirming — user wants a new interview
-            handleDiscardResume();
-          }
+          state.setShowResumeDialog(open);
+          if (!open) state.handleDiscardResume();
         }}
         title={t("kb.interview.resumeTitle")}
         description={t("kb.interview.resumePrivacyDescription")}
         confirmLabel={t("kb.interview.resumeAction")}
         cancelLabel={t("kb.interview.startNew")}
-        onConfirm={handleResumeInterview}
+        onConfirm={state.handleResumeInterview}
       />
-    </div>
+    </WorldBuildingLayout>
   );
 }

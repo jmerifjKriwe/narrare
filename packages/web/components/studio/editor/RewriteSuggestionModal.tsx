@@ -1,0 +1,141 @@
+"use client";
+
+import { Check, Loader2, Plus, RotateCcw, Sparkles, X } from "lucide-react";
+import type { useTranslations } from "next-intl";
+import { InlineDiff } from "./InlineDiff";
+import type { AISuggestion } from "./TipTapEditorController";
+
+type StudioTranslator = ReturnType<typeof useTranslations>;
+
+interface RewriteSuggestionModalProps {
+  aiSuggestion: AISuggestion;
+  selectedSuggestion: number;
+  onSelectedSuggestionChange: (index: number) => void;
+  rejectionReason: string;
+  onRejectionReasonChange: (reason: string) => void;
+  showRejectionInput: boolean;
+  isRewriteStreaming: boolean;
+  onReject: () => void;
+  onInsertAsNew: () => void;
+  onNewSuggestions: () => void;
+  onAccept: () => void;
+  t: StudioTranslator;
+}
+
+export function RewriteSuggestionModal({
+  aiSuggestion,
+  selectedSuggestion,
+  onSelectedSuggestionChange,
+  rejectionReason,
+  onRejectionReasonChange,
+  showRejectionInput,
+  isRewriteStreaming,
+  onReject,
+  onInsertAsNew,
+  onNewSuggestions,
+  onAccept,
+  t,
+}: RewriteSuggestionModalProps) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-card border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h3 className="font-medium">{t("aiModal.title")}</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t("aiModal.original", { text: aiSuggestion.original })}
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-3">
+            {aiSuggestion.suggestions.map((suggestion, index) => (
+              <button
+                type="button"
+                key={`suggestion-${suggestion.slice(0, 32)}`}
+                onClick={() => onSelectedSuggestionChange(index)}
+                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${selectedSuggestion === index ? "border-primary bg-accent" : "border-border hover:border-primary/50"}`}
+              >
+                {aiSuggestion.labels[index] && (
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    {aiSuggestion.labels[index]}
+                  </p>
+                )}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <InlineDiff original={aiSuggestion.original} alternative={suggestion} />
+                  </div>
+                  {selectedSuggestion === index && (
+                    <Check className="w-5 h-5 text-primary flex-shrink-0" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+          {isRewriteStreaming && (
+            <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{t("aiActions.generating")}</span>
+            </div>
+          )}
+        </div>
+
+        {showRejectionInput && (
+          <div className="p-6 border-t border-border bg-muted/30">
+            <label htmlFor="rejection-reason" className="block text-sm mb-2">
+              {t("aiActions.rejectReason")}
+            </label>
+            <textarea
+              id="rejection-reason"
+              value={rejectionReason}
+              onChange={(event) => onRejectionReasonChange(event.target.value)}
+              className="w-full px-3 py-2 bg-input-background border border-border rounded-lg text-sm"
+              rows={3}
+              placeholder={t("aiActions.rejectReasonPlaceholder")}
+            />
+          </div>
+        )}
+
+        <div className="p-6 border-t border-border flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onReject}
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+          >
+            <X className="w-4 h-4" />
+            {t("aiActions.reject")}
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onInsertAsNew}
+              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+              title={t("aiActions.insertAsNew")}
+            >
+              <Plus className="w-4 h-4" />
+              {t("aiActions.insertAsNew")}
+            </button>
+            <button
+              type="button"
+              onClick={onNewSuggestions}
+              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              {t("aiActions.newSuggestions")}
+            </button>
+            <button
+              type="button"
+              onClick={onAccept}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <Check className="w-4 h-4" />
+              {t("aiActions.replace")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

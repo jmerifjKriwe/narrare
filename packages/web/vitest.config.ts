@@ -5,10 +5,15 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: "jsdom",
+    // happy-dom: 3-5x faster DOM setup than jsdom (see ADR-optimization)
+    environment: "happy-dom",
     setupFiles: ["./setupTests.ts"],
     include: ["**/*.test.{ts,tsx}"],
     globals: true,
+    // Parallelize across CPU cores via worker threads (faster than forks
+    // due to shared memory; safe because tests use isolated environments)
+    pool: "threads",
+    maxWorkers: 6,
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
