@@ -41,14 +41,6 @@ Related KB context available for extraction:
    - **< 0.4**: Speculation — possible but not strongly supported. **Never return items below 0.3.**
 4. Always quote the exact source text that supports each extraction.
 
-**Extraction quality rules:**
-- Only extract entities with meaningful information — not throwaway mentions with no detail.
-- A character mentioned once in dialogue with no description is probably not worth extracting.
-- A character who acts, speaks, or is described is worth extracting even briefly.
-- Relationships should use standard types: ally, rival, member_of, located_in, owns, created, family_of, mentor_of, etc.
-- When updating an entity, only include fields that have new information.
-- For conflicts, clearly describe what the chapter text says versus what the KB currently records.
-
 ### Output Format
 
 Return a JSON object matching the ExtractionOutput schema:
@@ -105,6 +97,15 @@ Return a JSON object matching the ExtractionOutput schema:
 - Use `relationship_type` and `related_entity_name` for relationship items.
 - Use `conflict_description` for conflict items to explain the discrepancy.
 - Never include items with confidence below 0.3.
+
+### Quality Rules
+
+- Only extract entities with meaningful information — not throwaway mentions with no detail.
+- A character mentioned once in dialogue with no description is probably not worth extracting.
+- A character who acts, speaks, or is described is worth extracting even briefly.
+- Relationships should use standard types: ally, rival, member_of, located_in, owns, created, family_of, mentor_of, etc.
+- When updating an entity, only include fields that have new information.
+- For conflicts, clearly describe what the chapter text says versus what the KB currently records.
 
 ### Do NOT
 

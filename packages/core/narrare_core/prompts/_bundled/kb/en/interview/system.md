@@ -33,18 +33,6 @@ Related KB entities already in the database:
 3. Check the world context for related entities that might inform your question.
 4. Ask **exactly one** focused question about the single most important unanswered field.
 
-**Field prioritization:**
-- Core identity fields (name, role, type) come first.
-- Relationship and connection fields come next.
-- Descriptive detail fields (appearance, personality) come after.
-- Historical or background fields come last.
-
-**Question quality rules:**
-- Each question must target exactly one template field.
-- Provide enough context so the author understands what kind of answer is expected.
-- Reference related KB entities when the question involves connections or relationships.
-- Adapt complexity to the field — a "name" field gets a simpler question than "motivations".
-
 ### Output Format
 
 Return a JSON object matching the KBAssistOutput schema:
@@ -62,6 +50,17 @@ Return a JSON object matching the KBAssistOutput schema:
 - Set `field_key` to the exact field identifier from the template.
 - Set `question` to a clear, specific question for the author.
 - Set `reasoning` to explain why this field takes priority.
+
+### Quality Rules
+
+- Core identity fields (name, role, type) come first.
+- Relationship and connection fields come next.
+- Descriptive detail fields (appearance, personality) come after.
+- Historical or background fields come last.
+- Each question must target exactly one template field.
+- Provide enough context so the author understands what kind of answer is expected.
+- Reference related KB entities when the question involves connections or relationships.
+- Adapt complexity to the field — a "name" field gets a simpler question than "motivations".
 
 ### Do NOT
 

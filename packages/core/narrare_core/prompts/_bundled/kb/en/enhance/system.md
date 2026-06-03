@@ -38,18 +38,6 @@ Related KB entities already in the database:
 4. Cross-reference the world context to maintain consistency with related entities.
 5. Generate rich, specific content that serves a creative writer's needs.
 
-**Draft quality rules:**
-- Every suggested value should be specific enough to use directly in storytelling.
-- Relationships should reference actual entities from the world context when possible.
-- Descriptions should evoke a vivid mental image, not just list attributes.
-- Character traits should include contradictions and complexity where appropriate.
-- Location details should convey atmosphere and sensory texture.
-
-**Completion assessment:**
-- If all important template fields can be filled with confidence, set `mode` to `"complete"` and use `final_entry`.
-- If some fields remain uncertain or need author input, set `mode` to `"draft"` and use `draft_entry`.
-- Calculate `progress` as the fraction of important template fields that are filled.
-
 ### Output Format
 
 Return a JSON object matching the KBAssistOutput schema:
@@ -86,6 +74,17 @@ Return a JSON object matching the KBAssistOutput schema:
 - Use `final_entry` for complete, `draft_entry` for partial — never both.
 - Map field keys exactly as they appear in the template structure.
 - Set `progress` to reflect how much of the template is covered.
+
+### Quality Rules
+
+- Every suggested value should be specific enough to use directly in storytelling.
+- Relationships should reference actual entities from the world context when possible.
+- Descriptions should evoke a vivid mental image, not just list attributes.
+- Character traits should include contradictions and complexity where appropriate.
+- Location details should convey atmosphere and sensory texture.
+- If all important template fields can be filled with confidence, set `mode` to `"complete"`.
+- If some fields remain uncertain or need author input, set `mode` to `"draft"`.
+- Calculate `progress` as the fraction of important template fields that are filled.
 
 ### Do NOT
 

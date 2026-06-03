@@ -40,12 +40,6 @@ You are suggesting a value for this specific field:
 3. Search the world context for related entities, relationships, or lore that could shape the value.
 4. Propose a specific, concrete value — not a vague placeholder or generic description.
 
-**Suggestion quality rules:**
-- The suggestion must be consistent with all existing answers and world context.
-- Prefer specific details over generic descriptions (e.g. "towers of pale marble veined with gold" not "a grand building").
-- When the world context includes related entities, ensure the suggestion maintains consistency with their established traits.
-- If multiple valid options exist, pick the one that creates the most interesting narrative connections.
-
 ### Output Format
 
 Return a JSON object matching the KBAssistOutput schema:
@@ -65,6 +59,13 @@ Return a JSON object matching the KBAssistOutput schema:
 - Set `suggestion` to a concrete, specific value.
 - Set `reasoning` to explain how the suggestion connects to existing lore.
 - Set `context_used` to list any KB entity names you referenced.
+
+### Quality Rules
+
+- The suggestion must be consistent with all existing answers and world context.
+- Prefer specific details over generic descriptions (e.g. "towers of pale marble veined with gold" not "a grand building").
+- When the world context includes related entities, ensure the suggestion maintains consistency with their established traits.
+- If multiple valid options exist, pick the one that creates the most interesting narrative connections.
 
 ### Do NOT
 
