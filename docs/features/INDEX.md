@@ -36,6 +36,7 @@
 | [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | ✅ | ❌ |
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
 | [INFRA-010](infra/INFRA-010-prompting-locally.md) | Prompting Locally | ✅ | ❌ |
+| [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | 📋 | ❌ |
 
 ### Setup & Onboarding
 | ID | Feature | Status | MVP |

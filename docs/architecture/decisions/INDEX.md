@@ -50,6 +50,7 @@
 | [ADR-024]() | (reserved) | — | — | — |
 | [ADR-025](025-feature-adoption-infrastructure.md) | Feature Adoption Infrastructure (registry, context variables, assembler centralization, inline policy, adoption score) | 🔄 | 2026-05-31 | `scripts/architecture/`, `core/context/`, CR-03 |
 | [ADR-026](ADR-026-capability-prompt-injection.md) | Capability-Based Prompt Injection Pattern | ✅ | 2026-06-01 | `core/agents/capabilities/`, `core/prompts/`, RULE-02 |
+| [ADR-027](ADR-027-ai-feature-stabilization-gates.md) | AI Feature Stabilization Gates | 🔄 | 2026-06-02 | `core/prompts/`, `packages/web/lib/api/streaming.ts`, quality gates, agent docs |
 
 ---
 

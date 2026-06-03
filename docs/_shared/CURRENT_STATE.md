@@ -8,7 +8,7 @@
 ## Last Updated
 
 Date: 2026-06-02
-Session: Phase 6 extension — PLAN-004 vollständig und komplett: DurationImpossibilityCheck, SSE-Extraction, Confirm-Endpoint, LLM-Consistency-Prompt, Frontend SSE+Confirm, 4× RULE-04 Modularisierung (+17 Dateien, +4.2k Zeilen), 44 Files in 0e9e201
+Session: Phase 6 stabilization planning — Review 03 AI-feature audit accepted for implementation; INFRA-011 + ADR-027 created to freeze new AI feature work until prompt, streaming, documentation-drift, privacy, and gate stabilization pass.
 
 ---
 
@@ -124,8 +124,9 @@ Completed in Phase 6 so far:
 
 ## What's Next
 
-1. ANAL-005: Coreference Analysis
+1. INFRA-011: AI Feature Stabilization Program — prompt/adoption cleanup, frontend SSE centralization, KB Interview Resume privacy, documentation-drift cleanup, ratcheted gates, and no-growth exception gate.
 2. E2E test patterns
+3. ANAL-005: Coreference Analysis — resumes after INFRA-011 stabilization gates pass.
 
 ---
 
@@ -156,6 +157,7 @@ Completed in Phase 6 so far:
 | ADR-021 | Deterministic Analysis Strategy | ✅ Accepted |
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
+| ADR-027 | AI Feature Stabilization Gates | 🔄 Proposed — new AI features frozen until INFRA-011 gates pass |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
