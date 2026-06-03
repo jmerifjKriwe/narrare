@@ -186,6 +186,20 @@ inline_fallbacks:
     migration_target: "Test ergonomics — not a production path"
     reason: "Fallback for test/dev when no PromptComposer available; not used in production"
 
+  - file: "apps/api/narrare/consistency/prompt_builder.py"
+    lines: "33-65"
+    variable: "CONSISTENCY_SYSTEM_PROMPT"
+    status: registered
+    migration_target: "prompts/_bundled/consistency/en/system.md"
+    reason: "Consistency bundled prompt not yet authored (CONS-001)"
+
+  - file: "apps/api/narrare/kb/extraction_service.py"
+    lines: "40-57"
+    variable: "_DEFAULT_SYSTEM_PROMPT"
+    status: registered
+    migration_target: "prompts/_bundled/kb/en/extract/system.md"
+    reason: "Extraction bundled prompt not yet authored (KB-007)"
+
 # ── Feature Templates ─────────────────────────────────────────────────────────
 # Reference templates for new feature development (ADR-025 Decision 7).
 # These define the required files, infrastructure, and checklist for each type.

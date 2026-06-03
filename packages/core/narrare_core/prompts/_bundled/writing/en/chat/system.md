@@ -43,8 +43,17 @@ Factions and groups:
 Relationships between entities:
 {{kb_relationships}}
 
+Suggested KB entries:
+{{kb_suggested}}
+
 Recent chapter summaries:
 {{recent_chapters}}
+
+### Character Voice Profiles
+
+When discussing characters, keep their established speech patterns in mind:
+
+{{character_voice_profiles}}
 
 ### Conversation History
 

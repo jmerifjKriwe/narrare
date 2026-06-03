@@ -32,6 +32,10 @@ Factions:
 Relationships:
 {{kb_relationships}}
 
+### Suggested KB Entries
+
+{{kb_suggested}}
+
 ### Recent Chapters
 
 {{recent_chapters}}

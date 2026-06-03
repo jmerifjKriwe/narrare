@@ -1,208 +1,231 @@
 /**
- * Typed API client for the writing/generation endpoints.
+ * Generation API — name generation, writing generation, and streaming.
  *
- * Covers: start/stop generation, accept/reject draft, scene-by-scene control,
- * SSE streaming of generated text, and WebSocket interactive sessions.
+ * Re-exports SSE stream wrappers from generation-streams.ts so consumers
+ * can import everything from a single module.
  */
 
-import { fetchApi } from "./client";
+import type { NameGenerateRequest, NameGenerateResponse } from "@/types";
+import { fetchApi } from "./core";
 
+export type {
+  ContextMeta,
+  ExtendLength,
+  ExtendRequest,
+  ExtendStreamEvent,
+  GenerationChunk,
+  RewriteAlternative,
+  RewriteConfig,
+  RewriteMode,
+  RewriteRequest,
+} from "./generation-streams";
+// Re-export stream functions and types from the streams module
 export {
-  type ContextMeta,
-  type ExtendLength,
-  type ExtendRequest,
-  type ExtendStreamEvent,
-  type GenerationChunk,
   parseAlternatives,
-  type RewriteAlternative,
-  type RewriteConfig,
-  type RewriteMode,
-  type RewriteRequest,
   streamExtend,
   streamGeneration,
   streamRewrite,
 } from "./generation-streams";
 
 // ---------------------------------------------------------------------------
-// Types — field names match backend schemas exactly (RULE-17)
+// Generation types
 // ---------------------------------------------------------------------------
 
+/** Available generation modes for chapter writing. */
 export type GenerationMode =
   | "full_draft"
   | "scene_by_scene"
   | "interview_assisted"
   | "interactive_session";
 
-export type GenerationStatus = "pending" | "streaming" | "completed" | "stopped" | "failed";
-
+/** Request body for starting a chapter generation. */
 export interface GenerateRequest {
   mode: GenerationMode;
+  word_target?: number | null;
+  tone?: string;
   outline?: string | null;
   prompt?: string | null;
   auto_continue?: boolean;
-  word_target?: number | null;
-  tone?: string;
-  language?: string;
-}
-
-export interface GenerateResponse {
-  request_id: string;
-  status: string;
-  mode: string;
-}
-
-export interface StopResponse {
-  request_id: string;
-  status: string;
-  word_count: number;
-}
-
-export interface AcceptResponse {
-  request_id: string;
-  chapter_id: string;
-  word_count: number;
-}
-
-export interface RejectResponse {
-  request_id: string;
-  status: string;
-}
-
-export interface GenerationStats {
-  total_generations: number;
-  success_rate: number;
-  avg_tokens: number;
-  avg_word_count: number;
-  most_used_model: string | null;
 }
 
 // ---------------------------------------------------------------------------
-// REST API
+// Name generation
+// ---------------------------------------------------------------------------
+
+export const generationApi = {
+  generateNames: (request: NameGenerateRequest, signal?: AbortSignal) =>
+    fetchApi<NameGenerateResponse>("/generation/names", {
+      method: "POST",
+      body: JSON.stringify(request),
+      signal,
+    }),
+};
+
+// ---------------------------------------------------------------------------
+// Writing generation (REST)
 // ---------------------------------------------------------------------------
 
 export const writingApi = {
-  startGeneration: (chapterId: string, novelId: string, request: GenerateRequest) =>
-    fetchApi<GenerateResponse>(`/writing/chapters/${chapterId}/generate?novel_id=${novelId}`, {
-      method: "POST",
-      body: JSON.stringify(request),
-    }),
+  /** Start a new generation request for a chapter. */
+  startGeneration: (chapterId: string, novelId: string, body: GenerateRequest) =>
+    fetchApi<{ request_id: string; status: string; mode?: string }>(
+      `/writing/chapters/${chapterId}/generate?novel_id=${novelId}`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    ),
 
+  /** Stop an in-progress generation. */
   stopGeneration: (requestId: string) =>
-    fetchApi<StopResponse>(`/writing/generation/${requestId}`, { method: "DELETE" }),
+    fetchApi<{ request_id: string; status: string; word_count: number }>(
+      `/writing/generation/${requestId}`,
+      { method: "DELETE" },
+    ),
 
+  /** Accept the generated draft, optionally with edits. */
   acceptDraft: (requestId: string, modifiedText?: string) =>
-    fetchApi<AcceptResponse>(`/writing/generation/${requestId}/accept`, {
+    fetchApi<{ request_id: string; chapter_id: string; word_count: number }>(
+      `/writing/generation/${requestId}/accept`,
+      {
+        method: "POST",
+        body:
+          modifiedText !== undefined ? JSON.stringify({ modified_text: modifiedText }) : undefined,
+      },
+    ),
+
+  /** Reject the generated draft. */
+  rejectDraft: (requestId: string) =>
+    fetchApi<{ request_id: string; status: string }>(`/writing/generation/${requestId}/reject`, {
       method: "POST",
-      body: JSON.stringify({ modified_text: modifiedText }),
     }),
 
-  rejectDraft: (requestId: string) =>
-    fetchApi<RejectResponse>(`/writing/generation/${requestId}/reject`, { method: "POST" }),
-
+  /** Advance to the next scene. */
   nextScene: (requestId: string) =>
     fetchApi<{ request_id: string; scene_number: number; status: string }>(
       `/writing/generation/${requestId}/scene/next`,
       { method: "POST" },
     ),
 
-  acceptScene: (requestId: string, sceneNumber: number) =>
-    fetchApi<AcceptResponse>(`/writing/generation/${requestId}/scene/${sceneNumber}/accept`, {
-      method: "POST",
-    }),
+  /** Accept a specific scene. */
+  acceptScene: (requestId: string, sceneNum: number) =>
+    fetchApi<{ request_id: string; chapter_id: string; word_count: number }>(
+      `/writing/generation/${requestId}/scene/${sceneNum}/accept`,
+      { method: "POST" },
+    ),
 
-  getStats: (novelId: string) => fetchApi<GenerationStats>(`/writing/novels/${novelId}/stats`),
+  /** Get generation stats for a novel. */
+  getStats: (novelId: string) =>
+    fetchApi<{
+      total_generations: number;
+      success_rate: number;
+      avg_tokens: number;
+      avg_word_count: number;
+      most_used_model: string;
+    }>(`/writing/novels/${novelId}/stats`),
 };
 
 // ---------------------------------------------------------------------------
-// WebSocket — Interactive Sessions
+// WebSocket — Interactive writing sessions
 // ---------------------------------------------------------------------------
 
-export interface SessionMessage {
-  type: "user_direction" | "user_feedback" | "save_to_chapter" | "end_session" | "generate_draft";
-  content?: string;
-  action?: string;
-  text?: string;
-}
-
+/** Server-sent message types during an interactive writing session. */
 export interface SessionResponse {
   type:
     | "greeting"
+    | "interview_greeting"
     | "text_chunk"
     | "text_done"
+    | "draft_done"
     | "feedback_acknowledged"
     | "saved"
     | "timeout"
-    | "error"
-    | "draft_done"
-    | "interview_greeting";
+    | "error";
   text?: string;
   message?: string;
-  content?: string;
-  action?: string;
-  word_count?: number;
-  session_id?: string;
-  mode?: string;
 }
 
+/**
+ * WebSocket wrapper for interactive writing sessions.
+ *
+ * Connects to `ws(s)://{host}/api/v1/writing/sessions/{chapterId}` and
+ * handles reconnection up to MAX_RECONNECT_ATTEMPTS. Gracefully degrades
+ * when WebSocket is unavailable (e.g. test environments).
+ */
 export class WritingSessionSocket {
   private ws: WebSocket | null = null;
+  private closed = false;
   private reconnectAttempts = 0;
-  private maxReconnects = 3;
+  private static readonly MAX_RECONNECT_ATTEMPTS = 5;
 
   constructor(
-    private chapterId: string,
-    private onMessage: (msg: SessionResponse) => void,
-    private onError?: (error: Error) => void,
-    private userId?: string,
-    private projectId?: string,
-    private mode: string = "interactive_session",
+    private readonly chapterId: string,
+    private readonly onMessage: (msg: SessionResponse) => void,
+    private readonly onError: () => void,
+    private readonly userId?: string,
+    private readonly novelId?: string,
+    private readonly mode?: string,
   ) {}
 
+  /** Open the WebSocket connection. Safe to call multiple times. */
   connect(): void {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-    // Derive WebSocket base: replace http(s) with ws(s), or use current host
-    const wsBaseUrl = baseUrl
-      ? baseUrl.replace(/^http/, "ws") // http:// → ws://, https:// → wss://
-      : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+    if (this.closed) return;
+
+    const protocol =
+      typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = typeof window !== "undefined" ? window.location.host : "localhost";
+
     const params = new URLSearchParams();
     if (this.userId) params.set("user_id", this.userId);
-    if (this.projectId) params.set("project_id", this.projectId);
-    if (this.mode && this.mode !== "interactive_session") params.set("mode", this.mode);
-    const qs = params.toString();
-    const wsUrl = `${wsBaseUrl}/api/v1/writing/sessions/${this.chapterId}${qs ? `?${qs}` : ""}`;
+    if (this.novelId) params.set("project_id", this.novelId);
+    if (this.mode) params.set("mode", this.mode);
 
-    this.ws = new WebSocket(wsUrl);
+    const url = `${protocol}//${host}/api/v1/writing/sessions/${this.chapterId}?${params.toString()}`;
 
-    this.ws.onmessage = (event) => {
-      try {
-        this.onMessage(JSON.parse(event.data) as SessionResponse);
-        this.reconnectAttempts = 0;
-      } catch {
-        /* skip malformed JSON */
-      }
-    };
+    try {
+      this.ws = new WebSocket(url);
 
-    this.ws.onerror = () => {
-      this.onError?.(new Error("WebSocket error"));
-    };
+      this.ws.onmessage = (event: MessageEvent) => {
+        try {
+          this.onMessage(JSON.parse(event.data) as SessionResponse);
+        } catch {
+          // Ignore malformed messages
+        }
+      };
 
-    this.ws.onclose = () => {
-      if (this.reconnectAttempts < this.maxReconnects) {
-        const delay = 2 ** this.reconnectAttempts * 1000;
-        this.reconnectAttempts++;
-        setTimeout(() => this.connect(), delay);
-      }
-    };
-  }
+      this.ws.onerror = () => {
+        this.onError();
+      };
 
-  send(message: SessionMessage): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+      this.ws.onclose = () => {
+        if (!this.closed && this.reconnectAttempts < WritingSessionSocket.MAX_RECONNECT_ATTEMPTS) {
+          this.reconnectAttempts++;
+          setTimeout(() => this.connect(), 1000 * this.reconnectAttempts);
+        }
+      };
+    } catch {
+      // WebSocket not available (e.g. test environment) — degrade gracefully
     }
   }
 
+  /** Send a JSON message over the socket. No-op if not connected. */
+  send(message: Record<string, unknown>): void {
+    try {
+      this.ws?.send(JSON.stringify(message));
+    } catch {
+      // Silently ignore if not connected
+    }
+  }
+
+  /** Close the socket and prevent further reconnection attempts. */
   close(): void {
-    this.reconnectAttempts = this.maxReconnects;
-    this.ws?.close();
+    this.closed = true;
+    this.reconnectAttempts = WritingSessionSocket.MAX_RECONNECT_ATTEMPTS;
+    try {
+      this.ws?.close();
+    } catch {
+      // Silently ignore
+    }
+    this.ws = null;
   }
 }

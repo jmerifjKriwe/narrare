@@ -47,6 +47,10 @@ Story Structure: {{story_structure}}
 
 {{kb_characters}}
 
+### Suggested KB Entries
+
+{{kb_suggested}}
+
 ### Dialogue Awareness
 
 If the text before the cursor is mid-dialogue:

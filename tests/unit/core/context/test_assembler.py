@@ -128,7 +128,7 @@ class TestWritingContextAssemblerInheritance:
         asm = WritingContextAssembler(total_budget=10000)
         import asyncio
 
-        ctx = asyncio.get_event_loop().run_until_complete(asm.assemble())
+        ctx = asyncio.run(asm.assemble())
         assert ctx.total_budget_tokens == 10000
 
 

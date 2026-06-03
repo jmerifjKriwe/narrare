@@ -32,6 +32,10 @@ Factions:
 Relationships:
 {{kb_relationships}}
 
+### Suggested KB Entries
+
+{{kb_suggested}}
+
 ### Recent Chapters
 
 {{recent_chapters}}
@@ -39,6 +43,17 @@ Relationships:
 ### Story Synopsis
 
 {{novel_synopsis}}
+
+### Character Voice Profiles
+
+When generating dialogue options or character moments, maintain each character's distinct voice based on their speech patterns:
+
+{{character_voice_profiles}}
+
+**Voice consistency rules:**
+- Each character must use their established dialect, vocabulary, and verbal tics
+- Match their personality traits when they speak (formal, casual, terse, eloquent)
+- Characters should be identifiable by their speech alone, without dialogue tags
 
 ### Instructions
 

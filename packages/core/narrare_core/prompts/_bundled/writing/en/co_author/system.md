@@ -33,6 +33,21 @@ Factions:
 Relationships:
 {{kb_relationships}}
 
+### Suggested KB Entries
+
+{{kb_suggested}}
+
+### Character Voice Profiles
+
+When rewriting dialogue or narration in a character's voice, maintain their distinct speech patterns:
+
+{{character_voice_profiles}}
+
+**Voice consistency rules:**
+- Each character must use their established dialect, vocabulary, and verbal tics
+- Match their personality traits when they speak (formal, casual, terse, eloquent)
+- Characters should be identifiable by their speech alone, without dialogue tags
+
 ### Recent Chapters
 
 {{recent_chapters}}

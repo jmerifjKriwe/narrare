@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-03
-Session: Phase 6 stabilization — Review 03 AI-feature audit accepted for implementation; ADR-027 + INFRA-011 govern the AI feature freeze. Platform, Core, and Frontend stabilization slices are implemented and focused-validating; Docs/Governance drift cleanup is the remaining stabilization slice before freeze-lift review.
+Date: 2026-06-03 (Session 2)
+Session: Audit Review-05 Umsetzung — 9 Tasks aus Review-05-Release in 4 Wellen abgeschlossen. CI-Permissions minimiert (read-only Defaults). SSOT-Hierarchie in CONSTRAINTS.md §8 etabliert. Gate-Konformitäts-Audit (check_locale_sync blocking, check_streaming schon blocking). System-Health-Metrik (0.73 DEGRADED). Release-SBOM generiert. Observability-Trace-Kette dokumentiert + 22 Integration-Tests. Q-011 Distribution-Strategie dokumentiert. Ausnahmen-Sync CONSTRAINTS.md ↔ pyproject.toml.
 
 ---
 
@@ -74,7 +74,11 @@ Alembic migrations 0001 through ~0023
 ### Infrastructure
 
 - `scripts/check_architecture.py` — CI-enforced constraint validation
-- `.github/workflows/` — CI, architecture check, release, promptfoo evals (nightly)
+- `scripts/check_system_health.py` — Aggregierte System-Health-Metrik (HEALTHY/DEGRADED/CRITICAL)
+- `scripts/health_types.py` + `health_format.py` — Health-Score-Typen und Formatierer
+- `apps/api/narrare/_app/observability.py` — Zentraler Trace-Context-Helper
+- `docs/development/observability-guide.md` — End-to-End Observability-Trace-Kette dokumentiert
+- `.github/workflows/` — CI (gated: 16 blocking, 1 warning coverage), architecture check, release (mit SBOM), promptfoo evals (nightly)
 - Docker Compose: PostgreSQL (pgvector) + Redis + pgBouncer (prod profile)
 - OpenTelemetry + Langfuse for LLM observability
 - promptfoo eval framework (`evals/`) for prompt quality regression
@@ -124,9 +128,13 @@ Completed in Phase 6 so far:
 
 ## What's Next
 
-1. Finish INFRA-011 Docs/Governance drift cleanup and review whether the AI feature freeze can be lifted.
-2. E2E test patterns
-3. ANAL-005: Coreference Analysis — resumes only after INFRA-011 stabilization gates pass or an explicit Architecture-reviewed exception is approved.
+1. ❌ **Backend-Unit-Failures beheben (AUFG-02-01)** — 7 Test-Failures in Prompt-Integrity und Streaming-Compliance müssen vor dem Freeze-Lift behoben werden.
+2. ❌ **Prompt-Warnungen abbauen (AUFG-03-01)** — 79 Prompt-Structure-Warnungen auf dem Weg zu Score ≥0.85.
+3. ❌ **KB-Adoption über 0.85 (AUFG-03-02)** — KB-Score von 0.78 auf ≥0.85 heben.
+4. ❌ **Frontend-Hubs modularisieren (AUFG-01-02)** — EditorView, TipTapEditor, GhostText, API-Clients.
+5. ❌ **Frontend-Tests beschleunigen (AUFG-02-03)** — Vitest von 213s auf <120s.
+6. ⏳ **E2E test patterns**
+7. ⏳ **ANAL-005: Coreference Analysis** — resumes only after INFRA-011 stabilization gates pass or an explicit Architecture-reviewed exception is approved.
 
 ---
 
@@ -190,6 +198,8 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Python 3.14 missing type stubs | Low | Documented in pyproject.toml |
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
+| System Health Score 0.73 (DEGRADED) | Medium | CI-Check (warning-only bei DEGRADED, fail bei CRITICAL). Baseline-Items abbauen für ≥0.85 |
+| 6 offene Audit-Tasks (AUFG-02-01, -03-01, -03-02, -01-02, -02-03) | Medium | Blockieren Freeze-Lift. Separate Sprints nötig |
 
 ---
 
