@@ -226,6 +226,11 @@ for FastAPI, HTTP, and database calls. Exports to any OTLP-compatible backend.
 
 ## Frontend
 
+### Node.js `24+`
+**Why:** Required runtime for Next.js frontend and all frontend tooling (pnpm, biome, TypeScript).
+**Not:** Node 22 or lower — CI tests against 24 only. Older versions are unsupported.
+**Canonical source:** This document. All other docs (README, deployment-guide, DevContainer) reference this version.
+
 ### Next.js `16` (App Router) + TypeScript
 **Why:** SSR + SSE support. Strong TypeScript ecosystem. App Router for layouts and streaming.
 **Role:** WebUI — the primary client interface.
@@ -338,6 +343,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-05-26 — Recharts ~3.8 added for analysis visualization suite (ANAL-001)
+> Last updated: 2026-06-03 — Node.js 24+ added as canonical source (AUFG-04-01); Recharts ~3.8 added for analysis visualization suite (ANAL-001)
 > Maintained by: Architecture Agent
 > Changes require ADR

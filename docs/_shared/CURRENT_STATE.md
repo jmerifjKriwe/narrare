@@ -35,7 +35,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
 - ADRs: 24+ (ADR-001 through ADR-023, plus ADR-027 AI Feature Stabilization Gates)
 - Feature specs: 75 individual files + INDEX.md
-- Open questions: 8 (Q-001 through Q-008)
+- Open questions: 11 (Q-001 through Q-011)
 
 ### Core (`packages/core/narrare_core/`)
 
@@ -65,7 +65,7 @@ Alembic migrations 0001 through ~0023
 - `_shared/`: CONSTRAINTS.md (22 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
 - `architecture/decisions/`: 22 ADRs + 2 implementation plans (inkl. ADR-022 LLM Wiki — Accepted) (INDEX.md)
-- `architecture/questions/`: 8 questions in 5 files (INDEX.md)
+- `architecture/questions/`: 11 questions in 6 files (INDEX.md)
 - `features/`: 76 feature spec files (INDEX.md with status tracking)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
 - **PLAN-004** — Timeline Management (vollständig: DB → CRUD → AI analysis → SSE extraction → confirm endpoint → DurationImpossibilityCheck → LLM consistency via bundled prompt → character ages → visualization, 44 files, DoD-100%) ✅
@@ -169,12 +169,15 @@ Full details: `docs/architecture/decisions/INDEX.md`
 |----|---------|--------|
 | Q-001 | MCP auth strategy | 🟡 Open |
 | Q-002 | A2A streaming requirement | 🟡 Open |
-| Q-003 | Embedding provider abstraction | 🟡 Open |
+| Q-003 | Embedding provider abstraction | ✅ → ADR-020 |
 | Q-004 | Celery vs arq | ✅ → TaskIQ |
 | Q-005 | GLM/Z.AI compatibility | ✅ → OpenAI-compatible |
 | Q-006 | Configurable Model Routing | ✅ → Runtime cascade |
-| Q-007 | Writing context data loader | 🟡 Open |
-| Q-008 | Auth store hydration | 🟡 Open |
+| Q-007 | Writing context data loader | ✅ → WritingContextAssembler |
+| Q-008 | Auth store hydration | ✅ → AuthProvider.tsx |
+| Q-009 | Chat conversations: project-scoped vs user-scoped | 🟡 Open |
+| Q-010 | Chat prompt i18n: EN-only v1 vs full i18n | 🟡 Open |
+| Q-011 | Distribution strategy for non-technical users | 🟡 Open |
 
 Full details: `docs/architecture/questions/INDEX.md`
 
