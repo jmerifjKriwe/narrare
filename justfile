@@ -396,6 +396,11 @@ check-prompts-de:
     @echo "🇩🇪 Checking DE prompt quality..."
     uv run python scripts/prompt_quality_de.py
 
+# Check aggregated system health score (HEALTHY >= 0.85, DEGRADED 0.70-0.85, CRITICAL < 0.70)
+check-health:
+    @echo "🏥 Checking system health..."
+    uv run python scripts/check_system_health.py
+
 # List all bundled prompt modes with locale coverage
 prompt-list:
     #!/usr/bin/env bash
@@ -498,5 +503,5 @@ hooks-update:
 # ---------------------------------------------------------------------------
 
 # Full pre-merge check (everything, strict mode)
-check-full: check check-streaming check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models
+check-full: check check-streaming check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
     @echo "✅ All checks passed — ready to merge"

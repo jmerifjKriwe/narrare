@@ -1,5 +1,33 @@
 name: CI
 
+# ---------------------------------------------------------------------------
+# Gate-Konformitäts-Audit (Stand: 2026-06-03)
+# ---------------------------------------------------------------------------
+# Referenz: .opencode/context/narrare-dev/processes/quality-gates.md
+#
+# | Gate | Tool / Check                          | CI Status   | Notes                              |
+# |------|----------------------------------------|-------------|------------------------------------|
+# | G1   | pytest unit + integration + e2e        | ✅ Blocking  | Unit/Integration in separaten Jobs |
+# | G2   | --cov-fail-under (Coverage)            | ⚠️ Warning  | Übergangsausnahme: --cov-fail-under=0, User-Entscheidung |
+# | G3   | check_architecture.py                  | ✅ Blocking  | architecture Job                   |
+# | G3b  | check_exception_baseline.py            | ✅ Blocking  | architecture Job                   |
+# | G3c  | export_openapi.py --check              | ✅ Blocking  | architecture Job                   |
+# | G4   | test_fake_conformance.py               | ✅ Blocking  | test-unit Job (via pytest)         |
+# | G5   | Cross-layer contract tests             | ✅ Blocking  | test-unit Job (via pytest)         |
+# | G6   | pyright                                | ✅ Blocking  | typecheck Job                      |
+# | G6   | mypy --strict                          | ❌ Fehlend   | Nicht in CI (nur pyright)          |
+# | G7   | ruff check + ruff format --check       | ✅ Blocking  | lint Job                           |
+# | G8   | check_adoption.py                      | ✅ Blocking  | architecture Job                   |
+# | G9   | check_prompt_structure.py              | ✅ Blocking  | architecture Job                   |
+# | G9   | check_streaming_compliance.py (RULE-20)| ✅ Blocking  | architecture Job                   |
+# | G10  | check_locale_sync.py                   | ✅ Blocking  | architecture Job (was: warning)    |
+# | --   | check_doc_drift.py                     | ✅ Blocking  | architecture Job                   |
+# | --   | check_frontend_file_size.py (RULE-04)  | ✅ Blocking  | frontend Job                       |
+# | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
+# | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
+# | --   | pnpm test (frontend tests)             | ✅ Blocking  | frontend Job                       |
+# ---------------------------------------------------------------------------
+
 on:
   pull_request:
     paths:
@@ -53,7 +81,6 @@ jobs:
         run: uv run python scripts/check_adoption.py
 
       - name: Check locale sync
-        continue-on-error: true
         run: uv run python scripts/check_locale_sync.py
 
       - name: Check documentation drift
@@ -62,6 +89,9 @@ jobs:
       - name: Check streaming compliance (RULE-20)
         run: |
           uv run python scripts/check_streaming_compliance.py
+
+      - name: System health aggregation
+        run: uv run python scripts/check_system_health.py
 
   # -------------------------------------------------------------------------
   # Lint & format (< 60s)

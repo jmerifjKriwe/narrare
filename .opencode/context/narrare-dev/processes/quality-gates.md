@@ -69,19 +69,51 @@ Coverage below minimum = CI failure. No exceptions.
 
 ## Gate 7: CI Summary
 
-The full CI pipeline runs these gates in order:
+The full CI pipeline runs these gates in order. See `.github/workflows/ci.yml`
+for the authoritative source.
 
-1. `ruff` format + lint
-2. `check_architecture.py` (constraint enforcement)
-3. `check_exception_baseline.py` (no-growth approved exceptions)
-4. `check_adoption.py` + `check_prompt_structure.py` (AI adoption/prompt ratchet)
-5. `check_streaming_compliance.py` (RULE-20 SSE compliance ratchet)
-6. `check_frontend_file_size.py` (TS/TSX RULE-04 no-growth gate)
-7. `mypy --strict` + `pyright` (type checking)
-8. `pytest -m unit` (unit tests + coverage)
-9. `pytest -m integration` (integration tests + coverage)
-10. `pnpm test` (frontend tests)
-11. `bandit` (security scan)
+### Gate Status in CI (Stand: 2026-06-03)
+
+| # | Gate | CI Status | Notes |
+|---|------|-----------|-------|
+| 1 | `ruff` format + lint | ✅ Blocking | `lint` Job |
+| 2 | `check_architecture.py` | ✅ Blocking | `architecture` Job |
+| 3 | `check_exception_baseline.py` | ✅ Blocking | `architecture` Job |
+| 4 | `check_adoption.py` + `check_prompt_structure.py` | ✅ Blocking | `architecture` Job |
+| 5 | `check_streaming_compliance.py` (RULE-20) | ✅ Blocking | `architecture` Job |
+| 6 | `check_locale_sync.py` | ✅ Blocking | `architecture` Job (previously: warning) |
+| 7 | `check_doc_drift.py` | ✅ Blocking | `architecture` Job |
+| 8 | `export_openapi.py --check` | ✅ Blocking | `architecture` Job |
+| 9 | `mypy --strict` + `pyright` | ⚠️ Partial | Only `pyright` in CI; `mypy` not yet configured |
+| 10 | `pytest` unit tests | ✅ Blocking | `test-unit` Job |
+| 11 | Coverage threshold | ⚠️ Warning | **Übergangsausnahme** (see below) |
+| 12 | `pytest` integration tests | ✅ Blocking | `test-integration` Job |
+| 13 | `pnpm test` (frontend) | ✅ Blocking | `frontend` Job |
+| 14 | `bandit` + `pip-audit` | ✅ Blocking | `security` Job |
+
+### Übergangsausnahme: Coverage-Gate (Warning-only)
+
+**Entscheidung:** Coverage läuft mit `--cov-fail-under=0` und einem separaten
+Warning-Step, der bei < 80% eine GitHub-Warning ausgibt. Der Test-Job schlägt
+bei Test-Fehlern fehl, aber **nicht** bei Unterschreitung der Coverage-Schwelle.
+
+**Begründung:** Die Test-Suite befindet sich in einer Übergangsphase. Test-Failures
+werden in einem separaten Task (AUFG-02-01) behoben. Sobald die Test-Suite stabil
+durchläuft, wird `--cov-fail-under` auf den dokumentierten Schwellwert gesetzt.
+
+**Aufzuheben wenn:** Alle Unit- und Integrationstests grün sind und Coverage
+stabil über dem Schwellwert liegt. Erfordert explizite User-Freigabe.
+
+### Additional CI-only Gates
+
+These checks run in CI but are not part of the numbered gate system:
+
+| Check | CI Status | Notes |
+|-------|-----------|-------|
+| `check_frontend_file_size.py` (RULE-04) | ✅ Blocking | `frontend` Job |
+| `biome check` (frontend lint/format) | ✅ Blocking | `frontend` Job |
+| i18n validation | ✅ Blocking | `frontend` Job |
+| E2E tests | ✅ Blocking | `test-e2e` Job, main branch only |
 
 All gates must pass. No skipping, no `--no-cov` workarounds.
 
