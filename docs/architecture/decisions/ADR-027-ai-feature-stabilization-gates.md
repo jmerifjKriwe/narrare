@@ -1,6 +1,6 @@
 # ADR-027 — AI Feature Stabilization Gates
 
-> **Status:** Proposed
+> **Status:** ✅ Accepted
 > **Date:** 2026-06-02
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —

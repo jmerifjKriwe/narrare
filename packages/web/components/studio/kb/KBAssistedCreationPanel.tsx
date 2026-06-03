@@ -20,7 +20,12 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { KBEntityType } from "@/lib/api/kb";
 import type { KBEnhancementResult, KBInterviewResult } from "@/lib/api/kb-sessions";
-import { clearPendingInterview, savePendingInterview } from "@/lib/hooks/use-kb-interview-resume";
+import {
+  clearPendingInterview,
+  isInterviewResumePersistenceDisabled,
+  savePendingInterview,
+  setInterviewResumePersistenceDisabled,
+} from "@/lib/hooks/use-kb-interview-resume";
 import {
   useAbandonKBSession,
   useAnswerField,
@@ -61,6 +66,9 @@ export function KBAssistedCreationPanel({
   const [suggestingFieldKey, setSuggestingFieldKey] = useState<string | null>(null);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [entryName, setEntryName] = useState("");
+  const [resumePersistenceEnabled, setResumePersistenceEnabled] = useState(
+    () => !isInterviewResumePersistenceDisabled(),
+  );
 
   // --- Session mutations ---
   const createSessionMutation = useCreateKBSession(novelId);
@@ -203,7 +211,11 @@ export function KBAssistedCreationPanel({
       savePendingInterview(novelId, sessionId, entityType);
       abandonSessionMutation.mutate(undefined, {
         onSuccess: () => {
-          toast.success(t("kb.sessionAbandoned") || "Interview progress saved");
+          toast.success(
+            resumePersistenceEnabled
+              ? t("kb.sessionAbandoned")
+              : t("kb.sessionAbandonedWithoutSave"),
+          );
           onCancel();
         },
       });
@@ -217,13 +229,23 @@ export function KBAssistedCreationPanel({
       savePendingInterview(novelId, sessionId, entityType);
       abandonSessionMutation.mutate(undefined, {
         onSuccess: () => {
-          toast.success(t("kb.sessionAbandoned") || "Interview progress saved");
+          toast.success(
+            resumePersistenceEnabled
+              ? t("kb.sessionAbandoned")
+              : t("kb.sessionAbandonedWithoutSave"),
+          );
           onCancel();
         },
       });
     } else {
       onCancel();
     }
+  }
+
+  function handleResumePersistenceChange(enabled: boolean): void {
+    setResumePersistenceEnabled(enabled);
+    setInterviewResumePersistenceDisabled(!enabled);
+    if (!enabled) clearPendingInterview(novelId);
   }
 
   // --- Get icon for entity type ---
@@ -320,6 +342,16 @@ export function KBAssistedCreationPanel({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={resumePersistenceEnabled}
+                onChange={(event) => handleResumePersistenceChange(event.target.checked)}
+                className="h-4 w-4 rounded border-border"
+                aria-label={t("kb.interview.resumePersistenceToggle")}
+              />
+              <span>{t("kb.interview.resumePersistenceToggle")}</span>
+            </label>
             <button
               type="button"
               onClick={handleAbandon}
@@ -380,7 +412,11 @@ export function KBAssistedCreationPanel({
         open={confirmAbandon}
         onOpenChange={setConfirmAbandon}
         title={t("kb.interview.cancelConfirmTitle")}
-        description={t("kb.interview.cancelConfirmDescription")}
+        description={
+          resumePersistenceEnabled
+            ? t("kb.interview.cancelConfirmDescription")
+            : t("kb.interview.cancelConfirmNoSaveDescription")
+        }
         confirmLabel={t("kb.interview.cancelConfirmAction")}
         onConfirm={handleConfirmAbandon}
         variant="destructive"

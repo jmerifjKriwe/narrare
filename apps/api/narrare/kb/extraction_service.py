@@ -3,7 +3,7 @@
 Manages the full extraction flow:
 1. Fetch chapter content from the chapter repository
 2. Fetch existing KB entity names for dedup
-3. Build system prompt via PromptComposer (with fallback)
+3. Build system prompt via PromptComposer
 4. Run ExtractionAgent over the chapter text
 5. Return structured ExtractionOutput
 
@@ -35,26 +35,6 @@ if TYPE_CHECKING:
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# Fallback system prompt when no bundled prompt is available.
-_DEFAULT_SYSTEM_PROMPT = """You are a worldbuilding and narrative analysis assistant.
-Analyze the provided chapter text and extract:
-
-1. **New entities** — characters, locations, objects, factions, concepts, or systems that
-   appear in the text and are NOT in the existing entities list.
-2. **Entity updates** — new information about entities that already exist.
-3. **Relationships** — meaningful connections between entities (ally, enemy, member_of,
-   located_at, possesses, etc.).
-4. **Conflicts** — contradictions or inconsistencies with the existing knowledge base.
-
-For each extraction, provide:
-- The exact source text that supports the extraction
-- A confidence score (0.0-1.0)
-- Entity type classification
-- Proposed metadata where appropriate
-
-Be thorough but precise. Only extract what is directly supported by the text.
-"""
 
 
 class ExtractionService:
@@ -119,7 +99,7 @@ class ExtractionService:
         # 2. Get existing entity names for dedup.
         existing_names = await self._get_existing_entity_names(novel_id, user_id)
 
-        # 3. Build system prompt via PromptComposer (fallback if no bundled prompt).
+        # 3. Build system prompt via PromptComposer.
         system_prompt = await self._build_system_prompt()
 
         # 4. Get model from registry.
@@ -211,24 +191,14 @@ class ExtractionService:
             return []
 
     async def _build_system_prompt(self) -> str:
-        """Build system prompt via PromptComposer with inline fallback.
-
-        Two-tier approach:
-        1. PromptComposer — full extraction prompt from bundled templates
-        2. Inline fallback — default extraction instructions (last resort)
+        """Build system prompt via PromptComposer.
 
         The Narrare meta-prompt is injected automatically by NarrareMeta
         Capability (ADR-026) — no manual meta-prepending needed.
         """
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
-        from narrare_core.shared.errors import PromptNotFoundError
 
         ctx = PromptContext(language="en", mode="extract")
-        try:
-            composed = await self._composer.build(LLMIntent.KB_EXTRACT, ctx)
-            return composed.system
-        except PromptNotFoundError:
-            logger.info("no_bundled_extraction_prompt_using_default")
-
-        return _DEFAULT_SYSTEM_PROMPT
+        composed = await self._composer.build(LLMIntent.KB_EXTRACT, ctx)
+        return composed.system

@@ -1,84 +1,152 @@
 /**
- * SSE streaming client for AI responses.
+ * Shared SSE streaming transport for AI responses.
  * Uses native fetch + ReadableStream — axios cannot do this.
  */
 
 import { getAccessToken } from "./client";
 
+export type SSEMethod = "GET" | "POST";
+
+export type SSEErrorKind = "abort" | "http" | "network" | "parse" | "stream";
+
+export class SSEStreamError extends Error {
+  constructor(
+    message: string,
+    public readonly kind: SSEErrorKind,
+    public readonly status?: number,
+    public readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = "SSEStreamError";
+  }
+}
+
 export interface SSEOptions<T> {
   url: string;
-  body: unknown;
+  method?: SSEMethod;
+  body?: unknown;
   onChunk: (chunk: T) => void;
-  onComplete?: (result: T) => void;
-  onError?: (error: Error) => void;
+  onComplete?: (result: T | undefined) => void;
+  onError?: (error: SSEStreamError) => void;
   signal?: AbortSignal;
+}
+
+interface ParsedSSEEvent {
+  data: string;
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (error instanceof Error && error.name === "AbortError")
+  );
+}
+
+export function normalizeSSEError(error: unknown): SSEStreamError {
+  if (error instanceof SSEStreamError) return error;
+  if (isAbortError(error)) return new SSEStreamError("Stream aborted", "abort", undefined, error);
+  if (error instanceof Error) return new SSEStreamError(error.message, "network", undefined, error);
+  return new SSEStreamError(String(error), "network", undefined, error);
+}
+
+function buildHeaders(hasBody: boolean): Record<string, string> {
+  const headers: Record<string, string> = { Accept: "text/event-stream" };
+  if (hasBody) headers["Content-Type"] = "application/json";
+
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+function parseSSEBuffer(buffer: string): { events: ParsedSSEEvent[]; remainder: string } {
+  const normalized = buffer.replace(/\r\n/g, "\n");
+  const blocks = normalized.split("\n\n");
+  const remainder = blocks.pop() ?? "";
+  const events = blocks.flatMap((block) => {
+    const dataLines = block
+      .split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart());
+    return dataLines.length > 0 ? [{ data: dataLines.join("\n") }] : [];
+  });
+  return { events, remainder };
+}
+
+function parseSingleLineEvents(buffer: string): { events: ParsedSSEEvent[]; remainder: string } {
+  const lines = buffer.split("\n");
+  const remainder = lines.pop() ?? "";
+  const events = lines.flatMap((line) => {
+    if (!line.startsWith("data:")) return [];
+    return [{ data: line.slice(5).trimStart() }];
+  });
+  return { events, remainder };
+}
+
+async function processSSEStream<T>(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  options: Pick<SSEOptions<T>, "onChunk" | "onComplete" | "onError">,
+): Promise<void> {
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const parsed = buffer.includes("\n\n") ? parseSSEBuffer(buffer) : parseSingleLineEvents(buffer);
+    buffer = parsed.remainder;
+
+    for (const event of parsed.events) {
+      if (event.data === "[DONE]") {
+        options.onComplete?.(undefined);
+        return;
+      }
+
+      try {
+        options.onChunk(JSON.parse(event.data) as T);
+      } catch (error) {
+        options.onError?.(
+          new SSEStreamError("Malformed SSE JSON event", "parse", undefined, error),
+        );
+      }
+    }
+  }
+
+  options.onComplete?.(undefined);
 }
 
 export async function connectSSE<T>({
   url,
+  method = "POST",
   body,
   onChunk,
   onComplete,
   onError,
   signal,
 }: SSEOptions<T>): Promise<void> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "text/event-stream",
-  };
-
-  const token = getAccessToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  const hasBody = method !== "GET" && body !== undefined;
 
   try {
     const response = await fetch(`/api/v1${url}`, {
-      method: "POST",
-      headers,
+      method,
+      headers: buildHeaders(hasBody),
       credentials: "include",
-      body: JSON.stringify(body),
+      body: hasBody ? JSON.stringify(body) : undefined,
       signal,
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new SSEStreamError(`HTTP ${response.status}`, "http", response.status);
     }
 
     const reader = response.body?.getReader();
-    if (!reader) throw new Error("No response body");
+    if (!reader) throw new SSEStreamError("No response body", "stream");
 
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      // Parse SSE events
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || ""; // Keep incomplete line in buffer
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6);
-          if (data === "[DONE]") {
-            onComplete?.(undefined as T);
-            return;
-          }
-          try {
-            const parsed = JSON.parse(data) as T;
-            onChunk(parsed);
-          } catch {
-            // Skip malformed JSON
-          }
-        }
-      }
-    }
+    await processSSEStream(reader, { onChunk, onComplete, onError });
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") return;
-    onError?.(error instanceof Error ? error : new Error(String(error)));
+    const normalized = normalizeSSEError(error);
+    if (normalized.kind === "abort") return;
+    onError?.(normalized);
   }
 }

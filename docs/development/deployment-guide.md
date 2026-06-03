@@ -114,12 +114,12 @@ Automated versioning via **release-please**:
 
 | Job | Target | Commands |
 |-----|--------|----------|
-| `architecture-check` | <30s | `python scripts/check_architecture.py` + `check_adoption.py` + `check_streaming_compliance.py` (warning) |
+| `architecture-check` | <30s | `python scripts/check_architecture.py` + `check_exception_baseline.py` + `check_adoption.py` + `check_prompt_structure.py` + `check_streaming_compliance.py` |
 | `lint` | <60s | `ruff check` + `ruff format --check` (Python) |
 | `typecheck` | <2min | `pyright --strict` |
 | `test-unit` | <5min | `pytest tests/unit/` |
 | `test-integration` | <5min | `pytest tests/integration/` |
-| `frontend` | <3min | `biome check` + `validate-i18n` + `pnpm type-check` + `pnpm test` + `pnpm build` |
+| `frontend` | <3min | `check_frontend_file_size.py` + `biome check` + `validate-i18n` + `pnpm type-check` + `pnpm test` + `pnpm build` |
 | `security` | <60s | `bandit -r` + `pip-audit` |
 
 **Job ordering:**
@@ -237,6 +237,23 @@ repos:
 - RULE-06: Router purity
 - RULE-11: Silent failures
 
+## INFRA-011 Stabilization Gate Commands
+
+INFRA-011 adds ratcheted/no-growth checks for AI-feature stabilization:
+
+| Command | Checker | Purpose |
+|---------|---------|---------|
+| `just check-adoption` | `scripts/check_adoption.py` | Validates feature adoption scores and ratchets prompt/adoption WARN debt against `scripts/architecture/ai-gate-baseline.json`. |
+| `just check-exceptions` | `scripts/check_exception_baseline.py` | Prevents approved architecture exceptions from growing without ADR/user approval. |
+| `just check-frontend-size` | `scripts/check_frontend_file_size.py` | Enforces/report-ratchets TypeScript/TSX RULE-04 file-size debt for touched frontend hubs. |
+| `just check-streaming` | `scripts/check_streaming_compliance.py` | Ensures backend SSE-capable AI endpoints use frontend `connectSSE()` coverage. |
+| `just check-prompts-strict` | `scripts/check_prompt_structure.py --strict` | Treats prompt structure warnings as CI-relevant failures after baseline classification. |
+
+These gates are stabilization prerequisites for lifting the ADR-027 AI feature
+freeze. Existing classified legacy debt may shrink; new WARNs, new exceptions,
+or new frontend hard-limit violations require Architecture re-review and explicit
+approval.
+
 ## Streaming Compliance Checker
 
 `scripts/check_streaming_compliance.py` enforces **RULE-20** (no deferred streaming):
@@ -257,16 +274,10 @@ uv run python scripts/check_streaming_compliance.py --json
 
 ### CI Integration
 
-Currently runs as a **warning-only** step (`continue-on-error: true`) in the
-`architecture` job of `ci.yml`. After one sprint of clean runs, it will be
-promoted to a hard failure and added to the pre-commit hooks.
-
-### Promotion Checklist
-
-- [ ] All existing violations resolved
-- [ ] Sprint of clean CI runs confirmed
-- [ ] Remove `continue-on-error: true` from `ci.yml`
-- [ ] Add hook to `.pre-commit-config.yaml`
+Runs as part of the INFRA-011 architecture gate set and is ratcheted against the
+AI gate baseline. Existing classified gaps may be tracked while they shrink; new
+streaming gaps fail stabilization review unless explicitly approved by
+Architecture/user exception.
 
 ## Justfile Command Catalog
 
@@ -487,7 +498,7 @@ The application runs locally (not in Docker) for hot reload.
 ## Monitoring
 
 - Application logs: structlog with JSON output
-- Metrics: (TODO) Prometheus endpoint
-- Tracing: (TODO) OpenTelemetry integration
+- Metrics: Prometheus-compatible counters where services expose runtime metrics
+- Tracing: OpenTelemetry + Langfuse for LLM observability
 
 > Maintained by: Deployment Agent

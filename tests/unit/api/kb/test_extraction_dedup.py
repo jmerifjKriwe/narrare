@@ -245,14 +245,14 @@ async def test_extract_uses_composer_for_system_prompt(
 
 
 @pytest.mark.asyncio
-async def test_extract_falls_back_to_default_prompt(
+async def test_extract_propagates_prompt_resolution_error(
     mock_registry: MagicMock,
     config: ResolvedModelConfig,
     mock_chapter_repo: MagicMock,
     mock_kb_repo: MagicMock,
     mock_composer: MagicMock,
 ) -> None:
-    """When composer raises PromptNotFoundError, default system prompt is used."""
+    """When PromptComposer cannot resolve the bundled prompt, fail visibly."""
     from narrare_core.shared.errors import PromptNotFoundError
 
     chapter = _make_chapter()
@@ -276,17 +276,14 @@ async def test_extract_falls_back_to_default_prompt(
             mock_composer,
         )
 
-        result = await service.extract_from_chapter(
-            novel_id=uuid4(),
-            chapter_id=chapter.id,
-            user_id=uuid4(),
-        )
+        with pytest.raises(PromptNotFoundError):
+            await service.extract_from_chapter(
+                novel_id=uuid4(),
+                chapter_id=chapter.id,
+                user_id=uuid4(),
+            )
 
-        assert result is not None
-        MockAgent.assert_called_once()
-        system_prompt = MockAgent.call_args.kwargs.get("system_prompt")
-        assert system_prompt is not None
-        assert "existing entities" in system_prompt.lower() or "extract" in system_prompt.lower()
+        MockAgent.assert_not_called()
 
 
 def _make_extraction_output(

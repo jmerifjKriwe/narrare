@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-02
-Session: Phase 6 stabilization planning — Review 03 AI-feature audit accepted for implementation; INFRA-011 + ADR-027 created to freeze new AI feature work until prompt, streaming, documentation-drift, privacy, and gate stabilization pass.
+Date: 2026-06-03
+Session: Phase 6 stabilization — Review 03 AI-feature audit accepted for implementation; ADR-027 + INFRA-011 govern the AI feature freeze. Platform, Core, and Frontend stabilization slices are implemented and focused-validating; Docs/Governance drift cleanup is the remaining stabilization slice before freeze-lift review.
 
 ---
 
@@ -26,14 +26,14 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ## Codebase Overview
 
-### Stats (verified 2026-05-29)
+### Stats (verified 2026-06-03)
 
-- Knowledge Graph: 12,613 nodes, 92,243 edges, 1,241 files, 5,932 test nodes
+- Knowledge Graph: 15,407 nodes, 112,382 edges, risk medium
 - Backend tests: 4,273 (3,750 unit + 495 integration) across 396 test files
 - Frontend tests: ~5,000 across 165 test files (Vitest + MSW)
 - Total tests: ~9,200+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
-- ADRs: 23 (ADR-001 through ADR-023, inkl. ADR-022 LLM Wiki — Accepted, ADR-023 Co-Author Change Engine — Implemented)
+- ADRs: 24+ (ADR-001 through ADR-023, plus ADR-027 AI Feature Stabilization Gates)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 8 (Q-001 through Q-008)
 
@@ -124,9 +124,9 @@ Completed in Phase 6 so far:
 
 ## What's Next
 
-1. INFRA-011: AI Feature Stabilization Program — prompt/adoption cleanup, frontend SSE centralization, KB Interview Resume privacy, documentation-drift cleanup, ratcheted gates, and no-growth exception gate.
+1. Finish INFRA-011 Docs/Governance drift cleanup and review whether the AI feature freeze can be lifted.
 2. E2E test patterns
-3. ANAL-005: Coreference Analysis — resumes after INFRA-011 stabilization gates pass.
+3. ANAL-005: Coreference Analysis — resumes only after INFRA-011 stabilization gates pass or an explicit Architecture-reviewed exception is approved.
 
 ---
 
@@ -157,7 +157,7 @@ Completed in Phase 6 so far:
 | ADR-021 | Deterministic Analysis Strategy | ✅ Accepted |
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
-| ADR-027 | AI Feature Stabilization Gates | 🔄 Proposed — new AI features frozen until INFRA-011 gates pass |
+| ADR-027 | AI Feature Stabilization Gates | ✅ Accepted — new AI features frozen until INFRA-011 gates pass and freeze-lift review completes |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

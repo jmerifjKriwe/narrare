@@ -179,20 +179,6 @@ infrastructure_definitions:
 # Unregistered inline prompts >100 chars cause CI FAIL.
 
 inline_fallbacks:
-  - file: "apps/api/narrare/consistency/prompt_builder.py"
-    lines: "33-65"
-    variable: "CONSISTENCY_SYSTEM_PROMPT"
-    status: registered
-    migration_target: "_bundled/kb/en/consistency/system.md"
-    reason: "Consistency bundled prompt already exists at migration target"
-
-  - file: "apps/api/narrare/kb/extraction_service.py"
-    lines: "40-57"
-    variable: "_DEFAULT_SYSTEM_PROMPT"
-    status: registered
-    migration_target: "_bundled/kb/en/extract/system.md"
-    reason: "Extraction bundled prompt already exists at migration target"
-
   - file: "packages/core/narrare_core/agents/writing_graph_prompts.py"
     lines: "multiple"
     variable: "fallback when composer=None"

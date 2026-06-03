@@ -120,7 +120,7 @@ infrastructure_definitions:
     description: "User content wrapped in XML tags"
     evidence: "all UNSAFE_USER_VARS wrapped in <tag>...</tag>"
   meta_prompt:
-    description: "Narrare identity meta-prompt prepended"
+    description: "Narrare identity meta-prompt guaranteed by ADR-026 Capability"
     evidence: "uses PromptComposer or has agent inheriting NarrareAgent (Capabilities auto-injected per ADR-026)"
   i18n:
     description: "Bundled prompt exists in en/de/fr"

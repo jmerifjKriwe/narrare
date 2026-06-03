@@ -286,6 +286,7 @@ check-verbose:
 check-architecture:
     @echo "🏛️  Checking architecture constraints..."
     uv run python scripts/check_architecture.py
+    uv run python scripts/check_exception_baseline.py
 
 # Run ruff linter (with auto-fix)
 lint:
@@ -321,6 +322,7 @@ build-frontend:
 # Run all frontend checks (lint + typecheck + test)
 check-frontend:
     @echo "🔍 Running frontend checks..."
+    uv run python scripts/check_frontend_file_size.py
     just lint-frontend
     just typecheck-frontend
     just test-frontend
@@ -334,6 +336,16 @@ check-frontend:
 check-adoption:
     @echo "📈 Checking feature adoption score..."
     uv run python scripts/check_adoption.py
+
+# Check approved architecture exceptions do not grow without ADR/user approval
+check-exceptions:
+    @echo "🧾 Checking approved exception baseline..."
+    uv run python scripts/check_exception_baseline.py
+
+# Check TS/TSX file-size hard limits with no-growth baseline
+check-frontend-size:
+    @echo "📏 Checking frontend file-size limits..."
+    uv run python scripts/check_frontend_file_size.py
 
 # Check model registry against models.dev
 check-models:

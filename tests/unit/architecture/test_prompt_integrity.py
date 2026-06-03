@@ -251,8 +251,8 @@ class TestMetaPromptVersionConsistency:
 
         - A role-definition sentence (``Your role`` / ``Deine Aufgabe`` /
           ``Ton rôle``)
-        - Conflict resolution instructions referencing the outline
-          (``outline`` / ``Gliederung`` / ``plan``)
+        Conflict resolution is intentionally not asserted here: ADR-026 moved
+        outline-over-KB rules to the ``NarrareUniversalRules`` capability.
         """
         languages = ("en", "de", "fr")
         versions: dict[str, str] = {}
@@ -288,15 +288,25 @@ class TestMetaPromptVersionConsistency:
                 f"Meta-prompt '{lang}' is missing '{marker}' role definition"
             )
 
-        # --- Conflict resolution (outline / Gliederung / plan) ---
+    def test_universal_prompt_contains_conflict_resolution(self) -> None:
+        """Universal rules carry outline-over-KB conflict resolution (ADR-026)."""
         conflict_markers: dict[str, str] = {
             "en": "outline",
             "de": "Gliederung",
             "fr": "plan",
         }
+
         for lang, marker in conflict_markers.items():
-            assert marker in contents[lang], (
-                f"Meta-prompt '{lang}' is missing conflict resolution "
+            path = BUNDLED_ROOT / "universal" / lang / "system.md"
+            if not path.is_file():
+                pytest.skip(f"Universal rules for '{lang}' not found at {path}")
+
+            text = path.read_text(encoding="utf-8")
+            _metadata, content_lines = parse_frontmatter(text.splitlines())
+            content = "\n".join(content_lines)
+
+            assert marker in content, (
+                f"Universal rules '{lang}' are missing conflict resolution "
                 f"(expected '{marker}' in content)"
             )
 

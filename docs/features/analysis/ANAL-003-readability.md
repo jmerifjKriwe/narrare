@@ -176,7 +176,7 @@ class SentenceAnalysis:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
-- `2026-05-27` — TODO: Integrate deterministic readability metrics into Beta Reader (ANAL-001) as "Computed metrics" section. See ADR-021 hybrid feature pattern.
+- `2026-05-27` — Follow-up identified: integrate deterministic readability metrics into Beta Reader (ANAL-001) as a "Computed metrics" section. See ADR-021 hybrid feature pattern.
 - `2026-06-01` — Contracts defined: ``ReadabilityAnalyzer`` (deterministic protocol),
   ``ReadabilityAgentProtocol`` (LLM-based protocol), ``ReadabilityServiceProtocol``
   (API service protocol).  Types defined: ``ReadabilityMetrics``,

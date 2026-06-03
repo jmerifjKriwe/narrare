@@ -7,10 +7,15 @@ and violation reporting.
 from __future__ import annotations
 
 import json
+import sys
 import textwrap
 from pathlib import Path
 
-from check_streaming_compliance import (
+_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from scripts.check_streaming_compliance import (  # noqa: E402
     ComplianceResult,
     FrontendConsumer,
     SSEEndpoint,
@@ -20,6 +25,7 @@ from check_streaming_compliance import (
     _url_patterns_match,
     format_json,
     format_report,
+    violation_fingerprints,
 )
 
 # ---------------------------------------------------------------------------
@@ -62,6 +68,24 @@ SAMPLE_FRONTEND_SSE = textwrap.dedent("""\
     export async function extendChapter(chapterId: string) {
       return connectSSE({
         url: `/api/v1/writing/chapters/${chapterId}/extend`,
+      });
+    }
+""")
+
+SAMPLE_EXTRACTED_STREAMS_MODULE = textwrap.dedent("""\
+    import { connectSSE } from "./streaming";
+
+    export async function streamGeneration(requestId: string) {
+      return connectSSE({
+        url: `/writing/generation/${requestId}/stream`,
+        method: "GET",
+      });
+    }
+
+    export async function streamExtend(chapterId: string, novelId: string) {
+      return connectSSE({
+        url: `/writing/chapters/${chapterId}/extend?novel_id=${novelId}`,
+        method: "POST",
       });
     }
 """)
@@ -156,6 +180,18 @@ class TestExtractUrlPatterns:
         rest_consumers = [c for c in consumers if not c.uses_sse]
         assert len(rest_consumers) >= 1
 
+    def test_detects_sse_consumers_in_extracted_stream_module(self) -> None:
+        consumers = _extract_url_patterns(
+            SAMPLE_EXTRACTED_STREAMS_MODULE,
+            Path("lib/api/generation-streams.ts"),
+        )
+
+        assert all(c.uses_sse for c in consumers)
+        assert [c.url_fragment for c in consumers] == [
+            "/writing/generation/${requestId}/stream",
+            "/writing/chapters/${chapterId}/extend?novel_id=${novelId}",
+        ]
+
 
 # ---------------------------------------------------------------------------
 # Tests: URL pattern matching
@@ -197,6 +233,42 @@ class TestUrlPatternsMatch:
         assert _url_patterns_match(
             "/api/v1/chat",
             "/api/v1/chat",
+        )
+
+    def test_matches_frontend_url_without_api_prefix(self) -> None:
+        assert _url_patterns_match(
+            "/api/v1/writing/generation/{request_id}/stream",
+            "/writing/generation/${requestId}/stream",
+        )
+
+    def test_matches_frontend_url_with_query_parameters(self) -> None:
+        assert _url_patterns_match(
+            "/api/v1/writing/chapters/{chapter_id}/extend",
+            "/writing/chapters/${chapterId}/extend?novel_id=${novelId}",
+        )
+
+    def test_rejects_rest_lifecycle_url_missing_stream_suffix(self) -> None:
+        assert not _url_patterns_match(
+            "/api/v1/writing/generation/{request_id}/stream",
+            "/writing/generation/${requestId}",
+        )
+
+    def test_rejects_rest_lifecycle_url_missing_action_suffix(self) -> None:
+        assert not _url_patterns_match(
+            "/api/v1/writing/chapters/{chapter_id}/extend",
+            "/writing/chapters/${chapterId}",
+        )
+
+    def test_rejects_consumer_placeholder_for_static_action_segment(self) -> None:
+        assert not _url_patterns_match(
+            "/api/v1/writing/generation/{request_id}/stream",
+            "/writing/generation/${requestId}/${action}",
+        )
+
+    def test_matches_frontend_url_with_hash_fragment(self) -> None:
+        assert _url_patterns_match(
+            "/api/v1/writing/generation/{request_id}/stream",
+            "/writing/generation/${requestId}/stream#events",
         )
 
 
@@ -242,6 +314,21 @@ class TestFormatReport:
         result = ComplianceResult()
         report = format_report(result)
         assert "All SSE-capable endpoints use streaming" in report
+
+    def test_violation_fingerprint_is_stable(self) -> None:
+        result = ComplianceResult(
+            violations=[
+                "Chat uses fetch instead of connectSSE\n"
+                "  → packages/web/lib/api/client.ts:10\n"
+                "  → Backend SSE: apps/api/narrare/chat/router.py"
+            ]
+        )
+
+        assert violation_fingerprints(result) == {
+            "Chat uses fetch instead of connectSSE | "
+            "→ packages/web/lib/api/client.ts:10 | "
+            "→ Backend SSE: apps/api/narrare/chat/router.py"
+        }
 
 
 class TestFormatJson:

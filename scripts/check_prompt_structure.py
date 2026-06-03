@@ -32,32 +32,77 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-# Allow importing from the same directory.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+if TYPE_CHECKING:
+    from scripts.prompt_check_types import Issue
 
-from prompt_checks import (
-    Issue,
-    check_file_size,
-    check_frontmatter,
-    check_required_sections,
-    check_security,
-    check_variable_consistency,
-)
-from prompt_checks_crossfile import (
-    check_locale_coverage,
-    check_meta_guardrails,
-    discover_prompts,
-)
-from prompt_checks_universal import (
-    check_no_universal_rules_in_templates,
-    check_universal_rules_presence,
-)
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPTS_DIR = Path(__file__).resolve().parent
 
 # ── Constants ──────────────────────────────────────────────────
 
-ROOT = Path(__file__).resolve().parent.parent
 BUNDLED_DIR = ROOT / "packages" / "core" / "narrare_core" / "prompts" / "_bundled"
+PROMPT_WARNING_BASELINE_SECTION = "prompt_structure_warnings"
+
+
+def _ensure_import_paths() -> None:
+    """Make script-local helpers and project-root packages importable."""
+    for path in (SCRIPTS_DIR, ROOT):
+        path_text = str(path)
+        if path_text not in sys.path:
+            sys.path.insert(0, path_text)
+
+
+def collect_issues(bundled_dir: Path) -> tuple[int, int, list[Issue]]:
+    """Collect prompt structure issues without printing a report."""
+    _ensure_import_paths()
+    from prompt_checks import (
+        check_file_size,
+        check_frontmatter,
+        check_required_sections,
+        check_security,
+        check_variable_consistency,
+    )
+    from prompt_checks_crossfile import (
+        check_locale_coverage,
+        check_meta_guardrails,
+        discover_prompts,
+    )
+    from prompt_checks_universal import (
+        check_no_universal_rules_in_templates,
+        check_universal_rules_presence,
+    )
+
+    prompts = discover_prompts(bundled_dir)
+    system_prompts = [p for p in prompts if p.is_system_md]
+
+    issues: list[Issue] = []
+    for pf in prompts:
+        check_frontmatter(pf, issues)
+        check_required_sections(pf, issues)
+        check_security(pf, issues)
+        check_file_size(pf, issues)
+
+    check_variable_consistency(prompts, issues)
+    check_locale_coverage(prompts, issues)
+    check_meta_guardrails(prompts, issues)
+    check_universal_rules_presence(bundled_dir, issues)
+    check_no_universal_rules_in_templates(prompts, issues)
+
+    return len(prompts), len(system_prompts), issues
+
+
+def warning_fingerprints(issues: list[Issue]) -> set[str]:
+    """Return stable fingerprints for WARN-level prompt findings."""
+    _ensure_import_paths()
+    from scripts.architecture.baselines import stable_fingerprint
+
+    return {
+        stable_fingerprint(issue.file_path, issue.message)
+        for issue in issues
+        if issue.level == "WARN"
+    }
 
 
 # ── Reporting ──────────────────────────────────────────────────
@@ -68,6 +113,7 @@ def print_report(
     system_count: int,
     issues: list[Issue],
     strict: bool,
+    baseline_path: Path | None = None,
 ) -> int:
     """Print a summary report and return exit code."""
     fails = [i for i in issues if i.level == "FAIL"]
@@ -103,6 +149,23 @@ def print_report(
 
     print()
 
+    if baseline_path is not None:
+        _ensure_import_paths()
+        from scripts.architecture.baselines import (
+            compare_section,
+            format_comparison,
+        )
+
+        comparison = compare_section(
+            warning_fingerprints(issues),
+            PROMPT_WARNING_BASELINE_SECTION,
+            baseline_path,
+        )
+        print(format_comparison(comparison, "Prompt warning ratchet"))
+        if not comparison.ok:
+            print("RESULT: New prompt WARN(s) exceed baseline")
+            return 1
+
     if fails:
         print(f"RESULT: {len(fails)} FAIL(s), {len(warns)} WARN(s)")
         return 1
@@ -123,6 +186,9 @@ def print_report(
 
 
 def main() -> int:
+    _ensure_import_paths()
+    from scripts.architecture.baselines import DEFAULT_BASELINE_PATH
+
     parser = argparse.ArgumentParser(
         description="Validate Narrare prompt file structure and quality.",
         epilog=(
@@ -141,6 +207,17 @@ def main() -> int:
         default=BUNDLED_DIR,
         help="Path to _bundled/ directory (default: auto-detected).",
     )
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        default=DEFAULT_BASELINE_PATH,
+        help="JSON baseline used to fail only new WARN debt (default: ai-gate-baseline.json).",
+    )
+    parser.add_argument(
+        "--no-baseline",
+        action="store_true",
+        help="Disable prompt WARN ratchet comparison.",
+    )
     args = parser.parse_args()
 
     bundled_dir = args.path
@@ -151,38 +228,15 @@ def main() -> int:
         )
         return 1
 
-    # Discover all prompt files.
-    prompts = discover_prompts(bundled_dir)
-    total = len(prompts)
-    system_prompts = [p for p in prompts if p.is_system_md]
-    system_count = len(system_prompts)
+    total, system_count, issues = collect_issues(bundled_dir)
 
     if total == 0:
         print("WARN: No .md files found in bundled prompts directory.")
         return 0
 
-    issues: list[Issue] = []
-
-    # Run all checks.
-    for pf in prompts:
-        check_frontmatter(pf, issues)
-        check_required_sections(pf, issues)
-        check_security(pf, issues)
-        check_file_size(pf, issues)
-
-    # Cross-file check: variable consistency.
-    check_variable_consistency(prompts, issues)
-
-    # Cross-file checks: locale coverage and meta-prompt guardrails.
-    check_locale_coverage(prompts, issues)
-    check_meta_guardrails(prompts, issues)
-
-    # Universal rules: presence and duplication checks.
-    check_universal_rules_presence(bundled_dir, issues)
-    check_no_universal_rules_in_templates(prompts, issues)
-
     # Report.
-    return print_report(total, system_count, issues, args.strict)
+    baseline_path = None if args.no_baseline else args.baseline
+    return print_report(total, system_count, issues, args.strict, baseline_path)
 
 
 if __name__ == "__main__":

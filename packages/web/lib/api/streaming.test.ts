@@ -77,6 +77,80 @@ describe("connectSSE", () => {
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "HTTP 401" }));
   });
 
+  it("should support GET streams without a JSON body", async () => {
+    const onChunk = vi.fn();
+
+    server.use(
+      http.get("*/api/v1/test/get-stream", async ({ request }) => {
+        expect(request.headers.get("content-type")).toBeNull();
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('data: {"text":"GET"}\n'));
+            controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+            controller.close();
+          },
+        });
+        return new HttpResponse(stream, { headers: { "Content-Type": "text/event-stream" } });
+      }),
+    );
+
+    await connectSSE({
+      url: "/test/get-stream",
+      method: "GET",
+      onChunk,
+    });
+
+    expect(onChunk).toHaveBeenCalledWith({ text: "GET" });
+  });
+
+  it("should report malformed JSON without dropping later chunks", async () => {
+    const onChunk = vi.fn();
+    const onError = vi.fn();
+
+    server.use(
+      http.post("*/api/v1/test/malformed", async () => {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('data: {"text":"before"}\n'));
+            controller.enqueue(new TextEncoder().encode("data: {broken\n"));
+            controller.enqueue(new TextEncoder().encode('data: {"text":"after"}\n'));
+            controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+            controller.close();
+          },
+        });
+        return new HttpResponse(stream, { headers: { "Content-Type": "text/event-stream" } });
+      }),
+    );
+
+    await connectSSE({ url: "/test/malformed", body: {}, onChunk, onError });
+
+    expect(onChunk).toHaveBeenCalledWith({ text: "before" });
+    expect(onChunk).toHaveBeenCalledWith({ text: "after" });
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ kind: "parse" }));
+  });
+
+  it("should preserve buffered events split across network chunks", async () => {
+    const onChunk = vi.fn();
+
+    server.use(
+      http.post("*/api/v1/test/split", async () => {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('data: {"text":"split'));
+            controller.enqueue(new TextEncoder().encode(' chunk"}\n'));
+            controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+            controller.close();
+          },
+        });
+        return new HttpResponse(stream, { headers: { "Content-Type": "text/event-stream" } });
+      }),
+    );
+
+    await connectSSE({ url: "/test/split", body: {}, onChunk });
+
+    expect(onChunk).toHaveBeenCalledWith({ text: "split chunk" });
+  });
+
   it("should abort stream via AbortSignal", async () => {
     const onChunk = vi.fn();
     const onError = vi.fn();

@@ -1295,6 +1295,7 @@
     "confirmAbandon": "Are you sure? All progress will be lost.",
     "sessionSaved": "Entry created successfully",
     "sessionAbandoned": "Session abandoned",
+    "sessionAbandonedWithoutSave": "Sitzung ohne lokale Fortsetzungsdaten beendet",
     "creatingSession": "Creating session...",
     "sessionCreateFailed": "Failed to create session",
     "abandoning": "Abandoning...",
@@ -1351,10 +1352,13 @@
     "interview": {
       "resumeTitle": "Unterbrochenes Interview gefunden",
       "resumeDescription": "Du hast ein begonnenes Interview. Möchtest du es fortsetzen?",
+      "resumePrivacyDescription": "Du hast ein begonnenes Interview. Narrare hat nur Sitzungs-ID und Eintragstyp auf diesem Gerät gespeichert, löscht diese Daten nach 24 Stunden und speichert keine Interviewantworten lokal. Möchtest du fortfahren?",
       "resumeAction": "Fortsetzen",
       "startNew": "Neues Interview starten",
       "cancelConfirmTitle": "Interview beenden?",
       "cancelConfirmDescription": "Dein Fortschritt wird gespeichert. Du kannst das Interview später fortsetzen.",
+      "cancelConfirmNoSaveDescription": "Das Speichern zum Fortsetzen ist deaktiviert. Beim Beenden wird der lokale Fortsetzungszeiger verworfen; Interviewantworten werden nicht auf diesem Gerät gespeichert.",
+      "resumePersistenceToggle": "Fortsetzungszeiger 24 Stunden auf diesem Gerät speichern",
       "cancelConfirmAction": "Beenden"
     },
     "wiki": {

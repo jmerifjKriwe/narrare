@@ -376,7 +376,7 @@ export function WorldBuilding({ novelId }: WorldBuildingProps) {
           }
         }}
         title={t("kb.interview.resumeTitle")}
-        description={t("kb.interview.resumeDescription")}
+        description={t("kb.interview.resumePrivacyDescription")}
         confirmLabel={t("kb.interview.resumeAction")}
         cancelLabel={t("kb.interview.startNew")}
         onConfirm={handleResumeInterview}

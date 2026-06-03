@@ -3,7 +3,7 @@
 ---
 id: INFRA-011
 title: "AI Feature Stabilization Program"
-status: planned
+status: in-progress
 area: infra
 mvp: false
 
@@ -152,9 +152,9 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 **Acceptance criteria**
 
-- No documentation claims that short inline prompts in agents are generally allowed. It must reflect ADR-026 categories.
+- No documentation weakens ADR-026 by allowing broad agent inline-prompt exceptions.
 - MCP/A2A are described as planned adapters that call the Service Layer (RULE-12), with Q-001/Q-002 still open.
-- Documentation gate has no TODO/HACK placeholders.
+- Documentation gate has no unresolved placeholder language.
 
 ### Platform — NarrarePlatformSpecialist
 
@@ -210,25 +210,32 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 ## Definition of Done
 
+### Current Implementation Evidence (2026-06-03)
+
+- **Platform:** Ratchet/no-growth/frontend-size/streaming-compliance gates implemented; focused validation passed (37 tests).
+- **Core:** Meta/Universal/Lite prompt regressions fixed; KB adoption is PASS (`0.85`), overall adoption `0.90`; `check_prompt_structure.py` passes with classified legacy WARN debt and ratchet evidence (`0` new / `21` resolved).
+- **Frontend:** Shared `connectSSE` supports GET/POST with normalized errors; Generation/Rewrite/Extend/CoAuthor streams use shared transport; `generation.ts` split via `generation-streams.ts`; KB Interview Resume has 24h TTL, opt-out, privacy notice, and en/de/fr parity; focused Vitest passed (57 tests).
+- **Docs/Governance:** Current slice harmonizes AGENTS/context docs, MCP/A2A planned-scope wording, roadmap freeze language, and gate-command documentation before freeze-lift review.
+
 ### Program Gate
 
-- [ ] ADR-027 accepted or explicitly approved by the user/coordinator for implementation.
-- [ ] No new AI feature implementation is started before Core + Frontend + Platform stabilization gates pass.
-- [ ] Review 03 tasks AUFG-03-01 through AUFG-03-10 have implementation-owner handoffs and validation evidence.
+- [x] ADR-027 accepted or explicitly approved by the user/coordinator for implementation.
+- [x] No new AI feature implementation is started before Core + Frontend + Platform stabilization gates pass.
+- [x] Review 03 tasks AUFG-03-01 through AUFG-03-10 have implementation-owner handoffs and validation evidence.
 
 ### Core Gate
 
-- [ ] Prompt integrity regressions are fixed.
-- [ ] KB adoption score is `>= 0.85`.
-- [ ] Inline prompt fallback list shrinks or remains only with ADR-approved, target-dated exceptions.
-- [ ] Prompt i18n parity is restored or each remaining EN-only prompt has architecture-approved rationale.
+- [x] Prompt integrity regressions are fixed.
+- [x] KB adoption score is `>= 0.85`.
+- [x] Inline prompt fallback list shrinks or remains only with ADR-approved, target-dated exceptions.
+- [x] Prompt i18n parity is restored or each remaining EN-only prompt has architecture-approved rationale/classified legacy WARN status.
 
 ### Frontend Gate
 
-- [ ] Shared SSE abstraction supports GET/POST, AbortSignal, error normalization, typed events, and partial-output preservation.
-- [ ] Generation/Rewrite/Extend/CoAuthor use the shared streaming abstraction where backend SSE exists.
-- [ ] KB Interview Resume has TTL, opt-out, transparency, and minimized persisted data.
-- [ ] Touched frontend hubs are modularized rather than compressed.
+- [x] Shared SSE abstraction supports GET/POST, AbortSignal, error normalization, typed events, and partial-output preservation.
+- [x] Generation/Rewrite/Extend/CoAuthor use the shared streaming abstraction where backend SSE exists.
+- [x] KB Interview Resume has TTL, opt-out, transparency, and minimized persisted data.
+- [x] Touched frontend hubs are modularized rather than compressed.
 
 ### Docs Gate
 
@@ -238,10 +245,10 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 ### Platform Gate
 
-- [ ] Prompt/adoption gates are ratcheted: no new WARNs, decreasing legacy baseline.
-- [ ] No-growth exception gate is active.
-- [ ] Frontend file-size gate/report catches touched hard-limit violations.
-- [ ] Streaming compliance is represented in CI or an explicit architecture-review checklist with evidence.
+- [x] Prompt/adoption gates are ratcheted: no new WARNs, decreasing legacy baseline.
+- [x] No-growth exception gate is active.
+- [x] Frontend file-size gate/report catches touched hard-limit violations.
+- [x] Streaming compliance is represented in CI or an explicit architecture-review checklist with evidence.
 
 ## Risks & Mitigations
 

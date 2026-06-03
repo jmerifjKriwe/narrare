@@ -68,11 +68,15 @@ class ChapterSummaryService:
 # ❌ Verboten: direkter LLM-Import
 import openai  # RULE-01 Verletzung → CI schlägt fehl
 
-# ❌ Verboten: f-String Prompt-Bau (für komplexe Prompts —
-#     kurze Inline-Prompts sind in Agents erlaubt)
+# ❌ Verboten: Prompt-Bau im Service (RULE-02/RULE-02a)
 #
-#     Komplexe Prompts → prompts/_bundled/ mit PromptComposer
-#     Einfache Agent-Prompts → direkter String im Service
+#     Anpassbare Feature-Prompts → core/prompts/ + PromptComposer cascade
+#     Garantierte Meta-/Universal-Regeln → ADR-026 Capabilities
+#     Dynamische Agent-Instructions → @agent.instructions in core/agents/
+#
+#     Services dürfen nur Laufzeit-Input an agent.run(prompt=...) übergeben
+#     (z. B. Textinhalt oder Nutzeranfrage), aber keine System-/Task-
+#     Anweisungen, Rollen oder Prompt-Templates als Inline-String bauen.
 ```
 
 **Pattern-Zusammenfassung:**

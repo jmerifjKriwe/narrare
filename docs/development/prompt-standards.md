@@ -312,12 +312,18 @@ review, preferences, remap
 
 **Prompt types:** meta (system, system.lite)
 
+ADR-026 splits global prompt content by responsibility: `NarrareMeta` guarantees
+identity/role guidance, `NarrareUniversalRules` guarantees fiction content,
+conflict, and injection-defense rules, and `PromptComposer` handles customizable
+feature prompts. Do not treat meta prompt files as a general place for
+feature-specific inline instructions.
+
 **Mandatory elements:**
 
 | Element | Purpose |
 |---------|---------|
 | Narrare identity | Who Narrare is (collaborative writing assistant) |
-| Fiction Content Guidelines | Fiction-appropriate content handling |
+| Fiction Content Guidelines | Fiction-appropriate content handling via `NarrareUniversalRules` |
 | Conversation Guardrails | Off-topic handling, typo tolerance, empathy |
 | `{{avoidance_patterns}}` | User-defined content filtering |
 | `{{author_name}}` | Personalization |
@@ -325,8 +331,8 @@ review, preferences, remap
 | `{{genre}}` | Genre awareness |
 | `{{tone}}` | Tone matching |
 | `{{language}}` | Output language |
-| Conflict Resolution | KB vs. outline precedence rules |
-| Security instruction | Anti-injection directive |
+| Conflict Resolution | KB vs. outline precedence rules via `NarrareUniversalRules` |
+| Security instruction | Anti-injection directive via `NarrareUniversalRules` |
 
 **Security instruction template for meta-prompt:**
 ```

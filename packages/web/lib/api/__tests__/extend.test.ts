@@ -1,5 +1,5 @@
 import { HttpResponse, http } from "msw";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setAccessToken } from "@/lib/api/client";
 import { streamExtend } from "@/lib/api/generation";
 import { server } from "@/mocks/server";
@@ -132,6 +132,7 @@ describe("streamExtend", () => {
 
   it("skips malformed JSON lines", async () => {
     const chunks: string[] = [];
+    const onError = vi.fn();
 
     server.use(
       http.post(
@@ -153,9 +154,41 @@ describe("streamExtend", () => {
       "ch-malformed",
       "novel-1",
       { text_before: "Some text" },
-      { onChunk: (text) => chunks.push(text) },
+      { onChunk: (text) => chunks.push(text), onError },
     );
 
     expect(chunks).toEqual(["good", "also good"]);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ kind: "parse" }));
+  });
+
+  it("preserves partial chunks when a network error occurs", async () => {
+    const chunks: string[] = [];
+    const onError = vi.fn();
+
+    server.use(
+      http.post(
+        "*/api/v1/writing/chapters/ch-partial/extend",
+        async () =>
+          new HttpResponse(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('data: {"text":"partial"}\n'));
+                setTimeout(() => controller.error(new Error("connection lost")), 0);
+              },
+            }),
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+      ),
+    );
+
+    await streamExtend(
+      "ch-partial",
+      "novel-1",
+      { text_before: "Some text" },
+      { onChunk: (text) => chunks.push(text), onError },
+    );
+
+    expect(chunks).toEqual(["partial"]);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "connection lost" }));
   });
 });

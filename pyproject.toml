@@ -170,6 +170,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 filterwarnings = ["error", "ignore::DeprecationWarning:pydantic_ai", "ignore::DeprecationWarning:google.genai"]
 timeout = 10
+timeout_method = "thread"
 timeout_func_only = true
 markers = [
   "unit: unit tests (fast, no I/O, mocked dependencies)",

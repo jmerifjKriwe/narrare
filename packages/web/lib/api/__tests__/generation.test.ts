@@ -246,6 +246,7 @@ describe("streamGeneration (SSE)", () => {
 
   it("should skip malformed JSON lines", async () => {
     const chunks: GenerationChunk[] = [];
+    const onError = vi.fn();
 
     server.use(
       http.get(
@@ -263,8 +264,35 @@ describe("streamGeneration (SSE)", () => {
       ),
     );
 
-    await streamGeneration("gen-malformed", (c) => chunks.push(c));
+    await streamGeneration("gen-malformed", (c) => chunks.push(c), vi.fn(), onError);
     expect(chunks).toEqual([{ text: "good" }, { text: "also good" }]);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ kind: "parse" }));
+  });
+
+  it("preserves partial output when the stream fails after a chunk", async () => {
+    const chunks: GenerationChunk[] = [];
+    const onError = vi.fn();
+
+    server.use(
+      http.get(
+        "*/api/v1/writing/generation/gen-partial/stream",
+        async () =>
+          new HttpResponse(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('data: {"text":"partial"}\n'));
+                setTimeout(() => controller.error(new Error("connection lost")), 0);
+              },
+            }),
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+      ),
+    );
+
+    await streamGeneration("gen-partial", (chunk) => chunks.push(chunk), vi.fn(), onError);
+
+    expect(chunks).toEqual([{ text: "partial" }]);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "connection lost" }));
   });
 });
 

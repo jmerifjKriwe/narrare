@@ -609,15 +609,15 @@ All UI text is i18n strings (no hardcoded English). Light + dark mode works.
 
 | Feature | ID | Kernpunkte |
 |---------|-----|-----------|
-| **MCP Server** | Q-001 | Model Context Protocol Server. Erlaubt externen AI-Clients (Claude, GPT) auf Narrare-Daten zuzugreifen. Tools: `search_kb`, `get_chapter`, `list_characters`, `write_draft`. Auth über API-Keys. |
-| **A2A Protocol** | Q-002 | Agent-to-Agent Protocol. Narrare als Agent in Multi-Agent-Systemen. Andere Agents können Schreib-Aufgaben delegieren. |
+| **MCP Server** | Q-001 | Geplanter Model-Context-Protocol-Adapter. Externe AI-Clients sollen Narrare-Services als Tools aufrufen können; Auth-Strategie bleibt offen. |
+| **A2A Protocol** | Q-002 | Geplanter Agent-to-Agent-Adapter. Andere Agents sollen Schreib-Aufgaben an Narrare delegieren können; Streaming-Anforderung bleibt offen. |
 | **Embedding Abstraction** | Q-003 | Einheitliches Embedding-Interface in `core/llm/embeddings.py`. Aktuell: OpenAI + sentence-transformers ad-hoc. Ziel: Provider-Interface wie LLM-Gateway. |
 | **Writing Statistics** | STATS-001 | Zeitreihen-Analyse: Wörter/Tag, aktive Schreibzeiten, Kapitel-Fortschritt. Dashboard mit Charts. Persistenz in neuer `writing_sessions`-Tabelle. |
 | **Cost Tracking** | STATS-002 | Pro-Request Token-Tracking (bereits teilweise via Langfuse). UI-Dashboard mit Kosten pro Tag/Woche/Monat. Budget-Warnungen. |
 
 **Technische Kerne:**
-- MCP: `fastapi-mcp` oder eigener MCP-Server-Adapter. Tool-Definitionen aus bestehenden Service-Protokollen generieren.
-- A2A: Neuer `apps/a2a/` Adapter. RULE-12 stellt sicher: nur Service-Calls, keine neue Logik.
+- MCP: Geplanter `apps/mcp/` Adapter, der bestehende Service-Protokolle aufruft. Q-001 entscheidet die Auth-Strategie vor Implementierung.
+- A2A: Geplanter `apps/a2a/` Adapter. RULE-12 stellt sicher: nur Service-Calls, keine neue Logik. Q-002 entscheidet Streaming vor Implementierung.
 - Q-003: `EmbeddingProvider` Protocol + `EmbeddingRegistry`. Cascade wird zur Registry-Methode.
 - STATS-001: `writing_sessions` Tabelle (start_time, end_time, words_written, chapter_id). Cron-Job aggregiert täglich.
 - STATS-002: Langfuse-Daten → `ai_costs` Tabelle → Analytics-Endpoint → Frontend-Dashboard.
@@ -640,10 +640,10 @@ All UI text is i18n strings (no hardcoded English). Light + dark mode works.
 
 | ID | Frage | Empfehlung | Blockiert |
 |----|-------|-----------|-----------|
-| Q-001 | MCP Auth-Strategie | OAuth2 + API-Keys (hybrid) | apps/mcp/ |
-| Q-002 | A2A Streaming | SSE-kompatibler Modus (non-streaming fallback via RULE-13) | apps/a2a/ |
+| Q-001 | MCP Auth-Strategie | Offen — Adapter-Spec vor Implementierung erforderlich | apps/mcp/ |
+| Q-002 | A2A Streaming | Offen — Adapter-Spec vor Implementierung erforderlich | apps/a2a/ |
 | Q-003 | Embedding-Abstraktion | Provider-Interface wie LLM-Gateway | core/llm/embeddings.py |
-| Q-NEW | Inline-Suggestion Latenz | Prefix-Caching + kurze Prompts? Mini-Modell? | WRITE-007 |
+| Q-NEW | Inline-Suggestion Latenz | Prefix-Caching + kompakte Prompt-Templates? Mini-Modell? | WRITE-007 |
 | Q-NEW | Multi-Agent Chat Memory | Kontext-Window für Chat: wie viele KB-Einträge? Reranking? | ASSIST-003 |
 
 ---

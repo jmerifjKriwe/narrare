@@ -62,7 +62,7 @@ just db-revision "description"  # Create new migration
 narrare/
 ├── apps/
 │   ├── api/          ← FastAPI backend (Python 3.14)
-│   └── mcp/          ← MCP adapter (planned)
+│   └── mcp/          ← MCP adapter (planned; calls Service Layer when built)
 ├── packages/
 │   ├── core/         ← Shared domain logic
 │   ├── i18n/         ← Translations
@@ -89,6 +89,10 @@ The container includes Python 3.14, Node.js, uv, just, and all VS Code extension
 See [`docs/_shared/CONSTRAINTS.md`](docs/_shared/CONSTRAINTS.md) for architectural rules.
 
 See [`docs/_shared/TECH_STACK.md`](docs/_shared/TECH_STACK.md) for technology decisions.
+
+MCP and A2A are roadmap adapters, not implemented product surfaces. Under
+RULE-12, future adapters call the existing Service Layer; Q-001 (MCP auth) and
+Q-002 (A2A streaming) remain open until adapter-specific specs are written.
 
 ## License
 

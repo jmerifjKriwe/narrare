@@ -57,6 +57,14 @@ result = await agent.run(prompt="Content...", deps=deps)
 # → result.summary, result.key_points
 ```
 
+`prompt="Content..."` steht hier für **Laufzeit-Input** (z. B. Kapiteltext
+oder Nutzeranfrage), nicht für System-/Task-Anweisungen. Anpassbare
+Feature-Prompts werden weiterhin über `core/prompts/` und den
+`PromptComposer` gebaut. ADR-026 trennt Prompt-Inhalte in drei Kategorien:
+garantierte Capabilities, anpassbare Cascade-Prompts und dynamische
+`@agent.instructions` innerhalb von `core/agents/`. Kurze Inline-System- oder
+Task-Prompts sind dadurch nicht allgemein erlaubt.
+
 **Meta-Prompt Integration:**
 
 Meta-prompt and universal rules are architecturally guaranteed via Capabilities (ADR-026).
@@ -75,7 +83,8 @@ and `NarrareMeta` — no manual meta-prompt loading needed.
 **Neuen Agent hinzufügen:**
 1. Type-Datei `*_types.py` erstellen (Pydantic Output-Modell)
 2. Agent-Datei `*_agent.py` erstellen (extends `NarrareAgent[DepsT, OutputT]`)
-3. Prompt in `prompts/_bundled/{category}/{lang}/{mode}/system.md` (optional)
+3. Anpassbaren Prompt in `prompts/_bundled/{category}/{lang}/{mode}/system.md`
+   anlegen, falls der Agent Feature-spezifische System-/Task-Anweisungen braucht
 4. In `agents/__init__.py` exportieren
 5. Service im Backend schreiben (siehe `apps/api/AGENTS.md`)
 6. Tests: Agent-Level (TestModel) + Service-Level (Fake)
@@ -108,7 +117,9 @@ prompt = await composer.build(LLMIntent.SUMMARIZE, ctx)
 ```
 
 Der Composer wird primär *innerhalb* von Agent-Implementierungen genutzt.
-Backend-Services rufen Agents auf, nicht den Composer direkt.
+Backend-Services rufen Agents auf, nicht den Composer direkt. ADR-026
+Capabilities decken nur garantierte Meta-/Universal-Regeln ab; sie ersetzen
+nicht die PromptComposer-Cascade für anpassbare Feature-Prompts.
 
 **Neuen Intent hinzufügen (selten nötig):**
 1. `LLMIntent` in `llm/intents.py` erweitern

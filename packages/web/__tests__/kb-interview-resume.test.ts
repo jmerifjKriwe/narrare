@@ -10,13 +10,15 @@
  * 6. Corrupted data returns null gracefully
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearPendingInterview,
   getPendingInterview,
   hasPendingInterview,
+  isInterviewResumePersistenceDisabled,
   type PendingInterview,
   savePendingInterview,
+  setInterviewResumePersistenceDisabled,
 } from "@/lib/hooks/use-kb-interview-resume";
 
 // ---------------------------------------------------------------------------
@@ -54,6 +56,7 @@ describe("KB Interview Resume", () => {
     expect(parsed.sessionId).toBe("session-abc");
     expect(parsed.entityType).toBe("character");
     expect(parsed.savedAt).toBeTypeOf("number");
+    expect(parsed.expiresAt).toBeGreaterThan(parsed.savedAt);
   });
 
   it("getPendingInterview retrieves data without clearing", () => {
@@ -97,10 +100,45 @@ describe("KB Interview Resume", () => {
   });
 
   it("corrupted data returns null gracefully", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     store.set("narrare:kbInterview:novel-1", "not valid json");
 
     const result = getPendingInterview("novel-1");
     expect(result).toBeNull();
+    expect(store.has("narrare:kbInterview:novel-1")).toBe(false);
+    warnSpy.mockRestore();
+  });
+
+  it("expires and clears pending interviews after TTL", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-03T10:00:00Z"));
+    savePendingInterview("novel-1", "session-ttl", "character", 1000);
+
+    expect(hasPendingInterview("novel-1")).toBe(true);
+
+    vi.setSystemTime(new Date("2026-06-03T10:00:02Z"));
+    expect(getPendingInterview("novel-1")).toBeNull();
+    expect(store.has("narrare:kbInterview:novel-1")).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("does not persist interviews when persistence is disabled", () => {
+    setInterviewResumePersistenceDisabled(true);
+
+    savePendingInterview("novel-1", "session-private", "character");
+
+    expect(isInterviewResumePersistenceDisabled()).toBe(true);
+    expect(hasPendingInterview("novel-1")).toBe(false);
+    expect(store.has("narrare:kbInterview:novel-1")).toBe(false);
+  });
+
+  it("allows persistence to be re-enabled", () => {
+    setInterviewResumePersistenceDisabled(true);
+    setInterviewResumePersistenceDisabled(false);
+
+    expect(isInterviewResumePersistenceDisabled()).toBe(false);
+    savePendingInterview("novel-1", "session-enabled", "location");
+    expect(hasPendingInterview("novel-1")).toBe(true);
   });
 
   it("different novels have separate pending interviews", () => {

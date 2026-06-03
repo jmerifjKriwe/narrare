@@ -30,8 +30,9 @@ product code.
 
 **A2A (Agent-to-Agent)**
 A planned communication protocol allowing external AI agents to call Narrare
-services. Adapter lives in `apps/a2a/`. The Service Layer does not change to
-accommodate A2A — only the transport adapter changes.
+services. The future adapter will live in `apps/a2a/` and call the existing
+Service Layer. The Service Layer does not change to accommodate A2A — only the
+transport adapter changes. Q-002 remains open until the adapter spec is written.
 
 ---
 
@@ -247,7 +248,8 @@ matching the target page layout. Never spinners — always shape-matching placeh
 
 **MCP (Model Context Protocol)**
 A planned protocol adapter allowing external MCP clients to call Narrare services
-as tools. Lives in `apps/mcp/`. Uses the same Service Layer as the WebUI.
+as tools. The future adapter will live in `apps/mcp/` and use the same Service
+Layer as the WebUI. Q-001 remains open until the adapter spec is written.
 
 **Memory**
 User and project-level persistent context managed by mem0. Stores writing
@@ -255,9 +257,10 @@ preferences, style patterns, rejection feedback. Accessed via `core/memory/`.
 Always optional — the system degrades gracefully if unavailable.
 
 **Meta Prompt**
-A global persona/system prompt prepended to all feature-specific prompts.
-Defines the AI's overall character and writing philosophy.
-Loaded by `core/prompts/meta.py`. One implementation, used by all features.
+Guaranteed Narrare identity and role guidance injected by the `NarrareMeta`
+Capability (ADR-026). Universal fiction, conflict, and injection-defense rules
+come from `NarrareUniversalRules`; customizable feature prompts remain in the
+PromptComposer cascade under `core/prompts/_bundled/`.
 
 **Mode (Writing Mode / Prompt Mode)**
 The type of operation that determines which prompt file is selected and how

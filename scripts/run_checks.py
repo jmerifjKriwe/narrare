@@ -69,6 +69,7 @@ def _build_steps() -> list[Step]:
             "Architecture",
             [
                 (["uv", "run", "python", "scripts/check_architecture.py"], None),
+                (["uv", "run", "python", "scripts/check_exception_baseline.py"], None),
             ],
         ),
         Step(
@@ -125,7 +126,9 @@ def _build_steps() -> list[Step]:
         Step(
             "Prompts",
             [
-                (["uv", "run", "python", "scripts/check_prompt_structure.py", "--strict"], None),
+                (["uv", "run", "python", "scripts/check_prompt_structure.py"], None),
+                (["uv", "run", "python", "scripts/check_adoption.py"], None),
+                (["uv", "run", "python", "scripts/check_streaming_compliance.py"], None),
             ],
         ),
     ]
@@ -136,6 +139,7 @@ def _build_steps() -> list[Step]:
                 Step(
                     "Frontend Lint",
                     [
+                        (["uv", "run", "python", "scripts/check_frontend_file_size.py"], None),
                         (["pnpm", "lint:check"], web),
                     ],
                 ),

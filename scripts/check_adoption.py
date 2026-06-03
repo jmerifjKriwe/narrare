@@ -28,6 +28,7 @@ from typing import Any, cast
 
 # Allow importing from the same directory (scripts/).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import yaml
 from adoption.scorer import (
@@ -36,12 +37,45 @@ from adoption.scorer import (
     compute_adoption_report,
 )
 from prompt_checks_crossfile import discover_prompts
+from scripts.architecture.baselines import (
+    DEFAULT_BASELINE_PATH,
+    compare_section,
+    format_comparison,
+    stable_fingerprint,
+)
 
 # ── Constants ──────────────────────────────────────────────────────
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = ROOT / "scripts" / "architecture" / "adoption-registry.yaml"
 BUNDLED_DIR = ROOT / "packages" / "core" / "narrare_core" / "prompts" / "_bundled"
+ADOPTION_BASELINE_SECTION = "adoption_debt"
+
+
+def adoption_debt_fingerprints(report: AdoptionReport) -> set[str]:
+    """Return stable fingerprints for non-failing adoption debt."""
+    items: set[str] = set()
+    for category in report.categories:
+        if category.status == "WARN":
+            items.add(stable_fingerprint(category.category, "status", category.status))
+        for missing in category.missing_must:
+            items.add(stable_fingerprint(category.category, "missing_must", missing))
+        for missing in category.missing_should:
+            items.add(stable_fingerprint(category.category, "missing_should", missing))
+        for prompt_key, locales in category.missing_locales.items():
+            for locale in locales:
+                items.add(
+                    stable_fingerprint(category.category, "missing_locale", prompt_key, locale)
+                )
+        if category.inline_fallbacks:
+            items.add(
+                stable_fingerprint(
+                    category.category,
+                    "inline_fallback_count",
+                    category.inline_fallbacks,
+                )
+            )
+    return items
 
 
 # ── Registry loading ───────────────────────────────────────────────
@@ -158,6 +192,17 @@ def main() -> int:
         default=BUNDLED_DIR,
         help="Path to _bundled/ directory (default: auto-detected).",
     )
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        default=DEFAULT_BASELINE_PATH,
+        help="JSON baseline used to fail new adoption debt only.",
+    )
+    parser.add_argument(
+        "--no-baseline",
+        action="store_true",
+        help="Disable adoption debt ratchet comparison.",
+    )
     args = parser.parse_args()
 
     registry = load_registry(args.registry)
@@ -177,6 +222,16 @@ def main() -> int:
         print(_format_json(report))
     else:
         print(_format_human(report))
+
+    if not args.no_baseline:
+        comparison = compare_section(
+            adoption_debt_fingerprints(report),
+            ADOPTION_BASELINE_SECTION,
+            args.baseline,
+        )
+        print(format_comparison(comparison, "Adoption debt ratchet"))
+        if not comparison.ok:
+            return 1
 
     return _exit_code(report.status)
 

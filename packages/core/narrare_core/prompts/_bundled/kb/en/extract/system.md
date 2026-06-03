@@ -21,6 +21,12 @@ The following entities are already in the Knowledge Base:
 
 {{existing_entity_names}}
 
+### World Context
+
+Related KB context available for extraction:
+
+{{world_context}}
+
 ### Instructions
 
 1. Read the chapter text carefully, identifying all meaningful entities, relationships, and world details.

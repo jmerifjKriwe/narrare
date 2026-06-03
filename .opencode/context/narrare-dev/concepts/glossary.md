@@ -31,7 +31,7 @@
 | **Intent (LLMIntent)** | Typed enum: `WRITE`, `ANALYSE`, `EXTRACT`, `SUMMARIZE`. Gateway uses for model selection |
 | **Bundled Prompt** | Shipped in `core/prompts/_bundled/`. Lowest cascade priority |
 | **PromptContext** | Typed dataclass with all variables to render a prompt |
-| **Meta Prompt** | Global persona prepended to all feature prompts. Loaded by `core/prompts/meta.py` |
+| **Meta Prompt** | Narrare identity injected by `NarrareMeta` Capability (ADR-026); feature prompts stay in PromptComposer cascade |
 | **Modifier** | Optional prompt fragment appended to base prompt (e.g., `tone:formal`) |
 | **Resolver** | `core/prompts/registry.py` — single cascade implementation |
 

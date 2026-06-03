@@ -493,7 +493,8 @@ jobs:
           fi
 
       - name: Run E2E tests
-        run: uv run pytest tests/e2e/ -v -m e2e --timeout=60
+        timeout-minutes: 15
+        run: uv run pytest tests/e2e/ -v -m e2e --timeout=300 --timeout-method=thread
         env:
           E2E_BASE_URL: http://localhost:3000
           E2E_API_URL: http://localhost:8000

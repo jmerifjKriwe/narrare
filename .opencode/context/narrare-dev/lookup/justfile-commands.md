@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/justfile-commands | Priority: critical | Source: docs/development/deployment-guide.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/lookup/justfile-commands | Priority: critical | Source: docs/development/deployment-guide.md | Updated: 2026-06-03 -->
 
 # Justfile Command Catalog
 
@@ -47,6 +47,13 @@
 | Command | Description |
 |---------|-------------|
 | `just check` | Run all checks (architecture + lint + typecheck + security) |
+| `just check-verbose` | Run all checks with full tool output |
+| `just check-architecture` | Run architecture constraints + exception baseline |
+| `just check-adoption` | Validate AI feature adoption score and ratchet WARN debt |
+| `just check-exceptions` | Ensure approved architecture exceptions do not grow |
+| `just check-frontend-size` | Check TS/TSX RULE-04 file-size no-growth gate |
+| `just check-streaming` | Check RULE-20 SSE frontend coverage for backend streaming endpoints |
+| `just check-prompts-strict` | Run prompt structure checker with warnings treated as failures |
 | `just lint` | Run ruff lint + fix |
 | `just format` | Run ruff format |
 | `just typecheck` | Run pyright |

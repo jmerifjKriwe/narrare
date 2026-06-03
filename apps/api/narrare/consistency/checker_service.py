@@ -16,7 +16,6 @@ import structlog
 from narrare.consistency.prompt_builder import (
     MAX_KB_ENTRIES,
     build_user_prompt,
-    get_system_prompt,
 )
 from narrare.consistency.rule_helpers import deduplicate_issues, rule_based_check
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
@@ -137,7 +136,7 @@ class ConsistencyCheckerService:
             existing_issue_count=len(rule_issues),
         )
 
-        # 7. Compose system prompt (PromptComposer with inline fallback)
+        # 7. Compose system prompt through PromptComposer.
         system_prompt = await self._resolve_system_prompt(language)
 
         # 8. Run ConsistencyAgent
@@ -274,23 +273,17 @@ class ConsistencyCheckerService:
     async def _resolve_system_prompt(self, language: str) -> str:
         """Resolve the system prompt for the consistency agent.
 
-        Attempts PromptComposer first (production path). Falls back to
-        the inline prompt if no bundled prompt exists for this intent yet.
+        Uses the bundled prompt cascade. Locale fallback to English is handled
+        by PromptRegistry, so missing localized templates do not require an
+        inline prompt fallback here.
         """
-        try:
-            from narrare_core.llm.intents import LLMIntent
-            from narrare_core.prompts.context import PromptContext
+        from narrare_core.llm.intents import LLMIntent
+        from narrare_core.prompts.context import PromptContext
 
-            ctx = PromptContext(
-                language=language,
-                mode="consistency",
-                project_title="",
-            )
-            composed = await self._composer.build(LLMIntent.CONSISTENCY, ctx)
-            return composed.system
-        except Exception:
-            logger.debug(
-                "consistency_using_inline_prompt",
-                language=language,
-            )
-            return get_system_prompt()
+        ctx = PromptContext(
+            language=language,
+            mode="consistency",
+            project_title="",
+        )
+        composed = await self._composer.build(LLMIntent.CONSISTENCY, ctx)
+        return composed.system

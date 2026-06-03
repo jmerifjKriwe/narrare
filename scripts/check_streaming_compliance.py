@@ -15,7 +15,6 @@ import ast
 import json
 import re
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -23,58 +22,33 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.architecture.baselines import (  # noqa: E402
+    DEFAULT_BASELINE_PATH,
+    compare_section,
+    format_comparison,
+    stable_fingerprint,
+)
+from scripts.architecture.streaming_compliance import (  # noqa: E402
+    ComplianceResult,
+    FrontendConsumer,
+    SSEEndpoint,
+    url_patterns_match,
+)
+
 API_DIR = REPO_ROOT / "apps" / "api" / "narrare"
 WEB_DIR = REPO_ROOT / "packages" / "web"
-
-# SSE endpoint signatures: (router_file_pattern, url_substring, http_method)
-# url_substring is the route path after the APIRouter prefix.
-KNOWN_SSE_ENDPOINTS: list[tuple[str, str, str]] = [
-    # (router filename glob, URL fragment, HTTP method)
-    ("**/writing/router.py", "/writing/generation/", "GET"),
-    ("**/writing/router_extend.py", "/writing/chapters/", "POST"),
-    ("**/writing/router_rewrite.py", "/writing/chapters/", "POST"),
-    ("**/writing/router_coauthor.py", "/writing/chapters/", "POST"),
-    ("**/writing/router_suggest.py", "/writing/chapters/", "POST"),
-    ("**/kb/router_sessions_sse.py", "/kb/sessions/", "GET"),
-    ("**/planning/router_timeline_analysis.py", "/timeline/", "POST"),
-    ("**/chat/router.py", "/chat", "POST"),
-]
+STREAMING_BASELINE_SECTION = "streaming_compliance_gaps"
+_url_patterns_match = url_patterns_match
 
 
-# ---------------------------------------------------------------------------
-# Data structures
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class SSEEndpoint:
-    """A backend SSE endpoint discovered from router files."""
-
-    file: Path
-    route: str  # full route path (e.g. /api/v1/writing/chapters/{id}/extend)
-    method: str
-    prefix: str  # APIRouter prefix
-    name: str  # human-readable label (derived from file path)
-
-
-@dataclass
-class FrontendConsumer:
-    """A frontend API call that consumes a backend endpoint."""
-
-    file: Path
-    line: int
-    uses_sse: bool  # True if connectSSE is used
-    url_fragment: str  # URL pattern used in the call
-
-
-@dataclass
-class ComplianceResult:
-    """Overall compliance check result."""
-
-    sse_endpoints: list[SSEEndpoint] = field(default_factory=list[SSEEndpoint])
-    consumers: list[FrontendConsumer] = field(default_factory=list[FrontendConsumer])
-    passes: list[str] = field(default_factory=list[str])
-    violations: list[str] = field(default_factory=list[str])
+def _display_path(path: Path, base: Path = REPO_ROOT) -> str:
+    """Return a stable display path, tolerating synthetic test paths."""
+    try:
+        return path.relative_to(base).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +58,7 @@ class ComplianceResult:
 
 def _find_router_files() -> list[Path]:
     """Find all Python router files in the API directory."""
-    return list(API_DIR.rglob("router*.py")) + list(API_DIR.rglob("router_*.py"))
+    return sorted(set(API_DIR.rglob("router*.py")) | set(API_DIR.rglob("router_*.py")))
 
 
 def _extract_router_prefix(source: str) -> str:
@@ -119,7 +93,7 @@ def _extract_sse_routes(source: str, prefix: str, filepath: Path) -> list[SSEEnd
             current_route = m.group(2)
             continue
         if current_route is not None and "StreamingResponse" in line:
-            parts = filepath.relative_to(API_DIR).parts
+            parts = Path(_display_path(filepath, API_DIR)).parts
             name = f"{parts[0]}/{filepath.stem}" if len(parts) > 1 else filepath.stem
             endpoints.append(
                 SSEEndpoint(
@@ -216,48 +190,6 @@ def discover_frontend_consumers() -> list[FrontendConsumer]:
 # ---------------------------------------------------------------------------
 
 
-def _url_patterns_match(endpoint_url: str, consumer_url: str) -> bool:
-    """Check if a consumer URL matches an SSE endpoint URL by structural comparison."""
-    # Normalize path parameters: {anything} → {}
-    norm_endpoint = re.sub(r"\{[^}]+\}", "{}", endpoint_url)
-    norm_consumer = re.sub(r"\{[^}]+\}|\$\{[^}]+\}", "{}", consumer_url)
-    norm_consumer = re.sub(r"\$\w+", "{}", norm_consumer)
-
-    ep_parts = [p for p in norm_endpoint.split("/") if p]
-    co_parts = [p for p in norm_consumer.split("/") if p]
-
-    if len(ep_parts) < 3 or len(co_parts) < 3:
-        return False
-
-    # Compare from the end: the last N segments should match
-    # where N = min(len(co_parts), number of meaningful segments)
-    ep_len = len(ep_parts)
-    co_len = len(co_parts)
-
-    # Walk backwards and match segments
-    matched_from_end = 0
-    for i in range(1, min(ep_len, co_len) + 1):
-        ep_seg = ep_parts[ep_len - i]
-        co_seg = co_parts[co_len - i]
-        if ep_seg == co_seg:
-            matched_from_end += 1
-        elif ep_seg == "{}" or co_seg == "{}":
-            matched_from_end += 1  # parameter matches anything
-        else:
-            break
-
-    # Need at least 2 matching trailing segments for a meaningful match
-    # (e.g. "generation/stream" or "chapters/extend")
-    if matched_from_end < 2:
-        return False
-
-    # Also verify at least one leading segment matches (same API domain)
-    if ep_parts[0] != co_parts[0]:
-        return False
-
-    return not abs(ep_len - co_len) > 1
-
-
 def check_compliance() -> ComplianceResult:
     """Run the full compliance check."""
     result = ComplianceResult()
@@ -273,7 +205,10 @@ def check_compliance() -> ComplianceResult:
         ]
 
         if not matching_consumers:
-            # No consumer found at all — not a violation per se (might be unused)
+            result.violations.append(
+                f"{endpoint.name} has no frontend SSE consumer found\n"
+                f"  → Backend SSE: {_display_path(endpoint.file)}"
+            )
             continue
 
         sse_consumers = [c for c in matching_consumers if c.uses_sse]
@@ -289,11 +224,19 @@ def check_compliance() -> ComplianceResult:
             label = _derive_consumer_label(consumer)
             result.violations.append(
                 f"{endpoint.name} uses apiClient call instead of connectSSE\n"
-                f"  → {consumer.file.relative_to(REPO_ROOT)}:{consumer.line}\n"
-                f"  → Backend SSE: {endpoint.file.relative_to(REPO_ROOT)}"
+                f"  → {_display_path(consumer.file)}:{consumer.line}\n"
+                f"  → Backend SSE: {_display_path(endpoint.file)}"
             )
 
     return result
+
+
+def violation_fingerprints(result: ComplianceResult) -> set[str]:
+    """Return stable fingerprints for streaming coverage gaps."""
+    return {
+        stable_fingerprint(*[line.strip() for line in violation.splitlines()])
+        for violation in result.violations
+    }
 
 
 def _derive_consumer_label(consumer: FrontendConsumer) -> str:
@@ -340,7 +283,7 @@ def format_json(result: ComplianceResult) -> str:
         {
             "sse_endpoints": [
                 {
-                    "file": str(e.file.relative_to(REPO_ROOT)),
+                    "file": _display_path(e.file),
                     "route": e.route,
                     "method": e.method,
                     "name": e.name,
@@ -363,6 +306,8 @@ def format_json(result: ComplianceResult) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description="RULE-20 Streaming Compliance Check")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
+    parser.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE_PATH)
+    parser.add_argument("--no-baseline", action="store_true")
     args = parser.parse_args()
 
     result = check_compliance()
@@ -372,7 +317,20 @@ def main() -> int:
     else:
         print(format_report(result))
 
-    return 1 if result.violations else 0
+    if args.no_baseline:
+        return 1 if result.violations else 0
+
+    comparison = compare_section(
+        violation_fingerprints(result),
+        STREAMING_BASELINE_SECTION,
+        args.baseline,
+    )
+    print(format_comparison(comparison, "Streaming compliance ratchet"))
+    if comparison.ok:
+        print("RESULT: Streaming compliance gaps did not grow")
+        return 0
+    print("RESULT: New streaming compliance gap(s) require frontend SSE coverage")
+    return 1
 
 
 if __name__ == "__main__":

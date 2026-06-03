@@ -1,5 +1,5 @@
 import { HttpResponse, http } from "msw";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setAccessToken } from "@/lib/api/client";
 import { parseAlternatives, streamRewrite } from "@/lib/api/generation";
 import { server } from "@/mocks/server";
@@ -261,6 +261,7 @@ describe("streamRewrite", () => {
 
   it("skips malformed JSON lines", async () => {
     const alternatives: { label: string; text: string }[] = [];
+    const onError = vi.fn();
 
     server.use(
       http.post(
@@ -284,10 +285,50 @@ describe("streamRewrite", () => {
       {
         onAlternative: (label, text) => alternatives.push({ label, text }),
         onAlternativeFinal: () => {},
+        onError,
       },
     );
 
     expect(alternatives).toHaveLength(1);
     expect(alternatives[0]).toEqual({ label: "Good", text: "Text" });
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ kind: "parse" }));
+  });
+
+  it("preserves completed alternatives when the stream fails", async () => {
+    const alternatives: { label: string; text: string }[] = [];
+    const onError = vi.fn();
+
+    server.use(
+      http.post(
+        "*/api/v1/writing/chapters/ch-partial/rewrite",
+        async () =>
+          new HttpResponse(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    'data: {"text":"<alternative label=\\"A\\">Text</alternative>"}\n',
+                  ),
+                );
+                setTimeout(() => controller.error(new Error("connection lost")), 0);
+              },
+            }),
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+      ),
+    );
+
+    await streamRewrite(
+      "ch-partial",
+      "novel-1",
+      { selection_text: "Original", mode: "fix" },
+      {
+        onAlternative: (label, text) => alternatives.push({ label, text }),
+        onError,
+      },
+    );
+
+    expect(alternatives).toEqual([{ label: "A", text: "Text" }]);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "connection lost" }));
   });
 });

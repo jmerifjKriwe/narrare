@@ -36,7 +36,12 @@
 | [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | ✅ | ❌ |
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
 | [INFRA-010](infra/INFRA-010-prompting-locally.md) | Prompting Locally | ✅ | ❌ |
-| [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | 📋 | ❌ |
+| [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | 🔨 | ❌ |
+
+> **AI feature freeze:** New AI-feature implementation is paused until
+> INFRA-011 Core, Frontend, Platform, and Docs/Governance gates pass and the
+> freeze-lift review in ADR-027 is completed. Stabilization and bug-fix work
+> remain allowed.
 
 ### Setup & Onboarding
 | ID | Feature | Status | MVP |
@@ -241,5 +246,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-01 — ANAL-003 (Readability), ANAL-004 (POV) implemented. Status updated to stable.
+> Last updated: 2026-06-03 — INFRA-011 stabilization ordering and AI feature freeze documented.
 > Features are specified before they are implemented — never after

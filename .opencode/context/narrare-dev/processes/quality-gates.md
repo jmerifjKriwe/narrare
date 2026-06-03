@@ -73,11 +73,15 @@ The full CI pipeline runs these gates in order:
 
 1. `ruff` format + lint
 2. `check_architecture.py` (constraint enforcement)
-3. `mypy --strict` + `pyright` (type checking)
-4. `pytest -m unit` (unit tests + coverage)
-5. `pytest -m integration` (integration tests + coverage)
-6. `pnpm test` (frontend tests)
-7. `bandit` (security scan)
+3. `check_exception_baseline.py` (no-growth approved exceptions)
+4. `check_adoption.py` + `check_prompt_structure.py` (AI adoption/prompt ratchet)
+5. `check_streaming_compliance.py` (RULE-20 SSE compliance ratchet)
+6. `check_frontend_file_size.py` (TS/TSX RULE-04 no-growth gate)
+7. `mypy --strict` + `pyright` (type checking)
+8. `pytest -m unit` (unit tests + coverage)
+9. `pytest -m integration` (integration tests + coverage)
+10. `pnpm test` (frontend tests)
+11. `bandit` (security scan)
 
 All gates must pass. No skipping, no `--no-cov` workarounds.
 
@@ -97,7 +101,10 @@ pnpm test           # Frontend tests
 
 ## Gate 8: Feature Adoption Gate
 
-Runs `scripts/check_adoption.py` in CI.
+Runs `scripts/check_adoption.py` in CI. WARN-level adoption debt is ratcheted
+against `scripts/architecture/ai-gate-baseline.json`: existing debt may shrink,
+but new missing variables, locale gaps, WARN categories, or inline fallback debt
+fail until fixed or ADR/user-approved in the baseline.
 
 Reads the adoption registry at `scripts/architecture/adoption-registry.yaml` and validates that every registered feature adopts its required core infrastructure. Computes a weighted adoption score per feature and overall.
 
@@ -178,11 +185,11 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 | Token budget | Yes | `check_adoption.py` (import analysis) |
 | Memory layer | Yes | `check_prompt_structure.py` (variable check) |
 | Error handling | Partial | `check_architecture.py` (RULE-11 enforcement) |
-| Streaming | Manual | Requires architectural review — no static check yet |
+| Streaming | Partial | `check_streaming_compliance.py` discovers backend SSE endpoints and frontend `connectSSE()` coverage; gaps are ratcheted in `ai-gate-baseline.json` |
 
 ### Validated by
 
-`check_adoption.py` + `check_prompt_structure.py` + `check_architecture.py` together enforce items 1–7. Items 8–9 are validated by existing architecture checks and manual review.
+`check_adoption.py` + `check_prompt_structure.py` + `check_architecture.py` together enforce items 1–7. `check_exception_baseline.py` prevents approved exception growth, `check_frontend_file_size.py` reports TS/TSX RULE-04 hard-limit debt, and `check_streaming_compliance.py` conservatively ratchets frontend SSE coverage gaps. Manual review remains required where static matching is inconclusive.
 
 **Spec**: `docs/architecture/decisions/025-feature-adoption-infrastructure.md` (Decision 6)
 

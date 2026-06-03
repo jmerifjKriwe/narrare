@@ -14,6 +14,7 @@
 
 import type { TokenUsage } from "@/types";
 import { getAccessToken } from "./client";
+import { connectSSE, type SSEStreamError } from "./streaming";
 
 // ---------------------------------------------------------------------------
 // Types — field names match backend schemas exactly (RULE-17)
@@ -83,92 +84,15 @@ export async function streamCoAuthor(
   },
   signal?: AbortSignal,
 ): Promise<void> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "text/event-stream",
-  };
-  const token = getAccessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  let accumulatedText = "";
+  let finalChanges: ChangeDetail[] = [];
+  let finalReasoning = "";
+  let finalRequestId: string | undefined;
+  let completed = false;
 
-  try {
-    const response = await fetch(
-      `/api/v1/writing/chapters/${chapterId}/co-author?novel_id=${novelId}`,
-      {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify(request),
-        signal,
-      },
-    );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error("No response body");
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let accumulatedText = "";
-    let finalChanges: ChangeDetail[] = [];
-    let finalReasoning = "";
-    let finalRequestId: string | undefined;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6);
-          if (data === "[DONE]") {
-            // Stream complete — emit revision with accumulated data
-            callbacks.onComplete({
-              original: request.selection_text,
-              revised: accumulatedText,
-              changes: finalChanges,
-              reasoning: finalReasoning,
-              request_id: finalRequestId,
-            });
-            return;
-          }
-          try {
-            const parsed = JSON.parse(data) as CoAuthorStreamEvent;
-
-            // Context metadata event (CR-07)
-            if (parsed.type === "context_meta") {
-              callbacks.onContextMeta?.(parsed as Record<string, unknown>);
-              continue;
-            }
-
-            // Streaming text chunk
-            if (parsed.text) {
-              accumulatedText += parsed.text;
-              callbacks.onChunk(parsed.text);
-            }
-
-            // Final event — contains changes data + optional request_id
-            if (parsed.is_final) {
-              finalChanges = parsed.changes ?? [];
-              finalReasoning = parsed.reasoning ?? "";
-              finalRequestId = parsed.request_id;
-
-              // Use the final event's text as the definitive revised text
-              // (it may differ slightly from accumulated chunks)
-              if (parsed.text) {
-                accumulatedText = parsed.text;
-              }
-            }
-          } catch {
-            /* skip malformed JSON */
-          }
-        }
-      }
-    }
-
-    // Stream ended without [DONE] — still emit what we have
+  function complete(): void {
+    if (completed) return;
+    completed = true;
     callbacks.onComplete({
       original: request.selection_text,
       revised: accumulatedText,
@@ -176,13 +100,34 @@ export async function streamCoAuthor(
       reasoning: finalReasoning,
       request_id: finalRequestId,
     });
-  } catch (error) {
-    const isAbort =
-      (error instanceof DOMException && error.name === "AbortError") ||
-      (error instanceof Error && error.name === "AbortError");
-    if (isAbort) return;
-    callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
   }
+
+  await connectSSE<CoAuthorStreamEvent>({
+    url: `/writing/chapters/${chapterId}/co-author?novel_id=${novelId}`,
+    method: "POST",
+    body: request,
+    signal,
+    onChunk: (event) => {
+      if (event.type === "context_meta") {
+        callbacks.onContextMeta?.(event as Record<string, unknown>);
+        return;
+      }
+
+      if (event.text) {
+        accumulatedText += event.text;
+        callbacks.onChunk(event.text);
+      }
+
+      if (event.is_final) {
+        finalChanges = event.changes ?? [];
+        finalReasoning = event.reasoning ?? "";
+        finalRequestId = event.request_id;
+        if (event.text) accumulatedText = event.text;
+      }
+    },
+    onComplete: complete,
+    onError: (error: SSEStreamError) => callbacks.onError?.(error),
+  });
 }
 
 // ---------------------------------------------------------------------------
