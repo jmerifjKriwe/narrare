@@ -2,12 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
-import type { ChangeDetail, CoAuthorFocus } from "@/lib/api/coauthor";
 
-import { createAcceptanceMap, getCoAuthorPhaseLabel } from "./coauthor-message-utils";
+import { getCoAuthorPhaseLabel } from "./coauthor-message-utils";
 import { startCoAuthorStreaming } from "./coauthor-streaming";
 import type { CoAuthorPhase } from "./coauthor-styles";
 import { useCoAuthorApply } from "./useCoAuthorApply";
+import { useCoAuthorReviewState } from "./useCoAuthorReviewState";
 
 // ---------------------------------------------------------------------------
 // Hook params
@@ -38,34 +38,23 @@ export function useCoAuthorPanel({
 }: UseCoAuthorPanelParams) {
   const t = useTranslations("studio");
   const [phase, setPhase] = useState<CoAuthorPhase>("focus");
-  const [selectedFocus, setSelectedFocus] = useState<CoAuthorFocus[]>(["word_choice"]);
   const [streamedText, setStreamedText] = useState("");
-  const [changes, setChanges] = useState<ChangeDetail[]>([]);
   const [reasoning, setReasoning] = useState("");
   const [requestId, setRequestId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-  const [acceptance, setAcceptance] = useState<Record<string, boolean>>({});
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-
-  const toggleFocus = useCallback((value: CoAuthorFocus) => {
-    setSelectedFocus((prev) => {
-      if (prev.includes(value)) return prev.length <= 1 ? prev : prev.filter((f) => f !== value);
-      return [...prev, value];
-    });
-  }, []);
-
-  const handleAcceptAll = useCallback(() => {
-    setAcceptance(createAcceptanceMap(changes, true));
-  }, [changes]);
-
-  const handleRejectAll = useCallback(() => {
-    setAcceptance(createAcceptanceMap(changes, false));
-  }, [changes]);
-
-  const handleToggleChange = useCallback((id: string) => {
-    setAcceptance((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
+  const {
+    selectedFocus,
+    changes,
+    acceptance,
+    setChanges,
+    setAcceptance,
+    toggleFocus,
+    handleAcceptAll,
+    handleRejectAll,
+    handleToggleChange,
+  } = useCoAuthorReviewState();
 
   const handleStart = useCallback(() => {
     if (selectedFocus.length === 0) return;
@@ -86,7 +75,17 @@ export function useCoAuthorPanel({
       setAcceptance,
       setErrorMsg,
     });
-  }, [selectedFocus, chapterId, novelId, selectionText, contextBefore, contextAfter, t]);
+  }, [
+    selectedFocus,
+    chapterId,
+    novelId,
+    selectionText,
+    contextBefore,
+    contextAfter,
+    t,
+    setChanges,
+    setAcceptance,
+  ]);
 
   const handleApply = useCoAuthorApply({
     changes,
