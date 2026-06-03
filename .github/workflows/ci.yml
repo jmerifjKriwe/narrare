@@ -40,6 +40,9 @@ jobs:
       - name: Check architecture constraints
         run: uv run python scripts/check_architecture.py
 
+      - name: Check exception baseline (no-growth gate)
+        run: uv run python scripts/check_exception_baseline.py
+
       - name: Check OpenAPI spec drift
         run: uv run python scripts/export_openapi.py --check
 
@@ -53,8 +56,10 @@ jobs:
         continue-on-error: true
         run: uv run python scripts/check_locale_sync.py
 
+      - name: Check documentation drift
+        run: uv run python scripts/check_doc_drift.py
+
       - name: Check streaming compliance (RULE-20)
-        continue-on-error: true
         run: |
           uv run python scripts/check_streaming_compliance.py
 
@@ -359,6 +364,9 @@ jobs:
 
       - name: i18n validation
         run: npx tsx scripts/validate-i18n.ts
+
+      - name: Check frontend file sizes (RULE-04)
+        run: cd packages/web && uv run python scripts/check_frontend_file_size.py
 
       - name: Type check
         run: cd packages/web && pnpm type-check

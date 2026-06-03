@@ -847,34 +847,14 @@ same service methods without a parallel non-streaming implementation.
 
 ## 7. Approved Exceptions Register
 
-Current approved exceptions to the above rules.
+The **authoritative exception register** is `pyproject.toml [tool.narrare.architecture.exceptions]`.
 Each entry requires: rule, location, reason, approved-by, date.
 
-```toml
-# pyproject.toml
-[tool.narrare.architecture.exceptions]
+Every exception MUST be:
+1. **Registered in `pyproject.toml`** — for auditability and machine-readability
+2. **Inlined in the source file** — as a `# narrare: allow` comment at the violation site
 
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01"
-file = "packages/core/narrare_core/memory/mem0_client.py"
-reason = "mem0 AsyncMemory requires direct LLM client for memory extraction. Provider/model is user-configurable via settings. Gateway's intent routing and rate limiting don't apply to infrastructure-level memory extraction."
-approved_by = "generation-prompt-memory-foundation"
-date = "2026-05-15"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "packages/core/narrare_core/llm/gateway.py"
-reason = "Gateway._make_agent() is the internal bridge between ModelRegistry and Agent. Core/llm/ creates Agent instances with resolved models and system prompts — this is the approved boundary crossing. Agents in core/agents/ will use higher-level NarrareAgent wrappers."
-approved_by = "ADR-015"
-date = "2026-05-20"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01b"
-file = "apps/api/narrare/setup/provider_service.py"
-reason = "Setup-phase provider validation requires direct pydantic-ai Agent to test credentials. This runs once during project setup, not in the LLM call path."
-approved_by = "ADR-015"
-date = "2026-05-20"
-```
+See ADR-028 for the SSOT decision and checker enforcement specification.
 
 ### Exception: mem0 LLM client in `core/memory/mem0_client.py`
 
@@ -903,6 +883,6 @@ supports infrastructure-level calls with different routing rules.*
 
 ---
 
-> Last updated: 2026-06-01 — RULE-02a (prompt content categories and injection mechanisms)
+> Last updated: 2026-06-03 — §7 simplified to reference pyproject.toml SSOT (ADR-028)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone
