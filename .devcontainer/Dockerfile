@@ -25,7 +25,8 @@ RUN su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh \
     && nvm alias default ${NODE_VERSION}" 2>&1
 
 # Install pnpm
-RUN su vscode -c ". /usr/local/share/nvm/nvm.sh && npm install -g pnpm" 2>&1
+ARG PNPM_VERSION=10.24.0
+RUN su vscode -c ". /usr/local/share/nvm/nvm.sh && npm install -g pnpm@${PNPM_VERSION}" 2>&1
 
 # Install pre-commit
 RUN pip install pre-commit --break-system-packages

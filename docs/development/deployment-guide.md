@@ -7,10 +7,15 @@
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Docker and Docker Compose v2.24+ (required for release compose validation without a committed `.env`)
 - Python 3.14+
 - Node.js 24+
+- pnpm 10.24.0 via the root `package.json` `packageManager` pin
 - just (command runner)
+
+Canonical runtime and package-manager versions live in
+`docs/_shared/TECH_STACK.md` and root `package.json`; keep this guide focused on
+how to operate the environments.
 
 ### Python Environment Setup
 
@@ -34,15 +39,23 @@ uv run python -c "import narrare_core; import narrare; print('OK')"
 
 ### Local Services
 
+VM-first development is the primary setup mode. Run `just` commands on the VM or
+host unless a command explicitly says it is for the DevContainer. Host-side
+database and Redis helpers target published `localhost` ports; container-mode
+helpers use Docker service names.
+
 ```bash
+# Validate the VM-first development Compose topology
+docker compose -f docker-compose.dev.yml config
+
 # Start all services (postgres+pgvector, redis)
-just dev-up
+just dev-services
 
 # Stop services
-just dev-down
+just dev-services-stop
 
 # View logs
-just dev-logs
+just logs
 ```
 
 ### Dev Servers
@@ -64,29 +77,37 @@ migrations fail, the app fails to start — check the terminal output for detail
 
 ### Dev Container
 
+DevContainer support is optional. It must stay portable and must not become a
+requirement for VM-first development.
+
 The `.devcontainer/` configuration provides:
 - Python 3.14 with all dependencies
 - Node.js 24+ for frontend
 - Pre-configured extensions
 - Automatic service startup
 
+Validate the merged DevContainer topology explicitly from the repository root:
+
+```bash
+docker compose -f docker-compose.dev.yml -f .devcontainer/docker-compose.devcontainer.yml config
+```
+
 ## CI/CD Pipelines
 
 ### Workflow: CI (`.github/workflows/ci.yml`)
 
-Runs on every push:
+CI is the single blocking owner for setup, architecture, and application quality
+gates. It runs on pushes to protected branches and on PRs that touch application,
+docs, setup, Docker/Compose, workflow, lockfile, package-manager, and pre-commit
+paths; see `.github/workflows/ci.yml` for the canonical path filter.
+
+It covers:
 1. Linting (ruff, biome)
 2. Architecture checks (`check_architecture.py`)
 3. Unit tests
 4. Integration tests
 5. Build verification
-
-### Workflow: Architecture (`.github/workflows/architecture.yml`)
-
-Fast feedback on architecture violations:
-- Runs `scripts/check_architecture.py`
-- Fails on constraint violations
-- ~30 second runtime
+6. Setup/config drift checks, including locale and documentation drift checks
 
 ### Workflow: Release (`.github/workflows/release-please.yml`)
 
@@ -110,7 +131,8 @@ Automated versioning via **release-please**:
 
 ### CI Pipeline Specification
 
-7-job pipeline with staged execution:
+7-job pipeline with staged execution. Job details are maintained in
+`.github/workflows/ci.yml`; this table is a quick orientation only.
 
 | Job | Target | Commands |
 |-----|--------|----------|
@@ -119,7 +141,7 @@ Automated versioning via **release-please**:
 | `typecheck` | <2min | `pyright --strict` |
 | `test-unit` | <5min | `pytest tests/unit/` |
 | `test-integration` | <5min | `pytest tests/integration/` |
-| `frontend` | <3min | `check_frontend_file_size.py` + `biome check` + `validate-i18n` + `pnpm type-check` + `pnpm test` + `pnpm build` |
+| `frontend` | <3min | `check_frontend_file_size.py` + non-mutating frontend lint/format checks + i18n validation + `pnpm type-check` + `pnpm test` + `pnpm build` |
 | `security` | <60s | `bandit -r` + `pip-audit` |
 
 **Job ordering:**
@@ -138,95 +160,33 @@ Local quality checks before push:
 
 ```bash
 # Install hooks
-just pre-commit-install
+just hooks-update
 
 # Run manually
-just pre-commit-run
+pre-commit run --all-files
 ```
 
-9 hooks configured in `.pre-commit-config.yaml`:
+Hooks are configured in `.pre-commit-config.yaml`; that file is the canonical
+source for exact hook commands and stages. Important behavior:
+
+- Architecture, prompt, adoption, OpenAPI, Python, frontend, i18n, TypeScript,
+  security, hygiene, and commit-message checks run locally where applicable.
+- Some hooks intentionally mutate files (`openapi-regenerate`, `ruff-lint`,
+  `ruff-format`, `biome-frontend`, file hygiene fixers).
+- Type checks are full-project checks where the hook declares `pass_filenames:
+  false`; do not describe them as changed-file-only checks unless the config says
+  so.
+- CI remains the blocking gate; pre-commit is local fast feedback.
+
+Current hook groups:
 
 | Hook | Stage | Command |
 |------|-------|---------|
-| `architecture-constraints` | pre-commit | `python scripts/check_architecture.py` |
-| `ruff-lint` | pre-commit | `ruff check --fix` |
-| `ruff-format` | pre-commit | `ruff format` |
-| `pyright` | pre-commit | `pyright` (changed files) |
-| `bandit` | pre-commit | `bandit -c pyproject.toml` |
-| `conventional-commits` | commit-msg | `python scripts/check_commit_message.py` |
-| `biome-frontend` | pre-commit | `npx biome check --write components/ app/ lib/` (from packages/web/) |
-| `validate-i18n` | pre-commit | `npx tsx scripts/validate-i18n.ts` (from workspace root) |
-| `typecheck-frontend` | pre-commit | `npx tsc --noEmit` (from packages/web/) |
-
-```yaml
-repos:
-  - repo: local
-    hooks:
-      - id: architecture-constraints
-        name: Architecture Constraints
-        entry: python scripts/check_architecture.py
-        language: python
-        pass_filenames: false
-        always_run: true
-
-      - id: ruff-lint
-        name: Ruff Lint
-        entry: ruff check --fix
-        language: python
-        types: [python]
-
-      - id: ruff-format
-        name: Ruff Format
-        entry: ruff format
-        language: python
-        types: [python]
-
-      - id: pyright
-        name: Pyright (changed files)
-        entry: pyright
-        language: python
-        types: [python]
-        pass_filenames: true
-
-      - id: bandit
-        name: Security (Bandit)
-        entry: bandit -c pyproject.toml
-        language: python
-        types: [python]
-
-      - id: conventional-commits
-        name: Conventional Commits
-        entry: python scripts/check_commit_message.py
-        language: python
-        stages: [commit-msg]
-
-      - id: biome-frontend
-        name: Biome (Frontend)
-        entry: bash -c 'cd packages/web && npx biome check --write components/ app/ lib/'
-        language: system
-        types: [tsx]
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      - id: validate-i18n
-        name: i18n Validation
-        entry: bash -c 'npx tsx scripts/validate-i18n.ts'
-        language: system
-        types: [tsx]
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      - id: typecheck-frontend
-        name: TypeScript Check (Frontend)
-        entry: bash -c 'cd packages/web && npx tsc --noEmit'
-        language: system
-        types: [tsx]
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-```
+| Architecture/setup | pre-commit | Constraint, prompt structure, adoption score, and OpenAPI drift checks |
+| Python quality | pre-commit | Ruff lint/format, pyright, bandit |
+| Frontend quality | pre-commit | Biome, i18n validation, TypeScript type check |
+| File hygiene | pre-commit | Whitespace, EOF, YAML/TOML/JSON, merge-conflict, large-file checks |
+| Commit message | commit-msg | Conventional commit validation |
 
 ## Architecture Checker
 
@@ -300,15 +260,16 @@ All developer commands via `just`:
 | | `test-integration` | Run integration tests (needs Docker) |
 | | `test-cov` | Run with coverage report |
 | **Quality** | `check` | Run all checks (architecture + lint + typecheck + security) |
+| | `check-frontend` | Run non-mutating frontend file-size, lint/format, type, and test checks |
 | | `lint` | Run ruff lint + fix |
 | | `format` | Run ruff format |
 | | `typecheck` | Run pyright |
-| **Release** | `release-dry-run` | Preview changelog for unreleased changes |
+| **Release** | `changelog` | Preview changelog for unreleased changes |
 
 ## Release Process
 
 1. All commits follow conventional format
-2. Merge to main triggers release-please
+2. Merge to main triggers the release workflow
 3. Version bumped automatically
 4. CHANGELOG.md generated
 5. GitHub release created
@@ -325,7 +286,7 @@ Each release produces:
 
 | Artifact | Location | Description |
 |----------|----------|-------------|
-| Docker image | `ghcr.io/<owner>/narrare:<version>` | Single image with API + frontend |
+| Docker image | `ghcr.io/<owner>/narrare:<version>` | Single image with API + frontend. The release workflow derives `<owner>` from the repository owner in lowercase; release compose defaults to the same image tuple. |
 | Release bundle | `narrare-<version>.zip` | docker-compose.yml + .env.example + SBOM + README |
 | CycloneDX SBOM | Release asset `sbom.cyclonedx.json` | Machine-readable SBOM (via Syft) |
 | Python deps | Release asset `requirements.txt` | Python dependencies exported from uv.lock |
@@ -344,7 +305,7 @@ cd narrare-0.2.0/
 cp .env.example .env
 # Edit .env — set SECRET_KEY, NARRARE_ENCRYPTION_KEY, and AI provider keys
 
-# 3. Start
+# 3. Start from the release bundle
 docker compose up -d
 
 # 4. Open http://localhost:3000
@@ -356,9 +317,32 @@ docker compose up -d
 |----------|----------|-----------------|
 | `SECRET_KEY` | Yes | `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `NARRARE_ENCRYPTION_KEY` | Yes | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
-| `DATABASE_URL` | Yes | Must use `@postgres:5432/` (Docker service name, not localhost) |
-| `REDIS_URL` | Yes | Must use `redis://redis:6379/0` (Docker service name) |
+| `DATABASE_URL` | Yes | For release compose, use `@postgres:5432/` (Docker service name, not localhost) |
+| `REDIS_URL` | Yes | For release compose, use `redis://redis:6379/0` (Docker service name) |
 | AI API key | At least one | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. |
+
+### Compose Configuration Validation
+
+The repository has no default `docker-compose.yml`; every validation command must
+name the target topology explicitly.
+
+```bash
+# VM-first development services
+docker compose -f docker-compose.dev.yml config
+
+# Optional DevContainer overlay merged with development services
+docker compose -f docker-compose.dev.yml -f .devcontainer/docker-compose.devcontainer.yml config
+
+# Self-hosted release topology; config validation does not require a real .env
+docker compose -f docker-compose.release.yml config
+```
+
+Release compose treats `.env` as optional for `config` validation only. Actual
+self-hosted deployment still requires copying `.env.example` to `.env` and
+configuring `SECRET_KEY`, `NARRARE_ENCRYPTION_KEY`, Docker service URLs, and at
+least one AI provider key before `docker compose up -d`. The repository
+`.env.example` is the VM-first template; release deployments must switch service
+URLs to Docker service names as shown in `docker-compose.release.yml`.
 
 ### Updates
 
@@ -393,7 +377,7 @@ The production image is a multi-stage Docker build:
 
 ### CI/CD: Release Pipeline
 
-The `release-please.yml` workflow automates the entire release:
+The release workflow (`.github/workflows/release-please.yml`) automates the release:
 
 1. **Version detection** — release-please parses conventional commits
 2. **GitHub Release** — created with auto-generated changelog
@@ -407,7 +391,7 @@ merge to main
   → release-please detects version bump
     → opens release PR
       → on merge: GitHub Release created
-        → Docker image built + pushed to GHCR
+        → Docker image built + pushed to GHCR as ghcr.io/<owner>/narrare
         → Release bundle created + attached
 ```
 

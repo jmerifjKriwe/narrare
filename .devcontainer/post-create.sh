@@ -27,13 +27,18 @@ if [ ! -f .env ]; then
 fi
 
 # --- Adjust hostnames for dev container network ---
-# Inside the dev container, services are reachable via docker service names
-# (postgres, redis) not localhost. Detect by checking if docker CLI is absent.
-if ! command -v docker >/dev/null 2>&1; then
-  echo "🔧 Adjusting .env for dev container network..."
-  sed -i 's|://narrare@localhost:5432|://narrare@postgres:5432|g' .env
-  sed -i 's|://narrare@localhost:5433|://narrare@postgres_test:5432|g' .env
-  sed -i 's|redis://localhost:6379|redis://redis:6379|g' .env
+# Inside the dev container, services are reachable via Docker Compose service
+# DNS names (postgres, postgres_test, redis), not localhost. This script always
+# runs in the DevContainer lifecycle, so do not infer mode from incidental tool
+# availability such as docker or psql being installed.
+echo "🔧 Adjusting .env for dev container network..."
+sed -Ei 's|(DATABASE_URL=postgresql\+asyncpg://[^:]+:[^@]+@)localhost:5432/|\1postgres:5432/|g' .env
+sed -Ei 's|(TEST_DATABASE_URL=postgresql\+asyncpg://[^:]+:[^@]+@)localhost:5433/|\1postgres_test:5432/|g' .env
+sed -Ei 's|(REDIS_URL=redis://([^@/]+@)?)localhost:6379|\1redis:6379|g' .env
+if grep -q '^NARRARE_DEV_MODE=' .env; then
+  sed -Ei 's|^NARRARE_DEV_MODE=.*|NARRARE_DEV_MODE=container|' .env
+else
+  printf '\nNARRARE_DEV_MODE=container\n' >> .env
 fi
 
 # --- Frontend dependencies ---

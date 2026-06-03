@@ -231,6 +231,16 @@ for FastAPI, HTTP, and database calls. Exports to any OTLP-compatible backend.
 **Not:** Node 22 or lower — CI tests against 24 only. Older versions are unsupported.
 **Canonical source:** This document. All other docs (README, deployment-guide, DevContainer) reference this version.
 
+### pnpm `10.24.0`
+**Why:** Deterministic frontend installs across VM-first development, optional
+DevContainer bootstrap, and CI.
+**Role:** JavaScript package manager for the root workspace and `packages/web/`.
+**Canonical source:** `package.json` (`packageManager`). Setup docs should
+reference the package metadata instead of repeating the pinned version unless a
+version check is the topic.
+**Not:** `latest` bootstrap commands — ADR-029 requires pinned package-manager
+behavior.
+
 ### Next.js `16` (App Router) + TypeScript
 **Why:** SSR + SSE support. Strong TypeScript ecosystem. App Router for layouts and streaming.
 **Role:** WebUI — the primary client interface.
@@ -343,6 +353,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-06-03 — Node.js 24+ added as canonical source (AUFG-04-01); Recharts ~3.8 added for analysis visualization suite (ANAL-001)
+> Last updated: 2026-06-03 — pnpm 10.24.0 documented as package-manager pin (ADR-029); Node.js 24+ added as canonical source (AUFG-04-01); Recharts ~3.8 added for analysis visualization suite (ANAL-001)
 > Maintained by: Architecture Agent
 > Changes require ADR

@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-03 (Session 3)
-Session: AI Feature Freeze vollständig aufgehoben. INFRA-011 Stabilisierung abgeschlossen; post-freeze ratcheted governance bleibt aktiv. AUFG-02-01, AUFG-02-03, AUFG-03-01 und AUFG-03-02 sind gelöst; Frontend RULE-04 Debt ist von 53 auf 38 ratcheted Legacy-Verstöße reduziert. System Health bleibt 0.73 DEGRADED wegen Score-Floor/Baseline-Artefakt, ist aber nicht freeze-blocking; CRITICAL bleibt blockierend.
+Date: 2026-06-03 (Session 4)
+Session: ADR-029 VM-first setup cleanup implemented and documented. VM-first remains primary; DevContainer is optional and portable. CI is the single blocking setup/architecture gate owner. Compose validation passed for VM-first, DevContainer overlay, and release topology. Option B blocker cleanup resolved and revalidated the previously unrelated frontend RULE-04 ratchet and architecture exception baseline blockers; targeted validation now passes.
 
 ---
 
@@ -33,7 +33,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Frontend tests: 1,683 across 186 test files (Vitest + MSW)
 - Total tests: ~5,900+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
-- ADRs: 24+ (ADR-001 through ADR-023, plus ADR-027 AI Feature Stabilization Gates)
+- ADRs: 29 (ADR-001 through ADR-029; ADR-029 VM-first setup contract implemented)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 11 (Q-001 through Q-011)
 
@@ -64,7 +64,7 @@ Alembic migrations 0001 through ~0023
 
 - `_shared/`: CONSTRAINTS.md (22 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: 22 ADRs + 2 implementation plans (inkl. ADR-022 LLM Wiki — Accepted) (INDEX.md)
+- `architecture/decisions/`: ADR-001 through ADR-029 plus implementation plans (INDEX.md)
 - `architecture/questions/`: 11 questions in 6 files (INDEX.md)
 - `features/`: 76 feature spec files (INDEX.md with status tracking)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
@@ -78,7 +78,7 @@ Alembic migrations 0001 through ~0023
 - `scripts/health_types.py` + `health_format.py` — Health-Score-Typen und Formatierer
 - `apps/api/narrare/_app/observability.py` — Zentraler Trace-Context-Helper
 - `docs/development/observability-guide.md` — End-to-End Observability-Trace-Kette dokumentiert
-- `.github/workflows/` — CI (gated: 16 blocking, 1 warning coverage), architecture check, release (mit SBOM), promptfoo evals (nightly)
+- `.github/workflows/` — CI is the blocking architecture/setup gate SSOT; release workflow publishes GHCR image + SBOM; promptfoo evals run nightly
 - Docker Compose: PostgreSQL (pgvector) + Redis + pgBouncer (prod profile)
 - OpenTelemetry + Langfuse for LLM observability
 - promptfoo eval framework (`evals/`) for prompt quality regression
@@ -131,6 +131,7 @@ Completed in Phase 6 so far:
 32. ✅ Contracts modularized for RULE-04: contracts_readability.py, contracts_pov.py, schemas_readability.py, schemas_pov.py, pov_mapper.py
 33. ✅ WIKI-001 frontend: WikiOverviewPanel (entity summaries + status overview), WikiChapterSummaryPanel (chapter wiki in editor), KBCategorySidebar wiki tab, WorldBuilding wiki mode, 22 i18n keys (en/de/fr), 16 Vitest tests
 34. ✅ PLAN-004 vollständig und komplett — alle Phase 1–3 DoD-Lücken geschlossen: DurationImpossibilityCheck (3 Checks: same-character-location, death-before-birth, impossibly-fast-travel), POST /{novel_id}/extract SSE streaming, POST /{novel_id}/extract/confirm endpoint, LLM consistency via bundled prompt (RULE-02 fix), Frontend ExtractionReview mit SSE+Confirm (kein createEvent mehr), timeline_contracts.py (RULE-04), duration_check.py + age_check.py extrahiert. 44 Files, +3k Zeilen, +4 RULE-04 Modularisierungen.
+35. ✅ ADR-029: VM-first setup cleanup — portable optional DevContainer overlay, explicit host/container service addressing, pinned pnpm, non-mutating frontend check path, CI as single blocking setup/architecture gate owner, release image alignment, `.dockerignore`, and derived-doc SSOT cleanup.
 
 ---
 
@@ -175,6 +176,8 @@ Completed in Phase 6 so far:
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
 | ADR-027 | AI Feature Stabilization Gates | ✅ Completed — freeze lifted; ratcheted post-freeze governance retained |
+| ADR-028 | Architecture Exception Register SSOT | ✅ Implemented |
+| ADR-029 | VM-First Setup Contract and Optional DevContainer Cleanup | ✅ Implemented |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -209,6 +212,7 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
 | System Health Score 0.73 (DEGRADED) | Medium | Non-blocking metric-floor/baseline artifact. CI remains warning-only for DEGRADED and fails on CRITICAL. Baseline debt must keep shrinking for ≥0.85. |
 | 38 frontend RULE-04 legacy violations | Medium | Ratcheted baseline: no new violations; reductions only unless ADR/user-approved exception. |
+| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: exception baseline is current at 17/17. |
 
 ---
 

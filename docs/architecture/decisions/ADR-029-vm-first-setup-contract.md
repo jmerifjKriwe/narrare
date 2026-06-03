@@ -1,6 +1,6 @@
 # ADR-029 — VM-First Setup Contract and Optional DevContainer Cleanup
 
-> **Status:** Proposed
+> **Status:** Accepted — implemented
 > **Date:** 2026-06-03
 > **Deciders:** Architecture Agent, Narrare Dev Coordinator
 > **Supersedes:** —
@@ -9,7 +9,7 @@
 
 ## Context
 
-This ADR is the architecture/setup cleanup specification for the project setup audit. It documents the contract that Platform must implement later; it **does not implement any config, tooling, workflow, or documentation fixes yet**.
+This ADR is the architecture/setup cleanup specification for the project setup audit. It documents the contract that Platform has implemented for setup/config cleanup; future changes to the setup contract must continue to satisfy the acceptance criteria below.
 
 The audit found portability and drift issues across DevContainer configuration, VM-first helper commands, CI path filters, duplicate architecture gates, release image naming, package-manager pinning, frontend check mutability, Docker build context hygiene, and deployment/pre-commit docs.
 
@@ -29,7 +29,7 @@ The root cause is not one broken file; it is three ambiguous ownership boundarie
 - Setup/config changes must be validated by blocking CI even when no application code changes.
 - `docs/_shared/` remains the authoritative documentation layer; derived docs should reference rather than reproduce canonical facts.
 - No workaround path is acceptable: mode-specific behavior must be explicit, not inferred from incidental tool availability.
-- Platform owns implementation details; this ADR defines the contract and acceptance criteria.
+- Platform owns implementation details; this ADR defines the contract and acceptance criteria that the implementation must preserve.
 
 ---
 
@@ -48,10 +48,9 @@ The root cause is not one broken file; it is three ambiguous ownership boundarie
 ### Non-Goals
 
 - No production code changes in this ADR.
-- No immediate modification of `.devcontainer/`, `justfile`, CI workflows, compose files, lockfiles, or docs beyond this ADR and the ADR index.
 - No new runtime dependencies.
 - No redefinition of Narrare's application layer architecture, service-layer contracts, or feature specs.
-- No builds/tests are run as part of creating this spec.
+- No redefinition of the release/versioning strategy beyond aligning the existing release image and compose contract.
 
 ---
 
@@ -132,11 +131,11 @@ Fix each audit finding locally without defining a mode contract.
 
 **We choose Option A: VM-first is Narrare's primary setup contract; DevContainer support remains optional and must be portable.**
 
-Platform must implement the audit cleanup by making environment mode, CI gate ownership, release image naming, package-manager pinning, Docker context hygiene, and docs SSOT rules explicit. Config-specific details remain Platform-owned, but the resulting behavior must satisfy the contract and acceptance criteria below.
+Platform implemented the audit cleanup by making environment mode, CI gate ownership, release image naming, package-manager pinning, Docker context hygiene, and docs SSOT rules explicit. Config-specific details remain Platform-owned, but the resulting behavior must continue to satisfy the contract and acceptance criteria below.
 
 ---
 
-## Proposed Changes
+## Implemented Changes
 
 ### Platform
 
@@ -153,7 +152,7 @@ Platform must implement the audit cleanup by making environment mode, CI gate ow
 
 - Expand PR path filters so setup/config-only changes trigger blocking CI. At minimum cover `justfile`, `.devcontainer/**`, Dockerfiles, compose files, workflow files, lockfiles, package-manager metadata, and setup/deployment docs.
 - Consolidate architecture/setup gate ownership: `.github/workflows/ci.yml` should be the blocking SSOT unless Platform explicitly chooses a different single owner.
-- Retire or strengthen duplicate `.github/workflows/architecture.yml` so it cannot run stale/weaker checks, warning-only locale sync, or stale docs paths.
+- Retire duplicate `.github/workflows/architecture.yml` so stale/weaker checks, warning-only locale sync, or stale docs paths cannot masquerade as the blocking setup/architecture gate.
 
 ### Docs
 
@@ -173,29 +172,43 @@ Platform must implement the audit cleanup by making environment mode, CI gate ow
 
 Platform implementation is complete only when all criteria are satisfied:
 
-- [ ] VM-first mode uses host-reachable `localhost` ports for PostgreSQL and Redis helpers; no Unix socket fallback for `just` DB helpers.
-- [ ] DevContainer mode uses relative build context and service DNS hostnames for PostgreSQL and Redis.
-- [ ] DevContainer `.env` rewrite preserves the credentialed URL shape of `.env.example`.
-- [ ] Config-only PRs touching setup/platform files trigger blocking CI.
-- [ ] Architecture/setup gate has one blocking SSOT; duplicate workflows are removed, delegated, or made equivalent.
-- [ ] Release image name pushed by workflow matches release compose default.
-- [ ] pnpm version is pinned consistently; no `latest` bootstrap remains.
-- [ ] `just check-frontend` and other `check-*` commands are non-mutating; mutating behavior lives in explicit format/fix commands.
-- [ ] `.dockerignore` excludes secrets, dependency caches, build outputs, VCS metadata, and local runtime artifacts.
-- [ ] Derived setup/deployment/pre-commit docs reference SSOT files and no longer contradict current commands or versions.
-- [ ] Pre-commit comments describe actual hook behavior.
+- [x] VM-first mode uses host-reachable `localhost` ports for PostgreSQL and Redis helpers; no Unix socket fallback for `just` DB helpers.
+- [x] DevContainer mode uses relative build context and service DNS hostnames for PostgreSQL and Redis.
+- [x] DevContainer `.env` rewrite preserves the credentialed URL shape of `.env.example`.
+- [x] Config-only PRs touching setup/platform files trigger blocking CI.
+- [x] Architecture/setup gate has one blocking SSOT; duplicate workflows are removed, delegated, or made equivalent.
+- [x] Release image name pushed by workflow matches release compose default.
+- [x] pnpm version is pinned consistently; no `latest` bootstrap remains.
+- [x] `just check-frontend` and other `check-*` commands are non-mutating; mutating behavior lives in explicit format/fix commands.
+- [x] `.dockerignore` excludes secrets, dependency caches, build outputs, VCS metadata, and local runtime artifacts.
+- [x] Derived setup/deployment/pre-commit docs reference SSOT files and no longer contradict current commands or versions.
+- [x] Pre-commit comments describe actual hook behavior.
 
-Validation commands for Platform to run later (not run for this ADR):
+Validation commands:
 
 ```bash
 just check-architecture
 just check
 just check-frontend
-docker compose config
-docker compose -f .devcontainer/docker-compose.devcontainer.yml config
+docker compose -f docker-compose.dev.yml config
+docker compose -f docker-compose.dev.yml -f .devcontainer/docker-compose.devcontainer.yml config
+docker compose -f docker-compose.release.yml config
 ```
 
+The repository intentionally has no default `docker-compose.yml`; validation must
+name the target topology explicitly. Release compose validation must not require
+a committed `.env`, but actual self-hosted deployment still requires users to
+copy `.env.example` to `.env` and configure the runtime secrets and provider
+keys before `up -d`.
+
 Platform may add more targeted validation commands, but failures must be fixed at the root cause. Do not bypass validation and do not use `git commit --no-verify`.
+
+Implementation validation note (2026-06-03): the three explicit Compose config
+commands above passed. The previously unrelated governance blockers found during
+ADR-029 validation have since been resolved/revalidated: the frontend RULE-04
+blocker was modularized via `useCoAuthorReviewState`, the architecture exception
+baseline was revalidated at 17/17, and targeted validation now passes. These were
+not root causes of ADR-029 and do not change the setup contract.
 
 ---
 
@@ -290,6 +303,5 @@ Platform may add more targeted validation commands, but failures must be fixed a
 - `docs/_shared/CURRENT_STATE.md` — Current project state
 - `.devcontainer/docker-compose.devcontainer.yml` — DevContainer compose target for Platform cleanup
 - `justfile` — VM-first helper target for Platform cleanup
-- `.github/workflows/ci.yml` — proposed blocking CI SSOT
-- `.github/workflows/architecture.yml` — duplicate gate to retire, delegate, or strengthen
+- `.github/workflows/ci.yml` — blocking CI and architecture/setup gate SSOT
 - `docker-compose*.yml` and release compose files — release/setup targets for Platform cleanup

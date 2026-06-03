@@ -55,6 +55,12 @@ jobs:
         id: meta
         run: echo "VERSION=${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_OUTPUT
 
+      - name: Set canonical image name
+        id: image
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "IMAGE_NAME=ghcr.io/${owner}/narrare" >> "$GITHUB_OUTPUT"
+
       # ── Docker Build + Push to GHCR ──────────────────────────────
       - name: Build and push Docker image
         id: build
@@ -63,8 +69,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/narrare:${{ steps.meta.outputs.VERSION }}
-            ghcr.io/${{ github.repository }}/narrare:latest
+            ${{ steps.image.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.VERSION }}
+            ${{ steps.image.outputs.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -77,7 +83,7 @@ jobs:
       - name: Generate Docker image SBOM (best-effort)
         continue-on-error: true
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}/narrare:${{ steps.meta.outputs.VERSION }}"
+          IMAGE="${{ steps.image.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.VERSION }}"
           echo "Generating SBOM for $IMAGE"
           mkdir -p /tmp/bundle
 
@@ -138,9 +144,12 @@ jobs:
           - `NARRARE_ENCRYPTION_KEY` — generate with: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
           - At least one AI provider API key (e.g. `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`)
 
-          **Important:** Change the DATABASE_URL and REDIS_URL to use Docker service names:
+          **Important:** The bundled `.env.example` is the VM-first template from the repository.
+          Change the DATABASE_URL and REDIS_URL to use Docker service names for release compose:
           - `DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare`
           - `REDIS_URL=redis://redis:6379/0`
+
+          The compose file defaults to image `${{ steps.image.outputs.IMAGE_NAME }}:<version>`.
 
           ## Updates
 
@@ -174,10 +183,10 @@ jobs:
 
           ```bash
           # Pull by version tag
-          docker pull ghcr.io/<owner>/narrare:<version>
+          docker pull ${{ steps.image.outputs.IMAGE_NAME }}:<version>
 
           # Pull by digest (immutable — recommended for production)
-          docker pull ghcr.io/<owner>/narrare@<digest>
+          docker pull ${{ steps.image.outputs.IMAGE_NAME }}@<digest>
           ```
 
           Each release includes the image digest in the Release summary.
@@ -230,7 +239,7 @@ jobs:
           verification command is:
 
           ```bash
-          cosign verify ghcr.io/<owner>/narrare:<version> \
+          cosign verify ${{ steps.image.outputs.IMAGE_NAME }}:<version> \
             --certificate-identity-regexp 'https://github.com/<owner>/narrare/.github/workflows/release-please.yml@refs/tags/*' \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com
           ```
@@ -254,7 +263,7 @@ jobs:
         run: |
           echo "## Release ${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Docker image:** \`ghcr.io/${{ github.repository }}/narrare:${{ steps.meta.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker image:** \`${{ steps.image.outputs.IMAGE_NAME }}:${{ steps.meta.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Image digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Release bundle:** \`narrare-${{ steps.meta.outputs.VERSION }}.zip\`" >> $GITHUB_STEP_SUMMARY

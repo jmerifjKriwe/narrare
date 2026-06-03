@@ -13,10 +13,12 @@ default:
 # Helpers
 # ---------------------------------------------------------------------------
 
-# Check if docker is available (skip in dev container where services already run)
+# Check if docker is available (skip in explicit container mode where services already run)
 [private]
 _ensure-services:
-    @if command -v docker >/dev/null 2>&1; then \
+    @if [ "${NARRARE_DEV_MODE:-host}" = "container" ]; then \
+        echo "ℹ️  Container mode — assuming Compose services already running"; \
+    elif command -v docker >/dev/null 2>&1; then \
         docker compose -f docker-compose.dev.yml up -d --wait 2>/dev/null; \
     else \
         echo "ℹ️  Docker not available — assuming services already running (dev container?)"; \
@@ -31,14 +33,16 @@ _stop-services:
         echo "ℹ️  Docker not available — nothing to stop"; \
     fi
 
-# Run SQL via psql directly (dev container) or docker compose exec (host)
+# Run SQL via psql directly in explicit host/container mode, with Docker fallback.
 [private]
 _psql-sql db sql *args:
-    @if command -v psql >/dev/null 2>&1; then \
-        if ! command -v docker >/dev/null 2>&1; then \
-            PGPASSWORD=narrare psql -U narrare -h postgres -d {{db}} -c "{{sql}}"; \
+    @mode="${NARRARE_DEV_MODE:-host}"; \
+    if command -v psql >/dev/null 2>&1; then \
+        if [ "$$mode" = "container" ]; then \
+            PGPASSWORD=narrare psql -U narrare -h postgres -p 5432 -d {{db}} -c "{{sql}}"; \
         else \
-            psql -U narrare -d {{db}} -c "{{sql}}"; \
+            port=5432; [ "{{db}}" = "narrare_test" ] && port=5433; \
+            PGPASSWORD=narrare psql -U narrare -h localhost -p "$$port" -d {{db}} -c "{{sql}}"; \
         fi; \
     elif command -v docker >/dev/null 2>&1; then \
         docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d {{db}} -c "{{sql}}"; \
@@ -49,13 +53,14 @@ _psql-sql db sql *args:
 # Drop and recreate a database (connects to maintenance DB)
 [private]
 _psql-recreate-db db:
-    @if command -v psql >/dev/null 2>&1; then \
-        if ! command -v docker >/dev/null 2>&1; then \
-            PGPASSWORD=narrare psql -U narrare -h postgres -d postgres -c "DROP DATABASE IF EXISTS {{db}};" && \
-            PGPASSWORD=narrare psql -U narrare -h postgres -d postgres -c "CREATE DATABASE {{db}};"; \
+    @mode="${NARRARE_DEV_MODE:-host}"; \
+    if command -v psql >/dev/null 2>&1; then \
+        if [ "$$mode" = "container" ]; then \
+            PGPASSWORD=narrare psql -U narrare -h postgres -p 5432 -d postgres -c "DROP DATABASE IF EXISTS {{db}};" && \
+            PGPASSWORD=narrare psql -U narrare -h postgres -p 5432 -d postgres -c "CREATE DATABASE {{db}};"; \
         else \
-            psql -U narrare -d postgres -c "DROP DATABASE IF EXISTS {{db}};" && \
-            psql -U narrare -d postgres -c "CREATE DATABASE {{db}};"; \
+            PGPASSWORD=narrare psql -U narrare -h localhost -p 5432 -d postgres -c "DROP DATABASE IF EXISTS {{db}};" && \
+            PGPASSWORD=narrare psql -U narrare -h localhost -p 5432 -d postgres -c "CREATE DATABASE {{db}};"; \
         fi; \
     elif command -v docker >/dev/null 2>&1; then \
         docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d postgres -c "DROP DATABASE IF EXISTS {{db}};" && \
@@ -64,14 +69,16 @@ _psql-recreate-db db:
         echo "❌ Neither psql nor docker available — cannot run SQL"; exit 1; \
     fi
 
-# Open psql shell via psql directly (dev container) or docker compose exec (host)
+# Open psql shell via psql directly in explicit host/container mode, with Docker fallback.
 [private]
 _psql-shell db *args:
-    @if command -v psql >/dev/null 2>&1; then \
-        if ! command -v docker >/dev/null 2>&1; then \
-            PGPASSWORD=narrare psql -U narrare -h postgres -d {{db}}; \
+    @mode="${NARRARE_DEV_MODE:-host}"; \
+    if command -v psql >/dev/null 2>&1; then \
+        if [ "$$mode" = "container" ]; then \
+            PGPASSWORD=narrare psql -U narrare -h postgres -p 5432 -d {{db}}; \
         else \
-            psql -U narrare -d {{db}}; \
+            port=5432; [ "{{db}}" = "narrare_test" ] && port=5433; \
+            PGPASSWORD=narrare psql -U narrare -h localhost -p "$$port" -d {{db}}; \
         fi; \
     elif command -v docker >/dev/null 2>&1; then \
         docker compose -f docker-compose.dev.yml exec postgres psql -U narrare -d {{db}}; \
@@ -307,9 +314,17 @@ security:
     uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core
     uv run pip-audit
 
-# Run ESLint on frontend
+# Run non-mutating frontend lint and format checks
 lint-frontend:
+    cd packages/web && pnpm lint:check
+
+# Run frontend lint/format auto-fixes
+lint-frontend-fix:
     cd packages/web && pnpm lint
+
+# Run frontend formatter
+format-frontend:
+    cd packages/web && pnpm format
 
 # Run TypeScript type checking on frontend
 typecheck-frontend:

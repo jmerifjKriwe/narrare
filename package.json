@@ -2,6 +2,7 @@
   "name": "narrare-workspace",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.24.0",
 
   "devDependencies": {
     "ts-morph": "^28.0.0",

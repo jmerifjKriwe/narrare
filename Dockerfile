@@ -13,23 +13,7 @@
 #   DOCKER_BUILDKIT=1 docker build -t narrare .
 #
 # ---------------------------------------------------------------------------
-# Recommended .dockerignore (create alongside this file):
-#
-#   .git/
-#   .venv/
-#   .env
-#   **/node_modules/
-#   **/__pycache__/
-#   **/.pytest_cache/
-#   **/.ruff_cache/
-#   **/.next/
-#   **/*.egg-info/
-#   **/*.pyc
-#   tests/
-#   docs/
-#   scripts/local/
-#   .code-review-graph/
-#   .opencode/
+# Build context hygiene is enforced by the repository-level .dockerignore.
 # ============================================================================
 
 # ---------------------------------------------------------------------------
@@ -66,7 +50,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM node:24-slim-bookworm AS build-frontend
 
 # Enable pnpm via corepack
-RUN corepack enable && corepack prepare pnpm@latest --activate
+ARG PNPM_VERSION=10.24.0
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 WORKDIR /app
 

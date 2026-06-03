@@ -35,7 +35,26 @@ on:
       - "packages/**"
       - "scripts/**"
       - "tests/**"
+      - "docs/development/deployment-guide.md"
+      - "docs/_shared/CONSTRAINTS.md"
+      - "docs/_shared/CURRENT_STATE.md"
+      - "docs/_shared/TECH_STACK.md"
+      - "docs/architecture/decisions/**"
+      - ".devcontainer/**"
+      - ".env.example"
+      - ".github/workflows/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose*.yml"
+      - "justfile"
       - "pyproject.toml"
+      - "uv.lock"
+      - "package.json"
+      - "packages/web/package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "release-please-config.json"
+      - ".release-please-manifest.json"
       - ".pre-commit-config.yaml"
   push:
     branches: [main, develop]
@@ -381,7 +400,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: latest
+          version: 10.24.0
 
       - uses: actions/setup-node@v6
         with:
@@ -399,7 +418,7 @@ jobs:
         run: npx tsx scripts/validate-i18n.ts
 
       - name: Check frontend file sizes (RULE-04)
-        run: cd packages/web && uv run python scripts/check_frontend_file_size.py
+        run: uv run python scripts/check_frontend_file_size.py
 
       - name: Type check
         run: cd packages/web && pnpm type-check
@@ -464,7 +483,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: latest
+          version: 10.24.0
 
       - uses: actions/setup-node@v6
         with:

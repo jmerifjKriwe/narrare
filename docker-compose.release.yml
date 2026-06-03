@@ -7,24 +7,28 @@
 #
 # Requirements:
 #   - Docker Engine 24+ with Docker Compose v2
+#   - Docker Compose v2.24+ for optional env_file validation semantics
 #
 # Quick start:
 #   1. Copy .env.example to .env and configure (see notes below)
 #   2. docker compose -f docker-compose.release.yml up -d
 #   3. Open http://localhost:3000
 #
+# Validate compose syntax without committing a real .env:
+#   docker compose -f docker-compose.release.yml config
+#
 # Stop:
 #   docker compose -f docker-compose.release.yml down
 #
 # IMPORTANT — Docker networking:
-#   The .env.example defaults use "localhost" for DATABASE_URL and REDIS_URL,
-#   but inside Docker the services communicate via the Docker network. You MUST
-#   set these to use the service names instead:
+#   The repository .env.example defaults target VM-first development with
+#   localhost. For this release compose file, services communicate via the
+#   Docker network. Configure your release .env with service hostnames:
 #
 #     DATABASE_URL=postgresql+asyncpg://narrare:narrare@postgres:5432/narrare
 #     REDIS_URL=redis://redis:6379/0
 #
-#   The .env bundled with this release already has the correct hostnames.
+#   The release bundle includes .env.example as a template; update it before use.
 #
 # =============================================================================
 
@@ -33,10 +37,12 @@ services:
   # Combined FastAPI (backend) + Next.js (frontend) image.
   # All configuration comes from the .env file.
   narrare:
-    image: ghcr.io/${GHCR_OWNER:-narrare}/narrare:${NARRARE_VERSION:-latest}
+    image: ${NARRARE_IMAGE:-ghcr.io/jmerifjkriwe/narrare}:${NARRARE_VERSION:-latest}
     ports:
       - "3000:3000"
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     depends_on:
       postgres:
         condition: service_healthy
