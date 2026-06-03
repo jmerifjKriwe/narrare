@@ -4,14 +4,10 @@ import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import type { ChangeDetail, CoAuthorFocus } from "@/lib/api/coauthor";
 
-import { applyPartialChanges } from "./coauthor-apply";
-import {
-  allChangesAccepted,
-  createAcceptanceMap,
-  getCoAuthorPhaseLabel,
-} from "./coauthor-message-utils";
+import { createAcceptanceMap, getCoAuthorPhaseLabel } from "./coauthor-message-utils";
 import { startCoAuthorStreaming } from "./coauthor-streaming";
 import type { CoAuthorPhase } from "./coauthor-styles";
+import { useCoAuthorApply } from "./useCoAuthorApply";
 
 // ---------------------------------------------------------------------------
 // Hook params
@@ -59,6 +55,18 @@ export function useCoAuthorPanel({
     });
   }, []);
 
+  const handleAcceptAll = useCallback(() => {
+    setAcceptance(createAcceptanceMap(changes, true));
+  }, [changes]);
+
+  const handleRejectAll = useCallback(() => {
+    setAcceptance(createAcceptanceMap(changes, false));
+  }, [changes]);
+
+  const handleToggleChange = useCallback((id: string) => {
+    setAcceptance((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+
   const handleStart = useCallback(() => {
     if (selectedFocus.length === 0) return;
     startCoAuthorStreaming({
@@ -80,53 +88,20 @@ export function useCoAuthorPanel({
     });
   }, [selectedFocus, chapterId, novelId, selectionText, contextBefore, contextAfter, t]);
 
-  const handleAcceptAll = useCallback(() => {
-    setAcceptance(createAcceptanceMap(changes, true));
-  }, [changes]);
-
-  const handleRejectAll = useCallback(() => {
-    setAcceptance(createAcceptanceMap(changes, false));
-  }, [changes]);
-
-  const handleToggleChange = useCallback((id: string) => {
-    setAcceptance((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
-
-  const handleApply = useCallback(async () => {
-    if (allChangesAccepted(changes, acceptance)) {
-      onAccept(streamedText);
-      setPhase("done");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const content = await applyPartialChanges({
-        changes,
-        acceptance,
-        chapterId,
-        novelId,
-        requestId,
-        selectionText,
-      });
-      onAccept(content);
-      setPhase("done");
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : t("coAuthor.errorGeneric"));
-      setPhase("error");
-    } finally {
-      setSubmitting(false);
-    }
-  }, [
-    acceptance,
+  const handleApply = useCoAuthorApply({
     changes,
+    acceptance,
+    streamedText,
+    requestId,
     chapterId,
     novelId,
     selectionText,
-    streamedText,
-    requestId,
     onAccept,
-    t,
-  ]);
+    setPhase,
+    setSubmitting,
+    setErrorMsg,
+    errorGeneric: t("coAuthor.errorGeneric"),
+  });
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();

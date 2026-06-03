@@ -82,10 +82,23 @@
     "writing | inline_fallback_count | 1"
   ],
   "approved_exceptions": [
-    "inline_fallback | apps/api/narrare/consistency/prompt_builder.py | CONSISTENCY_SYSTEM_PROMPT | _bundled/kb/en/consistency/system.md",
-    "inline_fallback | apps/api/narrare/kb/extraction_service.py | _DEFAULT_SYSTEM_PROMPT | _bundled/kb/en/extract/system.md",
+    "inline_fallback | apps/api/narrare/consistency/prompt_builder.py | CONSISTENCY_SYSTEM_PROMPT | prompts/_bundled/consistency/en/system.md",
+    "inline_fallback | apps/api/narrare/kb/extraction_service.py | _DEFAULT_SYSTEM_PROMPT | prompts/_bundled/kb/en/extract/system.md",
     "inline_fallback | packages/core/narrare_core/agents/writing_graph_prompts.py | fallback when composer=None | Test ergonomics — not a production path",
-    "pyproject | RULE-01 | packages/core/narrare_core/llm/embedding_providers.py | Batch embedding API requires direct client access for performance"
+    "pyproject | RULE-01 | apps/api/narrare/setup/provider_service.py | Setup-phase provider validation requires direct import of pydantic_ai Agent.",
+    "pyproject | RULE-01 | packages/core/narrare_core/llm/embedding_providers.py | Batch embedding API requires direct client access for performance",
+    "pyproject | RULE-01 | packages/core/narrare_core/memory/mem0_client.py | mem0 AsyncMemory requires direct LLM client for memory extraction.",
+    "pyproject | RULE-01 | packages/core/narrare_core/wiki/agent.py | WikiGenerationAgent uses RunContext for pydantic_ai internals",
+    "pyproject | RULE-01 | packages/core/narrare_core/wiki/agent_chapter.py | WikiChapterGenerator wraps internal PydanticAgent (ADR-015)",
+    "pyproject | RULE-01b | apps/api/narrare/setup/provider_service.py | Setup-phase provider validation requires direct pydantic-ai Agent.",
+    "pyproject | RULE-01b | packages/core/narrare_core/llm/gateway.py | Gateway._make_agent() is the approved boundary crossing.",
+    "pyproject | RULE-01b | packages/core/narrare_core/planning/remap.py | Injected agent, not instantiated here",
+    "pyproject | RULE-01b | packages/core/narrare_core/wiki/agent_chapter.py | WikiChapterGenerator wraps internal PydanticAgent (ADR-015)",
+    "pyproject | RULE-02 | apps/api/narrare/kb/consistency_analyzer.py | Simple entity reference, not prompt assembly",
+    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_analysis_service.py | Mocking for service unit tests — no domain contract",
+    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_feedback_service.py | Mocking for service unit tests — no domain contract",
+    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_repository.py | Mocking for repository unit tests — no domain contract",
+    "pyproject | RULE-TEST-01 | tests/unit/api/metrics/test_metrics_router.py | Mocking SQLAlchemy Engine — no domain contract"
   ],
   "frontend_file_size_violations": [
     "packages/web/app/(auth)/login/page.tsx | page | 100",
@@ -128,7 +141,7 @@
     "packages/web/lib/stores/editorStore.ts | store | 150"
   ],
   "streaming_compliance_gaps": [
-    "chat/router uses apiClient call instead of connectSSE | → packages/web/lib/api/client.ts:522 | → Backend SSE: apps/api/narrare/chat/router.py",
+    "chat/router has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/chat/router.py",
     "kb/router_sessions_sse has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/kb/router_sessions_sse.py",
     "planning/router_timeline_analysis has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/planning/router_timeline_analysis.py",
     "writing/router uses apiClient call instead of connectSSE | → packages/web/lib/api/generation.ts:473 | → Backend SSE: apps/api/narrare/writing/router.py",

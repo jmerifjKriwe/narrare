@@ -1,9 +1,32 @@
 /**
  * Chat API (ADR-024 Free-Form Chat) — SSE-based streaming chat.
+ *
+ * Uses the shared `connectSSE` transport (streaming.ts) consistent with
+ * coauthor.ts, generation-streams.ts, and suggest.ts.
  */
 
 import type { ChatDoneEvent, ChatMetaEvent } from "@/types";
-import { getAccessToken } from "./core";
+import { connectSSE, type SSEStreamError } from "./streaming";
+
+// ---------------------------------------------------------------------------
+// SSE event shape — matches backend chat/router.py event_stream()
+// ---------------------------------------------------------------------------
+
+/** Union of all SSE event types the chat endpoint emits. */
+interface ChatStreamEvent {
+  type?: "meta" | "token" | "done";
+  /** meta event fields */
+  conversation_id?: string;
+  request_id?: string;
+  /** token event fields */
+  text?: string;
+  /** done event fields */
+  usage?: ChatDoneEvent["usage"];
+}
+
+// ---------------------------------------------------------------------------
+// API
+// ---------------------------------------------------------------------------
 
 export const chatApi = {
   /**
@@ -11,7 +34,6 @@ export const chatApi = {
    *
    * POST /api/v1/chat with SSE response.
    * Event types: meta, token, done.
-   * Follows the same SSE pattern as coauthor.ts / generation.ts.
    */
   streamChat: async (
     body: { project_id: string; message: string; conversation_id?: string | null },
@@ -23,70 +45,29 @@ export const chatApi = {
     },
     signal?: AbortSignal,
   ): Promise<void> => {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-    };
-    const token = getAccessToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    try {
-      const response = await fetch("/api/v1/chat", {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify(body),
-        signal,
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let currentEvent = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          // Track SSE event type
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim();
-            continue;
-          }
-
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") return;
-
-            try {
-              const parsed = JSON.parse(data) as Record<string, unknown>;
-
-              if (currentEvent === "meta" || parsed.conversation_id) {
-                callbacks.onMeta(parsed as unknown as ChatMetaEvent);
-              } else if (currentEvent === "token" || parsed.type === "token") {
-                callbacks.onToken(parsed.text as string);
-              } else if (currentEvent === "done" || parsed.type === "done") {
-                callbacks.onDone(parsed as unknown as ChatDoneEvent);
-              }
-            } catch {
-              // Skip malformed JSON
-            }
-
-            currentEvent = "";
-          }
+    await connectSSE<ChatStreamEvent>({
+      url: "/chat",
+      method: "POST",
+      body,
+      signal,
+      onChunk: (event) => {
+        if (event.type === "meta" || event.conversation_id) {
+          callbacks.onMeta({
+            conversation_id: event.conversation_id ?? "",
+            request_id: event.request_id ?? "",
+          });
+        } else if (event.type === "token" && event.text !== undefined) {
+          callbacks.onToken(event.text);
+        } else if (event.type === "done") {
+          callbacks.onDone({
+            type: "done",
+            usage: event.usage ?? { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+          });
         }
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      callbacks.onError(error instanceof Error ? error : new Error(String(error)));
-    }
+      },
+      onError: (error: SSEStreamError) => {
+        callbacks.onError(error);
+      },
+    });
   },
 };
