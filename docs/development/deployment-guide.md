@@ -9,7 +9,7 @@
 
 - Docker and Docker Compose
 - Python 3.14+
-- Node.js 20+
+- Node.js 24+
 - just (command runner)
 
 ### Python Environment Setup
@@ -66,7 +66,7 @@ migrations fail, the app fails to start — check the terminal output for detail
 
 The `.devcontainer/` configuration provides:
 - Python 3.14 with all dependencies
-- Node.js 20+ for frontend
+- Node.js 24+ for frontend
 - Pre-configured extensions
 - Automatic service startup
 

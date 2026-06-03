@@ -6,7 +6,7 @@
 
 ## Dev Environment Setup
 
-**Prerequisites:** Docker + Docker Compose, Python 3.14+, Node.js 20+, just (command runner)
+**Prerequisites:** Docker + Docker Compose, Python 3.14+, Node.js 24+, just (command runner)
 
 ```bash
 just dev-setup    # First-time: install deps, create .env, run migrations

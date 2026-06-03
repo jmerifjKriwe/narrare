@@ -2,6 +2,10 @@
   "name": "narrare-web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  },
   "scripts": {
     "dev": "next dev --port 3000",
     "prebuild": "test ! -f middleware.ts || (echo 'ERROR: middleware.ts exists — use proxy.ts instead. See proxy.ts header comment.' && exit 1)",

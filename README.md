@@ -14,7 +14,7 @@
 ## Requirements
 
 - [Python 3.14+](https://www.python.org/downloads/)
-- [Node.js 22+](https://nodejs.org/) + [pnpm](https://pnpm.io/installation)
+- [Node.js 24+](https://nodejs.org/) + [pnpm](https://pnpm.io/installation)
 - [Docker](https://docs.docker.com/get-docker/) + Docker Compose (provides PostgreSQL + pgvector and Redis via `docker-compose.dev.yml`)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [just](https://just.systems/man/en/chapter_4.html)

@@ -18,7 +18,7 @@ the pytest suite:
 
 ## Prerequisites
 
-- Node.js ≥ 20 (promptfoo is a Node.js tool)
+- Node.js ≥ 24 (promptfoo is a Node.js tool)
 - An `OPENAI_API_KEY` environment variable (or other configured provider)
 
 Install promptfoo:
