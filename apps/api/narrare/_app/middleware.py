@@ -1,4 +1,9 @@
-"""Request/response middleware."""
+"""Request/response middleware.
+
+Uses :func:`narrare._app.observability.get_current_trace_context` for
+trace context extraction so SSE routers and middleware share a single
+source of truth.
+"""
 
 from __future__ import annotations
 
@@ -9,24 +14,12 @@ from typing import TYPE_CHECKING
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from narrare._app.observability import get_current_trace_context
+
 if TYPE_CHECKING:
     from fastapi import Request, Response
 
 logger = structlog.get_logger(__name__)
-
-
-def _get_otel_trace_context() -> tuple[str, str]:
-    """Extract OpenTelemetry trace_id and span_id if available."""
-    try:
-        from opentelemetry import trace
-
-        span = trace.get_current_span()
-        if span.is_recording():
-            ctx = span.get_span_context()
-            return format(ctx.trace_id, "032x"), format(ctx.span_id, "016x")
-    except ImportError:
-        pass
-    return "", ""
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -37,7 +30,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
 
         # OTel trace context (if available)
-        trace_id, span_id = _get_otel_trace_context()
+        trace_ctx = get_current_trace_context()
+        trace_id = trace_ctx.get("x_trace_id", "")
+        span_id = trace_ctx.get("x_span_id", "")
 
         start = time.monotonic()
 

@@ -17,6 +17,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare._app.observability import enrich_sse_data
 from narrare.writing.deps import get_rewrite_service
 from narrare.writing.schemas_rewrite import RewriteRequest
 
@@ -62,7 +63,7 @@ async def rewrite_chapter(
             if chunk.context_meta is not None:
                 meta_data: dict[str, Any] = {"type": "context_meta"}
                 meta_data.update(chunk.context_meta)
-                yield f"data: {json.dumps(meta_data)}\n\n"
+                yield f"data: {json.dumps(enrich_sse_data(meta_data))}\n\n"
                 continue
 
             # Normal text chunk — <alternative> tags are preserved as raw text
@@ -75,7 +76,7 @@ async def rewrite_chapter(
                     "completion_tokens": chunk.usage.completion_tokens,
                     "total_tokens": chunk.usage.total_tokens,
                 }
-            yield f"data: {json.dumps(data)}\n\n"
+            yield f"data: {json.dumps(enrich_sse_data(data))}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

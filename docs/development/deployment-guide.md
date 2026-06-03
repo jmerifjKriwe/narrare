@@ -326,7 +326,9 @@ Each release produces:
 | Artifact | Location | Description |
 |----------|----------|-------------|
 | Docker image | `ghcr.io/<owner>/narrare:<version>` | Single image with API + frontend |
-| Release bundle | `narrare-<version>.zip` | docker-compose.yml + .env.example + README |
+| Release bundle | `narrare-<version>.zip` | docker-compose.yml + .env.example + SBOM + README |
+| CycloneDX SBOM | Release asset `sbom.cyclonedx.json` | Machine-readable SBOM (via Syft) |
+| Python deps | Release asset `requirements.txt` | Python dependencies exported from uv.lock |
 
 The Docker image is **private** by default (inherits repository visibility).
 End users authenticate once via `docker login ghcr.io`.
@@ -396,8 +398,9 @@ The `release-please.yml` workflow automates the entire release:
 1. **Version detection** — release-please parses conventional commits
 2. **GitHub Release** — created with auto-generated changelog
 3. **Docker build** — multi-stage build, pushed to GHCR
-4. **Release bundle** — zip with docker-compose.yml + .env.example + README
-5. **Bundle upload** — attached to the GitHub Release
+4. **SBOM generation** — CycloneDX SBOM (via Syft) and Python requirements (via `uv export`)
+5. **Release bundle** — zip with docker-compose.yml + .env.example + SBOM files + README
+6. **Bundle + SBOM upload** — attached to the GitHub Release as separate assets
 
 ```
 merge to main
@@ -494,6 +497,82 @@ services:
 | Redis | `redis:8-alpine` | 6379 | — |
 
 The application runs locally (not in Docker) for hot reload.
+
+## Release Verification
+
+Each release produces verifiable artifacts. The following sections document how
+to verify the authenticity and integrity of a release.
+
+### Release Bundle Integrity
+
+The release bundle (`narrare-<version>.zip`) is published as a GitHub Release
+artifact. All GitHub Release artifacts are automatically signed by GitHub's
+infrastructure. To manually verify the download:
+
+```bash
+# Download and checksum
+sha256sum narrare-<version>.zip
+# Compare with the hash shown in the GitHub Release metadata
+```
+
+### Docker Image Verification
+
+The Docker image is pushed to GHCR with both a version tag and a digest:
+
+```bash
+# Pull by version tag
+docker pull ghcr.io/<owner>/narrare:<version>
+
+# Pull by digest (immutable — recommended for production)
+docker pull ghcr.io/<owner>/narrare@<digest>
+```
+
+Each release's GitHub Release summary includes the image digest.
+
+### SBOM Verification
+
+Two SBOM artifacts are published with each release:
+
+| SBOM | Format | Tool | Content |
+|------|--------|------|---------|
+| `sbom.cyclonedx.json` | CycloneDX JSON | Syft | Full image SBOM (system + Python + Node.js) |
+| `requirements.txt` | pip requirements.txt | uv export | Python dependencies only |
+
+The SBOM is generated **during the release workflow** directly from the
+published Docker image, ensuring it reflects exactly what is in the image.
+
+You can scan the SBOM for vulnerabilities:
+
+```bash
+# Using Grype (from Anchore)
+grype sbom:sbom.cyclonedx.json
+
+# Using Trivy (from Aqua Security)
+trivy sbom sbom.cyclonedx.json
+```
+
+### Cosign Signing (Future)
+
+For cryptographic signing of Docker images, Cosign keyless signing via GitHub
+OIDC is the planned approach:
+
+- **Tool:** `sigstore/cosign-installer` (available as GitHub Action)
+- **Key management:** Keyless mode — no manual key management needed
+- **OIDC provider:** `https://token.actions.githubusercontent.com` (GitHub)
+- **Identity:** The release workflow identity (repo + ref)
+
+Implementation is deferred to a future milestone. See the release bundle README
+for the planned verification command.
+
+### Provenance Trust Model
+
+| Artifact | Method | Trust |
+|----------|--------|-------|
+| GitHub Release | Signed by GitHub infrastructure | High |
+| Docker image (by digest) | Cryptographically content-addressed | High |
+| Release bundle | SHA256 checksum in metadata | Medium |
+| CycloneDX SBOM | Generated from published image in trusted CI | Medium |
+| Cosign signature | Public-key cryptography (future) | High |
 
 ## Monitoring
 

@@ -17,6 +17,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare._app.observability import enrich_sse_data
 from narrare.writing.deps import get_suggest_service
 from narrare.writing.schemas import InlineSuggestRequest
 
@@ -70,7 +71,7 @@ async def suggest_inline(
                     "completion_tokens": chunk.usage.completion_tokens,
                     "total_tokens": chunk.usage.total_tokens,
                 }
-            yield f"data: {json.dumps(data)}\n\n"
+            yield f"data: {json.dumps(enrich_sse_data(data))}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

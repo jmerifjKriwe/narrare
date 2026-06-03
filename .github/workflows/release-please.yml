@@ -35,7 +35,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # ── Docker Build + Push to GHCR ──────────────────────────────
+      # ── Setup ────────────────────────────────────────────────────
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -50,7 +55,9 @@ jobs:
         id: meta
         run: echo "VERSION=${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_OUTPUT
 
+      # ── Docker Build + Push to GHCR ──────────────────────────────
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -61,14 +68,57 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # ── SBOM Generation ──────────────────────────────────────────
+      - name: Generate Python dependency list
+        run: |
+          mkdir -p /tmp/bundle
+          uv export --format requirements-txt --no-dev --output-file /tmp/bundle/requirements.txt
+
+      - name: Generate Docker image SBOM (best-effort)
+        continue-on-error: true
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}/narrare:${{ steps.meta.outputs.VERSION }}"
+          echo "Generating SBOM for $IMAGE"
+          mkdir -p /tmp/bundle
+
+          # Try docker sbom first (Docker SBOM CLI plugin)
+          if docker sbom --help &>/dev/null; then
+            echo "Using docker sbom..."
+            docker sbom "$IMAGE" \
+              --format cyclonedx-json \
+              --output /tmp/bundle/sbom.cyclonedx.json
+          else
+            # Fall back to Syft (Anchore)
+            echo "docker sbom not available, installing Syft..."
+            # Pull the just-pushed image for local scanning
+            docker pull "$IMAGE" 2>/dev/null || {
+              echo "⚠ docker pull failed, SBOM generation skipped"
+              exit 0
+            }
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+              | sh -s -- -b /usr/local/bin 2>/dev/null
+            syft "$IMAGE" -o cyclonedx-json > /tmp/bundle/sbom.cyclonedx.json
+          fi
+          echo "✓ SBOM generated for $IMAGE"
+
       # ── Release Bundle ───────────────────────────────────────────
       - name: Create release bundle
         run: |
-          mkdir -p /tmp/bundle
+          # SBOM files are already in /tmp/bundle from the generation steps above
+
+          # Copy release assets
           cp docker-compose.release.yml /tmp/bundle/docker-compose.yml
           cp .env.example /tmp/bundle/.env.example
 
-          # Create a minimal README for the bundle
+          # Verify SBOM files exist (best-effort generation may have skipped)
+          [ -f /tmp/bundle/requirements.txt ] \
+            && echo "✓ Python requirements.txt included" \
+            || echo "⚠ No requirements.txt generated"
+          [ -f /tmp/bundle/sbom.cyclonedx.json ] \
+            && echo "✓ CycloneDX SBOM included" \
+            || echo "⚠ No SBOM generated (best-effort step may have failed)"
+
+          # Create a README for the bundle
           cat > /tmp/bundle/README.md << 'READMEEOF'
           # Narrare — Self-Hosted Setup
 
@@ -104,6 +154,89 @@ jobs:
           ```bash
           docker compose down
           ```
+
+          ## Verification
+
+          ### Release Bundle Integrity
+
+          This release bundle (`narrare-<version>.zip`) is published as a GitHub
+          Release artifact. GitHub automatically signs all Release artifacts.
+          To verify the download integrity:
+
+          ```bash
+          # Compare checksum with the SHA hash in the GitHub Release metadata
+          sha256sum narrare-<version>.zip
+          ```
+
+          ### Docker Image Verification
+
+          The Docker image is published to GitHub Container Registry (GHCR):
+
+          ```bash
+          # Pull by version tag
+          docker pull ghcr.io/<owner>/narrare:<version>
+
+          # Pull by digest (immutable — recommended for production)
+          docker pull ghcr.io/<owner>/narrare@<digest>
+          ```
+
+          Each release includes the image digest in the Release summary.
+          Always verify the digest when pulling for production deployments.
+
+          ### SBOM (Software Bill of Materials)
+
+          This bundle includes two SBOM artifacts:
+
+          - **`requirements.txt`** — Python dependencies exported from
+            `uv.lock`. Lists all direct and transitive Python packages.
+
+          - **`sbom.cyclonedx.json`** — Machine-readable SBOM in CycloneDX
+            format, generated from the published Docker image. Covers all
+            image layers (system packages, Python, Node.js).
+
+          Analyze the SBOM for vulnerabilities with any CycloneDX-compatible
+          scanner:
+
+          ```bash
+          # Using Grype
+          grype sbom:sbom.cyclonedx.json
+
+          # Using Trivy
+          trivy sbom sbom.cyclonedx.json
+          ```
+
+          ### Provenance
+
+          | Artifact | Verification Method | Trust Level |
+          |----------|-------------------|-------------|
+          | GitHub Release | Signed by GitHub (automatic) | High |
+          | Docker Image | Pull by digest for immutable ref | Medium |
+          | Release Bundle | SHA256 checksum in Release | Medium |
+          | SBOM (CycloneDX) | Generated from published image | Medium |
+
+          **Key principles:**
+          - GitHub Release artifacts are automatically signed by GitHub's
+            infrastructure. The release tag is created by release-please,
+            which only runs on merges to `main`.
+          - Docker images are pushed from the same trusted workflow. For
+            supply-chain security, pin to the digest rather than the tag.
+          - The SBOM is generated during the release workflow and represents
+            exactly what is in the published image.
+
+          ### Optional: Cosign Signing (Future Enhancement)
+
+          For cryptographic signing of Docker images, future releases may
+          include Cosign keyless signing via GitHub OIDC. The planned
+          verification command is:
+
+          ```bash
+          cosign verify ghcr.io/<owner>/narrare:<version> \
+            --certificate-identity-regexp 'https://github.com/<owner>/narrare/.github/workflows/release-please.yml@refs/tags/*' \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          ```
+
+          **Prerequisites:** Install Cosign (`brew install cosign`), no
+          manual key management needed (keyless mode uses GitHub OIDC).
           READMEEOF
 
           cd /tmp && zip -r /tmp/narrare-${{ steps.meta.outputs.VERSION }}.zip bundle/
@@ -112,14 +245,27 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
-          files: /tmp/narrare-${{ steps.meta.outputs.VERSION }}.zip
+          files: |
+            /tmp/narrare-${{ steps.meta.outputs.VERSION }}.zip
+            /tmp/bundle/sbom.cyclonedx.json
+            /tmp/bundle/requirements.txt
 
       - name: Create GitHub Release summary
         run: |
           echo "## Release ${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Docker image:** \`ghcr.io/${{ github.repository }}/narrare:${{ steps.meta.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Release bundle:** \`narrare-${{ steps.meta.outputs.VERSION }}.zip\`" >> $GITHUB_STEP_SUMMARY
+          echo "**SBOM (CycloneDX):** \`sbom.cyclonedx.json\` (separate asset + inside bundle)" >> $GITHUB_STEP_SUMMARY
+          echo "**Python deps:** \`requirements.txt\` (exported from uv.lock)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Docker image** — pull by tag or immutable digest" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Release bundle** — verify SHA256 checksum" >> $GITHUB_STEP_SUMMARY
+          echo "3. **SBOM** — scan \`sbom.cyclonedx.json\` with Grype/Trivy" >> $GITHUB_STEP_SUMMARY
+          echo "4. **Cosign signing** — planned for future releases" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Release created successfully." >> $GITHUB_STEP_SUMMARY

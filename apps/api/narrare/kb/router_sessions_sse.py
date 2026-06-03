@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.observability import enrich_sse_data
 from narrare.kb.dependencies import get_kb_session_service
 
 if TYPE_CHECKING:
@@ -45,7 +46,7 @@ async def stream_session(
             return
         yield _sse_event(
             "session_state",
-            session.model_dump(mode="json"),
+            enrich_sse_data(session.model_dump(mode="json")),
         )
 
     return StreamingResponse(
