@@ -4520,63 +4520,6 @@
         }
       }
     },
-    "/api/v1/novels/{novel_id}/kb/sessions/{session_id}/stream": {
-      "get": {
-        "tags": [
-          "kb-sessions"
-        ],
-        "summary": "Stream Session",
-        "description": "SSE endpoint for streaming AI responses during a session.",
-        "operationId": "stream_session_api_v1_novels__novel_id__kb_sessions__session_id__stream_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "novel_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Novel Id"
-            }
-          },
-          {
-            "name": "session_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Session Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve": {
       "post": {
         "tags": [
@@ -7042,7 +6985,7 @@
           "monitoring"
         ],
         "summary": "Health",
-        "description": "Liveness check — confirms the process is running.",
+        "description": "Liveness check — confirms the process is running.\n\nIncludes OTel availability status so operators can detect degraded\nobservability from the health endpoint.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -7050,9 +6993,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
+                  "additionalProperties": true,
                   "type": "object",
                   "title": "Response Health Health Get"
                 }

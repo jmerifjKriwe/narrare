@@ -66,14 +66,12 @@
   - `DELETE /novels/{novel_id}/kb/sessions/{session_id}` — abandon session
   - All endpoints under RULE-06 (thin router, immediate delegation to service)
 
-### REQ-05: SSE endpoint
-- **What**: Streaming endpoint for interview and enhance modes
+### REQ-05: Streaming operations
+- **What**: Progressive responses are scoped to concrete assisted-creation actions.
 - **Details**:
-  - `GET /novels/{novel_id}/kb/sessions/{session_id}/stream` — SSE endpoint
-  - Streams KBAssistAgent output as events
-  - Event types: `question`, `suggestion`, `draft_update`, `complete`, `error`
-  - Uses FastAPI StreamingResponse with `text/event-stream` media type
-  - Falls back to REST response if streaming not requested
+  - No generic `GET /novels/{novel_id}/kb/sessions/{session_id}/stream` endpoint is exposed.
+  - Action-specific operations may use SSE when the frontend has a real progressive UX need.
+  - REST session lifecycle endpoints remain the source of truth for session state.
 
 ### REQ-06: Dependency injection
 - **What**: Wire session service dependencies in `api/kb/dependencies.py`

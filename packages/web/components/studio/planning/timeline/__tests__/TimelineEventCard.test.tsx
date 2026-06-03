@@ -31,13 +31,6 @@ vi.mock("@/lib/hooks/useTimeline", () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
-  useTimelineExtraction: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-    isError: false,
-    data: undefined,
-    reset: vi.fn(),
-  }),
   useTimelineAnalysis: () => ({
     data: null,
     isLoading: false,

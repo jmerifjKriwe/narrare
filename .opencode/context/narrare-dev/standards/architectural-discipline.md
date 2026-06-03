@@ -145,12 +145,12 @@ MUST use SSE as well. REST-only frontend for an SSE-capable backend is:
 - SSE is the core UX pattern for AI interaction — users see streaming output live
 - REST-only hides the AI response behind a loading spinner (schlechtere UX)
 - Adding SSE later means rewriting components that were built REST-only
-- The backend `router_sessions_sse.py` already exists — not using it is dead code
+- Backend SSE infrastructure without a real frontend consumer is dead code and
+  must be either consumed by a real progressive UX or removed
 
 **Existing precedents:**
 - WRITE-002/003: SSE for AI generation, REST for CRUD
 - WRITE-005: SSE for interactive sessions
-- KB-002 backend: `router_sessions_sse.py` committed, endpoint ready
 
 ---
 

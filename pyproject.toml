@@ -280,13 +280,6 @@ date = "2026-05-15"
 # --- Pre-existing inline markers (registered during ADR-028 enforcement) ---
 
 [[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-02"
-file = "apps/api/narrare/kb/consistency_analyzer.py"
-reason = "Simple entity reference, not prompt assembly"
-approved_by = "architecture-review"
-date = "2026-06-03"
-
-[[tool.narrare.architecture.exceptions.entries]]
 rule = "RULE-01b"
 file = "packages/core/narrare_core/planning/remap.py"
 reason = "Injected agent, not instantiated here"

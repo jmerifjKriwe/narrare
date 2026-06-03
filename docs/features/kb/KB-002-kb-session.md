@@ -175,8 +175,9 @@ KBQueryService (search_kb, get_entity, get_related).
 ### API: REST + SSE (not WebSocket)
 
 REST endpoints for data operations (create session, answer field, accept suggestion).
-SSE for streaming AI responses (suggest, interview). Not a real-time chat —
-turn-based Q&A with optional streaming output.
+Progressive AI responses are handled by action-specific operations where the UX
+needs streaming output; there is no generic session-state stream. Not a real-time
+chat — turn-based Q&A with optional streaming output.
 
 ### World context: ProactiveContextService
 
@@ -193,4 +194,4 @@ is sufficient. Final entries are saved via KB-001.
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Redesigned. Renamed from "Interactive KB Session" to "Assisted KB Creation". Template-guided spectrum (manual ↔ interview ↔ auto). Single KBAgent. REST+SSE. ProactiveContext for world context.
-- `2026-05-25` — Status updated to implemented. Backend + Frontend complete. Backend: session_service, session_store, session_models, session_schemas, assist_service, assist_contracts, router_sessions, router_sessions_sse, router_sessions_complete. Frontend: KBAssistedCreationPanel, KBAssistedCreationFooter, KBSessionFieldList, KBFieldSuggestion, KBInterviewView, KBEnhanceReview. Integration in WorldBuilding and KBEntryList ("New with AI Interview"). 99 backend tests. i18n complete.
+- `2026-05-25` — Status updated to implemented. Backend + Frontend complete. Backend: session_service, session_store, session_models, session_schemas, assist_service, assist_contracts, router_sessions, router_sessions_complete. Frontend: KBAssistedCreationPanel, KBAssistedCreationFooter, KBSessionFieldList, KBFieldSuggestion, KBInterviewView, KBEnhanceReview. Integration in WorldBuilding and KBEntryList ("New with AI Interview"). 99 backend tests. i18n complete.

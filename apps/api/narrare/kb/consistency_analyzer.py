@@ -166,20 +166,18 @@ class KBConsistencyAnalyzer:
         ctx = PromptContext(
             language="en",
             mode=LLMIntent.KB_CONSISTENCY.value,
+            entity_type=entity.entity_type,
+            entity_name=entity.name,
             extra={
-                "entity_type": entity.entity_type,
                 "entry_content": str(entry_content),
                 "template_structure": str(template_structure),
             },
         )
         composed = await self._composer.build(LLMIntent.KB_CONSISTENCY, ctx)
 
-        # narrare: allow-fstring — simple entity reference, not prompt assembly
-        user_prompt = f"Check {entity.name} ({entity.entity_type}) for internal consistency."
-
         result: _EntryInternalOutput = await self._registry.run(
             intent=LLMIntent.KB_CONSISTENCY,
-            prompt=user_prompt,
+            prompt=composed.user,
             config=self._config,
             system_prompt=composed.system,
             output_type=_EntryInternalOutput,

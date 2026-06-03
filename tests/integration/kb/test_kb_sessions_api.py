@@ -334,27 +334,29 @@ class TestCompleteSession:
 
 
 class TestStreamSession:
-    async def test_returns_200_with_event_stream(
+    async def test_stream_endpoint_is_not_exposed(
         self,
         client: AsyncClient,
         app: FastAPI,
         auth_headers: dict[str, str],
         mock_service: MagicMock,
     ) -> None:
+        """The unused session state stream is not part of the public API."""
+
         _override(app, mock_service)
         resp = await client.get(
             f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/stream", headers=auth_headers
         )
-        assert resp.status_code == 200
-        assert "text/event-stream" in resp.headers.get("content-type", "")
-        assert "event: session_state" in resp.text
+        assert resp.status_code == 404
 
-    async def test_returns_401_without_auth(
+    async def test_stream_endpoint_is_not_exposed_without_auth(
         self, client: AsyncClient, app: FastAPI, mock_service: MagicMock
     ) -> None:
+        """Missing auth does not matter because the route is not registered."""
+
         _override(app, mock_service)
         resp = await client.get(f"/api/v1/novels/{uuid4()}/kb/sessions/{uuid4()}/stream")
-        assert resp.status_code == 401
+        assert resp.status_code == 404
 
 
 class TestAbandonSession:

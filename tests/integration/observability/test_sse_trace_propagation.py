@@ -173,14 +173,3 @@ class TestSseResponseHeaders:
             },
         )
         assert response.headers.get("X-Request-ID") == request_id
-
-    async def test_kb_sessions_sse_has_request_id(self, client: AsyncClient) -> None:
-        """KB sessions SSE response includes ``X-Request-ID``."""
-        request_id = str(uuid.uuid4())
-        response = await client.get(
-            "/api/v1/novels/00000000-0000-0000-0000-000000000000/kb/sessions/"
-            "00000000-0000-0000-0000-000000000000/stream",
-            headers={"X-Request-ID": request_id},
-        )
-        # This endpoint returns 401 (no auth) — middleware still adds header
-        assert response.headers.get("X-Request-ID") == request_id

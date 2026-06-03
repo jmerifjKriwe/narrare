@@ -27,13 +27,6 @@ vi.mock("@/lib/hooks/useTimeline", () => ({
     error: null,
     refetch: vi.fn(),
   }),
-  useTimelineExtraction: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-    isError: false,
-    data: undefined,
-    reset: vi.fn(),
-  }),
   useSSEExtraction: () => ({
     isExtracting: false,
     extractedEvents: [],
@@ -143,13 +136,6 @@ describe("TimelinePanel", () => {
         isLoading: false,
         error: null,
         refetch: vi.fn(),
-      }),
-      useTimelineExtraction: () => ({
-        mutate: vi.fn(),
-        isPending: false,
-        isError: false,
-        data: undefined,
-        reset: vi.fn(),
       }),
       useCreateTimelineEvent: () => ({
         mutate: vi.fn(),

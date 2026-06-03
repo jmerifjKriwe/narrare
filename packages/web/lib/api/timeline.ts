@@ -86,18 +86,6 @@ export const timelineApi = {
   getAnalysis: (novelId: string) => fetchApi<TimelineAnalysis>(`/planning/timeline/${novelId}`),
 
   /**
-   * Extract temporal expressions from selected chapters.
-   * POST /planning/timeline/{novelId}/extract
-   *
-   * @deprecated Use extractExpressionsSSE for progressive SSE streaming extraction.
-   */
-  extractExpressions: (novelId: string, chapterIds: string[]) =>
-    fetchApi<ExtractedEvent[]>(`/planning/timeline/${novelId}/extract`, {
-      method: "POST",
-      body: JSON.stringify({ chapter_ids: chapterIds }),
-    }),
-
-  /**
    * Check temporal consistency for a novel.
    * GET /planning/timeline/{novelId}/consistency
    */

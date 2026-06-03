@@ -140,8 +140,5 @@
     "packages/web/lib/hooks/useTimeline.ts | hook | 150",
     "packages/web/lib/stores/editorStore.ts | store | 150"
   ],
-  "streaming_compliance_gaps": [
-    "kb/router_sessions_sse has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/kb/router_sessions_sse.py",
-    "planning/router_timeline_analysis has no frontend SSE consumer found | → Backend SSE: apps/api/narrare/planning/router_timeline_analysis.py"
-  ]
+  "streaming_compliance_gaps": []
 }

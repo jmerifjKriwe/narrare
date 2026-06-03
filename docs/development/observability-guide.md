@@ -77,13 +77,13 @@ that links request, service call, LLM call, and response together.
 | OTel Setup | `_app/telemetry.py` | Configure OTel SDK, exporter, FastAPI instrumentation |
 | Middleware | `_app/middleware.py` | Extract trace context, bind structlog, set response headers |
 | Structlog | `_app/logging.py` | Structured logging with `merge_contextvars` processor |
-| Trace Helper | `_app/observability.py` | Shared `get_current_trace_context()` for all components |
+| Trace Helper | `_app/observability.py` | Shared `get_current_trace_context()` and `get_observability_status()` for all components |
 | LLM Tracing | `core/llm/observability.py` | Langfuse integration for LLM call tracing |
 | LLM Metrics | `core/llm/metrics.py` | Prometheus metrics (success/failure/tokens/cache/duration) |
 | Agent Observability | `core/agents/capabilities/observability.py` | Per-agent metrics via `NarrareObservability` capability |
 | Event Bus | `_app/events.py` | Redis Pub/Sub events with `correlation_id` field |
 | Event Publisher | `events/publisher.py` | In-process event dispatch (no automatic trace propagation) |
-| Prometheus | `metrics/router.py` | `/metrics` endpoint exposing `prometheus_client` metrics |
+| Prometheus | `metrics/router.py` | `/health` (with OTel status), `/ready`, `/metrics` endpoints |
 
 ---
 
@@ -160,6 +160,30 @@ OTEL_SERVICE_NAME=narrare-api
 - No `BatchSpanProcessor` customisation (defaults apply).
 - No OTel log correlation (uses structlog instead of OTel logging SDK).
 
+### 3.1b `_app/observability.py` — Degradation Visibility
+
+**What it does:**
+- Probes OTel availability exactly once on first call to `get_current_trace_context()`
+- Caches availability state: `_otel_available`, `_failure_reason`, `_warning_emitted`
+- Emits exactly one structured warning via structlog when OTel is unavailable
+- All subsequent calls return silently (no log spam)
+- Thread-safe via `threading.Lock`
+
+**Public API:**
+- `get_current_trace_context()` — returns trace context dict (unchanged, but now
+  short-circuits when OTel is unavailable)
+- `get_observability_status()` — returns `{"available": bool, "failure_reason": str,
+  "warning_emitted": bool}` for health-endpoint reporting
+- `enrich_sse_data()` — unchanged
+
+**Health endpoint integration:**
+- `GET /health` now includes an `observability` field from `get_observability_status()`
+- Operators can detect degraded observability without inspecting logs
+
+**When OTel degrades at runtime:**
+- If a previously-working OTel import fails during context extraction, the module
+  transitions to unavailable state and emits a one-shot `"otel_degraded"` warning
+
 ### 3.2 `core/llm/observability.py` — Langfuse Integration
 
 **What it does:**
@@ -235,7 +259,6 @@ LANGFUSE_HOST=http://localhost:3000
 | `POST /api/v1/writing/chapters/{id}/rewrite` | `writing/router_rewrite.py` |
 | `POST /api/v1/writing/chapters/{id}/suggest` | `writing/router_suggest.py` |
 | `POST /api/v1/writing/chapters/{id}/co-author` | `writing/router_coauthor.py` |
-| `GET /api/v1/novels/{id}/kb/sessions/{id}/stream` | `kb/router_sessions_sse.py` |
 
 ---
 
@@ -416,6 +439,34 @@ grep "$REQUEST_ID" logs/narrare.log
 | `LANGFUSE_HOST` | `http://localhost:3000` | Langfuse self-hosted URL |
 | `LOG_LEVEL` | `INFO` | Log level (DEBUG/INFO/WARNING/ERROR) |
 | `LOG_FILE` | (unset) | File path for development dual-handler |
+
+## Health Endpoint
+
+The `/health` endpoint includes OTel availability status:
+
+```json
+{
+  "status": "ok",
+  "observability": {
+    "available": true,
+    "failure_reason": "",
+    "warning_emitted": false
+  }
+}
+```
+
+When OTel is not installed or unavailable:
+
+```json
+{
+  "status": "ok",
+  "observability": {
+    "available": false,
+    "failure_reason": "ImportError: No module named 'opentelemetry.trace'",
+    "warning_emitted": true
+  }
+}
+```
 
 ---
 

@@ -76,14 +76,23 @@ class FakeKBRepo:
 class FakeComposedPrompt:
     """Minimal composed prompt with system field."""
 
-    def __init__(self, system: str = "system") -> None:
+    def __init__(
+        self,
+        system: str = "system",
+        user: str = "composer-built user prompt",
+    ) -> None:
         self.system = system
+        self.user = user
 
 
 class FakeComposer:
     """Fake PromptComposer returning canned prompts."""
 
+    def __init__(self) -> None:
+        self.last_context: object | None = None
+
     async def build(self, intent: object, ctx: object) -> FakeComposedPrompt:
+        self.last_context = ctx
         return FakeComposedPrompt(system="check consistency system prompt")
 
 
@@ -268,6 +277,16 @@ class TestAnalyzeEntries:
         assert issues[0].category == ConsistencyCategory.ENTRY_INTERNAL
         assert issues[0].description == "Contradictory age reference"
         assert issues[0].severity == WorldbuildingSeverity.MAJOR
+
+        registry_mock.run.assert_awaited_once()
+        assert registry_mock.run.await_args.kwargs["prompt"] == "composer-built user prompt"
+
+        composer = deps["composer"]
+        assert isinstance(composer, FakeComposer)
+        ctx = composer.last_context
+        assert ctx is not None
+        assert getattr(ctx, "entity_name", None) == "Alice"  # pyright: ignore[reportAttributeAccessIssue]
+        assert getattr(ctx, "entity_type", None) == "character"  # pyright: ignore[reportAttributeAccessIssue]
 
     @pytest.mark.asyncio
     async def test_analyze_entries_exception_skips_and_continues(self) -> None:

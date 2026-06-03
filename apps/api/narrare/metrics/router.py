@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import structlog
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from sqlalchemy import text
 
 from narrare._app.database import get_engine
+from narrare._app.observability import get_observability_status
 
 router = APIRouter(tags=["monitoring"])
 
@@ -15,9 +18,13 @@ logger = structlog.get_logger(__name__)
 
 
 @router.get("/health")
-async def health() -> dict[str, str]:
-    """Liveness check — confirms the process is running."""
-    return {"status": "ok"}
+async def health() -> dict[str, Any]:
+    """Liveness check — confirms the process is running.
+
+    Includes OTel availability status so operators can detect degraded
+    observability from the health endpoint.
+    """
+    return {"status": "ok", "observability": get_observability_status()}
 
 
 @router.get("/ready")

@@ -443,13 +443,13 @@ consistency_analyzer.py: analyze_entries()
      a. Build entry_content dict:
         - name, entity_type, metadata (all field values), body, tags
      b. Build template_structure (field keys → labels) using get_schema()
-     c. Build system prompt via PromptComposer:
-        - PromptContext(language="en", mode=KB_CONSISTENCY)
-        - composed = composer.build(KB_CONSISTENCY, ctx)
-     d. Resolve model: model = registry.get_model(config)
-     e. Run single LLM call:
-        - user_prompt = f"Check {entity.name} ({entity.entity_type}) for internal consistency"
-        - Parse structured JSON response → list of entry-internal issues
+      c. Build prompts via PromptComposer:
+         - PromptContext(language="en", mode=KB_CONSISTENCY, entity_name=entity.name, entity_type=entity.entity_type)
+         - composed = composer.build(KB_CONSISTENCY, ctx)
+      d. Resolve model: model = registry.get_model(config)
+      e. Run single LLM call:
+         - prompt = composed.user
+         - Parse structured JSON response → list of entry-internal issues
      f. Map to ConsistencyIssue:
         - category = ENTRY_INTERNAL
         - entity_ids = [entity_id]

@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: de
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -13,6 +13,10 @@ Du bist ein Konsistenzanalyst für Wissensdatenbank-Einträge. Deine Aufgabe ist
 #### Entity Type
 
 {{entity_type}}
+
+#### Entity Name
+
+{{entity_name}}
 
 #### Template Structure
 
@@ -52,3 +56,7 @@ Gib ein JSON-Objekt mit `issues` und `assessment` zurück. Jedes Issue enthält 
 - Vergleiche nicht mit anderen Einträgen.
 - Markiere keine leeren Felder als Widerspruch.
 - Erfinde keine Fakten.
+
+## First Message
+
+Prüfe {{entity_name}} ({{entity_type}}) auf interne Konsistenz.

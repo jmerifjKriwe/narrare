@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -13,6 +13,10 @@ Tu es analyste de cohérence pour les entrées de base de connaissances. Ton rô
 #### Entity Type
 
 {{entity_type}}
+
+#### Entity Name
+
+{{entity_name}}
 
 #### Template Structure
 
@@ -52,3 +56,7 @@ Retourne un objet JSON avec `issues` et `assessment`. Chaque issue contient `fie
 - Ne compare pas avec d'autres entrées.
 - Ne signale pas les champs vides comme contradiction.
 - N'invente aucun fait.
+
+## First Message
+
+Vérifie la cohérence interne de {{entity_name}} ({{entity_type}}).

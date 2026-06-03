@@ -1,12 +1,14 @@
 /**
- * KB Interview Resume — persist minimized interview state to localStorage so
- * cancelled interviews can be resumed later when the user allows it.
+ * KB Interview Resume — store minimized interview state in sessionStorage so
+ * cancelled interviews can be resumed within the same tab session.
  *
  * Design decisions:
- * - localStorage (not sessionStorage): survives tab close for a short TTL
+ * - sessionStorage (not localStorage): data clears when the tab closes,
+ *   preventing project-adjacent content from persisting across sessions
  * - Keyed by novelId: one pending interview per project
  * - Minimal state: sessionId + entityType — actual data lives on the backend
- * - Privacy: TTL expiry and user-controlled disabled mode
+ * - Privacy: TTL expiry and user-controlled opt-out (stored in localStorage
+ *   because it is a user preference, not project content)
  * - Clean separation: this module only manages persistence, not UI
  */
 
@@ -45,7 +47,7 @@ export function savePendingInterview(
     expiresAt: now + ttlMs,
   };
   try {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}${novelId}`, JSON.stringify(data));
+    sessionStorage.setItem(`${STORAGE_KEY_PREFIX}${novelId}`, JSON.stringify(data));
   } catch (error) {
     console.warn("Unable to save pending KB interview", error);
   }
@@ -54,7 +56,7 @@ export function savePendingInterview(
 /** Retrieve and keep (don't clear) a pending interview. Returns null if none. */
 export function getPendingInterview(novelId: string): PendingInterview | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${novelId}`);
+  const raw = sessionStorage.getItem(`${STORAGE_KEY_PREFIX}${novelId}`);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<PendingInterview>;
@@ -77,7 +79,7 @@ export function getPendingInterview(novelId: string): PendingInterview | null {
 /** Clear the pending interview (after resume or discard). */
 export function clearPendingInterview(novelId: string): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(`${STORAGE_KEY_PREFIX}${novelId}`);
+  sessionStorage.removeItem(`${STORAGE_KEY_PREFIX}${novelId}`);
 }
 
 /** Check whether a pending interview exists for this project. */

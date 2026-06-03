@@ -36,6 +36,9 @@ from scripts.architecture.streaming_compliance import (  # noqa: E402
     SSEEndpoint,
     url_patterns_match,
 )
+from scripts.architecture.streaming_compliance import (  # noqa: E402
+    build_effective_router_prefixes as _build_effective_router_prefixes,
+)
 
 API_DIR = REPO_ROOT / "apps" / "api" / "narrare"
 WEB_DIR = REPO_ROOT / "packages" / "web"
@@ -113,15 +116,17 @@ def _extract_sse_routes(source: str, prefix: str, filepath: Path) -> list[SSEEnd
 def discover_sse_endpoints() -> list[SSEEndpoint]:
     """Discover all SSE endpoints from backend router files."""
     endpoints: list[SSEEndpoint] = []
-    for router_file in _find_router_files():
+    router_files = _find_router_files()
+    effective_prefixes = _build_effective_router_prefixes(router_files, _extract_router_prefix)
+    for router_file in router_files:
         try:
             source = router_file.read_text(encoding="utf-8")
         except OSError:
             continue
         if "StreamingResponse" not in source:
             continue
-        prefix = _extract_router_prefix(source)
-        endpoints.extend(_extract_sse_routes(source, prefix, router_file))
+        for prefix in effective_prefixes.get(router_file, [_extract_router_prefix(source)]):
+            endpoints.extend(_extract_sse_routes(source, prefix, router_file))
     return endpoints
 
 

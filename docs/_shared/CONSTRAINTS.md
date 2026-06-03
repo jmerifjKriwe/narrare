@@ -868,7 +868,6 @@ See ADR-028 for the SSOT decision and checker enforcement specification.
 |---|------|------|--------|-------------|------|
 | 1 | RULE-01 | `packages/core/narrare_core/llm/embedding_providers.py` | Batch embedding API requires direct client access for performance | architecture-review | 2026-05-27 |
 | 2 | RULE-01 | `packages/core/narrare_core/memory/mem0_client.py` | mem0 AsyncMemory requires direct LLM client for memory extraction | generation-prompt-memory-foundation | 2026-05-15 |
-| 3 | RULE-02 | `apps/api/narrare/kb/consistency_analyzer.py` | Simple entity reference, not prompt assembly | architecture-review | 2026-06-03 |
 | 4 | RULE-01b | `packages/core/narrare_core/planning/remap.py` | Injected agent, not instantiated here | architecture-review | 2026-06-03 |
 | 5 | RULE-01 | `packages/core/narrare_core/wiki/agent.py` | WikiGenerationAgent uses RunContext for pydantic_ai internals | architecture-review | 2026-06-03 |
 | 6 | RULE-01 | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
@@ -910,11 +909,6 @@ do not apply here because:
 This exception mirrors the embedding exception in `core/llm/embeddings.py` —
 both are infrastructure-level LLM calls that operate outside the user-facing
 intent routing system.
-
-#### Exception #3: Entity reference in `kb/consistency_analyzer.py`
-
-The consistency analyzer constructs simple entity reference strings (not prompt
-assembly). These are data formatting operations, not LLM prompt construction.
 
 #### Exceptions #4–7: Wiki agents (ADR-015)
 

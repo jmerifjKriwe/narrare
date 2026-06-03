@@ -50,10 +50,9 @@
 - Register in `apps/api/narrare/_app/main.py`
 - All endpoints under `/novels/{novel_id}/kb/sessions/`
 
-### 3.3 SSE endpoint
-- Add `GET /novels/{novel_id}/kb/sessions/{session_id}/stream`
-- StreamingResponse with text/event-stream
-- Event types: question, suggestion, draft_update, complete, error
+### 3.3 Streaming operations
+- Do not expose a generic session-state stream without a product consumer
+- Use action-specific streaming only where the assisted-creation UX needs progressive AI output
 
 ### 3.4 Dependency injection
 - Add `get_kb_session_service()` and `get_kb_assist_service()` to `apps/api/narrare/kb/dependencies.py`

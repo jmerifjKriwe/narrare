@@ -172,20 +172,6 @@ export function useConfirmExtractedEvent(novelId: string) {
   });
 }
 
-/**
- * @deprecated Use useSSEExtraction for progressive SSE streaming extraction.
- * Kept for backward compatibility — remove once all callers migrate to SSE.
- */
-export function useTimelineExtraction(novelId: string) {
-  const queryClient = useQueryClient();
-  return useMutation<ExtractedEvent[], Error, string[]>({
-    mutationFn: (chapterIds) => timelineApi.extractExpressions(novelId, chapterIds),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: timelineKeys.events(novelId) });
-    },
-  });
-}
-
 /** Check temporal consistency for a novel. Query with auto-refetch. */
 export function useTimelineConsistency(novelId: string) {
   return useQuery<TemporalConsistency>({

@@ -8,15 +8,89 @@ Graceful degradation:
   - OpenTelemetry package not installed → returns empty dict (no crash)
   - No active span → returns empty dict
   - Active span → returns ``{"x_trace_id": ..., "x_span_id": ...}``
+
+Degraded-state visibility:
+  - On first ``ImportError`` or unexpected exception, exactly one structured
+    warning is emitted via structlog.  Subsequent calls return silently.
+  - Module-level state (available, failure reason, warning-emitted flag) is
+    cached and queryable via :func:`get_observability_status`.
 """
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Module-level state tracking
+# ---------------------------------------------------------------------------
+# Accessed only under _state_lock.  The lock is a stdlib threading.Lock
+# (not re-entrant) which is sufficient — we never re-enter while holding it.
+
+_state_lock = threading.Lock()
+
+_otel_available: bool | None = None  # ``None`` = not yet probed
+_failure_reason: str = ""
+_warning_emitted: bool = False
+
+
+def _probe_once() -> None:
+    """Probe OTel availability exactly once; cache the result.
+
+    On the first call, attempts to import ``opentelemetry.trace``.  If the
+    import succeeds the module is marked available.  On ``ImportError`` or
+    any other exception the module is marked unavailable and exactly one
+    structured warning is emitted.  Subsequent calls are a no-op.
+    """
+    global _otel_available, _failure_reason, _warning_emitted
+
+    with _state_lock:
+        if _otel_available is not None:
+            return  # already probed
+
+        try:
+            import opentelemetry.trace as _trace_mod
+
+            # Verify the tracer provider is actually functional
+            _ = _trace_mod.get_tracer(__name__)
+            _otel_available = True
+        except ImportError as exc:
+            _otel_available = False
+            _failure_reason = f"ImportError: {exc}"
+        except Exception as exc:
+            _otel_available = False
+            _failure_reason = f"{type(exc).__name__}: {exc}"
+
+        if not _otel_available and not _warning_emitted:
+            logger.warning(
+                "otel_unavailable",
+                reason=_failure_reason,
+                _message="OpenTelemetry is not available; trace context will be empty",
+            )
+            _warning_emitted = True
+
+
+def get_observability_status() -> dict[str, Any]:
+    """Return the current OTel availability status.
+
+    Returns:
+        A dict with the following keys:
+
+        - ``available`` (bool): ``True`` if OTel was successfully probed.
+        - ``failure_reason`` (str): Non-empty when *available* is ``False``.
+        - ``warning_emitted`` (bool): Whether the one-shot warning was fired.
+    """
+    _probe_once()
+    with _state_lock:
+        return {
+            "available": bool(_otel_available),
+            "failure_reason": _failure_reason,
+            "warning_emitted": _warning_emitted,
+        }
 
 
 def get_current_trace_context() -> dict[str, str]:
@@ -27,6 +101,13 @@ def get_current_trace_context() -> dict[str, str]:
         span exists, or an empty dict if OTel is not configured or
         there is no active span.
     """
+    _probe_once()
+
+    # Short-circuit when OTel was already determined unavailable.
+    with _state_lock:
+        if _otel_available is False:
+            return {}
+
     try:
         from opentelemetry import trace
 
@@ -38,10 +119,29 @@ def get_current_trace_context() -> dict[str, str]:
                 "x_span_id": format(ctx.span_id, "016x"),
             }
     except ImportError:
-        pass
+        # Unlikely after probe success, but handle gracefully.
+        _mark_unavailable("ImportError on context extraction")
     except Exception:
-        logger.warning("otel_context_fetch_failed", exc_info=True)
+        _mark_unavailable("unexpected error during context extraction")
     return {}
+
+
+def _mark_unavailable(reason: str) -> None:
+    """Transition to unavailable state; emit warning on first occurrence."""
+    global _otel_available, _failure_reason, _warning_emitted
+
+    with _state_lock:
+        if _otel_available is False:
+            return  # already degraded — no further logging
+        _otel_available = False
+        _failure_reason = reason
+        if not _warning_emitted:
+            logger.warning(
+                "otel_degraded",
+                reason=reason,
+                _message="OpenTelemetry became unavailable at runtime",
+            )
+            _warning_emitted = True
 
 
 def enrich_sse_data(data: dict[str, Any]) -> dict[str, Any]:

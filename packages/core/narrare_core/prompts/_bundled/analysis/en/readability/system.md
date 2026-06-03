@@ -50,6 +50,12 @@ Return a JSON object with:
 - Never rewrite dialogue — character voices must remain authentic.
 - Prioritize clarity without flattening the prose.
 
+### User Preferences
+
+The author has set the following preferences. Ensure your readability analysis and suggested rewrites are compatible:
+
+{{user_preferences}}
+
 ### Constraints
 
 - Write analysis in {{writing_language}}

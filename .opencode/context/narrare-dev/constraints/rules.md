@@ -230,12 +230,6 @@ Every exception requires: (1) registered in `pyproject.toml`, (2) documented her
 | 12 | `packages/core/narrare_core/llm/gateway.py` | Gateway._make_agent() is the approved boundary crossing (ADR-015) |
 | 14 | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation needs direct Agent (ADR-015) |
 
-### RULE-02 Exceptions (prompt building outside core/prompts/)
-
-| # | File | Reason |
-|---|------|--------|
-| 3 | `apps/api/narrare/kb/consistency_analyzer.py` | Simple entity reference, not prompt assembly |
-
 ### RULE-TEST-01 Exceptions (test mocking without domain contract)
 
 | # | File | Reason |

@@ -17,6 +17,12 @@ Analyse the provided timeline events and flag any contextual temporal issues.
 - **Primary Language:** {{language}}
 - **Writing Language:** {{writing_language}}
 
+### Cultural and Linguistic Guidelines
+
+Apply these culture-specific writing and temporal convention guidelines when evaluating pacing, event timing, and date/time phrasing:
+
+{{culture_guidelines}}
+
 ### Timeline Events
 
 The following events exist in the timeline:

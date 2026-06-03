@@ -92,6 +92,12 @@ Return a JSON object with:
 - Flag only genuine violations, not stylistic choices.
 - Provide actionable suggestions that preserve the author's voice.
 
+### User Preferences
+
+The author has set the following preferences. Ensure your analysis and suggestions are compatible:
+
+{{user_preferences}}
+
 ### Constraints
 
 - Write analysis in {{writing_language}}
