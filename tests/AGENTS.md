@@ -2,6 +2,10 @@
 
 Du schreibst Tests für Narrare. Dein Ziel: jedes Verhalten ist beweisbar korrekt.
 
+> **SSOT Notice:** All architecture rules are defined in `docs/_shared/CONSTRAINTS.md`.
+> This file provides testing-specific context — it does NOT redefine or relax any
+> RULE-XX. See CONSTRAINTS.md §8 for the full SSOT hierarchy.
+
 **Lies zuerst:**
 - `docs/development/testing-standards.md`
 - `docs/_shared/CONSTRAINTS.md`

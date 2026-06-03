@@ -1,5 +1,10 @@
 # Narrare — Open Code Instructions
 
+> **SSOT Notice:** Architecture rules are authoritatively defined in
+> `docs/_shared/CONSTRAINTS.md`. The summaries below are for quick orientation
+> only — if any summary contradicts CONSTRAINTS.md, the CONSTRAINTS rule wins.
+> See CONSTRAINTS.md §8 for the full SSOT hierarchy.
+
 ## Code Knowledge Graph — MANDATORY
 
 This project has a code knowledge graph via code-review-graph MCP tools.
@@ -58,8 +63,9 @@ narrare/
 ## Kritische Regeln (nie brechen)
 
 ```
-RULE-01: Alle LLM-Calls gehen durch core/llm/gateway.py
-         → Kein direktes `import openai` außerhalb von core/llm/
+RULE-01b: Agents are the way to use LLMs. Models come from the ModelRegistry.
+          → Kein direktes `import openai` außerhalb von core/llm/
+          → Kein `pydantic_ai.Agent` außerhalb von core/agents/
 
 RULE-02: Prompts werden nur in core/prompts/ gebaut
          → Keine f-Strings für Prompts in Services

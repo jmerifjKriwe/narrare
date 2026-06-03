@@ -249,6 +249,12 @@ composer = 250
 default = 400
 
 [tool.narrare.architecture.exceptions]
+# CANONICAL SOURCE — this is the machine-readable exception register consumed by
+# scripts/check_architecture.py. The human-readable documentation mirrors this in
+# docs/_shared/CONSTRAINTS.md §7. Both MUST be kept in sync.
+# When adding or modifying exceptions, update BOTH files.
+# Details here take precedence in case of conflicts.
+#
 # Format:
 # [[tool.narrare.architecture.exceptions.entries]]
 # rule = "RULE-XX"

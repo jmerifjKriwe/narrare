@@ -2,6 +2,11 @@
 
 Du arbeitest im **Fundament** von Narrare. Core-Code hat keine HTTP-Dependencies, keine FastAPI-Imports, keine SQLAlchemy-Sessions. Core muss von API, MCP, CLI und Tests gleichermassen verwendbar sein.
 
+> **SSOT Notice:** All architecture rules are defined in `docs/_shared/CONSTRAINTS.md`.
+> This file provides context-specific examples and guidance — it does NOT redefine
+> or relax any RULE-XX. If anything here contradicts CONSTRAINTS.md, CONSTRAINTS.md
+> wins. See CONSTRAINTS.md §8 for the full SSOT hierarchy.
+
 **Lies zuerst:**
 - `docs/_shared/CONSTRAINTS.md`
 - `docs/development/coding-standards.md`

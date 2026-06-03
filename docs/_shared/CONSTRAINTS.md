@@ -848,15 +848,48 @@ same service methods without a parallel non-streaming implementation.
 ## 7. Approved Exceptions Register
 
 The **authoritative exception register** is `pyproject.toml [tool.narrare.architecture.exceptions]`.
-Each entry requires: rule, location, reason, approved-by, date.
+This section mirrors that register in human-readable form. Both sources MUST be kept in sync.
+
+> **Canonical source:** `pyproject.toml` is the machine-readable source consumed by
+> `scripts/check_architecture.py`. `CONSTRAINTS.md` is the human-readable documentation.
+> When adding or modifying exceptions, update BOTH files. Details in `pyproject.toml`
+> take precedence in case of conflicts.
 
 Every exception MUST be:
 1. **Registered in `pyproject.toml`** — for auditability and machine-readability
-2. **Inlined in the source file** — as a `# narrare: allow` comment at the violation site
+2. **Documented in this section** — for human readability
+3. **Inlined in the source file** — as a `# narrare: allow` comment at the violation site
 
 See ADR-028 for the SSOT decision and checker enforcement specification.
 
-### Exception: mem0 LLM client in `core/memory/mem0_client.py`
+### All Approved Exceptions
+
+| # | Rule | File | Reason | Approved By | Date |
+|---|------|------|--------|-------------|------|
+| 1 | RULE-01 | `packages/core/narrare_core/llm/embedding_providers.py` | Batch embedding API requires direct client access for performance | architecture-review | 2026-05-27 |
+| 2 | RULE-01 | `packages/core/narrare_core/memory/mem0_client.py` | mem0 AsyncMemory requires direct LLM client for memory extraction | generation-prompt-memory-foundation | 2026-05-15 |
+| 3 | RULE-02 | `apps/api/narrare/kb/consistency_analyzer.py` | Simple entity reference, not prompt assembly | architecture-review | 2026-06-03 |
+| 4 | RULE-01b | `packages/core/narrare_core/planning/remap.py` | Injected agent, not instantiated here | architecture-review | 2026-06-03 |
+| 5 | RULE-01 | `packages/core/narrare_core/wiki/agent.py` | WikiGenerationAgent uses RunContext for pydantic_ai internals | architecture-review | 2026-06-03 |
+| 6 | RULE-01 | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
+| 7 | RULE-01b | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
+| 8 | RULE-TEST-01 | `tests/unit/api/memory/test_analysis_service.py` | Mocking for service unit tests — no domain contract | architecture-review | 2026-06-03 |
+| 9 | RULE-TEST-01 | `tests/unit/api/memory/test_feedback_service.py` | Mocking for service unit tests — no domain contract | architecture-review | 2026-06-03 |
+| 10 | RULE-TEST-01 | `tests/unit/api/memory/test_repository.py` | Mocking for repository unit tests — no domain contract | architecture-review | 2026-06-03 |
+| 11 | RULE-TEST-01 | `tests/unit/api/metrics/test_metrics_router.py` | Mocking SQLAlchemy Engine — no domain contract | architecture-review | 2026-06-03 |
+| 12 | RULE-01b | `packages/core/narrare_core/llm/gateway.py` | Gateway._make_agent() is the approved boundary crossing | ADR-015 | 2026-05-20 |
+| 13 | RULE-01 | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct import of pydantic_ai Agent | ADR-015 | 2026-05-20 |
+| 14 | RULE-01b | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct pydantic-ai Agent | ADR-015 | 2026-05-20 |
+
+### Detailed Exception Justifications
+
+#### Exception #1: Batch embedding API in `core/llm/embedding_providers.py`
+
+The embedding provider requires direct client access for batch embedding operations.
+Performance considerations make going through the full Gateway intent routing
+impractical for high-volume embedding generation.
+
+#### Exception #2: mem0 LLM client in `core/memory/mem0_client.py`
 
 mem0's `AsyncMemory` class requires its own LLM client instance for memory
 extraction — it calls the LLM internally to analyze text, extract facts, and
@@ -878,11 +911,85 @@ This exception mirrors the embedding exception in `core/llm/embeddings.py` —
 both are infrastructure-level LLM calls that operate outside the user-facing
 intent routing system.
 
+#### Exception #3: Entity reference in `kb/consistency_analyzer.py`
+
+The consistency analyzer constructs simple entity reference strings (not prompt
+assembly). These are data formatting operations, not LLM prompt construction.
+
+#### Exceptions #4–7: Wiki agents (ADR-015)
+
+The wiki module agents wrap internal `PydanticAgent` instances and use
+`RunContext` for pydantic_ai internals. These are architecturally approved
+boundary crossings per ADR-015 (agent framework integration). The planning
+remap module receives an injected agent rather than instantiating one.
+
+#### Exceptions #8–11: Test mocking (RULE-TEST-01)
+
+Unit tests for memory and metrics modules mock infrastructure dependencies
+(SQLAlchemy Engine, service interfaces) where no domain contract is needed.
+These are standard test isolation patterns, not architectural violations.
+
+#### Exceptions #12–14: Gateway and setup (ADR-015)
+
+`Gateway._make_agent()` is the approved boundary crossing where the LLM Gateway
+creates pydantic_ai Agent instances — this is its design purpose per ADR-015.
+The setup provider validation service similarly requires direct Agent access
+for validating user-configured providers during initial setup.
+
 *Every exception is a debt that should be paid down. Revisit when the Gateway
 supports infrastructure-level calls with different routing rules.*
 
 ---
 
-> Last updated: 2026-06-03 — §7 simplified to reference pyproject.toml SSOT (ADR-028)
+## 8. Single Source of Truth (SSOT) — Documentation Hierarchy
+
+This section defines which document is authoritative when multiple sources
+address the same topic. **When a derived source contradicts the authoritative
+source, the authoritative source wins.**
+
+Derived sources MAY reference the authoritative source ("See CONSTRAINTS.md
+RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
+
+### Authority Table
+
+| Topic | Authoritative Source | Derived Sources (reference only) |
+|-------|---------------------|----------------------------------|
+| Architecture rules (RULE-XX) | `docs/_shared/CONSTRAINTS.md` (this file) | `AGENTS.md`, `.opencode/context/`, `coding-standards.md`, `.claude/rules/` |
+| Technology versions | `docs/_shared/TECH_STACK.md` | README, `deployment-guide.md`, devcontainer config |
+| Architecture decisions | `docs/architecture/decisions/ADR-*.md` | `AGENTS.md`, feature specs |
+| Feature specifications | `docs/features/{domain}/{id}.md` | Implementation code |
+| Coding standards | `docs/development/coding-standards.md` | `.opencode/context/examples/`, `.claude/rules/` |
+| Testing standards | `docs/development/testing-standards.md` | `.opencode/context/examples/`, `.claude/rules/` |
+| UI principles | `docs/development/ui-principles.md` | `.opencode/context/concepts/` |
+| Glossary | `docs/_shared/GLOSSARY.md` | All other docs |
+| Module structure | `docs/reference/directory-structure.md` | `AGENTS.md`, `.opencode/context/domain/module-map.md` |
+| Agent instructions | Root `AGENTS.md` | `apps/api/AGENTS.md`, `packages/core/AGENTS.md`, `tests/AGENTS.md` |
+
+### Rules for Derived Sources
+
+1. **Reference, don't reproduce.** Write "See CONSTRAINTS.md RULE-02 for prompt
+   building rules" — do not re-state the rule in your own words.
+2. **Never contradict.** If a derived source's guidance conflicts with the
+   authoritative source, the derived source is wrong and must be corrected.
+3. **Code examples are illustrative.** Code snippets in `AGENTS.md` files are
+   examples for context — they do not override or relax rules from the
+   authoritative source. If an example shows a pattern that contradicts a RULE-XX,
+   the example is wrong, not the rule.
+4. **Scoped additions only.** Sub-`AGENTS.md` files (e.g. `apps/api/AGENTS.md`)
+   may add context-specific guidance that the authoritative source does not cover
+   (e.g. "Here is how dependency injection works in the API layer"). They may NOT
+   relax, narrow, or reinterpret rules from the authoritative source.
+5. **Path references must be correct.** When a derived source references another
+   document, the path must resolve correctly from the derived source's location.
+
+### Enforcement
+
+- Manual: Architecture Specialist reviews documentation changes for SSOT compliance.
+- CI (future): Automated drift detection between authoritative and derived sources
+  (planned as AUFG-NEW-01 in Wave 3).
+
+---
+
+> Last updated: 2026-06-03 — §7 synchronized with pyproject.toml; §8 SSOT hierarchy added
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

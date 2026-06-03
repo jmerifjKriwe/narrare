@@ -2,10 +2,15 @@
 
 Du arbeitest im **Service Layer** von Narrare. Hier lebt die Business-Logik.
 
+> **SSOT Notice:** All architecture rules are defined in `docs/_shared/CONSTRAINTS.md`.
+> This file provides context-specific examples and guidance — it does NOT redefine
+> or relax any RULE-XX. If anything here contradicts CONSTRAINTS.md, CONSTRAINTS.md
+> wins. See CONSTRAINTS.md §8 for the full SSOT hierarchy.
+
 **Lies zuerst:**
-- `../../docs/agents/_shared/CONSTRAINTS.md`
-- `../../docs/agents/implementation/CODING_STANDARDS.md`
-- `../../docs/agents/implementation/AGENT.md`
+- `../../docs/_shared/CONSTRAINTS.md` — Architecture rules (authoritative)
+- `../../docs/development/coding-standards.md` — Coding standards
+- See also: `../../docs/development/testing-standards.md`
 
 ---
 
@@ -42,6 +47,7 @@ Services rufen Agents auf, nicht LLMs direkt. Model kommt aus ModelRegistry.
 # ✅ Korrekt: Agent aus narrare_core.agents, Model aus ModelRegistry
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.llm.gateway import ModelRegistry
+from narrare_core.prompts.composer import PromptComposer
 
 class ChapterSummaryService:
     def __init__(
@@ -49,18 +55,23 @@ class ChapterSummaryService:
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         chapter_repo: ChapterRepository,
+        composer: PromptComposer,
     ) -> None:
         self._registry = registry
         self._config = config
         self._chapter_repo = chapter_repo
+        self._composer = composer
 
     async def summarize(self, chapter_id: UUID) -> SummaryResult:
         chapter = await self._chapter_repo.get(chapter_id)
+        # Prompt built by PromptComposer (RULE-02) — not inline
+        prompt_ctx = PromptContext(language="en", chapter_title=chapter.title)
+        prompt = await self._composer.build(intent=LLMIntent.SUMMARIZE, context=prompt_ctx)
         model = await self._registry.get_model(self._config)
         agent = ChapterSummaryAgent(model=model)
         deps = SummaryDeps(language="en", chapter_title=chapter.title)
         result = await agent.run(
-            prompt=f"Summarize {chapter.content}",
+            prompt=prompt.user,
             deps=deps,
         )
         return SummaryResult(summary=result.summary)
