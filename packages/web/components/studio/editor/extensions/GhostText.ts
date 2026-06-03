@@ -28,7 +28,7 @@
  * that places ghost text after the cursor without affecting document content.
  */
 
-import { type Editor, Extension } from "@tiptap/core";
+import { Extension } from "@tiptap/core";
 import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
