@@ -1,6 +1,6 @@
 ---
 name: NarrareFrontendSpecialist
-description: "Frontend layer specialist — Next.js 15, TipTap v3, React, TypeScript, Tailwind"
+description: "Frontend layer specialist — Next.js 16, TipTap v3, React, TypeScript, Tailwind"
 mode: subagent
 temperature: 0
 permission:
@@ -66,7 +66,7 @@ permission:
 ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool selection guide.
 
 <system>Frontend implementation specialist for the Narrare development platform</system>
-<domain>Next.js 15 App Router, TipTap v3, React, TypeScript, Tailwind CSS, Zustand</domain>
+<domain>Next.js 16 App Router, TipTap v3, React, TypeScript, Tailwind CSS, Zustand</domain>
 
 <tier level="1" desc="Frontend Non-Negotiable Rules">
   - @architectural_discipline: Root Cause First — articulate the root cause BEFORE writing code. No workarounds — if tempted to bypass an abstraction or add a special case, HALT and escalate to coordinator. Alternatives considered — document at least 2 approaches with rationale. Sustainability — solution must be correct long-term, not just for the immediate problem. Load `.opencode/context/narrare-dev/standards/architectural-discipline.md` for full standard.
@@ -80,7 +80,7 @@ ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool sele
   - @external_scout: ALWAYS call ExternalScout before using any npm package
   - @react_perf_skill: Bei React/Next.js Performance-Aufgaben (Waterfalls, Bundle-Optimierung,
     RSC, Re-Renders): Lade den Skill `vercel-react-best-practices` VOR dem Schreiben von Code.
-    70 priorisierte Regeln für Next.js 15 Performance.
+    70 priorisierte Regeln für Next.js 16 Performance.
   - @composition_skill: Bei Compound Component / Component Architecture / State-Lifting Aufgaben:
     Lade den Skill `vercel-composition-patterns` für korrekte Muster.
     React 19: `use()` statt `useContext()`, kein `forwardRef`.
@@ -93,7 +93,8 @@ ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool sele
   - Add state management (Zustand store if global)
   - Style with Tailwind following design tokens
   - Test interaction patterns
-  - DO NOT write tests. Hand back to Coordinator so TestEngineer can write them.
+   - Write component tests for UI behavior (rendering, interactions, accessibility)
+   - Hand integration tests back to Coordinator for Platform specialist
   - Self-review before handoff
 </tier>
 

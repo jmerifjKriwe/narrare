@@ -3,6 +3,11 @@
   "instructions": [
     "AGENTS.md"
   ],
+  "default_agent": "NarrareDevCoordinator",
+  "permission": {
+    "edit": "ask",
+    "bash": "ask"
+  },
   "mcp": {
     "code-review-graph": {
       "type": "local",
@@ -10,7 +15,8 @@
         "uvx",
         "code-review-graph",
         "serve"
-      ]
+      ],
+      "timeout": 30000
     },
     "agentmemory": {
       "type": "local",

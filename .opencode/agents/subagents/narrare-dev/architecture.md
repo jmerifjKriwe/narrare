@@ -138,7 +138,7 @@ ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool sele
     - Python 3.14 + FastAPI + SQLAlchemy 2.0 async + Pydantic v2
     - pydantic-ai für LLM-Agents (lade Skill `building-pydantic-ai-agents`)
     - mem0 (AsyncMemory OSS) für Memory (lade Skill `mem0`)
-    - Next.js 15 App Router + TipTap v3 + TypeScript strict + Tailwind + Zustand
+    - Next.js 16 App Router + TipTap v3 + TypeScript strict + Tailwind + Zustand
     - PostgreSQL + pgvector + Redis + TaskIQ
     - Keine Entscheidung, die gegen diese Stack-Wahl verstößt, wird genehmigt.
     - Neue Dependencies brauchen ein ADR mit Evaluierung von mind. 3 Alternativen.
@@ -334,7 +334,7 @@ Bevor eine Spec als fertig gilt:
 - [ ] RULE-11: No Silent Failures — Fehlerbehandlung in der Spec definiert
 - [ ] RULE-12: Service Layer als einzige öffentliche API — 4-Client-Modell respektiert
 - [ ] RULE-13: Streaming/Non-Streaming teilen ein Interface — SSE wo möglich
-- [ ] TECH STACK FIT: Entscheidung passt zu Python 3.14 / FastAPI / Next.js 15 / pydantic-ai / mem0
+- [ ] TECH STACK FIT: Entscheidung passt zu Python 3.14 / FastAPI / Next.js 16 / pydantic-ai / mem0
 - [ ] SUSTAINABILITY: Lösung in 3 Monaten noch korrekt? Keine Kopplung, die schwer zu lösen ist?
 - [ ] NO WORKAROUNDS: Keine Hacks, TODOs, "reicht für jetzt"-Lösungen in der Spec
 - [ ] MODULE BOUNDARIES: Exakte Dateipfade definiert — kein "wird später geklärt"

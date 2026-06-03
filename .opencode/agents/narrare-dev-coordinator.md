@@ -59,8 +59,8 @@ documentation stays in sync with implementation.
 
 ## MCP Tools: Code Knowledge Graph (MANDATORY)
 
-This project has a code knowledge graph (8897 nodes, 61247 edges across 934 files)
-exposed via code-review-graph MCP tools.
+This project has a code knowledge graph exposed via code-review-graph MCP tools.
+Check graph stats with `list_graph_stats_tool`.
 
 **ALWAYS use graph tools FIRST, before Read/Glob/Grep, to explore the codebase:**
 - Exploring code: `semantic_search_nodes_tool` or `query_graph_tool` instead of Grep
