@@ -100,8 +100,8 @@ Streaming and non-streaming share one interface (RULE-13): `stream: bool = False
 |-------|------|----------|
 | Structured logging | `structlog` | All modules |
 | Distributed tracing | OpenTelemetry | `apps/api/narrare/_app/telemetry.py` |
-| LLM observability | Langfuse | `core/llm/observability.py` |
-| Metrics | OpenTelemetry SDK | Auto-instrumentation |
+| Agent/model/tool spans | OpenTelemetry via Pydantic-AI instrumentation | Agent runtime bootstrap (ADR-031) |
+| Metrics | Prometheus-compatible export | `/metrics` + OTel metrics where applicable |
 
 ---
 

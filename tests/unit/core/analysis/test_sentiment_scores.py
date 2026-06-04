@@ -1,18 +1,17 @@
-"""Tests for LexiconSentimentAnalyzer — sentence-level and aggregate scoring.
+"""Tests for LexiconSentimentAnalyzer — aggregate scoring internals.
 
 Covers:
-1. analyze_sentence() — positive/negative/neutral, provider unavailability
-2. _compute_sentence_vad() — with tokens, empty tokens, unknown words
-3. _compute_sentence_emotions() — word-level emotion lookup
-4. _get_dominant_emotion() — best emotion selection
-5. _get_top_emotions() — top N selection
-6. _compute_average_vad() — mean across sentences
-7. _compute_overall_emotions() — mean emotions across sentences
+1. _compute_sentence_vad() — with tokens, empty tokens, unknown words
+2. _compute_sentence_emotions() — word-level emotion lookup
+3. _get_dominant_emotion() — best emotion selection
+4. _get_top_emotions() — top N selection
+5. _compute_average_vad() — mean across sentences
+6. _compute_overall_emotions() — mean emotions across sentences
+
+See test_sentiment_analyze_sentence.py for analyze_sentence() tests.
 """
 
 from __future__ import annotations
-
-import pytest
 
 from narrare_core.analysis.sentiment import LexiconSentimentAnalyzer
 from narrare_core.analysis.types import (
@@ -20,114 +19,7 @@ from narrare_core.analysis.types import (
     SentenceSentiment,
     VADScores,
 )
-from narrare_core.nlp.contracts_types import TokenResult
-from narrare_core.shared.errors import NLPProviderError
-from tests.unit.core.analysis.helpers import (
-    FailingNLPProvider,
-    FakeNLPProvider,
-    _make_tokens,
-)
-
-# ---------------------------------------------------------------------------
-# B. analyze_sentence()
-# ---------------------------------------------------------------------------
-
-
-class TestAnalyzeSentence:
-    """LexiconSentimentAnalyzer.analyze_sentence() tests."""
-
-    @pytest.mark.asyncio
-    async def test_analyze_sentence_positive_returns_positive_vad(self) -> None:
-        """Sentence with 'joy' has positive valence."""
-        nlp = FakeNLPProvider(
-            tokenize_result=TokenResult(
-                tokens=_make_tokens(["She", "felt", "joy"]),
-                language="en",
-            ),
-        )
-        analyzer = LexiconSentimentAnalyzer(nlp_provider=nlp)
-        result = await analyzer.analyze_sentence("She felt joy")
-
-        assert result.vad.valence > 0.0
-        assert result.dominant_emotion == "joy"
-
-    @pytest.mark.asyncio
-    async def test_analyze_sentence_negative_returns_negative_vad(self) -> None:
-        """Sentence with 'fear' has negative valence."""
-        nlp = FakeNLPProvider(
-            tokenize_result=TokenResult(
-                tokens=_make_tokens(["She", "felt", "fear"]),
-                language="en",
-            ),
-        )
-        analyzer = LexiconSentimentAnalyzer(nlp_provider=nlp)
-        result = await analyzer.analyze_sentence("She felt fear")
-
-        assert result.vad.valence < 0.0
-
-    @pytest.mark.asyncio
-    async def test_analyze_sentence_neutral_unknown_words_returns_zero_vad(self) -> None:
-        """Sentence with no emotion words gets zero VAD."""
-        nlp = FakeNLPProvider(
-            tokenize_result=TokenResult(
-                tokens=_make_tokens(["xyz", "abc"]),
-                language="en",
-            ),
-        )
-        analyzer = LexiconSentimentAnalyzer(nlp_provider=nlp)
-        result = await analyzer.analyze_sentence("xyz abc")
-
-        assert result.vad == VADScores(valence=0.0, arousal=0.0, dominance=0.0)
-
-    @pytest.mark.asyncio
-    async def test_analyze_sentence_provider_unavailable_raises_error(self) -> None:
-        """NLPProviderError when provider is unavailable."""
-        nlp = FakeNLPProvider(available=False)
-        analyzer = LexiconSentimentAnalyzer(nlp_provider=nlp)
-
-        with pytest.raises(NLPProviderError, match="not available"):
-            await analyzer.analyze_sentence("Hello")
-
-    @pytest.mark.asyncio
-    async def test_analyze_sentence_tokenization_failure_raises_error(self) -> None:
-        """NLPProviderError wraps tokenization failures."""
-        nlp = FailingNLPProvider()
-        analyzer = LexiconSentimentAnalyzer(nlp_provider=nlp)
-
-        with pytest.raises(NLPProviderError, match="Sentence tokenization failed"):
-            await analyzer.analyze_sentence("Hello")
-
-    @pytest.mark.asyncio
-    async def test_analyze_sentence_returns_sentence_sentiment(self) -> None:
-        """analyze_sentence returns SentenceSentiment."""
-        nlp = FakeNLPProvider(
-            tokenize_result=TokenResult(
-                tokens=_make_tokens(["Hello", "world"]),
-                language="en",
-            ),
-        )
-        analyzer = LexiconSentimentAnalyzer(nlp_provider=nlp)
-        result = await analyzer.analyze_sentence("Hello world")
-
-        assert isinstance(result, SentenceSentiment)
-        assert result.sentence == "Hello world"
-        assert result.sentence_index == 0
-        assert result.word_count == 2
-
-    @pytest.mark.asyncio
-    async def test_analyze_sentence_dialogue_detection(self) -> None:
-        """Dialogue sentences are detected via is_dialogue_line."""
-        nlp = FakeNLPProvider(
-            tokenize_result=TokenResult(
-                tokens=_make_tokens(["Hello"]),
-                language="en",
-            ),
-        )
-        analyzer = LexiconSentimentAnalyzer(nlp_provider=nlp)
-        result = await analyzer.analyze_sentence('"Hello"')
-
-        assert result.is_dialogue is True
-
+from tests.unit.core.analysis.helpers import _make_tokens
 
 # ---------------------------------------------------------------------------
 # C. _compute_sentence_vad() — static method

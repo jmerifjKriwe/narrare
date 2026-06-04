@@ -4,7 +4,7 @@
 > **Date:** 2026-05-20
 > **Deciders:** Architecture Agent, Narrare Dev Coordinator
 > **Supersedes:** —
-> **Related:** ADR-015 (Agents as First-Class Citizens)
+> **Related:** ADR-015 (Agents as First-Class Citizens), ADR-031 (observability portions supersede Langfuse references)
 
 ---
 
@@ -143,7 +143,7 @@ Siehe [ADR-016-implementation-plan.md](ADR-016-implementation-plan.md).
 Zusammenfassung:
 - **Phase 0** (~2-3 Tage): `AgentRegistry` Singleton Cache in `core/agents/registry.py`
 - **Phase 1** (~3-4 Tage): `CacheSettings` in `ResolvedModelConfig` + provider-spezifische ModelSettings
-- **Phase 2** (~2-3 Tage): Cache-Hit Observability (Prometheus + Langfuse)
+- **Phase 2** (~2-3 Tage): Cache-Hit Observability (Prometheus-compatible metrics + OpenTelemetry spans per ADR-031)
 - **Phase 3** (~3-4 Tage): WritingGraph Integration (Agent-Reuse über Steps)
 
 ---

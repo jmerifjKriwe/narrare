@@ -1,6 +1,6 @@
 # ADR-010 — Observability Strategy
 
-> **Status:** ✅ Accepted
+> **Status:** ⛔ Superseded by ADR-031
 > **Date:** 2026-05-12
 > **Deciders:** Architecture Agent
 > **Supersedes:** prometheus-client selection in ADR-006

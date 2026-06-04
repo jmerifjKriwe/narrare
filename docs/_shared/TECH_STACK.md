@@ -100,7 +100,7 @@ No exceptions without a documented ADR and inline `# narrare: allow-direct-llm` 
 **Intent → Model routing** is defined in `core/llm/intents.py`, not hardcoded in services.
 Changing the model for an intent requires only one file change.
 
-### mem0 `>=1.0`
+### mem0 v3 OSS target (compatibility-gated)
 **Why:** Persistent memory layer for writing preferences, style patterns,
 rejection feedback, and session history across conversations.
 **Role:** Powers the learning system — user and project-level preference accumulation.
@@ -112,16 +112,15 @@ rejection feedback, and session history across conversations.
     - OpenAI → GPT-4.1-nano
     - Ollama → Llama3.2
   - Graceful degradation via `NullMemoryClient` — system works without memory
-  - **Embedding Cascade** (ADR-017): 4-tier fallback ensures mem0 works for all users:
-    1. OpenAI `text-embedding-3-small` (if OpenAI key configured)
-    2. Provider-native (future hook)
-    3. Local `all-MiniLM-L6-v2` via sentence-transformers (no API needed)
-    4. Disabled — NullMemoryClient fallback
-  - Users can override via `embedding_provider` setting (`"auto"` | `"openai"` | `"local"` | `"disabled"`)
+  - **mem0 v3 OSS target** (ADR-033): hybrid search, entity matching/linking,
+    filters-in-search, metadata filtering, and local embedding fallback.
+  - Platform-only features (Memory Decay, structured Memory Export) are not core
+    product dependencies.
+  - Users can override embedding behavior via the approved settings cascade.
 **Flow:** Feedback collection (`FeedbackService`) → preference extraction (mem0 AsyncMemory) → prompt injection (`PreferenceService` → `PromptComposer`)
 **Location:** Only used via `core/memory/mem0_client.py` (singleton factory, approved RULE-01 exception).
-**Not:** Custom memory service — mem0 with pgvector backend gives us semantic search
-over memories for free.
+**Not:** mem0 Platform as a core dependency; custom memory service unless ADR-033
+compatibility gates fail and Architecture selects a replacement.
 **Note:** Graceful degradation is mandatory. If mem0 is unavailable, the system
 continues without memory features. Never a hard dependency at request time.
 
@@ -134,8 +133,9 @@ continues without memory features. Never a hard dependency at request time.
 ### sentence-transformers `all-MiniLM-L6-v2` (optional)
 **Why:** Local embedding fallback for users without OpenAI access (z.ai, Anthropic, Ollama).
 **Role:** Powers the embedding cascade for mem0 memory search when no API-based embeddings are available.
-**Architecture:** 4-tier cascade: OpenAI → provider-native (future) → local (sentence-transformers) → disabled.
-See ADR-017 for full rationale.
+**Architecture:** Local fallback remains required under ADR-033; exact tiers are
+defined by the compatibility-verified mem0 v3 OSS implementation.
+See ADR-033 for full rationale.
 **Location:** Only via `core/memory/embedding_cascade.py`.
 **Not:** A required dependency — optional via `pip install narrare-core[memory]`.
 
@@ -199,14 +199,12 @@ for existing hashes during migration.
 ### OpenTelemetry (`opentelemetry-api >=1.30`, `opentelemetry-sdk >=1.30`, `opentelemetry-instrumentation-fastapi >=0.51`, `opentelemetry-exporter-otlp >=1.30`)
 **Why:** Vendor-neutral distributed tracing and metrics. Standard instrumentation
 for FastAPI, HTTP, and database calls. Exports to any OTLP-compatible backend.
-**Role:** Traces and metrics for all API requests, DB queries, and external calls.
-**Location:** Setup in `apps/api/narrare/_app/telemetry.py`. Auto-instrumentation only.
-
-### Langfuse `>=3.0`
-**Why:** LLM-specific observability — traces generations, tracks costs, captures prompts.
-**Role:** LLM call tracing, prompt versioning, cost attribution, quality metrics.
-**Location:** Only via `core/llm/observability.py` (inside the LLM layer).
-**Not:** General-purpose APM — OpenTelemetry handles infrastructure observability.
+**Role:** Sole trace standard for API requests, DB queries, external calls, and
+Pydantic-AI agent/model/tool spans (ADR-031). Optional local backends are OTel
+Collector + Grafana/Tempo/Loki/Prometheus.
+**Location:** Setup in `apps/api/narrare/_app/telemetry.py`; agent instrumentation
+through the approved runtime bootstrap boundary. No Langfuse/Logfire dependency
+for core runtime observability.
 
 ---
 
@@ -320,6 +318,14 @@ behavior.
 **Why:** Standard Python test stack with async support.
 **Role:** Unit, integration, and e2e tests. Coverage reports in CI.
 
+### Pydantic Evals
+**Why:** Python-native evaluation stack for Pydantic-AI agents, structured outputs,
+datasets, cases, evaluators, LLM judges, and span-based evals.
+**Role:** Evaluation SSOT for AI runtime quality (ADR-032): KB Extraction, Rewrite
+Selection, Preference Analysis, and future suites that run through Narrare agents,
+`PromptComposer`, and `ModelRegistry`.
+**Not:** promptfoo; Logfire is optional and not required for eval execution.
+
 ---
 
 ## What We Explicitly Do Not Use
@@ -341,6 +347,9 @@ behavior.
 | `slowapi` | Replaced by fastapi-limiter (async-native, Redis-based) |
 | `bcrypt` | Replaced by argon2-cffi (PHC winner, stronger against GPU/ASIC) |
 | `prometheus-client` | Replaced by OpenTelemetry SDK (vendor-neutral, distributed tracing) |
+| Langfuse | Superseded by OpenTelemetry-only tracing (ADR-031); no core runtime dependency |
+| Logfire | Not local-first for core observability; optional external service only, not a product requirement |
+| promptfoo | Superseded by Pydantic Evals as eval SSOT (ADR-032) |
 
 ---
 
@@ -353,6 +362,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-06-03 — pnpm 10.24.0 documented as package-manager pin (ADR-029); Node.js 24+ added as canonical source (AUFG-04-01); Recharts ~3.8 added for analysis visualization suite (ANAL-001)
+> Last updated: 2026-06-04 — AI runtime modernization Phase 0: OTel-only observability (ADR-031), Pydantic Evals SSOT (ADR-032), mem0 v3 OSS target (ADR-033)
 > Maintained by: Architecture Agent
 > Changes require ADR

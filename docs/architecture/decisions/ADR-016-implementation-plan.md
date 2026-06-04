@@ -16,7 +16,7 @@ Phase 0: 🏗️ AgentRegistry Singleton Cache                      ~2-3 Tage
      ↓
 Phase 1: ⚙️ CacheSettings in ResolvedModelConfig + Provider ModelSettings  ~3-4 Tage
      ↓
-Phase 2: 📊 Cache-Hit Observability (Prometheus + Langfuse)     ~2-3 Tage
+Phase 2: 📊 Cache-Hit Observability (Prometheus-compatible metrics + OpenTelemetry spans per ADR-031)     ~2-3 Tage
      ↓
 Phase 3: 🕸️ WritingGraph Integration (Agent-Reuse über Steps)  ~3-4 Tage
                                                       ─────────────

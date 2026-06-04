@@ -1,6 +1,6 @@
 # ADR-018 — promptfoo Eval Framework for Prompt Quality
 
-> **Status:** ✅ Accepted
+> **Status:** ⛔ Superseded by ADR-032
 > **Date:** 2026-05-23
 > **Deciders:** Platform Specialist
 > **Related:** ADR-001 (LLM Gateway), ADR-002 (Prompt System)

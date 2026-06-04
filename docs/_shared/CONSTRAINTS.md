@@ -356,8 +356,8 @@ No direct SDK calls to external services outside their dedicated adapter:
 | mem0 | `core/memory/client.py` only |
 | SMTP | `core/notifications/email.py` only |
 | Web search (Tavily/Serp) | `core/research/search_client.py` only |
-| Langfuse | `core/llm/observability.py` only |
-| OpenTelemetry | `apps/api/narrare/_app/telemetry.py` only |
+| Langfuse | Not allowed in core runtime; superseded by ADR-031 |
+| OpenTelemetry | `apps/api/narrare/_app/telemetry.py` and approved Pydantic-AI runtime instrumentation per ADR-031 |
 | Event bus (Redis Pub/Sub) | `apps/api/narrare/_app/events.py` only |
 
 ---
@@ -993,6 +993,6 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 ---
 
-> Last updated: 2026-06-04 — RULE-22 prompt language policy aligned with ADR-026 Phase 5; §7 synchronized with pyproject.toml; §8 SSOT hierarchy added
+> Last updated: 2026-06-04 — RULE-08 observability integration boundary aligned with ADR-031
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone
