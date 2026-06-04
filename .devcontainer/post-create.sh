@@ -15,6 +15,10 @@ sudo chown -R vscode:vscode /home/vscode/.opencode \
 echo "📦 Installing Python dependencies..."
 uv sync --all-packages --group dev
 
+# --- spaCy NLP models ---
+echo "🧠 Installing spaCy NLP models..."
+just install-nlp-models
+
 # --- Pre-commit hooks ---
 echo "🔧 Installing pre-commit hooks..."
 uv run pre-commit install --install-hooks

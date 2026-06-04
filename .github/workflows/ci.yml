@@ -339,6 +339,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-packages --group dev
 
+      - name: Install spaCy NLP models
+        run: just install-nlp-models
+
       - name: Run migrations
         run: cd apps/api && uv run alembic upgrade head
 
@@ -528,6 +531,9 @@ jobs:
 
       - name: Install Python dependencies
         run: uv sync --all-packages --group dev
+
+      - name: Install spaCy NLP models
+        run: just install-nlp-models
 
       - name: Install Playwright Chromium
         run: uv run playwright install chromium

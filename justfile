@@ -95,6 +95,7 @@ dev-setup:
     @echo "🚀 Setting up Narrare..."
     @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
     uv sync --all-packages --group dev
+    just install-nlp-models
     pre-commit install --install-hooks
     pnpm install
     @echo "⏳ Starting services..."
@@ -106,6 +107,28 @@ dev-setup:
 # Generate a secure secret key
 generate-secret:
     uv run python -c "import secrets; print(secrets.token_hex(32))"
+
+# ---------------------------------------------------------------------------
+# NLP Models
+# ---------------------------------------------------------------------------
+
+# Print the download URL for a spaCy model (debugging helper)
+# Usage: just _nlp-model-url de_core_news_md 3.8.0
+[private]
+_nlp-model-url model version:
+    echo "https://github.com/explosion/spacy-models/releases/download/{{model}}-{{version}}/{{model}}-{{version}}-py3-none-any.whl"
+
+# Install all spaCy language models (de, en, fr — medium)
+install-nlp-models:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SPACY_VER=$(uv run python -c "import spacy; v=spacy.__version__; print(f'{v.rsplit(\".\",1)[0]}.0')")
+    echo "Installing spaCy models for version ${SPACY_VER}..."
+    BASE="https://github.com/explosion/spacy-models/releases/download"
+    uv pip install \
+        "${BASE}/de_core_news_md-${SPACY_VER}/de_core_news_md-${SPACY_VER}-py3-none-any.whl" \
+        "${BASE}/en_core_web_md-${SPACY_VER}/en_core_web_md-${SPACY_VER}-py3-none-any.whl" \
+        "${BASE}/fr_core_news_md-${SPACY_VER}/fr_core_news_md-${SPACY_VER}-py3-none-any.whl"
 
 # ---------------------------------------------------------------------------
 # Development servers
