@@ -100,7 +100,7 @@ No exceptions without a documented ADR and inline `# narrare: allow-direct-llm` 
 **Intent → Model routing** is defined in `core/llm/intents.py`, not hardcoded in services.
 Changing the model for an intent requires only one file change.
 
-### mem0 v3 OSS target (compatibility-gated)
+### mem0 OSS (2.0.x, compatibility-verified)
 **Why:** Persistent memory layer for writing preferences, style patterns,
 rejection feedback, and session history across conversations.
 **Role:** Powers the learning system — user and project-level preference accumulation.
@@ -112,15 +112,15 @@ rejection feedback, and session history across conversations.
     - OpenAI → GPT-4.1-nano
     - Ollama → Llama3.2
   - Graceful degradation via `NullMemoryClient` — system works without memory
-  - **mem0 v3 OSS target** (ADR-033): hybrid search, entity matching/linking,
+  - **mem0 2.0.x** (ADR-033, verified): hybrid search, entity matching/linking,
     filters-in-search, metadata filtering, and local embedding fallback.
   - Platform-only features (Memory Decay, structured Memory Export) are not core
     product dependencies.
   - Users can override embedding behavior via the approved settings cascade.
 **Flow:** Feedback collection (`FeedbackService`) → preference extraction (mem0 AsyncMemory) → prompt injection (`PreferenceService` → `PromptComposer`)
 **Location:** Only used via `core/memory/mem0_client.py` (singleton factory, approved RULE-01 exception).
-**Not:** mem0 Platform as a core dependency; custom memory service unless ADR-033
-compatibility gates fail and Architecture selects a replacement.
+**Not:** mem0 Platform as a core dependency; custom memory service. ADR-033
+compatibility gates passed with 2.0.x.
 **Note:** Graceful degradation is mandatory. If mem0 is unavailable, the system
 continues without memory features. Never a hard dependency at request time.
 
@@ -134,7 +134,7 @@ continues without memory features. Never a hard dependency at request time.
 **Why:** Local embedding fallback for users without OpenAI access (z.ai, Anthropic, Ollama).
 **Role:** Powers the embedding cascade for mem0 memory search when no API-based embeddings are available.
 **Architecture:** Local fallback remains required under ADR-033; exact tiers are
-defined by the compatibility-verified mem0 v3 OSS implementation.
+defined by the compatibility-verified mem0 2.0.x implementation.
 See ADR-033 for full rationale.
 **Location:** Only via `core/memory/embedding_cascade.py`.
 **Not:** A required dependency — optional via `pip install narrare-core[memory]`.
@@ -364,6 +364,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-06-04 — AI runtime modernization Phase 0: OTel-only observability (ADR-031), Pydantic Evals SSOT (ADR-032), mem0 v3 OSS target (ADR-033)
+> Last updated: 2026-06-04 — AI runtime modernization Phase 0: OTel-only observability (ADR-031), Pydantic Evals SSOT (ADR-032), mem0 2.0.x (ADR-033 implemented)
 > Maintained by: Architecture Agent
 > Changes require ADR

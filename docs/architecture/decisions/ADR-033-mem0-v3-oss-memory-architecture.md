@@ -1,10 +1,18 @@
 # ADR-033 — mem0 v3 OSS Memory Architecture
 
-> **Status:** ✅ Accepted
+> **Status:** ✅ Implemented
 > **Date:** 2026-06-04
 > **Deciders:** User, Architecture Agent
 > **Supersedes:** ADR-017
 > **Related:** ADR-020, ADR-030, ADR-032
+>
+> **Implementation Note:** mem0 v3 OSS had not been released at implementation time.
+> Compatibility verification confirmed that mem0 2.0.x (2.0.4) provides all required
+> features: hybrid search, `filters`-based metadata querying, structured `metadata`
+> on `add()`, and pgvector backend. The migration targets the correct 2.0.x API
+> signatures (`messages`, `agent_id`, `filters`) rather than the pre-2.0 names
+> (`data`, `app_id`). Future mem0 major versions should be re-evaluated per the
+> Review Triggers section.
 
 ---
 
@@ -141,6 +149,7 @@ The accepted tradeoff is a hard pre-implementation verification gate. If the loc
 ## Implementation Plan / Migration Plan
 
 1. Verify `mem0ai` v3 OSS dependency resolution with Python 3.14 and uv, including optional NLP extras if needed.
+   > **Done:** Verified with mem0ai==2.0.4; Python 3.14 and uv lock compatible.
 2. Verify local pgvector-backed operation and local embedding fallback.
 3. Define contracts for metadata-aware preference retrieval and feedback metadata payloads before service implementation.
 4. Update `PreferenceService` retrieval to pass filters/metadata constraints through the memory client boundary.
