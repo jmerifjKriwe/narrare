@@ -1,7 +1,7 @@
 """Narrare Eval Baseline Drift Checker.
 
-Compares the latest promptfoo eval results against stored baselines and
-fails if any test case score drops more than a configurable threshold.
+Compares latest Pydantic Evals reports against stored baselines and fails if
+any test case score drops more than a configurable threshold.
 
 Usage:
     python scripts/check_eval_drift.py                        # human-readable
@@ -26,7 +26,7 @@ from .parser import (
     EvalResultFile,
     TestCaseScore,
     find_result_files,
-    parse_promptfoo_results,
+    parse_pydantic_eval_report,
 )
 from .reporting import print_human_report, print_json_report
 
@@ -41,7 +41,7 @@ __all__ = [
     "compare_against_baselines",
     "find_result_files",
     "load_baseline",
-    "parse_promptfoo_results",
+    "parse_pydantic_eval_report",
     "print_human_report",
     "print_json_report",
     "update_baselines",

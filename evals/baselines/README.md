@@ -1,20 +1,20 @@
 # Baseline Strategy
 
-Baselines are committed golden outputs used for regression comparison.
+Baselines are committed golden score summaries used for regression comparison.
 
 ## How baselines work
 
-1. Run `npx promptfoo eval` to generate fresh outputs
-2. Review the outputs for quality
-3. If satisfied, copy the results to `baselines/<test-name>-v<version>.json`
-4. Future runs compare against these baselines
+1. Run `uv run python -m evals run --suite all --mode smoke` to generate JSON reports.
+2. Review report outputs and scores for quality.
+3. Run `uv run python scripts/check_eval_drift.py --update-baselines` to store baselines.
+4. Future runs compare fresh Pydantic Evals reports against those baselines.
 
 ## Versioning
 
-- Baselines are versioned (`writing-v1.json`, `names-v1.json`)
-- When prompts change intentionally, create a new baseline version
-- Keep old baselines for historical comparison
+- Baseline filenames follow `<suite>-baseline.json`.
+- When suite definitions or evaluators change intentionally, update the baseline.
+- Runtime eval baselines should be reviewed manually before replacing smoke baselines.
 
 ## Current baselines
 
-_No baselines yet — run `npx promptfoo eval` to generate initial results._
+_No baselines yet — run the Pydantic Evals smoke command above to generate initial results._

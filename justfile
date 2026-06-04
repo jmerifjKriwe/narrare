@@ -297,13 +297,13 @@ check-architecture:
 
 # Run ruff linter (with auto-fix)
 lint:
-    uv run ruff check --fix apps/ packages/ scripts/ tests/
-    uv run ruff format apps/ packages/ scripts/ tests/
+    uv run ruff check --fix apps/ packages/ scripts/ tests/ evals/
+    uv run ruff format apps/ packages/ scripts/ tests/ evals/
 
 # Run ruff without fixing (for CI)
 lint-check:
-    uv run ruff check apps/ packages/ scripts/ tests/
-    uv run ruff format --check apps/ packages/ scripts/ tests/
+    uv run ruff check apps/ packages/ scripts/ tests/ evals/
+    uv run ruff format --check apps/ packages/ scripts/ tests/ evals/
 
 # Run pyright type checker
 typecheck:

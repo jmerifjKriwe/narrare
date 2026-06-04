@@ -19,7 +19,7 @@ from .parser import (
     DEFAULT_THRESHOLD,
     EvalResultFile,
     find_result_files,
-    parse_promptfoo_results,
+    parse_pydantic_eval_report,
 )
 from .reporting import print_human_report, print_json_report
 
@@ -41,7 +41,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--results-dir",
         type=Path,
         default=DEFAULT_RESULTS_DIR,
-        help=(f"Directory containing promptfoo eval JSON results (default: {DEFAULT_RESULTS_DIR})"),
+        help=(f"Directory containing Pydantic Evals JSON results (default: {DEFAULT_RESULTS_DIR})"),
     )
     parser.add_argument(
         "--baselines-dir",
@@ -104,13 +104,13 @@ def main(argv: list[str] | None = None) -> int:
             )
         else:
             print(f"No eval result files found in {results_dir}")
-            print("Run promptfoo eval to generate results first.")
+            print("Run `python -m evals run --suite all --mode smoke` to generate results first.")
         return 0
 
     # -- Parse all results --
     eval_results: list[EvalResultFile] = []
     for filepath in result_files:
-        result = parse_promptfoo_results(filepath)
+        result = parse_pydantic_eval_report(filepath)
         if result.test_cases:
             eval_results.append(result)
 

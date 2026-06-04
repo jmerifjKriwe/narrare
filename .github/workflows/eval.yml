@@ -1,14 +1,14 @@
-name: LLM Prompt Evaluation
+name: AI Evaluation
 
 on:
   workflow_dispatch:
     inputs:
       test_filter:
-        description: "Test case filter (e.g., writing-generation, name-generation)"
+        description: "Suite filter (kb_extraction, rewrite_selection, preference_analysis)"
         required: false
         default: ""
   schedule:
-    # Nightly at 3 AM UTC — only runs if eval test cases exist
+    # Nightly at 3 AM UTC on main.
     - cron: "0 3 * * *"
 
 permissions:
@@ -22,35 +22,32 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          node-version: "24"
+          enable-cache: true
 
-      - name: Install promptfoo
-        run: npm install -g promptfoo
+      - name: Install dependencies
+        run: uv sync --all-packages --group dev
 
       - name: Run evaluations
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           if [ -n "${{ github.event.inputs.test_filter }}" ]; then
-            TEST_NAME="${{ github.event.inputs.test_filter }}"
-            promptfoo eval -c "evals/testcases/${TEST_NAME}.yaml" \
-              --output "evals/results/${TEST_NAME}.json" || true
+            uv run python -m evals run \
+              --suite "${{ github.event.inputs.test_filter }}" \
+              --mode smoke \
+              --results-dir evals/results
           else
-            for f in evals/testcases/*.yaml; do
-              echo "=== Running: $f ==="
-              TEST_NAME="$(basename "$f" .yaml)"
-              promptfoo eval -c "$f" \
-                --output "evals/results/${TEST_NAME}.json" || true
-            done
+            uv run python -m evals run \
+              --suite all \
+              --mode smoke \
+              --results-dir evals/results
           fi
 
       - name: Check eval drift against baselines
         if: always()
         run: |
-          python scripts/check_eval_drift.py \
+          uv run python scripts/check_eval_drift.py \
             --results-dir evals/results \
             --baselines-dir evals/baselines \
             --threshold 0.05
@@ -58,7 +55,7 @@ jobs:
       - name: Update baselines (manual trigger only)
         if: always() && github.event_name == 'workflow_dispatch'
         run: |
-          python scripts/check_eval_drift.py --update-baselines
+          uv run python scripts/check_eval_drift.py --update-baselines
 
       - name: Upload eval results
         if: always()

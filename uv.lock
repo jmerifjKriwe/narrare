@@ -1430,6 +1430,7 @@ version = "0.1.0"
 source = { editable = "apps/api" }
 dependencies = [
     { name = "aiofiles" },
+    { name = "aiohttp" },
     { name = "aiosmtplib" },
     { name = "alembic" },
     { name = "argon2-cffi" },
@@ -1478,6 +1479,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles", specifier = "==25.1.0" },
+    { name = "aiohttp", specifier = ">=3.14.0" },
     { name = "aiosmtplib", specifier = "==5.1.1" },
     { name = "alembic", specifier = "==1.18.4" },
     { name = "argon2-cffi", specifier = ">=25.1.0" },
@@ -1591,6 +1593,7 @@ dev = [
     { name = "hypothesis" },
     { name = "pip-audit" },
     { name = "playwright" },
+    { name = "pydantic-evals" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1610,6 +1613,7 @@ dev = [
     { name = "hypothesis", specifier = ">=6.100" },
     { name = "pip-audit", specifier = "==2.10.0" },
     { name = "playwright", specifier = ">=1.52" },
+    { name = "pydantic-evals", specifier = "==1.104.0" },
     { name = "pyright", specifier = "==1.1.409" },
     { name = "pytest", specifier = "==9.0.3" },
     { name = "pytest-asyncio", specifier = "==1.4.0" },
@@ -2425,6 +2429,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/30/a6/9f9f380dbb301f67023bf8f707aaa75daadf84f7152d95c410fd7e81d994/pydantic_core-2.46.4-cp314-cp314t-win32.whl", hash = "sha256:e846ae7835bf0703ae43f534ab79a867146dadd59dc9ca5c8b53d5c8f7c9ef02", size = 1955575, upload-time = "2026-05-06T13:38:51.116Z" },
     { url = "https://files.pythonhosted.org/packages/40/1f/f1eb9eb350e795d1af8586289746f5c5677d16043040d63710e22abc43c9/pydantic_core-2.46.4-cp314-cp314t-win_amd64.whl", hash = "sha256:2108ba5c1c1eca18030634489dc544844144ee36357f2f9f780b93e7ddbb44b5", size = 2051624, upload-time = "2026-05-06T13:38:21.672Z" },
     { url = "https://files.pythonhosted.org/packages/f6/d2/42dd53d0a85c27606f316d3aa5d2869c4e8470a5ed6dec30e4a1abe19192/pydantic_core-2.46.4-cp314-cp314t-win_arm64.whl", hash = "sha256:4fcbe087dbc2068af7eda3aa87634eba216dbda64d1ae73c8684b621d33f6596", size = 2017325, upload-time = "2026-05-06T13:40:52.723Z" },
+]
+
+[[package]]
+name = "pydantic-evals"
+version = "1.104.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "logfire-api" },
+    { name = "pydantic" },
+    { name = "pydantic-ai-slim" },
+    { name = "pyyaml" },
+    { name = "rich" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/13/ed/ea24d54dc295678f2643a2d323b06d245383a56dae64211ebf4bdd48228e/pydantic_evals-1.104.0.tar.gz", hash = "sha256:3eb5d6b449f59ffec2ef34019f11030238ef170e81d386dadd293fde3a3f424c", size = 78555, upload-time = "2026-05-29T04:52:36.401Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/c4/9bb0f0782499036ca4db53076a6a2afd7383ef655f0a295229d4cdecb33e/pydantic_evals-1.104.0-py3-none-any.whl", hash = "sha256:18ca6da0eca85d94a1f19d69b901773d61dd13226a4d81e485ab6607deeb23b4", size = 93528, upload-time = "2026-05-29T04:52:29.322Z" },
 ]
 
 [[package]]

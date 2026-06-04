@@ -38,6 +38,7 @@ on:
       - "packages/**"
       - "scripts/**"
       - "tests/**"
+      - "evals/**"
       - "docs/development/deployment-guide.md"
       - "docs/_shared/CONSTRAINTS.md"
       - "docs/_shared/CURRENT_STATE.md"
