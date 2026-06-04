@@ -84,7 +84,7 @@ Alembic migrations 0001 through ~0023
 - `.github/workflows/` — CI is the blocking architecture/setup gate SSOT; release workflow publishes GHCR image + SBOM; Pydantic Evals are the ADR-032 target for AI quality gates
 - Docker Compose: PostgreSQL (pgvector) + Redis + pgBouncer (prod profile)
 - OpenTelemetry-only trace standard for API and LLM/agent observability (ADR-031)
-- Pydantic Evals as the evaluation SSOT for AI runtime quality (ADR-032; implementation migration pending)
+- Pydantic Evals as the evaluation SSOT for AI runtime quality (ADR-032; implemented)
 
 ### AI Feature Freeze / Post-Freeze Governance
 
@@ -187,7 +187,7 @@ Completed in Phase 6 so far:
 | ADR-029 | VM-First Setup Contract and Optional DevContainer Cleanup | ✅ Implemented |
 | ADR-030 | MagicMock-to-Fake Migration Plan for Memory Tests | ✅ Implemented |
 | ADR-031 | Local-First OpenTelemetry Observability | ✅ Phase 1 implemented — Langfuse removed; Pydantic-AI OTel instrumentation active |
-| ADR-032 | Pydantic Evals as Evaluation SSOT | ✅ Accepted; implementation migration pending |
+| ADR-032 | Pydantic Evals as Evaluation SSOT | ✅ Implemented |
 | ADR-033 | mem0 v3 OSS Memory Architecture | ✅ Accepted; compatibility verification pending |
 | ADR-034 | Conversational History Policy | ✅ Accepted |
 | ADR-035 | Agent Output Validation Policy | ✅ Accepted |

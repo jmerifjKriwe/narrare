@@ -1116,18 +1116,27 @@ Evaluating prompt quality is fundamentally different from testing code correctne
 
 ```
 evals/
-├── README.md                ← Usage instructions
-├── datasets/                ← Pydantic Evals datasets/cases
-├── suites/                  ← Eval suite entry points
-├── baselines/               ← Golden outputs (versioned, where used)
-└── results/                 ← Latest eval results / CI artifacts (gitignored)
+├── __main__.py          # python -m evals
+├── runner.py            # CLI runner
+├── models.py            # typed case input/output models
+├── datasets/            # code-first Dataset/Case definitions
+│   └── ...
+├── evaluators/          # custom Evaluator implementations
+│   └── ...
+├── tasks/               # smoke and runtime task entrypoints
+│   └── ...
+├── baselines/           # drift baselines
+└── results/             # JSON reports uploaded by CI
 ```
 
 ### Running Evals
 
 ```bash
-# Run commands are defined by the eval suite after ADR-032 implementation.
-# Until then, do not add new promptfoo commands or YAML suites.
+# Smoke mode — deterministic, no provider secrets needed
+uv run python -m evals run --suite all --mode smoke
+
+# Runtime mode — needs a configured model
+uv run python -m evals run --suite kb_extraction --mode runtime
 ```
 
 ### Writing New Test Cases

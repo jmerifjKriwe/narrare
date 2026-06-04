@@ -31,6 +31,13 @@ narrare/
 │   ├── mvp/                    ← MVP plan
 │   └── reference/              ← Directory structure, project vision
 │
+├── evals/                       ← Pydantic Evals suites (ADR-032)
+│   ├── datasets/                ← Code-first Dataset/Case definitions
+│   ├── evaluators/              ← Custom Evaluator implementations
+│   ├── tasks/                   ← Smoke and runtime task entrypoints
+│   ├── baselines/               ← Drift baselines
+│   └── results/                 ← JSON reports (gitignored)
+│
 ├── scripts/
 │   ├── check_architecture.py   ← Hard constraint enforcement
 │   ├── export_openapi.py       ← OpenAPI spec static export + CI drift check
