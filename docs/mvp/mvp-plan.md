@@ -391,7 +391,7 @@ All UI text is i18n strings (no hardcoded English). Light + dark mode works.
 
 **Infrastructure:**
   ✓ 19 Alembic migrations (auto-run on startup)
-  ✓ OpenTelemetry + Langfuse observability
+  ✓ OpenTelemetry-only observability standard accepted (ADR-031; implementation migration pending)
   ✓ Redis Pub/Sub event bus + TaskIQ integration stubs
   ✓ pgBouncer for production
   ✓ 17 ADRs documented

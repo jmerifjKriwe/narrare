@@ -8,14 +8,14 @@
 > evaluating prompt PRs.
 >
 > **Enforcement**: `scripts/check_architecture.py` (prompt content checker);
-> promptfoo evals (ADR-018); PR review checklist.
+> Pydantic Evals (ADR-032); PR review checklist.
 >
 > **Companion document**: `docs/development/prompt-content-standards.md` — the
 > machine-checkable quality rules. This standard is the authoritative reference;
 > that document is the enforcement companion.
 >
-> **Related ADRs**: ADR-002 (Unified Prompt System), ADR-018 (promptfoo Eval
-> Framework), ADR-019 (System-Prompt Consistency)
+> **Related ADRs**: ADR-002 (Unified Prompt System), ADR-032 (Pydantic Evals
+> as Evaluation SSOT), ADR-019 (System-Prompt Consistency)
 >
 > **Related Rules**: RULE-02 (Prompts are built in `core/prompts/`. Nowhere else.)
 >
@@ -411,7 +411,7 @@ override AI behavior through content they provide.
 
 ## 4. Quality Criteria Table
 
-Use this table during prompt reviews and promptfoo evals (ADR-018) to assess
+Use this table during prompt reviews and Pydantic Evals suites (ADR-032) to assess
 prompt quality. Every criterion marked YES is mandatory for stable prompts.
 
 | Criterion | Required | Category | Notes |
@@ -584,12 +584,12 @@ prompts, and follow a simpler format.
 | `docs/_shared/CONSTRAINTS.md` (RULE-02) | Defines WHERE prompts are built. This document defines WHAT they contain. |
 | `docs/development/prompt-content-standards.md` | Machine-checkable quality rules. Subset of this standard, focused on what `check_architecture.py` validates. |
 | ADR-002 (Unified Prompt System) | Architecture of the prompt cascade. This standard is the content quality layer on top of that architecture. |
-| ADR-018 (promptfoo Eval Framework) | Runtime prompt quality testing. This standard defines the structural baseline; promptfoo verifies output quality. |
+| ADR-032 (Pydantic Evals as Evaluation SSOT) | Runtime prompt quality testing. This standard defines the structural baseline; Pydantic Evals verifies output quality through Narrare's Python agent/runtime paths. |
 | ADR-019 (System-Prompt Consistency) | Meta-prompt guardrails and persona consistency. This standard extends those requirements to all prompt categories. |
 | `core/prompts/variable_engine.py` | Implementation of user-content variable registry (`_USER_CONTENT_VARS`). |
 
 ---
 
-> **Last updated:** 2026-05-30
+> **Last updated:** 2026-06-04 — prompt eval references updated for ADR-032.
 > **Maintained by:** Architecture Agent + Documentation Agent
 > **Review trigger:** When a new prompt category is added, or when ADR-002/019 is revised

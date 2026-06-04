@@ -527,7 +527,7 @@ zu `agent.run()`.
 
 ## Phase 2 — Cache-Hit Observability
 
-**Ziel**: Cache-Hit/Miss-Tracking in Prometheus + Langfuse. Ermöglicht Messung der
+**Ziel**: Cache-Hit/Miss-Tracking in Prometheus-compatible metrics and OpenTelemetry spans per ADR-031. Ermöglicht Messung der
 effektiven Cache-Rate und Kostenersparnis.
 
 ### Root Cause
@@ -668,44 +668,26 @@ Die genaue Struktur muss mit der verwendeten pydantic-ai-Version abgeglichen wer
 - `NarrareObservability` extrahiert Cache-Statistiken aus Usage
 - Cache-Metriken werden bei jedem LLM-Call aufgezeichnet
 
-#### 2.3 Cache-Statistiken in Langfuse (Core Specialist)
+#### 2.3 Cache-Statistiken in OpenTelemetry spans (Core Specialist)
 
-Erweiterung von `core/llm/observability.py`:
+Erweiterung der approved Pydantic-AI runtime instrumentation boundary per ADR-031:
 
 ```python
-class LLMObservability:
-    def finish_trace(self, trace_context, result_text, usage, duration_ms):
-        # ... existing logic ...
-        generation.end(
-            output=result_text[:2000],
-            usage={
-                "input": usage.prompt_tokens,
-                "output": usage.completion_tokens,
-                "total": usage.total_tokens,
-                # NEU: Cache-Statistiken
-                "cache_read": usage.cache_read_tokens,
-                "cache_creation": usage.cache_creation_tokens,
-            },
-            metadata={
-                "duration_ms": duration_ms,
-                "cache_savings_pct": (
-                    round(usage.cache_read_tokens / max(usage.prompt_tokens, 1) * 100, 1)
-                    if usage.cache_read_tokens > 0 else 0
-                ),
-            },
-        )
+span.set_attribute("llm.cache_read_tokens", usage.cache_read_tokens)
+span.set_attribute("llm.cache_creation_tokens", usage.cache_creation_tokens)
+span.set_attribute("llm.cache_savings_pct", cache_savings_pct)
 ```
 
 **Layer**: Core
-**DoD**: Langfuse zeigt Cache-Statistiken in Generation-Traces.
+**DoD**: OTel spans enthalten Cache-Statistiken in Generation-Traces.
 
 #### 2.4 Tests für Cache-Observability (Platform Specialist)
 
 - `record_cache_usage()` schreibt korrekte Prometheus-Metriken
 - `TokenUsage` mit Cache-Feldern serialisierbar
 - `NarrareObservability` extrahiert Cache-Statistiken aus Mock-Usage
-- Langfuse-Trace enthält Cache-Metadaten
-- Integration: Agent-Run → Observability → Prometheus + Langfuse
+- OTel spans enthalten Cache-Metadaten
+- Integration: Agent-Run → Observability → Prometheus-compatible metrics + OpenTelemetry
 
 **Layer**: Platform
 **DoD**: 10+ Tests, Cache-Observability vollständig getestet.
@@ -871,7 +853,7 @@ Phase 0 ──────→ Phase 1 ──────→ Phase 3
                Phase 2 (parallel zu Phase 3 möglich)
                   ↑
                Observability
-               Metrics+Langfuse
+                Metrics+OpenTelemetry
 ```
 
 Phase 0 und 1 sind **strikt sequenziell**: AgentRegistry muss existieren bevor
@@ -916,7 +898,7 @@ Anthropic erlaubt max. **4 `cache_control`-Blöcke** pro Request. Unsere Strateg
 
 | Layer | Phase 0 | Phase 1 | Phase 2 | Phase 3 |
 |-------|---------|---------|---------|---------|
-| **Core** | `agents/contracts.py` (Protocol), `agents/registry.py` (AgentRegistry), `agents/__init__.py` (Export) | `llm/intents.py` (CacheSettings), `llm/_providers/cache_settings.py` (Provider-Logic), `llm/gateway.py` (get_cache_settings) | `llm/metrics.py` (Cache-Metriken), `llm/result.py` (TokenUsage Cache-Felder), `agents/capabilities/observability.py` (Cache-Hooks), `llm/observability.py` (Langfuse Cache) | `agents/writing_graph.py` (Registry-Nutzung), `agents/writing_graph_types.py` (WritingDeps), `agents/writing_graph_prompts.py` (Cache-Settings durchreichen) |
+| **Core** | `agents/contracts.py` (Protocol), `agents/registry.py` (AgentRegistry), `agents/__init__.py` (Export) | `llm/intents.py` (CacheSettings), `llm/_providers/cache_settings.py` (Provider-Logic), `llm/gateway.py` (get_cache_settings) | `llm/metrics.py` (Cache-Metriken), `llm/result.py` (TokenUsage Cache-Felder), `agents/capabilities/observability.py` (Cache-Hooks), approved OTel runtime instrumentation boundary per ADR-031 | `agents/writing_graph.py` (Registry-Nutzung), `agents/writing_graph_types.py` (WritingDeps), `agents/writing_graph_prompts.py` (Cache-Settings durchreichen) |
 | **Backend** | `_app/dependencies.py` (AgentRegistryDep) | — | — | `writing/service.py` oder `writing/pipeline_graph.py` (WritingDeps mit AgentRegistry) |
 | **Platform** | 15+ Tests für AgentRegistry | 10+ Tests für CacheSettings | 10+ Tests für Cache-Observability | 12+ Tests für WritingGraph Integration |
 

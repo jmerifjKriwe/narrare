@@ -81,10 +81,10 @@ Alembic migrations 0001 through ~0023
 - `docs/development/observability-guide.md` — End-to-End Observability-Trace-Kette dokumentiert
 - `scripts/architecture/streaming_compliance.py` — Streaming compliance checker with nested router prefix resolution (`build_effective_router_prefixes()`)
 - `scripts/check_streaming_compliance.py` — Pre-commit hook for streaming compliance
-- `.github/workflows/` — CI is the blocking architecture/setup gate SSOT; release workflow publishes GHCR image + SBOM; promptfoo evals run nightly
+- `.github/workflows/` — CI is the blocking architecture/setup gate SSOT; release workflow publishes GHCR image + SBOM; Pydantic Evals are the ADR-032 target for AI quality gates
 - Docker Compose: PostgreSQL (pgvector) + Redis + pgBouncer (prod profile)
-- OpenTelemetry + Langfuse for LLM observability
-- promptfoo eval framework (`evals/`) for prompt quality regression
+- OpenTelemetry-only trace standard for API and LLM/agent observability (ADR-031)
+- Pydantic Evals as the evaluation SSOT for AI runtime quality (ADR-032; implementation migration pending)
 
 ### AI Feature Freeze / Post-Freeze Governance
 
@@ -117,8 +117,8 @@ Completed in Phase 6 so far:
 14. ✅ CR-01 through CR-04: Prompt quality audits + preference wiring + meta-prompt guardrails
 15. ✅ Coverage Uplift: 1,045+ new tests across all layers
 16. ✅ ADR-016: Prompt Caching — Implemented across all 4 phases (Phase 0: AgentRegistry, Phase 1: CacheSettings+ModelSettings, Phase 2: Cache Observability, Phase 3: WritingGraph Backend DI)
-17. ✅ ADR-017: Embedding Cascade — Implemented
-18. ✅ ADR-018: Promptfoo Eval Framework — Implemented
+17. ⛔ ADR-017: Embedding Cascade — Superseded by ADR-033
+18. ⛔ ADR-018: Promptfoo Eval Framework — Superseded by ADR-032
 19. ✅ ADR-019: System-Prompt Consistency — Accepted
 20. ✅ ADR-020: Embedding Provider Abstraction — Accepted
 21. ✅ ADR-021: Deterministic Analysis Strategy — Accepted
@@ -168,15 +168,15 @@ Completed in Phase 6 so far:
 | ADR-007 | TaskIQ for Background Tasks | ✅ Decided |
 | ADR-008 | Frontend Stack | ✅ Applied |
 | ADR-009 | Security Modernization (argon2 + fastapi-limiter) | ✅ Implemented |
-| ADR-010 | Observability (OpenTelemetry + Langfuse) | ✅ Implemented |
+| ADR-010 | Observability (OpenTelemetry + Langfuse) | ⛔ Superseded by ADR-031 |
 | ADR-011 | Content Versioning | ✅ Implemented |
 | ADR-012 | Event-Driven Architecture (Redis Pub/Sub) | ✅ Implemented |
 | ADR-013 | Internationalization | ✅ Implemented |
 | ADR-014 | RULE-14: Model-Migration Consistency | ✅ Enforced |
 | ADR-015 | Pydantic-AI Agents as First-Class Citizens | ✅ Accepted |
 | ADR-016 | Prompt Caching Strategy | ✅ Implemented (all 4 phases) |
-| ADR-017 | Embedding Cascade for mem0 | ✅ Implemented |
-| ADR-018 | Promptfoo Eval Framework | ✅ Implemented |
+| ADR-017 | Embedding Cascade for mem0 | ⛔ Superseded by ADR-033 |
+| ADR-018 | Promptfoo Eval Framework | ⛔ Superseded by ADR-032 |
 | ADR-019 | System-Prompt Consistency for Agents | ✅ Accepted |
 | ADR-020 | Embedding Provider Abstraction | ✅ Accepted |
 | ADR-021 | Deterministic Analysis Strategy | ✅ Accepted |
@@ -186,6 +186,12 @@ Completed in Phase 6 so far:
 | ADR-028 | Architecture Exception Register SSOT | ✅ Implemented |
 | ADR-029 | VM-First Setup Contract and Optional DevContainer Cleanup | ✅ Implemented |
 | ADR-030 | MagicMock-to-Fake Migration Plan for Memory Tests | ✅ Implemented |
+| ADR-031 | Local-First OpenTelemetry Observability | ✅ Accepted; implementation migration pending |
+| ADR-032 | Pydantic Evals as Evaluation SSOT | ✅ Accepted; implementation migration pending |
+| ADR-033 | mem0 v3 OSS Memory Architecture | ✅ Accepted; compatibility verification pending |
+| ADR-034 | Conversational History Policy | ✅ Accepted |
+| ADR-035 | Agent Output Validation Policy | ✅ Accepted |
+| ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

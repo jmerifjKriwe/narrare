@@ -94,7 +94,7 @@ Approaching limit → extract a new module. NEVER compress code to fit.
 - PostgreSQL: `*/repository.py` only | Redis: `core/cache/client.py` only
 - pgvector: `core/embeddings/store.py` only | mem0: `core/memory/client.py` only
 - SMTP: `core/notifications/email.py` only | Web search: `core/research/search_client.py` only
-- Langfuse: `core/llm/observability.py` only | OpenTelemetry: `apps/api/.../telemetry.py` only
+- Langfuse: not allowed in core runtime (ADR-031) | OpenTelemetry: `_app/telemetry.py` + approved Pydantic-AI runtime instrumentation only
 - Event bus: `apps/api/.../events.py` only
 
 ### RULE-14: Every model column needs a migration

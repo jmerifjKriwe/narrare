@@ -1093,19 +1093,20 @@ uv run pytest tests/e2e/test_auth_flow.py -v -m e2e --timeout=60
 
 ---
 
-## LLM Prompt Evaluation — promptfoo
+## LLM Prompt Evaluation — Pydantic Evals
 
 > **Scope:** Qualitative evaluation of LLM prompt outputs.
-> **Independent from pytest** — separate tool, separate cadence.
-> **Reference:** ADR-018
+> **Python-native eval layer** — may share fixtures with runtime code, but keeps a
+> separate eval cadence from deterministic pytest gates.
+> **Reference:** ADR-032
 
 ### Why a Separate System
 
 Evaluating prompt quality is fundamentally different from testing code correctness:
 
-| Aspect | pytest (Code Tests) | promptfoo (Prompt Evals) |
+| Aspect | pytest (Code Tests) | Pydantic Evals |
 |--------|---------------------|--------------------------|
-| LLM calls | Mocked (TestModel) | **Real** |
+| LLM calls | Mocked (TestModel) | **Real or judged**, depending on suite |
 | Result | Pass/Fail | **Score (0–1)** |
 | Determinism | Deterministic | **Non-deterministic** |
 | Cadence | Every commit | Nightly / Manual |
@@ -1116,45 +1117,36 @@ Evaluating prompt quality is fundamentally different from testing code correctne
 ```
 evals/
 ├── README.md                ← Usage instructions
-├── promptfooconfig.yaml     ← Global configuration
-├── testcases/               ← Test case definitions (YAML)
-│   ├── writing-generation.yaml
-│   ├── name-generation.yaml
-│   └── summarization.yaml
-├── baselines/               ← Golden outputs (versioned)
-└── results/                 ← Latest eval results (gitignored)
+├── datasets/                ← Pydantic Evals datasets/cases
+├── suites/                  ← Eval suite entry points
+├── baselines/               ← Golden outputs (versioned, where used)
+└── results/                 ← Latest eval results / CI artifacts (gitignored)
 ```
 
 ### Running Evals
 
 ```bash
-# Run all evals
-npx promptfoo eval
-
-# Run specific test case
-npx promptfoo eval -c evals/testcases/writing-generation.yaml
-
-# View results in browser
-npx promptfoo view
+# Run commands are defined by the eval suite after ADR-032 implementation.
+# Until then, do not add new promptfoo commands or YAML suites.
 ```
 
 ### Writing New Test Cases
 
-1. Create a YAML file in `evals/testcases/`
-2. Define the prompt template with `{{variable}}` placeholders
-3. Add test cases with `vars` and `assert` blocks
-4. Use `llm-rubric` for qualitative scoring, `not-contains` for guardrails
-5. Set appropriate `threshold` (recommended: 0.7 for narrative quality)
+1. Create or extend a Python dataset/case in `evals/datasets/`.
+2. Exercise Narrare's actual agent, `PromptComposer`, and `ModelRegistry` paths.
+3. Add evaluators for qualitative scoring, guardrails, and structured-output checks.
+4. Set an explicit threshold appropriate to the suite.
+5. Store CI-readable results under `evals/results/` or the configured artifact path.
 
 ### Assertion Types
 
-| Type | Use for |
-|------|---------|
-| `llm-rubric` | Qualitative narrative quality (tone, style, structure) |
-| `similar` | Cosine similarity against baseline text |
-| `contains` / `not-contains` | Guardrails (no "As an AI", no refusal phrases) |
-| `regex` | Format validation (has paragraphs, has specific structure) |
-| `javascript` / `python` | Custom scoring functions |
+| Evaluator | Use for |
+|-----------|---------|
+| LLM judge evaluator | Qualitative narrative quality (tone, style, structure) |
+| Similarity/baseline evaluator | Similarity against golden outputs where useful |
+| Guardrail evaluator | Prohibited phrases, refusal leakage, scope violations |
+| Structured-output evaluator | Schema validity and validator policy checks |
+| Custom Python evaluator | Domain-specific scoring functions |
 
 ### CI Integration
 

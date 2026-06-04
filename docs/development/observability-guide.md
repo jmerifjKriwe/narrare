@@ -1,8 +1,12 @@
 # Observability Guide — End-to-End Trace Chain
 
-> **Status:** ✅ Documented
+> **Status:** ⛔ Superseded by ADR-031
 > **Date:** 2026-06-03
-> **See also:** [ADR-010: Observability Strategy](../architecture/decisions/ADR-010-observability.md)
+> **See also:** [ADR-031: Local-First OpenTelemetry Observability](../architecture/decisions/ADR-031-local-first-opentelemetry-observability.md)
+>
+> This guide documents the pre-ADR-031 trace chain and is historical until it is
+> rewritten after the OpenTelemetry-only implementation phase. Do not use the
+> Langfuse sections below as current architecture.
 
 ---
 

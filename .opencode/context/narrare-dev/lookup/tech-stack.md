@@ -68,8 +68,8 @@ Three questions before adding any dependency:
 | Tech | Role |
 |------|------|
 | structlog >=25.5 | All logging. Never print(), never stdlib logging directly |
-| OpenTelemetry | Distributed tracing + metrics for API, DB, HTTP |
-| Langfuse >=3.0 | LLM-specific: generation traces, costs, prompt versioning |
+| OpenTelemetry | Sole trace standard for API, DB, HTTP, and Pydantic-AI agent/model/tool spans |
+| Prometheus-compatible metrics | Runtime counters/metrics; exported through approved OTel/metrics paths |
 
 ## Frontend
 

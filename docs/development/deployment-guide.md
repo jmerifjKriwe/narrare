@@ -562,6 +562,6 @@ for the planned verification command.
 
 - Application logs: structlog with JSON output
 - Metrics: Prometheus-compatible counters where services expose runtime metrics
-- Tracing: OpenTelemetry + Langfuse for LLM observability
+- Tracing: OpenTelemetry-only trace standard for API and LLM/agent observability (ADR-031)
 
 > Maintained by: Deployment Agent

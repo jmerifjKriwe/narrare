@@ -3,7 +3,7 @@
 # Prompt Engineering Standard — Quick Reference
 
 > **Full document**: `docs/development/prompt-standards.md`
-> **Enforcement**: `check_architecture.py` + promptfoo evals (ADR-018)
+> **Enforcement**: `check_architecture.py` + Pydantic Evals (ADR-032)
 > **Related**: RULE-02, RULE-02a, ADR-002, ADR-019, ADR-026
 
 ---
