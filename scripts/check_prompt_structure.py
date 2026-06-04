@@ -11,7 +11,7 @@ Checks:
   3. Variable consistency across locales
   4. Security: user-content variables must be wrapped in XML tags
   5. File size check (max 300 lines per prompt file)
-  6. Locale coverage (all modes should exist in EN, DE, FR)
+  6. Locale coverage (policy-aware: meta/universal required, features EN-only default)
   7. Meta-prompt guardrails (ADR-019 mandatory elements)
   8. Universal rules presence (files exist with key phrases)
   9. No universal rules duplication in templates

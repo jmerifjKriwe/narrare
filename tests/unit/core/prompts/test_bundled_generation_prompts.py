@@ -17,7 +17,8 @@ _BUNDLED_ROOT = Path(__file__).parent.parent.parent.parent.parent / (
     "packages/core/narrare_core/prompts/_bundled"
 )
 
-# Expected name generation language dirs (EN only — DE/FR removed in Phase 5)
+# Canonical name generation feature prompt language under ADR-026 Phase 5.
+# DE/FR feature copies are not required unless explicitly approved.
 _NAME_LANGUAGES = ("en",)
 
 # Expected culture IDs and languages

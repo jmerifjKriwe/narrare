@@ -3,14 +3,15 @@
 CR-04 coherence fix: The review prompt contains explicit guidance to treat
 user preferences as intentional authorial choices, not issues to flag.
 
-Phase 5 update: DE/FR feature-specific templates removed — DE/FR requests
-cascade to EN. Tests verify EN content and EN-fallback for DE/FR.
+Phase 5 update: DE/FR feature-specific templates are not required for bundled
+feature prompts. Tests verify EN content and that DE/FR requests resolve either
+to an explicitly bundled localized family or to the EN fallback.
 
 Test strategy:
 - Pure unit tests — loads bundled prompt files (no I/O beyond package data).
 - Verify {{user_preferences}} variable is present.
 - Verify explicit respect-preferences instruction exists in EN.
-- Verify DE/FR cascade to EN (bundled_en source).
+- Verify DE/FR resolve via bundled localized files or bundled_en fallback.
 """
 
 from __future__ import annotations
@@ -58,13 +59,13 @@ class TestReviewRespectPreferences:
         assert "user preferences" in lowered
 
     @pytest.mark.parametrize("language", ["de", "fr"])
-    async def test_de_fr_cascades_to_en(self, language: str) -> None:
-        """DE/FR review requests cascade to EN bundled prompt."""
+    async def test_de_fr_resolves_to_bundled_or_en_fallback(self, language: str) -> None:
+        """DE/FR review requests may use localized bundle or EN fallback."""
         registry = PromptRegistry()
         result = await registry.resolve(
             category="analysis",
             language=language,
             mode="review",
         )
-        assert result.source == "bundled_en"
+        assert result.source in {"bundled", "bundled_en"}
         assert "{{user_preferences}}" in result.system_prompt

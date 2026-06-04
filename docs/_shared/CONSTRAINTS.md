@@ -762,8 +762,19 @@ project settings, etc.).
 4. **Variable registration**: Register new template variables in
    `_SYSTEM_VARS` or `_USER_CONTENT_VARS` in `variable_engine.py`. No unregistered
    variables in prompt templates.
-5. **i18n parity**: Ensure all 3 language variants (en/de/fr) exist for every
-   new prompt file, or document EN-only with explicit rationale in the spec.
+5. **i18n parity / prompt language policy**: Treat UI i18n and prompt-template
+   language as separate concerns:
+   - **UI i18n**: UI strings and `packages/web/messages/{locale}/` namespaces
+     continue to require en/de/fr parity (see RULE-16).
+   - **Bundled feature system prompts**: New bundled feature prompt templates
+     default to EN-only. Output/writing language must be controlled through
+     variables, Context, Deps, or preferences such as `{{writing_language}}`,
+     not by duplicating the bundled template per locale.
+   - **Localized prompt families**: If the spec declares an
+     architecture-approved localized prompt family, all declared locales for
+     that family must exist and keep variables in sync.
+   - **Validation requirement**: EN-only bundled feature prompts are valid only
+     when relevant output-language variables/context are present and validated.
 6. **User-content variable registration**: Any new variable that contains
    user-authored content MUST be added to `_USER_CONTENT_VARS` and wrapped
    in XML tags in the prompt template.
@@ -982,6 +993,6 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 ---
 
-> Last updated: 2026-06-03 — §7 synchronized with pyproject.toml; §8 SSOT hierarchy added
+> Last updated: 2026-06-04 — RULE-22 prompt language policy aligned with ADR-026 Phase 5; §7 synchronized with pyproject.toml; §8 SSOT hierarchy added
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

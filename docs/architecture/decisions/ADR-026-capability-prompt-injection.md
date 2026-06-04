@@ -29,6 +29,7 @@ pydantic-ai provides `AbstractCapability.get_instructions()` and `@agent.instruc
 - **pydantic-ai alignment** — Use the framework's native composition mechanisms instead of building parallel infrastructure
 - **Backward compatibility** — Existing PromptComposer paths must continue to work during migration
 - **Separation of concerns** — Guaranteed content, customizable content, and dynamic content have different lifecycle requirements
+- **Language-boundary clarity** — Prompt instruction language, output/writing language, UI i18n, and meta/universal capability language are separate architectural concerns
 
 ---
 
@@ -172,6 +173,25 @@ After migration, templates become shorter. They contain only:
 
 Universal rules, meta-prompt identity, and injection defense are removed from templates and handled by Capabilities.
 
+### Prompt Language Policy (Phase 5)
+
+Phase 5 is an **active accepted strategy**, not a superseded migration idea.
+Narrare's bundled feature system prompts use the following language policy:
+
+| Language concept | Definition | Policy |
+|------------------|------------|--------|
+| **Prompt instruction language** | The language used inside bundled system prompt templates that instruct the model what to do | New bundled feature system prompts default to **EN-only**. English is the canonical instruction language for bundled feature prompts. |
+| **Output / writing language** | The language the model must produce for user-facing prose or answers | Controlled through variables, Context, Deps, and preferences such as `{{writing_language}}`; never inferred from the template file's locale. |
+| **UI i18n language** | Translated labels, messages, and interface copy in the web UI | Governed separately by UI i18n rules; en/de/fr parity remains mandatory for UI namespaces and message files. |
+| **Meta / universal capability prompt language** | Persona, safety, interaction, identity, and universal capability instructions | May and should remain localized where tone, persona, safety wording, or interaction style is language-sensitive. |
+
+Bundled feature prompt language variants (`de`, `fr`, or future locales) are valid only when one of these is true:
+
+1. An architecture-approved localized prompt family explicitly declares that the feature requires locale-specific instruction wording.
+2. A project-level or user-level prompt override is provided through the prompt cascade.
+
+Otherwise, adding DE/FR copies of bundled feature system prompts is architectural drift: it multiplies templates without improving output-language control. Every new writing language would otherwise require dozens of template copies, which is the maintenance failure Phase 5 prevents.
+
 ---
 
 ## Rationale
@@ -194,7 +214,7 @@ This is not "three ways to do the same thing" — it is three mechanisms for thr
 **Positive:**
 - Universal rules are architecturally guaranteed — impossible to forget
 - Templates become shorter and focused on customizable content
-- Language optimization becomes possible (EN-only templates with cascade overrides)
+- Language optimization is the accepted governance strategy: bundled feature system prompts are EN-only by default, with localized output controlled through variables/context and localized prompt families only when explicitly approved
 - `with_meta()` removed entirely — Capabilities replace it (Phases 1–3)
 - PromptComposer's role becomes clearer: it handles customizable content only
 - ADR-019's two-path problem is resolved — Capabilities are always present regardless of path
@@ -206,9 +226,11 @@ This is not "three ways to do the same thing" — it is three mechanisms for thr
 - Migration must be phased (cannot break existing PromptComposer paths)
 - Capabilities add a small token overhead (instructions are always included in the system prompt)
 - `NarrareUniversalRules` must load from `core/prompts/_bundled/` — this creates a dependency from `core/agents/capabilities/` to `core/prompts/`, but it is a read-only dependency that respects RULE-02 (no prompt assembly in capabilities)
+- Gates and documentation must distinguish UI i18n parity from prompt-template language parity. Feature-prompt EN-only is valid when output-language variables/context are present; UI i18n remains unaffected.
 
 **Constraints introduced / updated:**
 - RULE-02 is amended to RULE-02a: distinguishes user-customizable, architecturally guaranteed, and dynamic prompt content
+- RULE-22 i18n parity distinguishes UI i18n from prompt-template language: new bundled feature system prompts are EN-only by default, while declared localized prompt families must keep their declared locales in sync
 - `check_architecture.py` should verify that no `get_instructions()` in `core/agents/capabilities/` assembles prompts via f-string or concatenation — it must load from `core/prompts/` or return static strings
 - ADR-019 is fully superseded: `with_meta()` has been removed, all prompt identity/rules are now via Capabilities
 
@@ -223,9 +245,9 @@ The migration is phased to ensure each step is atomic and backward-compatible.
 | 1 | `NarrareUniversalRules` Capability + template cleanup | Low — additive, no existing paths change | ADR-026 approval | ✅ Complete |
 | 2 | PromptGuard reorientation | Low — PromptGuard validates Capability output | Phase 1 | ✅ Complete |
 | 3 | `NarrareMeta` Capability | Medium — meta-prompt moves from PromptComposer to Capability | Phase 1 | ✅ Complete |
-| 4 | ~~KB-Context as `@agent.instructions`~~ **Skipped** | — | — |
-| 5 | Language optimization (EN-only templates) | Low — removes language variants | Phase 3 |
-| 6 | ~~TemplateStr evaluation~~ **Not Adopted** | — | — |
+| 4 | ~~KB-Context as `@agent.instructions`~~ **Skipped** | — | — | ⏭️ Skipped |
+| 5 | Language optimization governance (EN-only bundled feature prompts by default) | Low — prevents language-variant drift while preserving localized output through context | Phase 3 | ✅ Accepted strategy / governance alignment in progress |
+| 6 | ~~TemplateStr evaluation~~ **Not Adopted** | — | — | ❌ Not Adopted |
 
 ### Phase 1: NarrareUniversalRules + Template Cleanup (Atomic)
 
@@ -262,24 +284,28 @@ The migration is phased to ensure each step is atomic and backward-compatible.
 
 This led to a refinement of the "Dynamic" category in the three-mechanism model.
 
-### Phase 5: Language Optimization (In Progress)
+### Phase 5: Language Optimization (Accepted Strategy / Governance Alignment in Progress)
 
-**Goal:** Reduce template maintenance burden by making EN the default template language, with DE/FR available only as cascade overrides.
+**Goal:** Reduce template maintenance burden by making EN the default bundled feature prompt instruction language, with localized user output controlled through variables/context and DE/FR available only as explicit localized prompt families or cascade overrides.
 
 **What changes:**
-- Delete all DE/FR template files under `_bundled/{writing,kb,analysis,planning,generation,chat,wiki}/de/` and `.../fr/`
-- Keep EN templates as the sole bundled variant
-- Keep all 3 languages for `_bundled/meta/` and `_bundled/universal/` (where language matters for persona/identity)
-- DE/FR users can still override via project-level cascade (`.narrare/prompts/{category}/de/`)
+- New bundled feature system prompts under feature categories such as `_bundled/{writing,kb,analysis,planning,generation,chat,wiki}/` default to EN-only
+- Existing or new DE/FR bundled feature prompt copies require an explicit architecture-approved localized prompt family declaration
+- Keep localized variants for meta/universal capability prompts where language matters for persona, safety, identity, or interaction style
+- DE/FR users can still override feature prompts via the project/user prompt cascade (`.narrare/prompts/{category}/{locale}/` or equivalent configured override path)
+- Gates must treat feature-prompt EN-only as valid when output-language variables/context are present where relevant
 
 **Why this works:**
 - LLMs understand English system prompts and generate output in `{{writing_language}}` correctly
-- The `{{writing_language}}` variable controls output language, not the system prompt language
-- DE/FR templates were 1:1 translations with identical structure — maintenance burden with no quality gain
+- The `{{writing_language}}` variable, Context, Deps, and preferences control output language, not the system prompt template locale
+- DE/FR feature prompt copies that are 1:1 translations with identical structure create maintenance burden with no output-quality gain
+- UI i18n remains separate: web UI strings still require en/de/fr parity and are not relaxed by this ADR
 
 **CI changes:**
-- `prompt_checks.py` cross-locale variable consistency check becomes EN-only
-- `prompt_vars.py` validation remains per-category (language-independent)
+- Prompt-template validation must not report EN-only bundled feature prompts as debt
+- If a localized prompt family is declared, cross-locale variable consistency applies to every declared locale in that family
+- Output-language validation must verify that relevant feature prompts receive language variables/context such as `{{writing_language}}`
+- UI i18n validators remain unchanged and continue enforcing en/de/fr parity for UI namespaces and message files
 
 ### Phase 6: Not Adopted — TemplateStr Evaluation
 
@@ -295,7 +321,7 @@ The `substitute()` function provides `strict` mode for validation, supports the 
 | 2 | ✅ Complete — PromptGuard reorientation | d1432d1 |
 | 3 | ✅ Complete — `NarrareMeta` Capability, `with_meta()` removed | 45b7395 |
 | 4 | ⏭️ Skipped — KB context stays as variable substitution | N/A |
-| 5 | 🔄 In Progress — Language optimization | — |
+| 5 | ✅ Accepted strategy / governance alignment in progress — EN-only bundled feature prompts by default; localized output via variables/context | — |
 | 6 | ❌ Not Adopted — TemplateStr evaluation | N/A |
 
 ---
@@ -322,7 +348,7 @@ The `substitute()` function provides `strict` mode for validation, supports the 
 | `core/prompts/composer.py` | Remove universal rules prepending (Phase 1), remove meta prepending (Phase 3) |
 | `core/prompts/meta.py` | Simplify after universal rules extraction |
 | `core/prompts/_bundled/meta/{lang}/system.md` | Remove universal rules sections |
-| `docs/_shared/CONSTRAINTS.md` | Amend RULE-02 |
+| `docs/_shared/CONSTRAINTS.md` | Amend RULE-02 and RULE-22 prompt language governance |
 
 ### Key Pattern: Capability Loading from core/prompts/
 
@@ -361,6 +387,7 @@ This avoids requiring all Deps types to implement a full protocol, while still p
 
 - [x] ~~Phase 1: Verify universal rules present in all agent outputs~~ (done — d1432d1)
 - [x] ~~Phase 3: Verify meta-prompt identity regardless of PromptComposer~~ (done — 45b7395)
-- [ ] Phase 5: Verify EN-only templates produce correct output in all writing languages
+- [ ] Phase 5 governance: Verify gates treat EN-only bundled feature prompts as valid when output-language variables/context are present
+- [ ] Output-language validation: Verify EN-only feature prompts produce correct output across configured writing languages via Context/Deps/preferences
 - [ ] pydantic-ai v2: Verify `AbstractCapability.get_instructions()` contract unchanged
 - [ ] When adding a new agent: Verify it inherits `NarrareUniversalRules` via `NarrareAgent.__init__`

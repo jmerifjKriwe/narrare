@@ -14,11 +14,13 @@
     {
       "id": "mypy-not-configured",
       "gate": "G6",
-      "description": "mypy --strict not in CI. Only pyright active. Docs reference mypy but it is not configured in pyproject.toml.",
+      "description": "RESOLVED: pyright alone is sufficient. Documentation corrected to reflect reality. No mypy needed.",
       "set_date": "2026-06-04",
       "expires": "2026-09-01",
       "review_after": "2026-08-01",
-      "status": "active",
+      "status": "resolved",
+      "resolved_date": "2026-06-04",
+      "resolved_by": "user",
       "approved_by": "coordinator"
     }
   ]

@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
 # ── Constants ──────────────────────────────────────────────────
 
+_SUPPORTED_PROMPT_LOCALES: frozenset[str] = frozenset({"en", "de", "fr"})
+_LOCALIZED_REQUIRED_CATEGORIES: frozenset[str] = frozenset({"meta", "universal", "universal_rules"})
+
 # Mandatory keywords for meta prompts (ADR-019).
 _META_MANDATORY_PATTERNS: list[tuple[str, str]] = [
     ("fiction|narrative|fiktion|narratif|ficti", "fiction/narrative content guidance"),
@@ -34,8 +37,14 @@ _META_MANDATORY_PATTERNS: list[tuple[str, str]] = [
 
 
 def check_locale_coverage(prompts: list[PromptFile], issues: list[Issue]) -> None:
-    """Check 6: Locale coverage — all modes should exist in all supported languages."""
-    valid_locales = {"en", "de", "fr"}
+    """Check 6: Locale coverage according to ADR-026 Phase 5 policy.
+
+    Bundled feature system prompts are EN-only by default. Meta and universal
+    capability prompts remain localized-required because persona, security, and
+    interaction wording can be language-sensitive. Feature prompt families that
+    already include multiple bundled locales are still checked for complete
+    locale coverage so accidental partial localized families stay visible.
+    """
 
     # Group system.md files by (category, mode, variant).
     groups: dict[str, dict[str, PromptFile]] = {}
@@ -49,31 +58,37 @@ def check_locale_coverage(prompts: list[PromptFile], issues: list[Issue]) -> Non
 
     for key, locale_files in sorted(groups.items()):
         present_locales = set(locale_files.keys())
-        missing = valid_locales - present_locales
+        missing = _SUPPORTED_PROMPT_LOCALES - present_locales
 
         if not missing:
             continue
 
-        if present_locales == {"en"}:
+        category = key.split("/", maxsplit=1)[0]
+
+        if category not in _LOCALIZED_REQUIRED_CATEGORIES and present_locales == {"en"}:
+            continue
+
+        if category in _LOCALIZED_REQUIRED_CATEGORIES:
             missing_str = ", ".join(sorted(missing))
             issues.append(
                 Issue(
                     "WARN",
                     f"{key}/en",
-                    f"EN-only prompt, missing locales: {missing_str} "
-                    f"(add DE/FR translations for full i18n support)",
+                    f"Missing required locales: {missing_str} "
+                    f"(localized prompt family requires en/de/fr)",
                 )
             )
-        else:
-            missing_str = ", ".join(sorted(missing))
-            present_str = ", ".join(sorted(present_locales))
-            issues.append(
-                Issue(
-                    "WARN",
-                    f"{key}/{present_str}",
-                    f"Missing locales: {missing_str} (has {present_str})",
-                )
+            continue
+
+        missing_str = ", ".join(sorted(missing))
+        present_str = ", ".join(sorted(present_locales))
+        issues.append(
+            Issue(
+                "WARN",
+                f"{key}/{present_str}",
+                f"Missing locales: {missing_str} (has {present_str})",
             )
+        )
 
 
 def check_meta_guardrails(prompts: list[PromptFile], issues: list[Issue]) -> None:

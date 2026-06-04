@@ -6,7 +6,7 @@ Covers:
 3. run_deterministic_checks — combines all checks
 4. Edge cases — empty events, single event
 5. TemporalIssueSeverity and TemporalIssue models
-6. Prompt file existence — temporal_consistency in all 3 locales
+6. Prompt file existence — canonical EN temporal_consistency feature prompt
 
 Moved to separate test files:
 - DurationImpossibilityCheck  → ``test_duration_check.py``
@@ -314,7 +314,7 @@ class TestTemporalIssueModels:
 
 
 class TestTemporalConsistencyPromptExistence:
-    """temporal_consistency prompt files exist in EN (DE/FR removed in Phase 5)."""
+    """temporal_consistency canonical EN feature prompt exists."""
 
     def _prompt_path(self, lang: str) -> Path:
         return PROMPTS_DIR / "planning" / lang / "temporal_consistency" / "system.md"

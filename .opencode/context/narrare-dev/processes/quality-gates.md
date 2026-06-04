@@ -61,7 +61,7 @@ Coverage below minimum = CI failure. No exceptions.
 
 ## Gate 6: Type Checking
 
-- `pyright` in CI (RULE-09); `mypy --strict` nicht in pyproject.toml konfiguriert
+- `pyright` in CI (RULE-09); pyright is the sole type checker (no other checker configured)
 - No untyped public functions
 - `Any` forbidden except in approved adapters
 
@@ -84,7 +84,7 @@ for the authoritative source.
 | 6 | `check_locale_sync.py` | ✅ Blocking | `architecture` Job (previously: warning) |
 | 7 | `check_doc_drift.py` | ✅ Blocking | `architecture` Job |
 | 8 | `export_openapi.py --check` | ✅ Blocking | `architecture` Job |
-| 9 | `pyright` (mypy nicht konfiguriert) | ⚠️ Partial | Nur `pyright` in CI aktiv; `mypy --strict` nicht in pyproject.toml konfiguriert. Gate 6 Dokumentation in CI-Header korrigiert. |
+| 9 | `pyright` | ⚠️ Partial | `pyright` in CI aktiv (RULE-09). Pyright is the sole type checker. |
 | 10 | `pytest` unit tests | ✅ Blocking | `test-unit` Job |
 | 11 | Coverage threshold | ⚠️ Warning (≥60%) | **Übergangsausnahme**: Hard floor 60%, Target 80% |
 | 12 | `pytest` integration tests | ✅ Blocking | `test-integration` Job |
@@ -217,7 +217,7 @@ Reads the adoption registry at `scripts/architecture/adoption-registry.yaml` and
 2. check_architecture.py        (RULE enforcement)
 3. check_adoption.py             ← Gate 8: adoption score
 4. check_prompt_structure.py     (prompt variable validation)
-5. mypy --strict + pyright
+5. pyright
 6. pytest -m unit
 7. pytest -m integration
 8. pnpm test
@@ -312,7 +312,7 @@ Architecture Specialist during Stage 2.5 (Semantic Review).
 2. check_architecture.py --prompt-integrity  (RULE enforcement + prompt integrity)
 3. check_adoption.py
 4. check_prompt_structure.py
-5. mypy --strict + pyright
+5. pyright
 6. pytest -m unit
 7. pytest -m integration
 8. pnpm test

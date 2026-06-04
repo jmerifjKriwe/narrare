@@ -19,7 +19,8 @@ _BUNDLED_ROOT = Path(__file__).parent.parent.parent.parent.parent / (
     "packages/core/narrare_core/prompts/_bundled"
 )
 
-# Expected writing prompt languages and modes (EN only — DE/FR removed in Phase 5)
+# Canonical bundled feature prompt language under ADR-026 Phase 5.
+# DE/FR feature copies may exist only as explicit localized families/overrides.
 _WRITING_LANGUAGES = ("en",)
 _WRITING_MODES = ("new_chapter", "scene_by_scene", "interview", "interactive_session")
 
@@ -80,7 +81,7 @@ def _tone_path(tone_id: str) -> Path:
 
 
 class TestWritingPromptExistence:
-    """Verify all 4 writing prompt files exist (4 modes x EN only)."""
+    """Verify canonical EN writing prompt files exist."""
 
     @pytest.mark.parametrize("language", _WRITING_LANGUAGES)
     @pytest.mark.parametrize("mode", _WRITING_MODES)
@@ -90,7 +91,7 @@ class TestWritingPromptExistence:
         assert path.exists(), f"Missing writing prompt: {path}"
 
     def test_total_prompt_file_count(self) -> None:
-        """Verify total expected count: 4 modes x 1 language = 4 files."""
+        """Verify total expected canonical count: 4 modes x EN = 4 files."""
         writing_dir = _BUNDLED_ROOT / "writing"
         prompt_files = []
         for lang_dir in writing_dir.iterdir():
