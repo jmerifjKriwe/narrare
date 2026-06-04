@@ -35,13 +35,30 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           if [ -n "${{ github.event.inputs.test_filter }}" ]; then
-            promptfoo eval -c evals/testcases/${{ github.event.inputs.test_filter }}.yaml
+            TEST_NAME="${{ github.event.inputs.test_filter }}"
+            promptfoo eval -c "evals/testcases/${TEST_NAME}.yaml" \
+              --output "evals/results/${TEST_NAME}.json" || true
           else
             for f in evals/testcases/*.yaml; do
               echo "=== Running: $f ==="
-              promptfoo eval -c "$f" || true
+              TEST_NAME="$(basename "$f" .yaml)"
+              promptfoo eval -c "$f" \
+                --output "evals/results/${TEST_NAME}.json" || true
             done
           fi
+
+      - name: Check eval drift against baselines
+        if: always()
+        run: |
+          python scripts/check_eval_drift.py \
+            --results-dir evals/results \
+            --baselines-dir evals/baselines \
+            --threshold 0.05
+
+      - name: Update baselines (manual trigger only)
+        if: always() && github.event_name == 'workflow_dispatch'
+        run: |
+          python scripts/check_eval_drift.py --update-baselines
 
       - name: Upload eval results
         if: always()

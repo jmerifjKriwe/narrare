@@ -1,0 +1,25 @@
+{
+  "_comment": "Registry of CI gate exceptions with expiry dates. See .opencode/context/narrare-dev/processes/quality-gates.md Gate 11.",
+  "exceptions": [
+    {
+      "id": "coverage-threshold",
+      "gate": "G2",
+      "description": "Coverage below 80% warning-only, hard floor at 60%. Target: modular core/api thresholds.",
+      "set_date": "2026-06-04",
+      "expires": "2026-09-01",
+      "review_after": "2026-07-15",
+      "status": "active",
+      "approved_by": "user"
+    },
+    {
+      "id": "mypy-not-configured",
+      "gate": "G6",
+      "description": "mypy --strict not in CI. Only pyright active. Docs reference mypy but it is not configured in pyproject.toml.",
+      "set_date": "2026-06-04",
+      "expires": "2026-09-01",
+      "review_after": "2026-08-01",
+      "status": "active",
+      "approved_by": "coordinator"
+    }
+  ]
+}

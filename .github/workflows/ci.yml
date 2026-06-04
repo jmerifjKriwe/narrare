@@ -8,14 +8,14 @@ name: CI
 # | Gate | Tool / Check                          | CI Status   | Notes                              |
 # |------|----------------------------------------|-------------|------------------------------------|
 # | G1   | pytest unit + integration + e2e        | ✅ Blocking  | Unit/Integration in separaten Jobs |
-# | G2   | --cov-fail-under (Coverage)            | ⚠️ Warning  | Übergangsausnahme: --cov-fail-under=0, User-Entscheidung |
+# | G2   | --cov-fail-under (Coverage)            | ⚠️ Warning (≥60%) | Übergangsausnahme: --cov-fail-under=60, target 80% |
 # | G3   | check_architecture.py                  | ✅ Blocking  | architecture Job                   |
 # | G3b  | check_exception_baseline.py            | ✅ Blocking  | architecture Job                   |
 # | G3c  | export_openapi.py --check              | ✅ Blocking  | architecture Job                   |
 # | G4   | test_fake_conformance.py               | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G5   | Cross-layer contract tests             | ✅ Blocking  | test-unit Job (via pytest)         |
 # | G6   | pyright                                | ✅ Blocking  | typecheck Job                      |
-# | G6   | mypy --strict                          | ❌ Fehlend   | Nicht in CI (nur pyright)          |
+# | G6   | mypy --strict                          | ❌ Nicht konfiguriert | mypy nicht in pyproject.toml; nur pyright aktiv |
 # | G7   | ruff check + ruff format --check       | ✅ Blocking  | lint Job                           |
 # | G8   | check_adoption.py                      | ✅ Blocking  | architecture Job                   |
 # | G9   | check_prompt_structure.py              | ✅ Blocking  | architecture Job                   |
@@ -23,6 +23,9 @@ name: CI
 # | G10  | check_locale_sync.py                   | ✅ Blocking  | architecture Job (was: warning)    |
 # | --   | check_doc_drift.py                     | ✅ Blocking  | architecture Job                   |
 # | --   | check_frontend_file_size.py (RULE-04)  | ✅ Blocking  | frontend Job                       |
+# | --   | check_test_coverage_gaps.py (RULE-10)  | ✅ Blocking  | architecture Job                   |
+# | --   | check_module_coverage.py (RULE-10)    | ⚠️ Warning   | test-unit Job (--warning-only)     |
+# | --   | check-testid.ts (data-testid gate)      | ✅ Blocking  | frontend Job                       |
 # | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
 # | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
 # | --   | pnpm test (frontend tests)             | ✅ Blocking  | frontend Job                       |
@@ -105,12 +108,21 @@ jobs:
       - name: Check documentation drift
         run: uv run python scripts/check_doc_drift.py
 
+      - name: Check gate exceptions expiry
+        run: uv run python scripts/check_gate_expirations.py
+
+      - name: Check gate drift (docs vs CI)
+        run: uv run python scripts/check_gate_drift.py
+
       - name: Check streaming compliance (RULE-20)
         run: |
           uv run python scripts/check_streaming_compliance.py
 
       - name: System health aggregation
         run: uv run python scripts/check_system_health.py
+
+      - name: Check test coverage gaps (RULE-10)
+        run: uv run python scripts/check_test_coverage_gaps.py --fail-on-missing
 
   # -------------------------------------------------------------------------
   # Lint & format (< 60s)
@@ -151,6 +163,16 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --all-packages --group dev
+
+      - name: Cache Pyright
+        uses: actions/cache@v4
+        with:
+          path: |
+            .pyright/
+            **/.pyc
+          key: pyright-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            pyright-${{ runner.os }}-
 
       - name: Pyright
         run: uv run pyright
@@ -213,7 +235,7 @@ jobs:
             --cov-report=xml \
             --cov-report=term-missing:skip-covered \
             --junitxml=pytest.xml \
-            --cov-fail-under=0 \
+            --cov-fail-under=60 \
             -v | tee pytest-coverage.txt
 
       - name: Check coverage threshold
@@ -221,15 +243,24 @@ jobs:
         run: |
           uv run python -c "
           import xml.etree.ElementTree as ET
+          import sys
           tree = ET.parse('coverage.xml')
           rate = float(tree.getroot().attrib['line-rate'])
           pct = rate * 100
           print(f'Coverage: {pct:.1f}%')
-          if pct < 80:
+          if pct < 60:
+              print(f'::error::Coverage {pct:.1f}% is below the 60% minimum threshold')
+              sys.exit(1)
+          elif pct < 80:
               print(f'::warning::Coverage {pct:.1f}% is below the 80% target threshold')
           else:
               print(f'Coverage {pct:.1f}% meets the 80% target threshold')
-          "
+           "
+
+      - name: Check per-module coverage (RULE-10)
+        if: always() && steps.tests.outcome != 'cancelled'
+        run: |
+          uv run python scripts/check_module_coverage.py --warning-only
 
       - name: Pytest coverage comment
         if: github.event_name == 'pull_request'
@@ -425,6 +456,9 @@ jobs:
 
       - name: Test
         run: cd packages/web && pnpm test
+
+      - name: Check component markers (data-testid)
+        run: cd packages/web && npx tsx scripts/check-testid.ts --fail
 
       - name: Build
         run: cd packages/web && pnpm build

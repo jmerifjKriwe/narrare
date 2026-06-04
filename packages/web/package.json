@@ -18,6 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "check:testid": "npx tsx scripts/check-testid.ts",
+    "check:testid:strict": "npx tsx scripts/check-testid.ts --strict --fail",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed"

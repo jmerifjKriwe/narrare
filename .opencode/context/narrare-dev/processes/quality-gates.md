@@ -61,7 +61,7 @@ Coverage below minimum = CI failure. No exceptions.
 
 ## Gate 6: Type Checking
 
-- `mypy --strict` + `pyright` in CI (RULE-09)
+- `pyright` in CI (RULE-09); `mypy --strict` nicht in pyproject.toml konfiguriert
 - No untyped public functions
 - `Any` forbidden except in approved adapters
 
@@ -84,25 +84,27 @@ for the authoritative source.
 | 6 | `check_locale_sync.py` | ✅ Blocking | `architecture` Job (previously: warning) |
 | 7 | `check_doc_drift.py` | ✅ Blocking | `architecture` Job |
 | 8 | `export_openapi.py --check` | ✅ Blocking | `architecture` Job |
-| 9 | `mypy --strict` + `pyright` | ⚠️ Partial | Only `pyright` in CI; `mypy` not yet configured |
+| 9 | `pyright` (mypy nicht konfiguriert) | ⚠️ Partial | Nur `pyright` in CI aktiv; `mypy --strict` nicht in pyproject.toml konfiguriert. Gate 6 Dokumentation in CI-Header korrigiert. |
 | 10 | `pytest` unit tests | ✅ Blocking | `test-unit` Job |
-| 11 | Coverage threshold | ⚠️ Warning | **Übergangsausnahme** (see below) |
+| 11 | Coverage threshold | ⚠️ Warning (≥60%) | **Übergangsausnahme**: Hard floor 60%, Target 80% |
 | 12 | `pytest` integration tests | ✅ Blocking | `test-integration` Job |
 | 13 | `pnpm test` (frontend) | ✅ Blocking | `frontend` Job |
 | 14 | `bandit` + `pip-audit` | ✅ Blocking | `security` Job |
 
-### Übergangsausnahme: Coverage-Gate (Warning-only)
+### Übergangsausnahme: Coverage-Gate (Hart ab 60%, Warning ab 80%)
 
-**Entscheidung:** Coverage läuft mit `--cov-fail-under=0` und einem separaten
-Warning-Step, der bei < 80% eine GitHub-Warning ausgibt. Der Test-Job schlägt
-bei Test-Fehlern fehl, aber **nicht** bei Unterschreitung der Coverage-Schwelle.
+**Entscheidung:** Coverage läuft mit `--cov-fail-under=60` (harte Schwelle) und
+einem separaten Check-Step, der bei 60-80% eine GitHub-Warning ausgibt.
+Der Test-Job schlägt bei Unterschreitung von 60% **fehl** (< 60% = CI-Failure),
+60-80% = Warning, ≥ 80% = Target erreicht.
 
-**Begründung:** Die Test-Suite befindet sich in einer Übergangsphase. Test-Failures
-werden in einem separaten Task (AUFG-02-01) behoben. Sobald die Test-Suite stabil
-durchläuft, wird `--cov-fail-under` auf den dokumentierten Schwellwert gesetzt.
+**Begründung:** Die Test-Suite ist stabil (AUFG-02-01 behoben, 0 Failures).
+Coverage liegt bei 76% — unter dem dokumentierten Target von 80% für api bzw.
+90% für core. Die 60%-Schwelle verhindert weiteren Verfall, während der
+Coverage schrittweise auf die dokumentierten Modul-Schwellen angehoben wird.
 
-**Aufzuheben wenn:** Alle Unit- und Integrationstests grün sind und Coverage
-stabil über dem Schwellwert liegt. Erfordert explizite User-Freigabe.
+**Aufzuheben wenn:** Coverage stabil ≥ 80% global und modulare Schwellen
+(core ≥ 90%, api ≥ 80%) in CI aktiv sind. Erfordert explizite User-Freigabe.
 
 ### Additional CI-only Gates
 
@@ -116,6 +118,47 @@ These checks run in CI but are not part of the numbered gate system:
 | E2E tests | ✅ Blocking | `test-e2e` Job, main branch only |
 
 All gates must pass. No skipping, no `--no-cov` workarounds.
+
+---
+
+## Gate 11: Übergangsausnahme-Ablaufmanagement
+
+Übergangsausnahmen (Warning-only Gates, deaktivierte Checks) müssen ein Ablaufdatum
+haben. Das Script `scripts/check_gate_expirations.py` prüft konfigurierte Fristen
+und warnt/failt bei Überschreitung.
+
+### Registrierung
+
+Jede Übergangsausnahme wird in `scripts/gate-exceptions.json` registriert:
+
+```json
+{
+  "exceptions": [
+    {
+      "id": "coverage-threshold",
+      "gate": "G2",
+      "description": "Coverage < 80% warning-only, hard floor at 60%",
+      "set_date": "2026-06-04",
+      "expires": "2026-09-01",
+      "review_after": "2026-07-15",
+      "status": "active",
+      "approved_by": "user"
+    }
+  ]
+}
+```
+
+### CI Integration
+
+Der `architecture` Job in CI führt `scripts/check_gate_expirations.py` aus:
+- Vor `review_after`: Info-Message
+- Nach `review_after`, vor `expires`: Warning
+- Nach `expires`: **CI Failure** (Ausnahme muss verlängert oder aufgehoben werden)
+
+### When to add
+
+Jede neue Übergangsausnahme muss einen Eintrag in dieser Datei haben. Ohne Eintrag
+gilt die Ausnahme als nicht autorisiert.
 
 ---
 
