@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -34,6 +34,12 @@ Characters:
 
 Locations:
 {{kb_locations}}
+
+Factions:
+{{kb_factions}}
+
+Relationships:
+{{kb_relationships}}
 
 ### User Preferences
 

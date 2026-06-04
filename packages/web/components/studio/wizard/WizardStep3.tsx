@@ -5,12 +5,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { setupApi } from "@/lib/api/client";
-import { GENRE_SUGGESTIONS } from "@/lib/constants/genres";
 import { BUNDLED_TONES } from "@/lib/constants/tones";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import type { StoryStructure, StoryTone } from "@/types";
-
-const GENRE_DATALIST_ID = "genre-suggestions";
+import { NovelMetadataFields } from "./NovelMetadataFields";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -49,8 +47,6 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
       story_structure: state.story_structure,
       tone: state.tone,
     },
-    // Sync external store changes (e.g. demo metadata prefill from Step 2)
-    // into the form without requiring manual reset() calls.
     values: {
       title: state.title,
       author: state.author,
@@ -76,13 +72,14 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
     onNext();
   };
 
-  const structureOptions: { value: string; label: string }[] = [
+  const structureOptions = [
     "three_act",
     "five_act",
     "heros_journey",
     "save_the_cat",
     "seven_point",
   ].map((v) => ({ value: v, label: t(`wizard.storyStructure.${v}` as const) }));
+  const toneOptions = BUNDLED_TONES.map((opt) => ({ value: opt.value, label: t(opt.label) }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,111 +89,26 @@ export function WizardStep3({ onNext, onBack }: WizardStep3Props) {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-        <div>
-          <label htmlFor="novel_title" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step3.novelTitle")}
-          </label>
-          <input
-            id="novel_title"
-            type="text"
-            {...register("title")}
-            placeholder={t("wizard.step3.novelTitlePlaceholder")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          />
-          {errors.title && <p className="text-sm text-destructive mt-1">{errors.title.message}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="author" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step3.author")}
-          </label>
-          <input
-            id="author"
-            type="text"
-            {...register("author")}
-            placeholder={t("wizard.step3.authorPlaceholder")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="genre" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step3.genre")}
-          </label>
-          <input
-            id="genre"
-            type="text"
-            list={GENRE_DATALIST_ID}
-            {...register("genre")}
-            placeholder={t("wizard.step3.genrePlaceholder")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          />
-          <datalist id={GENRE_DATALIST_ID}>
-            {GENRE_SUGGESTIONS.map((suggestion) => (
-              <option key={suggestion} value={suggestion} />
-            ))}
-          </datalist>
-        </div>
-
-        <div>
-          <label htmlFor="writing_language" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step3.writingLanguage")}
-          </label>
-          <input
-            id="writing_language"
-            type="text"
-            {...register("writing_language")}
-            placeholder={t("wizard.step3.writingLanguagePlaceholder")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="logline" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step3.logline")}
-          </label>
-          <input
-            id="logline"
-            type="text"
-            {...register("logline")}
-            placeholder={t("wizard.step3.loglinePlaceholder")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="story_structure" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step3.structure")}
-          </label>
-          <select
-            id="story_structure"
-            {...register("story_structure")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          >
-            {structureOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="tone" className="block text-sm font-medium mb-1.5">
-            {t("wizard.step3.tone")}
-          </label>
-          <select
-            id="tone"
-            {...register("tone")}
-            className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-          >
-            {BUNDLED_TONES.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {t(opt.label)}
-              </option>
-            ))}
-          </select>
-        </div>
+        <NovelMetadataFields
+          register={register}
+          structureOptions={structureOptions}
+          toneOptions={toneOptions}
+          translations={{
+            novelTitle: t("wizard.step3.novelTitle"),
+            novelTitlePlaceholder: t("wizard.step3.novelTitlePlaceholder"),
+            author: t("wizard.step3.author"),
+            authorPlaceholder: t("wizard.step3.authorPlaceholder"),
+            genre: t("wizard.step3.genre"),
+            genrePlaceholder: t("wizard.step3.genrePlaceholder"),
+            writingLanguage: t("wizard.step3.writingLanguage"),
+            writingLanguagePlaceholder: t("wizard.step3.writingLanguagePlaceholder"),
+            logline: t("wizard.step3.logline"),
+            loglinePlaceholder: t("wizard.step3.loglinePlaceholder"),
+            structure: t("wizard.step3.structure"),
+            tone: t("wizard.step3.tone"),
+          }}
+          titleError={errors.title?.message}
+        />
 
         <div className="flex justify-end gap-3 mt-4">
           <button

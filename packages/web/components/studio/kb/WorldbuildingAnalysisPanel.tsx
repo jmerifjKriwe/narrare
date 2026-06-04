@@ -10,128 +10,42 @@
  * §16 compliance: AbortController cancel, useConnectionLost, studio.aiActions.* labels.
  */
 
-import { ArrowLeft, Check, Link2, Loader2, RefreshCw, Search, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Check, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
 import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
-import type { WorldbuildingAnalysisResponse } from "@/lib/api/worldbuilding";
-import { useConnectionLost } from "@/lib/hooks/use-connection-lost";
-import { useWorldbuildingAnalyze, useWorldbuildingApply } from "@/lib/hooks/useWorldbuilding";
 import { AnalysisError } from "./AnalysisError";
 import { AnalysisLoading } from "./AnalysisLoading";
 import { AnalysisScoreHeader } from "./AnalysisScoreHeader";
 import { AnalysisTabs } from "./AnalysisTabs";
-
-type AnalysisTab = "gaps" | "connections" | "consistency";
-type AnalysisViewState = "idle" | "loading" | "results" | "error";
+import { useWorldbuildingAnalysis } from "./useWorldbuildingAnalysis";
+import { WorldbuildingAnalysisTabBar } from "./WorldbuildingAnalysisTabBar";
 
 interface WorldbuildingAnalysisPanelProps {
   novelId: string;
   onClose: () => void;
 }
 
-const TAB_CONFIG: { key: AnalysisTab; icon: typeof Sparkles }[] = [
-  { key: "gaps", icon: Search },
-  { key: "connections", icon: Link2 },
-  { key: "consistency", icon: Sparkles },
-];
-
 export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAnalysisPanelProps) {
   const t = useTranslations("studio");
-  const [state, setState] = useState<AnalysisViewState>("idle");
-  const [analysis, setAnalysis] = useState<WorldbuildingAnalysisResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<AnalysisTab>("gaps");
-  const [selectedConnectionIndices, setSelectedConnectionIndices] = useState<Set<number>>(
-    new Set(),
-  );
-  const [error, setError] = useState<Error | null>(null);
-  const [applyMessage, setApplyMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-
-  const analyzeMutation = useWorldbuildingAnalyze(novelId);
-  const applyMutation = useWorldbuildingApply(novelId);
   const {
+    state,
+    analysis,
+    activeTab,
+    setActiveTab,
+    selectedConnectionIndices,
+    setSelectedConnectionIndices,
+    error,
+    applyMessage,
+    analyzeMutation,
+    applyMutation,
     isConnectionLost,
-    markConnectionLost,
-    retry: retryConnection,
-  } = useConnectionLost({ onRetry: () => void runAnalysis(false) });
-
-  const runAnalysis = useCallback(
-    async (refresh = false) => {
-      setState("loading");
-      setError(null);
-      setApplyMessage(null);
-      try {
-        const result = await analyzeMutation.mutateAsync({ refresh });
-        setAnalysis(result);
-        setSelectedConnectionIndices(new Set());
-        setState("results");
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        markConnectionLost();
-        setError(err instanceof Error ? err : new Error(String(err)));
-        setState("error");
-      }
-    },
-    [analyzeMutation, markConnectionLost],
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
-  useEffect(() => {
-    if (state === "idle") void runAnalysis(false);
-  }, []);
-
-  const toggleConnection = useCallback((index: number) => {
-    setSelectedConnectionIndices((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  }, []);
-
-  const handleCancel = useCallback(() => {
-    analyzeMutation.abort();
-    setState("idle");
-  }, [analyzeMutation]);
-
-  const applySelectedConnections = useCallback(async () => {
-    if (!analysis) return;
-    try {
-      const result = await applyMutation.mutateAsync({
-        finding_indices: Array.from(selectedConnectionIndices),
-        analysis,
-      });
-      if (result.success) {
-        setApplyMessage({
-          type: "success",
-          text:
-            t("worldbuilding.applied", { count: result.created_count }) ||
-            `Applied ${result.created_count} connections`,
-        });
-        setSelectedConnectionIndices(new Set());
-        await runAnalysis(true);
-      } else {
-        setApplyMessage({
-          type: "error",
-          text: t("worldbuilding.failed") || `Failed: ${result.errors.join(", ")}`,
-        });
-      }
-    } catch (err) {
-      setApplyMessage({
-        type: "error",
-        text: err instanceof Error ? err.message : t("worldbuilding.failed") || "Apply failed",
-      });
-    }
-  }, [analysis, selectedConnectionIndices, applyMutation, t, runAnalysis]);
-
-  const hasNoFindings =
-    analysis &&
-    analysis.gap_findings.length === 0 &&
-    analysis.connection_suggestions.length === 0 &&
-    analysis.consistency_issues.length === 0;
+    retryConnection,
+    runAnalysis,
+    toggleConnection,
+    handleCancel,
+    applySelectedConnections,
+    hasNoFindings,
+  } = useWorldbuildingAnalysis(novelId);
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-background">
@@ -189,32 +103,11 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
 
       {/* Tabs */}
       {state === "results" && !hasNoFindings && (
-        <div className="flex border-b border-border bg-card">
-          {TAB_CONFIG.map(({ key, icon: TabIcon }) => {
-            const count =
-              key === "gaps"
-                ? (analysis?.gap_findings.length ?? 0)
-                : key === "connections"
-                  ? (analysis?.connection_suggestions.length ?? 0)
-                  : (analysis?.consistency_issues.length ?? 0);
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveTab(key)}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors border-b-2 ${activeTab === key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-              >
-                <TabIcon className="w-4 h-4" />
-                {t(`worldbuilding.${key}`) || key.charAt(0).toUpperCase() + key.slice(1)}
-                <span
-                  className={`text-xs px-1.5 py-0.5 rounded ${activeTab === key ? "bg-primary/10" : "bg-muted"}`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <WorldbuildingAnalysisTabBar
+          activeTab={activeTab}
+          analysis={analysis}
+          onActiveTabChange={setActiveTab}
+        />
       )}
 
       {/* Content */}

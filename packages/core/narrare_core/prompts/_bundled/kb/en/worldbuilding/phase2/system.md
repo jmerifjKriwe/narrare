@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -51,6 +51,9 @@ Before providing your structured output, use a <scratchpad> to work through each
 {{user_preferences}}
 
 ### Context
+
+#### World Context
+{{world_context}}
 
 #### Candidate Pairs
 {{candidate_pairs}}

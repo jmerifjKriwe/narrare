@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: de
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -61,6 +61,22 @@ Analysiere den bereitgestellten Text:
 
 Der Autor beabsichtigt, in folgender Perspektive zu schreiben: {{pov_type_hint}}
 {% endif %}
+
+### Wissensbasis-Kontext
+
+Nutze diese KB-Referenzen, um die POV-Konsistenz gegen die etablierten Figureninformationen zu prüfen:
+
+Figuren:
+{{kb_characters}}
+
+Fraktionen:
+{{kb_factions}}
+
+Schauplätze:
+{{kb_locations}}
+
+Beziehungen:
+{{kb_relationships}}
 
 ## Ausgabeformat
 

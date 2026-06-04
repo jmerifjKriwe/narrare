@@ -1,10 +1,9 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 import type { IntentCategory, ModelOverride, UserProvider } from "@/types";
+import { IntentCategoryPanel } from "./IntentCategoryPanel";
 
 // --- Static config ---
 
@@ -159,122 +158,20 @@ export function IntentOverrides({
         const catLabel = t(`settings.ai.categories.${CATEGORY_LABEL_KEYS[category]}`);
 
         return (
-          <div key={category} className="border border-border rounded-md overflow-hidden">
-            <button
-              type="button"
-              onClick={() => toggleCategory(category)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent/50 transition-colors"
-              aria-expanded={isOpen}
-            >
-              <span className="text-sm font-medium">{catLabel}</span>
-              <span
-                className={cn(
-                  "text-muted-foreground transition-transform duration-200 text-xs",
-                  isOpen && "rotate-180",
-                )}
-              >
-                ▼
-              </span>
-            </button>
-
-            {isOpen && (
-              <div className="border-t border-border px-4 py-3 space-y-3 bg-background/50">
-                {intents.map((intent) => {
-                  const override = overrides[intent.value];
-                  const isActive = !!override;
-                  const modelsForProvider = override
-                    ? (modelOptions[override.provider_id] ?? [])
-                    : [];
-                  const isLoading = override ? loadingModels?.[override.provider_id] : false;
-                  const intentLabel = t(`settings.ai.intents.${intent.labelKey}`);
-
-                  return (
-                    <div key={intent.value} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{intentLabel}</span>
-                        <button
-                          type="button"
-                          onClick={() => toggleIntentOverride(intent.value)}
-                          className={cn(
-                            "relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0",
-                            isActive ? "bg-primary" : "bg-muted-foreground/30",
-                          )}
-                          role="switch"
-                          aria-checked={isActive}
-                          aria-label={`${isActive ? t("settings.ai.categoryOverrides.disable") : t("settings.ai.categoryOverrides.enable")} ${intentLabel}`}
-                        >
-                          <span
-                            className={cn(
-                              "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200",
-                              isActive ? "translate-x-5" : "translate-x-0",
-                            )}
-                          />
-                        </button>
-                      </div>
-
-                      {isActive && override && (
-                        <div className="flex gap-3 ml-2">
-                          <div className="flex-1">
-                            <select
-                              value={override.provider_id}
-                              onChange={(e) =>
-                                updateIntentOverride(intent.value, "provider_id", e.target.value)
-                              }
-                              className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-                              aria-label={t("settings.ai.intentOverrides.provider")}
-                            >
-                              <option value="">{t("settings.ai.intentOverrides.provider")}</option>
-                              {activeProviders.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.provider_name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="flex-1">
-                            {isLoading ? (
-                              <div className="flex items-center gap-2 py-2">
-                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">
-                                  {t("settings.ai.intentOverrides.loading")}
-                                </span>
-                              </div>
-                            ) : modelsForProvider.length > 0 ? (
-                              <select
-                                value={override.model_id}
-                                onChange={(e) =>
-                                  updateIntentOverride(intent.value, "model_id", e.target.value)
-                                }
-                                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-                                aria-label={t("settings.ai.intentOverrides.model")}
-                              >
-                                <option value="">{t("settings.ai.intentOverrides.model")}</option>
-                                {modelsForProvider.map((m) => (
-                                  <option key={m.value} value={m.value}>
-                                    {m.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                type="text"
-                                value={override.model_id}
-                                onChange={(e) =>
-                                  updateIntentOverride(intent.value, "model_id", e.target.value)
-                                }
-                                placeholder={t("settings.ai.intentOverrides.modelId")}
-                                className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-                              />
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <IntentCategoryPanel
+            key={category}
+            category={category}
+            categoryLabel={catLabel}
+            intents={intents}
+            isOpen={isOpen}
+            overrides={overrides}
+            activeProviders={activeProviders}
+            modelOptions={modelOptions}
+            loadingModels={loadingModels}
+            onToggleCategory={toggleCategory}
+            onToggleIntent={toggleIntentOverride}
+            onUpdateOverride={updateIntentOverride}
+          />
         );
       })}
     </div>

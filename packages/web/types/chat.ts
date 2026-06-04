@@ -1,13 +1,41 @@
-// Chat SSE types (ADR-024 Free-Form Chat)
+import type { RefObject } from "react";
 
-import type { TokenUsage } from "./settings";
+export interface ChatMessage {
+  readonly id: string;
+  readonly role: "user" | "assistant" | "system";
+  readonly content: string;
+}
 
 export interface ChatMetaEvent {
-  conversation_id: string;
-  request_id: string;
+  readonly conversation_id: string;
+  readonly request_id: string;
+}
+
+export interface ChatUsage {
+  readonly prompt_tokens: number;
+  readonly completion_tokens: number;
+  readonly total_tokens: number;
 }
 
 export interface ChatDoneEvent {
-  type: "done";
-  usage: TokenUsage;
+  readonly type: "done";
+  readonly usage: ChatUsage;
+}
+
+export interface UseChatReturn {
+  messages: ChatMessage[];
+  isStreaming: boolean;
+  conversationId: string | null;
+  error: string | null;
+  sendMessage: (text: string) => Promise<void>;
+  clearConversation: () => void;
+  cancelStream: () => void;
+  chatEndRef: RefObject<HTMLDivElement | null>;
+}
+
+let messageCounter = 0;
+
+export function createMessageId(): string {
+  messageCounter += 1;
+  return `chat-msg-${messageCounter}`;
 }

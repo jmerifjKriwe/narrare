@@ -3,30 +3,59 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-from httpx import ASGITransport, AsyncClient
+    from types import TracebackType
 
 from narrare._app.main import app
 
 
+class FakeConnection:
+    """Minimal async SQLAlchemy connection fake for readiness checks."""
+
+    async def execute(self, statement: object) -> None:
+        """Record that a statement could be executed successfully."""
+
+
+class FakeConnectionContext:
+    """Async context manager returned by FakeEngine.connect()."""
+
+    def __init__(self, connection: FakeConnection) -> None:
+        self._connection = connection
+
+    async def __aenter__(self) -> FakeConnection:
+        """Enter the fake connection context."""
+        return self._connection
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool:
+        """Exit the fake connection context without suppressing errors."""
+        return False
+
+
+class FakeEngine:
+    """Minimal SQLAlchemy engine fake with async connect semantics."""
+
+    def __init__(self) -> None:
+        self._connection = FakeConnection()
+
+    def connect(self) -> FakeConnectionContext:
+        """Return an async connection context manager."""
+        return FakeConnectionContext(self._connection)
+
+
 @pytest.fixture
-def mock_engine() -> MagicMock:
-    # narrare: allow-direct-llm  reason="Mocking SQLAlchemy Engine — no domain contract"
-    engine = MagicMock()
-    conn = AsyncMock()
-    conn.execute = AsyncMock(return_value=None)
-    ctx_manager = AsyncMock()
-    ctx_manager.__aenter__ = AsyncMock(return_value=conn)
-    ctx_manager.__aexit__ = AsyncMock(return_value=False)
-    engine.connect = MagicMock(  # narrare: allow  reason="Mocking SQLAlchemy Engine connect method"
-        return_value=ctx_manager
-    )
-    return engine
+def fake_engine() -> FakeEngine:
+    return FakeEngine()
 
 
 @pytest.fixture
@@ -40,15 +69,22 @@ class TestHealth:
     async def test_returns_200_with_ok(self, client: AsyncClient) -> None:
         response = await client.get("/health")
         assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
+        body = response.json()
+        assert body["status"] == "ok"
+
+        observability = body["observability"]
+        assert set(observability) == {"available", "failure_reason", "warning_emitted"}
+        assert isinstance(observability["available"], bool)
+        assert isinstance(observability["failure_reason"], str)
+        assert isinstance(observability["warning_emitted"], bool)
 
 
 class TestReady:
     @patch("narrare.metrics.router.get_engine")
     async def test_returns_200_when_db_healthy(
-        self, mock_get_engine: AsyncMock, client: AsyncClient, mock_engine: MagicMock
+        self, mock_get_engine: AsyncMock, client: AsyncClient, fake_engine: FakeEngine
     ) -> None:
-        mock_get_engine.return_value = mock_engine
+        mock_get_engine.return_value = fake_engine
         response = await client.get("/ready")
         assert response.status_code == 200
         assert response.json() == {"status": "ready"}

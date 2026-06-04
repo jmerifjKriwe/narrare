@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -27,6 +27,22 @@ Tu es un analyste de lisibilité pour un outil d'écriture créative. À partir 
 <user_provided_text>
 {{chapter_text}}
 </user_provided_text>
+
+### Contexte de la base de connaissances
+
+Utilise ces références KB pour t'assurer que les réécritures suggérées restent cohérentes avec le worldbuilding établi :
+
+Personnages :
+{{kb_characters}}
+
+Factions :
+{{kb_factions}}
+
+Lieux :
+{{kb_locations}}
+
+Relations :
+{{kb_relationships}}
 
 ### Format de sortie
 

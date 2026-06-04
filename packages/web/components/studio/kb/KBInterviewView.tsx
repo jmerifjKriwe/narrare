@@ -7,10 +7,14 @@
  * AI extracts relevant field values from the answers.
  */
 
-import { ArrowLeft, Loader2, MessageSquare, Send, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { KBCreationSession, KBInterviewResult } from "@/lib/api/kb-sessions";
+import { InterviewCompleteState } from "./InterviewCompleteState";
+import { InterviewErrorState } from "./InterviewErrorState";
+import { InterviewHeader } from "./InterviewHeader";
+import { InterviewQuestionCard } from "./InterviewQuestionCard";
 
 type InterviewState = "idle" | "loading" | "question" | "answering" | "complete" | "error";
 
@@ -135,25 +139,7 @@ export function KBInterviewView({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-purple-500" />
-            <h3 className="font-medium">{t("kb.interviewMode") || "Interview Mode"}</h3>
-          </div>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          {t("kb.interviewProgress", { current: questionCount }) || `Question ${questionCount}`}
-        </div>
-      </div>
+      <InterviewHeader questionCount={questionCount} onBack={onBack} />
 
       {/* Progress bar */}
       <div className="h-1 bg-muted">
@@ -176,121 +162,26 @@ export function KBInterviewView({
 
           {/* Error state */}
           {state === "error" && error && (
-            <div className="p-4 border border-red-200 dark:border-red-900/50 rounded-lg bg-red-50 dark:bg-red-950/20">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {error.message || "Failed to get question"}
-                </p>
-                <button
-                  type="button"
-                  onClick={requestNextQuestion}
-                  className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700"
-                >
-                  {t("kb.retry") || "Retry"}
-                </button>
-              </div>
-            </div>
+            <InterviewErrorState error={error} onRetry={requestNextQuestion} />
           )}
 
           {/* Question state */}
           {(state === "question" || state === "answering") && currentQuestion && (
-            <div className="space-y-6">
-              {/* AI Question */}
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div className="flex-1 p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg rounded-tl-none">
-                  <p className="text-sm whitespace-pre-wrap">{currentQuestion.question}</p>
-                  {currentQuestion.target_field && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {t("kb.aboutField") || "About:"}{" "}
-                      {session.fields.find((f) => f.field_key === currentQuestion.target_field)
-                        ?.label || currentQuestion.target_field}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Answer input */}
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                    {t("kb.youLabel") || "You"}
-                  </span>
-                </div>
-                <div className="flex-1 space-y-3">
-                  <textarea
-                    ref={answerRef}
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    placeholder={t("kb.yourAnswer") || "Type your answer..."}
-                    className="w-full px-4 py-3 bg-input-background border border-border rounded-lg text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    disabled={state === "answering"}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                        void handleSubmitAnswer();
-                      }
-                    }}
-                  />
-                  <div className="flex justify-between items-center">
-                    <button
-                      type="button"
-                      onClick={onBack}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="w-3 h-3" />
-                      {t("kb.exitInterview")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmitAnswer}
-                      disabled={!answer.trim() || state === "answering"}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 text-sm"
-                    >
-                      {state === "answering" ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                      {t("kb.submitAnswer")}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <InterviewQuestionCard
+              question={currentQuestion}
+              session={session}
+              answer={answer}
+              state={state}
+              answerRef={answerRef}
+              onAnswerChange={setAnswer}
+              onSubmitAnswer={handleSubmitAnswer}
+              onBack={onBack}
+            />
           )}
 
           {/* Complete state */}
           {state === "complete" && (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">
-                {t("kb.interviewComplete") || "Interview Complete"}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                {t("kb.interviewCompleteDesc") ||
-                  "Great! We've gathered enough information. You can review and refine your answers in the field list."}
-              </p>
-              <div className="flex justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={requestNextQuestion}
-                  className="px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors text-sm"
-                >
-                  {t("kb.askMoreQuestions") || "Ask More Questions"}
-                </button>
-                <button
-                  type="button"
-                  onClick={onBack}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm"
-                >
-                  {t("kb.backToOverview") || "Back to Overview"}
-                </button>
-              </div>
-            </div>
+            <InterviewCompleteState onRequestMoreQuestions={requestNextQuestion} onBack={onBack} />
           )}
         </div>
       </div>

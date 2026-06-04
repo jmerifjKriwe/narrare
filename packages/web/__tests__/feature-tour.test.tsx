@@ -13,7 +13,7 @@
  */
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import { FeatureTour, TOUR_STORAGE_KEY, type TourStep } from "@/components/ui/feature-tour";
 
 // ---------------------------------------------------------------------------

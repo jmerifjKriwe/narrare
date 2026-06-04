@@ -10,76 +10,38 @@
 import { AlertTriangle, BookOpen, Loader2, RefreshCw, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import type { WikiSummaryResponse } from "@/lib/api/wiki";
 import {
   useWikiIndex,
   useWikiMarkStale,
   useWikiRefresh,
   useWikiSummaries,
 } from "@/lib/hooks/useWiki";
+import { useWikiRelativeTime } from "./useWikiRelativeTime";
+import { WikiEntitySummaryCard } from "./WikiEntitySummaryCard";
+import { WikiIndexStats } from "./WikiIndexStats";
 
-// --- Status indicator ---
+// --- Panel Header ---
 
-interface StatusDotProps {
-  status: "fresh" | "stale" | "pending";
+interface PanelHeaderProps {
+  onClose: () => void;
+  title: string;
+  closeLabel: string;
 }
 
-function StatusDot({ status }: StatusDotProps) {
-  const colorMap = {
-    fresh: "bg-green-500",
-    stale: "bg-yellow-500",
-    pending: "bg-gray-400",
-  };
-  return <span className={`inline-block w-2.5 h-2.5 rounded-full ${colorMap[status]}`} />;
-}
-
-// --- Entity Summary Card ---
-
-interface EntitySummaryCardProps {
-  summary: WikiSummaryResponse;
-  refreshMutation: ReturnType<typeof useWikiRefresh>;
-}
-
-function EntitySummaryCard({ summary, refreshMutation }: EntitySummaryCardProps) {
-  const t = useTranslations("studio");
-  const isRefreshing = refreshMutation.isPending;
-  const entityName = summary.entity_id;
-  const label = summary.narrative_summary
-    ? summary.narrative_summary.length > 120
-      ? `${summary.narrative_summary.slice(0, 120)}…`
-      : summary.narrative_summary
-    : t("kb.wiki.notGenerated");
-
-  const buttonText = summary.status === "pending" ? t("kb.wiki.generate") : t("kb.wiki.refresh");
-
+function PanelHeader({ onClose, title, closeLabel }: PanelHeaderProps) {
   return (
-    <div className="flex items-start gap-3 py-3 px-3 rounded-md hover:bg-muted/30 transition-colors">
-      <div className="mt-1.5 shrink-0">
-        <StatusDot status={summary.status} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{entityName}</p>
-        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{label}</p>
-        {summary.role_in_story && (
-          <span className="inline-block mt-1 px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">
-            {summary.role_in_story}
-          </span>
-        )}
+    <div className="p-4 border-b border-border flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <BookOpen className="w-4 h-4 text-primary" />
+        <h2 className="text-sm font-medium">{title}</h2>
       </div>
       <button
         type="button"
-        onClick={() => refreshMutation.mutate({ entityId: summary.entity_id })}
-        disabled={isRefreshing}
-        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 text-xs border border-border rounded-md
-          hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        aria-label={buttonText}
+        onClick={onClose}
+        className="p-1 rounded hover:bg-muted"
+        aria-label={closeLabel}
       >
-        {isRefreshing ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <RefreshCw className="w-3.5 h-3.5" />
-        )}
-        <span className="hidden sm:inline">{buttonText}</span>
+        <X className="w-4 h-4" />
       </button>
     </div>
   );
@@ -116,40 +78,18 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
     return [...items].sort((a, b) => (priority[a.status] ?? 3) - (priority[b.status] ?? 3));
   }, [summariesData]);
 
-  const relativeTime = useMemo(() => {
-    const dateStr = indexData?.last_generated_at;
-    if (!dateStr) return null;
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSeconds = Math.floor(diffMs / 1000);
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffSeconds < 60) return t("kb.wiki.justNow");
-    if (diffMinutes < 60) return t("kb.wiki.minutesAgo", { count: diffMinutes });
-    if (diffHours < 24) return t("kb.wiki.hoursAgo", { count: diffHours });
-    return t("kb.wiki.daysAgo", { count: diffDays });
-  }, [indexData?.last_generated_at, t]);
+  const relativeTime = useWikiRelativeTime(indexData?.last_generated_at);
   const staleCount = indexData?.stale_count ?? 0;
-  const pendingCount = indexData?.pending_count ?? 0;
 
   // Loading state
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col h-full border-l border-border bg-card">
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-sm font-medium">{t("kb.wiki.overviewTitle")}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded hover:bg-muted"
-            aria-label={t("kb.wiki.close")}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <PanelHeader
+          onClose={onClose}
+          title={t("kb.wiki.overviewTitle")}
+          closeLabel={t("kb.wiki.close")}
+        />
         <div className="flex-1 flex items-center justify-center">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -164,17 +104,11 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
   if (isError) {
     return (
       <div className="flex-1 flex flex-col h-full border-l border-border bg-card">
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-sm font-medium">{t("kb.wiki.overviewTitle")}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded hover:bg-muted"
-            aria-label={t("kb.wiki.close")}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <PanelHeader
+          onClose={onClose}
+          title={t("kb.wiki.overviewTitle")}
+          closeLabel={t("kb.wiki.close")}
+        />
         <div className="flex-1 flex items-center justify-center p-6">
           <p className="text-sm text-destructive">{t("kb.wiki.loadError")}</p>
         </div>
@@ -184,51 +118,14 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
 
   return (
     <div className="flex-1 flex flex-col h-full border-l border-border bg-card">
-      {/* Header */}
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-primary" />
-          <h2 className="text-sm font-medium">{t("kb.wiki.overviewTitle")}</h2>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1 rounded hover:bg-muted"
-          aria-label={t("kb.wiki.close")}
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+      <PanelHeader
+        onClose={onClose}
+        title={t("kb.wiki.overviewTitle")}
+        closeLabel={t("kb.wiki.close")}
+      />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Index Stats */}
-        <div className="border border-border/50 rounded-lg p-4 space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            {t("kb.wiki.indexStats")}
-          </h3>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            <span className="flex items-center gap-1.5">
-              <StatusDot status="fresh" />
-              {t("kb.wiki.fresh")}: {indexData?.fresh_count ?? 0}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <StatusDot status="stale" />
-              {t("kb.wiki.stale")}: {staleCount}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <StatusDot status="pending" />
-              {t("kb.wiki.pending")}: {pendingCount}
-            </span>
-            <span className="text-muted-foreground">
-              {t("kb.wiki.total")}: {indexData?.total_summaries ?? 0}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {relativeTime
-              ? `${t("kb.wiki.lastGenerated")}: ${relativeTime}`
-              : t("kb.wiki.neverGenerated")}
-          </p>
-        </div>
+        <WikiIndexStats indexData={indexData} relativeTime={relativeTime} />
 
         {/* Actions */}
         <div className="flex gap-2">
@@ -284,7 +181,7 @@ export function WikiOverviewPanel({ novelId, onClose }: WikiOverviewPanelProps) 
             </p>
           ) : (
             sortedSummaries.map((summary) => (
-              <EntitySummaryCard
+              <WikiEntitySummaryCard
                 key={summary.entity_id}
                 summary={summary}
                 refreshMutation={refreshMutation}

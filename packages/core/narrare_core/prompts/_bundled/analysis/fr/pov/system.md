@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: fr
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -61,6 +61,22 @@ Analyse le texte fourni :
 
 L'auteur a l'intention d'écrire en : {{pov_type_hint}}
 {% endif %}
+
+### Contexte de la base de connaissances
+
+Utilise ces références KB pour valider la cohérence POV par rapport aux informations établies sur les personnages :
+
+Personnages :
+{{kb_characters}}
+
+Factions :
+{{kb_factions}}
+
+Lieux :
+{{kb_locations}}
+
+Relations :
+{{kb_relationships}}
 
 ## Format de sortie
 

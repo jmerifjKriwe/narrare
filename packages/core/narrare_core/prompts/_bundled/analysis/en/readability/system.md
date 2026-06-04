@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -27,6 +27,22 @@ You are a readability analyst for a creative writing tool. Given a passage of te
 <user_provided_text>
 {{chapter_text}}
 </user_provided_text>
+
+### Knowledge Base Context
+
+Use these KB references to ensure suggested rewrites remain consistent with established worldbuilding:
+
+Characters:
+{{kb_characters}}
+
+Factions:
+{{kb_factions}}
+
+Locations:
+{{kb_locations}}
+
+Relationships:
+{{kb_relationships}}
 
 ### Output Format
 

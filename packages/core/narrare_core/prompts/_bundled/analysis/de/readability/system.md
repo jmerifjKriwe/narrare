@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: de
-prompt_version: "1.0.0"
+prompt_version: "1.1.0"
 ---
 
 ## System Prompt
@@ -27,6 +27,22 @@ Du bist ein Lesbarkeits-Analyst für ein kreatives Schreibtool. Identifiziere be
 <user_provided_text>
 {{chapter_text}}
 </user_provided_text>
+
+### Wissensbasis-Kontext
+
+Nutze diese KB-Referenzen, um sicherzustellen, dass vorgeschlagene Umformulierungen mit dem etablierten Worldbuilding konsistent bleiben:
+
+Figuren:
+{{kb_characters}}
+
+Fraktionen:
+{{kb_factions}}
+
+Schauplätze:
+{{kb_locations}}
+
+Beziehungen:
+{{kb_relationships}}
 
 ### Ausgabeformat
 

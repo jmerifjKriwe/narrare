@@ -872,9 +872,6 @@ See ADR-028 for the SSOT decision and checker enforcement specification.
 | 5 | RULE-01 | `packages/core/narrare_core/wiki/agent.py` | WikiGenerationAgent uses RunContext for pydantic_ai internals | architecture-review | 2026-06-03 |
 | 6 | RULE-01 | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
 | 7 | RULE-01b | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
-| 8 | RULE-TEST-01 | `tests/unit/api/memory/test_analysis_service.py` | Mocking for service unit tests — no domain contract | architecture-review | 2026-06-03 |
-| 9 | RULE-TEST-01 | `tests/unit/api/memory/test_feedback_service.py` | Mocking for service unit tests — no domain contract | architecture-review | 2026-06-03 |
-| 10 | RULE-TEST-01 | `tests/unit/api/memory/test_repository.py` | Mocking for repository unit tests — no domain contract | architecture-review | 2026-06-03 |
 | 11 | RULE-TEST-01 | `tests/unit/api/metrics/test_metrics_router.py` | Mocking SQLAlchemy Engine — no domain contract | architecture-review | 2026-06-03 |
 | 12 | RULE-01b | `packages/core/narrare_core/llm/gateway.py` | Gateway._make_agent() is the approved boundary crossing | ADR-015 | 2026-05-20 |
 | 13 | RULE-01 | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct import of pydantic_ai Agent | ADR-015 | 2026-05-20 |
@@ -917,11 +914,12 @@ The wiki module agents wrap internal `PydanticAgent` instances and use
 boundary crossings per ADR-015 (agent framework integration). The planning
 remap module receives an injected agent rather than instantiating one.
 
-#### Exceptions #8–11: Test mocking (RULE-TEST-01)
+#### Exception #11: Metrics router test mocking (RULE-TEST-01)
 
-Unit tests for memory and metrics modules mock infrastructure dependencies
-(SQLAlchemy Engine, service interfaces) where no domain contract is needed.
-These are standard test isolation patterns, not architectural violations.
+The metrics router unit test mocks SQLAlchemy's Engine object for the `/ready`
+health-check endpoint. SQLAlchemy Engine is a third-party library type with no
+domain contract — creating a Fake class would add maintenance burden for no
+architectural benefit.
 
 #### Exceptions #12–14: Gateway and setup (ADR-015)
 

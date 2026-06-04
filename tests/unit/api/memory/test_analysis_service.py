@@ -2,12 +2,39 @@
 
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
+from pydantic_ai.models.test import (
+    TestModel,
+)  # narrare: allow-agent reason="unit test registry returns pydantic-ai TestModel"
+
 from narrare.memory.schemas import AnalyzeResponse
+from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.prompts.composer import ComposedPrompt
+
+if TYPE_CHECKING:
+    from pydantic_ai.usage import UsageLimits
+
+    from narrare_core.llm import ResolvedModelConfig
+
+
+@dataclass
+class FakeFeedbackEvent:
+    """Minimal fake feedback event for analysis service tests.
+
+    Provides the same attributes accessed by
+    ``PreferenceAnalysisService._format_events_for_agent``.
+    """
+
+    action: str = "accept"
+    intent: str = "write"
+    suggestion_text: str = "Good text."
+    modification: str | None = None
+    rating: int | None = None
+    context: dict[str, Any] = field(default_factory=dict)
 
 
 class FakeFeedbackRepo:
@@ -50,6 +77,24 @@ class FakeProfileRepo:
         return self._profiles.get(key)
 
 
+class FakeModelRegistry(ModelRegistry):
+    """ModelRegistry test double that returns a valid pydantic-ai test model."""
+
+    def __init__(self, model: TestModel | None = None) -> None:
+        self.model = model or TestModel()
+
+    async def get_model(
+        self,
+        config: ResolvedModelConfig,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        usage_limits: UsageLimits | None = None,
+    ) -> TestModel:
+        """Return the configured pydantic-ai TestModel without provider lookup."""
+        return self.model
+
+
 def _make_composer() -> AsyncMock:
     """Create a mock PromptComposer that returns a ComposedPrompt."""
     composer = AsyncMock()
@@ -66,7 +111,7 @@ class TestPreferenceAnalysisService:
     def _make_service(self, event_count: int = 10) -> tuple[Any, FakeFeedbackRepo, FakeProfileRepo]:
         from narrare.memory.analysis_service import PreferenceAnalysisService
 
-        registry = MagicMock()  # narrare: allow-mock — Mocking ModelRegistry for service unit test
+        registry = FakeModelRegistry()
         feedback_repo = FakeFeedbackRepo(event_count=event_count)
         profile_repo = FakeProfileRepo()
         composer = _make_composer()
@@ -91,12 +136,7 @@ class TestPreferenceAnalysisService:
         service, feedback_repo, _ = self._make_service(event_count=10)
         # Seed some fake events
         for _ in range(10):
-            event = MagicMock()  # narrare: allow-mock — Fake feedback event for service test
-            event.action = "accept"
-            event.intent = "write"
-            event.suggestion_text = "Good text."
-            event.modification = None
-            event.rating = None
+            event = FakeFeedbackEvent()
             feedback_repo._events.append(event)
 
         user_id = uuid4()
@@ -115,12 +155,7 @@ class TestPreferenceAnalysisService:
     async def test_get_profile_returns_after_analyze(self) -> None:
         service, feedback_repo, _profile_repo = self._make_service(event_count=10)
         for _ in range(10):
-            event = MagicMock()  # narrare: allow-mock — Fake feedback event for service test
-            event.action = "accept"
-            event.intent = "write"
-            event.suggestion_text = "Text."
-            event.modification = None
-            event.rating = None
+            event = FakeFeedbackEvent(suggestion_text="Text.")
             feedback_repo._events.append(event)
 
         user_id = uuid4()
@@ -134,25 +169,17 @@ class TestPreferenceAnalysisService:
     def test_format_events_includes_rating(self) -> None:
         from narrare.memory.analysis_service import PreferenceAnalysisService
 
-        event = MagicMock()  # narrare: allow-mock — Fake feedback event for format test
-        event.action = "accept"
-        event.intent = "write"
-        event.suggestion_text = "Short."
-        event.modification = None
-        event.rating = 4
+        event = FakeFeedbackEvent(rating=4)
 
-        text = PreferenceAnalysisService._format_events_for_agent([event])
+        text = PreferenceAnalysisService._format_events_for_agent([event])  # type: ignore[arg-type]
         assert "rating: 4/5" in text
 
     def test_format_events_includes_modification(self) -> None:
         from narrare.memory.analysis_service import PreferenceAnalysisService
 
-        event = MagicMock()  # narrare: allow-mock — Fake feedback event for format test
-        event.action = "modify"
-        event.intent = "edit"
-        event.suggestion_text = "Original."
-        event.modification = "Changed."
-        event.rating = None
+        event = FakeFeedbackEvent(
+            action="modify", intent="edit", suggestion_text="Original.", modification="Changed."
+        )
 
-        text = PreferenceAnalysisService._format_events_for_agent([event])
+        text = PreferenceAnalysisService._format_events_for_agent([event])  # type: ignore[arg-type]
         assert "modified to" in text

@@ -3,10 +3,48 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 from narrare.memory.models import FeedbackEventModel, PreferenceProfileModel
+
+
+class FakeScalars:
+    """Fake SQLAlchemy Scalars result wrapper."""
+
+    def __init__(self, items: list[Any] | None = None) -> None:
+        self._items = items if items is not None else []
+
+    def all(self) -> list[Any]:
+        return self._items
+
+
+class FakeResult:
+    """Fake SQLAlchemy Result returned by FakeAsyncSession.execute().
+
+    Provides the same interface as SQLAlchemy's ``Result`` object
+    (``scalar_one_or_none``, ``scalars``, ``scalar``) without requiring
+    a real database connection.
+    """
+
+    def __init__(
+        self,
+        *,
+        scalar_one: Any | None = None,
+        scalars: list[Any] | None = None,
+        scalar_value: Any = 0,
+    ) -> None:
+        self._scalar_one = scalar_one
+        self._scalars = FakeScalars(scalars)
+        self._scalar_value = scalar_value
+
+    def scalar_one_or_none(self) -> Any | None:
+        return self._scalar_one
+
+    def scalars(self) -> FakeScalars:
+        return self._scalars
+
+    def scalar(self) -> Any:
+        return self._scalar_value
 
 
 class FakeAsyncSession:
@@ -25,12 +63,8 @@ class FakeAsyncSession:
     async def refresh(self, entity: Any) -> None:
         pass
 
-    async def execute(self, stmt: Any) -> MagicMock:  # narrare: allow-mock — Fake async session
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_result.scalars.return_value.all.return_value = []
-        mock_result.scalar.return_value = 0
-        return mock_result
+    async def execute(self, stmt: Any) -> FakeResult:
+        return FakeResult()
 
     async def delete(self, entity: Any) -> None:
         if entity in self._data:

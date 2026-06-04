@@ -14,38 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { chatApi } from "@/lib/api/client";
 import type { ChatDoneEvent, ChatMetaEvent } from "@/types";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export interface ChatMessage {
-  readonly id: string;
-  readonly role: "user" | "assistant" | "system";
-  readonly content: string;
-}
-
-interface UseChatReturn {
-  messages: ChatMessage[];
-  isStreaming: boolean;
-  conversationId: string | null;
-  error: string | null;
-  sendMessage: (text: string) => Promise<void>;
-  clearConversation: () => void;
-  cancelStream: () => void;
-  chatEndRef: React.RefObject<HTMLDivElement | null>;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-let messageCounter = 0;
-
-function createMessageId(): string {
-  messageCounter += 1;
-  return `chat-msg-${messageCounter}`;
-}
+import { type ChatMessage, createMessageId, type UseChatReturn } from "@/types/chat";
 
 // ---------------------------------------------------------------------------
 // Hook

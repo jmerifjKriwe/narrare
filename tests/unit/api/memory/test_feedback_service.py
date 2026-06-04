@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+from narrare.memory.repository import FeedbackRepository
 from narrare.memory.schemas import FeedbackRequest
 
 
@@ -37,7 +38,7 @@ class TestMemoryFeedbackService:
 
         core = FakeCoreFeedback()
         publisher = FakeEventPublisher() if with_publisher else None
-        repo = MagicMock()  # narrare: allow-mock — Mocking feedback repository for service test
+        repo = MagicMock(spec=FeedbackRepository)
         service = MemoryFeedbackService(
             repository=repo,
             core_feedback=core,  # type: ignore[arg-type]

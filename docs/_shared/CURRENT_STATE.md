@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-03 (Session 4)
-Session: ADR-029 VM-first setup cleanup implemented and documented. VM-first remains primary; DevContainer is optional and portable. CI is the single blocking setup/architecture gate owner. Compose validation passed for VM-first, DevContainer overlay, and release topology. Option B blocker cleanup resolved and revalidated the previously unrelated frontend RULE-04 ratchet and architecture exception baseline blockers; targeted validation now passes.
+Date: 2026-06-03 (Session 5)
+Session: Review-01 remediation across 3 phases. Phase 1 (Streaming + Prompts): removed deprecated timeline REST wrapper and unused KB sessions SSE endpoint; fixed streaming-compliance checker for nested routers; added streaming pre-commit hook; added required prompt variables to analysis/pov, analysis/readability, planning/temporal_consistency. Phase 2 (Structure): removed RULE-02 f-string exception from KB consistency analyzer (prompt moved to bundled core prompts); modularized EditorView.tsx from 764→146 lines into 14 focused modules; updated exception registers. Phase 3 (Privacy + Observability): changed KB interview resume from localStorage to sessionStorage; added module-level OTel degradation visibility with one-shot warning and health-endpoint status. Streaming compliance now 0 violations. Frontend RULE-04 violations: 38→37. Architecture exceptions: 14→13 (RULE-02 exception #3 removed).
 
 ---
 
@@ -33,6 +33,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Frontend tests: 1,683 across 186 test files (Vitest + MSW)
 - Total tests: ~5,900+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
+- Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
 - ADRs: 29 (ADR-001 through ADR-029; ADR-029 VM-first setup contract implemented)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 11 (Q-001 through Q-011)
@@ -47,7 +48,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 20 domain modules: analysis, auth, chapters, consistency, embeddings, events, generation, kb, memory, metrics, novels, planning, prompts, settings, setup, tasks, templates, volumes, writing (+ _app infrastructure)
 
-38 router files covering all CRUD + SSE + WebSocket endpoints
+37 router files covering all CRUD + SSE + WebSocket endpoints (KB sessions SSE removed — unused)
 
 Alembic migrations 0001 through ~0023
 
@@ -76,8 +77,10 @@ Alembic migrations 0001 through ~0023
 - `scripts/check_architecture.py` — CI-enforced constraint validation
 - `scripts/check_system_health.py` — Aggregierte System-Health-Metrik (HEALTHY/DEGRADED/CRITICAL)
 - `scripts/health_types.py` + `health_format.py` — Health-Score-Typen und Formatierer
-- `apps/api/narrare/_app/observability.py` — Zentraler Trace-Context-Helper
+- `apps/api/narrare/_app/observability.py` — Central Trace-Context-Helper + module-level OTel degradation visibility (`get_observability_status()`, one-shot warning)
 - `docs/development/observability-guide.md` — End-to-End Observability-Trace-Kette dokumentiert
+- `scripts/architecture/streaming_compliance.py` — Streaming compliance checker with nested router prefix resolution (`build_effective_router_prefixes()`)
+- `scripts/check_streaming_compliance.py` — Pre-commit hook for streaming compliance
 - `.github/workflows/` — CI is the blocking architecture/setup gate SSOT; release workflow publishes GHCR image + SBOM; promptfoo evals run nightly
 - Docker Compose: PostgreSQL (pgvector) + Redis + pgBouncer (prod profile)
 - OpenTelemetry + Langfuse for LLM observability
@@ -87,9 +90,10 @@ Alembic migrations 0001 through ~0023
 
 - **Status:** Freeze fully lifted after Architecture freeze-lift review (2026-06-03).
 - **Resolved blockers:** AUFG-02-01 backend unit failures `7 → 0`; AUFG-02-03 frontend tests stable under 120s (`112.43s`, `115.04s`, `111.95s`); AUFG-03-01 prompt warnings `79 → 35`; AUFG-03-02 KB adoption `0.78 → 0.90 PASS`.
-- **Remaining governed debt:** frontend RULE-04 legacy file-size debt is ratcheted at 38 violations (`53 → 38`, 15 resolved, 0 new). This is not a freeze blocker.
+- **Remaining governed debt:** frontend RULE-04 legacy file-size debt is ratcheted at 37 violations (`53 → 38 → 37`, 16 resolved, 0 new). This is not a freeze blocker.
 - **Still blocked by governance:** new prompt/adoption warning growth, new architecture exceptions without ADR/user approval, new frontend file-size violations, REST-only frontend paths for SSE-capable AI backends, and workaround/quick-fix implementations.
-- **Health note:** System Health `0.73 DEGRADED` reflects the metric floor while baseline debt remains. DEGRADED is warning-only for freeze status; CRITICAL blocks.
+- **Streaming compliance:** 0 violations (baseline was 2: unused KB sessions SSE + timeline analysis without frontend consumer; both resolved).
+- **Health note:** System Health reflects baseline debt; streaming compliance is now 0 violations and RULE-02 exception count reduced from 1 to 0. DEGRADED is warning-only for freeze status; CRITICAL blocks.
 
 ---
 
@@ -132,6 +136,9 @@ Completed in Phase 6 so far:
 33. ✅ WIKI-001 frontend: WikiOverviewPanel (entity summaries + status overview), WikiChapterSummaryPanel (chapter wiki in editor), KBCategorySidebar wiki tab, WorldBuilding wiki mode, 22 i18n keys (en/de/fr), 16 Vitest tests
 34. ✅ PLAN-004 vollständig und komplett — alle Phase 1–3 DoD-Lücken geschlossen: DurationImpossibilityCheck (3 Checks: same-character-location, death-before-birth, impossibly-fast-travel), POST /{novel_id}/extract SSE streaming, POST /{novel_id}/extract/confirm endpoint, LLM consistency via bundled prompt (RULE-02 fix), Frontend ExtractionReview mit SSE+Confirm (kein createEvent mehr), timeline_contracts.py (RULE-04), duration_check.py + age_check.py extrahiert. 44 Files, +3k Zeilen, +4 RULE-04 Modularisierungen.
 35. ✅ ADR-029: VM-first setup cleanup — portable optional DevContainer overlay, explicit host/container service addressing, pinned pnpm, non-mutating frontend check path, CI as single blocking setup/architecture gate owner, release image alignment, `.dockerignore`, and derived-doc SSOT cleanup.
+36. ✅ Review-01 Phase 1 (Streaming + Prompts): deprecated timeline REST wrapper removed; unused KB sessions SSE endpoint deleted; streaming-compliance checker fixed for nested FastAPI routers with `build_effective_router_prefixes()`; streaming pre-commit hook added; required prompt variables added to analysis/pov, analysis/readability, planning/temporal_consistency.
+37. ✅ Review-01 Phase 2 (Structure): RULE-02 f-string exception removed from KB consistency analyzer (prompt → bundled `core/prompts/_bundled/kb/*/consistency/system.md`); EditorView.tsx modularized from 764→146 lines into 14 focused modules (`editor-view/` directory); exception registers updated in CONSTRAINTS.md and pyproject.toml (14→13).
+38. ✅ Review-01 Phase 3 (Privacy + Observability): KB interview resume changed from localStorage→sessionStorage (privacy); module-level OTel degradation visibility with one-shot warning + `get_observability_status()`; health endpoint includes OTel status (`/health` returns `observability` field).
 
 ---
 
@@ -142,9 +149,10 @@ Completed in Phase 6 so far:
 3. ✅ **Prompt-Warnungen reduziert (AUFG-03-01)** — 79 → 35; no-growth ratchet aktiv.
 4. ✅ **KB-Adoption über 0.85 (AUFG-03-02)** — 0.78 → 0.90 PASS.
 5. ✅ **Frontend-Tests beschleunigt (AUFG-02-03)** — Vitest stabil <120s.
-6. ⏳ **Frontend-Hubs weiter modularisieren (AUFG-01-02)** — 38 ratcheted legacy RULE-04 violations remain; no new violations allowed.
-7. ⏳ **E2E test patterns**
-8. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
+6. ✅ **Streaming Compliance (Review-01 Phase 1)** — 2 violations → 0. KB sessions SSE removed; timeline analysis fixed.
+7. ⏳ **Frontend-Hubs weiter modularisieren (AUFG-01-02)** — 37 ratcheted legacy RULE-04 violations remain (was 38; EditorView modularized); no new violations allowed.
+8. ⏳ **E2E test patterns**
+9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
 
 ---
 
@@ -210,9 +218,9 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Python 3.14 missing type stubs | Low | Documented in pyproject.toml |
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
-| System Health Score 0.73 (DEGRADED) | Medium | Non-blocking metric-floor/baseline artifact. CI remains warning-only for DEGRADED and fails on CRITICAL. Baseline debt must keep shrinking for ≥0.85. |
-| 38 frontend RULE-04 legacy violations | Medium | Ratcheted baseline: no new violations; reductions only unless ADR/user-approved exception. |
-| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: exception baseline is current at 17/17. |
+| System Health Score (DEGRADED) | Medium | Non-blocking metric-floor/baseline artifact. CI remains warning-only for DEGRADED and fails on CRITICAL. Streaming compliance now 0 violations; baseline debt must keep shrinking for ≥0.85. |
+| 37 frontend RULE-04 legacy violations | Medium | Ratcheted baseline: no new violations; reductions only unless ADR/user-approved exception. EditorView modularized (764→146 lines). |
+| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: exception baseline is current at 13/13 (was 14/14; RULE-02 exception #3 removed). |
 
 ---
 

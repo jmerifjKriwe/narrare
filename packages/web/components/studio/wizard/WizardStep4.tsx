@@ -1,11 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
-import { setupApi } from "@/lib/api/client";
 import { PROVIDERS } from "@/lib/providers";
 import { useWizardStore } from "@/lib/stores/wizardStore";
-import type { AIProvider } from "@/types";
+import { useProviderSetup } from "./useProviderSetup";
 
 interface WizardStep4Props {
   onNext: () => void;
@@ -17,67 +15,36 @@ export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
   const tCommon = useTranslations("common");
   const { updateStep4, state } = useWizardStore();
 
-  const [provider, setProvider] = useState<AIProvider>(state.provider);
-  const [apiKey, setApiKey] = useState(state.api_key);
-  const [ollamaUrl, setOllamaUrl] = useState(state.ollama_url);
-  const [zaiEndpoint, setZaiEndpoint] = useState<string>(state.zai_endpoint || "general");
-  const [model, setModel] = useState(state.model);
-  const [models, setModels] = useState<{ value: string; label: string }[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(false);
-  const [validating, setValidating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load models when provider or key changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: loadModels reads latest closure values; ollamaUrl needed to trigger reload for Ollama
-  useEffect(() => {
-    const key = apiKey.trim();
-    if (provider === "ollama" || key.length > 8) {
-      loadModels();
-    }
-  }, [provider, apiKey, ollamaUrl]);
-
-  const loadModels = async () => {
-    setModelsLoading(true);
-    setModels([]);
-    setModel("");
-    try {
-      const result = await setupApi.getProviderModels(provider, apiKey, ollamaUrl);
-      const opts = result.models.map((m) => ({ value: m.id, label: m.name }));
-      setModels(opts);
-      if (opts.length > 0 && !model) setModel(opts[0].value);
-    } catch {
-      // Fallback — still show empty list, user can type manually
-    } finally {
-      setModelsLoading(false);
-    }
-  };
-
-  const handleNext = async () => {
-    setError(null);
-    setValidating(true);
-    try {
-      await setupApi.validateStep4({
-        provider,
-        api_key: apiKey,
-        model,
-        ollama_url: ollamaUrl,
-        zai_endpoint: zaiEndpoint,
-      });
-      updateStep4({
-        provider,
-        api_key: apiKey,
-        model,
-        ollama_url: ollamaUrl,
-        zai_endpoint: zaiEndpoint,
-      });
+  const {
+    provider,
+    apiKey,
+    ollamaUrl,
+    zaiEndpoint,
+    model,
+    models,
+    modelsLoading,
+    validating,
+    error,
+    setProvider,
+    setApiKey,
+    setOllamaUrl,
+    setZaiEndpoint,
+    setModel,
+    handleValidate,
+  } = useProviderSetup(
+    {
+      provider: state.provider,
+      api_key: state.api_key,
+      ollama_url: state.ollama_url,
+      zai_endpoint: state.zai_endpoint ?? "general",
+      model: state.model,
+    },
+    (data) => {
+      updateStep4(data);
       onNext();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || t("wizard.step4.validationFailed"));
-    } finally {
-      setValidating(false);
-    }
-  };
+    },
+    t("wizard.step4.validationFailed"),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,7 +61,7 @@ export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
           <select
             id="provider"
             value={provider}
-            onChange={(e) => setProvider(e.target.value as AIProvider)}
+            onChange={(e) => setProvider(e.target.value as typeof provider)}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
           >
             {PROVIDERS.map((p) => (
@@ -210,7 +177,7 @@ export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
         </button>
         <button
           type="button"
-          onClick={handleNext}
+          onClick={handleValidate}
           disabled={validating || !model}
           data-testid="wizard-next"
           className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm disabled:opacity-50"

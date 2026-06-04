@@ -8,7 +8,6 @@
  */
 
 import { type UseQueryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import {
   type KBCreationSession,
   type KBSessionCompleteResponse,
@@ -47,7 +46,6 @@ export function useKBSession(
     placeholderData: (previousData) => previousData,
     // Poll every 2 seconds for active sessions to catch up with SSE side-effects
     refetchInterval: sessionId ? 2000 : false,
-    refetchIntervalInBackground: false,
     ...options,
   });
 }
