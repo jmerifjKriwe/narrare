@@ -273,13 +273,13 @@ class NarrareObservability(AbstractCapability[Any]):
 Integration:
 - `NarrareObservability` wird in `NarrareAgent.__init__()` immer injected
 - Ersetzt die Aufrufe in `LLMGateway._run_single()` / `_stream_single()`
-- Logfire kann parallel aktiviert werden: `logfire.instrument_pydantic_ai()`
+- ADR-031 supersedes the earlier Logfire option: Pydantic-AI runtime spans use OpenTelemetry, not Logfire.
 
 **Layer**: Core
 **DoD**:
 - `NarrareObservability` trackt alle LLM-Calls (Success/Failure/Tokens/Dauer)
 - Alte `record_success`/`record_failure` sind durch Hooks ersetzt
-- Logfire-Option funktioniert (global oder per-Agent)
+- Pydantic-AI OpenTelemetry instrumentation is active through the ADR-031 runtime bootstrap
 - Tests: Hooks feuern, Metriken landen im richtigen Backend
 
 #### ✅ 1.3 Token-Usage in UI anzeigen (Frontend Specialist)

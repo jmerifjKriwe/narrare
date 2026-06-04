@@ -1219,25 +1219,6 @@ wheels = [
 ]
 
 [[package]]
-name = "langfuse"
-version = "4.7.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "backoff" },
-    { name = "httpx" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-exporter-otlp-proto-http" },
-    { name = "opentelemetry-sdk" },
-    { name = "packaging" },
-    { name = "pydantic" },
-    { name = "wrapt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/2c/74/a6f1a99893ee6d1a69439ae7eb92f8fe8806103492dc26531d5942dbd3bf/langfuse-4.7.1.tar.gz", hash = "sha256:f9e262eceedb353b191c1da1f8452d1e8ebf52297ca20e160cda0206608e3a40", size = 320620, upload-time = "2026-05-29T18:06:22.435Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/9a/bd3368f46b6c72ee2068b80536826b02ae86df53eff1c79941344503098f/langfuse-4.7.1-py3-none-any.whl", hash = "sha256:a4e59c81ad5e5b16a65d3849f4923ebc3ad6e67ec803ada83d50c0cb66149490", size = 562571, upload-time = "2026-05-29T18:06:20.517Z" },
-]
-
-[[package]]
 name = "license-expression"
 version = "30.4.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1549,7 +1530,6 @@ source = { editable = "packages/core" }
 dependencies = [
     { name = "aiofiles" },
     { name = "httpx" },
-    { name = "langfuse" },
     { name = "mem0ai" },
     { name = "narrare-i18n" },
     { name = "prometheus-client" },
@@ -1574,7 +1554,6 @@ nlp = [
 requires-dist = [
     { name = "aiofiles", specifier = "==25.1.0" },
     { name = "httpx", specifier = "==0.28.1" },
-    { name = "langfuse", specifier = ">=3.0.0" },
     { name = "mem0ai", specifier = ">=1.0" },
     { name = "narrare-i18n", editable = "packages/i18n" },
     { name = "prometheus-client", specifier = ">=0.20.0" },

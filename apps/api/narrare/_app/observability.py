@@ -25,6 +25,33 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+
+class _NoOpSpan:
+    """Minimal span object used when OpenTelemetry is unavailable."""
+
+    def __enter__(self) -> _NoOpSpan:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        return None
+
+    def set_attribute(self, _key: str, _value: object) -> None:
+        """Ignore attributes in degraded mode."""
+        return None
+
+
+class _NoOpTracer:
+    """Tracer fallback preserving ``start_as_current_span`` call sites."""
+
+    def start_as_current_span(self, _name: str, *args: Any, **kwargs: Any) -> _NoOpSpan:
+        """Return a no-op context manager span."""
+        return _NoOpSpan()
+
+    def start_span(self, _name: str, *args: Any, **kwargs: Any) -> _NoOpSpan:
+        """Return a no-op span."""
+        return _NoOpSpan()
+
+
 # ---------------------------------------------------------------------------
 # Module-level state tracking
 # ---------------------------------------------------------------------------
@@ -91,6 +118,28 @@ def get_observability_status() -> dict[str, Any]:
             "failure_reason": _failure_reason,
             "warning_emitted": _warning_emitted,
         }
+
+
+def get_tracer(name: str) -> Any:
+    """Return an OpenTelemetry tracer or a no-op tracer when unavailable.
+
+    This centralizes tracer lookup so callers do not need their own import or
+    degradation logic.
+    """
+    _probe_once()
+    with _state_lock:
+        if _otel_available is False:
+            return _NoOpTracer()
+
+    try:
+        from opentelemetry import trace
+
+        return trace.get_tracer(name)
+    except ImportError:
+        _mark_unavailable("ImportError on tracer lookup")
+    except Exception:
+        _mark_unavailable("unexpected error during tracer lookup")
+    return _NoOpTracer()
 
 
 def get_current_trace_context() -> dict[str, str]:

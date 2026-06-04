@@ -26,7 +26,7 @@ Eine spätere Migration von Weg A zu Weg B ist unwahrscheinlich (technische Schu
 
 - **Writing-Pipeline-Komplexität** — 1500+ Zeilen manuelle Orchestrierung vs. native pydantic-ai-Features
 - **Token-Kosten** — Pro Request werden vollständige Context-Assemblies ans LLM geschickt; Tools + ToolSearch könnten das drastisch reduzieren
-- **Observability** — Manuelle Metrik-Erfassung (`observability.py`) vs. native Hooks + Logfire
+- **Observability** — Manuelle Metrik-Erfassung vs. native Hooks und OpenTelemetry-Spans (see ADR-031; Logfire is not used for core observability)
 - **Structured Output** — Manuelle Validierung nach dem LLM-Call vs. `output_type=` mit nativem Retry
 - **Testing** — AsyncMock-Pyramiden vs. `TestModel`/`FunctionModel`
 - **Wartbarkeit** — Das Framework wird von Pydantic maintaint; Eigenbau muss selbst gewartet werden

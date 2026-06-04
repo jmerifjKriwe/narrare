@@ -429,6 +429,13 @@ NARRARE_ENCRYPTION_KEY=<generate with: python -c "from cryptography.fernet impor
 
 # Default Model
 DEFAULT_LLM_MODEL=anthropic/claude-sonnet-4-5
+
+# Observability (optional; OpenTelemetry-only, ADR-031)
+OTEL_EXPORTER_OTLP_ENDPOINT=
+OTEL_SERVICE_NAME=narrare-api
+# Include prompt/completion content in Pydantic-AI spans.
+# Defaults to true outside production and false when ENVIRONMENT=production.
+NARRARE_OTEL_INCLUDE_CONTENT=
 ```
 
 ### NARRARE_ENCRYPTION_KEY
@@ -562,6 +569,8 @@ for the planned verification command.
 
 - Application logs: structlog with JSON output
 - Metrics: Prometheus-compatible counters where services expose runtime metrics
-- Tracing: OpenTelemetry-only trace standard for API and LLM/agent observability (ADR-031)
+- Tracing: OpenTelemetry-only trace standard for API and Pydantic-AI LLM/agent/tool spans (ADR-031)
+- Langfuse is removed from the core runtime; Logfire is not used for core observability
+- Production should leave `NARRARE_OTEL_INCLUDE_CONTENT=false` unless prompt/completion capture is explicitly approved
 
 > Maintained by: Deployment Agent

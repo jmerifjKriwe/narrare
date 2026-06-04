@@ -19,7 +19,6 @@ from narrare_core.llm.model_listing import (
     ModelCatalogError,
 )
 from narrare_core.llm.model_routing import ModelRoutingResolver, ResolvedModel
-from narrare_core.llm.observability import LLMObservability
 from narrare_core.llm.override_schemas import (
     CategoryOverride,
     IntentOverride,
@@ -39,7 +38,6 @@ __all__ = [
     "IntentCategory",
     "IntentOverride",
     "LLMIntent",
-    "LLMObservability",
     "LLMResult",
     "LLMStream",
     "ModelCatalogClient",

@@ -202,9 +202,11 @@ for FastAPI, HTTP, and database calls. Exports to any OTLP-compatible backend.
 **Role:** Sole trace standard for API requests, DB queries, external calls, and
 Pydantic-AI agent/model/tool spans (ADR-031). Optional local backends are OTel
 Collector + Grafana/Tempo/Loki/Prometheus.
-**Location:** Setup in `apps/api/narrare/_app/telemetry.py`; agent instrumentation
-through the approved runtime bootstrap boundary. No Langfuse/Logfire dependency
-for core runtime observability.
+**Location:** Setup in `apps/api/narrare/_app/telemetry.py`; shared tracer helpers
+in `apps/api/narrare/_app/observability.py`; Pydantic-AI instrumentation helper in
+`packages/core/narrare_core/agents/instrumentation.py`. Prompt/completion capture
+is controlled by `NARRARE_OTEL_INCLUDE_CONTENT` and defaults to off in production.
+No Langfuse/Logfire dependency for core runtime observability.
 
 ---
 

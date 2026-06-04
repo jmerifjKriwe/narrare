@@ -6,6 +6,8 @@ Environment variables:
   OTEL_EXPORTER_OTLP_ENDPOINT — OTel Collector endpoint (e.g. "http://localhost:4317")
   OTEL_SERVICE_NAME — Service name (default: "narrare-api")
   OTEL_TRACES_ENABLED — Enable tracing (default: "false" for dev)
+  NARRARE_OTEL_INCLUDE_CONTENT — Include prompt/completion content in AI spans
+      (default: true outside production, false in production)
 """
 
 from __future__ import annotations
@@ -15,10 +17,27 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare_core.agents.instrumentation import configure_pydantic_ai_instrumentation
+
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
 logger = structlog.get_logger(__name__)
+
+
+def _env_bool(name: str, *, default: bool) -> bool:
+    """Parse a boolean environment variable using common truthy values."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _include_ai_content() -> bool:
+    """Return whether Pydantic-AI spans may include prompt/completion content."""
+    environment = os.environ.get("ENVIRONMENT", "development").strip().lower()
+    default = environment != "production"
+    return _env_bool("NARRARE_OTEL_INCLUDE_CONTENT", default=default)
 
 
 def setup_telemetry(app: FastAPI) -> None:
@@ -52,7 +71,18 @@ def setup_telemetry(app: FastAPI) -> None:
         trace.set_tracer_provider(provider)
 
         FastAPIInstrumentor.instrument_app(app)  # type: ignore[attr-defined]
+        include_content = _include_ai_content()
+        configure_pydantic_ai_instrumentation(
+            include_content=include_content,
+            tracer_provider=provider,
+        )
 
-        logger.info("otel_configured", endpoint=endpoint, service=service_name)
+        logger.info(
+            "otel_configured",
+            endpoint=endpoint,
+            service=service_name,
+            pydantic_ai_instrumented=True,
+            include_content=include_content,
+        )
     except Exception:
         logger.warning("otel_setup_failed", exc_info=True)

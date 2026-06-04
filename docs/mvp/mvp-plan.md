@@ -391,7 +391,7 @@ All UI text is i18n strings (no hardcoded English). Light + dark mode works.
 
 **Infrastructure:**
   ✓ 19 Alembic migrations (auto-run on startup)
-  ✓ OpenTelemetry-only observability standard accepted (ADR-031; implementation migration pending)
+  ✓ OpenTelemetry-only observability Phase 1 implemented (ADR-031; Langfuse removed, Pydantic-AI OTel instrumentation active)
   ✓ Redis Pub/Sub event bus + TaskIQ integration stubs
   ✓ pgBouncer for production
   ✓ 17 ADRs documented
@@ -613,14 +613,14 @@ All UI text is i18n strings (no hardcoded English). Light + dark mode works.
 | **A2A Protocol** | Q-002 | Geplanter Agent-to-Agent-Adapter. Andere Agents sollen Schreib-Aufgaben an Narrare delegieren können; Streaming-Anforderung bleibt offen. |
 | **Embedding Abstraction** | Q-003 | Einheitliches Embedding-Interface in `core/llm/embeddings.py`. Aktuell: OpenAI + sentence-transformers ad-hoc. Ziel: Provider-Interface wie LLM-Gateway. |
 | **Writing Statistics** | STATS-001 | Zeitreihen-Analyse: Wörter/Tag, aktive Schreibzeiten, Kapitel-Fortschritt. Dashboard mit Charts. Persistenz in neuer `writing_sessions`-Tabelle. |
-| **Cost Tracking** | STATS-002 | Pro-Request Token-Tracking (bereits teilweise via Langfuse). UI-Dashboard mit Kosten pro Tag/Woche/Monat. Budget-Warnungen. |
+| **Cost Tracking** | STATS-002 | Pro-Request Token-Tracking über OpenTelemetry-Spans und Prometheus-kompatible Metriken. UI-Dashboard mit Kosten pro Tag/Woche/Monat. Budget-Warnungen. |
 
 **Technische Kerne:**
 - MCP: Geplanter `apps/mcp/` Adapter, der bestehende Service-Protokolle aufruft. Q-001 entscheidet die Auth-Strategie vor Implementierung.
 - A2A: Geplanter `apps/a2a/` Adapter. RULE-12 stellt sicher: nur Service-Calls, keine neue Logik. Q-002 entscheidet Streaming vor Implementierung.
 - Q-003: `EmbeddingProvider` Protocol + `EmbeddingRegistry`. Cascade wird zur Registry-Methode.
 - STATS-001: `writing_sessions` Tabelle (start_time, end_time, words_written, chapter_id). Cron-Job aggregiert täglich.
-- STATS-002: Langfuse-Daten → `ai_costs` Tabelle → Analytics-Endpoint → Frontend-Dashboard.
+- STATS-002: OTel-/Metrikdaten → `ai_costs` Tabelle → Analytics-Endpoint → Frontend-Dashboard.
 
 **Dependencies:** Keine harten Abhängigkeiten. Kann parallel zu allen anderen Phasen laufen.
 

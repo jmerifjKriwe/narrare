@@ -1,119 +1,58 @@
-"""Tests for llm/observability.py — Langfuse cache observability.
+"""Architecture tests for ADR-031 Core observability migration.
 
-Covers:
-1. ``finish_trace()`` with cache data does not raise (no Langfuse configured)
-2. ``finish_trace()`` sends ``cache_read`` / ``cache_creation`` to ``generation.end()``
-3. ``finish_trace()`` computes ``cache_savings_pct`` from cache_read tokens
-4. ``cache_savings_pct`` is 0 when no cache data present
+ADR-031 selects OpenTelemetry-only tracing for Narrare. Core keeps
+Prometheus-compatible metrics via ``narrare_core.llm.metrics`` and must not
+retain the former Langfuse LLM tracing adapter as a runtime dependency or
+public LLM export.
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import ast
+import tomllib
+from importlib.util import find_spec
+from pathlib import Path
 
-from narrare_core.llm.observability import LLMObservability
-from narrare_core.llm.result import TokenUsage
+import narrare_core.llm as llm
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
+CORE_PACKAGE_ROOT = REPO_ROOT / "packages" / "core"
+CORE_SOURCE_ROOT = CORE_PACKAGE_ROOT / "narrare_core"
 
 
-class TestLLMObservabilityCache:
-    """LLMObservability.finish_trace handles cache data correctly."""
+class TestCoreObservabilityMigration:
+    """Core no longer exposes or imports the Langfuse adapter."""
 
-    def test_finish_trace_with_cache_data_does_not_raise(self) -> None:
-        """Calling finish_trace with cache fields doesn't raise when Langfuse disabled."""
-        obs = LLMObservability()
-        usage = TokenUsage(
-            prompt_tokens=100,
-            completion_tokens=50,
-            total_tokens=150,
-            cache_read_tokens=30,
-            cache_creation_tokens=10,
-        )
-        # Should not raise even without Langfuse configured
-        obs.finish_trace(None, "result", usage, 1000)
+    def test_llm_package_does_not_export_llm_observability(self) -> None:
+        """The public LLM runtime API does not expose the removed Langfuse adapter."""
+        assert not hasattr(llm, "LLMObservability")
+        assert "LLMObservability" not in llm.__all__
 
-    @patch("narrare_core.llm.observability._create_client")
-    def test_finish_trace_sends_cache_data_to_generation_end(
-        self,
-        mock_create: MagicMock,
-    ) -> None:
-        """finish_trace sends cache_read/cache_creation in the usage dict."""
-        mock_client = MagicMock(spec=["trace"])
-        mock_trace = MagicMock(spec=["generation"])
-        mock_generation = MagicMock(spec=["end"])
-        mock_client.trace.return_value = mock_trace
-        mock_trace.generation.return_value = mock_generation
-        mock_create.return_value = mock_client
+    def test_llm_observability_module_is_removed(self) -> None:
+        """The former Langfuse adapter module is absent rather than dormant."""
+        assert find_spec("narrare_core.llm.observability") is None
 
-        obs = LLMObservability()
-        ctx = {"trace": mock_trace, "generation": mock_generation}
+    def test_core_package_does_not_depend_on_langfuse(self) -> None:
+        """The core package metadata has no Langfuse runtime dependency."""
+        pyproject = tomllib.loads((CORE_PACKAGE_ROOT / "pyproject.toml").read_text())
+        dependencies = pyproject["project"]["dependencies"]
 
-        usage = TokenUsage(
-            prompt_tokens=100,
-            completion_tokens=50,
-            total_tokens=150,
-            cache_read_tokens=30,
-            cache_creation_tokens=10,
-        )
-        obs.finish_trace(ctx, "generated text", usage, 1000)
+        assert all(not dependency.lower().startswith("langfuse") for dependency in dependencies)
 
-        mock_generation.end.assert_called_once()
-        call_kwargs = mock_generation.end.call_args[1]
-        assert call_kwargs["usage"]["cache_read"] == 30
-        assert call_kwargs["usage"]["cache_creation"] == 10
+    def test_core_python_sources_do_not_import_langfuse(self) -> None:
+        """No core Python source imports Langfuse after ADR-031 migration."""
+        offending_imports: list[str] = []
 
-    @patch("narrare_core.llm.observability._create_client")
-    def test_finish_trace_computes_cache_savings_pct(
-        self,
-        mock_create: MagicMock,
-    ) -> None:
-        """finish_trace computes cache_savings_pct = cache_read / prompt_tokens."""
-        mock_client = MagicMock(spec=["trace"])
-        mock_gen = MagicMock(spec=["end"])
-        mock_client.trace.return_value.generation.return_value = mock_gen
-        mock_create.return_value = mock_client
+        for source_path in sorted(CORE_SOURCE_ROOT.rglob("*.py")):
+            tree = ast.parse(source_path.read_text(), filename=str(source_path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name == "langfuse" or alias.name.startswith("langfuse."):
+                            offending_imports.append(f"{source_path}:{node.lineno}")
+                elif isinstance(node, ast.ImportFrom):
+                    module_name = node.module or ""
+                    if module_name == "langfuse" or module_name.startswith("langfuse."):
+                        offending_imports.append(f"{source_path}:{node.lineno}")
 
-        obs = LLMObservability()
-        ctx = {
-            "trace": mock_client.trace.return_value,
-            "generation": mock_gen,
-        }
-
-        # 30 cache_read out of 100 prompt tokens = 30%
-        usage = TokenUsage(
-            prompt_tokens=100,
-            completion_tokens=50,
-            total_tokens=150,
-            cache_read_tokens=30,
-            cache_creation_tokens=0,
-        )
-        obs.finish_trace(ctx, "result", usage, 1000)
-
-        metadata = mock_gen.end.call_args[1]["metadata"]
-        assert metadata["cache_savings_pct"] == 30.0
-
-    @patch("narrare_core.llm.observability._create_client")
-    def test_cache_savings_pct_zero_when_no_cache(
-        self,
-        mock_create: MagicMock,
-    ) -> None:
-        """cache_savings_pct is 0 when cache_read_tokens is 0."""
-        mock_client = MagicMock(spec=["trace"])
-        mock_gen = MagicMock(spec=["end"])
-        mock_client.trace.return_value.generation.return_value = mock_gen
-        mock_create.return_value = mock_client
-
-        obs = LLMObservability()
-        ctx = {
-            "trace": mock_client.trace.return_value,
-            "generation": mock_gen,
-        }
-
-        usage = TokenUsage(
-            prompt_tokens=100,
-            completion_tokens=50,
-            total_tokens=150,
-        )
-        obs.finish_trace(ctx, "result", usage, 1000)
-
-        metadata = mock_gen.end.call_args[1]["metadata"]
-        assert metadata["cache_savings_pct"] == 0
+        assert offending_imports == []

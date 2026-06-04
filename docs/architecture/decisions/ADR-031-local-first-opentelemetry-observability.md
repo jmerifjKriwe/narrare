@@ -1,6 +1,6 @@
 # ADR-031 — Local-First OpenTelemetry Observability
 
-> **Status:** ✅ Accepted
+> **Status:** ✅ Accepted — Phase 1 implemented
 > **Date:** 2026-06-04
 > **Deciders:** User, Architecture Agent
 > **Supersedes:** ADR-010
@@ -12,7 +12,7 @@
 
 ADR-010 selected OpenTelemetry plus Langfuse for observability. That decision no longer fits Narrare's runtime reality or local-first architecture.
 
-Observed state:
+Observed state before ADR-031:
 
 - `LLMObservability` exists for Langfuse in `packages/core/narrare_core/llm/observability.py`, but it is not wired into the runtime in a complete way.
 - The API already initializes OpenTelemetry in `apps/api/narrare/_app/telemetry.py` when `OTEL_EXPORTER_OTLP_ENDPOINT` is configured.
@@ -145,6 +145,20 @@ This is the simplest correct solution: one span model, one propagation mechanism
 ---
 
 ## Implementation Plan / Migration Plan
+
+### Phase 1 — completed 2026-06-04
+
+1. Removed the Langfuse dependency from `packages/core/pyproject.toml` and the lockfile.
+2. Removed `packages/core/narrare_core/llm/observability.py`; no dormant Langfuse adapter remains.
+3. Removed `LLMObservability` from the public `narrare_core.llm` exports.
+4. Added `packages/core/narrare_core/agents/instrumentation.py`, which configures
+   native Pydantic-AI OpenTelemetry instrumentation via `Agent.instrument_all(InstrumentationSettings(...))`.
+5. Wired API telemetry setup to enable FastAPI OTel spans and Pydantic-AI agent/model/tool spans from the same `TracerProvider`.
+6. Added `NARRARE_OTEL_INCLUDE_CONTENT` for prompt/completion capture control;
+   it defaults to `true` outside production and `false` in production.
+7. Added `get_tracer(name: str)` to `_app/observability.py` for shared API-side custom spans with no-op fallback.
+
+### Original migration plan
 
 1. Remove Langfuse dependency from `packages/core/pyproject.toml` and lock files.
 2. Delete or replace `packages/core/narrare_core/llm/observability.py`; no dormant Langfuse adapter remains.

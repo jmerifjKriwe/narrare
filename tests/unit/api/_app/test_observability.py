@@ -213,6 +213,17 @@ class TestProbeOnce:
 
         status = _obs_mod.get_observability_status()
         assert status["available"] is True
+        assert status["failure_reason"] == ""
+        assert status["warning_emitted"] is False
+
+    def test_status_triggers_probe_if_not_yet_probed(self) -> None:
+        """Calling get_observability_status triggers probe automatically."""
+        fake_trace = _make_fake_otel_trace()
+
+        with _RedirectOtelImports(fake_trace):
+            status = _obs_mod.get_observability_status()
+
+        assert status["available"] is True
 
     def test_probe_captures_unexpected_exception(self) -> None:
         """Non-ImportError exceptions are captured and stored."""
@@ -294,14 +305,32 @@ class TestGetObservabilityStatus:
 
         status = _obs_mod.get_observability_status()
         assert status["available"] is True
-        assert status["failure_reason"] == ""
-        assert status["warning_emitted"] is False
 
-    def test_status_triggers_probe_if_not_yet_probed(self) -> None:
-        """Calling get_observability_status triggers probe automatically."""
+
+# ---------------------------------------------------------------------------
+# Test: get_tracer
+# ---------------------------------------------------------------------------
+
+
+class TestGetTracer:
+    """Tests for centralized tracer lookup."""
+
+    def test_returns_otel_tracer_when_available(self) -> None:
+        """When OTel is available, get_tracer delegates to trace.get_tracer."""
         fake_trace = _make_fake_otel_trace()
 
         with _RedirectOtelImports(fake_trace):
-            status = _obs_mod.get_observability_status()
+            tracer = _obs_mod.get_tracer("narrare.test")
 
-        assert status["available"] is True
+        assert tracer.__class__.__name__ == "FakeTracer"
+
+    def test_returns_noop_tracer_when_unavailable(self) -> None:
+        """When OTel is unavailable, get_tracer returns a safe no-op tracer."""
+        with _BlockOtelImports():
+            tracer = _obs_mod.get_tracer("narrare.test")
+
+        with tracer.start_as_current_span("unit-test") as span:
+            span.set_attribute("key", "value")
+
+        status = _obs_mod.get_observability_status()
+        assert status["available"] is False

@@ -186,7 +186,7 @@ Completed in Phase 6 so far:
 | ADR-028 | Architecture Exception Register SSOT | ✅ Implemented |
 | ADR-029 | VM-First Setup Contract and Optional DevContainer Cleanup | ✅ Implemented |
 | ADR-030 | MagicMock-to-Fake Migration Plan for Memory Tests | ✅ Implemented |
-| ADR-031 | Local-First OpenTelemetry Observability | ✅ Accepted; implementation migration pending |
+| ADR-031 | Local-First OpenTelemetry Observability | ✅ Phase 1 implemented — Langfuse removed; Pydantic-AI OTel instrumentation active |
 | ADR-032 | Pydantic Evals as Evaluation SSOT | ✅ Accepted; implementation migration pending |
 | ADR-033 | mem0 v3 OSS Memory Architecture | ✅ Accepted; compatibility verification pending |
 | ADR-034 | Conversational History Policy | ✅ Accepted |

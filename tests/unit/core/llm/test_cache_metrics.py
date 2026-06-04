@@ -153,7 +153,11 @@ class TestTokenUsageCacheFields:
             model="claude-sonnet-4-5-20251020",
         )
         assert usage.cache_read_tokens == 0
-        assert usage.cost_estimate_usd > 0
+        with patch(
+            "narrare_core.llm.cost_rates.get_rates",
+            return_value={"input": 3.0, "output": 15.0},
+        ):
+            assert usage.cost_estimate_usd > 0
 
 
 # ---------------------------------------------------------------------------
