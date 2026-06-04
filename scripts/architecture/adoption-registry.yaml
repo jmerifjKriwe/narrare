@@ -35,7 +35,7 @@ features:
       kb_relationships: required   # ← catches the missing {{kb_relationships}} gap
       injection_defense: required
       meta_prompt: required
-      i18n: required
+      i18n: partial                # EN-only per ADR-026 Phase 5; localized output via {{writing_language}}
     context_variables:
       must:
         - user_preferences
@@ -66,7 +66,7 @@ features:
       kb_relationships: partial    # context-dependent
       injection_defense: required
       meta_prompt: required
-      i18n: required
+      i18n: partial                # EN-only per ADR-026 Phase 5; localized output via {{writing_language}}
     context_variables:
       must:
         - user_preferences
@@ -94,7 +94,7 @@ features:
       kb_entities: required
       injection_defense: required
       meta_prompt: required
-      i18n: required                # currently EN only — known gap
+      i18n: partial                # EN-only per ADR-026 Phase 5; localized output via {{writing_language}}
     context_variables:
       must:
         - user_preferences
@@ -109,7 +109,7 @@ features:
       token_budget: partial
       prompt_composer: required
       meta_prompt: required
-      i18n: required
+      i18n: partial                # EN-only per ADR-026 Phase 5; localized output via {{writing_language}}
     context_variables:
       must:
         - user_preferences
@@ -123,7 +123,7 @@ features:
     required_infrastructure:
       prompt_composer: required
       meta_prompt: required
-      i18n: required
+      i18n: partial                # EN-only per ADR-026 Phase 5; localized output via {{writing_language}}
     context_variables:
       must:
         - user_preferences
@@ -136,7 +136,7 @@ features:
       prompt_composer: required
       mem0_preferences: required
       meta_prompt: required
-      i18n: required
+      i18n: partial                # EN-only per ADR-026 Phase 5; localized output via {{writing_language}}
     context_variables:
       must:
         - user_preferences
@@ -170,8 +170,8 @@ infrastructure_definitions:
     description: "Narrare identity meta-prompt prepended to all system prompts"
     evidence: "uses PromptComposer (includes meta automatically) or with_meta() or MetaPromptLoader"
   i18n:
-    description: "Bundled prompt exists in en, de, and fr locale directories"
-    evidence: "system.md present in _bundled/{category}/en/, de/, and fr/"
+    description: "Bundled prompt locale coverage (ADR-026 Phase 5: meta/universal require en+de+fr; feature prompts are EN-only with localized output via variables)"
+    evidence: "system.md present in required locales for category (_required_locales_for policy)"
 
 # ── Inline Fallbacks ─────────────────────────────────────────────────────────
 # Registered inline prompts that bypass PromptComposer (ADR-025 Decision 4).
@@ -198,7 +198,7 @@ feature_templates:
   writing_feature:
     extends: writing
     required_files:
-      - "packages/core/narrare_core/prompts/_bundled/writing/{lang}/{mode}/system.md"
+      - "packages/core/narrare_core/prompts/_bundled/writing/en/{mode}/system.md"
       - "packages/core/narrare_core/writing/{feature}/contracts.py"
       - "packages/core/narrare_core/writing/{feature}/assembler.py"
       - "apps/api/narrare/writing/{feature}_service.py"
@@ -208,7 +208,7 @@ feature_templates:
       - "TokenBudgetManager"
     checklist:
       - "Register in adoption-registry.yaml under writing.modes"
-      - "Create bundled prompt in _bundled/writing/{lang}/{mode}/system.md for en, de, fr"
+      - "Create bundled prompt in _bundled/writing/en/{mode}/system.md (EN-only per ADR-026 Phase 5)"
       - "Include all context variables from writing.must list"
       - "Wrap all UNSAFE_USER_VARS in XML tags"
       - "Add unit tests with >90% coverage"
@@ -217,7 +217,7 @@ feature_templates:
   analysis_feature:
     extends: analysis
     required_files:
-      - "packages/core/narrare_core/prompts/_bundled/analysis/{lang}/{mode}/system.md"
+      - "packages/core/narrare_core/prompts/_bundled/analysis/en/{mode}/system.md"
       - "packages/core/narrare_core/analysis/{feature}/contracts.py"
       - "apps/api/narrare/analysis/{feature}_service.py"
     must_use:
@@ -225,7 +225,7 @@ feature_templates:
       - "TokenBudgetManager (or AnalysisContextAssembler when available)"
     checklist:
       - "Register in adoption-registry.yaml under analysis.modes"
-      - "Create bundled prompt in _bundled/analysis/{lang}/{mode}/system.md for en, de, fr"
+      - "Create bundled prompt in _bundled/analysis/en/{mode}/system.md (EN-only per ADR-026 Phase 5)"
       - "Include all context variables from analysis.must list"
       - "Wrap all UNSAFE_USER_VARS in XML tags"
       - "Add unit tests with >90% coverage"
@@ -234,14 +234,14 @@ feature_templates:
   kb_feature:
     extends: kb
     required_files:
-      - "packages/core/narrare_core/prompts/_bundled/kb/{lang}/{mode}/system.md"
+      - "packages/core/narrare_core/prompts/_bundled/kb/en/{mode}/system.md"
       - "apps/api/narrare/kb/{feature}_service.py"
     must_use:
       - "PromptComposer.build()"
       - "TokenBudgetManager (for extract/interview modes)"
     checklist:
       - "Register in adoption-registry.yaml under kb.modes"
-      - "Create bundled prompt in _bundled/kb/{lang}/{mode}/system.md for en, de, fr"
+      - "Create bundled prompt in _bundled/kb/en/{mode}/system.md (EN-only per ADR-026 Phase 5)"
       - "Include all context variables from kb.must list"
       - "Wrap all UNSAFE_USER_VARS in XML tags"
       - "Add unit tests with >90% coverage"
