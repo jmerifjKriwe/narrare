@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-03 (Session 5)
-Session: Review-01 remediation across 3 phases. Phase 1 (Streaming + Prompts): removed deprecated timeline REST wrapper and unused KB sessions SSE endpoint; fixed streaming-compliance checker for nested routers; added streaming pre-commit hook; added required prompt variables to analysis/pov, analysis/readability, planning/temporal_consistency. Phase 2 (Structure): removed RULE-02 f-string exception from KB consistency analyzer (prompt moved to bundled core prompts); modularized EditorView.tsx from 764→146 lines into 14 focused modules; updated exception registers. Phase 3 (Privacy + Observability): changed KB interview resume from localStorage to sessionStorage; added module-level OTel degradation visibility with one-shot warning and health-endpoint status. Streaming compliance now 0 violations. Frontend RULE-04 violations: 38→37. Architecture exceptions: 14→13 (RULE-02 exception #3 removed).
+Date: 2026-06-04 (Session 6)
+Session: Documentation gate coverage expansion + test coverage uplift (sentiment, syllables, spaCy, wiki, memory ADR-030). Phase 1 (Streaming + Prompts): removed deprecated timeline REST wrapper and unused KB sessions SSE endpoint; fixed streaming-compliance checker for nested routers; added streaming pre-commit hook; added required prompt variables to analysis/pov, analysis/readability, planning/temporal_consistency. Phase 2 (Structure): removed RULE-02 f-string exception from KB consistency analyzer (prompt moved to bundled core prompts); modularized EditorView.tsx from 764→146 lines into 14 focused modules; updated exception registers. Phase 3 (Privacy + Observability): changed KB interview resume from localStorage to sessionStorage; added module-level OTel degradation visibility with one-shot warning and health-endpoint status. Streaming compliance now 0 violations. Frontend RULE-04 violations: 38→37. Architecture exceptions: 14→13 (RULE-02 exception #3 removed).
 
 ---
 
@@ -26,15 +26,15 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ## Codebase Overview
 
-### Stats (verified 2026-06-03)
+### Stats (verified 2026-06-04)
 
 - Knowledge Graph: 15,527 nodes, 112,368 edges, risk medium
-- Backend tests: 4,273 (3,750 unit + 495 integration) across 396 test files
+- Backend tests: ~4,500 (approx. 3,976 unit + 495 integration) across 405 test files
 - Frontend tests: 1,683 across 186 test files (Vitest + MSW)
-- Total tests: ~5,900+
+- Total tests: ~6,200+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
 - Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
-- ADRs: 29 (ADR-001 through ADR-029; ADR-029 VM-first setup contract implemented)
+- ADRs: 30 (ADR-001 through ADR-030; ADR-030 MagicMock-to-Fake migration implemented)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 11 (Q-001 through Q-011)
 
@@ -139,8 +139,7 @@ Completed in Phase 6 so far:
 36. ✅ Review-01 Phase 1 (Streaming + Prompts): deprecated timeline REST wrapper removed; unused KB sessions SSE endpoint deleted; streaming-compliance checker fixed for nested FastAPI routers with `build_effective_router_prefixes()`; streaming pre-commit hook added; required prompt variables added to analysis/pov, analysis/readability, planning/temporal_consistency.
 37. ✅ Review-01 Phase 2 (Structure): RULE-02 f-string exception removed from KB consistency analyzer (prompt → bundled `core/prompts/_bundled/kb/*/consistency/system.md`); EditorView.tsx modularized from 764→146 lines into 14 focused modules (`editor-view/` directory); exception registers updated in CONSTRAINTS.md and pyproject.toml (14→13).
 38. ✅ Review-01 Phase 3 (Privacy + Observability): KB interview resume changed from localStorage→sessionStorage (privacy); module-level OTel degradation visibility with one-shot warning + `get_observability_status()`; health endpoint includes OTel status (`/health` returns `observability` field).
-
----
+39. ✅ Coverage expansion: LexiconSentimentAnalyzer 19%→99% (40 tests), syllable counting 85%→92% (practical ceiling without pyphen), SpacyNLPProvider 49%→50% (ceiling without spaCy installed); wiki chapter_service 0%→100%, wiki service 18%→100%, wiki system_accessors 62%→100%, overall wiki coverage 74%→87%; memory tests migrated from MagicMock to Fake classes (ADR-030 implemented).
 
 ## What's Next
 
@@ -186,6 +185,7 @@ Completed in Phase 6 so far:
 | ADR-027 | AI Feature Stabilization Gates | ✅ Completed — freeze lifted; ratcheted post-freeze governance retained |
 | ADR-028 | Architecture Exception Register SSOT | ✅ Implemented |
 | ADR-029 | VM-First Setup Contract and Optional DevContainer Cleanup | ✅ Implemented |
+| ADR-030 | MagicMock-to-Fake Migration Plan for Memory Tests | ✅ Implemented |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

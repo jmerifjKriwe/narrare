@@ -3,45 +3,24 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from narrare.memory.repository import FeedbackRepository
 from narrare.memory.schemas import FeedbackRequest
-
-
-class FakeCoreFeedback:
-    """Fake core FeedbackService for testing."""
-
-    def __init__(self) -> None:
-        self.recorded: list[Any] = []
-
-    async def record(self, event: Any) -> None:
-        self.recorded.append(event)
-
-
-class FakeEventPublisher:
-    """Fake EventPublisher for testing."""
-
-    def __init__(self) -> None:
-        self.published: list[dict[str, Any]] = []
-
-    async def publish_feedback_recorded(self, user_id: Any, project_id: Any, event_id: Any) -> None:
-        self.published.append({"user_id": user_id, "project_id": project_id, "event_id": event_id})
+from tests.fakes import FakeCoreFeedbackService, FakeEventPublisher, FakeFeedbackRepository
 
 
 class TestMemoryFeedbackService:
     def _make_service(
         self, *, with_publisher: bool = False
-    ) -> tuple[Any, FakeCoreFeedback, FakeEventPublisher | None]:
+    ) -> tuple[Any, FakeCoreFeedbackService, FakeEventPublisher | None]:
         from narrare.memory.service import MemoryFeedbackService
 
-        core = FakeCoreFeedback()
+        core = FakeCoreFeedbackService()
         publisher = FakeEventPublisher() if with_publisher else None
-        repo = MagicMock(spec=FeedbackRepository)
+        repo = FakeFeedbackRepository()
         service = MemoryFeedbackService(
             repository=repo,
-            core_feedback=core,  # type: ignore[arg-type]
+            core_feedback=core,
             event_publisher=publisher,
         )
         return service, core, publisher
@@ -136,10 +115,8 @@ class TestMemoryFeedbackService:
     async def test_record_feedback_publisher_failure_does_not_raise(self) -> None:
         service, core, _ = self._make_service(with_publisher=False)
 
-        failing_publisher = AsyncMock()
-        failing_publisher.publish_feedback_recorded = AsyncMock(
-            side_effect=ConnectionError("broker down")
-        )
+        failing_publisher = FakeEventPublisher()
+        failing_publisher.fail_on_publish(ConnectionError("broker down"))
         service._event_publisher = failing_publisher
 
         request = FeedbackRequest(

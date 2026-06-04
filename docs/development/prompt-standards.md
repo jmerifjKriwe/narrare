@@ -427,7 +427,7 @@ prompt quality. Every criterion marked YES is mandatory for stable prompts.
 | User input XML-encapsulated | YES | Security | All user-content variables wrapped in XML tags |
 | Chain-of-thought mechanism | REC | Quality | For analysis/evaluation tasks: scratchpad, reasoning field |
 | Length/scope defined | REC | Quality | Word count target, item count range, or "exactly N" |
-| Locale variants consistent | YES | Maintenance | All 3 locales have the same structure and version |
+| Locale variants consistent | YES* | Maintenance | Declared localized families (meta, universal) have locale parity; bundled feature prompts are EN-only (see §5) |
 | Frontmatter complete | YES | Maintenance | type, language, version all present and accurate |
 
 *\* = required for the applicable categories defined in §2*
@@ -460,13 +460,20 @@ Prompt versions follow Semantic Versioning: `MAJOR.MINOR.PATCH`
 
 ### Locale Consistency
 
-All 3 locale variants (en, de, fr) of the same prompt MUST have the **same
-version number**. When one locale is updated, all locales must be updated in
-the same PR.
+Prompt locale handling depends on the prompt family (per ADR-026 Phase 5,
+RULE-22 §5):
 
-**Rationale:** If the English prompt is at 1.2.0 and the German prompt is at
-1.1.0, we cannot tell whether they are structurally equivalent. Shared
-versioning ensures parity is tracked.
+- **Bundled feature system prompts** are **EN-only by default**. Output and
+  writing language is controlled through variables (`{{writing_language}}`),
+  Context, Deps, and preferences — not by duplicating templates per locale.
+- **Declared localized prompt families** (e.g. `NarrareMeta`, `NarrareUniversalRules`,
+  or any family with an architecture-approved localization declaration) MUST have
+  all declared locale variants at the **same version number**. When one locale
+  is updated, all declared locales must be updated in the same PR.
+
+**Rationale:** EN-only feature prompts eliminate silent drift across locale
+copies. For declared localized families, shared versioning ensures parity is
+tracked (if EN is 1.2.0 and DE is 1.1.0, structural equivalence is unclear).
 
 ### Version History
 
@@ -509,9 +516,10 @@ must pass before merge.
 
 ### Locale Consistency
 
-- [ ] All 3 locale variants (en, de, fr) updated in the same PR
-- [ ] All 3 locale variants have the same version number
-- [ ] Structural sections match across locales (same sections, same order)
+- [ ] Bundled feature prompts: EN-only — no locale variants required (output language via `{{writing_language}}` and context)
+- [ ] Declared localized families (meta, universal, etc.): all declared locale variants updated in the same PR
+- [ ] Declared localized families: all locale variants have the same version number
+- [ ] Structural sections match across declared locale variants (same sections, same order)
 
 ### Version
 

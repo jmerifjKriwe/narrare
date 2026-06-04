@@ -123,7 +123,12 @@ export function CoAuthorPanel({
                 {errorMsg || t("coAuthor.errorGeneric")}
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={handleCancel} className={`${btnSecondary} flex-1`}>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className={`${btnSecondary} flex-1`}
+                  data-testid="coauthor-error-close"
+                >
                   {t("coAuthor.close")}
                 </button>
                 <button

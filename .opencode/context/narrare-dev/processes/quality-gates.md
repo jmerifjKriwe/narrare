@@ -242,7 +242,7 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 - [ ] **All MUST variables present** — `check_prompt_structure.py --strict` passes for the feature's category
 - [ ] **Meta-prompt included** — Narrare identity and universal rules are architecturally guaranteed via `NarrareMeta` and `NarrareUniversalRules` Capabilities (ADR-026). No manual loading needed.
 - [ ] **Injection defense: user content XML-wrapped** — all UNSAFE_USER_VARS wrapped in `<tag>...</tag>` in prompt templates
-- [ ] **i18n: prompt files in en/de/fr** — `system.md` exists in all three locale directories under `_bundled/{category}/`
+- [ ] **i18n: prompt locale policy** — Bundled feature prompts are EN-only (output language via `{{writing_language}}`); declared localized families (meta, universal) must exist in all declared locale directories under `_bundled/{category}/`
 - [ ] **Token budget enforced** — ContextAssembler (or WritingContextAssembler) used with TokenBudgetManager
 - [ ] **Memory layer included** — `{{user_preferences}}` and `{{avoidance_patterns}}` variables present
 - [ ] **Error handling: LLM failures don't crash** — proper exception handling per RULE-11 (no bare except, no silent failures)
@@ -284,7 +284,7 @@ Architecture Specialist during Stage 2.5 (Semantic Review).
 - [ ] **Cross-Feature data flows identified** — Shared data sources listed (KB, Storyboard, Frontmatter, wiki, memory/preferences, prompt registry, settings, etc.)
 - [ ] **Integration Contract defined** — For each shared source, behaviour on change and deletion is documented per RULE-03 Integration Contracts
 - [ ] **Intent semantic scope verified** — No existing intent/prompt has the same ID with different semantic scope. New intents have Scope/Input/Output/NOT documented
-- [ ] **i18n parity checked** — All prompt files exist in en/de/fr, or EN-only is documented with rationale
+- [ ] **i18n parity checked** — Bundled feature prompts: EN-only by default (ADR-026 Phase 5). Declared localized prompt families: all declared locales exist and are in sync. UI i18n: en/de/fr required per RULE-16.
 - [ ] **Injection defence verified** — All user-content variables registered in `_USER_CONTENT_VARS` and wrapped in XML tags in prompt templates
 - [ ] **Template variables registered** — New variables added to `_SYSTEM_VARS` in `variable_engine.py`
 - [ ] **KB status filtering considered** — If feature reads KB data, deprecated/archived entities are excluded
@@ -342,6 +342,31 @@ Gates 8–10 are **additive** — they do not replace Gates 1–7. The relations
 | **10** | **Semantic Review** | **Cross-feature incoherence: missing Integration Contract, unregistered variables, unimplemented i18n, intent scope drift** |
 
 A feature must pass ALL gates (1–10) to reach `status: stable`.
+
+---
+
+## Umgang mit Gate-Verletzungen
+
+Wenn ein CI-Gate/Hook fehlschlägt:
+
+1. **FIXEN, nicht forschen.** Ob der Fehler "pre-existing" ist oder nicht, ist irrelevant.
+   Der Commit ist blockiert → der Fehler wird behoben. Punkt.
+
+2. **Keine Ausreden.** "Das war schon vorher kaputt" ist keine akzeptable Rechtfertigung.
+   Wenn es kaputt ist, wird es jetzt repariert.
+
+3. **Keine Root-Cause-Analyse.** Bei einfachen Lint/Test-Fehlern gibt es keine
+   mehrstufige Ursachenforschung. Der Fehler wird an der Fundstelle behoben.
+
+4. **Scope:** Fixiere NUR die gemeldeten Violations. Keine Architektur-Diskussionen,
+   keine ADR-Vorschläge, keine "eigentlich müsste man ganz anders"-Exkurse.
+
+5. **Priorität:** Geschwindigkeit > Eleganz. Ein `MagicMock(spec=...)` ist besser
+   als ein Fake-Refactoring, das 30 Minuten dauert. Der perfekte Fix kann im
+   nächsten Commit nachgereicht werden.
+
+Diese Regel gilt für den NarrarePlatformSpecialist und wird vom Coordinator
+durchgesetzt. Wiederholte Verstöße (Forschen statt Fixen) sind ein Prozessverstoß.
 
 ---
 

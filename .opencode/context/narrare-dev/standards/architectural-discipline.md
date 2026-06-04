@@ -154,6 +154,25 @@ MUST use SSE as well. REST-only frontend for an SSE-capable backend is:
 
 ---
 
+## 6. Fixing-Treue: Pre-existing Issues werden beim ersten Fund gefixt, nicht analysiert
+
+Wenn ein CI-Gate, Hook oder Check fehlschlägt, gilt ausschließlich:
+
+1. **Fixieren, nicht forschen.** Ob ein Fehler "pre-existing" ist oder in dieser Session
+   eingeführt wurde, ist irrelevant. Der Commit ist blockiert → der Fehler wird behoben.
+2. **Keine Ursachen-Debatte.** Der Platform-Subagent forscht nicht nach der "root cause"
+   eines Lint/Test-Fehlers. Er fixt die Violation an der Fundstelle und macht weiter.
+3. **Keine Ausreden.** "Das war schon vorher kaputt" ist keine gültige Rechtfertigung für
+   einen fehlgeschlagenen Gate. Kaputt = wird jetzt repariert.
+4. **Geschwindigkeit > Eleganz.** Bei einem blockierten Gate ist ein schneller, korrekter
+   Fix besser als ein stundenlanges Refactoring. Der perfekte Fix kann im nächsten Commit
+   nachgereicht werden.
+
+Diese Regel ist Teil des Architectural Discipline Standards und gilt für ALLE Subagents.
+Der Coordinator setzt sie durch. Verstöße sind Prozessverstöße.
+
+---
+
 ## Red Flags — Stop and Escalate
 
 If you catch yourself thinking any of these, **STOP**:

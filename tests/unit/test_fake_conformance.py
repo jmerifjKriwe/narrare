@@ -128,6 +128,26 @@ class TestFakeConformance:
 
         assert_implements_protocol(FakeOutlineRepository, OutlineRepositoryProtocol)
 
+    # ------------------------------------------------------------------
+    # Memory module Fakes (ADR-030)
+    # ------------------------------------------------------------------
+
+    def test_fake_feedback_repo(self) -> None:
+        """FakeFeedbackRepository implements FeedbackRepositoryProtocol."""
+        from narrare.memory.contracts import FeedbackRepositoryProtocol
+        from tests.fakes import FakeFeedbackRepository
+
+        assert_implements_protocol(FakeFeedbackRepository, FeedbackRepositoryProtocol)
+
+    def test_fake_preference_profile_repo(self) -> None:
+        """FakePreferenceProfileRepository implements PreferenceProfileRepositoryProtocol."""
+        from narrare.memory.contracts import PreferenceProfileRepositoryProtocol
+        from tests.fakes import FakePreferenceProfileRepository
+
+        assert_implements_protocol(
+            FakePreferenceProfileRepository, PreferenceProfileRepositoryProtocol
+        )
+
 
 class TestFakeIsinstance:
     """Every @runtime_checkable Fake must pass isinstance() for structural subtyping."""
@@ -197,3 +217,21 @@ class TestFakeIsinstance:
         from tests.fakes import FakeOutlineRepository
 
         _assert_isinstance(FakeOutlineRepository, OutlineRepositoryProtocol)
+
+    # ------------------------------------------------------------------
+    # Memory module Fakes (ADR-030)
+    # ------------------------------------------------------------------
+
+    def test_fake_feedback_repo_isinstance(self) -> None:
+        """FakeFeedbackRepository passes isinstance check for FeedbackRepositoryProtocol."""
+        from narrare.memory.contracts import FeedbackRepositoryProtocol
+        from tests.fakes import FakeFeedbackRepository
+
+        _assert_isinstance(FakeFeedbackRepository, FeedbackRepositoryProtocol)
+
+    def test_fake_preference_profile_repo_isinstance(self) -> None:
+        """FakePreferenceProfileRepository matches PreferenceProfileRepositoryProtocol."""
+        from narrare.memory.contracts import PreferenceProfileRepositoryProtocol
+        from tests.fakes import FakePreferenceProfileRepository
+
+        _assert_isinstance(FakePreferenceProfileRepository, PreferenceProfileRepositoryProtocol)

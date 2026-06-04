@@ -40,7 +40,21 @@ WEIGHT_REQUIRED = 1.0
 WEIGHT_PARTIAL = 0.5
 INLINE_FALLBACK_PENALTY = 0.1
 
-REQUIRED_LOCALES = {"en", "de", "fr"}
+# Categories requiring full DE/FR locale bundles (ADR-026 Phase 5).
+_LOCALIZED_REQUIRED_CATEGORIES = {"meta", "universal", "universal_rules"}
+
+
+def _required_locales_for(category: str) -> set[str]:
+    """Return required locales for *category* (ADR-026 Phase 5 policy).
+
+    Localized-required categories (meta, universal, universal_rules) need
+    ``en``, ``de``, and ``fr`` variants.  All other categories (writing,
+    analysis, KB, planning, generation, chat) are EN-only feature prompts.
+    """
+    if category in _LOCALIZED_REQUIRED_CATEGORIES:
+        return {"en", "de", "fr"}
+    return {"en"}
+
 
 # Mapping infrastructure names to the prompt variables that evidence adoption.
 _INFRA_VAR_EVIDENCE: dict[str, set[str]] = {
@@ -129,15 +143,17 @@ def _check_i18n_coverage(
     if not groups:
         return {}, 0.0, 0, 0
 
+    required = _required_locales_for(category)
+
     missing_map: dict[str, list[str]] = {}
     total_applicable = 0
     total_covered = 0
 
     for key in sorted(groups):
         present = groups[key]
-        missing = sorted(REQUIRED_LOCALES - present)
-        total_applicable += len(REQUIRED_LOCALES)
-        total_covered += len(present & REQUIRED_LOCALES)
+        missing = sorted(required - present)
+        total_applicable += len(required)
+        total_covered += len(present & required)
         if missing:
             # Show missing for the primary locale's key.
             missing_map[key] = missing
@@ -147,8 +163,10 @@ def _check_i18n_coverage(
         mode_keys_in_fs = {p.group_key for p in category_system}
         for mode in modes:
             expected_key = f"{category}/{mode}"
-            if expected_key not in mode_keys_in_fs:
-                missing_map[expected_key] = sorted(REQUIRED_LOCALES)
+            # Only flag for localized-required categories (feature
+            # categories are EN-only — variable checks cover missing EN).
+            if expected_key not in mode_keys_in_fs and required != {"en"}:
+                missing_map[expected_key] = sorted(required)
 
     adopted_frac = total_covered / total_applicable if total_applicable else 0.0
     return missing_map, adopted_frac, total_applicable, total_covered

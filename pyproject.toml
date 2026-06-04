@@ -277,8 +277,6 @@ reason = "mem0 AsyncMemory requires direct LLM client for memory extraction."
 approved_by = "generation-prompt-memory-foundation"
 date = "2026-05-15"
 
-# --- Pre-existing inline markers (registered during ADR-028 enforcement) ---
-
 [[tool.narrare.architecture.exceptions.entries]]
 rule = "RULE-01b"
 file = "packages/core/narrare_core/planning/remap.py"
@@ -305,27 +303,6 @@ rule = "RULE-01b"
 file = "packages/core/narrare_core/wiki/agent_chapter.py"
 reason = "WikiChapterGenerator wraps internal PydanticAgent (ADR-015)"
 approved_by = "ADR-015"
-date = "2026-06-03"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-TEST-01"
-file = "tests/unit/api/memory/test_analysis_service.py"
-reason = "Mocking for service unit tests — no domain contract"
-approved_by = "architecture-review"
-date = "2026-06-03"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-TEST-01"
-file = "tests/unit/api/memory/test_feedback_service.py"
-reason = "Mocking for service unit tests — no domain contract"
-approved_by = "architecture-review"
-date = "2026-06-03"
-
-[[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-TEST-01"
-file = "tests/unit/api/memory/test_repository.py"
-reason = "Mocking for repository unit tests — no domain contract"
-approved_by = "architecture-review"
 date = "2026-06-03"
 
 [[tool.narrare.architecture.exceptions.entries]]

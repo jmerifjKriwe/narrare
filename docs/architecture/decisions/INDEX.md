@@ -53,7 +53,7 @@
 | [ADR-027](ADR-027-ai-feature-stabilization-gates.md) | AI Feature Stabilization Gates | ✅ | 2026-06-02 | `core/prompts/`, `packages/web/lib/api/streaming.ts`, quality gates, agent docs |
 | [ADR-028](ADR-028-architecture-exception-ssot.md) | Architecture Exception Register: Single Source of Truth | ✅ | 2026-06-03 | `pyproject.toml`, `CONSTRAINTS.md §7`, `scripts/architecture/`, all exception locations |
 | [ADR-029](ADR-029-vm-first-setup-contract.md) | VM-First Setup Contract and Optional DevContainer Cleanup | ✅ | 2026-06-03 | `.devcontainer/`, `justfile`, `.github/workflows/`, Docker/Compose, release docs |
-| [ADR-030](ADR-030-magicmock-migration-plan.md) | MagicMock-to-Fake Migration Plan for Memory Tests | 🔄 | 2026-06-04 | `tests/unit/api/memory/`, `tests/fakes/`, `apps/api/narrare/memory/contracts.py` |
+| [ADR-030](ADR-030-magicmock-migration-plan.md) | MagicMock-to-Fake Migration Plan for Memory Tests | ✅ | 2026-06-04 | `tests/unit/api/memory/`, `tests/fakes/`, `apps/api/narrare/memory/contracts.py` |
 
 ---
 

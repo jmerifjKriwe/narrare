@@ -101,7 +101,7 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 - Fix prompt-integrity regressions for Meta, Universal, and Lite prompts.
 - Remove or migrate inline prompt fallbacks in KB/writing according to RULE-02/RULE-02a.
-- Ensure prompt variables match `prompt-standards.md`: `{{user_preferences}}`, `{{avoidance_patterns}}`, category-specific variables, XML wrapping for user content, and 3-locale version parity.
+- Ensure prompt variables match `prompt-standards.md`: `{{user_preferences}}`, `{{avoidance_patterns}}`, category-specific variables, XML wrapping for user content. Bundled feature prompts are EN-only (ADR-026 Phase 5); declared localized families (meta, universal) require locale parity.
 - Classify any remaining EN-only prompt as either non-user-facing transitional content with explicit rationale or convert to de/fr.
 
 **Module boundaries**
@@ -179,7 +179,7 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 | Cross-feature data flows | ✅ | Prompt registry, KB data, memory/preferences, settings, frontend streaming, and docs all identified. |
 | Integration contracts | ✅ | Prompt/adoption registry and ADR-027 define cross-feature contracts; frontend SSE contract required before parser migration. |
 | Intent semantics | ✅ | No new LLMIntent is introduced by this stabilization program. Existing intent collisions must be checked when prompt files are touched. |
-| i18n parity | ✅ | All user-facing bundled prompts touched by this work require en/de/fr parity or explicit architecture-approved rationale. |
+| i18n parity | ✅ | Bundled feature prompts are EN-only by default (ADR-026 Phase 5). Declared localized families (meta, universal) require all declared locales. Remaining EN-only deviations must have architecture-approved rationale. |
 | Injection defense | ✅ | User-content variables must remain registered in `_USER_CONTENT_VARS` and XML-wrapped. |
 | Template variables | ✅ | New variables must be registered in `_SYSTEM_VARS` or `_USER_CONTENT_VARS` before prompt use. |
 | KB status filtering | ✅ | Any KB context fixes must preserve deprecated/archived filtering semantics. |
@@ -243,7 +243,7 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 - [x] Prompt integrity regressions are fixed.
 - [x] KB adoption score is `>= 0.85`.
 - [x] Inline prompt fallback list shrinks or remains only with ADR-approved, target-dated exceptions.
-- [x] Prompt i18n parity is restored or each remaining EN-only prompt has architecture-approved rationale/classified legacy WARN status.
+- [x] Prompt locale policy matches ADR-026 Phase 5: bundled feature prompts are EN-only; declared localized families have all declared locales.
 
 ### Frontend Gate
 

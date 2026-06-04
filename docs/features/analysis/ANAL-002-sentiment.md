@@ -1,7 +1,7 @@
 ---
 id: ANAL-002
 title: "Sentiment Analysis"
-status: in_progress
+status: stable
 area: analysis
 mvp: false
 
@@ -165,3 +165,4 @@ class SentimentVisualization:
 - `project-init` — Added to registry as planned feature
 - `2026-05-28` — Moved to `in_progress`. Core NLP module (`core/nlp/`) and analysis module (`core/analysis/`) implemented. LexiconSentimentAnalyzer with deterministic VAD + emotion scoring + narrative arc detection. API and frontend implemented (tests pending).
 - `2026-05-28` — All spec requirements implemented. Cross-chapter arc trajectory line graph added. Word count + arc minimum warnings added to service. Chart export (PNG download) via html-to-image. Hover tooltips on emotion chart + arc graph. LLMIntent.SENTIMENT confirmed in intents.py. 8 warning tests + 30 rule tests added.
+- `2026-06-04` — Coverage uplift: 19% → 99% (40 tests). Status promoted to stable.

@@ -10,6 +10,7 @@ import ast
 import sys
 import textwrap
 from pathlib import Path as _Path
+from unittest.mock import patch
 
 _ROOT = str(_Path(__file__).resolve().parent.parent.parent.parent)
 if _ROOT not in sys.path:
@@ -155,31 +156,53 @@ class TestCheckInlinePromptsRegistration:
     """Tests that registered fallbacks are approved, not violations."""
 
     def test_registered_variable_approved(self) -> None:
-        """The CONSISTENCY_SYSTEM_PROMPT is in the registry and should be approved."""
+        """A registered inline prompt is emitted as approved, not a violation."""
         source = '''\
         CONSISTENCY_SYSTEM_PROMPT = """You are a consistency checker for a creative
         writing project. Your job is to detect contradictions and inconsistencies
         across chapters and entity data. Be thorough but fair."""
         '''
         tree, lines = _parse(source)
-        violations = check_inline_prompts(
-            "apps/api/narrare/consistency/prompt_builder.py", tree, lines
-        )
+        fake_registry = [
+            {
+                "file": "apps/api/narrare/consistency/prompt_builder.py",
+                "variable": "CONSISTENCY_SYSTEM_PROMPT",
+                "reason": "Registered inline fallback",
+            }
+        ]
+        with patch(
+            "scripts.architecture._checkers.inline_prompts._load_registered_fallbacks",
+            return_value=fake_registry,
+        ):
+            violations = check_inline_prompts(
+                "apps/api/narrare/consistency/prompt_builder.py", tree, lines
+            )
         assert len(violations) == 1
         assert violations[0].approved
         assert "Registered" in violations[0].detail
 
     def test_unregistered_variable_in_registered_file_is_violation(self) -> None:
-        """An unregistered prompt in a registered file is still a violation
-        if the variable name doesn't match."""
+        """An unregistered prompt in a file with other registrations is a violation
+        if the variable name doesn't match any entry."""
         source = '''\
         DIFFERENT_PROMPT = """You are a completely different assistant. Your job is
         to do something else entirely. This is not the registered prompt."""
         '''
         tree, lines = _parse(source)
-        violations = check_inline_prompts(
-            "apps/api/narrare/consistency/prompt_builder.py", tree, lines
-        )
-        # The file has a blanket registration entry only for CONSISTENCY_SYSTEM_PROMPT
+        fake_registry = [
+            {
+                "file": "apps/api/narrare/consistency/prompt_builder.py",
+                "variable": "CONSISTENCY_SYSTEM_PROMPT",
+                "reason": "Only CONSISTENCY_SYSTEM_PROMPT is registered",
+            }
+        ]
+        with patch(
+            "scripts.architecture._checkers.inline_prompts._load_registered_fallbacks",
+            return_value=fake_registry,
+        ):
+            violations = check_inline_prompts(
+                "apps/api/narrare/consistency/prompt_builder.py", tree, lines
+            )
+        # DIFFERENT_PROMPT doesn't match the registered CONSISTENCY_SYSTEM_PROMPT
         assert len(violations) == 1
         assert not violations[0].approved

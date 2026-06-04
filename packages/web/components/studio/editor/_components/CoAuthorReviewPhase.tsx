@@ -94,7 +94,12 @@ export function CoAuthorReviewPhase({
       </div>
 
       <div className="flex items-center gap-2 pt-2">
-        <button type="button" onClick={onClose} className={`${btnSecondary} flex-1`}>
+        <button
+          type="button"
+          onClick={onClose}
+          className={`${btnSecondary} flex-1`}
+          data-testid="coauthor-cancel-review"
+        >
           {t("coAuthor.cancel")}
         </button>
         <button

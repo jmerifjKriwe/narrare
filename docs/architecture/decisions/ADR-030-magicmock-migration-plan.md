@@ -1,6 +1,6 @@
 # ADR-030 — MagicMock-to-Fake Migration Plan for Memory Tests
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Implemented
 > **Date:** 2026-06-04
 > **Deciders:** Architecture Agent, Docs Specialist
 > **Supersedes:** —

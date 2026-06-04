@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from pydantic_ai.models.test import (
@@ -13,7 +12,7 @@ from pydantic_ai.models.test import (
 
 from narrare.memory.schemas import AnalyzeResponse
 from narrare_core.llm.gateway import ModelRegistry
-from narrare_core.prompts.composer import ComposedPrompt
+from tests.fakes import FakeFeedbackRepository, FakePreferenceProfileRepository, FakePromptComposer
 
 if TYPE_CHECKING:
     from pydantic_ai.usage import UsageLimits
@@ -37,46 +36,6 @@ class FakeFeedbackEvent:
     context: dict[str, Any] = field(default_factory=dict)
 
 
-class FakeFeedbackRepo:
-    """Fake FeedbackRepository for testing."""
-
-    def __init__(self, event_count: int = 10) -> None:
-        self._event_count = event_count
-        self._events: list[Any] = []
-
-    async def get_event_count(self, user_id: Any, project_id: Any) -> int:
-        return self._event_count
-
-    async def get_events_batch(
-        self, user_id: Any, project_id: Any, *, limit: int = 50
-    ) -> list[Any]:
-        return self._events
-
-
-class FakeProfileRepo:
-    """Fake PreferenceProfileRepository for testing."""
-
-    def __init__(self) -> None:
-        self._profiles: dict[str, Any] = {}
-
-    async def upsert(self, profile: Any) -> Any:
-        from datetime import UTC, datetime
-
-        if profile.id is None:
-            profile.id = uuid4()
-        if profile.created_at is None:
-            profile.created_at = datetime.now(UTC)
-        if profile.updated_at is None:
-            profile.updated_at = datetime.now(UTC)
-        key = f"{profile.user_id}:{profile.project_id}"
-        self._profiles[key] = profile
-        return profile
-
-    async def get(self, user_id: Any, project_id: Any) -> Any | None:
-        key = f"{user_id}:{project_id}"
-        return self._profiles.get(key)
-
-
 class FakeModelRegistry(ModelRegistry):
     """ModelRegistry test double that returns a valid pydantic-ai test model."""
 
@@ -95,52 +54,63 @@ class FakeModelRegistry(ModelRegistry):
         return self.model
 
 
-def _make_composer() -> AsyncMock:
-    """Create a mock PromptComposer that returns a ComposedPrompt."""
-    composer = AsyncMock()
-    composer.build = AsyncMock(
-        return_value=ComposedPrompt(
-            system="You are a preference analyst.",
-            user="Analyze the following feedback history.",
-        )
-    )
-    return composer
-
-
 class TestPreferenceAnalysisService:
-    def _make_service(self, event_count: int = 10) -> tuple[Any, FakeFeedbackRepo, FakeProfileRepo]:
+    def _make_service(
+        self, event_count: int = 10
+    ) -> tuple[Any, FakeFeedbackRepository, FakePreferenceProfileRepository]:
         from narrare.memory.analysis_service import PreferenceAnalysisService
 
         registry = FakeModelRegistry()
-        feedback_repo = FakeFeedbackRepo(event_count=event_count)
-        profile_repo = FakeProfileRepo()
-        composer = _make_composer()
+        feedback_repo = FakeFeedbackRepository()
+        profile_repo = FakePreferenceProfileRepository()
+        composer = FakePromptComposer()
         service = PreferenceAnalysisService(
             registry=registry,
-            feedback_repo=feedback_repo,  # type: ignore[arg-type]
-            profile_repo=profile_repo,  # type: ignore[arg-type]
+            feedback_repo=feedback_repo,
+            profile_repo=profile_repo,
             composer=composer,
         )
         return service, feedback_repo, profile_repo
 
+    def _seed_events(
+        self,
+        feedback_repo: FakeFeedbackRepository,
+        user_id: object,
+        project_id: object,
+        count: int,
+    ) -> None:
+        """Seed the fake repo with minimal event-like objects for analysis."""
+        from narrare.memory.models import FeedbackEventModel
+
+        for _ in range(count):
+            event = FeedbackEventModel(
+                user_id=user_id,  # type: ignore[arg-type]
+                project_id=project_id,  # type: ignore[arg-type]
+                suggestion_id=uuid4(),
+                action="accept",
+                intent="write",
+                suggestion_text="Seeded event.",
+            )
+            feedback_repo.seed(event)
+
     async def test_analyze_raises_with_too_few_events(self) -> None:
-        service, _, _ = self._make_service(event_count=3)
+        service, feedback_repo, _ = self._make_service()
+        user_id = uuid4()
+        project_id = uuid4()
+        self._seed_events(feedback_repo, user_id, project_id, 3)
 
         try:
-            await service.analyze(uuid4(), uuid4())
+            await service.analyze(user_id, project_id)
             raise AssertionError("Should have raised ValueError")
         except ValueError as exc:
             assert "at least 5" in str(exc)
 
     async def test_analyze_with_enough_events_succeeds(self) -> None:
-        service, feedback_repo, _ = self._make_service(event_count=10)
-        # Seed some fake events
-        for _ in range(10):
-            event = FakeFeedbackEvent()
-            feedback_repo._events.append(event)
-
+        service, feedback_repo, _ = self._make_service()
         user_id = uuid4()
         project_id = uuid4()
+        self._seed_events(feedback_repo, user_id, project_id, 10)
+
         result = await service.analyze(user_id, project_id)
 
         assert isinstance(result, AnalyzeResponse)
@@ -153,13 +123,11 @@ class TestPreferenceAnalysisService:
         assert result is None
 
     async def test_get_profile_returns_after_analyze(self) -> None:
-        service, feedback_repo, _profile_repo = self._make_service(event_count=10)
-        for _ in range(10):
-            event = FakeFeedbackEvent(suggestion_text="Text.")
-            feedback_repo._events.append(event)
-
+        service, feedback_repo, _ = self._make_service()
         user_id = uuid4()
         project_id = uuid4()
+        self._seed_events(feedback_repo, user_id, project_id, 10)
+
         await service.analyze(user_id, project_id)
 
         profile = await service.get_profile(user_id, project_id)

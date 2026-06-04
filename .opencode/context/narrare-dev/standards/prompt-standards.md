@@ -63,7 +63,7 @@ conflict resolution are now in `NarrareUniversalRules` Capability, not meta temp
 | Better instructions, new rules, clearer wording | MINOR | Rewriting Do NOT items |
 | Typos, minor wording | PATCH | Grammar fix |
 
-**All 3 locales (en, de, fr) MUST share the same version number.**
+**Declared localized prompt families** (meta, universal) — all declared locales MUST share the same version number. Bundled feature prompts are EN-only (ADR-026 Phase 5).
 
 ---
 
@@ -74,5 +74,5 @@ conflict resolution are now in `NarrareUniversalRules` Capability, not meta temp
 - [ ] Do NOT ≥4 items, Quality Rules ≥3 items
 - [ ] `{{user_preferences}}` + `{{avoidance_patterns}}` included (where applicable)
 - [ ] User content in XML tags
-- [ ] All 3 locale variants updated, same version
+- [ ] Declared localized families: all locale variants updated, same version. Feature prompts: EN-only (no locale variants)
 - [ ] Version bumped appropriately

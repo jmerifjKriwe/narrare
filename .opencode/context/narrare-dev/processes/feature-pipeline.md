@@ -63,7 +63,7 @@ Vor der Implementation prüft der Architecture Specialist die Cross-Feature-Koh�
 - [ ] **Cross-Feature-Datenflüsse identifiziert?** — Welche Daten teilt das Feature mit anderen Features? (KB, Storyboard, Frontmatter, wiki, memory, settings, etc.)
 - [ ] **Integration Contract definiert?** — Was passiert bei shared-data Änderung/Löschung? (Siehe RULE-03 Integration Contracts)
 - [ ] **Intent-Semantik geprüft?** — Falls neuer LLMIntent: Scope-Beschreibung dokumentiert? Falls existierender Intent: gleiche Semantik?
-- [ ] **i18n-Parität geprüft?** — Prompts in en/de/fr oder EN-Fallback dokumentiert?
+- [ ] **i18n-Parität geprüft?** — Bundled Feature-Prompts: EN-only (ADR-026 Phase 5). Deklarierte lokalisierte Prompt-Familien (meta, universal): alle deklarierten Locales vorhanden. UI-i18n: en/de/fr (RULE-16).
 - [ ] **Injection-Defense geprüft?** — Neue user-content Variablen in _USER_CONTENT_VARS? XML-Wrapping in Templates?
 - [ ] **Template-Variablen registriert?** — Neue Variablen in _SYSTEM_VARS oder WritingContext?
 - [ ] **KB-Status-Filtering beachtet?** — Falls KB-Daten: deprecated ausgeschlossen?

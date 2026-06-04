@@ -17,28 +17,52 @@ Usage:
 
 from tests.fakes.fake_auth_repository import FakeAuthRepository
 from tests.fakes.fake_chapter_repo import FakeChapterRepository
+from tests.fakes.fake_chapter_wiki_service import FakeChapterWikiService
+from tests.fakes.fake_core_wiki_service import FakeCoreWikiService
 from tests.fakes.fake_embedding_repo import FakeEmbeddingRepository
+from tests.fakes.fake_kb_repo import FakeKBRepository
 from tests.fakes.fake_llm_gateway import FakeLLMGateway, FakeModelRegistry
+from tests.fakes.fake_memory_repos import (
+    FakeFeedbackRepository,
+    FakePreferenceProfileRepository,
+)
+from tests.fakes.fake_memory_services import (
+    FakeCoreFeedbackService,
+    FakeEventPublisher,
+    FakePromptComposer,
+)
 from tests.fakes.fake_novel_repo import FakeNovelRepository
 from tests.fakes.fake_outline_repo import FakeOutlineRepository
+from tests.fakes.fake_relationship_repo import FakeRelationshipRepository
 from tests.fakes.fake_services import (
     FakeNovelService,
 )
 from tests.fakes.fake_setup import FakeDemoLoader, FakeProviderService
 from tests.fakes.fake_user_settings_repo import FakeUserSettingsRepository
 from tests.fakes.fake_volume_repo import FakeVolumeRepository
+from tests.fakes.fake_wiki_repo import FakeWikiRepository
 
 __all__ = [
     "FakeAuthRepository",
     "FakeChapterRepository",
+    "FakeChapterWikiService",
+    "FakeCoreFeedbackService",
+    "FakeCoreWikiService",
     "FakeDemoLoader",
     "FakeEmbeddingRepository",
+    "FakeEventPublisher",
+    "FakeFeedbackRepository",
+    "FakeKBRepository",
     "FakeLLMGateway",
     "FakeModelRegistry",
     "FakeNovelRepository",
     "FakeNovelService",
     "FakeOutlineRepository",
+    "FakePreferenceProfileRepository",
+    "FakePromptComposer",
     "FakeProviderService",
+    "FakeRelationshipRepository",
     "FakeUserSettingsRepository",
     "FakeVolumeRepository",
+    "FakeWikiRepository",
 ]

@@ -26,7 +26,12 @@ export function CoAuthorDonePhase({ onClose }: CoAuthorDonePhaseProps) {
         <Check className="w-6 h-6 text-green-500" />
       </div>
       <p className="text-sm font-medium">{t("coAuthor.done")}</p>
-      <button type="button" onClick={onClose} className={btnSecondary}>
+      <button
+        type="button"
+        onClick={onClose}
+        className={btnSecondary}
+        data-testid="coauthor-done-close"
+      >
         {t("coAuthor.close")}
       </button>
     </div>
