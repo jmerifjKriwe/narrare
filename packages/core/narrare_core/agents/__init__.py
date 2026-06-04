@@ -34,6 +34,7 @@ from narrare_core.agents.draft_types import DraftConfig, DraftOutput
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.agents.graph_store import GraphStateStore
+from narrare_core.agents.history_policy import HistoryPolicy
 from narrare_core.agents.inline_suggest_agent import InlineSuggestAgent
 from narrare_core.agents.inline_suggest_types import InlineSuggestDeps
 from narrare_core.agents.kb_agent import KBAgent, KBDeps
@@ -144,6 +145,7 @@ __all__ = [
     "ExtractionItem",
     "ExtractionOutput",
     "GraphStateStore",
+    "HistoryPolicy",
     "ImprovementSuggestion",
     "InlineSuggestAgent",
     "InlineSuggestDeps",

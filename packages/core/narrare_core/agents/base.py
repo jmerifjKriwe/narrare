@@ -28,6 +28,7 @@ from narrare_core.agents.capabilities import (
     NarrareObservability,
     NarrareUniversalRules,
 )
+from narrare_core.agents.history_policy import HistoryPolicy
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
@@ -57,6 +58,7 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         output_type: OutputSpec[OutputT] | None = None,
         capabilities: list[Any] | None = None,
         system_prompt: str | None = None,
+        history_policy: HistoryPolicy = HistoryPolicy.NONE,
     ) -> None:
         # Build Agent kwargs: pydantic-ai does not accept None for
         # output_type or system_prompt, so only pass when explicitly set.
@@ -76,6 +78,16 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
             agent_kwargs["system_prompt"] = system_prompt
 
         self._agent = Agent(**agent_kwargs)
+        self._history_policy = history_policy
+
+    @property
+    def history_policy(self) -> HistoryPolicy:
+        """History policy for this agent (ADR-034).
+
+        Task agents default to NONE (no ProcessHistory).
+        Conversational agents declare CONVERSATIONAL explicitly.
+        """
+        return self._history_policy
 
     async def run(
         self,
