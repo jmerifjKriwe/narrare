@@ -63,8 +63,7 @@ class PreferenceService:
             try:
                 result = await self._mem0.search(
                     query=query,
-                    user_id=str(user_id),
-                    app_id=str(project_id),
+                    filters={"user_id": str(user_id), "agent_id": str(project_id)},
                 )
                 memories = result.get("results", [])
                 total_memories += len(memories)
@@ -107,7 +106,7 @@ class PreferenceService:
         try:
             await self._mem0.delete_all(
                 user_id=str(user_id),
-                app_id=str(project_id),
+                agent_id=str(project_id),
             )
             logger.info(
                 "preferences_reset",

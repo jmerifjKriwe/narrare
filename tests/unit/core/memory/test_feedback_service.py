@@ -58,11 +58,12 @@ class TestFeedbackServiceRecord:
 
         mem0.add.assert_awaited_once()
         call_kwargs = mem0.add.call_args[1]
-        assert "accepted a suggestion" in call_kwargs["data"]
+        assert "accepted a suggestion" in call_kwargs["messages"]
         assert call_kwargs["user_id"] == str(event.user_id)
-        assert call_kwargs["app_id"] == str(event.project_id)
+        assert call_kwargs["agent_id"] == str(event.project_id)
         assert call_kwargs["metadata"]["action"] == "accept"
         assert call_kwargs["metadata"]["intent"] == "suggestion"
+        assert call_kwargs["metadata"]["project_id"] == str(event.project_id)
 
     async def test_record_persists_when_mem0_raises(self) -> None:
         """record() must persist to DB even when mem0 raises."""

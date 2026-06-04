@@ -99,6 +99,23 @@ class TestPreferenceServiceGetPreferences:
         assert len(profile.constraints) == 1
         assert profile.event_count == 2
 
+    async def test_search_called_with_filters_parameter(self) -> None:
+        """search() must pass user_id and agent_id via filters dict."""
+        mem0 = AsyncMock()
+        mem0.search.return_value = {"results": []}
+        service = PreferenceService(mem0_client=mem0)
+
+        user_id = uuid4()
+        project_id = uuid4()
+        await service.get_preferences(user_id, project_id)
+
+        # Verify every search call uses filters with correct user_id/agent_id
+        for call in mem0.search.await_args_list:
+            call_kwargs = call[1]
+            assert "filters" in call_kwargs
+            assert call_kwargs["filters"]["user_id"] == str(user_id)
+            assert call_kwargs["filters"]["agent_id"] == str(project_id)
+
     async def test_handles_memory_text_in_text_field(self) -> None:
         """Some mem0 results use 'text' key instead of 'memory'."""
         mem0 = AsyncMock()
@@ -129,7 +146,7 @@ class TestPreferenceServiceReset:
 
         mem0.delete_all.assert_awaited_once_with(
             user_id=str(user_id),
-            app_id=str(project_id),
+            agent_id=str(project_id),
         )
 
     async def test_reset_handles_mem0_exception(self) -> None:

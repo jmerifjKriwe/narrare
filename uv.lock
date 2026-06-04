@@ -1304,7 +1304,7 @@ wheels = [
 
 [[package]]
 name = "mem0ai"
-version = "2.0.2"
+version = "2.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openai" },
@@ -1315,9 +1315,9 @@ dependencies = [
     { name = "qdrant-client" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ce/8f/86975bdf11a0aece78b6f4d5551b8b92c38b9bdf5f5764fc879e6cb1227b/mem0ai-2.0.2.tar.gz", hash = "sha256:482d11a55c8aa00dce29a66eeecbba2fd5f5c7501c054ce8ba606baee3755f99", size = 214627, upload-time = "2026-05-07T20:03:47.812Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/51/e22728c4b4e94e06f97464a3262b895ca67f62381d5cb34fe1c6f672c946/mem0ai-2.0.4.tar.gz", hash = "sha256:0cffdbdaa961aa4371c707e5f90f25961ae0cf170169abf6aaf6adba14c6bca1", size = 216092, upload-time = "2026-05-27T17:45:46.46Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/f8/59902456c1950e63b6b226634463bc8b24d81697e7114f0740059fd0a270/mem0ai-2.0.2-py3-none-any.whl", hash = "sha256:6fda32549c213fb63b393f4b1920f54961ea75c51d95b6492096108609accf3b", size = 302276, upload-time = "2026-05-07T20:03:45.706Z" },
+    { url = "https://files.pythonhosted.org/packages/71/ab/46eac3d46c17427af579cb44ff1513b552d85b32998748f2c66248513955/mem0ai-2.0.4-py3-none-any.whl", hash = "sha256:920a39474bf4c2a5a7d4bb814e237aacd699c435d8e20db257c3b43568e7175e", size = 303753, upload-time = "2026-05-27T17:45:44.598Z" },
 ]
 
 [[package]]
@@ -1490,7 +1490,7 @@ requires-dist = [
     { name = "filelock", specifier = "==3.29.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jinja2", specifier = "==3.1.6" },
-    { name = "mem0ai", specifier = "==2.0.2" },
+    { name = "mem0ai", specifier = "==2.0.4" },
     { name = "narrare-core", editable = "packages/core" },
     { name = "narrare-i18n", editable = "packages/i18n" },
     { name = "opentelemetry-api", specifier = ">=1.39.0,<1.43.0" },
@@ -1556,7 +1556,7 @@ nlp = [
 requires-dist = [
     { name = "aiofiles", specifier = "==25.1.0" },
     { name = "httpx", specifier = "==0.28.1" },
-    { name = "mem0ai", specifier = ">=1.0" },
+    { name = "mem0ai", specifier = ">=2.0.2" },
     { name = "narrare-i18n", editable = "packages/i18n" },
     { name = "prometheus-client", specifier = ">=0.20.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.0" },

@@ -56,13 +56,14 @@ class FeedbackService:
         try:
             memory_text = self._translate_to_memory_text(event)
             await self._mem0.add(
-                data=memory_text,
+                messages=memory_text,
                 user_id=str(event.user_id),
-                app_id=str(event.project_id),
+                agent_id=str(event.project_id),
                 metadata={
                     "action": event.action.value,
                     "intent": event.intent,
                     "suggestion_id": str(event.suggestion_id),
+                    "project_id": str(event.project_id),
                 },
             )
         except Exception:

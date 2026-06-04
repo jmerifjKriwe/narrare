@@ -43,7 +43,7 @@ dependencies = [
   "httpx==0.28.1",
 
   # Memory layer
-  "mem0ai==2.0.2",
+  "mem0ai==2.0.4",
 
   # Observability
   "structlog==25.5.0",
