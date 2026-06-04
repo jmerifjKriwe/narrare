@@ -8,6 +8,9 @@
     "edit": "ask",
     "bash": "ask"
   },
+  "plugin": [
+    "./.opencode/plugins/agentmemory-capture.ts"
+  ],
   "mcp": {
     "code-review-graph": {
       "type": "local",
