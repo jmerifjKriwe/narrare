@@ -57,8 +57,8 @@
 | [ADR-031](ADR-031-local-first-opentelemetry-observability.md) | Local-First OpenTelemetry Observability | ✅ | 2026-06-04 | `apps/api/narrare/_app/telemetry.py`, `core/agents/`, `core/llm/`, observability |
 | [ADR-032](ADR-032-pydantic-evals-ssot.md) | Pydantic Evals as Evaluation Single Source of Truth | ✅ | 2026-06-04 | `evals/`, `core/agents/`, `core/prompts/`, CI |
 | [ADR-033](ADR-033-mem0-v3-oss-memory-architecture.md) | mem0 2.0.x OSS Memory Architecture | ✅ Implemented | 2026-06-04 | `core/memory/`, `apps/api/narrare/memory/`, preference retrieval |
-| [ADR-034](ADR-034-conversational-history-policy.md) | Conversational History Policy for Narrare Agents | ✅ | 2026-06-04 | `core/agents/`, chat, writing sessions, task agents |
-| [ADR-035](ADR-035-agent-output-validation-policy.md) | Agent Output Validation Policy | ✅ | 2026-06-04 | `core/agents/`, structured outputs, Pydantic Evals |
+| [ADR-034](ADR-034-conversational-history-policy.md) | Conversational History Policy for Narrare Agents | ✅ Implemented | 2026-06-04 | `core/agents/`, chat, writing sessions, task agents |
+| [ADR-035](ADR-035-agent-output-validation-policy.md) | Agent Output Validation Policy | ✅ Implemented | 2026-06-04 | `core/agents/`, structured outputs, Pydantic Evals |
 | [ADR-036](ADR-036-durable-execution-boundary.md) | Durable Execution Boundary | ✅ | 2026-06-04 | TaskIQ, events, agent workflows, runtime infrastructure |
 
 ---

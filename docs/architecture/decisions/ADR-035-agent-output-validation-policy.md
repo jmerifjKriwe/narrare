@@ -1,10 +1,16 @@
 # ADR-035 — Agent Output Validation Policy
 
-> **Status:** ✅ Accepted
+> **Status:** ✅ Implemented
 > **Date:** 2026-06-04
 > **Deciders:** User, Architecture Agent
 > **Supersedes:** —
 > **Related:** ADR-015, ADR-026, ADR-027, ADR-032, ADR-034
+
+> **Implementation Note:** Implemented output validators for 4 priority agents:
+> PreferenceAnalysisAgent, ExtractionAgent, ConsistencyAgent, TimelineAgent.
+> Uses `self._agent.output_validator()` pattern (Approach A). 76 validation tests.
+> Remaining agents (DraftAgent, KBImproveAgent, KBAssistAgent, etc.) are secondary
+> candidates to be addressed as the pattern matures.
 
 ---
 

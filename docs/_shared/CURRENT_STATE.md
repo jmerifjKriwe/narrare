@@ -189,8 +189,8 @@ Completed in Phase 6 so far:
 | ADR-031 | Local-First OpenTelemetry Observability | ✅ Phase 1 implemented — Langfuse removed; Pydantic-AI OTel instrumentation active |
 | ADR-032 | Pydantic Evals as Evaluation SSOT | ✅ Implemented |
 | ADR-033 | mem0 v3 OSS Memory Architecture | ✅ Implemented (mem0 2.0.x) |
-| ADR-034 | Conversational History Policy | ✅ Accepted |
-| ADR-035 | Agent Output Validation Policy | ✅ Accepted |
+| ADR-034 | Conversational History Policy | ✅ Implemented |
+| ADR-035 | Agent Output Validation Policy | ✅ Implemented (4 priority agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 
 Full details: `docs/architecture/decisions/INDEX.md`
