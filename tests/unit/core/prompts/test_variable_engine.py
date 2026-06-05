@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import pytest
 
 from narrare_core.prompts.variable_engine import (
+    _FEATURE_DYNAMIC_VARS,
     _SYSTEM_VARS,
     _USER_CONTENT_VARS,
     extract_variables,
@@ -13,6 +17,8 @@ from narrare_core.prompts.variable_engine import (
     wrap_user_content,
 )
 from narrare_core.shared.errors import PromptVariableError
+
+_BUNDLED_ROOT = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
 
 
 class TestExtractVariables:
@@ -177,3 +183,42 @@ class TestVariableConstants:
         assert "kb_objects" not in _SYSTEM_VARS
         assert "kb_concepts" not in _SYSTEM_VARS
         assert "kb_settings" not in _SYSTEM_VARS
+
+    def test_all_bundled_template_variables_are_classified(self) -> None:
+        """INFRA-012: no bundled prompt variable may be unregistered."""
+        discovered: set[str] = set()
+        for path in _BUNDLED_ROOT.rglob("*.md"):
+            discovered.update(re.findall(r"\{\{(\w+)\}\}", path.read_text()))
+
+        registered = _USER_CONTENT_VARS | _SYSTEM_VARS | _FEATURE_DYNAMIC_VARS
+
+        assert sorted(discovered - registered) == []
+
+    def test_variable_registries_are_mutually_exclusive(self) -> None:
+        """Each variable has exactly one provenance classification."""
+        assert _USER_CONTENT_VARS.isdisjoint(_SYSTEM_VARS)
+        assert _USER_CONTENT_VARS.isdisjoint(_FEATURE_DYNAMIC_VARS)
+        assert _SYSTEM_VARS.isdisjoint(_FEATURE_DYNAMIC_VARS)
+
+    def test_find005_examples_are_classified_by_provenance(self) -> None:
+        """Classify examples called out by INFRA-012 FIND-005."""
+        assert "entity_body" in _USER_CONTENT_VARS
+
+        for name in (
+            "writing_language",
+            "novel_synopsis",
+            "style_profile",
+            "chapter_summaries",
+            "known_characters",
+        ):
+            assert name in _SYSTEM_VARS
+
+        for name in (
+            "timeline_position",
+            "candidate_pairs",
+            "entity_events",
+            "relationships",
+            "variant_count",
+            "explanation_language",
+        ):
+            assert name in _FEATURE_DYNAMIC_VARS

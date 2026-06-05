@@ -11,6 +11,10 @@ sites in the router modules so that:
 - The **real** ``GenerationRepository`` is used (DB integration).
 - A **fake** ``WritingPipeline`` / ``FakeModelRegistry`` replaces LLM calls.
 - All other service logic runs unmodified.
+
+PERFORMANCE: All imports are at module level (not lazy) to avoid ~1s
+cold-start import overhead on the first test invocation of each service
+factory function.  See: tests/integration/README.md.
 """
 
 from __future__ import annotations
@@ -20,13 +24,40 @@ from unittest.mock import patch
 
 import pytest
 
+# Module-level imports to amortise import cost across all tests in the
+# writing integration suite.  Lazy imports inside the factory functions
+# added ~1s to the first test that called each service.
+from narrare._app.dependencies import get_composer
+from narrare.chapters.repository import ChapterRepository
+from narrare.writing.extend_service import ExtendService
+from narrare.writing.repository import GenerationRepository
+from narrare.writing.rewrite_service import RewriteService
+from narrare.writing.service import WritingService
+from narrare.writing.suggest_service import InlineSuggestService
+from narrare_core.llm import ResolvedModelConfig
+from narrare_core.writing.context_assembler import WritingContextAssembler
+from narrare_core.writing.draft_processor import DraftProcessor
+from narrare_core.writing.pipeline import WritingPipeline
+from tests.fakes.fake_llm_gateway import FakeModelRegistry
+
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from narrare.writing.extend_service import ExtendService
-    from narrare.writing.rewrite_service import RewriteService
-    from narrare.writing.service import WritingService
-    from narrare.writing.suggest_service import InlineSuggestService
+
+_assembler = WritingContextAssembler()
+_processor = DraftProcessor()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _prewarm_composer() -> None:  # pyright: ignore[reportUnusedFunction]
+    """Pre-warm PromptComposer singleton (~750ms cold start).
+
+    ``get_composer()`` calls ``_get_composer_instance()`` which is
+    ``@lru_cache``'d.  The first call loads the entire prompt registry
+    from disk (YAML prompt files).  This fixture runs once per session,
+    so the ~750ms overhead is paid once, not per-test.
+    """
+    get_composer()
 
 
 async def _make_writing_service(
@@ -35,15 +66,6 @@ async def _make_writing_service(
     project_id: object = None,
 ) -> WritingService:
     """Build a WritingService with real repo + fake pipeline (no LLM calls)."""
-    from narrare._app.dependencies import get_composer
-    from narrare.writing.repository import GenerationRepository
-    from narrare.writing.service import WritingService
-    from narrare_core.llm import ResolvedModelConfig
-    from narrare_core.writing.context_assembler import WritingContextAssembler
-    from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
-    from tests.fakes.fake_llm_gateway import FakeModelRegistry
-
     repo = GenerationRepository(session)
     fake_registry = FakeModelRegistry()
     config = ResolvedModelConfig(
@@ -56,14 +78,14 @@ async def _make_writing_service(
     pipeline = WritingPipeline(
         registry=fake_registry,
         composer=get_composer(),
-        context_assembler=WritingContextAssembler(),
-        draft_processor=DraftProcessor(),
+        context_assembler=_assembler,
+        draft_processor=_processor,
     )
 
     return WritingService(
         repo=repo,
         pipeline=pipeline,
-        draft_processor=DraftProcessor(),
+        draft_processor=_processor,
         config=config,
     )
 
@@ -74,15 +96,6 @@ async def _make_extend_service(
     project_id: object = None,
 ) -> ExtendService:
     """Build an ExtendService with real repo + fake pipeline (no LLM calls)."""
-    from narrare._app.dependencies import get_composer
-    from narrare.writing.extend_service import ExtendService
-    from narrare.writing.repository import GenerationRepository
-    from narrare_core.llm import ResolvedModelConfig
-    from narrare_core.writing.context_assembler import WritingContextAssembler
-    from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
-    from tests.fakes.fake_llm_gateway import FakeModelRegistry
-
     repo = GenerationRepository(session)
     fake_registry = FakeModelRegistry()
     # Queue a default stream response for extend tests.
@@ -97,14 +110,14 @@ async def _make_extend_service(
     pipeline = WritingPipeline(
         registry=fake_registry,
         composer=get_composer(),
-        context_assembler=WritingContextAssembler(),
-        draft_processor=DraftProcessor(),
+        context_assembler=_assembler,
+        draft_processor=_processor,
     )
 
     return ExtendService(
         repo=repo,
         pipeline=pipeline,
-        draft_processor=DraftProcessor(),
+        draft_processor=_processor,
         config=config,
     )
 
@@ -115,15 +128,6 @@ async def _make_rewrite_service(
     project_id: object = None,
 ) -> RewriteService:
     """Build a RewriteService with real repo + fake pipeline (no LLM calls)."""
-    from narrare._app.dependencies import get_composer
-    from narrare.writing.repository import GenerationRepository
-    from narrare.writing.rewrite_service import RewriteService
-    from narrare_core.llm import ResolvedModelConfig
-    from narrare_core.writing.context_assembler import WritingContextAssembler
-    from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
-    from tests.fakes.fake_llm_gateway import FakeModelRegistry
-
     repo = GenerationRepository(session)
     fake_registry = FakeModelRegistry()
     # Queue a default stream response with <alternative> tags for rewrite tests.
@@ -145,14 +149,14 @@ async def _make_rewrite_service(
     pipeline = WritingPipeline(
         registry=fake_registry,
         composer=get_composer(),
-        context_assembler=WritingContextAssembler(),
-        draft_processor=DraftProcessor(),
+        context_assembler=_assembler,
+        draft_processor=_processor,
     )
 
     return RewriteService(
         repo=repo,
         pipeline=pipeline,
-        draft_processor=DraftProcessor(),
+        draft_processor=_processor,
         config=config,
     )
 
@@ -163,12 +167,6 @@ async def _make_suggest_service(
     project_id: object = None,
 ) -> InlineSuggestService:
     """Build an InlineSuggestService with real chapter repo + fake registry."""
-    from narrare._app.dependencies import get_composer
-    from narrare.chapters.repository import ChapterRepository
-    from narrare.writing.suggest_service import InlineSuggestService
-    from narrare_core.llm import ResolvedModelConfig
-    from tests.fakes.fake_llm_gateway import FakeModelRegistry
-
     fake_registry = FakeModelRegistry()
     # Queue a default short stream response for suggest tests.
     fake_registry.returns_stream(

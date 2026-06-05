@@ -4,7 +4,7 @@
 > **Date:** 2026-06-01
 > **Deciders:** Architecture Specialist
 > **Supersedes:** Partially supersedes ADR-019 (system-prompt consistency)
-> **Related:** ADR-002 (unified prompt system), ADR-015 (agents as first-class citizens), ADR-016 (prompt caching)
+> **Related:** ADR-002 (unified prompt system), ADR-015 (agents as first-class citizens), ADR-016 (prompt caching), INFRA-012 (prompt governance hardening)
 
 ---
 
@@ -383,10 +383,57 @@ This avoids requiring all Deps types to implement a full protocol, while still p
 
 ---
 
+## Hardening Completion Addendum (CR-02 / INFRA-012)
+
+The CR-02 content review confirmed that the ADR-026 runtime mechanism is correct:
+`NarrareMeta` and `NarrareUniversalRules` are injected by `NarrareAgent`, while
+feature-specific prompt content stays in the PromptComposer cascade. Remaining
+work is governance hardening, not a change to the decision.
+
+### Completion Rules
+
+1. **Meta and Universal are validated separately.** Checkers must not expect all
+   ADR-019-era global content in a single meta template. `NarrareMeta` covers
+   identity/role/guardrails; `NarrareUniversalRules` covers fiction guidelines,
+   conflict resolution, and injection defense.
+
+2. **Bundled feature prompts may be EN-only.** This remains valid per Phase 5
+   when output language is supplied through variables, Context, Deps, or
+   preferences such as `{{writing_language}}`, `{{language}}`, or
+   `{{explanation_language}}` where applicable.
+
+3. **Every PromptComposer mapping is route-governed.** Every routeable
+   `_INTENT_TO_CATEGORY` + `_INTENT_TO_MODE` mapping must resolve to a bundled EN
+   target. Unused mappings must be removed/remapped or marked non-routeable with
+   explicit rationale. Missing routeable targets are CI failures.
+
+4. **Production inline system/task fallback bodies are forbidden when bundled
+   targets exist.** Test-only fallbacks must be scoped so production DI cannot
+   reach them and must be documented in the adoption registry. Broad prompt
+   fallback catches are not allowed.
+
+5. **Every production agent path inherits `NarrareMeta` and
+   `NarrareUniversalRules` through `NarrareAgent`.** Bare pydantic-ai `Agent`
+   usage remains limited to ADR-approved exceptions.
+
+### Governance Contract
+
+The detailed implementation contract lives in
+[`INFRA-012 — Prompt Governance Hardening`](../../features/infra/INFRA-012-prompt-governance-hardening.md).
+INFRA-012 defines variable registry governance, cross-feature context precedence,
+process-prevention checklists, and layer-specific handoffs. Material deviations
+from that spec require architecture re-review under RULE-21.
+
+---
+
 ## Review Trigger
 
 - [x] ~~Phase 1: Verify universal rules present in all agent outputs~~ (done — d1432d1)
 - [x] ~~Phase 3: Verify meta-prompt identity regardless of PromptComposer~~ (done — 45b7395)
+- [ ] INFRA-012: Verify gates validate Meta and Universal separately rather than as one monolithic meta prompt
+- [ ] INFRA-012: Verify every routeable PromptComposer mapping resolves to a bundled EN target or has an explicit non-routeable rationale
+- [ ] INFRA-012: Verify production inline prompt fallback bodies are removed or test-scoped only
+- [ ] INFRA-012: Verify every production agent path inherits `NarrareMeta` and `NarrareUniversalRules` via `NarrareAgent`
 - [ ] Phase 5 governance: Verify gates treat EN-only bundled feature prompts as valid when output-language variables/context are present
 - [ ] Output-language validation: Verify EN-only feature prompts produce correct output across configured writing languages via Context/Deps/preferences
 - [ ] pydantic-ai v2: Verify `AbstractCapability.get_instructions()` contract unchanged

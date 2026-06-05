@@ -74,11 +74,16 @@ def create_app() -> FastAPI:
         elif isinstance(exc, ValidationError):
             status_code = 422
 
+        # NOTE: exc_info is intentionally omitted — NarrareError subclasses
+        # are expected domain errors (not bugs), not unexpected crashes.
+        # The code + detail fields are sufficient for diagnostics.
+        # Keeping exc_info=True would trigger structlog's rich traceback
+        # rendering (ConsoleRenderer) which adds ~2.7s per error due to
+        # deep exception chains (NotFoundError ← IntegrityError ← DBError).
         logger.error(
             "narrare_error",
             code=exc.code,
             detail=str(exc),
-            exc_info=True,
         )
         return JSONResponse(
             status_code=status_code,

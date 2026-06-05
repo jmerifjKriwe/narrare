@@ -274,8 +274,7 @@ class ConsistencyCheckerService:
         """Resolve the system prompt for the consistency agent.
 
         Uses the bundled prompt cascade. Locale fallback to English is handled
-        by PromptRegistry, so missing localized templates do not require an
-        inline prompt fallback here.
+        by PromptRegistry — no production inline fallback needed.
         """
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext

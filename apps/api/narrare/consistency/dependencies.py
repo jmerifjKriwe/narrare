@@ -15,7 +15,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
 
     Production wiring:
     - ModelRegistry for LLM model resolution
-    - PromptComposer for system prompt assembly (with inline fallback)
+    - PromptComposer for system prompt assembly
     - ChapterRepository for chapter content fetching
     - NovelRepository for novel access control + language resolution
     - KBRepository for KB entity summaries

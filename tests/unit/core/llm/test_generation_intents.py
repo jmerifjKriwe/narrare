@@ -11,7 +11,11 @@ from __future__ import annotations
 
 from narrare_core.llm import LLMIntent
 from narrare_core.llm.intent_categories import INTENT_CATEGORY_MAP, IntentCategory
-from narrare_core.prompts.composer import _INTENT_TO_CATEGORY, _INTENT_TO_MODE
+from narrare_core.prompts.routes import (
+    _INTENT_TO_CATEGORY,
+    _INTENT_TO_MODE,
+    _NON_ROUTEABLE_INTENTS,
+)
 
 
 class TestGenerationLLMIntents:
@@ -51,26 +55,26 @@ class TestComposerCategoryMapping:
     """Task 2.3: _INTENT_TO_CATEGORY in PromptComposer."""
 
     def test_generate_category(self) -> None:
-        assert _INTENT_TO_CATEGORY[LLMIntent.GENERATE] == "generation"
+        assert LLMIntent.GENERATE in _NON_ROUTEABLE_INTENTS
 
     def test_name_generate_category(self) -> None:
         assert _INTENT_TO_CATEGORY[LLMIntent.NAME_GENERATE] == "generation"
 
     def test_title_generate_category(self) -> None:
-        assert _INTENT_TO_CATEGORY[LLMIntent.TITLE_GENERATE] == "generation"
+        assert LLMIntent.TITLE_GENERATE in _NON_ROUTEABLE_INTENTS
 
 
 class TestComposerModeMapping:
     """Task 2.4: _INTENT_TO_MODE in PromptComposer."""
 
     def test_generate_mode(self) -> None:
-        assert _INTENT_TO_MODE[LLMIntent.GENERATE] == "general"
+        assert LLMIntent.GENERATE not in _INTENT_TO_MODE
 
     def test_name_generate_mode(self) -> None:
         assert _INTENT_TO_MODE[LLMIntent.NAME_GENERATE] == "names"
 
     def test_title_generate_mode(self) -> None:
-        assert _INTENT_TO_MODE[LLMIntent.TITLE_GENERATE] == "titles"
+        assert LLMIntent.TITLE_GENERATE not in _INTENT_TO_MODE
 
 
 class TestGenerationIntentRoutingConsistency:
@@ -81,12 +85,11 @@ class TestGenerationIntentRoutingConsistency:
         for intent in (LLMIntent.GENERATE, LLMIntent.NAME_GENERATE, LLMIntent.TITLE_GENERATE):
             assert intent in INTENT_CATEGORY_MAP
 
-    def test_all_generation_intents_have_composer_category(self) -> None:
-        """Every generation intent must appear in _INTENT_TO_CATEGORY."""
+    def test_all_generation_intents_have_prompt_route_decision(self) -> None:
+        """Every generation intent has a route or explicit non-routeable decision."""
         for intent in (LLMIntent.GENERATE, LLMIntent.NAME_GENERATE, LLMIntent.TITLE_GENERATE):
-            assert intent in _INTENT_TO_CATEGORY
+            assert intent in _INTENT_TO_CATEGORY or intent in _NON_ROUTEABLE_INTENTS
 
-    def test_all_generation_intents_have_composer_mode(self) -> None:
-        """Every generation intent must appear in _INTENT_TO_MODE."""
-        for intent in (LLMIntent.GENERATE, LLMIntent.NAME_GENERATE, LLMIntent.TITLE_GENERATE):
-            assert intent in _INTENT_TO_MODE
+    def test_all_routeable_generation_intents_have_composer_mode(self) -> None:
+        """Routeable generation intents must have a bundled mode."""
+        assert LLMIntent.NAME_GENERATE in _INTENT_TO_MODE

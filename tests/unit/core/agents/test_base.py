@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+import inspect
+from typing import TYPE_CHECKING, Any, ClassVar
+
 from pydantic_ai.models.test import TestModel
 
 from narrare_core.agents import NarrareAgent
+from narrare_core.agents.capabilities import NarrareMeta, NarrareUniversalRules
+
+if TYPE_CHECKING:
+    import pytest
 
 
 class TestNarrareAgent:
@@ -125,3 +132,52 @@ class TestNarrareAgent:
         # Agent with non-None deps type
         result = await agent.run("Hallo", deps=MyDeps(user_name="Alice"))
         assert result == "success (no tool calls)"
+
+    def test_all_production_agent_classes_inherit_adr026_capabilities(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Every exported production agent path receives ADR-026 capabilities.
+
+        This patches the stable construction hook used by ``NarrareAgent`` instead
+        of inspecting pydantic-ai private internals. If an agent stops calling the
+        base constructor, no captured construction call is produced and this test
+        fails for that concrete agent class.
+        """
+        import narrare_core.agents as agents_module
+        import narrare_core.agents.base as base_module
+
+        class CapturingPydanticAgent:
+            calls: ClassVar[list[dict[str, Any]]] = []
+
+            def __init__(self, **kwargs: Any) -> None:
+                self.calls.append(kwargs)
+
+            def output_validator(self, validator: Any) -> Any:
+                return validator
+
+            def tool(self, tool_func: Any) -> Any:
+                return tool_func
+
+        monkeypatch.setattr(base_module, "Agent", CapturingPydanticAgent)
+
+        agent_classes = [
+            exported
+            for name in agents_module.__all__
+            if inspect.isclass(exported := getattr(agents_module, name))
+            and issubclass(exported, NarrareAgent)
+            and exported is not NarrareAgent
+        ]
+
+        assert agent_classes, "No production NarrareAgent classes were discovered"
+
+        for agent_class in agent_classes:
+            before = len(CapturingPydanticAgent.calls)
+            constructor: Any = agent_class
+            constructor(model=object())
+            assert len(CapturingPydanticAgent.calls) == before + 1, agent_class.__name__
+
+            capabilities = CapturingPydanticAgent.calls[-1]["capabilities"]
+            capability_types = {type(capability) for capability in capabilities}
+            assert NarrareMeta in capability_types, agent_class.__name__
+            assert NarrareUniversalRules in capability_types, agent_class.__name__

@@ -97,6 +97,18 @@ class PromptNotFoundError(PromptError):
         self.mode = mode
 
 
+class PromptRouteNotConfiguredError(PromptError):
+    """PromptComposer has no governed route for the requested intent."""
+
+    def __init__(self, intent: str, reason: str) -> None:
+        super().__init__(
+            f"Prompt route not configured for intent '{intent}': {reason}",
+            code="PROMPT_ROUTE_NOT_CONFIGURED",
+        )
+        self.intent = intent
+        self.reason = reason
+
+
 class PromptVariableError(PromptError):
     """Required prompt variable is missing or invalid."""
 

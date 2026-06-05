@@ -51,7 +51,21 @@ conflict resolution are now in `NarrareUniversalRules` Capability, not meta temp
   `{{existing_answers}}`, `{{selection_text}}`, `{{context_before/after}}`,
   `{{text_before/after}}`, `{{author_instructions}}`, `{{conversation_history}}`
 - Register new user-content vars in `_USER_CONTENT_VARS` (`variable_engine.py`)
+- Classify every prompt variable as user-authored, system-generated, or feature-dynamic;
+  new unregistered variables are CI failures, not warnings
 - Meta-prompt MUST include anti-injection directive
+
+---
+
+## Cross-Feature Context Precedence
+
+Default order when context conflicts:
+current author instruction > explicit project writing profile/manual override >
+current scene/storyboard/timeline plan > curated KB > learned memory/mem0
+preferences > generated suggestions/inferred extraction.
+
+High-impact conflicts between explicit/manual/curated sources must be surfaced,
+not silently resolved.
 
 ---
 
@@ -74,5 +88,6 @@ conflict resolution are now in `NarrareUniversalRules` Capability, not meta temp
 - [ ] Do NOT ≥4 items, Quality Rules ≥3 items
 - [ ] `{{user_preferences}}` + `{{avoidance_patterns}}` included (where applicable)
 - [ ] User content in XML tags
+- [ ] All variables registered/classified; no new unregistered variables
 - [ ] Declared localized families: all locale variants updated, same version. Feature prompts: EN-only (no locale variants)
 - [ ] Version bumped appropriately

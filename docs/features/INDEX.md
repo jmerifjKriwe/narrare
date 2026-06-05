@@ -37,6 +37,7 @@
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
 | [INFRA-010](infra/INFRA-010-prompting-locally.md) | Prompting Locally | ✅ | ❌ |
 | [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | ✅ | ❌ |
+| [INFRA-012](infra/INFRA-012-prompt-governance-hardening.md) | Prompt Governance Hardening | 📋 | ❌ |
 
 > **AI feature freeze lifted:** INFRA-011 gates passed and the ADR-027 freeze-lift
 > review completed on 2026-06-03. New AI-feature work may resume under ratcheted
@@ -247,5 +248,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-03 — INFRA-011 marked stable; AI feature freeze lifted with ratcheted governance retained.
+> Last updated: 2026-06-05 — INFRA-012 added for CR-02 prompt governance hardening.
 > Features are specified before they are implemented — never after

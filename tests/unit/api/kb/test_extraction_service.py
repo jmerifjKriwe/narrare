@@ -6,46 +6,22 @@ Happy path, chapter-not-found, empty-content.
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
-from narrare.kb.extraction_service import ExtractionService
-from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
+from narrare_core.agents.extraction_types import ExtractionItem
 from narrare_core.llm import ResolvedModelConfig
 
-# ---------------------------------------------------------------------------
-# Fake dependency classes (avoid bare MagicMock — RULE-TEST-01)
-# ---------------------------------------------------------------------------
-
-
-class _FakeModelRegistry:
-    """Fake ModelRegistry with configurable get_model."""
-
-    def __init__(self) -> None:
-        self.get_model = AsyncMock(return_value=MagicMock(spec=object))
-
-
-class _FakeComposer:
-    """Fake PromptComposer returning configurable system prompt."""
-
-    def __init__(self) -> None:
-        self.build = AsyncMock(return_value=MagicMock(spec=object, system="Test system prompt."))
-
-
-class _FakeChapterRepo:
-    """Fake ChapterRepositoryProtocol."""
-
-    def __init__(self) -> None:
-        self.get_by_id = AsyncMock()
-
-
-class _FakeKBRepo:
-    """Fake KBRepositoryProtocol."""
-
-    def __init__(self) -> None:
-        self.list_entries = AsyncMock(return_value=([], 0))
-
+from ._extraction_helpers import (
+    FakeChapterRepo,
+    FakeComposer,
+    FakeKBRepo,
+    FakeModelRegistry,
+    make_chapter,
+    make_extraction_output,
+    make_service,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -60,68 +36,23 @@ def config() -> ResolvedModelConfig:
 
 
 @pytest.fixture
-def mock_registry() -> _FakeModelRegistry:
-    return _FakeModelRegistry()
+def mock_registry() -> FakeModelRegistry:
+    return FakeModelRegistry()
 
 
 @pytest.fixture
-def mock_composer() -> _FakeComposer:
-    return _FakeComposer()
+def mock_composer() -> FakeComposer:
+    return FakeComposer()
 
 
 @pytest.fixture
-def mock_chapter_repo() -> _FakeChapterRepo:
-    return _FakeChapterRepo()
+def mock_chapter_repo() -> FakeChapterRepo:
+    return FakeChapterRepo()
 
 
 @pytest.fixture
-def mock_kb_repo() -> _FakeKBRepo:
-    return _FakeKBRepo()
-
-
-def make_service(
-    registry: MagicMock,
-    config: ResolvedModelConfig,
-    chapter_repo: MagicMock,
-    kb_repo: MagicMock,
-    composer: MagicMock,
-) -> ExtractionService:
-    return ExtractionService(
-        registry=registry,
-        config=config,
-        chapter_repo=chapter_repo,
-        kb_repo=kb_repo,
-        composer=composer,
-    )
-
-
-def _make_chapter(
-    chapter_id: UUID | None = None,
-    content: str = "Anna walked into the dark forest. The trees whispered.",
-    title: str = "Chapter 1",
-) -> MagicMock:
-    chapter = MagicMock(spec=["id", "content", "title"])
-    chapter.id = chapter_id or uuid4()
-    chapter.content = content
-    chapter.title = title
-    return chapter
-
-
-def _make_extraction_output(
-    items: list[ExtractionItem] | None = None,
-    notes: str = "",
-) -> ExtractionOutput:
-    if items is None:
-        items = [
-            ExtractionItem(
-                item_type="new_entity",
-                entity_type="location",
-                name="Dark Forest",
-                confidence=0.95,
-                source_text="the dark forest",
-            )
-        ]
-    return ExtractionOutput(results=items, analysis_notes=notes)
+def mock_kb_repo() -> FakeKBRepo:
+    return FakeKBRepo()
 
 
 # ---------------------------------------------------------------------------
@@ -131,17 +62,17 @@ def _make_extraction_output(
 
 @pytest.mark.asyncio
 async def test_extract_from_chapter_returns_output(
-    mock_registry: MagicMock,
+    mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
-    mock_chapter_repo: MagicMock,
-    mock_kb_repo: MagicMock,
-    mock_composer: MagicMock,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
 ) -> None:
     """Happy path: valid chapter content returns ExtractionOutput."""
-    chapter = _make_chapter()
+    chapter = make_chapter()
     mock_chapter_repo.get_by_id.return_value = chapter
 
-    expected_output = _make_extraction_output(
+    expected_output = make_extraction_output(
         items=[
             ExtractionItem(
                 item_type="new_entity",
@@ -184,20 +115,20 @@ async def test_extract_from_chapter_returns_output(
 
 @pytest.mark.asyncio
 async def test_extract_from_chapter_passes_ids(
-    mock_registry: MagicMock,
+    mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
-    mock_chapter_repo: MagicMock,
-    mock_kb_repo: MagicMock,
-    mock_composer: MagicMock,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
 ) -> None:
     """get_by_id receives chapter_id AND novel_id."""
     novel_id, chapter_id = uuid4(), uuid4()
-    chapter = _make_chapter(chapter_id=chapter_id)
+    chapter = make_chapter(chapter_id=chapter_id)
     mock_chapter_repo.get_by_id.return_value = chapter
 
     with patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent:
         mock_agent = MagicMock(spec=["run"])
-        mock_agent.run = AsyncMock(return_value=_make_extraction_output())
+        mock_agent.run = AsyncMock(return_value=make_extraction_output())
         MockAgent.return_value = mock_agent
         service = make_service(
             mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer
@@ -217,11 +148,11 @@ async def test_extract_from_chapter_passes_ids(
 
 @pytest.mark.asyncio
 async def test_extract_from_chapter_raises_when_chapter_not_found(
-    mock_registry: MagicMock,
+    mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
-    mock_chapter_repo: MagicMock,
-    mock_kb_repo: MagicMock,
-    mock_composer: MagicMock,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
 ) -> None:
     """Chapter not found raises ValueError."""
     mock_chapter_repo.get_by_id.return_value = None
@@ -235,20 +166,65 @@ async def test_extract_from_chapter_raises_when_chapter_not_found(
 
 
 # ---------------------------------------------------------------------------
+# PromptComposer resolution
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_build_system_prompt_uses_composer(
+    mock_registry: FakeModelRegistry,
+    config: ResolvedModelConfig,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
+) -> None:
+    """_build_system_prompt returns PromptComposer output, not fallback."""
+    mock_composer.build = AsyncMock(
+        return_value=MagicMock(spec=object, system="Bundled extraction prompt"),
+    )
+    service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
+
+    result = await service._build_system_prompt()
+
+    assert result == "Bundled extraction prompt"
+    mock_composer.build.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_build_system_prompt_correct_intent(
+    mock_registry: FakeModelRegistry,
+    config: ResolvedModelConfig,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
+) -> None:
+    """_build_system_prompt calls composer.build with KB_EXTRACT intent."""
+    mock_composer.build = AsyncMock(
+        return_value=MagicMock(spec=object, system="prompt"),
+    )
+    service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
+
+    await service._build_system_prompt()
+
+    intent_arg = mock_composer.build.call_args[0][0]
+    assert intent_arg.name == "KB_EXTRACT"
+
+
+# ---------------------------------------------------------------------------
 # Error: empty chapter content
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_extract_from_chapter_raises_when_content_empty(
-    mock_registry: MagicMock,
+    mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
-    mock_chapter_repo: MagicMock,
-    mock_kb_repo: MagicMock,
-    mock_composer: MagicMock,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
 ) -> None:
     """Empty content raises ValueError."""
-    chapter = _make_chapter(content="   ", title="Empty")
+    chapter = make_chapter(content="   ", title="Empty")
     mock_chapter_repo.get_by_id.return_value = chapter
     service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
     with pytest.raises(ValueError, match="has no content"):
@@ -261,14 +237,14 @@ async def test_extract_from_chapter_raises_when_content_empty(
 
 @pytest.mark.asyncio
 async def test_extract_from_chapter_raises_when_content_none(
-    mock_registry: MagicMock,
+    mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
-    mock_chapter_repo: MagicMock,
-    mock_kb_repo: MagicMock,
-    mock_composer: MagicMock,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
 ) -> None:
     """None content raises ValueError."""
-    chapter = _make_chapter(content=None, title="No Content")  # type: ignore[arg-type]
+    chapter = make_chapter(content=None, title="No Content")  # type: ignore[arg-type]
     mock_chapter_repo.get_by_id.return_value = chapter
     service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
     with pytest.raises(ValueError, match="has no content"):

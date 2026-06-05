@@ -760,8 +760,11 @@ project settings, etc.).
    verify no existing intent/prompt has the same ID with a different semantic
    scope. If a match is found, reuse or rename.
 4. **Variable registration**: Register new template variables in
-   `_SYSTEM_VARS` or `_USER_CONTENT_VARS` in `variable_engine.py`. No unregistered
-   variables in prompt templates.
+   `_USER_CONTENT_VARS`, `_SYSTEM_VARS`, or an architecture-approved
+   feature-dynamic variable registry in `variable_engine.py`. No unregistered
+   variables in prompt templates. New unregistered variables are CI failures;
+   legacy gaps may only exist as ratcheted baseline debt with an owner and
+   cleanup target.
 5. **i18n parity / prompt language policy**: Treat UI i18n and prompt-template
    language as separate concerns:
    - **UI i18n**: UI strings and `packages/web/messages/{locale}/` namespaces
@@ -778,6 +781,14 @@ project settings, etc.).
 6. **User-content variable registration**: Any new variable that contains
    user-authored content MUST be added to `_USER_CONTENT_VARS` and wrapped
    in XML tags in the prompt template.
+
+7. **Cross-feature context precedence**: If shared context conflicts, apply the
+   default order current author instruction → explicit project writing profile /
+   manual override → current scene/storyboard/timeline plan → curated KB →
+   learned memory/mem0 preferences → generated suggestions/inferred extraction.
+   High-impact conflicts between explicit/manual/curated sources must be
+   surfaced through typed results, consistency issues, or user-facing
+   clarification instead of silently resolved.
 
 **Why:** Cross-feature data dependencies are invisible at the individual feature
 level. A new feature might read KB data, but only the KB feature knows its data
@@ -993,6 +1004,6 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 ---
 
-> Last updated: 2026-06-04 — RULE-08 observability integration boundary aligned with ADR-031
+> Last updated: 2026-06-05 — RULE-22 prompt variable provenance and context precedence clarified for INFRA-012
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

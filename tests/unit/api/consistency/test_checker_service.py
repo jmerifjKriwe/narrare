@@ -172,6 +172,54 @@ class TestCheckChapter:
         assert result.warning_count == 1
 
 
+# --- D. PromptComposer resolution ---
+
+
+class TestResolveSystemPrompt:
+    @pytest.mark.asyncio
+    async def test_resolve_system_prompt_uses_composer(self) -> None:
+        """_resolve_system_prompt returns PromptComposer output, not fallback."""
+        _, _, svc = _setup()
+
+        # Spy on composer.build to verify it's the prompt source.
+        svc._composer.build = AsyncMock(
+            return_value=MagicMock(spec=["system"], system="Bundled consistency prompt"),
+        )
+
+        result = await svc._resolve_system_prompt("en")
+
+        assert result == "Bundled consistency prompt"
+        svc._composer.build.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_resolve_system_prompt_correct_intent(self) -> None:
+        """_resolve_system_prompt calls composer.build with CONSISTENCY intent."""
+        _, _, svc = _setup()
+
+        svc._composer.build = AsyncMock(
+            return_value=MagicMock(spec=["system"], system="prompt"),
+        )
+
+        await svc._resolve_system_prompt("en")
+
+        intent_arg = svc._composer.build.call_args[0][0]
+        assert intent_arg.name == "CONSISTENCY"
+
+    @pytest.mark.asyncio
+    async def test_resolve_system_prompt_passes_language(self) -> None:
+        """_resolve_system_prompt passes the language to PromptContext."""
+        _, _, svc = _setup()
+
+        svc._composer.build = AsyncMock(
+            return_value=MagicMock(spec=["system"], system="prompt"),
+        )
+
+        await svc._resolve_system_prompt("de")
+
+        ctx_arg = svc._composer.build.call_args[0][1]
+        assert ctx_arg.language == "de"
+
+
 # --- C. Error cases ---
 
 

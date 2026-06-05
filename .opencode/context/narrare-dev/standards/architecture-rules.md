@@ -155,6 +155,13 @@ When Feature A consumes data from Feature B:
 - **When**: During Stage 2 (Specification), before Stage 3 (Implementation)
 - **Enforcement**: Checklist in feature spec. Verified during Semantic Review.
 - **Source**: `docs/_shared/CONSTRAINTS.md` — RULE-22
+- **Prompt variable governance**: new template variables are classified as
+  user-authored, system-generated, or feature-dynamic before use; unregistered
+  new variables are CI failures.
+- **Context precedence**: current author instruction > explicit project writing
+  profile/manual override > current scene/storyboard/timeline > curated KB >
+  learned memory/mem0 > generated suggestions; high-impact conflicts are
+  surfaced, not silently resolved.
 
 ## Related Files
 

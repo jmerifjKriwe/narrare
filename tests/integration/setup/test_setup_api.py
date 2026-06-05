@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 from sqlalchemy import text
 
 from narrare.setup.schemas import (
+    AIProvider,
     AvailableModelsResponse,
     CompleteSetupResponse,
+    ProviderModel,
     Step1LocationResponse,
     Step2NovelResponse,
     Step3StarterResponse,
@@ -171,7 +174,18 @@ class TestValidateStep3:
 class TestListProviderModels:
     async def test_returns_fallback_models_without_key(self, client: AsyncClient) -> None:
         """Should return fallback model list even without a valid API key."""
-        response = await client.get("/api/v1/setup/providers/anthropic/models")
+
+        # Patch fetch_models to raise immediately — the endpoint catches the
+        # exception and returns the hardcoded fallback list.  Without the patch
+        # the real HTTP call to Anthropic takes ~0.4s (connection refused).
+        async def _raise(*args: object, **kwargs: object) -> None:
+            raise RuntimeError("No API key — using fallback")
+
+        with patch(
+            "narrare.setup.provider_service.fetch_models",
+            _raise,
+        ):
+            response = await client.get("/api/v1/setup/providers/anthropic/models")
         assert response.status_code == 200
         validated = AvailableModelsResponse.model_validate(response.json())
         assert validated.provider == "anthropic"
@@ -179,11 +193,38 @@ class TestListProviderModels:
 
     async def test_all_providers_return_models(self, client: AsyncClient) -> None:
         providers = ["anthropic", "openai", "google", "groq", "openrouter", "zai"]
-        for provider in providers:
-            response = await client.get(f"/api/v1/setup/providers/{provider}/models")
-            assert response.status_code == 200, f"Failed for provider: {provider}"
-            validated = AvailableModelsResponse.model_validate(response.json())
-            assert len(validated.models) > 0
+        # Patch fetch_models in the provider_service namespace to avoid real HTTP
+        # calls to 6 provider APIs.  Each real call would take ~0.4s (connection
+        # refused).  The patch triggers the fallback model list immediately.
+        #
+        # We patch at provider_service.fetch_models (not at ModelCatalogClient)
+        # because provider_service has a local "from ... import fetch_models"
+        # reference that is set at module-import time.
+
+        async def _fake_fetch_models(
+            provider: AIProvider,
+            api_key: str,
+            ollama_url: str,
+            fallback_models: dict[AIProvider, list[ProviderModel]],
+        ) -> list[ProviderModel]:
+            """Return fallback models immediately without any HTTP calls."""
+            from narrare.setup.provider_service import _FALLBACK_MODELS as FB
+
+            return FB.get(provider, [])
+
+        patcher = patch(
+            "narrare.setup.provider_service.fetch_models",
+            _fake_fetch_models,
+        )
+        patcher.start()
+        try:
+            for provider in providers:
+                response = await client.get(f"/api/v1/setup/providers/{provider}/models")
+                assert response.status_code == 200, f"Failed for provider: {provider}"
+                validated = AvailableModelsResponse.model_validate(response.json())
+                assert len(validated.models) > 0
+        finally:
+            patcher.stop()
 
 
 class TestCompleteSetup:

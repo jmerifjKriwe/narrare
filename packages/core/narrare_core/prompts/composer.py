@@ -19,75 +19,16 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare_core.llm.intents import LLMIntent
+from narrare_core.prompts.routes import resolve_prompt_route
 from narrare_core.prompts.variable_engine import substitute
 
 if TYPE_CHECKING:
+    from narrare_core.llm.intents import LLMIntent
     from narrare_core.memory.protocols import PreferenceProvider
     from narrare_core.prompts.context import PromptContext
     from narrare_core.prompts.registry import PromptRegistry
 
 logger = structlog.get_logger(__name__)
-
-# Category mapping: intent → prompt category
-_INTENT_TO_CATEGORY: dict[LLMIntent, str] = {
-    LLMIntent.WRITE: "writing",
-    LLMIntent.EXTEND: "writing",
-    LLMIntent.REWRITE: "writing",
-    LLMIntent.CO_AUTHOR: "writing",
-    LLMIntent.KB_CREATE: "kb",
-    LLMIntent.KB_IMPROVE: "kb",
-    LLMIntent.KB_EXTRACT: "kb",
-    LLMIntent.KB_INTERVIEW: "kb",
-    LLMIntent.KB_SUGGEST: "kb",
-    LLMIntent.KB_ENHANCE: "kb",
-    LLMIntent.KB_WORLDBUILD: "kb",
-    LLMIntent.KB_CONSISTENCY: "kb",
-    LLMIntent.ANALYSE: "analysis",
-    LLMIntent.SENTIMENT: "analysis",
-    LLMIntent.CONSISTENCY: "analysis",
-    LLMIntent.BETA_READ: "analysis",
-    LLMIntent.VOICE: "analysis",
-    LLMIntent.PLAN: "planning",
-    LLMIntent.SUMMARIZE: "analysis",
-    LLMIntent.GENERATE: "generation",
-    LLMIntent.NAME_GENERATE: "generation",
-    LLMIntent.TITLE_GENERATE: "generation",
-    LLMIntent.EXTRACT: "analysis",
-    LLMIntent.SUGGEST: "writing",
-    LLMIntent.CHAT: "chat",
-    LLMIntent.RESEARCH: "analysis",
-}
-
-# Mode mapping: intent → prompt mode directory name
-_INTENT_TO_MODE: dict[LLMIntent, str] = {
-    LLMIntent.WRITE: "new_chapter",
-    LLMIntent.EXTEND: "extend_chapter",
-    LLMIntent.REWRITE: "rewrite_selection",
-    LLMIntent.CO_AUTHOR: "co_author",
-    LLMIntent.KB_CREATE: "create",
-    LLMIntent.KB_IMPROVE: "improve",
-    LLMIntent.KB_EXTRACT: "extract",
-    LLMIntent.KB_INTERVIEW: "interview",
-    LLMIntent.KB_SUGGEST: "suggest",
-    LLMIntent.KB_ENHANCE: "enhance",
-    LLMIntent.KB_WORLDBUILD: "worldbuilding/phase1",
-    LLMIntent.KB_CONSISTENCY: "consistency",
-    LLMIntent.ANALYSE: "general",
-    LLMIntent.SENTIMENT: "sentiment",
-    LLMIntent.CONSISTENCY: "consistency",
-    LLMIntent.BETA_READ: "beta_reader",
-    LLMIntent.VOICE: "voice",
-    LLMIntent.PLAN: "scene_planning",
-    LLMIntent.SUMMARIZE: "summarize",
-    LLMIntent.GENERATE: "general",
-    LLMIntent.NAME_GENERATE: "names",
-    LLMIntent.TITLE_GENERATE: "titles",
-    LLMIntent.EXTRACT: "extract",
-    LLMIntent.SUGGEST: "inline_suggest",
-    LLMIntent.CHAT: "",
-    LLMIntent.RESEARCH: "research",
-}
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,8 +85,9 @@ class PromptComposer:
             PromptNotFoundError: If no prompt file exists for this intent.
             PromptVariableError: If a required variable is missing from context.
         """
-        category = _INTENT_TO_CATEGORY.get(intent, "writing")
-        mode = context.mode or _INTENT_TO_MODE.get(intent, intent.value)
+        route = resolve_prompt_route(intent, context.mode)
+        category = route.category
+        mode = route.mode
         variables = context.as_variables()
 
         # Auto-resolve preferences if service configured and context has empty preferences

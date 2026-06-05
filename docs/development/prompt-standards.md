@@ -407,6 +407,49 @@ The meta-prompt MUST include an anti-injection instruction (see §2, Meta
 Prompt). This is the system-level defense against users attempting to
 override AI behavior through content they provide.
 
+### Variable Registry Governance
+
+Every `{{variable}}` used in a prompt template MUST have an explicit provenance
+classification. New unregistered variables are CI failures; legacy gaps may only
+exist as ratcheted baseline debt with an owner and cleanup target.
+
+| Class | Definition | Registry | XML requirement |
+|-------|------------|----------|-----------------|
+| User-authored content | Text or structured content authored directly by the user/author: prose, selections, author instructions, conversation history, KB entity body/name supplied by a user | `_USER_CONTENT_VARS` | MUST be XML-wrapped in templates |
+| System-generated data | Trusted data assembled from persisted/project system state: curated KB summaries, project settings, computed counts, generated profiles accepted by a service | `_SYSTEM_VARS` | Not required by default |
+| Feature-dynamic data | Per-feature runtime data that is neither globally reusable nor directly user-authored, e.g. candidate pairs, timeline position, entity events, variant count, explanation language | `_FEATURE_DYNAMIC_VARS` or the approved feature-variable registry | Required if the value can contain user-authored text |
+
+**Rules:**
+
+- A variable may not be used in a prompt before it is classified.
+- User-authored variables MUST be XML-wrapped even if they are optional.
+- Feature-dynamic variables MUST document the feature/mode that owns them.
+- Output-language variables such as `{{writing_language}}`, `{{language}}`, and
+  `{{explanation_language}}` are system/feature-dynamic language-control data;
+  they satisfy ADR-026 Phase 5 only when the calling context actually supplies
+  the desired output language.
+
+### Cross-Feature Context Precedence
+
+When a prompt receives contradictory context, use this default precedence order:
+
+1. **Current author instruction** — explicit instruction for this run.
+2. **Explicit project writing profile / manual override** — durable author-set
+   project style, tone, language, and rules.
+3. **Current scene / storyboard / timeline plan** — what should happen now.
+4. **Curated KB** — accepted facts about characters, places, factions,
+   relationships, and world state.
+5. **Learned memory / mem0 preferences** — inferred preferences and avoidance
+   patterns from prior interactions.
+6. **Generated suggestions / inferred extraction** — unaccepted suggestions,
+   candidates, analysis outputs, and model-inferred possibilities.
+
+Do not silently resolve high-impact conflicts between items 1–4. Surface the
+conflict through the feature's typed result, consistency issue, or user-facing
+clarification when the output can be materially affected. Learned memory is
+ignored for the run when it conflicts with explicit/manual sources. Generated
+suggestions remain candidates until accepted or curated.
+
 ---
 
 ## 4. Quality Criteria Table
@@ -506,7 +549,9 @@ must pass before merge.
 - [ ] `{{user_preferences}}` included (for applicable categories per §2)
 - [ ] `{{avoidance_patterns}}` included (for applicable categories per §2)
 - [ ] Category-specific mandatory variables present (per §2)
+- [ ] All template variables classified in `_USER_CONTENT_VARS`, `_SYSTEM_VARS`, or the approved feature-dynamic registry
 - [ ] All new user-content variables registered in `_USER_CONTENT_VARS`
+- [ ] New unregistered variables are treated as CI failures, not warnings
 
 ### Security
 
@@ -533,6 +578,7 @@ must pass before merge.
 - [ ] Quality rules are measurable where possible
 - [ ] Do NOT rules are specific, not vague ("be careful")
 - [ ] Constraints include language directive (`Write in {{language}}`)
+- [ ] Cross-feature context precedence is respected or conflicts are explicitly surfaced
 
 ---
 

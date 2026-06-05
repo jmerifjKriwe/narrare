@@ -20,101 +20,18 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from narrare_core.prompts.variable_registry import (
+    FEATURE_DYNAMIC_VARS,
+    SYSTEM_VARS,
+    USER_CONTENT_VARS,
+)
 from narrare_core.shared.errors import PromptVariableError
 
 _VARIABLE_RE = re.compile(r"\{\{(\w+)\}\}")
 
-# User-authored content variables that require XML encapsulation
-# in prompt templates for prompt injection defense.
-# Keep in sync with scripts/prompt_vars.py UNSAFE_USER_VARS
-#
-# These variables contain text written by the end user (chapter prose,
-# interview answers, instructions, etc.) and MUST be wrapped in XML
-# tags in the template files:
-#   - <user_provided_text> for prose/content (existing_content, chapter_text, etc.)
-#   - <user_provided_data> for structured data (existing_answers)
-#   - <user_instructions> for author instructions
-#   - <conversation_history> for conversation logs
-#
-# System-generated variables (kb_characters, recent_chapters, etc.)
-# are intentionally excluded — they are assembled by the backend,
-# not authored by the user, and are not an injection vector.
-_USER_CONTENT_VARS: frozenset[str] = frozenset(
-    {
-        # Prose / text content
-        "existing_content",
-        "chapter_text",
-        "chapter_texts",
-        "entry_content",
-        "selection_text",
-        "context_before",
-        "context_after",
-        "text_before",
-        "text_after",
-        # Structured data
-        "existing_answers",
-        # Author instructions
-        "author_instructions",
-        # Conversation history
-        "conversation_history",
-        # KB entity content (user-authored in KB sessions)
-        "entity_name",
-        "entity_current_content",
-    }
-)
-
-# System-generated variables that are NOT user content and should
-# NOT be wrapped. Listed here for clarity — these are assembled by
-# the backend from the KB, project config, or other system sources.
-_SYSTEM_VARS: frozenset[str] = frozenset(
-    {
-        "recent_chapters",
-        "chapter_content",
-        "chapter_outline",
-        "chapter_context",
-        "kb_characters",
-        "kb_locations",
-        "kb_factions",
-        "kb_relationships",
-        "kb_entities",
-        "existing_names",
-        "existing_relationships",
-        "existing_entity_names",
-        "user_preferences",
-        "avoidance_patterns",
-        "style_constraints",
-        "character_voice_profiles",
-        "feedback_text",
-        "template_structure",
-        "world_context",
-        "entity_type",
-        "target_field",
-        "target_field_description",
-        "project_title",
-        "genre",
-        "language",
-        "tone",
-        "tone_instructions",
-        "story_structure",
-        "author_name",
-        "culture_guidelines",
-        "word_target",
-        "word_count",
-        "extend_length",
-        "chapter_title",
-        "chapter_titles",
-        "count",
-        "focus_categories",
-        "check_types",
-        "co_author_focus_instructions",
-        "rewrite_mode_instructions",
-        "deepdive_category",
-        "phase1_strengths_summary",
-        "phase1_feedback_summary",
-        "category_focus_instructions",
-        "mode",
-    }
-)
+_USER_CONTENT_VARS = USER_CONTENT_VARS
+_SYSTEM_VARS = SYSTEM_VARS
+_FEATURE_DYNAMIC_VARS = FEATURE_DYNAMIC_VARS
 
 
 @dataclass(frozen=True, slots=True)

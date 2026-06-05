@@ -138,7 +138,11 @@ async def test_engine() -> AsyncGenerator[AsyncEngine]:
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
-    """Transaction-wrapped session — rolled back after each test."""
+    """Transaction-wrapped session — rolled back after each test.
+
+    This is a **function-scoped** fixture (pytest default).  Each test gets
+    a fresh connection, a new transaction, and clean rollback on teardown.
+    """
     async with test_engine.connect() as conn:
         transaction = await conn.begin()
         session = AsyncSession(bind=conn, expire_on_commit=False)
@@ -152,21 +156,26 @@ async def db_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
             await transaction.rollback()
 
 
-@pytest_asyncio.fixture(loop_scope="session")
-async def app(db_session: AsyncSession) -> AsyncGenerator[FastAPI]:
-    """Create a FastAPI app with DB session and memory client overrides."""
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def app() -> AsyncGenerator[FastAPI]:
+    """Session-scoped FastAPI app.
+
+    ``create_app()`` imports all routers, which cascades into hundreds of
+    lazy imports.  Session-scoping avoids paying this cost per-test — the
+    app is built once and reused across all integration tests.
+
+    The ``get_async_session`` dependency override is NOT set here; it is
+    applied per-test by the autouse ``_override_db_session`` fixture so
+    that each test still gets its own function-scoped DB transaction.
+    """
     from narrare.memory.dependencies import get_memory_client
     from narrare_core.memory.mem0_client import NullMemoryClient
 
     app = create_app()
 
-    async def override_session():
-        yield db_session
-
     async def override_memory_client():
         return NullMemoryClient()
 
-    app.dependency_overrides[get_async_session] = override_session
     app.dependency_overrides[get_memory_client] = override_memory_client
 
     yield app
@@ -174,11 +183,53 @@ async def app(db_session: AsyncSession) -> AsyncGenerator[FastAPI]:
     app.dependency_overrides.clear()
 
 
-@pytest_asyncio.fixture(loop_scope="session")
+@pytest_asyncio.fixture(loop_scope="session", autouse=True)
+async def _override_db_session(  # pyright: ignore[reportUnusedFunction]
+    app: FastAPI,
+    db_session: AsyncSession,
+) -> AsyncGenerator[None]:
+    """Override the async session dependency per-test.
+
+    ``app`` is session-scoped (built once), but each test needs its own DB
+    transaction.  This autouse fixture re-sets the ``get_async_session``
+    override for every test function, pointing it at the fresh
+    ``db_session`` that pytest created for this test.
+    """
+
+    async def _override():
+        yield db_session
+
+    app.dependency_overrides[get_async_session] = _override
+    yield
+    app.dependency_overrides.pop(get_async_session, None)
+
+
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
-    """Test HTTP client backed by the test app."""
+    """Session-scoped test HTTP client (reused across tests).
+
+    The underlying ``ASGITransport`` is stateless — each request goes
+    through the same ``app``, which resolves ``get_async_session`` from
+    the dependency override that ``_override_db_session`` set for the
+    current test.
+    """
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
+
+
+# Pre-computed bcrypt hash for "testpassword123" — avoids ~0.1s hash_password()
+# call per test.  The hash is deterministic so caching is safe.
+_cached_password_hash: str | None = None
+
+
+def _get_test_password_hash() -> str:
+    """Return cached bcrypt hash for the test password (computed once)."""
+    global _cached_password_hash
+    if _cached_password_hash is None:
+        from narrare.auth.security import hash_password
+
+        _cached_password_hash = hash_password("testpassword123")
+    return _cached_password_hash
 
 
 @pytest_asyncio.fixture(loop_scope="session")
@@ -189,7 +240,7 @@ async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict[st
 
     from narrare._app.config import get_settings
     from narrare.auth.models import User
-    from narrare.auth.security import create_access_token, hash_password
+    from narrare.auth.security import create_access_token
 
     # Create test user in the database with a unique email to prevent any
     # possible unique-constraint conflict across test runs (even when a prior
@@ -197,7 +248,7 @@ async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict[st
     user = User(
         id=uuid.uuid4(),
         email=f"test-{uuid.uuid4().hex[:12]}@example.com",
-        hashed_password=hash_password("testpassword123"),
+        hashed_password=_get_test_password_hash(),
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )

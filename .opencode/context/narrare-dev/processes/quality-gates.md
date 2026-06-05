@@ -239,9 +239,13 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 ### Checklist (per feature)
 
 - [ ] **Prompt uses PromptComposer** — not inline, unless registered in `adoption-registry.yaml` under `inline_fallbacks` (ADR-025 Decision 4)
+- [ ] **No production inline fallback body** — if a bundled target exists, production code must not carry an alternate inline system/task prompt body; test-only fallbacks must be unreachable from production DI
+- [ ] **PromptComposer routeability** — every routeable `_INTENT_TO_CATEGORY` + `_INTENT_TO_MODE` mapping resolves to a bundled EN target or has an explicit non-routeable rationale
 - [ ] **All MUST variables present** — `check_prompt_structure.py --strict` passes for the feature's category
-- [ ] **Meta-prompt included** — Narrare identity and universal rules are architecturally guaranteed via `NarrareMeta` and `NarrareUniversalRules` Capabilities (ADR-026). No manual loading needed.
+- [ ] **Meta/Universal validated separately** — Narrare identity is guaranteed by `NarrareMeta`; fiction rules, conflict rules, and injection defense are guaranteed by `NarrareUniversalRules` (ADR-026). Do not validate as one monolithic meta prompt.
+- [ ] **Production agent capability inheritance** — every production agent path uses `NarrareAgent` and therefore inherits both `NarrareMeta` and `NarrareUniversalRules`, except ADR-approved exceptions
 - [ ] **Injection defense: user content XML-wrapped** — all UNSAFE_USER_VARS wrapped in `<tag>...</tag>` in prompt templates
+- [ ] **Variable provenance** — every template variable is classified as user-authored content, system-generated data, or feature-dynamic data; new unregistered variables fail CI
 - [ ] **i18n: prompt locale policy** — Bundled feature prompts are EN-only (output language via `{{writing_language}}`); declared localized families (meta, universal) must exist in all declared locale directories under `_bundled/{category}/`
 - [ ] **Token budget enforced** — ContextAssembler (or WritingContextAssembler) used with TokenBudgetManager
 - [ ] **Memory layer included** — `{{user_preferences}}` and `{{avoidance_patterns}}` variables present
@@ -252,10 +256,12 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 
 | Checklist Item | Automated? | Tool |
 |----------------|------------|------|
-| PromptComposer usage | Yes | `check_adoption.py` |
+| PromptComposer usage / no inline production fallback | Yes | `check_adoption.py` + inline fallback registry |
+| PromptComposer routeability | Yes | `check_architecture.py --prompt-integrity` / intent checker |
 | MUST variables | Yes | `check_prompt_structure.py` |
-| Meta-prompt | Yes | `check_adoption.py` + `check_prompt_structure.py` |
+| Meta/Universal capabilities | Yes | `check_adoption.py` + `check_prompt_structure.py` + production-agent regression tests |
 | Injection defense | Yes | `check_prompt_structure.py` |
+| Variable provenance | Yes | `check_prompt_structure.py` + variable checker |
 | i18n locales | Yes | `check_adoption.py` (i18n evidence check) |
 | Token budget | Yes | `check_adoption.py` (import analysis) |
 | Memory layer | Yes | `check_prompt_structure.py` (variable check) |
@@ -290,6 +296,7 @@ Architecture Specialist during Stage 2.5 (Semantic Review).
 - [ ] **KB status filtering considered** — If feature reads KB data, deprecated/archived entities are excluded
 - [ ] **Token budget defined** — String-truncation limits or TokenBudgetManager usage defined
 - [ ] **RULE-22 compliance** — Cross-Feature Coherence Gate passed
+- [ ] **Context precedence applied** — Current author instruction > explicit project writing profile/manual override > current scene/storyboard/timeline plan > curated KB > learned memory/mem0 preferences > generated suggestions/inferred extraction. High-impact conflicts are surfaced, not silently resolved.
 
 ### Automation Status
 
@@ -304,6 +311,7 @@ Architecture Specialist during Stage 2.5 (Semantic Review).
 | KB status filtering | Manual | Requires architectural review |
 | Token budget | Manual | Requires architectural review |
 | RULE-22 | Manual | Stage 2.5 checklist |
+| Context precedence | Manual + prompt tests | Stage 2.5 checklist + feature-specific regression scenarios |
 
 ### CI Pipeline Position
 
@@ -342,6 +350,38 @@ Gates 8–10 are **additive** — they do not replace Gates 1–7. The relations
 | **10** | **Semantic Review** | **Cross-feature incoherence: missing Integration Contract, unregistered variables, unimplemented i18n, intent scope drift** |
 
 A feature must pass ALL gates (1–10) to reach `status: stable`.
+
+---
+
+## Process Prevention Checklists
+
+### ADR CI Impact Checklist
+
+Every ADR or ADR update that changes runtime architecture must identify the CI
+surface it affects before implementation starts:
+
+- [ ] Which architecture/prompt/adoption/streaming checkers must change?
+- [ ] Which baselines must shrink, stay fixed, or be invalidated?
+- [ ] Which tests prove the new guarantee?
+- [ ] Which existing exceptions are removed, revalidated, or forbidden from growth?
+- [ ] Which derived docs/context summaries must be updated to prevent stale guidance?
+
+### Migration Completion / Legacy Cleanup Checklist
+
+A migration is not complete until old production paths and old guidance are closed:
+
+- [ ] Old production path removed or unreachable from production DI.
+- [ ] Stale comments/docstrings/examples describing old behavior removed.
+- [ ] Adoption/exception registries no longer list migrated production fallbacks.
+- [ ] Regression tests fail if the legacy path is reintroduced.
+- [ ] Docs and extracted context reflect the new source of truth.
+
+### AI Content Review Gate Integration
+
+- Stage 2.5 Architecture: verify PromptComposer routeability, variable provenance,
+  context precedence, ADR-026 capability inheritance, and prompt language policy.
+- Stage 4 Platform: validate machine checks, baselines, and regression tests.
+- Stage 5 Docs: verify no derived guide weakens RULE-02/RULE-02a/ADR-026.
 
 ---
 

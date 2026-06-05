@@ -237,6 +237,7 @@ jobs:
             --cov-report=term-missing:skip-covered \
             --junitxml=pytest.xml \
             --cov-fail-under=60 \
+            -n auto \
             -v | tee pytest-coverage.txt
 
       - name: Check coverage threshold
@@ -346,7 +347,7 @@ jobs:
         run: cd apps/api && uv run alembic upgrade head
 
       - name: Run integration tests
-        run: uv run pytest tests/integration/ -v
+        run: uv run pytest tests/integration/ -v -n auto --dist=loadfile --timeout=120
 
   # -------------------------------------------------------------------------
   # Update coverage badge in README (main push only)

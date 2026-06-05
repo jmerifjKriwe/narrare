@@ -13,11 +13,13 @@ essence and role in the story.
 ## Context
 
 Entity Type: {{entity_type}}
-Entity Name: {{entity_name}}
+Entity Name: <user_provided_data>{{entity_name}}</user_provided_data>
 
 ### Entity Content
 
+<user_provided_text>
 {{entity_body}}
+</user_provided_text>
 
 ### Metadata
 
