@@ -191,10 +191,12 @@ async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict[st
     from narrare.auth.models import User
     from narrare.auth.security import create_access_token, hash_password
 
-    # Create test user in the database
+    # Create test user in the database with a unique email to prevent any
+    # possible unique-constraint conflict across test runs (even when a prior
+    # transaction rollback has an edge-case failure).
     user = User(
         id=uuid.uuid4(),
-        email="test@example.com",
+        email=f"test-{uuid.uuid4().hex[:12]}@example.com",
         hashed_password=hash_password("testpassword123"),
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),

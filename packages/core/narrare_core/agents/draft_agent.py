@@ -21,27 +21,12 @@ from pydantic_ai.capabilities import ToolSearch, Toolset
 from pydantic_ai.exceptions import ModelRetry
 
 from narrare_core.agents.base import NarrareAgent
-from narrare_core.agents.draft_types import DraftOutput
+from narrare_core.agents.draft_types import DraftDeps, DraftOutput
+from narrare_core.agents.draft_validators import validate_draft_output
 from narrare_core.writing.draft_processor import DraftProcessor
 
 if TYPE_CHECKING:
     from narrare_core.agents.kb_agent import KBAgent
-    from narrare_core.writing.context_assembler import WritingContextAssembler
-
-
-class DraftDeps:
-    """Dependencies for DraftAgent.
-
-    Attributes:
-        context_assembler: Provides 5-tier context assembly for writing.
-        preference_service: User preferences for style, tone, etc. (Phase 3+).
-    """
-
-    def __init__(
-        self,
-        context_assembler: WritingContextAssembler | None = None,
-    ) -> None:
-        self.context_assembler = context_assembler
 
 
 class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
@@ -81,6 +66,8 @@ class DraftAgent(NarrareAgent[DraftDeps, DraftOutput]):
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
+
+        self._agent.output_validator(validate_draft_output)
 
         # Tools nach Super-Konstruktor registrieren
         self._agent.tool(self.get_kb_context)

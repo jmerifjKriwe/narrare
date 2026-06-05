@@ -22,7 +22,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.character_arc_types import (
@@ -78,6 +81,57 @@ class CharacterArcAgent(NarrareAgent[CharacterArcDeps, CharacterArcOutput]):
             output_type=[self._process_output, CharacterArcOutput],
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[CharacterArcDeps],
+        output: CharacterArcOutput,
+    ) -> CharacterArcOutput:
+        """Validate deterministic invariants for character arc output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - character_name must be non-empty
+        - phases should have 3-5 entries when present
+        - Each phase should have non-empty phase_name and description
+        - starting_state and ending_state should be non-empty
+        """
+        # character_name must be non-empty
+        if not output.character_name.strip():
+            raise ModelRetry(
+                "character_name must be non-empty — every character arc needs a character"
+            )
+
+        # starting_state must be non-empty
+        if not output.starting_state.strip():
+            raise ModelRetry(
+                "starting_state must be non-empty — the arc needs a defined starting state"
+            )
+
+        # ending_state must be non-empty
+        if not output.ending_state.strip():
+            raise ModelRetry(
+                "ending_state must be non-empty — the arc needs a defined ending state"
+            )
+
+        # phases should have 3-5 entries when present
+        if output.phases and (len(output.phases) < 3 or len(output.phases) > 5):
+            raise ModelRetry(f"phases should have 3-5 entries, got {len(output.phases)}")
+
+        # Each phase should have non-empty phase_name and description
+        for idx, phase in enumerate(output.phases):
+            if not phase.phase_name.strip():
+                raise ModelRetry(f"Phase {idx} has an empty phase_name — every phase needs a name")
+            if not phase.description.strip():
+                raise ModelRetry(
+                    f"Phase {idx} ('{phase.phase_name}') has an empty description — "
+                    "every phase needs a description"
+                )
+
+        return output
 
     async def _process_output(
         self,

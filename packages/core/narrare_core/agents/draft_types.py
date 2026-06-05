@@ -1,13 +1,31 @@
-"""Output types for DraftAgent.
+"""Types and deps for DraftAgent.
 
 Siehe ADR-015 Phase 2.1 — Output Types.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from narrare_core.writing.context_assembler import WritingContextAssembler
+
+
+class DraftDeps:
+    """Dependencies for DraftAgent.
+
+    Attributes:
+        context_assembler: Provides 5-tier context assembly for writing.
+        preference_service: User preferences for style, tone, etc. (Phase 3+).
+    """
+
+    def __init__(
+        self,
+        context_assembler: WritingContextAssembler | None = None,
+    ) -> None:
+        self.context_assembler = context_assembler
 
 
 class DraftOutput(BaseModel):

@@ -15,6 +15,7 @@ from pydantic_ai import RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
+from narrare_core.agents.beta_reader_processors import process_beta_reader_phase1
 from narrare_core.agents.beta_reader_types import (
     BetaReaderDeps,
     BetaReaderPhase1Output,
@@ -80,9 +81,8 @@ class TestProcessPhase1:
         """During streaming (partial_output), returns empty defaults."""
         ctx = _make_run_context()
         ctx.partial_output = True
-        agent = BetaReaderAgent(model=TestModel())
 
-        result = await agent._process_phase1(ctx)
+        result = await process_beta_reader_phase1(ctx)
 
         assert isinstance(result, BetaReaderPhase1Output)
         assert result.strengths == []
@@ -95,9 +95,8 @@ class TestProcessPhase1:
     async def test_full_output_maps_correctly(self) -> None:
         """Full LLM response maps to structured output."""
         ctx = _make_run_context()
-        agent = BetaReaderAgent(model=TestModel())
 
-        result = await agent._process_phase1(
+        result = await process_beta_reader_phase1(
             ctx,
             strengths=[
                 {"category": "plot", "title": "Strong opening", "description": "Engaging start"},
@@ -141,9 +140,8 @@ class TestProcessPhase1:
     async def test_empty_input_returns_minimal_output(self) -> None:
         """No arguments produces empty lists and default overall."""
         ctx = _make_run_context()
-        agent = BetaReaderAgent(model=TestModel())
 
-        result = await agent._process_phase1(ctx)
+        result = await process_beta_reader_phase1(ctx)
 
         assert result.strengths == []
         assert result.feedback == []

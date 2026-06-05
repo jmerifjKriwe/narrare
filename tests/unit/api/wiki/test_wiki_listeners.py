@@ -195,6 +195,25 @@ class TestOnWikiSyncRequested:
             assert call_args[0][0] == entity_id
             assert call_args[0][1] == novel_id
 
+    async def test_skips_on_invalid_payload(self) -> None:
+        """Does nothing when entity_id is missing from payload."""
+        listener = _make_listener()
+        event = _make_event("wiki.sync.requested")
+        event.payload = {"novel_id": str(uuid.uuid4())}  # no entity_id
+
+        with patch("narrare.wiki.listeners.run_wiki_generate_entity") as mock_gen:
+            await listener.on_wiki_sync_requested(event)
+            mock_gen.assert_not_called()
+
+    async def test_skips_on_invalid_uuid(self) -> None:
+        """Does nothing when entity_id is not a valid UUID."""
+        listener = _make_listener()
+        event = _make_event("wiki.sync.requested", entity_id="not-a-uuid")
+
+        with patch("narrare.wiki.listeners.run_wiki_generate_entity") as mock_gen:
+            await listener.on_wiki_sync_requested(event)
+            mock_gen.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # Tests: Debouncing

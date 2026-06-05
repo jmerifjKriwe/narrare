@@ -11,8 +11,8 @@ from __future__ import annotations
 import pytest
 from pydantic_ai.models.test import TestModel
 
-from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
-from narrare_core.agents.draft_types import DraftOutput
+from narrare_core.agents.draft_agent import DraftAgent
+from narrare_core.agents.draft_types import DraftDeps, DraftOutput
 from narrare_core.agents.kb_agent import KBAgent
 
 

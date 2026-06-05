@@ -20,7 +20,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.merge_types import (
@@ -89,6 +92,52 @@ class KBMergeAgent(NarrareAgent[KBMergeDeps, MergeOutput]):
             output_type=[self._process_output, MergeOutput],
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[KBMergeDeps],
+        output: MergeOutput,
+    ) -> MergeOutput:
+        """Validate deterministic invariants for merge output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - decision should be one of "merge", "distinct", "uncertain"
+        - pair_id must be non-empty for each decision
+        - When decision is "merge", merge_strategy must be present
+        - No duplicate pair_ids
+        """
+        valid_decisions = {"merge", "distinct", "uncertain"}
+
+        # No duplicate pair_ids
+        seen_pair_ids: set[str] = set()
+        for idx, d in enumerate(output.merge_decisions):
+            if d.pair_id in seen_pair_ids:
+                raise ModelRetry(
+                    f"Duplicate pair_id '{d.pair_id}' at index {idx} — "
+                    "each pair must be decided exactly once"
+                )
+            seen_pair_ids.add(d.pair_id)
+
+        for d in output.merge_decisions:
+            # pair_id must be non-empty
+            if not d.pair_id.strip():
+                raise ModelRetry("Each merge decision must have a non-empty pair_id")
+
+            # decision must be one of the valid values
+            if d.decision not in valid_decisions:
+                raise ModelRetry(f"Decision must be one of {valid_decisions}, got '{d.decision}'")
+
+            # When decision is "merge", merge_strategy must be present
+            if d.decision == "merge" and d.merge_strategy is None:
+                raise ModelRetry(
+                    f"Decision 'merge' for pair '{d.pair_id}' must include a merge_strategy"
+                )
+
+        return output
 
     async def _process_output(
         self,

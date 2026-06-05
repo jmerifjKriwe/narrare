@@ -269,7 +269,11 @@ class TestRefreshModels:
 class TestGetModelLimits:
     def test_returns_none_for_unknown_model(self) -> None:
         """Unknown model returns None (graceful degradation)."""
-        result = get_model_limits("openai", "nonexistent-model-v42")
+        with patch(
+            "narrare_core.llm.cost_rates._fetch_models",
+            return_value={"models": {}},
+        ):
+            result = get_model_limits("openai", "nonexistent-model-v42")
         assert result is None
 
     def test_model_limits_dataclass(self) -> None:

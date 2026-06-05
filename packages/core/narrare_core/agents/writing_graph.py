@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from pydantic_graph import End, GraphBuilder, StepContext
 
-from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
+from narrare_core.agents.draft_agent import DraftAgent
+from narrare_core.agents.draft_types import DraftDeps
 from narrare_core.agents.outline_agent import OutlineAgent, OutlineDeps
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps

@@ -20,7 +20,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.summary_types import SummaryOutput
@@ -63,6 +66,37 @@ class ChapterSummaryAgent(NarrareAgent[SummaryDeps, SummaryOutput]):
             output_type=[self._process_summary, SummaryOutput],
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[SummaryDeps],
+        output: SummaryOutput,
+    ) -> SummaryOutput:
+        """Validate deterministic invariants for summary output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - summary must be non-empty
+        - key_points should have non-empty strings (filter empty)
+        - At least one key_point when summary is non-empty
+        """
+        # summary must be non-empty
+        if not output.summary.strip():
+            raise ModelRetry(
+                "Summary text must be non-empty — every chapter summary requires content"
+            )
+
+        # Filter empty key points
+        filtered_points = [p for p in output.key_points if p.strip()]
+
+        # At least one key_point when summary is non-empty
+        if not filtered_points:
+            raise ModelRetry("At least one key_point is required when a summary is provided")
+
+        return output.model_copy(update={"key_points": filtered_points})
 
     async def _process_summary(
         self,

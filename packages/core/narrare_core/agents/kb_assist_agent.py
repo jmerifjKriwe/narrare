@@ -26,7 +26,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 from pydantic_ai.capabilities import ToolSearch, Toolset
 
 from narrare_core.agents.base import NarrareAgent
@@ -91,6 +94,48 @@ class KBAssistAgent(NarrareAgent[KBAssistDeps, KBAssistOutput]):
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[KBAssistDeps],
+        output: KBAssistOutput,
+    ) -> KBAssistOutput:
+        """Validate deterministic invariants for KB assist output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - Mode-dependent field presence:
+          - "question" mode → question non-empty, field_key non-empty
+          - "suggestion" mode → suggestion non-empty, field_key non-empty
+          - "draft" mode → draft_entry must be non-empty dict
+          - "complete" mode → final_entry must be non-empty dict
+        """
+        mode = output.mode
+
+        if mode == "question":
+            if not output.question or not output.question.strip():
+                raise ModelRetry("question mode requires a non-empty 'question' field")
+            if not output.field_key or not output.field_key.strip():
+                raise ModelRetry("question mode requires a non-empty 'field_key' field")
+
+        elif mode == "suggestion":
+            if not output.suggestion or not output.suggestion.strip():
+                raise ModelRetry("suggestion mode requires a non-empty 'suggestion' field")
+            if not output.field_key or not output.field_key.strip():
+                raise ModelRetry("suggestion mode requires a non-empty 'field_key' field")
+
+        elif mode == "draft":
+            if not output.draft_entry or len(output.draft_entry) == 0:
+                raise ModelRetry("draft mode requires a non-empty 'draft_entry' dict")
+
+        elif mode == "complete":
+            if not output.final_entry or len(output.final_entry) == 0:
+                raise ModelRetry("complete mode requires a non-empty 'final_entry' dict")
+
+        return output
 
     async def _process_output(
         self,

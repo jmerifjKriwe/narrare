@@ -27,7 +27,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.pov_types import (
@@ -77,6 +80,67 @@ class POVDetectionAgent(NarrareAgent[POVDeps, POVDetectionOutput]):
             output_type=[self._process_output, POVDetectionOutput],
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    # Known sets for validation
+    _VALID_ISSUE_TYPES = frozenset(
+        {
+            "head_hop",
+            "knowledge_leak",
+            "emotional_leak",
+            "physical_impossibility",
+        }
+    )
+    _VALID_SEVERITIES = frozenset({"error", "warning"})
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[POVDeps],
+        output: POVDetectionOutput,
+    ) -> POVDetectionOutput:
+        """Validate deterministic invariants for POV detection output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - scene_index values should be unique
+        - pov_character should be non-empty for each scene
+        - issue severity should be "error" or "warning"
+        - issue type from known set
+        """
+        # scene_index uniqueness
+        seen_indices: set[int] = set()
+        for scene in output.scenes:
+            if scene.scene_index in seen_indices:
+                raise ModelRetry(
+                    f"Duplicate scene_index {scene.scene_index} — "
+                    "each scene must have a unique index"
+                )
+            seen_indices.add(scene.scene_index)
+
+        # pov_character non-empty for each scene
+        for scene in output.scenes:
+            if not scene.pov_character.strip():
+                raise ModelRetry(
+                    f"Scene {scene.scene_index} has an empty pov_character — "
+                    "every scene needs a detected POV character"
+                )
+
+        # Issue type and severity from known sets
+        for issue in output.issues:
+            if issue.type not in self._VALID_ISSUE_TYPES:
+                raise ModelRetry(
+                    f"POV issue type '{issue.type}' is not valid — "
+                    f"must be one of {sorted(self._VALID_ISSUE_TYPES)}"
+                )
+            if issue.severity not in self._VALID_SEVERITIES:
+                raise ModelRetry(
+                    f"POV issue severity '{issue.severity}' is not valid — "
+                    f"must be one of {sorted(self._VALID_SEVERITIES)}"
+                )
+
+        return output
 
     async def _process_output(
         self,

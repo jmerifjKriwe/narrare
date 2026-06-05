@@ -13,8 +13,8 @@ from pydantic_ai import RunContext, RunUsage
 from pydantic_ai.exceptions import ModelRetry
 from pydantic_ai.models.test import TestModel
 
-from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
-from narrare_core.agents.draft_types import DraftConfig, DraftOutput
+from narrare_core.agents.draft_agent import DraftAgent
+from narrare_core.agents.draft_types import DraftConfig, DraftDeps, DraftOutput
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

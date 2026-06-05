@@ -29,8 +29,8 @@ from narrare_core.agents.consistency_types import (
     ConsistencySeverity,
 )
 from narrare_core.agents.contracts import AgentRegistryProtocol
-from narrare_core.agents.draft_agent import DraftAgent, DraftDeps
-from narrare_core.agents.draft_types import DraftConfig, DraftOutput
+from narrare_core.agents.draft_agent import DraftAgent
+from narrare_core.agents.draft_types import DraftConfig, DraftDeps, DraftOutput
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.agents.graph_store import GraphStateStore

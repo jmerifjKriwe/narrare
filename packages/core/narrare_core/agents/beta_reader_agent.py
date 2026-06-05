@@ -35,18 +35,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
-
 from narrare_core.agents.base import NarrareAgent
+from narrare_core.agents.beta_reader_processors import (
+    process_beta_reader_phase1,
+    process_beta_reader_phase2,
+)
 from narrare_core.agents.beta_reader_types import (
-    AgentDeepDiveFeedback,
-    AgentFeedbackItem,
-    AgentOverallAssessment,
-    AgentReaderQuestion,
-    AgentStrength,
     BetaReaderDeps,
     BetaReaderPhase1Output,
     BetaReaderPhase2Output,
+)
+from narrare_core.agents.beta_reader_validators import (
+    validate_beta_reader_phase1,
+    validate_beta_reader_phase2,
 )
 
 
@@ -71,62 +72,10 @@ class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
         super().__init__(
             model=model,
             deps_type=BetaReaderDeps,
-            output_type=[self._process_phase1, BetaReaderPhase1Output],
+            output_type=[process_beta_reader_phase1, BetaReaderPhase1Output],
             system_prompt=system_prompt,
         )
-
-    async def _process_phase1(
-        self,
-        ctx: RunContext[BetaReaderDeps],
-        strengths: list[dict[str, Any]] | None = None,
-        feedback: list[dict[str, Any]] | None = None,
-        questions: list[dict[str, Any]] | None = None,
-        overall: dict[str, Any] | None = None,
-    ) -> BetaReaderPhase1Output:
-        """Output function for Phase 1 — structures LLM response.
-
-        During streaming (ctx.partial_output), returns minimal result.
-        """
-        if ctx.partial_output:
-            return BetaReaderPhase1Output(
-                strengths=[],
-                feedback=[],
-                questions=[],
-                overall=AgentOverallAssessment(
-                    summary="",
-                    reader_engagement=5,
-                    emotional_impact=5,
-                    pacing_score=5,
-                    prose_quality=5,
-                    plot_progression=5,
-                    character_development=5,
-                ),
-            )
-
-        parsed_strengths = [AgentStrength(**s) for s in (strengths or [])]
-        parsed_feedback = [AgentFeedbackItem(**f) for f in (feedback or [])]
-        parsed_questions = [AgentReaderQuestion(**q) for q in (questions or [])]
-        parsed_overall = AgentOverallAssessment(
-            **(
-                overall
-                or {
-                    "summary": "",
-                    "reader_engagement": 5,
-                    "emotional_impact": 5,
-                    "pacing_score": 5,
-                    "prose_quality": 5,
-                    "plot_progression": 5,
-                    "character_development": 5,
-                }
-            ),
-        )
-
-        return BetaReaderPhase1Output(
-            strengths=parsed_strengths,
-            feedback=parsed_feedback,
-            questions=parsed_questions,
-            overall=parsed_overall,
-        )
+        self._agent.output_validator(validate_beta_reader_phase1)
 
     async def run_phase1(
         self,
@@ -153,36 +102,12 @@ class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
         phase2_agent = NarrareAgent[BetaReaderDeps, BetaReaderPhase2Output](
             model=model,
             deps_type=BetaReaderDeps,
-            output_type=[self._process_phase2, BetaReaderPhase2Output],
+            output_type=[process_beta_reader_phase2, BetaReaderPhase2Output],
             system_prompt=system_prompt,
         )
+        phase2_agent._agent.output_validator(validate_beta_reader_phase2)
         result = await phase2_agent.run(prompt, deps=deps)
         return result.output  # type: ignore[return-value]
-
-    async def _process_phase2(
-        self,
-        ctx: RunContext[BetaReaderDeps],
-        detailed_feedback: list[dict[str, Any]] | None = None,
-        revision_suggestions: list[str] | None = None,
-        category_score: int = 5,
-    ) -> BetaReaderPhase2Output:
-        """Output function for Phase 2 — structures deep-dive response.
-
-        During streaming (ctx.partial_output), returns minimal result.
-        """
-        if ctx.partial_output:
-            return BetaReaderPhase2Output(
-                detailed_feedback=[],
-                revision_suggestions=[],
-                category_score=5,
-            )
-
-        parsed = [AgentDeepDiveFeedback(**f) for f in (detailed_feedback or [])]
-        return BetaReaderPhase2Output(
-            detailed_feedback=parsed,
-            revision_suggestions=revision_suggestions or [],
-            category_score=min(max(category_score, 1), 10),
-        )
 
     async def run(
         self,

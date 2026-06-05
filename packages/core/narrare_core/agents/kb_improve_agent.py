@@ -22,7 +22,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 from pydantic_ai.capabilities import ToolSearch, Toolset
 
 from narrare_core.agents.base import NarrareAgent
@@ -63,6 +66,51 @@ class KBImproveAgent(NarrareAgent[KBImproveDeps, KBImproveOutput]):
             output_type=[self._process_output, KBImproveOutput],
             capabilities=capabilities,
             system_prompt=system_prompt,
+        )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[KBImproveDeps],
+        output: KBImproveOutput,
+    ) -> KBImproveOutput:
+        """Validate deterministic invariants for KB improve output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - target field must be non-empty for each suggestion
+        - description must be non-empty for each suggestion
+        - Filter suggestions with empty target or description
+        - completeness_score clamped to [0.0, 1.0]
+        """
+        # Filter suggestions with empty target or description
+        valid_suggestions = [
+            s for s in output.suggestions if s.target.strip() and s.description.strip()
+        ]
+
+        for s in valid_suggestions:
+            # target must be non-empty
+            if not s.target.strip():
+                raise ModelRetry(
+                    "Suggestion has an empty target — every suggestion needs a target field"
+                )
+            # description must be non-empty
+            if not s.description.strip():
+                raise ModelRetry(
+                    f"Suggestion for '{s.target}' has an empty description — "
+                    "every suggestion needs a description"
+                )
+
+        # completeness_score clamped to [0.0, 1.0]
+        clamped_score = min(max(output.completeness_score, 0.0), 1.0)
+
+        return output.model_copy(
+            update={
+                "suggestions": valid_suggestions,
+                "completeness_score": clamped_score,
+            }
         )
 
     async def _process_output(

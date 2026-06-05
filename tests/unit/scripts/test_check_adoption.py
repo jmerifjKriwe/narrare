@@ -59,7 +59,7 @@ def _minimal_registry(
                 or {
                     "prompt_composer": "required",
                     "meta_prompt": "required",
-                    "i18n": "required",
+                    "i18n": "partial",
                 },
                 "context_variables": {
                     "must": must or ["user_preferences"],
@@ -245,11 +245,24 @@ class TestI18n:
         report = compute_adoption_report(registry, prompts)
         assert report.categories[0].missing_locales == {}
 
-    def test_partial_locale_coverage(self) -> None:
-        registry = _minimal_registry()
+    def test_partial_locale_coverage_for_localized_category(self) -> None:
+        """Only EN prompts for a localized-required category reports missing de/fr."""
+        registry = {
+            "features": {
+                "meta": {
+                    "modes": ["system"],
+                    "required_infrastructure": {"prompt_composer": "required"},
+                    "context_variables": {"must": [], "should": []},
+                }
+            },
+            "inline_fallbacks": [],
+        }
         prompts = [
-            _make_prompt("writing", "en", "new_chapter"),
+            _make_prompt("meta", "en", "system"),
+            # No de/fr prompts — this is the "partial" case
         ]
         report = compute_adoption_report(registry, prompts)
-        # Should report missing locales
-        assert len(report.categories[0].missing_locales) > 0
+        cat = report.categories[0]
+        assert "meta/system" in cat.missing_locales
+        assert "de" in cat.missing_locales["meta/system"]
+        assert "fr" in cat.missing_locales["meta/system"]

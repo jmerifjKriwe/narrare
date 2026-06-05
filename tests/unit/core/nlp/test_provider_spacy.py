@@ -13,7 +13,8 @@ The actual NLP processing requires spaCy models (tested in integration tests).
 
 from __future__ import annotations
 
-import contextlib
+import contextlib  # type: ignore[reportAttributeAccessIssue]
+import importlib
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -24,13 +25,9 @@ from narrare_core.nlp.contracts_types import Token, TokenResult
 from narrare_core.nlp.provider_spacy import _MODEL_MAP, SpacyNLPProvider
 from narrare_core.shared.errors import NLPProviderError
 
-# ---------------------------------------------------------------------------
-# A. Initialization
-# ---------------------------------------------------------------------------
-
 
 class TestSpacyProviderInit:
-    """SpacyNLPProvider initialization."""
+    """SpacyNLPProvider initialization and supported languages."""
 
     def test_init_creates_empty_model_cache(self) -> None:
         """Fresh instance has no cached models."""
@@ -42,14 +39,7 @@ class TestSpacyProviderInit:
         provider = SpacyNLPProvider()
         assert provider._load_errors == set()
 
-
-# ---------------------------------------------------------------------------
-# B. supported_languages
-# ---------------------------------------------------------------------------
-
-
-class TestSupportedLanguages:
-    """supported_languages property."""
+    # --- supported_languages ---
 
     def test_returns_en_de_fr(self) -> None:
         """Returns English, German, French."""
@@ -388,11 +378,13 @@ class TestProtocolConformance:
         result = await provider.count_syllables("test")
         assert isinstance(result, int)
 
-
-class TestTokenizeForSentiment:
-    """SpacyNLPProvider.tokenize_for_sentiment — delegates to _get_model."""
+    # --- tokenize_for_sentiment ---
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        importlib.util.find_spec("spacy") is not None,  # type: ignore[reportAttributeAccessIssue]
+        reason="spacy is available — cannot test without-spacy path",
+    )
     async def test_tokenize_for_sentiment_raises_without_spacy(self) -> None:
         """Without spaCy, tokenize_for_sentiment raises ImportError."""
         provider = SpacyNLPProvider()

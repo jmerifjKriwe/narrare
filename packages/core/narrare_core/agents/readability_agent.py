@@ -24,7 +24,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.readability_types import ReadabilityAgentOutput
@@ -61,6 +64,41 @@ class ReadabilityAgent(NarrareAgent[ReadabilityDeps, ReadabilityAgentOutput]):
             deps_type=ReadabilityDeps,
             output_type=[self._process_output, ReadabilityAgentOutput],
             system_prompt=system_prompt,
+        )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[ReadabilityDeps],
+        output: ReadabilityAgentOutput,
+    ) -> ReadabilityAgentOutput:
+        """Validate deterministic invariants for readability output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - overall_assessment non-empty
+        - Filter problematic_sentences with empty content
+        """
+        # overall_assessment must be non-empty
+        if not output.overall_assessment.strip():
+            raise ModelRetry(
+                "overall_assessment must be non-empty — "
+                "every readability analysis needs an assessment"
+            )
+
+        # Filter problematic_sentences with empty content
+        valid_sentences = [
+            s
+            for s in output.problematic_sentences
+            if s.get("content", s.get("sentence", "")).strip()
+        ]
+
+        return output.model_copy(
+            update={
+                "problematic_sentences": valid_sentences,
+            }
         )
 
     async def _process_output(

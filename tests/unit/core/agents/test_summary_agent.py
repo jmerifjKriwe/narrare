@@ -83,20 +83,40 @@ class TestChapterSummaryAgent:
 
     @pytest.mark.asyncio
     async def test_run_with_test_model(self) -> None:
+        """Agent output function works correctly with valid input.
+
+        Note: TestModel produces empty output which the ADR-035 validator
+        rejects. The validator is tested separately in
+        test_summary_validation.py. Here we test the output function directly.
+        """
         agent = ChapterSummaryAgent(model=TestModel())
-        result = await agent.run(
-            "Summarize a chapter about a wizard.", deps=SummaryDeps(language="en")
+        ctx = RunContext[SummaryDeps](deps=SummaryDeps(), model=TestModel(), usage=RunUsage())
+        result = await agent._process_summary(
+            ctx,
+            summary="The wizard discovers an ancient spell.",
+            key_points=["Discovery of the spell"],
         )
         assert isinstance(result, SummaryOutput)
+        assert result.summary == "The wizard discovers an ancient spell."
 
     @pytest.mark.asyncio
     async def test_run_with_custom_deps(self) -> None:
+        """Output function produces correct output with custom deps."""
         agent = ChapterSummaryAgent(model=TestModel())
-        deps = SummaryDeps(
-            language="de", genre="Sci-Fi", chapter_title="Chapter 5", max_sentences=2
+        ctx = RunContext[SummaryDeps](
+            deps=SummaryDeps(
+                language="de", genre="Sci-Fi", chapter_title="Chapter 5", max_sentences=2
+            ),
+            model=TestModel(),
+            usage=RunUsage(),
         )
-        result = await agent.run("Summarize space battle.", deps=deps)
+        result = await agent._process_summary(
+            ctx,
+            summary="The fleet engages in a space battle.",
+            key_points=["Battle begins", "Victory achieved"],
+        )
         assert isinstance(result, SummaryOutput)
+        assert len(result.key_points) == 2
 
 
 # ---------------------------------------------------------------------------

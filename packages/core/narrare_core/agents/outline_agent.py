@@ -20,7 +20,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.outline_types import OutlineOutput
@@ -66,6 +69,35 @@ class OutlineAgent(NarrareAgent[OutlineDeps, OutlineOutput]):
             output_type=[self._process_outline, OutlineOutput],
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[OutlineDeps],
+        output: OutlineOutput,
+    ) -> OutlineOutput:
+        """Validate deterministic invariants for outline output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - At least one scene
+        - chapter_title must be non-empty
+        - Filter empty scene strings
+        """
+        # chapter_title must be non-empty
+        if not output.chapter_title.strip():
+            raise ModelRetry("chapter_title must be non-empty — every outline needs a title")
+
+        # Filter empty scene strings
+        filtered_scenes = [s for s in output.scenes if s.strip()]
+
+        # At least one scene
+        if not filtered_scenes:
+            raise ModelRetry("At least one scene is required in the outline")
+
+        return output.model_copy(update={"scenes": filtered_scenes})
 
     async def _process_outline(
         self,

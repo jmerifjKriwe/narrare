@@ -32,7 +32,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+# RunContext must be at runtime — pydantic-ai calls get_type_hints()
+# on output functions passed via output_type= (TC002 suppressed)
+from pydantic_ai import RunContext  # noqa: TC002
 from pydantic_ai.capabilities import ToolSearch, Toolset
 
 from narrare_core.agents.base import NarrareAgent
@@ -43,6 +45,10 @@ from narrare_core.agents.worldbuilding_types import (
     WorldbuildingDeps,
     WorldbuildingPhase1Output,
     WorldbuildingPhase2Output,
+)
+from narrare_core.agents.worldbuilding_validators import (
+    validate_worldbuilding_phase1,
+    validate_worldbuilding_phase2,
 )
 
 if TYPE_CHECKING:
@@ -83,6 +89,7 @@ class WorldbuildingAgent(NarrareAgent[WorldbuildingDeps, WorldbuildingPhase1Outp
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(validate_worldbuilding_phase1)
 
     async def _process_phase1(
         self,
@@ -158,6 +165,7 @@ class WorldbuildingAgent(NarrareAgent[WorldbuildingDeps, WorldbuildingPhase1Outp
             output_type=[self._process_phase2, WorldbuildingPhase2Output],
             system_prompt=system_prompt,
         )
+        phase2_agent._agent.output_validator(validate_worldbuilding_phase2)
         result = await phase2_agent.run(prompt, deps=deps)
         return result.output  # type: ignore[return-value]
 

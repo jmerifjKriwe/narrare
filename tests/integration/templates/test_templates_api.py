@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
+import pytest_asyncio
 
 from narrare.templates.schemas import (
     DiffResponse,
@@ -25,13 +25,20 @@ _VALID_ENTITY_TYPE = "character"
 
 
 async def _create_novel(client: AsyncClient, auth_headers: dict[str, str]) -> str:
-    """Create a novel and return its ID."""
+    """Create a novel and return its ID.
+
+    Raises:
+        AssertionError: If the API returns a non-201 status, with diagnostic
+            info (status, body) to help debug fixture-failure flakiness.
+    """
     resp = await client.post(
         "/api/v1/novels",
         json={"title": "Templates Test Novel", "language": "en"},
         headers=auth_headers,
     )
-    assert resp.status_code == 201
+    if resp.status_code != 201:
+        body = resp.text[:500] if resp.text else "(empty)"
+        raise AssertionError(f"Novel creation failed: status={resp.status_code}, body={body}")
     return resp.json()["id"]
 
 
@@ -46,7 +53,7 @@ def _template_url(novel_id: str, *parts: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def novel_id(client: AsyncClient, auth_headers: dict[str, str]) -> str:
     """Create a test novel and return its ID."""
     return await _create_novel(client, auth_headers)

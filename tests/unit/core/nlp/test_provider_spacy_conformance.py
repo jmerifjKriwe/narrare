@@ -145,6 +145,11 @@ class TestTokenizeForSentiment:
     @pytest.mark.asyncio
     async def test_tokenize_for_sentiment_raises_without_spacy(self) -> None:
         """Without spaCy, tokenize_for_sentiment raises ImportError."""
+        try:
+            __import__("spacy")
+            pytest.skip("spaCy is installed — test only valid without spaCy")
+        except ImportError:
+            pass
         provider = SpacyNLPProvider()
         with pytest.raises((ImportError, NLPProviderError, ValueError)):
             await provider.tokenize_for_sentiment("Hello, world!")

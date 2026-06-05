@@ -14,7 +14,7 @@ import pytest
 from pydantic_ai import RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 
-from narrare_core.agents.beta_reader_agent import BetaReaderAgent
+from narrare_core.agents.beta_reader_processors import process_beta_reader_phase2
 from narrare_core.agents.beta_reader_types import (
     BetaReaderDeps,
     BetaReaderPhase2Output,
@@ -44,9 +44,8 @@ class TestProcessPhase2:
         """During streaming, returns empty Phase 2 output."""
         ctx = _make_run_context()
         ctx.partial_output = True
-        agent = BetaReaderAgent(model=TestModel())
 
-        result = await agent._process_phase2(ctx)
+        result = await process_beta_reader_phase2(ctx)
 
         assert isinstance(result, BetaReaderPhase2Output)
         assert result.detailed_feedback == []
@@ -57,9 +56,8 @@ class TestProcessPhase2:
     async def test_full_output_maps_correctly(self) -> None:
         """Full Phase 2 response maps correctly."""
         ctx = _make_run_context()
-        agent = BetaReaderAgent(model=TestModel())
 
-        result = await agent._process_phase2(
+        result = await process_beta_reader_phase2(
             ctx,
             detailed_feedback=[
                 {
@@ -91,9 +89,8 @@ class TestScoreClamping:
     async def test_score_below_minimum_clamped_to_1(self) -> None:
         """Score of 0 is clamped to 1."""
         ctx = _make_run_context()
-        agent = BetaReaderAgent(model=TestModel())
 
-        result = await agent._process_phase2(ctx, category_score=0)
+        result = await process_beta_reader_phase2(ctx, category_score=0)
 
         assert result.category_score == 1
 
@@ -101,9 +98,8 @@ class TestScoreClamping:
     async def test_score_above_maximum_clamped_to_10(self) -> None:
         """Score of 15 is clamped to 10."""
         ctx = _make_run_context()
-        agent = BetaReaderAgent(model=TestModel())
 
-        result = await agent._process_phase2(ctx, category_score=15)
+        result = await process_beta_reader_phase2(ctx, category_score=15)
 
         assert result.category_score == 10
 
@@ -111,8 +107,7 @@ class TestScoreClamping:
     async def test_negative_score_clamped_to_1(self) -> None:
         """Negative score is clamped to 1."""
         ctx = _make_run_context()
-        agent = BetaReaderAgent(model=TestModel())
 
-        result = await agent._process_phase2(ctx, category_score=-5)
+        result = await process_beta_reader_phase2(ctx, category_score=-5)
 
         assert result.category_score == 1

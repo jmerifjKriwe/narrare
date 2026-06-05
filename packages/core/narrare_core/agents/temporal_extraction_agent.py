@@ -21,7 +21,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.temporal_extraction_types import (
@@ -65,6 +68,35 @@ class TemporalExtractionAgent(NarrareAgent[TemporalExtractionDeps, TemporalExtra
             output_type=[self._process_output, TemporalExtractionOutput],
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[TemporalExtractionDeps],
+        output: TemporalExtractionOutput,
+    ) -> TemporalExtractionOutput:
+        """Validate deterministic invariants for temporal extraction output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - expression must be non-empty for each extraction
+        - Filter extractions with empty expression
+        - Confidence bounds enforcement (0.0-1.0)
+        """
+        # Filter extractions with empty expression
+        valid_extractions = [e for e in output.extracted if e.expression.strip()]
+
+        # Enforce confidence bounds on each extraction
+        for e in valid_extractions:
+            if e.confidence < 0.0 or e.confidence > 1.0:
+                raise ModelRetry(
+                    f"Temporal expression '{e.expression}' has confidence "
+                    f"{e.confidence} — must be between 0.0 and 1.0"
+                )
+
+        return output.model_copy(update={"extracted": valid_extractions})
 
     async def _process_output(
         self,
