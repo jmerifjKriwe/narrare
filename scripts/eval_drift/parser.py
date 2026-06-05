@@ -83,7 +83,10 @@ def load_json_object(path: Path) -> dict[str, Any] | None:
         return None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError, OSError:
+    except (
+        json.JSONDecodeError,
+        OSError,
+    ):
         return None
     if isinstance(data, dict):
         return cast("dict[str, Any]", data)
