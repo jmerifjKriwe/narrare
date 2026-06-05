@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-05 (Session 7)
-Session: Documentation gate coverage expansion + test coverage uplift (sentiment, syllables, spaCy, wiki, memory ADR-030). Phase 1 (Streaming + Prompts): removed deprecated timeline REST wrapper and unused KB sessions SSE endpoint; fixed streaming-compliance checker for nested routers; added streaming pre-commit hook; added required prompt variables to analysis/pov, analysis/readability, planning/temporal_consistency. Phase 2 (Structure): removed RULE-02 f-string exception from KB consistency analyzer (prompt moved to bundled core prompts); modularized EditorView.tsx from 764→146 lines into 14 focused modules; updated exception registers. Phase 3 (Privacy + Observability): changed KB interview resume from localStorage to sessionStorage; added module-level OTel degradation visibility with one-shot warning and health-endpoint status. Streaming compliance now 0 violations. Frontend RULE-04 violations: 38→37. Architecture exceptions: 14→13 (RULE-02 exception #3 removed).
+Date: 2026-06-05 (Session 8)
+Session: Chat Migration — ChatAgent + ChatDeps created with HistoryPolicy.CONVERSATIONAL (ADR-034); ProcessHistory for cross-turn continuity; API backend refactored to use ChatAgent.run_stream(); documentation updates for CHAT-001, ADR-024, ADR-034, glossary, directory structure, CURRENT_STATE.
 
 ---
 
@@ -34,15 +34,15 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Total tests: ~6,200+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
 - Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
-- ADRs: 30 (ADR-001 through ADR-030; ADR-030 MagicMock-to-Fake migration implemented)
+- ADRs: 36 (ADR-001 through ADR-036)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 11 (Q-001 through Q-011)
 
 ### Core (`packages/core/narrare_core/`)
 
-17 submodules: agents, analysis, cache, context, embeddings, events, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, writing
+18 submodules: agents, analysis, cache, chat, context, embeddings, events, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, writing
 
-18 AI agents (pydantic-ai): beta_reader, character_arc, consistency, draft, extraction, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, pov_detection, preference_analysis, readability, review, summary, timeline, worldbuilding
+19 AI agents (pydantic-ai): beta_reader, character_arc, chat (ChatAgent), consistency, draft, extraction, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, pov_detection, preference_analysis, readability, review, summary, timeline, worldbuilding
 
 ### Backend (`apps/api/narrare/`)
 
@@ -140,6 +140,7 @@ Completed in Phase 6 so far:
 37. ✅ Review-01 Phase 2 (Structure): RULE-02 f-string exception removed from KB consistency analyzer (prompt → bundled `core/prompts/_bundled/kb/*/consistency/system.md`); EditorView.tsx modularized from 764→146 lines into 14 focused modules (`editor-view/` directory); exception registers updated in CONSTRAINTS.md and pyproject.toml (14→13).
 38. ✅ Review-01 Phase 3 (Privacy + Observability): KB interview resume changed from localStorage→sessionStorage (privacy); module-level OTel degradation visibility with one-shot warning + `get_observability_status()`; health endpoint includes OTel status (`/health` returns `observability` field).
 39. ✅ Coverage expansion: LexiconSentimentAnalyzer 19%→99% (40 tests), syllable counting 85%→92% (practical ceiling without pyphen), SpacyNLPProvider 49%→50% (ceiling without spaCy installed); wiki chapter_service 0%→100%, wiki service 18%→100%, wiki system_accessors 62%→100%, overall wiki coverage 74%→87%; memory tests migrated from MagicMock to Fake classes (ADR-030 implemented).
+40. ✅ **Chat Migration (CHAT-001, ADR-034)**: `ChatAgent` + `ChatDeps` created with `HistoryPolicy.CONVERSATIONAL` (first adopter of ADR-034). `ProcessHistory` for cross-turn message continuity. Backend `chat_service.py` refactored to use `ChatAgent.run_stream()` instead of `ModelRegistry.stream()`. `StreamEvent` yielded during `NarrareAgent.run_stream()`. Unit tests for chat service (happy path, history, errors).
 
 ## What's Next
 
@@ -182,6 +183,9 @@ Completed in Phase 6 so far:
 | ADR-021 | Deterministic Analysis Strategy | ✅ Accepted |
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
+| ADR-024 | Free-Form Chat for Writing Craft | ✅ Implemented — ChatAgent + ChatDeps + HistoryPolicy.CONVERSATIONAL |
+| ADR-025 | Feature Adoption Infrastructure | 🔄 Proposed |
+| ADR-026 | Capability-Based Prompt Injection Pattern | ✅ Implemented |
 | ADR-027 | AI Feature Stabilization Gates | ✅ Completed — freeze lifted; ratcheted post-freeze governance retained |
 | ADR-028 | Architecture Exception Register SSOT | ✅ Implemented |
 | ADR-029 | VM-First Setup Contract and Optional DevContainer Cleanup | ✅ Implemented |

@@ -3,7 +3,7 @@
 Wires core chat logic (narrare_core.chat) to FastAPI infrastructure:
 - SQLAlchemy store for persistence
 - PromptComposer for prompt assembly
-- ModelRegistry for LLM streaming
+- ChatAgent via ModelRegistry for agent-based LLM streaming
 
 Follows ChatServiceProtocol from core contracts.py.
 """
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+from narrare_core.agents.process_history import ProcessHistory
 from narrare_core.chat.chat_service_core import (
     build_chat_context,
     format_history,
@@ -31,6 +32,8 @@ if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.prompts import PromptComposer
+    from narrare_core.prompts.composer import ComposedPrompt
+    from narrare_core.prompts.context import PromptContext
 
 logger = structlog.get_logger(__name__)
 
@@ -41,8 +44,9 @@ class ChatService(ChatServiceProtocol):
     Handles the full chat lifecycle:
     1. Conversation creation or history loading
     2. Context assembly and prompt composition
-    3. LLM streaming via ModelRegistry
-    4. Message persistence via SQLAlchemyConversationStore
+    3. Agent-based LLM streaming via ChatAgent (ADR-024)
+    4. ProcessHistory tracking for conversational continuity (ADR-034)
+    5. Message persistence via SQLAlchemyConversationStore
     """
 
     def __init__(
@@ -56,7 +60,7 @@ class ChatService(ChatServiceProtocol):
 
         Args:
             prompt_composer: For assembling system + user prompts.
-            model_registry: For LLM model resolution and streaming.
+            model_registry: For LLM model resolution and agent creation.
             conversation_store: For message persistence.
             config: Resolved model configuration (provider, model, params).
         """
@@ -64,6 +68,7 @@ class ChatService(ChatServiceProtocol):
         self._registry = model_registry
         self._store = conversation_store
         self._config = config
+        self._histories: dict[UUID, ProcessHistory] = {}
 
     async def ask(
         self,
@@ -76,6 +81,9 @@ class ChatService(ChatServiceProtocol):
         - ``{"type": "meta", "conversation_id": ..., "request_id": ...}``
         - ``{"type": "token", "text": ...}`` (zero or more)
         - ``{"type": "done", "usage": {...}}``
+
+        Uses ``ChatAgent`` (via ``ChatAgent.run_stream()``) with
+        ``ProcessHistory`` for conversational continuity across turns.
 
         Args:
             request: The chat request (project_id, message, conversation_id).
@@ -114,31 +122,52 @@ class ChatService(ChatServiceProtocol):
             user_prompt=request.message,
         )
 
-        # 3. Return the async generator that streams events
-        return self._stream_response(conv_id, composed)
+        # 3. Return the async generator that streams events via ChatAgent
+        return self._stream_agent_response(conv_id, composed, context, request.message)
 
-    async def _stream_response(
+    async def _stream_agent_response(
         self,
         conv_id: UUID,
-        composed: object,
+        composed: ComposedPrompt,
+        context: PromptContext,
+        user_prompt: str,
     ) -> AsyncIterator[dict[str, object]]:
-        """Async generator that yields SSE events for the chat response.
+        """Async generator that streams the chat response via ``ChatAgent.run_stream()``.
 
-        Separated from ``ask()`` to maintain type compatibility with
-        ``ChatServiceProtocol`` — async generators cannot be returned
-        directly from protocol ``async def`` methods.
+        Replaces the old ``_stream_response`` which used ``ModelRegistry.stream()``
+        directly (violating ADR-015). Now uses ``ChatAgent`` for agent-based
+        streaming with ``ProcessHistory`` for conversational continuity.
 
         Args:
             conv_id: The conversation UUID.
-            composed: The composed prompt (ComposedPrompt).
+            composed: The composed prompt (system + user prompts).
+            context: The prompt context with project metadata.
+            user_prompt: The raw user message text.
 
         Yields:
             Dict-based SSE events for the streaming response.
         """
-        # Import here to avoid circular imports at module level
-        from narrare_core.prompts.composer import ComposedPrompt
+        from narrare_core.chat.chat_agent import ChatAgent
+        from narrare_core.chat.chat_deps import ChatDeps
 
-        assert isinstance(composed, ComposedPrompt)
+        # Get model from registry
+        model = await self._registry.get_model(self._config)
+
+        # Create ChatAgent (uses HistoryPolicy.CONVERSATIONAL by design)
+        agent = ChatAgent(model=model)
+
+        # Create ChatDeps for the agent
+        deps = ChatDeps(
+            prompt_composer=self._composer,
+            context=context,
+            user_prompt=user_prompt,
+        )
+
+        # Combine system + user prompt as the agent prompt
+        full_prompt = f"{composed.system}\n\n{composed.user}" if composed.system else composed.user
+
+        # Get or create ProcessHistory for this conversation
+        history = self._histories.get(conv_id, ProcessHistory())
 
         # Yield meta event with conversation ID
         yield {
@@ -147,31 +176,30 @@ class ChatService(ChatServiceProtocol):
             "request_id": str(uuid4()),
         }
 
-        # Stream LLM response
+        # Stream agent response
         full_response = ""
         try:
-            async for chunk in self._registry.stream(
-                intent=LLMIntent.CHAT,
-                system_prompt=composed.system,
-                user_prompt=composed.user,
-                config=self._config,
+            async for event in agent.run_stream(
+                prompt=full_prompt,
+                deps=deps,
+                message_history=history.messages if not history.is_empty else None,
             ):
-                if chunk.is_final:
+                if event.type == "token":
+                    yield {"type": "token", "text": event.text}
+                    full_response += event.text
+                elif event.type == "done":
+                    # Update ProcessHistory with new messages from this turn
+                    if event.new_messages:
+                        history.add(event.new_messages)
+                        self._histories[conv_id] = history
+
                     yield {
                         "type": "done",
-                        "usage": {
-                            "prompt_tokens": chunk.usage.prompt_tokens if chunk.usage else 0,
-                            "completion_tokens": chunk.usage.completion_tokens
-                            if chunk.usage
-                            else 0,
-                            "total_tokens": chunk.usage.total_tokens if chunk.usage else 0,
-                        }
-                        if chunk.usage
-                        else {},
+                        "usage": event.usage or {},
                     }
-                else:
-                    yield {"type": "token", "text": chunk.text}
-                    full_response += chunk.text
+                    # Use the complete text from the done event
+                    if event.text:
+                        full_response = event.text
         except Exception as exc:
             logger.error(
                 "chat_stream_failed",

@@ -91,6 +91,8 @@ It is the layer that would work identically whether called from FastAPI, MCP, CL
 ```
 packages/core/narrare_core/
 │
+├── agents/                     ← Pydantic-ai agents (NarrareAgent subclasses) — all agents live here
+│                                   (ChatAgent lives in chat/ — see below)
 ├── llm/                        ← Everything LLM. The only place LLM clients live.
 │   ├── __init__.py             ← Exports: LLMGateway, LLMIntent, LLMResult
 │   ├── gateway.py              ← THE gateway. All LLM calls go here. Max 300 lines.
@@ -156,6 +158,15 @@ packages/core/narrare_core/
 ├── cache/                      ← Caching abstraction
 │   ├── __init__.py
 │   └── client.py               ← Redis abstraction (only place redis is used)
+│
+├── chat/                       ← Free-Form Chat (CHAT-001, ADR-024)
+│   ├── __init__.py             ← Exports: ChatAgent, ChatDeps, ChatServiceProtocol
+│   ├── chat_agent.py           ← ChatAgent[ChatDeps, str] — conversational agent
+│   ├── chat_deps.py            ← ChatDeps — prompt composition per turn
+│   ├── chat_service_core.py    ← Pure business logic (context assembly)
+│   ├── conversation_store.py   ← DB persistence for chat history
+│   ├── contracts.py            ← ChatServiceProtocol
+│   └── schemas.py              ← Pydantic schemas
 │
 ├── notifications/              ← External notifications
 │   ├── __init__.py

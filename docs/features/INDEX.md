@@ -72,7 +72,7 @@
 ### Chat
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [CHAT-001](chat/CHAT-001-free-form-chat.md) | Free-Form Chat | 📋 | ❌ |
+| [CHAT-001](chat/CHAT-001-free-form-chat.md) | Free-Form Chat | 🔨 | ❌ |
 
 ### Knowledge Base
 | ID | Feature | Status | MVP |

@@ -80,6 +80,17 @@ An interactive writing mode where the AI acts as a collaborative writing partner
 taking turns with the user. Different from a Writing Session (which is AI-driven)
 and a KB Session (which is knowledge-editing).
 
+**ChatAgent**
+A pydantic-ai Agent (`NarrareAgent[ChatDeps, str]`) that provides free-form chat
+for writing craft discussion. Uses `HistoryPolicy.CONVERSATIONAL` for cross-turn
+continuity (ADR-034). Invoked via `run_stream()` which yields `StreamEvent` objects.
+Defined in `core/chat/chat_agent.py`. Part of CHAT-001.
+
+**ChatDeps**
+A dependency container for `ChatAgent`, providing the prompt composition infrastructure
+needed for each chat turn. Contains `prompt_composer: PromptComposer`, `context: PromptContext`,
+and `user_prompt: str`. Injected by the service layer. Defined in `core/chat/chat_deps.py`.
+
 **cva (class-variance-authority)**
 A utility for composing variant-based Tailwind class names. Used in UI primitives
 (Button, etc.) to define variant maps (`primary`, `secondary`, `ghost`, `danger`)
@@ -327,6 +338,11 @@ instead of the legacy `DraftProcessor` pipeline path. Defined inline in
 **Precomputed Context Layer**
 Ein Architekturpattern, bei dem Daten vorverarbeitet (precomputed) und als optimierte, LLM-lesbare Zusammenfassungen gespeichert werden — statt Rohdaten bei jedem LLM-Call live zu laden. Ermöglicht deterministischen, token-effizienten Context Assembly. In Narrare implementiert als LLM Wiki (WIKI-001, ADR-022).
 
+**ProcessHistory**
+A lightweight dataclass for storing pydantic-ai message history across conversational
+turns. Used by agents with `HistoryPolicy.CONVERSATIONAL`. Provides `add()`, `clear()`,
+and `is_empty` operations. Defined in `core/agents/process_history.py`. Part of ADR-034.
+
 **Prompt Context (`PromptContext`)**
 A typed dataclass carrying all variables needed to render a prompt:
 project metadata, language, mode, KB context bundle, style profile, etc.
@@ -380,6 +396,12 @@ The utility in `packages/web/lib/api/streaming.ts` that handles Server-Sent Even
 Uses native `fetch` + `ReadableStream` (axios cannot do SSE). Parses SSE `data:` lines,
 handles `[DONE]` sentinel, and supports `AbortSignal` for cancellation.
 Every streaming AI response in the frontend uses this client.
+
+**StreamEvent**
+An event yielded during `NarrareAgent.run_stream()`. Two types: `"token"` (text chunk)
+and `"done"` (completion with usage info and `new_messages`). The `"done"` event carries
+`new_messages` for updating `ProcessHistory`. Defined in `core/agents/base.py`. Part of
+the unified streaming interface (RULE-13).
 
 **Stale (WikiSummary)**
 Der Status eines WikiSummary, dessen Abhängigkeiten (Prompt-Version, Entity-Content, Template-Version) sich seit der Generierung geändert haben. Ein stale Summary löst einen Lazy-Refresh beim nächsten Zugriff aus — der Write-Call fällt dabei auf Rohdaten zurück. Siehe *WikiSummary*.
@@ -491,6 +513,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-06-05 — Added "Output Validator" entry (ADR-035 Phase 6)
+> Last updated: 2026-06-05 — Added ChatAgent, ChatDeps, ProcessHistory, StreamEvent (Chat Migration)
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

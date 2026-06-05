@@ -1,7 +1,7 @@
 ---
 id: CHAT-001
 title: "Free-Form Chat"
-status: planned
+status: in_progress
 area: chat
 mvp: false
 
@@ -38,7 +38,7 @@ service: chat/service.py
 contract: chat/contracts.py#ChatServiceProtocol
 router: chat/router.py
 prompt: core/prompts/_bundled/chat/en/system.md
-requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
+requires: [INFRA-001, INFRA-002, INFRA-003, KB-001, ADR-034]
 ---
 
 # CHAT-001 — Free-Form Chat
@@ -80,9 +80,12 @@ earlier planned feature with a scoped, architecturally grounded design.
 **Entry point:** `chat/router.py` → `POST /api/v1/chat/message` (SSE streaming)
 **Service:** `ChatService.handle_message()` in `chat/service.py`
 **Contract:** `ChatServiceProtocol` in `chat/contracts.py`
+**Agent:** `ChatAgent[ChatDeps, str]` in `core/chat/chat_agent.py` — conversational agent with `HistoryPolicy.CONVERSATIONAL`
+**Dependencies:** `ChatDeps` in `core/chat/chat_deps.py` — prompt composition infrastructure per turn
+**History:** `ProcessHistory` in `core/agents/process_history.py` — cross-turn message continuity (ADR-034)
 **LLM Intent:** `LLMIntent.CHAT`
 **Intent Category:** `IntentCategory.CHAT`
-**Prompt:** `core/prompts/_bundled/chat/{lang}/system.md`
+**Prompt:** `core/prompts/_bundled/writing/{lang}/chat/system.md`
 **Context assembled by:** `PromptComposer` with `PromptContext`
 
 ### PromptComposer Integration
@@ -102,6 +105,23 @@ The composer automatically:
 4. Injects user preferences and avoidance patterns
 5. Substitutes all template variables
 
+### Core Module Structure
+
+```
+packages/core/narrare_core/chat/
+├── __init__.py         ← Exports: ChatAgent, ChatDeps, ChatServiceProtocol
+├── chat_agent.py       ← ChatAgent[ChatDeps, str] — conversational agent (HistoryPolicy.CONVERSATIONAL)
+├── chat_deps.py        ← ChatDeps — prompt composition infrastructure per turn
+├── chat_service_core.py← Pure business logic (context assembly, prompt building)
+├── conversation_store.py← DB persistence for chat history (max 50 messages)
+├── contracts.py        ← ChatServiceProtocol, ChatMessage, ChatRequest, ChatResponse
+└── schemas.py          ← Pydantic schemas
+```
+
+History persistence is provided by `ProcessHistory` in `core/agents/process_history.py`
+(ADR-034). The `ChatAgent` passes `message_history=history.messages` to
+`NarrareAgent.run_stream()` for cross-turn continuity.
+
 ### Backend Module Structure
 
 ```
@@ -109,8 +129,10 @@ apps/api/narrare/chat/
 ├── __init__.py
 ├── contracts.py    ← ChatServiceProtocol
 ├── schemas.py      ← ChatRequest, ChatResponse, ChatMessage
-├── service.py      ← ChatService (uses PromptComposer + LLM gateway)
-└── router.py       ← POST /chat/message (SSE streaming)
+├── service.py      ← ChatService (uses ChatAgent + PromptComposer)
+├── dependencies.py ← FastAPI DI factory
+├── models.py       ← SQLAlchemy models for conversation history
+└── router.py       ← POST /chat/message (SSE streaming), history CRUD
 ```
 
 ### Request/Response Flow
@@ -122,19 +144,47 @@ router.py (POST /chat/message)
        ↓
 ChatService.handle_message()
        ↓
-PromptComposer.build(LLMIntent.CHAT, context)
-       ↓  (system prompt assembled with KB + preferences)
-LLM Gateway (streaming)
+ChatServiceCore.build_context()   ← Minimal project context (Tiers 1-4)
+ChatServiceCore.build_prompt()    ← PromptComposer.build(LLMIntent.CHAT, context)
+       ↓
+ChatAgent.run_stream(prompt, deps=ChatDeps(...),
+                     message_history=history.messages)
+       ↓
+NarrareAgent.run_stream()         ← Yields StreamEvent(type="token"|"done")
        ↓
 SSE stream → frontend
 ```
 
+The `ChatAgent` is a `NarrareAgent[ChatDeps, str]` with `history_policy=HistoryPolicy.CONVERSATIONAL`.
+It delegates to the base class `run_stream()` which yields `StreamEvent` objects.
+Each turn's `new_messages` are appended to a `ProcessHistory` instance for
+cross-turn continuity (see Conversation History below).
+
 ### Conversation History
 
-Conversation history is maintained per session. The service includes the last
-N turns as context in the user message sent to the LLM. History is not
-persisted in the database — it lives in the client state (frontend) and is
-sent with each request.
+Conversation history is maintained via `ProcessHistory` for cross-turn continuity.
+The `ChatAgent` uses `HistoryPolicy.CONVERSATIONAL` (ADR-034), which means it
+accumulates pydantic-ai message history across turns.
+
+**Flow:**
+```
+history = ProcessHistory()
+
+# Turn 1 — no prior history
+async for event in agent.run_stream(prompt, deps, message_history=None):
+    if event.type == "done" and event.new_messages:
+        history.add(event.new_messages)
+
+# Turn 2 — continuation with prior history
+async for event in agent.run_stream(prompt, deps,
+                                     message_history=history.messages):
+    if event.type == "done" and event.new_messages:
+        history.add(event.new_messages)
+```
+
+History is scoped per conversation session. The backend persists messages in
+the database (via `conversation_store.py`) for cross-page-load continuity.
+`ProcessHistory` handles the in-memory pydantic-ai message list for each turn.
 
 ### Streaming
 
@@ -146,8 +196,9 @@ mode is available through the same interface for MCP/CLI clients.
 
 - **Scoped to writing topics**: The AI redirects non-writing questions. This is
   a writing companion, not a general chatbot.
-- **No conversation persistence**: History lives in client state. Closing the
-  panel clears the conversation. Future enhancement may add persistence.
+- **Conversation persistence**: History is persisted in the database via
+  `conversation_store.py`. Conversations survive page reloads. Max 50 messages
+  per conversation; older messages are auto-archived.
 - **KB dependency**: If the Knowledge Base is empty, the AI operates without
   project-specific context. Responses are still useful for general writing
   craft questions.
@@ -172,14 +223,14 @@ mode is available through the same interface for MCP/CLI clients.
 
 | Rule | Status | Evidence |
 |------|--------|----------|
-| RULE-01b | ✅ | Chat uses LLM Gateway via agents — no direct LLM imports |
-| RULE-02 | ✅ | Prompt built exclusively by PromptComposer from `_bundled/chat/` |
+| RULE-01b | ✅ | Chat uses `ChatAgent` (`NarrareAgent` subclass) — no direct LLM imports |
+| RULE-02 | ✅ | Prompt built exclusively by `PromptComposer` via `ChatDeps` — no f-string prompts |
 | RULE-03 | ✅ | `ChatServiceProtocol` in `contracts.py` before implementation |
-| RULE-04 | ✅ | Module split: contracts, schemas, service, router — each under limits |
-| RULE-05 | ✅ | Module boundaries: `chat/` owns its schemas, service, contract, router |
-| RULE-06 | ✅ | Router delegates to service. Service has logic. No business logic in router. |
-| RULE-07 | ✅ | Dependency direction: router → service → core/llm/gateway |
-| RULE-08 | ✅ | LLM access abstracted through gateway. No direct SDK calls. |
+| RULE-04 | ✅ | Module split: contracts, schemas, service, router, agent, deps — each under limits |
+| RULE-05 | ✅ | Module boundaries: `chat/` owns its schemas, service, contract, router, agent, deps |
+| RULE-06 | ✅ | Router delegates to service. Service delegates to `ChatAgent`. Agent handles LLM calls. |
+| RULE-07 | ✅ | Dependency direction: router → service → core/chat/ (ChatAgent) → core/agents/ (NarrareAgent) |
+| RULE-08 | ✅ | LLM access abstracted through `NarrareAgent` → pydantic-ai `Agent`. No direct SDK calls. |
 | RULE-09 | ✅ | All public methods fully typed. No `Any` in public interfaces. |
 | RULE-10 | ✅ | Unit tests for service, integration tests for router. Coverage ≥ 80%. |
 | RULE-11 | ✅ | Error handling: typed domain errors, structured logging, no bare except. |
@@ -190,4 +241,5 @@ mode is available through the same interface for MCP/CLI clients.
 ## Status & History
 
 - `2026-05-31` — Feature spec created (supersedes ASSIST-003). CR-02 identified the gap.
+- `2026-06-05` — Implementation started: `ChatAgent` + `ChatDeps` created, `ProcessHistory` for cross-turn continuity, `HistoryPolicy.CONVERSATIONAL` as first adopter (ADR-034). API backend refactored to use `ChatAgent.run_stream()`.
 - `project-init` — ASSIST-003 added as planned placeholder (now superseded).

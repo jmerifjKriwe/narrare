@@ -1,7 +1,7 @@
 # ADR-024 — Free-Form Chat for Writing Craft
 
-> **Status:** 🔄 Proposed
-> **Date:** 2026-05-30
+> **Status:** ✅ Implemented
+> **Date:** 2026-05-30 (proposed), 2026-06-05 (implemented)
 > **Deciders:** Architecture Specialist
 > **Affects:** `core/prompts/`, `core/llm/`, `apps/api/narrare/chat/`, `packages/web/`, FIND-019, CR-AUFG-02-03
 
@@ -579,6 +579,48 @@ The Chat endpoint (`POST /api/v1/chat`) produces the following SSE event sequenc
 
 ---
 
+## Implementation Status (2026-06-05)
+
+Chat is now implemented as an agent-based service using `ChatAgent` + `ChatDeps`:
+
+### What changed from the original ADR
+
+| Aspect | Original ADR | Implementation |
+|--------|-------------|----------------|
+| **Agent model** | Direct `ModelRegistry.stream()` call | `ChatAgent[ChatDeps, str]` via `NarrareAgent.run_stream()` |
+| **History** | db-persisted conversation, prompt-injected | `ProcessHistory` + `HistoryPolicy.CONVERSATIONAL` (ADR-034) |
+| **Core module** | `chat_service_core.py` + `conversation_store.py` | `chat_agent.py` + `chat_deps.py` + agents |
+| **Prompt routing** | `LLMIntent.CHAT → category: "chat"` | `LLMIntent.CHAT → category: "writing", mode: "chat"` |
+
+### Architecture Flow (implemented)
+
+```
+Frontend → POST /api/v1/chat
+               ↓
+          ChatService.handle_message()
+               ↓
+          ChatServiceCore.build_context()    ← Minimal PromptContext (Tiers 1-4)
+          ChatServiceCore.build_prompt()     ← PromptComposer.build(LLMIntent.CHAT, context)
+               ↓
+          ChatAgent.run_stream(prompt,       ← ChatDeps(prompt_composer, context, user_prompt)
+              deps=ChatDeps(...),
+              message_history=history.messages)
+               ↓
+          NarrareAgent.run_stream()          ← Yields StreamEvent type="token"|"done"
+               ↓
+          SSE stream → frontend
+```
+
+### Key decisions confirmed
+
+- ✅ **Agent-based**: `ChatAgent` is a `NarrareAgent[ChatDeps, str]` subclass — not a direct gateway call
+- ✅ **ProcessHistory for continuity**: In-memory pydantic-ai message list, managed per conversation session
+- ✅ **HistoryPolicy.CONVERSATIONAL**: First adopter of ADR-034 policy
+- ✅ **SSE streaming**: `run_stream()` yields `StreamEvent` → serialized as SSE events
+- ✅ **DB persistence**: Messages stored via `conversation_store.py` for cross-page continuity
+
+---
+
 ## Constraints Affected
 
 | Rule | Status | How Satisfied |
@@ -634,49 +676,45 @@ See new entries in `docs/architecture/questions/INDEX.md`:
 
 ```
 Frontend (page.tsx) → chatApi.ask() → connectSSE(…) → POST /api/v1/chat
-                                                             ↓
-                                                      router.py
-                                                             ↓
-                                                      chat_service.py
-                                                             ↓
-                                                    ┌──────────────────┐
-                                                    │ 1. Load history  │
-                                                    │    (or create)   │
-                                                    │ 2. Build context │
-                                                    │ 3. Build prompt  │
-                                                    │    → Composer    │
-                                                    │ 4. Call gateway  │
-                                                    │    → SSE stream  │
-                                                    │ 5. Save message  │
-                                                    └──────────────────┘
+                                                              ↓
+                                                       router.py
+                                                              ↓
+                                                       chat_service.py
+                                                              ↓
+                                                     ┌────────────────────────┐
+                                                     │ 1. Load history       │
+                                                     │    (or create)        │
+                                                     │ 2. Build context      │
+                                                     │ 3. Build prompt       │
+                                                     │    → Composer         │
+                                                     │ 4. ChatAgent          │
+                                                     │    run_stream()       │
+                                                     │    → NarrareAgent     │
+                                                     │    → SSE stream       │
+                                                     │ 5. Save message       │
+                                                     │    + ProcessHistory   │
+                                                     └────────────────────────┘
 ```
 
-### `chat_service_core.py` — Core Business Logic
+### `chat_agent.py` — Conversational Agent (Core)
 
 ```python
-class ChatServiceCore:
-    """Pure business logic for chat — no HTTP, no DB calls directly."""
+class ChatAgent(NarrareAgent[ChatDeps, str]):
+    """Conversational agent for free-form chat.
+    Uses HistoryPolicy.CONVERSATIONAL (ADR-034).
+    """
 
-    def build_context(
-        self,
-        project: ProjectSummary,
-        kb_entities: KBSummary,
-        relationships: RelationshipSummary,
-        recent_chapters: list[ChapterSummary],
-    ) -> PromptContext:
-        """Build a minimal PromptContext for chat (Tiers 1-4)."""
-        ...
+    def __init__(self, model: Model) -> None:
+        super().__init__(
+            model=model,
+            deps_type=ChatDeps,
+            history_policy=HistoryPolicy.CONVERSATIONAL,
+        )
 
-    async def build_prompt(
-        self,
-        composer: PromptComposer,
-        context: PromptContext,
-        message: str,
-        history: list[ChatMessage],
-    ) -> ComposedPrompt:
-        """Build the final prompt with conversation history injection."""
-        context.conversation_history = self._format_history(history)
-        return await composer.build(LLMIntent.CHAT, context, user_prompt=message)
+    # run_stream() is inherited from NarrareAgent:
+    #   async for event in agent.run_stream(prompt, deps, message_history=...):
+    #       if event.type == "token": ...
+    #       elif event.type == "done": ...
 ```
 
 ### `conversation_store.py` — DB Persistence
@@ -714,8 +752,8 @@ class ChatService:
 
     def __init__(
         self,
+        chat_agent: ChatAgent,
         prompt_composer: PromptComposer,
-        model_registry: ModelRegistry,
         conversation_store: ConversationStore,
         context_assembler: WritingContextAssembler,
     ) -> None:
@@ -729,12 +767,13 @@ class ChatService:
     ) -> AsyncIterator[dict]:
         """Process a chat message and stream the response."""
         # 1. Resolve conversation_id
-        # 2. Load history (if continuing)
+        # 2. Load history (if continuing), build ProcessHistory
         # 3. Build PromptContext via context_assembler (minimal)
         # 4. Build prompt via ChatServiceCore + PromptComposer
-        # 5. Call ModelRegistry.stream() with LLMIntent.CHAT
-        # 6. Save user message + assistant response to DB
-        # 7. Yield SSE events (meta, token..., done)
+        # 5. Create ChatDeps(prompt_composer, context, user_prompt)
+        # 6. Call ChatAgent.run_stream(prompt, deps, message_history=...)
+        # 7. Yield StreamEvent as SSE events (meta, token..., done)
+        # 8. Save user message + assistant response to DB
         ...
 ```
 

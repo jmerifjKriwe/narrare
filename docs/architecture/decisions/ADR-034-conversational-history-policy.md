@@ -7,9 +7,8 @@
 > **Related:** ADR-015, ADR-016, ADR-024, ADR-026, ADR-027, ADR-033
 
 > **Implementation Note:** Implemented as `HistoryPolicy` enum (NONE, CONVERSATIONAL)
-> on `NarrareAgent` base class. Default is NONE (task agents). No agent currently
-> uses CONVERSATIONAL — Chat remains a non-agent streaming service. When Chat migrates
-> to a NarrareAgent, it will declare `history_policy=HistoryPolicy.CONVERSATIONAL`.
+> on `NarrareAgent` base class. Default is NONE (task agents). ChatAgent now uses
+> `HistoryPolicy.CONVERSATIONAL` (first adopter).
 
 ---
 
