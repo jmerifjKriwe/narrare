@@ -1,5 +1,7 @@
 # Narrare Pydantic Evals
 
+**Node.js ≥ 24**
+
 ADR-032 makes Pydantic Evals the active AI evaluation single source of truth.
 This package replaces the former YAML/Node eval stack with Python-native suites
 that can exercise Narrare runtime paths.
