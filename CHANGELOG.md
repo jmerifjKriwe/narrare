@@ -24,6 +24,13 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- **ADR-035 Phase 6 — Output Validators for all 13 remaining agents**
+  - Added output validators to: DraftAgent, ReviewAgent, ChapterSummaryAgent, OutlineAgent, CharacterArcAgent, KBImproveAgent, KBMergeAgent, TemporalExtractionAgent, KBAssistAgent, BetaReaderAgent, WorldbuildingAgent, POVDetectionAgent, ReadabilityAgent
+  - 3 dedicated validator modules: `draft_validators.py`, `worldbuilding_validators.py`, `beta_reader_validators.py`; remaining agents use inline validators
+  - All 17 structured-output agents now have output validators (4 Phase 5 + 13 Phase 6)
+  - 161 new validation tests across 13 test files (237 total across all 17 agents)
+  - Docs: ADR-035 implementation note expanded; CURRENT_STATE updated; GLOSSARY added "Output Validator" term
+
 - **INFRA-010 — Prompting Locally (Cascade Activation)**
   - Core: Activated project-level prompt cascade — PromptRegistry and MetaPromptLoader now receive workspace root (project_root=BASE_DIR)
   - Core: Fixed fallback path inconsistency in ManagementService (~/.narrare/ → user_config_dir/prompts/)

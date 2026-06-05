@@ -7,7 +7,7 @@
 
 ## Last Updated
 
-Date: 2026-06-04 (Session 6)
+Date: 2026-06-05 (Session 7)
 Session: Documentation gate coverage expansion + test coverage uplift (sentiment, syllables, spaCy, wiki, memory ADR-030). Phase 1 (Streaming + Prompts): removed deprecated timeline REST wrapper and unused KB sessions SSE endpoint; fixed streaming-compliance checker for nested routers; added streaming pre-commit hook; added required prompt variables to analysis/pov, analysis/readability, planning/temporal_consistency. Phase 2 (Structure): removed RULE-02 f-string exception from KB consistency analyzer (prompt moved to bundled core prompts); modularized EditorView.tsx from 764→146 lines into 14 focused modules; updated exception registers. Phase 3 (Privacy + Observability): changed KB interview resume from localStorage to sessionStorage; added module-level OTel degradation visibility with one-shot warning and health-endpoint status. Streaming compliance now 0 violations. Frontend RULE-04 violations: 38→37. Architecture exceptions: 14→13 (RULE-02 exception #3 removed).
 
 ---
@@ -190,7 +190,7 @@ Completed in Phase 6 so far:
 | ADR-032 | Pydantic Evals as Evaluation SSOT | ✅ Implemented |
 | ADR-033 | mem0 v3 OSS Memory Architecture | ✅ Implemented (mem0 2.0.x) |
 | ADR-034 | Conversational History Policy | ✅ Implemented |
-| ADR-035 | Agent Output Validation Policy | ✅ Implemented (4 priority agents) |
+| ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 
 Full details: `docs/architecture/decisions/INDEX.md`

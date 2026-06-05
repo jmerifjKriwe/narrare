@@ -1,16 +1,24 @@
 # ADR-035 — Agent Output Validation Policy
 
-> **Status:** ✅ Implemented
-> **Date:** 2026-06-04
+> **Status:** ✅ Implemented (all phases)
+> **Date:** 2026-06-05 (Phase 6 complete)
 > **Deciders:** User, Architecture Agent
 > **Supersedes:** —
 > **Related:** ADR-015, ADR-026, ADR-027, ADR-032, ADR-034
 
-> **Implementation Note:** Implemented output validators for 4 priority agents:
-> PreferenceAnalysisAgent, ExtractionAgent, ConsistencyAgent, TimelineAgent.
-> Uses `self._agent.output_validator()` pattern (Approach A). 76 validation tests.
-> Remaining agents (DraftAgent, KBImproveAgent, KBAssistAgent, etc.) are secondary
-> candidates to be addressed as the pattern matures.
+> **Implementation Note:** Output validators are now implemented across all 17
+> structured-output agents in two phases:
+> - **Phase 5** (4 priority agents): PreferenceAnalysisAgent, ExtractionAgent,
+>   ConsistencyAgent, TimelineAgent.
+> - **Phase 6** (13 remaining agents): DraftAgent, ReviewAgent,
+>   ChapterSummaryAgent, OutlineAgent, CharacterArcAgent, KBImproveAgent,
+>   KBMergeAgent, TemporalExtractionAgent, KBAssistAgent, BetaReaderAgent,
+>   WorldbuildingAgent, POVDetectionAgent, ReadabilityAgent.
+> Uses `self._agent.output_validator()` pattern (Approach A).
+> **Total: 237 validation tests** (76 Phase 5 + 161 Phase 6).
+> 3 agents have dedicated validator modules (draft_validators.py,
+> worldbuilding_validators.py, beta_reader_validators.py); the remaining agents
+> define validators inline.
 
 ---
 
@@ -141,11 +149,12 @@ The policy prevents a common anti-pattern: using validators as hidden business l
 
 ## Implementation Plan / Migration Plan
 
-1. Define an output validation policy document or contract in the agent architecture before code changes.
-2. Audit existing structured-output agents and classify validators as required/allowed/not applicable.
-3. Implement validators starting with Preference Analysis, KB Extraction, Rewrite, and Consistency/Timeline.
-4. Add deterministic unit tests for validators and Pydantic Evals cases for validator-driven quality gates.
-5. Emit validation span attributes/results through OTel instrumentation.
+1. ✅ Define an output validation policy document or contract in the agent architecture before code changes.
+2. ✅ Audit existing structured-output agents and classify validators as required/allowed/not applicable.
+3. ✅ Implement validators starting with Preference Analysis, KB Extraction, Rewrite, and Consistency/Timeline (Phase 5 — 4 priority agents).
+4. ✅ Extend validators to all remaining structured-output agents (Phase 6 — 13 agents: Draft, Review, ChapterSummary, Outline, CharacterArc, KBImprove, KBMerge, TemporalExtraction, KBAssist, BetaReader, Worldbuilding, POVDetection, Readability).
+5. ✅ Add deterministic unit tests for validators and Pydantic Evals cases for validator-driven quality gates.
+6. Emit validation span attributes/results through OTel instrumentation (pending ADR-031 Phase 2).
 
 ---
 

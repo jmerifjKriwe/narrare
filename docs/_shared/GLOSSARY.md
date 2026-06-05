@@ -303,6 +303,14 @@ directly into the prompt.
 
 ## O
 
+**Output Validator**
+A deterministic function registered via `agent.output_validator()` on a pydantic-ai
+Agent that enforces domain invariants on the agent's structured output before it is
+returned to the caller. Validators can reject or guide retries, but must not make
+hidden LLM calls, write to the database, or assemble prompts. Policy defined in
+ADR-035. Narrare has validators on all 17 structured-output agents (Phase 5: 4
+priority agents, Phase 6: 13 remaining agents). 237 validation tests total.
+
 **Output Function**
 A callable registered as part of `output_type` in a pydantic-ai Agent (e.g.,
 `output_type=[callable, Model]`). The callable is called by the model as a
@@ -483,6 +491,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-06-01 — Mode entry broadened to cover prompt modes (character_arc, timeline, merge, etc.)
+> Last updated: 2026-06-05 — Added "Output Validator" entry (ADR-035 Phase 6)
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist
