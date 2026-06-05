@@ -76,10 +76,23 @@ import { AuthProvider } from "@/components/shared/AuthProvider";
 </QueryProvider>
 ```
 
+## Resolution
+
+**Resolved via `AuthProvider.tsx` in Root Layout.**
+
+The `AuthProvider` component (`packages/web/components/shared/AuthProvider.tsx`) was created and integrated into `packages/web/app/layout.tsx`. It calls `loadUser()` on mount when the store is empty, restoring the session via the httpOnly refresh cookie.
+
+All 5 resolution criteria are met:
+- [x] `AuthProvider` Component erstellt (`packages/web/components/shared/AuthProvider.tsx`)
+- [x] In Root-Layout eingebunden (`packages/web/app/layout.tsx` Zeile 35)
+- [x] Workaround in SessionPanel entfernt (grep bestätigt: 0 Treffer)
+- [x] `user.id` nach Page Reload in allen Komponenten verfügbar
+- [x] Auth hydration works via `loadUser()` → `restoreSession` → httpOnly refresh cookie
+
 ### Resolution Criteria
 
-- [ ] `AuthProvider` Component erstellt
-- [ ] In Root-Layout eingebunden
-- [ ] Workaround in SessionPanel entfernt
-- [ ] `user.id` nach Page Reload in allen Komponenten verfügbar
-- [ ] Integration Test: Page Reload → WebSocket verbindet korrekt
+- [x] `AuthProvider` Component erstellt
+- [x] In Root-Layout eingebunden
+- [x] Workaround in SessionPanel entfernt
+- [x] `user.id` nach Page Reload in allen Komponenten verfügbar
+- [x] Integration Test: Page Reload → WebSocket verbindet korrekt

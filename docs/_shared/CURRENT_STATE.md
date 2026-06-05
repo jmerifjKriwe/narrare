@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-05 (Session 8)
-Session: Chat Migration — ChatAgent + ChatDeps created with HistoryPolicy.CONVERSATIONAL (ADR-034); ProcessHistory for cross-turn continuity; API backend refactored to use ChatAgent.run_stream(); documentation updates for CHAT-001, ADR-024, ADR-034, glossary, directory structure, CURRENT_STATE.
+Date: 2026-06-05 (CR-03 specified / INFRA-013)
+Session: AI Invocation Adoption Contract specified — ADR-038 proposed and INFRA-013 added as a planned specification. CR-03 is specified only; no production implementation is complete.
 
 ---
 
@@ -26,17 +26,17 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ## Codebase Overview
 
-### Stats (verified 2026-06-04)
+### Stats (verified 2026-06-05)
 
-- Knowledge Graph: 15,527 nodes, 112,368 edges, risk medium
+- Knowledge Graph: 17,357 nodes, 122,996 edges, risk low
 - Backend tests: ~4,500 (approx. 3,976 unit + 495 integration) across 405 test files
 - Frontend tests: 1,683 across 186 test files (Vitest + MSW)
 - Total tests: ~6,200+
-- Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
+- Architecture rules: 22 rules (RULE-01 through RULE-22, plus RULE-01b)
 - Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
-- ADRs: 37 (ADR-001 through ADR-037)
-- Feature specs: 75 individual files + INDEX.md
-- Open questions: 11 (Q-001 through Q-011)
+- ADRs: 38 (ADR-001 through ADR-038)
+- Feature specs: 83 individual files + INDEX.md (75 registered entries)
+- Open questions: 3 active (Q-001, Q-002, Q-011), 8 resolved
 
 ### Core (`packages/core/narrare_core/`)
 
@@ -65,9 +65,9 @@ Alembic migrations 0001 through ~0023
 
 - `_shared/`: CONSTRAINTS.md (22 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001 through ADR-029 plus implementation plans (INDEX.md)
-- `architecture/questions/`: 11 questions in 6 files (INDEX.md)
-- `features/`: 76 feature spec files (INDEX.md with status tracking)
+- `architecture/decisions/`: ADR-001 through ADR-038 plus implementation plans (INDEX.md)
+- `architecture/questions/`: 11 questions in 6 files (3 active, 8 resolved)
+- `features/`: 83 feature spec files + INDEX.md (75 registered entries with status tracking)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
 - **PLAN-004** — Timeline Management (vollständig: DB → CRUD → AI analysis → SSE extraction → confirm endpoint → DurationImpossibilityCheck → LLM consistency via bundled prompt → character ages → visualization, 44 files, DoD-100%) ✅
 - `mvp/`: Product roadmap (Phases 0–6 + Post-MVP)
@@ -153,6 +153,7 @@ Completed in Phase 6 so far:
 7. ⏳ **Frontend-Hubs weiter modularisieren (AUFG-01-02)** — 37 ratcheted legacy RULE-04 violations remain (was 38; EditorView modularized); no new violations allowed.
 8. ⏳ **E2E test patterns**
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
+10. ⏳ **CR-03 / INFRA-013 implementation** — ADR-038 is proposed and INFRA-013 is planned/specification; P0 runtime invocation evidence gates are next.
 
 ---
 
@@ -197,6 +198,7 @@ Completed in Phase 6 so far:
 | ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ Accepted — CR-01 prompt surface contract for manifest-routeable intents (INFRA-012) |
+| ADR-038 | AI Invocation Adoption Contract | 🔄 Proposed — CR-03 runtime evidence contract for INFRA-013; specification only, not implemented |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -214,8 +216,8 @@ Full details: `docs/architecture/decisions/INDEX.md`
 | Q-006 | Configurable Model Routing | ✅ → Runtime cascade |
 | Q-007 | Writing context data loader | ✅ → WritingContextAssembler |
 | Q-008 | Auth store hydration | ✅ → AuthProvider.tsx |
-| Q-009 | Chat conversations: project-scoped vs user-scoped | 🟡 Open |
-| Q-010 | Chat prompt i18n: EN-only v1 vs full i18n | 🟡 Open |
+| Q-009 | Chat conversations: project-scoped vs user-scoped | ✅ → Project-scoped (Option A) |
+| Q-010 | Chat prompt i18n: EN-only v1 vs full i18n | ✅ → English-only v1 (Option A) |
 | Q-011 | Distribution strategy for non-technical users | 🟡 Open |
 
 Full details: `docs/architecture/questions/INDEX.md`

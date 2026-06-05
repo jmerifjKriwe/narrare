@@ -82,10 +82,23 @@ class WritingContextLoader:
 
 Then `stream_generation` in `service.py` calls this loader before invoking the pipeline.
 
+## Resolution
+
+**Resolved via `WritingContextAssembler` in `packages/core/narrare_core/writing/context_assembler.py`.**
+
+The `WritingContextAssembler` assembles writing context from multiple tiers (project metadata, chapter content, KB entities, recent chapters). It is wired via dependency injection in `apps/api/narrare/writing/deps.py` across all generation modes (draft, extend, rewrite, co-author) and in `router_sessions.py` for interactive sessions.
+
+All 5 resolution criteria are met:
+- [x] KB module implemented with entity loading
+- [x] Chapters API has content retrieval
+- [x] `WritingContextAssembler` service implemented (replaces the originally proposed `WritingContextLoader`)
+- [x] All 4 generation modes receive full context
+- [x] Integration tests verify context injection
+
 ### Resolution Criteria
 
-- [ ] KB module implemented with entity loading
-- [ ] Chapters API has content retrieval
-- [ ] `WritingContextLoader` service implemented
-- [ ] All 4 generation modes receive full context
-- [ ] Integration tests verify context injection
+- [x] KB module implemented with entity loading
+- [x] Chapters API has content retrieval
+- [x] `WritingContextLoader` service implemented
+- [x] All 4 generation modes receive full context
+- [x] Integration tests verify context injection
