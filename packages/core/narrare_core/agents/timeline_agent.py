@@ -19,7 +19,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.timeline_types import (
@@ -65,6 +68,53 @@ class TimelineAgent(NarrareAgent[TimelineDeps, TimelineOutput]):
             output_type=[self._process_output, TimelineOutput],
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[TimelineDeps],
+        output: TimelineOutput,
+    ) -> TimelineOutput:
+        """Validate deterministic invariants for timeline output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - Each event must have non-empty event_name and description
+        - chapter_reference non-empty for each event (traceability)
+        - No duplicate events (same event_name + timestamp)
+        - Filter out events with empty event_name
+        """
+        # Filter out events with empty event_name
+        valid_events = [e for e in output.timeline_events if e.event_name.strip()]
+
+        for event in valid_events:
+            # Each event must have non-empty description
+            if not event.description.strip():
+                raise ModelRetry(
+                    f"Timeline event '{event.event_name}' must have a non-empty description"
+                )
+
+            # chapter_reference must be non-empty for traceability
+            if not event.chapter_reference.strip():
+                raise ModelRetry(
+                    f"Timeline event '{event.event_name}' must have "
+                    "a non-empty chapter_reference for traceability"
+                )
+
+        # Check for duplicates (same event_name + timestamp)
+        seen: set[tuple[str, str]] = set()
+        for event in valid_events:
+            key = (event.event_name.strip(), event.timestamp.strip())
+            if key in seen:
+                raise ModelRetry(
+                    f"Duplicate timeline event: '{event.event_name}' "
+                    f"at timestamp '{event.timestamp}'"
+                )
+            seen.add(key)
+
+        return output.model_copy(update={"timeline_events": valid_events})
 
     async def _process_output(
         self,

@@ -23,7 +23,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 from pydantic_ai.capabilities import ToolSearch, Toolset
 
 from narrare_core.agents.base import NarrareAgent
@@ -85,6 +88,73 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[ExtractionDeps],
+        output: ExtractionOutput,
+    ) -> ExtractionOutput:
+        """Validate deterministic invariants for extraction output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - entity_type required when item_type is new_entity or update_entity
+        - source_text non-empty for all items
+        - relationship items need relationship_type AND related_entity_name
+        - conflict items need conflict_description
+        - No duplicate items (same name + item_type)
+        - Filter out items with empty names
+        """
+        # Filter out items with empty names
+        valid_items = [item for item in output.results if item.name.strip()]
+
+        for item in valid_items:
+            # source_text must be non-empty for all items
+            if not item.source_text.strip():
+                raise ModelRetry(
+                    f"Item '{item.name}' has empty source_text — "
+                    "every extraction must reference source text"
+                )
+
+            # entity_type required for new/update entities
+            if item.item_type in ("new_entity", "update_entity") and (
+                not item.entity_type or not item.entity_type.strip()
+            ):
+                raise ModelRetry(
+                    f"Item '{item.name}' ({item.item_type}) must have a non-empty entity_type"
+                )
+
+            # relationship items need both relationship_type and related_entity_name
+            if item.item_type == "relationship":
+                if not item.relationship_type or not item.relationship_type.strip():
+                    raise ModelRetry(
+                        f"Relationship item '{item.name}' must have a non-empty relationship_type"
+                    )
+                if not item.related_entity_name or not item.related_entity_name.strip():
+                    raise ModelRetry(
+                        f"Relationship item '{item.name}' must have a non-empty related_entity_name"
+                    )
+
+            # conflict items need conflict_description
+            if item.item_type == "conflict" and (
+                not item.conflict_description or not item.conflict_description.strip()
+            ):
+                raise ModelRetry(
+                    f"Conflict item '{item.name}' must have a non-empty conflict_description"
+                )
+
+        # Check for duplicates (same name + item_type)
+        seen: set[tuple[str, str]] = set()
+        for item in valid_items:
+            key = (item.name.strip(), item.item_type)
+            if key in seen:
+                raise ModelRetry(f"Duplicate extraction item: '{item.name}' ({item.item_type})")
+            seen.add(key)
+
+        return output.model_copy(update={"results": valid_items})
 
     async def _process_output(
         self,

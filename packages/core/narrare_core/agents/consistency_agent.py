@@ -30,11 +30,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic_ai import RunContext  # noqa: TC002 — needed at runtime by pydantic_ai internals
+from pydantic_ai import (
+    ModelRetry,
+    RunContext,
+)
 from pydantic_ai.capabilities import ToolSearch, Toolset
 
 from narrare_core.agents.base import NarrareAgent
-from narrare_core.agents.consistency_types import ConsistencyDeps, ConsistencyOutput
+from narrare_core.agents.consistency_types import (
+    ConsistencyDeps,
+    ConsistencyOutput,
+    ConsistencySeverity,
+)
 
 if TYPE_CHECKING:
     from narrare_core.agents.kb_agent import KBAgent
@@ -78,6 +85,45 @@ class ConsistencyAgent(NarrareAgent[ConsistencyDeps, ConsistencyOutput]):
             capabilities=capabilities,
             system_prompt=system_prompt,
         )
+        self._agent.output_validator(self._validate_output)
+
+    async def _validate_output(
+        self,
+        ctx: RunContext[ConsistencyDeps],
+        output: ConsistencyOutput,
+    ) -> ConsistencyOutput:
+        """Validate deterministic invariants for consistency output.
+
+        ADR-035: Enforces output quality at the agent boundary.
+        No side effects — deterministic validation only.
+
+        Invariants:
+        - Each issue must have a non-empty description
+        - conflicting_facts must have >= 2 entries (contradiction needs 2+ facts)
+        - ERROR-severity issues must have a suggestion
+        - Filter out issues with empty descriptions
+        """
+        # Filter out issues with empty descriptions
+        valid_issues = [issue for issue in output.issues if issue.description.strip()]
+
+        for issue in valid_issues:
+            # conflicting_facts must have at least 2 entries
+            if len(issue.conflicting_facts) < 2:
+                raise ModelRetry(
+                    f"Consistency issue '{issue.description[:50]}' must have at least "
+                    f"2 conflicting_facts, got {len(issue.conflicting_facts)}"
+                )
+
+            # ERROR severity issues must have a suggestion
+            if issue.severity == ConsistencySeverity.ERROR and (
+                not issue.suggestion or not issue.suggestion.strip()
+            ):
+                raise ModelRetry(
+                    f"ERROR-severity issue '{issue.description[:50]}' must have "
+                    "a non-empty suggestion"
+                )
+
+        return output.model_copy(update={"issues": valid_issues})
 
     async def _process_output(
         self,
