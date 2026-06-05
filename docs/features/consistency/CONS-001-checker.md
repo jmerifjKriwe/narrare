@@ -1,7 +1,7 @@
 ---
 id: CONS-001
 title: "Consistency Checker"
-status: in_progress
+status: stable
 area: consistency
 mvp: false
 
@@ -70,9 +70,9 @@ ui_help_long: |
   `narrare consistency check --novel <id> --type character`
 ui_available_in: [analysis, cli]
 
-service: consistency/checker_service.py
-contract: consistency/contracts.py#ConsistencyCheckerProtocol
-router: consistency/router.py
+service: apps/api/narrare/consistency/checker_service.py
+contract: apps/api/narrare/consistency/contracts.py#ConsistencyCheckerProtocol
+router: apps/api/narrare/consistency/router.py
 prompt: core/prompts/_bundled/consistency/en/check
 requires: [INFRA-001, INFRA-002, KB-001, KB-007]
 ---

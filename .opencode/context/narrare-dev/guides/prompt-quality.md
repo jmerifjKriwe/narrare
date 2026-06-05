@@ -1,9 +1,10 @@
-<!-- Context: narrare-dev/guides/prompt-quality | Priority: high | Source: docs/development/prompt-content-standards.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/guides/prompt-quality | Priority: high | Source: docs/development/prompt-content-standards.md | Updated: 2026-06-05 -->
 
 # Prompt Content Standards
 
 > Complete reference: `docs/development/prompt-content-standards.md`
-> Enforced by: `scripts/check_architecture.py` (prompt content checker)
+> Enforced by: `scripts/check_architecture.py` (prompt content checker) +
+> Prompt Surface Contract manifest checker (ADR-037)
 
 ## Mandatory Elements (every bundled prompt MUST have these)
 
@@ -57,14 +58,17 @@ All variables containing user-provided text MUST be listed in `_USER_CONTENT_VAR
 - [ ] Output format explicitly specified
 - [ ] At least 3 Do-NOT rules present
 - [ ] All new user-content variables in `_USER_CONTENT_VARS`
+- [ ] Variable provenance: every template variable classified with provenance and security class per ADR-037 manifest / INFRA-012 taxonomy
 - [ ] Chain-of-thought included (if analysis task)
 - [ ] `{{user_preferences}}` included (if content generation)
 - [ ] `{{avoidance_patterns}}` in Constraints (if content generation)
 - [ ] Length/scope defined
-- [ ] i18n: DE and FR versions created alongside EN (run `check_prompt_structure.py` for locale coverage)
+- [ ] i18n: bundled feature prompts are EN-only (output language via `{{writing_language}}`); declared localized families updated in all declared locales per ADR-026 Phase 5
 - [ ] Frontmatter version bumped
 - [ ] Meta-persona compatibility: Role definition compatible with Narrare identity (meta-prompt Role Flexibility)
 - [ ] Fallback audit: No inline fallback that bypasses PromptComposer/MetaPromptLoader
+- [ ] Manifest conformance: intent registered in Prompt Surface Contract manifest with correct routeable status and variable list (ADR-037)
+- [ ] Output-language variable present for user-facing generation prompts (per manifest `output_language_variable`)
 - [ ] `check_prompt_structure.py --strict` passes for all locales
 
 ## Exemplary vs Weak

@@ -80,6 +80,7 @@ for the authoritative source.
 | 2 | `check_architecture.py` | ✅ Blocking | `architecture` Job |
 | 3 | `check_exception_baseline.py` | ✅ Blocking | `architecture` Job |
 | 4 | `check_adoption.py` + `check_prompt_structure.py` | ✅ Blocking | `architecture` Job |
+| 4a | `check_prompt_surface.py` (ADR-037) | ✅ Blocking | `architecture` Job — P0 Prompt Surface Manifest conformance |
 | 5 | `check_streaming_compliance.py` (RULE-20) | ✅ Blocking | `architecture` Job |
 | 6 | `check_locale_sync.py` | ✅ Blocking | `architecture` Job (previously: warning) |
 | 7 | `check_doc_drift.py` | ✅ Blocking | `architecture` Job |
@@ -241,6 +242,7 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 - [ ] **Prompt uses PromptComposer** — not inline, unless registered in `adoption-registry.yaml` under `inline_fallbacks` (ADR-025 Decision 4)
 - [ ] **No production inline fallback body** — if a bundled target exists, production code must not carry an alternate inline system/task prompt body; test-only fallbacks must be unreachable from production DI
 - [ ] **PromptComposer routeability** — every routeable `_INTENT_TO_CATEGORY` + `_INTENT_TO_MODE` mapping resolves to a bundled EN target or has an explicit non-routeable rationale
+- [ ] **Prompt Surface Manifest conformance (ADR-037)** — every production LLM intent has a manifest entry; routeable entries have correct template path, variables, provenance, security, and fallback policy; non-routeable entries have rationale; missing manifest entry is a P0 CI blocker
 - [ ] **All MUST variables present** — `check_prompt_structure.py --strict` passes for the feature's category
 - [ ] **Meta/Universal validated separately** — Narrare identity is guaranteed by `NarrareMeta`; fiction rules, conflict rules, and injection defense are guaranteed by `NarrareUniversalRules` (ADR-026). Do not validate as one monolithic meta prompt.
 - [ ] **Production agent capability inheritance** — every production agent path uses `NarrareAgent` and therefore inherits both `NarrareMeta` and `NarrareUniversalRules`, except ADR-approved exceptions
@@ -258,6 +260,7 @@ Applies to features that involve prompt engineering, LLM interaction, or user-fa
 |----------------|------------|------|
 | PromptComposer usage / no inline production fallback | Yes | `check_adoption.py` + inline fallback registry |
 | PromptComposer routeability | Yes | `check_architecture.py --prompt-integrity` / intent checker |
+| Prompt Surface Manifest conformance | Yes | `check_prompt_surface.py` (ADR-037) — manifest/route/template/variable conformance |
 | MUST variables | Yes | `check_prompt_structure.py` |
 | Meta/Universal capabilities | Yes | `check_adoption.py` + `check_prompt_structure.py` + production-agent regression tests |
 | Injection defense | Yes | `check_prompt_structure.py` |
@@ -293,6 +296,7 @@ Architecture Specialist during Stage 2.5 (Semantic Review).
 - [ ] **i18n parity checked** — Bundled feature prompts: EN-only by default (ADR-026 Phase 5). Declared localized prompt families: all declared locales exist and are in sync. UI i18n: en/de/fr required per RULE-16.
 - [ ] **Injection defence verified** — All user-content variables registered in `_USER_CONTENT_VARS` and wrapped in XML tags in prompt templates
 - [ ] **Template variables registered** — New variables added to `_SYSTEM_VARS` in `variable_engine.py`
+- [ ] **Prompt Surface Manifest conformance** — Intent registered in manifest with correct routeable/non-routeable status, variables, provenance, security class, and fallback policy (ADR-037)
 - [ ] **KB status filtering considered** — If feature reads KB data, deprecated/archived entities are excluded
 - [ ] **Token budget defined** — String-truncation limits or TokenBudgetManager usage defined
 - [ ] **RULE-22 compliance** — Cross-Feature Coherence Gate passed
@@ -308,6 +312,7 @@ Architecture Specialist during Stage 2.5 (Semantic Review).
 | i18n parity | Partial | `check_i18n_parity()` in prompt_integrity.py |
 | Injection defence | Yes | `check_template_variables()` in prompt_integrity.py |
 | Variable registration | Yes | `check_variable_registration()` in prompt_integrity.py |
+| Prompt Surface Manifest | Yes | `check_prompt_surface.py` (ADR-037) |
 | KB status filtering | Manual | Requires architectural review |
 | Token budget | Manual | Requires architectural review |
 | RULE-22 | Manual | Stage 2.5 checklist |

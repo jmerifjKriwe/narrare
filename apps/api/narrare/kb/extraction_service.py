@@ -100,7 +100,10 @@ class ExtractionService:
         existing_names = await self._get_existing_entity_names(novel_id, user_id)
 
         # 3. Build system prompt via PromptComposer.
-        system_prompt = await self._build_system_prompt()
+        system_prompt = await self._build_system_prompt(
+            chapter_title=chapter.title or "",
+            existing_entity_names=existing_names,
+        )
 
         # 4. Get model from registry.
         model = await self._registry.get_model(self._config)
@@ -173,24 +176,24 @@ class ExtractionService:
     ) -> list[str]:
         """Fetch existing KB entry names for dedup.
 
-        Retrieves all KB entries for the novel and extracts names.
-        Gracefully degrades to empty list on failure so extraction
-        can proceed without dedup.
+        Retrieves all KB entries for the novel and extracts names. Repository
+        errors propagate so extraction cannot silently run without dedup data.
         """
-        try:
-            entries, _ = await self._kb_repo.list_entries(
-                novel_id=novel_id,
-                entity_type=None,
-                tags=None,
-                page=1,
-                page_size=1000,
-            )
-            return [entry.name for entry in entries if entry.name]
-        except Exception:
-            logger.warning("failed_to_fetch_existing_entities", exc_info=True)
-            return []
+        entries, _ = await self._kb_repo.list_entries(
+            novel_id=novel_id,
+            entity_type=None,
+            tags=None,
+            page=1,
+            page_size=1000,
+        )
+        return [entry.name for entry in entries if entry.name]
 
-    async def _build_system_prompt(self) -> str:
+    async def _build_system_prompt(
+        self,
+        *,
+        chapter_title: str,
+        existing_entity_names: list[str],
+    ) -> str:
         """Build system prompt via PromptComposer.
 
         The Narrare meta-prompt is injected automatically by NarrareMeta
@@ -199,6 +202,11 @@ class ExtractionService:
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
 
-        ctx = PromptContext(language="en", mode="extract")
+        ctx = PromptContext(
+            language="en",
+            mode="extract",
+            chapter_title=chapter_title,
+            extra={"existing_entity_names": "\n".join(existing_entity_names)},
+        )
         composed = await self._composer.build(LLMIntent.KB_EXTRACT, ctx)
         return composed.system

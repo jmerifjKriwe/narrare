@@ -16,6 +16,11 @@ from narrare_core.prompts.variable_engine import (
     validate_variables,
     wrap_user_content,
 )
+from narrare_core.prompts.variable_registry import (
+    VariableProvenance,
+    VariableSecurity,
+    get_variable_classification,
+)
 from narrare_core.shared.errors import PromptVariableError
 
 _BUNDLED_ROOT = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
@@ -222,3 +227,56 @@ class TestVariableConstants:
             "explanation_language",
         ):
             assert name in _FEATURE_DYNAMIC_VARS
+
+
+class TestVariableTaxonomy:
+    """INFRA-012 provenance/security taxonomy for prompt variables."""
+
+    @pytest.mark.parametrize(
+        ("name", "provenance", "security"),
+        [
+            (
+                "existing_content",
+                VariableProvenance.CURRENT_AUTHOR_INSTRUCTION,
+                VariableSecurity.XML_REQUIRED,
+            ),
+            ("world_context", VariableProvenance.CURATED_KB, VariableSecurity.XML_SECTION_REQUIRED),
+            (
+                "user_preferences",
+                VariableProvenance.LEARNED_MEMORY,
+                VariableSecurity.LABEL_REQUIRED,
+            ),
+            (
+                "avoidance_patterns",
+                VariableProvenance.LEARNED_MEMORY,
+                VariableSecurity.LABEL_REQUIRED,
+            ),
+            (
+                "kb_suggested",
+                VariableProvenance.GENERATED_SUGGESTION,
+                VariableSecurity.GENERATED_LABEL_REQUIRED,
+            ),
+            (
+                "writing_language",
+                VariableProvenance.PROJECT_WRITING_PROFILE,
+                VariableSecurity.SYSTEM_ONLY,
+            ),
+        ],
+    )
+    def test_prompt_variables_have_provenance_and_security_metadata(
+        self,
+        name: str,
+        provenance: VariableProvenance,
+        security: VariableSecurity,
+    ) -> None:
+        classification = get_variable_classification(name)
+
+        assert classification is not None
+        assert classification.provenance is provenance
+        assert classification.security is security
+
+    def test_every_legacy_registry_variable_has_taxonomy_metadata(self) -> None:
+        registered = _USER_CONTENT_VARS | _SYSTEM_VARS | _FEATURE_DYNAMIC_VARS
+        missing = [name for name in sorted(registered) if get_variable_classification(name) is None]
+
+        assert missing == []

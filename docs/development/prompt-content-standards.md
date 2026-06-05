@@ -5,7 +5,11 @@
 >
 > **Audience**: Developers writing or modifying bundled prompts.
 >
-> **Enforcement**: `scripts/check_architecture.py` (prompt content checker).
+> **Enforcement**: `scripts/check_architecture.py` (prompt content checker);
+> Prompt Surface Contract manifest checker (ADR-037).
+>
+> **Related**: ADR-037 (Prompt Surface Contract Manifest), INFRA-012 (Prompt
+> Governance Hardening), `docs/development/prompt-standards.md` (full standard).
 
 ---
 
@@ -97,14 +101,17 @@ Before merging any prompt change, verify:
 - [ ] Output format explicitly specified
 - [ ] At least 3 Do-NOT rules present
 - [ ] All new user-content variables in `_USER_CONTENT_VARS`
+- [ ] Variable provenance: every template variable classified with provenance and security class per ADR-037 manifest / INFRA-012 taxonomy
 - [ ] Chain-of-thought included (if analysis task)
 - [ ] `{{user_preferences}}` included (if content generation)
 - [ ] `{{avoidance_patterns}}` in Constraints (if content generation)
 - [ ] Length/scope defined
-- [ ] i18n: DE and FR versions created alongside EN (run `check_prompt_structure.py` for locale coverage)
+- [ ] i18n: bundled feature prompts are EN-only (output language via `{{writing_language}}`); declared localized families (meta, universal) updated in all declared locales per ADR-026 Phase 5
 - [ ] Frontmatter version bumped
 - [ ] Meta-persona compatibility: Role definition compatible with Narrare identity (meta-prompt Role Flexibility)
 - [ ] Fallback audit: No inline fallback that bypasses PromptComposer/MetaPromptLoader
+- [ ] Manifest conformance: intent registered in Prompt Surface Contract manifest with correct routeable status and variable list (ADR-037)
+- [ ] Output-language variable present for user-facing generation prompts (per manifest `output_language_variable`)
 - [ ] `check_prompt_structure.py --strict` passes for all locales
 
 ---

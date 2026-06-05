@@ -24,6 +24,7 @@ from narrare_core.prompts.variable_registry import (
     FEATURE_DYNAMIC_VARS,
     SYSTEM_VARS,
     USER_CONTENT_VARS,
+    is_registered_variable,
 )
 from narrare_core.shared.errors import PromptVariableError
 
@@ -139,3 +140,32 @@ def validate_variables(
     required = {info.name for info in extract_variables(template)}
     provided = set(variables.keys())
     return sorted(required - provided)
+
+
+def prepare_variables_for_template(
+    template: str,
+    variables: dict[str, str],
+    *,
+    optional_variables: frozenset[str] = frozenset(),
+    prompt_id: str = "",
+) -> dict[str, str]:
+    """Validate template variables and add empty defaults for optional context.
+
+    This is strict preflight for PromptComposer routes: every placeholder must be
+    registered in the taxonomy, required placeholders must be present in the
+    provided context, and optional placeholders are rendered as empty strings when
+    absent. XML/label boundaries remain the template author's responsibility; this
+    function never auto-wraps values.
+    """
+    prepared = dict(variables)
+    for info in extract_variables(template):
+        name = info.name
+        if not is_registered_variable(name):
+            raise PromptVariableError(name, prompt_id)
+        if name in prepared:
+            continue
+        if name in optional_variables:
+            prepared[name] = ""
+            continue
+        raise PromptVariableError(name, prompt_id)
+    return prepared

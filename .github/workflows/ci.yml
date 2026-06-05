@@ -86,7 +86,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev
 
       - name: Check architecture constraints
         run: uv run python scripts/check_architecture.py
@@ -140,7 +140,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev
 
       - name: Ruff lint
         run: uv run ruff check apps/ packages/ scripts/ tests/
@@ -163,7 +163,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev
 
       - name: Cache Pyright
         uses: actions/cache@v4
@@ -193,7 +193,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev
 
       - name: Bandit
         run: |
@@ -221,7 +221,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev
 
       - name: Run unit tests
         id: tests
@@ -338,7 +338,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
@@ -531,7 +531,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install Python dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install spaCy NLP models
         run: just install-nlp-models

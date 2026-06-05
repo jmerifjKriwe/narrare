@@ -62,7 +62,7 @@ Extracted context for the Narrare AI writing tool project.
 | `testing.md` | testing-standards.md (1224 lines) | high | 3-level architecture, what gets tested, cross-layer contracts |
 | `deployment.md` | deployment-guide.md (442 lines) | medium | Dev environment, CI/CD, Docker, env variables |
 | `agent-creation.md` | how-to-add-an-agent.md (285 lines) | medium | 7-step NarrareAgent creation process |
-| `prompt-quality.md` | prompt-content-standards.md (137 lines) | medium | Mandatory prompt elements, quality checklist |
+| `prompt-quality.md` | prompt-content-standards.md (140 lines) | high | Mandatory prompt elements, quality checklist, ADR-037 manifest conformance |
 | `orchestrator.md` | orchestrator.md (246 lines) | medium | Thinking Partner vs Router modes, agent mapping, briefing format |
 
 ---
@@ -98,7 +98,7 @@ Extracted context for the Narrare AI writing tool project.
 | `architectural-discipline.md` | Project conventions | critical | Quality mandate, root cause first, no workarounds, sustainability check, streaming required |
 | `architecture-rules.md` | CONSTRAINTS.md (766 lines) | critical | 22 machine-enforced rules with enforcement summary and approved exceptions |
 | `code-graph-first.md` | AGENTS.md (MCP Tools) | critical | ALWAYS query graph before Read/Glob/Grep; tool selection guide, workflow, fallback rules |
-| `prompt-standards.md` | prompt-standards.md (3885 lines) | high | Prompt quality standards: system prompt consistency, evaluation framework, template patterns |
+| `prompt-standards.md` | prompt-standards.md (641 lines) | high | Prompt quality standards: system prompt consistency, evaluation framework, template patterns, ADR-037 manifest conformance |
 | `python-standards.md` | coding-standards.md (Python) | high | Python 3.14 typing, naming, async, error handling, DI, SQLAlchemy, docstrings |
 | `typescript-standards.md` | coding-standards.md (TypeScript) | high | React conventions, Tailwind v4, API client, i18n, RULE-15 (no middleware.ts) |
 

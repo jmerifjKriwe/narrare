@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from narrare.consistency.prompt_builder import (
     MAX_CONSISTENCY_CONTEXT_TOKENS,
-    build_user_prompt,
+    build_consistency_prompt_variables,
 )
 from narrare_core.agents.consistency_types import (
     ConsistencyCheckType,
@@ -38,7 +38,9 @@ class TestTokenTruncation:
         """Short text should pass through unchanged."""
         text = "The quick brown fox jumps over the lazy dog."
         deps = _deps(chapter_texts={"ch-1": text})
-        result = build_user_prompt(deps, [ConsistencyCheckType.CHARACTER])
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])[
+            "chapter_texts"
+        ]
         assert text in result
         # No truncation marker — full text present
         assert result.count(text) == 1
@@ -53,7 +55,9 @@ class TestTokenTruncation:
         assert original_tokens > MAX_CONSISTENCY_CONTEXT_TOKENS
 
         deps = _deps(chapter_texts={"ch-1": long_text})
-        result = build_user_prompt(deps, [ConsistencyCheckType.CHARACTER])
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])[
+            "chapter_texts"
+        ]
 
         # Extract the chapter preview from the result
         # It should be between "### Chapter ch-1\n" and the next "\n##"
@@ -83,7 +87,9 @@ class TestTokenTruncation:
     def test_empty_text_returns_empty_preview(self) -> None:
         """Empty chapter text should produce an empty chapter section."""
         deps = _deps(chapter_texts={"ch-1": ""})
-        result = build_user_prompt(deps, [ConsistencyCheckType.CHARACTER])
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])[
+            "chapter_texts"
+        ]
         assert "### Chapter ch-1" in result
         # Empty text → empty line after chapter header
         assert "word0" not in result
@@ -100,7 +106,9 @@ class TestTokenTruncation:
         assert original_tokens > MAX_CONSISTENCY_CONTEXT_TOKENS
 
         deps = _deps(chapter_texts={"ch-1": long_german})
-        result = build_user_prompt(deps, [ConsistencyCheckType.CHARACTER])
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])[
+            "chapter_texts"
+        ]
 
         # Extract preview (same logic as above)
         lines = result.split("\n")
@@ -131,7 +139,9 @@ class TestTokenTruncation:
         # Exactly 2001 characters (old threshold was 2000 chars)
         text_2001 = "a" * 2001
         deps = _deps(chapter_texts={"ch-1": text_2001})
-        result = build_user_prompt(deps, [ConsistencyCheckType.CHARACTER])
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])[
+            "chapter_texts"
+        ]
 
         # With 2001 chars as a single word, tokens = 2001 * 1.3 = 2601
         # This exceeds 2000 tokens, so it should be truncated — but
@@ -146,15 +156,15 @@ class TestTokenTruncation:
 # --- Prompt assembly ---
 
 
-class TestBuildUserPrompt:
-    """Tests for the overall prompt construction."""
+class TestBuildConsistencyPromptVariables:
+    """Tests for runtime data formatting for PromptComposer variables."""
 
     def test_includes_all_chapters(self) -> None:
         """All chapter IDs appear in the prompt."""
         deps = _deps(chapter_texts={"ch-1": "Hello", "ch-2": "World"})
-        result = build_user_prompt(deps, [ConsistencyCheckType.CHARACTER])
-        assert "### Chapter ch-1" in result
-        assert "### Chapter ch-2" in result
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])
+        assert "### Chapter ch-1" in result["chapter_texts"]
+        assert "### Chapter ch-2" in result["chapter_texts"]
 
     def test_includes_kb_entities(self) -> None:
         """KB entity summaries appear in the prompt."""
@@ -162,23 +172,33 @@ class TestBuildUserPrompt:
             {"entity_type": "character", "name": "Alice", "fields": {"age": "25"}},
         ]
         deps = _deps(kb_summaries=summaries)
-        result = build_user_prompt(deps, [ConsistencyCheckType.CHARACTER])
-        assert "Alice" in result
-        assert "[character]" in result
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])
+        assert "Alice" in result["kb_entities"]
+        assert "[character]" in result["kb_entities"]
 
     def test_includes_check_types(self) -> None:
         """Requested check types appear in the prompt."""
         deps = _deps()
-        result = build_user_prompt(
+        result = build_consistency_prompt_variables(
             deps,
             [ConsistencyCheckType.CHARACTER, ConsistencyCheckType.TIMELINE],
         )
-        assert "character" in result
-        assert "timeline" in result
+        assert result["check_types"] == "character, timeline"
 
-    def test_empty_deps_produces_valid_prompt(self) -> None:
-        """Empty deps still produce a well-formed prompt."""
+    def test_empty_deps_produces_empty_runtime_variables(self) -> None:
+        """Empty deps produce empty data variables, not inline instructions."""
         deps = _deps()
-        result = build_user_prompt(deps, [ConsistencyCheckType.CHARACTER])
-        assert "Check the following content" in result
-        assert "## Chapters (0 total)" in result
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])
+        assert result["chapter_texts"] == ""
+        assert result["kb_entities"] == ""
+        assert result["check_types"] == "character"
+
+    def test_runtime_variables_do_not_include_inline_task_body(self) -> None:
+        """Prompt body instructions stay in bundled templates, not API fallbacks."""
+        deps = _deps(chapter_texts={"ch-1": "Hello"})
+        result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])
+
+        combined = "\n".join(result.values())
+        assert "You are a consistency checker" not in combined
+        assert "Analyze the chapters" not in combined
+        assert "Return structured findings" not in combined

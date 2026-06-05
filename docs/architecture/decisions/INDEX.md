@@ -60,6 +60,7 @@
 | [ADR-034](ADR-034-conversational-history-policy.md) | Conversational History Policy for Narrare Agents | ✅ Implemented | 2026-06-04 | `core/agents/`, chat, writing sessions, task agents |
 | [ADR-035](ADR-035-agent-output-validation-policy.md) | Agent Output Validation Policy | ✅ Implemented | 2026-06-04 | `core/agents/`, structured outputs, Pydantic Evals |
 | [ADR-036](ADR-036-durable-execution-boundary.md) | Durable Execution Boundary | ✅ | 2026-06-04 | TaskIQ, events, agent workflows, runtime infrastructure |
+| [ADR-037](ADR-037-prompt-surface-contract-manifest.md) | Prompt Surface Contract Manifest | ✅ | 2026-06-05 | `core/prompts/`, `scripts/architecture/`, prompt governance, RULE-22 |
 
 ---
 

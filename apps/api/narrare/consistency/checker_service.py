@@ -15,7 +15,7 @@ import structlog
 
 from narrare.consistency.prompt_builder import (
     MAX_KB_ENTRIES,
-    build_user_prompt,
+    compose_consistency_prompt,
 )
 from narrare.consistency.rule_helpers import deduplicate_issues, rule_based_check
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
@@ -136,13 +136,17 @@ class ConsistencyCheckerService:
             existing_issue_count=len(rule_issues),
         )
 
-        # 7. Compose system prompt through PromptComposer.
-        system_prompt = await self._resolve_system_prompt(language)
+        # 7. Compose prompt through PromptComposer.
+        system_prompt, user_prompt = await compose_consistency_prompt(
+            self._composer,
+            language,
+            deps,
+            check_types,
+        )
 
         # 8. Run ConsistencyAgent
         model = await self._registry.get_model(self._config)
         agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
-        user_prompt = build_user_prompt(deps, check_types)
         result = await agent.run(prompt=user_prompt, deps=deps)
 
         # 9. Combine rule-based (confidence=1.0) + LLM issues, then deduplicate

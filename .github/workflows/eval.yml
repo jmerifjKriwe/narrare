@@ -28,7 +28,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install spaCy NLP models
         run: just install-nlp-models

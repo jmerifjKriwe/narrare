@@ -199,6 +199,27 @@ class TestWritingPromptVariables:
         content = path.read_text()
         assert "## System Prompt" in content, f"Missing '## System Prompt' section in {path}"
 
+    @pytest.mark.parametrize("mode", ("new_chapter", "extend_chapter", "co_author"))
+    def test_kb_suggested_is_labelled_lower_priority_generated_context(self, mode: str) -> None:
+        """Generated KB suggestions must be visibly lower-priority and unaccepted."""
+        content = _prompt_path("en", mode).read_text().lower()
+
+        assert "{{kb_suggested}}" in content
+        assert "lower-priority" in content
+        assert "unaccepted" in content
+
+    def test_inline_suggest_labels_preferences_avoidance_and_suggestions(self) -> None:
+        """Inline suggest keeps dynamic context concise but explicitly labelled."""
+        content = _prompt_path("en", "inline_suggest").read_text().lower()
+
+        assert "### learned author preferences" in content
+        assert "{{user_preferences}}" in content
+        assert "### learned avoidance constraints" in content
+        assert "{{avoidance_patterns}}" in content
+        assert "### optional lower-priority generated kb suggestions" in content
+        assert "{{kb_suggested}}" in content
+        assert "unaccepted" in content
+
 
 # ---------------------------------------------------------------------------
 # Tone variant validation

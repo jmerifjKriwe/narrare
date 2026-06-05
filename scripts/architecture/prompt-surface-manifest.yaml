@@ -1,0 +1,344 @@
+# Narrare Prompt Surface Contract Manifest (ADR-037 / INFRA-012)
+#
+# Governance SSOT for prompt routeability. Core remains the runtime owner;
+# Platform reads this manifest and fails CI when routes, templates, variables,
+# XML wrappers, or fallback behavior drift from it.
+#
+# Schema: ADR-037
+# Enforced by: scripts/architecture/_checkers/_check_prompt_surface.py
+
+version: "1.0.0"
+
+routes:
+  # ── Writing operations ──────────────────────────────────────────────
+
+  - intent: WRITE
+    routeable: true
+    category: writing
+    mode: new_chapter
+    template: packages/core/narrare_core/prompts/_bundled/writing/en/new_chapter/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: [chapter_outline]
+    optional_variables: [author_instructions, kb_suggested, kb_characters, kb_locations, kb_factions, kb_relationships, recent_chapters, novel_synopsis, style_profile, character_voice_profiles, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, language, writing_language, word_target, timeline_position, story_structure, world_context]
+    security:
+      xml_required: [author_instructions]
+      generated_suggestions_must_be_labelled: [kb_suggested]
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: EXTEND
+    routeable: true
+    category: writing
+    mode: extend_chapter
+    template: packages/core/narrare_core/prompts/_bundled/writing/en/extend_chapter/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: [existing_content]
+    optional_variables: [author_instructions, kb_suggested, kb_characters, kb_locations, kb_factions, kb_relationships, recent_chapters, novel_synopsis, style_profile, character_voice_profiles, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, language, writing_language, extend_length, timeline_position, story_structure, world_context]
+    security:
+      xml_required: [existing_content, author_instructions]
+      generated_suggestions_must_be_labelled: [kb_suggested]
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: REWRITE
+    routeable: true
+    category: writing
+    mode: rewrite_selection
+    template: packages/core/narrare_core/prompts/_bundled/writing/en/rewrite_selection/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: [selection_text]
+    optional_variables: [author_instructions, context_before, context_after, kb_suggested, kb_characters, kb_locations, kb_factions, kb_relationships, recent_chapters, style_profile, character_voice_profiles, user_preferences, avoidance_patterns, culture_guidelines, tone_instructions, project_title, genre, language, writing_language, rewrite_mode_instructions, count, timeline_position, story_structure, world_context]
+    security:
+      xml_required: [selection_text, context_before, context_after, author_instructions]
+      generated_suggestions_must_be_labelled: [kb_suggested]
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: CO_AUTHOR
+    routeable: true
+    category: writing
+    mode: co_author
+    template: packages/core/narrare_core/prompts/_bundled/writing/en/co_author/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: [selection_text]
+    optional_variables: [author_instructions, context_before, context_after, kb_suggested, kb_characters, kb_locations, kb_factions, kb_relationships, recent_chapters, style_profile, character_voice_profiles, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, language, writing_language, co_author_focus_instructions, timeline_position, story_structure, world_context]
+    security:
+      xml_required: [selection_text, context_before, context_after, author_instructions]
+      generated_suggestions_must_be_labelled: [kb_suggested]
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: SUGGEST
+    routeable: true
+    category: writing
+    mode: inline_suggest
+    template: packages/core/narrare_core/prompts/_bundled/writing/en/inline_suggest/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: [text_before]
+    optional_variables: [text_after, chapter_context, kb_suggested, kb_characters, character_voice_profiles, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, writing_language, timeline_position, story_structure, world_context]
+    security:
+      xml_required: [text_before, text_after]
+      generated_suggestions_must_be_labelled: [kb_suggested]
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: CHAT
+    routeable: true
+    category: chat
+    mode: ""
+    template: packages/core/narrare_core/prompts/_bundled/writing/en/chat/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: [conversation_history, kb_characters, kb_locations, kb_factions, kb_relationships, kb_suggested, recent_chapters, character_voice_profiles, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, language, writing_language, timeline_position, story_structure, world_context]
+    security:
+      xml_required: [conversation_history]
+      generated_suggestions_must_be_labelled: [kb_suggested]
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  # ── KB operations ──────────────────────────────────────────────────
+
+  - intent: KB_CREATE
+    routeable: true
+    category: kb
+    mode: null
+    template: null
+    content_type: aggregate_assisted_flow
+    output_language_variable: null
+    required_variables: []
+    optional_variables: [world_context, user_preferences, avoidance_patterns]
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: raise_route_not_configured
+    note: "KB creation is an aggregate assisted flow; callers must choose a specific KB mode."
+
+  - intent: KB_IMPROVE
+    routeable: true
+    category: kb
+    mode: improve
+    template: packages/core/narrare_core/prompts/_bundled/kb/en/improve/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: KB_EXTRACT
+    routeable: true
+    category: kb
+    mode: extract
+    template: packages/core/narrare_core/prompts/_bundled/kb/en/extract/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: [world_context, user_preferences, avoidance_patterns]
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: KB_INTERVIEW
+    routeable: true
+    category: kb
+    mode: interview
+    template: packages/core/narrare_core/prompts/_bundled/kb/en/interview/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: KB_SUGGEST
+    routeable: true
+    category: kb
+    mode: suggest
+    template: packages/core/narrare_core/prompts/_bundled/kb/en/suggest/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: KB_ENHANCE
+    routeable: true
+    category: kb
+    mode: enhance
+    template: packages/core/narrare_core/prompts/_bundled/kb/en/enhance/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: KB_WORLDBUILD
+    routeable: true
+    category: kb
+    mode: worldbuilding/phase1
+    template: packages/core/narrare_core/prompts/_bundled/kb/en/worldbuilding/phase1/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: [world_context, user_preferences, avoidance_patterns]
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: KB_CONSISTENCY
+    routeable: true
+    category: kb
+    mode: consistency
+    template: packages/core/narrare_core/prompts/_bundled/kb/en/consistency/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  # ── Analysis operations ────────────────────────────────────────────
+
+  - intent: ANALYSE
+    routeable: true
+    category: analysis
+    mode: review
+    template: packages/core/narrare_core/prompts/_bundled/analysis/en/review/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: CONSISTENCY
+    routeable: true
+    category: analysis
+    mode: consistency
+    template: packages/core/narrare_core/prompts/_bundled/analysis/en/consistency/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: [user_preferences, avoidance_patterns]
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: BETA_READ
+    routeable: true
+    category: analysis
+    mode: beta_reader
+    template: packages/core/narrare_core/prompts/_bundled/analysis/en/beta_reader/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: SUMMARIZE
+    routeable: true
+    category: analysis
+    mode: summarize
+    template: packages/core/narrare_core/prompts/_bundled/analysis/en/summarize/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  - intent: EXTRACT
+    routeable: true
+    category: analysis
+    mode: null
+    template: null
+    content_type: aggregate_assisted_flow
+    output_language_variable: null
+    required_variables: []
+    optional_variables: [user_preferences, avoidance_patterns]
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: raise_route_not_configured
+    note: "General extraction has no canonical bundled template; callers must provide a governed mode."
+
+  # ── Planning operations ────────────────────────────────────────────
+
+  - intent: PLAN
+    routeable: true
+    category: planning
+    mode: outline
+    template: packages/core/narrare_core/prompts/_bundled/planning/en/outline/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: null
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  # ── Generation operations ──────────────────────────────────────────
+
+  - intent: NAME_GENERATE
+    routeable: true
+    category: generation
+    mode: names
+    template: packages/core/narrare_core/prompts/_bundled/generation/en/names/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: []
+    optional_variables: []
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+
+  # ── Non-routeable intents (explicit rationale) ─────────────────────
+
+  - intent: SENTIMENT
+    routeable: false
+    rationale: "Sentiment analysis is handled by deterministic NLP analyzers."
+    fallback_policy: raise_route_not_configured
+
+  - intent: VOICE
+    routeable: false
+    rationale: "Voice analysis has no dedicated bundled PromptComposer template yet."
+    fallback_policy: raise_route_not_configured
+
+  - intent: GENERATE
+    routeable: false
+    rationale: "Generic generation must use a specific routed intent or feature mode."
+    fallback_policy: raise_route_not_configured
+
+  - intent: TITLE_GENERATE
+    routeable: false
+    rationale: "No title-generation feature prompt is bundled yet."
+    fallback_policy: raise_route_not_configured
+
+  - intent: RESEARCH
+    routeable: false
+    rationale: "Research synthesis has no bundled PromptComposer route yet."
+    fallback_policy: raise_route_not_configured

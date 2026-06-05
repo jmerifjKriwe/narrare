@@ -34,7 +34,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Total tests: ~6,200+
 - Architecture rules: 22 rules (RULE-01 through RULE-21, plus RULE-01b)
 - Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
-- ADRs: 36 (ADR-001 through ADR-036)
+- ADRs: 37 (ADR-001 through ADR-037)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 11 (Q-001 through Q-011)
 
@@ -196,6 +196,7 @@ Completed in Phase 6 so far:
 | ADR-034 | Conversational History Policy | ✅ Implemented |
 | ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
+| ADR-037 | Prompt Surface Contract Manifest | ✅ Accepted — CR-01 prompt surface contract for manifest-routeable intents (INFRA-012) |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

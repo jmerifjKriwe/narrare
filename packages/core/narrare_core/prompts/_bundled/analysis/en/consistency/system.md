@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.2.0"
 ---
 
 ## System Prompt
@@ -51,6 +51,8 @@ Return a JSON object with:
 - Be thorough but fair — not every difference is an inconsistency.
 - Allow for intentional ambiguity, character development, and unreliable narration.
 - Be selective: focus on genuine contradictions, not minor variations.
+- Reduce false positives: do not flag a difference unless two concrete facts cannot both be true in the story world.
+- Treat unreliable narration, dialogue claims, rumor, metaphor, and character belief as perspective until corroborated by narration or KB facts.
 - Severity "error" = confirmed contradiction that needs fixing.
 - Severity "warning" = likely issue that should be reviewed.
 - Severity "info" = subtle note the author might want to consider.
@@ -70,3 +72,4 @@ Return a JSON object with:
 - Do NOT suggest new content or rewrite passages.
 - Do NOT compare against KB entries' internal fields — that's handled by the KB consistency check.
 - Do NOT flag intentional ambiguity as a contradiction.
+- Do NOT flag stylistic variation, evolving character understanding, unreliable narration, or unconfirmed rumors as contradictions unless the provided facts explicitly prove conflict.

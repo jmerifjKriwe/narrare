@@ -19,7 +19,8 @@ from narrare_core.agents.consistency_types import (
     ConsistencyOutput,
     ConsistencySeverity,
 )
-from narrare_core.shared.errors import NotFoundError
+from narrare_core.prompts import PromptComposer, PromptRegistry
+from narrare_core.shared.errors import NotFoundError, PromptNotFoundError
 from tests.fakes import FakeChapterRepository, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_kb_entry, make_novel, seed_repos
 
@@ -38,16 +39,18 @@ def _output(**kw) -> ConsistencyOutput:
     return ConsistencyOutput(**defaults)
 
 
-def _service(nr=None, cr=None, kb=None) -> ConsistencyCheckerService:
+def _service(nr=None, cr=None, kb=None, composer=None) -> ConsistencyCheckerService:
     from narrare_core.llm import ResolvedModelConfig
 
     kb = kb or AsyncMock(list_entries=AsyncMock(return_value=([], 0)))
     registry = MagicMock(spec=_RegistryProto)
     registry.get_model = AsyncMock(return_value=object())
-    composed = MagicMock(spec=["system"])
+    composed = MagicMock(spec=["system", "user"])
     composed.system = "Test prompt"
-    composer = AsyncMock()
-    composer.build = AsyncMock(return_value=composed)
+    composed.user = ""
+    if composer is None:
+        composer = AsyncMock()
+        composer.build = AsyncMock(return_value=composed)
     return ConsistencyCheckerService(
         chapter_repo=cr or FakeChapterRepository(),
         novel_repo=nr or FakeNovelRepository(),
@@ -218,6 +221,56 @@ class TestResolveSystemPrompt:
 
         ctx_arg = svc._composer.build.call_args[0][1]
         assert ctx_arg.language == "de"
+
+    @pytest.mark.asyncio
+    async def test_check_with_real_composer_uses_bundled_template_variables(self) -> None:
+        """Production path routes consistency data through bundled templates."""
+        novel, (ch, *_), _ = _setup()
+        composer = PromptComposer(PromptRegistry())
+        nr, cr = FakeNovelRepository(), FakeChapterRepository()
+        seed_repos(novel, ch, novel_repo=nr, chapter_repo=cr)
+        svc = _service(nr=nr, cr=cr, composer=composer)
+
+        agent = AsyncMock(run=AsyncMock(return_value=_output()))
+        with patch(
+            "narrare.consistency.checker_service.ConsistencyAgent", return_value=agent
+        ) as MockAgent:
+            await svc.check(
+                novel_id=novel.id,
+                user_id=novel.user_id,
+                request=ConsistencyRequest(
+                    chapter_ids=[ch.id], check_types=[ConsistencyCheckType.CHARACTER]
+                ),
+            )
+
+        system_prompt = MockAgent.call_args.kwargs["system_prompt"]
+        assert "You are a consistency checker" in system_prompt
+        assert ch.content in system_prompt
+        agent_prompt = agent.run.call_args.kwargs["prompt"]
+        assert "Analyze the chapters" not in agent_prompt
+        assert "Return structured findings" not in agent_prompt
+
+    @pytest.mark.asyncio
+    async def test_check_when_prompt_missing_propagates_typed_error(self) -> None:
+        """Missing Composer templates are not replaced with inline fallback bodies."""
+        novel, (ch, *_), _ = _setup()
+        composer = AsyncMock()
+        composer.build = AsyncMock(side_effect=PromptNotFoundError("analysis", "en", "consistency"))
+        nr, cr = FakeNovelRepository(), FakeChapterRepository()
+        seed_repos(novel, ch, novel_repo=nr, chapter_repo=cr)
+        svc = _service(nr=nr, cr=cr, composer=composer)
+
+        with (
+            patch("narrare.consistency.checker_service.ConsistencyAgent") as MockAgent,
+            pytest.raises(PromptNotFoundError),
+        ):
+            await svc.check(
+                novel_id=novel.id,
+                user_id=novel.user_id,
+                request=ConsistencyRequest(chapter_ids=[ch.id]),
+            )
+
+        MockAgent.assert_not_called()
 
 
 # --- C. Error cases ---

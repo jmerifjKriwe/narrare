@@ -16,7 +16,7 @@ from narrare_core.prompts.routes import (
     _INTENT_TO_MODE,
     _NON_ROUTEABLE_INTENTS,
 )
-from narrare_core.shared.errors import PromptRouteNotConfiguredError
+from narrare_core.shared.errors import PromptRouteNotConfiguredError, PromptVariableError
 
 _BUNDLED_ROOT = Path(__file__).parents[4] / "packages/core/narrare_core/prompts/_bundled"
 _CR02_TARGETS = {
@@ -102,6 +102,24 @@ class TestPromptComposerBuild:
         result = await composer.build(LLMIntent.WRITE, ctx)
         assert "Echoes of the Thornwall" in result.system
 
+    async def test_strict_preflight_rejects_missing_required_route_variable(self) -> None:
+        fake_registry = FakePromptRegistry(_make_resolved(system="Outline: {{chapter_outline}}"))
+        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+
+        with pytest.raises(PromptVariableError, match="chapter_outline"):
+            await composer.build(LLMIntent.WRITE, PromptContext(language="en"))
+
+    async def test_optional_generated_context_defaults_to_empty_string(self) -> None:
+        fake_registry = FakePromptRegistry(
+            _make_resolved(system="Optional lower-priority suggestions: {{kb_suggested}}")
+        )
+        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+
+        result = await composer.build(LLMIntent.WRITE, PromptContext(language="en"))
+
+        assert "{{kb_suggested}}" not in result.system
+        assert result.system == "Optional lower-priority suggestions: "
+
 
 class TestPromptRouteGovernance:
     """Regression coverage for INFRA-012 PromptComposer route governance."""
@@ -146,6 +164,18 @@ class TestPromptRouteGovernance:
 
         assert fake_registry.calls[-1]["category"] == "analysis"
         assert fake_registry.calls[-1]["mode"] == "preferences"
+
+    async def test_kb_create_allows_only_documented_aggregate_modes(self) -> None:
+        fake_registry = FakePromptRegistry()
+        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+
+        with pytest.raises(PromptRouteNotConfiguredError, match="unsupported_mode"):
+            await composer.build(
+                LLMIntent.KB_CREATE,
+                PromptContext(language="en", mode="unsupported_mode"),
+            )
+
+        assert fake_registry.calls == []
 
     @pytest.mark.parametrize("intent", sorted(_NON_ROUTEABLE_INTENTS, key=str))
     async def test_non_routeable_intents_fail_before_registry_lookup(

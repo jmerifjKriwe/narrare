@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.prompts.routes import resolve_prompt_route
-from narrare_core.prompts.variable_engine import substitute
+from narrare_core.prompts.variable_engine import prepare_variables_for_template, substitute
 
 if TYPE_CHECKING:
     from narrare_core.llm.intents import LLMIntent
@@ -121,11 +121,11 @@ class PromptComposer:
             db_content=db_content,
         )
 
-        # Substitute variables in system prompt
-        system = substitute(resolved.system_prompt, variables, strict=False)
+        system_template = resolved.system_prompt
 
-        # Inject name style guidelines if placeholder present
-        if "{{culture_guidelines}}" in system and context.extra.get("name_style"):
+        # Inject name style guidelines if placeholder present.
+        # This is explicit variable provisioning, not automatic XML wrapping.
+        if "{{culture_guidelines}}" in system_template and context.extra.get("name_style"):
             name_style_content = await self._registry.resolve_name_style(
                 category=category,
                 language=context.language,
@@ -136,16 +136,36 @@ class PromptComposer:
                 name_style_content = (
                     f"Generate names fitting the following style: {context.extra['name_style']}"
                 )
-            system = system.replace("{{culture_guidelines}}", name_style_content)
-        elif "{{culture_guidelines}}" in system:
-            # No name_style specified — replace with empty string
-            system = system.replace("{{culture_guidelines}}", "")
+            variables["culture_guidelines"] = name_style_content
+        elif "{{culture_guidelines}}" in system_template:
+            variables["culture_guidelines"] = ""
+
+        prompt_id = f"{category}/{context.language}/{mode}"
+        variables = prepare_variables_for_template(
+            system_template,
+            variables,
+            optional_variables=route.optional_variables,
+            prompt_id=prompt_id,
+        )
+        system = substitute(system_template, variables, strict=True)
 
         # Determine user message
         if user_prompt:
-            final_user = substitute(user_prompt, variables, strict=False)
+            user_variables = prepare_variables_for_template(
+                user_prompt,
+                variables,
+                optional_variables=route.optional_variables,
+                prompt_id=prompt_id,
+            )
+            final_user = substitute(user_prompt, user_variables, strict=True)
         elif resolved.first_message:
-            final_user = substitute(resolved.first_message, variables, strict=False)
+            first_message_variables = prepare_variables_for_template(
+                resolved.first_message,
+                variables,
+                optional_variables=route.optional_variables,
+                prompt_id=prompt_id,
+            )
+            final_user = substitute(resolved.first_message, first_message_variables, strict=True)
         else:
             final_user = context.author_instructions or ""
 

@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/current-state | Priority: critical | Source: docs/_shared/CURRENT_STATE.md | Updated: 2026-06-03 -->
+<!-- Context: narrare-dev/lookup/current-state | Priority: critical | Source: docs/_shared/CURRENT_STATE.md | Updated: 2026-06-05 -->
 
 # Current State — Live Project Status
 
@@ -29,7 +29,7 @@
 - Frontend tests: 1,683 across 186 test files (Vitest + MSW)
 - Total tests: ~5,900+
 - Architecture rules: 22 (RULE-01 through RULE-21 + RULE-01b)
-- ADRs: 24+ (ADR-001 through ADR-023, plus ADR-027 AI Feature Stabilization Gates)
+- ADRs: 37 (ADR-001 through ADR-037)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 11 (Q-001 through Q-011)
 
@@ -57,7 +57,7 @@
 
 ## Phase 6 Completed
 
-34+ items including WRITE-003/004/006/007, INFRA-004, KB-002/003/005/006a/007/009, ANAL-001/002/003/004, CONS-001, SET-005, WIKI-001, PLAN-004/006, CR-01 to CR-04, ADR-016 through ADR-023, ADR-027, INFRA-011 stabilization slices.
+34+ items including WRITE-003/004/006/007, INFRA-004, KB-002/003/005/006a/007/009, ANAL-001/002/003/004, CONS-001, SET-005, WIKI-001, PLAN-004/006, CR-01 to CR-04, ADR-016 through ADR-023, ADR-027, INFRA-011 stabilization slices, ADR-037 Prompt Surface Contract Manifest (INFRA-012 CR-01).
 
 ---
 

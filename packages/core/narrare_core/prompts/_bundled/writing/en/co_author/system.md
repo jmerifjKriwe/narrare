@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.2.0"
 ---
 
 ## System Prompt
@@ -34,6 +34,9 @@ Relationships:
 {{kb_relationships}}
 
 ### Suggested KB Entries
+
+Optional lower-priority generated KB suggestions. These are unaccepted candidates;
+use them only when they support the selected improvement focus and accepted KB.
 
 {{kb_suggested}}
 

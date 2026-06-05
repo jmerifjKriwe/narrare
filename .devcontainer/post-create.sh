@@ -13,7 +13,7 @@ sudo chown -R vscode:vscode /home/vscode/.opencode \
 
 # --- Python dependencies via uv ---
 echo "📦 Installing Python dependencies..."
-uv sync --all-packages --group dev
+uv sync --frozen --all-packages --group dev --extra nlp
 
 # --- spaCy NLP models ---
 echo "🧠 Installing spaCy NLP models..."

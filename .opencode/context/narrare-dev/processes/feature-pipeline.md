@@ -67,6 +67,7 @@ Vor der Implementation prüft der Architecture Specialist die Cross-Feature-Koh�
 - [ ] **Injection-Defense geprüft?** — Neue user-content Variablen in _USER_CONTENT_VARS? XML-Wrapping in Templates?
 - [ ] **Template-Variablen registriert?** — Neue Variablen als user-authored, system-generated, oder feature-dynamic klassifiziert und in der passenden Registry erfasst?
 - [ ] **PromptComposer-Routeability geprüft?** — Routeable Intent/Mode-Mappings haben ein bundled EN target oder explizite non-routeable rationale?
+- [ ] **ADR-037 Manifest-Conformance geprüft?** — Falls neuer Intent oder Template: im Prompt Surface Contract Manifest (`scripts/architecture/prompt-surface-manifest.yaml`) eingetragen? Routeable/non-routeable Status, Variablen, Provenance, Security, Fallback-Policy korrekt?
 - [ ] **ADR-026 Capability-Erbe geprüft?** — Produktions-Agent-Pfade erben `NarrareMeta` + `NarrareUniversalRules` über `NarrareAgent`?
 - [ ] **Kontext-Precedence geprüft?** — Current author instruction > project writing profile/manual override > current scene/storyboard/timeline > curated KB > learned memory/mem0 > generated suggestions; Konflikte werden nicht still gelöst.
 - [ ] **KB-Status-Filtering beachtet?** — Falls KB-Daten: deprecated ausgeschlossen?

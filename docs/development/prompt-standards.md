@@ -14,10 +14,13 @@
 > machine-checkable quality rules. This standard is the authoritative reference;
 > that document is the enforcement companion.
 >
-> **Related ADRs**: ADR-002 (Unified Prompt System), ADR-032 (Pydantic Evals
-> as Evaluation SSOT), ADR-019 (System-Prompt Consistency)
+> **Related ADRs**: ADR-002 (Unified Prompt System), ADR-026 (Capability-Based
+> Prompt Injection Pattern), ADR-032 (Pydantic Evals as Evaluation SSOT),
+> ADR-037 (Prompt Surface Contract Manifest), ADR-019 (System-Prompt Consistency)
 >
 > **Related Rules**: RULE-02 (Prompts are built in `core/prompts/`. Nowhere else.)
+>
+> **Related Specs**: INFRA-012 (Prompt Governance Hardening)
 >
 > **Location**: `docs/development/prompt-standards.md`
 > **Maintained by**: Architecture Agent + Documentation Agent
@@ -413,6 +416,10 @@ Every `{{variable}}` used in a prompt template MUST have an explicit provenance
 classification. New unregistered variables are CI failures; legacy gaps may only
 exist as ratcheted baseline debt with an owner and cleanup target.
 
+The ADR-037 Prompt Surface Contract manifest requires that every routeable
+template variable is classified with provenance and security metadata. See
+INFRA-012 for the full variable taxonomy and security classification table.
+
 | Class | Definition | Registry | XML requirement |
 |-------|------------|----------|-----------------|
 | User-authored content | Text or structured content authored directly by the user/author: prose, selections, author instructions, conversation history, KB entity body/name supplied by a user | `_USER_CONTENT_VARS` | MUST be XML-wrapped in templates |
@@ -428,6 +435,9 @@ exist as ratcheted baseline debt with an owner and cleanup target.
   `{{explanation_language}}` are system/feature-dynamic language-control data;
   they satisfy ADR-026 Phase 5 only when the calling context actually supplies
   the desired output language.
+- A variable is valid only when it has a provenance class, a security class,
+  and template consumption aligned with that security class (per ADR-037
+  manifest conformance).
 
 ### Cross-Feature Context Precedence
 
@@ -552,12 +562,24 @@ must pass before merge.
 - [ ] All template variables classified in `_USER_CONTENT_VARS`, `_SYSTEM_VARS`, or the approved feature-dynamic registry
 - [ ] All new user-content variables registered in `_USER_CONTENT_VARS`
 - [ ] New unregistered variables are treated as CI failures, not warnings
+- [ ] Variable provenance matches ADR-037 manifest (required/optional, source, security class)
+- [ ] Variables marked `xml_required` in the manifest are wrapped in explicit XML tags in the template
 
 ### Security
 
 - [ ] User content wrapped in XML tags (via variable engine or explicit)
 - [ ] System instructions clearly separated from user content
 - [ ] Meta-prompt includes anti-injection instruction
+- [ ] Generated suggestions labelled as unaccepted/lower-priority where applicable (per INFRA-12)
+
+### Manifest Conformance (ADR-037)
+
+- [ ] Intent is registered in the Prompt Surface Contract manifest with correct routeable/non-routeable status
+- [ ] Routeable intent resolves to an existing bundled EN template
+- [ ] Non-routeable intent has documented rationale
+- [ ] Manifest `required_variables` match template usage
+- [ ] Manifest `output_language_variable` present for user-facing generation prompts
+- [ ] No production inline fallback body for routeable manifest targets
 
 ### Locale Consistency
 
@@ -630,12 +652,15 @@ prompts, and follow a simpler format.
 | `docs/_shared/CONSTRAINTS.md` (RULE-02) | Defines WHERE prompts are built. This document defines WHAT they contain. |
 | `docs/development/prompt-content-standards.md` | Machine-checkable quality rules. Subset of this standard, focused on what `check_architecture.py` validates. |
 | ADR-002 (Unified Prompt System) | Architecture of the prompt cascade. This standard is the content quality layer on top of that architecture. |
+| ADR-026 (Capability-Based Prompt Injection) | Splits guaranteed content (capabilities) from customizable content (PromptComposer). This standard governs the customizable portion. |
+| ADR-037 (Prompt Surface Contract Manifest) | Machine-readable manifest for routeable intents, variables, provenance, security, and fallback policy. This standard's review checklist verifies manifest conformance. |
+| INFRA-012 (Prompt Governance Hardening) | Feature spec implementing ADR-037 gates and variable taxonomy. This standard references the taxonomy for provenance/security classification. |
 | ADR-032 (Pydantic Evals as Evaluation SSOT) | Runtime prompt quality testing. This standard defines the structural baseline; Pydantic Evals verifies output quality through Narrare's Python agent/runtime paths. |
 | ADR-019 (System-Prompt Consistency) | Meta-prompt guardrails and persona consistency. This standard extends those requirements to all prompt categories. |
 | `core/prompts/variable_engine.py` | Implementation of user-content variable registry (`_USER_CONTENT_VARS`). |
 
 ---
 
-> **Last updated:** 2026-06-04 — prompt eval references updated for ADR-032.
+> **Last updated:** 2026-06-05 — ADR-037 manifest conformance added to review checklist and variable governance; INFRA-012 provenance taxonomy referenced.
 > **Maintained by:** Architecture Agent + Documentation Agent
-> **Review trigger:** When a new prompt category is added, or when ADR-002/019 is revised
+> **Review trigger:** When a new prompt category is added, or when ADR-002/019/037 is revised

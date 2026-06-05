@@ -82,6 +82,21 @@ class TestKBPromptVariables:
         assert "confidence" in content.lower()
         assert "0.7" in content or "calibrat" in content.lower()
 
+    def test_extract_prompt_wraps_world_context_as_curated_kb(self) -> None:
+        """world_context is curated author KB and must have explicit XML boundaries."""
+        content = _kb_prompt_path("extract").read_text()
+        assert "<curated_kb_context>" in content
+        assert "{{world_context}}" in content
+        assert "</curated_kb_context>" in content
+
+    def test_worldbuilding_phase2_wraps_world_context_as_curated_kb(self) -> None:
+        """Worldbuilding phase 2 consumes curated KB context with explicit XML boundaries."""
+        path = _BUNDLED_ROOT / "kb" / "en" / "worldbuilding" / "phase2" / "system.md"
+        content = path.read_text()
+        assert "<curated_kb_context>" in content
+        assert "{{world_context}}" in content
+        assert "</curated_kb_context>" in content
+
 
 # ---------------------------------------------------------------------------
 # C. Content quality — output format and negative examples

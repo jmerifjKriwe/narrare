@@ -22,8 +22,8 @@ how to operate the environments.
 The project uses `uv` with workspace members (`apps/api`, `packages/core`, `packages/i18n`). To set up the Python environment:
 
 ```bash
-# Install all dependencies AND workspace member packages
-uv sync --all-packages
+# Install dev dependencies, NLP extra, and workspace member packages
+uv sync --frozen --all-packages --group dev --extra nlp
 ```
 
 **Important:** `uv sync` alone does NOT install workspace member packages (narrare, narrare_core) in editable mode. You MUST use `--all-packages` to make workspace members importable. Without this:
@@ -31,10 +31,14 @@ uv sync --all-packages
 - Pyright reports thousands of unresolved imports
 - Running `uv run python` cannot import `narrare` or `narrare_core`
 
+The setup contract also includes `--group dev` for developer tools and
+`--extra nlp` because `just install-nlp-models` intentionally assumes spaCy is
+already installed from the core package's optional NLP extra.
+
 **Verification:**
 
 ```bash
-uv run python -c "import narrare_core; import narrare; print('OK')"
+uv run python -c "import narrare_core; import narrare; import spacy; print('OK')"
 ```
 
 ### Local Services
@@ -245,7 +249,7 @@ All developer commands via `just`:
 
 | Category | Command | Description |
 |----------|---------|-------------|
-| **Setup** | `dev-setup` | First-time setup: install deps, create .env, run migrations |
+| **Setup** | `dev-setup` | First-time setup: install dev + NLP deps/models, create .env, run migrations |
 | | `generate-secret` | Generate a secure `SECRET_KEY` |
 | **Development** | `dev` | Start all services (API + frontend + workers) |
 | | `dev-api` | Start API only |

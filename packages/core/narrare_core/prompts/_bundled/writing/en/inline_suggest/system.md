@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "2.2.0"
+prompt_version: "2.3.0"
 ---
 
 ## System Prompt
@@ -23,7 +23,15 @@ Your task: Complete the text naturally, as if the author themselves wrote it.
 
 {{culture_guidelines}}
 
+### Learned Author Preferences
+
+Lower-priority learned memory. Follow only when it does not conflict with the immediate text:
+
 {{user_preferences}}
+
+### Learned Avoidance Constraints
+
+Lower-priority learned avoidance patterns. Respect them when possible without breaking the current sentence:
 
 {{avoidance_patterns}}
 
@@ -47,7 +55,9 @@ Story Structure: {{story_structure}}
 
 {{kb_characters}}
 
-### Suggested KB Entries
+### Optional Lower-Priority Generated KB Suggestions
+
+These are unaccepted generated candidates. Use them only if they naturally fit the next few words.
 
 {{kb_suggested}}
 

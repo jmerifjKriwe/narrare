@@ -7,6 +7,26 @@ feature-specific runtime data (INFRA-012 / RULE-22).
 
 from __future__ import annotations
 
+from narrare_core.prompts.variable_taxonomy import (
+    VariableClassification,
+    VariableProvenance,
+    VariableSecurity,
+    build_variable_classifications,
+)
+
+__all__ = [
+    "FEATURE_DYNAMIC_VARS",
+    "SYSTEM_VARS",
+    "USER_CONTENT_VARS",
+    "VARIABLE_CLASSIFICATIONS",
+    "VariableClassification",
+    "VariableProvenance",
+    "VariableSecurity",
+    "get_variable_classification",
+    "is_registered_variable",
+]
+
+
 USER_CONTENT_VARS: frozenset[str] = frozenset(
     {
         "existing_content",
@@ -112,3 +132,19 @@ FEATURE_DYNAMIC_VARS: frozenset[str] = frozenset(
         "variant_count",
     }
 )
+
+VARIABLE_CLASSIFICATIONS: dict[str, VariableClassification] = build_variable_classifications(
+    USER_CONTENT_VARS,
+    SYSTEM_VARS,
+    FEATURE_DYNAMIC_VARS,
+)
+
+
+def get_variable_classification(name: str) -> VariableClassification | None:
+    """Return provenance/security metadata for a prompt variable."""
+    return VARIABLE_CLASSIFICATIONS.get(name)
+
+
+def is_registered_variable(name: str) -> bool:
+    """Return whether a prompt variable is in the governed taxonomy."""
+    return name in VARIABLE_CLASSIFICATIONS

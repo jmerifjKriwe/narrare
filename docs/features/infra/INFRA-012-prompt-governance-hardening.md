@@ -3,315 +3,517 @@
 ---
 id: INFRA-012
 title: "Prompt Governance Hardening"
-status: stable
+status: in-progress
 area: infra
 mvp: false
 
-ui_tooltip: "Closes remaining prompt-governance gaps from the content review."
+ui_tooltip: "Closes prompt-governance and prompt-quality gaps from content review."
 ui_help_short: |
-  Hardens Narrare's prompt system so every agent path inherits the same persona,
-  every PromptComposer route has a governed template target, and every prompt
-  variable has a declared provenance.
+  Hardens Narrare's prompt system so every production LLM intent has an explicit
+  prompt-surface contract, every routeable template has governed variables, and
+  every user-authored context value is separated from instructions.
 ui_help_long: |
-  This infrastructure spec completes the CR-02 remediation approved by the user:
-  ADR-026 Capability guarantees are validated separately, inline production
-  fallbacks are removed or explicitly scoped to tests, PromptComposer mappings
-  cannot drift from bundled targets, prompt variables are classified, and
-  cross-feature context precedence is documented before new AI feature work.
+  INFRA-012 started as the CR-02 remediation for ADR-026 governance and now also
+  covers the user-approved CR-01 prompt-quality findings. The feature turns prompt
+  quality rules into contracts: routeable intents must map to bundled templates,
+  variables must declare provenance/security, production inline prompt fallbacks
+  are forbidden, context producers and consumers are matched, and prompt checks
+  classify blockers separately from ratcheted warnings.
 ui_available_in: []
 
 service: scripts/architecture/_checkers/prompt_integrity.py
-contract: docs/architecture/decisions/ADR-026-capability-prompt-injection.md
+contract: docs/architecture/decisions/ADR-037-prompt-surface-contract-manifest.md
 router: null
 prompt: packages/core/narrare_core/prompts/_bundled/
-requires: [INFRA-002, INFRA-011, PROMPT-001, PROMPT-002]
+requires: [INFRA-002, INFRA-003, INFRA-011, PROMPT-001, PROMPT-002]
 ---
+
+## Status and Decision Summary
+
+- **CR-02 hardening:** implemented on 2026-06-05 and retained as part of this
+  feature's governance baseline.
+- **CR-01 hardening:** specified here for implementation after Architecture
+  handoff. Core/Backend/Platform/Docs must not start production-code work before
+  this spec is accepted by the coordinator/user.
+- **ADR decision:** ADR-037 is required because the Prompt Surface Contract
+  manifest is a new cross-module contract affecting Core routes, bundled prompts,
+  Platform CI, and docs. ADR-025's schema-driven adoption pattern remains valid;
+  ADR-037 specializes it for route-level prompt governance.
 
 ## Scope
 
-### In Scope
+### In Scope — CR-01 P0 Blockers
 
-- Complete the CR-02 hardening items around ADR-026, PromptComposer routing,
-  inline fallback removal, and production agent capability inheritance.
-- Classify every prompt template variable as user-authored content,
-  system-generated data, or feature-dynamic data.
-- Convert new unregistered prompt variables from warnings to CI failures.
-- Define cross-feature context precedence for author instructions, project
-  writing profile, storyboard/timeline, curated KB, learned memory, and generated
-  suggestions.
-- Add process-prevention checklists: ADR CI Impact, Migration Completion / Legacy
-  Cleanup, and AI Content Review Gate integration.
+1. Prompt Surface Contract manifest: routeable `LLMIntent` ↔ category/mode/template,
+   required/optional variables, variable source, content type, XML requirement,
+   output-language field, and fallback policy.
+2. Intent-to-template completeness gate.
+3. No production inline prompt fallback policy and gate.
+4. Template variable registry/taxonomy gate.
+5. User-content XML wrapping gate and strict prompt preflight.
+
+### In Scope — CR-01 P1 Quality Fixes
+
+6. Context Producer/Consumer Matrix for `world_context`, `kb_suggested`,
+   `writing_language`, `style_profile`, `genre`, `tone`, and future profile fields.
+7. `world_context` for KB extraction and worldbuilding phase 2 templates.
+8. `kb_suggested` in writing templates where safe and explicitly lower-priority.
+9. Inline Suggest preference/context labeling improvements.
+10. Consistency false-positive control, with schema-contract handling if output
+    fields change.
+
+### Strategic Items — Architecture-Deferred, Not Half-Implemented
+
+11. **Project Writing Profile:** deferred to a follow-up feature spec
+    (`SET-006 Project Writing Profile`, to be created before implementation). This
+    cycle may only use existing `PromptContext` fields and manifest provenance
+    labels; it must not add hidden DB/settings/profile storage.
+12. **Multi-step strategy:** deferred to follow-up specs per workflow:
+    consistency (`CONS-003 Multi-step Consistency Analysis`), long KB extraction
+    (`KB-011 Long-form Extraction Strategy`), and major rewrite
+    (`WRITE-013 Major Rewrite Workflow`). No service may introduce an unreviewed
+    partial multi-step pipeline in this CR-01 implementation.
+
+### P2 Items — Ratcheted Unless Schema-Compatible
+
+13. Evidence/confidence for extraction and output-language/cultural consistency.
+    Prompt/manifest improvements are in scope. If evidence/confidence requires
+    output schema changes, Backend/API/Frontend contract updates are required in
+    the same implementation slice; otherwise the item stays architecture-deferred,
+    not half-implemented.
 
 ### Out of Scope
 
-- Creating new AI features.
-- Changing the prompt language policy from ADR-026 Phase 5.
+- Creating new user-facing AI features.
+- Changing ADR-026's prompt content categories or feature-prompt EN-only policy.
 - Adding external dependencies.
-- Production code implementation by the Architecture Specialist.
+- Production code changes by the Architecture Specialist.
+- Hidden storage/API/UI work for Project Writing Profile or multi-step workflows.
 
 ## Root Cause / Motivation
 
-**Symptom:** CR-02 found that ADR-026's mechanism is correct, but prompt governance
-still has gaps: stale checkers, missing PromptComposer targets, stale inline
-fallback references, incomplete variable classification, and underspecified
-cross-feature precedence.
+**Symptom:** CR-01 found strong default prompt content overall, but also missing
+template routes, incomplete variable classification, uneven context adoption
+(`world_context`, `kb_suggested`, writing-language/style fields), user-content XML
+coverage risk, production inline fallback risk, and strategic context gaps.
 
-**Why #1:** ADR-026 fixed the runtime mechanism first. The supporting governance
-surface — checkers, registry coverage, adoption records, and migration closure
-criteria — lagged behind the architectural change.
+**Why #1:** Prompt quality is governed by multiple partial surfaces: route tables,
+bundled templates, `PromptContext`, context assemblers, variable registries,
+adoption registry entries, content standards, and platform checkers. A template can
+look good locally while the route/context/security contract remains incomplete.
 
-**Why #2:** Prompt-related contracts are split across PromptComposer mappings,
-bundled templates, variable registries, adoption YAML, content review findings,
-and process docs. Because not every surface is a blocking gate, new templates or
-intents can drift without failing immediately.
+**Why #2:** The current system validates categories and some variables, but it does
+not declare the complete production prompt surface per intent. Without a route-level
+manifest, Core cannot know which context is contractually required and Platform
+cannot reliably distinguish blockers from ratcheted quality warnings.
 
-**Root cause:** Prompt architecture and prompt governance are not yet one
-operational contract. The correct response is not a local prompt edit; it is a
-contracted hardening program that turns remaining drift surfaces into explicit,
-machine-checkable gates.
+**Root cause:** Prompt quality and prompt governance are still split. The correct
+fix is not isolated prompt wording edits; it is a Prompt Surface Contract that makes
+intent routeability, variables, provenance, XML safety, fallback behavior, and
+context precedence machine-checkable.
 
 ## Alternatives Considered
 
 | Option | Description | Pros | Cons | Decision |
 |--------|-------------|------|------|----------|
-| A | Patch only the reported files and leave existing checks mostly unchanged | Fast local cleanup | Repeats root cause: future drift can re-enter through unmapped intents, unclassified variables, or broad fallbacks | Rejected |
-| B | Hardening spec plus CI contracts for PromptComposer routes, capability inheritance, variable provenance, and migration closure | Addresses root cause; sustainable; compatible with ADR-026/RULE-22 | Requires coordinated Core/Backend/Platform/Docs work | **Chosen** |
-| C | Revert to localized feature prompts and monolithic meta validation | Simpler for old checkers | Contradicts ADR-026 Phase 5 and reintroduces the maintenance failure ADR-026 solved | Rejected |
+| A | Patch only the CR-01 templates and current registries | Improves today's prompt text | Repeats root cause; future intents/variables/fallbacks can drift again | Rejected |
+| B | Extend INFRA-012 with ADR-037 Prompt Surface Contract manifest plus CI gates | Addresses root cause; aligns Core/Platform/Docs; no prompt-surface drift | Requires coordinated manifest, checker, template, and docs work | **Chosen** |
+| C | Implement Project Writing Profile and multi-step workflows immediately inside this cycle | Could address strategic findings directly | Too broad; would mix prompt governance with new storage/API/workflow architecture and risk half-implementation | Rejected for this cycle; deferred to follow-up specs |
+| D | Encode all policy in checker heuristics without a manifest | No new manifest file | Policy becomes implicit and hard to review; non-routeable rationale and optional variables are unclear | Rejected |
 
-## Architectural Decisions
+### Sustainability Rationale for Chosen Approach
 
-### 1. ADR-026 Hardening / Completion Contract
+- Correct in 3 months: new intents/templates must enter the same manifest contract.
+- Coupling: Core remains runtime owner; Platform inspects via manifest and does not
+  become a runtime dependency.
+- Simplest correct solution: a manifest plus focused checkers is simpler than
+  expanding prose standards or embedding semantic policy in heuristics.
+- Design intent: reviewers can see why a route is routeable/non-routeable and which
+  variables are required before code changes land.
 
-ADR-026 remains the governing architecture. This spec completes its governance
-surface with the following rules:
+## Prompt Surface Contract / Manifest Design
 
-1. **Meta and Universal validation are separate.**
-   - `NarrareMeta` validates identity, role flexibility, and conversation
-     guardrails.
-   - `NarrareUniversalRules` validates fiction-content rules, conflict
-     resolution, and injection defense.
-   - Checkers must not require monolithic ADR-019-era meta content in one file.
+### Location and Ownership
 
-2. **Feature templates may be EN-only.**
-   - Bundled feature system prompts remain EN-only by default per ADR-026 Phase 5.
-   - This is valid only when output language is supplied through variables,
-     Context, Deps, or preferences such as `{{writing_language}}` /
-     `{{language}}` / `{{explanation_language}}` as appropriate.
-   - Meta and Universal localized families keep their declared locale parity.
+- **Manifest path:** `scripts/architecture/prompt-surface-manifest.yaml`
+- **Runtime conformance:** `packages/core/narrare_core/prompts/routes.py`,
+  `packages/core/narrare_core/prompts/composer.py`, bundled templates.
+- **CI enforcement:** `scripts/architecture/_checkers/_check_prompt_surface.py`
+  integrated through `prompt_integrity.py` / `check_prompt_structure.py`.
+- **Architecture authority:** ADR-037 and this spec.
 
-3. **Every PromptComposer mapping must be route-governed.**
-   - Each `_INTENT_TO_CATEGORY` + `_INTENT_TO_MODE` entry must resolve to a
-     bundled EN target, be remapped/removed if unused, or be explicitly marked
-     non-routeable with rationale.
-   - Missing bundled EN targets are blocking failures for routeable intents.
-   - Known CR-02 targets to resolve: `KB_CREATE`, `ANALYSE`, `SENTIMENT`,
-     `VOICE`, `PLAN`, `GENERATE`, `TITLE_GENERATE`, `EXTRACT`, `RESEARCH`.
+The manifest is a governance contract, not a runtime prompt builder. Core must not
+import from `scripts/architecture/`; Platform may inspect Core files.
 
-4. **Production inline prompt fallback bodies are forbidden when bundled targets exist.**
-   - Production services must fail loudly with typed errors when a required
-     bundled target is missing.
-   - Test-only fallback bodies are allowed only when explicitly scoped to tests,
-     documented in the adoption registry, and unreachable from production DI.
-   - Broad `except Exception` prompt fallback behavior is forbidden.
+### Manifest Schema
 
-5. **Every production agent path inherits ADR-026 Capabilities through `NarrareAgent`.**
-   - Production agents must subclass/use `NarrareAgent`, not bare pydantic-ai
-     `Agent`, unless an existing ADR-approved exception applies.
-   - Regression coverage must prove production agent paths include both
-     `NarrareMeta` and `NarrareUniversalRules`.
+```yaml
+version: "1.0.0"
+routes:
+  - intent: EXTEND
+    routeable: true
+    category: writing
+    mode: extend_chapter
+    template: packages/core/narrare_core/prompts/_bundled/writing/en/extend_chapter/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables:
+      - existing_content
+      - user_preferences
+      - avoidance_patterns
+    optional_variables:
+      - kb_suggested
+      - style_profile
+      - world_context
+    variable_sources:
+      existing_content: current_author_instruction
+      user_preferences: learned_memory
+      avoidance_patterns: learned_memory
+      kb_suggested: generated_suggestion
+      style_profile: project_writing_profile
+    security:
+      xml_required:
+        - existing_content
+      mixed_content_label_required:
+        - user_preferences
+        - avoidance_patterns
+      generated_suggestions_must_be_labelled:
+        - kb_suggested
+    fallback_policy: fail_loudly_if_bundled_missing
 
-### 2. Variable Registry Governance
+  - intent: VOICE
+    routeable: false
+    rationale: "No dedicated bundled PromptComposer template yet."
+```
 
-Prompt variables must have one provenance classification:
+### Required Route Semantics
 
-| Class | Meaning | Required registry | XML wrapping |
-|------|---------|-------------------|--------------|
-| User-authored content | Text or structured content written directly by the author/user: chapter prose, selections, author instructions, conversation history, KB entity body/name supplied by a user | `_USER_CONTENT_VARS` | Required in templates |
-| System-generated data | Data assembled from trusted system state: curated KB summaries, project settings, computed counts, generated profiles persisted by services | `_SYSTEM_VARS` | Not required by default |
-| Feature-dynamic data | Per-feature runtime data that is neither globally reusable nor directly user-authored: candidate pairs, entity events, timeline position, explanation language, variant count | `_FEATURE_DYNAMIC_VARS` or equivalent documented feature-variable registry | Required only if the value can include user-authored text |
+- `routeable: true` means `PromptComposer.build(intent, context)` can resolve a
+  bundled EN target without inline production fallback.
+- `routeable: false` means the intent is model-routing-only, deterministic, not yet
+  a prompt surface, or requires a context mode; it must include rationale.
+- Context-mode-required intents must declare allowed modes or rationale so
+  aggregate intents (for example, KB creation flows) do not pretend to have one
+  canonical template.
+- Every new `LLMIntent` addition requires a manifest entry in the same change.
 
-Governance rules:
+### Content Types
 
-- New template variables that are absent from all registries fail CI.
-- Existing legacy gaps may be baselined only with explicit cleanup owners and
-  must not grow.
-- Any variable that can contain user-authored text must be in
-  `_USER_CONTENT_VARS` and must be XML-wrapped in the template.
-- The checker must classify examples from FIND-005, including
-  `writing_language`, `timeline_position`, `novel_synopsis`, `style_profile`,
-  `candidate_pairs`, `chapter_summaries`, `entity_events`, `known_characters`,
-  `entity_body`, `relationships`, `variant_count`, and `explanation_language`.
+| Content type | Meaning | Allowed mechanism |
+|--------------|---------|-------------------|
+| `customizable_feature_prompt` | User-overridable role/task/output/mode instructions | PromptComposer cascade |
+| `guaranteed_capability` | Meta/universal content guaranteed by ADR-026 | `NarrareAgent` capabilities, not manifest-routeable feature templates |
+| `runtime_dynamic_data` | Per-run context values | `PromptContext`, Deps, context assemblers |
+| `generated_candidate_context` | Unaccepted suggestions/extractions | Runtime data, labelled lower priority |
 
-### 3. Cross-Feature Context Precedence
+The manifest governs the first and the variables used by the third/fourth. It does
+not move guaranteed capability content back into templates.
 
-When prompt context sources conflict, the default precedence is:
+## Variable Taxonomy and Security Classification
 
-1. **Current author instruction** — the user's explicit instruction for this run.
-2. **Explicit project writing profile / manual override** — durable project-level
-   style, tone, language, and rules intentionally set by the author.
-3. **Current scene / storyboard / timeline plan** — the active plan for what is
-   supposed to happen now.
-4. **Curated KB** — accepted facts about characters, locations, factions,
-   relationships, and world state.
-5. **Learned memory / mem0 preferences** — inferred preferences and avoidance
-   patterns from past interactions.
-6. **Generated suggestions / inferred extraction** — unaccepted suggestions,
-   extraction candidates, analysis outputs, and model-inferred possibilities.
+### Provenance Classes
 
-**Rationale:** Current explicit author intent must win because the author owns the
-work. Manual profile overrides outrank plans because they are global authorial
-constraints. Current storyboard/timeline outranks curated KB for scene execution
-because plans can intentionally move the story forward, but contradictions with
-curated KB must be surfaced. Curated KB outranks learned memory because accepted
-facts are stronger than inferred preferences. Generated suggestions are lowest
-until the user accepts/curates them.
+| Provenance | Examples | Default precedence | Security requirement |
+|------------|----------|--------------------|----------------------|
+| `current_author_instruction` | `author_instructions`, selected text, current chapter text | 1 | XML required |
+| `project_writing_profile` | `writing_language`, `genre`, `audience`, `pov`, `tense`, `tone`, `style_profile` | 2 | Label required; XML required when free-text |
+| `scene_story_plan` | storyboard/timeline/current scene data, `timeline_position`, `story_structure` | 3 | Label required; XML required when user-authored text |
+| `curated_kb` | accepted KB characters/locations/factions/relationships/world context | 4 | XML section wrapper required because KB text is author-authored but curated |
+| `learned_memory` | `user_preferences`, `avoidance_patterns`, learned style constraints | 5 | Label required; XML/mixed-content wrapper when raw preference text is injected |
+| `generated_suggestion` | `kb_suggested`, extraction candidates, candidate pairs | 6 | Must be labelled unaccepted/lower-priority |
+| `system_generated` | counts, language codes, output format switches | n/a | No XML by default |
+| `feature_dynamic` | per-feature computed values such as `variant_count`, `explanation_language` | feature-specific | Classified in manifest/registry |
 
-Conflict handling:
+### Registry Requirements
 
-- Do not silently resolve high-impact conflicts between items 1–4.
-- If author instruction conflicts with project profile, follow the current
-  instruction and surface the conflict when the output can be materially affected.
-- If storyboard/timeline conflicts with curated KB, surface the conflict or emit a
-  typed consistency issue unless the feature is explicitly a brainstorming mode.
-- If learned memory conflicts with any explicit/manual source, ignore memory for
-  that run and optionally report that a learned preference was overridden.
-- Generated suggestions/extractions must be labeled as unaccepted candidates until
-  a service persists or accepts them.
+Implementation may keep the current three top-level registries
+(`USER_CONTENT_VARS`, `SYSTEM_VARS`, `FEATURE_DYNAMIC_VARS`) only if the manifest
+adds the missing provenance/security dimension. A variable is valid only when it is:
 
-### 4. Process Prevention
+1. present in the registry/taxonomy,
+2. assigned exactly one provenance class in the manifest or registry metadata,
+3. assigned a security class (`xml_required`, `label_required`, `generated_label`,
+   or `system_only`), and
+4. consumed by templates according to that security class.
 
-#### ADR CI Impact Checklist
+Any variable that can carry user-authored prose, KB content, profile prose, or
+memory-derived prose must be wrapped in an explicit XML section or rejected by
+strict preflight. Generated suggestions must be visibly labelled as unaccepted and
+lower-priority.
 
-Every ADR or ADR update that changes runtime architecture must include a CI impact
-section:
+## Fallback Policy
 
-- [ ] Which checkers must change?
-- [ ] Which baselines must shrink, remain, or be invalidated?
-- [ ] Which docs/context summaries must be updated to avoid stale guidance?
-- [ ] Which tests prove the new architectural guarantee?
-- [ ] Which existing exceptions are removed or revalidated?
+Production prompt fallback policy:
 
-#### Migration Completion / Legacy Cleanup Checklist
+- Routeable manifest entries require a bundled EN template. Missing target = typed
+  prompt route/template error.
+- Prompt cascade may fall back from user/project DB override to bundled template.
+  It may not fall back from missing bundled template to inline production prompt
+  bodies.
+- Broad `except Exception` prompt fallback behavior is forbidden.
+- Test-only fallback bodies are allowed only if they are registered, unreachable
+  from production dependency injection, and covered by tests proving production
+  cannot call them.
+- Non-routeable intents must raise a typed route-not-configured error when used
+  through `PromptComposer` without an approved context mode.
 
-Any migration is incomplete until:
+## Context Producer/Consumer Matrix
 
-- [ ] Old production paths are removed or unreachable.
-- [ ] Stale comments/docstrings/examples describing old behavior are removed.
-- [ ] Adoption/exception registries no longer list migrated production fallbacks.
-- [ ] Regression tests fail if the legacy path is reintroduced.
-- [ ] Documentation reflects the new source of truth.
+| Context variable / group | Producer | Required consumers in this cycle | Security/precedence note |
+|--------------------------|----------|----------------------------------|--------------------------|
+| `world_context` | KB/context assembly from curated KB/world state | `packages/core/narrare_core/prompts/_bundled/kb/en/extract/system.md`; `.../kb/en/worldbuilding/phase2/system.md` | Curated KB; XML section wrapper required; conflicts surfaced, not silently resolved |
+| `kb_suggested` | `WritingContextAssembler` Tier 4 suggested entities | Safe writing templates: `writing/en/new_chapter`, `writing/en/extend_chapter`, `writing/en/co_author`, and `writing/en/inline_suggest` if kept lightweight | Generated suggestion; label as optional/lower-priority; never force into prose |
+| `writing_language` / `language` / `explanation_language` | project/user settings, request context, feature deps | All user-facing generation and explanation templates referenced by manifest | Output-language control; required for EN-only feature prompts |
+| `style_profile` | Existing `PromptContext` field; future Project Writing Profile | Writing templates where style continuity matters; analysis/chat/planning only after SET-006 | Free-text profile prose requires label/XML; strategic durable producer deferred |
+| `genre`, `tone`, `story_structure`, `timeline_position` | Existing request/context assembly; future Project Writing Profile / planning features | Writing/planning templates that already route through PromptComposer | Scene/story plan outranks curated KB only for current-scene execution; conflicts surfaced |
+| `user_preferences`, `avoidance_patterns` | mem0/preference provider | All context-aware prompts per prompt standards | Learned memory is lower than explicit/profile/KB; label or XML/mixed-content wrapper |
+| `candidate_pairs`, `entity_events`, extraction candidates | Feature services/assemblers | KB worldbuilding/extraction prompts | Generated suggestions; must remain candidate-labelled until accepted |
 
-#### AI Content Review Gate Integration
+### P1 Template Requirements
 
-The AI Content Review Gate must be part of Stage 2.5 and Stage 4 for every AI
-feature:
+- Add `world_context` sections to KB extraction and worldbuilding phase 2.
+- Add `kb_suggested` only where it improves quality without harming latency or
+  task focus. Inline Suggest must use a concise labelled section; Rewrite Selection
+  may omit `kb_suggested` unless the manifest marks it optional for a specific mode.
+- Improve Inline Suggest labels for preferences, avoidance patterns, and suggested
+  context.
+- Add consistency false-positive control wording. If this changes output schema
+  (for example adding `classification`), update backend schemas, frontend types,
+  and contract tests in the same implementation slice.
 
-- Stage 2.5: Architecture confirms PromptComposer routing, variable provenance,
-  context precedence, ADR-026 capability inheritance, and output-language policy.
-- Stage 4: Platform validates the machine checks and baselines.
-- Stage 5: Docs verifies no derived guide weakens the rule.
+## Project Writing Profile Handling
+
+Project Writing Profile is **architecture-deferred**, not partially implemented in
+this cycle.
+
+Follow-up feature spec to create before code: `docs/features/settings/SET-006-project-writing-profile.md`.
+
+Contract outline for the follow-up:
+
+- Fields: `writing_language`, `genre`, `audience`, `pov`, `tense`, `tone`,
+  `style_profile`, `cultural_context`, `avoidance_patterns`, optional
+  `custom_style_rules`.
+- Producer: project settings/profile service, not ad-hoc request dictionaries.
+- Consumers: writing, analysis, chat, planning, KB extraction/worldbuilding where
+  output language/style matters.
+- Precedence: current author instruction > Project Writing Profile/manual override
+  > current scene/storyboard/timeline > curated KB > learned memory > generated
+  suggestions.
+- Required architecture artifacts: feature spec, API/backend contract, frontend
+  settings UX contract, prompt manifest updates, tests.
+
+CR-01 implementation may register existing `PromptContext` fields as profile-like
+sources, but must not add hidden profile persistence or UI without SET-006.
+
+## Multi-step Strategy Handling
+
+Multi-step workflows are **architecture-deferred** to avoid half-implementation.
+
+Follow-up specs required before code:
+
+- `CONS-003 Multi-step Consistency Analysis`: extract facts/events first, compare
+  second, return typed issue classifications and evidence.
+- `KB-011 Long-form Extraction Strategy`: chunk/evidence extraction with confidence
+  and merge/dedup stages.
+- `WRITE-013 Major Rewrite Workflow`: analyze selected text and rewrite goals first,
+  then produce final variants with style/voice continuity.
+
+Current CR-01 implementation may improve single-step prompts and manifest labels.
+It must not introduce partial orchestration, hidden background jobs, or unreviewed
+multi-agent chains.
+
+## CI / Checker / Test Plan
+
+### Blocker Gates
+
+| Gate | Owner | Blocking condition |
+|------|-------|--------------------|
+| Prompt Surface Manifest | Platform | Missing manifest entry for any production `LLMIntent`; routeable target missing; route table drift |
+| Intent-to-template completeness | Platform/Core | Routeable manifest route cannot resolve bundled EN template |
+| Variable taxonomy | Platform/Core | New template variable not registered/classified; duplicate/conflicting provenance |
+| XML/security preflight | Platform/Core | `xml_required` variable appears outside explicit XML wrapper; generated suggestions not labelled |
+| Fallback prohibition | Platform/Backend/Core | Production inline fallback body for routeable manifest target; broad prompt fallback catch |
+| Strict prompt preflight | Core/Platform | Required manifest variables absent from `PromptContext`/extra for production path tests |
+| Contract-change parity | Backend/Frontend/Platform | Consistency/extraction output schema changes without matching API/TS/tests |
+| Regression tests | Core/Platform | No tests for manifest conformance, variable security, and no-fallback behavior |
+
+### Ratcheted Warnings
+
+| Warning | Ratchet rule |
+|---------|--------------|
+| Optional context variable missing (`kb_suggested`, `style_profile`, profile-like fields) | Baseline may not grow; touched route must either adopt or explicitly justify omission in manifest |
+| P2 evidence/confidence wording without schema support | Warning until a follow-up schema-contract spec is approved; no hidden schema drift |
+| Cultural/output-language specificity | Warning for prompts that are not user-facing; blocker for user-facing EN-only feature prompts without output-language variable |
+| Legacy docs wording | Warning only if not normative; blocker if derived docs contradict ADR-026/ADR-037/CONSTRAINTS |
+
+### Test Surfaces
+
+- `tests/unit/core/prompts/test_composer.py`: routeability and typed route errors.
+- `tests/unit/core/prompts/test_variable_engine.py`: strict preflight and variable
+  classification interactions.
+- `tests/unit/core/prompts/test_prompt_surface_manifest.py` (new): manifest schema,
+  route/template/variable conformance.
+- `tests/unit/architecture/test_prompt_surface_checker.py` (new or equivalent):
+  checker blocker vs warning behavior.
+- `tests/unit/api/consistency/test_checker_service.py`: no inline fallback and schema
+  parity if consistency output changes.
+- `tests/unit/api/kb/test_extraction_service.py`: evidence/confidence only if typed
+  output contract supports it.
 
 ## Module Boundaries and Required Implementation Surfaces
 
-### Core
+### Core Handoff
 
-- `packages/core/narrare_core/prompts/composer.py`
-  - Routeability contract for `_INTENT_TO_CATEGORY` + `_INTENT_TO_MODE`.
-- `packages/core/narrare_core/prompts/variable_engine.py`
-  - Variable provenance registries.
-- `packages/core/narrare_core/agents/base.py`
-  - `NarrareAgent` capability inheritance remains the only production base path.
-- `packages/core/narrare_core/prompts/_bundled/**`
-  - Bundled EN targets or explicit non-routeable rationale.
+Likely files affected:
 
-### Backend
+- `packages/core/narrare_core/prompts/routes.py` — align routeable/non-routeable
+  decisions with manifest.
+- `packages/core/narrare_core/prompts/composer.py` — strict preflight behavior for
+  manifest-required variables if implemented in Core.
+- `packages/core/narrare_core/prompts/context.py` — expose existing fields cleanly;
+  no hidden Project Writing Profile persistence.
+- `packages/core/narrare_core/prompts/variable_registry.py` — expand taxonomy or add
+  provenance/security metadata consumed by Platform.
+- `packages/core/narrare_core/prompts/variable_engine.py` — preserve template-level
+  XML model; strict checks must not auto-wrap silently.
+- Bundled templates:
+  - `packages/core/narrare_core/prompts/_bundled/kb/en/extract/system.md`
+  - `packages/core/narrare_core/prompts/_bundled/kb/en/worldbuilding/phase2/system.md`
+  - `packages/core/narrare_core/prompts/_bundled/writing/en/new_chapter/system.md`
+  - `packages/core/narrare_core/prompts/_bundled/writing/en/extend_chapter/system.md`
+  - `packages/core/narrare_core/prompts/_bundled/writing/en/co_author/system.md`
+  - `packages/core/narrare_core/prompts/_bundled/writing/en/inline_suggest/system.md`
+  - `packages/core/narrare_core/prompts/_bundled/analysis/en/consistency/system.md`
+- `packages/core/narrare_core/writing/context_assembler.py` and
+  `packages/core/narrare_core/writing/models.py` only if existing `kb_suggested` /
+  profile fields need pass-through verification.
 
-- `apps/api/narrare/consistency/**`
-  - Confirm no production inline prompt fallback body remains; remove stale comments.
-- `apps/api/narrare/kb/**extraction*`
-  - Confirm no production inline prompt fallback body remains; remove stale comments.
-- Backend services must call agents/composer through DI and typed errors, not broad
-  prompt fallback catches.
+Core Definition of Done:
 
-### Platform
+- Route table and manifest agree.
+- Prompt variables used by touched templates are classified with provenance and
+  security requirements.
+- Touched templates include required XML/labels and output-language variables.
+- No automatic XML wrapping workaround is introduced.
+- Tests cover route errors, variable classification, and strict preflight behavior.
 
-- `scripts/architecture/_checkers/prompt_integrity.py`
+### Backend Handoff
+
+Backend has no required storage/router work for P0 manifest governance. Backend work
+is required only where current services still expose fallback or output-schema drift:
+
+- `apps/api/narrare/consistency/checker_service.py`
+- `apps/api/narrare/consistency/dependencies.py`
+- `apps/api/narrare/consistency/router.py` / schemas if consistency issue output
+  changes.
+- `apps/api/narrare/kb/**extraction**` service/schema files if extraction
+  evidence/confidence fields become typed output.
+
+Backend Definition of Done:
+
+- No production inline prompt fallback for routeable manifest targets.
+- Typed errors are propagated/converted intentionally; no broad silent fallback.
+- Any output schema change updates API contract and client-facing tests in the same
+  implementation slice.
+
+### Platform Handoff
+
+Likely files affected:
+
+- `scripts/architecture/prompt-surface-manifest.yaml` (new)
+- `scripts/architecture/_checkers/_check_prompt_surface.py` (new)
 - `scripts/architecture/_checkers/_check_intents.py`
 - `scripts/architecture/_checkers/_check_variables.py`
+- `scripts/architecture/_checkers/prompt_integrity.py`
 - `scripts/check_prompt_structure.py`
 - `scripts/architecture/adoption-registry.yaml`
 - `scripts/architecture/ai-gate-baseline.json`
+- `.github/workflows/ci.yml` only if a new checker command must be wired into CI.
 
-### Docs
+Platform Definition of Done:
+
+- Blocker vs ratcheted warning classification implemented exactly as this spec.
+- Missing routeable templates, unregistered variables, unsafe XML omissions, and
+  production fallback bodies fail CI.
+- Legacy baselines do not grow silently.
+- Checker tests cover positive and negative examples.
+
+### Docs Handoff
+
+Likely files affected:
 
 - `docs/development/prompt-standards.md`
+- `docs/development/prompt-content-standards.md`
+- `.opencode/context/narrare-dev/standards/prompt-standards.md`
+- `.opencode/context/narrare-dev/processes/feature-pipeline.md`
 - `.opencode/context/narrare-dev/processes/quality-gates.md`
-- Derived AGENTS/context docs that mention ADR-026, PromptComposer, inline
-  fallbacks, or prompt locale policy.
+- Feature docs for any prompt whose output schema/UX semantics change.
+
+Docs Definition of Done:
+
+- Derived prompt guidance references ADR-037 and does not contradict
+  CONSTRAINTS.md, ADR-026, or this spec.
+- Project Writing Profile and multi-step workflows are documented as deferred until
+  their own specs exist.
+- Prompt review checklist includes manifest routeability, variable provenance,
+  XML/security, output-language, and fallback checks.
 
 ## RULE-XX Compliance Matrix
 
 | Rule | Status | Evidence |
 |------|--------|----------|
-| RULE-01b | ✅ | Production LLM paths must use `NarrareAgent`; regression coverage prevents bare `Agent` bypass except approved exceptions. |
-| RULE-02/02a | ✅ | Prompt content remains separated: Capabilities for guaranteed content, PromptComposer for customizable templates, runtime data via context. |
-| RULE-03 | ✅ | This spec is the contract before implementation; no Core/Backend/Platform changes start without it. |
-| RULE-04 | ✅ | Checkers and registries have separate responsibilities; no line-squeezing or monolithic checker expansion is required. |
-| RULE-05 | ✅ | Module boundaries are defined by layer above. |
-| RULE-06 | ✅ | Route checks, variable checks, adoption registry, and docs governance remain separate responsibilities. |
-| RULE-07 | ✅ | Core remains independent of apps/api and docs; platform scripts inspect but are not imported by core runtime. |
-| RULE-09 | ✅ | Public checker/helper additions require typed signatures. |
-| RULE-10 | ✅ | Regression tests are required for capability inheritance, routeability, variable classification, and fallback prohibition. |
-| RULE-11 | ✅ | Missing prompt targets must fail loudly with typed errors; broad fallback catches are forbidden. |
-| RULE-12 | ✅ | No client-specific business logic; governance applies to service-layer AI paths. |
-| RULE-13 | ✅ | No streaming interface changes; AI Content Review Gate still enforces SSE where applicable. |
-| RULE-20 | ✅ | No half-implementation: migration completion requires code, registry, tests, and docs closure. |
+| RULE-01b | ✅ | No LLM call path changes; agents/model routing remain governed by existing ADRs. |
+| RULE-02/02a | ✅ | Manifest governs customizable feature templates and runtime data; ADR-026 capabilities remain guaranteed content. |
+| RULE-03 | ✅ | ADR-037 and this spec define the cross-module contract before implementation. |
+| RULE-04 | ✅ | Manifest, route logic, variable registry, and checkers remain separate responsibilities. |
+| RULE-05 | ✅ | Core prompt ownership and Platform checker ownership are explicit. |
+| RULE-06 | ✅ | No service/router/checker receives mixed responsibilities in the handoff. |
+| RULE-07 | ✅ | Core does not import `apps/` or `scripts/`; Platform inspects Core. |
+| RULE-08 | ✅ | No new external integration or dependency is introduced. |
+| RULE-09 | ✅ | New public checker/helper APIs require full type annotations. |
+| RULE-10 | ✅ | Unit and checker tests are required before implementation is done. |
+| RULE-11 | ✅ | Missing routeable templates fail loudly; silent fallback is forbidden. |
+| RULE-12 | ✅ | Service layer remains the public API; no client-specific logic is added. |
+| RULE-13 | ✅ | No streaming interface changes; SSE rules remain unaffected. |
+| RULE-14 | ✅ | No DB/model changes in current scope; Project Writing Profile storage is deferred. |
+| RULE-15 | ✅ | No frontend route middleware work. |
+| RULE-16 | ✅ | UI i18n unaffected; prompt EN-only policy remains ADR-026-governed. |
+| RULE-17 | ✅ | Any output schema change must update API/frontend contracts in the same slice. |
+| RULE-18 | ✅ | No hardcoded runtime config is introduced. |
+| RULE-19 | ✅ | No DB session dependency changes in current scope. |
+| RULE-20 | ✅ | Strategic items are explicitly deferred; no partial Project Writing Profile or multi-step workflow. |
 | RULE-21 | ✅ | Material deviations from this spec require architecture re-review. |
-| RULE-22 | ✅ | Cross-feature precedence and variable provenance are explicit semantic-review inputs. |
+| RULE-22 | ✅ | Variable provenance, context precedence, injection defense, routeability, and CI impact are explicit. |
 
-## Definition of Done
+## Architecture Validation Checklist
 
-### Core Gate
-
-- [ ] Every routeable `PromptComposer` mapping has a bundled EN target or is
-      removed/remapped/non-routeable with rationale.
-- [ ] `NarrareMeta` and `NarrareUniversalRules` are validated separately.
-- [ ] Variable registries classify all existing template variables.
-- [ ] Regression tests prove all production agents inherit both ADR-026 capabilities.
-
-### Backend Gate
-
-- [ ] No production inline system/task prompt fallback body remains when a bundled
-      target exists.
-- [ ] Test-only fallback, if any, is unreachable from production DI and explicitly
-      registered.
-- [ ] Broad prompt fallback catches are replaced by typed error handling.
-
-### Platform Gate
-
-- [ ] New unregistered prompt variables fail CI.
-- [ ] Missing routeable bundled EN targets fail CI.
-- [ ] New production inline fallbacks fail CI.
-- [ ] Legacy baselines shrink or stay explicitly approved; no silent growth.
-
-### Docs Gate
-
-- [x] Prompt standards document variable provenance and context precedence. — Added to `docs/development/prompt-standards.md` §3 and `.opencode/context/narrare-dev/standards/prompt-standards.md`
-- [x] AI Content Review Gate includes ADR-026 hardening checks. — Process Prevention Checklists added to `quality-gates.md` (Gates 9–10)
-- [x] Stale ADR-019/monolithic-meta references are removed or marked historical. — Audit completed; no derived guide presents `with_meta()` or monolithic meta as current practice.
+- [x] Root cause documented with 2x Why.
+- [x] Minimum two alternatives evaluated.
+- [x] ADR requirement evaluated; ADR-037 created because this is a new cross-module
+      contract.
+- [x] Prompt Surface Contract design specified.
+- [x] Variable taxonomy and security classification specified.
+- [x] Fallback policy specified.
+- [x] Context Producer/Consumer Matrix specified.
+- [x] CI/checker/test plan classifies blockers vs ratcheted warnings.
+- [x] Layer handoff includes exact Core/Backend/Platform/Docs surfaces and DoD.
+- [x] Project Writing Profile and multi-step strategy explicitly deferred to
+      follow-up specs to avoid half-implementation.
+- [x] Sustainability check passed.
 
 ## Handoff Order
 
-1. **Core** — routeability, variable classification, capability regression tests.
-2. **Backend** — production fallback cleanup and typed error behavior.
-3. **Platform** — enforce routeability, variable, fallback, and baseline gates.
-4. **Docs** — harmonize derived guidance and feature/process docs after code
-   evidence is available.
+1. **Core** — manifest-conformant route/template/variable/context changes and prompt
+   tests.
+2. **Backend** — remove/verify fallback absence and apply schema-contract changes
+   only if prompt output changes require them.
+3. **Platform** — implement manifest/checker gates and CI/baseline behavior.
+4. **Docs** — update derived prompt standards and mark strategic follow-ups as
+   deferred until their specs are created.
 
 ## Status & History
 
-- 2026-06-05 — Spec created for approved CR-02 system-prompt/coherence
-  remediation before implementation.
-- 2026-06-05 — Implementation complete: Core routeability (routes.py), variable
-  registry (variable_registry.py), Backend fallback removal (consistency + KB
-  extraction), Platform checker updates, Docs audit completed.
+- 2026-06-05 — CR-02 prompt governance remediation implemented.
+- 2026-06-05 — CR-01 prompt-quality architecture specified; ADR-037 added for the
+  Prompt Surface Contract manifest; feature status set to `in-progress` until
+  Core/Backend/Platform/Docs implementation and validation complete.

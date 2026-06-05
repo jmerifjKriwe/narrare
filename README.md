@@ -25,7 +25,7 @@
 git clone https://github.com/your-org/narrare.git
 cd narrare
 
-# First-time setup (installs deps, creates .env, runs migrations, seeds dev user)
+# First-time setup (installs dev + NLP deps/models, creates .env, runs migrations, seeds dev user)
 just dev-setup
 
 # Edit .env and add your AI provider API key, then:

@@ -1,10 +1,10 @@
-<!-- Context: narrare-dev/standards/prompt-standards | Priority: high | Version: 1.0 | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/standards/prompt-standards | Priority: high | Version: 1.1 | Updated: 2026-06-05 -->
 
 # Prompt Engineering Standard — Quick Reference
 
 > **Full document**: `docs/development/prompt-standards.md`
-> **Enforcement**: `check_architecture.py` + Pydantic Evals (ADR-032)
-> **Related**: RULE-02, RULE-02a, ADR-002, ADR-019, ADR-026
+> **Enforcement**: `check_architecture.py` + Pydantic Evals (ADR-032) + Prompt Surface Contract manifest checker (ADR-037)
+> **Related**: RULE-02, RULE-02a, ADR-002, ADR-019, ADR-026, ADR-037, INFRA-012
 
 ---
 
@@ -81,13 +81,26 @@ not silently resolved.
 
 ---
 
+## Variable Provenance (ADR-037 / INFRA-012)
+
+Every template variable must have a provenance class and security classification
+in the manifest or registry. Seven provenance classes (INFRA-012):
+`current_author_instruction`, `project_writing_profile`, `scene_story_plan`,
+`curated_kb`, `learned_memory`, `generated_suggestion`, `system_generated`,
+`feature_dynamic`. A variable is valid only when classified, security-tagged,
+and consumed according to its security class.
+
+---
+
 ## Review Checklist (for prompt PRs)
 
 - [ ] All 9 skeleton sections present
 - [ ] Output format = JSON with example object
-- [ ] Do NOT ≥4 items, Quality Rules ≥3 items
+- [ ] Do NOT >=4 items, Quality Rules >=3 items
 - [ ] `{{user_preferences}}` + `{{avoidance_patterns}}` included (where applicable)
 - [ ] User content in XML tags
-- [ ] All variables registered/classified; no new unregistered variables
+- [ ] All variables registered/classified with provenance and security; no new unregistered variables
 - [ ] Declared localized families: all locale variants updated, same version. Feature prompts: EN-only (no locale variants)
 - [ ] Version bumped appropriately
+- [ ] Manifest conformance (ADR-037): intent registered, routeable status correct, no production inline fallback
+- [ ] Output-language variable present for user-facing generation prompts

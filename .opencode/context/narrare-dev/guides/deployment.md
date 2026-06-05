@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/guides/deployment | Priority: high | Source: docs/development/deployment-guide.md | Updated: 2026-05-30 -->
+<!-- Context: narrare-dev/guides/deployment | Priority: high | Source: docs/development/deployment-guide.md | Updated: 2026-06-05 -->
 
 # Deployment & Dev Environment
 
@@ -9,7 +9,7 @@
 **Prerequisites:** Docker + Docker Compose, Python 3.14+, Node.js 24+, just (command runner)
 
 ```bash
-just dev-setup    # First-time: install deps, create .env, run migrations
+just dev-setup    # First-time: install dev + NLP deps/models, create .env, run migrations
 just dev-up       # Start PostgreSQL (pgvector:pg17) + Redis (8-alpine)
 just dev          # Start API (port 8000) + frontend (port 3000) + workers
 ```

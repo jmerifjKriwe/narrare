@@ -90,11 +90,11 @@ _psql-shell db *args:
 # Setup
 # ---------------------------------------------------------------------------
 
-# First-time setup: install all dependencies, create .env, run migrations
+# First-time setup: install all dev + NLP dependencies, create .env, run migrations
 dev-setup:
     @echo "🚀 Setting up Narrare..."
     @if [ ! -f .env ]; then cp .env.example .env && echo "📋 Created .env — add your API keys"; fi
-    uv sync --all-packages --group dev
+    uv sync --frozen --all-packages --group dev --extra nlp
     just install-nlp-models
     pre-commit install --install-hooks
     pnpm install
@@ -122,7 +122,13 @@ _nlp-model-url model version:
 install-nlp-models:
     #!/usr/bin/env bash
     set -euo pipefail
-    SPACY_VER=$(uv run python -c "import spacy; v=spacy.__version__; print(f'{v.rsplit(\".\",1)[0]}.0')")
+    if ! uv run python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('spacy') else 1)" >/dev/null; then
+        echo "❌ spaCy is not installed. Run 'uv sync --frozen --all-packages --group dev --extra nlp' before 'just install-nlp-models'." >&2
+        exit 1
+    fi
+    if ! SPACY_VER=$(uv run python -c "import spacy; print(spacy.__version__.rsplit('.', 1)[0] + '.0')"); then
+        exit 1
+    fi
     echo "Installing spaCy models for version ${SPACY_VER}..."
     BASE="https://github.com/explosion/spacy-models/releases/download"
     uv pip install \
@@ -527,7 +533,7 @@ deps:
 
 # Update all dependencies to latest compatible versions
 deps-update:
-    uv sync --upgrade --all-packages --dev
+    uv sync --upgrade --all-packages --group dev --extra nlp
     cd packages/web && pnpm update
     @echo "⚠️  Run 'just check', 'just test', and 'just check-frontend' after updating dependencies"
 

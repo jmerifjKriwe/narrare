@@ -1,6 +1,9 @@
 """Unit tests for ExtractionService — core extraction flow.
 
 Happy path, chapter-not-found, empty-content.
+
+CR-01 governance tests (prompt composition, typed error propagation)
+live in test_extraction_service_governance.py.
 """
 
 from __future__ import annotations
@@ -163,51 +166,6 @@ async def test_extract_from_chapter_raises_when_chapter_not_found(
             chapter_id=uuid4(),
             user_id=uuid4(),
         )
-
-
-# ---------------------------------------------------------------------------
-# PromptComposer resolution
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_build_system_prompt_uses_composer(
-    mock_registry: FakeModelRegistry,
-    config: ResolvedModelConfig,
-    mock_chapter_repo: FakeChapterRepo,
-    mock_kb_repo: FakeKBRepo,
-    mock_composer: FakeComposer,
-) -> None:
-    """_build_system_prompt returns PromptComposer output, not fallback."""
-    mock_composer.build = AsyncMock(
-        return_value=MagicMock(spec=object, system="Bundled extraction prompt"),
-    )
-    service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
-
-    result = await service._build_system_prompt()
-
-    assert result == "Bundled extraction prompt"
-    mock_composer.build.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_build_system_prompt_correct_intent(
-    mock_registry: FakeModelRegistry,
-    config: ResolvedModelConfig,
-    mock_chapter_repo: FakeChapterRepo,
-    mock_kb_repo: FakeKBRepo,
-    mock_composer: FakeComposer,
-) -> None:
-    """_build_system_prompt calls composer.build with KB_EXTRACT intent."""
-    mock_composer.build = AsyncMock(
-        return_value=MagicMock(spec=object, system="prompt"),
-    )
-    service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
-
-    await service._build_system_prompt()
-
-    intent_arg = mock_composer.build.call_args[0][0]
-    assert intent_arg.name == "KB_EXTRACT"
 
 
 # ---------------------------------------------------------------------------

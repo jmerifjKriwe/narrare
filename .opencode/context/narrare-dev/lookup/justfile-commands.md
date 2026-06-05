@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/justfile-commands | Priority: critical | Source: docs/development/deployment-guide.md | Updated: 2026-06-03 -->
+<!-- Context: narrare-dev/lookup/justfile-commands | Priority: critical | Source: docs/development/deployment-guide.md | Updated: 2026-06-05 -->
 
 # Justfile Command Catalog
 
@@ -8,7 +8,7 @@
 
 | Command | Description |
 |---------|-------------|
-| `just dev-setup` | First-time setup: install deps, create .env, run migrations |
+| `just dev-setup` | First-time setup: install dev + NLP deps/models, create .env, run migrations |
 | `just generate-secret` | Generate a secure `SECRET_KEY` |
 
 ## Development
