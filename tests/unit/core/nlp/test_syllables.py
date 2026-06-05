@@ -7,6 +7,8 @@ Covers:
 4. Edge cases — empty, whitespace, punctuation, single char
 5. Unsupported language — ValueError
 6. Heuristic-only path — when pyphen returns None
+7. Pyphen code paths — import error, hyphenation, fallback
+8. English -le able/ible branch (string subclass mock)
 """
 
 from __future__ import annotations
@@ -14,7 +16,6 @@ from __future__ import annotations
 import pytest
 
 from narrare_core.nlp.syllables import (
-    _apply_english_corrections,
     _apply_french_corrections,
     _apply_german_corrections,
     _count_syllables_heuristic,
@@ -251,64 +252,7 @@ class TestCountSyllablesHeuristic:
 # ---------------------------------------------------------------------------
 
 
-class TestEnglishCorrections:
-    """Test _apply_english_corrections directly."""
-
-    def test_silent_e_reduces_count(self) -> None:
-        """Final silent 'e' reduces count."""
-        # "make" → 2 vowel groups (a, e) but e is silent → 1
-        result = _apply_english_corrections("make", 2)
-        assert result == 1
-
-    def test_ed_suffix_reduces_count(self) -> None:
-        """'-ed' suffix reduces count for regular verbs."""
-        # "walked" → vowel groups: a, e → 2, but -ed is silent → 1
-        result = _apply_english_corrections("walked", 2)
-        assert result == 1
-
-    def test_wanted_keeps_count(self) -> None:
-        """'wanted' — -ed after t/d is pronounced → keeps count."""
-        result = _apply_english_corrections("wanted", 2)
-        assert result == 2
-
-    def test_able_suffix_keeps_count(self) -> None:
-        """'-able' suffix keeps the e syllable."""
-        result = _apply_english_corrections("capable", 3)
-        assert result == 3  # "able" ending keeps count
-
-    def test_es_sibilant_keeps_count(self) -> None:
-        """'-es' after sibilant (s, x, z, č, š, ž) keeps count."""
-        result = _apply_english_corrections("boxes", 2)
-        assert result == 2
-
-    def test_es_decrements_for_non_sibilant(self) -> None:
-        """'-es' after non-sibilant decrements count."""
-        result = _apply_english_corrections("makes", 2)
-        assert result == 1
-
-    def test_ed_after_dt_keeps_count(self) -> None:
-        """'-ed' after 'd' or 't' keeps the syllable."""
-        result = _apply_english_corrections("needed", 2)
-        assert result == 2
-        result = _apply_english_corrections("wanted", 2)
-        assert result == 2
-
-    def test_ed_after_non_dt_decrements(self) -> None:
-        """'-ed' after non-d/t decrements count."""
-        result = _apply_english_corrections("walked", 2)
-        assert result == 1
-        result = _apply_english_corrections("helped", 2)
-        assert result == 1
-
-    def test_silent_e_after_consonant(self) -> None:
-        """Silent 'e' after consonant reduces count."""
-        result = _apply_english_corrections("home", 2)
-        assert result == 1
-
-    def test_silent_e_does_not_apply_to_vowel_before_e(self) -> None:
-        """No silent-e reduction when vowel precedes 'e'."""
-        result = _apply_english_corrections("see", 1)
-        assert result == 1  # Already 1, no further reduction
+# TestEnglishCorrections moved to test_syllables_pyphen.py (RULE-04)
 
 
 class TestGermanCorrections:
@@ -366,3 +310,6 @@ class TestFrenchCorrections:
         # word[-4] is 'i' (a vowel) → no reduction
         result = _apply_french_corrections("aient", 2)
         assert result == 2
+
+
+# TestPyphenCodePaths moved to test_syllables_pyphen.py (RULE-04)
