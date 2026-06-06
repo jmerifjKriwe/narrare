@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionResponse
     from narrare.kb.service import KBService
     from narrare_core.agents.extraction_types import ExtractionOutput
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
@@ -48,6 +49,7 @@ class ExtractionService:
         composer: PromptComposer for bundled system prompts (RULE-02).
         kb_service: KBService for the apply step (optional, needed for apply).
         rel_repo: RelationshipRepository for the apply step (optional).
+        invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
     def __init__(
@@ -59,6 +61,7 @@ class ExtractionService:
         composer: PromptComposer,
         kb_service: KBService | None = None,
         rel_repo: RelationshipRepository | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._registry = registry
         self._config = config
@@ -67,6 +70,7 @@ class ExtractionService:
         self._composer = composer
         self._kb_service = kb_service
         self._rel_repo = rel_repo
+        self._invocation_pipeline = invocation_pipeline
 
     async def extract_from_chapter(
         self,
@@ -107,6 +111,18 @@ class ExtractionService:
 
         # 4. Get model from registry.
         model = await self._registry.get_model(self._config)
+
+        # 4a. Record invocation evidence (ADR-040)
+        from narrare._app.invocation_context import safe_record_evidence
+        from narrare_core.llm.intents import LLMIntent
+
+        await safe_record_evidence(
+            self._invocation_pipeline,
+            feature_id="kb_extract",
+            intent=LLMIntent.KB_EXTRACT,
+            user_id=user_id,
+            project_id=novel_id,
+        )
 
         # 5. Run ExtractionAgent over the chapter text.
         agent = ExtractionAgent(model=model, system_prompt=system_prompt)

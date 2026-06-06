@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     )
 
     from narrare_core.agents.kb_assist_types import KBAssistOutput
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.context.contracts import ProactiveContextProtocol
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
@@ -71,6 +72,7 @@ class KBAssistService:
         proactive_context: ProactiveContextProtocol,
         prompt_composer: PromptComposer,
         kb_agent: object | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
@@ -79,6 +81,7 @@ class KBAssistService:
         self._proactive_context = proactive_context
         self._prompt_composer = prompt_composer
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
+        self._invocation_pipeline = invocation_pipeline
 
     async def _build_deps(
         self,
@@ -161,7 +164,20 @@ class KBAssistService:
         deps: KBAssistDeps,
         system_prompt: str,
     ) -> KBAssistOutput:
-        """Run KBAssistAgent with composed system prompt and user prompt."""
+        """Run KBAssistAgent with composed system prompt and user prompt.
+
+        Records invocation evidence when the pipeline is wired (ADR-040).
+        """
+        # Record invocation evidence before agent execution (ADR-040)
+        from narrare._app.invocation_context import safe_record_evidence
+        from narrare_core.llm.intents import LLMIntent
+
+        await safe_record_evidence(
+            self._invocation_pipeline,
+            feature_id="kb_assist",
+            intent=LLMIntent.KB_CREATE,
+        )
+
         model = await self._get_model()
         agent = KBAssistAgent(
             model=model,

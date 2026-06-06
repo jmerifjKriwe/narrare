@@ -78,6 +78,9 @@ class WritingContext:
     writing_language: str = "en"  # output language (freetext)
     story_structure: str = ""  # e.g. "3-Act Structure", "Hero's Journey"
     timeline_position: str = ""  # diegetic time, e.g. "Day 5"
+    novel_synopsis: str = ""
+    style_profile: str = ""
+    logline: str = ""
 
     # Character voice profiles (extracted from KB character speech metadata)
     character_voice_profiles: str = ""
@@ -166,4 +169,7 @@ class WritingContext:
             "is_sparse_kb": str(self.is_sparse_kb).lower(),
             "story_structure": self.story_structure,
             "timeline_position": self.timeline_position,
+            "novel_synopsis": self.novel_synopsis,
+            "style_profile": self.style_profile,
+            "logline": self.logline,
         }

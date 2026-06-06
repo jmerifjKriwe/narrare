@@ -253,3 +253,40 @@ class TestKBEntityUpdatedAt:
             updated_at="2024-01-15T10:00:00Z",
         )
         assert entity.updated_at == "2024-01-15T10:00:00Z"
+
+
+# ---------------------------------------------------------------------------
+# FIND-007: WritingContext profile fields
+# ---------------------------------------------------------------------------
+
+
+class TestWritingContextProfileFields:
+    """WritingContext includes novel_synopsis, style_profile, logline (FIND-007)."""
+
+    def test_writing_context_has_profile_fields(self) -> None:
+        from narrare_core.writing.models import WritingContext
+
+        ctx = WritingContext(
+            novel_synopsis="A hero enters the forest.",
+            style_profile="Short sentences.",
+            logline="Hero saves world.",
+        )
+        assert ctx.novel_synopsis == "A hero enters the forest."
+        assert ctx.style_profile == "Short sentences."
+        assert ctx.logline == "Hero saves world."
+
+    def test_writing_context_profile_fields_in_prompt_variables(self) -> None:
+        from narrare_core.writing.models import WritingContext
+
+        ctx = WritingContext(
+            novel_synopsis="A hero enters the forest.",
+            style_profile="Short sentences.",
+            logline="Hero saves world.",
+        )
+        variables = ctx.to_prompt_variables()
+        assert "novel_synopsis" in variables
+        assert "style_profile" in variables
+        assert "logline" in variables
+        assert variables["novel_synopsis"] == "A hero enters the forest."
+        assert variables["style_profile"] == "Short sentences."
+        assert variables["logline"] == "Hero saves world."

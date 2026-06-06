@@ -74,10 +74,13 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
 
     Also injects KBService and RelationshipRepository for the apply
     extraction step (KB-007).
+
+    Includes InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.dependencies import (
         build_system_default_config,
         get_composer,
+        get_invocation_pipeline,
         get_model_registry,
     )
     from narrare.chapters.repository import ChapterRepository
@@ -102,6 +105,7 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
             embedding_hooks=None,
         ),
         rel_repo=RelationshipRepository(session),
+        invocation_pipeline=get_invocation_pipeline(),
     )
 
 
@@ -132,11 +136,13 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
     Production wiring: uses EmbeddingService for ProactiveContextService,
     ModelRegistry for LLM model, and PromptComposer for system prompts.
     For session storage, uses RedisSessionCache for persistence with TTL.
+    Includes InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         build_system_default_config,
         get_composer,
+        get_invocation_pipeline,
         get_model_registry,
     )
     from narrare.embeddings.repository import EmbeddingRepository
@@ -166,6 +172,7 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
         config=config,
         proactive_context=proactive,
         prompt_composer=composer,
+        invocation_pipeline=get_invocation_pipeline(),
     )
 
     kb_service = get_kb_service(session)
@@ -184,11 +191,13 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     for system prompts, ProactiveContextService for world context,
     and KBRepository + KBService + RelationshipRepository for data access.
     Uses Redis-backed KBImproveCache for 10min TTL on analysis results.
+    Includes InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         build_system_default_config,
         get_composer,
+        get_invocation_pipeline,
         get_model_registry,
     )
     from narrare.embeddings.repository import EmbeddingRepository
@@ -231,6 +240,7 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
         kb_repo=kb_repo,
         kb_service=kb_service,
         rel_repo=RelationshipRepository(session),
+        invocation_pipeline=get_invocation_pipeline(),
     )
 
 
@@ -241,11 +251,13 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
     for system prompts, PromptRegistry for prompt resolution, and
     KBRepository + RelationshipRepository for data access.
     Uses Redis-backed WorldbuildingCache for 10min TTL on analysis results.
+    Includes InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         build_system_default_config,
         get_composer,
+        get_invocation_pipeline,
         get_model_registry,
         get_registry,
     )
@@ -284,6 +296,7 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
         analyzer=analyzer,
         rel_repo=rel_repo,
         cache=worldbuilding_cache,
+        invocation_pipeline=get_invocation_pipeline(),
     )
 
 
@@ -311,11 +324,13 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     KBRepository + RelationshipRepository for data access.
     Reuses WorldbuildingAnalyzer for cross-entity Phase 2 consistency.
     Uses Redis-backed ConsistencyCache for 10min TTL on results.
+    Includes InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         build_system_default_config,
         get_composer,
+        get_invocation_pipeline,
         get_model_registry,
         get_registry,
     )
@@ -376,4 +391,5 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
         kb_repo=kb_repo,
         rel_repo=rel_repo,
         cache=consistency_cache,
+        invocation_pipeline=get_invocation_pipeline(),
     )

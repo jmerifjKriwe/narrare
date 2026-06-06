@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare_core.agents.pov_agent import POVDetectionAgent
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry
     from narrare_core.llm.model_config import ResolvedModelConfig
 
@@ -46,6 +47,7 @@ class POVService:
             ``POVDetectionAgent``.
         model_config: Resolved model configuration (provider, model_id,
             temperature, max_tokens).
+        invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
     def __init__(
@@ -56,12 +58,14 @@ class POVService:
         kb_repo: KBRepository,
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
         self._kb_repo = kb_repo
         self._model_registry = model_registry
         self._model_config = model_config
+        self._invocation_pipeline = invocation_pipeline
 
     # -------------------------------------------------------------------
     # Public API — matches POVServiceProtocol
@@ -138,6 +142,19 @@ class POVService:
 
         # 4. Run POVDetectionAgent
         try:
+            # 4a. Record invocation evidence (ADR-040)
+            from narrare._app.invocation_context import safe_record_evidence
+            from narrare_core.llm.intents import LLMIntent
+
+            await safe_record_evidence(
+                self._invocation_pipeline,
+                feature_id="analysis_pov",
+                intent=LLMIntent.ANALYSE,
+                user_id=user_id,
+                project_id=novel_id,
+                language=effective_language,
+            )
+
             agent = self._get_agent()
             deps = build_deps(
                 text=combined_text,

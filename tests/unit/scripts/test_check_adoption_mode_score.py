@@ -291,3 +291,105 @@ class TestModeScoreAggregation:
         assert isinstance(cat.modes, list)
         assert len(cat.modes) == 1
         assert isinstance(cat.modes[0], ModeScore)
+
+
+# ── requires_runtime_evidence gating (ADR-040 Decision 4) ───────────
+
+
+class TestRequiresRuntimeEvidenceGating:
+    """Verify requires_runtime_evidence flag gates the adopted state."""
+
+    def test_runtime_evidence_required_blocks_adopted_without_runtime(self) -> None:
+        """requires_runtime_evidence=True forces adopted=False when not runtime verified."""
+        ms = compute_mode_score(
+            mode_name="gated",
+            must_vars=["v1"],
+            should_vars=[],
+            infra={"prompt_composer": "required"},
+            runtime_reqs={"a": "required"},
+            all_vars={"v1"},
+            i18n_frac=1.0,
+            has_prompts=True,
+            fb_count=0,
+            requires_runtime_evidence=True,
+        )
+        assert ms.static_verified is True
+        assert ms.runtime_verified is False
+        assert ms.requires_runtime_evidence is True
+        assert ms.adopted is False
+
+    def test_runtime_evidence_required_allows_adopted_with_runtime(self) -> None:
+        """requires_runtime_evidence=True allows adopted when both verified."""
+        ms = compute_mode_score(
+            mode_name="both_pass",
+            must_vars=["v1"],
+            should_vars=[],
+            infra={"prompt_composer": "required"},
+            runtime_reqs={"a": "none"},
+            all_vars={"v1"},
+            i18n_frac=1.0,
+            has_prompts=True,
+            fb_count=0,
+            requires_runtime_evidence=True,
+        )
+        assert ms.static_verified is True
+        assert ms.runtime_verified is True
+        assert ms.adopted is True
+
+    def test_runtime_evidence_not_required_adopted_from_static_only(self) -> None:
+        """requires_runtime_evidence=False allows adopted from static only."""
+        ms = compute_mode_score(
+            mode_name="deferred",
+            must_vars=["v1"],
+            should_vars=[],
+            infra={"prompt_composer": "required"},
+            runtime_reqs={"a": "required"},
+            all_vars={"v1"},
+            i18n_frac=1.0,
+            has_prompts=True,
+            fb_count=0,
+            requires_runtime_evidence=False,
+        )
+        assert ms.static_verified is True
+        assert ms.runtime_verified is False
+        assert ms.requires_runtime_evidence is False
+        assert ms.adopted is True
+
+    def test_runtime_evidence_not_required_static_fail_still_unadopted(self) -> None:
+        """requires_runtime_evidence=False still requires static_verified."""
+        ms = compute_mode_score(
+            mode_name="bad_static",
+            must_vars=["v1", "v2", "v3"],
+            should_vars=[],
+            infra={},
+            runtime_reqs={"a": "required"},
+            all_vars={"v1"},
+            i18n_frac=1.0,
+            has_prompts=False,
+            fb_count=0,
+            requires_runtime_evidence=False,
+        )
+        assert ms.static_verified is False
+        assert ms.adopted is False
+
+    def test_mode_config_flag_flows_through_report(self) -> None:
+        """requires_runtime_evidence from registry config flows to ModeScore."""
+        registry = _minimal_registry_v2(
+            modes={
+                "gated": {"requires_runtime_evidence": True},
+                "deferred": {"requires_runtime_evidence": False},
+            },
+            cat_runtime={"feature_a": "required"},
+        )
+        prompts = [
+            _make_prompt("writing", "en", "gated", {"user_preferences"}),
+            _make_prompt("writing", "en", "deferred", {"user_preferences"}),
+        ]
+        report = compute_adoption_report(registry, prompts)
+        cat = report.categories[0]
+        gated = next(m for m in cat.modes if m.mode == "gated")
+        deferred = next(m for m in cat.modes if m.mode == "deferred")
+        assert gated.requires_runtime_evidence is True
+        assert gated.adopted is False
+        assert deferred.requires_runtime_evidence is False
+        assert deferred.adopted is True

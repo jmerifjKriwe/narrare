@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
     from narrare.kb.relationship_asymmetry import RelationshipAsymmetryChecker
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -60,6 +61,7 @@ class KBConsistencyService:
         kb_repo: KB entry repository for building Phase 3 deps.
         rel_repo: Relationship repository for candidate pair generation.
         cache: Redis-backed cache for consistency results (10min TTL).
+        invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
     def __init__(
@@ -70,6 +72,7 @@ class KBConsistencyService:
         kb_repo: KBRepositoryProtocol,
         rel_repo: RelationshipRepositoryProtocol,
         cache: ConsistencyCache,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._analyzer = analyzer
         self._asymmetry_checker = asymmetry_checker
@@ -77,6 +80,7 @@ class KBConsistencyService:
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
         self._cache = cache
+        self._invocation_pipeline = invocation_pipeline
 
     async def check(
         self,
@@ -109,6 +113,19 @@ class KBConsistencyService:
         if request.include_asymmetry:
             asymmetry_issues = await self._run_asymmetry(novel_id)
             all_issues.extend(asymmetry_issues)
+
+        # 2a. Record invocation evidence for LLM phases (ADR-040)
+        has_llm_phase = request.include_entry_internal or request.include_cross_entity
+        if has_llm_phase:
+            from narrare._app.invocation_context import safe_record_evidence
+            from narrare_core.llm.intents import LLMIntent
+
+            await safe_record_evidence(
+                self._invocation_pipeline,
+                feature_id="kb_consistency",
+                intent=LLMIntent.KB_CONSISTENCY,
+                project_id=novel_id,
+            )
 
         # 3. Phase 2: Entry-internal check (LLM per entry)
         if request.include_entry_internal:

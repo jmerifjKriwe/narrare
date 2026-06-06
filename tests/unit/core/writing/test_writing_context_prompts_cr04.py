@@ -78,6 +78,9 @@ class TestWritingContextPromptVariables:
             "is_sparse_kb",
             "story_structure",
             "timeline_position",
+            "novel_synopsis",
+            "style_profile",
+            "logline",
         }
         assert set(vars.keys()) == expected
 

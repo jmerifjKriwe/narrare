@@ -3,7 +3,7 @@
 Covers all mandatory test cases from P0.3b spec:
 1. Happy path — intent with known profile (BETA_READ → long_texts → 8000).
 2. Happy path — intent with known profile (NAME_GENERATE → quick → 500).
-3. Fallback — intent without profile mapping (CHAT) → default_max_tokens.
+3. Fallback — intent without profile mapping (EMBED) → default_max_tokens.
 4. Custom default_max_tokens in constructor.
 5. Provenance — source="intent_profile" when profile found.
 6. Reason strings are non-empty and descriptive.
@@ -83,20 +83,10 @@ class TestIntentOutputBudgetResolverFallback:
     """Fallback when no profile mapping exists."""
 
     @pytest.mark.asyncio
-    async def test_chat_intent_uses_default(self) -> None:
-        """CHAT has no profile mapping → default_max_tokens (4096)."""
+    async def test_embed_intent_uses_default(self) -> None:
+        """EMBED has no profile mapping → default_max_tokens (4096)."""
         resolver = IntentOutputBudgetResolverImpl()
-        ctx = _make_context(intent=LLMIntent.CHAT)
-        decision = await resolver.resolve(ctx)
-
-        assert decision.budget.max_tokens == 4096
-        assert decision.budget.profile is None
-
-    @pytest.mark.asyncio
-    async def test_write_intent_uses_default(self) -> None:
-        """WRITE has no profile mapping → default_max_tokens."""
-        resolver = IntentOutputBudgetResolverImpl()
-        ctx = _make_context(intent=LLMIntent.WRITE)
+        ctx = _make_context(intent=LLMIntent.EMBED)
         decision = await resolver.resolve(ctx)
 
         assert decision.budget.max_tokens == 4096
@@ -106,7 +96,7 @@ class TestIntentOutputBudgetResolverFallback:
     async def test_custom_default_max_tokens(self) -> None:
         """Constructor-configured default is used when no profile exists."""
         resolver = IntentOutputBudgetResolverImpl(default_max_tokens=2048)
-        ctx = _make_context(intent=LLMIntent.CHAT)
+        ctx = _make_context(intent=LLMIntent.EMBED)
         decision = await resolver.resolve(ctx)
 
         assert decision.budget.max_tokens == 2048
@@ -136,9 +126,9 @@ class TestIntentOutputBudgetResolverProvenance:
 
     @pytest.mark.asyncio
     async def test_source_default_config_when_unmapped(self) -> None:
-        """source='default_config' when intent has no profile mapping."""
+        """source='default_config' when intent has no profile mapping (EMBED)."""
         resolver = IntentOutputBudgetResolverImpl()
-        ctx = _make_context(intent=LLMIntent.CHAT)
+        ctx = _make_context(intent=LLMIntent.EMBED)
         decision = await resolver.resolve(ctx)
 
         assert decision.source == "default_config"
@@ -156,13 +146,13 @@ class TestIntentOutputBudgetResolverProvenance:
 
     @pytest.mark.asyncio
     async def test_reason_non_empty_when_unmapped(self) -> None:
-        """Reason is non-empty and descriptive when using default."""
+        """Reason is non-empty and descriptive when using default (EMBED)."""
         resolver = IntentOutputBudgetResolverImpl()
-        ctx = _make_context(intent=LLMIntent.CHAT)
+        ctx = _make_context(intent=LLMIntent.EMBED)
         decision = await resolver.resolve(ctx)
 
         assert len(decision.reason) > 0
-        assert "chat" in decision.reason
+        assert "embed" in decision.reason
         assert "default" in decision.reason.lower()
 
     @pytest.mark.asyncio
@@ -305,8 +295,8 @@ class TestIntentOutputBudgetResolverConcurrency:
 
         assert decisions[0].budget.max_tokens == 8000  # BETA_READ → long_texts
         assert decisions[1].budget.max_tokens == 500  # NAME_GENERATE → quick
-        assert decisions[2].budget.max_tokens == 4096  # CHAT → default
-        assert decisions[3].budget.max_tokens == 4096  # WRITE → default
+        assert decisions[2].budget.max_tokens == 2000  # CHAT → balanced
+        assert decisions[3].budget.max_tokens == 8000  # WRITE → long_texts
 
 
 class TestIntentOutputBudgetResolverNeverRaises:

@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.service import KBService
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -38,11 +39,13 @@ class KBImproveService:
         kb_repo: KBRepository,
         kb_service: KBService,
         rel_repo: RelationshipRepository,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._analyzer = analyzer
         self._kb_repo = kb_repo
         self._kb_service = kb_service
         self._rel_repo = rel_repo
+        self._invocation_pipeline = invocation_pipeline
 
     async def analyze(
         self,
@@ -54,7 +57,17 @@ class KBImproveService:
 
         Delegates to :class:`KBImproveAnalyzer` which handles caching,
         deps building, prompt composition, and agent execution.
+        Records invocation evidence via the pipeline (ADR-040).
         """
+        from narrare._app.invocation_context import safe_record_evidence
+        from narrare_core.llm.intents import LLMIntent
+
+        await safe_record_evidence(
+            self._invocation_pipeline,
+            feature_id="kb_improve",
+            intent=LLMIntent.KB_IMPROVE,
+            project_id=novel_id,
+        )
         return await self._analyzer.analyze(novel_id=novel_id, entry_id=entry_id)
 
     async def apply(

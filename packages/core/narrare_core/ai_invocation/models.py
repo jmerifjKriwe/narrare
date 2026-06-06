@@ -27,6 +27,7 @@ from narrare_core.ai_invocation._enums import (
     PreferenceRequirement,
     PreferenceStatus,
     ValidationStatus,
+    VoiceProfileStatus,
 )
 from narrare_core.ai_invocation.budgets import OutputBudget, OutputBudgetDecision
 
@@ -50,6 +51,7 @@ __all__ = [
     "PromptInvocationContext",
     "ValidationResult",
     "ValidationStatus",
+    "VoiceProfileStatus",
 ]
 
 
@@ -163,6 +165,7 @@ class FeatureInvocationEvidence(BaseModel):
     prompt_route: str = Field(min_length=1, description="Resolved prompt route.")
     preference_status: PreferenceStatus
     kb_suggested_status: KBSuggestedStatus
+    voice_profile_status: VoiceProfileStatus | None = None
     output_budget_profile: str | None = None
     final_prompt_validated: bool
     validation_errors: tuple[str, ...] = ()

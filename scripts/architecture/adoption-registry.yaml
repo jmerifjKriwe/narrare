@@ -66,15 +66,24 @@ category_defaults:
 features:
   writing:
     modes:
-      new_chapter: {}
-      extend_chapter: {}
-      rewrite_selection: {}
-      story_suggest: {}
-      interactive_session: {}
-      interview: {}
-      scene_by_scene: {}
-      chat: {}
+      new_chapter:
+        requires_runtime_evidence: true
+      extend_chapter:
+        requires_runtime_evidence: true
+      rewrite_selection:
+        requires_runtime_evidence: true
+      story_suggest:
+        requires_runtime_evidence: true
+      interactive_session:
+        requires_runtime_evidence: true
+      interview:
+        requires_runtime_evidence: true
+      scene_by_scene:
+        requires_runtime_evidence: true
+      chat:
+        requires_runtime_evidence: false  # P3 target
       inline_suggest:
+        requires_runtime_evidence: true
         description: "Low-latency inline writing suggestions"
         overrides:
           required_infrastructure:
@@ -89,6 +98,7 @@ features:
             final_validation: optional
             evidence_sink: optional
       co_author:
+        requires_runtime_evidence: true
         description: "Peer-to-peer co-authoring session"
         overrides:
           required_infrastructure:
@@ -130,13 +140,20 @@ features:
 
   analysis:
     modes:
-      - beta_reader
-      - beta_reader_deepdive
-      - review
-      - preferences
-      - summarize
-      - remap
-      - consistency
+      beta_reader:
+        requires_runtime_evidence: true
+      beta_reader_deepdive:
+        requires_runtime_evidence: true
+      review:
+        requires_runtime_evidence: true
+      preferences:
+        requires_runtime_evidence: true
+      summarize:
+        requires_runtime_evidence: true
+      remap:
+        requires_runtime_evidence: true
+      consistency:
+        requires_runtime_evidence: true
     required_infrastructure:
       token_budget: required
       prompt_composer: required
@@ -158,14 +175,22 @@ features:
 
   kb:
     modes:
-      - consistency
-      - worldbuilding/phase1
-      - worldbuilding/phase2
-      - improve
-      - suggest
-      - interview
-      - extract
-      - enhance
+      consistency:
+        requires_runtime_evidence: true
+      worldbuilding/phase1:
+        requires_runtime_evidence: true
+      worldbuilding/phase2:
+        requires_runtime_evidence: true
+      improve:
+        requires_runtime_evidence: true
+      suggest:
+        requires_runtime_evidence: true
+      interview:
+        requires_runtime_evidence: true
+      extract:
+        requires_runtime_evidence: true
+      enhance:
+        requires_runtime_evidence: true
     required_infrastructure:
       token_budget: partial         # extract/interview need it, simple CRUD doesn't
       prompt_composer: required
@@ -183,7 +208,8 @@ features:
 
   planning:
     modes:
-      - outline
+      outline:
+        requires_runtime_evidence: false  # P3 target
     required_infrastructure:
       token_budget: partial
       prompt_composer: required
@@ -198,7 +224,8 @@ features:
 
   generation:
     modes:
-      - names
+      names:
+        requires_runtime_evidence: false  # P3 target
     required_infrastructure:
       prompt_composer: required
       meta_prompt: required

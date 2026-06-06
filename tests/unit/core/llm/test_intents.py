@@ -11,7 +11,7 @@ from narrare_core.llm.intent_categories import (
     IntentCategory,
     get_default_profile_for_intent,
 )
-from narrare_core.llm.model_config import _PROFILE_OUTPUT_LIMITS, ResolvedModelConfig
+from narrare_core.llm.model_config import PROFILE_OUTPUT_LIMITS, ResolvedModelConfig
 
 
 class TestLLMIntent:
@@ -130,8 +130,7 @@ class TestResolvedModelConfig:
             model_id="claude-sonnet-4-5-20251020",
         )
         assert (
-            config.resolve_output_limit(profile="long_texts")
-            == _PROFILE_OUTPUT_LIMITS["long_texts"]
+            config.resolve_output_limit(profile="long_texts") == PROFILE_OUTPUT_LIMITS["long_texts"]
         )
 
     def test_resolve_output_limit_uses_quick_profile(self) -> None:
@@ -139,7 +138,7 @@ class TestResolvedModelConfig:
             provider_name="anthropic",
             model_id="claude-sonnet-4-5-20251020",
         )
-        assert config.resolve_output_limit(profile="quick") == _PROFILE_OUTPUT_LIMITS["quick"]
+        assert config.resolve_output_limit(profile="quick") == PROFILE_OUTPUT_LIMITS["quick"]
 
     def test_resolve_output_limit_falls_back_to_max_tokens(self) -> None:
         """When no profile is known, return max_tokens."""
@@ -164,7 +163,7 @@ class TestResolvedModelConfig:
             model_id="claude-sonnet-4-5-20251020",
             token_limit_profile="long_texts",
         )
-        assert config.resolve_output_limit() == _PROFILE_OUTPUT_LIMITS["long_texts"]
+        assert config.resolve_output_limit() == PROFILE_OUTPUT_LIMITS["long_texts"]
 
     def test_resolve_output_limit_profile_param_overrides_attr(self) -> None:
         """Explicit profile param overrides token_limit_profile attr."""
@@ -173,7 +172,7 @@ class TestResolvedModelConfig:
             model_id="claude-sonnet-4-5-20251020",
             token_limit_profile="long_texts",
         )
-        assert config.resolve_output_limit(profile="quick") == _PROFILE_OUTPUT_LIMITS["quick"]
+        assert config.resolve_output_limit(profile="quick") == PROFILE_OUTPUT_LIMITS["quick"]
 
     def test_resolve_output_limit_unknown_token_limit_profile_falls_back(self) -> None:
         """Unknown token_limit_profile falls back to max_tokens."""
@@ -198,15 +197,14 @@ class TestIntentProfileDefaults:
         assert _INTENT_PROFILE_DEFAULTS[LLMIntent.NAME_GENERATE] == "quick"
         assert get_default_profile_for_intent(LLMIntent.NAME_GENERATE) == "quick"
 
-    def test_unmapped_intent_returns_none(self) -> None:
-        """Intents without explicit defaults return None."""
-        assert get_default_profile_for_intent(LLMIntent.WRITE) is None
-        assert get_default_profile_for_intent(LLMIntent.CHAT) is None
+    def test_embed_returns_none(self) -> None:
+        """EMBED is not routeable and has no profile."""
+        assert get_default_profile_for_intent(LLMIntent.EMBED) is None
 
     def test_all_defaults_reference_valid_profiles(self) -> None:
-        """Every profile name in _INTENT_PROFILE_DEFAULTS must exist in _PROFILE_OUTPUT_LIMITS."""
+        """Every profile name in _INTENT_PROFILE_DEFAULTS must exist in PROFILE_OUTPUT_LIMITS."""
         for intent, profile in _INTENT_PROFILE_DEFAULTS.items():
-            assert profile in _PROFILE_OUTPUT_LIMITS, (
+            assert profile in PROFILE_OUTPUT_LIMITS, (
                 f"Intent {intent.name!r} maps to unknown profile {profile!r}"
             )
 
@@ -217,4 +215,4 @@ class TestIntentProfileDefaults:
             model_id="claude-sonnet-4-5-20251020",
             token_limit_profile="long_texts",
         )
-        assert config.resolve_output_limit() == _PROFILE_OUTPUT_LIMITS["long_texts"]
+        assert config.resolve_output_limit() == PROFILE_OUTPUT_LIMITS["long_texts"]

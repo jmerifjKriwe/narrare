@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from narrare.kb.contracts import RelationshipRepositoryProtocol
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -44,10 +45,12 @@ class WorldbuildingService:
         analyzer: WorldbuildingAnalyzer,
         rel_repo: RelationshipRepositoryProtocol,
         cache: WorldbuildingCache,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._analyzer = analyzer
         self._rel_repo = rel_repo
         self._cache = cache
+        self._invocation_pipeline = invocation_pipeline
 
     async def analyze(
         self,
@@ -68,6 +71,18 @@ class WorldbuildingService:
             Complete analysis with all requested finding types.
         """
         logger.info("worldbuilding_analyze_start", novel_id=str(novel_id))
+
+        # Record invocation evidence (ADR-040)
+        from narrare._app.invocation_context import safe_record_evidence
+        from narrare_core.llm.intents import LLMIntent
+
+        await safe_record_evidence(
+            self._invocation_pipeline,
+            feature_id="kb_worldbuilding",
+            intent=LLMIntent.KB_WORLDBUILD,
+            project_id=novel_id,
+        )
+
         return await self._analyzer.analyze(novel_id, request)
 
     async def apply_connections(

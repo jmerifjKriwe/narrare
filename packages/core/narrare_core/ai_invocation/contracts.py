@@ -21,6 +21,7 @@ if TYPE_CHECKING:
         PromptInvocationContext,
         ValidationResult,
     )
+    from narrare_core.profiles.models import ProjectWritingProfile
     from narrare_core.prompts.composer import ComposedPrompt
 
 
@@ -132,5 +133,28 @@ class FeatureInvocationEvidenceSink(Protocol):
 
         Args:
             evidence: Privacy-safe evidence record.
+        """
+        ...
+
+
+class ProfileProvider(Protocol):
+    """Provides ProjectWritingProfile for invocation enrichment.
+
+    The invocation-layer contract for loading project writing profiles.
+    Distinct from ``profiles.VoiceProfileProvider`` which returns only
+    voice data — this returns the full ``ProjectWritingProfile``.
+    """
+
+    async def get_profile(
+        self,
+        project_id: object,
+    ) -> ProjectWritingProfile | None:
+        """Load the project writing profile.
+
+        Args:
+            project_id: The project identifier.
+
+        Returns:
+            The project's writing profile, or ``None`` if not found.
         """
         ...

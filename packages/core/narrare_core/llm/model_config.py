@@ -13,12 +13,21 @@ from dataclasses import dataclass
 # Output token limit profiles
 # ---------------------------------------------------------------------------
 
-_PROFILE_OUTPUT_LIMITS: dict[str, int] = {
+PROFILE_OUTPUT_LIMITS: dict[str, int] = {
     "quick": 500,
     "balanced": 2000,
     "long_texts": 8000,
+    "comprehensive": 16000,
 }
 """Token limit presets referenced by :meth:`ResolvedModelConfig.resolve_output_limit`.
+
+Four tiers calibrated to intent output requirements:
+
+- ``quick`` (500) — short answers, single names, sentiment labels.
+- ``balanced`` (2000) — chat, summaries, moderate structured output.
+- ``long_texts`` (8000) — chapter prose, analysis, KB extraction, planning.
+- ``comprehensive`` (16000) — cross-chapter consistency checks requiring
+  exhaustive detail.
 
 The final output limit is determined by ``resolve_output_limit(profile)``.
 If a ``token_limit_profile`` is set on the config, it takes precedence
@@ -72,7 +81,7 @@ class ResolvedModelConfig:
         """Return the output token limit, optionally overridden by *profile*.
 
         Resolution order:
-        1. If *profile* is a known key in ``_PROFILE_OUTPUT_LIMITS``,
+        1. If *profile* is a known key in ``PROFILE_OUTPUT_LIMITS``,
            return that limit.
         2. If ``self.token_limit_profile`` is a known key, return its
            limit.
@@ -89,6 +98,6 @@ class ResolvedModelConfig:
             The resolved output token limit.
         """
         effective = profile or self.token_limit_profile
-        if effective and effective in _PROFILE_OUTPUT_LIMITS:
-            return _PROFILE_OUTPUT_LIMITS[effective]
+        if effective and effective in PROFILE_OUTPUT_LIMITS:
+            return PROFILE_OUTPUT_LIMITS[effective]
         return self.max_tokens

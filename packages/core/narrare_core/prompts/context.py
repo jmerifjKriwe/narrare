@@ -42,14 +42,8 @@ class PromptContext:
     author_name: str = ""
 
     # --- Novel context ---
-    # NOTE: The following fields are defined for future use and currently
-    # have no prompt template consumers. They were introduced as part of
-    # the PromptContext schema but are not yet referenced by any prompt:
-    # - novel_synopsis
-    # - style_profile
-    # - previous_chapter_summary
-    # - next_chapter_hint
-    # See: CR-AUFG-04-11, docs/architecture/questions/INDEX.md
+    # These fields are populated by ProjectWritingProfile when a project
+    # context is available. See: FIND-007, core/project/profile.py.
     novel_synopsis: str = ""
     style_profile: str = ""
 

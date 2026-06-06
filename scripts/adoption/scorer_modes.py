@@ -43,6 +43,7 @@ class ModeScore:
     static_verified: bool
     runtime_verified: bool
     adopted: bool
+    requires_runtime_evidence: bool = False
     details: list[CheckDetail] = field(default_factory=list[CheckDetail])
     runtime_details: list[RuntimeCheckDetail] = field(default_factory=list[RuntimeCheckDetail])
 
@@ -104,11 +105,16 @@ def compute_mode_score(
     i18n_frac: float,
     has_prompts: bool,
     fb_count: int,
+    requires_runtime_evidence: bool = True,
 ) -> ModeScore:
     """Compute adoption score for a single mode.
 
     Static score uses the same weighted-ratio formula as the category-level
     scorer.  Runtime-requirement checks use static defaults for P1 CI.
+
+    When *requires_runtime_evidence* is True the ``adopted`` flag requires
+    both static and runtime verification.  When False, static verification
+    alone is sufficient (ADR-040 Decision 4).
     """
     details: list[CheckDetail] = []
     numerator = 0.0
@@ -173,7 +179,7 @@ def compute_mode_score(
     else:
         runtime_details, runtime_verified = [], False
 
-    adopted = static_verified and runtime_verified
+    adopted = static_verified and runtime_verified if requires_runtime_evidence else static_verified
 
     return ModeScore(
         mode=mode_name,
@@ -182,6 +188,7 @@ def compute_mode_score(
         static_verified=static_verified,
         runtime_verified=runtime_verified,
         adopted=adopted,
+        requires_runtime_evidence=requires_runtime_evidence,
         details=details,
         runtime_details=runtime_details,
     )
@@ -228,6 +235,9 @@ def compute_all_mode_scores(
         # Resolve runtime requirements (category defaults + mode overrides).
         merged_runtime = {**cat_runtime, **(overrides.get("runtime_requirements", {}))}
 
+        # Resolve requires_runtime_evidence from mode config (ADR-040 Decision 4).
+        requires_rte = mode_cfg.get("requires_runtime_evidence", True)
+
         ms = compute_mode_score(
             mode_name=mode_name,
             must_vars=mode_must,
@@ -238,6 +248,7 @@ def compute_all_mode_scores(
             i18n_frac=i18n_frac,
             has_prompts=has_prompts,
             fb_count=fb_count,
+            requires_runtime_evidence=requires_rte,
         )
         scores.append(ms)
     return scores

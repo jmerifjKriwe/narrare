@@ -11,8 +11,6 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare_core.writing._voice_profiles import extract_voice_profiles
-
 if TYPE_CHECKING:
     from narrare_core.writing.context_models import KBEntity
 
@@ -62,11 +60,26 @@ def check_voice_profile_freshness(
 ) -> list[str]:
     """Check if character voice profiles are stale (not updated recently).
 
-    Delegates freshness detection to ``extract_voice_profiles``.
+    Uses :func:`~narrare_core.profiles._freshness.check_freshness_warning`
+    for staleness detection.
     Returns only the list of warning strings (empty when all profiles
     are current or when no character entities exist).
     """
-    _, warnings = extract_voice_profiles(entities, max_age_days)
+    from narrare_core.profiles._freshness import check_freshness_warning
+
+    characters = [e for e in entities if e.entity_type == "character"]
+    warnings: list[str] = []
+    for char in characters:
+        if not char.metadata:
+            continue
+        # Only check freshness for characters with voice data
+        from narrare_core.profiles._voice_extraction import get_speech_data
+
+        if not get_speech_data(char.metadata):
+            continue
+        warning = check_freshness_warning(char.name, char.updated_at, max_age_days)
+        if warning:
+            warnings.append(warning)
     return warnings
 
 

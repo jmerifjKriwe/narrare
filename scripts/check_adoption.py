@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import yaml
+from adoption.audit_report import build_audit_report
 from adoption.scorer import (
     PASS_THRESHOLD,
     AdoptionReport,
@@ -277,6 +278,11 @@ def main() -> int:
         action="store_true",
         help="Disable adoption debt ratchet comparison.",
     )
+    parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="Also generate and print an AuditReport (ADR-040 Decision 3).",
+    )
     args = parser.parse_args()
 
     registry = load_registry(args.registry)
@@ -306,6 +312,13 @@ def main() -> int:
         print(format_comparison(comparison, "Adoption debt ratchet"))
         if not comparison.ok:
             return 1
+
+    if args.audit:
+        audit = build_audit_report(report, registry, args.baseline)
+        if args.json:
+            print(audit.to_json())
+        else:
+            print(audit.to_markdown())
 
     return _exit_code(report.status)
 

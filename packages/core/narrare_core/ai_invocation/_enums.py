@@ -33,6 +33,14 @@ class KBSuggestedStatus(StrEnum):
     MISSING = "missing"
 
 
+class VoiceProfileStatus(StrEnum):
+    """Delivery status of voice profile data for an invocation."""
+
+    PROVIDED = "provided"
+    NOT_APPLICABLE = "not_applicable"
+    MISSING = "missing"
+
+
 # ---------------------------------------------------------------------------
 # Audit lifecycle
 # ---------------------------------------------------------------------------

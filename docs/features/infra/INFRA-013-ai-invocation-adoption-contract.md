@@ -28,14 +28,19 @@ requires: [INFRA-002, INFRA-003, INFRA-005, INFRA-011, INFRA-012, PROMPT-001, PR
 
 ## Status and Decision Summary
 
-- **Status:** P0 implemented, P0.3e and P1 partial delivered. Core `ai_invocation`
-  module, InvocationPipeline, enrichers, validators, budget resolver,
-  LoggingEvidenceSink, and WritingPipeline integration are in production.
-  User/Project IDs flow through InvocationContext. P1 (mode-specific adoption
-  registry, checker update, kb_suggested) through P3 remain outstanding.
+- **Status:** P0, P0.3e, P1, and P2 implemented. Core `ai_invocation` module,
+  InvocationPipeline, enrichers, validators, budget resolver,
+  LoggingEvidenceSink, WritingPipeline integration, `core/profiles/` module
+  (ProjectWritingProfile SSOT), KBConsistencyEnricher, VoiceProfileStatus,
+  AuditReport, KG Consistency Checker, and `requires_runtime_evidence` flag
+  are all in production. 24/27 modes wired. User/Project IDs flow through
+  InvocationContext. P2 (KG/voice/profile SSOT, audit lifecycle) implemented.
+  P3 (typed manifests, quality metrics, doc-drift automation) remains
+  outstanding.
 - **Governing ADR:** [ADR-038 — AI Invocation Adoption Contract](../../architecture/decisions/ADR-038-ai-invocation-adoption-contract.md).
-- **CR-03 state:** P0 implemented, P1 partial (User/Project IDs). CR-03 is not
-  resolved until P1–P3 exit criteria and runtime evidence gates pass.
+- **CR-03 state:** P0, P1, and P2 implemented. 24/27 modes have runtime evidence
+  wiring. CR-03 is not resolved until P3 exit criteria and runtime evidence
+  gates pass for all modes.
 
 ## Scope
 
@@ -560,3 +565,8 @@ suggestions. High-impact conflicts are surfaced rather than silently resolved.
 - 2026-06-06 — P0.3e (LoggingEvidenceSink) and P1 partial (User/Project IDs in
   InvocationContext) implemented. P1 (mode-specific adoption registry, checker
   update, kb_suggested) through P3 remain outstanding.
+- 2026-06-06 — P2 implemented: core/profiles/ module (ProjectWritingProfile SSOT),
+  KBConsistencyEnricher + VoiceProfileStatus in ai_invocation/,
+  AuditReport + KG Consistency Checker in scripts/adoption/,
+  requires_runtime_evidence flag in adoption registry. 24/27 modes wired.
+  P3 (typed manifests, quality metrics, doc-drift, persistent evidence) remains outstanding.

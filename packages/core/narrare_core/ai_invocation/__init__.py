@@ -15,11 +15,19 @@ from narrare_core.ai_invocation._enums import (
     PreferenceRequirement,
     PreferenceStatus,
     ValidationStatus,
+    VoiceProfileStatus,
 )
 from narrare_core.ai_invocation.budgets import (
     IntentOutputBudgetResolverImpl,
     OutputBudget,
     OutputBudgetDecision,
+)
+from narrare_core.ai_invocation.consistency import (
+    ConsistencyStatus,
+    EntityType,
+    EntityTypeCheck,
+    KBConsistencyCheck,
+    KBConsistencyResult,
 )
 from narrare_core.ai_invocation.contracts import (
     ContextEnricher,
@@ -27,6 +35,7 @@ from narrare_core.ai_invocation.contracts import (
     FinalPromptValidator,
     IntentOutputBudgetResolver,
     PreferenceContextEnricher,
+    ProfileProvider,
     RuntimeVariableValidator,
 )
 from narrare_core.ai_invocation.evidence import LoggingEvidenceSink
@@ -51,8 +60,11 @@ from narrare_core.ai_invocation.validators import (
 __all__ = [
     "AdoptionPolicy",
     "AuditState",
+    "ConsistencyStatus",
     "ContextEnricher",
     "ContextEnrichmentResult",
+    "EntityType",
+    "EntityTypeCheck",
     "FeatureInvocationEvidence",
     "FeatureInvocationEvidenceSink",
     "FinalPromptValidator",
@@ -62,6 +74,8 @@ __all__ = [
     "IntentOutputBudgetResolverImpl",
     "InvocationPipeline",
     "InvocationWarning",
+    "KBConsistencyCheck",
+    "KBConsistencyResult",
     "KBSuggestedRequirement",
     "KBSuggestedStatus",
     "LoggingEvidenceSink",
@@ -71,9 +85,11 @@ __all__ = [
     "PreferenceRequirement",
     "PreferenceStatus",
     "PreparedInvocation",
+    "ProfileProvider",
     "PromptInvocationContext",
     "RuntimeVariableValidator",
     "RuntimeVariableValidatorImpl",
     "ValidationResult",
     "ValidationStatus",
+    "VoiceProfileStatus",
 ]

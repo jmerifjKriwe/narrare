@@ -15,9 +15,9 @@ from uuid import UUID
 
 import structlog
 
+from narrare.analysis.beta_reader_agent_run import run_phase1, run_phase2
 from narrare.analysis.beta_reader_cache import BetaReaderCache
 from narrare.analysis.beta_reader_mapper import (
-    build_deepdive_prompt,
     map_phase1_response,
     map_phase2_response,
 )
@@ -37,11 +37,8 @@ from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
     from narrare.analysis.context_assembler import ContextAssembler
-    from narrare_core.agents.beta_reader_types import (
-        BetaReaderDeps,
-        BetaReaderPhase1Output,
-        BetaReaderPhase2Output,
-    )
+    from narrare_core.agents.beta_reader_types import BetaReaderDeps
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry
     from narrare_core.prompts import PromptComposer
     from narrare_core.prompts.composer import ComposedPrompt
@@ -62,6 +59,8 @@ class BetaReaderService:
         registry: ModelRegistry for LLM model resolution.
         config: Default ResolvedModelConfig for BETA_READ intent.
         composer: PromptComposer for system prompt assembly.
+        invocation_pipeline: Optional pipeline for invocation evidence.
+            When provided, evidence is recorded for every LLM call.
     """
 
     def __init__(
@@ -72,6 +71,7 @@ class BetaReaderService:
         config: ResolvedModelConfig,
         composer: PromptComposer,
         budget_assembler: AnalysisContextAssembler | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._assembler = context_assembler
         self._cache = cache
@@ -79,6 +79,7 @@ class BetaReaderService:
         self._config = config
         self._composer = composer
         self._budget_assembler = budget_assembler or AnalysisContextAssembler()
+        self._invocation_pipeline = invocation_pipeline
 
     async def analyze(
         self,
@@ -134,9 +135,22 @@ class BetaReaderService:
         # 6. Compose prompt and run agent
         composed = await self._compose_prompt(deps.language, "beta_reader")
         model = await self._registry.get_model(self._config)
+
+        # 6a. Record invocation evidence (ADR-040)
+        from narrare._app.invocation_context import safe_record_evidence
+
+        await safe_record_evidence(
+            self._invocation_pipeline,
+            feature_id="analysis_beta_read",
+            intent=LLMIntent.BETA_READ,
+            user_id=user_id,
+            project_id=novel_id,
+            language=deps.language,
+        )
+
         agent = BetaReaderAgent(model=model, system_prompt=composed.system)
         user_prompt = await build_budgeted_prompt(deps, self._budget_assembler)
-        result = await self._run_agent_phase1(agent, user_prompt, deps)
+        result = await run_phase1(agent, user_prompt, deps)
 
         # 7. Map to response and cache
         response = map_phase1_response(result, novel_id, request.chapter_ids, deps.word_count)
@@ -203,8 +217,21 @@ class BetaReaderService:
         # 3. Compose Phase 2 prompt and run agent
         composed = await self._compose_prompt(deps.language, "beta_reader_deepdive")
         model = await self._registry.get_model(self._config)
+
+        # 3a. Record invocation evidence for deep-dive (ADR-040)
+        from narrare._app.invocation_context import safe_record_evidence
+
+        await safe_record_evidence(
+            self._invocation_pipeline,
+            feature_id="analysis_beta_read_deepdive",
+            intent=LLMIntent.BETA_READ,
+            user_id=user_id,
+            project_id=novel_id,
+            language=deps.language,
+        )
+
         agent = BetaReaderAgent(model=model, system_prompt=composed.system)
-        result = await self._run_agent_phase2(agent, deps, model)
+        result = await run_phase2(agent, deps, model)
 
         # 4. Map to response
         response = map_phase2_response(result, novel_id, request.category)
@@ -256,40 +283,3 @@ class BetaReaderService:
         except Exception as exc:
             logger.error("prompt_composition_failed", mode=mode, error=str(exc))
             raise AnalysisError("Failed to compose analysis prompt") from exc
-
-    async def _run_agent_phase1(
-        self, agent: BetaReaderAgent, user_prompt: str, deps: BetaReaderDeps
-    ) -> BetaReaderPhase1Output:
-        """Run Phase 1 agent with error handling.
-
-        Args:
-            agent: The BetaReaderAgent instance.
-            user_prompt: Pre-built user prompt string (budget-enforced).
-            deps: BetaReaderDeps for agent structured output.
-
-        Raises:
-            AnalysisError: If agent execution fails.
-        """
-        try:
-            return await agent.run_phase1(user_prompt, deps=deps)
-        except AnalysisError:
-            raise
-        except Exception as exc:
-            logger.error("agent_execution_failed", error=str(exc))
-            raise AnalysisError("Analysis execution failed") from exc
-
-    async def _run_agent_phase2(
-        self, agent: BetaReaderAgent, deps: BetaReaderDeps, model: object
-    ) -> BetaReaderPhase2Output:
-        """Run Phase 2 agent with error handling.
-
-        Raises:
-            AnalysisError: If agent execution fails.
-        """
-        try:
-            return await agent.run_phase2(build_deepdive_prompt(deps), deps=deps, model=model)
-        except AnalysisError:
-            raise
-        except Exception as exc:
-            logger.error("agent_execution_failed_deep_dive", error=str(exc))
-            raise AnalysisError("Deep-dive execution failed") from exc

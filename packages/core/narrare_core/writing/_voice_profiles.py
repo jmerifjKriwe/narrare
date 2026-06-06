@@ -1,130 +1,49 @@
-"""Voice profile extraction — character speech metadata → prompt variable.
+"""Voice profile extraction — backward-compat re-exports.
 
-Extracted from ``context_assembler.py`` for RULE-04 compliance.
+New code should import from :mod:`narrare_core.profiles` instead.
+This module is kept for backward compatibility with existing callers
+in ``writing/`` and tests.
 
-This module contains the pure transformation logic for extracting speech
-and personality data from KB character entities.
+The actual implementation now lives in:
+
+- :mod:`narrare_core.profiles._voice_extraction`  — extraction helpers
+- :mod:`narrare_core.profiles._freshness`          — staleness checks
+- :mod:`narrare_core.profiles.models`              — data models
+- :mod:`narrare_core.profiles.assembly`            — ProfileAssembler
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import structlog
+
+from narrare_core.profiles._freshness import is_stale as _is_stale
+from narrare_core.profiles._voice_extraction import (
+    build_character_voice_profile,
+    get_speech_data,
+)
+
+__all__ = [
+    "_is_stale",
+    "extract_voice_profiles",
+    "get_speech_data",
+]
 
 if TYPE_CHECKING:
     from narrare_core.writing.context_models import KBEntity
 
 logger = structlog.get_logger(__name__)
 
-# ---------------------------------------------------------------------------
-# Helpers (module-level to avoid pyright strict-mode noise with dict access)
-# ---------------------------------------------------------------------------
-
-
-def _add_str_field(
-    data: dict[str, object],
-    key: str,
-    label: str,
-    parts: list[str],
-) -> None:
-    """Append a single string metadata field if present."""
-    value = data.get(key)
-    if isinstance(value, str) and value:
-        parts.append(f"{label}: {value}")
-
-
-def _add_list_field(
-    data: dict[str, object],
-    key: str,
-    label: str,
-    parts: list[str],
-    max_items: int = 5,
-) -> None:
-    """Append a list metadata field if present."""
-    value = data.get(key)
-    if isinstance(value, list) and value:
-        str_items: list[str] = []
-        for item in value[:max_items]:  # pyright: ignore[reportUnknownVariableType]
-            str_items.append(str(item))  # pyright: ignore[reportUnknownArgumentType]
-        if str_items:
-            parts.append(f"{label}: {', '.join(str_items)}")
-
-
-def _extract_speech_parts(  # pyright: ignore[reportUnknownParameterType]
-    metadata: object,
-) -> list[str]:
-    """Extract speech/personality metadata parts from a raw metadata dict.
-
-    Accepts ``metadata: object`` to avoid pyright strict-mode noise with
-    ``dict[str, Any]`` patterns.  Runtime isinstance checks ensure safety.
-    """
-    parts: list[str] = []
-
-    if not isinstance(metadata, dict):
-        return parts
-
-    # Speech metadata block
-    speech_raw = metadata.get("speech")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-    if isinstance(speech_raw, dict):
-        _add_str_field(speech_raw, "dialect", "dialect", parts)  # pyright: ignore[reportUnknownArgumentType]
-        _add_str_field(speech_raw, "vocabulary_quirks", "vocabulary", parts)  # pyright: ignore[reportUnknownArgumentType]
-        _add_list_field(speech_raw, "typical_phrases", "typical phrases", parts)  # pyright: ignore[reportUnknownArgumentType]
-        _add_str_field(speech_raw, "body_language", "body language", parts)  # pyright: ignore[reportUnknownArgumentType]
-
-    # Personality metadata block
-    personality_raw = metadata.get("personality")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-    if isinstance(personality_raw, dict):
-        _add_list_field(personality_raw, "traits", "personality traits", parts)  # pyright: ignore[reportUnknownArgumentType]
-
-    return parts
-
-
-# ---------------------------------------------------------------------------
-# Freshness helpers
-# ---------------------------------------------------------------------------
-
-
-def _is_stale(
-    updated_at: str | None,
-    max_age_days: int,
-) -> bool:
-    """Check if an ISO-8601 timestamp is older than ``max_age_days``.
-
-    Returns ``False`` when ``updated_at`` is ``None`` or unparsable
-    (graceful degradation — absence of timestamp does not trigger the
-    staleness warning).
-    """
-    if not updated_at:
-        return False
-    try:
-        if updated_at.endswith("Z"):
-            updated_at = updated_at[:-1] + "+00:00"
-        parsed = datetime.fromisoformat(updated_at)
-        age = (datetime.now(UTC) - parsed).days
-        return age > max_age_days
-    except ValueError, TypeError:
-        return False
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
 
 def extract_voice_profiles(
     entities: list[KBEntity],
     max_age_days: int = 30,
 ) -> tuple[str, list[str]]:
-    """Extract speech/voice data from character KB entities.
+    """Extract voice profiles from KB entities (backward-compat wrapper).
 
-    Formats character speech patterns as a dedicated voice profile block
-    for prompt injection.  Falls back gracefully when no speech metadata
-    is available.
-
-    When a character's ``updated_at`` is older than ``max_age_days``, a
-    warning is appended to the returned warnings list.
+    New code should use :class:`~narrare_core.profiles.assembly.ProfileAssembler`
+    instead.
 
     Args:
         entities: All KB entities to scan for character voice profiles.
@@ -141,14 +60,21 @@ def extract_voice_profiles(
     profiles: list[str] = []
     warnings: list[str] = []
     for char in characters:
-        speech_data = get_speech_data(char)
-        if not speech_data:
+        vp = build_character_voice_profile(
+            entity_id=char.entity_id,
+            name=char.name,
+            metadata=char.metadata,
+            updated_at=char.updated_at,
+            max_age_days=max_age_days,
+        )
+        if vp is None:
             continue
 
-        # Check freshness
-        if _is_stale(char.updated_at, max_age_days):
+        line = f"**{vp.name}**: {vp.speech_summary}"
+        if not vp.is_fresh and vp.updated_at:
+            line += f" [\u26a0\ufe0f last updated: {vp.updated_at}]"
             warnings.append(
-                f"Voice profile for '{char.name}' last updated {char.updated_at} "
+                f"Voice profile for '{vp.name}' last updated {vp.updated_at} "
                 f"(>{max_age_days} days ago)"
             )
             logger.warning(
@@ -158,18 +84,6 @@ def extract_voice_profiles(
                 updated_at=char.updated_at,
                 max_age_days=max_age_days,
             )
-            speech_data += f" [⚠️ last updated: {char.updated_at}]"
-
-        profiles.append(f"**{char.name}**: {speech_data}")
+        profiles.append(line)
 
     return "\n".join(profiles) if profiles else "", warnings
-
-
-def get_speech_data(entity: KBEntity) -> str:
-    """Extract speech-relevant info from a character entity."""
-    metadata = entity.metadata
-    if not metadata:
-        return ""
-
-    parts = _extract_speech_parts(metadata)
-    return "; ".join(parts) if parts else ""

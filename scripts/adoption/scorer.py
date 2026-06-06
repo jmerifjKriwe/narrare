@@ -106,6 +106,7 @@ class AdoptionReport:
     mode_count: int = 0
     runtime_verified_count: int = 0
     adopted_count: int = 0
+    runtime_evidence_gap_count: int = 0
 
 
 # ── Helpers ────────────────────────────────────────────────────────
@@ -285,10 +286,7 @@ def compute_adoption_report(
 
         # i18n check.
         missing_locales, i18n_frac, _, _ = _check_i18n_coverage(prompts, cat_name, mode_names)
-
         has_prompts = bool([p for p in prompts if p.category == cat_name and p.is_system_md])
-
-        # Category-level runtime requirements from category_defaults.
         cat_runtime: dict[str, str] = category_defaults.get(cat_name, {}).get(
             "runtime_requirements", {}
         )
@@ -386,15 +384,17 @@ def compute_adoption_report(
         )
 
     overall = (sum(c.score for c in categories) / len(categories)) if categories else 1.0
-    runtime_verified_count = sum(sum(1 for m in c.modes if m.runtime_verified) for c in categories)
-    adopted_count = sum(sum(1 for m in c.modes if m.adopted) for c in categories)
+    all_modes = [m for c in categories for m in c.modes]
 
     return AdoptionReport(
         overall_score=overall,
         status=status(overall),
         categories=categories,
         total_inline_fallbacks=len(fallbacks),
-        mode_count=sum(len(c.modes) for c in categories),
-        runtime_verified_count=runtime_verified_count,
-        adopted_count=adopted_count,
+        mode_count=len(all_modes),
+        runtime_verified_count=sum(1 for m in all_modes if m.runtime_verified),
+        adopted_count=sum(1 for m in all_modes if m.adopted),
+        runtime_evidence_gap_count=sum(
+            1 for m in all_modes if m.requires_runtime_evidence and not m.adopted
+        ),
     )

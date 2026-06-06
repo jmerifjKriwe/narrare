@@ -268,3 +268,55 @@ class TestI18n:
         assert "meta/system" in cat.missing_locales
         assert "de" in cat.missing_locales["meta/system"]
         assert "fr" in cat.missing_locales["meta/system"]
+
+
+# ── runtime_evidence_gap_count (ADR-040 Decision 4) ──────────────────
+
+
+class TestRuntimeEvidenceGapCount:
+    """Verify AdoptionReport.runtime_evidence_gap_count computation."""
+
+    def test_gap_count_zero_when_all_adopted(self) -> None:
+        """No gaps when all modes with requires_runtime_evidence are adopted."""
+        registry = _minimal_registry()
+        # Provide passing runtime requirements so modes become adopted.
+        registry["category_defaults"] = {
+            "writing": {"runtime_requirements": {"feature_a": "none"}},
+        }
+        prompts = [_make_prompt("writing", "en", "new_chapter", {"user_preferences"})]
+        report = compute_adoption_report(registry, prompts)
+        assert report.runtime_evidence_gap_count == 0
+
+    def test_gap_count_includes_modes_needing_runtime_but_not_adopted(self) -> None:
+        """Modes with requires_runtime_evidence=True and adopted=False are counted."""
+        registry_v2: dict[str, object] = {
+            "category_defaults": {
+                "writing": {"runtime_requirements": {"feature_a": "required"}},
+            },
+            "features": {
+                "writing": {
+                    "modes": {
+                        "gated": {"requires_runtime_evidence": True},
+                        "deferred": {"requires_runtime_evidence": False},
+                    },
+                    "required_infrastructure": {
+                        "prompt_composer": "required",
+                        "meta_prompt": "required",
+                        "i18n": "partial",
+                    },
+                    "context_variables": {
+                        "must": ["user_preferences"],
+                        "should": [],
+                    },
+                }
+            },
+            "inline_fallbacks": [],
+        }
+        prompts = [
+            _make_prompt("writing", "en", "gated", {"user_preferences"}),
+            _make_prompt("writing", "en", "deferred", {"user_preferences"}),
+        ]
+        report = compute_adoption_report(registry_v2, prompts)
+        # "gated" has requires_runtime_evidence=True but not adopted → gap
+        # "deferred" has requires_runtime_evidence=False → not a gap
+        assert report.runtime_evidence_gap_count == 1

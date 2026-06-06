@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.novels.repository import NovelRepository
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
 
@@ -40,6 +41,7 @@ class KBMergeService:
         model_config: Resolved model config (provider + model ID).
         api_key: Optional API key override.
         base_url: Optional base URL override.
+        invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
     def __init__(
@@ -50,12 +52,14 @@ class KBMergeService:
         *,
         api_key: str | None = None,
         base_url: str | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._registry = model_registry
         self._config = model_config
         self._api_key = api_key
         self._base_url = base_url
+        self._invocation_pipeline = invocation_pipeline
 
     async def analyze_merge_candidates(
         self,
@@ -84,6 +88,18 @@ class KBMergeService:
         from narrare_core.agents.merge_agent import KBMergeAgent, KBMergeDeps
 
         model = await self._registry.get_model(self._config)  # type: ignore[arg-type]
+
+        # Record invocation evidence (ADR-040)
+        from narrare._app.invocation_context import safe_record_evidence
+        from narrare_core.llm.intents import LLMIntent
+
+        await safe_record_evidence(
+            self._invocation_pipeline,
+            feature_id="kb_merge",
+            intent=LLMIntent.KB_CONSISTENCY,
+            project_id=novel_id,
+            user_id=user_id,
+        )
 
         # Build deps
         deps = KBMergeDeps(
