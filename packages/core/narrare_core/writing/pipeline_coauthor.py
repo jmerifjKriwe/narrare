@@ -163,7 +163,12 @@ async def stream_coauthor(
     )
 
     # Compose prompt via RULE-02
-    prompt = await pipeline._build_and_validate_prompt(LLMIntent.CO_AUTHOR, prompt_ctx)  # pyright: ignore[reportPrivateUsage]
+    prompt = await pipeline._build_and_validate_prompt(  # pyright: ignore[reportPrivateUsage]
+        LLMIntent.CO_AUTHOR,
+        prompt_ctx,
+        user_id=request.user_id,
+        project_id=request.project_id,
+    )
 
     # Stream from LLM via RULE-01
     accumulated: list[str] = []

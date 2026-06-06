@@ -3,7 +3,7 @@
 Task 2.5: Verify all 9 tones present, balanced is empty, others have content.
 """
 
-from narrare_core.writing.pipeline import _TONE_INSTRUCTIONS
+from narrare_core.writing._tone_data import TONE_INSTRUCTIONS
 
 
 class TestToneInstructions:
@@ -19,12 +19,12 @@ class TestToneInstructions:
             "adventurous",
             "quiet",
         }
-        assert set(_TONE_INSTRUCTIONS.keys()) == ALL_TONES
+        assert set(TONE_INSTRUCTIONS.keys()) == ALL_TONES
 
     def test_balanced_is_empty(self) -> None:
-        assert _TONE_INSTRUCTIONS["balanced"] == ""
+        assert TONE_INSTRUCTIONS["balanced"] == ""
 
     def test_other_tones_have_instructions(self) -> None:
-        for tone, instr in _TONE_INSTRUCTIONS.items():
+        for tone, instr in TONE_INSTRUCTIONS.items():
             if tone != "balanced":
                 assert instr.strip(), f"{tone} should have non-empty instructions"

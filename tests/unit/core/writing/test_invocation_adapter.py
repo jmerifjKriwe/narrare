@@ -11,6 +11,7 @@ Covers:
 8. Call order integration: prepare → build → finalize.
 
 Auto-context creation tests are in test_invocation_auto_context.py.
+User/Project-ID pass-through tests are in test_invocation_adapter_context.py.
 
 See:
     INFRA-013, ADR-038, CONSTRAINTS.md RULE-10/RULE-11.

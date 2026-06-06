@@ -158,7 +158,12 @@ async def stream_rewrite(
     )
 
     # Compose prompt via RULE-02
-    prompt = await pipeline._build_and_validate_prompt(LLMIntent.REWRITE, prompt_ctx)  # pyright: ignore[reportPrivateUsage]
+    prompt = await pipeline._build_and_validate_prompt(  # pyright: ignore[reportPrivateUsage]
+        LLMIntent.REWRITE,
+        prompt_ctx,
+        user_id=request.user_id,
+        project_id=request.project_id,
+    )
 
     # Stream from LLM via RULE-01
     accumulated: list[str] = []

@@ -180,6 +180,26 @@ class TestAutoContextCreation:
         assert prepared_ctx.project_id is None
 
     @pytest.mark.asyncio
+    async def test_auto_created_context_receives_user_and_project_ids(self) -> None:
+        """Auto-created context gets user_id and project_id when provided."""
+        composer = _mock_composer()
+        mock_pipeline = _mock_pipeline_pass()
+
+        await build_and_validate_prompt(
+            composer=composer,
+            invocation_pipeline=mock_pipeline,
+            intent=LLMIntent.WRITE,
+            prompt_ctx=_prompt_ctx(),
+            invocation_context=None,
+            user_id="user-123",
+            project_id="proj-456",
+        )
+
+        prepared_ctx = mock_pipeline.prepare.call_args.args[0]
+        assert prepared_ctx.user_id == "user-123"
+        assert prepared_ctx.project_id == "proj-456"
+
+    @pytest.mark.asyncio
     async def test_explicit_context_preferred_over_auto(self) -> None:
         """When explicit invocation_context is provided, it is used as-is."""
         composer = _mock_composer()

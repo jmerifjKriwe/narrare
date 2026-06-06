@@ -39,7 +39,7 @@ async def resolve_tone_instructions(
     Returns:
         Custom instructions string, or ``None`` for bundled tones.
     """
-    from narrare_core.writing.pipeline import is_bundled_tone
+    from narrare_core.writing._tone_data import is_bundled_tone
 
     if is_bundled_tone(tone):
         return None

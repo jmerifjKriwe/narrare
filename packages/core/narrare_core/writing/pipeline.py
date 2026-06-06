@@ -22,6 +22,7 @@ from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import WritingError
 from narrare_core.writing._enums import GenerationMode
 from narrare_core.writing._invocation_adapter import build_and_validate_prompt
+from narrare_core.writing._tone_data import TONE_INSTRUCTIONS
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -39,56 +40,6 @@ if TYPE_CHECKING:
     from narrare_core.writing.models import GenerationRequest, WritingContext
 
 logger = structlog.get_logger(__name__)
-
-# -- Tone instructions — injected into prompt extra variables --
-
-_TONE_INSTRUCTIONS: dict[str, str] = {
-    "dramatic": (
-        "Use vivid imagery, heightened emotional stakes, powerful verbs, "
-        "and dramatic pacing. Build tension through escalating sentences."
-    ),
-    "quiet": (
-        "Use understated prose, sensory details, internal reflection, "
-        "and gentle pacing. Let subtext carry the emotional weight."
-    ),
-    "suspenseful": (
-        "Use short punchy sentences, cliffhangers, sensory details, "
-        "and withheld information. Create urgency and uncertainty."
-    ),
-    "balanced": "",
-    "humorous": (
-        "Use witty observations, lighthearted tone, playful language, "
-        "comedic timing, and unexpected juxtapositions. Maintain levity."
-    ),
-    "contemplative": (
-        "Use reflective prose, philosophical musings, measured pacing, "
-        "internal monologue, and layered observations."
-    ),
-    "romantic": (
-        "Use evocative sensory details, emotional language, intimate moments, "
-        "lyrical prose, and heightened emotional resonance."
-    ),
-    "dark": (
-        "Use grim imagery, foreboding atmosphere, visceral details, "
-        "moral ambiguity, and unsettling tension."
-    ),
-    "adventurous": (
-        "Use dynamic action sequences, energetic pacing, bold descriptive "
-        "language, rising stakes, and momentum."
-    ),
-}
-
-
-def is_bundled_tone(tone: str) -> bool:
-    """Check whether a tone name is one of the bundled built-in tones.
-
-    Args:
-        tone: Tone name to check.
-
-    Returns:
-        ``True`` if the tone has built-in instructions.
-    """
-    return tone in _TONE_INSTRUCTIONS
 
 
 class WritingPipeline:
@@ -378,6 +329,9 @@ class WritingPipeline:
         intent: LLMIntent,
         prompt_ctx: PromptContext,
         invocation_context: PromptInvocationContext | None = None,
+        *,
+        user_id: object | None = None,
+        project_id: object | None = None,
     ) -> ComposedPrompt:
         """Build prompt with optional invocation pipeline validation."""
         return await build_and_validate_prompt(
@@ -386,12 +340,11 @@ class WritingPipeline:
             intent,
             prompt_ctx,
             invocation_context,
+            user_id=user_id,
+            project_id=project_id,
         )
 
     @staticmethod
     def _tone_instructions(tone: str) -> str:
         """Return tone-specific writing instructions."""
-        # TODO(metadata-consistency): Add user override support via prompt cascade
-        # Currently bundled instructions only. Future: user can override via
-        # prompt cascade mechanism (see design.md Decision 6).
-        return _TONE_INSTRUCTIONS.get(tone, "")
+        return TONE_INSTRUCTIONS.get(tone, "")

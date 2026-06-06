@@ -29,6 +29,7 @@ from narrare_core.ai_invocation.contracts import (
     PreferenceContextEnricher,
     RuntimeVariableValidator,
 )
+from narrare_core.ai_invocation.evidence import LoggingEvidenceSink
 from narrare_core.ai_invocation.models import (
     AdoptionPolicy,
     ContextEnrichmentResult,
@@ -63,6 +64,7 @@ __all__ = [
     "InvocationWarning",
     "KBSuggestedRequirement",
     "KBSuggestedStatus",
+    "LoggingEvidenceSink",
     "OutputBudget",
     "OutputBudgetDecision",
     "PreferenceContextEnricher",

@@ -37,6 +37,9 @@ logger = structlog.get_logger(__name__)
 def _create_minimal_invocation_context(
     intent: LLMIntent,
     prompt_ctx: PromptContext,
+    *,
+    user_id: object | None = None,
+    project_id: object | None = None,
 ) -> PromptInvocationContext:
     """Create a minimal PromptInvocationContext from prompt data.
 
@@ -45,15 +48,11 @@ def _create_minimal_invocation_context(
     from the intent and PromptContext that are always available in the
     writing subsystem.
 
-    Note:
-        ``user_id`` and ``project_id`` are set to ``None`` because the
-        adapter layer does not have access to authenticated user context.
-        Enrichers that need these values should handle ``None`` gracefully
-        (see :class:`PreferenceContextEnricherImpl`).
-
     Args:
         intent: The LLM intent for this invocation.
         prompt_ctx: The prompt context carrying language, mode, etc.
+        user_id: Optional user identifier for enrichment.
+        project_id: Optional project identifier for enrichment.
 
     Returns:
         A PromptInvocationContext with feature_id derived from the intent.
@@ -64,8 +63,8 @@ def _create_minimal_invocation_context(
         feature_id=f"writing_{intent.value}",
         intent=intent,
         mode=prompt_ctx.mode,
-        user_id=None,
-        project_id=None,
+        user_id=user_id,
+        project_id=project_id,
         language=prompt_ctx.language,
         output_language=prompt_ctx.writing_language or None,
         streaming=True,
@@ -78,6 +77,9 @@ async def build_and_validate_prompt(
     intent: LLMIntent,
     prompt_ctx: PromptContext,
     invocation_context: PromptInvocationContext | None = None,
+    *,
+    user_id: object | None = None,
+    project_id: object | None = None,
 ) -> ComposedPrompt:
     """Build a prompt, optionally wrapping with invocation pipeline steps.
 
@@ -87,7 +89,8 @@ async def build_and_validate_prompt(
     When ``invocation_pipeline`` is provided:
         - If ``invocation_context`` is also provided, uses it directly.
         - If ``invocation_context`` is ``None``, auto-creates a minimal
-          context from ``intent`` and ``prompt_ctx``.
+          context from ``intent``, ``prompt_ctx``, and optional
+          ``user_id``/``project_id``.
         1. ``prepare()`` — validate variables + enrich + resolve budget.
         2. Build prompt via composer (original ``prompt_ctx``).
         3. ``finalize()`` — validate final prompt + record evidence.
@@ -99,6 +102,8 @@ async def build_and_validate_prompt(
         intent: LLM intent determining the prompt template.
         prompt_ctx: Prompt context with template variables.
         invocation_context: Optional typed context for the invocation.
+        user_id: Optional user identifier for the invocation context.
+        project_id: Optional project identifier for the invocation context.
 
     Returns:
         ComposedPrompt ready for LLM consumption.
@@ -110,7 +115,12 @@ async def build_and_validate_prompt(
         return await composer.build(intent, prompt_ctx)
 
     # Auto-create context when pipeline is wired but context was not provided.
-    ctx = invocation_context or _create_minimal_invocation_context(intent, prompt_ctx)
+    ctx = invocation_context or _create_minimal_invocation_context(
+        intent,
+        prompt_ctx,
+        user_id=user_id,
+        project_id=project_id,
+    )
 
     # Phase 1: Prepare — validate + enrich + resolve budget
     prepared = await invocation_pipeline.prepare(ctx)

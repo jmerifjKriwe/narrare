@@ -310,13 +310,14 @@ def get_invocation_pipeline() -> InvocationPipeline:
     - PreferenceContextEnricherImpl (if preference service available)
 
     Note:
-        ``evidence_sink`` is intentionally ``None`` — evidence recording
-        is P0.3e scope. The pipeline still runs validation and enrichment.
+        ``evidence_sink`` is a :class:`LoggingEvidenceSink` that records
+        structured logs for each invocation. Can be disabled via log level.
     """
     from narrare_core.ai_invocation import (
         FinalPromptValidatorImpl,
         IntentOutputBudgetResolverImpl,
         InvocationPipeline,
+        LoggingEvidenceSink,
         RuntimeVariableValidatorImpl,
     )
     from narrare_core.ai_invocation.enrichers import PreferenceContextEnricherImpl
@@ -332,7 +333,7 @@ def get_invocation_pipeline() -> InvocationPipeline:
         variable_validator=RuntimeVariableValidatorImpl(),
         budget_resolver=IntentOutputBudgetResolverImpl(),
         final_validator=FinalPromptValidatorImpl(),
-        evidence_sink=None,  # P0.3e will add real evidence sink
+        evidence_sink=LoggingEvidenceSink(),
     )
 
 
