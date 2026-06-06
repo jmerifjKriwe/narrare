@@ -57,7 +57,7 @@ async def stream_scene_by_scene(
                 "scene_outline": scene_outline,
             },
         )
-        prompt = await pipeline._composer.build(LLMIntent.WRITE, scene_prompt)  # pyright: ignore[reportPrivateUsage]
+        prompt = await pipeline._build_and_validate_prompt(LLMIntent.WRITE, scene_prompt)  # pyright: ignore[reportPrivateUsage]
 
         accumulated: list[str] = []
 

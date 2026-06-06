@@ -4,7 +4,7 @@
 > **Date:** 2026-05-31
 > **Deciders:** Architecture Agent
 > **Supersedes:** —
-> **Related:** ADR-002 (Unified Prompt System), ADR-019 (System-Prompt Consistency), CONSTRAINTS.md RULE-01b/02/03/04
+> **Related:** ADR-002 (Unified Prompt System), ADR-019 (System-Prompt Consistency), ADR-037 (Prompt Surface Contract Manifest), ADR-038 (AI Invocation Adoption Contract), CONSTRAINTS.md RULE-01b/02/03/04/20/22
 
 ---
 
@@ -887,6 +887,18 @@ Decision 6 (Quality Gates)
 ---
 
 ## Review Trigger
+
+### Runtime Evidence Addendum (ADR-038)
+
+ADR-025 defines the static adoption registry and scoring direction. ADR-038 adds the
+runtime contract required before an adoption claim can be marked adopted: a feature
+mode must prove that its production invocation path enriched or explicitly injected
+required context, built the prompt through `PromptComposer`, validated the final
+prompt, resolved an intent/mode output budget, and recorded privacy-safe evidence.
+
+Therefore, a passing adoption score or prompt/template check is `static_verified`,
+not `adopted`, until runtime evidence exists. ADR-037 remains the route-level prompt
+surface contract; ADR-038 governs the request-to-model invocation path.
 
 - [ ] After Phase 2 complete — verify adoption score thresholds are calibrated correctly
 - [ ] When a new feature category is added — update registry and verify CI catches it

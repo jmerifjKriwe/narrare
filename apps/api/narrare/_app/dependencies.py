@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from narrare.templates.cascade_resolver import CascadeResolver
     from narrare.templates.repository import TemplateRepository
     from narrare.templates.service import TemplateApiService
+    from narrare_core.ai_invocation import ContextEnricher
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.memory.protocols import PreferenceProvider
 
@@ -291,6 +292,52 @@ def get_graph_state_store(session: SessionDep) -> PostgresGraphStateStore:
 
 
 GraphStateStoreDep = Annotated[PostgresGraphStateStore, Depends(get_graph_state_store)]
+
+
+# ---------------------------------------------------------------------------
+# Invocation Pipeline (singleton)
+# ---------------------------------------------------------------------------
+
+
+@lru_cache
+def get_invocation_pipeline() -> InvocationPipeline:
+    """Create InvocationPipeline with production implementations.
+
+    Assembles the pipeline with all P0.3 components:
+    - RuntimeVariableValidatorImpl (pre-composition checks)
+    - IntentOutputBudgetResolverImpl (budget resolution)
+    - FinalPromptValidatorImpl (post-composition checks)
+    - PreferenceContextEnricherImpl (if preference service available)
+
+    Note:
+        ``evidence_sink`` is intentionally ``None`` — evidence recording
+        is P0.3e scope. The pipeline still runs validation and enrichment.
+    """
+    from narrare_core.ai_invocation import (
+        FinalPromptValidatorImpl,
+        IntentOutputBudgetResolverImpl,
+        InvocationPipeline,
+        RuntimeVariableValidatorImpl,
+    )
+    from narrare_core.ai_invocation.enrichers import PreferenceContextEnricherImpl
+
+    preference_service = _get_preference_service_instance()
+
+    enrichers: list[ContextEnricher] = []
+    if preference_service is not None:
+        enrichers.append(PreferenceContextEnricherImpl(preference_provider=preference_service))
+
+    return InvocationPipeline(
+        enrichers=enrichers,
+        variable_validator=RuntimeVariableValidatorImpl(),
+        budget_resolver=IntentOutputBudgetResolverImpl(),
+        final_validator=FinalPromptValidatorImpl(),
+        evidence_sink=None,  # P0.3e will add real evidence sink
+    )
+
+
+if TYPE_CHECKING:
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/adr-index | Priority: medium | Source: docs/architecture/decisions/INDEX.md | Updated: 2026-06-05 -->
+<!-- Context: narrare-dev/lookup/adr-index | Priority: medium | Source: docs/architecture/decisions/INDEX.md | Updated: 2026-06-06 -->
 
 # Architecture Decision Records — Index
 
@@ -55,6 +55,7 @@
 | ADR-035 | Agent Output Validation Policy | ✅ | 2026-06-04 | `core/agents/`, structured outputs, Pydantic Evals |
 | ADR-036 | Durable Execution Boundary | ✅ | 2026-06-04 | TaskIQ, events, agent workflows, runtime infrastructure |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ | 2026-06-05 | `core/prompts/`, `scripts/architecture/`, prompt governance, RULE-22 |
+| ADR-038 | AI Invocation Adoption Contract | ✅ | 2026-06-05 | `core/ai_invocation/`, `core/prompts/`, `apps/api/`, `scripts/adoption/`, CR-03 |
 
 ## Creating a New ADR
 

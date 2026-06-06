@@ -93,6 +93,22 @@ packages/core/narrare_core/
 │
 ├── agents/                     ← Pydantic-ai agents (NarrareAgent subclasses) — all agents live here
 │                                   (ChatAgent lives in chat/ — see below)
+├── ai_invocation/               ← AI Invocation Adoption Contract (ADR-038, INFRA-013)
+│   ├── __init__.py             ← Exports: InvocationPipeline, PromptInvocationContext
+│   ├── contracts.py            ← PromptInvocationContext, AdoptionPolicy, Protocol definitions
+│   ├── pipeline.py             ← InvocationPipeline orchestrator
+│   ├── enrichers/              ← Context enrichment chain
+│   │   ├── preferences.py      ← PreferenceContextEnricher
+│   │   └── ...
+│   ├── validators/             ← Prompt validation
+│   │   ├── runtime.py          ← RuntimeVariableValidator
+│   │   ├── final_prompt.py     ← FinalPromptValidator
+│   │   └── ...
+│   ├── budgets/                ← Output budget resolution
+│   │   ├── resolver.py         ← IntentOutputBudgetResolver
+│   │   ├── _types.py           ← OutputBudget, OutputBudgetDecision
+│   │   └── ...
+│   └── ...
 ├── llm/                        ← Everything LLM. The only place LLM clients live.
 │   ├── __init__.py             ← Exports: LLMGateway, LLMIntent, LLMResult
 │   ├── gateway.py              ← THE gateway. All LLM calls go here. Max 300 lines.
@@ -140,6 +156,7 @@ packages/core/narrare_core/
 │   ├── context_assembler.py    ← WritingContextAssembler with 5-tier ranking + token budgets
 │   ├── budget.py               ← TokenBudgetManager for tier allocation
 │   ├── draft_processor.py      ← DraftProcessor with artifact removal + markdown normalization
+│   ├── _invocation_adapter.py  ← ADR-038 InvocationPipeline adapter around PromptComposer.build()
 │   ├── pipeline.py             ← WritingPipeline with 4-mode dispatch
 │   ├── pipeline_scene.py       ← Scene-by-scene mode logic
 │   ├── pipeline_interview.py   ← Interview-assisted mode logic

@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/lookup/feature-index | Priority: high | Source: docs/features/INDEX.md | Updated: 2026-06-03 -->
+<!-- Context: narrare-dev/lookup/feature-index | Priority: high | Source: docs/features/INDEX.md | Updated: 2026-06-06 -->
 
 # Feature Registry — Index
 
@@ -26,6 +26,8 @@
 | INFRA-005 | Memory Layer (mem0) | ✅ |
 | INFRA-010 | Prompting Locally | ✅ |
 | INFRA-011 | AI Feature Stabilization Program | ✅ |
+| INFRA-012 | Prompt Governance Hardening | 🔨 |
+| INFRA-013 | AI Invocation Adoption Contract | 🔨 |
 
 > **AI feature freeze lifted:** INFRA-011 gates passed and the ADR-027 freeze-lift
 > review completed on 2026-06-03. New AI-feature work may resume under ratcheted
@@ -64,7 +66,7 @@
 
 | ID | Feature | Status |
 |----|---------|--------|
-| CHAT-001 | Free-Form Chat | 📋 |
+| CHAT-001 | Free-Form Chat | 🔨 |
 
 ## Knowledge Base
 

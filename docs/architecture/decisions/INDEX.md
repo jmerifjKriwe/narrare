@@ -61,6 +61,7 @@
 | [ADR-035](ADR-035-agent-output-validation-policy.md) | Agent Output Validation Policy | ✅ Implemented | 2026-06-04 | `core/agents/`, structured outputs, Pydantic Evals |
 | [ADR-036](ADR-036-durable-execution-boundary.md) | Durable Execution Boundary | ✅ | 2026-06-04 | TaskIQ, events, agent workflows, runtime infrastructure |
 | [ADR-037](ADR-037-prompt-surface-contract-manifest.md) | Prompt Surface Contract Manifest | ✅ | 2026-06-05 | `core/prompts/`, `scripts/architecture/`, prompt governance, RULE-22 |
+| [ADR-038](ADR-038-ai-invocation-adoption-contract.md) | AI Invocation Adoption Contract | ✅ | 2026-06-05 | `core/ai_invocation/`, `core/prompts/`, `apps/api/`, `scripts/adoption/`, CR-03 |
 
 ---
 

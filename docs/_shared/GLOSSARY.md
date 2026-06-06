@@ -17,6 +17,11 @@ considered, and the rationale for the choice. Lives in
 `docs/architecture/decisions/`. Every significant structural decision
 gets an ADR. See `_TEMPLATE.md` for format.
 
+**AdoptionPolicy**
+A value object describing which adoption requirements apply to a feature mode:
+`preference_requirement`, `kb_suggested_requirement`, `requires_output_budget`,
+and `requires_final_validation`. See ADR-038.
+
 **Agent (AI Agent)**
 A configured LLM invocation with a system prompt, optional tools, and defined
 input/output contracts. In Narrare code, agents are defined in `*_agent.py` files
@@ -69,6 +74,10 @@ assignment, and a summary (AI-generated or manual). The primary unit of writing.
 The assembled collection of KB entries, chapter summaries, and memory items
 that are injected into a prompt. Built by `core/context/assembler.py`. Represented
 as `ContextBundle` type.
+
+**ContextEnricher**
+A Protocol for runtime context enrichment before `PromptComposer`. Implementations
+add data to `PromptInvocationContext.dynamic_inputs`.
 
 **Contract**
 A Python `Protocol` class that defines the public interface of a service.
@@ -157,15 +166,19 @@ name generation requests. Distinct from *Writing Language* and *Prompt Language*
 ## F
 
 **Fact**
+A structured piece of information extracted from a chapter or KB entry.
+Stored in the Knowledge Graph. Example: "Character X is married to Character Y."
+Used for consistency checking.
+
+**FeatureInvocationEvidence**
+Privacy-safe proof that an AI invocation satisfies its adoption requirements.
+Contains only structured metadata, never prompt text.
 
 **FunctionToolset**
 A pydantic-ai toolset (`pydantic_ai.toolsets.FunctionToolset`) that bundles
 multiple `Tool` instances with `defer_loading=True`. Used by `KBAgent` to
 provide KB tools (`search_kb`, `get_entity`, `get_related_entities`) to other
 Agents via `Toolset` capability injection. Defined in `core/agents/kb_agent.py`.
-A structured piece of information extracted from a chapter or KB entry.
-Stored in the Knowledge Graph. Example: "Character X is married to Character Y."
-Used for consistency checking.
 
 **First Message**
 The opening assistant message in a KB Session or interactive writing session.
@@ -203,6 +216,11 @@ modifiers.
 ---
 
 ## I
+
+**InvocationPipeline**
+The orchestrator for the AI Invocation Adoption Contract (ADR-038). Coordinates:
+Variable Validation → Enrichment → Budget Resolution → Prompt Composition → Final
+Validation → Evidence Recording.
 
 **Intent (LLM Intent)**
 A typed enum value that describes the purpose of an LLM call.
@@ -313,6 +331,10 @@ directly into the prompt.
 ---
 
 ## O
+
+**OutputBudget / OutputBudgetDecision**
+Intent/mode-specific token-budget resolution. `OutputBudget` is the validated
+token value; `OutputBudgetDecision` adds provenance metadata.
 
 **Output Validator**
 A deterministic function registered via `agent.output_validator()` on a pydantic-ai
@@ -513,6 +535,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-06-05 — Added ChatAgent, ChatDeps, ProcessHistory, StreamEvent (Chat Migration)
+> Last updated: 2026-06-06 — Added AI invocation adoption terms (ADR-038 / INFRA-013 P0)
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

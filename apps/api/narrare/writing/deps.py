@@ -13,6 +13,7 @@ from uuid import UUID
 from narrare._app.dependencies import (
     get_agent_registry,
     get_composer,
+    get_invocation_pipeline,
     get_model_registry,
     get_model_routing_resolver,
 )
@@ -28,6 +29,34 @@ if TYPE_CHECKING:
     from narrare.writing.rewrite_service import RewriteService
     from narrare.writing.service import WritingService
     from narrare.writing.suggest_service import InlineSuggestService
+    from narrare_core.writing.draft_processor import DraftProcessor
+    from narrare_core.writing.pipeline import WritingPipeline
+
+
+def _create_pipeline(draft_processor: DraftProcessor) -> WritingPipeline:
+    """Create a WritingPipeline with the invocation pipeline wired.
+
+    Shared helper used by all writing service factories to avoid
+    duplicating the WritingPipeline construction (RULE-04 compliance).
+
+    Args:
+        draft_processor: Shared DraftProcessor instance (also passed to
+            the service for direct use).
+
+    Returns:
+        Configured WritingPipeline with InvocationPipeline attached.
+    """
+    from narrare_core.writing.context_assembler import WritingContextAssembler
+    from narrare_core.writing.pipeline import WritingPipeline
+
+    return WritingPipeline(
+        registry=get_model_registry(),
+        composer=get_composer(),
+        context_assembler=WritingContextAssembler(),
+        draft_processor=draft_processor,
+        agent_registry=get_agent_registry(),
+        invocation_pipeline=get_invocation_pipeline(),
+    )
 
 
 async def get_writing_service(
@@ -54,9 +83,7 @@ async def get_writing_service(
     from narrare.settings.repository import UserSettingsRepository
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.service import WritingService
-    from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -91,17 +118,8 @@ async def get_writing_service(
         # (UX constraint, not a profile concern).
         config = replace(config, temperature=0.3, max_tokens=60)
 
-    registry = get_model_registry()
-    composer = get_composer()
-    assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
-    pipeline = WritingPipeline(
-        registry=registry,
-        composer=composer,
-        context_assembler=assembler,
-        draft_processor=draft_processor,
-        agent_registry=get_agent_registry(),
-    )
+    pipeline = _create_pipeline(draft_processor)
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
     tone_service = CustomToneService(repo=UserSettingsRepository(session))
@@ -138,9 +156,7 @@ async def get_extend_service(
     from narrare.settings.repository import UserSettingsRepository
     from narrare.writing.extend_service import ExtendService
     from narrare.writing.repository import GenerationRepository
-    from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -171,17 +187,8 @@ async def get_extend_service(
         max_tokens=limits.output_limit,
     )
 
-    registry = get_model_registry()
-    composer = get_composer()
-    assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
-    pipeline = WritingPipeline(
-        registry=registry,
-        composer=composer,
-        context_assembler=assembler,
-        draft_processor=draft_processor,
-        agent_registry=get_agent_registry(),
-    )
+    pipeline = _create_pipeline(draft_processor)
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
     tone_service = CustomToneService(repo=UserSettingsRepository(session))
@@ -224,9 +231,7 @@ async def get_rewrite_service(
     from narrare.settings.token_limits.service import TokenLimitsService
     from narrare.writing.repository import GenerationRepository
     from narrare.writing.rewrite_service import RewriteService
-    from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -250,17 +255,8 @@ async def get_rewrite_service(
         max_tokens=limits.output_limit,
     )
 
-    registry = get_model_registry()
-    composer = get_composer()
-    assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
-    pipeline = WritingPipeline(
-        registry=registry,
-        composer=composer,
-        context_assembler=assembler,
-        draft_processor=draft_processor,
-        agent_registry=get_agent_registry(),
-    )
+    pipeline = _create_pipeline(draft_processor)
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
     tone_service = CustomToneService(repo=UserSettingsRepository(session))
@@ -334,9 +330,7 @@ async def get_coauthor_service(
     from narrare.settings.token_limits.service import TokenLimitsService
     from narrare.writing.coauthor_service import CoAuthorService
     from narrare.writing.repository import GenerationRepository
-    from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.draft_processor import DraftProcessor
-    from narrare_core.writing.pipeline import WritingPipeline
 
     resolver = get_model_routing_resolver(session)
     assert isinstance(resolver, ModelRoutingResolverImpl)
@@ -360,17 +354,8 @@ async def get_coauthor_service(
         max_tokens=limits.output_limit,
     )
 
-    registry = get_model_registry()
-    composer = get_composer()
-    assembler = WritingContextAssembler()
     draft_processor = DraftProcessor()
-    pipeline = WritingPipeline(
-        registry=registry,
-        composer=composer,
-        context_assembler=assembler,
-        draft_processor=draft_processor,
-        agent_registry=get_agent_registry(),
-    )
+    pipeline = _create_pipeline(draft_processor)
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
 

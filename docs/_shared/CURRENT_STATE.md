@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-05 (CR-03 specified / INFRA-013)
-Session: AI Invocation Adoption Contract specified — ADR-038 proposed and INFRA-013 added as a planned specification. CR-03 is specified only; no production implementation is complete.
+Date: 2026-06-06 (CR-03 P0 implemented / INFRA-013)
+Session: AI Invocation Adoption Contract P0 implemented — Core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, and WritingPipeline integration. ADR-038 status updated to Implemented (P0). P1–P3 remain outstanding.
 
 ---
 
@@ -40,7 +40,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ### Core (`packages/core/narrare_core/`)
 
-18 submodules: agents, analysis, cache, chat, context, embeddings, events, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, writing
+19 submodules: agents, ai_invocation, analysis, cache, chat, context, embeddings, events, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, wiki, writing
 
 19 AI agents (pydantic-ai): beta_reader, character_arc, chat (ChatAgent), consistency, draft, extraction, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, pov_detection, preference_analysis, readability, review, summary, timeline, worldbuilding
 
@@ -141,6 +141,7 @@ Completed in Phase 6 so far:
 38. ✅ Review-01 Phase 3 (Privacy + Observability): KB interview resume changed from localStorage→sessionStorage (privacy); module-level OTel degradation visibility with one-shot warning + `get_observability_status()`; health endpoint includes OTel status (`/health` returns `observability` field).
 39. ✅ Coverage expansion: LexiconSentimentAnalyzer 19%→99% (40 tests), syllable counting 85%→92% (practical ceiling without pyphen), SpacyNLPProvider 49%→50% (ceiling without spaCy installed); wiki chapter_service 0%→100%, wiki service 18%→100%, wiki system_accessors 62%→100%, overall wiki coverage 74%→87%; memory tests migrated from MagicMock to Fake classes (ADR-030 implemented).
 40. ✅ **Chat Migration (CHAT-001, ADR-034)**: `ChatAgent` + `ChatDeps` created with `HistoryPolicy.CONVERSATIONAL` (first adopter of ADR-034). `ProcessHistory` for cross-turn message continuity. Backend `chat_service.py` refactored to use `ChatAgent.run_stream()` instead of `ModelRegistry.stream()`. `StreamEvent` yielded during `NarrareAgent.run_stream()`. Unit tests for chat service (happy path, history, errors).
+41. ✅ **CR-03 / INFRA-013 P0 (ADR-038)**: Core `ai_invocation/` module with contracts (`PromptInvocationContext`, `AdoptionPolicy`), enrichers (`PreferenceContextEnricher`), validators (`RuntimeVariableValidator`, `FinalPromptValidator`), budget resolver (`IntentOutputBudgetResolver`), `InvocationPipeline` orchestrator, and WritingPipeline integration via `_invocation_adapter.py`. Backend DI wired. P1–P3 outstanding.
 
 ## What's Next
 
@@ -153,7 +154,7 @@ Completed in Phase 6 so far:
 7. ⏳ **Frontend-Hubs weiter modularisieren (AUFG-01-02)** — 37 ratcheted legacy RULE-04 violations remain (was 38; EditorView modularized); no new violations allowed.
 8. ⏳ **E2E test patterns**
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
-10. ⏳ **CR-03 / INFRA-013 implementation** — ADR-038 is proposed and INFRA-013 is planned/specification; P0 runtime invocation evidence gates are next.
+10. ✅ **CR-03 / INFRA-013 P0** — Core `ai_invocation` module implemented, InvocationPipeline active in WritingPipeline. ADR-038 status: Implemented (P0). P1–P3 (Evidence Sink, Adoption Checker, User/Project IDs) remain outstanding.
 
 ---
 
@@ -198,7 +199,7 @@ Completed in Phase 6 so far:
 | ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ Accepted — CR-01 prompt surface contract for manifest-routeable intents (INFRA-012) |
-| ADR-038 | AI Invocation Adoption Contract | 🔄 Proposed — CR-03 runtime evidence contract for INFRA-013; specification only, not implemented |
+| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0) — CR-03 runtime evidence contract for INFRA-013; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver; P1–P3 outstanding |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

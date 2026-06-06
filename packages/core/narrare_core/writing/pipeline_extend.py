@@ -89,7 +89,7 @@ async def stream_extend(
     )
 
     # Compose prompt via RULE-02
-    prompt = await pipeline._composer.build(LLMIntent.EXTEND, prompt_ctx)  # pyright: ignore[reportPrivateUsage]
+    prompt = await pipeline._build_and_validate_prompt(LLMIntent.EXTEND, prompt_ctx)  # pyright: ignore[reportPrivateUsage]
 
     # Stream from LLM via RULE-01
     accumulated: list[str] = []

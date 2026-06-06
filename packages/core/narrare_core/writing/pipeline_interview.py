@@ -55,7 +55,7 @@ async def stream_interview_assisted(
             "recent_chapters": context.recent_chapters,
         },
     )
-    prompt = await pipeline._composer.build(LLMIntent.CHAT, prompt_context)  # pyright: ignore[reportPrivateUsage]
+    prompt = await pipeline._build_and_validate_prompt(LLMIntent.CHAT, prompt_context)  # pyright: ignore[reportPrivateUsage]
 
     try:
         result_text: str = await pipeline._registry.run(  # pyright: ignore[reportPrivateUsage,reportUnknownVariableType]

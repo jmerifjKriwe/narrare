@@ -4,7 +4,7 @@
 > **Date:** 2026-06-01
 > **Deciders:** Architecture Specialist
 > **Supersedes:** Partially supersedes ADR-019 (system-prompt consistency)
-> **Related:** ADR-002 (unified prompt system), ADR-015 (agents as first-class citizens), ADR-016 (prompt caching), INFRA-012 (prompt governance hardening)
+> **Related:** ADR-002 (unified prompt system), ADR-015 (agents as first-class citizens), ADR-016 (prompt caching), ADR-038 (AI Invocation Adoption Contract), INFRA-012 (prompt governance hardening), INFRA-013 (AI Invocation Adoption Contract)
 
 ---
 
@@ -423,6 +423,14 @@ The detailed implementation contract lives in
 INFRA-012 defines variable registry governance, cross-feature context precedence,
 process-prevention checklists, and layer-specific handoffs. Material deviations
 from that spec require architecture re-review under RULE-21.
+
+Runtime adoption evidence is governed by
+[`ADR-038 — AI Invocation Adoption Contract`](ADR-038-ai-invocation-adoption-contract.md)
+and [`INFRA-013`](../../features/infra/INFRA-013-ai-invocation-adoption-contract.md).
+Those documents do not change ADR-026's content categories; they require runtime
+proof that dynamic preferences/context, output-language controls, final prompt
+validation, and intent/mode output budgets reached the production invocation path
+before a feature claims adopted status.
 
 ---
 

@@ -21,14 +21,18 @@ from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import WritingError
 from narrare_core.writing._enums import GenerationMode
+from narrare_core.writing._invocation_adapter import build_and_validate_prompt
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare_core.ai_invocation.models import PromptInvocationContext
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
-    from narrare_core.prompts.composer import PromptComposer
+    from narrare_core.llm.intents import LLMIntent
+    from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.context_models import KBEntity, RecentChapter
     from narrare_core.writing.draft_processor import DraftProcessor
@@ -36,9 +40,7 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-# ---------------------------------------------------------------------------
-# Tone instructions — injected into prompt extra variables
-# ---------------------------------------------------------------------------
+# -- Tone instructions — injected into prompt extra variables --
 
 _TONE_INSTRUCTIONS: dict[str, str] = {
     "dramatic": (
@@ -102,17 +104,17 @@ class WritingPipeline:
         context_assembler: WritingContextAssembler,
         draft_processor: DraftProcessor,
         agent_registry: object | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._registry = registry
         self._composer = composer
         self._context_assembler = context_assembler
         self._draft_processor = draft_processor
         self._agent_registry = agent_registry
+        self._invocation_pipeline = invocation_pipeline
         self._stop_signals: set[UUID] = set()
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    # -- Public API --
 
     async def generate(
         self,
@@ -313,9 +315,7 @@ class WritingPipeline:
     def _is_stopped(self, request_id: UUID) -> bool:
         return request_id in self._stop_signals
 
-    # ------------------------------------------------------------------
-    # Helpers (used by sub-modules via the pipeline instance)
-    # ------------------------------------------------------------------
+    # -- Helpers (used by sub-modules via the pipeline instance) --
 
     def _build_prompt_context(
         self,
@@ -371,6 +371,21 @@ class WritingPipeline:
             avoidance_patterns=context.avoidance_patterns,
             character_voice_profiles=context.character_voice_profiles,
             extra=extra,
+        )
+
+    async def _build_and_validate_prompt(
+        self,
+        intent: LLMIntent,
+        prompt_ctx: PromptContext,
+        invocation_context: PromptInvocationContext | None = None,
+    ) -> ComposedPrompt:
+        """Build prompt with optional invocation pipeline validation."""
+        return await build_and_validate_prompt(
+            self._composer,
+            self._invocation_pipeline,
+            intent,
+            prompt_ctx,
+            invocation_context,
         )
 
     @staticmethod
