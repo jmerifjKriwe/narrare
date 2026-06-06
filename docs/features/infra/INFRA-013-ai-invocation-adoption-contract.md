@@ -28,13 +28,14 @@ requires: [INFRA-002, INFRA-003, INFRA-005, INFRA-011, INFRA-012, PROMPT-001, PR
 
 ## Status and Decision Summary
 
-- **Status:** P0 implemented. Core `ai_invocation` module, InvocationPipeline,
-  enrichers, validators, budget resolver, and WritingPipeline integration are in
-  production. P1–P3 (Evidence Sink, Adoption Checker, User/Project IDs) remain
-  outstanding.
+- **Status:** P0 implemented, P0.3e and P1 partial delivered. Core `ai_invocation`
+  module, InvocationPipeline, enrichers, validators, budget resolver,
+  LoggingEvidenceSink, and WritingPipeline integration are in production.
+  User/Project IDs flow through InvocationContext. P1 (mode-specific adoption
+  registry, checker update, kb_suggested) through P3 remain outstanding.
 - **Governing ADR:** [ADR-038 — AI Invocation Adoption Contract](../../architecture/decisions/ADR-038-ai-invocation-adoption-contract.md).
-- **CR-03 state:** P0 implemented. CR-03 is not resolved until P1–P3 exit
-  criteria and runtime evidence gates pass.
+- **CR-03 state:** P0 implemented, P1 partial (User/Project IDs). CR-03 is not
+  resolved until P1–P3 exit criteria and runtime evidence gates pass.
 
 ## Scope
 
@@ -556,3 +557,6 @@ suggestions. High-impact conflicts are surfaced rather than silently resolved.
   WritingPipeline integration (`_invocation_adapter.py`), and backend DI.
   Module path changed from spec `core/invocation/` to `core/ai_invocation/`.
   P1–P3 remain outstanding.
+- 2026-06-06 — P0.3e (LoggingEvidenceSink) and P1 partial (User/Project IDs in
+  InvocationContext) implemented. P1 (mode-specific adoption registry, checker
+  update, kb_suggested) through P3 remain outstanding.

@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-06 (CR-03 P0 implemented / INFRA-013)
-Session: AI Invocation Adoption Contract P0 implemented — Core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, and WritingPipeline integration. ADR-038 status updated to Implemented (P0). P1–P3 remain outstanding.
+Date: 2026-06-06 (CR-03 P0.3e + P1 implemented)
+Session: AI Invocation Adoption Contract P0.3e + P1 partial — Core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink, and WritingPipeline integration. ADR-038 status updated to Implemented (P0.3e, P1 partial). P1 (mode-specific registry) through P3 remain outstanding.
 
 ---
 
@@ -141,7 +141,7 @@ Completed in Phase 6 so far:
 38. ✅ Review-01 Phase 3 (Privacy + Observability): KB interview resume changed from localStorage→sessionStorage (privacy); module-level OTel degradation visibility with one-shot warning + `get_observability_status()`; health endpoint includes OTel status (`/health` returns `observability` field).
 39. ✅ Coverage expansion: LexiconSentimentAnalyzer 19%→99% (40 tests), syllable counting 85%→92% (practical ceiling without pyphen), SpacyNLPProvider 49%→50% (ceiling without spaCy installed); wiki chapter_service 0%→100%, wiki service 18%→100%, wiki system_accessors 62%→100%, overall wiki coverage 74%→87%; memory tests migrated from MagicMock to Fake classes (ADR-030 implemented).
 40. ✅ **Chat Migration (CHAT-001, ADR-034)**: `ChatAgent` + `ChatDeps` created with `HistoryPolicy.CONVERSATIONAL` (first adopter of ADR-034). `ProcessHistory` for cross-turn message continuity. Backend `chat_service.py` refactored to use `ChatAgent.run_stream()` instead of `ModelRegistry.stream()`. `StreamEvent` yielded during `NarrareAgent.run_stream()`. Unit tests for chat service (happy path, history, errors).
-41. ✅ **CR-03 / INFRA-013 P0 (ADR-038)**: Core `ai_invocation/` module with contracts (`PromptInvocationContext`, `AdoptionPolicy`), enrichers (`PreferenceContextEnricher`), validators (`RuntimeVariableValidator`, `FinalPromptValidator`), budget resolver (`IntentOutputBudgetResolver`), `InvocationPipeline` orchestrator, and WritingPipeline integration via `_invocation_adapter.py`. Backend DI wired. P1–P3 outstanding.
+41. ✅ **CR-03 / INFRA-013 P0 (ADR-038)**: Core `ai_invocation/` module with contracts (`PromptInvocationContext`, `AdoptionPolicy`), enrichers (`PreferenceContextEnricher`), validators (`RuntimeVariableValidator`, `FinalPromptValidator`), budget resolver (`IntentOutputBudgetResolver`), `InvocationPipeline` orchestrator, and WritingPipeline integration via `_invocation_adapter.py`. Backend DI wired. P0.3e (LoggingEvidenceSink) and P1 (User/Project IDs in InvocationContext) also implemented. P1 (mode-specific registry) through P3 remain outstanding.
 
 ## What's Next
 
@@ -154,7 +154,7 @@ Completed in Phase 6 so far:
 7. ⏳ **Frontend-Hubs weiter modularisieren (AUFG-01-02)** — 37 ratcheted legacy RULE-04 violations remain (was 38; EditorView modularized); no new violations allowed.
 8. ⏳ **E2E test patterns**
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
-10. ✅ **CR-03 / INFRA-013 P0** — Core `ai_invocation` module implemented, InvocationPipeline active in WritingPipeline. ADR-038 status: Implemented (P0). P1–P3 (Evidence Sink, Adoption Checker, User/Project IDs) remain outstanding.
+10. ✅ **CR-03 / INFRA-013 P0–P1 partial** — Core `ai_invocation` module implemented (P0). P0.3e (LoggingEvidenceSink), P1 (User/Project IDs in InvocationContext) committed 4b927e3. P1 (mode-specific adoption registry, checker update, kb_suggested), P2, P3 remain.
 
 ---
 
@@ -199,7 +199,7 @@ Completed in Phase 6 so far:
 | ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ Accepted — CR-01 prompt surface contract for manifest-routeable intents (INFRA-012) |
-| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0) — CR-03 runtime evidence contract for INFRA-013; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver; P1–P3 outstanding |
+| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0.3e, P1 partial) — CR-03 runtime evidence contract; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; P1 (mode-specific registry) through P3 outstanding |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

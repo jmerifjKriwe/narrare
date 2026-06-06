@@ -1,6 +1,6 @@
 # ADR-038 — AI Invocation Adoption Contract
 
-> **Status:** ✅ Implemented (P0)
+> **Status:** ✅ Implemented (P0.3e, P1 partial)
 > **Date:** 2026-06-05
 > **Deciders:** User, Architecture Specialist
 > **Supersedes:** —
