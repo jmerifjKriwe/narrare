@@ -320,13 +320,20 @@ def get_invocation_pipeline() -> InvocationPipeline:
         LoggingEvidenceSink,
         RuntimeVariableValidatorImpl,
     )
-    from narrare_core.ai_invocation.enrichers import PreferenceContextEnricherImpl
+    from narrare_core.ai_invocation.enrichers import (
+        KBSuggestedContextEnricher,
+        PreferenceContextEnricherImpl,
+    )
 
     preference_service = _get_preference_service_instance()
 
     enrichers: list[ContextEnricher] = []
     if preference_service is not None:
         enrichers.append(PreferenceContextEnricherImpl(preference_provider=preference_service))
+
+    # KB-suggested enricher runs before budget resolution so the resolver
+    # can decide whether token budget allows KB context inclusion.
+    enrichers.append(KBSuggestedContextEnricher(kb_provider=None))
 
     return InvocationPipeline(
         enrichers=enrichers,

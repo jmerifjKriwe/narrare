@@ -29,6 +29,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from prompt_checks import PromptFile
 
+    from adoption.scorer_modes import ModeScore
+
 # ── Constants ──────────────────────────────────────────────────────
 
 PASS_THRESHOLD = 0.85
@@ -90,6 +92,7 @@ class CategoryScore:
     missing_should: list[str] = field(default_factory=list[str])
     missing_locales: dict[str, list[str]] = field(default_factory=dict[str, list[str]])
     inline_fallbacks: int = 0
+    modes: list[ModeScore] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType] — circular TYPE_CHECKING dep
 
 
 @dataclass
@@ -100,12 +103,15 @@ class AdoptionReport:
     status: str  # "PASS" | "WARN" | "FAIL"
     categories: list[CategoryScore] = field(default_factory=list[CategoryScore])
     total_inline_fallbacks: int = 0
+    mode_count: int = 0
+    runtime_verified_count: int = 0
+    adopted_count: int = 0
 
 
 # ── Helpers ────────────────────────────────────────────────────────
 
 
-def _status(score: float) -> str:
+def status(score: float) -> str:
     if score >= PASS_THRESHOLD:
         return "PASS"
     if score >= WARN_THRESHOLD:
@@ -172,7 +178,7 @@ def _check_i18n_coverage(
     return missing_map, adopted_frac, total_applicable, total_covered
 
 
-def _check_infrastructure(
+def check_infrastructure(
     infra_name: str,
     level: str,
     all_vars: set[str],
@@ -250,11 +256,14 @@ def compute_adoption_report(
     prompts: list[PromptFile],
 ) -> AdoptionReport:
     """Compute the full adoption report from registry data and parsed prompts."""
+    from adoption.scorer_modes import normalize_modes as _norm
+
     features: dict[str, Any] = registry.get("features", {})
     fallbacks: list[dict[str, str]] = registry.get("inline_fallbacks", []) or []
+    category_defaults: dict[str, Any] = registry.get("category_defaults", {})
 
     category_modes: dict[str, list[str]] = {
-        name: list(cfg.get("modes", [])) for name, cfg in features.items()
+        name: [mn for mn, _ in _norm(cfg.get("modes", []))] for name, cfg in features.items()
     }
     fallback_counts = _map_fallbacks_to_categories(fallbacks, category_modes)
 
@@ -262,7 +271,8 @@ def compute_adoption_report(
 
     for cat_name, cfg in sorted(features.items()):
         all_vars = _collect_category_vars(prompts, cat_name)
-        modes = cfg.get("modes", [])
+        mode_items = _norm(cfg.get("modes", []))
+        mode_names = [name for name, _ in mode_items]
         infra = cfg.get("required_infrastructure", {})
         ctx = cfg.get("context_variables", {})
 
@@ -274,9 +284,14 @@ def compute_adoption_report(
         missing_should = [v for v in should_vars if v not in all_vars]
 
         # i18n check.
-        missing_locales, i18n_frac, _, _ = _check_i18n_coverage(prompts, cat_name, modes)
+        missing_locales, i18n_frac, _, _ = _check_i18n_coverage(prompts, cat_name, mode_names)
 
         has_prompts = bool([p for p in prompts if p.category == cat_name and p.is_system_md])
+
+        # Category-level runtime requirements from category_defaults.
+        cat_runtime: dict[str, str] = category_defaults.get(cat_name, {}).get(
+            "runtime_requirements", {}
+        )
 
         # ── Score computation ──────────────────────────────────
         numerator = 0.0
@@ -321,7 +336,7 @@ def compute_adoption_report(
 
         # Infrastructure items.
         for infra_name, level in infra.items():
-            detail = _check_infrastructure(infra_name, level, all_vars, has_prompts, i18n_frac)
+            detail = check_infrastructure(infra_name, level, all_vars, has_prompts, i18n_frac)
             details.append(detail)
             numerator += detail.weight * detail.adopted
             denominator += detail.weight
@@ -343,25 +358,43 @@ def compute_adoption_report(
         score = numerator / denominator if denominator > 0 else 1.0
         score = max(0.0, min(1.0, score))  # clamp to [0, 1]
 
+        from adoption.scorer_modes import compute_all_mode_scores as _score_modes
+
+        mode_scores = _score_modes(
+            mode_items=mode_items,
+            infra=infra,
+            must_vars=must_vars,
+            should_vars=should_vars,
+            cat_runtime=cat_runtime,
+            all_vars=all_vars,
+            i18n_frac=i18n_frac,
+            has_prompts=has_prompts,
+            fb_count=fb_count,
+        )
         categories.append(
             CategoryScore(
                 category=cat_name,
                 score=score,
-                status=_status(score),
+                status=status(score),
                 details=details,
                 missing_must=missing_must,
                 missing_should=missing_should,
                 missing_locales=missing_locales,
                 inline_fallbacks=fb_count,
+                modes=mode_scores,
             )
         )
 
-    # Overall score: simple average of category scores.
     overall = (sum(c.score for c in categories) / len(categories)) if categories else 1.0
+    runtime_verified_count = sum(sum(1 for m in c.modes if m.runtime_verified) for c in categories)
+    adopted_count = sum(sum(1 for m in c.modes if m.adopted) for c in categories)
 
     return AdoptionReport(
         overall_score=overall,
-        status=_status(overall),
+        status=status(overall),
         categories=categories,
         total_inline_fallbacks=len(fallbacks),
+        mode_count=sum(len(c.modes) for c in categories),
+        runtime_verified_count=runtime_verified_count,
+        adopted_count=adopted_count,
     )

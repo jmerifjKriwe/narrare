@@ -75,6 +75,22 @@ def adoption_debt_fingerprints(report: AdoptionReport) -> set[str]:
                     category.inline_fallbacks,
                 )
             )
+        # Mode-level fingerprints for runtime gaps.
+        for mode in category.modes:
+            if mode.static_verified and not mode.runtime_verified:
+                for rd in mode.runtime_details:
+                    if rd.evidence_status != "verified":
+                        items.add(
+                            stable_fingerprint(
+                                category.category,
+                                mode.mode,
+                                "runtime",
+                                rd.requirement,
+                                rd.evidence_status,
+                            )
+                        )
+            if mode.static_verified and not mode.adopted:
+                items.add(stable_fingerprint(category.category, mode.mode, "not_adopted"))
     return items
 
 
@@ -111,6 +127,15 @@ def _format_human(report: AdoptionReport) -> str:
             f" ({cat.inline_fallbacks} inline fallback(s))" if cat.inline_fallbacks else ""
         )
 
+        # Mode summary.
+        if cat.modes:
+            mode_count = len(cat.modes)
+            rt_count = sum(1 for m in cat.modes if m.runtime_verified)
+            ad_count = sum(1 for m in cat.modes if m.adopted)
+            mode_marker = f"  [{mode_count} modes, {rt_count} runtime_verified, {ad_count} adopted]"
+        else:
+            mode_marker = ""
+
         parts: list[str] = []
         if cat.missing_must:
             parts.append(f"missing MUST: {', '.join(cat.missing_must)}")
@@ -121,7 +146,33 @@ def _format_human(report: AdoptionReport) -> str:
             parts.append(f"i18n gaps: {'; '.join(locale_strs)}")
 
         detail_str = f"  ({'; '.join(parts)})" if parts else ""
-        lines.append(f"  {cat.category:<14} {cat.score:.2f} {icon}{fallback_info}{detail_str}")
+        lines.append(
+            f"  {cat.category:<14} {cat.score:.2f} {icon}{mode_marker}{fallback_info}{detail_str}"
+        )
+
+        # Mode-level breakdown.
+        for mode in cat.modes:
+            micon = _STATUS_ICON.get(mode.status, "  ")
+            rt_icon = "✅" if mode.runtime_verified else "❌"
+            ad_icon = "✅" if mode.adopted else "❌"
+
+            rt_hint = ""
+            if not mode.runtime_verified:
+                failed = [rd for rd in mode.runtime_details if rd.evidence_status != "verified"]
+                if failed:
+                    rt_hint = f" {failed[0].requirement}={failed[0].declared}"
+
+            lines.append(
+                f"    {mode.mode:<24} {mode.score:.2f} {micon} "
+                f"static {'✅' if mode.static_verified else '❌'} | "
+                f"runtime {rt_icon}{rt_hint} | adopted {ad_icon}"
+            )
+
+            # Runtime failure details.
+            if not mode.runtime_verified:
+                for rd in mode.runtime_details:
+                    if rd.evidence_status != "verified":
+                        lines.append(f"      → runtime: {rd.requirement} declared '{rd.declared}'")
 
     lines.append("")
     overall_icon = _STATUS_ICON.get(report.status, "")
@@ -140,6 +191,9 @@ def _format_json(report: AdoptionReport) -> str:
         "overall_score": round(report.overall_score, 4),
         "status": report.status,
         "total_inline_fallbacks": report.total_inline_fallbacks,
+        "mode_count": report.mode_count,
+        "runtime_verified_count": report.runtime_verified_count,
+        "adopted_count": report.adopted_count,
         "categories": [
             {
                 "category": cat.category,
@@ -149,6 +203,26 @@ def _format_json(report: AdoptionReport) -> str:
                 "missing_should": cat.missing_should,
                 "missing_locales": cat.missing_locales,
                 "inline_fallbacks": cat.inline_fallbacks,
+                "modes": [
+                    {
+                        "mode": m.mode,
+                        "score": round(m.score, 4),
+                        "status": m.status,
+                        "static_verified": m.static_verified,
+                        "runtime_verified": m.runtime_verified,
+                        "adopted": m.adopted,
+                        "runtime_details": [
+                            {
+                                "requirement": rd.requirement,
+                                "declared": rd.declared,
+                                "evidence_status": rd.evidence_status,
+                                "note": rd.note,
+                            }
+                            for rd in m.runtime_details
+                        ],
+                    }
+                    for m in cat.modes
+                ],
             }
             for cat in report.categories
         ],

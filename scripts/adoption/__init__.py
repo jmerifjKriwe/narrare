@@ -12,10 +12,13 @@ from adoption.scorer import (
     CheckDetail,
     compute_adoption_report,
 )
+from adoption.scorer_modes import ModeScore, RuntimeCheckDetail
 
 __all__ = [
     "AdoptionReport",
     "CategoryScore",
     "CheckDetail",
+    "ModeScore",
+    "RuntimeCheckDetail",
     "compute_adoption_report",
 ]

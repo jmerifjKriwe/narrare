@@ -2,6 +2,8 @@
 
 Validates weighted score calculation, threshold classification,
 and individual check dimensions.
+
+Mode-level tests are in test_check_adoption_mode.py (ADR-039).
 """
 
 from __future__ import annotations
@@ -19,8 +21,8 @@ if _SCRIPTS not in sys.path:
 from adoption.scorer import (  # noqa: E402
     PASS_THRESHOLD,
     WARN_THRESHOLD,
-    _status,
     compute_adoption_report,
+    status,
 )
 from prompt_checks import PromptFile  # noqa: E402
 
@@ -76,16 +78,16 @@ def _minimal_registry(
 
 class TestStatus:
     def test_pass(self) -> None:
-        assert _status(0.90) == "PASS"
-        assert _status(PASS_THRESHOLD) == "PASS"
+        assert status(0.90) == "PASS"
+        assert status(PASS_THRESHOLD) == "PASS"
 
     def test_warn(self) -> None:
-        assert _status(0.75) == "WARN"
-        assert _status(WARN_THRESHOLD) == "WARN"
+        assert status(0.75) == "WARN"
+        assert status(WARN_THRESHOLD) == "WARN"
 
     def test_fail(self) -> None:
-        assert _status(0.50) == "FAIL"
-        assert _status(0.0) == "FAIL"
+        assert status(0.50) == "FAIL"
+        assert status(0.0) == "FAIL"
 
 
 # ── compute_adoption_report — perfect score ────────────────────────

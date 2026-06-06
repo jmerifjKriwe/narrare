@@ -6,7 +6,56 @@
 # Spec: docs/architecture/decisions/025-feature-adoption-infrastructure.md
 # =============================================================================
 
-version: "1.0.0"
+version: "2.0.0"
+
+# ── Category Defaults ──────────────────────────────────────────────────────────
+# Baseline runtime_requirements per category. Individual modes may override
+# these via mode-level overrides (see inline_suggest, co_author below).
+# Levels: required | optional | none | not_applicable | budget_rejected
+
+category_defaults:
+  writing:
+    runtime_requirements:
+      preference_enrichment: required
+      kb_suggested: provided
+      budget_resolution: required
+      final_validation: required
+      evidence_sink: required
+  analysis:
+    runtime_requirements:
+      preference_enrichment: required
+      kb_suggested: not_applicable
+      budget_resolution: optional
+      final_validation: required
+      evidence_sink: optional
+  kb:
+    runtime_requirements:
+      preference_enrichment: optional
+      kb_suggested: not_applicable
+      budget_resolution: optional
+      final_validation: required
+      evidence_sink: optional
+  planning:
+    runtime_requirements:
+      preference_enrichment: required
+      kb_suggested: not_applicable
+      budget_resolution: optional
+      final_validation: required
+      evidence_sink: optional
+  generation:
+    runtime_requirements:
+      preference_enrichment: required
+      kb_suggested: not_applicable
+      budget_resolution: none
+      final_validation: optional
+      evidence_sink: optional
+  chat:
+    runtime_requirements:
+      preference_enrichment: required
+      kb_suggested: not_applicable
+      budget_resolution: none
+      final_validation: optional
+      evidence_sink: optional
 
 # ── Feature Categories ────────────────────────────────────────────────────────
 # Each category maps to a _bundled/{category}/ directory.
@@ -17,16 +66,46 @@ version: "1.0.0"
 features:
   writing:
     modes:
-      - new_chapter
-      - extend_chapter
-      - rewrite_selection
-      - inline_suggest
-      - story_suggest
-      - interactive_session
-      - interview
-      - scene_by_scene
-      - chat
-      - co_author
+      new_chapter: {}
+      extend_chapter: {}
+      rewrite_selection: {}
+      story_suggest: {}
+      interactive_session: {}
+      interview: {}
+      scene_by_scene: {}
+      chat: {}
+      inline_suggest:
+        description: "Low-latency inline writing suggestions"
+        overrides:
+          required_infrastructure:
+            token_budget: optional
+          context_variables:
+            should:
+              - kb_suggested
+          runtime_requirements:
+            preference_enrichment: required
+            kb_suggested: budget_rejected
+            budget_resolution: none
+            final_validation: optional
+            evidence_sink: optional
+      co_author:
+        description: "Peer-to-peer co-authoring session"
+        overrides:
+          required_infrastructure:
+            mem0_preferences: required
+            kb_entities: optional
+            kb_relationships: optional
+          context_variables:
+            must:
+              - user_preferences
+              - avoidance_patterns
+            should: []
+          runtime_requirements:
+            preference_enrichment: required
+            kb_suggested: not_applicable
+            budget_resolution: required
+            final_validation: required
+            evidence_sink: required
     required_infrastructure:
       token_budget: required
       prompt_composer: required
