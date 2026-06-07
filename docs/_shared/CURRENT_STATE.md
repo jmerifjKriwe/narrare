@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-07 (CR-03 P3 fully implemented)
-Session: CR-03 P3 implementation complete — FileEvidenceSink (Layer 1), registry drift detection with JSON Schema + check_registry_drift.py (Layer 2), doc-drift automation with doc_drift/ package (Layer 3), quality metrics with QualityReport + joiner (Layer 4), and CI integration with --drift flag (Layer 5). ADR-041 accepted. INFRA-013 complete through P3. All P3 exit criteria satisfied.
+Date: 2026-06-07 (CR-04 Cross-Feature Coherence)
+Session: CR-04 Cross-Feature Coherence — KB Context Contract + Variable Naming + Governance. KBContextEntry extended with source/evidence/confidence/review_status/freshness metadata. VARIABLE_ALIASES with canonical variable resolution and bare `language` deprecation. ADR Implementation Completeness Gate (Gate 12). Cross-Feature Audit Cadence. FIND-009 (Timeline→Consistency) registered. 39 new tests.
 
 ---
 
@@ -29,9 +29,9 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 ### Stats (verified 2026-06-05)
 
 - Knowledge Graph: 17,357 nodes, 122,996 edges, risk low
-- Backend tests: ~4,500 (approx. 3,976 unit + 495 integration) across 405 test files
+- Backend tests: ~4,540 (approx. 4,015 unit + 495 integration) across 408 test files
 - Frontend tests: 1,683 across 186 test files (Vitest + MSW)
-- Total tests: ~6,200+
+- Total tests: ~6,240+
 - Architecture rules: 22 rules (RULE-01 through RULE-22, plus RULE-01b)
 - Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
 - ADRs: 40 (ADR-001 through ADR-041)
@@ -144,6 +144,7 @@ Completed in Phase 6 so far:
 41. ✅ **CR-03 / INFRA-013 P0 (ADR-038)**: Core `ai_invocation/` module with contracts (`PromptInvocationContext`, `AdoptionPolicy`), enrichers (`PreferenceContextEnricher`), validators (`RuntimeVariableValidator`, `FinalPromptValidator`), budget resolver (`IntentOutputBudgetResolver`), `InvocationPipeline` orchestrator, and WritingPipeline integration via `_invocation_adapter.py`. Backend DI wired. P0.3e (LoggingEvidenceSink) and P1 (User/Project IDs in InvocationContext) also implemented. P1 (mode-specific registry) through P3 remain outstanding.
 42. ✅ **CR-03 / INFRA-013 P2 (ADR-040)**: `core/profiles/` module with `ProjectWritingProfile` SSOT (consolidated voice/tone/style/language/genre), `KBConsistencyEnricher` + `VoiceProfileStatus` in `ai_invocation/`, `AuditReport` + KG Consistency Checker in `scripts/adoption/`, `requires_runtime_evidence` flag in adoption registry. 24/27 modes wired with runtime evidence.
 43. ✅ **CR-03 / INFRA-013 P3 (ADR-041)**: FileEvidenceSink (`.evidence/invocations.jsonl`), registry drift detection (JSON Schema + `check_registry_drift.py`), doc-drift automation (`doc_drift/` package), quality metrics (`QualityReport` + joiner), CI integration (`--drift` flag, CI jobs). All P3 exit criteria satisfied. INFRA-013 complete through P3.
+44. ✅ **CR-04 Cross-Feature Coherence Remediation**: KB Context Contract with source/evidence/confidence/review_status metadata (CR-AUFG-04-01 + B1 + B3); Variable naming canonical aliases with deprecation of bare `language` (CR-AUFG-04-03 + E2 + B6); ADR Implementation Completeness Gate (Gate 12); Cross-Feature Audit Cadence; FIND-009 (Timeline→Consistency) registered. 39 new tests. Precedence confirmed in RULE-22 §7 (E3: no standalone ADR needed).
 
 ## What's Next
 

@@ -169,6 +169,9 @@ class ExtractionApplyService:
             body=item.source_text,
             status="draft",
         )
+        # TODO(CR-AUFG-04-B3): Once KBEntryCreate supports provenance fields,
+        # add source="auto_extraction" and review_status="pending" here
+        # so auto-extracted entities carry their origin metadata.
         entry = await self._kb_service.create(
             novel_id=novel_id,
             user_id=user_id,

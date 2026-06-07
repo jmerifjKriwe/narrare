@@ -82,6 +82,76 @@ class TestKBEntity:
 
 
 # ---------------------------------------------------------------------------
+# CR-AUFG-04: KBEntity provenance metadata
+# ---------------------------------------------------------------------------
+
+
+class TestKBEntityProvenance:
+    """KBEntity provenance fields (source, review_status, confidence)."""
+
+    def test_source_defaults_to_manual(self) -> None:
+        entity = KBEntity(
+            entity_id="e1",
+            entity_type="character",
+            name="Alice",
+            content="A warrior.",
+        )
+        assert entity.source == "manual"
+
+    def test_review_status_defaults_to_endorsed(self) -> None:
+        entity = KBEntity(
+            entity_id="e1",
+            entity_type="character",
+            name="Alice",
+            content="A warrior.",
+        )
+        assert entity.review_status == "endorsed"
+
+    def test_confidence_defaults_to_one(self) -> None:
+        entity = KBEntity(
+            entity_id="e1",
+            entity_type="character",
+            name="Alice",
+            content="A warrior.",
+        )
+        assert entity.confidence == 1.0
+
+    def test_auto_extraction_source(self) -> None:
+        entity = KBEntity(
+            entity_id="e2",
+            entity_type="location",
+            name="Castle",
+            content="An old castle.",
+            source="auto_extraction",
+            review_status="pending",
+            confidence=0.85,
+        )
+        assert entity.source == "auto_extraction"
+        assert entity.review_status == "pending"
+        assert entity.confidence == 0.85
+
+    def test_imported_source(self) -> None:
+        entity = KBEntity(
+            entity_id="e3",
+            entity_type="faction",
+            name="The Guild",
+            content="A trading guild.",
+            source="imported",
+        )
+        assert entity.source == "imported"
+
+    def test_rejected_review_status(self) -> None:
+        entity = KBEntity(
+            entity_id="e4",
+            entity_type="character",
+            name="Mallory",
+            content="An antagonist.",
+            review_status="rejected",
+        )
+        assert entity.review_status == "rejected"
+
+
+# ---------------------------------------------------------------------------
 # RecentChapter
 # ---------------------------------------------------------------------------
 

@@ -39,6 +39,11 @@ class KBEntity:
     wiki_status: str | None = None  # "fresh" | "stale" | "pending" | None
     status: str = "canon"  # KB lifecycle: draft | reviewed | canon | deprecated
 
+    # Provenance metadata (CR-AUFG-04)
+    source: str = "manual"  # "manual" | "auto_extraction" | "imported"
+    review_status: str = "endorsed"  # "pending" | "endorsed" | "rejected"
+    confidence: float = 1.0  # Extraction confidence (1.0 for manual entries)
+
     @property
     def relevance_score(self) -> float:
         """Weighted relevance: 50 % similarity + 30 % frequency + 20 % recency."""

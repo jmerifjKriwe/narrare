@@ -213,14 +213,19 @@ def compute_adoption_report(
     evidence_repo: Any | None = None,
 ) -> AdoptionReport:
     """Compute the full adoption report from registry data and parsed prompts."""
-    from adoption.scorer_modes import load_probe_evidence
+    from adoption.scorer_evidence import (
+        load_preference_enrichment_evidence,
+        load_probe_evidence,
+    )
     from adoption.scorer_modes import normalize_modes as _norm
 
-    probe_evidence = (
-        load_probe_evidence(evidence_dir=evidence_dir, evidence_repo=evidence_repo)
-        if evidence_dir or evidence_repo
-        else {}
-    )
+    pref_evidence: dict[str, set[str]] = {}
+    probe_evidence: dict[str, set[str]] = {}
+    if evidence_dir:
+        pref_evidence = load_preference_enrichment_evidence(evidence_dir)
+        probe_evidence = load_probe_evidence(evidence_dir=evidence_dir)
+    elif evidence_repo:
+        probe_evidence = load_probe_evidence(evidence_repo=evidence_repo)
 
     features: dict[str, Any] = registry.get("features", {})
     fallbacks: list[dict[str, str]] = registry.get("inline_fallbacks", []) or []
@@ -333,6 +338,7 @@ def compute_adoption_report(
             fb_count=fb_count,
             probe_evidence=probe_evidence or None,
             feature_id=cat_name,
+            preference_evidence=pref_evidence or None,
         )
         categories.append(
             CategoryScore(

@@ -15,12 +15,64 @@ from typing import Any
 
 @dataclass(slots=True)
 class KBContextEntry:
-    """A single KB entry included in context."""
+    """A single KB entry included in context.
+
+    Metadata fields (source, evidence, confidence, review_status, freshness)
+    track data provenance and quality for cross-feature coherence (CR-AUFG-04).
+    """
 
     entity_type: str
     name: str
     content: str
     relevance_score: float = 1.0
+    source: str = "manual"  # "manual" | "auto_extraction" | "imported" | "wiki_generated"
+    evidence: str = ""  # Human-readable reason why this entry is relevant
+    confidence: float = 1.0  # 0.0-1.0 confidence score for auto-extracted facts
+    review_status: str = "endorsed"  # "pending" | "endorsed" | "rejected"
+    freshness: str = "fresh"  # "fresh" | "stale" | "pending" — wiki/LLM summary freshness
+
+
+def validate_world_context(world_context: str) -> list[str]:
+    """Validate world_context has minimum required structure.
+
+    Returns a list of warnings (empty list means the context looks OK).
+    Never raises — all issues are reported as warnings per RULE-11.
+    """
+    warnings: list[str] = []
+
+    if not world_context.strip():
+        warnings.append("world_context is empty")
+        return warnings
+
+    # Heuristic: check for at least one entity-type keyword
+    entity_keywords = (
+        "character",
+        "location",
+        "faction",
+        "setting",
+        "timeline",
+        "event",
+        "relationship",
+        "system",
+        "object",
+        "concept",
+    )
+    lower = world_context.lower()
+    has_entity_keyword = any(kw in lower for kw in entity_keywords)
+
+    # Heuristic: check for structured boundaries (headings, bullet lists,
+    # or colon-separated labels like "Name: ...")
+    has_structure = any(
+        marker in world_context for marker in ("###", "##", "- ", "* ", ":", "\n\n")
+    )
+
+    if not has_entity_keyword and not has_structure:
+        warnings.append(
+            "world_context appears to be unstructured text without "
+            "clear entity references or boundaries"
+        )
+
+    return warnings
 
 
 @dataclass(slots=True)

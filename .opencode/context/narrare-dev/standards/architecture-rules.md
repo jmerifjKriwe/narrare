@@ -147,6 +147,13 @@ When Feature A consumes data from Feature B:
 **Expected schema:** KB entity v2 with: id, name, type, status, summary
 ```
 
+### Variable Naming Convention
+
+- **`writing_language`** is the canonical variable for output/writing language.
+- **`language`** is a deprecated alias — do not use in new templates.
+- **`explanation_language`** is a distinct variable (name meaning explanations), not an alias.
+- See `variable_registry.py` → `VARIABLE_ALIASES` for the complete mapping.
+
 ### RULE-22 Quick Reference
 
 - **What**: Cross-Feature Coherence Gate — mandatory validation before merging

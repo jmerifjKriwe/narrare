@@ -210,6 +210,43 @@ Before committing:
 
 ---
 
+## Cross-Feature Audit Cadence
+
+### Regular Reviews
+
+| Phase | Cadence | Scope | Owner |
+|-------|---------|-------|-------|
+| Active development (≥3 features/week) | Every 6–8 weeks | Full CR-00 to CR-08 review | Coordinator + Architecture Specialist |
+| Steady state (≤1 feature/week) | Quarterly | Full CR-00 to CR-08 review | Coordinator + Architecture Specialist |
+| Post-freeze / pre-release | Once, before release | Cross-feature precedence + integration contracts | Architecture Specialist |
+
+### Triggers for Ad-Hoc Review
+
+An unscheduled cross-feature review is triggered when:
+
+- A new shared data source is introduced (e.g., new context tier, new KB field)
+- An existing shared data source schema changes
+- Two features are found to produce contradictory AI output
+- A new ADR supersedes an existing one that other features depend on
+
+### Minimum Review Scope
+
+Even in cadence reviews, the following MUST be checked:
+
+1. **KB context contract** — CR-AUFG-04-01 compliance (source, freshness, confidence/evidence, relationship edges, priority tier)
+2. **Variable naming** — no new unregistered or misnamed variables
+3. **Cross-feature precedence** — RULE-22 §7 still correct and referenced from all governance documents
+4. **Shared data schema evolution** — any breaking changes surfaced and consumers updated
+
+### Context
+
+Introduced per CR-06 §5.3 recommendation. Cross-feature coherence issues were
+only caught by a dedicated content review (CR-00 through CR-08). Quarterly
+reviews are too infrequent during active development phases — this cadence
+ensures coherence gaps are detected before they compound.
+
+---
+
 ## Specialist Ownership Summary
 
 | Specialist | Owns Stages | Key Artifacts |

@@ -353,8 +353,9 @@ Gates 8–10 are **additive** — they do not replace Gates 1–7. The relations
 | **8** | **Feature adoption** | **Missing infrastructure: no TokenBudget, no PromptComposer, no KB entities** |
 | **9** | **AI content quality** | **Missing prompt variables, no injection defense, no i18n, no streaming** |
 | **10** | **Semantic Review** | **Cross-feature incoherence: missing Integration Contract, unregistered variables, unimplemented i18n, intent scope drift** |
+| **12** | **ADR Implementation Completeness** | **ADRs marked "Implemented" without DI wiring, tests, consumer migration, or documentation** |
 
-A feature must pass ALL gates (1–10) to reach `status: stable`.
+A feature must pass ALL gates (1–12) to reach `status: stable`.
 
 ---
 
@@ -387,6 +388,45 @@ A migration is not complete until old production paths and old guidance are clos
   context precedence, ADR-026 capability inheritance, and prompt language policy.
 - Stage 4 Platform: validate machine checks, baselines, and regression tests.
 - Stage 5 Docs: verify no derived guide weakens RULE-02/RULE-02a/ADR-026.
+
+---
+
+## Gate 12: ADR Implementation Completeness
+
+Before marking any ADR as "✅ Implemented", ALL of the following must be verified:
+
+- [ ] **Code complete**: All code artifacts specified in the ADR exist and compile/pass
+- [ ] **DI wired**: If the ADR introduces a service/component, it is wired into the application DI container
+- [ ] **Tests pass**: Unit AND integration tests cover the ADR's behavioral requirements
+- [ ] **Consumers updated**: All existing consumers that should use the new pattern are migrated
+- [ ] **Documentation updated**: CURRENT_STATE.md, relevant feature specs, and architecture-rules.md reflect the change
+- [ ] **No dead code**: Old patterns that the ADR replaces are removed or explicitly registered as exceptions
+- [ ] **CI reflects change**: Any new architecture checks or baselines are updated
+
+**Exception**: ADRs that are purely declarative (no code changes) may skip code/DI/test items but must still update documentation.
+
+### Root Cause
+
+This gate was introduced because ADR-033 (mem0) was marked "Implemented" but the DI wiring was never completed (FIND-003 from CR-03). The root cause was the absence of a verification gate between "code exists" and "fully integrated." Without this gate, an ADR can appear complete while its integration path is dead — silently degrading the feature it was supposed to enable.
+
+### CI Integration
+
+This gate is manual (checked by the Coordinator during Stage 6 commit), but the following automated checks support it:
+
+| Item | Automated Support |
+|------|------------------|
+| Code complete | `pytest` + `pyright` |
+| DI wired | Integration tests that exercise the DI path |
+| Tests pass | `pytest` coverage gates |
+| Consumers updated | `check_adoption.py` + `check_architecture.py` |
+| Documentation updated | `check_doc_drift.py` |
+| No dead code | `check_architecture.py` + `check_exception_baseline.py` |
+| CI reflects change | CI pipeline runs on every PR |
+
+### Validated by
+
+Coordinator during Stage 6 (Commit). Architecture Specialist during Architecture Review.
+Reported by: CR-04 audit (FIND-003 root cause).
 
 ---
 

@@ -9,14 +9,8 @@ Introduced with the v2.0.0 adoption-registry.yaml format.
 
 from __future__ import annotations
 
-import asyncio
-import json
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from narrare.evidence.contracts import EvidenceRepository
+from typing import Any
 
 from adoption.scorer import (
     INLINE_FALLBACK_PENALTY,
@@ -54,8 +48,6 @@ class ModeScore:
     runtime_details: list[RuntimeCheckDetail] = field(default_factory=list[RuntimeCheckDetail])
 
 
-# Now partially replaced by probe evidence (evidence_sink + optional final_validation).
-# Remaining requirements (preference_enrichment, required final_validation) need dedicated probes.
 _RUNTIME_EVIDENCE_DEFAULT: dict[str, str] = {
     "none": "verified",
     "optional": "verified",
@@ -75,91 +67,17 @@ _RUNTIME_NOTE: dict[str, str] = {
 }
 
 
-_KNOWN_FEATURES: list[str] = [
-    "writing",
-    "analysis",
-    "kb",
-    "planning",
-    "generation",
-    "memory",
-    "chat",
-]
-
-
-def _load_from_repo(evidence_repo: EvidenceRepository) -> dict[str, set[str]]:
-    """Load probe evidence from an EvidenceRepository.
-
-    Calls ``get_distinct_modes()`` for each known feature and returns
-    the same ``dict[str, set[str]]`` format as the file-based loader.
-
-    Returns ``{}`` if the repo raises.
-    """
-    known = _KNOWN_FEATURES
-
-    async def _query() -> dict[str, set[str]]:
-        result: dict[str, set[str]] = {}
-        for fid in known:
-            modes = await evidence_repo.get_distinct_modes(fid)
-            if modes:
-                result[fid] = set(modes)
-        return result
-
-    try:
-        return asyncio.run(_query())
-    except Exception:
-        return {}
-
-
-def load_probe_evidence(
-    evidence_dir: str | Path | None = None,
-    evidence_repo: Any | None = None,
-) -> dict[str, set[str]]:
-    """Load probe evidence from file or repository.
-
-    When *evidence_repo* is provided, queries the ``EvidenceRepository``
-    for distinct modes per known feature.  Otherwise falls back to
-    reading from ``invocations.jsonl`` under *evidence_dir*.
-
-    Returns mapping: feature_id -> {mode1, mode2, ...}
-    Returns empty dict if no evidence source is available.
-    """
-    if evidence_repo is not None:
-        return _load_from_repo(evidence_repo)
-
-    if evidence_dir is not None:
-        evidence_file = Path(evidence_dir) / "invocations.jsonl"
-        if not evidence_file.exists():
-            return {}
-
-        result: dict[str, set[str]] = {}
-        with evidence_file.open("r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                fid = record.get("feature_id")
-                mode = record.get("mode")
-                if fid and mode:
-                    result.setdefault(fid, set()).add(mode)
-        return result
-
-    return {}
-
-
 def _check_runtime_requirements(
     runtime_reqs: dict[str, str],
     probe_evidence: dict[str, set[str]] | None = None,
     mode_feature_id: str | None = None,
     mode_name: str | None = None,
+    preference_evidence: dict[str, set[str]] | None = None,
 ) -> tuple[list[RuntimeCheckDetail], bool]:
     """Check runtime requirements; return (details, all_verified).
 
     Uses static defaults (see _RUNTIME_EVIDENCE_DEFAULT) with optional
-    overrides from probe evidence.
+    overrides from probe evidence and preference enrichment evidence.
     """
     details: list[RuntimeCheckDetail] = []
     all_verified = True
@@ -188,8 +106,7 @@ def _check_runtime_requirements(
             if detail.requirement == "evidence_sink" and detail.evidence_status == "missing":
                 detail.evidence_status = "verified"
                 detail.note = "verified by probe evidence"
-                if all_verified is False:
-                    # Check if this was the only failing requirement
+                if not all_verified:
                     all_verified = all(d.evidence_status == "verified" for d in details)
             if (
                 detail.requirement == "final_validation"
@@ -198,6 +115,23 @@ def _check_runtime_requirements(
             ):
                 detail.evidence_status = "verified"
                 detail.note = "optional validator skipped, pipeline stable"
+
+    # ── Preference enrichment evidence override ─────────────────────
+    if (
+        preference_evidence
+        and mode_feature_id
+        and mode_name
+        and mode_name in preference_evidence.get(mode_feature_id, set())
+    ):
+        for detail in details:
+            if (
+                detail.requirement == "preference_enrichment"
+                and detail.evidence_status == "missing"
+            ):
+                detail.evidence_status = "verified"
+                detail.note = "verified by preference enrichment probe"
+                if not all_verified:
+                    all_verified = all(d.evidence_status == "verified" for d in details)
 
     return details, all_verified
 
@@ -215,16 +149,16 @@ def compute_mode_score(
     requires_runtime_evidence: bool = True,
     probe_evidence: dict[str, set[str]] | None = None,
     mode_feature_id: str | None = None,
+    preference_evidence: dict[str, set[str]] | None = None,
 ) -> ModeScore:
     """Compute adoption score for a single mode.
 
-    Static score uses the same weighted-ratio formula as the category-level
-    scorer.  Runtime-requirement checks use static defaults for P1 CI,
-    with optional overrides from probe evidence.
+    Static score uses the same ratio formula as category-level scorer.
+    Runtime checks use static defaults with optional overrides from
+    probe evidence and preference enrichment evidence.
 
     When *requires_runtime_evidence* is True the ``adopted`` flag requires
-    both static and runtime verification.  When False, static verification
-    alone is sufficient (ADR-040 Decision 4).
+    both static and runtime verification (ADR-040 Decision 4).
     """
     details: list[CheckDetail] = []
     numerator = 0.0
@@ -290,6 +224,7 @@ def compute_mode_score(
             probe_evidence=probe_evidence,
             mode_feature_id=mode_feature_id,
             mode_name=mode_name,
+            preference_evidence=preference_evidence,
         )
     else:
         runtime_details, runtime_verified = [], False
@@ -335,6 +270,7 @@ def compute_all_mode_scores(
     fb_count: int,
     probe_evidence: dict[str, set[str]] | None = None,
     feature_id: str | None = None,
+    preference_evidence: dict[str, set[str]] | None = None,
 ) -> list[ModeScore]:
     """Compute ModeScores for all modes in a category."""
     scores: list[ModeScore] = []
@@ -368,6 +304,7 @@ def compute_all_mode_scores(
             requires_runtime_evidence=requires_rte,
             probe_evidence=probe_evidence,
             mode_feature_id=feature_id,
+            preference_evidence=preference_evidence,
         )
         scores.append(ms)
     return scores

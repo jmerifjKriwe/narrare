@@ -439,6 +439,24 @@ INFRA-012 for the full variable taxonomy and security classification table.
   and template consumption aligned with that security class (per ADR-037
   manifest conformance).
 
+### Variable Naming Convention (Canonical Aliases)
+
+Prompt template variables have a canonical naming convention enforced via
+`core/prompts/variable_registry.py` → `VARIABLE_ALIASES`. Use
+`resolve_canonical_variable()` to normalise alias names at build time.
+
+| Canonical name | Deprecated alias | Notes |
+|----------------|------------------|-------|
+| `writing_language` | `language` | Use `writing_language` in all new templates. Bare `language` is resolved automatically but must not appear in new code. |
+| `explanation_language` | — | Distinct variable (name meaning explanations), **not** an alias for `writing_language`. |
+
+**Rules:**
+
+- New templates MUST use canonical variable names only.
+- Existing templates using deprecated aliases continue to work via
+  `resolve_canonical_variable()` but should be migrated when touched.
+- See `variable_registry.py` → `VARIABLE_ALIASES` for the complete mapping.
+
 ### Cross-Feature Context Precedence
 
 When a prompt receives contradictory context, use this default precedence order:

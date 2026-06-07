@@ -82,6 +82,11 @@ What tradeoffs are we consciously accepting?]
 [Anything a developer needs to know to implement this correctly.
 Links to relevant files, patterns, or examples.]
 
+**ADR Implementation Completeness Gate (Gate 12):** Before marking this ADR as
+"✅ Implemented", verify all items in the Gate 12 checklist at
+`.opencode/context/narrare-dev/processes/quality-gates.md`. An ADR is not
+implemented until it is fully wired, tested, consumed, and documented.
+
 ---
 
 ## Review Trigger

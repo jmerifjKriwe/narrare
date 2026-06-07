@@ -26,17 +26,25 @@ _project_root = str(Path(__file__).resolve().parent.parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from scripts.probes.analysis_probes import main_async as analysis_probe  # noqa: E402
 from scripts.probes.base_probe import EVIDENCE_DIR_DEFAULT  # noqa: E402
 from scripts.probes.chat_chat_probe import main_async as chat_probe  # noqa: E402
 from scripts.probes.generation_names_probe import main_async as names_probe  # noqa: E402
+from scripts.probes.kb_probes import main_async as kb_probe  # noqa: E402
 from scripts.probes.planning_outline_probe import main_async as outline_probe  # noqa: E402
+from scripts.probes.preference_enrichment_probe import main_async as enrichment_probe  # noqa: E402
+from scripts.probes.writing_probes import main_async as writing_probe  # noqa: E402
 
 ProbeFn = Callable[[Path], Coroutine[Any, Any, int]]
 
 PROBES: list[tuple[str, ProbeFn]] = [
     ("writing/chat", chat_probe),
+    ("writing/* (9 modes)", writing_probe),
+    ("analysis/* (7 modes)", analysis_probe),
+    ("kb/* (8 modes)", kb_probe),
     ("planning/outline", outline_probe),
     ("generation/names", names_probe),
+    ("preference_enrichment", enrichment_probe),
 ]
 
 

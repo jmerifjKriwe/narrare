@@ -7,7 +7,7 @@ from narrare_core.prompts._management_types import (
     UpdateInfo,
 )
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
-from narrare_core.prompts.context import KBContextEntry, PromptContext
+from narrare_core.prompts.context import KBContextEntry, PromptContext, validate_world_context
 from narrare_core.prompts.management import PromptManagementService
 from narrare_core.prompts.meta import MetaPromptLoader
 from narrare_core.prompts.registry import PromptRegistry, ResolvedPrompt
@@ -43,4 +43,5 @@ __all__ = [
     "get_variables_for_names",
     "substitute",
     "validate_variables",
+    "validate_world_context",
 ]

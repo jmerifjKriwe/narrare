@@ -3,6 +3,12 @@
 Every bundled template variable must appear in exactly one registry so prompt
 governance can distinguish direct user content from trusted system data and
 feature-specific runtime data (INFRA-012 / RULE-22).
+
+Variable Naming Convention:
+- ``writing_language`` — canonical name for output/writing language (e.g. "Deutsch")
+- ``language`` — DEPRECATED alias for writing_language; do not use in new templates
+- ``explanation_language`` — separate variable for name meaning explanations
+  (distinct from writing_language)
 """
 
 from __future__ import annotations
@@ -18,12 +24,14 @@ __all__ = [
     "FEATURE_DYNAMIC_VARS",
     "SYSTEM_VARS",
     "USER_CONTENT_VARS",
+    "VARIABLE_ALIASES",
     "VARIABLE_CLASSIFICATIONS",
     "VariableClassification",
     "VariableProvenance",
     "VariableSecurity",
     "get_variable_classification",
     "is_registered_variable",
+    "resolve_canonical_variable",
 ]
 
 
@@ -148,3 +156,20 @@ def get_variable_classification(name: str) -> VariableClassification | None:
 def is_registered_variable(name: str) -> bool:
     """Return whether a prompt variable is in the governed taxonomy."""
     return name in VARIABLE_CLASSIFICATIONS
+
+
+# Canonical alias mapping — use canonical names in all new templates.
+# Aliases exist for backward compatibility only.
+VARIABLE_ALIASES: dict[str, str] = {
+    "language": "writing_language",  # DEPRECATED: use writing_language for output language
+}
+
+
+def resolve_canonical_variable(name: str) -> str:
+    """Resolve a variable name to its canonical form.
+
+    Returns the alias target if the name is deprecated, otherwise the
+    name itself.  Unknown variable names are returned unchanged so that
+    callers can still detect and report unregistered variables.
+    """
+    return VARIABLE_ALIASES.get(name, name)
