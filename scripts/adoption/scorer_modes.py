@@ -9,10 +9,14 @@ Introduced with the v2.0.0 adoption-registry.yaml format.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from narrare.evidence.contracts import EvidenceRepository
 
 from adoption.scorer import (
     INLINE_FALLBACK_PENALTY,
@@ -71,31 +75,79 @@ _RUNTIME_NOTE: dict[str, str] = {
 }
 
 
-def load_probe_evidence(evidence_dir: str | Path) -> dict[str, set[str]]:
-    """Load probe evidence from invocations.jsonl.
+_KNOWN_FEATURES: list[str] = [
+    "writing",
+    "analysis",
+    "kb",
+    "planning",
+    "generation",
+    "memory",
+    "chat",
+]
 
-    Returns mapping: feature_id -> {mode1, mode2, ...}
-    Returns empty dict if no evidence file exists.
+
+def _load_from_repo(evidence_repo: EvidenceRepository) -> dict[str, set[str]]:
+    """Load probe evidence from an EvidenceRepository.
+
+    Calls ``get_distinct_modes()`` for each known feature and returns
+    the same ``dict[str, set[str]]`` format as the file-based loader.
+
+    Returns ``{}`` if the repo raises.
     """
-    evidence_file = Path(evidence_dir) / "invocations.jsonl"
-    if not evidence_file.exists():
+    known = _KNOWN_FEATURES
+
+    async def _query() -> dict[str, set[str]]:
+        result: dict[str, set[str]] = {}
+        for fid in known:
+            modes = await evidence_repo.get_distinct_modes(fid)
+            if modes:
+                result[fid] = set(modes)
+        return result
+
+    try:
+        return asyncio.run(_query())
+    except Exception:
         return {}
 
-    result: dict[str, set[str]] = {}
-    with evidence_file.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            fid = record.get("feature_id")
-            mode = record.get("mode")
-            if fid and mode:
-                result.setdefault(fid, set()).add(mode)
-    return result
+
+def load_probe_evidence(
+    evidence_dir: str | Path | None = None,
+    evidence_repo: Any | None = None,
+) -> dict[str, set[str]]:
+    """Load probe evidence from file or repository.
+
+    When *evidence_repo* is provided, queries the ``EvidenceRepository``
+    for distinct modes per known feature.  Otherwise falls back to
+    reading from ``invocations.jsonl`` under *evidence_dir*.
+
+    Returns mapping: feature_id -> {mode1, mode2, ...}
+    Returns empty dict if no evidence source is available.
+    """
+    if evidence_repo is not None:
+        return _load_from_repo(evidence_repo)
+
+    if evidence_dir is not None:
+        evidence_file = Path(evidence_dir) / "invocations.jsonl"
+        if not evidence_file.exists():
+            return {}
+
+        result: dict[str, set[str]] = {}
+        with evidence_file.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                fid = record.get("feature_id")
+                mode = record.get("mode")
+                if fid and mode:
+                    result.setdefault(fid, set()).add(mode)
+        return result
+
+    return {}
 
 
 def _check_runtime_requirements(

@@ -294,6 +294,12 @@ def main() -> int:
         default=None,
         help="Path to .evidence/ directory with probe evidence (default: none).",
     )
+    parser.add_argument(
+        "--evidence-repo",
+        action="store_true",
+        default=False,
+        help="Use EvidenceRepository for probe evidence (production mode).",
+    )
     args = parser.parse_args()
 
     registry = load_registry(args.registry)

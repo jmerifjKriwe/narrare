@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 import narrare.auth.models
 import narrare.chapters.models
 import narrare.embeddings.models
+import narrare.evidence.models
 import narrare.generation.models
 import narrare.kb.models
 import narrare.memory.models
