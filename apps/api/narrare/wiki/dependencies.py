@@ -28,7 +28,8 @@ def get_wiki_repository(session: SessionDep) -> WikiRepository:
 
 async def build_core_wiki_service() -> WikiServiceProtocol:
     """Create the core WikiService with agent and NullEventBus."""
-    from narrare._app.dependencies import build_system_default_config, get_model_registry
+    from narrare._app.dependencies import get_model_registry
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare_core.events.bus import NullEventBus
     from narrare_core.wiki.agent import WikiGenerationAgent
     from narrare_core.wiki.service import WikiService

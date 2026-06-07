@@ -17,8 +17,8 @@ from narrare._app.dependencies import (
     get_composer,
     get_current_user_id,
     get_model_registry,
-    get_model_routing_resolver,
 )
+from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.chapters.repository import ChapterRepository
 from narrare_core.llm.intents import LLMIntent
 

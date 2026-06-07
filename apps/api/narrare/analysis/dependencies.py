@@ -25,11 +25,11 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.analysis.beta_reader_cache import BetaReaderCache
     from narrare.analysis.beta_reader_service import BetaReaderService
     from narrare.analysis.context_assembler import ContextAssembler
@@ -113,10 +113,10 @@ def get_readability_service(session: SessionDep) -> ReadabilityService:
     ModelRegistry.
     """
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_invocation_pipeline,
         get_model_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.analysis.services.readability_service import ReadabilityService
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
@@ -148,10 +148,10 @@ def get_pov_service(session: SessionDep) -> POVService:
     - InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_invocation_pipeline,
         get_model_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.analysis.services.pov_service import POVService
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.repository import KBRepository

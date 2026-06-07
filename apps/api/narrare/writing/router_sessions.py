@@ -76,7 +76,7 @@ async def interactive_session(
         # Resolve model config per-user via routing resolver (RULE-18)
         from dataclasses import replace as dataclass_replace
 
-        from narrare._app.dependencies import get_model_routing_resolver
+        from narrare._app.dependencies_services import get_model_routing_resolver
         from narrare_core.llm.intents import LLMIntent
 
         resolver = get_model_routing_resolver(session)

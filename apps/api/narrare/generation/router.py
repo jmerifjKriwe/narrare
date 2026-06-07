@@ -13,8 +13,8 @@ from narrare._app.dependencies import (
     SessionDep,
     get_composer,
     get_model_registry,
-    get_model_routing_resolver,
 )
+from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.generation.schemas import NameGenerateRequest, NameGenerateResponse
 
 if TYPE_CHECKING:

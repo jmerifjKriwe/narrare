@@ -14,8 +14,8 @@ from narrare._app.dependencies import (
     SessionDep,
     get_invocation_pipeline,
     get_model_registry,
-    get_model_routing_resolver,
 )
+from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.kb.merge_service import KBMergeService
 from narrare.kb.schemas_merge import MergeRequest, MergeResponse
 from narrare.novels.repository import NovelRepository

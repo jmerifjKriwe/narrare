@@ -33,7 +33,7 @@ def get_chat_service(session: SessionDep) -> ChatService:
     Returns:
         Configured ChatService ready for use.
     """
-    from narrare._app.dependencies import build_system_default_config
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
 

@@ -21,10 +21,10 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     - KBRepository for KB entity summaries
     """
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_composer,
         get_model_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.chapters.repository import ChapterRepository
     from narrare.consistency.checker_service import ConsistencyCheckerService
     from narrare.kb.repository import KBRepository

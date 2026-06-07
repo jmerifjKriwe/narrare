@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare._app.dependencies import get_model_registry, get_model_routing_resolver
+from narrare._app.dependencies import get_model_registry
+from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.novels.repository import NovelRepository
 from narrare.planning.character_arc_service import CharacterArcService
 from narrare_core.shared.errors import ConfigurationError, NotFoundError

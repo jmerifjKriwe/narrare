@@ -78,11 +78,11 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
     Includes InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.extraction_service import ExtractionService
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -140,11 +140,11 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.embeddings.service import EmbeddingService
     from narrare.kb.assist_service import KBAssistService
@@ -195,11 +195,11 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.embeddings.service import EmbeddingService
     from narrare.kb.improve_analyzer import KBImproveAnalyzer
@@ -255,12 +255,12 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
         get_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
@@ -328,12 +328,12 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
     """
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
-        build_system_default_config,
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
         get_registry,
     )
+    from narrare._app.dependencies_services import build_system_default_config
     from narrare.kb.consistency_analyzer import KBConsistencyAnalyzer
     from narrare.kb.consistency_cache import ConsistencyCache
     from narrare.kb.consistency_service import KBConsistencyService
