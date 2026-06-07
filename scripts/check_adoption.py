@@ -288,6 +288,12 @@ def main() -> int:
         action="store_true",
         help="Also run registry drift + doc drift checks (P3 Layer 5).",
     )
+    parser.add_argument(
+        "--evidence-dir",
+        type=Path,
+        default=None,
+        help="Path to .evidence/ directory with probe evidence (default: none).",
+    )
     args = parser.parse_args()
 
     registry = load_registry(args.registry)
@@ -301,7 +307,11 @@ def main() -> int:
 
     prompts = discover_prompts(args.prompts)
 
-    report = compute_adoption_report(registry, prompts)
+    report = compute_adoption_report(
+        registry,
+        prompts,
+        evidence_dir=str(args.evidence_dir) if args.evidence_dir else None,
+    )
 
     if args.json:
         print(_format_json(report))

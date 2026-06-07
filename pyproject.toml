@@ -102,6 +102,7 @@ exclude = [
 
   # Tool-Artefakte
   ".code-review-graph",
+  ".agents",  # External agent skills — not project code
   ".gemini",
   ".qoder",
 
@@ -152,6 +153,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "N"]
+".agents/**" = ["S", "TC"]  # External agent skills — not project code
 "**/migrations/**" = ["E501"]
 "**/*router*.py" = ["B008", "TC001"]  # FastAPI Depends() pattern; CurrentUserIdDep needed at runtime
 # SQLAlchemy needs datetime at runtime, not just type-checking
@@ -217,6 +219,7 @@ exclude_dirs = [
   ".venv",
   "__pycache__",
   ".pytest_cache",
+  ".agents",
 ]
 skips = ["B101"]  # assert_used is fine in tests
 

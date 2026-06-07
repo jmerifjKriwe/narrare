@@ -9,7 +9,9 @@ Introduced with the v2.0.0 adoption-registry.yaml format.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from adoption.scorer import (
@@ -18,9 +20,9 @@ from adoption.scorer import (
     WEIGHT_MUST,
     WEIGHT_SHOULD,
     CheckDetail,
-    check_infrastructure,
     status,
 )
+from adoption.scorer_checks import check_infrastructure
 
 
 @dataclass
@@ -48,8 +50,8 @@ class ModeScore:
     runtime_details: list[RuntimeCheckDetail] = field(default_factory=list[RuntimeCheckDetail])
 
 
-# TODO(P1): Replace with test probe JSON reading in follow-up; currently
-# defaults to 'missing' for required runtime checks.
+# Now partially replaced by probe evidence (evidence_sink + optional final_validation).
+# Remaining requirements (preference_enrichment, required final_validation) need dedicated probes.
 _RUNTIME_EVIDENCE_DEFAULT: dict[str, str] = {
     "none": "verified",
     "optional": "verified",
@@ -69,13 +71,43 @@ _RUNTIME_NOTE: dict[str, str] = {
 }
 
 
+def load_probe_evidence(evidence_dir: str | Path) -> dict[str, set[str]]:
+    """Load probe evidence from invocations.jsonl.
+
+    Returns mapping: feature_id -> {mode1, mode2, ...}
+    Returns empty dict if no evidence file exists.
+    """
+    evidence_file = Path(evidence_dir) / "invocations.jsonl"
+    if not evidence_file.exists():
+        return {}
+
+    result: dict[str, set[str]] = {}
+    with evidence_file.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            fid = record.get("feature_id")
+            mode = record.get("mode")
+            if fid and mode:
+                result.setdefault(fid, set()).add(mode)
+    return result
+
+
 def _check_runtime_requirements(
     runtime_reqs: dict[str, str],
+    probe_evidence: dict[str, set[str]] | None = None,
+    mode_feature_id: str | None = None,
+    mode_name: str | None = None,
 ) -> tuple[list[RuntimeCheckDetail], bool]:
     """Check runtime requirements; return (details, all_verified).
 
-    For P1 CI, this uses static defaults (see _RUNTIME_EVIDENCE_DEFAULT).
-    A follow-up will replace this with test probe JSON reading.
+    Uses static defaults (see _RUNTIME_EVIDENCE_DEFAULT) with optional
+    overrides from probe evidence.
     """
     details: list[RuntimeCheckDetail] = []
     all_verified = True
@@ -92,6 +124,29 @@ def _check_runtime_requirements(
                 note=note,
             )
         )
+
+    # ── Probe evidence overrides ─────────────────────────────────
+    if (
+        probe_evidence
+        and mode_feature_id
+        and mode_name
+        and mode_name in probe_evidence.get(mode_feature_id, set())
+    ):
+        for detail in details:
+            if detail.requirement == "evidence_sink" and detail.evidence_status == "missing":
+                detail.evidence_status = "verified"
+                detail.note = "verified by probe evidence"
+                if all_verified is False:
+                    # Check if this was the only failing requirement
+                    all_verified = all(d.evidence_status == "verified" for d in details)
+            if (
+                detail.requirement == "final_validation"
+                and detail.declared == "optional"
+                and detail.evidence_status == "missing"
+            ):
+                detail.evidence_status = "verified"
+                detail.note = "optional validator skipped, pipeline stable"
+
     return details, all_verified
 
 
@@ -106,11 +161,14 @@ def compute_mode_score(
     has_prompts: bool,
     fb_count: int,
     requires_runtime_evidence: bool = True,
+    probe_evidence: dict[str, set[str]] | None = None,
+    mode_feature_id: str | None = None,
 ) -> ModeScore:
     """Compute adoption score for a single mode.
 
     Static score uses the same weighted-ratio formula as the category-level
-    scorer.  Runtime-requirement checks use static defaults for P1 CI.
+    scorer.  Runtime-requirement checks use static defaults for P1 CI,
+    with optional overrides from probe evidence.
 
     When *requires_runtime_evidence* is True the ``adopted`` flag requires
     both static and runtime verification.  When False, static verification
@@ -175,7 +233,12 @@ def compute_mode_score(
 
     # Runtime checks.
     if runtime_reqs:
-        runtime_details, runtime_verified = _check_runtime_requirements(runtime_reqs)
+        runtime_details, runtime_verified = _check_runtime_requirements(
+            runtime_reqs,
+            probe_evidence=probe_evidence,
+            mode_feature_id=mode_feature_id,
+            mode_name=mode_name,
+        )
     else:
         runtime_details, runtime_verified = [], False
 
@@ -218,6 +281,8 @@ def compute_all_mode_scores(
     i18n_frac: float,
     has_prompts: bool,
     fb_count: int,
+    probe_evidence: dict[str, set[str]] | None = None,
+    feature_id: str | None = None,
 ) -> list[ModeScore]:
     """Compute ModeScores for all modes in a category."""
     scores: list[ModeScore] = []
@@ -249,6 +314,8 @@ def compute_all_mode_scores(
             has_prompts=has_prompts,
             fb_count=fb_count,
             requires_runtime_evidence=requires_rte,
+            probe_evidence=probe_evidence,
+            mode_feature_id=feature_id,
         )
         scores.append(ms)
     return scores

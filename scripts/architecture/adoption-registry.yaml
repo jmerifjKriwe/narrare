@@ -81,7 +81,7 @@ features:
       scene_by_scene:
         requires_runtime_evidence: true
       chat:
-        requires_runtime_evidence: false  # P3 target
+        requires_runtime_evidence: true  # P3 probes active
       inline_suggest:
         requires_runtime_evidence: true
         description: "Low-latency inline writing suggestions"
@@ -209,7 +209,7 @@ features:
   planning:
     modes:
       outline:
-        requires_runtime_evidence: false  # P3 target
+        requires_runtime_evidence: true  # P3 probes active
     required_infrastructure:
       token_budget: partial
       prompt_composer: required
@@ -225,7 +225,7 @@ features:
   generation:
     modes:
       names:
-        requires_runtime_evidence: false  # P3 target
+        requires_runtime_evidence: true  # P3 probes active
     required_infrastructure:
       prompt_composer: required
       meta_prompt: required

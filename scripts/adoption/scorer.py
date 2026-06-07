@@ -26,6 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from adoption.scorer_checks import check_infrastructure
+
 if TYPE_CHECKING:
     from prompt_checks import PromptFile
 
@@ -56,14 +58,6 @@ def _required_locales_for(category: str) -> set[str]:
     if category in _LOCALIZED_REQUIRED_CATEGORIES:
         return {"en", "de", "fr"}
     return {"en"}
-
-
-# Mapping infrastructure names to the prompt variables that evidence adoption.
-_INFRA_VAR_EVIDENCE: dict[str, set[str]] = {
-    "mem0_preferences": {"user_preferences", "avoidance_patterns"},
-    "kb_entities": {"kb_characters", "kb_locations", "kb_factions"},
-    "kb_relationships": {"kb_relationships"},
-}
 
 
 # ── Data structures ────────────────────────────────────────────────
@@ -179,46 +173,6 @@ def _check_i18n_coverage(
     return missing_map, adopted_frac, total_applicable, total_covered
 
 
-def check_infrastructure(
-    infra_name: str,
-    level: str,
-    all_vars: set[str],
-    has_prompts: bool,
-    i18n_adopted_frac: float,
-) -> CheckDetail:
-    """Check a single infrastructure item and return its detail."""
-    weight = WEIGHT_REQUIRED if level == "required" else WEIGHT_PARTIAL
-
-    # Infrastructure that can be checked via variable presence.
-    if infra_name in _INFRA_VAR_EVIDENCE:
-        evidence_vars = _INFRA_VAR_EVIDENCE[infra_name]
-        present = bool(all_vars & evidence_vars)
-        adopted = 1.0 if present else (0.5 if level == "partial" else 0.0)
-        note = (
-            f"vars present: {sorted(all_vars & evidence_vars)}"
-            if present
-            else f"no evidence vars found ({sorted(evidence_vars)})"
-        )
-        return CheckDetail(name=infra_name, weight=weight, adopted=adopted, note=note)
-
-    # prompt_composer / meta_prompt: adopted if bundled prompts exist.
-    if infra_name in ("prompt_composer", "meta_prompt"):
-        adopted = 1.0 if has_prompts else 0.0
-        note = "bundled prompts exist" if has_prompts else "no bundled prompts"
-        return CheckDetail(name=infra_name, weight=weight, adopted=adopted, note=note)
-
-    # i18n: adopted proportionally to locale coverage.
-    if infra_name == "i18n":
-        adopted = i18n_adopted_frac
-        note = f"locale coverage: {i18n_adopted_frac:.0%}"
-        return CheckDetail(name=infra_name, weight=weight, adopted=adopted, note=note)
-
-    # token_budget / injection_defense: assume adopted if bundled prompts exist.
-    adopted = 1.0 if has_prompts else 0.0
-    note = "assumed adopted (bundled prompts present)" if has_prompts else "no prompts to validate"
-    return CheckDetail(name=infra_name, weight=weight, adopted=adopted, note=note)
-
-
 def _map_fallbacks_to_categories(
     fallbacks: list[dict[str, str]],
     category_modes: dict[str, list[str]],
@@ -255,9 +209,13 @@ def _map_fallbacks_to_categories(
 def compute_adoption_report(
     registry: dict[str, Any],
     prompts: list[PromptFile],
+    evidence_dir: str | None = None,
 ) -> AdoptionReport:
     """Compute the full adoption report from registry data and parsed prompts."""
+    from adoption.scorer_modes import load_probe_evidence
     from adoption.scorer_modes import normalize_modes as _norm
+
+    probe_evidence = load_probe_evidence(evidence_dir) if evidence_dir else {}
 
     features: dict[str, Any] = registry.get("features", {})
     fallbacks: list[dict[str, str]] = registry.get("inline_fallbacks", []) or []
@@ -368,6 +326,8 @@ def compute_adoption_report(
             i18n_frac=i18n_frac,
             has_prompts=has_prompts,
             fb_count=fb_count,
+            probe_evidence=probe_evidence or None,
+            feature_id=cat_name,
         )
         categories.append(
             CategoryScore(
@@ -384,17 +344,15 @@ def compute_adoption_report(
         )
 
     overall = (sum(c.score for c in categories) / len(categories)) if categories else 1.0
-    all_modes = [m for c in categories for m in c.modes]
-
     return AdoptionReport(
         overall_score=overall,
         status=status(overall),
         categories=categories,
         total_inline_fallbacks=len(fallbacks),
-        mode_count=len(all_modes),
-        runtime_verified_count=sum(1 for m in all_modes if m.runtime_verified),
-        adopted_count=sum(1 for m in all_modes if m.adopted),
+        mode_count=sum(len(c.modes) for c in categories),
+        runtime_verified_count=sum(1 for c in categories for m in c.modes if m.runtime_verified),
+        adopted_count=sum(1 for c in categories for m in c.modes if m.adopted),
         runtime_evidence_gap_count=sum(
-            1 for m in all_modes if m.requires_runtime_evidence and not m.adopted
+            1 for c in categories for m in c.modes if m.requires_runtime_evidence and not m.adopted
         ),
     )
