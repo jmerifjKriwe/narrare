@@ -7,7 +7,7 @@ Tests:
 - Correct KB_EXTRACT intent
 - Real composer integration with runtime context
 - PromptNotFoundError propagation (no silent fallback)
-- KB repo error propagation (no silent empty-list fallback)
+- KB repo error graceful degradation (empty dedup list, extraction continues)
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from ._extraction_helpers import (
     FakeKBRepo,
     FakeModelRegistry,
     make_chapter,
+    make_extraction_output,
     make_service,
 )
 
@@ -173,27 +174,34 @@ async def test_extract_when_prompt_missing_propagates_typed_error(
 
 
 @pytest.mark.asyncio
-async def test_extract_when_existing_entities_lookup_fails_propagates_error(
+async def test_extract_when_existing_entities_lookup_fails_degrades_gracefully(
     mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
     mock_chapter_repo: FakeChapterRepo,
     mock_kb_repo: FakeKBRepo,
     mock_composer: FakeComposer,
 ) -> None:
-    """KB lookup failures must not silently fall back to an empty dedup list."""
+    """KB repo failure degrades gracefully: empty dedup list, extraction continues."""
     chapter = make_chapter()
     mock_chapter_repo.get_by_id.return_value = chapter
     mock_kb_repo.list_entries = AsyncMock(side_effect=RuntimeError("repository offline"))
     service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
 
-    with (
-        patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent,
-        pytest.raises(RuntimeError, match="repository offline"),
-    ):
-        await service.extract_from_chapter(
+    with patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent:
+        mock_agent = MagicMock(spec=["run"])
+        mock_agent.run = AsyncMock(return_value=make_extraction_output())
+        MockAgent.return_value = mock_agent
+
+        result = await service.extract_from_chapter(
             novel_id=uuid4(),
             chapter_id=chapter.id,
             user_id=uuid4(),
         )
 
-    MockAgent.assert_not_called()
+        # Extraction succeeds despite KB repo failure
+        assert result is not None
+        assert len(result.results) == 1
+
+        # Agent was called with empty dedup list
+        deps = mock_agent.run.call_args.kwargs["deps"]
+        assert deps.existing_entity_names == []

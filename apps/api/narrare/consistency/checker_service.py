@@ -1,9 +1,7 @@
 """Consistency checker service — orchestrates consistency analysis.
 
-Orchestrates: validate → collect chapter content + KB data → compose prompt
-→ run ConsistencyAgent → map to API response.
-
-Follows the same pattern as BetaReaderService.
+Orchestrates: validate → collect content + KB + timeline → compose prompt
+→ run ConsistencyAgent → map to API response. Follows BetaReaderService pattern.
 """
 
 from __future__ import annotations
@@ -19,6 +17,7 @@ from narrare.consistency.prompt_builder import (
 )
 from narrare.consistency.rule_helpers import deduplicate_issues, rule_based_check
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
+from narrare.consistency.timeline_fetch import fetch_timeline_events
 from narrare_core.agents.consistency_agent import ConsistencyAgent
 from narrare_core.agents.consistency_types import (
     ConsistencyCheckType,
@@ -32,6 +31,7 @@ if TYPE_CHECKING:
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
+    from narrare.planning.timeline_repository import TimelineEventRepository
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.prompts import PromptComposer
 
@@ -41,13 +41,14 @@ logger = structlog.get_logger(__name__)
 class ConsistencyCheckerService:
     """Implements ConsistencyCheckerProtocol.
 
-    Orchestrates the consistency checking pipeline:
-      validate → collect chapters + KB → build deps → run agent → map response.
+    Orchestrates: validate → collect chapters + KB + timeline → build deps
+    → run agent → map response.
 
     Args:
         chapter_repo: Chapter persistence (fetch chapter content).
         novel_repo: Novel persistence (access control + language).
         kb_repo: KB persistence (fetch entity summaries for context).
+        timeline_repo: Timeline event persistence (temporal context).
         registry: ModelRegistry for LLM model resolution.
         config: Default ResolvedModelConfig for CONSISTENCY intent.
         composer: PromptComposer for system prompt assembly.
@@ -58,6 +59,7 @@ class ConsistencyCheckerService:
         chapter_repo: ChapterRepository,
         novel_repo: NovelRepository,
         kb_repo: KBRepository,
+        timeline_repo: TimelineEventRepository,
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         composer: PromptComposer,
@@ -65,6 +67,7 @@ class ConsistencyCheckerService:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
         self._kb_repo = kb_repo
+        self._timeline_repo = timeline_repo
         self._registry = registry
         self._config = config
         self._composer = composer
@@ -119,6 +122,9 @@ class ConsistencyCheckerService:
         if request.include_kb:
             kb_summaries = await self._fetch_kb_summaries(novel_id)
 
+        # 3b. Fetch timeline events for temporal consistency context
+        timeline_events = await fetch_timeline_events(self._timeline_repo, novel_id)
+
         # 4. Rule-based pre-check (deterministic, no LLM needed)
         rule_issues = rule_based_check(kb_summaries)
 
@@ -132,6 +138,7 @@ class ConsistencyCheckerService:
             novel_id=str(novel_id),
             chapter_texts=chapter_texts,
             kb_entity_summaries=kb_summaries,
+            timeline_events=timeline_events,
             check_types=check_types,
             existing_issue_count=len(rule_issues),
         )

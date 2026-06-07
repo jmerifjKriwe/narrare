@@ -75,6 +75,8 @@ class ConsistencyDeps:
         chapter_texts: Dict mapping chapter_id -> chapter_content to analyze.
         kb_entity_summaries: KB entity summaries for context. Each entry has
             entity_type, name, and fields dict.
+        timeline_events: Timeline events for temporal consistency context.
+            Each entry has event_name, timestamp, character, and location.
         check_types: Which check types to run. If empty, runs all.
         existing_issue_count: Number of previously found issues (for dedup context).
     """
@@ -85,6 +87,7 @@ class ConsistencyDeps:
         novel_id: str = "",
         chapter_texts: dict[str, str] | None = None,
         kb_entity_summaries: list[dict[str, object]] | None = None,
+        timeline_events: list[dict[str, str]] | None = None,
         check_types: list[ConsistencyCheckType] | None = None,
         existing_issue_count: int = 0,
     ) -> None:
@@ -92,6 +95,7 @@ class ConsistencyDeps:
         self.novel_id = novel_id
         self.chapter_texts = chapter_texts or {}
         self.kb_entity_summaries = kb_entity_summaries or []
+        self.timeline_events = timeline_events or []
         self.check_types = check_types or list(ConsistencyCheckType)
         self.existing_issue_count = existing_issue_count
 

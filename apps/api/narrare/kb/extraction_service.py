@@ -100,8 +100,8 @@ class ExtractionService:
         if not chapter_content.strip():
             raise ValueError(f"Chapter {chapter_id} has no content")
 
-        # 2. Get existing entity names for dedup.
-        existing_names = await self._get_existing_entity_names(novel_id, user_id)
+        # 2. Get existing entity names for dedup (graceful on repo failure).
+        existing_names = await self._get_existing_entity_names_graceful(novel_id, user_id)
 
         # 3. Build system prompt via PromptComposer.
         system_prompt = await self._build_system_prompt(
@@ -192,8 +192,9 @@ class ExtractionService:
     ) -> list[str]:
         """Fetch existing KB entry names for dedup.
 
-        Retrieves all KB entries for the novel and extracts names. Repository
-        errors propagate so extraction cannot silently run without dedup data.
+        Retrieves all KB entries for the novel and extracts names.
+        Repository errors propagate — callers that need error-tolerant
+        behaviour should use ``_get_existing_entity_names_graceful``.
         """
         entries, _ = await self._kb_repo.list_entries(
             novel_id=novel_id,
@@ -203,6 +204,27 @@ class ExtractionService:
             page_size=1000,
         )
         return [entry.name for entry in entries if entry.name]
+
+    async def _get_existing_entity_names_graceful(
+        self,
+        novel_id: UUID,
+        user_id: UUID,
+    ) -> list[str]:
+        """Fetch existing KB entry names for dedup, with graceful degradation.
+
+        If the KB repo is unavailable (DB connection lost, timeout, etc.),
+        returns an empty list so extraction can proceed without dedup data.
+        Logs a warning so the failure is visible.
+        """
+        try:
+            return await self._get_existing_entity_names(novel_id, user_id)
+        except Exception as exc:
+            logger.warning(
+                "kb_repo_unavailable_using_empty_dedup",
+                novel_id=str(novel_id),
+                error=str(exc),
+            )
+            return []
 
     async def _build_system_prompt(
         self,

@@ -250,9 +250,11 @@ def get_invocation_pipeline() -> InvocationPipeline:
 
     preference_service = _get_preference_service_instance()
 
-    enrichers: list[ContextEnricher] = []
-    if preference_service is not None:
-        enrichers.append(PreferenceContextEnricherImpl(preference_provider=preference_service))
+    # Preference enricher is always wired — graceful degradation via None
+    # provider (returns context unchanged, preference_status=MISSING).
+    enrichers: list[ContextEnricher] = [
+        PreferenceContextEnricherImpl(preference_provider=preference_service),
+    ]
 
     # KB-suggested enricher runs before budget resolution so the resolver
     # can decide whether token budget allows KB context inclusion.

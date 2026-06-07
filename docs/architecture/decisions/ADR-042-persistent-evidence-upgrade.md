@@ -752,6 +752,21 @@ and appropriate indexing.
 
 ---
 
+## Review Trigger Status (2026-06-07)
+
+Evaluated during P4 ongoing implementation after initial P4b deployment.
+
+| # | Trigger | Status | Action |
+|---|---------|--------|--------|
+| 1 | Evidence > 1M rows | ❌ Not triggered | ~0 rows in new table |
+| 2 | Concurrent sources → CompositeSink | ❌ Not triggered | File & Persistent paths separate by env |
+| 3 | Dashboard < 1ms → Read Replicas | ❌ Not triggered | No production dashboard |
+| 4 | Real-time evidence in CI → Test PG | ❌ Not needed | CI uses `--evidence-dir` successfully |
+| 5 | Privacy model changes | ❌ Not triggered | Schema is privacy-safe |
+| 6 | New consumer without query need | ❌ Not triggered | No new consumers |
+
+---
+
 ## ARCHITECTURE HANDOFF
 
 ### Spec

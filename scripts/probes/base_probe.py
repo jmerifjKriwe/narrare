@@ -25,7 +25,12 @@ from narrare_core.prompts.composer import ComposedPrompt
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from narrare_core.ai_invocation.contracts import ContextEnricher
+    from narrare_core.ai_invocation.contracts import (
+        ContextEnricher,
+        FinalPromptValidator,
+        IntentOutputBudgetResolver,
+        RuntimeVariableValidator,
+    )
     from narrare_core.ai_invocation.models import PromptInvocationContext
 
 # Default evidence directory: <repo_root>/.evidence/
@@ -35,17 +40,24 @@ EVIDENCE_DIR_DEFAULT = Path(__file__).resolve().parent.parent.parent / ".evidenc
 def make_pipeline(
     evidence_dir: Path | None = None,
     enrichers: Sequence[ContextEnricher] = (),
+    *,
+    variable_validator: RuntimeVariableValidator | None = None,
+    budget_resolver: IntentOutputBudgetResolver | None = None,
+    final_validator: FinalPromptValidator | None = None,
 ) -> InvocationPipeline:
     """Create an InvocationPipeline with a FileEvidenceSink.
 
-    No validators or budget resolvers — this is a minimal probe that
-    only exercises the evidence recording path and optional enrichers.
+    Optionally includes validators and budget resolver for exercising
+    specific pipeline components.
 
     Args:
         evidence_dir: Directory for evidence files. Defaults to
             ``<repo_root>/.evidence/``.
         enrichers: Optional sequence of context enrichers to include
             in the pipeline (e.g. PreferenceContextEnricherImpl).
+        variable_validator: Optional pre-composition variable validator.
+        budget_resolver: Optional output budget resolver.
+        final_validator: Optional post-composition prompt validator.
 
     Returns:
         A configured InvocationPipeline ready for probe calls.
@@ -53,7 +65,13 @@ def make_pipeline(
     sink = FileEvidenceSink(
         evidence_dir=evidence_dir or EVIDENCE_DIR_DEFAULT,
     )
-    return InvocationPipeline(evidence_sink=sink, enrichers=enrichers)
+    return InvocationPipeline(
+        evidence_sink=sink,
+        enrichers=enrichers,
+        variable_validator=variable_validator,
+        budget_resolver=budget_resolver,
+        final_validator=final_validator,
+    )
 
 
 async def run_probe(

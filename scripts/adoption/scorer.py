@@ -214,6 +214,8 @@ def compute_adoption_report(
 ) -> AdoptionReport:
     """Compute the full adoption report from registry data and parsed prompts."""
     from adoption.scorer_evidence import (
+        load_budget_resolution_evidence,
+        load_final_validation_evidence,
         load_preference_enrichment_evidence,
         load_probe_evidence,
     )
@@ -221,9 +223,13 @@ def compute_adoption_report(
 
     pref_evidence: dict[str, set[str]] = {}
     probe_evidence: dict[str, set[str]] = {}
+    val_evidence: dict[str, set[str]] = {}
+    budget_evidence: dict[str, set[str]] = {}
     if evidence_dir:
         pref_evidence = load_preference_enrichment_evidence(evidence_dir)
         probe_evidence = load_probe_evidence(evidence_dir=evidence_dir)
+        val_evidence = load_final_validation_evidence(evidence_dir)
+        budget_evidence = load_budget_resolution_evidence(evidence_dir)
     elif evidence_repo:
         probe_evidence = load_probe_evidence(evidence_repo=evidence_repo)
 
@@ -339,6 +345,8 @@ def compute_adoption_report(
             probe_evidence=probe_evidence or None,
             feature_id=cat_name,
             preference_evidence=pref_evidence or None,
+            validation_evidence=val_evidence or None,
+            budget_evidence=budget_evidence or None,
         )
         categories.append(
             CategoryScore(

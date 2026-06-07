@@ -35,118 +35,18 @@ from scripts.probes.base_probe import (  # noqa: E402
     make_pipeline,
     run_probe,
 )
+from scripts.probes.mode_data import ALL_MODES  # noqa: E402
 
 from narrare_core.ai_invocation.enrichers import PreferenceContextEnricherImpl  # noqa: E402
 from narrare_core.ai_invocation.models import PromptInvocationContext  # noqa: E402
-from narrare_core.llm.intents import LLMIntent  # noqa: E402
 from narrare_core.memory.models import PreferenceProfile  # noqa: E402
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
+    from narrare_core.llm.intents import LLMIntent
 
-#: Modes to enrich — one representative per category plus all
-#: unique-requirement modes.
-MODES_TO_ENRICH: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
-    (
-        "writing",
-        "chat",
-        LLMIntent.CHAT,
-        {
-            "conversation_history": "",
-            "user_message": "Tell me about my story",
-        },
-    ),
-    (
-        "writing",
-        "new_chapter",
-        LLMIntent.WRITE,
-        {
-            "chapter_title": "The Beginning",
-            "outline": "Story outline",
-        },
-    ),
-    (
-        "writing",
-        "inline_suggest",
-        LLMIntent.SUGGEST,
-        {
-            "text_before": "The hero ",
-            "text_after": " walked forward.",
-        },
-    ),
-    (
-        "writing",
-        "co_author",
-        LLMIntent.CO_AUTHOR,
-        {
-            "selection_text": "The dialogue felt flat.",
-            "focus": "dialogue",
-        },
-    ),
-    (
-        "analysis",
-        "review",
-        LLMIntent.ANALYSE,
-        {
-            "chapter_text": "The chapter needed work.",
-        },
-    ),
-    (
-        "analysis",
-        "preferences",
-        LLMIntent.VOICE,
-        {
-            "chapter_text": "Voice analysis sample text.",
-        },
-    ),
-    (
-        "analysis",
-        "summarize",
-        LLMIntent.SUMMARIZE,
-        {
-            "chapter_text": "Summary sample text.",
-        },
-    ),
-    (
-        "kb",
-        "suggest",
-        LLMIntent.KB_SUGGEST,
-        {
-            "template_structure": "name, description",
-            "target_field": "description",
-            "existing_answers": '{"name": "Mirkwood"}',
-        },
-    ),
-    (
-        "kb",
-        "improve",
-        LLMIntent.KB_IMPROVE,
-        {
-            "entity_type": "character",
-            "entry_content": "A brave hero.",
-        },
-    ),
-    (
-        "planning",
-        "outline",
-        LLMIntent.PLAN,
-        {
-            "project_title": "Test Story",
-            "genre": "Fantasy",
-            "tone": "dark",
-        },
-    ),
-    (
-        "generation",
-        "names",
-        LLMIntent.NAME_GENERATE,
-        {
-            "name_type": "character",
-            "count": "5",
-            "writing_language": "en",
-        },
-    ),
-]
+#: All modes to enrich with preferences.
+MODES_TO_ENRICH = ALL_MODES
 
 
 class _FakePreferenceProvider:

@@ -73,6 +73,8 @@ def _check_runtime_requirements(
     mode_feature_id: str | None = None,
     mode_name: str | None = None,
     preference_evidence: dict[str, set[str]] | None = None,
+    validation_evidence: dict[str, set[str]] | None = None,
+    budget_evidence: dict[str, set[str]] | None = None,
 ) -> tuple[list[RuntimeCheckDetail], bool]:
     """Check runtime requirements; return (details, all_verified).
 
@@ -83,7 +85,7 @@ def _check_runtime_requirements(
     all_verified = True
     for req, declared in sorted(runtime_reqs.items()):
         evidence = _RUNTIME_EVIDENCE_DEFAULT.get(declared, "missing")
-        if evidence != "verified":
+        if evidence not in ("verified", "not_applicable"):
             all_verified = False
         note = _RUNTIME_NOTE.get(declared, f"declared '{declared}'")
         details.append(
@@ -107,7 +109,9 @@ def _check_runtime_requirements(
                 detail.evidence_status = "verified"
                 detail.note = "verified by probe evidence"
                 if not all_verified:
-                    all_verified = all(d.evidence_status == "verified" for d in details)
+                    all_verified = all(
+                        d.evidence_status in ("verified", "not_applicable") for d in details
+                    )
             if (
                 detail.requirement == "final_validation"
                 and detail.declared == "optional"
@@ -131,7 +135,52 @@ def _check_runtime_requirements(
                 detail.evidence_status = "verified"
                 detail.note = "verified by preference enrichment probe"
                 if not all_verified:
-                    all_verified = all(d.evidence_status == "verified" for d in details)
+                    all_verified = all(
+                        d.evidence_status in ("verified", "not_applicable") for d in details
+                    )
+
+    # ── Final validation evidence override ───────────────────────────
+    if (
+        validation_evidence
+        and mode_feature_id
+        and mode_name
+        and mode_name in validation_evidence.get(mode_feature_id, set())
+    ):
+        for detail in details:
+            if detail.requirement == "final_validation" and detail.evidence_status == "missing":
+                detail.evidence_status = "verified"
+                detail.note = "verified by validation probe"
+                if not all_verified:
+                    all_verified = all(
+                        d.evidence_status in ("verified", "not_applicable") for d in details
+                    )
+
+    # ── Budget resolution evidence override ──────────────────────────
+    if (
+        budget_evidence
+        and mode_feature_id
+        and mode_name
+        and mode_name in budget_evidence.get(mode_feature_id, set())
+    ):
+        for detail in details:
+            if detail.requirement == "budget_resolution" and detail.evidence_status == "missing":
+                detail.evidence_status = "verified"
+                detail.note = "verified by budget probe"
+                if not all_verified:
+                    all_verified = all(
+                        d.evidence_status in ("verified", "not_applicable") for d in details
+                    )
+            if (
+                detail.requirement == "kb_suggested"
+                and detail.declared == "budget_rejected"
+                and detail.evidence_status == "missing"
+            ):
+                detail.evidence_status = "verified"
+                detail.note = "budget rejected (verified by budget probe)"
+                if not all_verified:
+                    all_verified = all(
+                        d.evidence_status in ("verified", "not_applicable") for d in details
+                    )
 
     return details, all_verified
 
@@ -150,6 +199,8 @@ def compute_mode_score(
     probe_evidence: dict[str, set[str]] | None = None,
     mode_feature_id: str | None = None,
     preference_evidence: dict[str, set[str]] | None = None,
+    validation_evidence: dict[str, set[str]] | None = None,
+    budget_evidence: dict[str, set[str]] | None = None,
 ) -> ModeScore:
     """Compute adoption score for a single mode.
 
@@ -225,6 +276,8 @@ def compute_mode_score(
             mode_feature_id=mode_feature_id,
             mode_name=mode_name,
             preference_evidence=preference_evidence,
+            validation_evidence=validation_evidence,
+            budget_evidence=budget_evidence,
         )
     else:
         runtime_details, runtime_verified = [], False
@@ -271,6 +324,8 @@ def compute_all_mode_scores(
     probe_evidence: dict[str, set[str]] | None = None,
     feature_id: str | None = None,
     preference_evidence: dict[str, set[str]] | None = None,
+    validation_evidence: dict[str, set[str]] | None = None,
+    budget_evidence: dict[str, set[str]] | None = None,
 ) -> list[ModeScore]:
     """Compute ModeScores for all modes in a category."""
     scores: list[ModeScore] = []
@@ -305,6 +360,8 @@ def compute_all_mode_scores(
             probe_evidence=probe_evidence,
             mode_feature_id=feature_id,
             preference_evidence=preference_evidence,
+            validation_evidence=validation_evidence,
+            budget_evidence=budget_evidence,
         )
         scores.append(ms)
     return scores

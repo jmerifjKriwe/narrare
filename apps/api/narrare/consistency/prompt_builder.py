@@ -37,15 +37,16 @@ def build_consistency_prompt_variables(
     output-format requirements are resolved through PromptComposer templates.
 
     Args:
-        deps: Assembled ConsistencyDeps with chapter texts and KB data.
+        deps: Assembled ConsistencyDeps with chapter texts, KB data, and timeline events.
         check_types: Which check types to run.
 
     Returns:
-        PromptComposer variables for chapter text, KB entities, and check types.
+        PromptComposer variables for chapter text, KB entities, timeline, and check types.
     """
     return {
         "chapter_texts": _format_chapter_texts(deps),
         "kb_entities": _format_kb_entities(deps),
+        "timeline_position": _format_timeline_events(deps),
         "check_types": ", ".join(t.value for t in check_types),
     }
 
@@ -71,7 +72,6 @@ async def compose_consistency_prompt(
     from narrare_core.prompts.context import PromptContext
 
     variables = build_consistency_prompt_variables(deps, check_types)
-    variables["timeline_position"] = ""
     ctx = PromptContext(
         language=language,
         mode="consistency",
@@ -101,4 +101,42 @@ def _format_kb_entities(deps: ConsistencyDeps) -> str:
         name = entity.get("name", "unnamed")
         fields = entity.get("fields", {})
         parts.append(f"- [{etype}] {name}: {fields}")
+    return "\n".join(parts)
+
+
+def _format_timeline_events(deps: ConsistencyDeps) -> str:
+    """Format timeline events as dynamic prompt data for temporal consistency.
+
+    Each event dict contains: event_name, timestamp, character, location.
+    Produces a compact timeline summary the LLM can use to detect temporal
+    contradictions (e.g., a character in two places at once).
+
+    Returns:
+        Formatted timeline string, or empty string when no events are provided
+        (backward-compatible with checks that don't include timeline data).
+    """
+    if not deps.timeline_events:
+        return ""
+
+    parts: list[str] = ["## Timeline Events"]
+    for event in deps.timeline_events:
+        name = event.get("event_name", "Unnamed event")
+        timestamp = event.get("timestamp", "")
+        character = event.get("character", "")
+        location = event.get("location", "")
+
+        # Format: - [timestamp] "event_name" — character; location
+        ts_label = f"[{timestamp}]" if timestamp else "[?]"
+        detail_parts: list[str] = []
+        if character:
+            detail_parts.append(character)
+        if location:
+            detail_parts.append(location)
+        detail = "; ".join(detail_parts)
+
+        if detail:
+            parts.append(f'- {ts_label} "{name}" — {detail}')
+        else:
+            parts.append(f'- {ts_label} "{name}"')
+
     return "\n".join(parts)

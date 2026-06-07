@@ -354,8 +354,9 @@ Gates 8–10 are **additive** — they do not replace Gates 1–7. The relations
 | **9** | **AI content quality** | **Missing prompt variables, no injection defense, no i18n, no streaming** |
 | **10** | **Semantic Review** | **Cross-feature incoherence: missing Integration Contract, unregistered variables, unimplemented i18n, intent scope drift** |
 | **12** | **ADR Implementation Completeness** | **ADRs marked "Implemented" without DI wiring, tests, consumer migration, or documentation** |
+| **13** | **Quarterly Content Review** | **Stale findings, missing cross-feature audit, prompt surface drift** |
 
-A feature must pass ALL gates (1–12) to reach `status: stable`.
+A feature must pass ALL gates (1–13) to reach `status: stable`.
 
 ---
 
@@ -427,6 +428,49 @@ This gate is manual (checked by the Coordinator during Stage 6 commit), but the 
 
 Coordinator during Stage 6 (Commit). Architecture Specialist during Architecture Review.
 Reported by: CR-04 audit (FIND-003 root cause).
+
+---
+
+## Gate 13: Quarterly Content Review
+
+Re-run the full content review (CR-00 through CR-08) every quarter, or when:
+- A new AI feature is added
+- A cross-feature integration point changes
+- The prompt template surface grows by > 10%
+
+### Cadence by Development Phase
+
+| Phase | Cadence | Minimum Scope |
+|-------|---------|---------------|
+| Active development | Per new AI feature | CR-01, CR-04, Gate 9 checklist |
+| Stabilization | Monthly | CR-01 through CR-04 |
+| Maintenance | Quarterly | Full CR-00 through CR-08 |
+
+### Ad-hoc Triggers
+
+- New AI agent or intent registered
+- Prompt template format changes
+- Context assembly pipeline changes
+- KB context contract updates
+
+### Review Scope
+
+| Review | Focus | Tool |
+|--------|-------|------|
+| CR-01 | Prompt quality & completeness | Manual + `check_prompt_structure.py` |
+| CR-02 | System prompt architecture | `check_adoption.py` + `check_architecture.py --prompt-integrity` |
+| CR-03 | Feature adoption (mem0, budget, KG) | `check_adoption.py` + probes |
+| CR-04 | Cross-feature coherence | Manual + `check_registry_drift.py` |
+| CR-07 | AI-UX compliance | `check_streaming_compliance.py` + manual |
+| CR-08 | Hardcoded values & configurability | Manual + `check_model_registry.py` |
+
+### Outcome
+
+After each review:
+1. Update `_audit/results/content-review/findings/cr-05-initial-findings.md`
+2. Register new findings in `_audit/results/content-review/findings/`
+3. Create remediation tasks for any new ❌ Open findings
+4. Update `docs/_shared/CURRENT_STATE.md` if findings status changed
 
 ---
 

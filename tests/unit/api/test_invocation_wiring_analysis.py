@@ -98,8 +98,9 @@ class TestBetaReaderInvocationWiring:
             patch.object(service, "_assemble_context", AsyncMock(return_value=mock_deps)),
             patch.object(service, "_compose_prompt", AsyncMock(return_value=mock_composed)),
             patch("narrare.analysis.beta_reader_service.validate_word_count"),
-            patch.object(
-                service, "_run_agent_phase1", AsyncMock(return_value=MagicMock(spec=["output"]))
+            patch(
+                "narrare.analysis.beta_reader_service.run_phase1",
+                AsyncMock(return_value=MagicMock(spec=["output"])),
             ),
             patch(
                 "narrare.analysis.beta_reader_service.map_phase1_response",
@@ -167,8 +168,9 @@ class TestBetaReaderInvocationWiring:
                 AsyncMock(return_value=MagicMock(spec=["system"], system="s")),
             ),
             patch("narrare.analysis.beta_reader_service.validate_word_count"),
-            patch.object(
-                service, "_run_agent_phase1", AsyncMock(return_value=MagicMock(spec=["output"]))
+            patch(
+                "narrare.analysis.beta_reader_service.run_phase1",
+                AsyncMock(return_value=MagicMock(spec=["output"])),
             ),
             patch(
                 "narrare.analysis.beta_reader_service.map_phase1_response",

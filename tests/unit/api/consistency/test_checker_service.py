@@ -51,10 +51,16 @@ def _service(nr=None, cr=None, kb=None, composer=None) -> ConsistencyCheckerServ
     if composer is None:
         composer = AsyncMock()
         composer.build = AsyncMock(return_value=composed)
+
+    # Timeline repo — returns empty list by default (graceful degradation)
+    timeline_repo = AsyncMock()
+    timeline_repo.list_by_novel = AsyncMock(return_value=[])
+
     return ConsistencyCheckerService(
         chapter_repo=cr or FakeChapterRepository(),
         novel_repo=nr or FakeNovelRepository(),
         kb_repo=kb,
+        timeline_repo=timeline_repo,
         registry=registry,
         config=ResolvedModelConfig(
             provider_name="test", model_id="test", temperature=0.5, max_tokens=2048

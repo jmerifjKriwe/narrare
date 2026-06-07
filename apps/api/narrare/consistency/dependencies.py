@@ -19,6 +19,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     - ChapterRepository for chapter content fetching
     - NovelRepository for novel access control + language resolution
     - KBRepository for KB entity summaries
+    - TimelineEventRepository for temporal consistency context
     """
     from narrare._app.dependencies import (
         get_composer,
@@ -29,6 +30,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     from narrare.consistency.checker_service import ConsistencyCheckerService
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
+    from narrare.planning.timeline_repository import TimelineEventRepository
 
     registry = get_model_registry()
     composer = get_composer()
@@ -38,11 +40,13 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
     kb_repo = KBRepository(session)
+    timeline_repo = TimelineEventRepository(session)
 
     return ConsistencyCheckerService(
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
         kb_repo=kb_repo,
+        timeline_repo=timeline_repo,
         registry=registry,
         config=config,
         composer=composer,

@@ -93,7 +93,8 @@ class TestBuildCoreWikiService:
         with (
             patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
             patch(
-                "narrare._app.dependencies.build_system_default_config", return_value=mock_config
+                "narrare._app.dependencies_services.build_system_default_config",
+                return_value=mock_config,
             ),
             patch("narrare_core.wiki.agent.WikiGenerationAgent") as mock_agent_cls,
             patch("narrare_core.wiki.service.WikiService") as mock_svc_cls,

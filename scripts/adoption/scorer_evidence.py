@@ -109,3 +109,37 @@ def load_preference_enrichment_evidence(
         return {fid: set(modes) for fid, modes in data.get("features", {}).items()}
     except json.JSONDecodeError, KeyError:
         return {}
+
+
+def load_final_validation_evidence(evidence_dir: str | Path) -> dict[str, set[str]]:
+    """Load final validation marker file.
+
+    Reads marker from ``validation_budget_probes.py``.
+    Returns ``{feature_id: {mode, ...}}`` or empty dict.
+    """
+    marker_path = Path(evidence_dir) / "final_validation.json"
+    if not marker_path.exists():
+        return {}
+    try:
+        with marker_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {fid: set(modes) for fid, modes in data.get("features", {}).items()}
+    except json.JSONDecodeError, KeyError:
+        return {}
+
+
+def load_budget_resolution_evidence(evidence_dir: str | Path) -> dict[str, set[str]]:
+    """Load budget resolution marker file.
+
+    Reads marker from ``validation_budget_probes.py``.
+    Returns ``{feature_id: {mode, ...}}`` or empty dict.
+    """
+    marker_path = Path(evidence_dir) / "budget_resolution.json"
+    if not marker_path.exists():
+        return {}
+    try:
+        with marker_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {fid: set(modes) for fid, modes in data.get("features", {}).items()}
+    except json.JSONDecodeError, KeyError:
+        return {}

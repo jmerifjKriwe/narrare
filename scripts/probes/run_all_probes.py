@@ -33,6 +33,9 @@ from scripts.probes.generation_names_probe import main_async as names_probe  # n
 from scripts.probes.kb_probes import main_async as kb_probe  # noqa: E402
 from scripts.probes.planning_outline_probe import main_async as outline_probe  # noqa: E402
 from scripts.probes.preference_enrichment_probe import main_async as enrichment_probe  # noqa: E402
+from scripts.probes.validation_budget_probes import (  # noqa: E402
+    main_async as validation_budget_probe,
+)
 from scripts.probes.writing_probes import main_async as writing_probe  # noqa: E402
 
 ProbeFn = Callable[[Path], Coroutine[Any, Any, int]]
@@ -45,6 +48,7 @@ PROBES: list[tuple[str, ProbeFn]] = [
     ("planning/outline", outline_probe),
     ("generation/names", names_probe),
     ("preference_enrichment", enrichment_probe),
+    ("validation_budget", validation_budget_probe),
 ]
 
 
