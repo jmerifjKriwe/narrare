@@ -5,8 +5,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+from narrare_core.memory._null_client import NullMemoryClient
 from narrare_core.memory.feedback_service import FeedbackService
-from narrare_core.memory.mem0_client import NullMemoryClient
 from narrare_core.memory.models import FeedbackAction, FeedbackEvent
 
 

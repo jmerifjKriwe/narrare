@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from narrare_core.memory.mem0_client import NullMemoryClient
+from narrare_core.memory._null_client import NullMemoryClient
 from narrare_core.memory.models import PreferenceProfile
 from narrare_core.memory.preference_service import PreferenceService
 

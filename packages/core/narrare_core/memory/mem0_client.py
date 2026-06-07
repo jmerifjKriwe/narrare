@@ -20,6 +20,7 @@ from typing import Any
 
 import structlog
 
+from narrare_core.memory._null_client import NullMemoryClient
 from narrare_core.memory.embedding_cascade import EmbeddingCascadeResolver
 
 logger = structlog.get_logger(__name__)
@@ -96,76 +97,109 @@ def _default_memory_model(provider: str) -> str:
     return _PROVIDER_DEFAULT_MODELS.get(provider, _FALLBACK_MODEL)
 
 
-class NullMemoryClient:
-    """No-op memory client used when mem0 is unavailable.
+def _build_mem0_config(
+    *,
+    provider: str,
+    api_key: str,
+    base_url: str | None = None,
+    memory_model: str | None = None,
+    db_url: str = "",
+    user_providers: list[str] | None = None,
+    user_api_keys: dict[str, str] | None = None,
+    user_base_urls: dict[str, str | None] | None = None,
+    embedding_provider: str = "auto",
+    custom_instructions: str | None = None,
+    language: str = "en",
+    # Legacy params (kept for backward compatibility, used as fallback)
+    embedding_model: str | None = None,
+    embedding_api_key: str | None = None,
+    embedding_base_url: str | None = None,
+) -> dict[str, Any] | None:
+    """Build mem0 config dict synchronously. Returns None if embeddings disabled.
 
-    Every method logs a warning and returns empty results so callers
-    never need to handle ``None`` or missing client state.
-
-    Method signatures match the mem0 2.0.x ``AsyncMemory`` API so
-    callers can rely on explicit, typed parameters instead of opaque
-    ``**kwargs``.
+    Extracted from ``create_memory_client()`` for reuse in synchronous
+    DI contexts (e.g. ``create_memory_client_sync()``). Contains only
+    config-building logic — no mem0 imports, no client instantiation.
     """
+    # Resolve embedding config via cascade
+    providers = user_providers or [provider]
+    keys = dict(user_api_keys or {})
+    if provider not in keys:
+        keys[provider] = api_key
+    urls = dict(user_base_urls or {})
 
-    async def add(
-        self,
-        *,
-        messages: str | list[dict[str, str]],
-        user_id: str | None = None,
-        agent_id: str | None = None,
-        run_id: str | None = None,
-        metadata: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> dict[str, list[Any]]:
-        """No-op add — logs warning and returns empty results."""
-        logger.warning("mem0_unavailable", method="add")
-        return {"results": [], "relations": []}
+    resolver = EmbeddingCascadeResolver()
+    embedding_config = resolver.resolve(
+        user_providers=providers,
+        user_api_keys=keys,
+        user_base_urls=urls,
+        explicit_provider=embedding_provider,
+    )
 
-    async def search(
-        self,
-        *,
-        query: str,
-        top_k: int = 20,
-        filters: dict[str, Any] | None = None,
-        threshold: float = 0.1,
-        **kwargs: Any,
-    ) -> dict[str, list[Any]]:
-        """No-op search — logs warning and returns empty results."""
-        logger.warning("mem0_unavailable", method="search")
-        return {"results": []}
+    # Tier 4: Disabled — return None
+    if embedding_config.provider == "disabled":
+        return None
 
-    async def get_all(
-        self,
-        *,
-        filters: dict[str, Any] | None = None,
-        top_k: int = 20,
-        **kwargs: Any,
-    ) -> dict[str, list[Any]]:
-        """No-op get_all — logs warning and returns empty results."""
-        logger.warning("mem0_unavailable", method="get_all")
-        return {"results": []}
+    model = memory_model or _default_memory_model(provider)
+    extraction_prompt = custom_instructions or get_extraction_prompt(language)
 
-    async def delete(
-        self,
-        *,
-        memory_id: str,
-        **kwargs: Any,
-    ) -> dict[str, list[Any]]:
-        """No-op delete — logs warning and returns empty results."""
-        logger.warning("mem0_unavailable", method="delete")
-        return {"results": []}
+    llm_config: dict[str, Any] = {
+        "model": model,
+        "api_key": api_key,
+    }
+    if base_url:
+        llm_config["base_url"] = base_url
 
-    async def delete_all(
-        self,
-        *,
-        user_id: str | None = None,
-        agent_id: str | None = None,
-        run_id: str | None = None,
-        **kwargs: Any,
-    ) -> dict[str, list[Any]]:
-        """No-op delete_all — logs warning and returns empty results."""
-        logger.warning("mem0_unavailable", method="delete_all")
-        return {"results": []}
+    # Build embedder config from resolved cascade result
+    # Legacy params override cascade result if provided
+    if embedding_model or embedding_api_key or embedding_base_url:
+        embedder_config: dict[str, Any] = {
+            "provider": "openai",
+            "config": {
+                "model": embedding_model or embedding_config.model,
+                "api_key": embedding_api_key or embedding_config.api_key or api_key,
+            },
+        }
+        if embedding_base_url:
+            embedder_config["config"]["base_url"] = embedding_base_url
+    elif embedding_config.provider == "local":
+        # Tier 3: Local sentence-transformers via HuggingFace provider
+        embedder_config = {
+            "provider": "huggingface",
+            "config": {
+                "model": embedding_config.model,
+            },
+        }
+    else:
+        # Tier 1: OpenAI embeddings
+        embedder_config = {
+            "provider": "openai",
+            "config": {
+                "model": embedding_config.model,
+                "api_key": embedding_config.api_key,
+            },
+        }
+        if embedding_config.base_url:
+            embedder_config["config"]["base_url"] = embedding_config.base_url
+
+    vector_store_config: dict[str, Any] = {}
+    if db_url:
+        vector_store_config = {
+            "provider": "pgvector",
+            "config": {
+                "dbname": db_url,
+            },
+        }
+
+    config: dict[str, Any] = {
+        "llm": llm_config,
+        "embedder": embedder_config,
+        "custom_instructions": extraction_prompt,
+    }
+    if vector_store_config:
+        config["vector_store"] = vector_store_config
+
+    return config
 
 
 async def create_memory_client(
@@ -236,28 +270,26 @@ async def create_memory_client(
     Any
         A ``mem0.AsyncMemory`` instance, or ``NullMemoryClient`` on failure.
     """
-    # Resolve embedding config via cascade
-    providers = user_providers or [provider]
-    keys = dict(user_api_keys or {})
-    if provider not in keys:
-        keys[provider] = api_key
-    urls = dict(user_base_urls or {})
-
-    resolver = EmbeddingCascadeResolver()
-    embedding_config = resolver.resolve(
-        user_providers=providers,
-        user_api_keys=keys,
-        user_base_urls=urls,
-        explicit_provider=embedding_provider,
+    config = _build_mem0_config(
+        provider=provider,
+        api_key=api_key,
+        base_url=base_url,
+        memory_model=memory_model,
+        db_url=db_url,
+        user_providers=user_providers,
+        user_api_keys=user_api_keys,
+        user_base_urls=user_base_urls,
+        embedding_provider=embedding_provider,
+        custom_instructions=custom_instructions,
+        language=language,
+        embedding_model=embedding_model,
+        embedding_api_key=embedding_api_key,
+        embedding_base_url=embedding_base_url,
     )
 
-    # Tier 4: Disabled — return NullMemoryClient
-    if embedding_config.provider == "disabled":
+    if config is None:
         logger.info("mem0_embeddings_disabled", reason="embedding_provider=disabled")
         return NullMemoryClient()
-
-    model = memory_model or _default_memory_model(provider)
-    extraction_prompt = custom_instructions or get_extraction_prompt(language)
 
     try:
         from mem0 import (  # type: ignore[import-untyped,reportMissingTypeStubs]
@@ -271,75 +303,73 @@ async def create_memory_client(
         return NullMemoryClient()
 
     try:
-        llm_config: dict[str, Any] = {
-            "model": model,
-            "api_key": api_key,
-        }
-        if base_url:
-            llm_config["base_url"] = base_url
-
-        # Build embedder config from resolved cascade result
-        # Legacy params override cascade result if provided
-        if embedding_model or embedding_api_key or embedding_base_url:
-            embedder_config: dict[str, Any] = {
-                "provider": "openai",
-                "config": {
-                    "model": embedding_model or embedding_config.model,
-                    "api_key": embedding_api_key or embedding_config.api_key or api_key,
-                },
-            }
-            if embedding_base_url:
-                embedder_config["config"]["base_url"] = embedding_base_url
-        elif embedding_config.provider == "local":
-            # Tier 3: Local sentence-transformers via HuggingFace provider
-            embedder_config = {
-                "provider": "huggingface",
-                "config": {
-                    "model": embedding_config.model,
-                },
-            }
-        else:
-            # Tier 1: OpenAI embeddings
-            embedder_config = {
-                "provider": "openai",
-                "config": {
-                    "model": embedding_config.model,
-                    "api_key": embedding_config.api_key,
-                },
-            }
-            if embedding_config.base_url:
-                embedder_config["config"]["base_url"] = embedding_config.base_url
-
-        vector_store_config: dict[str, Any] = {}
-        if db_url:
-            vector_store_config = {
-                "provider": "pgvector",
-                "config": {
-                    "dbname": db_url,
-                },
-            }
-
-        config: dict[str, Any] = {
-            "llm": llm_config,
-            "embedder": embedder_config,
-            "custom_instructions": extraction_prompt,
-        }
-        if vector_store_config:
-            config["vector_store"] = vector_store_config
-
         client = AsyncMemory.from_config(config_dict=config)  # type: ignore[reportUnknownVariableType,reportUnknownMemberType]
         logger.info(
             "mem0_client_created",
             provider=provider,
-            model=model,
-            embedding_provider=embedding_config.provider,
-            embedding_model=embedding_config.model,
+            embedding_provider=config.get("embedder", {}).get("provider"),
         )
         return client  # type: ignore[reportUnknownVariableType]
     except Exception:
         logger.exception(
             "mem0_client_creation_failed",
             provider=provider,
-            model=model,
         )
+        return NullMemoryClient()
+
+
+def create_memory_client_sync(
+    *,
+    provider: str,
+    api_key: str,
+    base_url: str | None = None,
+    memory_model: str | None = None,
+    db_url: str = "",
+    embedding_provider: str = "auto",
+    language: str = "en",
+    embedding_model: str | None = None,
+    embedding_api_key: str | None = None,
+    embedding_base_url: str | None = None,
+) -> Any:
+    """Synchronous factory for mem0 AsyncMemory (for sync DI init).
+
+    Same config logic as ``create_memory_client()`` but synchronous.
+    Uses ``_build_mem0_config()`` internally and returns
+    ``NullMemoryClient`` on failure. Intended for module-level DI
+    wiring where async is not available.
+
+    Returns ``Any`` because mem0 may not be installed — callers should
+    not rely on a specific type from the mem0 package.
+    """
+    config = _build_mem0_config(
+        provider=provider,
+        api_key=api_key,
+        base_url=base_url,
+        memory_model=memory_model,
+        db_url=db_url,
+        embedding_provider=embedding_provider,
+        language=language,
+        embedding_model=embedding_model,
+        embedding_api_key=embedding_api_key,
+        embedding_base_url=embedding_base_url,
+    )
+
+    if config is None:
+        logger.info("mem0_embeddings_disabled_sync", reason="embedding_provider=disabled")
+        return NullMemoryClient()
+
+    try:
+        from mem0 import (  # type: ignore[import-untyped,reportMissingTypeStubs]
+            AsyncMemory,  # type: ignore[reportUnknownVariableType]  # narrare: allow-mem0-import  reason="RULE-08: mem0 adapter location"
+        )
+    except ImportError:
+        logger.warning("mem0_not_installed_sync")
+        return NullMemoryClient()
+
+    try:
+        client = AsyncMemory.from_config(config_dict=config)  # type: ignore[reportUnknownVariableType,reportUnknownMemberType]
+        logger.info("mem0_client_created_sync", provider=provider)
+        return client  # type: ignore[reportUnknownVariableType]
+    except Exception:
+        logger.exception("mem0_client_creation_failed_sync", provider=provider)
         return NullMemoryClient()

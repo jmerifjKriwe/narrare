@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from narrare_core.memory.mem0_client import NullMemoryClient, create_memory_client
+from narrare_core.memory._null_client import NullMemoryClient
+from narrare_core.memory.mem0_client import create_memory_client
 
 # ---------------------------------------------------------------------------
 # Test helpers — structured mocks for the mem0 module

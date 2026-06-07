@@ -20,6 +20,7 @@ import structlog
 from narrare_core.context.assembler import ContextAssembler
 from narrare_core.writing._classify import classify_entities
 from narrare_core.writing._helpers import extract_frontmatter_references, format_entities
+from narrare_core.writing._tier3_processor import apply_tier3
 from narrare_core.writing._token_utils import (
     default_token_counter,
     enforce_budget,
@@ -28,13 +29,13 @@ from narrare_core.writing._token_utils import (
 from narrare_core.writing._voice_profiles import extract_voice_profiles
 from narrare_core.writing.budget import TokenBudgetManager
 from narrare_core.writing.context_validators import check_orphan_references, extract_entity_names
-from narrare_core.writing.context_wiki import format_entities_with_wiki
 from narrare_core.writing.models import WritingContext
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from narrare_core.context.types import TierBudget
+    from narrare_core.project.profile import ProjectWritingProfile
     from narrare_core.wiki.types import WikiSummaryData
     from narrare_core.writing.context_models import KBEntity, RecentChapter
 
@@ -113,6 +114,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         mode: str | None = None,
         timeline_position: str = "",
         story_structure: str = "",
+        profile: ProjectWritingProfile | None = None,
         **_extra: Any,
     ) -> WritingContext:
         """Assemble writing context with budget enforcement.
@@ -184,7 +186,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             overflow,
             wiki_fresh,
             wiki_stale,
-        ) = self._apply_tier3(tier3_entities, t3_limit, wiki_summaries)
+        ) = apply_tier3(tier3_entities, t3_limit, self._count_tokens, wiki_summaries)
 
         # Tier 4: KB Suggested
         t4_limit = budgets["kb_suggested"].token_limit + overflow
@@ -203,6 +205,27 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
 
         # Extract entity names for metadata
         char_names, loc_names, fac_names = extract_entity_names(all_classified)
+
+        # Apply ProjectWritingProfile (overrides defaults if provided)
+        if profile is not None:
+            novel_synopsis = profile.novel_synopsis
+            style_profile = profile.style_profile
+            logline = profile.logline
+            # Optionally override metadata fields when they're empty
+            if not project_title and profile.project_title:
+                project_title = profile.project_title
+            if not genre and profile.genre:
+                genre = profile.genre
+            if not tone or (tone == "balanced" and profile.tone):
+                tone = profile.tone
+            if not writing_language and profile.writing_language:
+                writing_language = profile.writing_language
+            if not story_structure and profile.story_structure:
+                story_structure = profile.story_structure
+        else:
+            novel_synopsis = ""
+            style_profile = ""
+            logline = ""
 
         return WritingContext(
             chapter_content=content,
@@ -239,6 +262,9 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             location_names=loc_names,
             faction_names=fac_names,
             total_budget_tokens=self._total_budget,
+            novel_synopsis=novel_synopsis,
+            style_profile=style_profile,
+            logline=logline,
         )
 
     # ------------------------------------------------------------------
@@ -293,105 +319,3 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         # Even summaries too long — truncate
         truncated = self._truncate(summary_text, limit)
         return truncated, 0
-
-    def _apply_tier3(
-        self,
-        entities: list[KBEntity],
-        limit: int,
-        wiki_summaries: dict[str, WikiSummaryData] | None = None,
-    ) -> tuple[str, str, str, str, str, int, int, int]:
-        """Build tier 3 (referenced KB) by entity type.
-
-        Prefers wiki summaries over raw KB content when a fresh wiki
-        summary is available (graceful fallback when stale/pending).
-
-        Truncation priority (lowest → highest): systems, factions,
-        timelines, locations, characters.
-
-        Returns:
-            (characters_text, locations_text, factions_text, systems_text,
-             timelines_text, overflow, wiki_fresh_count, wiki_stale_count)
-        """
-        chars = [e for e in entities if e.entity_type == "character"]
-        locs = [e for e in entities if e.entity_type == "location"]
-        facs = [e for e in entities if e.entity_type == "faction"]
-        systems = [e for e in entities if e.entity_type == "system"]
-        timelines = [e for e in entities if e.entity_type == "timeline"]
-
-        chars_text, chars_fresh, chars_stale = format_entities_with_wiki(chars, wiki_summaries)
-        locs_text, locs_fresh, locs_stale = format_entities_with_wiki(locs, wiki_summaries)
-        facs_text, facs_fresh, facs_stale = format_entities_with_wiki(facs, wiki_summaries)
-        systs_text, systs_fresh, systs_stale = format_entities_with_wiki(systems, wiki_summaries)
-        times_text, times_fresh, times_stale = format_entities_with_wiki(timelines, wiki_summaries)
-        wiki_fresh = chars_fresh + locs_fresh + facs_fresh + systs_fresh + times_fresh
-        wiki_stale = chars_stale + locs_stale + facs_stale + systs_stale + times_stale
-
-        chars_tokens = self._count_tokens(chars_text)
-        locs_tokens = self._count_tokens(locs_text)
-        facs_tokens = self._count_tokens(facs_text)
-        systs_tokens = self._count_tokens(systs_text)
-        times_tokens = self._count_tokens(times_text)
-        total = chars_tokens + locs_tokens + facs_tokens + systs_tokens + times_tokens
-
-        if total <= limit:
-            return (
-                chars_text,
-                locs_text,
-                facs_text,
-                systs_text,
-                times_text,
-                limit - total,
-                wiki_fresh,
-                wiki_stale,
-            )
-
-        # Truncation priority (lowest → highest):
-        # systems → factions → timelines → locations → characters
-        remaining = limit
-
-        # 1. Truncate systems
-        after_rest = remaining - chars_tokens - locs_tokens - facs_tokens - times_tokens
-        if after_rest < systs_tokens:
-            systs_text = self._truncate(systs_text, after_rest) if after_rest > 0 else ""
-            systs_tokens = self._count_tokens(systs_text)
-
-        # 2. Truncate factions
-        after_chars_locs_times = remaining - chars_tokens - locs_tokens - times_tokens
-        if after_chars_locs_times < facs_tokens:
-            facs_text = (
-                self._truncate(facs_text, after_chars_locs_times)
-                if after_chars_locs_times > 0
-                else ""
-            )
-            facs_tokens = self._count_tokens(facs_text)
-
-        # 3. Truncate timelines
-        after_chars_locs_facs = remaining - chars_tokens - locs_tokens - facs_tokens
-        if after_chars_locs_facs < times_tokens:
-            times_text = (
-                self._truncate(times_text, after_chars_locs_facs)
-                if after_chars_locs_facs > 0
-                else ""
-            )
-            times_tokens = self._count_tokens(times_text)
-
-        # 4. Truncate locations
-        after_chars_facs_systs_times = (
-            remaining - chars_tokens - facs_tokens - systs_tokens - times_tokens
-        )
-        if after_chars_facs_systs_times < locs_tokens:
-            locs_text = (
-                self._truncate(locs_text, after_chars_facs_systs_times)
-                if after_chars_facs_systs_times > 0
-                else ""
-            )
-            locs_tokens = self._count_tokens(locs_text)
-
-        # 5. Truncate characters (last resort — highest priority)
-        after_locs_facs_systs_times = (
-            remaining - locs_tokens - facs_tokens - systs_tokens - times_tokens
-        )
-        if after_locs_facs_systs_times < chars_tokens:
-            chars_text = self._truncate(chars_text, max(0, after_locs_facs_systs_times))
-
-        return chars_text, locs_text, facs_text, systs_text, times_text, 0, wiki_fresh, wiki_stale

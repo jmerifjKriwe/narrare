@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from narrare_core.memory.mem0_client import NullMemoryClient
+from narrare_core.memory._null_client import NullMemoryClient
 
 
 class TestNullMemoryClient:

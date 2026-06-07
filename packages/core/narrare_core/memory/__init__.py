@@ -5,11 +5,13 @@ Public API:
     PreferenceProfile, MemoryFacade, FeedbackService, PreferenceService,
     EmbeddingConfig, EmbeddingCascadeResolver, MemoryClientCache
 
-The mem0 client factory (``create_memory_client``) is intentionally
-excluded from public exports — it is an internal implementation detail
-used only during service wiring.
+The mem0 client factories (``create_memory_client``,
+``create_memory_client_sync``) are intentionally excluded from public
+exports — they are internal implementation details used only during
+service wiring.
 """
 
+from narrare_core.memory._null_client import NullMemoryClient
 from narrare_core.memory.embedding_cascade import (
     EmbeddingCascadeResolver,
     EmbeddingConfig,
@@ -37,6 +39,7 @@ __all__ = [
     "FeedbackService",
     "MemoryClientCache",
     "MemoryFacade",
+    "NullMemoryClient",
     "PreferenceProfile",
     "PreferenceProvider",
     "PreferenceService",

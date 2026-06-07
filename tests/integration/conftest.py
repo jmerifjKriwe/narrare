@@ -169,7 +169,7 @@ async def app() -> AsyncGenerator[FastAPI]:
     that each test still gets its own function-scoped DB transaction.
     """
     from narrare.memory.dependencies import get_memory_client
-    from narrare_core.memory.mem0_client import NullMemoryClient
+    from narrare_core.memory._null_client import NullMemoryClient
 
     app = create_app()
 
