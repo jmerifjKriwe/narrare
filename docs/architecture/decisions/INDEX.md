@@ -48,7 +48,7 @@
 | [ADR-022](ADR-022-llm-wiki.md) | LLM Wiki — Precomputed Context Layer | ✅ | 2026-05-29 | `core/wiki/`, `apps/api/wiki/`, WIKI-001, INFRA-003 |
 | [ADR-023](ADR-023-co-author-change-engine.md) | Co-Author Change Engine | ✅ | 2026-05-29 | `core/writing/`, `apps/api/narrare/writing/`, `packages/web/`, WRITE-006 |
 | [ADR-024](ADR-024-free-form-chat.md) | Free-Form Chat for Writing Craft | ✅ | 2026-05-30 | `core/prompts/`, `core/llm/`, `apps/api/narrare/chat/`, `packages/web/`, FIND-019, CR-AUFG-02-03 |
-| [ADR-025](025-feature-adoption-infrastructure.md) | Feature Adoption Infrastructure (registry, context variables, assembler centralization, inline policy, adoption score) | 🔄 | 2026-05-31 | `scripts/architecture/`, `core/context/`, CR-03 |
+| [ADR-025](025-feature-adoption-infrastructure.md) | Feature Adoption Infrastructure (registry, context variables, assembler centralization, inline policy, adoption score) | ✅ | 2026-05-31 | `scripts/architecture/`, `core/context/`, CR-03 |
 | [ADR-026](ADR-026-capability-prompt-injection.md) | Capability-Based Prompt Injection Pattern | ✅ | 2026-06-01 | `core/agents/capabilities/`, `core/prompts/`, RULE-02 |
 | [ADR-027](ADR-027-ai-feature-stabilization-gates.md) | AI Feature Stabilization Gates | ✅ | 2026-06-02 | `core/prompts/`, `packages/web/lib/api/streaming.ts`, quality gates, agent docs |
 | [ADR-028](ADR-028-architecture-exception-ssot.md) | Architecture Exception Register: Single Source of Truth | ✅ | 2026-06-03 | `pyproject.toml`, `CONSTRAINTS.md §7`, `scripts/architecture/`, all exception locations |
