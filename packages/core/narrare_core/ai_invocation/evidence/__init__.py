@@ -8,8 +8,10 @@ See:
     ADR-038, INFRA-013, CONSTRAINTS.md RULE-03/RULE-06.
 """
 
+from narrare_core.ai_invocation.evidence.file_sink import FileEvidenceSink
 from narrare_core.ai_invocation.evidence.logging_sink import LoggingEvidenceSink
 
 __all__ = [
+    "FileEvidenceSink",
     "LoggingEvidenceSink",
 ]

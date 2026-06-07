@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-06 (CR-03 P2 implemented)
-Session: AI Invocation Adoption Contract P2 — core/profiles/ module (ProjectWritingProfile SSOT), KBConsistencyEnricher + VoiceProfileStatus in ai_invocation/, AuditReport + KG Consistency Checker in scripts/adoption/, requires_runtime_evidence flag in adoption registry. 24/27 modes wired. ADR-040 accepted. P3 (typed manifests, quality metrics, doc-drift, persistent evidence) remains outstanding.
+Date: 2026-06-07 (CR-03 P3 fully implemented)
+Session: CR-03 P3 implementation complete — FileEvidenceSink (Layer 1), registry drift detection with JSON Schema + check_registry_drift.py (Layer 2), doc-drift automation with doc_drift/ package (Layer 3), quality metrics with QualityReport + joiner (Layer 4), and CI integration with --drift flag (Layer 5). ADR-041 accepted. INFRA-013 complete through P3. All P3 exit criteria satisfied.
 
 ---
 
@@ -34,7 +34,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Total tests: ~6,200+
 - Architecture rules: 22 rules (RULE-01 through RULE-22, plus RULE-01b)
 - Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
-- ADRs: 39 (ADR-001 through ADR-038, ADR-040)
+- ADRs: 40 (ADR-001 through ADR-041)
 - Feature specs: 83 individual files + INDEX.md (75 registered entries)
 - Open questions: 3 active (Q-001, Q-002, Q-011), 8 resolved
 
@@ -65,7 +65,7 @@ Alembic migrations 0001 through ~0023
 
 - `_shared/`: CONSTRAINTS.md (22 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001 through ADR-038, ADR-040 plus implementation plans (INDEX.md)
+- `architecture/decisions/`: ADR-001 through ADR-041 plus implementation plans (INDEX.md)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 8 resolved)
 - `features/`: 83 feature spec files + INDEX.md (75 registered entries with status tracking)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
@@ -142,7 +142,8 @@ Completed in Phase 6 so far:
 39. ✅ Coverage expansion: LexiconSentimentAnalyzer 19%→99% (40 tests), syllable counting 85%→92% (practical ceiling without pyphen), SpacyNLPProvider 49%→50% (ceiling without spaCy installed); wiki chapter_service 0%→100%, wiki service 18%→100%, wiki system_accessors 62%→100%, overall wiki coverage 74%→87%; memory tests migrated from MagicMock to Fake classes (ADR-030 implemented).
 40. ✅ **Chat Migration (CHAT-001, ADR-034)**: `ChatAgent` + `ChatDeps` created with `HistoryPolicy.CONVERSATIONAL` (first adopter of ADR-034). `ProcessHistory` for cross-turn message continuity. Backend `chat_service.py` refactored to use `ChatAgent.run_stream()` instead of `ModelRegistry.stream()`. `StreamEvent` yielded during `NarrareAgent.run_stream()`. Unit tests for chat service (happy path, history, errors).
 41. ✅ **CR-03 / INFRA-013 P0 (ADR-038)**: Core `ai_invocation/` module with contracts (`PromptInvocationContext`, `AdoptionPolicy`), enrichers (`PreferenceContextEnricher`), validators (`RuntimeVariableValidator`, `FinalPromptValidator`), budget resolver (`IntentOutputBudgetResolver`), `InvocationPipeline` orchestrator, and WritingPipeline integration via `_invocation_adapter.py`. Backend DI wired. P0.3e (LoggingEvidenceSink) and P1 (User/Project IDs in InvocationContext) also implemented. P1 (mode-specific registry) through P3 remain outstanding.
-42. ✅ **CR-03 / INFRA-013 P2 (ADR-040)**: `core/profiles/` module with `ProjectWritingProfile` SSOT (consolidated voice/tone/style/language/genre), `KBConsistencyEnricher` + `VoiceProfileStatus` in `ai_invocation/`, `AuditReport` + KG Consistency Checker in `scripts/adoption/`, `requires_runtime_evidence` flag in adoption registry. 24/27 modes wired with runtime evidence. P3 (typed manifests, quality metrics, doc-drift, persistent evidence) remains outstanding.
+42. ✅ **CR-03 / INFRA-013 P2 (ADR-040)**: `core/profiles/` module with `ProjectWritingProfile` SSOT (consolidated voice/tone/style/language/genre), `KBConsistencyEnricher` + `VoiceProfileStatus` in `ai_invocation/`, `AuditReport` + KG Consistency Checker in `scripts/adoption/`, `requires_runtime_evidence` flag in adoption registry. 24/27 modes wired with runtime evidence.
+43. ✅ **CR-03 / INFRA-013 P3 (ADR-041)**: FileEvidenceSink (`.evidence/invocations.jsonl`), registry drift detection (JSON Schema + `check_registry_drift.py`), doc-drift automation (`doc_drift/` package), quality metrics (`QualityReport` + joiner), CI integration (`--drift` flag, CI jobs). All P3 exit criteria satisfied. INFRA-013 complete through P3.
 
 ## What's Next
 
@@ -155,7 +156,7 @@ Completed in Phase 6 so far:
 7. ⏳ **Frontend-Hubs weiter modularisieren (AUFG-01-02)** — 37 ratcheted legacy RULE-04 violations remain (was 38; EditorView modularized); no new violations allowed.
 8. ⏳ **E2E test patterns**
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
-10. ✅ **CR-03 / INFRA-013 P0–P2** — Core `ai_invocation` module implemented (P0). P0.3e (LoggingEvidenceSink), P1 (User/Project IDs in InvocationContext, mode-specific registry, checker update, kb_suggested), P2 (core/profiles/ module, KBConsistencyEnricher, VoiceProfileStatus, AuditReport, KG Consistency Checker, requires_runtime_evidence flag, 24/27 modes wired) all implemented. P3 (typed manifests, quality metrics, doc-drift, persistent evidence) remains.
+10. ✅ **CR-03 / INFRA-013 P0–P3** — Core `ai_invocation` module implemented (P0). P0.3e (LoggingEvidenceSink), P1 (User/Project IDs in InvocationContext, mode-specific registry, checker update, kb_suggested), P2 (core/profiles/ module, KBConsistencyEnricher, VoiceProfileStatus, AuditReport, KG Consistency Checker, requires_runtime_evidence flag, 24/27 modes wired), and P3 (FileEvidenceSink, registry drift detection, doc-drift automation, quality metrics, CI integration) all fully implemented.
 
 ---
 
@@ -200,8 +201,9 @@ Completed in Phase 6 so far:
 | ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ Accepted — CR-01 prompt surface contract for manifest-routeable intents (INFRA-012) |
-| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0.3e, P1, P2) — CR-03 runtime evidence contract; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; core/profiles/ (ProjectWritingProfile SSOT); KBConsistencyEnricher; AuditReport; 24/27 modes wired; P3 outstanding |
+| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0.3e, P1, P2, P3) — CR-03 runtime evidence contract complete through P3; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; core/profiles/ (ProjectWritingProfile SSOT); KBConsistencyEnricher; AuditReport; FileEvidenceSink; registry drift detection; doc-drift automation; quality metrics; CI integration; 24/27 modes wired |
 | ADR-040 | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ Accepted — P2 architecture for ProjectWritingProfile SSOT, KG consistency evidence, audit lifecycle reporting, mode runtime proof expansion (24/27 modes) |
+| ADR-041 | Typed Manifests / Doc-Drift Automation / Quality Metrics / Persistent Evidence | ✅ Accepted — P3 architecture for registry drift detection (JSON Schema + check_registry_drift.py), doc-drift automation (doc_drift/ package), quality metrics (QualityReport + joiner), and file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl) |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

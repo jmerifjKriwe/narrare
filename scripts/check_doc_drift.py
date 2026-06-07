@@ -2,26 +2,27 @@
 """
 Narrare Documentation Drift Checker.
 
-Validates that documented version numbers and configuration values match
-the CI/repository reality. Prevents drift between documentation and
-infrastructure configuration.
+Validates that documented version numbers, ADR cross-references,
+spec/RULE-XX alignment, and checker terminology match reality.
 
-Phase 1: Node.js version drift detection.
+Check families:
+  - Node.js version consistency (Phase 1)
+  - ADR cross-reference and status consistency (Phase 2)
+  - Spec/RULE-XX reference alignment (Phase 2)
+  - Checker terminology alignment (Phase 2)
 
 Exit codes:
-  0: No drift detected — all documented values match reality.
-  1: Drift found — at least one documented value is out of sync.
+  0: No drift detected — all checks passed.
+  1: Drift found — at least one critical finding.
 
 Usage:
   python scripts/check_doc_drift.py                        # human-readable
   python scripts/check_doc_drift.py --json                 # JSON for CI
   python scripts/check_doc_drift.py --verbose              # detailed steps
-
-Extending:
-  Add new check families by creating check functions and registering
-  them in the CHECKS registry. Each check function returns list[CheckResult].
+  python scripts/check_doc_drift.py --governance-only      # skip Node checks
 
 See: docs/_shared/CONSTRAINTS.md (RULE-04, RULE-06)
+     docs/architecture/decisions/ADR-041 (Phase 2)
 """
 
 from __future__ import annotations
@@ -36,6 +37,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 from pathlib import Path
+
+# Allow importing from scripts/ sub-packages.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from doc_drift.adr_checks import DocDriftFinding, check_adr_consistency
+from doc_drift.spec_checks import check_spec_references
+from doc_drift.terminology_checks import check_terminology_alignment
 
 # ── Constants ──────────────────────────────────────────────────
 
@@ -80,11 +88,7 @@ class DriftReport:
 
 
 def _read_file(path: str) -> str | None:
-    """Read a file relative to REPO_ROOT.
-
-    Returns file contents on success, None if the file does not exist
-    or cannot be read.
-    """
+    """Read a file relative to REPO_ROOT."""
     full_path = REPO_ROOT / path
     if not full_path.exists():
         return None
@@ -101,19 +105,7 @@ def node_check(
     min_count: int = 1,
     label: str | None = None,
 ) -> CheckResult:
-    """Check a file for a Node-version-related pattern.
-
-    Args:
-        path: Relative path from REPO_ROOT to the file to check.
-        pattern: Regex pattern to search for in the file content.
-        min_count: Minimum number of matches required (default 1).
-            Set >1 for files that must reference the version in
-            multiple places (e.g. CI workflows with multiple jobs).
-        label: Human-readable label for output. Defaults to *path*.
-
-    Returns:
-        A CheckResult indicating whether the file met expectations.
-    """
+    """Check a file for a Node-version-related pattern."""
     display_name = label or path
     full_path = REPO_ROOT / path
 
@@ -153,25 +145,14 @@ def node_check(
     )
 
 
-# ── Check registry ─────────────────────────────────────────────
-# Each entry is a (name, callable) tuple.
-# The callable returns list[CheckResult].
-# This structure makes it straightforward to add new check families
-# (e.g. Python version, PostgreSQL/pgvector version, Redis version).
+# ── Node check registry ────────────────────────────────────────
 
 CHECKS: list[tuple[str, Callable[[], list[CheckResult]]]] = []
 
 
 def register_checks() -> None:
-    """Register all drift checks in the CHECKS registry.
-
-    Each check targets a specific documented value and validates it
-    against the expected version or configuration extracted from the
-    CI infrastructure.
-    """
+    """Register Node.js version drift checks."""
     v = EXPECTED_NODE_VERSION
-
-    # ── Documentation files ────────────────────────────────
 
     CHECKS.append(
         (
@@ -185,7 +166,6 @@ def register_checks() -> None:
             ],
         )
     )
-
     CHECKS.append(
         (
             "Deployment guide Node version (x2)",
@@ -199,7 +179,6 @@ def register_checks() -> None:
             ],
         )
     )
-
     CHECKS.append(
         (
             "Context deployment guide Node version",
@@ -212,7 +191,6 @@ def register_checks() -> None:
             ],
         )
     )
-
     CHECKS.append(
         (
             "Evals README Node version",
@@ -225,9 +203,6 @@ def register_checks() -> None:
             ],
         )
     )
-
-    # ── CI configuration files ─────────────────────────────
-
     CHECKS.append(
         (
             "CI workflow Node version (x2)",
@@ -241,7 +216,6 @@ def register_checks() -> None:
             ],
         )
     )
-
     CHECKS.append(
         (
             "Eval workflow Node version",
@@ -254,9 +228,6 @@ def register_checks() -> None:
             ],
         )
     )
-
-    # ── Package configuration ──────────────────────────────
-
     CHECKS.append(
         (
             "Web package.json engines.node",
@@ -271,21 +242,30 @@ def register_checks() -> None:
     )
 
 
+# ── Governance checks ──────────────────────────────────────────
+
+
+def _run_governance_checks() -> list[DocDriftFinding]:
+    """Run all doc-drift governance checks (Phase 2)."""
+    findings: list[DocDriftFinding] = []
+    findings.extend(check_adr_consistency())
+    findings.extend(check_spec_references())
+    findings.extend(check_terminology_alignment())
+    return findings
+
+
 # ── Output formatting ──────────────────────────────────────────
 
 
 def _format_human_check(check: CheckResult, verbose: bool = False) -> str:
     """Format a single check result as a human-readable line."""
     if verbose:
-        pattern_info = f"  Pattern: /{check.pattern}/"
-        detail_info = f"  Detail: {check.detail}"
-        if check.passed:
-            return f"  ✅ {check.file}\n{pattern_info}\n{detail_info}"
-        return f"  ❌ {check.file}\n{pattern_info}\n{detail_info}"
-
-    if check.passed:
-        return f"✅ {check.file}: {check.detail}"
-    return f"❌ {check.file}: expected pattern /{check.pattern}/ — {check.detail}"
+        detail = f"  Detail: {check.detail}"
+        pat = f"  Pattern: /{check.pattern}/"
+        icon = "✅" if check.passed else "❌"
+        return f"  {icon} {check.file}\n{pat}\n{detail}"
+    icon = "✅" if check.passed else "❌"
+    return f"{icon} {check.file}: {check.detail}"
 
 
 def print_human_report(report: DriftReport, verbose: bool = False) -> None:
@@ -346,6 +326,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  python scripts/check_doc_drift.py\n"
             "  python scripts/check_doc_drift.py --json\n"
             "  python scripts/check_doc_drift.py --verbose\n"
+            "  python scripts/check_doc_drift.py --governance-only\n"
         ),
     )
     parser.add_argument(
@@ -358,29 +339,59 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Print detailed per-check information",
     )
+    parser.add_argument(
+        "--governance-only",
+        action="store_true",
+        help="Run only governance checks (ADR/spec/terminology), skip Node checks",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run all registered drift checks and return the exit code.
-
-    Returns:
-        0 if all checks pass, 1 if any drift is detected.
-    """
+    """Run all drift checks. Returns 0 if clean, 1 if drift found."""
     args = parse_args(argv)
-    register_checks()
+    has_critical = False
 
-    report = DriftReport()
-    for _name, check_fn in CHECKS:
-        results = check_fn()
-        report.checks.extend(results)
+    # ── Phase 1: Node.js version checks ──────────────────────
+    if not args.governance_only:
+        register_checks()
+        report = DriftReport()
+        for _name, check_fn in CHECKS:
+            results = check_fn()
+            report.checks.extend(results)
 
-    if args.json:
-        print_json_report(report)
-    else:
-        print_human_report(report, verbose=args.verbose)
+        if args.json:
+            print_json_report(report)
+        else:
+            print_human_report(report, verbose=args.verbose)
 
-    return 0 if report.passed else 1
+        if not report.passed:
+            has_critical = True
+
+    # ── Phase 2: Governance checks ───────────────────────────
+    findings = _run_governance_checks()
+    critical = [f for f in findings if f.severity == "critical"]
+    warnings = [f for f in findings if f.severity == "warning"]
+
+    if findings:
+        print()
+        print("── Governance Checks ──")
+        for f in findings:
+            label = f"[{f.severity.upper()}]"
+            print(f"  {label} {f.file}: {f.message}")
+
+    if critical:
+        print(f"\n❌ {len(critical)} critical doc drift findings")
+        has_critical = True
+    elif warnings:
+        print(f"\n⚠️  {len(warnings)} doc drift warnings")
+
+    if not findings and not has_critical:
+        print("\n✅ Doc drift check passed")
+    elif not has_critical:
+        print("\n✅ Doc drift check passed (with warnings)")
+
+    return 1 if has_critical else 0
 
 
 if __name__ == "__main__":

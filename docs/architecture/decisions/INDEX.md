@@ -63,6 +63,7 @@
 | [ADR-037](ADR-037-prompt-surface-contract-manifest.md) | Prompt Surface Contract Manifest | ✅ | 2026-06-05 | `core/prompts/`, `scripts/architecture/`, prompt governance, RULE-22 |
 | [ADR-038](ADR-038-ai-invocation-adoption-contract.md) | AI Invocation Adoption Contract | ✅ | 2026-06-05 | `core/ai_invocation/`, `core/prompts/`, `apps/api/`, `scripts/adoption/`, CR-03 |
 | [ADR-040](ADR-040-kg-ssot-audit-lifecycle.md) | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ | 2026-06-06 | `core/profiles/`, `core/ai_invocation/consistency`, `scripts/adoption/audit_report.py`, CR-03 P2 |
+| [ADR-041](ADR-041-typed-manifests-drift-metrics.md) | Typed Manifests / Doc-Drift / Quality Metrics / Persistent Evidence | ✅ | 2026-06-07 | `scripts/check_registry_drift.py`, `scripts/quality/`, `scripts/doc_drift/`, `.evidence/`, CR-03 P3 |
 
 ---
 

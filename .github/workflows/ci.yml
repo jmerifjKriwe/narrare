@@ -22,6 +22,8 @@ name: CI
 # | G9   | check_streaming_compliance.py (RULE-20)| ✅ Blocking  | architecture Job                   |
 # | G10  | check_locale_sync.py                   | ✅ Blocking  | architecture Job (was: warning)    |
 # | --   | check_doc_drift.py                     | ✅ Blocking  | architecture Job                   |
+# | --   | check_registry_drift.py                | ✅ Blocking  | architecture Job                   |
+# | --   | check_quality_metrics.py               | ⚠️ Warning   | architecture Job (opt-in)          |
 # | --   | check_frontend_file_size.py (RULE-04)  | ✅ Blocking  | frontend Job                       |
 # | --   | check_test_coverage_gaps.py (RULE-10)  | ✅ Blocking  | architecture Job                   |
 # | --   | check_module_coverage.py (RULE-10)    | ⚠️ Warning   | test-unit Job (--warning-only)     |
@@ -108,6 +110,12 @@ jobs:
 
       - name: Check documentation drift
         run: uv run python scripts/check_doc_drift.py
+
+      - name: Check registry drift (P3)
+        run: uv run python scripts/check_registry_drift.py
+
+      - name: Quality metrics (P3, opt-in)
+        run: uv run python scripts/check_quality_metrics.py --quality
 
       - name: Check gate exceptions expiry
         run: uv run python scripts/check_gate_expirations.py

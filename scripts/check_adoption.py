@@ -283,6 +283,11 @@ def main() -> int:
         action="store_true",
         help="Also generate and print an AuditReport (ADR-040 Decision 3).",
     )
+    parser.add_argument(
+        "--drift",
+        action="store_true",
+        help="Also run registry drift + doc drift checks (P3 Layer 5).",
+    )
     args = parser.parse_args()
 
     registry = load_registry(args.registry)
@@ -319,6 +324,27 @@ def main() -> int:
             print(audit.to_json())
         else:
             print(audit.to_markdown())
+
+    if args.drift:
+        # Registry drift check
+        from scripts.check_registry_drift import DriftReport, check_registry_drift
+
+        registry_findings = check_registry_drift()
+        registry_report = DriftReport(findings=registry_findings)
+        if registry_report.has_critical:
+            critical = [f for f in registry_findings if f.severity == "critical"]
+            print(f"\n❌ Registry drift: {len(critical)} critical findings")
+            for f in critical:
+                print(f"  [{f.category}/{f.mode}] {f.message}")
+        else:
+            print("\n✅ Registry drift: no critical findings")
+
+        # Doc drift check — pass empty argv so it doesn't re-parse --drift
+        from scripts.check_doc_drift import main as check_doc_drift_main
+
+        doc_result = check_doc_drift_main(argv=[])
+        if doc_result != 0:
+            print(f"\n⚠️  Doc drift check returned exit code {doc_result}")
 
     return _exit_code(report.status)
 
