@@ -356,7 +356,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v4
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
@@ -559,7 +559,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev --extra nlp
 
       - name: Install just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v4
 
       - name: Install spaCy NLP models
         run: just install-nlp-models
