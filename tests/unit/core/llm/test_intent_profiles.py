@@ -2,6 +2,9 @@
 
 Ensures every routeable LLMIntent has an explicit output token profile,
 preventing silent fallback to arbitrary defaults (FIND-004).
+
+Also validates the IntentProfile suitability matrix (CR-08 §2.2) —
+capability tiers and output profiles per intent.
 """
 
 from __future__ import annotations
@@ -11,6 +14,12 @@ import pytest
 from narrare_core.llm.intent_categories import (
     INTENT_CATEGORY_MAP,
     get_default_profile_for_intent,
+)
+from narrare_core.llm.intent_profiles import (
+    INTENT_PROFILES,
+    VALID_CAPABILITY_TIERS,
+    VALID_OUTPUT_PROFILES,
+    get_intent_profile,
 )
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.model_config import PROFILE_OUTPUT_LIMITS
@@ -102,3 +111,99 @@ class TestProfileIsPublic:
 
         assert isinstance(PROFILE_OUTPUT_LIMITS, dict)
         assert len(PROFILE_OUTPUT_LIMITS) >= 4
+
+
+# ------------------------------------------------------------------
+# CR-08 §2.2 — Intent Suitability Matrix (capability tiers)
+# ------------------------------------------------------------------
+
+
+class TestIntentProfileMapping:
+    """Every LLMIntent must have an IntentProfile entry with valid values."""
+
+    def test_all_intents_have_profiles(self) -> None:
+        """Every enum member must appear in INTENT_PROFILES."""
+        for intent in LLMIntent:
+            assert intent in INTENT_PROFILES, f"Missing profile for {intent}"
+
+    def test_output_profiles_are_valid(self) -> None:
+        for intent, profile in INTENT_PROFILES.items():
+            assert profile.output_profile in VALID_OUTPUT_PROFILES, (
+                f"{intent}: invalid output_profile '{profile.output_profile}'"
+            )
+
+    def test_capability_tiers_are_valid(self) -> None:
+        for intent, profile in INTENT_PROFILES.items():
+            assert profile.capability_tier in VALID_CAPABILITY_TIERS, (
+                f"{intent}: invalid capability_tier '{profile.capability_tier}'"
+            )
+
+    def test_descriptions_are_non_empty(self) -> None:
+        for intent, profile in INTENT_PROFILES.items():
+            assert len(profile.description) > 0, f"{intent}: description is empty"
+
+
+class TestGetIntentProfile:
+    """get_intent_profile returns correct profiles and falls back safely."""
+
+    def test_returns_entry_for_known_intent(self) -> None:
+        profile = get_intent_profile(LLMIntent.WRITE)
+        assert profile.output_profile == "long_texts"
+        assert profile.capability_tier == "creative"
+
+    def test_returns_entry_for_embed(self) -> None:
+        profile = get_intent_profile(LLMIntent.EMBED)
+        assert profile.output_profile == "quick"
+        assert profile.capability_tier == "fast"
+
+
+class TestIntentProfileTiers:
+    """Verify semantic grouping — writing→creative, analysis→reasoning, etc."""
+
+    def test_writing_intents_use_creative(self) -> None:
+        writing = [LLMIntent.WRITE, LLMIntent.EXTEND, LLMIntent.REWRITE, LLMIntent.CO_AUTHOR]
+        for intent in writing:
+            assert INTENT_PROFILES[intent].capability_tier == "creative", (
+                f"{intent} should use creative tier"
+            )
+
+    def test_analysis_intents_use_reasoning(self) -> None:
+        analysis = [
+            LLMIntent.ANALYSE,
+            LLMIntent.CONSISTENCY,
+            LLMIntent.BETA_READ,
+            LLMIntent.VOICE,
+        ]
+        for intent in analysis:
+            assert INTENT_PROFILES[intent].capability_tier == "reasoning", (
+                f"{intent} should use reasoning tier"
+            )
+
+    def test_quick_intents_use_fast_tier(self) -> None:
+        """Short-output, non-creative intents use the fast tier."""
+        quick = [
+            LLMIntent.SUGGEST,
+            LLMIntent.SENTIMENT,
+        ]
+        for intent in quick:
+            assert INTENT_PROFILES[intent].capability_tier == "fast", (
+                f"{intent} should use fast tier"
+            )
+
+    def test_kb_intents_mixed_tiers(self) -> None:
+        """KB intents use balanced or reasoning — never fast."""
+        kb_intents = [
+            LLMIntent.KB_CREATE,
+            LLMIntent.KB_IMPROVE,
+            LLMIntent.KB_EXTRACT,
+            LLMIntent.KB_INTERVIEW,
+            LLMIntent.KB_SUGGEST,
+            LLMIntent.KB_ENHANCE,
+            LLMIntent.KB_WORLDBUILD,
+            LLMIntent.KB_CONSISTENCY,
+        ]
+        for intent in kb_intents:
+            tier = INTENT_PROFILES[intent].capability_tier
+            assert tier in {"balanced", "reasoning", "creative"}, (
+                f"{intent} has unexpected tier '{tier}'"
+            )

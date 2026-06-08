@@ -11,6 +11,7 @@ from narrare_core.llm.cost_rates import (
 )
 from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.llm.intent_categories import INTENT_CATEGORY_MAP, IntentCategory
+from narrare_core.llm.intent_profiles import IntentProfile, get_intent_profile
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.model_config import CacheSettings, ResolvedModelConfig
 from narrare_core.llm.model_listing import (
@@ -37,6 +38,7 @@ __all__ = [
     "CategoryOverride",
     "IntentCategory",
     "IntentOverride",
+    "IntentProfile",
     "LLMIntent",
     "LLMResult",
     "LLMStream",
@@ -55,6 +57,7 @@ __all__ = [
     "TokenLimitOverride",
     "TokenUsage",
     "get_cached_data",
+    "get_intent_profile",
     "get_model_limits",
     "get_rates",
     "invalidate_cache",
