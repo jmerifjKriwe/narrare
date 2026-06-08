@@ -14,7 +14,6 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { analysisApi, type ConsistencyResponse } from "@/lib/api/analysis";
-import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { ConsistencyPanelHeader } from "./ConsistencyPanelHeader";
@@ -24,11 +23,14 @@ import {
   ConsistencyResults,
   ConsistencyScopeSelector,
 } from "./ConsistencyPanelSections";
+import {
+  getChapterIdsForScope,
+  getConsistencyErrorMessage,
+  type Scope,
+  useElapsedTimer,
+} from "./consistencyPanelUtils";
 
 // --- Types ---
-
-/** Scope controls which chapters are included in the check. */
-type Scope = "current" | "selected" | "all";
 
 interface ConsistencyPanelProps {
   novelId: string;
@@ -42,8 +44,6 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
 
   const [scope, setScope] = useState<Scope>("selected");
   const [result, setResult] = useState<ConsistencyResponse | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
 
@@ -56,7 +56,7 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
   const aiOp = useAIOperation<ConsistencyResponse>({
     execute: async (signal) => {
       const currentScope = scopeRef.current;
-      const ids = getChapterIdsForScope(currentScope);
+      const ids = getChapterIdsForScope(currentScope, activeChapterId, chapterIds);
       if (ids.length === 0 && currentScope !== "all") {
         throw new Error("No chapters selected");
       }
@@ -98,13 +98,9 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
 
   const structuredError = aiOp.state.error;
 
-  // --- Scope → chapter IDs mapping ---
+  // --- Elapsed timer ---
 
-  function getChapterIdsForScope(s: Scope): string[] {
-    if (s === "current") return activeChapterId ? [activeChapterId] : chapterIds.slice(0, 1);
-    if (s === "all") return [];
-    return chapterIds;
-  }
+  const { elapsed, loadingStep } = useElapsedTimer(aiOp.isLoading || aiOp.isStreaming);
 
   // --- Run / Cancel ---
 
@@ -125,47 +121,15 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
     runCheck();
   }, []);
 
-  // --- Elapsed timer for loading progress ---
-  useEffect(() => {
-    if (viewState !== "loading") {
-      setElapsed(0);
-      return;
-    }
-    elapsedRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => {
-      if (elapsedRef.current) clearInterval(elapsedRef.current);
-    };
-  }, [viewState]);
-
-  const loadingStep =
-    elapsed < 5
-      ? "collecting"
-      : elapsed < 15
-        ? "loading"
-        : elapsed < 35
-          ? "analyzing"
-          : "finishing";
-
   // --- i18n adapter ---
 
   const tFn = (key: string, params?: Record<string, unknown>) => {
     return t(key as Parameters<typeof t>[0], params as Parameters<typeof t>[1]) as string;
   };
 
-  // --- Error message helper ---
+  // --- Error message ---
 
-  const getErrorMessage = useCallback(
-    (error: AIErrorResponse | null): string => {
-      if (!error) return t("error");
-      // Try studio.aiActions.* key first (structured errors)
-      try {
-        return tStudio(error.i18nKey as Parameters<typeof tStudio>[0]);
-      } catch {
-        return error.userMessage || t("error");
-      }
-    },
-    [t, tStudio],
-  );
+  const errorMessage = getConsistencyErrorMessage(structuredError, t, tStudio);
 
   // --- Render ---
 
@@ -197,7 +161,7 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
           {/* Error state */}
           {viewState === "error" && (
             <ConsistencyErrorState
-              errorMessage={getErrorMessage(structuredError)}
+              errorMessage={errorMessage}
               isConnectionLost={aiOp.isConnectionLost}
               onRetry={() => runCheck()}
               t={t}

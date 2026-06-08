@@ -137,7 +137,7 @@ class TestValidateStep3:
         assert validated.valid is True
         assert validated.demo_info is not None
         assert validated.demo_info.title == "Im Stillen Wald"
-        assert validated.demo_info.language == "de"
+        assert validated.demo_info.writing_language == "de"
 
     async def test_fantasy_demo_returns_info(self, client: AsyncClient) -> None:
         response = await client.post(

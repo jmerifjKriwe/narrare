@@ -29,6 +29,8 @@ export interface SSEOptions<T> {
   onComplete?: (result: T | undefined) => void;
   onError?: (error: SSEStreamError) => void;
   signal?: AbortSignal;
+  /** Maximum time in ms to wait for the initial HTTP response. Default: 30_000 (30s). */
+  connectTimeoutMs?: number;
 }
 
 interface ParsedSSEEvent {
@@ -116,6 +118,9 @@ async function processSSEStream<T>(
   options.onComplete?.(undefined);
 }
 
+/** Default connect timeout — 30 seconds for initial HTTP response. */
+const DEFAULT_CONNECT_TIMEOUT_MS = 30_000;
+
 export async function connectSSE<T>({
   url,
   method = "POST",
@@ -124,8 +129,18 @@ export async function connectSSE<T>({
   onComplete,
   onError,
   signal,
+  connectTimeoutMs = DEFAULT_CONNECT_TIMEOUT_MS,
 }: SSEOptions<T>): Promise<void> {
   const hasBody = method !== "GET" && body !== undefined;
+
+  // Internal AbortController for the connect timeout.
+  // Combines with the caller's signal via AbortSignal.any() so either can abort.
+  const timeoutController = new AbortController();
+  const combinedSignal = signal
+    ? AbortSignal.any([signal, timeoutController.signal])
+    : timeoutController.signal;
+
+  const timeoutId = setTimeout(() => timeoutController.abort(), connectTimeoutMs);
 
   try {
     const response = await fetch(`/api/v1${url}`, {
@@ -133,7 +148,7 @@ export async function connectSSE<T>({
       headers: buildHeaders(hasBody),
       credentials: "include",
       body: hasBody ? JSON.stringify(body) : undefined,
-      signal,
+      signal: combinedSignal,
     });
 
     if (!response.ok) {
@@ -148,5 +163,7 @@ export async function connectSSE<T>({
     const normalized = normalizeSSEError(error);
     if (normalized.kind === "abort") return;
     onError?.(normalized);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

@@ -25,7 +25,6 @@
 | [Q-002](Q-001-to-Q-004.md#q-002--does-a2a-require-streaming-support) | Does A2A protocol require streaming support? | 🟡 | `apps/a2a/` (post-MVP) | init |
 | [Q-003](Q-001-to-Q-004.md#q-003--embedding-provider-abstraction-from-day-one) | Should embeddings be provider-agnostic from day one? | ✅ | `core/llm/embeddings.py` | init |
 | [Q-011](Q-011-distribution-strategy.md) | Wie wird Narrare für nicht-technische Nutzer zugänglich? | 🟡 | Zielgruppen-Positionierung, Post-MVP Distribution | 2026-06-03 |
-| [Q-012](Q-012-prompt-variable-ux.md) | Wie erklären wir dem Nutzer Prompt-Variablen und ermöglichen Reset-to-Default? | 🟡 | PROMPT-003 Prompt Customization UX (Post-MVP) | 2026-06-08 |
 
 ---
 
@@ -41,3 +40,4 @@
 | [Q-008](Q-008-auth-store-hydration.md) | Auth Store wird nach Page Reload nicht rehydriert | → Resolved via `AuthProvider.tsx` in Root Layout | — |
 | [Q-009](Q-009-to-Q-010.md#q-009--should-chat-conversations-be-project-scoped-or-user-scoped) | Should Chat Conversations Be Project-Scoped or User-Scoped? | → Project-scoped (Option A) | ADR-024 |
 | [Q-010](Q-009-to-Q-010.md#q-010--should-the-chat-prompt-support-defr-from-day-one-or-english-only-v1) | Should the Chat Prompt Support DE/FR from Day One or English-Only v1? | → English-only v1 (Option A) | ADR-024 |
+| [Q-012](Q-012-prompt-variable-ux.md) | Wie erklären wir dem Nutzer Prompt-Variablen und ermöglichen Reset-to-Default? | → Option A (Manifest) via PROMPT-003 (Post-MVP) | — |

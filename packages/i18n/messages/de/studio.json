@@ -1725,7 +1725,21 @@
     "skip": "Überspringen",
     "back": "Zurück",
     "next": "Weiter",
-    "done": "Fertig"
+    "done": "Fertig",
+    "replay": "Einführung erneut starten",
+    "replayDescription": "Starte die geführte Tour durch Narrares KI-Features erneut."
+  },
+  "demos": {
+    "title": "Demo-Projekte",
+    "subtitle": "Probiere Narrare mit einer fertigen Geschichte",
+    "loadDemo": "Demo laden",
+    "loading": "Demo-Projekte werden geladen…",
+    "error": "Demo-Projekte konnten nicht geladen werden",
+    "retry": "Erneut versuchen",
+    "empty": "Keine Demo-Projekte verfügbar",
+    "chapters": "{{count}} Kapitel",
+    "words": "{{count}} Wörter",
+    "characters": "{{count}} Charaktere"
   },
   "quickStart": {
     "label": "Sofort loslegen",

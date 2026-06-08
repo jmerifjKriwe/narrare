@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-08 (CR-07 UX Audit Remediation — ONBOARD-001, PROMPT-003, KEYBOARD-001)
-Session: CR-07 UX Audit Remediation — Phase 1 specs created. ADR-043 useAIOperation Primitives erstellt, P0/P1/P2 flows migriert, §16 Checks implementiert, 114 Tests. UX-Dokumentation: 3 neue Feature-Specs (ONBOARD-001 Onboarding & AI-Einführung, PROMPT-003 Prompt Customization UX, KEYBOARD-001 Tastatur-Konsistenz) basierend auf CR-07 §5–§7 Befunden.
+Date: 2026-06-08 (CR-07 UX Audit Remediation — Full Implementation)
+Session: CR-07 UX Audit Remediation abgeschlossen. ADR-043 useAIOperation implementiert (Commit 1001125). Alle P0/P1 AI-Flows migriert, §16 Compliance durchgesetzt (0 Violations), maschinelle Checks + CI, 84 Dateien geändert (+5.132/-674). ONBOARD-001, PROMPT-003, KEYBOARD-001 als Feature-Specs erstellt. Q-012 resolved.
 
 ---
 
@@ -36,7 +36,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
 - ADRs: 43 (ADR-001 through ADR-043)
 - Feature specs: 86 individual files + INDEX.md (78 registered entries)
-- Open questions: 4 active (Q-001, Q-002, Q-011, Q-012), 8 resolved
+- Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
 
 ### Core (`packages/core/narrare_core/`)
 
@@ -147,7 +147,7 @@ Completed in Phase 6 so far:
   44. ✅ **CR-04 Cross-Feature Coherence Remediation**: KB Context Contract with source/evidence/confidence/review_status metadata (CR-AUFG-04-01 + B1 + B3); Variable naming canonical aliases with deprecation of bare `language` (CR-AUFG-04-03 + E2 + B6); ADR Implementation Completeness Gate (Gate 12); Cross-Feature Audit Cadence; FIND-009 (Timeline→Consistency) registered. 39 new tests. Precedence confirmed in RULE-22 §7 (E3: no standalone ADR needed).
   45. ✅ **CR-03 / INFRA-013 P4 (ADR-042)**: PersistentEvidenceSink (PostgreSQL hybrid), EvidenceRepository protocol + implementation, PersistentEvidenceSink in Backend, Alembic migration 0028_invocation_evidence, 41 tests (23 unit + 18 integration). FileEvidenceSink unchanged for CI.
    46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Modes Adopted**: All 27 feature modes fully adopted. Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json cleared (0 adoption debt). CI integration: probes run before adoption check.
-47. ✅ **CR-07 UX Audit Remediation — Phase 1 (Specs)**: ADR-043 useAIOperation Primitives erstellt, P0/P1/P2 flows migriert, §16 Checks implementiert, 114 Tests. UX-Dokumentation: 3 neue Feature-Specs erstellt (ONBOARD-001, PROMPT-003, KEYBOARD-001) basierend auf CR-07 §5–§7 Befunden. Demo-Discovery, Prompt-Variablen-Erklärung, Keyboard-Konsistenz als Post-MVP-Roadmap-Items dokumentiert.
+47. ✅ **CR-07 UX Audit Remediation — Full Implementation**: ADR-043 useAIOperation hook + mapSSEError implementiert. Alle P0/P1 AI-Flows (GenerationPanel, CoAuthorPanel, ContinueButton, TipTapEditor, KB sessions, timeline, KB _components) auf useAIOperation migriert. §16 Compliance: aiActions.* i18n keys (de/en/fr), structured AIErrorResponse, no raw AbortController, no useConnectionLost. Maschinelle Compliance-Checks + CI-Integration. RULE-04: scorer_modes.py (401→365) + compliance script (594→93) modularisiert. ONBOARD-001, PROMPT-003, KEYBOARD-001 Feature-Specs erstellt. Q-012 resolved. Commit 1001125: 84 Dateien, +5.132/-674.
 
 ## What's Next
 
@@ -161,7 +161,7 @@ Completed in Phase 6 so far:
 8. ✅ **E2E test patterns** — Playwright-based E2E tests established (16 test files, 3.3k lines). Auth proxy pattern, wizard robustness, editor persistence, warmup fixture, `NARRARE_E2E_TEST=1` mode. Documented in testing-standards.md.
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
 10. ✅ **CR-03 / INFRA-013 P0–P5** — Core ai_invocation module implemented through P5. P0 (pipeline + contracts), P1 (User/Project IDs), P2 (profiles + KG consistency), P3 (FileEvidenceSink + drift detection + quality metrics), P4 (PersistentEvidenceSink + PostgreSQL), P5 (27/27 modes adopted — all runtime blockers resolved). INFRA-013 complete.
-11. ✅ **CR-07 UX Audit — Phase 1 (Specs + ADR-043)** — ADR-043 useAIOperation Primitives erstellt, P0/P1/P2 flows migriert, §16 Checks implementiert, 114 Tests. UX-Lücken (Onboarding, Prompt UX, Keyboard) als Feature-Specs dokumentiert.
+11. ✅ **CR-07 UX Audit — Full Implementation** — ADR-043 implementiert, alle P0/P1 flows migriert, §16 compliance durchgesetzt, maschinelle Checks + CI.
 12. ⏳ **ONBOARD-001: Onboarding & AI-Einführung** — Demo-Discovery im Dashboard, KI-Tour (1–2 Min.), kontextuelle Tooltips. Post-MVP.
 13. ⏳ **PROMPT-003: Prompt Customization UX** — Variablen-Erklärung, Preview/Test-Modus, Reset-to-Default. Post-MVP (nicht vor Phase 6).
 14. ⏳ **KEYBOARD-001: Tastatur-Konsistenz** — Ctrl+Enter für alle AI-Aktionen, Escape für Cancel, Tab für GhostText-Accept. Post-MVP / Low Priority.
@@ -214,7 +214,7 @@ Completed in Phase 6 so far:
 | ADR-040 | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ Accepted — P2 architecture for ProjectWritingProfile SSOT, KG consistency evidence, audit lifecycle reporting, mode runtime proof expansion (24/27 modes) |
 | ADR-041 | Typed Manifests / Doc-Drift Automation / Quality Metrics / Persistent Evidence | ✅ Accepted — P3 architecture for registry drift detection (JSON Schema + check_registry_drift.py), doc-drift automation (doc_drift/ package), quality metrics (QualityReport + joiner), and file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl) |
 | ADR-042 | PostgreSQL Evidence Upgrade | ✅ Implemented (P4) — hybrid FileEvidenceSink (CI) + PersistentEvidenceSink (production) |
-| ADR-043 | `useAIOperation` Primitives | ✅ Implemented — shared streaming client, cancel/error/loading primitives, canonical `studio.aiActions.*` labels, §16 compliance checks, P0/P1/P2 flows migrated |
+| ADR-043 | `useAIOperation` Primitives | ✅ Implemented — shared streaming client, cancel/error/loading primitives, canonical `studio.aiActions.*` labels, §16 compliance checks, P0/P1 flows migrated (Commit 1001125) |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -235,7 +235,7 @@ Full details: `docs/architecture/decisions/INDEX.md`
 | Q-009 | Chat conversations: project-scoped vs user-scoped | ✅ → Project-scoped (Option A) |
 | Q-010 | Chat prompt i18n: EN-only v1 vs full i18n | ✅ → English-only v1 (Option A) |
 | Q-011 | Distribution strategy for non-technical users | 🟡 Open |
-| Q-012 | Prompt-Variablen-Erklärung und Reset-to-Default in der WebUI | 🟡 Open — adressiert durch PROMPT-003 (Post-MVP) |
+| Q-012 | Prompt-Variablen-Erklärung und Reset-to-Default in der WebUI | ✅ Resolved — adressiert durch PROMPT-003 (Post-MVP), UX-Lücke dokumentiert in Feature-Spec |
 
 Full details: `docs/architecture/questions/INDEX.md`
 

@@ -105,13 +105,31 @@ class FakeDemoLoader:
         return DemoProjectInfo(
             id=starter,
             title="Fake Demo",
-            language="en",
+            writing_language="en",
             genre="Test",
             chapter_count=1,
             character_count=0,
             word_count=100,
             description="Fake demo for testing",
         )
+
+    def all_demo_info(self) -> list[DemoProjectInfo]:
+        """Return all demo info — mirrors real DemoLoader."""
+        self.calls.append({"method": "all_demo_info"})
+        if self._info is not None:
+            return [self._info]
+        return [
+            DemoProjectInfo(
+                id=StarterContent.DEMO_FANTASY,
+                title="Fake Demo",
+                writing_language="en",
+                genre="Test",
+                chapter_count=1,
+                character_count=0,
+                word_count=100,
+                description="Fake demo for testing",
+            )
+        ]
 
     async def load(
         self, starter: StarterContent, novel_id: uuid.UUID, user_id: uuid.UUID | None = None

@@ -70,7 +70,7 @@ def _load_demo_info(starter: StarterContent) -> DemoProjectInfo:
     return DemoProjectInfo(
         id=starter,
         title=raw.get("title", ""),
-        language=raw.get("language", "en"),
+        writing_language=raw.get("writing_language", raw.get("language", "en")),
         genre=raw.get("genre", ""),
         chapter_count=stats.get("chapters", 0),
         character_count=stats.get("characters", 0),

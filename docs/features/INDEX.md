@@ -53,7 +53,7 @@
 | [SETUP-002](setup/SETUP-002-demo-content.md) | Demo Projects | ✅ | ✅ |
 | [SETUP-003](setup/SETUP-003-import.md) | Project Import | 📋 | ❌ |
 | [SETUP-004](setup/SETUP-004-provider-config.md) | AI Provider Configuration | ✅ | ✅ |
-| [ONBOARD-001](onboarding-user-guide.md) | Onboarding & AI-Einführung | 📋 | ❌ |
+| [ONBOARD-001](onboarding-user-guide.md) | Onboarding & AI-Einführung | ✅ | ❌ |
 
 ### Writing
 | ID | Feature | Status | MVP |

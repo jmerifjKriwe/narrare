@@ -1725,7 +1725,21 @@
     "skip": "Ignorer",
     "back": "Retour",
     "next": "Suivant",
-    "done": "Terminé"
+    "done": "Terminé",
+    "replay": "Revoir l'introduction",
+    "replayDescription": "Rejouer la visite guidée des fonctionnalités IA de Narrare."
+  },
+  "demos": {
+    "title": "Projets de démonstration",
+    "subtitle": "Essayez Narrare avec une histoire prête à l'emploi",
+    "loadDemo": "Charger la démo",
+    "loading": "Chargement des démos…",
+    "error": "Impossible de charger les projets de démonstration",
+    "retry": "Réessayer",
+    "empty": "Aucune démo disponible",
+    "chapters": "{{count}} chapitres",
+    "words": "{{count}} mots",
+    "characters": "{{count}} personnages"
   },
   "quickStart": {
     "label": "Démarrage rapide",

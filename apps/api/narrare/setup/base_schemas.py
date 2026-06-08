@@ -116,7 +116,7 @@ class DemoProjectInfo(BaseModel):
 
     id: StarterContent
     title: str
-    language: str
+    writing_language: str
     genre: str
     chapter_count: int
     character_count: int
@@ -127,6 +127,12 @@ class DemoProjectInfo(BaseModel):
     logline: str = ""
     pov: str = ""
     tags: list[str] = []
+
+
+class DemoListResponse(BaseModel):
+    """Response for listing available demo projects."""
+
+    demos: list[DemoProjectInfo]
 
 
 class Step3StarterResponse(BaseModel):

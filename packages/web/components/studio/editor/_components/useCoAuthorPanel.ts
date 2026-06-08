@@ -12,27 +12,14 @@
  */
 
 import { useTranslations } from "next-intl";
-import { useCallback, useState } from "react";
-import { type CoAuthorRevision, streamCoAuthor } from "@/lib/api/coauthor";
-import { useAIOperation } from "@/lib/hooks/use-ai-operation";
-import { createAcceptanceMap, getCoAuthorPhaseLabel } from "./coauthor-message-utils";
-import type { CoAuthorPhase } from "./coauthor-styles";
+import { useState } from "react";
+import type { CoAuthorRevision } from "@/lib/api/coauthor";
+import { getCoAuthorPhaseLabel } from "./coauthor-message-utils";
+import { computeCoAuthorPhase, type UseCoAuthorPanelParams } from "./coauthor-panel-utils";
 import { useCoAuthorApply } from "./useCoAuthorApply";
+import { useCoAuthorHandlers } from "./useCoAuthorHandlers";
 import { useCoAuthorReviewState } from "./useCoAuthorReviewState";
-
-// ---------------------------------------------------------------------------
-// Hook params
-// ---------------------------------------------------------------------------
-
-interface UseCoAuthorPanelParams {
-  readonly novelId: string;
-  readonly chapterId: string;
-  readonly selectionText: string;
-  readonly contextBefore?: string;
-  readonly contextAfter?: string;
-  readonly onAccept: (revisedText: string) => void;
-  readonly onClose: () => void;
-}
+import { useCoAuthorStream } from "./useCoAuthorStream";
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -48,11 +35,7 @@ export function useCoAuthorPanel({
   onClose,
 }: UseCoAuthorPanelParams) {
   const t = useTranslations("studio");
-  const [streamedText, setStreamedText] = useState("");
-  const [reasoning, setReasoning] = useState("");
-  const [requestId, setRequestId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-  const [manualPhase, setManualPhase] = useState<CoAuthorPhase | null>(null);
   const [localErrorMsg, setLocalErrorMsg] = useState<string | null>(null);
 
   const {
@@ -68,73 +51,41 @@ export function useCoAuthorPanel({
   } = useCoAuthorReviewState();
 
   const {
+    streamedText,
+    reasoning,
+    requestId,
     state,
     start,
     cancel,
-    notifyData,
     retry,
     isLoading,
     isStreaming,
     isComplete,
     isError,
     isConnectionLost,
-  } = useAIOperation<CoAuthorRevision | null>({
-    execute: async (signal) => {
-      setStreamedText("");
-      setChanges([]);
-      setReasoning("");
-      setRequestId(crypto.randomUUID());
-
-      let revision: CoAuthorRevision | null = null;
-
-      await streamCoAuthor(
-        chapterId,
-        novelId,
-        {
-          selection_text: selectionText,
-          context_before: contextBefore,
-          context_after: contextAfter,
-          focus: [...selectedFocus],
-        },
-        {
-          onChunk: (text) => {
-            notifyData();
-            setStreamedText((prev) => prev + text);
-          },
-          onComplete: (rev) => {
-            revision = rev;
-            setChanges(rev.changes);
-            setReasoning(rev.reasoning);
-            if (rev.request_id) setRequestId(rev.request_id);
-            setAcceptance(createAcceptanceMap(rev.changes, true));
-          },
-          onError: (err) => {
-            throw err;
-          },
-        },
-        signal,
-      );
-
-      return revision;
+  } = useCoAuthorStream({
+    novelId,
+    chapterId,
+    selectionText,
+    contextBefore,
+    contextAfter,
+    selectedFocus,
+    setChanges,
+    setAcceptance,
+    onSuccess: (revision: CoAuthorRevision) => {
+      setManualPhase(revision.changes.length > 0 ? "review" : "done");
     },
-    onSuccess: (revision) => {
-      if (revision) {
-        setManualPhase(revision.changes.length > 0 ? "review" : "done");
-      }
-    },
-    connectionLossTimeout: 15_000,
   });
 
-  // Merge useAIOperation lifecycle with manual phase overrides (stop-with-output)
-  const phase: CoAuthorPhase =
-    manualPhase ??
-    (isLoading || isStreaming ? "streaming" : isComplete ? "review" : isError ? "error" : "focus");
-
-  const handleStart = useCallback(() => {
-    if (selectedFocus.length === 0) return;
-    setManualPhase(null);
-    start();
-  }, [selectedFocus, start]);
+  const { manualPhase, setManualPhase, handleStart, handleCancel, handleStop, handleRetry } =
+    useCoAuthorHandlers({
+      selectedFocus,
+      streamedText,
+      onClose,
+      start,
+      cancel,
+      retry,
+    });
 
   const handleApply = useCoAuthorApply({
     changes,
@@ -154,21 +105,8 @@ export function useCoAuthorPanel({
     errorGeneric: t("coAuthor.errorGeneric"),
   });
 
-  const handleCancel = useCallback(() => {
-    cancel();
-    setManualPhase(null);
-    onClose();
-  }, [cancel, onClose]);
-
-  const handleStop = useCallback(() => {
-    cancel();
-    setManualPhase(streamedText.trim().length > 0 ? "review" : "focus");
-  }, [cancel, streamedText]);
-
-  const handleRetry = useCallback(() => {
-    setManualPhase(null);
-    retry();
-  }, [retry]);
+  // Merge useAIOperation lifecycle with manual phase overrides (stop-with-output)
+  const phase = computeCoAuthorPhase(manualPhase, isLoading, isStreaming, isComplete, isError);
 
   const phaseLabel = getCoAuthorPhaseLabel(phase, t);
 

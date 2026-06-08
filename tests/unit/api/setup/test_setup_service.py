@@ -90,7 +90,7 @@ class TestValidateStep3:
         mock_info = DemoProjectInfo(
             id=StarterContent.DEMO_GERMAN,
             title="Im stillen Wald",
-            language="de",
+            writing_language="de",
             genre="Literarische Fiktion",
             chapter_count=2,
             character_count=3,

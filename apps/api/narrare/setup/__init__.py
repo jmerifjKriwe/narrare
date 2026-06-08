@@ -2,6 +2,7 @@
 
 from .base_schemas import (
     AIProvider,
+    DemoListResponse,
     DemoProjectInfo,
     StarterContent,
     Step1LocationRequest,
@@ -28,6 +29,7 @@ __all__ = [
     "AvailableModelsResponse",
     "CompleteSetupRequest",
     "CompleteSetupResponse",
+    "DemoListResponse",
     "DemoProjectInfo",
     "ProviderModel",
     "StarterContent",

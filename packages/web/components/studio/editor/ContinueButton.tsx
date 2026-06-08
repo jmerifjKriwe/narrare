@@ -2,15 +2,10 @@
 
 import type { Editor } from "@tiptap/react";
 import { ChevronDown, Loader2, PenLine } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  appendToPendingMark,
-  finalizePendingMark,
-  insertAIContent,
-} from "@/components/studio/editor/extensions/AIAnnotation";
-import { type ExtendLength, streamExtend } from "@/lib/api/generation";
-import { useAIOperation } from "@/lib/hooks/use-ai-operation";
+import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState } from "react";
+import type { ExtendLength } from "@/lib/api/generation";
+import { useContinueStream } from "./useContinueStream";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,95 +18,21 @@ interface ContinueButtonProps {
   readonly tone?: string;
 }
 
-interface ExtendRequestParams {
-  readonly textBefore: string;
-  readonly textAfter: string | null;
-  readonly selectedLength: ExtendLength;
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export function ContinueButton({ editor, chapterId, novelId, tone }: ContinueButtonProps) {
   const t = useTranslations("studio");
-  const locale = useLocale();
   const [length, setLength] = useState<ExtendLength>("medium");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const accumulatedRef = useRef("");
-  const requestRef = useRef<ExtendRequestParams | null>(null);
 
-  // -- AI operation lifecycle via useAIOperation --
-
-  const { start, cancel, notifyData, isLoading, isStreaming } = useAIOperation<void>({
-    execute: (signal) =>
-      new Promise<void>((resolve, reject) => {
-        const req = requestRef.current;
-        if (!req || editor.isDestroyed) {
-          resolve();
-          return;
-        }
-
-        let settled = false;
-        let isFirstChunk = true;
-
-        const onAbort = () => {
-          if (!settled) {
-            settled = true;
-            reject(new DOMException("Aborted", "AbortError"));
-          }
-        };
-        signal.addEventListener("abort", onAbort, { once: true });
-
-        streamExtend(
-          chapterId,
-          novelId,
-          {
-            text_before: req.textBefore,
-            text_after: req.textAfter,
-            length: req.selectedLength,
-            tone,
-            language: locale,
-          },
-          {
-            onChunk: (text) => {
-              if (editor.isDestroyed) return;
-              if (isFirstChunk) {
-                notifyData();
-                isFirstChunk = false;
-              }
-
-              const localId = `extend-${Date.now()}`;
-              if (accumulatedRef.current.length === 0) {
-                insertAIContent(editor, null, text, localId, "extend");
-              } else {
-                appendToPendingMark(editor, text);
-              }
-              accumulatedRef.current += text;
-            },
-            onComplete: () => {
-              if (!settled) {
-                settled = true;
-                signal.removeEventListener("abort", onAbort);
-                if (!editor.isDestroyed) {
-                  finalizePendingMark(editor, accumulatedRef.current);
-                }
-                resolve();
-              }
-            },
-            onError: (err) => {
-              if (!settled) {
-                settled = true;
-                signal.removeEventListener("abort", onAbort);
-                reject(err);
-              }
-            },
-          },
-          signal,
-        );
-      }),
-    connectionLossTimeout: 15_000,
+  const { handleExtend, handleStop, isStreaming } = useContinueStream({
+    editor,
+    chapterId,
+    novelId,
+    tone,
   });
 
   // Close dropdown on outside click
@@ -125,27 +46,6 @@ export function ContinueButton({ editor, chapterId, novelId, tone }: ContinueBut
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [dropdownOpen]);
-
-  const handleExtend = useCallback(
-    (selectedLength: ExtendLength) => {
-      if (isLoading || isStreaming) return;
-      if (editor.isDestroyed) return;
-
-      const $head = editor.state.selection.$head;
-      const textBefore = $head.parent.textContent.slice(0, $head.parentOffset);
-      const textAfter = $head.parent.textContent.slice($head.parentOffset);
-
-      requestRef.current = { textBefore, textAfter: textAfter || null, selectedLength };
-      accumulatedRef.current = "";
-      setDropdownOpen(false);
-      start();
-    },
-    [editor, isLoading, isStreaming, start],
-  );
-
-  const handleStop = useCallback(() => {
-    cancel();
-  }, [cancel]);
 
   return (
     <div className="relative" ref={dropdownRef}>

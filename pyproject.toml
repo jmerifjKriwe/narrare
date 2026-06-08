@@ -22,7 +22,6 @@ dev = [
   "pytest-randomly==4.1.0",
   "pytest-timeout>=2.3",
   "hypothesis>=6.100",
-  "playwright>=1.52",
   "pytest-playwright>=0.7",
   "pydantic-evals==1.106.0",
 ]
@@ -175,7 +174,7 @@ pythonpath = ["apps/api", "packages/core"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-filterwarnings = ["error", "ignore::DeprecationWarning:pydantic_ai", "ignore::DeprecationWarning:google.genai", "ignore:.*sqlite3.*:pytest.PytestUnraisableExceptionWarning"]
+filterwarnings = ["error", "ignore::DeprecationWarning:pydantic_ai", "ignore::DeprecationWarning:google.genai", "ignore:.*sqlite3.*:pytest.PytestUnraisableExceptionWarning", "ignore:.*qdrant.*:pytest.PytestUnraisableExceptionWarning"]
 timeout = 10
 timeout_method = "thread"
 timeout_func_only = true

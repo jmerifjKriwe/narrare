@@ -42,12 +42,18 @@ class ResolvedModel:
         source: Which cascade level resolved this model, e.g.
             ``"project_intent"``, ``"user_category"``, ``"user_default"``.
             Used for logging and debugging.
+        recommended_tier: Advisory capability tier from
+            :func:`~narrare_core.llm.intent_profiles.get_intent_profile`.
+            One of ``"creative"``, ``"reasoning"``, ``"fast"``, ``"balanced"``.
+            ``None`` when not populated (backward compatible).
+            Does not affect routing — metadata only.
     """
 
     config: ResolvedModelConfig
     api_key: str | None = None
     base_url: str | None = None
     source: str = ""
+    recommended_tier: str | None = None
 
 
 @runtime_checkable
@@ -59,6 +65,11 @@ class ModelRoutingResolver(Protocol):
 
     The gateway never calls this directly — the *service layer* calls
     the resolver and passes the result to the gateway.
+
+    Implementations SHOULD call
+    :func:`~narrare_core.llm.intent_profiles.get_intent_profile` and
+    populate ``recommended_tier`` with the ``capability_tier`` for
+    observability and logging. This is advisory, not mandatory.
 
     Example implementation flow::
 

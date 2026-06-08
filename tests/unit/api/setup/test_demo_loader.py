@@ -53,7 +53,7 @@ class TestLoadDemoInfo:
         info = _load_demo_info(StarterContent.DEMO_FANTASY)
         assert info.id == StarterContent.DEMO_FANTASY
         assert info.title == "Echoes of the Thornwall"
-        assert info.language == "en"
+        assert info.writing_language == "en"
         assert info.genre == "Fantasy"
         assert info.chapter_count == 4
         assert info.character_count == 5
@@ -64,7 +64,7 @@ class TestLoadDemoInfo:
         info = _load_demo_info(StarterContent.DEMO_SCIFI)
         assert info.id == StarterContent.DEMO_SCIFI
         assert info.title == "Dead Signal"
-        assert info.language == "en"
+        assert info.writing_language == "en"
         assert info.genre == "Science Fiction"
         assert info.chapter_count == 3
 
@@ -72,7 +72,7 @@ class TestLoadDemoInfo:
         info = _load_demo_info(StarterContent.DEMO_GERMAN)
         assert info.id == StarterContent.DEMO_GERMAN
         assert info.title == "Im Stillen Wald"
-        assert info.language == "de"
+        assert info.writing_language == "de"
 
     def test_load_demo_info_populates_project_md_fields(self) -> None:
         """New fields (author, logline, pov, tags) come from project_md."""
@@ -140,14 +140,14 @@ class TestGetInfo:
     def test_returns_info_for_german_demo(self, loader: DemoLoader) -> None:
         info = loader.get_info(StarterContent.DEMO_GERMAN)
         assert info.title == "Im Stillen Wald"
-        assert info.language == "de"
+        assert info.writing_language == "de"
         assert info.chapter_count == 2
         assert info.character_count == 3
 
     def test_returns_info_for_fantasy_demo(self, loader: DemoLoader) -> None:
         info = loader.get_info(StarterContent.DEMO_FANTASY)
         assert info.title == "Echoes of the Thornwall"
-        assert info.language == "en"
+        assert info.writing_language == "en"
 
     def test_returns_info_for_scifi_demo(self, loader: DemoLoader) -> None:
         info = loader.get_info(StarterContent.DEMO_SCIFI)

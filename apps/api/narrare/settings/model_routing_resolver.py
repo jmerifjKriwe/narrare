@@ -21,6 +21,7 @@ import structlog
 
 from narrare_core.crypto import decrypt
 from narrare_core.llm.intent_categories import INTENT_CATEGORY_MAP, get_default_profile_for_intent
+from narrare_core.llm.intent_profiles import get_intent_profile
 from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.llm.model_routing import ResolvedModel
 from narrare_core.shared.errors import ConfigurationError
@@ -89,6 +90,11 @@ class ModelRoutingResolverImpl:
         category = INTENT_CATEGORY_MAP.get(intent)
         category_name = category.value if category else None
 
+        # Advisory capability tier — populated on every resolved model
+        # for observability/logging. Does not affect routing logic.
+        intent_profile = get_intent_profile(intent)
+        recommended_tier = intent_profile.capability_tier
+
         # --- Project-level overrides ---
         if project_id is not None:
             project_settings = await self._project_ai_repo.get(project_id)
@@ -149,6 +155,7 @@ class ModelRoutingResolverImpl:
                     api_key=api_key,
                     base_url=provider.base_url,
                     source="user_default",
+                    recommended_tier=recommended_tier,
                 )
 
         # 6. No configuration found
@@ -208,6 +215,7 @@ class ModelRoutingResolverImpl:
 
         api_key = self._decrypt_key(provider.api_key_encrypted)
         profile = get_default_profile_for_intent(intent)
+        intent_profile = get_intent_profile(intent)
         return ResolvedModel(
             config=ResolvedModelConfig(
                 provider_name=provider.provider_name,
@@ -217,6 +225,7 @@ class ModelRoutingResolverImpl:
             api_key=api_key,
             base_url=provider.base_url,
             source=source,
+            recommended_tier=intent_profile.capability_tier,
         )
 
     @staticmethod

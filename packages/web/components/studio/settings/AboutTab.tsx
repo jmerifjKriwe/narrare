@@ -1,5 +1,8 @@
-import { BookOpen } from "lucide-react";
+"use client";
+
+import { BookOpen, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { requestFeatureTour } from "@/components/ui/feature-tour";
 import { ABOUT_FEATURE_KEYS } from "./settings-view-config";
 
 export function AboutTab() {
@@ -51,6 +54,20 @@ export function AboutTab() {
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* Tour replay */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <h3 className="font-medium mb-2">{t("tour.replay")}</h3>
+          <p className="text-sm text-muted-foreground mb-4">{t("tour.replayDescription")}</p>
+          <button
+            type="button"
+            onClick={requestFeatureTour}
+            className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+            {t("tour.replay")}
+          </button>
         </div>
       </div>
     </div>

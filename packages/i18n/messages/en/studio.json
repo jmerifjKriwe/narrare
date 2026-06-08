@@ -1725,7 +1725,21 @@
     "skip": "Skip",
     "back": "Back",
     "next": "Next",
-    "done": "Done"
+    "done": "Done",
+    "replay": "Replay introduction",
+    "replayDescription": "Replay the guided tour through Narrare's AI features."
+  },
+  "demos": {
+    "title": "Demo Projects",
+    "subtitle": "Try Narrare with a ready-made story",
+    "loadDemo": "Load Demo",
+    "loading": "Loading demos…",
+    "error": "Failed to load demo projects",
+    "retry": "Try again",
+    "empty": "No demos available",
+    "chapters": "{{count}} chapters",
+    "words": "{{count}} words",
+    "characters": "{{count}} characters"
   },
   "quickStart": {
     "label": "Quick Start",

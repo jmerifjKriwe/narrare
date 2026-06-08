@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { authApi, novelsApi } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { DashboardHeader } from "./DashboardHeader";
+import { DemoProjectCards } from "./DemoProjectCards";
 import { NovelCardGrid } from "./NovelCardGrid";
 
 export function DashboardView() {
@@ -105,6 +106,11 @@ export function DashboardView() {
             isDeleting={deleteMutation.isPending}
             formatDate={formatDate}
           />
+
+          {/* Demo projects section */}
+          <div className="mt-12">
+            <DemoProjectCards />
+          </div>
         </div>
       </div>
 

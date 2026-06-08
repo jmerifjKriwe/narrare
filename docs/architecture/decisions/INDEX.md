@@ -65,7 +65,7 @@
 | [ADR-040](ADR-040-kg-ssot-audit-lifecycle.md) | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ | 2026-06-06 | `core/profiles/`, `core/ai_invocation/consistency`, `scripts/adoption/audit_report.py`, CR-03 P2 |
 | [ADR-041](ADR-041-typed-manifests-drift-metrics.md) | Typed Manifests / Doc-Drift / Quality Metrics / Persistent Evidence | ✅ | 2026-06-07 | `scripts/check_registry_drift.py`, `scripts/quality/`, `scripts/doc_drift/`, `.evidence/`, CR-03 P3 |
 | [ADR-042](ADR-042-persistent-evidence-upgrade.md) | PostgreSQL Evidence Upgrade | ✅ | 2026-06-07 | `apps/api/narrare/evidence/`, `apps/api/alembic/versions/0028_invocation_evidence.py`, CR-03 P4 |
-| [ADR-043](043-ai-interaction-primitives.md) | Shared AI Interaction Primitives (`useAIOperation` hook) | 🔄 | 2026-06-08 | `packages/web/lib/hooks/`, `packages/web/lib/api/`, §16 compliance, CR-07 |
+| [ADR-043](043-ai-interaction-primitives.md) | Shared AI Interaction Primitives (`useAIOperation` hook) | ✅ Implemented | 2026-06-08 | `packages/web/lib/hooks/`, `packages/web/lib/api/`, §16 compliance, CR-07 |
 
 ---
 

@@ -1,6 +1,6 @@
 # ADR-043 — Shared AI Interaction Primitives
 
-> **Status:** Proposed
+> **Status:** Implemented
 > **Date:** 2026-06-08
 > **Deciders:** Architecture Agent
 > **Supersedes:** None

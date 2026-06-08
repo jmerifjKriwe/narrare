@@ -7,6 +7,7 @@ for backward compatibility. New code should import from the specific modules.
 # Re-export everything from base_schemas
 from .base_schemas import (
     AIProvider,
+    DemoListResponse,
     DemoProjectInfo,
     StarterContent,
     Step1LocationRequest,
@@ -46,6 +47,7 @@ __all__ = [  # noqa: RUF022 (grouped by step for clarity)
     "Step3StarterRequest",
     "Step3StarterResponse",
     "DemoProjectInfo",
+    "DemoListResponse",
     # Step 4
     "Step4ProviderRequest",
     "Step4ProviderResponse",

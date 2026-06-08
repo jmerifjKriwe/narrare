@@ -3,7 +3,7 @@
 | Attribute | Value |
 |-----------|-------|
 | **ID** | Q-012 |
-| **Status** | 🟡 Open |
+| **Status** | ✅ Resolved |
 | **Raised** | 2026-06-08 |
 | **Source** | CR-07 UX Audit §6 — Prompt-Anpassbarkeit ⭐⭐☆☆☆ |
 | **Blocks** | PROMPT-003 Prompt Customization UX |
@@ -80,8 +80,9 @@ Variablen werden direkt im UI-Text (i18n) erklärt, ohne separates Manifest.
 
 ## Resolution
 
-> ⏳ **Noch offen** — wird im Rahmen von PROMPT-003 (Post-MVP) entschieden.
-> Vorläufige Tendenz: Option A (Manifest in `core/prompts/`).
+> ✅ **Gelöst durch PROMPT-003 (Prompt Customization UX)** — Die bevorzugte Lösung ist Option A
+> (Prompt-Variable-Manifest in `core/prompts/`). Die Feature-Spec PROMPT-003 dokumentiert
+> die UX-Anforderungen (Variablen-Erklärung, Preview, Reset-to-Default). Implementierung erfolgt Post-MVP.
 
 ---
 

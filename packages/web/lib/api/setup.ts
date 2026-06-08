@@ -59,4 +59,7 @@ export const setupApi = {
       method: "POST",
       body: JSON.stringify({ state }),
     }),
+
+  /** List available demo projects for the dashboard. */
+  listDemos: () => fetchApi<{ demos: DemoProjectInfo[] }>("/setup/demos").then((r) => r.demos),
 };

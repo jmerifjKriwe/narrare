@@ -30,10 +30,15 @@ from narrare.setup.schemas import (
 )
 from narrare.setup.service import SetupService
 
+from .router_demos import router as demo_router
+
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/setup", tags=["setup"])
+
+
+router.include_router(demo_router)
 
 
 def _get_service(
