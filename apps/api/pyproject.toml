@@ -33,7 +33,7 @@ dependencies = [
   "aiohttp>=3.14.0",
 
   # Cache & broker
-  "redis==7.4.0",
+  "redis==8.0.0",
 
   # Auth
   "PyJWT==2.13.0",
