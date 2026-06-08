@@ -174,7 +174,7 @@ jobs:
         run: uv sync --frozen --all-packages --group dev
 
       - name: Cache Pyright
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .pyright/
