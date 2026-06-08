@@ -7,7 +7,6 @@ Tests the fix for FIND-011: chapters are truncated by token budget
 from __future__ import annotations
 
 from narrare.consistency.prompt_builder import (
-    MAX_CONSISTENCY_CONTEXT_TOKENS,
     build_consistency_prompt_variables,
 )
 from narrare_core.agents.consistency_types import (
@@ -15,6 +14,9 @@ from narrare_core.agents.consistency_types import (
     ConsistencyDeps,
 )
 from narrare_core.writing._token_utils import default_token_counter
+
+# Default max_chapter_tokens matching the dataclass default in TokenLimitOverrides.
+_DEFAULT_CHAPTER_TOKENS = 2000
 
 
 def _deps(
@@ -46,13 +48,13 @@ class TestTokenTruncation:
         assert result.count(text) == 1
 
     def test_text_over_limit_truncated_to_token_budget(self) -> None:
-        """Long text should be truncated to fit within MAX_CONSISTENCY_CONTEXT_TOKENS."""
+        """Long text should be truncated to fit within max_chapter_tokens."""
         # Generate text well over the token limit (~500 words * 1.3 = ~650 tokens,
         # so we need something much larger)
         words = [f"word{i}" for i in range(5000)]
         long_text = " ".join(words)
         original_tokens = default_token_counter(long_text)
-        assert original_tokens > MAX_CONSISTENCY_CONTEXT_TOKENS
+        assert original_tokens > _DEFAULT_CHAPTER_TOKENS
 
         deps = _deps(chapter_texts={"ch-1": long_text})
         result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])[
@@ -76,13 +78,45 @@ class TestTokenTruncation:
 
         # Truncated text must be within token budget
         preview_tokens = default_token_counter(preview)
-        assert preview_tokens <= MAX_CONSISTENCY_CONTEXT_TOKENS, (
-            f"Preview has {preview_tokens} tokens, "
-            f"exceeds budget of {MAX_CONSISTENCY_CONTEXT_TOKENS}"
+        assert preview_tokens <= _DEFAULT_CHAPTER_TOKENS, (
+            f"Preview has {preview_tokens} tokens, exceeds budget of {_DEFAULT_CHAPTER_TOKENS}"
         )
 
         # Truncated text must be shorter than original
         assert len(preview) < len(long_text)
+
+    def test_custom_max_chapter_tokens_limits_preview(self) -> None:
+        """Custom max_chapter_tokens parameter is respected."""
+        custom_budget = 50
+        words = [f"word{i}" for i in range(500)]
+        long_text = " ".join(words)
+        assert default_token_counter(long_text) > custom_budget
+
+        deps = _deps(chapter_texts={"ch-1": long_text})
+        result = build_consistency_prompt_variables(
+            deps,
+            [ConsistencyCheckType.CHARACTER],
+            max_chapter_tokens=custom_budget,
+        )["chapter_texts"]
+
+        # Extract preview
+        lines = result.split("\n")
+        preview_lines: list[str] = []
+        capturing = False
+        for line in lines:
+            if line.startswith("### Chapter ch-1"):
+                capturing = True
+                continue
+            if capturing and (line.startswith("## ") or line.startswith("Check")):
+                break
+            if capturing:
+                preview_lines.append(line)
+        preview = "\n".join(preview_lines).strip()
+
+        preview_tokens = default_token_counter(preview)
+        assert preview_tokens <= custom_budget, (
+            f"Preview has {preview_tokens} tokens, exceeds custom budget of {custom_budget}"
+        )
 
     def test_empty_text_returns_empty_preview(self) -> None:
         """Empty chapter text should produce an empty chapter section."""
@@ -99,11 +133,11 @@ class TestTokenTruncation:
         # German text: Über die schöne Bäckerei repeated to exceed budget
         base = "Über die schöne Bäckerei in der Fußgängerzone "
         # Repeat until well over the token budget
-        repeats = int(MAX_CONSISTENCY_CONTEXT_TOKENS * 2 / default_token_counter(base)) + 2
+        repeats = int(_DEFAULT_CHAPTER_TOKENS * 2 / default_token_counter(base)) + 2
         long_german = base * repeats
 
         original_tokens = default_token_counter(long_german)
-        assert original_tokens > MAX_CONSISTENCY_CONTEXT_TOKENS
+        assert original_tokens > _DEFAULT_CHAPTER_TOKENS
 
         deps = _deps(chapter_texts={"ch-1": long_german})
         result = build_consistency_prompt_variables(deps, [ConsistencyCheckType.CHARACTER])[
@@ -125,9 +159,9 @@ class TestTokenTruncation:
         preview = "\n".join(preview_lines).strip()
 
         preview_tokens = default_token_counter(preview)
-        assert preview_tokens <= MAX_CONSISTENCY_CONTEXT_TOKENS, (
+        assert preview_tokens <= _DEFAULT_CHAPTER_TOKENS, (
             f"German preview has {preview_tokens} tokens, "
-            f"exceeds budget of {MAX_CONSISTENCY_CONTEXT_TOKENS}"
+            f"exceeds budget of {_DEFAULT_CHAPTER_TOKENS}"
         )
 
     def test_no_character_based_hardcoded_truncation(self) -> None:

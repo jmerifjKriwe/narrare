@@ -100,8 +100,11 @@ def _load_cache() -> dict[str, Any] | None:
         return None
 
 
-def _fetch_models() -> dict[str, Any]:
+def _fetch_models(*, timeout: float = 10.0) -> dict[str, Any]:
     """Fetch the models.dev dataset from the remote API.
+
+    Args:
+        timeout: Request timeout in seconds.
 
     Returns:
         Parsed JSON response as a dict.
@@ -110,7 +113,7 @@ def _fetch_models() -> dict[str, Any]:
         httpx.HTTPError: On connection or HTTP errors.
         json.JSONDecodeError: On invalid JSON response.
     """
-    with httpx.Client(timeout=10.0) as client:
+    with httpx.Client(timeout=timeout) as client:
         response = client.get(MODELS_DEV_URL)
         response.raise_for_status()
         data: dict[str, Any] = response.json()

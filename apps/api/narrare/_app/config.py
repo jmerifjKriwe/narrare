@@ -124,6 +124,21 @@ class Settings(BaseSettings):
     """Base delay in seconds for retry backoff."""
 
     # ---------------------------------------------------------------------------
+    # Consistency Token Limits (Operator-Config)
+    # ---------------------------------------------------------------------------
+    consistency_max_chapter_tokens: int = Field(
+        default=2000,
+        alias="NARRARE_CONSISTENCY_MAX_CHAPTER_TOKENS",
+    )
+    """Maximum tokens per chapter preview in consistency checks."""
+
+    consistency_max_kb_entries: int = Field(
+        default=100,
+        alias="NARRARE_CONSISTENCY_MAX_KB_ENTRIES",
+    )
+    """Maximum KB entries to include in consistency context."""
+
+    # ---------------------------------------------------------------------------
     # Cost Estimation (optional override)
     # ---------------------------------------------------------------------------
     cost_rates_json: str = Field(

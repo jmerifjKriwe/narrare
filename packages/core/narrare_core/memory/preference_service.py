@@ -24,9 +24,6 @@ _PREFERENCE_QUERIES: list[tuple[str, str]] = [
     ("constraints", "What does the user dislike or want to avoid?"),
 ]
 
-# Confidence scales linearly from 0 to 1 based on this denominator
-_CONFIDENCE_DENOMINATOR: float = 20.0
-
 
 class PreferenceService:
     """Derives user preferences from mem0 semantic memories.
@@ -41,8 +38,14 @@ class PreferenceService:
         PreferenceProvider protocol.
     """
 
-    def __init__(self, mem0_client: Any) -> None:
+    def __init__(
+        self,
+        mem0_client: Any,
+        *,
+        confidence_denominator: float = 20.0,
+    ) -> None:
         self._mem0 = mem0_client
+        self._confidence_denominator = confidence_denominator
 
     async def get_preferences(
         self,
@@ -88,7 +91,7 @@ class PreferenceService:
                 )
 
         confidence = (
-            min(1.0, total_memories / _CONFIDENCE_DENOMINATOR) if total_memories > 0 else 0.0
+            min(1.0, total_memories / self._confidence_denominator) if total_memories > 0 else 0.0
         )
 
         return PreferenceProfile(

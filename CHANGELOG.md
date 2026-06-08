@@ -24,6 +24,13 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- **CR-08 Hardcoded Values Remediation** (CR-AUFG-08-02)
+  - **consistency**: Integrate `TokenLimitsService` for configurable context caps. New fields `max_chapter_tokens` and `max_kb_entries` in `TokenLimitOverrides`. New env vars `NARRARE_CONSISTENCY_MAX_CHAPTER_TOKENS`, `NARRARE_CONSISTENCY_MAX_KB_ENTRIES`.
+  - **core**: Make 3 hardcoded values parameterizable — `PreferenceService.confidence_denominator`, `ModelCatalogClient.catalog_timeout`, `cost_rates._fetch_models(timeout=)`.
+  - **arch**: Add `check_hardcoded_constants` architecture checker (3 AST patterns: module-level constants, hardcoded timeouts, percentage dicts). Configurable via `pyproject.toml [tool.narrare.architecture.configurable_defaults]`.
+  - **consistency**: Split `checker_service.py` for RULE-04 compliance. Extract `checker_helpers.py`. New `consistency/deps.py` factory wires `TokenLimitsService` injection.
+  - **audit**: CR-08 — 5 additional findings assessed (3 fixed, 2 confirmed already correct).
+
 - **ADR-035 Phase 6 — Output Validators for all 13 remaining agents**
   - Added output validators to: DraftAgent, ReviewAgent, ChapterSummaryAgent, OutlineAgent, CharacterArcAgent, KBImproveAgent, KBMergeAgent, TemporalExtractionAgent, KBAssistAgent, BetaReaderAgent, WorldbuildingAgent, POVDetectionAgent, ReadabilityAgent
   - 3 dedicated validator modules: `draft_validators.py`, `worldbuilding_validators.py`, `beta_reader_validators.py`; remaining agents use inline validators

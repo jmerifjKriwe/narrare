@@ -126,7 +126,7 @@ def _count_syllables_pyphen(word: str, language: LanguageCode) -> int | None:
         locale = _PYPHEN_LOCALE[language]
         dic = _pyphen.language_fallback(locale)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
         # Insert hyphenation points and count segments
-        hyphenated = dic.inserted(word)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        hyphenated = dic.inserted(word)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType, reportAttributeAccessIssue]
         if hyphenated and hyphenated != word:
             return hyphenated.count("-") + 1  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
         # If pyphen could not hyphenate at all, let the caller decide

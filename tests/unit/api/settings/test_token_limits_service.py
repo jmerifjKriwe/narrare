@@ -46,6 +46,8 @@ class _FakeConfig:
     ws_idle_timeout_seconds = 1800
     retry_max_attempts = 3
     retry_base_delay = 1.0
+    consistency_max_chapter_tokens = 2000
+    consistency_max_kb_entries = 100
 
 
 # ---------------------------------------------------------------------------

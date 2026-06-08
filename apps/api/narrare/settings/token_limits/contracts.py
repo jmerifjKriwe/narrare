@@ -53,6 +53,10 @@ class TokenLimitOverrides:
     """Temporary legacy field for SET-005 dual-write migration.
     Stores old-format per-category overrides during transition.
     Will be removed after migration is complete."""
+    max_chapter_tokens: int = 2000
+    """Maximum tokens per chapter preview in consistency checks."""
+    max_kb_entries: int = 100
+    """Maximum KB entries to include in consistency context."""
 
 
 # ---------------------------------------------------------------------------

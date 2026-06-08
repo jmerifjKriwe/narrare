@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.consistency.checker_service import ConsistencyCheckerService
-from narrare.consistency.dependencies import get_consistency_service
+from narrare.consistency.deps import get_consistency_service
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
 
 router = APIRouter(prefix="/consistency", tags=["consistency"])

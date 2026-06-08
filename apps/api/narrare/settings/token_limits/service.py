@@ -44,6 +44,9 @@ _VALID_OVERRIDE_FIELDS: set[str] = {
     # Legacy migration key — stores old-format per-category overrides
     # during the SET-005 dual-write transition period.
     "legacy_per_category_overrides",
+    # Consistency context caps
+    "max_chapter_tokens",
+    "max_kb_entries",
 }
 
 
@@ -215,6 +218,8 @@ class TokenLimitsService:
             ws_timeout=cfg.ws_idle_timeout_seconds,
             retry_max_attempts=cfg.retry_max_attempts,
             retry_base_delay=cfg.retry_base_delay,
+            max_chapter_tokens=cfg.consistency_max_chapter_tokens,
+            max_kb_entries=cfg.consistency_max_kb_entries,
         )
 
     async def _apply_project_layer(
@@ -288,4 +293,6 @@ class TokenLimitsService:
             ws_timeout=kwargs.get("ws_timeout", base.ws_timeout),  # type: ignore[arg-type]
             retry_max_attempts=kwargs.get("retry_max_attempts", base.retry_max_attempts),  # type: ignore[arg-type]
             retry_base_delay=kwargs.get("retry_base_delay", base.retry_base_delay),  # type: ignore[arg-type]
+            max_chapter_tokens=kwargs.get("max_chapter_tokens", base.max_chapter_tokens),  # type: ignore[arg-type]
+            max_kb_entries=kwargs.get("max_kb_entries", base.max_kb_entries),  # type: ignore[arg-type]
         )

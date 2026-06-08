@@ -7,12 +7,12 @@ Orchestrates: validate → collect content + KB + timeline → compose prompt
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from narrare.consistency.checker_helpers import fetch_chapters, fetch_kb_summaries
 from narrare.consistency.prompt_builder import (
-    MAX_KB_ENTRIES,
     compose_consistency_prompt,
 )
 from narrare.consistency.rule_helpers import deduplicate_issues, rule_based_check
@@ -52,6 +52,7 @@ class ConsistencyCheckerService:
         registry: ModelRegistry for LLM model resolution.
         config: Default ResolvedModelConfig for CONSISTENCY intent.
         composer: PromptComposer for system prompt assembly.
+        token_limits_service: Optional TokenLimitsService for dynamic limit resolution.
     """
 
     def __init__(
@@ -63,6 +64,7 @@ class ConsistencyCheckerService:
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         composer: PromptComposer,
+        token_limits_service: Any = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -71,6 +73,7 @@ class ConsistencyCheckerService:
         self._registry = registry
         self._config = config
         self._composer = composer
+        self._token_limits_service = token_limits_service
 
     async def check(
         self,
@@ -104,35 +107,51 @@ class ConsistencyCheckerService:
             include_kb=request.include_kb,
         )
 
-        # 1. Validate novel access
+        # 1. Resolve token limits (with fallback to defaults)
+        max_chapter_tokens = 2000
+        max_kb_entries = 100
+        if self._token_limits_service is not None:
+            resolved = await self._token_limits_service.get_resolved_limits(
+                str(user_id),
+                str(novel_id),
+            )
+            max_chapter_tokens = resolved.max_chapter_tokens
+            max_kb_entries = resolved.max_kb_entries
+
+        # 2. Validate novel access
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
 
-        # 2. Fetch chapter content
-        chapter_texts, resolved_ids = await self._fetch_chapters(
+        # 3. Fetch chapter content
+        chapter_texts, resolved_ids = await fetch_chapters(
+            self._chapter_repo,
             novel_id,
             request.chapter_ids,
         )
         if not chapter_texts:
             raise NotFoundError("Chapters", identifier=f"novel {novel_id}")
 
-        # 3. Fetch KB entity summaries if requested
+        # 4. Fetch KB entity summaries if requested
         kb_summaries: list[dict[str, object]] = []
         if request.include_kb:
-            kb_summaries = await self._fetch_kb_summaries(novel_id)
+            kb_summaries = await fetch_kb_summaries(
+                self._kb_repo,
+                novel_id,
+                max_kb_entries=max_kb_entries,
+            )
 
-        # 3b. Fetch timeline events for temporal consistency context
+        # 4b. Fetch timeline events for temporal consistency context
         timeline_events = await fetch_timeline_events(self._timeline_repo, novel_id)
 
-        # 4. Rule-based pre-check (deterministic, no LLM needed)
+        # 5. Rule-based pre-check (deterministic, no LLM needed)
         rule_issues = rule_based_check(kb_summaries)
 
-        # 5. Resolve language and check types
+        # 6. Resolve language and check types
         language = novel.writing_language or "en"
         check_types = request.check_types or list(ConsistencyCheckType)
 
-        # 6. Build ConsistencyDeps
+        # 7. Build ConsistencyDeps
         deps = ConsistencyDeps(
             language=language,
             novel_id=str(novel_id),
@@ -143,24 +162,25 @@ class ConsistencyCheckerService:
             existing_issue_count=len(rule_issues),
         )
 
-        # 7. Compose prompt through PromptComposer.
+        # 8. Compose prompt through PromptComposer.
         system_prompt, user_prompt = await compose_consistency_prompt(
             self._composer,
             language,
             deps,
             check_types,
+            max_chapter_tokens=max_chapter_tokens,
         )
 
-        # 8. Run ConsistencyAgent
+        # 9. Run ConsistencyAgent
         model = await self._registry.get_model(self._config)
         agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
         result = await agent.run(prompt=user_prompt, deps=deps)
 
-        # 9. Combine rule-based (confidence=1.0) + LLM issues, then deduplicate
+        # 10. Combine rule-based (confidence=1.0) + LLM issues, then deduplicate
         all_issues = rule_issues + result.issues
         deduped_issues = deduplicate_issues(all_issues)
 
-        # 10. Map to response (severity counts auto-computed via model_post_init)
+        # 11. Map to response (severity counts auto-computed via model_post_init)
         now = datetime.now(tz=UTC).isoformat()
         response = ConsistencyResponse(
             novel_id=novel_id,
@@ -220,66 +240,6 @@ class ConsistencyCheckerService:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
-
-    async def _fetch_chapters(
-        self,
-        novel_id: uuid.UUID,
-        chapter_ids: list[uuid.UUID],
-    ) -> tuple[dict[str, str], list[uuid.UUID]]:
-        """Fetch chapter content from repository.
-
-        If *chapter_ids* is empty, fetches ALL chapters for the novel
-        (all-chapters fallback for comprehensive checking).
-
-        Returns:
-            Tuple of (chapter_texts mapping, resolved chapter ID list).
-            Returns empty dict and empty list if no chapters found.
-
-        Raises:
-            NotFoundError: If any specifically requested chapter_id is missing.
-        """
-        if not chapter_ids:
-            chapters = await self._chapter_repo.list_by_novel(novel_id)
-            if not chapters:
-                return {}, []
-            texts = {str(ch.id): ch.content or "" for ch in chapters}
-            ids = [ch.id for ch in chapters]
-            return texts, ids
-
-        texts: dict[str, str] = {}
-        ids: list[uuid.UUID] = []
-        for cid in chapter_ids:
-            chapter = await self._chapter_repo.get_by_id(cid, novel_id)
-            if chapter is None:
-                raise NotFoundError("Chapter", identifier=str(cid))
-            texts[str(cid)] = chapter.content or ""
-            ids.append(cid)
-        return texts, ids
-
-    async def _fetch_kb_summaries(
-        self,
-        novel_id: uuid.UUID,
-    ) -> list[dict[str, object]]:
-        """Build simplified KB entity summaries for agent context.
-
-        Returns:
-            List of dicts with ``entity_type``, ``name``, and ``fields`` keys.
-            Empty list if no KB entries exist.
-        """
-        entries, _total = await self._kb_repo.list_entries(
-            novel_id,
-            page_size=MAX_KB_ENTRIES,
-        )
-        summaries: list[dict[str, object]] = []
-        for entry in entries:
-            summaries.append(
-                {
-                    "entity_type": entry.entity_type,
-                    "name": entry.name,
-                    "fields": entry.metadata_ or {},
-                }
-            )
-        return summaries
 
     async def _resolve_system_prompt(self, language: str) -> str:
         """Resolve the system prompt for the consistency agent.

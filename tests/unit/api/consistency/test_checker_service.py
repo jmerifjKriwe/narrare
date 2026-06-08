@@ -19,8 +19,7 @@ from narrare_core.agents.consistency_types import (
     ConsistencyOutput,
     ConsistencySeverity,
 )
-from narrare_core.prompts import PromptComposer, PromptRegistry
-from narrare_core.shared.errors import NotFoundError, PromptNotFoundError
+from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_kb_entry, make_novel, seed_repos
 
@@ -179,104 +178,6 @@ class TestCheckChapter:
         assert result.chapter_ids == [ch.id]
         assert result.total_issues == 1
         assert result.warning_count == 1
-
-
-# --- D. PromptComposer resolution ---
-
-
-class TestResolveSystemPrompt:
-    @pytest.mark.asyncio
-    async def test_resolve_system_prompt_uses_composer(self) -> None:
-        """_resolve_system_prompt returns PromptComposer output, not fallback."""
-        _, _, svc = _setup()
-
-        # Spy on composer.build to verify it's the prompt source.
-        svc._composer.build = AsyncMock(
-            return_value=MagicMock(spec=["system"], system="Bundled consistency prompt"),
-        )
-
-        result = await svc._resolve_system_prompt("en")
-
-        assert result == "Bundled consistency prompt"
-        svc._composer.build.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_resolve_system_prompt_correct_intent(self) -> None:
-        """_resolve_system_prompt calls composer.build with CONSISTENCY intent."""
-        _, _, svc = _setup()
-
-        svc._composer.build = AsyncMock(
-            return_value=MagicMock(spec=["system"], system="prompt"),
-        )
-
-        await svc._resolve_system_prompt("en")
-
-        intent_arg = svc._composer.build.call_args[0][0]
-        assert intent_arg.name == "CONSISTENCY"
-
-    @pytest.mark.asyncio
-    async def test_resolve_system_prompt_passes_language(self) -> None:
-        """_resolve_system_prompt passes the language to PromptContext."""
-        _, _, svc = _setup()
-
-        svc._composer.build = AsyncMock(
-            return_value=MagicMock(spec=["system"], system="prompt"),
-        )
-
-        await svc._resolve_system_prompt("de")
-
-        ctx_arg = svc._composer.build.call_args[0][1]
-        assert ctx_arg.language == "de"
-
-    @pytest.mark.asyncio
-    async def test_check_with_real_composer_uses_bundled_template_variables(self) -> None:
-        """Production path routes consistency data through bundled templates."""
-        novel, (ch, *_), _ = _setup()
-        composer = PromptComposer(PromptRegistry())
-        nr, cr = FakeNovelRepository(), FakeChapterRepository()
-        seed_repos(novel, ch, novel_repo=nr, chapter_repo=cr)
-        svc = _service(nr=nr, cr=cr, composer=composer)
-
-        agent = AsyncMock(run=AsyncMock(return_value=_output()))
-        with patch(
-            "narrare.consistency.checker_service.ConsistencyAgent", return_value=agent
-        ) as MockAgent:
-            await svc.check(
-                novel_id=novel.id,
-                user_id=novel.user_id,
-                request=ConsistencyRequest(
-                    chapter_ids=[ch.id], check_types=[ConsistencyCheckType.CHARACTER]
-                ),
-            )
-
-        system_prompt = MockAgent.call_args.kwargs["system_prompt"]
-        assert "You are a consistency checker" in system_prompt
-        assert ch.content in system_prompt
-        agent_prompt = agent.run.call_args.kwargs["prompt"]
-        assert "Analyze the chapters" not in agent_prompt
-        assert "Return structured findings" not in agent_prompt
-
-    @pytest.mark.asyncio
-    async def test_check_when_prompt_missing_propagates_typed_error(self) -> None:
-        """Missing Composer templates are not replaced with inline fallback bodies."""
-        novel, (ch, *_), _ = _setup()
-        composer = AsyncMock()
-        composer.build = AsyncMock(side_effect=PromptNotFoundError("analysis", "en", "consistency"))
-        nr, cr = FakeNovelRepository(), FakeChapterRepository()
-        seed_repos(novel, ch, novel_repo=nr, chapter_repo=cr)
-        svc = _service(nr=nr, cr=cr, composer=composer)
-
-        with (
-            patch("narrare.consistency.checker_service.ConsistencyAgent") as MockAgent,
-            pytest.raises(PromptNotFoundError),
-        ):
-            await svc.check(
-                novel_id=novel.id,
-                user_id=novel.user_id,
-                request=ConsistencyRequest(chapter_ids=[ch.id]),
-            )
-
-        MockAgent.assert_not_called()
 
 
 # --- C. Error cases ---

@@ -18,18 +18,11 @@ if TYPE_CHECKING:
     )
     from narrare_core.prompts import PromptComposer
 
-# Maximum KB entries to include in a single check (token budget protection).
-MAX_KB_ENTRIES = 100
-
-# Token budget per chapter preview in consistency checks.
-# This is a TOKEN limit (not character limit) — ensures language-independent
-# context sizing regardless of script density (Latin vs CJK vs Arabic).
-MAX_CONSISTENCY_CONTEXT_TOKENS = 2000
-
 
 def build_consistency_prompt_variables(
     deps: ConsistencyDeps,
     check_types: list[ConsistencyCheckType],
+    max_chapter_tokens: int = 2000,
 ) -> dict[str, str]:
     """Build dynamic variables for the bundled consistency prompt.
 
@@ -39,12 +32,13 @@ def build_consistency_prompt_variables(
     Args:
         deps: Assembled ConsistencyDeps with chapter texts, KB data, and timeline events.
         check_types: Which check types to run.
+        max_chapter_tokens: Maximum tokens per chapter preview.
 
     Returns:
         PromptComposer variables for chapter text, KB entities, timeline, and check types.
     """
     return {
-        "chapter_texts": _format_chapter_texts(deps),
+        "chapter_texts": _format_chapter_texts(deps, max_chapter_tokens=max_chapter_tokens),
         "kb_entities": _format_kb_entities(deps),
         "timeline_position": _format_timeline_events(deps),
         "check_types": ", ".join(t.value for t in check_types),
@@ -56,6 +50,7 @@ async def compose_consistency_prompt(
     language: str,
     deps: ConsistencyDeps,
     check_types: list[ConsistencyCheckType],
+    max_chapter_tokens: int = 2000,
 ) -> tuple[str, str]:
     """Compose the governed consistency prompt with runtime variables.
 
@@ -64,6 +59,7 @@ async def compose_consistency_prompt(
         language: Output language for prompt resolution.
         deps: Dynamic consistency-analysis data.
         check_types: Check types requested by the caller.
+        max_chapter_tokens: Maximum tokens per chapter preview.
 
     Returns:
         Tuple of ``(system_prompt, user_prompt)`` from PromptComposer.
@@ -71,7 +67,11 @@ async def compose_consistency_prompt(
     from narrare_core.llm.intents import LLMIntent
     from narrare_core.prompts.context import PromptContext
 
-    variables = build_consistency_prompt_variables(deps, check_types)
+    variables = build_consistency_prompt_variables(
+        deps,
+        check_types,
+        max_chapter_tokens=max_chapter_tokens,
+    )
     ctx = PromptContext(
         language=language,
         mode="consistency",
@@ -82,13 +82,16 @@ async def compose_consistency_prompt(
     return composed.system, composed.user
 
 
-def _format_chapter_texts(deps: ConsistencyDeps) -> str:
+def _format_chapter_texts(
+    deps: ConsistencyDeps,
+    max_chapter_tokens: int = 2000,
+) -> str:
     """Format chapter content as dynamic prompt data."""
     parts: list[str] = []
 
     for ch_id, text in deps.chapter_texts.items():
         # Truncate individual chapters to token budget (not character limit).
-        preview = cap_to_budget(text, MAX_CONSISTENCY_CONTEXT_TOKENS)
+        preview = cap_to_budget(text, max_chapter_tokens)
         parts.append(f"### Chapter {ch_id}\n{preview}\n")
     return "\n".join(parts).strip()
 

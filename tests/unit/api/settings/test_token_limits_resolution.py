@@ -37,6 +37,8 @@ class _FakeConfig:
     ws_idle_timeout_seconds: int = 1800
     retry_max_attempts: int = 3
     retry_base_delay: float = 1.0
+    consistency_max_chapter_tokens: int = 2000
+    consistency_max_kb_entries: int = 100
 
 
 class _FakeUserRepo:

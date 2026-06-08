@@ -166,6 +166,13 @@ Phase 1 (SET-005) delivered:
 - Model limits validation via `get_model_limits()`
 - Frontend profile read/write via `TokenLimitsApi`
 
+Phase 2 (CR-AUFG-08-02) delivered:
+- Consistency module integration: `checker_service.py` resolves limits via `TokenLimitsService`
+- `prompt_builder.py` accepts `max_chapter_tokens` parameter instead of hardcoded `MAX_CONSISTENCY_CONTEXT_TOKENS`
+- `checker_helpers.py` accepts `max_kb_entries` parameter instead of hardcoded `MAX_KB_ENTRIES`
+- `consistency/deps.py` factory wires TokenLimitsService injection
+- New fields: `max_chapter_tokens: int = 2000`, `max_kb_entries: int = 100`
+
 ## Related Features
 
 - [SET-001](SET-001-user-settings.md) — User settings base
@@ -177,3 +184,4 @@ Phase 1 (SET-005) delivered:
 
 - `2026-05-24` — Created from CR-08 audit findings
 | 2026-05-26 | Phase 1 implemented | Stable |
+| 2026-06-08 | Phase 2 implemented (CR-AUFG-08-02) | Stable |

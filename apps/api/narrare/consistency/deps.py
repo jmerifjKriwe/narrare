@@ -1,4 +1,8 @@
-"""Consistency dependency injection factories."""
+"""Consistency dependency injection factories.
+
+Replaces dependencies.py — adds TokenLimitsService injection for dynamic
+consistency context caps (CR-AUFG-08-02).
+"""
 
 from __future__ import annotations
 
@@ -20,7 +24,9 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     - NovelRepository for novel access control + language resolution
     - KBRepository for KB entity summaries
     - TimelineEventRepository for temporal consistency context
+    - TokenLimitsService for dynamic context cap resolution
     """
+    from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         get_composer,
         get_model_registry,
@@ -31,6 +37,11 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
+    from narrare.settings.token_limits.repository import (
+        ProjectTokenLimitsRepository,
+        UserTokenLimitsRepository,
+    )
+    from narrare.settings.token_limits.service import TokenLimitsService
 
     registry = get_model_registry()
     composer = get_composer()
@@ -42,6 +53,14 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     kb_repo = KBRepository(session)
     timeline_repo = TimelineEventRepository(session)
 
+    # TokenLimitsService for dynamic context caps
+    settings = get_settings()
+    token_limits_service = TokenLimitsService(
+        user_repo=UserTokenLimitsRepository(session),
+        project_repo=ProjectTokenLimitsRepository(session),
+        config=settings,
+    )
+
     return ConsistencyCheckerService(
         chapter_repo=chapter_repo,
         novel_repo=novel_repo,
@@ -50,4 +69,5 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
         registry=registry,
         config=config,
         composer=composer,
+        token_limits_service=token_limits_service,
     )

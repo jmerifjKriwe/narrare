@@ -60,9 +60,6 @@ SUPPORTED_CATALOG_PROVIDERS: frozenset[str] = frozenset(
     {"anthropic", "openai", "ollama", "google", "groq", "openrouter", "zai"}
 )
 
-# Default request timeout for catalog API calls (seconds).
-_DEFAULT_TIMEOUT = 10.0
-
 # OpenRouter returns hundreds of models; cap to keep the UI usable.
 _OPENROUTER_MAX_MODELS = 30
 
@@ -84,6 +81,9 @@ class ModelCatalogClient:
         client = ModelCatalogClient()
         models = await client.list_models("openai", api_key="sk-...")
     """
+
+    def __init__(self, *, catalog_timeout: float = 10.0) -> None:
+        self._catalog_timeout = catalog_timeout
 
     # -- public API ---------------------------------------------------------
 
@@ -124,7 +124,7 @@ class ModelCatalogClient:
             )
 
         try:
-            async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=self._catalog_timeout) as client:
                 return await self._dispatch(client, normalized, api_key, base_url)
         except ModelCatalogError:
             raise

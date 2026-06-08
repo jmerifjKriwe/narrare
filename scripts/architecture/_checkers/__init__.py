@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 from scripts.architecture._checkers.exceptions import check_bare_except
 from scripts.architecture._checkers.file_size import check_file_size
+from scripts.architecture._checkers.hardcoded_values import check_hardcoded_constants
 from scripts.architecture._checkers.inline_prompts import check_inline_prompts
 from scripts.architecture._checkers.llm import check_llm_imports, check_llm_urls
 from scripts.architecture._checkers.model_config import check_hardcoded_model_config
@@ -37,6 +38,7 @@ __all__ = [
     "check_bare_except",
     "check_bare_magic_mock",
     "check_file_size",
+    "check_hardcoded_constants",
     "check_hardcoded_model_config",
     "check_inline_prompts",
     "check_llm_imports",
@@ -135,6 +137,7 @@ def scan_file(
     forbidden_imports: list[str] = config.get("forbidden_llm_imports", []) or []
     forbidden_urls: list[str] = config.get("forbidden_llm_urls", []) or []
     size_limits: dict[str, int] = config.get("file_size_limits", {}) or {}
+    hardcoded_config: dict[str, Any] = config.get("configurable_defaults", {}) or {}
 
     all_violations = (
         check_llm_imports(rel_path, tree, source_lines, allowed_llm, forbidden_imports)
@@ -148,6 +151,7 @@ def scan_file(
         + check_bare_magic_mock(rel_path, tree, source_lines)
         + check_bare_async_session(rel_path, tree, source_lines)
         + check_hardcoded_model_config(rel_path, tree, source_lines)
+        + check_hardcoded_constants(rel_path, tree, source_lines, hardcoded_config)
     )
 
     approved_before = len(result.approved_exceptions)
