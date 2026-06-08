@@ -46,7 +46,9 @@ export function useQuickStart(): UseQuickStartReturn {
       const result = await setupApi.complete(state);
       reset();
       requestFeatureTour();
-      router.push(result.redirect_to as Parameters<typeof router.push>[0]);
+      // Navigate directly to the novel editor using novel_id
+      // (see WizardShell.handleComplete for rationale)
+      router.push(`/novel/${result.novel_id}` as Parameters<typeof router.push>[0]);
     } catch {
       setIsQuickStarting(false);
     }

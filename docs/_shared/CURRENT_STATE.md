@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-07 (CR-04 Cross-Feature Coherence)
-Session: CR-04 Cross-Feature Coherence — KB Context Contract + Variable Naming + Governance. KBContextEntry extended with source/evidence/confidence/review_status/freshness metadata. VARIABLE_ALIASES with canonical variable resolution and bare `language` deprecation. ADR Implementation Completeness Gate (Gate 12). Cross-Feature Audit Cadence. FIND-009 (Timeline→Consistency) registered. 39 new tests.
+Date: 2026-06-08 (CR-07 UX Audit Remediation — ONBOARD-001, PROMPT-003, KEYBOARD-001)
+Session: CR-07 UX Audit Remediation — Phase 1 specs created. ADR-043 useAIOperation Primitives erstellt, P0/P1/P2 flows migriert, §16 Checks implementiert, 114 Tests. UX-Dokumentation: 3 neue Feature-Specs (ONBOARD-001 Onboarding & AI-Einführung, PROMPT-003 Prompt Customization UX, KEYBOARD-001 Tastatur-Konsistenz) basierend auf CR-07 §5–§7 Befunden.
 
 ---
 
@@ -34,9 +34,9 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Total tests: ~6,240+
 - Architecture rules: 22 rules (RULE-01 through RULE-22, plus RULE-01b)
 - Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
-- ADRs: 40 (ADR-001 through ADR-041)
-- Feature specs: 83 individual files + INDEX.md (75 registered entries)
-- Open questions: 3 active (Q-001, Q-002, Q-011), 8 resolved
+- ADRs: 43 (ADR-001 through ADR-043)
+- Feature specs: 86 individual files + INDEX.md (78 registered entries)
+- Open questions: 4 active (Q-001, Q-002, Q-011, Q-012), 8 resolved
 
 ### Core (`packages/core/narrare_core/`)
 
@@ -65,7 +65,7 @@ Alembic migrations 0001 through ~0023
 
 - `_shared/`: CONSTRAINTS.md (22 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001 through ADR-041 plus implementation plans (INDEX.md)
+- `architecture/decisions/`: ADR-001 through ADR-042 plus implementation plans (INDEX.md)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 8 resolved)
 - `features/`: 83 feature spec files + INDEX.md (75 registered entries with status tracking)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
@@ -90,7 +90,7 @@ Alembic migrations 0001 through ~0023
 
 - **Status:** Freeze fully lifted after Architecture freeze-lift review (2026-06-03).
 - **Resolved blockers:** AUFG-02-01 backend unit failures `7 → 0`; AUFG-02-03 frontend tests stable under 120s (`112.43s`, `115.04s`, `111.95s`); AUFG-03-01 prompt warnings `79 → 35`; AUFG-03-02 KB adoption `0.78 → 0.90 PASS`.
-- **Remaining governed debt:** frontend RULE-04 legacy file-size debt is ratcheted at 37 violations (`53 → 38 → 37`, 16 resolved, 0 new). This is not a freeze blocker.
+- **Remaining governed debt:** frontend RULE-04 legacy file-size debt fully resolved (`53 → 38 → 37 → 0`). All TS/TSX files within limits.
 - **Still blocked by governance:** new prompt/adoption warning growth, new architecture exceptions without ADR/user approval, new frontend file-size violations, REST-only frontend paths for SSE-capable AI backends, and workaround/quick-fix implementations.
 - **Streaming compliance:** 0 violations (baseline was 2: unused KB sessions SSE + timeline analysis without frontend consumer; both resolved).
 - **Health note:** System Health reflects baseline debt; streaming compliance is now 0 violations and RULE-02 exception count reduced from 1 to 0. DEGRADED is warning-only for freeze status; CRITICAL blocks.
@@ -144,7 +144,10 @@ Completed in Phase 6 so far:
 41. ✅ **CR-03 / INFRA-013 P0 (ADR-038)**: Core `ai_invocation/` module with contracts (`PromptInvocationContext`, `AdoptionPolicy`), enrichers (`PreferenceContextEnricher`), validators (`RuntimeVariableValidator`, `FinalPromptValidator`), budget resolver (`IntentOutputBudgetResolver`), `InvocationPipeline` orchestrator, and WritingPipeline integration via `_invocation_adapter.py`. Backend DI wired. P0.3e (LoggingEvidenceSink) and P1 (User/Project IDs in InvocationContext) also implemented. P1 (mode-specific registry) through P3 remain outstanding.
 42. ✅ **CR-03 / INFRA-013 P2 (ADR-040)**: `core/profiles/` module with `ProjectWritingProfile` SSOT (consolidated voice/tone/style/language/genre), `KBConsistencyEnricher` + `VoiceProfileStatus` in `ai_invocation/`, `AuditReport` + KG Consistency Checker in `scripts/adoption/`, `requires_runtime_evidence` flag in adoption registry. 24/27 modes wired with runtime evidence.
 43. ✅ **CR-03 / INFRA-013 P3 (ADR-041)**: FileEvidenceSink (`.evidence/invocations.jsonl`), registry drift detection (JSON Schema + `check_registry_drift.py`), doc-drift automation (`doc_drift/` package), quality metrics (`QualityReport` + joiner), CI integration (`--drift` flag, CI jobs). All P3 exit criteria satisfied. INFRA-013 complete through P3.
-44. ✅ **CR-04 Cross-Feature Coherence Remediation**: KB Context Contract with source/evidence/confidence/review_status metadata (CR-AUFG-04-01 + B1 + B3); Variable naming canonical aliases with deprecation of bare `language` (CR-AUFG-04-03 + E2 + B6); ADR Implementation Completeness Gate (Gate 12); Cross-Feature Audit Cadence; FIND-009 (Timeline→Consistency) registered. 39 new tests. Precedence confirmed in RULE-22 §7 (E3: no standalone ADR needed).
+  44. ✅ **CR-04 Cross-Feature Coherence Remediation**: KB Context Contract with source/evidence/confidence/review_status metadata (CR-AUFG-04-01 + B1 + B3); Variable naming canonical aliases with deprecation of bare `language` (CR-AUFG-04-03 + E2 + B6); ADR Implementation Completeness Gate (Gate 12); Cross-Feature Audit Cadence; FIND-009 (Timeline→Consistency) registered. 39 new tests. Precedence confirmed in RULE-22 §7 (E3: no standalone ADR needed).
+  45. ✅ **CR-03 / INFRA-013 P4 (ADR-042)**: PersistentEvidenceSink (PostgreSQL hybrid), EvidenceRepository protocol + implementation, PersistentEvidenceSink in Backend, Alembic migration 0028_invocation_evidence, 41 tests (23 unit + 18 integration). FileEvidenceSink unchanged for CI.
+   46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Modes Adopted**: All 27 feature modes fully adopted. Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json cleared (0 adoption debt). CI integration: probes run before adoption check.
+47. ✅ **CR-07 UX Audit Remediation — Phase 1 (Specs)**: ADR-043 useAIOperation Primitives erstellt, P0/P1/P2 flows migriert, §16 Checks implementiert, 114 Tests. UX-Dokumentation: 3 neue Feature-Specs erstellt (ONBOARD-001, PROMPT-003, KEYBOARD-001) basierend auf CR-07 §5–§7 Befunden. Demo-Discovery, Prompt-Variablen-Erklärung, Keyboard-Konsistenz als Post-MVP-Roadmap-Items dokumentiert.
 
 ## What's Next
 
@@ -154,10 +157,15 @@ Completed in Phase 6 so far:
 4. ✅ **KB-Adoption über 0.85 (AUFG-03-02)** — 0.78 → 0.90 PASS.
 5. ✅ **Frontend-Tests beschleunigt (AUFG-02-03)** — Vitest stabil <120s.
 6. ✅ **Streaming Compliance (Review-01 Phase 1)** — 2 violations → 0. KB sessions SSE removed; timeline analysis fixed.
-7. ⏳ **Frontend-Hubs weiter modularisieren (AUFG-01-02)** — 37 ratcheted legacy RULE-04 violations remain (was 38; EditorView modularized); no new violations allowed.
-8. ⏳ **E2E test patterns**
+7. ✅ **Frontend-Hubs modularisiert (AUFG-01-02)** — All frontend RULE-04 violations resolved (`53 → 38 → 37 → 0`). EditorView modularized (764→146 lines). File-size check reports 0 current, 0 baseline, 0 new.
+8. ✅ **E2E test patterns** — Playwright-based E2E tests established (16 test files, 3.3k lines). Auth proxy pattern, wizard robustness, editor persistence, warmup fixture, `NARRARE_E2E_TEST=1` mode. Documented in testing-standards.md.
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
-10. ✅ **CR-03 / INFRA-013 P0–P3** — Core `ai_invocation` module implemented (P0). P0.3e (LoggingEvidenceSink), P1 (User/Project IDs in InvocationContext, mode-specific registry, checker update, kb_suggested), P2 (core/profiles/ module, KBConsistencyEnricher, VoiceProfileStatus, AuditReport, KG Consistency Checker, requires_runtime_evidence flag, 24/27 modes wired), and P3 (FileEvidenceSink, registry drift detection, doc-drift automation, quality metrics, CI integration) all fully implemented.
+10. ✅ **CR-03 / INFRA-013 P0–P5** — Core ai_invocation module implemented through P5. P0 (pipeline + contracts), P1 (User/Project IDs), P2 (profiles + KG consistency), P3 (FileEvidenceSink + drift detection + quality metrics), P4 (PersistentEvidenceSink + PostgreSQL), P5 (27/27 modes adopted — all runtime blockers resolved). INFRA-013 complete.
+11. ✅ **CR-07 UX Audit — Phase 1 (Specs + ADR-043)** — ADR-043 useAIOperation Primitives erstellt, P0/P1/P2 flows migriert, §16 Checks implementiert, 114 Tests. UX-Lücken (Onboarding, Prompt UX, Keyboard) als Feature-Specs dokumentiert.
+12. ⏳ **ONBOARD-001: Onboarding & AI-Einführung** — Demo-Discovery im Dashboard, KI-Tour (1–2 Min.), kontextuelle Tooltips. Post-MVP.
+13. ⏳ **PROMPT-003: Prompt Customization UX** — Variablen-Erklärung, Preview/Test-Modus, Reset-to-Default. Post-MVP (nicht vor Phase 6).
+14. ⏳ **KEYBOARD-001: Tastatur-Konsistenz** — Ctrl+Enter für alle AI-Aktionen, Escape für Cancel, Tab für GhostText-Accept. Post-MVP / Low Priority.
+15. ⏳ **CR-07 UX Audit — Phase 2 (Implementation)** — CR-AUFG-07-01 bis CR-AUFG-07-06: Migrate streaming to connectSSE(), Add AbortController to remaining flows, Replace feature-local labels with aiActions, Shared error mapping, Connection-loss preservation, Remove hardcoded English fallbacks.
 
 ---
 
@@ -189,7 +197,7 @@ Completed in Phase 6 so far:
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
 | ADR-024 | Free-Form Chat for Writing Craft | ✅ Implemented — ChatAgent + ChatDeps + HistoryPolicy.CONVERSATIONAL |
-| ADR-025 | Feature Adoption Infrastructure | 🔄 Proposed |
+| ADR-025 | Feature Adoption Infrastructure | ✅ Implemented — 27/27 modes adopted; INFRA-013 complete |
 | ADR-026 | Capability-Based Prompt Injection Pattern | ✅ Implemented |
 | ADR-027 | AI Feature Stabilization Gates | ✅ Completed — freeze lifted; ratcheted post-freeze governance retained |
 | ADR-028 | Architecture Exception Register SSOT | ✅ Implemented |
@@ -202,9 +210,11 @@ Completed in Phase 6 so far:
 | ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ Accepted — CR-01 prompt surface contract for manifest-routeable intents (INFRA-012) |
-| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0.3e, P1, P2, P3) — CR-03 runtime evidence contract complete through P3; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; core/profiles/ (ProjectWritingProfile SSOT); KBConsistencyEnricher; AuditReport; FileEvidenceSink; registry drift detection; doc-drift automation; quality metrics; CI integration; 24/27 modes wired |
+| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0–P5) — CR-03 runtime evidence contract complete through P5; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; core/profiles/ (ProjectWritingProfile SSOT); KBConsistencyEnricher; AuditReport; FileEvidenceSink; PersistentEvidenceSink (PostgreSQL hybrid); registry drift detection; doc-drift automation; quality metrics; CI integration; 27/27 modes adopted — INFRA-013 complete |
 | ADR-040 | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ Accepted — P2 architecture for ProjectWritingProfile SSOT, KG consistency evidence, audit lifecycle reporting, mode runtime proof expansion (24/27 modes) |
 | ADR-041 | Typed Manifests / Doc-Drift Automation / Quality Metrics / Persistent Evidence | ✅ Accepted — P3 architecture for registry drift detection (JSON Schema + check_registry_drift.py), doc-drift automation (doc_drift/ package), quality metrics (QualityReport + joiner), and file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl) |
+| ADR-042 | PostgreSQL Evidence Upgrade | ✅ Implemented (P4) — hybrid FileEvidenceSink (CI) + PersistentEvidenceSink (production) |
+| ADR-043 | `useAIOperation` Primitives | ✅ Implemented — shared streaming client, cancel/error/loading primitives, canonical `studio.aiActions.*` labels, §16 compliance checks, P0/P1/P2 flows migrated |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -225,6 +235,7 @@ Full details: `docs/architecture/decisions/INDEX.md`
 | Q-009 | Chat conversations: project-scoped vs user-scoped | ✅ → Project-scoped (Option A) |
 | Q-010 | Chat prompt i18n: EN-only v1 vs full i18n | ✅ → English-only v1 (Option A) |
 | Q-011 | Distribution strategy for non-technical users | 🟡 Open |
+| Q-012 | Prompt-Variablen-Erklärung und Reset-to-Default in der WebUI | 🟡 Open — adressiert durch PROMPT-003 (Post-MVP) |
 
 Full details: `docs/architecture/questions/INDEX.md`
 
@@ -238,7 +249,7 @@ Full details: `docs/architecture/questions/INDEX.md`
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
 | System Health Score (DEGRADED) | Medium | Non-blocking metric-floor/baseline artifact. CI remains warning-only for DEGRADED and fails on CRITICAL. Streaming compliance now 0 violations; baseline debt must keep shrinking for ≥0.85. |
-| 37 frontend RULE-04 legacy violations | Medium | Ratcheted baseline: no new violations; reductions only unless ADR/user-approved exception. EditorView modularized (764→146 lines). |
+| Frontend RULE-04 regressions | Low | All 37 legacy violations resolved (53→0). `check_frontend_file_size.py` enforces limits in CI. New violations blocked by ratchet. |
 | Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: exception baseline is current at 13/13 (was 14/14; RULE-02 exception #3 removed). |
 
 ---

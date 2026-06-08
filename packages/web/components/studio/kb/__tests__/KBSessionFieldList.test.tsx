@@ -265,8 +265,8 @@ describe("KBSessionFieldList", () => {
     render(<KBSessionFieldList {...defaultProps} />);
 
     // "Background" has ai_suggested_value → should show accept/reject
-    expect(screen.getByText("kb.reject")).toBeDefined();
-    expect(screen.getByText("kb.accept")).toBeDefined();
+    expect(screen.getByText("aiActions.reject")).toBeDefined();
+    expect(screen.getByText("aiActions.accept")).toBeDefined();
     expect(screen.getByText("A historian from a small town.")).toBeDefined();
   });
 
@@ -281,7 +281,7 @@ describe("KBSessionFieldList", () => {
     render(<KBSessionFieldList {...defaultProps} onAcceptSuggestion={onAcceptSuggestion} />);
 
     // Find and click the accept button (within AI suggestion section)
-    const acceptButtons = screen.getAllByText("kb.accept");
+    const acceptButtons = screen.getAllByText("aiActions.accept");
     fireEvent.click(acceptButtons[0]);
 
     expect(onAcceptSuggestion).toHaveBeenCalledWith("background", "A historian from a small town.");
@@ -291,7 +291,7 @@ describe("KBSessionFieldList", () => {
     const onRejectSuggestion = vi.fn();
     render(<KBSessionFieldList {...defaultProps} onRejectSuggestion={onRejectSuggestion} />);
 
-    const rejectButtons = screen.getAllByText("kb.reject");
+    const rejectButtons = screen.getAllByText("aiActions.reject");
     fireEvent.click(rejectButtons[0]);
 
     expect(onRejectSuggestion).toHaveBeenCalledWith("background");

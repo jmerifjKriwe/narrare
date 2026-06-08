@@ -73,7 +73,11 @@ export function WizardShell() {
     const { state: updatedState } = useWizardStore.getState();
     const result = await setupApi.complete(updatedState);
     reset();
-    router.push(result.redirect_to as Parameters<typeof router.push>[0]);
+    // Navigate directly to the novel editor using novel_id.
+    // The API returns redirect_to="/dashboard" for blank starters, but
+    // the dashboard route is at "/" — navigating to "/dashboard" hits a 404.
+    // Using novel_id always lands the user in the editor after setup.
+    router.push(`/novel/${result.novel_id}` as Parameters<typeof router.push>[0]);
   };
 
   // Step definitions — Step 4 omitted when providers already configured

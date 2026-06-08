@@ -330,7 +330,8 @@ describe("KBImprovePanel", () => {
     render(<KBImprovePanel {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Analysis failed")).toBeInTheDocument();
+      // Error is now a structured AIErrorResponse with i18n key
+      expect(screen.getByText("aiActions.errorConnection")).toBeInTheDocument();
     });
   });
 
@@ -343,12 +344,12 @@ describe("KBImprovePanel", () => {
     render(<KBImprovePanel {...defaultProps} />);
 
     await waitFor(() => {
-      // Error message is displayed
-      expect(screen.getByText("fail")).toBeInTheDocument();
+      // Error message is structured AIErrorResponse with i18n key
+      expect(screen.getByText("aiActions.errorConnection")).toBeInTheDocument();
     });
 
-    // Click retry button
-    const retryButton = screen.getByText("kb.retry");
+    // Click retry button (now uses aiActions.retry instead of kb.retry)
+    const retryButton = screen.getByText("aiActions.retry");
     await user.click(retryButton);
 
     expect(mockAnalyzeMutateAsync).toHaveBeenCalledTimes(2);

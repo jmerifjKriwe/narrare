@@ -62,9 +62,7 @@ export function KBAssistedCreationPanel({
       <div className="flex-1 flex flex-col items-center justify-center bg-background">
         <div className="text-center">
           <EntityIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50 animate-pulse" />
-          <p className="text-muted-foreground">
-            {t("kb.creatingSession") || "Creating session..."}
-          </p>
+          <p className="text-muted-foreground">{t("kb.sessionCreating")}</p>
         </div>
       </div>
     );
@@ -76,7 +74,7 @@ export function KBAssistedCreationPanel({
       <div className="flex-1 flex flex-col items-center justify-center bg-background">
         <div className="text-center max-w-md">
           <p className="text-red-500 mb-4">
-            {controller.errorMessage || t("kb.sessionCreateFailed") || "Failed to create session"}
+            {controller.errorMessage || t("kb.sessionCreateFailed")}
           </p>
           <button
             type="button"

@@ -1688,7 +1688,14 @@
     "connectionLostRetry": "Reconnect",
     "newSuggestions": "New Suggestions",
     "original": "Original",
-    "suggested": "Suggested"
+    "suggested": "Suggested",
+    "errorApiKey": "Your API key is invalid. Check your AI settings.",
+    "errorTextTooLong": "The text is too long for the AI. Shorten your selection and try again.",
+    "errorRateLimit": "You've sent too many requests. Wait a moment.",
+    "errorTimeout": "The AI is taking too long. Try again with less context.",
+    "errorConnection": "Connection lost. Check your internet connection.",
+    "errorParse": "The AI response was malformed. Try again.",
+    "errorDefault": "An unexpected error occurred. Try again."
   },
   "tour": {
     "step1": {

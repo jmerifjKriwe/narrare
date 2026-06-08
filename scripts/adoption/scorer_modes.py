@@ -9,9 +9,13 @@ Introduced with the v2.0.0 adoption-registry.yaml format.
 
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
+from adoption._scorer_evidence import apply_evidence_override
 from adoption.scorer import (
     INLINE_FALLBACK_PENALTY,
     PASS_THRESHOLD,
@@ -67,6 +71,37 @@ _RUNTIME_NOTE: dict[str, str] = {
 }
 
 
+def load_probe_evidence(evidence_dir: str) -> dict[str, set[str]]:
+    """Load probe evidence from an ``invocations.jsonl`` file.
+
+    Reads each line of ``<evidence_dir>/invocations.jsonl`` as a JSON object
+    with ``feature_id`` and ``mode`` fields, and returns a dict grouping
+    modes by feature_id.
+
+    Returns an empty dict if the directory or file does not exist.
+    Skips lines that are empty or not valid JSON.
+    """
+    ev_path = Path(evidence_dir) / "invocations.jsonl"
+    if not ev_path.is_file():
+        return {}
+
+    result: dict[str, set[str]] = {}
+    for line in ev_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            record = json.loads(stripped)
+        except json.JSONDecodeError:
+            logging.debug("Skipping invalid JSON line in %s: %s", ev_path, line)
+            continue
+        feature_id = record.get("feature_id")
+        mode = record.get("mode")
+        if feature_id is not None and mode is not None:
+            result.setdefault(feature_id, set()).add(mode)
+    return result
+
+
 def _check_runtime_requirements(
     runtime_reqs: dict[str, str],
     probe_evidence: dict[str, set[str]] | None = None,
@@ -97,90 +132,53 @@ def _check_runtime_requirements(
             )
         )
 
-    # ── Probe evidence overrides ─────────────────────────────────
-    if (
-        probe_evidence
-        and mode_feature_id
-        and mode_name
-        and mode_name in probe_evidence.get(mode_feature_id, set())
-    ):
-        for detail in details:
-            if detail.requirement == "evidence_sink" and detail.evidence_status == "missing":
-                detail.evidence_status = "verified"
-                detail.note = "verified by probe evidence"
-                if not all_verified:
-                    all_verified = all(
-                        d.evidence_status in ("verified", "not_applicable") for d in details
-                    )
-            if (
-                detail.requirement == "final_validation"
-                and detail.declared == "optional"
-                and detail.evidence_status == "missing"
-            ):
-                detail.evidence_status = "verified"
-                detail.note = "optional validator skipped, pipeline stable"
-
-    # ── Preference enrichment evidence override ─────────────────────
-    if (
-        preference_evidence
-        and mode_feature_id
-        and mode_name
-        and mode_name in preference_evidence.get(mode_feature_id, set())
-    ):
-        for detail in details:
-            if (
-                detail.requirement == "preference_enrichment"
-                and detail.evidence_status == "missing"
-            ):
-                detail.evidence_status = "verified"
-                detail.note = "verified by preference enrichment probe"
-                if not all_verified:
-                    all_verified = all(
-                        d.evidence_status in ("verified", "not_applicable") for d in details
-                    )
-
-    # ── Final validation evidence override ───────────────────────────
-    if (
-        validation_evidence
-        and mode_feature_id
-        and mode_name
-        and mode_name in validation_evidence.get(mode_feature_id, set())
-    ):
-        for detail in details:
-            if detail.requirement == "final_validation" and detail.evidence_status == "missing":
-                detail.evidence_status = "verified"
-                detail.note = "verified by validation probe"
-                if not all_verified:
-                    all_verified = all(
-                        d.evidence_status in ("verified", "not_applicable") for d in details
-                    )
-
-    # ── Budget resolution evidence override ──────────────────────────
-    if (
-        budget_evidence
-        and mode_feature_id
-        and mode_name
-        and mode_name in budget_evidence.get(mode_feature_id, set())
-    ):
-        for detail in details:
-            if detail.requirement == "budget_resolution" and detail.evidence_status == "missing":
-                detail.evidence_status = "verified"
-                detail.note = "verified by budget probe"
-                if not all_verified:
-                    all_verified = all(
-                        d.evidence_status in ("verified", "not_applicable") for d in details
-                    )
-            if (
-                detail.requirement == "kb_suggested"
-                and detail.declared == "budget_rejected"
-                and detail.evidence_status == "missing"
-            ):
-                detail.evidence_status = "verified"
-                detail.note = "budget rejected (verified by budget probe)"
-                if not all_verified:
-                    all_verified = all(
-                        d.evidence_status in ("verified", "not_applicable") for d in details
-                    )
+    # ── Evidence overrides ──────────────────────────────────────────
+    details, all_verified = apply_evidence_override(
+        details,
+        all_verified,
+        probe_evidence,
+        mode_feature_id,
+        mode_name,
+        "evidence_sink",
+        "verified by probe evidence",
+        optional_requirement_name="final_validation",
+    )
+    details, all_verified = apply_evidence_override(
+        details,
+        all_verified,
+        preference_evidence,
+        mode_feature_id,
+        mode_name,
+        "preference_enrichment",
+        "verified by preference enrichment probe",
+    )
+    details, all_verified = apply_evidence_override(
+        details,
+        all_verified,
+        validation_evidence,
+        mode_feature_id,
+        mode_name,
+        "final_validation",
+        "verified by validation probe",
+    )
+    details, all_verified = apply_evidence_override(
+        details,
+        all_verified,
+        budget_evidence,
+        mode_feature_id,
+        mode_name,
+        "budget_resolution",
+        "verified by budget probe",
+    )
+    details, all_verified = apply_evidence_override(
+        details,
+        all_verified,
+        budget_evidence,
+        mode_feature_id,
+        mode_name,
+        "kb_suggested",
+        "budget rejected (verified by budget probe)",
+    )
 
     return details, all_verified
 

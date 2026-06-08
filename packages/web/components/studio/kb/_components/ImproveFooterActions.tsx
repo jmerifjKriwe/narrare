@@ -37,7 +37,7 @@ export function ImproveFooterActions({
         className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors text-sm"
       >
         <ArrowLeft className="w-4 h-4" />
-        {t("kb.improve.back") || "Back to Entry"}
+        {t("kb.improve.back")}
       </button>
       {hasSuggestions && (
         <div className="flex items-center gap-3">
@@ -46,7 +46,7 @@ export function ImproveFooterActions({
             onClick={onRejectAll}
             className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
-            {t("kb.rejectAll") || "Reject All"}
+            {t("aiActions.reject")}
           </button>
           <button
             type="button"
@@ -59,7 +59,7 @@ export function ImproveFooterActions({
             ) : (
               <Check className="w-4 h-4" />
             )}
-            {t("kb.applySelected", { count: selectedCount }) || `Apply Selected (${selectedCount})`}
+            {t("kb.applySelected", { count: selectedCount })}
           </button>
         </div>
       )}

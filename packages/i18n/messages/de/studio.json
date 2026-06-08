@@ -1688,7 +1688,14 @@
     "connectionLostRetry": "Erneut verbinden",
     "newSuggestions": "Neue Vorschläge",
     "original": "Original",
-    "suggested": "Vorschlag"
+    "suggested": "Vorschlag",
+    "errorApiKey": "Dein API-Schlüssel ist ungültig. Überprüfe deine KI-Einstellungen.",
+    "errorTextTooLong": "Der Text ist zu lang für die KI. Kürze die Auswahl und versuche es erneut.",
+    "errorRateLimit": "Du hast zu viele Anfragen gesendet. Warte einen Moment.",
+    "errorTimeout": "Die KI braucht zu lange. Versuche es mit weniger Kontext erneut.",
+    "errorConnection": "Verbindung verloren. Prüfe deine Internetverbindung.",
+    "errorParse": "Die KI-Antwort war fehlerhaft. Versuche es erneut.",
+    "errorDefault": "Ein unerwarteter Fehler ist aufgetreten. Versuche es erneut."
   },
   "tour": {
     "step1": {

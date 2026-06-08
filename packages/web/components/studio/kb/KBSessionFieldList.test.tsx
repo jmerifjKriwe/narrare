@@ -458,8 +458,8 @@ describe("KBSessionFieldList", () => {
 
     render(<KBSessionFieldList session={session} {...defaultCallbacks} />);
 
-    expect(screen.getByText("kb.accept")).toBeInTheDocument();
-    expect(screen.getByText("kb.reject")).toBeInTheDocument();
+    expect(screen.getByText("aiActions.accept")).toBeInTheDocument();
+    expect(screen.getByText("aiActions.reject")).toBeInTheDocument();
   });
 
   it("accept AI suggestion triggers onAcceptSuggestion", async () => {
@@ -485,7 +485,7 @@ describe("KBSessionFieldList", () => {
       />,
     );
 
-    await user.click(screen.getByText("kb.accept"));
+    await user.click(screen.getByText("aiActions.accept"));
 
     expect(onAcceptSuggestion).toHaveBeenCalledWith("backstory", "A legendary warrior");
   });
@@ -513,7 +513,7 @@ describe("KBSessionFieldList", () => {
       />,
     );
 
-    await user.click(screen.getByText("kb.reject"));
+    await user.click(screen.getByText("aiActions.reject"));
 
     expect(onRejectSuggestion).toHaveBeenCalledWith("backstory");
   });

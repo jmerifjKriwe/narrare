@@ -32,6 +32,14 @@ interface ExtractionPanelProps {
   onApplied: () => void;
 }
 
+/** Extract user-visible message from an error, preferring structured AIErrorResponse. */
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && "userMessage" in err) {
+    return (err as { userMessage: string }).userMessage;
+  }
+  return err instanceof Error ? err["message"] : fallback;
+}
+
 export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: ExtractionPanelProps) {
   const t = useTranslations("studio");
   const [phase, setPhase] = useState<ExtractionPhase>("loading");
@@ -63,7 +71,7 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
         return;
       }
       markConnectionLost();
-      setErrorMsg(err instanceof Error ? err.message : t("kb.extractionFailed"));
+      setErrorMsg(getErrorMessage(err, t("kb.extractionFailed")));
       setPhase("error");
     },
     [t, markConnectionLost, isAbortError, phase, onClose],
@@ -108,7 +116,7 @@ export function ExtractionPanel({ novelId, chapterId, onClose, onApplied }: Extr
       },
       onError: (err) => {
         if (isAbortError(err)) return;
-        setErrorMsg(err instanceof Error ? err.message : t("kb.extractionApplyError"));
+        setErrorMsg(getErrorMessage(err, t("kb.extractionApplyError")));
         setPhase("error");
       },
     });

@@ -50,7 +50,7 @@ export function LearningTab({ novelId }: LearningTabProps) {
   if (error) {
     return (
       <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm" role="alert">
-        {error.message}
+        {"userMessage" in error ? (error as { userMessage: string }).userMessage : error["message"]}
       </div>
     );
   }
@@ -100,7 +100,11 @@ export function LearningTab({ novelId }: LearningTabProps) {
           role="alert"
         >
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span>{analysisMutation.error.message}</span>
+          <span>
+            {"userMessage" in analysisMutation.error
+              ? (analysisMutation.error as { userMessage: string }).userMessage
+              : analysisMutation.error["message"]}
+          </span>
         </div>
       )}
 

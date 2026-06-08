@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "validators": [
+    "RuntimeVariableValidatorImpl",
+    "FinalPromptValidatorImpl"
+  ],
+  "features": {
+    "writing": [
+      "new_chapter",
+      "extend_chapter",
+      "rewrite_selection",
+      "story_suggest",
+      "interactive_session",
+      "interview",
+      "scene_by_scene",
+      "chat",
+      "co_author"
+    ],
+    "analysis": [
+      "beta_reader",
+      "beta_reader_deepdive",
+      "review",
+      "preferences",
+      "summarize",
+      "remap",
+      "consistency"
+    ],
+    "kb": [
+      "consistency",
+      "worldbuilding/phase1",
+      "worldbuilding/phase2",
+      "improve",
+      "suggest",
+      "interview",
+      "extract",
+      "enhance"
+    ],
+    "planning": [
+      "outline"
+    ]
+  }
+}

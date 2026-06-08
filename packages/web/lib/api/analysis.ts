@@ -298,10 +298,11 @@ export const analysisApi = {
    * Run cross-chapter consistency check.
    * POST /consistency/check?novel_id={novelId}
    */
-  consistencyCheck: (novelId: string, request: ConsistencyRequest) =>
+  consistencyCheck: (novelId: string, request: ConsistencyRequest, signal?: AbortSignal) =>
     fetchApi<ConsistencyResponse>(`/consistency/check?novel_id=${novelId}`, {
       method: "POST",
       body: JSON.stringify(request),
+      signal,
     }),
 
   /**

@@ -22,13 +22,12 @@ import { ConsistencyPanel } from "./ConsistencyPanel";
 // Mocks
 // ---------------------------------------------------------------------------
 
-let mockMutateAsync: Mock;
+let mockApiCall: Mock;
 
-vi.mock("@/lib/hooks/useConsistency", () => ({
-  useConsistencyCheck: () => ({
-    mutateAsync: (...args: unknown[]) => mockMutateAsync(...args),
-    isPending: false,
-  }),
+vi.mock("@/lib/api/analysis", () => ({
+  analysisApi: {
+    consistencyCheck: (...args: unknown[]) => mockApiCall(...args),
+  },
 }));
 
 const mockSetConsistencyResult = vi.fn();
@@ -119,7 +118,7 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("renders loading state on mount", () => {
-    mockMutateAsync = vi.fn(() => new Promise(() => {}));
+    mockApiCall = vi.fn(() => new Promise(() => {}));
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -128,7 +127,7 @@ describe("ConsistencyPanel", () => {
   });
 
   it("calls setConsistencyLoading(true) during loading", () => {
-    mockMutateAsync = vi.fn(() => new Promise(() => {}));
+    mockApiCall = vi.fn(() => new Promise(() => {}));
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -142,7 +141,7 @@ describe("ConsistencyPanel", () => {
   it("calls onClose when close button is clicked", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    mockMutateAsync = vi.fn(() => new Promise(() => {}));
+    mockApiCall = vi.fn(() => new Promise(() => {}));
 
     render(<ConsistencyPanel {...defaultProps} onClose={onClose} />);
 
@@ -158,7 +157,7 @@ describe("ConsistencyPanel", () => {
 
   it("renders severity badges with correct counts in results", async () => {
     const result = makeConsistencyResponse();
-    mockMutateAsync = vi.fn().mockResolvedValue(result);
+    mockApiCall = vi.fn().mockResolvedValue(result);
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -175,7 +174,7 @@ describe("ConsistencyPanel", () => {
 
   it("renders overall assessment in results", async () => {
     const result = makeConsistencyResponse();
-    mockMutateAsync = vi.fn().mockResolvedValue(result);
+    mockApiCall = vi.fn().mockResolvedValue(result);
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -186,7 +185,7 @@ describe("ConsistencyPanel", () => {
 
   it("stores result in editor store on success", async () => {
     const result = makeConsistencyResponse();
-    mockMutateAsync = vi.fn().mockResolvedValue(result);
+    mockApiCall = vi.fn().mockResolvedValue(result);
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -201,7 +200,7 @@ describe("ConsistencyPanel", () => {
 
   it("renders scope selector with three options when not loading", async () => {
     const result = makeConsistencyResponse();
-    mockMutateAsync = vi.fn().mockResolvedValue(result);
+    mockApiCall = vi.fn().mockResolvedValue(result);
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -219,7 +218,7 @@ describe("ConsistencyPanel", () => {
 
   it("scope selector default is 'selected' (aria-pressed)", async () => {
     const result = makeConsistencyResponse();
-    mockMutateAsync = vi.fn().mockResolvedValue(result);
+    mockApiCall = vi.fn().mockResolvedValue(result);
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -239,20 +238,21 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("renders error state with retry button when check fails", async () => {
-    mockMutateAsync = vi.fn().mockRejectedValue(new Error("Server error"));
+    mockApiCall = vi.fn().mockRejectedValue(new Error("Server error"));
 
     render(<ConsistencyPanel {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText("error")).toBeInTheDocument();
+      // Structured AIErrorResponse with i18n key
+      expect(screen.getByText("aiActions.errorConnection")).toBeInTheDocument();
     });
-    expect(screen.getByText("Server error")).toBeInTheDocument();
-    expect(screen.getByText("retry")).toBeInTheDocument();
+    expect(screen.getByText("error")).toBeInTheDocument();
+    expect(screen.getByText("aiActions.retry")).toBeInTheDocument();
   });
 
   it("retry button triggers re-check", async () => {
     const user = userEvent.setup();
-    mockMutateAsync = vi
+    mockApiCall = vi
       .fn()
       .mockRejectedValueOnce(new Error("fail"))
       .mockResolvedValueOnce(makeConsistencyResponse());
@@ -260,12 +260,12 @@ describe("ConsistencyPanel", () => {
     render(<ConsistencyPanel {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText("retry")).toBeInTheDocument();
+      expect(screen.getByText("aiActions.retry")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("retry"));
+    await user.click(screen.getByText("aiActions.retry"));
 
-    expect(mockMutateAsync).toHaveBeenCalledTimes(2);
+    expect(mockApiCall).toHaveBeenCalledTimes(2);
   });
 
   // -------------------------------------------------------------------------
@@ -273,7 +273,7 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("loading state shows elapsed timer text", () => {
-    mockMutateAsync = vi.fn(() => new Promise(() => {}));
+    mockApiCall = vi.fn(() => new Promise(() => {}));
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -290,7 +290,7 @@ describe("ConsistencyPanel", () => {
   it("refresh button triggers re-check in results state", async () => {
     const user = userEvent.setup();
     const result = makeConsistencyResponse();
-    mockMutateAsync = vi.fn().mockResolvedValue(result);
+    mockApiCall = vi.fn().mockResolvedValue(result);
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -304,7 +304,7 @@ describe("ConsistencyPanel", () => {
     const refreshButtons = screen.getAllByText("refresh");
     await user.click(refreshButtons[0]);
 
-    expect(mockMutateAsync).toHaveBeenCalledTimes(2);
+    expect(mockApiCall).toHaveBeenCalledTimes(2);
   });
 
   // -------------------------------------------------------------------------
@@ -312,7 +312,7 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("hides scope selector during loading state", () => {
-    mockMutateAsync = vi.fn(() => new Promise(() => {}));
+    mockApiCall = vi.fn(() => new Promise(() => {}));
 
     render(<ConsistencyPanel {...defaultProps} />);
 

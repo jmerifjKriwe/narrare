@@ -1,6 +1,7 @@
 import type { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import type { KBEntityType } from "@/lib/api/kb";
 import type { KBEnhancementResult, KBInterviewResult } from "@/lib/api/kb-sessions";
 import {
@@ -154,7 +155,9 @@ export function useKBAssistedCreationController({
     filledFields,
     isLoading: createSessionMutation.isPending || sessionLoading,
     isError: createSessionMutation.isError,
-    errorMessage: createSessionMutation.error?.message,
+    errorMessage: createSessionMutation.error
+      ? (mapSSEError(createSessionMutation.error)?.userMessage ?? t("kb.sessionCreateFailed"))
+      : undefined,
     completePending: completeSessionMutation.isPending,
     handleSuggest,
     handleAnswer,
@@ -170,7 +173,7 @@ export function useKBAssistedCreationController({
       completeSessionMutation.mutate(undefined, {
         onSuccess: (response) => {
           clearPendingInterview(novelId);
-          toast.success(t("kb.sessionSaved") || "Session saved");
+          toast.success(t("kb.sessionSaved"));
           onComplete(response.entry_id);
         },
       });

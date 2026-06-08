@@ -166,8 +166,18 @@ describe("ContinueButton (supplementary)", () => {
   // -------------------------------------------------------------------------
 
   it("does not trigger another extend while already streaming", async () => {
-    // Make the first streamExtend hang
-    mockStreamExtend.mockReturnValue(new Promise(() => {}));
+    // Fire onChunk to trigger streaming state, but never complete
+    mockStreamExtend.mockImplementation(
+      (
+        _chId: string,
+        _nId: string,
+        _req: unknown,
+        callbacks: { onChunk: (text: string) => void },
+      ) => {
+        callbacks.onChunk("extended text");
+        return new Promise(() => {}); // Never settles
+      },
+    );
 
     const user = userEvent.setup();
     const editor = createMockEditor();

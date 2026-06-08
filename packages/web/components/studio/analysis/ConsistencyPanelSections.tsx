@@ -1,8 +1,10 @@
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import type { useTranslations } from "next-intl";
 import type { ConsistencyResponse } from "@/lib/api/analysis";
 import { ConsistencyIssueList } from "./ConsistencyIssueList";
 
 type Scope = "current" | "selected" | "all";
+type StudioTranslator = ReturnType<typeof useTranslations>;
 
 interface ScopeSelectorProps {
   scope: Scope;
@@ -67,28 +69,47 @@ export function ConsistencyLoadingState({
 }
 
 export function ConsistencyErrorState({
-  error,
+  errorMessage,
+  isConnectionLost,
   onRetry,
   t,
+  tStudio,
 }: {
-  error: Error | null;
+  errorMessage: string;
+  isConnectionLost: boolean;
   onRetry: () => void;
   t: (key: string) => string;
+  tStudio: StudioTranslator;
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-        <AlertTriangle className="w-6 h-6 text-red-500" />
+        {isConnectionLost ? (
+          <WifiOff className="w-6 h-6 text-red-500" />
+        ) : (
+          <AlertTriangle className="w-6 h-6 text-red-500" />
+        )}
       </div>
-      <p className="text-lg font-medium mb-1">{t("error")}</p>
-      <p className="text-sm text-muted-foreground mb-4">{error?.message}</p>
+      <p className="text-lg font-medium mb-1">
+        {isConnectionLost ? tStudio("aiActions.connectionLost") : t("error")}
+      </p>
+      <p className="text-sm text-muted-foreground mb-4">{errorMessage}</p>
       <button
         type="button"
         onClick={onRetry}
         className="flex items-center gap-1.5 px-4 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors"
       >
-        <RefreshCw className="w-4 h-4" />
-        {t("retry")}
+        {isConnectionLost ? (
+          <>
+            <Wifi className="w-4 h-4" />
+            {tStudio("aiActions.connectionLostRetry")}
+          </>
+        ) : (
+          <>
+            <RefreshCw className="w-4 h-4" />
+            {tStudio("aiActions.retry")}
+          </>
+        )}
       </button>
     </div>
   );

@@ -79,7 +79,7 @@ export function ImproveSuggestionCard({
         </div>
         {isSelected && (
           <span className="text-xs text-green-600 dark:text-green-400 flex-shrink-0">
-            {t("kb.willApply") || "Will apply"}
+            {t("kb.willApply")}
           </span>
         )}
       </button>
@@ -135,7 +135,7 @@ export function ImproveSuggestionCard({
           className="flex items-center gap-1 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-muted transition-colors"
         >
           <X className="w-3 h-3" />
-          {t("kb.reject") || "Reject"}
+          {t("aiActions.reject")}
         </button>
         <button
           type="button"
@@ -146,7 +146,7 @@ export function ImproveSuggestionCard({
           className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
         >
           <Check className="w-3 h-3" />
-          {t("kb.accept") || "Accept"}
+          {t("aiActions.accept")}
         </button>
       </div>
     </div>

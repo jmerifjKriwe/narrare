@@ -163,7 +163,7 @@ export function KBSessionFieldRow({
               className="flex items-center gap-1 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-muted transition-colors"
             >
               <X className="w-3 h-3" />
-              {t("kb.reject")}
+              {t("aiActions.reject")}
             </button>
             <button
               type="button"
@@ -171,7 +171,7 @@ export function KBSessionFieldRow({
               className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
             >
               <Check className="w-3 h-3" />
-              {t("kb.accept")}
+              {t("aiActions.accept")}
             </button>
           </div>
         </div>

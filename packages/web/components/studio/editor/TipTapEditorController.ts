@@ -3,6 +3,7 @@ import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import type { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import {
   type RewriteAlternative,
   type RewriteConfig,
@@ -10,6 +11,8 @@ import {
   writingApi,
 } from "@/lib/api/generation";
 import { createSseSuggestionFetcher } from "@/lib/api/suggest";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useRecordFeedback } from "@/lib/hooks/useMemory";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
@@ -76,7 +79,9 @@ export function useTipTapEditorController({
   const [showRejectionInput, setShowRejectionInput] = useState(false);
   const [rewritePhase, setRewritePhase] = useState<RewritePhase>("idle");
   const [rewriteSelection, setRewriteSelection] = useState<RewriteSelection | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [rewriteError, setRewriteError] = useState<AIErrorResponse | null>(null);
+  const rewriteConfigRef = useRef<RewriteConfig | null>(null);
+  const rewriteSelectionRef = useRef<RewriteSelection | null>(null);
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useGhostTextOnboarding();
   const [onboardingAnchor, setOnboardingAnchor] = useState<HTMLElement | null>(null);
   const recordFeedback = useRecordFeedback(novelId ?? "");
@@ -188,6 +193,83 @@ export function useTipTapEditorController({
     };
   }, [editor, showOnboarding]);
 
+  // --- Rewrite AI Operation (§16 lifecycle management) ---
+
+  const rewriteAiOp = useAIOperation<RewriteAlternative[]>({
+    execute: async (signal) => {
+      const config = rewriteConfigRef.current;
+      const sel = rewriteSelectionRef.current;
+      if (!sel || !chapterId || !novelId || !config) {
+        return [];
+      }
+
+      const alternatives: RewriteAlternative[] = [];
+
+      await streamRewrite(
+        chapterId,
+        novelId,
+        {
+          selection_text: sel.text,
+          context_before: sel.contextBefore,
+          context_after: sel.contextAfter,
+          mode: config.mode,
+          options: config.mode !== "custom" ? { option: config.option } : undefined,
+          count: config.count,
+          custom_instructions: config.customInstructions,
+          language: locale,
+        },
+        {
+          onRequestInfo: () => {},
+          onAlternative: (label, text) => {
+            alternatives.push({ label, text });
+            setAiSuggestion((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    suggestions: alternatives.map((a) => a.text),
+                    labels: alternatives.map((a) => a.label),
+                  }
+                : {
+                    original: sel.text,
+                    suggestions: alternatives.map((a) => a.text),
+                    labels: alternatives.map((a) => a.label),
+                    position: { from: sel.from, to: sel.to },
+                  },
+            );
+            if (alternatives.length === 1) setSelectedSuggestion(0);
+            setRewritePhase("showing-alternatives");
+          },
+          onAlternativeFinal: () => {
+            // Stream complete — alternatives already accumulated
+          },
+          onError: (error: Error) => {
+            // Let useAIOperation's error mapper handle it
+            throw error;
+          },
+        },
+        signal,
+      );
+
+      return alternatives;
+    },
+    errorMapper: mapSSEError,
+    onSuccess: () => {
+      setRewriteError(null);
+    },
+    onError: (error) => {
+      setRewriteError(error);
+      // If no alternatives were generated, go back to idle
+      setAiSuggestion((prev) => {
+        if (!prev || prev.suggestions.length === 0) {
+          setRewritePhase("idle");
+          return null;
+        }
+        return prev;
+      });
+    },
+    connectionLossTimeout: 20_000,
+  });
+
   const getSelectionContext = useCallback(
     (from: number, to: number) => {
       if (!editor) return { contextBefore: "", contextAfter: "" };
@@ -217,56 +299,13 @@ export function useTipTapEditorController({
   const handleRewriteGenerate = useCallback(
     (config: RewriteConfig) => {
       if (!editor || !rewriteSelection || !chapterId || !novelId) return;
+      rewriteConfigRef.current = config;
+      rewriteSelectionRef.current = rewriteSelection;
       setRewritePhase("streaming");
-      const controller = new AbortController();
-      abortRef.current = controller;
-      const alternatives: RewriteAlternative[] = [];
-      streamRewrite(
-        chapterId,
-        novelId,
-        {
-          selection_text: rewriteSelection.text,
-          context_before: rewriteSelection.contextBefore,
-          context_after: rewriteSelection.contextAfter,
-          mode: config.mode,
-          options: config.mode !== "custom" ? { option: config.option } : undefined,
-          count: config.count,
-          custom_instructions: config.customInstructions,
-          language: locale,
-        },
-        {
-          onRequestInfo: () => {},
-          onAlternative: (label, text) => {
-            alternatives.push({ label, text });
-            setAiSuggestion((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    suggestions: alternatives.map((a) => a.text),
-                    labels: alternatives.map((a) => a.label),
-                  }
-                : {
-                    original: rewriteSelection.text,
-                    suggestions: alternatives.map((a) => a.text),
-                    labels: alternatives.map((a) => a.label),
-                    position: { from: rewriteSelection.from, to: rewriteSelection.to },
-                  },
-            );
-            if (alternatives.length === 1) setSelectedSuggestion(0);
-            setRewritePhase("showing-alternatives");
-          },
-          onAlternativeFinal: () => {
-            abortRef.current = null;
-          },
-          onError: () => {
-            setRewritePhase("idle");
-            abortRef.current = null;
-          },
-        },
-        controller.signal,
-      );
+      setRewriteError(null);
+      rewriteAiOp.start();
     },
-    [editor, rewriteSelection, chapterId, novelId, locale],
+    [editor, rewriteSelection, chapterId, novelId, rewriteAiOp],
   );
 
   const resetRewriteState = useCallback(() => {
@@ -275,7 +314,9 @@ export function useTipTapEditorController({
     setRewriteSelection(null);
     setShowRejectionInput(false);
     setRejectionReason("");
-  }, []);
+    setRewriteError(null);
+    rewriteAiOp.reset();
+  }, [rewriteAiOp]);
   const acceptSuggestion = useCallback(() => {
     if (!editor || !aiSuggestion) return;
     replaceSelectionWithAIContent(
@@ -319,18 +360,19 @@ export function useTipTapEditorController({
     showRejectionInput,
     rewritePhase,
     rewriteSelection,
+    rewriteError,
     showOnboarding,
     dismissOnboarding,
     onboardingAnchor,
     selectionLength,
     isRewriteEnabled:
       selectionLength >= MIN_SELECTION_LENGTH && selectionLength <= MAX_SELECTION_LENGTH,
-    isRewriteStreaming: rewritePhase === "streaming",
+    isRewriteStreaming:
+      rewritePhase === "streaming" || rewriteAiOp.isLoading || rewriteAiOp.isStreaming,
     handleAIRewrite,
     handleRewriteGenerate,
     handleRewriteCancel: () => {
-      abortRef.current?.abort();
-      abortRef.current = null;
+      rewriteAiOp.cancel();
       setRewritePhase("idle");
       setRewriteSelection(null);
     },
