@@ -145,18 +145,31 @@ export interface SessionResponse {
   message?: string;
 }
 
+/** Configuration options for WritingSessionSocket. */
+export interface WritingSessionSocketOptions {
+  /** Maximum reconnection attempts. Default: 5. */
+  readonly maxReconnectAttempts?: number;
+  /** Base delay in ms for linear reconnect backoff (delay = base × attempt). Default: 1000. */
+  readonly reconnectBaseDelayMs?: number;
+}
+
+/** Default values for socket configuration. */
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
+const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
+
 /**
  * WebSocket wrapper for interactive writing sessions.
  *
  * Connects to `ws(s)://{host}/api/v1/writing/sessions/{chapterId}` and
- * handles reconnection up to MAX_RECONNECT_ATTEMPTS. Gracefully degrades
+ * handles reconnection up to maxReconnectAttempts. Gracefully degrades
  * when WebSocket is unavailable (e.g. test environments).
  */
 export class WritingSessionSocket {
   private ws: WebSocket | null = null;
   private closed = false;
   private reconnectAttempts = 0;
-  private static readonly MAX_RECONNECT_ATTEMPTS = 5;
+  private readonly maxReconnectAttempts: number;
+  private readonly reconnectBaseDelayMs: number;
 
   constructor(
     private readonly chapterId: string,
@@ -165,7 +178,13 @@ export class WritingSessionSocket {
     private readonly userId?: string,
     private readonly novelId?: string,
     private readonly mode?: string,
-  ) {}
+    socketOptions?: WritingSessionSocketOptions,
+  ) {
+    this.maxReconnectAttempts =
+      socketOptions?.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
+    this.reconnectBaseDelayMs =
+      socketOptions?.reconnectBaseDelayMs ?? DEFAULT_RECONNECT_BASE_DELAY_MS;
+  }
 
   /** Open the WebSocket connection. Safe to call multiple times. */
   connect(): void {
@@ -198,9 +217,9 @@ export class WritingSessionSocket {
       };
 
       this.ws.onclose = () => {
-        if (!this.closed && this.reconnectAttempts < WritingSessionSocket.MAX_RECONNECT_ATTEMPTS) {
+        if (!this.closed && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
-          setTimeout(() => this.connect(), 1000 * this.reconnectAttempts);
+          setTimeout(() => this.connect(), this.reconnectBaseDelayMs * this.reconnectAttempts);
         }
       };
     } catch {
@@ -220,7 +239,7 @@ export class WritingSessionSocket {
   /** Close the socket and prevent further reconnection attempts. */
   close(): void {
     this.closed = true;
-    this.reconnectAttempts = WritingSessionSocket.MAX_RECONNECT_ATTEMPTS;
+    this.reconnectAttempts = this.maxReconnectAttempts;
     try {
       this.ws?.close();
     } catch {
