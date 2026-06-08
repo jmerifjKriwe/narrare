@@ -33,7 +33,7 @@ dependencies = [
   "aiohttp>=3.14.0",
 
   # Cache & broker
-  "redis==8.0.0",
+  "redis>=7.0.0,<8",
 
   # Auth
   "PyJWT==2.13.0",
@@ -79,8 +79,8 @@ dev = [
   "pytest-asyncio==1.4.0",
   "pytest-cov==7.1.0",
   "httpx==0.28.1",
-  "pyright==1.1.409",
-  "ruff==0.15.15",
+  "pyright==1.1.410",
+  "ruff==0.15.16",
   "bandit==1.9.4",
   "pip-audit==2.10.0",
 ]
