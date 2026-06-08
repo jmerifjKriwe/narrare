@@ -220,12 +220,17 @@ describe("ContinueButton", () => {
   // -------------------------------------------------------------------------
 
   it("shows loading state during generation", async () => {
-    // Make streamExtend hang (never resolves callbacks) so we stay in streaming
-    let extendResolve: () => void = () => {};
-    mockStreamExtend.mockReturnValue(
-      new Promise<void>((resolve) => {
-        extendResolve = resolve;
-      }),
+    // Fire onChunk to trigger notifyData() → streaming state, but don't complete
+    mockStreamExtend.mockImplementation(
+      (
+        _chId: string,
+        _nId: string,
+        _req: unknown,
+        callbacks: { onChunk: (text: string) => void },
+      ) => {
+        callbacks.onChunk("generated text");
+        return new Promise(() => {}); // Never settles — stay in streaming
+      },
     );
 
     const user = userEvent.setup();
@@ -239,9 +244,6 @@ describe("ContinueButton", () => {
     expect(screen.getByText("aiActions.stop")).toBeDefined();
     // Chevron dropdown should be hidden during streaming
     expect(screen.queryByLabelText("annotation.selectLength")).toBeNull();
-
-    // Clean up — resolve the pending promise
-    extendResolve();
   });
 
   it("returns to idle state after streaming completes", async () => {
@@ -265,8 +267,18 @@ describe("ContinueButton", () => {
     // Track abort calls by spying on AbortController.prototype.abort
     const abortSpy = vi.spyOn(AbortController.prototype, "abort");
 
-    // Keep streaming indefinitely
-    mockStreamExtend.mockReturnValue(new Promise(() => {}));
+    // Fire onChunk to trigger streaming state, but never complete
+    mockStreamExtend.mockImplementation(
+      (
+        _chId: string,
+        _nId: string,
+        _req: unknown,
+        callbacks: { onChunk: (text: string) => void },
+      ) => {
+        callbacks.onChunk("generated text");
+        return new Promise(() => {}); // Never settles
+      },
+    );
 
     const user = userEvent.setup();
     const editor = createMockEditor();

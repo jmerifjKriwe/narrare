@@ -401,6 +401,11 @@ check-streaming:
     @echo "📡 Checking RULE-20 streaming compliance..."
     uv run python scripts/check_streaming_compliance.py
 
+# Check ADR-043 / §16 AI interaction compliance (5 machine-checkable rules)
+check-ai-ux:
+    @echo "🤖 Checking ADR-043 AI interaction compliance..."
+    uv run python scripts/checks/check_ai_interaction_compliance.py
+
 # Validate a commit message (for hook/CI use)
 # Usage: just check-commit-msg "feat(core): add new prompt mode"
 check-commit-msg msg:
@@ -547,5 +552,5 @@ hooks-update:
 # ---------------------------------------------------------------------------
 
 # Full pre-merge check (everything, strict mode)
-check-full: check check-streaming check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
+check-full: check check-streaming check-ai-ux check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
     @echo "✅ All checks passed — ready to merge"

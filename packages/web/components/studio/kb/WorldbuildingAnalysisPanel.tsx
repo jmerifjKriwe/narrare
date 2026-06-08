@@ -115,7 +115,14 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
         <div className="max-w-3xl mx-auto p-6 space-y-4">
           {state === "loading" && <AnalysisLoading onCancel={handleCancel} />}
           {state === "error" && error && (
-            <AnalysisError message={error.message} onRetry={() => void runAnalysis(false)} />
+            <AnalysisError
+              message={
+                "userMessage" in error
+                  ? (error as { userMessage: string }).userMessage
+                  : error["message"]
+              }
+              onRetry={() => void runAnalysis(false)}
+            />
           )}
           {state === "results" && hasNoFindings && (
             <div className="flex flex-col items-center justify-center py-12 text-center">

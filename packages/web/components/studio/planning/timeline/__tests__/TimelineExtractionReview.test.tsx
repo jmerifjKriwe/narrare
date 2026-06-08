@@ -43,7 +43,7 @@ const mockExtractedEvents: ExtractedEvent[] = [
 // SSE extraction hook mock state
 let mockIsExtracting = false;
 let mockExtractedEventsState: ExtractedEvent[] = [];
-let mockExtractError: string | null = null;
+let mockExtractError: { userMessage: string } | null = null;
 const mockStartExtraction = vi.fn();
 const mockResetExtraction = vi.fn();
 
@@ -171,7 +171,7 @@ describe("TimelineExtractionReview", () => {
   });
 
   it("shows error state when extraction fails", async () => {
-    mockExtractError = "Failed to extract temporal expressions.";
+    mockExtractError = { userMessage: "Failed to extract temporal expressions." };
     render(<TimelineExtractionReview novelId="novel-1" />);
 
     await waitFor(() => {

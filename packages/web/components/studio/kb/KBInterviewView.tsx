@@ -5,18 +5,21 @@
  *
  * The AI asks questions about the entity, user answers, and the
  * AI extracts relevant field values from the answers.
+ *
+ * Uses useAIOperation for lifecycle management (§16).
  */
 
-import { Loader2 } from "lucide-react";
+import { Loader2, OctagonX } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { KBCreationSession, KBInterviewResult } from "@/lib/api/kb-sessions";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { InterviewCompleteState } from "./InterviewCompleteState";
 import { InterviewErrorState } from "./InterviewErrorState";
 import { InterviewHeader } from "./InterviewHeader";
 import { InterviewQuestionCard } from "./InterviewQuestionCard";
 
-type InterviewState = "idle" | "loading" | "question" | "answering" | "complete" | "error";
+type InterviewPhase = "idle" | "question" | "answering" | "complete";
 
 interface KBInterviewViewProps {
   novelId: string;
@@ -36,57 +39,35 @@ export function KBInterviewView({
   onBack,
 }: KBInterviewViewProps) {
   const t = useTranslations("studio");
-  const [state, setState] = useState<InterviewState>("idle");
+  const [phase, setPhase] = useState<InterviewPhase>("idle");
   const [currentQuestion, setCurrentQuestion] = useState<KBInterviewResult | null>(null);
   const [answer, setAnswer] = useState("");
   const [questionCount, setQuestionCount] = useState(0);
-  const [error, setError] = useState<Error | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const answerRef = useRef<HTMLTextAreaElement>(null);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, []);
-
-  // Calculate progress
-  const totalFields = session.fields.length;
-  const filledFields = session.fields.filter((f) => f.final_value || f.user_value).length;
-
-  async function requestNextQuestion() {
-    // Abort any in-flight request
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setState("loading");
-    setError(null);
-
-    try {
-      const result = await onRequestQuestion(controller.signal);
+  // --- AI operation lifecycle via useAIOperation ---
+  const interviewOp = useAIOperation<KBInterviewResult>({
+    execute: (signal) => onRequestQuestion(signal),
+    onSuccess: (result) => {
       setCurrentQuestion(result);
       setQuestionCount((prev) => prev + 1);
-      setState("question");
+      setPhase("question");
+      setTimeout(() => answerRef.current?.focus(), 100);
+    },
+    onError: () => {
+      // Error is displayed via interviewOp.state.error — phase stays as-is
+    },
+  });
 
-      // Focus answer input after a short delay
-      setTimeout(() => {
-        answerRef.current?.focus();
-      }, 100);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        return;
-      }
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setState("error");
-    }
-  }
+  const requestNextQuestion = useCallback(() => {
+    setPhase("idle");
+    interviewOp.start();
+  }, [interviewOp]);
 
   async function handleSubmitAnswer() {
     if (!currentQuestion || !answer.trim()) return;
 
-    setState("answering");
+    setPhase("answering");
 
     try {
       // If we have a target field, answer it directly
@@ -94,48 +75,39 @@ export function KBInterviewView({
         await onSubmitAnswer(currentQuestion.target_field, answer.trim());
       }
 
-      // Reset answer and request next question
+      // Reset answer and check if done
       setAnswer("");
 
-      // Check if we're done (all required fields filled)
       const requiredFields = session.fields.filter((f) => f.required);
       const filledRequired = requiredFields.filter((f) => f.final_value || f.user_value);
 
       if (filledRequired.length >= requiredFields.length && questionCount >= 3) {
-        setState("complete");
+        setPhase("complete");
       } else {
-        await requestNextQuestion();
+        requestNextQuestion();
       }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setState("error");
+    } catch {
+      // Answer submission errors are non-AI; stay in answering phase
+      // The field mutation handles its own error state
+      setPhase("question");
     }
   }
 
+  // Start interview on mount
   // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount — intentional mount-trigger pattern
   useEffect(() => {
-    if (state !== "idle") return;
-
-    const startInterview = async () => {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      setState("loading");
-      try {
-        const result = await onRequestQuestion(controller.signal);
-        setCurrentQuestion(result);
-        setQuestionCount((prev) => prev + 1);
-        setState("question");
-        setTimeout(() => answerRef.current?.focus(), 100);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setError(err instanceof Error ? err : new Error(String(err)));
-        setState("error");
-      }
-    };
-    void startInterview();
+    if (phase !== "idle") return;
+    interviewOp.start();
   }, []);
+
+  // Derive display state from hook + phase
+  const isLoading = interviewOp.isLoading || interviewOp.isStreaming;
+  const isError = interviewOp.isError || interviewOp.isConnectionLost;
+  const error = interviewOp.state.error;
+
+  // Calculate progress
+  const totalFields = session.fields.length;
+  const filledFields = session.fields.filter((f) => f.final_value || f.user_value).length;
 
   return (
     <div className="flex flex-col h-full">
@@ -153,25 +125,51 @@ export function KBInterviewView({
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Loading state */}
-          {state === "loading" && (
+          {isLoading && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Loader2 className="w-8 h-8 text-muted-foreground animate-spin mb-4" />
-              <p className="text-muted-foreground">{t("kb.aiThinking")}</p>
+              <p className="text-muted-foreground">{t("aiActions.aiThinking")}</p>
+              <button
+                type="button"
+                onClick={interviewOp.cancel}
+                className="flex items-center gap-1.5 mt-4 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
+              >
+                <OctagonX className="w-3.5 h-3.5" />
+                {t("aiActions.stop")}
+              </button>
+            </div>
+          )}
+
+          {/* Connection lost state */}
+          {interviewOp.isConnectionLost && (
+            <div className="p-4 border border-amber-200 dark:border-amber-900/50 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  {t("aiActions.connectionLost")}
+                </p>
+                <button
+                  type="button"
+                  onClick={interviewOp.retry}
+                  className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                >
+                  {t("aiActions.connectionLostRetry")}
+                </button>
+              </div>
             </div>
           )}
 
           {/* Error state */}
-          {state === "error" && error && (
-            <InterviewErrorState error={error} onRetry={requestNextQuestion} />
+          {isError && !interviewOp.isConnectionLost && error && (
+            <InterviewErrorState error={error} onRetry={interviewOp.retry} />
           )}
 
           {/* Question state */}
-          {(state === "question" || state === "answering") && currentQuestion && (
+          {(phase === "question" || phase === "answering") && currentQuestion && !isLoading && (
             <InterviewQuestionCard
               question={currentQuestion}
               session={session}
               answer={answer}
-              state={state}
+              state={phase}
               answerRef={answerRef}
               onAnswerChange={setAnswer}
               onSubmitAnswer={handleSubmitAnswer}
@@ -180,7 +178,7 @@ export function KBInterviewView({
           )}
 
           {/* Complete state */}
-          {state === "complete" && (
+          {phase === "complete" && (
             <InterviewCompleteState onRequestMoreQuestions={requestNextQuestion} onBack={onBack} />
           )}
         </div>

@@ -60,7 +60,7 @@ export function GenerationPanel({
             setWordTarget={controller.setWordTarget}
             tone={controller.tone}
             setTone={controller.setTone}
-            isPending={controller.startMutation.isPending}
+            isPending={controller.isLoading}
             onGenerate={controller.handleGenerate}
             onStartSession={onStartSession}
           />

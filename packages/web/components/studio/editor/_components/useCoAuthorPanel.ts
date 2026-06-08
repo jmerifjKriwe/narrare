@@ -1,10 +1,21 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useCallback, useRef, useState } from "react";
+/**
+ * Co-Author panel hook — manages the co-author SSE lifecycle via useAIOperation.
+ *
+ * Replaces the previous manual AbortController + startCoAuthorStreaming pattern
+ * with the shared AI operation primitive (§16, ADR-043).
+ *
+ * On success, transitions to review mode with per-change accept/reject.
+ * On stop/cancel, preserves partial output for user review.
+ * Structured AIErrorResponse replaces raw error.message.
+ */
 
-import { getCoAuthorPhaseLabel } from "./coauthor-message-utils";
-import { startCoAuthorStreaming } from "./coauthor-streaming";
+import { useTranslations } from "next-intl";
+import { useCallback, useState } from "react";
+import { type CoAuthorRevision, streamCoAuthor } from "@/lib/api/coauthor";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
+import { createAcceptanceMap, getCoAuthorPhaseLabel } from "./coauthor-message-utils";
 import type { CoAuthorPhase } from "./coauthor-styles";
 import { useCoAuthorApply } from "./useCoAuthorApply";
 import { useCoAuthorReviewState } from "./useCoAuthorReviewState";
@@ -37,13 +48,13 @@ export function useCoAuthorPanel({
   onClose,
 }: UseCoAuthorPanelParams) {
   const t = useTranslations("studio");
-  const [phase, setPhase] = useState<CoAuthorPhase>("focus");
   const [streamedText, setStreamedText] = useState("");
   const [reasoning, setReasoning] = useState("");
   const [requestId, setRequestId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [manualPhase, setManualPhase] = useState<CoAuthorPhase | null>(null);
+  const [localErrorMsg, setLocalErrorMsg] = useState<string | null>(null);
+
   const {
     selectedFocus,
     changes,
@@ -56,36 +67,74 @@ export function useCoAuthorPanel({
     handleToggleChange,
   } = useCoAuthorReviewState();
 
+  const {
+    state,
+    start,
+    cancel,
+    notifyData,
+    retry,
+    isLoading,
+    isStreaming,
+    isComplete,
+    isError,
+    isConnectionLost,
+  } = useAIOperation<CoAuthorRevision | null>({
+    execute: async (signal) => {
+      setStreamedText("");
+      setChanges([]);
+      setReasoning("");
+      setRequestId(crypto.randomUUID());
+
+      let revision: CoAuthorRevision | null = null;
+
+      await streamCoAuthor(
+        chapterId,
+        novelId,
+        {
+          selection_text: selectionText,
+          context_before: contextBefore,
+          context_after: contextAfter,
+          focus: [...selectedFocus],
+        },
+        {
+          onChunk: (text) => {
+            notifyData();
+            setStreamedText((prev) => prev + text);
+          },
+          onComplete: (rev) => {
+            revision = rev;
+            setChanges(rev.changes);
+            setReasoning(rev.reasoning);
+            if (rev.request_id) setRequestId(rev.request_id);
+            setAcceptance(createAcceptanceMap(rev.changes, true));
+          },
+          onError: (err) => {
+            throw err;
+          },
+        },
+        signal,
+      );
+
+      return revision;
+    },
+    onSuccess: (revision) => {
+      if (revision) {
+        setManualPhase(revision.changes.length > 0 ? "review" : "done");
+      }
+    },
+    connectionLossTimeout: 15_000,
+  });
+
+  // Merge useAIOperation lifecycle with manual phase overrides (stop-with-output)
+  const phase: CoAuthorPhase =
+    manualPhase ??
+    (isLoading || isStreaming ? "streaming" : isComplete ? "review" : isError ? "error" : "focus");
+
   const handleStart = useCallback(() => {
     if (selectedFocus.length === 0) return;
-    startCoAuthorStreaming({
-      novelId,
-      chapterId,
-      selectionText,
-      contextBefore,
-      contextAfter,
-      selectedFocus,
-      errorGeneric: t("coAuthor.errorGeneric"),
-      abortRef,
-      setPhase,
-      setStreamedText,
-      setChanges,
-      setReasoning,
-      setRequestId,
-      setAcceptance,
-      setErrorMsg,
-    });
-  }, [
-    selectedFocus,
-    chapterId,
-    novelId,
-    selectionText,
-    contextBefore,
-    contextAfter,
-    t,
-    setChanges,
-    setAcceptance,
-  ]);
+    setManualPhase(null);
+    start();
+  }, [selectedFocus, start]);
 
   const handleApply = useCoAuthorApply({
     changes,
@@ -96,28 +145,30 @@ export function useCoAuthorPanel({
     novelId,
     selectionText,
     onAccept,
-    setPhase,
+    setPhase: (p) => {
+      setManualPhase(p);
+      if (p !== "error") setLocalErrorMsg(null);
+    },
     setSubmitting,
-    setErrorMsg,
+    setErrorMsg: (msg) => setLocalErrorMsg(msg),
     errorGeneric: t("coAuthor.errorGeneric"),
   });
 
   const handleCancel = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
+    cancel();
+    setManualPhase(null);
     onClose();
-  }, [onClose]);
+  }, [cancel, onClose]);
 
   const handleStop = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setPhase(streamedText.trim().length > 0 ? "review" : "focus");
-  }, [streamedText]);
+    cancel();
+    setManualPhase(streamedText.trim().length > 0 ? "review" : "focus");
+  }, [cancel, streamedText]);
 
   const handleRetry = useCallback(() => {
-    setPhase("focus");
-    setErrorMsg(null);
-  }, []);
+    setManualPhase(null);
+    retry();
+  }, [retry]);
 
   const phaseLabel = getCoAuthorPhaseLabel(phase, t);
 
@@ -129,7 +180,11 @@ export function useCoAuthorPanel({
     reasoning,
     submitting,
     acceptance,
-    errorMsg,
+    /** Structured AIErrorResponse from useAIOperation (null when no error). */
+    error: state.error,
+    /** User-visible error message string (null when no error). */
+    errorMsg: state.error?.userMessage ?? localErrorMsg,
+    isConnectionLost,
     phaseLabel,
     t,
     toggleFocus,

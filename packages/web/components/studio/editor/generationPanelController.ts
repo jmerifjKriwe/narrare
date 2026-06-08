@@ -1,5 +1,19 @@
+"use client";
+
+/**
+ * Generation panel controller — manages chapter generation lifecycle via useAIOperation.
+ *
+ * Replaces the previous manual AbortController + useMutation pattern with the shared
+ * AI operation primitive (§16, ADR-043). Provides:
+ * - Unified lifecycle: idle → loading → streaming → complete → error | connection_lost
+ * - Server-side cancel via writingApi.stopGeneration + hook-level AbortController
+ * - Structured AIErrorResponse instead of raw error.message mapping
+ * - Connection-loss detection with partial output preservation
+ */
+
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
+
 import {
   type ContextMeta,
   type GenerateRequest,
@@ -7,6 +21,7 @@ import {
   streamGeneration,
   writingApi,
 } from "@/lib/api/generation";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useMemoryStatus, useRecordFeedback } from "@/lib/hooks/useMemory";
 import type { FeedbackRequest, TokenUsage } from "@/types";
 
@@ -24,104 +39,97 @@ export function useGenerationPanelController({
   novelId,
   chapterId,
   onDraftAccepted,
-  t,
+  t: _t,
 }: ControllerArgs) {
   const [mode, setMode] = useState<GenerationMode>("full_draft");
   const [outline, setOutline] = useState("");
   const [prompt, setPrompt] = useState("");
   const [wordTarget, setWordTarget] = useState<number>(0);
   const [tone, setTone] = useState("balanced");
-  const [phase, setPhase] = useState<PanelPhase>("config");
   const [draftText, setDraftText] = useState("");
   const [requestId, setRequestId] = useState<string | null>(null);
   const [wordCount, setWordCount] = useState(0);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [connectionLost, setConnectionLost] = useState(false);
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
   const [contextMeta, setContextMeta] = useState<ContextMeta | null>(null);
   const [showRating, setShowRating] = useState<RatingAction | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [stoppedWithOutput, setStoppedWithOutput] = useState(false);
   const lastParamsRef = useRef<GenerateRequest | null>(null);
   const originalTextRef = useRef<string>("");
   const recordFeedback = useRecordFeedback(novelId);
   const { eventCount } = useMemoryStatus(novelId);
 
   const buildRequest = useCallback((): GenerateRequest => {
-    const req: GenerateRequest = { mode, word_target: wordTarget > 0 ? wordTarget : null, tone };
+    const req: GenerateRequest = {
+      mode,
+      word_target: wordTarget > 0 ? wordTarget : null,
+      tone,
+    };
     if (mode === "full_draft" || mode === "scene_by_scene") req.outline = outline || null;
     if (mode === "full_draft" || mode === "interview_assisted") req.prompt = prompt || null;
     if (mode === "interview_assisted") req.auto_continue = true;
     return req;
   }, [mode, outline, prompt, wordTarget, tone]);
 
-  const startMutation = useMutation({
-    mutationFn: (req: GenerateRequest) => writingApi.startGeneration(chapterId, novelId, req),
-    onSuccess: async (data) => {
-      setRequestId(data.request_id);
-      setPhase("streaming");
+  const {
+    state,
+    start,
+    cancel,
+    notifyData,
+    retry,
+    isIdle,
+    isLoading,
+    isStreaming,
+    isComplete,
+    isConnectionLost,
+  } = useAIOperation<null>({
+    execute: async (signal) => {
+      const req = lastParamsRef.current!;
+      const data = await writingApi.startGeneration(chapterId, novelId, req);
+      const rid = data.request_id;
+
+      setRequestId(rid);
       setDraftText("");
       setWordCount(0);
-      setErrorMsg(null);
-      setConnectionLost(false);
-      setShowRating(null);
-      originalTextRef.current = "";
-      setContextMeta(null);
       setTokenUsage(null);
+      setContextMeta(null);
+      setShowRating(null);
+      setStoppedWithOutput(false);
+      originalTextRef.current = "";
 
-      const controller = new AbortController();
-      abortRef.current = controller;
       await streamGeneration(
-        data.request_id,
+        rid,
         (chunk) => {
+          notifyData();
           setDraftText((prev) => prev + chunk.text);
           setWordCount((prev) => prev + chunk.text.split(/\s+/).filter(Boolean).length);
         },
-        () => {
-          setPhase("review");
-          abortRef.current = null;
-        },
+        undefined,
         (err) => {
-          if (err.message.includes("HTTP")) {
-            setErrorMsg(err.message);
-            setPhase("error");
-          } else {
-            setConnectionLost(true);
-          }
-          abortRef.current = null;
+          throw err;
         },
-        controller.signal,
+        signal,
         setTokenUsage,
         setContextMeta,
       );
+
+      return null;
     },
-    onError: (err: unknown) => setStartError(err),
+    connectionLossTimeout: 15_000,
   });
 
-  function setStartError(err: unknown) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("MISSING_INPUT") || msg.includes("At least one")) {
-      setErrorMsg(t("generationPanel.validationMissingInput"));
-    } else if (msg.includes("CONTEXT_TOO_LARGE") || msg.includes("context_too_large")) {
-      if (msg.includes("outline") || msg.includes("OUTLINE")) {
-        setErrorMsg(t("generationPanel.contextTooLargeOutline", { max: 8000 }));
-      } else if (msg.includes("pinned") || msg.includes("PINNED") || msg.includes("kb_entries")) {
-        setErrorMsg(t("generationPanel.contextTooLargePinned"));
-      } else setErrorMsg(t("generationPanel.contextTooLargeGeneric"));
-    } else setErrorMsg(msg || t("generationPanel.startFailed"));
-    setPhase("error");
-  }
+  // -- Derived phase from hook state + stopped-with-output flag --
 
-  const handleGenerate = useCallback(() => {
-    const req = buildRequest();
-    lastParamsRef.current = req;
-    startMutation.mutate(req);
-  }, [buildRequest, startMutation]);
+  const phase: PanelPhase = stoppedWithOutput
+    ? "review"
+    : isIdle
+      ? "config"
+      : isLoading || isStreaming
+        ? "streaming"
+        : isComplete
+          ? "review"
+          : "error";
 
-  const handleStop = useCallback(async () => {
-    abortRef.current?.abort();
-    if (requestId) await writingApi.stopGeneration(requestId);
-    setPhase(draftText ? "review" : "config");
-  }, [requestId, draftText]);
+  // -- Mutation wrappers for accept/reject (REST calls, not AI operations) --
 
   const acceptMutation = useMutation({
     mutationFn: () => writingApi.acceptDraft(requestId!),
@@ -138,6 +146,48 @@ export function useGenerationPanelController({
       setShowRating("reject");
     },
   });
+
+  // -- Handlers --
+
+  const handleGenerate = useCallback(() => {
+    setStoppedWithOutput(false);
+    const req = buildRequest();
+    lastParamsRef.current = req;
+    start();
+  }, [buildRequest, start]);
+
+  const handleStop = useCallback(async () => {
+    if (requestId) {
+      await writingApi.stopGeneration(requestId).catch(() => {});
+    }
+    cancel();
+
+    if (draftText) {
+      setStoppedWithOutput(true);
+    }
+  }, [requestId, draftText, cancel]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (requestId) {
+      await writingApi.rejectDraft(requestId).catch(() => {});
+    }
+    setDraftText("");
+    setRequestId(null);
+    setStoppedWithOutput(false);
+    setContextMeta(null);
+    setShowRating(null);
+    originalTextRef.current = "";
+
+    if (lastParamsRef.current) {
+      lastParamsRef.current = buildRequest();
+      start();
+    }
+  }, [requestId, buildRequest, start]);
+
+  const handleRetry = useCallback(() => {
+    setStoppedWithOutput(false);
+    retry();
+  }, [retry]);
 
   const handleRatingDone = useCallback(
     (rating?: number, reason?: string) => {
@@ -162,7 +212,7 @@ export function useGenerationPanelController({
           { onError: () => undefined },
         );
       }
-      setPhase("config");
+      setStoppedWithOutput(false);
       setDraftText("");
       setRequestId(null);
       setShowRating(null);
@@ -172,28 +222,18 @@ export function useGenerationPanelController({
     [showRating, draftText, requestId, mode, novelId, chapterId, recordFeedback],
   );
 
-  const handleRegenerate = useCallback(async () => {
-    if (requestId) await writingApi.rejectDraft(requestId);
-    setDraftText("");
-    setRequestId(null);
-    setPhase("config");
-    setContextMeta(null);
-    if (lastParamsRef.current) startMutation.mutate(lastParamsRef.current);
-  }, [requestId, startMutation]);
-
-  const handleRetry = useCallback(() => {
-    setConnectionLost(false);
-    setErrorMsg(null);
-    if (lastParamsRef.current) startMutation.mutate(lastParamsRef.current);
-  }, [startMutation]);
-
   return {
     acceptMutation,
-    connectionLost,
+    connectionLost: isConnectionLost,
     contextMeta,
     draftText,
-    errorMsg,
+    /** Structured AIErrorResponse (null when no error). §16.5 */
+    error: state.error,
+    /** Resolved user-visible error message string (null when no error). */
+    errorMsg: state.error?.userMessage ?? null,
     eventCount,
+    /** True while the AI operation is loading (before first streaming chunk). */
+    isLoading,
     handleGenerate,
     handleRatingDone,
     handleRegenerate,
@@ -201,6 +241,7 @@ export function useGenerationPanelController({
     handleStop,
     mode,
     outline,
+    /** Derived panel phase from AI operation status. */
     phase,
     prompt,
     rejectMutation,
@@ -210,7 +251,6 @@ export function useGenerationPanelController({
     setTone,
     setWordTarget,
     showRating,
-    startMutation,
     tokenUsage,
     tone,
     wordCount,

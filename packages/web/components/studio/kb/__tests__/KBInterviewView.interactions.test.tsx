@@ -116,10 +116,11 @@ describe("KBInterviewView — Interactions & Flows", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to get question")).toBeDefined();
+      // Error is now mapped to AIErrorResponse with i18n key
+      expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
     });
 
-    expect(screen.getByText("kb.retry")).toBeDefined();
+    expect(screen.getByText("aiActions.retry")).toBeDefined();
   });
 
   it("retry button re-requests question after error", async () => {
@@ -140,10 +141,10 @@ describe("KBInterviewView — Interactions & Flows", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Failed")).toBeDefined();
+      expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText("kb.retry"));
+    fireEvent.click(screen.getByText("aiActions.retry"));
 
     await waitFor(() => {
       expect(onRequestQuestion).toHaveBeenCalledTimes(2);

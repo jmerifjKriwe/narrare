@@ -21,7 +21,7 @@ interface UseCoAuthorApplyParams {
   readonly novelId: string;
   readonly selectionText: string;
   readonly onAccept: (revisedText: string) => void;
-  readonly setPhase: Dispatch<SetStateAction<CoAuthorPhase>>;
+  readonly setPhase: Dispatch<SetStateAction<CoAuthorPhase | null>>;
   readonly setSubmitting: Dispatch<SetStateAction<boolean>>;
   readonly setErrorMsg: Dispatch<SetStateAction<string | null>>;
   readonly errorGeneric: string;

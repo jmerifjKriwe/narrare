@@ -13,8 +13,9 @@
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import type { ImproveSuggestion, KBImproveAnalysisResponse } from "@/lib/api/kb-improve";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 import { useKBImproveAnalysis, useKBImproveApply } from "@/lib/hooks/useKBImprove";
 
 import { ImproveErrorState } from "./_components/ImproveErrorState";
@@ -38,7 +39,7 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
   const [assessment, setAssessment] = useState("");
   const [completenessScore, setCompletenessScore] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<AIErrorResponse | null>(null);
 
   const analyzeMutation = useKBImproveAnalysis(novelId, entryId);
   const applyMutation = useKBImproveApply(novelId, entryId);
@@ -58,8 +59,12 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
       );
       setState("review");
     } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setState("error");
+      const mapped = mapSSEError(err);
+      if (mapped) {
+        setError(mapped);
+        setState("error");
+      }
+      // Abort errors are silently ignored
     }
   }
 
@@ -109,8 +114,11 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
         onApplied();
       }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setState("error");
+      const mapped = mapSSEError(err);
+      if (mapped) {
+        setError(mapped);
+        setState("error");
+      }
     }
   }
 

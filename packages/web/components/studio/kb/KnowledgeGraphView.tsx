@@ -52,9 +52,13 @@ export function KnowledgeGraphView({ novelId, onSelectEntry }: KnowledgeGraphVie
 
   // --- Render ---
   if (controller.error) {
+    const errorMsg =
+      "userMessage" in controller.error
+        ? (controller.error as { userMessage: string }).userMessage
+        : (controller.error["message"] ?? "Failed to load graph data");
     return (
       <div className="flex-1 flex items-center justify-center text-destructive">
-        <p>{controller.error.message || "Failed to load graph data"}</p>
+        <p>{errorMsg}</p>
       </div>
     );
   }

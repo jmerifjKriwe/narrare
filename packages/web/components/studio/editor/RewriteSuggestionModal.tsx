@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, Loader2, Plus, RotateCcw, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Plus, RotateCcw, Sparkles, X } from "lucide-react";
 import type { useTranslations } from "next-intl";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 import { InlineDiff } from "./InlineDiff";
 import type { AISuggestion } from "./TipTapEditorController";
 
@@ -15,6 +16,7 @@ interface RewriteSuggestionModalProps {
   onRejectionReasonChange: (reason: string) => void;
   showRejectionInput: boolean;
   isRewriteStreaming: boolean;
+  rewriteError: AIErrorResponse | null;
   onReject: () => void;
   onInsertAsNew: () => void;
   onNewSuggestions: () => void;
@@ -30,6 +32,7 @@ export function RewriteSuggestionModal({
   onRejectionReasonChange,
   showRejectionInput,
   isRewriteStreaming,
+  rewriteError,
   onReject,
   onInsertAsNew,
   onNewSuggestions,
@@ -78,6 +81,27 @@ export function RewriteSuggestionModal({
             <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>{t("aiActions.generating")}</span>
+            </div>
+          )}
+
+          {/* Structured error display (§11 no silent failures) */}
+          {rewriteError && !isRewriteStreaming && (
+            <div className="flex items-start gap-2 mt-4 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-sm">
+              <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-700 dark:text-red-400 font-medium">
+                  {getErrorMessage(rewriteError, t)}
+                </p>
+                {rewriteError.retryable && (
+                  <button
+                    type="button"
+                    onClick={onNewSuggestions}
+                    className="mt-1 text-red-600 dark:text-red-400 underline hover:no-underline"
+                  >
+                    {t("aiActions.retry")}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -138,4 +162,20 @@ export function RewriteSuggestionModal({
       </div>
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve a structured AIErrorResponse to a user-facing message.
+ * Uses the i18n key when available, falls back to the mapped userMessage.
+ */
+function getErrorMessage(error: AIErrorResponse, t: StudioTranslator): string {
+  try {
+    return t(error.i18nKey as Parameters<typeof t>[0]);
+  } catch {
+    return error.userMessage || t("aiActions.errorDefault");
+  }
 }

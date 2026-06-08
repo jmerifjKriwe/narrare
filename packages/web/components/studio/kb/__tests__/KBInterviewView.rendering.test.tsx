@@ -71,7 +71,7 @@ describe("KBInterviewView — Rendering & Display", () => {
     vi.clearAllMocks();
   });
 
-  it("shows loading state on mount while requesting first question", () => {
+  it("shows loading state on mount while requesting first question", async () => {
     // Keep promise pending — don't resolve
     const onRequestQuestion = vi.fn().mockReturnValue(new Promise(() => {}));
 
@@ -86,8 +86,12 @@ describe("KBInterviewView — Rendering & Display", () => {
       />,
     );
 
-    expect(screen.getByText("kb.aiThinking")).toBeDefined();
-    expect(onRequestQuestion).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("aiActions.aiThinking")).toBeDefined();
+
+    // start() defers execute via queueMicrotask — wait for it
+    await waitFor(() => {
+      expect(onRequestQuestion).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("shows question after SSE completes", async () => {

@@ -97,6 +97,7 @@ class NameGeneratorService:
                 "count": str(request.count),
                 "gender": request.gender.value,
                 "existing_names": ", ".join(existing_names),
+                "explanation_language": request.explanation_language,
             },
         )
 

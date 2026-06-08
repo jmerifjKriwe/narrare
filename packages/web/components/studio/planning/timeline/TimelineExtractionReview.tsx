@@ -99,7 +99,7 @@ export function TimelineExtractionReview({ novelId, onClose }: TimelineExtractio
         chaptersError={chaptersError}
         selectedChapterIds={selectedChapterIds}
         isExtracting={isExtracting}
-        extractError={extractError}
+        extractError={extractError?.userMessage ?? null}
         onToggleChapter={handleToggleChapter}
         onExtract={handleExtract}
       />

@@ -53,6 +53,7 @@
 | [SETUP-002](setup/SETUP-002-demo-content.md) | Demo Projects | ✅ | ✅ |
 | [SETUP-003](setup/SETUP-003-import.md) | Project Import | 📋 | ❌ |
 | [SETUP-004](setup/SETUP-004-provider-config.md) | AI Provider Configuration | ✅ | ✅ |
+| [ONBOARD-001](onboarding-user-guide.md) | Onboarding & AI-Einführung | 📋 | ❌ |
 
 ### Writing
 | ID | Feature | Status | MVP |
@@ -150,6 +151,7 @@
 |----|---------|--------|-----|
 | [PROMPT-001](prompts/PROMPT-001-file-overrides.md) | File-based Prompt Overrides | ✅ | ✅ |
 | [PROMPT-002](prompts/PROMPT-002-db-templates.md) | User DB Prompt Templates | ✅ | ✅ |
+| [PROMPT-003](prompt-customization-ux.md) | Prompt Customization UX | 📋 | ❌ |
 
 ### Import / Export
 | ID | Feature | Status | MVP |
@@ -165,6 +167,7 @@
 | [SET-002](settings/SET-002-project-settings.md) | Project Settings | ✅ | ✅ |
 | [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | ✅ | ✅ |
 | [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | ✅ | ❌ |
+| [KEYBOARD-001](keyboard-consistency.md) | Tastatur-Konsistenz | 📋 | ❌ |
 
 ### Analytics & Cost
 | ID | Feature | Status | MVP |
@@ -249,5 +252,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-06 — INFRA-013 moved to in-progress after P0 implementation.
+> Last updated: 2026-06-08 — ONBOARD-001, PROMPT-003, KEYBOARD-001 added (CR-07 UX Audit Remediation).
 > Features are specified before they are implemented — never after

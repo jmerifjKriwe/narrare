@@ -5,12 +5,17 @@
  *
  * Shows severity summary badges, overall assessment, and filterable issue cards.
  * Follows BetaReaderPanel layout (400px wide, border-left).
+ *
+ * Uses useAIOperation for lifecycle management with structured error mapping
+ * and cancel support (§16 AI-Interaction Standards).
  */
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ConsistencyResponse } from "@/lib/api/analysis";
-import { useConsistencyCheck } from "@/lib/hooks/useConsistency";
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
+import { analysisApi, type ConsistencyResponse } from "@/lib/api/analysis";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { ConsistencyPanelHeader } from "./ConsistencyPanelHeader";
 import {
@@ -33,59 +38,91 @@ interface ConsistencyPanelProps {
 
 export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPanelProps) {
   const t = useTranslations("analysis");
+  const tStudio = useTranslations("studio");
 
   const [scope, setScope] = useState<Scope>("selected");
-  const [viewState, setViewState] = useState<"idle" | "loading" | "results" | "error">("idle");
   const [result, setResult] = useState<ConsistencyResponse | null>(null);
-  const [error, setError] = useState<Error | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
 
-  const checkMutation = useConsistencyCheck(novelId);
   const setConsistencyResult = useEditorStore((s) => s.setConsistencyResult);
   const setConsistencyLoading = useEditorStore((s) => s.setConsistencyLoading);
   const activeChapterId = useEditorStore((s) => s.activeChapterId);
 
-  // --- Scope → chapter IDs mapping ---
+  // --- AI Operation lifecycle ---
 
-  const getChapterIds = useCallback((): string[] => {
-    if (scope === "current") return activeChapterId ? [activeChapterId] : chapterIds.slice(0, 1);
-    if (scope === "all") return [];
-    return chapterIds;
-  }, [scope, activeChapterId, chapterIds]);
-
-  // --- Run consistency check ---
-
-  const runCheck = useCallback(async () => {
-    const ids = getChapterIds();
-    // Allow empty ids only for "all" scope (backend fetches all chapters)
-    if (ids.length === 0 && scope !== "all") return;
-    setViewState("loading");
-    setConsistencyLoading(true);
-    setError(null);
-
-    try {
-      const res = await checkMutation.mutateAsync({
-        chapter_ids: ids,
-        check_types: ["character", "timeline", "world", "plot"],
-        include_kb: true,
-      });
+  const aiOp = useAIOperation<ConsistencyResponse>({
+    execute: async (signal) => {
+      const currentScope = scopeRef.current;
+      const ids = getChapterIdsForScope(currentScope);
+      if (ids.length === 0 && currentScope !== "all") {
+        throw new Error("No chapters selected");
+      }
+      return analysisApi.consistencyCheck(
+        novelId,
+        {
+          chapter_ids: ids,
+          check_types: ["character", "timeline", "world", "plot"],
+          include_kb: true,
+        },
+        signal,
+      );
+    },
+    errorMapper: (error) => {
+      const mapped = mapSSEError(error);
+      if (mapped) return mapped;
+      // mapSSEError returns null for aborts — propagate that
+      return null;
+    },
+    onSuccess: (res) => {
       setResult(res);
       setConsistencyResult(res);
-      setViewState("results");
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setViewState("error");
-    } finally {
-      setConsistencyLoading(false);
-    }
-  }, [getChapterIds, scope, checkMutation, setConsistencyResult, setConsistencyLoading]);
+    },
+    onError: () => {
+      setResult(null);
+    },
+    connectionLossTimeout: 30_000,
+  });
+
+  const viewState: "idle" | "loading" | "results" | "error" = aiOp.isConnectionLost
+    ? "error"
+    : aiOp.isLoading || aiOp.isStreaming
+      ? "loading"
+      : aiOp.isError
+        ? "error"
+        : aiOp.isComplete
+          ? "results"
+          : "idle";
+
+  const structuredError = aiOp.state.error;
+
+  // --- Scope → chapter IDs mapping ---
+
+  function getChapterIdsForScope(s: Scope): string[] {
+    if (s === "current") return activeChapterId ? [activeChapterId] : chapterIds.slice(0, 1);
+    if (s === "all") return [];
+    return chapterIds;
+  }
+
+  // --- Run / Cancel ---
+
+  const runCheck = useCallback(() => {
+    setConsistencyLoading(true);
+    aiOp.start();
+  }, [aiOp, setConsistencyLoading]);
+
+  // Sync loading state to store
+  useEffect(() => {
+    setConsistencyLoading(aiOp.isLoading || aiOp.isStreaming);
+  }, [aiOp.isLoading, aiOp.isStreaming, setConsistencyLoading]);
 
   // Auto-trigger on mount
   // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount
   useEffect(() => {
     if (viewState !== "idle") return;
-    void runCheck();
+    runCheck();
   }, []);
 
   // --- Elapsed timer for loading progress ---
@@ -115,16 +152,33 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
     return t(key as Parameters<typeof t>[0], params as Parameters<typeof t>[1]) as string;
   };
 
+  // --- Error message helper ---
+
+  const getErrorMessage = useCallback(
+    (error: AIErrorResponse | null): string => {
+      if (!error) return t("error");
+      // Try studio.aiActions.* key first (structured errors)
+      try {
+        return tStudio(error.i18nKey as Parameters<typeof tStudio>[0]);
+      } catch {
+        return error.userMessage || t("error");
+      }
+    },
+    [t, tStudio],
+  );
+
   // --- Render ---
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-background w-[400px] min-w-[400px]">
       <ConsistencyPanelHeader
         viewState={viewState}
-        isPending={checkMutation.isPending}
+        isPending={aiOp.isLoading || aiOp.isStreaming}
         onClose={onClose}
-        onRefresh={() => void runCheck()}
+        onRefresh={() => runCheck()}
+        onCancel={aiOp.isLoading || aiOp.isStreaming ? aiOp.cancel : undefined}
         t={t}
+        tStudio={tStudio}
       />
 
       {/* Scope selector */}
@@ -142,7 +196,13 @@ export function ConsistencyPanel({ novelId, chapterIds, onClose }: ConsistencyPa
 
           {/* Error state */}
           {viewState === "error" && (
-            <ConsistencyErrorState error={error} onRetry={() => void runCheck()} t={t} />
+            <ConsistencyErrorState
+              errorMessage={getErrorMessage(structuredError)}
+              isConnectionLost={aiOp.isConnectionLost}
+              onRetry={() => runCheck()}
+              t={t}
+              tStudio={tStudio}
+            />
           )}
 
           {/* Results */}

@@ -130,6 +130,10 @@ jobs:
         run: |
           uv run python scripts/check_streaming_compliance.py
 
+      - name: Check AI interaction compliance (ADR-043 / §16)
+        run: |
+          uv run python scripts/checks/check_ai_interaction_compliance.py
+
       - name: System health aggregation
         run: uv run python scripts/check_system_health.py
 

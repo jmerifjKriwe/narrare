@@ -84,6 +84,7 @@ export function TipTapEditor({
           onRejectionReasonChange={controller.setRejectionReason}
           showRejectionInput={controller.showRejectionInput}
           isRewriteStreaming={controller.isRewriteStreaming}
+          rewriteError={controller.rewriteError}
           onReject={controller.rejectSuggestion}
           onInsertAsNew={controller.insertAsNew}
           onNewSuggestions={controller.handleAIRewrite}

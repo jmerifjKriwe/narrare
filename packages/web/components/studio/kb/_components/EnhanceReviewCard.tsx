@@ -56,11 +56,9 @@ export function EnhanceReviewCard({
         </div>
         <div className="flex items-center gap-2">
           {isSelected ? (
-            <span className="text-xs text-green-600 dark:text-green-400">
-              {t("kb.willApply") || "Will apply"}
-            </span>
+            <span className="text-xs text-green-600 dark:text-green-400">{t("kb.willApply")}</span>
           ) : (
-            <span className="text-xs text-muted-foreground">{t("kb.skipped") || "Skipped"}</span>
+            <span className="text-xs text-muted-foreground">{t("kb.skipped")}</span>
           )}
         </div>
       </button>
@@ -70,17 +68,17 @@ export function EnhanceReviewCard({
         {/* Original */}
         <div className="p-4">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-            {t("kb.original") || "Original"}
+            {t("kb.original")}
           </div>
           <div className="text-sm text-muted-foreground whitespace-pre-wrap line-through opacity-70">
-            {enhancement.original || <span className="italic">{t("kb.empty") || "(empty)"}</span>}
+            {enhancement.original || <span className="italic">{t("kb.empty")}</span>}
           </div>
         </div>
 
         {/* Suggested */}
         <div className="p-4">
           <div className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">
-            {t("kb.suggested") || "Suggested"}
+            {t("kb.suggested")}
           </div>
           <div className="text-sm whitespace-pre-wrap">{enhancement.suggested}</div>
         </div>
@@ -109,7 +107,7 @@ export function EnhanceReviewCard({
           className="flex items-center gap-1 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-muted transition-colors"
         >
           <X className="w-3 h-3" />
-          {t("kb.reject")}
+          {t("aiActions.reject")}
         </button>
         <button
           type="button"
@@ -120,7 +118,7 @@ export function EnhanceReviewCard({
           className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
         >
           <Check className="w-3 h-3" />
-          {t("kb.accept")}
+          {t("aiActions.accept")}
         </button>
       </div>
     </div>

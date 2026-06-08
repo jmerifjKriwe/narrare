@@ -1,0 +1,14 @@
+# ADR-043 / §16 AI Interaction Compliance — Exclude List
+#
+# One relative path (from repo root) per line. Lines starting with # are comments.
+# Use this for files undergoing migration, with a tracking issue reference.
+#
+# Format: <path/from/repo/root>  # ISSUE-123: reason
+#
+# Current baseline (2026-06-08):
+packages/web/components/studio/generation/NameGenerator.tsx
+packages/web/components/studio/kb/ConsistencyCheckPanel.tsx
+packages/web/components/studio/analysis/BetaReaderPanel.tsx
+packages/web/components/studio/extraction/ExtractionPanel.tsx
+packages/web/components/studio/kb/useWorldbuildingAnalysis.ts
+packages/web/__tests__/connection-lost.test.tsx

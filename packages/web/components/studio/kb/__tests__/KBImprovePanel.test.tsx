@@ -165,10 +165,11 @@ describe("KBImprovePanel", () => {
     renderPanel();
 
     await waitFor(() => {
-      expect(screen.getByText("Analysis failed")).toBeDefined();
+      // Error is now mapped to AIErrorResponse with i18n key
+      expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
     });
 
-    expect(screen.getByText("kb.retry")).toBeDefined();
+    expect(screen.getByText("aiActions.retry")).toBeDefined();
   });
 
   // -----------------------------------------------------------------------
@@ -318,13 +319,13 @@ describe("KBImprovePanel", () => {
     // Click "Apply Selected"
     fireEvent.click(screen.getByText("kb.applySelected"));
 
-    // The component should show the error
+    // The error is now mapped to AIErrorResponse with i18n key
     await waitFor(() => {
-      expect(screen.getByText("Apply failed")).toBeDefined();
+      expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
     });
 
-    // The error retry button should be visible
-    expect(screen.getByText("kb.retry")).toBeDefined();
+    // The error retry button uses aiActions.retry
+    expect(screen.getByText("aiActions.retry")).toBeDefined();
 
     // onApplied should NOT be called
     expect(onApplied).not.toHaveBeenCalled();

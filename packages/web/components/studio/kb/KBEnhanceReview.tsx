@@ -5,11 +5,14 @@
  *
  * Shows before/after comparisons for AI-enhanced fields,
  * with accept/reject per field and bulk actions.
+ *
+ * Uses useAIOperation for lifecycle management (§16).
  */
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type { KBCreationSession, KBEnhancementResult } from "@/lib/api/kb-sessions";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 
 import { EnhanceReviewBulkActions } from "./_components/EnhanceReviewBulkActions";
 import { EnhanceReviewCard } from "./_components/EnhanceReviewCard";
@@ -17,7 +20,7 @@ import { EnhanceReviewFooter } from "./_components/EnhanceReviewFooter";
 import { EnhanceReviewHeader } from "./_components/EnhanceReviewHeader";
 import { EnhanceErrorState, EnhanceLoadingState } from "./_components/EnhanceReviewStates";
 
-type EnhanceViewState = "idle" | "loading" | "review" | "error";
+type EnhancePhase = "idle" | "review" | "complete";
 
 interface KBEnhanceReviewProps {
   session: KBCreationSession;
@@ -35,12 +38,28 @@ export function KBEnhanceReview({
   onBack,
 }: KBEnhanceReviewProps) {
   const t = useTranslations("studio");
-  const [state, setState] = useState<EnhanceViewState>("idle");
+  const [phase, setPhase] = useState<EnhancePhase>("idle");
   const [enhancements, setEnhancements] = useState<KBEnhancementResult[]>([]);
   const [selectedFieldKeys, setSelectedFieldKeys] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<Error | null>(null);
 
-  // --- State management & handlers ---
+  // --- AI operation lifecycle via useAIOperation ---
+  const enhanceOp = useAIOperation<KBEnhancementResult[]>({
+    execute: () => onRequestEnhance(),
+    onSuccess: (results) => {
+      setEnhancements(results);
+      setSelectedFieldKeys(new Set(results.map((e) => e.field_key)));
+      setPhase("review");
+    },
+  });
+
+  // Start on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount — intentional mount-trigger pattern
+  useEffect(() => {
+    if (phase !== "idle") return;
+    enhanceOp.start();
+  }, []);
+
+  // --- Selection management ---
 
   function toggleFieldSelection(fieldKey: string) {
     setSelectedFieldKeys((prev) => {
@@ -76,40 +95,6 @@ export function KBEnhanceReview({
     return session.fields.find((f) => f.field_key === fieldKey)?.label || fieldKey;
   }
 
-  async function requestEnhancement() {
-    setState("loading");
-    setError(null);
-    try {
-      const results = await onRequestEnhance();
-      setEnhancements(results);
-      setSelectedFieldKeys(new Set(results.map((e) => e.field_key)));
-      setState("review");
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setState("error");
-    }
-  }
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount — intentional mount-trigger pattern
-  useEffect(() => {
-    if (state !== "idle") return;
-    const run = async () => {
-      setState("loading");
-      try {
-        const results = await onRequestEnhance();
-        setEnhancements(results);
-        setSelectedFieldKeys(new Set(results.map((e) => e.field_key)));
-        setState("review");
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error(String(err)));
-        setState("error");
-      }
-    };
-    void run();
-  }, []);
-
-  // --- Helpers for card accept/reject ---
-
   function handleCardAccept(fieldKey: string) {
     setSelectedFieldKeys((prev) => new Set(prev).add(fieldKey));
   }
@@ -122,12 +107,17 @@ export function KBEnhanceReview({
     });
   }
 
+  // --- Derive display state ---
+  const isLoading = enhanceOp.isLoading || enhanceOp.isStreaming;
+  const isError = enhanceOp.isError || enhanceOp.isConnectionLost;
+  const error = enhanceOp.state.error;
+
   // --- Render ---
 
   return (
     <div className="flex flex-col h-full">
       <EnhanceReviewHeader
-        state={state}
+        state={isLoading ? "loading" : isError ? "error" : phase === "review" ? "review" : "idle"}
         selectedCount={selectedFieldKeys.size}
         totalCount={enhancements.length}
         onBack={onBack}
@@ -137,13 +127,17 @@ export function KBEnhanceReview({
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto space-y-6">
-          {state === "loading" && <EnhanceLoadingState t={t} />}
+          {isLoading && <EnhanceLoadingState t={t} onCancel={enhanceOp.cancel} />}
 
-          {state === "error" && error && (
-            <EnhanceErrorState error={error} onRetry={requestEnhancement} t={t} />
+          {enhanceOp.isConnectionLost && error && (
+            <EnhanceErrorState error={error} onRetry={enhanceOp.retry} t={t} />
           )}
 
-          {state === "review" && (
+          {isError && !enhanceOp.isConnectionLost && error && (
+            <EnhanceErrorState error={error} onRetry={enhanceOp.retry} t={t} />
+          )}
+
+          {phase === "review" && (
             <div className="space-y-4">
               <EnhanceReviewBulkActions
                 count={enhancements.length}
@@ -168,7 +162,7 @@ export function KBEnhanceReview({
         </div>
       </div>
 
-      {state === "review" && (
+      {phase === "review" && (
         <EnhanceReviewFooter
           selectedCount={selectedFieldKeys.size}
           onBack={onBack}

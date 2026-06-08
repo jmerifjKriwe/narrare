@@ -83,7 +83,7 @@ describe("KBEnhanceReview", () => {
     vi.clearAllMocks();
   });
 
-  it("shows loading state on mount (idle triggers auto-enhance)", () => {
+  it("shows loading state on mount (idle triggers auto-enhance)", async () => {
     // Don't resolve the promise — keep loading
     const onRequestEnhance = vi.fn().mockReturnValue(new Promise(() => {}));
 
@@ -97,9 +97,13 @@ describe("KBEnhanceReview", () => {
       />,
     );
 
-    expect(screen.getByText("kb.aiEnhancing")).toBeDefined();
+    expect(screen.getByText("aiActions.generating")).toBeDefined();
     expect(screen.getByText("kb.aiEnhancingDesc")).toBeDefined();
-    expect(onRequestEnhance).toHaveBeenCalledTimes(1);
+
+    // start() defers execute via queueMicrotask — wait for it
+    await waitFor(() => {
+      expect(onRequestEnhance).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("shows error state with retry button", async () => {
@@ -116,10 +120,11 @@ describe("KBEnhanceReview", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Enhancement failed")).toBeDefined();
+      // Error is now a structured AIErrorResponse with i18n key
+      expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
     });
 
-    expect(screen.getByText("kb.retry")).toBeDefined();
+    expect(screen.getByText("aiActions.retry")).toBeDefined();
   });
 
   it("shows before/after comparison after enhancement completes", async () => {
@@ -293,7 +298,9 @@ describe("KBEnhanceReview", () => {
       expect(screen.getByText("kb.enhanceSelected")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText("kb.rejectAll"));
+    // Multiple buttons use "aiActions.reject" (cards + footer) — the last one is "Reject All"
+    const rejectButtons = screen.getAllByText("aiActions.reject");
+    fireEvent.click(rejectButtons[rejectButtons.length - 1]);
     expect(screen.getByText("kb.enhanceSelected")).toBeDefined();
   });
 
@@ -360,11 +367,12 @@ describe("KBEnhanceReview", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("First attempt failed")).toBeDefined();
+      // Error is now mapped to AIErrorResponse with i18n key
+      expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
     });
 
-    // Click retry
-    fireEvent.click(screen.getByText("kb.retry"));
+    // Click retry (now uses aiActions.retry key)
+    fireEvent.click(screen.getByText("aiActions.retry"));
 
     await waitFor(() => {
       expect(onRequestEnhance).toHaveBeenCalledTimes(2);

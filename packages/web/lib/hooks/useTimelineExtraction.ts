@@ -1,8 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { confirmExtractedEvent, extractExpressionsSSE, timelineApi } from "@/lib/api/timeline";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 import type {
   CharacterAgeReport,
   ExtractedEvent,
@@ -14,20 +16,31 @@ import type {
  * Extract temporal expressions from chapters via SSE streaming.
  * Events are accumulated progressively as SSE chunks arrive.
  * Invalidates the events list on completion.
+ *
+ * NOTE: Full useAIOperation migration is not possible here because the SSE
+ * transport uses onEvent/onComplete/onError callbacks for progressive
+ * accumulation, not a single Promise. We apply partial migration:
+ * - Structured errors via mapSSEError (§16.5)
+ * - AbortController exposed for cancel support (§16.2)
  */
 export function useSSEExtraction(novelId: string) {
   const queryClient = useQueryClient();
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedEvents, setExtractedEvents] = useState<ExtractedEvent[]>([]);
-  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractError, setExtractError] = useState<AIErrorResponse | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const startExtraction = useCallback(
     (chapterIds: string[]) => {
+      // Abort any previous extraction
+      abortRef.current?.abort();
+
       setIsExtracting(true);
       setExtractedEvents([]);
       setExtractError(null);
 
-      const abortController = new AbortController();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       extractExpressionsSSE(
         novelId,
@@ -38,27 +51,34 @@ export function useSSEExtraction(novelId: string) {
           },
           onComplete: () => {
             setIsExtracting(false);
+            abortRef.current = null;
             void queryClient.invalidateQueries({ queryKey: ["timeline", novelId, "events"] });
           },
           onError: (error) => {
             setIsExtracting(false);
-            setExtractError(error.message);
+            abortRef.current = null;
+            const mapped = mapSSEError(error);
+            setExtractError(mapped);
           },
         },
-        abortController.signal,
+        controller.signal,
       );
-
-      return () => abortController.abort();
     },
     [novelId, queryClient],
   );
+
+  const cancelExtraction = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsExtracting(false);
+  }, []);
 
   const reset = useCallback(() => {
     setExtractedEvents([]);
     setExtractError(null);
   }, []);
 
-  return { isExtracting, extractedEvents, extractError, startExtraction, reset };
+  return { isExtracting, extractedEvents, extractError, startExtraction, cancelExtraction, reset };
 }
 
 /**

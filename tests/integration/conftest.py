@@ -62,6 +62,19 @@ def gc_after_test():
     gc.collect()
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def _clear_client_cookies(client: AsyncClient) -> AsyncGenerator[None]:  # pyright: ignore[reportUnusedFunction]
+    """Clear cookies between tests to prevent session-scoped cookie leakage.
+
+    The ``client`` fixture is session-scoped (one AsyncClient for all tests).
+    Without cleanup, tests that explicitly set cookies (e.g. refresh-token
+    tests) leak those cookies to subsequent tests, causing 401 errors when
+    ``pytest-randomly`` shuffles execution order.
+    """
+    yield
+    client.cookies.clear()
+
+
 @pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
 async def check_db_available() -> None:
     """Skip all integration tests if database is not available, run migrations."""

@@ -10,6 +10,7 @@ import {
   insertAIContent,
 } from "@/components/studio/editor/extensions/AIAnnotation";
 import { type ExtendLength, streamExtend } from "@/lib/api/generation";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,7 +23,11 @@ interface ContinueButtonProps {
   readonly tone?: string;
 }
 
-type ExtendPhase = "idle" | "streaming";
+interface ExtendRequestParams {
+  readonly textBefore: string;
+  readonly textAfter: string | null;
+  readonly selectedLength: ExtendLength;
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -32,11 +37,82 @@ export function ContinueButton({ editor, chapterId, novelId, tone }: ContinueBut
   const t = useTranslations("studio");
   const locale = useLocale();
   const [length, setLength] = useState<ExtendLength>("medium");
-  const [phase, setPhase] = useState<ExtendPhase>("idle");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const accumulatedRef = useRef("");
+  const requestRef = useRef<ExtendRequestParams | null>(null);
+
+  // -- AI operation lifecycle via useAIOperation --
+
+  const { start, cancel, notifyData, isLoading, isStreaming } = useAIOperation<void>({
+    execute: (signal) =>
+      new Promise<void>((resolve, reject) => {
+        const req = requestRef.current;
+        if (!req || editor.isDestroyed) {
+          resolve();
+          return;
+        }
+
+        let settled = false;
+        let isFirstChunk = true;
+
+        const onAbort = () => {
+          if (!settled) {
+            settled = true;
+            reject(new DOMException("Aborted", "AbortError"));
+          }
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+
+        streamExtend(
+          chapterId,
+          novelId,
+          {
+            text_before: req.textBefore,
+            text_after: req.textAfter,
+            length: req.selectedLength,
+            tone,
+            language: locale,
+          },
+          {
+            onChunk: (text) => {
+              if (editor.isDestroyed) return;
+              if (isFirstChunk) {
+                notifyData();
+                isFirstChunk = false;
+              }
+
+              const localId = `extend-${Date.now()}`;
+              if (accumulatedRef.current.length === 0) {
+                insertAIContent(editor, null, text, localId, "extend");
+              } else {
+                appendToPendingMark(editor, text);
+              }
+              accumulatedRef.current += text;
+            },
+            onComplete: () => {
+              if (!settled) {
+                settled = true;
+                signal.removeEventListener("abort", onAbort);
+                if (!editor.isDestroyed) {
+                  finalizePendingMark(editor, accumulatedRef.current);
+                }
+                resolve();
+              }
+            },
+            onError: (err) => {
+              if (!settled) {
+                settled = true;
+                signal.removeEventListener("abort", onAbort);
+                reject(err);
+              }
+            },
+          },
+          signal,
+        );
+      }),
+    connectionLossTimeout: 15_000,
+  });
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -52,74 +128,24 @@ export function ContinueButton({ editor, chapterId, novelId, tone }: ContinueBut
 
   const handleExtend = useCallback(
     (selectedLength: ExtendLength) => {
-      if (phase === "streaming") return;
+      if (isLoading || isStreaming) return;
       if (editor.isDestroyed) return;
 
       const $head = editor.state.selection.$head;
       const textBefore = $head.parent.textContent.slice(0, $head.parentOffset);
       const textAfter = $head.parent.textContent.slice($head.parentOffset);
 
-      setPhase("streaming");
-      setDropdownOpen(false);
+      requestRef.current = { textBefore, textAfter: textAfter || null, selectedLength };
       accumulatedRef.current = "";
-
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      let isFirstChunk = true;
-
-      streamExtend(
-        chapterId,
-        novelId,
-        {
-          text_before: textBefore,
-          text_after: textAfter || null,
-          length: selectedLength,
-          tone,
-          language: locale,
-        },
-        {
-          onRequestInfo: () => {
-            // Request ID received from first SSE event
-          },
-          onChunk: (text) => {
-            if (editor.isDestroyed) return;
-
-            if (isFirstChunk) {
-              const localId = `extend-${Date.now()}`;
-              insertAIContent(editor, null, text, localId, "extend");
-              accumulatedRef.current = text;
-              isFirstChunk = false;
-            } else {
-              appendToPendingMark(editor, text);
-              accumulatedRef.current += text;
-            }
-          },
-          onComplete: () => {
-            if (!editor.isDestroyed) {
-              finalizePendingMark(editor, accumulatedRef.current);
-            }
-            setPhase("idle");
-            abortRef.current = null;
-          },
-          onError: () => {
-            setPhase("idle");
-            abortRef.current = null;
-          },
-        },
-        controller.signal,
-      );
+      setDropdownOpen(false);
+      start();
     },
-    [editor, chapterId, novelId, tone, locale, phase],
+    [editor, isLoading, isStreaming, start],
   );
 
   const handleStop = useCallback(() => {
-    abortRef.current?.abort();
-    setPhase("idle");
-    abortRef.current = null;
-  }, []);
-
-  const isStreaming = phase === "streaming";
+    cancel();
+  }, [cancel]);
 
   return (
     <div className="relative" ref={dropdownRef}>

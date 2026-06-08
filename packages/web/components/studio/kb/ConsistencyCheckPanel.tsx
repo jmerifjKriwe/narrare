@@ -166,7 +166,14 @@ export function ConsistencyCheckPanel({
         <div className="max-w-3xl mx-auto p-6 space-y-4">
           {state === "loading" && <ConsistencyLoading onCancel={handleCancel} />}
           {state === "error" && error && (
-            <ConsistencyError message={error.message} onRetry={() => void runCheck(false)} />
+            <ConsistencyError
+              message={
+                "userMessage" in error
+                  ? (error as { userMessage: string }).userMessage
+                  : error["message"]
+              }
+              onRetry={() => void runCheck(false)}
+            />
           )}
           {state === "results" && result && (
             <ConsistencyResults result={result} onEntityClick={onEntityClick} />

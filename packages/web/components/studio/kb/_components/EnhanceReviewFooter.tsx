@@ -33,7 +33,7 @@ export function EnhanceReviewFooter({
         className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors text-sm"
       >
         <ArrowLeft className="w-4 h-4" />
-        {t("kb.backToFieldList") || "Back to Field List"}
+        {t("kb.backToFieldList")}
       </button>
       <div className="flex items-center gap-3">
         <button
@@ -41,7 +41,7 @@ export function EnhanceReviewFooter({
           onClick={onRejectAll}
           className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
         >
-          {t("kb.rejectAll") || "Reject All"}
+          {t("aiActions.reject")}
         </button>
         <button
           type="button"
@@ -50,7 +50,7 @@ export function EnhanceReviewFooter({
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 text-sm"
         >
           <Check className="w-4 h-4" />
-          {t("kb.applySelected", { count: selectedCount }) || `Apply Selected (${selectedCount})`}
+          {t("kb.applySelected", { count: selectedCount })}
         </button>
       </div>
     </div>

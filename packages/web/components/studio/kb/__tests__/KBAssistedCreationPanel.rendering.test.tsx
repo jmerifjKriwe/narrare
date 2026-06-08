@@ -234,7 +234,7 @@ describe("KBAssistedCreationPanel — Rendering & State", () => {
     renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
 
     // Should show the loading state with creating session text
-    expect(screen.getByText("kb.creatingSession")).toBeDefined();
+    expect(screen.getByText("kb.sessionCreating")).toBeDefined();
   });
 
   it("shows field list after session created", async () => {
@@ -279,7 +279,10 @@ describe("KBAssistedCreationPanel — Rendering & State", () => {
     renderWithProviders(<KBAssistedCreationPanel {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to create session")).toBeDefined();
+      // Error is mapped via mapSSEError → AIErrorResponse with German fallback
+      expect(
+        screen.getByText("Verbindung verloren. Prüfe deine Internetverbindung."),
+      ).toBeDefined();
     });
 
     // Cancel button should be visible in error state
@@ -299,7 +302,9 @@ describe("KBAssistedCreationPanel — Rendering & State", () => {
     renderWithProviders(<KBAssistedCreationPanel {...defaultProps} onCancel={onCancel} />);
 
     await waitFor(() => {
-      expect(screen.getByText("Creation failed")).toBeDefined();
+      expect(
+        screen.getByText("Verbindung verloren. Prüfe deine Internetverbindung."),
+      ).toBeDefined();
     });
 
     fireEvent.click(screen.getByText("kb.cancel"));
