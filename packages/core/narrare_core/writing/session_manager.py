@@ -59,12 +59,18 @@ class SessionManager:
     directly (RULE-08).
     """
 
-    SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
-    MAX_HISTORY_MESSAGES = 20
     KEY_PREFIX = "writing:session:"
 
-    def __init__(self, cache: SessionCacheProtocol) -> None:
+    def __init__(
+        self,
+        cache: SessionCacheProtocol,
+        *,
+        session_ttl_seconds: int = 30 * 60,
+        max_history_messages: int = 20,
+    ) -> None:
         self._cache = cache
+        self._session_ttl_seconds = session_ttl_seconds
+        self._max_history_messages = max_history_messages
 
     # ------------------------------------------------------------------
     # Public API (implements SessionManagerProtocol)
@@ -206,7 +212,7 @@ class SessionManager:
     async def _persist(self, state: SessionState) -> None:
         """Serialize and write to cache with TTL refresh."""
         key = self._cache_key(state.session_id)
-        await self._cache.set(key, self._serialize(state), self.SESSION_TTL_SECONDS)
+        await self._cache.set(key, self._serialize(state), self._session_ttl_seconds)
 
     async def _load(self, session_id: UUID) -> SessionState | None:
         """Load session from cache, returning None if missing."""
@@ -225,14 +231,14 @@ class SessionManager:
 
     def _trim_history(self, state: SessionState) -> None:
         """Enforce the message cap, preserving system messages."""
-        if len(state.conversation_history) <= self.MAX_HISTORY_MESSAGES:
+        if len(state.conversation_history) <= self._max_history_messages:
             return
 
         system_msgs = [m for m in state.conversation_history if m.get("role") == "system"]
         non_system = [m for m in state.conversation_history if m.get("role") != "system"]
 
         # Keep newest non-system messages within budget
-        budget = self.MAX_HISTORY_MESSAGES - len(system_msgs)
+        budget = self._max_history_messages - len(system_msgs)
         if budget < 0:
             budget = 0
         trimmed = non_system[-budget:] if budget > 0 else []

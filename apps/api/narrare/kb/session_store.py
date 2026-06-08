@@ -20,27 +20,34 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-SESSION_TTL = 1800  # 30 minutes
-SESSION_KEY_PREFIX = "kb:session:"
-
 
 class KBCreationSessionStore:
     """Redis-backed ephemeral storage for KB creation sessions.
 
     Args:
         cache: Injected cache backend (Redis in production).
+        ttl: Session TTL in seconds.
+        key_prefix: Redis key prefix for namespace isolation.
     """
 
-    def __init__(self, cache: SessionCacheProtocol) -> None:
+    def __init__(
+        self,
+        cache: SessionCacheProtocol,
+        *,
+        ttl: int = 1800,
+        key_prefix: str = "kb:session:",
+    ) -> None:
         self._cache = cache
+        self._ttl = ttl
+        self._key_prefix = key_prefix
 
     def _key(self, session_id: UUID) -> str:
-        return f"{SESSION_KEY_PREFIX}{session_id}"
+        return f"{self._key_prefix}{session_id}"
 
     async def create(self, session: KBCreationSession) -> KBCreationSession:
         """Store a new session with TTL."""
         key = self._key(session.id)
-        await self._cache.set(key, session.model_dump_json(), ttl_seconds=SESSION_TTL)
+        await self._cache.set(key, session.model_dump_json(), ttl_seconds=self._ttl)
         logger.info(
             "kb_session_created",
             session_id=str(session.id),
@@ -60,7 +67,7 @@ class KBCreationSessionStore:
         """Update an existing session (extends TTL)."""
         session.updated_at = datetime.now(UTC)
         key = self._key(session.id)
-        await self._cache.set(key, session.model_dump_json(), ttl_seconds=SESSION_TTL)
+        await self._cache.set(key, session.model_dump_json(), ttl_seconds=self._ttl)
         logger.debug(
             "kb_session_updated",
             session_id=str(session.id),

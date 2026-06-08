@@ -28,10 +28,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-_DEFAULT_MODEL = "text-embedding-3-small"
-_DEFAULT_DIMENSION = 1536
-_DEFAULT_PROVIDER = "openai"
-
 
 class EmbeddingService:
     """Business logic for embedding operations.
@@ -45,11 +41,13 @@ class EmbeddingService:
         *,
         model: str | None = None,
         dimension: int | None = None,
+        provider: str = "openai",
         scoring_config: ScoringConfig | None = None,
     ) -> None:
         self._repo = repo
-        self._model = model or os.environ.get("DEFAULT_EMBEDDING_MODEL", _DEFAULT_MODEL)
-        self._dimension = dimension or _DEFAULT_DIMENSION
+        self._model = model or os.environ.get("DEFAULT_EMBEDDING_MODEL", "text-embedding-3-small")
+        self._dimension = dimension or 1536
+        self._provider = provider
         self._scoring_config = scoring_config or ScoringConfig()
 
     async def generate(
@@ -282,4 +280,4 @@ class EmbeddingService:
     @property
     def provider(self) -> str:
         """Return the embedding provider name."""
-        return _DEFAULT_PROVIDER
+        return self._provider

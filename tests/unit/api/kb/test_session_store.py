@@ -14,8 +14,6 @@ import pytest
 
 from narrare.kb.session_models import KBCreationField, KBCreationSession
 from narrare.kb.session_store import (
-    SESSION_KEY_PREFIX,
-    SESSION_TTL,
     KBCreationSessionStore,
 )
 from narrare_core.writing.session_manager import SessionCacheProtocol
@@ -87,7 +85,7 @@ class TestSessionStoreKey:
 
         key = store._key(session_id)
 
-        assert key == f"{SESSION_KEY_PREFIX}{session_id}"
+        assert key == f"kb:session:{session_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -110,9 +108,9 @@ class TestSessionStoreCreate:
         assert result.id == session.id
         assert result.entity_type == session.entity_type
         # Verify stored in backend
-        key = f"{SESSION_KEY_PREFIX}{session.id}"
+        key = f"kb:session:{session.id}"
         assert key in fake._data
-        assert fake._ttls[key] == SESSION_TTL
+        assert fake._ttls[key] == 1800
 
     @pytest.mark.asyncio
     async def test_create_returns_same_session(self) -> None:
@@ -134,7 +132,7 @@ class TestSessionStoreCreate:
 
         await store.create(session)
 
-        key = f"{SESSION_KEY_PREFIX}{session.id}"
+        key = f"kb:session:{session.id}"
         restored = KBCreationSession.model_validate_json(fake._data[key])
         assert restored.id == session.id
         assert restored.entity_type == session.entity_type
@@ -220,11 +218,11 @@ class TestSessionStoreUpdate:
 
         await store.update(session)
 
-        key = f"{SESSION_KEY_PREFIX}{session.id}"
+        key = f"kb:session:{session.id}"
         # The last set call should be the update with TTL
         last_call = fake.set_calls[-1]
         assert last_call[0] == key
-        assert last_call[2] == SESSION_TTL
+        assert last_call[2] == 1800
 
     @pytest.mark.asyncio
     async def test_update_updates_timestamp(self) -> None:

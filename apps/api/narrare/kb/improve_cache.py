@@ -23,22 +23,29 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-IMPROVE_TTL = 600  # 10 minutes
-IMPROVE_KEY_PREFIX = "kb:improve:"
-
 
 class KBImproveCache:
     """Redis-backed cache for KB improve analysis results.
 
     Args:
         cache: Injected cache backend (Redis in production).
+        ttl: Cache TTL in seconds.
+        key_prefix: Redis key prefix for namespace isolation.
     """
 
-    def __init__(self, cache: SessionCacheProtocol) -> None:
+    def __init__(
+        self,
+        cache: SessionCacheProtocol,
+        *,
+        ttl: int = 600,
+        key_prefix: str = "kb:improve:",
+    ) -> None:
         self._cache = cache
+        self._ttl = ttl
+        self._key_prefix = key_prefix
 
     def _key(self, entry_id: str) -> str:
-        return f"{IMPROVE_KEY_PREFIX}{entry_id}"
+        return f"{self._key_prefix}{entry_id}"
 
     async def get(self, entry_id: str) -> str | None:
         """Get cached analysis for an entry.
@@ -67,7 +74,7 @@ class KBImproveCache:
             value: The JSON-serialised analysis response.
         """
         key = self._key(entry_id)
-        await self._cache.set(key, value, ttl_seconds=IMPROVE_TTL)
+        await self._cache.set(key, value, ttl_seconds=self._ttl)
         logger.debug("kb_improve_cache_set", entry_id=entry_id)
 
     async def delete(self, entry_id: str) -> None:

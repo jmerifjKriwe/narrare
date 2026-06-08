@@ -29,13 +29,7 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-# Retry delays in seconds (exponential backoff)
-_RETRY_DELAYS: list[float] = [30.0, 120.0, 300.0]
-_MAX_RETRIES = len(_RETRY_DELAYS)
-
-# Default embedding configuration
-_DEFAULT_MODEL = "text-embedding-3-small"
-_DEFAULT_DIMENSION = 1536
+_DEFAULT_RETRY_DELAYS: list[float] = [30.0, 120.0, 300.0]
 
 
 async def run_embed_source(
@@ -46,6 +40,7 @@ async def run_embed_source(
     repo: EmbeddingRepositoryProtocol,
     model: str | None = None,
     dimension: int | None = None,
+    retry_delays: list[float] | None = None,
 ) -> bool:
     """Generate embedding for a source entity with retry and idempotency.
 
@@ -69,8 +64,10 @@ async def run_embed_source(
     Returns:
         True if embedding was generated, False if skipped (unchanged).
     """
-    effective_model = model or _DEFAULT_MODEL
-    effective_dimension = dimension or _DEFAULT_DIMENSION
+    effective_model = model or "text-embedding-3-small"
+    effective_dimension = dimension or 1536
+    delays = retry_delays or _DEFAULT_RETRY_DELAYS
+    max_retries = len(delays)
 
     # Step 1: Compute content hash
     content_hash = compute_content_hash(content)
@@ -87,7 +84,7 @@ async def run_embed_source(
 
     # Step 3: Generate embedding with retry
     last_error: Exception | None = None
-    for attempt in range(_MAX_RETRIES + 1):
+    for attempt in range(max_retries + 1):
         try:
             vectors = await embed_texts([content], model=effective_model)
             if not vectors:
@@ -115,14 +112,14 @@ async def run_embed_source(
 
         except Exception as exc:
             last_error = exc
-            if attempt < _MAX_RETRIES:
-                delay = _RETRY_DELAYS[attempt]
+            if attempt < max_retries:
+                delay = delays[attempt]
                 logger.warning(
                     "embed_source_retry",
                     source_type=source_type,
                     source_id=str(source_id),
                     attempt=attempt + 1,
-                    max_retries=_MAX_RETRIES,
+                    max_retries=max_retries,
                     delay_seconds=delay,
                     error=str(exc),
                 )
@@ -140,7 +137,7 @@ async def run_embed_source(
     # on next save
     if last_error is not None:
         raise EmbeddingError(
-            f"Embedding failed after {_MAX_RETRIES} retries: {last_error}"
+            f"Embedding failed after {max_retries} retries: {last_error}"
         ) from last_error
     return False  # unreachable, but satisfies type checker
 

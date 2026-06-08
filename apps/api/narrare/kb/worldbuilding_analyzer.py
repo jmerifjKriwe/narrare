@@ -52,8 +52,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-_MAX_PHASE2_PAIRS = 15
-
 
 class WorldbuildingAnalyzer:
     """LLM orchestration for worldbuilding analysis.
@@ -61,6 +59,16 @@ class WorldbuildingAnalyzer:
     Assembles entity data, manages token budgets, and orchestrates
     Phase 1 (gaps + connections) and Phase 2 (consistency) via
     WorldbuildingAgent.
+
+    Args:
+        kb_repo: KB entry repository.
+        rel_repo: Relationship repository.
+        cache: Redis-backed worldbuilding cache.
+        registry: Model registry for LLM access.
+        config: Resolved model configuration.
+        composer: Prompt composer for building prompts.
+        prompt_registry: Prompt registry for Phase 2 prompt lookup.
+        max_phase2_pairs: Maximum number of entity pairs for Phase 2 consistency check.
     """
 
     def __init__(
@@ -72,6 +80,8 @@ class WorldbuildingAnalyzer:
         config: ResolvedModelConfig,
         composer: PromptComposer,
         prompt_registry: PromptRegistry,
+        *,
+        max_phase2_pairs: int = 15,
     ) -> None:
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
@@ -80,6 +90,7 @@ class WorldbuildingAnalyzer:
         self._config = config
         self._composer = composer
         self._prompt_registry = prompt_registry
+        self._max_phase2_pairs = max_phase2_pairs
 
     async def analyze(
         self,
@@ -213,7 +224,7 @@ class WorldbuildingAnalyzer:
         candidate_pairs: list[tuple[str, str]],
     ) -> list[ConsistencyIssue]:
         """Execute Phase 2: consistency checking on candidate pairs."""
-        pairs = candidate_pairs[:_MAX_PHASE2_PAIRS]
+        pairs = candidate_pairs[: self._max_phase2_pairs]
 
         # Load full entity details for pair entities
         entity_details: dict[str, dict[str, object]] = {}

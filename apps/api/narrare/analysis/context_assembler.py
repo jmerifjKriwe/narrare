@@ -24,12 +24,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-# Maximum number of previous chapters to include summaries for
-_MAX_PREVIOUS_CHAPTERS = 3
-
-# Maximum characters for KB entry summaries
-_KB_SUMMARY_TRUNCATION = 200
-
 
 class ContextAssembler:
     """Assembles context for beta reader analysis.
@@ -41,6 +35,8 @@ class ContextAssembler:
         chapter_repo: Chapter repository for text retrieval.
         kb_repo: KB repository for character/location lookup.
         novel_repo: Novel repository for genre metadata.
+        max_previous_chapters: Maximum previous chapters to include summaries for.
+        kb_summary_truncation: Maximum characters for KB entry summaries.
     """
 
     def __init__(
@@ -48,10 +44,15 @@ class ContextAssembler:
         chapter_repo: ChapterRepositoryProtocol,
         kb_repo: KBRepositoryProtocol,
         novel_repo: NovelRepositoryProtocol,
+        *,
+        max_previous_chapters: int = 3,
+        kb_summary_truncation: int = 200,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._kb_repo = kb_repo
         self._novel_repo = novel_repo
+        self._max_previous_chapters = max_previous_chapters
+        self._kb_summary_truncation = kb_summary_truncation
 
     async def build_context(
         self,
@@ -155,7 +156,7 @@ class ContextAssembler:
 
         # Sort by position descending, take up to 3 most recent
         previous.sort(key=lambda c: c.position, reverse=True)
-        previous = previous[:_MAX_PREVIOUS_CHAPTERS]
+        previous = previous[: self._max_previous_chapters]
 
         summaries: list[str] = []
         for c in previous:
@@ -163,7 +164,7 @@ class ContextAssembler:
             if not summary:
                 # Fall back to first 200 chars of content
                 content = c.content or ""
-                summary = content[:_KB_SUMMARY_TRUNCATION]
+                summary = content[: self._kb_summary_truncation]
             if summary:
                 summaries.append(summary)
 
@@ -198,7 +199,7 @@ class ContextAssembler:
             entity_type = entry.entity_type
             name = entry.name
             body = entry.body or ""
-            summary = body[:_KB_SUMMARY_TRUNCATION]
+            summary = body[: self._kb_summary_truncation]
 
             item: dict[str, str] = {
                 "name": name,

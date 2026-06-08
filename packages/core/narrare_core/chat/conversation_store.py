@@ -20,8 +20,6 @@ class ConversationStore(ABC):
     - SQLAlchemyConversationStore: Production (apps/api layer)
     """
 
-    MAX_MESSAGES = 50
-
     @abstractmethod
     async def add_message(
         self,
@@ -61,7 +59,8 @@ class InMemoryConversationStore(ConversationStore):
     Useful for testing and local development without PostgreSQL.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, max_messages: int = 50) -> None:
+        self._max_messages = max_messages
         self._messages: dict[UUID, list[ChatMessage]] = {}
         self._conversations: dict[UUID, dict[str, object]] = {}
 
@@ -83,8 +82,8 @@ class InMemoryConversationStore(ConversationStore):
         )
         self._messages.setdefault(conversation_id, []).append(msg)
         # Auto-trim if over limit
-        if len(self._messages[conversation_id]) > self.MAX_MESSAGES:
-            self._messages[conversation_id] = self._messages[conversation_id][-self.MAX_MESSAGES :]
+        if len(self._messages[conversation_id]) > self._max_messages:
+            self._messages[conversation_id] = self._messages[conversation_id][-self._max_messages :]
         return msg
 
     async def get_history(

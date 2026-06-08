@@ -191,11 +191,12 @@ class TestEmbedTexts:
         mock_client.embeddings.create.assert_called_once_with(input=["text"], model="env-model")
 
     async def test_processes_large_input_in_batches(self) -> None:
-        from narrare_core.llm.embedding_providers import _BATCH_SIZE
         from narrare_core.llm.embeddings import embed_texts
 
+        batch_size = 100
+
         # Create more texts than the batch size
-        texts = [f"text {i}" for i in range(_BATCH_SIZE + 10)]
+        texts = [f"text {i}" for i in range(batch_size + 10)]
 
         # Create mock items with proper index and embedding
         all_items: list[MagicMock] = []
@@ -206,10 +207,10 @@ class TestEmbedTexts:
             all_items.append(mock_item)
 
         mock_response = MagicMock(spec=_FakeEmbeddingResponse)
-        mock_response.data = all_items[:_BATCH_SIZE]
+        mock_response.data = all_items[:batch_size]
 
         mock_response2 = MagicMock(spec=_FakeEmbeddingResponse)
-        mock_response2.data = all_items[_BATCH_SIZE:]
+        mock_response2.data = all_items[batch_size:]
 
         mock_client = AsyncMock()
         mock_client.embeddings = MagicMock(spec=_FakeEmbeddingsResource)

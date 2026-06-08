@@ -260,32 +260,6 @@ default = 400
 max_allowed_constant = 5
 allowed_patterns = ["_PERCENTAGES", "_VALID_", "_PREFERENCE_", "_PROVIDER", "SUPPORTED_"]
 ignored_modules = [
-  # Already remediated by CR-08 (parameterized):
-  "packages/core/narrare_core/llm/cost_rates.py",
-  # Known technical debt — tracked for future CR phases:
-  "apps/api/narrare/analysis/beta_reader_cache.py",
-  "apps/api/narrare/analysis/context_assembler.py",
-  "apps/api/narrare/analysis/validation.py",
-  "apps/api/narrare/chapters/service.py",
-  "apps/api/narrare/embeddings/service.py",
-  "apps/api/narrare/embeddings/tasks.py",
-  "apps/api/narrare/kb/consistency_cache.py",
-  "apps/api/narrare/kb/consistency_service.py",
-  "apps/api/narrare/kb/improve_cache.py",
-  "apps/api/narrare/kb/session_store.py",
-  "apps/api/narrare/kb/worldbuilding_analyzer.py",
-  "apps/api/narrare/kb/worldbuilding_cache.py",
-  "apps/api/narrare/kb/worldbuilding_entity_assembly.py",
-  "apps/api/narrare/settings/custom_tone_service.py",
-  "apps/api/narrare/wiki/listeners.py",
-  "packages/core/narrare_core/chat/chat_service_core.py",
-  "packages/core/narrare_core/chat/conversation_store.py",
-  "packages/core/narrare_core/llm/embedding_providers.py",
-  "packages/core/narrare_core/llm/model_listing.py",
-  "packages/core/narrare_core/prompts/meta.py",
-  "packages/core/narrare_core/wiki/service.py",
-  "packages/core/narrare_core/writing/pipeline_extend.py",
-  "packages/core/narrare_core/writing/session_manager.py",
   # Script/tooling files (not production code):
   "scripts/architecture/_checkers/inline_prompts.py",
   "scripts/check_gate_expirations.py",

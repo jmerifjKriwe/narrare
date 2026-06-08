@@ -25,9 +25,6 @@ from narrare_core.shared.frontmatter import strip_frontmatter
 
 logger = structlog.get_logger(__name__)
 
-# Token budget threshold below which we use the lite meta-prompt
-_LITE_THRESHOLD = 2000
-
 
 class MetaPromptLoader:
     """Loads and caches the meta-prompt for a given language."""
@@ -36,10 +33,13 @@ class MetaPromptLoader:
         self,
         project_root: Path | None = None,
         user_config_dir: Path | None = None,
+        *,
+        lite_threshold: int = 2000,
     ) -> None:
         self._project_root = project_root
         self._user_config_dir = user_config_dir or Path.home() / ".config" / "narrare"
         self._bundled_root = self._find_bundled_root()
+        self._lite_threshold = lite_threshold
         self._cache: dict[str, str] = {}
 
     def _find_bundled_root(self) -> Path:
@@ -111,7 +111,7 @@ class MetaPromptLoader:
 
     def should_use_lite(self, remaining_budget: int) -> bool:
         """Determine if the lite meta-prompt variant should be used."""
-        return remaining_budget < _LITE_THRESHOLD
+        return remaining_budget < self._lite_threshold
 
     def invalidate_cache(self) -> None:
         """Clear the cache (e.g. after a meta-prompt file is updated)."""

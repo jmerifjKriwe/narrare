@@ -11,8 +11,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from narrare.kb.consistency_cache import (
-    CONSISTENCY_KEY_PREFIX,
-    CONSISTENCY_TTL,
     ConsistencyCache,
 )
 from narrare_core.writing.session_manager import SessionCacheProtocol
@@ -109,13 +107,13 @@ class TestConsistencyCacheKey:
     def test_key_without_hash(self) -> None:
         """_key with no hash suffix produces prefix + novel_id."""
         cache, _ = _make_cache()
-        assert cache._key("novel-123") == f"{CONSISTENCY_KEY_PREFIX}novel-123"
+        assert cache._key("novel-123") == "kb:consistency:novel-123"
 
     def test_key_with_hash(self) -> None:
         """_key includes entity type hash when provided."""
         cache, _ = _make_cache()
         suffix = ":abc12345"
-        assert cache._key("novel-123", suffix) == f"{CONSISTENCY_KEY_PREFIX}novel-123{suffix}"
+        assert cache._key("novel-123", suffix) == f"kb:consistency:novel-123{suffix}"
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +133,7 @@ class TestConsistencyCacheGet:
         result = await cache.get("novel-1")
 
         assert result == '{"inconsistencies": []}'
-        backend.get.assert_awaited_once_with(f"{CONSISTENCY_KEY_PREFIX}novel-1")
+        backend.get.assert_awaited_once_with("kb:consistency:novel-1")
 
     @pytest.mark.asyncio
     async def test_missing_key_returns_none(self) -> None:
@@ -165,7 +163,7 @@ class TestConsistencyCacheGet:
 
         await cache.get("novel-1", entity_types_hash=":abc12345")
 
-        backend.get.assert_awaited_once_with(f"{CONSISTENCY_KEY_PREFIX}novel-1:abc12345")
+        backend.get.assert_awaited_once_with("kb:consistency:novel-1:abc12345")
 
 
 # ---------------------------------------------------------------------------
@@ -185,9 +183,9 @@ class TestConsistencyCacheSet:
         await cache.set("novel-1", '{"inconsistencies": []}')
 
         backend.set.assert_awaited_once_with(
-            f"{CONSISTENCY_KEY_PREFIX}novel-1",
+            "kb:consistency:novel-1",
             '{"inconsistencies": []}',
-            ttl_seconds=CONSISTENCY_TTL,
+            ttl_seconds=600,
         )
 
     @pytest.mark.asyncio
@@ -199,9 +197,9 @@ class TestConsistencyCacheSet:
         await cache.set("novel-1", '{"data": 1}', entity_types_hash=":abc12345")
 
         backend.set.assert_awaited_once_with(
-            f"{CONSISTENCY_KEY_PREFIX}novel-1:abc12345",
+            "kb:consistency:novel-1:abc12345",
             '{"data": 1}',
-            ttl_seconds=CONSISTENCY_TTL,
+            ttl_seconds=600,
         )
 
 
@@ -221,7 +219,7 @@ class TestConsistencyCacheDelete:
 
         await cache.delete("novel-1")
 
-        backend.delete.assert_awaited_once_with(f"{CONSISTENCY_KEY_PREFIX}novel-1")
+        backend.delete.assert_awaited_once_with("kb:consistency:novel-1")
 
     @pytest.mark.asyncio
     async def test_delete_with_entity_types_hash(self) -> None:
@@ -231,7 +229,7 @@ class TestConsistencyCacheDelete:
 
         await cache.delete("novel-1", entity_types_hash=":abc12345")
 
-        backend.delete.assert_awaited_once_with(f"{CONSISTENCY_KEY_PREFIX}novel-1:abc12345")
+        backend.delete.assert_awaited_once_with("kb:consistency:novel-1:abc12345")
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +248,7 @@ class TestConsistencyCacheDeleteAll:
 
         await cache.delete_all("novel-1")
 
-        backend.delete.assert_awaited_once_with(f"{CONSISTENCY_KEY_PREFIX}novel-1")
+        backend.delete.assert_awaited_once_with("kb:consistency:novel-1")
 
 
 # ---------------------------------------------------------------------------

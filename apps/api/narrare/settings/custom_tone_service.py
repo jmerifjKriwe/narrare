@@ -21,17 +21,25 @@ from narrare.settings.schemas_tones import CustomTone, CustomToneCreate, CustomT
 
 logger = structlog.get_logger(__name__)
 
-MAX_CUSTOM_TONES = 20
-
 
 class CustomToneService:
     """CRUD operations for user-defined writing tones.
 
     Tones are stored as a JSON array in user_settings.custom_tones.
+
+    Args:
+        repo: User settings repository for persistence.
+        max_custom_tones: Maximum number of custom tones per user.
     """
 
-    def __init__(self, repo: UserSettingsRepositoryProtocol) -> None:
+    def __init__(
+        self,
+        repo: UserSettingsRepositoryProtocol,
+        *,
+        max_custom_tones: int = 20,
+    ) -> None:
         self._repo = repo
+        self._max_custom_tones = max_custom_tones
 
     async def list_tones(self, user_id: uuid.UUID) -> list[CustomTone]:
         """List all custom tones for a user.
@@ -61,8 +69,8 @@ class CustomToneService:
         settings = await self._repo.get(user_id)
         existing = self._parse_tones(settings.custom_tones)
 
-        if len(existing) >= MAX_CUSTOM_TONES:
-            raise ValidationError(f"Maximum of {MAX_CUSTOM_TONES} custom tones reached")
+        if len(existing) >= self._max_custom_tones:
+            raise ValidationError(f"Maximum of {self._max_custom_tones} custom tones reached")
 
         if any(t.name == request.name for t in existing):
             raise ValidationError(f"Custom tone with name '{request.name}' already exists")

@@ -25,9 +25,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-# Default word target when none specified on the request.
-_DEFAULT_EXTEND_WORD_TARGET = 400
-
 
 async def stream_extend(
     pipeline: WritingPipeline,
@@ -38,6 +35,7 @@ async def stream_extend(
     api_key: str | None = None,
     base_url: str | None = None,
     custom_tone_instructions: str | None = None,
+    default_word_target: int = 400,
 ) -> AsyncIterator[StreamChunk]:
     """Generate a seamless continuation from the cursor position.
 
@@ -47,7 +45,7 @@ async def stream_extend(
     critical for the extend prompt.
     """
     # Word target: from request (set by API layer) or default
-    word_target = request.word_target or _DEFAULT_EXTEND_WORD_TARGET
+    word_target = request.word_target or default_word_target
 
     tone_instr = (
         custom_tone_instructions

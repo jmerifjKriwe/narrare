@@ -22,8 +22,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-_PHASE1_ENTITY_BUDGET = 8000
-
 
 async def list_entities(
     kb_repo: KBRepositoryProtocol,
@@ -88,7 +86,7 @@ def build_entity_summaries(
 
 def prioritize_entities(
     summaries: list[Phase1EntitySummary],
-    budget: int = _PHASE1_ENTITY_BUDGET,
+    budget: int = 8000,
 ) -> list[Phase1EntitySummary]:
     """Apply 4-tier entity prioritization within token budget.
 

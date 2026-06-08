@@ -1,6 +1,6 @@
 # ADR-025 — Feature Adoption Infrastructure
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Accepted
 > **Date:** 2026-05-31
 > **Deciders:** Architecture Agent
 > **Supersedes:** —

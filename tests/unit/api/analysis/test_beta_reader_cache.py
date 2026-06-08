@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-from narrare.analysis.beta_reader_cache import BETA_READER_TTL, BetaReaderCache
+from narrare.analysis.beta_reader_cache import BetaReaderCache
 from narrare_core.writing.session_manager import SessionCacheProtocol
 
 # ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ class TestBetaReaderCacheSet:
 
         backend.set.assert_awaited_once()
         call_args = backend.set.call_args
-        assert call_args[1]["ttl_seconds"] == BETA_READER_TTL
+        assert call_args[1]["ttl_seconds"] == 1800
 
 
 # ---------------------------------------------------------------------------

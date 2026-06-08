@@ -24,8 +24,6 @@ from narrare_core.shared.errors import EmbeddingError
 
 logger = structlog.get_logger(__name__)
 
-_BATCH_SIZE = 100  # OpenAI recommended batch size
-
 # ---------------------------------------------------------------------------
 # Protocol
 # ---------------------------------------------------------------------------
@@ -90,22 +88,33 @@ class OpenAIEmbeddingProvider:
     and accepts an optional pre-configured ``AsyncOpenAI`` client for testing
     or custom configuration.
 
-    Attributes:
+    Constructor parameters:
         default_model: Default model identifier (``"text-embedding-3-small"``).
         default_dimension: Default vector dimension (``1536``).
     """
 
-    default_model = "text-embedding-3-small"
-    default_dimension = 1536
-
-    def __init__(self, *, client: openai.AsyncOpenAI | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        client: openai.AsyncOpenAI | None = None,
+        batch_size: int = 100,
+        default_model: str = "text-embedding-3-small",
+        default_dimension: int = 1536,
+    ) -> None:
         """Initialise the OpenAI embedding provider.
 
         Args:
             client: Optional pre-configured ``AsyncOpenAI`` client.
                 When omitted, a new client is created on first use.
+            batch_size: Number of texts per batched API call.
+                Defaults to 100 (OpenAI recommended batch size).
+            default_model: Default model identifier.
+            default_dimension: Default vector dimension.
         """
         self._client = client
+        self._batch_size = batch_size
+        self.default_model = default_model
+        self.default_dimension = default_dimension
 
     async def embed_texts(
         self,
@@ -117,7 +126,7 @@ class OpenAIEmbeddingProvider:
 
         Empty strings are handled without API calls — they return zero vectors
         of :attr:`default_dimension`. Non-empty texts are processed in batches
-        of up to :data:`_BATCH_SIZE` (100).
+        of up to ``batch_size`` (default 100).
 
         Args:
             texts: List of text strings to embed. Empty strings are skipped.
@@ -154,8 +163,8 @@ class OpenAIEmbeddingProvider:
 
         try:
             # Process in batches
-            for batch_start in range(0, len(texts_to_embed), _BATCH_SIZE):
-                batch = texts_to_embed[batch_start : batch_start + _BATCH_SIZE]
+            for batch_start in range(0, len(texts_to_embed), self._batch_size):
+                batch = texts_to_embed[batch_start : batch_start + self._batch_size]
                 response = await client.embeddings.create(
                     input=batch,
                     model=model_name,

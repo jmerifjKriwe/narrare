@@ -24,22 +24,29 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-WORLDBUILD_TTL = 600  # 10 minutes
-WORLDBUILD_KEY_PREFIX = "kb:worldbuild:"
-
 
 class WorldbuildingCache:
     """Redis-backed cache for worldbuilding analysis results.
 
     Args:
         cache: Injected cache backend via SessionCacheProtocol.
+        ttl: Cache TTL in seconds.
+        key_prefix: Redis key prefix for namespace isolation.
     """
 
-    def __init__(self, cache: SessionCacheProtocol) -> None:
+    def __init__(
+        self,
+        cache: SessionCacheProtocol,
+        *,
+        ttl: int = 600,
+        key_prefix: str = "kb:worldbuild:",
+    ) -> None:
         self._cache = cache
+        self._ttl = ttl
+        self._key_prefix = key_prefix
 
     def _key(self, novel_id: str, entity_types_hash: str = "") -> str:
-        return f"{WORLDBUILD_KEY_PREFIX}{novel_id}{entity_types_hash}"
+        return f"{self._key_prefix}{novel_id}{entity_types_hash}"
 
     @staticmethod
     def hash_entity_types(entity_types: list[str] | None) -> str:
@@ -102,7 +109,7 @@ class WorldbuildingCache:
                 from :meth:`hash_entity_types`.
         """
         key = self._key(novel_id, entity_types_hash)
-        await self._cache.set(key, value, ttl_seconds=WORLDBUILD_TTL)
+        await self._cache.set(key, value, ttl_seconds=self._ttl)
         logger.debug(
             "worldbuilding_cache_set",
             novel_id=novel_id,

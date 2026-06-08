@@ -20,8 +20,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 SYSTEM_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000000")
-_RETRY_DELAYS: list[float] = [30.0, 120.0, 300.0]
-_MAX_RETRIES = len(_RETRY_DELAYS)
+_DEFAULT_RETRY_DELAYS: list[float] = [30.0, 120.0, 300.0]
 _GenerateFn = Callable[[uuid.UUID, uuid.UUID], Awaitable[Any]]
 
 
@@ -110,17 +109,20 @@ async def _retry_generate(
     novel_id: uuid.UUID,
     *,
     context: str,
+    retry_delays: list[float] | None = None,
 ) -> bool:
     """Execute ``generate_fn(target_id, novel_id)`` with exponential-backoff retry."""
-    for attempt in range(_MAX_RETRIES + 1):
+    delays = retry_delays or _DEFAULT_RETRY_DELAYS
+    max_retries = len(delays)
+    for attempt in range(max_retries + 1):
         try:
             result = await generate_fn(target_id, novel_id)
             if result is not None:
                 logger.info(f"{context}_completed", target_id=str(target_id), attempt=attempt)
                 return True
             # Graceful None — retry unless exhausted.
-            if attempt < _MAX_RETRIES:
-                delay = _RETRY_DELAYS[attempt]
+            if attempt < max_retries:
+                delay = delays[attempt]
                 logger.warning(
                     f"{context}_retry_no_result",
                     target_id=str(target_id),
@@ -133,8 +135,8 @@ async def _retry_generate(
                     f"{context}_permanently_failed", target_id=str(target_id), attempts=attempt + 1
                 )
         except Exception as exc:
-            if attempt < _MAX_RETRIES:
-                delay = _RETRY_DELAYS[attempt]
+            if attempt < max_retries:
+                delay = delays[attempt]
                 logger.warning(
                     f"{context}_retry_exception",
                     target_id=str(target_id),

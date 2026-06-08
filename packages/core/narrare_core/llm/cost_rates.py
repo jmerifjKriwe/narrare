@@ -24,7 +24,6 @@ logger = structlog.get_logger(__name__)
 MODELS_DEV_URL = "https://models.dev/api.json"
 CACHE_DIR = Path.home() / ".narrare" / "cache"
 CACHE_FILE = CACHE_DIR / "models_cache.json"
-CACHE_TTL_SECONDS = 86400  # 24h
 
 _DEFAULT_RATES: dict[str, dict[str, float]] = {
     # Fallback when model not found in models.dev
@@ -72,11 +71,11 @@ def _ensure_cache_dir() -> Path:
     return CACHE_DIR
 
 
-def _load_cache() -> dict[str, Any] | None:
+def _load_cache(cache_ttl: int = 86400) -> dict[str, Any] | None:
     """Load the local models.dev cache if it exists and is still fresh.
 
     Cache is considered valid if the file's mtime is less than
-    CACHE_TTL_SECONDS old.
+    *cache_ttl* seconds old.
 
     Returns:
         Parsed JSON data as dict, or None if no valid cache exists.
@@ -87,7 +86,7 @@ def _load_cache() -> dict[str, Any] | None:
 
         mtime = CACHE_FILE.stat().st_mtime
         age = time.time() - mtime
-        if age > CACHE_TTL_SECONDS:
+        if age > cache_ttl:
             logger.info("models_cache_expired", age_seconds=round(age))
             return None
 

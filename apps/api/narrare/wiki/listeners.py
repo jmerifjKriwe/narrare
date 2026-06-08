@@ -26,9 +26,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-_DEBOUNCE_WINDOW_S = 1.0
-_DEBOUNCE_TTL_S = 60.0
-
 
 def _uuid_from_payload(payload: dict[str, Any], key: str) -> uuid.UUID | None:
     """Extract and validate a UUID from an event payload. Returns None on failure."""
@@ -46,10 +43,20 @@ class WikiEventListener:
 
     Args:
         wiki_service_factory: Zero-arg callable returning an ``APIWikiService``.
+        debounce_window_s: Minimum seconds between duplicate event processing.
+        debounce_ttl_s: Seconds after which debounce entries are evicted.
     """
 
-    def __init__(self, wiki_service_factory: Callable[[], Any]) -> None:
+    def __init__(
+        self,
+        wiki_service_factory: Callable[[], Any],
+        *,
+        debounce_window_s: float = 1.0,
+        debounce_ttl_s: float = 60.0,
+    ) -> None:
         self._factory = wiki_service_factory
+        self._debounce_window_s = debounce_window_s
+        self._debounce_ttl_s = debounce_ttl_s
         self._recent_events: dict[str, float] = {}
 
     def _is_debounced(self, event_type: str, entity_id: str) -> bool:
@@ -57,11 +64,11 @@ class WikiEventListener:
         key = f"{event_type}:{entity_id}"
         now = time.monotonic()
         last_seen = self._recent_events.get(key)
-        if last_seen is not None and (now - last_seen) < _DEBOUNCE_WINDOW_S:
+        if last_seen is not None and (now - last_seen) < self._debounce_window_s:
             return True
         self._recent_events[key] = now
         # Evict stale entries to prevent unbounded growth.
-        cutoff = now - _DEBOUNCE_TTL_S
+        cutoff = now - self._debounce_ttl_s
         self._recent_events = {k: ts for k, ts in self._recent_events.items() if ts >= cutoff}
         return False
 

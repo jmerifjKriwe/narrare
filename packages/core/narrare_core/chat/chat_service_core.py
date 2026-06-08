@@ -13,8 +13,6 @@ from narrare_core.prompts.context import PromptContext
 if TYPE_CHECKING:
     from narrare_core.chat.contracts import ChatMessage
 
-MAX_HISTORY_MESSAGES = 50
-
 
 def build_chat_context(
     project_title: str,
@@ -46,12 +44,16 @@ def build_chat_context(
     return context
 
 
-def format_history(history: list[ChatMessage]) -> str:
+def format_history(
+    history: list[ChatMessage],
+    *,
+    max_history_messages: int = 50,
+) -> str:
     """Format conversation history for prompt injection.
 
-    Includes the last MAX_HISTORY_MESSAGES messages.
+    Includes the last *max_history_messages* messages.
     """
-    trimmed = history[-MAX_HISTORY_MESSAGES:]
+    trimmed = history[-max_history_messages:]
     parts: list[str] = []
     for msg in trimmed:
         prefix = "Author" if msg.role == "user" else "Assistant"

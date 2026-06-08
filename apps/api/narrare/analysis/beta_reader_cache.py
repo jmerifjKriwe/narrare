@@ -23,19 +23,26 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-BETA_READER_TTL = 1800  # 30 minutes
-BETA_READER_KEY_PREFIX = "analysis:beta:"
-
 
 class BetaReaderCache:
     """Redis-backed cache for beta reader analysis results.
 
     Args:
         cache: Injected cache backend (Redis in production).
+        ttl: Cache TTL in seconds.
+        key_prefix: Redis key prefix for namespace isolation.
     """
 
-    def __init__(self, cache: SessionCacheProtocol) -> None:
+    def __init__(
+        self,
+        cache: SessionCacheProtocol,
+        *,
+        ttl: int = 1800,
+        key_prefix: str = "analysis:beta:",
+    ) -> None:
         self._cache = cache
+        self._ttl = ttl
+        self._key_prefix = key_prefix
 
     def _key(self, novel_id: str, chapter_ids_hash: str) -> str:
         """Build cache key from novel ID and chapter IDs hash.
@@ -47,7 +54,7 @@ class BetaReaderCache:
         Returns:
             Cache key string.
         """
-        return f"{BETA_READER_KEY_PREFIX}{novel_id}:{chapter_ids_hash}"
+        return f"{self._key_prefix}{novel_id}:{chapter_ids_hash}"
 
     @staticmethod
     def hash_chapter_ids(chapter_ids: list[str], content_hash: str = "") -> str:
@@ -111,7 +118,7 @@ class BetaReaderCache:
             content_hash: Optional content hash for cache-key discrimination.
         """
         key = self._key(novel_id, self.hash_chapter_ids(chapter_ids, content_hash))
-        await self._cache.set(key, value, ttl_seconds=BETA_READER_TTL)
+        await self._cache.set(key, value, ttl_seconds=self._ttl)
         logger.debug("beta_reader_cache_set", novel_id=novel_id)
 
     async def delete(

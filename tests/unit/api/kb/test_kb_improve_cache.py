@@ -9,7 +9,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-from narrare.kb.improve_cache import IMPROVE_TTL, KBImproveCache
+from narrare.kb.improve_cache import KBImproveCache
 from narrare_core.writing.session_manager import SessionCacheProtocol
 
 # ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ class TestKBImproveCacheSet:
         backend.set.assert_awaited_once_with(
             "kb:improve:entry-1",
             '{"analysis": "test"}',
-            ttl_seconds=IMPROVE_TTL,
+            ttl_seconds=600,
         )
 
 

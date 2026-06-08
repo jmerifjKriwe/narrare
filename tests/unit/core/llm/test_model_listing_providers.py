@@ -10,7 +10,6 @@ from __future__ import annotations
 import pytest
 
 from narrare_core.llm.model_listing import (
-    _OPENROUTER_MAX_MODELS,
     ModelCatalogClient,
 )
 
@@ -159,7 +158,7 @@ class TestOpenRouter:
         resp = make_mock_response(many)
         async with patch_httpx_client(resp):
             models = await catalog.list_models("openrouter", api_key="sk-or-test")
-        assert len(models) == _OPENROUTER_MAX_MODELS
+        assert len(models) == catalog._openrouter_max_models
 
     @pytest.mark.asyncio
     async def test_fallback_to_id_when_no_name(

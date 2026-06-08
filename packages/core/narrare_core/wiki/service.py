@@ -28,9 +28,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-# Maximum tokens for entity narrative_summary before truncation warning
-_MAX_SUMMARY_TOKENS = 60
-
 
 class WikiService:
     """Orchestrates wiki summary generation, retrieval, and refresh.
@@ -47,6 +44,8 @@ class WikiService:
         self,
         agent: WikiAgentProtocol,
         event_bus: EventBus | None = None,
+        *,
+        max_summary_tokens: int = 60,
     ) -> None:
         """Initialize the WikiService.
 
@@ -54,9 +53,12 @@ class WikiService:
             agent: Wiki generation agent (implements WikiAgentProtocol).
             event_bus: Event bus for publishing domain events.
                 Defaults to NullEventBus when not provided.
+            max_summary_tokens: Maximum tokens for entity narrative_summary
+                before a truncation warning is logged.
         """
         self._agent = agent
         self._event_bus = event_bus or NullEventBus()
+        self._max_summary_tokens = max_summary_tokens
 
     # ------------------------------------------------------------------
     # Public API
@@ -247,12 +249,12 @@ class WikiService:
         # Rough token count: ~1.3 words per token, so 60 tokens ≈ 78 words
         word_count = len(result.narrative_summary.split())
         estimated_tokens = int(word_count / 1.3)
-        if estimated_tokens > _MAX_SUMMARY_TOKENS:
+        if estimated_tokens > self._max_summary_tokens:
             logger.warning(
                 "wiki_summary_exceeds_token_limit",
                 entity_id=entity_id,
                 estimated_tokens=estimated_tokens,
-                max_tokens=_MAX_SUMMARY_TOKENS,
+                max_tokens=self._max_summary_tokens,
                 word_count=word_count,
                 detail="Summary may exceed token budget — truncation recommended",
             )

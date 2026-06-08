@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 
-from narrare.settings.custom_tone_service import MAX_CUSTOM_TONES, CustomToneService
+from narrare.settings.custom_tone_service import CustomToneService
 from narrare.settings.schemas_tones import CustomToneCreate, CustomToneUpdate
 from narrare_core.shared.errors import NotFoundError, ValidationError
 from tests.fakes.fake_user_settings_repo import FakeUserSettingsRepository
@@ -110,7 +110,7 @@ class TestCreateTone:
             )
 
     async def test_max_tones_enforced(self, service: CustomToneService, user_id: uuid.UUID) -> None:
-        for i in range(MAX_CUSTOM_TONES):
+        for i in range(20):
             await service.create_tone(
                 user_id,
                 CustomToneCreate(name=f"Tone {i}", instructions=f"Instructions {i}"),

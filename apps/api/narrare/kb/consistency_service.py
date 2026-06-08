@@ -48,8 +48,6 @@ _SEVERITY_ORDER: dict[str, int] = {
     "info": 3,
 }
 
-_MAX_PHASE2_PAIRS = 15
-
 
 class KBConsistencyService:
     """Orchestrates all three consistency analysis sources.
@@ -62,6 +60,7 @@ class KBConsistencyService:
         rel_repo: Relationship repository for candidate pair generation.
         cache: Redis-backed cache for consistency results (10min TTL).
         invocation_pipeline: Optional pipeline for invocation evidence.
+        max_phase2_pairs: Maximum number of entity pairs for Phase 2 cross-entity check.
     """
 
     def __init__(
@@ -73,6 +72,8 @@ class KBConsistencyService:
         rel_repo: RelationshipRepositoryProtocol,
         cache: ConsistencyCache,
         invocation_pipeline: InvocationPipeline | None = None,
+        *,
+        max_phase2_pairs: int = 15,
     ) -> None:
         self._analyzer = analyzer
         self._asymmetry_checker = asymmetry_checker
@@ -81,6 +82,7 @@ class KBConsistencyService:
         self._rel_repo = rel_repo
         self._cache = cache
         self._invocation_pipeline = invocation_pipeline
+        self._max_phase2_pairs = max_phase2_pairs
 
     async def check(
         self,
@@ -229,7 +231,7 @@ class KBConsistencyService:
             existing_relationships=relationships,
         )
 
-        pairs = _generate_candidate_pairs(adjacency, _MAX_PHASE2_PAIRS)
+        pairs = _generate_candidate_pairs(adjacency, self._max_phase2_pairs)
         if not pairs:
             return []
 

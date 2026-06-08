@@ -10,6 +10,14 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Workspace version consistency — catches Dependabot drift across pyproject.toml files
+      - id: version-consistency
+        name: Version Consistency (Workspace Drift)
+        entry: uv run python scripts/check_version_consistency.py
+        language: system
+        pass_filenames: false
+        files: pyproject\.toml$
+
       # Prompt structure validation — catches missing variables, locale gaps, security issues
       - id: prompt-structure
         name: Prompt Structure Check

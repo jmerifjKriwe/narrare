@@ -13,7 +13,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from narrare.wiki.models import WikiSummary
 from narrare.wiki.service import APIWikiService
 from narrare.wiki.tasks import (
-    _MAX_RETRIES,
     SYSTEM_USER_ID,
     run_wiki_generate_chapter,
     run_wiki_generate_entity,
@@ -104,7 +103,7 @@ class TestRunWikiGenerateEntity:
 
         assert result is False
         # Called once per attempt (initial + retries)
-        assert svc.generate_entity_summary.call_count == _MAX_RETRIES + 1
+        assert svc.generate_entity_summary.call_count == 4  # max_retries(3) + 1
 
 
 # ---------------------------------------------------------------------------

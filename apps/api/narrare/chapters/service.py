@@ -24,8 +24,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
-_MAX_CONTENT_LENGTH = 100_000  # characters
-
 
 class ChapterService:
     def __init__(
@@ -33,10 +31,13 @@ class ChapterService:
         repo: ChapterRepositoryProtocol,
         novel_service: NovelServiceProtocol,
         volume_repo: VolumeRepositoryProtocol | None = None,
+        *,
+        max_content_length: int = 100_000,
     ) -> None:
         self._repo = repo
         self._novel_service = novel_service
         self._volume_repo = volume_repo
+        self._max_content_length = max_content_length
 
     async def get(
         self,
@@ -86,9 +87,9 @@ class ChapterService:
         user_id: uuid.UUID,
         request: UpdateChapterContentRequest,
     ) -> Chapter:
-        if len(request.content) > _MAX_CONTENT_LENGTH:
+        if len(request.content) > self._max_content_length:
             raise ValidationError(
-                f"Chapter content exceeds {_MAX_CONTENT_LENGTH:,} character limit"
+                f"Chapter content exceeds {self._max_content_length:,} character limit"
             )
         chapter = await self.get(chapter_id, novel_id, user_id)
         word_count = request.word_count or count_words(request.content)

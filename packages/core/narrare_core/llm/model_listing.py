@@ -61,7 +61,7 @@ SUPPORTED_CATALOG_PROVIDERS: frozenset[str] = frozenset(
 )
 
 # OpenRouter returns hundreds of models; cap to keep the UI usable.
-_OPENROUTER_MAX_MODELS = 30
+# The default (30) is configured in ModelCatalogClient.__init__.
 
 
 # ---------------------------------------------------------------------------
@@ -82,8 +82,14 @@ class ModelCatalogClient:
         models = await client.list_models("openai", api_key="sk-...")
     """
 
-    def __init__(self, *, catalog_timeout: float = 10.0) -> None:
+    def __init__(
+        self,
+        *,
+        catalog_timeout: float = 10.0,
+        openrouter_max_models: int = 30,
+    ) -> None:
         self._catalog_timeout = catalog_timeout
+        self._openrouter_max_models = openrouter_max_models
 
     # -- public API ---------------------------------------------------------
 
@@ -320,7 +326,7 @@ class ModelCatalogClient:
                 context_window=m.get("context_length"),
             )
             for m in data.get("data", [])
-        ][:_OPENROUTER_MAX_MODELS]
+        ][: self._openrouter_max_models]
 
     # -- Z.AI ---------------------------------------------------------------
 
