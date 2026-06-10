@@ -1,7 +1,7 @@
 ---
 id: CHAT-001
 title: "Free-Form Chat"
-status: in_progress
+status: stable
 area: chat
 mvp: false
 
@@ -242,4 +242,5 @@ mode is available through the same interface for MCP/CLI clients.
 
 - `2026-05-31` — Feature spec created (supersedes ASSIST-003). CR-02 identified the gap.
 - `2026-06-05` — Implementation started: `ChatAgent` + `ChatDeps` created, `ProcessHistory` for cross-turn continuity, `HistoryPolicy.CONVERSATIONAL` as first adopter (ADR-034). API backend refactored to use `ChatAgent.run_stream()`.
+- `2026-06-10` — Fully implemented and promoted to stable. ChatAgent + ChatDeps with SSE streaming, ProcessHistory for cross-turn continuity (ADR-034), ChatPanel frontend component, conversation persistence, PromptComposer integration. All RULE-XX compliance verified.
 - `project-init` — ASSIST-003 added as planned placeholder (now superseded).

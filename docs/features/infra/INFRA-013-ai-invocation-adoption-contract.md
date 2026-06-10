@@ -3,7 +3,7 @@
 ---
 id: INFRA-013
 title: "AI Invocation Adoption Contract"
-status: in-progress
+status: stable
 area: infra
 mvp: false
 
@@ -28,21 +28,22 @@ requires: [INFRA-002, INFRA-003, INFRA-005, INFRA-011, INFRA-012, PROMPT-001, PR
 
 ## Status and Decision Summary
 
-- **Status:** P0, P0.3e, P1, P2, and P3 fully implemented. Core `ai_invocation` module,
+- **Status:** P0 through P5 fully implemented. Core `ai_invocation` module,
   InvocationPipeline, enrichers, validators, budget resolver,
   LoggingEvidenceSink, WritingPipeline integration, `core/profiles/` module
   (ProjectWritingProfile SSOT), KBConsistencyEnricher, VoiceProfileStatus,
   AuditReport, KG Consistency Checker, and `requires_runtime_evidence` flag
-  are all in production. 24/27 modes wired. User/Project IDs flow through
+  are all in production. 27/27 modes wired. User/Project IDs flow through
   InvocationContext. P2 (KG/voice/profile SSOT, audit lifecycle) implemented.
   P3 (ADR-041) fully implemented: registry drift detection (JSON Schema + drift checker),
   doc-drift automation (ADR/spec/RULE-XX cross-reference validation),
   quality metrics (QualityReport joining eval results with invocation evidence),
   file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl),
-  and CI integration (--drift flag, CI jobs).
+  and CI integration (--drift flag, CI jobs). P5 completion: all 27/27 modes
+  have runtime evidence wiring.
 - **Governing ADR:** [ADR-038 — AI Invocation Adoption Contract](../../architecture/decisions/ADR-038-ai-invocation-adoption-contract.md).
-- **CR-03 state:** P0, P1, P2, and P3 fully implemented. 24/27 modes have runtime evidence
-  wiring. CR-03 P3 exit criteria satisfied.
+- **CR-03 state:** P0 through P5 fully implemented. 27/27 modes have runtime evidence
+  wiring. CR-03 P5 exit criteria satisfied.
 
 ## Scope
 
@@ -593,3 +594,5 @@ suggestions. High-impact conflicts are surfaced rather than silently resolved.
   with doc_drift/ package (Layer 3), quality metrics with QualityReport + joiner
   (Layer 4), and CI integration with --drift flag (Layer 5). All P3 exit criteria
   satisfied. INFRA-013 complete through P3.
+- 2026-06-10 — P5 completed: all 27/27 modes have runtime evidence wiring.
+  INFRA-013 fully complete. Promoted to stable.

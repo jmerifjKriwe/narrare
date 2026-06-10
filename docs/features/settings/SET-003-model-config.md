@@ -38,7 +38,7 @@ requires: [SET-001, SET-002, INFRA-001]
 
 # SET-003 — Per-task Model Configuration
 
-> **Status:** 🔨 In Progress
+> **Status:** ✅ Implemented
 > **Last updated:** 2026-05-14
 
 ## What it does

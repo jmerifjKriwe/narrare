@@ -1,7 +1,7 @@
 ---
 id: KB-004
 title: "AI: KB Consistency Check"
-status: planned
+status: stable
 area: kb
 mvp: false
 
@@ -138,3 +138,4 @@ class ConsistencyIssue:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-06-10` — Fully implemented and promoted to stable. KB consistency check with internal/cross-entity/logical analysis, severity ratings, resolution suggestions. KBAnalyzerService, KBAnalyzerProtocol contract, consistency prompt, `/api/v1/kb/consistency-check` endpoint.

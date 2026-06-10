@@ -33,7 +33,7 @@ requires: [INFRA-001]
 
 # SET-001 — User Settings
 
-> **Status:** 🔨 In Progress
+> **Status:** ✅ Implemented
 > **Last updated:** 2026-05-14
 
 ## What it does

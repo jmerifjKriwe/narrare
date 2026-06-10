@@ -59,9 +59,9 @@ ui_help_long: |
   `narrare learning feedback submit --suggestion <id> --action reject --reason "too wordy"`
 ui_available_in: [global, cli]
 
-service: learning/service.py
-contract: learning/contracts.py#FeedbackServiceProtocol
-router: learning/router.py
+service: memory/service.py
+contract: memory/contracts.py#FeedbackServiceProtocol
+router: memory/router.py
 prompt: ~
 requires: [INFRA-005]
 ---
@@ -98,9 +98,9 @@ Generic AI suggestions don't match every writer's style. Writers have unique pre
 
 ## How it works (Technical)
 
-**Entry point:** Implicit on all AI interactions via `learning/service.py`
-**Service:** `FeedbackService.record()` and `LearningService.apply()` in `learning/service.py`
-**Contract:** `FeedbackServiceProtocol` in `learning/contracts.py`
+**Entry point:** Implicit on all AI interactions via `memory/service.py`
+**Service:** `FeedbackService.record()` and `LearningService.apply()` in `memory/service.py`
+**Contract:** `FeedbackServiceProtocol` in `memory/contracts.py`
 
 **Feedback record:**
 ```python

@@ -1,7 +1,7 @@
 ---
 id: WRITE-006
 title: "Co-Author Mode"
-status: planned
+status: stable
 area: writing
 mvp: false
 
@@ -72,9 +72,9 @@ ui_help_long: |
   shape future suggestions to match your style.
 ui_available_in: [editor]
 
-service: writing/co_author_service.py
-contract: writing/contracts.py#CoAuthorProtocol
-router: writing/router.py
+service: writing/coauthor_service.py
+contract: writing/contracts_coauthor.py#CoAuthorServiceProtocol
+router: writing/router_coauthor.py
 prompt: core/prompts/_bundled/writing/en/co_author
 requires: [INFRA-001, INFRA-002, LEARN-001]
 ---
@@ -170,3 +170,4 @@ class CoAuthorSuggestion:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-06-10` — Fully implemented and promoted to stable. Co-Author mode with diff-based suggestions, selective acceptance, CoAuthorService in `writing/coauthor_service.py`, CoAuthorServiceProtocol contract, dedicated router (`writing/router_coauthor.py`), Co-Author prompts. Integrates with LEARN-001 feedback loop for personalization.

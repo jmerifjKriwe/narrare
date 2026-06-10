@@ -38,7 +38,7 @@
 | [INFRA-010](infra/INFRA-010-prompting-locally.md) | Prompting Locally | ✅ | ❌ |
 | [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | ✅ | ❌ |
 | [INFRA-012](infra/INFRA-012-prompt-governance-hardening.md) | Prompt Governance Hardening | 🔨 | ❌ |
-| [INFRA-013](infra/INFRA-013-ai-invocation-adoption-contract.md) | AI Invocation Adoption Contract | 🔨 | ❌ |
+| [INFRA-013](infra/INFRA-013-ai-invocation-adoption-contract.md) | AI Invocation Adoption Contract | ✅ | ❌ |
 
 > **AI feature freeze lifted:** INFRA-011 gates passed and the ADR-027 freeze-lift
 > review completed on 2026-06-03. New AI-feature work may resume under ratcheted
@@ -63,7 +63,7 @@
 | [WRITE-003](writing/WRITE-003-extend.md) | AI: Extend Chapter | ✅ | ❌ |
 | [WRITE-004](writing/WRITE-004-rewrite.md) | AI: Rewrite Selection | ✅ | ❌ |
 | [WRITE-005](writing/WRITE-005-interactive-session.md) | Interactive Writing Session | ✅ | ✅ |
-| [WRITE-006](writing/WRITE-006-co-author.md) | Co-Author Mode | 📋 | ❌ |
+| [WRITE-006](writing/WRITE-006-co-author.md) | Co-Author Mode | ✅ | ❌ |
 | [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | ✅ | ❌ |
 | [WRITE-008](writing/WRITE-008-multi-draft.md) | Multi-Draft Generation | 📋 | ❌ |
 | [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Block Tools | 📋 | ❌ |
@@ -75,7 +75,7 @@
 ### Chat
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
-| [CHAT-001](chat/CHAT-001-free-form-chat.md) | Free-Form Chat | 🔨 | ❌ |
+| [CHAT-001](chat/CHAT-001-free-form-chat.md) | Free-Form Chat | ✅ | ❌ |
 
 ### Knowledge Base
 | ID | Feature | Status | MVP |
@@ -113,11 +113,11 @@
 | [PLAN-001](planning/PLAN-001-scene-planning.md) | Scene Planning | 📋 | ❌ |
 | [PLAN-002](planning/PLAN-002-gap-analysis.md) | Narrative Gap Analysis | 📋 | ❌ |
 | [PLAN-003](planning/PLAN-003-structure.md) | Story Structure Visualization | ✅ | ✅ |
-| [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | 🔨 | ❌ |
+| [PLAN-004](planning/PLAN-004-timeline.md) | Timeline Management | ✅ | ❌ |
 | [PLAN-005](planning/PLAN-005-storyboard.md) | Storyboard View | ✅ | ✅ |
 | [PLAN-006](planning/PLAN-006-character-arc.md) | Character Arc Analysis | ✅ | ❌ |
 
-> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 has a partial integration point (`timeline_position` field) and now AI-powered timeline analysis (TimelineAgent) — full timeline management (UI, date tracking, extraction) remains future work. PLAN-006 is backend-only with no UI yet.
+> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 Timeline Management is fully implemented through Phase 4 (AI timeline analysis, extraction, consistency checks, frontend visualization). PLAN-006 is backend-only with no UI yet.
 
 ### AI Assist (Standalone Operations)
 | ID | Feature | Status | MVP |
@@ -252,5 +252,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-09 — KEYBOARD-001 + ONBOARD-001 promoted to stable; CR-07 Phase 2 completed.
+> Last updated: 2026-06-10 — Feature audit: INFRA-013, CHAT-001, WRITE-006, PLAN-004 promoted to stable; CONS-002 corrected to planned; path references fixed across multiple specs.
 > Features are specified before they are implemented — never after

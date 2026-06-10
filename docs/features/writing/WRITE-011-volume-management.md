@@ -45,9 +45,9 @@ ui_help_long: |
 
 ui_available_in: [editor, sidebar]
 
-service: novels/volumes_service.py
-contract: novels/contracts.py#VolumeServiceProtocol
-router: novels/router_volumes.py
+service: volumes/volumes_service.py
+contract: volumes/contracts.py#VolumeRepositoryProtocol
+router: volumes/router.py
 requires: [WRITE-001, KB-001]
 ---
 

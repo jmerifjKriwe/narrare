@@ -73,7 +73,7 @@ ui_available_in: [analysis, cli]
 service: apps/api/narrare/consistency/checker_service.py
 contract: apps/api/narrare/consistency/contracts.py#ConsistencyCheckerProtocol
 router: apps/api/narrare/consistency/router.py
-prompt: core/prompts/_bundled/consistency/en/check
+prompt: core/prompts/_bundled/analysis/en/consistency/system.md
 requires: [INFRA-001, INFRA-002, KB-001, KB-007]
 ---
 

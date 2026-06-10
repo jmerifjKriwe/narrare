@@ -226,4 +226,4 @@ registerContextSection({
 ## Status & History
 
 - `project-init` — Specified for MVP, detailed for Phase 4 implementation
-- `2026-05-14` — Core extensions implemented: NarrareDocument, DialogueMark, Autosave, SceneBreak. CommandPalette with Cmd+K and commands.ts registry. EditorSurface uses Autosave extension. editorStore holds editor ref. Status → in_progress.
+- `2026-05-14` — Core extensions implemented: NarrareDocument, DialogueMark, Autosave, SceneBreak. CommandPalette with Cmd+K and commands.ts registry. EditorSurface uses Autosave extension. editorStore holds editor ref. Status → implemented.

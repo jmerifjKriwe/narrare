@@ -112,7 +112,7 @@ content vs. the current bundled content, allowing users to review and merge
 changes from Narrare updates.
 
 **Frontend UI:**
-- `PromptSettings.tsx` — Shows all prompts with source indicators (bundled, file override, DB override)
+- `PromptsTab.tsx` — Shows all prompts with source indicators (bundled, file override, DB override)
 - `PromptEditor.tsx` — Edit mode with variables sidebar showing available `{{variables}}`
 - `PromptDiff.tsx` — Side-by-side diff comparison between override and bundled version
 

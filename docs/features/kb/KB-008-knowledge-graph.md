@@ -1,7 +1,7 @@
 ---
 id: KB-008
 title: "Knowledge Graph Visualization"
-status: planned
+status: stable
 area: kb
 mvp: false
 
@@ -155,3 +155,4 @@ and edges in distinct color. Display path length and relationship sequence.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-06-10` — Fully implemented and promoted to stable. Interactive graph visualization with Cytoscape.js, force-directed/hierarchical/concentric layouts, path highlighting, filtering, entity CRUD from graph. GraphService, GraphServiceProtocol contract, `/api/v1/graph/` endpoints.
