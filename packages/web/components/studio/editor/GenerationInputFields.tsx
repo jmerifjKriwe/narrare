@@ -19,6 +19,7 @@ interface GenerationInputFieldsProps {
   readonly setWordTarget: Dispatch<SetStateAction<number>>;
   readonly tone: string;
   readonly setTone: Dispatch<SetStateAction<string>>;
+  readonly onGenerate?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -36,8 +37,16 @@ export function GenerationInputFields({
   setWordTarget,
   tone,
   setTone,
+  onGenerate,
 }: GenerationInputFieldsProps) {
   const t = useTranslations("studio");
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, action: () => void) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      action();
+    }
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -53,6 +62,7 @@ export function GenerationInputFields({
             id="gen-outline"
             value={outline}
             onChange={(e) => setOutline(e.target.value)}
+            onKeyDown={(e) => onGenerate && handleKeyDown(e, onGenerate)}
             rows={3}
             className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm resize-none outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
             placeholder={t("generationPanel.outlinePlaceholder")}
@@ -77,6 +87,7 @@ export function GenerationInputFields({
             id="gen-prompt"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => onGenerate && handleKeyDown(e, onGenerate)}
             rows={2}
             className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm resize-none outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
             placeholder={t("generationPanel.promptPlaceholder")}

@@ -527,7 +527,15 @@
       "ghostTextWordDescription": "Nächstes Wort des Vorschlags übernehmen",
       "ghostTextDismiss": "Ghost Text verwerfen",
       "ghostTextDismissDescription": "Vorschlag verwerfen und weiter schreiben",
-      "selectText": "Markieren"
+      "selectText": "Markieren",
+      "aiCtrlEnter": "KI-Aktion ausführen",
+      "aiCtrlEnterDescription": "Strg+Enter (oder Cmd+Enter auf Mac) in allen KI-Textfeldern",
+      "aiEscapeCancel": "KI-Operation abbrechen",
+      "aiEscapeCancelDescription": "Escape bricht eine laufende KI-Operation ab",
+      "aiAccept": "KI-Output übernehmen",
+      "aiAcceptDescription": "Strg+Y übernimmt den aktuellen KI-Vorschlag",
+      "aiReject": "KI-Output verwerfen",
+      "aiRejectDescription": "Strg+N verwirft den aktuellen KI-Vorschlag"
     },
     "aboutSection": {
       "title": "Über Narrare",
@@ -1646,6 +1654,7 @@
     "streaming": "Denke nach...",
     "inputPlaceholder": "Frag zum Schreiben...",
     "send": "Senden",
+    "sendHint": "Strg+Enter zum Senden",
     "errorConnecting": "Verbindungsfehler",
     "clearConversation": "Gespräch löschen"
   },

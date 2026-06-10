@@ -13,7 +13,7 @@
  * @module use-ai-operation
  */
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import type { OperationContext } from "./ai-operation-execute";
@@ -120,18 +120,24 @@ export function useAIOperation<T>(options: UseAIOperationOptions<T>): UseAIOpera
 
   const status = state.status;
 
-  return {
-    state,
-    start,
-    cancel,
-    retry,
-    reset,
-    notifyData,
-    isIdle: status === "idle",
-    isLoading: status === "loading",
-    isStreaming: status === "streaming",
-    isComplete: status === "complete",
-    isError: status === "error",
-    isConnectionLost: status === "connection_lost",
-  };
+  // Memoize the return value so that caller effects (e.g. cleanup on unmount
+  // via aiOp.cancel()) don't fire on every re-render. The lifecycle actions
+  // (start/cancel/retry/...) are ref-stable, so their references don't change.
+  return useMemo(
+    () => ({
+      state,
+      start,
+      cancel,
+      retry,
+      reset,
+      notifyData,
+      isIdle: status === "idle",
+      isLoading: status === "loading",
+      isStreaming: status === "streaming",
+      isComplete: status === "complete",
+      isError: status === "error",
+      isConnectionLost: status === "connection_lost",
+    }),
+    [state, start, cancel, retry, reset, notifyData, status],
+  );
 }

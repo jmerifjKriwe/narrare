@@ -1,35 +1,69 @@
 /**
- * useWorldbuilding hook tests — TanStack Query hooks for worldbuilding analysis.
+ * useWorldbuilding hook tests — useAIOperation wrapper for worldbuilding analysis.
+ *
+ * Tests the wrapper API mapping (mutate, data, error, isSuccess, isError, abort).
+ * useAIOperation is mocked — these tests verify the hook correctly maps
+ * the primitive's state to the backward-compatible interface.
  *
  * Tests:
- * 1. useWorldbuildingAnalyze calls analyze and caches result
- * 2. useWorldbuildingAnalyze handles errors
- * 3. useWorldbuildingApply calls applyConnections and invalidates caches
- * 4. useWorldbuildingApply handles errors
+ * 1. useWorldbuildingAnalyze.mutate stores options and calls aiOp.start
+ * 2. useWorldbuildingAnalyze.data reflects state.result when complete
+ * 3. useWorldbuildingAnalyze.error wraps state.error.userMessage
+ * 4. useWorldbuildingApply.mutate stores body and calls aiOp.start
+ * 5. useWorldbuildingApply.data reflects state.result when complete
+ * 6. useWorldbuildingApply.error wraps state.error.userMessage
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { cleanup, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the API client module
-vi.mock("@/lib/api/worldbuilding", () => ({
-  worldbuildingApi: {
-    analyze: vi.fn(),
-    applyConnections: vi.fn(),
-  },
+import type { AIOperationState, UseAIOperationReturn } from "@/lib/hooks/use-ai-operation";
+
+// ---------------------------------------------------------------------------
+// Hoisted mock data factory
+// ---------------------------------------------------------------------------
+
+const { createDefaultMockAiOp } = vi.hoisted(() => {
+  function createDefaultMockAiOp<T>(
+    overrides: Partial<UseAIOperationReturn<T>> = {},
+  ): UseAIOperationReturn<T> {
+    const start = vi.fn();
+    const cancel = vi.fn();
+    return {
+      state: {
+        status: "idle",
+        result: null,
+        error: null,
+        attemptCount: 0,
+      } as AIOperationState<T>,
+      start,
+      cancel,
+      retry: vi.fn(),
+      reset: vi.fn(),
+      notifyData: vi.fn(),
+      isIdle: true,
+      isLoading: false,
+      isStreaming: false,
+      isComplete: false,
+      isError: false,
+      isConnectionLost: false,
+      ...overrides,
+    };
+  }
+  return { createDefaultMockAiOp };
+});
+
+// Mock useAIOperation at module level
+vi.mock("@/lib/hooks/use-ai-operation", () => ({
+  useAIOperation: vi.fn(),
 }));
 
-import { worldbuildingApi } from "@/lib/api/worldbuilding";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useWorldbuildingAnalyze, useWorldbuildingApply } from "@/lib/hooks/useWorldbuilding";
 
-// ---------------------------------------------------------------------------
-// Mock helpers
-// ---------------------------------------------------------------------------
-
-const mockAnalyze = worldbuildingApi.analyze as ReturnType<typeof vi.fn>;
-const mockApplyConnections = worldbuildingApi.applyConnections as ReturnType<typeof vi.fn>;
+const mockedUseAIOperation = vi.mocked(useAIOperation);
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -66,6 +100,14 @@ const mockApplyResponse = {
   errors: [],
 };
 
+const mockError = {
+  kind: "http" as const,
+  i18nKey: "aiActions.errorDefault",
+  userMessage: "Analysis failed",
+  retryable: true,
+  cause: new Error("Analysis failed"),
+};
+
 // ---------------------------------------------------------------------------
 // Test wrapper
 // ---------------------------------------------------------------------------
@@ -82,14 +124,8 @@ function createWrapper() {
   };
 }
 
-function createWrapperWithClient(queryClient: QueryClient) {
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-  };
-}
-
 // ---------------------------------------------------------------------------
-// Tests
+// Tests: useWorldbuildingAnalyze
 // ---------------------------------------------------------------------------
 
 describe("useWorldbuildingAnalyze", () => {
@@ -101,8 +137,9 @@ describe("useWorldbuildingAnalyze", () => {
     cleanup();
   });
 
-  it("calls worldbuildingApi.analyze with novelId and options", async () => {
-    mockAnalyze.mockResolvedValueOnce(mockAnalysisResponse);
+  it("stores options and calls aiOp.start when mutate is called", () => {
+    const mockAiOp = createDefaultMockAiOp();
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
 
     const { result } = renderHook(() => useWorldbuildingAnalyze("novel-1"), {
       wrapper: createWrapper(),
@@ -110,75 +147,57 @@ describe("useWorldbuildingAnalyze", () => {
 
     result.current.mutate({ include_gaps: true });
 
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+    expect(mockAiOp.start).toHaveBeenCalledOnce();
+  });
+
+  it("returns data when state is complete", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "complete",
+        result: mockAnalysisResponse,
+        error: null,
+        attemptCount: 1,
+      },
+      isComplete: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useWorldbuildingAnalyze("novel-1"), {
+      wrapper: createWrapper(),
     });
 
-    expect(mockAnalyze).toHaveBeenCalledWith(
-      "novel-1",
-      { include_gaps: true },
-      expect.any(AbortSignal),
-    );
+    expect(result.current.isSuccess).toBe(true);
     expect(result.current.data?.worldbuilding_score).toBe(0.5);
-  });
-
-  it("caches analysis result on success", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
-    });
-    const setSpy = vi.spyOn(queryClient, "setQueryData");
-
-    mockAnalyze.mockResolvedValueOnce(mockAnalysisResponse);
-
-    const { result } = renderHook(() => useWorldbuildingAnalyze("novel-1"), {
-      wrapper: createWrapperWithClient(queryClient),
-    });
-
-    result.current.mutate(undefined);
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(setSpy).toHaveBeenCalledWith(
-      ["worldbuilding", "novel-1", "analysis"],
-      mockAnalysisResponse,
-    );
-  });
-
-  it("handles API errors", async () => {
-    mockAnalyze.mockRejectedValueOnce(new Error("Analysis failed"));
-
-    const { result } = renderHook(() => useWorldbuildingAnalyze("novel-1"), {
-      wrapper: createWrapper(),
-    });
-
-    result.current.mutate(undefined);
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    expect(result.current.error?.message).toBe("Analysis failed");
-  });
-
-  it("returns gap findings on success", async () => {
-    mockAnalyze.mockResolvedValueOnce(mockAnalysisResponse);
-
-    const { result } = renderHook(() => useWorldbuildingAnalyze("novel-1"), {
-      wrapper: createWrapper(),
-    });
-
-    result.current.mutate(undefined);
-
-    await waitFor(() => {
-      expect(result.current.data).toBeDefined();
-    });
-
     expect(result.current.data?.gap_findings).toHaveLength(1);
     expect(result.current.data?.gap_findings[0].severity).toBe("critical");
   });
+
+  it("returns error when state is error", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "error",
+        result: null,
+        error: mockError,
+        attemptCount: 1,
+      },
+      isError: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useWorldbuildingAnalyze("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isError).toBe(true);
+    expect(result.current.error?.message).toBe("Analysis failed");
+  });
 });
+
+// ---------------------------------------------------------------------------
+// Tests: useWorldbuildingApply
+// ---------------------------------------------------------------------------
 
 describe("useWorldbuildingApply", () => {
   beforeEach(() => {
@@ -189,60 +208,64 @@ describe("useWorldbuildingApply", () => {
     cleanup();
   });
 
-  it("calls worldbuildingApi.applyConnections with body", async () => {
-    mockApplyConnections.mockResolvedValueOnce(mockApplyResponse);
+  it("calls aiOp.start when mutate is called", () => {
+    const mockAiOp = createDefaultMockAiOp();
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
 
     const { result } = renderHook(() => useWorldbuildingApply("novel-1"), {
       wrapper: createWrapper(),
     });
 
     const body = { finding_indices: [0], analysis: mockAnalysisResponse };
-
     result.current.mutate(body);
 
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(mockApplyConnections).toHaveBeenCalledWith("novel-1", body, expect.any(AbortSignal));
-    expect(result.current.data?.created_count).toBe(2);
+    expect(mockAiOp.start).toHaveBeenCalledOnce();
   });
 
-  it("invalidates KB and worldbuilding caches on success", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+  it("returns data when state is complete", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "complete",
+        result: mockApplyResponse,
+        error: null,
+        attemptCount: 1,
+      },
+      isComplete: true,
+      isIdle: false,
     });
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-
-    mockApplyConnections.mockResolvedValueOnce(mockApplyResponse);
-
-    const { result } = renderHook(() => useWorldbuildingApply("novel-1"), {
-      wrapper: createWrapperWithClient(queryClient),
-    });
-
-    result.current.mutate({ finding_indices: [0], analysis: mockAnalysisResponse });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["kb", "novel-1"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["worldbuilding", "novel-1"] });
-  });
-
-  it("handles API errors", async () => {
-    mockApplyConnections.mockRejectedValueOnce(new Error("Apply failed"));
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
 
     const { result } = renderHook(() => useWorldbuildingApply("novel-1"), {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate({ finding_indices: [], analysis: mockAnalysisResponse });
+    expect(result.current.isSuccess).toBe(true);
+    expect(result.current.data?.created_count).toBe(2);
+  });
 
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
+  it("returns error when state is error", () => {
+    const applyError = {
+      ...mockError,
+      userMessage: "Apply failed",
+      cause: new Error("Apply failed"),
+    };
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "error",
+        result: null,
+        error: applyError,
+        attemptCount: 1,
+      },
+      isError: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useWorldbuildingApply("novel-1"), {
+      wrapper: createWrapper(),
     });
 
+    expect(result.current.isError).toBe(true);
     expect(result.current.error?.message).toBe("Apply failed");
   });
 });

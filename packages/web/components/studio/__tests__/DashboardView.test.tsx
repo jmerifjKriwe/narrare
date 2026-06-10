@@ -19,6 +19,7 @@ const { mockNovelsApi, mockUseQuery } = vi.hoisted(() => ({
 vi.mock("@/lib/api/client", () => ({
   novelsApi: mockNovelsApi,
   authApi: { me: vi.fn() },
+  setupApi: { listDemos: vi.fn().mockResolvedValue([]) },
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => ({
@@ -99,6 +100,9 @@ describe("DashboardView", () => {
       ({ queryKey }: { queryKey: string[] }): { data: unknown; isLoading: boolean } => {
         if (queryKey[0] === "auth") {
           return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
+        }
+        if (queryKey[0] === "demos") {
+          return { data: [], isLoading: false };
         }
         return {
           data: [

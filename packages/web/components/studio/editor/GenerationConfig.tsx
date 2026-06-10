@@ -89,6 +89,7 @@ export function GenerationConfig({
           setWordTarget={setWordTarget}
           tone={tone}
           setTone={setTone}
+          onGenerate={onGenerate}
         />
       )}
 

@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-08 (CR-07 UX Audit Remediation — Full Implementation)
-Session: CR-07 UX Audit Remediation abgeschlossen. ADR-043 useAIOperation implementiert (Commit 1001125). Alle P0/P1 AI-Flows migriert, §16 Compliance durchgesetzt (0 Violations), maschinelle Checks + CI, 84 Dateien geändert (+5.132/-674). ONBOARD-001, PROMPT-003, KEYBOARD-001 als Feature-Specs erstellt. Q-012 resolved.
+Date: 2026-06-09 (CR-07 Phase 2 + KEYBOARD-001 Implementation)
+Session: CR-07 Phase 2 (CR-AUFG-07-01 bis 07-06) implementiert — 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText modularisiert (ghost-text-helpers → ghost-text-suggestions). 5 Testfiles aktualisiert, 40 Tests grün. 0 manuelle AbortController in AI-Komponenten. KEYBOARD-001 implementiert: Ctrl+Enter = send, Escape = cancel/close in ChatPanel, CoAuthorPanel, ConsistencyCheckPanel. 14 neue Test-Assertions. i18n Keys für sendHint + Shortcuts in allen 3 Locales.
 
 ---
 
@@ -148,6 +148,7 @@ Completed in Phase 6 so far:
   45. ✅ **CR-03 / INFRA-013 P4 (ADR-042)**: PersistentEvidenceSink (PostgreSQL hybrid), EvidenceRepository protocol + implementation, PersistentEvidenceSink in Backend, Alembic migration 0028_invocation_evidence, 41 tests (23 unit + 18 integration). FileEvidenceSink unchanged for CI.
    46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Modes Adopted**: All 27 feature modes fully adopted. Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json cleared (0 adoption debt). CI integration: probes run before adoption check.
 47. ✅ **CR-07 UX Audit Remediation — Full Implementation**: ADR-043 useAIOperation hook + mapSSEError implementiert. Alle P0/P1 AI-Flows (GenerationPanel, CoAuthorPanel, ContinueButton, TipTapEditor, KB sessions, timeline, KB _components) auf useAIOperation migriert. §16 Compliance: aiActions.* i18n keys (de/en/fr), structured AIErrorResponse, no raw AbortController, no useConnectionLost. Maschinelle Compliance-Checks + CI-Integration. RULE-04: scorer_modes.py (401→365) + compliance script (594→93) modularisiert. ONBOARD-001, PROMPT-003, KEYBOARD-001 Feature-Specs erstellt. Q-012 resolved. Commit 1001125: 84 Dateien, +5.132/-674.
+48. ✅ **CR-07 UX Audit — Phase 2**: CR-AUFG-07-01 bis CR-AUFG-07-06 abgeschlossen. 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming DEAD CODE DELETED. Migrierte Flows: Chat SSE (CHAT-001), Beta Reader (ANAL-001), Extraction (KB-007), Worldbuilding (KB-006), Name Generator (GEN-001), Consistency Check (CONS-001). KEYBOARD-001 implementiert (Ctrl+Enter, Escape-Cancel). 5 Testfiles aktualisiert, 40+14 Tests grün.
 
 ## What's Next
 
@@ -162,10 +163,10 @@ Completed in Phase 6 so far:
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
 10. ✅ **CR-03 / INFRA-013 P0–P5** — Core ai_invocation module implemented through P5. P0 (pipeline + contracts), P1 (User/Project IDs), P2 (profiles + KG consistency), P3 (FileEvidenceSink + drift detection + quality metrics), P4 (PersistentEvidenceSink + PostgreSQL), P5 (27/27 modes adopted — all runtime blockers resolved). INFRA-013 complete.
 11. ✅ **CR-07 UX Audit — Full Implementation** — ADR-043 implementiert, alle P0/P1 flows migriert, §16 compliance durchgesetzt, maschinelle Checks + CI.
-12. ⏳ **ONBOARD-001: Onboarding & AI-Einführung** — Demo-Discovery im Dashboard, KI-Tour (1–2 Min.), kontextuelle Tooltips. Post-MVP.
+12. ✅ **ONBOARD-001: Onboarding & AI-Einführung** — Demo-Discovery im Dashboard, KI-Tour (1–2 Min.), kontextuelle Tooltips. Post-MVP. Implementiert: GET /setup/demos, DemoProjectCards, useSeenTooltips, Tour-Replay.
 13. ⏳ **PROMPT-003: Prompt Customization UX** — Variablen-Erklärung, Preview/Test-Modus, Reset-to-Default. Post-MVP (nicht vor Phase 6).
-14. ⏳ **KEYBOARD-001: Tastatur-Konsistenz** — Ctrl+Enter für alle AI-Aktionen, Escape für Cancel, Tab für GhostText-Accept. Post-MVP / Low Priority.
-15. ⏳ **CR-07 UX Audit — Phase 2 (Implementation)** — CR-AUFG-07-01 bis CR-AUFG-07-06: Migrate streaming to connectSSE(), Add AbortController to remaining flows, Replace feature-local labels with aiActions, Shared error mapping, Connection-loss preservation, Remove hardcoded English fallbacks.
+14. ✅ **KEYBOARD-001: Tastatur-Konsistenz** — Ctrl+Enter für alle AI-Aktionen, Escape für Cancel, Tab für GhostText-Accept. Post-MVP. Implementiert: ChatPanel (Ctrl+Enter send, Escape cancel/close), CoAuthorPanel (Escape close), ConsistencyCheckPanel (Escape close). 14 neue Test-Assertions. i18n Keys für sendHint + Shortcuts in allen 3 Locales.
+15. ✅ **CR-07 UX Audit — Phase 2 (Implementation)** — CR-AUFG-07-01 bis CR-AUFG-07-06: 8 Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming gelöscht (dead code). 5 Testfiles aktualisiert, 40 Tests grün. 0 manuelle AbortController in AI-Komponenten.
 
 ---
 
@@ -255,3 +256,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
+> Last content update: 2026-06-09 (CR-07 Phase 2 + KEYBOARD-001)

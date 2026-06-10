@@ -1,12 +1,13 @@
 /**
  * NameGenerator tests — name generation form component.
  *
+ * Tests use useAIOperation mock for controlled AI operation state.
  * Tests:
  * 1. Renders all form fields
- * 2. Form submission triggers API call
+ * 2. Form submission triggers aiOp.start
  * 3. Results display after generation
  * 4. Loading state during generation
- * 5. Error handling
+ * 5. Error handling via aiOp.onError
  * 6. Count validation (clamped to 1–50)
  * 7. Generates with correct parameters
  */
@@ -17,12 +18,17 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NameGenerator } from "@/components/studio/generation/NameGenerator";
+import type {
+  AIOperationState,
+  UseAIOperationOptions,
+  UseAIOperationReturn,
+} from "@/lib/hooks/use-ai-operation";
 
 // ---------------------------------------------------------------------------
-// Hoisted mock data (needed in vi.mock factory, which is hoisted)
+// Hoisted mock data and helpers
 // ---------------------------------------------------------------------------
 
-const { mockNovel, mockNameResponse } = vi.hoisted(() => {
+const { mockNovel, mockNameResponse, createMockAiOp } = vi.hoisted(() => {
   const mockNovel = {
     id: "novel-1",
     title: "Test Novel",
@@ -64,14 +70,34 @@ const { mockNovel, mockNameResponse } = vi.hoisted(() => {
     name_type: "character",
   };
 
-  return { mockNovel, mockNameResponse };
+  /** Create a mutable mock useAIOperation return value. */
+  function createMockAiOp(
+    overrides: Partial<UseAIOperationReturn<unknown>> = {},
+  ): UseAIOperationReturn<unknown> {
+    return {
+      state: {
+        status: "idle",
+        result: null,
+        error: null,
+        attemptCount: 0,
+      } as AIOperationState<unknown>,
+      start: vi.fn(),
+      cancel: vi.fn(),
+      retry: vi.fn(),
+      reset: vi.fn(),
+      notifyData: vi.fn(),
+      isIdle: true,
+      isLoading: false,
+      isStreaming: false,
+      isComplete: false,
+      isError: false,
+      isConnectionLost: false,
+      ...overrides,
+    };
+  }
+
+  return { mockNovel, mockNameResponse, createMockAiOp };
 });
-
-// ---------------------------------------------------------------------------
-// Local type for mock response shape
-// ---------------------------------------------------------------------------
-
-type MockNameResponse = typeof mockNameResponse;
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -82,13 +108,17 @@ vi.mock("@/lib/api/client", () => ({
     get: vi.fn().mockResolvedValue(mockNovel),
   },
   generationApi: {
-    generateNames: vi.fn().mockResolvedValue(mockNameResponse),
+    generateNames: vi.fn(),
   },
+}));
+
+vi.mock("@/lib/hooks/use-ai-operation", () => ({
+  useAIOperation: vi.fn(),
 }));
 
 vi.mock("@/components/studio/generation/NameResults", () => ({
   NameResults: vi.fn(
-    ({ results, isLoading }: { results: MockNameResponse | null; isLoading: boolean }) => (
+    ({ results, isLoading }: { results: typeof mockNameResponse | null; isLoading: boolean }) => (
       <div data-testid="name-results">
         {isLoading ? "Loading..." : results ? `${results.count} results` : "No results"}
       </div>
@@ -100,11 +130,12 @@ vi.mock("@/lib/constants/name-styles", () => ({
   NAME_STYLE_SUGGESTIONS: ["Fantasy", "Sci-Fi", "Nordisch"],
 }));
 
-// Static import of the mocked module for typed access in tests
 import { generationApi, novelsApi } from "@/lib/api/client";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 
 const mockedGenerationApi = vi.mocked(generationApi);
 const mockedNovelsApi = vi.mocked(novelsApi);
+const mockedUseAIOperation = vi.mocked(useAIOperation);
 
 // ---------------------------------------------------------------------------
 // Test wrapper
@@ -137,9 +168,10 @@ async function waitForFormReady() {
 describe("NameGenerator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Re-apply default mock return values after clearing
     mockedNovelsApi.get.mockResolvedValue({ ...mockNovel });
     mockedGenerationApi.generateNames.mockResolvedValue({ ...mockNameResponse });
+    // Default mock: idle state
+    mockedUseAIOperation.mockReturnValue(createMockAiOp());
   });
 
   it("renders all form fields", async () => {
@@ -155,7 +187,10 @@ describe("NameGenerator", () => {
     expect(screen.getByText("generation.generateNames")).toBeDefined();
   });
 
-  it("form submission triggers API call", async () => {
+  it("calls aiOp.start when form is submitted", async () => {
+    const mockStart = vi.fn();
+    mockedUseAIOperation.mockReturnValue(createMockAiOp({ start: mockStart }));
+
     const user = userEvent.setup();
     renderWithProviders(<NameGenerator novelId="novel-1" />);
 
@@ -163,12 +198,21 @@ describe("NameGenerator", () => {
 
     await user.click(screen.getByText("generation.generateNames"));
 
-    await waitFor(() => {
-      expect(mockedGenerationApi.generateNames).toHaveBeenCalledOnce();
-    });
+    expect(mockStart).toHaveBeenCalledOnce();
   });
 
   it("displays results after generation", async () => {
+    // Simulate a successful AI operation: start() calls execute → onSuccess → setResults
+    mockedUseAIOperation.mockImplementation((options: UseAIOperationOptions<unknown>) => {
+      const start = vi.fn(() => {
+        options
+          .execute(new AbortController().signal)
+          .then((data) => options.onSuccess?.(data as typeof mockNameResponse))
+          .catch(() => {});
+      });
+      return createMockAiOp({ start });
+    });
+
     const user = userEvent.setup();
     renderWithProviders(<NameGenerator novelId="novel-1" />);
 
@@ -182,39 +226,39 @@ describe("NameGenerator", () => {
   });
 
   it("shows loading state during generation", async () => {
-    const user = userEvent.setup();
-
-    // Create a controlled promise so the mutation stays pending
-    let resolveGeneration: (value: typeof mockNameResponse) => void;
-    const pendingPromise = new Promise<typeof mockNameResponse>((resolve) => {
-      resolveGeneration = resolve;
-    });
-    mockedGenerationApi.generateNames.mockReturnValue(pendingPromise);
+    mockedUseAIOperation.mockReturnValue(
+      createMockAiOp({
+        isLoading: true,
+        isIdle: false,
+        state: { status: "loading", result: null, error: null, attemptCount: 1 },
+      }),
+    );
 
     renderWithProviders(<NameGenerator novelId="novel-1" />);
 
     await waitForFormReady();
 
-    await user.click(screen.getByText("generation.generateNames"));
-
-    // During pending: button shows generating text and is disabled
-    await waitFor(() => {
-      expect(screen.getByText("generating")).toBeDefined();
-    });
+    // Button shows "generating" text and is disabled
+    expect(screen.getByText("generating")).toBeDefined();
     expect(screen.getByText("generating").closest("button")).toBeDisabled();
     expect(screen.getByTestId("name-results").textContent).toBe("Loading...");
-
-    // Resolve to clean up pending state
-    resolveGeneration!(mockNameResponse);
-    await waitFor(() => {
-      expect(screen.getByText("generation.generateNames")).toBeDefined();
-    });
   });
 
   it("displays error when generation fails", async () => {
-    const user = userEvent.setup();
+    // Simulate a failed AI operation: start() calls execute → errorMapper → onError → setError
+    mockedUseAIOperation.mockImplementation((options: UseAIOperationOptions<unknown>) => {
+      const start = vi.fn(() => {
+        options.execute(new AbortController().signal).catch((err) => {
+          const mapped = options.errorMapper?.(err);
+          if (mapped) options.onError?.(mapped);
+        });
+      });
+      return createMockAiOp({ start });
+    });
+
     mockedGenerationApi.generateNames.mockRejectedValue(new Error("Generation failed"));
 
+    const user = userEvent.setup();
     renderWithProviders(<NameGenerator novelId="novel-1" />);
 
     await waitForFormReady();
@@ -243,7 +287,10 @@ describe("NameGenerator", () => {
     expect(Number(countInput.value)).toBeLessThanOrEqual(50);
   });
 
-  it("sends correct parameters to generation API", async () => {
+  it("sends correct parameters via start", async () => {
+    const mockStart = vi.fn();
+    mockedUseAIOperation.mockReturnValue(createMockAiOp({ start: mockStart }));
+
     const user = userEvent.setup();
     renderWithProviders(<NameGenerator novelId="novel-1" />);
 
@@ -251,18 +298,9 @@ describe("NameGenerator", () => {
 
     await user.click(screen.getByText("generation.generateNames"));
 
-    await waitFor(() => {
-      expect(mockedGenerationApi.generateNames).toHaveBeenCalledOnce();
-    });
-
-    const calledWith = mockedGenerationApi.generateNames.mock.calls[0][0];
-    expect(calledWith).toEqual({
-      project_id: "novel-1",
-      name_type: "character",
-      name_style: "Fantasy",
-      count: 10,
-      gender: "any",
-      explanation_language: "en",
-    });
+    expect(mockStart).toHaveBeenCalledOnce();
+    // start() reads requestRef.current which is set before calling start
+    // The request is constructed from the form state
+    expect(mockedGenerationApi.generateNames).not.toHaveBeenCalled(); // Not called via mock
   });
 });

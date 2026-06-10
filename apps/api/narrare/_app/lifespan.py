@@ -141,6 +141,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     settings = get_settings()
 
+    if settings.encryption_key and not os.environ.get("NARRARE_ENCRYPTION_KEY"):
+        os.environ["NARRARE_ENCRYPTION_KEY"] = settings.encryption_key
+
     # Log E2E test mode if active
     if os.environ.get("NARRARE_E2E_TEST"):
         logger.info(

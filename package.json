@@ -2,13 +2,17 @@
   "name": "narrare-workspace",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "pnpm@10.24.0",
-
+  "packageManager": "pnpm@11.5.2",
   "devDependencies": {
     "ts-morph": "^28.0.0",
     "tsx": "^4.21.0"
   },
   "scripts": {
     "check:i18n": "tsx scripts/validate-i18n.ts"
+  },
+  "pnpm": {
+    "overrides": {
+      "qs": ">=6.15.2"
+    }
   }
 }

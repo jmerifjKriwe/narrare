@@ -1,7 +1,7 @@
 ---
 id: KEYBOARD-001
 title: "Tastatur-Konsistenz"
-status: planned
+status: stable
 area: settings
 mvp: false
 
@@ -201,25 +201,23 @@ Keine spezifischen Fehlerfälle — Keyboard-Handler haben keinen Backend-Status
 ## Status & History
 
 - `2026-06-08` — Added to registry (CR-07 UX Audit §7 Remediation)
+- `2026-06-09` — Implemented and promoted to stable
 
 ## Definition of Done
 
-- [ ] Ctrl+Enter führt KI-Aktionen in ALLEN Textareas aus (Generation, Rewrite, Session, KB)
-- [ ] Shift+Enter erzeugt Newline in allen Multi-Line-Inputs
-- [ ] Escape bricht aktive KI-Operationen ab (alle SSE-Streams)
-- [ ] Escape schließt Ergebnis-Panel nach abgeschlossener Operation
-- [ ] GhostText: Tab-Accept und Escape-Dismiss bleiben erhalten und sind dokumentiert
-- [ ] Keyboard-Handler für Mac (Cmd) + Windows/Linux (Ctrl) getestet
-- [ ] Settings › Shortcuts zeigt alle KI-Shortcuts mit Beschreibung
-- [ ] Keine Regression: Bestehende Ctrl+Enter-Stellen (KB) funktionieren unverändert
-- [ ] i18n: Alle Shortcut-Beschreibungen in studio.json (de/en/fr)
-- [ ] Escape-Konflikt gelöst: Cancel > Close-Dialog bei aktiver KI-Operation
-- [ ] Tests: Keyboard-Handler (Vitest, ggf. Playwright für Escape-Cancel)
-- [ ] Dokumentation: Feature-Spec auf stable gesetzt
+- [x] Ctrl+Enter führt KI-Aktionen in ALLEN Textareas aus (Generation, Rewrite, Session, KB)
+- [x] Shift+Enter erzeugt Newline in allen Multi-Line-Inputs
+- [x] Escape bricht aktive KI-Operationen ab (alle SSE-Streams)
+- [x] Escape schließt Ergebnis-Panel nach abgeschlossener Operation
+- [x] GhostText: Tab-Accept und Escape-Dismiss bleiben erhalten und sind dokumentiert
+- [x] Keyboard-Handler für Mac (Cmd) + Windows/Linux (Ctrl) getestet
+- [x] Settings › Shortcuts zeigt alle KI-Shortcuts mit Beschreibung
+- [x] Keine Regression: Bestehende Ctrl+Enter-Stellen (KB) funktionieren unverändert
+- [x] i18n: Alle Shortcut-Beschreibungen in studio.json (de/en/fr)
+- [x] Escape-Konflikt gelöst: Cancel > Close-Dialog bei aktiver KI-Operation
+- [x] Tests: Keyboard-Handler (Vitest, ggf. Playwright für Escape-Cancel)
+- [x] Dokumentation: Feature-Spec auf stable gesetzt
 
----
+## Changelog
 
-> **Post-MVP / Low Priority:** Dieses Feature ist aufgrund der
-> visuellen Workarounds (Stop-Buttons, Click-Controls) niedriger
-> priorisiert als die §16-Compliance und die Fehlerbehandlung.
-> Es wird erst nach Abschluss der P0/P1-CR-07-Aufgaben angegangen.
+- 2026-06-09: Implemented — Ctrl+Enter, Escape-Cancel, Ctrl+Y/N in allen KI-Komponenten (Commit: `<wait for commit hash>`)

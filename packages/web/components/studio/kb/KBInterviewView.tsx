@@ -17,6 +17,7 @@ import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { InterviewCompleteState } from "./InterviewCompleteState";
 import { InterviewErrorState } from "./InterviewErrorState";
 import { InterviewHeader } from "./InterviewHeader";
+import { InterviewProgressBar } from "./InterviewProgressBar";
 import { InterviewQuestionCard } from "./InterviewQuestionCard";
 
 type InterviewPhase = "idle" | "question" | "answering" | "complete";
@@ -105,21 +106,30 @@ export function KBInterviewView({
   const isError = interviewOp.isError || interviewOp.isConnectionLost;
   const error = interviewOp.state.error;
 
-  // Calculate progress
-  const totalFields = session.fields.length;
-  const filledFields = session.fields.filter((f) => f.final_value || f.user_value).length;
+  // Escape-Cancel Handler (KEYBOARD-001)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isLoading) {
+        e.preventDefault();
+        interviewOp.cancel();
+      }
+      if (e.key === "Escape" && !isLoading) {
+        e.preventDefault();
+        onBack();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isLoading, interviewOp.cancel, onBack]);
 
   return (
     <div className="flex flex-col h-full">
       <InterviewHeader questionCount={questionCount} onBack={onBack} />
 
-      {/* Progress bar */}
-      <div className="h-1 bg-muted">
-        <div
-          className="h-full bg-purple-500 transition-all duration-300"
-          style={{ width: totalFields > 0 ? `${(filledFields / totalFields) * 100}%` : "0%" }}
-        />
-      </div>
+      <InterviewProgressBar
+        filledFields={session.fields.filter((f) => f.final_value || f.user_value).length}
+        totalFields={session.fields.length}
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">

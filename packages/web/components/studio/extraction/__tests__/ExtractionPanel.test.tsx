@@ -90,19 +90,41 @@ const sampleItems: ExtractionItem[] = [
   },
 ];
 
+// Controlled promise resolvers for mutateAsync
+let extractResolve: ((value: unknown) => void) | null = null;
+let extractReject: ((reason: unknown) => void) | null = null;
+let applyResolve: ((value: unknown) => void) | null = null;
+let applyReject: ((reason: unknown) => void) | null = null;
+
 // Stable mock functions — defined once, reused across renders
 const stableExtractMutate = vi.fn();
 const stableApplyMutate = vi.fn();
+const stableExtractMutateAsync = vi.fn<() => Promise<unknown>>(
+  () =>
+    new Promise((resolve, reject) => {
+      extractResolve = resolve;
+      extractReject = reject;
+    }),
+);
+const stableApplyMutateAsync = vi.fn<(items: unknown[]) => Promise<unknown>>(
+  () =>
+    new Promise((resolve, reject) => {
+      applyResolve = resolve;
+      applyReject = reject;
+    }),
+);
 
 vi.mock("@/lib/hooks/useExtraction", () => ({
   useExtractChapter: () => ({
     mutate: stableExtractMutate,
+    mutateAsync: stableExtractMutateAsync,
     isPending: false,
     isError: false,
     error: null,
   }),
   useApplyExtraction: () => ({
     mutate: stableApplyMutate,
+    mutateAsync: stableApplyMutateAsync,
     isPending: false,
     isError: false,
     error: null,
@@ -161,11 +183,12 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 /**
- * Simulate extraction success: update selection state and call onSuccess callback.
- * The ExtractionPanel's useEffect calls extractMutation.mutate(undefined, { onSuccess, onError }).
- * We intercept this call and invoke the onSuccess callback to trigger phase transition.
+ * Simulate extraction success: update selection state and resolve the
+ * mutateAsync promise. The ExtractionPanel's useEffect calls
+ * extractMutation.mutateAsync().then(...).catch(...) which we intercept
+ * via the controlled promise stored in extractResolve/extractReject.
  */
-function simulateExtractSuccess(
+async function simulateExtractSuccess(
   output: { results: ExtractionItem[]; analysis_notes: string } = {
     results: sampleItems,
     analysis_notes: "Found 3 items.",
@@ -176,25 +199,19 @@ function simulateExtractSuccess(
   mockSelectionSelectedIndices = new Set(mockSelectionItems.map((_, i) => i));
   mockSelectionAnalysisNotes = output.analysis_notes;
 
-  // The mutate function was called with (undefined, { onSuccess, onError })
-  const lastCall = stableExtractMutate.mock.calls[stableExtractMutate.mock.calls.length - 1];
-  if (lastCall?.[1]?.onSuccess) {
-    act(() => {
-      lastCall[1].onSuccess(output);
-    });
-  }
+  // Resolve the controlled promise created by mutateAsync
+  await act(async () => {
+    extractResolve?.(output);
+  });
 }
 
-function simulateExtractError(error: Error) {
-  const lastCall = stableExtractMutate.mock.calls[stableExtractMutate.mock.calls.length - 1];
-  if (lastCall?.[1]?.onError) {
-    act(() => {
-      lastCall[1].onError(error);
-    });
-  }
+async function simulateExtractError(error: Error) {
+  await act(async () => {
+    extractReject?.(error);
+  });
 }
 
-function simulateApplySuccess(
+async function simulateApplySuccess(
   response: {
     created_entries: Array<{ id: string; name: string; entity_type: string }>;
     updated_entries: Array<{ id: string; name: string; entity_type: string }>;
@@ -203,21 +220,15 @@ function simulateApplySuccess(
     updated_entries: [],
   },
 ) {
-  const lastCall = stableApplyMutate.mock.calls[stableApplyMutate.mock.calls.length - 1];
-  if (lastCall?.[1]?.onSuccess) {
-    act(() => {
-      lastCall[1].onSuccess(response);
-    });
-  }
+  await act(async () => {
+    applyResolve?.(response);
+  });
 }
 
-function simulateApplyError(error: Error) {
-  const lastCall = stableApplyMutate.mock.calls[stableApplyMutate.mock.calls.length - 1];
-  if (lastCall?.[1]?.onError) {
-    act(() => {
-      lastCall[1].onError(error);
-    });
-  }
+async function simulateApplyError(error: Error) {
+  await act(async () => {
+    applyReject?.(error);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -227,6 +238,10 @@ function simulateApplyError(error: Error) {
 describe("ExtractionPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    extractResolve = null;
+    extractReject = null;
+    applyResolve = null;
+    applyReject = null;
     mockSelectionItems = [];
     mockSelectionSelectedIndices = new Set();
     mockSelectionAnalysisNotes = "";
@@ -243,15 +258,15 @@ describe("ExtractionPanel", () => {
     const loadingTitles = screen.getAllByText("kb.extractionLoadingTitle");
     expect(loadingTitles.length).toBeGreaterThanOrEqual(1);
 
-    // Should have triggered the extract mutation
-    expect(stableExtractMutate).toHaveBeenCalledTimes(1);
+    // Should have triggered the extract mutation via mutateAsync
+    expect(stableExtractMutateAsync).toHaveBeenCalledTimes(1);
   });
 
-  it("shows review state after extraction succeeds", () => {
+  it("shows review state after extraction succeeds", async () => {
     renderWithProviders(<ExtractionPanel {...defaultProps} />);
 
     // Simulate extraction success
-    simulateExtractSuccess();
+    await simulateExtractSuccess();
 
     // Should now show review state with item names
     expect(screen.getByText("kb.extractionResultsSummary")).toBeDefined();
@@ -259,42 +274,41 @@ describe("ExtractionPanel", () => {
     expect(screen.getByText("Dr. Viktor Stein")).toBeDefined();
   });
 
-  it("shows error state with retry on extraction failure", () => {
+  it("shows error state with retry on extraction failure", async () => {
     renderWithProviders(<ExtractionPanel {...defaultProps} />);
 
     // Simulate extraction failure
-    simulateExtractError(new Error("Extraction service unavailable"));
+    await simulateExtractError(new Error("Extraction service unavailable"));
 
     expect(screen.getByText("Extraction service unavailable")).toBeDefined();
     expect(screen.getByText("kb.extractionRetry")).toBeDefined();
   });
 
-  it("retry button re-triggers extraction after error", () => {
+  it("retry button re-triggers extraction after error", async () => {
     renderWithProviders(<ExtractionPanel {...defaultProps} />);
 
     // Simulate first failure
-    simulateExtractError(new Error("First attempt failed"));
+    await simulateExtractError(new Error("First attempt failed"));
     expect(screen.getByText("First attempt failed")).toBeDefined();
 
     // Click retry
     fireEvent.click(screen.getByText("kb.extractionRetry"));
 
-    // Should have called mutate again (at least once on mount + once on retry)
-    // Note: the mount effect may re-fire due to unstable extractMutation.mutate reference
-    expect(stableExtractMutate.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // Should have called mutateAsync again (at least once on mount + once on retry)
+    expect(stableExtractMutateAsync.mock.calls.length).toBeGreaterThanOrEqual(2);
 
     // Simulate success on retry
-    simulateExtractSuccess();
+    await simulateExtractSuccess();
 
     // Should now show review state
     expect(screen.getByText("kb.extractionResultsSummary")).toBeDefined();
   });
 
-  it("apply calls mutation with selected items only", () => {
+  it("apply calls mutation with selected items only", async () => {
     renderWithProviders(<ExtractionPanel {...defaultProps} />);
 
     // Simulate extraction success with all items selected
-    simulateExtractSuccess();
+    await simulateExtractSuccess();
 
     // Deselect the middle item (Dr. Viktor Stein at index 1 after sort by confidence)
     mockSelectionSelectedIndices = new Set([0, 2]); // Only Anna and relationship selected
@@ -305,27 +319,27 @@ describe("ExtractionPanel", () => {
     const applyButtons = screen.getAllByText("kb.extractionApply");
     fireEvent.click(applyButtons[0]);
 
-    // Should have called apply mutation
-    expect(stableApplyMutate).toHaveBeenCalledTimes(1);
+    // Should have called apply mutation via mutateAsync
+    expect(stableApplyMutateAsync).toHaveBeenCalledTimes(1);
 
     // Verify the items passed to apply
-    const applyArgs = stableApplyMutate.mock.calls[0][0];
+    const applyArgs = stableApplyMutateAsync.mock.calls[0][0];
     expect(Array.isArray(applyArgs)).toBe(true);
   });
 
-  it("on apply success, calls onApplied callback", () => {
+  it("on apply success, calls onApplied callback", async () => {
     const onApplied = vi.fn();
     renderWithProviders(<ExtractionPanel {...defaultProps} onApplied={onApplied} />);
 
     // Simulate extraction success
-    simulateExtractSuccess();
+    await simulateExtractSuccess();
 
     // Click apply
     const applyButtons = screen.getAllByText("kb.extractionApply");
     fireEvent.click(applyButtons[0]);
 
     // Simulate apply success
-    simulateApplySuccess();
+    await simulateApplySuccess();
 
     expect(onApplied).toHaveBeenCalledTimes(1);
   });
@@ -341,45 +355,45 @@ describe("ExtractionPanel", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("shows done state after successful apply", () => {
+  it("shows done state after successful apply", async () => {
     renderWithProviders(<ExtractionPanel {...defaultProps} />);
 
     // Simulate extraction success
-    simulateExtractSuccess();
+    await simulateExtractSuccess();
 
     // Click apply
     const applyButtons = screen.getAllByText("kb.extractionApply");
     fireEvent.click(applyButtons[0]);
 
     // Simulate apply success
-    simulateApplySuccess();
+    await simulateApplySuccess();
 
     // Should show done state
     expect(screen.getByText("kb.extractionAppliedTitle")).toBeDefined();
   });
 
-  it("shows apply error state when apply fails", () => {
+  it("shows apply error state when apply fails", async () => {
     renderWithProviders(<ExtractionPanel {...defaultProps} />);
 
     // Simulate extraction success
-    simulateExtractSuccess();
+    await simulateExtractSuccess();
 
     // Click apply
     const applyButtons = screen.getAllByText("kb.extractionApply");
     fireEvent.click(applyButtons[0]);
 
     // Simulate apply failure
-    simulateApplyError(new Error("Apply failed: KB service unavailable"));
+    await simulateApplyError(new Error("Apply failed: KB service unavailable"));
 
     // Should show error state
     expect(screen.getByText("Apply failed: KB service unavailable")).toBeDefined();
   });
 
-  it("items are sorted by confidence descending", () => {
+  it("items are sorted by confidence descending", async () => {
     renderWithProviders(<ExtractionPanel {...defaultProps} />);
 
     // Simulate extraction success — loadResults sorts by confidence
-    simulateExtractSuccess();
+    await simulateExtractSuccess();
 
     // The mock selection items are already sorted by confidence descending
     // Anna Schmidt (0.92) should be first, Dr. Viktor Stein (0.85) second

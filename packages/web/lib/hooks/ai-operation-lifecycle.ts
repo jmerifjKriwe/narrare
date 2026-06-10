@@ -116,10 +116,10 @@ export function createLifecycleActions<T>(
     ctx.abortRef.current?.abort();
     ctx.abortRef.current = null;
     clearConnectionLossTimer();
-    ctx.operationIdRef.current += 1;
 
     ctx.setState((prev) => {
       if (prev.status === "loading" || prev.status === "streaming") {
+        ctx.operationIdRef.current += 1;
         return { ...prev, status: "idle", error: null };
       }
       return prev;

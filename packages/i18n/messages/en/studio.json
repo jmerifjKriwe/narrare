@@ -527,7 +527,15 @@
       "ghostTextWordDescription": "Accept the next word of the suggestion",
       "ghostTextDismiss": "Dismiss Ghost Text",
       "ghostTextDismissDescription": "Dismiss suggestion and continue writing",
-      "selectText": "Select"
+      "selectText": "Select",
+      "aiCtrlEnter": "Execute AI Action",
+      "aiCtrlEnterDescription": "Ctrl+Enter (or Cmd+Enter on Mac) in all AI text fields",
+      "aiEscapeCancel": "Cancel AI Operation",
+      "aiEscapeCancelDescription": "Escape cancels a running AI operation",
+      "aiAccept": "Accept AI Output",
+      "aiAcceptDescription": "Ctrl+Y accepts the current AI suggestion",
+      "aiReject": "Reject AI Output",
+      "aiRejectDescription": "Ctrl+Shift+N rejects the current AI suggestion"
     },
     "aboutSection": {
       "title": "About Narrare",
@@ -1646,6 +1654,7 @@
     "streaming": "Thinking...",
     "inputPlaceholder": "Ask about your writing...",
     "send": "Send",
+    "sendHint": "Ctrl+Enter to send",
     "errorConnecting": "Connection error",
     "clearConversation": "Clear conversation"
   },

@@ -1,9 +1,11 @@
 "use client";
 
-import { AlertTriangle, Check, Loader2, Plus, RotateCcw, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Sparkles } from "lucide-react";
 import type { useTranslations } from "next-intl";
+import { useEffect } from "react";
 import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 import { InlineDiff } from "./InlineDiff";
+import { RewriteModalFooter } from "./RewriteModalFooter";
 import type { AISuggestion } from "./TipTapEditorController";
 
 type StudioTranslator = ReturnType<typeof useTranslations>;
@@ -39,6 +41,30 @@ export function RewriteSuggestionModal({
   onAccept,
   t,
 }: RewriteSuggestionModalProps) {
+  // Keyboard Shortcuts Handler (KEYBOARD-001)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+        e.preventDefault();
+        onAccept();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        onReject();
+      }
+      if (e.key === "Escape" && isRewriteStreaming) {
+        e.preventDefault();
+        onNewSuggestions(); // Retry = neue Vorschläge laden
+      }
+      if (e.key === "Escape" && !isRewriteStreaming) {
+        e.preventDefault();
+        onReject(); // Modal schließen bei nicht-streaming
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isRewriteStreaming, onAccept, onReject, onNewSuggestions]);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
@@ -122,43 +148,13 @@ export function RewriteSuggestionModal({
           </div>
         )}
 
-        <div className="p-6 border-t border-border flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onReject}
-            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
-          >
-            <X className="w-4 h-4" />
-            {t("aiActions.reject")}
-          </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onInsertAsNew}
-              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
-              title={t("aiActions.insertAsNew")}
-            >
-              <Plus className="w-4 h-4" />
-              {t("aiActions.insertAsNew")}
-            </button>
-            <button
-              type="button"
-              onClick={onNewSuggestions}
-              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-              {t("aiActions.newSuggestions")}
-            </button>
-            <button
-              type="button"
-              onClick={onAccept}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <Check className="w-4 h-4" />
-              {t("aiActions.replace")}
-            </button>
-          </div>
-        </div>
+        <RewriteModalFooter
+          onReject={onReject}
+          onInsertAsNew={onInsertAsNew}
+          onNewSuggestions={onNewSuggestions}
+          onAccept={onAccept}
+          t={t}
+        />
       </div>
     </div>
   );

@@ -44,11 +44,11 @@ import {
   clearAll,
   handleTypingDuringSuggestion,
   scheduleAutoTrigger,
-  simulateSuggestion,
 } from "./ghost-text-helpers";
+import { simulateSuggestion } from "./ghost-text-suggestions";
 
 // Re-export simulateSuggestion for external consumers (TipTapEditor.tsx)
-export { simulateSuggestion } from "./ghost-text-helpers";
+export { simulateSuggestion } from "./ghost-text-suggestions";
 
 // ── Extension ──────────────────────────────────────────────────────────────────
 

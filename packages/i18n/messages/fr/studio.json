@@ -527,7 +527,15 @@
       "ghostTextWordDescription": "Accepter le mot suivant de la suggestion",
       "ghostTextDismiss": "Rejeter le Ghost Text",
       "ghostTextDismissDescription": "Rejeter la suggestion et continuer à écrire",
-      "selectText": "Sélectionner"
+      "selectText": "Sélectionner",
+      "aiCtrlEnter": "Exécuter l'action IA",
+      "aiCtrlEnterDescription": "Ctrl+Entrée (ou Cmd+Entrée sur Mac) dans tous les champs IA",
+      "aiEscapeCancel": "Annuler l'opération IA",
+      "aiEscapeCancelDescription": "Échap annule une opération IA en cours",
+      "aiAccept": "Accepter la sortie IA",
+      "aiAcceptDescription": "Ctrl+Y accepte la suggestion IA actuelle",
+      "aiReject": "Rejeter la sortie IA",
+      "aiRejectDescription": "Ctrl+Shift+N rejette la suggestion IA actuelle"
     },
     "aboutSection": {
       "title": "À propos de Narrare",
@@ -1646,6 +1654,7 @@
     "streaming": "Réflexion...",
     "inputPlaceholder": "Posez une question...",
     "send": "Envoyer",
+    "sendHint": "Ctrl+Entrée pour envoyer",
     "errorConnecting": "Erreur de connexion",
     "clearConversation": "Effacer la conversation"
   },

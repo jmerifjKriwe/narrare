@@ -1,15 +1,17 @@
 "use client";
 
 /**
- * TanStack Query hooks for Beta Reader analysis.
+ * React hooks for Beta Reader analysis — §16 AI-Interaction Standards.
  *
- * All hooks accept novelId as the primary key parameter.
- * Query keys follow the pattern ["analysis", novelId, ...] for cache management.
- * Each hook manages its own AbortController for cancel support (§16.2).
+ * Wraps useAIOperation for lifecycle management (no manual AbortController).
+ * Keeps TanStack Query cache for result sharing between components.
+ *
+ * @module useBetaReader
  */
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef } from "react";
+import { mapRestApiError } from "@/lib/api/ai-rest-error";
 import {
   analysisApi,
   type BetaReaderDeepDiveRequest,
@@ -17,6 +19,15 @@ import {
   type BetaReaderRequest,
   type BetaReaderResponse,
 } from "@/lib/api/analysis";
+import {
+  buildMutationReturn,
+  createAbortAwareErrorMapper,
+  createOnErrorCallback,
+  createOnSuccessCallback,
+  useAbortCallback,
+  useMutateAsyncFactory,
+} from "@/lib/hooks/ai-mutation-adapter";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 
 // --- Query key factory ---
 
@@ -26,58 +37,91 @@ const analysisKeys = {
     ["analysis", novelId, "beta-reader", ...chapterIds.sort()] as const,
 };
 
-// --- Mutation hooks ---
+// ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
 
 /**
  * Mutation hook for Phase 1 (full chapter analysis).
- *
- * On success, stores the result in the TanStack Query cache so other
- * components can read it without re-fetching.
+ * On success, stores result in TanStack Query cache.
  */
 export function useBetaReaderAnalyze(novelId: string) {
   const queryClient = useQueryClient();
-  const abortRef = useRef<AbortController | null>(null);
+  const requestRef = useRef<BetaReaderRequest | null>(null);
+  const resolveRef = useRef<((value: BetaReaderResponse) => void) | null>(null);
+  const rejectRef = useRef<((reason: unknown) => void) | null>(null);
 
-  const mutation = useMutation<BetaReaderResponse, Error, BetaReaderRequest>({
-    mutationFn: (request) => {
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
-      return analysisApi.analyze(novelId, request, abortRef.current.signal);
+  const aiOp = useAIOperation<BetaReaderResponse>({
+    execute: async (signal) => {
+      const request = requestRef.current;
+      if (!request) throw new Error("No request parameters provided");
+      return analysisApi.analyze(novelId, request, signal);
     },
-    onSuccess: (data, variables) => {
-      queryClient.setQueryData(analysisKeys.betaReader(novelId, variables.chapter_ids), data);
+    errorMapper: createAbortAwareErrorMapper(resolveRef, rejectRef, mapRestApiError),
+    onSuccess: (data) => {
+      resolveRef.current?.(data);
+      resolveRef.current = null;
+      rejectRef.current = null;
+      const request = requestRef.current;
+      if (request) {
+        queryClient.setQueryData(analysisKeys.betaReader(novelId, request.chapter_ids), data);
+      }
     },
+    onError: createOnErrorCallback(resolveRef, rejectRef),
+    connectionLossTimeout: 15_000,
   });
 
-  const abort = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
+  const mutate = useCallback(
+    (request: BetaReaderRequest) => {
+      requestRef.current = request;
+      aiOp.start();
+    },
+    [aiOp],
+  );
 
-  return { ...mutation, abort };
+  return buildMutationReturn(
+    aiOp,
+    mutate,
+    useMutateAsyncFactory(requestRef, resolveRef, rejectRef, aiOp),
+    useAbortCallback(resolveRef, rejectRef, aiOp),
+    requestRef.current,
+  );
 }
 
 /**
  * Mutation hook for Phase 2 (category deep-dive).
- *
- * Phase 2 results are not cached separately — the user can re-trigger
- * if needed. The cache_key from Phase 1 is passed in the request body.
+ * Phase 2 results are not cached separately.
  */
 export function useBetaReaderDeepDive(novelId: string) {
-  const abortRef = useRef<AbortController | null>(null);
+  const requestRef = useRef<BetaReaderDeepDiveRequest | null>(null);
+  const resolveRef = useRef<((value: BetaReaderDeepDiveResponse) => void) | null>(null);
+  const rejectRef = useRef<((reason: unknown) => void) | null>(null);
 
-  const mutation = useMutation<BetaReaderDeepDiveResponse, Error, BetaReaderDeepDiveRequest>({
-    mutationFn: (request) => {
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
-      return analysisApi.deepDive(novelId, request, abortRef.current.signal);
+  const aiOp = useAIOperation<BetaReaderDeepDiveResponse>({
+    execute: async (signal) => {
+      const request = requestRef.current;
+      if (!request) throw new Error("No request parameters provided");
+      return analysisApi.deepDive(novelId, request, signal);
     },
+    errorMapper: createAbortAwareErrorMapper(resolveRef, rejectRef, mapRestApiError),
+    onSuccess: createOnSuccessCallback(resolveRef, rejectRef),
+    onError: createOnErrorCallback(resolveRef, rejectRef),
+    connectionLossTimeout: 15_000,
   });
 
-  const abort = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
+  const mutate = useCallback(
+    (request: BetaReaderDeepDiveRequest) => {
+      requestRef.current = request;
+      aiOp.start();
+    },
+    [aiOp],
+  );
 
-  return { ...mutation, abort };
+  return buildMutationReturn(
+    aiOp,
+    mutate,
+    useMutateAsyncFactory(requestRef, resolveRef, rejectRef, aiOp),
+    useAbortCallback(resolveRef, rejectRef, aiOp),
+    requestRef.current,
+  );
 }

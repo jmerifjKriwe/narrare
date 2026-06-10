@@ -136,11 +136,19 @@ def browser_context_args() -> dict[str, Any]:
     }
 
 
+@pytest.fixture(autouse=True)
+def _skip_feature_tour(page: Page) -> Generator[None]:
+    """Disable the feature tour for all E2E tests."""
+    page.add_init_script("localStorage.setItem('narrare:featureTourCompleted', 'true');")
+    yield
+
+
 @pytest.fixture
 def fresh_page(browser: Browser, browser_context_args: dict[str, Any]) -> Generator[Page]:
     """Clean browser context — no auth, fresh state."""
     context = browser.new_context(**browser_context_args)  # type: ignore[arg-type]
     page = context.new_page()
+    page.add_init_script("localStorage.setItem('narrare:featureTourCompleted', 'true');")
     yield page
     context.close()
 
@@ -159,6 +167,7 @@ def authenticated_page(browser: Browser, browser_context_args: dict[str, Any]) -
     """
     context = browser.new_context(**browser_context_args)  # type: ignore[arg-type]
     page = context.new_page()
+    page.add_init_script("localStorage.setItem('narrare:featureTourCompleted', 'true');")
 
     # -----------------------------------------------------------------------
     # Step 1: Log in via the API (direct HTTP, not through the browser).

@@ -9,9 +9,50 @@
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { NameGeneratorModal } from "@/components/studio/generation/NameGeneratorModal";
+import type { NameGenerateResponse } from "@/types";
+
+// ---------------------------------------------------------------------------
+// Mock generation API (bypasses MSW — not compatible with happy-dom)
+// ---------------------------------------------------------------------------
+
+const { mockGenerateNames, mockNovelGet } = vi.hoisted(() => ({
+  mockGenerateNames: vi.fn(),
+  mockNovelGet: vi.fn().mockResolvedValue({ id: "novel-1", writing_language: "en" }),
+}));
+
+vi.mock("@/lib/api/client", () => ({
+  generationApi: { generateNames: mockGenerateNames },
+  novelsApi: { get: mockNovelGet },
+}));
+
+const sampleResponse: NameGenerateResponse = {
+  names: [
+    {
+      name: "TestName1",
+      pronunciation: "TEST-nam",
+      meaning: "Test meaning",
+      type: "character",
+      name_style: "fantasy",
+      is_duplicate: true,
+      confidence: 0.9,
+    },
+    {
+      name: "TestName2",
+      pronunciation: null,
+      meaning: null,
+      type: "character",
+      name_style: "fantasy",
+      is_duplicate: false,
+      confidence: 0.85,
+    },
+  ],
+  count: 2,
+  name_style: "fantasy",
+  name_type: "character",
+};
 
 // ---------------------------------------------------------------------------
 // Test wrapper
@@ -34,6 +75,7 @@ function renderWithProviders(ui: React.ReactElement) {
 describe("NameGeneratorModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGenerateNames.mockResolvedValue(sampleResponse);
   });
 
   it("renders form with type/culture/count selectors when open", async () => {
@@ -59,8 +101,11 @@ describe("NameGeneratorModal", () => {
       expect(screen.getByText("generation.generateNames")).toBeDefined();
     });
 
-    // Click generate button
-    fireEvent.click(screen.getByText("generation.generateNames"));
+    // Click generate button inside act so React flushes microtasks
+    await act(async () => {
+      fireEvent.click(screen.getByText("generation.generateNames"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
     // After clicking, the MSW handler returns results
     // The button text should change or results should appear
@@ -79,10 +124,13 @@ describe("NameGeneratorModal", () => {
       expect(screen.getByText("generation.generateNames")).toBeDefined();
     });
 
-    // Click generate
-    fireEvent.click(screen.getByText("generation.generateNames"));
+    // Click generate inside act so React flushes microtasks and state updates
+    await act(async () => {
+      fireEvent.click(screen.getByText("generation.generateNames"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
-    // Wait for MSW results: "TestName1", "TestName2", etc.
+    // Wait for results to appear in DOM
     await waitFor(() => {
       expect(screen.getByText("TestName1")).toBeDefined();
     });
@@ -96,10 +144,13 @@ describe("NameGeneratorModal", () => {
       expect(screen.getByText("generation.generateNames")).toBeDefined();
     });
 
-    // Click generate
-    fireEvent.click(screen.getByText("generation.generateNames"));
+    // Click generate inside act so React flushes microtasks
+    await act(async () => {
+      fireEvent.click(screen.getByText("generation.generateNames"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
-    // MSW handler returns TestName1 with is_duplicate=true (i === 0)
+    // Mock returns TestName1 with is_duplicate=true (first item)
     await waitFor(() => {
       expect(screen.getByText("TestName1")).toBeDefined();
     });

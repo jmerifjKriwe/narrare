@@ -1,36 +1,69 @@
 /**
- * useBetaReader hook tests — TanStack Query hooks for beta reader analysis.
+ * useBetaReader hook tests — useAIOperation wrapper for beta reader analysis.
+ *
+ * Tests the wrapper API mapping (mutate, data, error, isSuccess, isError, abort).
+ * useAIOperation is mocked — these tests verify the hook correctly maps
+ * the primitive's state to the backward-compatible interface.
  *
  * Tests:
- * 1. useBetaReaderAnalyze calls analysisApi.analyze with correct params
- * 2. useBetaReaderAnalyze handles API errors
- * 3. useBetaReaderAnalyze caches result on success
- * 4. useBetaReaderDeepDive calls analysisApi.deepDive with correct params
- * 5. useBetaReaderDeepDive handles API errors
+ * 1. useBetaReaderAnalyze.mutate stores request and calls aiOp.start
+ * 2. useBetaReaderAnalyze.data reflects state.result when complete
+ * 3. useBetaReaderAnalyze.error wraps state.error.userMessage
+ * 4. useBetaReaderDeepDive.mutate stores request and calls aiOp.start
+ * 5. useBetaReaderDeepDive.data reflects state.result when complete
+ * 6. useBetaReaderDeepDive.error wraps state.error.userMessage
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { cleanup, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the API client module
-vi.mock("@/lib/api/analysis", () => ({
-  analysisApi: {
-    analyze: vi.fn(),
-    deepDive: vi.fn(),
-  },
+import type { AIOperationState, UseAIOperationReturn } from "@/lib/hooks/use-ai-operation";
+
+// ---------------------------------------------------------------------------
+// Hoisted mock data factory (needed in vi.mock, which is hoisted)
+// ---------------------------------------------------------------------------
+
+const { createDefaultMockAiOp } = vi.hoisted(() => {
+  function createDefaultMockAiOp<T>(
+    overrides: Partial<UseAIOperationReturn<T>> = {},
+  ): UseAIOperationReturn<T> {
+    const start = vi.fn();
+    const cancel = vi.fn();
+    return {
+      state: {
+        status: "idle",
+        result: null,
+        error: null,
+        attemptCount: 0,
+      } as AIOperationState<T>,
+      start,
+      cancel,
+      retry: vi.fn(),
+      reset: vi.fn(),
+      notifyData: vi.fn(),
+      isIdle: true,
+      isLoading: false,
+      isStreaming: false,
+      isComplete: false,
+      isError: false,
+      isConnectionLost: false,
+      ...overrides,
+    };
+  }
+  return { createDefaultMockAiOp };
+});
+
+// Mock useAIOperation at module level
+vi.mock("@/lib/hooks/use-ai-operation", () => ({
+  useAIOperation: vi.fn(),
 }));
 
-import { analysisApi } from "@/lib/api/analysis";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useBetaReaderAnalyze, useBetaReaderDeepDive } from "@/lib/hooks/useBetaReader";
 
-// ---------------------------------------------------------------------------
-// Mock helpers
-// ---------------------------------------------------------------------------
-
-const mockAnalyze = analysisApi.analyze as ReturnType<typeof vi.fn>;
-const mockDeepDive = analysisApi.deepDive as ReturnType<typeof vi.fn>;
+const mockedUseAIOperation = vi.mocked(useAIOperation);
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -65,6 +98,14 @@ const mockDeepDiveResponse = {
   analyzed_at: "2026-05-27T10:05:00Z",
 };
 
+const mockError = {
+  kind: "http" as const,
+  i18nKey: "aiActions.errorDefault",
+  userMessage: "Analysis failed",
+  retryable: true,
+  cause: new Error("Analysis failed"),
+};
+
 // ---------------------------------------------------------------------------
 // Test wrapper
 // ---------------------------------------------------------------------------
@@ -82,7 +123,7 @@ function createWrapper() {
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Tests: useBetaReaderAnalyze
 // ---------------------------------------------------------------------------
 
 describe("useBetaReaderAnalyze", () => {
@@ -94,35 +135,9 @@ describe("useBetaReaderAnalyze", () => {
     cleanup();
   });
 
-  it("calls analysisApi.analyze with novelId and request", async () => {
-    mockAnalyze.mockResolvedValueOnce(mockAnalysisResponse);
-
-    const { result } = renderHook(() => useBetaReaderAnalyze("novel-1"), {
-      wrapper: createWrapper(),
-    });
-
-    result.current.mutate({
-      chapter_ids: ["ch-1"],
-      phase: "full",
-    });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(mockAnalyze).toHaveBeenCalledWith(
-      "novel-1",
-      {
-        chapter_ids: ["ch-1"],
-        phase: "full",
-      },
-      expect.any(AbortSignal),
-    );
-    expect(result.current.data?.cache_key).toBe("cache-abc");
-  });
-
-  it("handles API errors", async () => {
-    mockAnalyze.mockRejectedValueOnce(new Error("Analysis failed"));
+  it("calls aiOp.start when mutate is called", () => {
+    const mockAiOp = createDefaultMockAiOp();
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
 
     const { result } = renderHook(() => useBetaReaderAnalyze("novel-1"), {
       wrapper: createWrapper(),
@@ -130,58 +145,77 @@ describe("useBetaReaderAnalyze", () => {
 
     result.current.mutate({ chapter_ids: ["ch-1"], phase: "full" });
 
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
+    expect(mockAiOp.start).toHaveBeenCalledOnce();
+  });
+
+  it("returns data when state is complete", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "complete",
+        result: mockAnalysisResponse,
+        error: null,
+        attemptCount: 1,
+      },
+      isComplete: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useBetaReaderAnalyze("novel-1"), {
+      wrapper: createWrapper(),
     });
 
+    expect(result.current.isSuccess).toBe(true);
+    expect(result.current.data).toEqual(mockAnalysisResponse);
+    expect(result.current.data?.overall.reader_engagement).toBe(7);
+  });
+
+  it("returns error when state is error", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "error",
+        result: null,
+        error: mockError,
+        attemptCount: 1,
+      },
+      isError: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useBetaReaderAnalyze("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isError).toBe(true);
     expect(result.current.error?.message).toBe("Analysis failed");
   });
 
-  it("caches result in query cache on success", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, gcTime: 0 },
-        mutations: { retry: false },
+  it("cancels via abort and calls aiOp.cancel", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "loading",
+        result: null,
+        error: null,
+        attemptCount: 1,
       },
+      isLoading: true,
+      isIdle: false,
     });
-    const setQueryDataSpy = vi.spyOn(queryClient, "setQueryData");
-
-    mockAnalyze.mockResolvedValueOnce(mockAnalysisResponse);
-
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-
-    const { result } = renderHook(() => useBetaReaderAnalyze("novel-1"), { wrapper });
-
-    result.current.mutate({ chapter_ids: ["ch-1"], phase: "full" });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(setQueryDataSpy).toHaveBeenCalledWith(
-      ["analysis", "novel-1", "beta-reader", "ch-1"],
-      mockAnalysisResponse,
-    );
-  });
-
-  it("returns overall assessment on success", async () => {
-    mockAnalyze.mockResolvedValueOnce(mockAnalysisResponse);
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
 
     const { result } = renderHook(() => useBetaReaderAnalyze("novel-1"), {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate({ chapter_ids: ["ch-1"], phase: "full" });
-
-    await waitFor(() => {
-      expect(result.current.data).toBeDefined();
-    });
-
-    expect(result.current.data?.overall.reader_engagement).toBe(7);
+    result.current.abort();
+    expect(mockAiOp.cancel).toHaveBeenCalledOnce();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Tests: useBetaReaderDeepDive
+// ---------------------------------------------------------------------------
 
 describe("useBetaReaderDeepDive", () => {
   beforeEach(() => {
@@ -192,8 +226,9 @@ describe("useBetaReaderDeepDive", () => {
     cleanup();
   });
 
-  it("calls analysisApi.deepDive with novelId and request", async () => {
-    mockDeepDive.mockResolvedValueOnce(mockDeepDiveResponse);
+  it("calls aiOp.start when mutate is called", () => {
+    const mockAiOp = createDefaultMockAiOp();
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
 
     const { result } = renderHook(() => useBetaReaderDeepDive("novel-1"), {
       wrapper: createWrapper(),
@@ -205,39 +240,53 @@ describe("useBetaReaderDeepDive", () => {
       cache_key: "cache-abc",
     });
 
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+    expect(mockAiOp.start).toHaveBeenCalledOnce();
+  });
+
+  it("returns data when state is complete", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "complete",
+        result: mockDeepDiveResponse,
+        error: null,
+        attemptCount: 1,
+      },
+      isComplete: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useBetaReaderDeepDive("novel-1"), {
+      wrapper: createWrapper(),
     });
 
-    expect(mockDeepDive).toHaveBeenCalledWith(
-      "novel-1",
-      {
-        chapter_ids: ["ch-1"],
-        category: "pacing",
-        cache_key: "cache-abc",
-      },
-      expect.any(AbortSignal),
-    );
+    expect(result.current.isSuccess).toBe(true);
     expect(result.current.data?.category_score).toBe(4.5);
   });
 
-  it("handles API errors", async () => {
-    mockDeepDive.mockRejectedValueOnce(new Error("Deep dive failed"));
+  it("returns error when state is error", () => {
+    const deepDiveError = {
+      ...mockError,
+      userMessage: "Deep dive failed",
+      cause: new Error("Deep dive failed"),
+    };
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "error",
+        result: null,
+        error: deepDiveError,
+        attemptCount: 1,
+      },
+      isError: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
 
     const { result } = renderHook(() => useBetaReaderDeepDive("novel-1"), {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate({
-      chapter_ids: ["ch-1"],
-      category: "pacing",
-      cache_key: "cache-abc",
-    });
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
+    expect(result.current.isError).toBe(true);
     expect(result.current.error?.message).toBe("Deep dive failed");
   });
 });

@@ -1,16 +1,20 @@
 "use client";
 
 /**
- * NameGenerator — AI name generation with cancel support.
+ * NameGenerator — AI name generation with §16 AI-Interaction Standards.
  *
- * Generates names based on user parameters using the generation API.
- * §16 compliance: AbortController cancel, studio.aiActions.* labels.
+ * Uses useAIOperation for lifecycle management with structured error
+ * mapping and cancel support. Keeps TanStack Query for novel data fetching.
+ *
+ * @module NameGenerator
  */
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { mapRestApiError } from "@/lib/api/ai-rest-error";
 import { generationApi, novelsApi } from "@/lib/api/client";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import type { Gender, NameGenerateRequest, NameGenerateResponse, NameType } from "@/types";
 import { NameGeneratorForm } from "./NameGeneratorForm";
 import { NameResults } from "./NameResults";
@@ -31,7 +35,7 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
   const [results, setResults] = useState<NameGenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const abortRef = useRef<AbortController | null>(null);
+  const requestRef = useRef<NameGenerateRequest | null>(null);
 
   // Fetch novel to determine default explanation_language from writing_language
   const { data: novel } = useQuery({
@@ -47,46 +51,51 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
     }
   }, [novel?.writing_language]);
 
-  const generateMutation = useMutation({
-    mutationFn: (request: NameGenerateRequest) => {
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
-      return generationApi.generateNames(request, abortRef.current.signal);
+  // -- AI operation lifecycle via useAIOperation --
+
+  const aiOp = useAIOperation<NameGenerateResponse>({
+    execute: async (signal) => {
+      const request = requestRef.current;
+      if (!request) throw new Error("No request parameters");
+      return generationApi.generateNames(request, signal);
     },
+    errorMapper: mapRestApiError,
     onSuccess: (data) => {
       setResults(data);
       setError(null);
     },
-    onError: (e: unknown) => {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      setError(e instanceof Error ? e.message : t("generation.generationFailed"));
+    onError: (errResponse) => {
+      setError(errResponse.userMessage);
       setResults(null);
     },
+    connectionLossTimeout: 15_000,
   });
 
   const handleGenerate = () => {
     if (count < 1 || count > 50) return;
-    generateMutation.mutate({
+    requestRef.current = {
       project_id: novelId,
       name_type: nameType,
       name_style: nameStyle,
       count,
       gender,
       explanation_language: explanationLanguage,
-    });
+    };
+    aiOp.start();
   };
 
   const handleCancel = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
+    aiOp.cancel();
+  }, [aiOp]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      abortRef.current?.abort();
+      aiOp.cancel();
     };
-  }, []);
+  }, [aiOp]);
+
+  const isPending = aiOp.isLoading || aiOp.isStreaming;
 
   return (
     <div className="flex flex-col gap-6">
@@ -118,12 +127,12 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={generateMutation.isPending}
+          disabled={isPending}
           className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-lg text-[0.9375rem] font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {generateMutation.isPending ? tAction("generating") : t("generation.generateNames")}
+          {isPending ? tAction("generating") : t("generation.generateNames")}
         </button>
-        {generateMutation.isPending && (
+        {isPending && (
           <button
             type="button"
             onClick={handleCancel}
@@ -134,7 +143,7 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
         )}
       </div>
 
-      <NameResults results={results} isLoading={generateMutation.isPending} />
+      <NameResults results={results} isLoading={isPending} />
     </div>
   );
 }

@@ -14,6 +14,18 @@ from narrare_core.llm._providers.registry import (
 
 
 class TestRegisterAndGet:
+    @pytest.fixture(autouse=True)
+    def _clear_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Ensure NARRARE_E2E_TEST is not set during registry tests.
+
+        The ``.env`` file may contain ``NARRARE_E2E_TEST=1`` (loaded by
+        ``just`` via ``dotenv-load``). When this variable is set, ``get()``
+        in ``registry.py`` returns ``_test_model_factory`` instead of the
+        registered factory, breaking tests that exercise real factory
+        registration and credential passing.
+        """
+        monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
+
     def test_register_and_retrieve_factory(self) -> None:
         def my_factory(model_id: str) -> object:
             return f"model:{model_id}"
@@ -109,6 +121,14 @@ class TestInferProvider:
 
 class TestProviderFactoryCredentials:
     """Test that provider factories accept api_key and base_url kwargs."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Ensure NARRARE_E2E_TEST is not set during credential tests.
+
+        See ``TestRegisterAndGet._clear_e2e_env`` for rationale.
+        """
+        monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
 
     def test_factory_accepts_api_key_kwarg(self) -> None:
         """Registered factories accept api_key keyword argument."""

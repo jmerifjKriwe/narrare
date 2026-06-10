@@ -1,128 +1,124 @@
 "use client";
 
 /**
- * React hook for the free-form chat (ChatPanel).
+ * React hook for the free-form chat (ChatPanel) — §16 AI-Interaction Standards.
  *
- * Wraps SSE streaming from POST /api/v1/chat with:
- * - Message history (local state)
- * - Streaming text accumulation
- * - AbortController for cancellation
- * - Auto-scroll via ref
- * - Conversation ID management (auto-start new, reuse existing)
+ * Wraps SSE streaming via useAIOperation for lifecycle management
+ * (no manual AbortController, connection-loss detection, retry support).
+ *
+ * @module useChat
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { chatApi } from "@/lib/api/client";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import type { ChatDoneEvent, ChatMetaEvent } from "@/types";
 import { type ChatMessage, createMessageId, type UseChatReturn } from "@/types/chat";
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 export function useChat(projectId: string): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const abortRef = useRef<AbortController | null>(null);
+  const messageRef = useRef("");
+  const accumulatedRef = useRef("");
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll after any render with new content (cheap no-op if already at bottom)
+  const conversationIdRef = useRef(conversationId);
+  conversationIdRef.current = conversationId;
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   });
 
-  const sendMessage = useCallback(
-    async (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || isStreaming) return;
-
-      setError(null);
-
-      // Add user message
-      const userMsg: ChatMessage = {
-        id: createMessageId(),
-        role: "user",
-        content: trimmed,
-      };
-      setMessages((prev) => [...prev, userMsg]);
-
-      // Create abort controller
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      setIsStreaming(true);
-
-      let assistantContent = "";
-
+  const aiOp = useAIOperation<string | null>({
+    execute: async (signal) => {
+      const msg = messageRef.current;
+      if (!msg) return null;
+      let content = "";
+      accumulatedRef.current = "";
       await chatApi.streamChat(
-        {
-          project_id: projectId,
-          message: trimmed,
-          conversation_id: conversationId,
-        },
+        { project_id: projectId, message: msg, conversation_id: conversationIdRef.current },
         {
           onMeta: (meta: ChatMetaEvent) => {
             setConversationId(meta.conversation_id);
+            aiOp.notifyData();
           },
           onToken: (text: string) => {
-            assistantContent += text;
+            content += text;
+            accumulatedRef.current = content;
+            aiOp.notifyData();
           },
           onDone: (_done: ChatDoneEvent) => {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: createMessageId(),
-                role: "assistant",
-                content: assistantContent,
-              },
-            ]);
-            setIsStreaming(false);
-            assistantContent = "";
+            /* content accumulated */
           },
           onError: (err: Error) => {
-            // If we have partial content, still show it
-            if (assistantContent) {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: createMessageId(),
-                  role: "assistant",
-                  content: assistantContent,
-                },
-              ]);
-              assistantContent = "";
-            }
-            setError(err.message);
-            setIsStreaming(false);
+            throw err;
           },
         },
-        controller.signal,
+        signal,
       );
+      return content || null;
     },
-    [projectId, conversationId, isStreaming],
+    errorMapper: (error) => {
+      if (
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError")
+      )
+        return null;
+      return mapSSEError(error);
+    },
+    onSuccess: (content) => {
+      if (content) {
+        setMessages((prev) => [...prev, { id: createMessageId(), role: "assistant", content }]);
+      }
+      accumulatedRef.current = "";
+      setError(null);
+    },
+    onError: (errResponse) => {
+      const partial = accumulatedRef.current;
+      if (partial) {
+        setMessages((prev) => [
+          ...prev,
+          { id: createMessageId(), role: "assistant", content: partial },
+        ]);
+      }
+      accumulatedRef.current = "";
+      setError(errResponse.userMessage);
+    },
+    connectionLossTimeout: 15_000,
+  });
+
+  const sendMessage = useCallback(
+    async (text: string): Promise<void> => {
+      const trimmed = text.trim();
+      if (!trimmed || aiOp.isLoading || aiOp.isStreaming) return;
+      setError(null);
+      setMessages((prev) => [...prev, { id: createMessageId(), role: "user", content: trimmed }]);
+      messageRef.current = trimmed;
+      aiOp.start();
+    },
+    [aiOp],
   );
 
   const clearConversation = useCallback(() => {
     setMessages([]);
     setConversationId(null);
     setError(null);
-    setIsStreaming(false);
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
+    aiOp.cancel();
+    accumulatedRef.current = "";
+    messageRef.current = "";
+  }, [aiOp]);
 
   const cancelStream = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setIsStreaming(false);
-  }, []);
+    aiOp.cancel();
+    accumulatedRef.current = "";
+  }, [aiOp]);
 
   return {
     messages,
-    isStreaming,
+    isStreaming: aiOp.isLoading || aiOp.isStreaming,
     conversationId,
     error,
     sendMessage,

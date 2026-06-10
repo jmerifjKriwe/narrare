@@ -99,6 +99,26 @@ export const SETTINGS_SHORTCUTS: ShortcutConfig[] = [
     labelKey: "settings.shortcutsSection.ghostTextDismiss",
     descKey: "settings.shortcutsSection.ghostTextDismissDescription",
   },
+  {
+    key: "Ctrl+Enter",
+    labelKey: "settings.shortcutsSection.aiCtrlEnter",
+    descKey: "settings.shortcutsSection.aiCtrlEnterDescription",
+  },
+  {
+    key: "Esc",
+    labelKey: "settings.shortcutsSection.aiEscapeCancel",
+    descKey: "settings.shortcutsSection.aiEscapeCancelDescription",
+  },
+  {
+    key: "Ctrl+Y",
+    labelKey: "settings.shortcutsSection.aiAccept",
+    descKey: "settings.shortcutsSection.aiAcceptDescription",
+  },
+  {
+    key: "Ctrl+Shift+N",
+    labelKey: "settings.shortcutsSection.aiReject",
+    descKey: "settings.shortcutsSection.aiRejectDescription",
+  },
 ];
 
 export const ABOUT_FEATURE_KEYS = [

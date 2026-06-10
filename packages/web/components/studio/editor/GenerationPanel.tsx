@@ -2,6 +2,7 @@
 
 import { AlertTriangle, RotateCcw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 import { LearningStatus } from "@/components/studio/learning/LearningStatus";
 import { ContextInspector } from "./ContextInspector";
 import { GenerationConfig } from "./GenerationConfig";
@@ -28,6 +29,22 @@ export function GenerationPanel({
 }: GenerationPanelProps) {
   const t = useTranslations("studio");
   const controller = useGenerationPanelController({ novelId, chapterId, onDraftAccepted, t });
+
+  // Escape-Cancel Handler (KEYBOARD-001)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && controller.phase === "streaming") {
+        e.preventDefault();
+        controller.handleStop();
+      }
+      if (e.key === "Escape" && controller.phase === "review") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [controller.phase, controller.handleStop, onClose]);
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-card w-80">

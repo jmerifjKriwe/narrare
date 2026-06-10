@@ -45,10 +45,12 @@ export function SessionActions({
   const tAction = useTranslations("studio.aiActions");
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Ctrl/Cmd+Enter sends the message
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       onSend();
     }
+    // Plain Enter: browser default (nichts tun, allow normal input behavior)
   };
 
   return (

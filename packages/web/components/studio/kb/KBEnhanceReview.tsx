@@ -112,6 +112,22 @@ export function KBEnhanceReview({
   const isError = enhanceOp.isError || enhanceOp.isConnectionLost;
   const error = enhanceOp.state.error;
 
+  // Escape-Cancel Handler (KEYBOARD-001)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isLoading) {
+        e.preventDefault();
+        enhanceOp.cancel();
+      }
+      if (e.key === "Escape" && !isLoading) {
+        e.preventDefault();
+        onBack();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isLoading, enhanceOp.cancel, onBack]);
+
   // --- Render ---
 
   return (

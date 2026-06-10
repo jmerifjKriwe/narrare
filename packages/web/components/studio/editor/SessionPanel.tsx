@@ -8,7 +8,6 @@
  * §16 compliance: Stop Generation aborts current stream only (not session).
  */
 
-import { Bot, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
@@ -16,6 +15,7 @@ import type { Message } from "./ChatMessage";
 import { ChatMessage } from "./ChatMessage";
 import { SessionActions } from "./SessionActions";
 import { SessionHeader } from "./SessionHeader";
+import { StreamingBubble } from "./StreamingBubble";
 import { useSessionSocket } from "./useSessionSocket";
 
 interface SessionPanelProps {
@@ -120,6 +120,22 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
     onClose();
   }, [closeSocket, onClose]);
 
+  // Escape-Cancel Handler (KEYBOARD-001)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isStreaming) {
+        e.preventDefault();
+        handleStopGeneration();
+      }
+      if (e.key === "Escape" && !isStreaming) {
+        e.preventDefault();
+        handleEndSession();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isStreaming, handleStopGeneration, handleEndSession]);
+
   const hasAddedAny = useMemo(() => addedIds.size > 0, [addedIds]);
   const aiDraftBadge = t("sessionPanel.aiDraftBadge");
   const addToDraftLabel = t("aiActions.addToDraft");
@@ -149,17 +165,7 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
             addedToDraftLabel={addedToDraftLabel}
           />
         ))}
-        {isStreaming && streamingText && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] flex items-start gap-2">
-              <Bot className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-              <div className="px-3 py-2 rounded-lg bg-muted text-sm text-foreground whitespace-pre-wrap">
-                {streamingText}
-                <Loader2 className="inline w-3 h-3 ml-1 animate-spin text-muted-foreground" />
-              </div>
-            </div>
-          </div>
-        )}
+        {isStreaming && streamingText && <StreamingBubble streamingText={streamingText} />}
         <div ref={chatEndRef} />
       </div>
       {saveNotification && (

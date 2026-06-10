@@ -1,6 +1,7 @@
 "use client";
 
 import { RotateCcw, Sparkles, X } from "lucide-react";
+import { useEffect } from "react";
 
 import {
   CoAuthorDonePhase,
@@ -69,6 +70,17 @@ export function CoAuthorPanel({
     onAccept,
     onClose,
   });
+
+  // Global Escape handler: cancel / close
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleCancel();
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [handleCancel]);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

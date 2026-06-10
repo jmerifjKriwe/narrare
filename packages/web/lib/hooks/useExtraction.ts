@@ -1,62 +1,126 @@
 "use client";
 
 /**
- * TanStack Query hooks for KB extraction.
+ * React hooks for KB extraction — §16 AI-Interaction Standards.
  *
- * Mutation-only — extraction is a one-shot operation, not a subscription.
- * On apply success, invalidates KB query keys so the KB panel refreshes.
- * Each hook manages its own AbortController for cancel support (§16.2).
+ * Wraps useAIOperation for lifecycle management (no manual AbortController).
+ * Keeps TanStack Query cache for KB invalidation on apply.
+ *
+ * @module useExtraction
  */
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef } from "react";
+import { mapRestApiError } from "@/lib/api/ai-rest-error";
 import {
   type ApplyExtractionItem,
   type ApplyExtractionResponse,
   type ExtractionOutput,
   extractionApi,
 } from "@/lib/api/extraction";
+import {
+  buildMutationReturn,
+  createAbortAwareErrorMapper,
+  createOnErrorCallback,
+  useAbortCallback,
+  useMutateAsyncFactory,
+} from "@/lib/hooks/ai-mutation-adapter";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 
-/** Extract entities from a chapter. One-shot mutation with cancel support. */
+/** Extract entities from a chapter. One-shot operation with cancel support. */
 export function useExtractChapter(novelId: string, chapterId: string) {
-  const abortRef = useRef<AbortController | null>(null);
+  const resolveRef = useRef<((value: ExtractionOutput) => void) | null>(null);
+  const rejectRef = useRef<((reason: unknown) => void) | null>(null);
 
-  const mutation = useMutation<ExtractionOutput, Error, void>({
-    mutationFn: () => {
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
-      return extractionApi.extractChapter(novelId, chapterId, abortRef.current.signal);
+  const aiOp = useAIOperation<ExtractionOutput>({
+    execute: (signal) => extractionApi.extractChapter(novelId, chapterId, signal),
+    errorMapper: createAbortAwareErrorMapper(resolveRef, rejectRef, mapRestApiError),
+    onSuccess: (data) => {
+      resolveRef.current?.(data);
+      resolveRef.current = null;
+      rejectRef.current = null;
     },
+    onError: createOnErrorCallback(resolveRef, rejectRef),
+    connectionLossTimeout: 15_000,
   });
 
-  const abort = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
+  const mutate = useCallback(
+    (_void: undefined) => {
+      aiOp.start();
+    },
+    [aiOp],
+  );
 
-  return { ...mutation, abort };
+  const mutateAsync = useCallback((): Promise<ExtractionOutput> => {
+    return new Promise<ExtractionOutput>((resolve, reject) => {
+      resolveRef.current = resolve;
+      rejectRef.current = reject;
+      aiOp.start();
+    });
+  }, [aiOp]);
+
+  const abort = useAbortCallback(resolveRef, rejectRef, aiOp);
+
+  return {
+    state: aiOp.state,
+    start: aiOp.start,
+    cancel: aiOp.cancel,
+    retry: aiOp.retry,
+    reset: aiOp.reset,
+    notifyData: aiOp.notifyData,
+    isIdle: aiOp.isIdle,
+    isLoading: aiOp.isLoading,
+    isStreaming: aiOp.isStreaming,
+    isComplete: aiOp.isComplete,
+    isError: aiOp.isError,
+    isConnectionLost: aiOp.isConnectionLost,
+    mutate,
+    mutateAsync,
+    abort,
+    isPending: aiOp.isLoading || aiOp.isStreaming,
+    data: aiOp.state.result,
+    error: aiOp.state.error ? new Error(aiOp.state.error.userMessage) : null,
+    isSuccess: aiOp.state.status === "complete",
+  };
 }
 
 /** Apply selected extraction items to the KB. Invalidates KB cache on success. */
 export function useApplyExtraction(novelId: string) {
   const queryClient = useQueryClient();
-  const abortRef = useRef<AbortController | null>(null);
+  const itemsRef = useRef<ApplyExtractionItem[] | null>(null);
+  const resolveRef = useRef<((value: ApplyExtractionResponse) => void) | null>(null);
+  const rejectRef = useRef<((reason: unknown) => void) | null>(null);
 
-  const mutation = useMutation<ApplyExtractionResponse, Error, ApplyExtractionItem[]>({
-    mutationFn: (items) => {
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
-      return extractionApi.applyExtraction(novelId, items, abortRef.current.signal);
+  const aiOp = useAIOperation<ApplyExtractionResponse>({
+    execute: async (signal) => {
+      const items = itemsRef.current;
+      if (!items) throw new Error("No items to apply");
+      return extractionApi.applyExtraction(novelId, items, signal);
     },
-    onSuccess: () => {
+    errorMapper: createAbortAwareErrorMapper(resolveRef, rejectRef, mapRestApiError),
+    onSuccess: (data) => {
+      resolveRef.current?.(data);
+      resolveRef.current = null;
+      rejectRef.current = null;
       void queryClient.invalidateQueries({ queryKey: ["kb", novelId] });
     },
+    onError: createOnErrorCallback(resolveRef, rejectRef),
+    connectionLossTimeout: 15_000,
   });
 
-  const abort = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
+  const mutate = useCallback(
+    (items: ApplyExtractionItem[]) => {
+      itemsRef.current = items;
+      aiOp.start();
+    },
+    [aiOp],
+  );
 
-  return { ...mutation, abort };
+  return buildMutationReturn(
+    aiOp,
+    mutate,
+    useMutateAsyncFactory(itemsRef, resolveRef, rejectRef, aiOp),
+    useAbortCallback(resolveRef, rejectRef, aiOp),
+    itemsRef.current,
+  );
 }

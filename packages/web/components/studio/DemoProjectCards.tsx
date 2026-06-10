@@ -51,11 +51,11 @@ export function DemoProjectCards(_props?: DemoProjectCardsProps) {
       </div>
 
       {isLoading && <DemoSkeletonGrid />}
-      {isError && <DemoErrorState onRetry={() => refetch()} t={t} />}
+      {isError && <DemoErrorState onRetry={() => refetch()} />}
       {!isLoading && !isError && demos.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {demos.map((demo) => (
-            <DemoCard key={demo.id} demo={demo} onSelect={handleSelect} t={t} />
+            <DemoCard key={demo.id} demo={demo} onSelect={handleSelect} />
           ))}
         </div>
       )}
@@ -74,12 +74,12 @@ export function DemoProjectCards(_props?: DemoProjectCardsProps) {
 function DemoCard({
   demo,
   onSelect,
-  t,
 }: {
   readonly demo: DemoProjectInfo;
   readonly onSelect: (demo: DemoProjectInfo) => void;
-  readonly t: (key: string, vars?: Record<string, string | number | Date>) => string;
 }) {
+  const t = useTranslations("studio");
+
   return (
     <button
       type="button"
@@ -139,13 +139,9 @@ function DemoSkeletonGrid() {
   );
 }
 
-function DemoErrorState({
-  onRetry,
-  t,
-}: {
-  readonly onRetry: () => void;
-  readonly t: (key: string) => string;
-}) {
+function DemoErrorState({ onRetry }: { readonly onRetry: () => void }) {
+  const t = useTranslations("studio");
+
   return (
     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
       <BookOpen className="w-12 h-12 mb-3 opacity-10" />

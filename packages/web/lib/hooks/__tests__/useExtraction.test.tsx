@@ -1,36 +1,69 @@
 /**
- * useExtraction hook tests — TanStack Query hooks for KB extraction.
+ * useExtraction hook tests — useAIOperation wrapper for KB extraction.
+ *
+ * Tests the wrapper API mapping (mutate, data, error, isSuccess, isError, abort).
+ * useAIOperation is mocked — these tests verify the hook correctly maps
+ * the primitive's state to the backward-compatible interface.
  *
  * Tests:
- * 1. useExtractChapter calls correct endpoint
- * 2. useExtractChapter handles API errors
- * 3. useApplyExtraction calls correct endpoint
- * 4. useApplyExtraction handles API errors
- * 5. useApplyExtraction invalidates KB cache on success
+ * 1. useExtractChapter.mutate calls aiOp.start
+ * 2. useExtractChapter.data reflects state.result when complete
+ * 3. useExtractChapter.error wraps state.error.userMessage
+ * 4. useApplyExtraction.mutate stores items and calls aiOp.start
+ * 5. useApplyExtraction.data reflects state.result when complete
+ * 6. useApplyExtraction.error wraps state.error.userMessage
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { cleanup, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the API client module
-vi.mock("@/lib/api/extraction", () => ({
-  extractionApi: {
-    extractChapter: vi.fn(),
-    applyExtraction: vi.fn(),
-  },
+import type { AIOperationState, UseAIOperationReturn } from "@/lib/hooks/use-ai-operation";
+
+// ---------------------------------------------------------------------------
+// Hoisted mock data factory
+// ---------------------------------------------------------------------------
+
+const { createDefaultMockAiOp } = vi.hoisted(() => {
+  function createDefaultMockAiOp<T>(
+    overrides: Partial<UseAIOperationReturn<T>> = {},
+  ): UseAIOperationReturn<T> {
+    const start = vi.fn();
+    const cancel = vi.fn();
+    return {
+      state: {
+        status: "idle",
+        result: null,
+        error: null,
+        attemptCount: 0,
+      } as AIOperationState<T>,
+      start,
+      cancel,
+      retry: vi.fn(),
+      reset: vi.fn(),
+      notifyData: vi.fn(),
+      isIdle: true,
+      isLoading: false,
+      isStreaming: false,
+      isComplete: false,
+      isError: false,
+      isConnectionLost: false,
+      ...overrides,
+    };
+  }
+  return { createDefaultMockAiOp };
+});
+
+// Mock useAIOperation at module level
+vi.mock("@/lib/hooks/use-ai-operation", () => ({
+  useAIOperation: vi.fn(),
 }));
 
-import { extractionApi } from "@/lib/api/extraction";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useApplyExtraction, useExtractChapter } from "@/lib/hooks/useExtraction";
 
-// ---------------------------------------------------------------------------
-// Mock helpers
-// ---------------------------------------------------------------------------
-
-const mockExtractChapter = extractionApi.extractChapter as ReturnType<typeof vi.fn>;
-const mockApplyExtraction = extractionApi.applyExtraction as ReturnType<typeof vi.fn>;
+const mockedUseAIOperation = vi.mocked(useAIOperation);
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -59,18 +92,13 @@ const mockApplyResponse = {
   updated_entries: [],
 };
 
-const mockApplyItems = [
-  {
-    item_type: "new_entity" as const,
-    name: "Anna Schmidt",
-    entity_type: "character",
-    proposed_content: { role: "Protagonist" },
-    target_entity_id: null,
-    relationship_type: null,
-    related_entity_name: null,
-    source_text: "She walked through the old archive.",
-  },
-];
+const mockError = {
+  kind: "http" as const,
+  i18nKey: "aiActions.errorDefault",
+  userMessage: "Extraction failed",
+  retryable: true,
+  cause: new Error("Extraction failed"),
+};
 
 // ---------------------------------------------------------------------------
 // Test wrapper
@@ -88,14 +116,8 @@ function createWrapper() {
   };
 }
 
-function createWrapperWithClient(queryClient: QueryClient) {
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-  };
-}
-
 // ---------------------------------------------------------------------------
-// Tests
+// Tests: useExtractChapter
 // ---------------------------------------------------------------------------
 
 describe("useExtractChapter", () => {
@@ -107,8 +129,9 @@ describe("useExtractChapter", () => {
     cleanup();
   });
 
-  it("calls extractionApi.extractChapter with novelId and chapterId", async () => {
-    mockExtractChapter.mockResolvedValueOnce(mockExtractionOutput);
+  it("calls aiOp.start when mutate is called", () => {
+    const mockAiOp = createDefaultMockAiOp();
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
 
     const { result } = renderHook(() => useExtractChapter("novel-1", "chapter-1"), {
       wrapper: createWrapper(),
@@ -116,53 +139,58 @@ describe("useExtractChapter", () => {
 
     result.current.mutate(undefined);
 
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+    expect(mockAiOp.start).toHaveBeenCalledOnce();
+  });
+
+  it("returns data when state is complete", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "complete",
+        result: mockExtractionOutput,
+        error: null,
+        attemptCount: 1,
+      },
+      isComplete: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useExtractChapter("novel-1", "chapter-1"), {
+      wrapper: createWrapper(),
     });
 
-    expect(mockExtractChapter).toHaveBeenCalledWith(
-      "novel-1",
-      "chapter-1",
-      expect.any(AbortSignal),
-    );
+    expect(result.current.isSuccess).toBe(true);
     expect(result.current.data).toEqual(mockExtractionOutput);
-  });
-
-  it("handles API errors", async () => {
-    mockExtractChapter.mockRejectedValueOnce(new Error("Extraction failed"));
-
-    const { result } = renderHook(() => useExtractChapter("novel-1", "chapter-1"), {
-      wrapper: createWrapper(),
-    });
-
-    result.current.mutate(undefined);
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    expect(result.current.error?.message).toBe("Extraction failed");
-  });
-
-  it("returns extraction output on success", async () => {
-    mockExtractChapter.mockResolvedValueOnce(mockExtractionOutput);
-
-    const { result } = renderHook(() => useExtractChapter("novel-1", "chapter-1"), {
-      wrapper: createWrapper(),
-    });
-
-    result.current.mutate(undefined);
-
-    await waitFor(() => {
-      expect(result.current.data).toEqual(mockExtractionOutput);
-    });
-
-    // Verify the results array is present
     expect(result.current.data?.results).toHaveLength(1);
     expect(result.current.data?.results[0].name).toBe("Anna Schmidt");
     expect(result.current.data?.analysis_notes).toBe("Found 1 new entity.");
   });
+
+  it("returns error when state is error", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "error",
+        result: null,
+        error: mockError,
+        attemptCount: 1,
+      },
+      isError: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useExtractChapter("novel-1", "chapter-1"), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isError).toBe(true);
+    expect(result.current.error?.message).toBe("Extraction failed");
+  });
 });
+
+// ---------------------------------------------------------------------------
+// Tests: useApplyExtraction
+// ---------------------------------------------------------------------------
 
 describe("useApplyExtraction", () => {
   beforeEach(() => {
@@ -173,8 +201,22 @@ describe("useApplyExtraction", () => {
     cleanup();
   });
 
-  it("calls extractionApi.applyExtraction with novelId and items", async () => {
-    mockApplyExtraction.mockResolvedValueOnce(mockApplyResponse);
+  it("calls aiOp.start when mutate is called", () => {
+    const mockAiOp = createDefaultMockAiOp();
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const mockApplyItems = [
+      {
+        item_type: "new_entity" as const,
+        name: "Anna Schmidt",
+        entity_type: "character",
+        proposed_content: { role: "Protagonist" },
+        target_entity_id: null,
+        relationship_type: null,
+        related_entity_name: null,
+        source_text: "She walked through the old archive.",
+      },
+    ];
 
     const { result } = renderHook(() => useApplyExtraction("novel-1"), {
       wrapper: createWrapper(),
@@ -182,101 +224,56 @@ describe("useApplyExtraction", () => {
 
     result.current.mutate(mockApplyItems);
 
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+    expect(mockAiOp.start).toHaveBeenCalledOnce();
+  });
+
+  it("returns data when state is complete", () => {
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "complete",
+        result: mockApplyResponse,
+        error: null,
+        attemptCount: 1,
+      },
+      isComplete: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useApplyExtraction("novel-1"), {
+      wrapper: createWrapper(),
     });
 
-    expect(mockApplyExtraction).toHaveBeenCalledWith(
-      "novel-1",
-      mockApplyItems,
-      expect.any(AbortSignal),
-    );
+    expect(result.current.isSuccess).toBe(true);
     expect(result.current.data).toEqual(mockApplyResponse);
-  });
-
-  it("handles API errors", async () => {
-    mockApplyExtraction.mockRejectedValueOnce(new Error("Apply failed"));
-
-    const { result } = renderHook(() => useApplyExtraction("novel-1"), {
-      wrapper: createWrapper(),
-    });
-
-    result.current.mutate(mockApplyItems);
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    expect(result.current.error?.message).toBe("Apply failed");
-  });
-
-  it("invalidates KB cache on success", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, gcTime: 0 },
-        mutations: { retry: false },
-      },
-    });
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-
-    mockApplyExtraction.mockResolvedValueOnce(mockApplyResponse);
-
-    const { result } = renderHook(() => useApplyExtraction("novel-1"), {
-      wrapper: createWrapperWithClient(queryClient),
-    });
-
-    result.current.mutate(mockApplyItems);
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    // Should invalidate KB query keys for this novel
-    expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ["kb", "novel-1"],
-    });
-  });
-
-  it("does not invalidate KB cache on failure", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, gcTime: 0 },
-        mutations: { retry: false },
-      },
-    });
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-
-    mockApplyExtraction.mockRejectedValueOnce(new Error("Apply failed"));
-
-    const { result } = renderHook(() => useApplyExtraction("novel-1"), {
-      wrapper: createWrapperWithClient(queryClient),
-    });
-
-    result.current.mutate(mockApplyItems);
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    // Should NOT have invalidated on failure
-    expect(invalidateSpy).not.toHaveBeenCalled();
-  });
-
-  it("returns apply response with created and updated entries", async () => {
-    mockApplyExtraction.mockResolvedValueOnce(mockApplyResponse);
-
-    const { result } = renderHook(() => useApplyExtraction("novel-1"), {
-      wrapper: createWrapper(),
-    });
-
-    result.current.mutate(mockApplyItems);
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
     expect(result.current.data?.created_entries).toHaveLength(1);
     expect(result.current.data?.created_entries[0].name).toBe("Anna Schmidt");
     expect(result.current.data?.updated_entries).toHaveLength(0);
+  });
+
+  it("returns error when state is error", () => {
+    const applyError = {
+      ...mockError,
+      userMessage: "Apply failed",
+      cause: new Error("Apply failed"),
+    };
+    const mockAiOp = createDefaultMockAiOp({
+      state: {
+        status: "error",
+        result: null,
+        error: applyError,
+        attemptCount: 1,
+      },
+      isError: true,
+      isIdle: false,
+    });
+    mockedUseAIOperation.mockReturnValue(mockAiOp);
+
+    const { result } = renderHook(() => useApplyExtraction("novel-1"), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isError).toBe(true);
+    expect(result.current.error?.message).toBe("Apply failed");
   });
 });

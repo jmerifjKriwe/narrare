@@ -12,49 +12,11 @@
 import type { Editor } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { ReplaceStep } from "@tiptap/pm/transform";
-
+import { simulateSuggestion } from "./ghost-text-suggestions";
 import type { GhostTextOptions, GhostTextStorage } from "./ghost-text-types";
 
-// ── Simulated Suggestion Generator (Phase 2 Built-in) ─────────────────────────
-
-export async function simulateSuggestion(params: {
-  textBefore: string;
-  textAfter: string;
-  signal: AbortSignal;
-}): Promise<string> {
-  const { textBefore, signal } = params;
-
-  // Simulate AI inference latency (300-600ms)
-  const delay = 300 + Math.random() * 300;
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, delay);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(new DOMException("Aborted", "AbortError"));
-      },
-      { once: true },
-    );
-  });
-
-  if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-
-  // Trigger-based completions. Leading space provides natural gap between
-  // the user's last word and the suggestion.
-  const trimmed = textBefore.trimEnd();
-  if (trimmed.endsWith("The old house")) {
-    return " stood at the end of the lane, its windows dark.";
-  }
-  if (trimmed.endsWith("She walked")) {
-    return " slowly towards the door, her footsteps echoing.";
-  }
-  if (trimmed.endsWith("It was a")) {
-    return " cold and misty morning when they finally arrived.";
-  }
-
-  return " continued on their journey through the dark forest.";
-}
+// Re-export simulateSuggestion from the dedicated module (RULE-04)
+export { simulateSuggestion } from "./ghost-text-suggestions";
 
 // ── Internal Helper Functions ──────────────────────────────────────────────────
 

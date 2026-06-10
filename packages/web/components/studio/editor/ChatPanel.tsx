@@ -12,10 +12,11 @@
  * Supports AbortController for cancel-in-flight.
  */
 
-import { Bot, Loader2, MessageSquare, Send, Trash2, X } from "lucide-react";
+import { Bot, Loader2, MessageSquare, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@/lib/hooks/useChat";
+import { ChatInputArea } from "./ChatInputArea";
 import { ChatMessage } from "./ChatMessage";
 
 // ---------------------------------------------------------------------------
@@ -39,17 +40,9 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // -------------------------------------------------------------------------
-  // Stable i18n strings for memoized child
-  // -------------------------------------------------------------------------
-
   const aiDraftBadge = t("sessionPanel.aiDraftBadge");
   const addToDraftLabel = t("aiActions.addToDraft");
   const addedToDraftLabel = t("sessionPanel.addedToDraft");
-
-  // -------------------------------------------------------------------------
-  // Actions
-  // -------------------------------------------------------------------------
 
   const handleSend = useCallback(() => {
     const text = input.trim();
@@ -60,7 +53,7 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         handleSend();
       }
@@ -68,9 +61,18 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
     [handleSend],
   );
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (isStreaming) {
+        cancelStream();
+      } else {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isStreaming, cancelStream, onClose]);
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-card w-80">
@@ -96,7 +98,6 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
 
       {/* Message list */}
       <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
-        {/* Empty state */}
         {messages.length === 0 && !isStreaming && (
           <div className="flex flex-col items-center justify-center flex-1 text-center text-muted-foreground gap-2">
             <MessageSquare className="w-8 h-8 opacity-40" />
@@ -116,7 +117,6 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
           />
         ))}
 
-        {/* Streaming indicator */}
         {isStreaming && (
           <div className="flex justify-start">
             <div className="flex items-start gap-2">
@@ -131,7 +131,6 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
           </div>
         )}
 
-        {/* Error message */}
         {error && (
           <div className="flex justify-center">
             <span className="px-3 py-1 rounded-full bg-destructive/10 text-xs text-destructive">
@@ -143,56 +142,18 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t("chatPanel.inputPlaceholder")}
-            disabled={isStreaming}
-            className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
-          />
-          {isStreaming ? (
-            <button
-              type="button"
-              onClick={cancelStream}
-              className="p-2 rounded-lg bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity"
-              aria-label={t("sessionPanel.close")}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!input.trim()}
-              className="p-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label={t("chatPanel.send")}
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom action bar */}
-      {messages.length > 0 && (
-        <div className="border-t border-border px-4 py-2 flex justify-center">
-          <button
-            type="button"
-            onClick={clearConversation}
-            disabled={isStreaming}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-          >
-            <Trash2 className="w-3 h-3" />
-            <span>{t("chatPanel.clearConversation")}</span>
-          </button>
-        </div>
-      )}
+      <ChatInputArea
+        inputRef={inputRef}
+        input={input}
+        onInputChange={setInput}
+        onKeyDown={handleKeyDown}
+        isStreaming={isStreaming}
+        onSend={handleSend}
+        onCancelStream={cancelStream}
+        onClearConversation={clearConversation}
+        hasMessages={messages.length > 0}
+        t={t}
+      />
     </div>
   );
 }

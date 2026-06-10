@@ -225,15 +225,15 @@ Nicht anwendbar — keine KI-Ladezustände.
 
 ## Definition of Done
 
-- [ ] GET /setup/demos Endpoint mit `DemoListResponse` Contract (RULE-03)
-- [ ] `setupApi.listDemos()` im Frontend API Client
-- [ ] RULE-17 FIELD-Match geklärt: `language` (BE) ↔ `writing_language` (FE) — Contract Test
-- [ ] `DemoProjectCards` Komponente im Dashboard (extrahiert aus DashboardView, RULE-04)
-- [ ] `useSeenTooltips` Hook (analog GhostTextOnboarding-Pattern)
-- [ ] `FEATURE_TOUR_STEPS` für ONBOARD-001 Inhalt aktualisiert (oder bestätigt: aktuelle 6 Steps decken es ab)
-- [ ] Tour-Replay Trigger in Settings/Hilfe
-- [ ] A11y: aria-live bei Step-Wechsel (Nice-to-have: Focus-Trap in FeatureTour)
-- [ ] i18n: studio-Namespace erweitert für Demo-Kacheln und neue Tooltips (kein neuer Namespace)
-- [ ] Tests: DemoProjectCards (Vitest), useSeenTooltips (Vitest), GET /setup/demos (Backend pytest)
-- [ ] Keine Regressionen: Bestehende FeatureTour, GhostTextOnboarding, DemoLoader funktionieren unverändert
-- [ ] Spec auf stable gesetzt
+- [x] GET /setup/demos Endpoint mit `DemoListResponse` Contract (RULE-03)
+- [x] `setupApi.listDemos()` im Frontend API Client
+- [x] RULE-17 FIELD-Match geklärt: `language` (BE) ↔ `writing_language` (FE) — Contract Test
+- [x] `DemoProjectCards` Komponente im Dashboard (extrahiert aus DashboardView, RULE-04)
+- [x] `useSeenTooltips` Hook (analog GhostTextOnboarding-Pattern)
+- [x] `FEATURE_TOUR_STEPS` für ONBOARD-001 Inhalt aktualisiert (oder bestätigt: aktuelle 6 Steps decken es ab)
+- [x] Tour-Replay Trigger in Settings/Hilfe
+- [x] A11y: aria-live bei Step-Wechsel (Nice-to-have: Focus-Trap in FeatureTour)
+- [x] i18n: studio-Namespace erweitert für Demo-Kacheln und neue Tooltips (kein neuer Namespace)
+- [x] Tests: DemoProjectCards (Vitest), useSeenTooltips (Vitest), GET /setup/demos (Backend pytest)
+- [x] Keine Regressionen: Bestehende FeatureTour, GhostTextOnboarding, DemoLoader funktionieren unverändert
+- [x] Spec auf stable gesetzt

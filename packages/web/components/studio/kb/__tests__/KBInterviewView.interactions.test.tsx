@@ -284,4 +284,68 @@ describe("KBInterviewView — Interactions & Flows", () => {
       expect(onRequestQuestion).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe("keyboard shortcuts", () => {
+    it("calls onBack on Escape when NOT loading", async () => {
+      const onBack = vi.fn();
+      const onRequestQuestion = vi
+        .fn()
+        .mockResolvedValueOnce(mockQuestion)
+        .mockImplementation(() => new Promise(() => {}));
+
+      render(
+        <KBInterviewView
+          novelId="novel-1"
+          sessionId="session-1"
+          session={mockSession}
+          onRequestQuestion={onRequestQuestion}
+          onSubmitAnswer={vi.fn()}
+          onBack={onBack}
+        />,
+      );
+
+      // Wait for first question to display (NOT loading)
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("kb.yourAnswer")).toBeDefined();
+      });
+
+      // Fire Escape — should call onBack since not loading
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
+
+    it("cancels loading on Escape and then calls onBack on second Escape", async () => {
+      const onBack = vi.fn();
+      // Return a promise that never resolves — keeps loading
+      const onRequestQuestion = vi.fn().mockReturnValue(new Promise(() => {}));
+
+      render(
+        <KBInterviewView
+          novelId="novel-1"
+          sessionId="session-1"
+          session={mockSession}
+          onRequestQuestion={onRequestQuestion}
+          onSubmitAnswer={vi.fn()}
+          onBack={onBack}
+        />,
+      );
+
+      // Wait for loading state
+      await waitFor(() => {
+        expect(screen.getByText("aiActions.aiThinking")).toBeDefined();
+      });
+
+      // Fire Escape to cancel loading
+      fireEvent.keyDown(window, { key: "Escape" });
+
+      // After cancel, loading should stop — wait for indicator to disappear
+      await waitFor(() => {
+        expect(screen.queryByText("aiActions.aiThinking")).toBeNull();
+      });
+
+      // Now !isLoading, so Escape should trigger onBack
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
+  });
 });

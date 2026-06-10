@@ -167,7 +167,7 @@
 | [SET-002](settings/SET-002-project-settings.md) | Project Settings | ✅ | ✅ |
 | [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | ✅ | ✅ |
 | [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | ✅ | ❌ |
-| [KEYBOARD-001](keyboard-consistency.md) | Tastatur-Konsistenz | 📋 | ❌ |
+| [KEYBOARD-001](keyboard-consistency.md) | Tastatur-Konsistenz | ✅ | ❌ |
 
 ### Analytics & Cost
 | ID | Feature | Status | MVP |
@@ -252,5 +252,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-08 — ONBOARD-001, PROMPT-003, KEYBOARD-001 added (CR-07 UX Audit Remediation).
+> Last updated: 2026-06-09 — KEYBOARD-001 + ONBOARD-001 promoted to stable; CR-07 Phase 2 completed.
 > Features are specified before they are implemented — never after

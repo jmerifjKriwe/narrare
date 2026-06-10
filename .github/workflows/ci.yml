@@ -609,6 +609,7 @@ jobs:
           cp -r packages/web/.next/static packages/web/.next/standalone/packages/web/.next/static
           cp -r packages/web/public packages/web/.next/standalone/packages/web/public
 
+          AUTH_JWT_SECRET=test-secret-key-not-for-production \
           PORT=3000 node packages/web/.next/standalone/packages/web/server.js > /tmp/frontend-server.log 2>&1 &
           echo "Waiting for frontend server..."
           for i in $(seq 1 30); do
@@ -633,6 +634,7 @@ jobs:
           E2E_API_URL: http://localhost:8000
           CI: "true"
           NARRARE_E2E_TEST: 1
+          AUTH_JWT_SECRET: test-secret-key-not-for-production
 
       - name: Collect server logs on failure
         if: failure()
