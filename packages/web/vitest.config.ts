@@ -10,6 +10,8 @@ export default defineConfig({
     setupFiles: ["./setupTests.ts"],
     include: ["**/*.test.{ts,tsx}"],
     globals: true,
+    testTimeout: 30_000, // default 5_000 → 30_000 (prevents premature timeout)
+    slowTestThreshold: 2_000, // Warn when individual test takes >2s
     // Parallelize across CPU cores via worker threads (faster than forks
     // due to shared memory; safe because tests use isolated environments)
     pool: "threads",

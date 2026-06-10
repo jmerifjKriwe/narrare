@@ -32,12 +32,8 @@ const defaultProps = {
 
 // --- Mocks ---
 
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useQuery: vi.fn(() => ({
-    data: mockTemplateDetail,
-    isLoading: false,
-  })),
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: vi.fn(() => ({ data: mockTemplateDetail, isLoading: false })),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
 }));

@@ -272,6 +272,26 @@ describe("KBImprovePanel", () => {
   });
 
   // -----------------------------------------------------------------------
+  // 6b. Apply button disabled when no suggestions selected
+  // -----------------------------------------------------------------------
+
+  it("apply button is disabled when no suggestions selected", async () => {
+    setupReviewState();
+
+    renderPanel();
+    await waitForReview();
+
+    // Start: 1 selected (suggestion 1 auto-selected). Deselect all first.
+    // Use fireEvent since we're in review state already
+    fireEvent.click(screen.getByText("kb.selectNone"));
+
+    await waitFor(() => {
+      const applyButton = screen.getByText("kb.applySelected").closest("button");
+      expect(applyButton).toHaveProperty("disabled", true);
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // 7. Apply Selected — success
   // -----------------------------------------------------------------------
 
@@ -332,6 +352,34 @@ describe("KBImprovePanel", () => {
   });
 
   // -----------------------------------------------------------------------
+  // 8b. Retry in error state
+  // -----------------------------------------------------------------------
+
+  it("retry button in error state triggers re-analysis", async () => {
+    const mockAnalyze = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("fail"))
+      .mockResolvedValueOnce(mockAnalysis);
+    (useKBImproveAnalysis as ReturnType<typeof vi.fn>).mockReturnValue({
+      mutateAsync: mockAnalyze,
+      isPending: false,
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
+    });
+
+    // Click retry button
+    fireEvent.click(screen.getByText("aiActions.retry"));
+
+    await waitFor(() => {
+      expect(mockAnalyze).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // 9. No suggestions
   // -----------------------------------------------------------------------
 
@@ -361,6 +409,21 @@ describe("KBImprovePanel", () => {
   // -----------------------------------------------------------------------
   // 10. Close button
   // -----------------------------------------------------------------------
+
+  // -----------------------------------------------------------------------
+  // 11. Confidence display
+  // -----------------------------------------------------------------------
+
+  it("shows confidence percentage for each suggestion", async () => {
+    setupReviewState();
+
+    renderPanel();
+    await waitForReview();
+
+    // confidence values: 85%, 45%
+    expect(screen.getByText("85%")).toBeDefined();
+    expect(screen.getByText("45%")).toBeDefined();
+  });
 
   it("close button calls onClose", async () => {
     setupReviewState();

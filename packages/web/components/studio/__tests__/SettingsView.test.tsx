@@ -32,8 +32,7 @@ vi.mock("@/lib/api/client", () => ({
   },
 }));
 
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(({ queryKey }: { queryKey: string[] }) => {
     if (queryKey[0] === "settings" && queryKey[1] === "user") {
       return { data: { display_name: "Test User", ui_language: "en" }, isLoading: false };
@@ -47,7 +46,6 @@ vi.mock("@tanstack/react-query", async (importOriginal) => ({
     if (queryKey[0] === "settings" && queryKey[1] === "ai" && queryKey[2] === "models") {
       return { data: { models: [] }, isLoading: false };
     }
-    // Default: empty array for chapters, etc.
     return { data: [], isLoading: false };
   }),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),

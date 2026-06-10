@@ -10,7 +10,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WorldBuilding } from "@/components/studio/WorldBuilding";
 
 // --- Test wrapper with QueryClient ---
@@ -28,17 +28,6 @@ function renderWithQueryClient(ui: React.ReactElement) {
   const queryClient = createTestQueryClient();
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
-
-// --- Mocks ---
-
-// Mock setAccessToken so fetchApi doesn't fail
-vi.mock("@/lib/api/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/api/client")>();
-  return {
-    ...actual,
-    setAccessToken: vi.fn(),
-  };
-});
 
 // --- Tests ---
 

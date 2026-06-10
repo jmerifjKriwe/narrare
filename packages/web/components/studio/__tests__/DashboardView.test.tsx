@@ -22,11 +22,16 @@ vi.mock("@/lib/api/client", () => ({
   setupApi: { listDemos: vi.fn().mockResolvedValue([]) },
 }));
 
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+vi.mock("@tanstack/react-query", () => ({
   useQuery: mockUseQuery,
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
+  QueryClient: class {
+    getQueryData = vi.fn();
+    setQueryData = vi.fn();
+    invalidateQueries = vi.fn();
+  },
+  QueryClientProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock("@/lib/stores/authStore", () => ({

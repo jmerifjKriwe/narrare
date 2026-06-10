@@ -29,16 +29,42 @@ describe("editorStore", () => {
     expect(useEditorStore.getState().activeChapterId).toBe("ch-1");
   });
 
+  it("replaces previous active chapter id", () => {
+    useEditorStore.getState().setActiveChapterId("ch-1");
+    useEditorStore.getState().setActiveChapterId("ch-2");
+    expect(useEditorStore.getState().activeChapterId).toBe("ch-2");
+  });
+
+  it("clears active chapter id", () => {
+    useEditorStore.getState().setActiveChapterId("ch-1");
+    useEditorStore.getState().setActiveChapterId(null);
+    expect(useEditorStore.getState().activeChapterId).toBeNull();
+  });
+
   it("sets active volume id", () => {
     useEditorStore.getState().setActiveVolumeId("vol-1");
     expect(useEditorStore.getState().activeVolumeId).toBe("vol-1");
   });
 
-  it("sets save status and updates lastSavedAt on save", () => {
+  it("sets save status — saving state", () => {
+    useEditorStore.getState().setSaveStatus("saving");
+    expect(useEditorStore.getState().saveStatus).toBe("saving");
+  });
+
+  it("sets save status — saved updates lastSavedAt", () => {
     useEditorStore.getState().setSaveStatus("saved");
     expect(useEditorStore.getState().saveStatus).toBe("saved");
     expect(useEditorStore.getState().lastSavedAt).toBeInstanceOf(Date);
+  });
 
+  it("sets save status — error without updating lastSavedAt", () => {
+    useEditorStore.getState().setSaveStatus("error");
+    expect(useEditorStore.getState().saveStatus).toBe("error");
+    expect(useEditorStore.getState().lastSavedAt).toBeUndefined();
+  });
+
+  it("sets save status — resets to idle", () => {
+    useEditorStore.getState().setSaveStatus("saved");
     useEditorStore.getState().setSaveStatus("idle");
     expect(useEditorStore.getState().saveStatus).toBe("idle");
   });
@@ -111,7 +137,7 @@ describe("editorStore", () => {
     expect(useEditorStore.getState().generationPanelOpen).toBe(true);
   });
 
-  it("updateChapterWordCount is a pure function", () => {
+  it("updateChapterWordCount updates the specified chapter", () => {
     const chapters: ChapterSummary[] = [
       {
         id: "c1",
@@ -137,7 +163,50 @@ describe("editorStore", () => {
     const updated = useEditorStore.getState().updateChapterWordCount("c1", 150, chapters);
     expect(updated[0].word_count).toBe(150);
     expect(updated[1].word_count).toBe(200);
-    // Original unchanged
+  });
+
+  it("updateChapterWordCount is a pure function — original unchanged", () => {
+    const chapters: ChapterSummary[] = [
+      {
+        id: "c1",
+        word_count: 100,
+        title: "Ch1",
+        novel_id: "n1",
+        volume_id: null,
+        position: 0,
+        status: "draft",
+        updated_at: "2024-01-01",
+      },
+      {
+        id: "c2",
+        word_count: 200,
+        title: "Ch2",
+        novel_id: "n1",
+        volume_id: null,
+        position: 1,
+        status: "draft",
+        updated_at: "2024-01-01",
+      },
+    ];
+    useEditorStore.getState().updateChapterWordCount("c2", 999, chapters);
     expect(chapters[0].word_count).toBe(100);
+    expect(chapters[1].word_count).toBe(200);
+  });
+
+  it("updateChapterWordCount returns unchanged array if chapter not found", () => {
+    const chapters: ChapterSummary[] = [
+      {
+        id: "c1",
+        word_count: 100,
+        title: "Ch1",
+        novel_id: "n1",
+        volume_id: null,
+        position: 0,
+        status: "draft",
+        updated_at: "2024-01-01",
+      },
+    ];
+    const result = useEditorStore.getState().updateChapterWordCount("c-nonexistent", 500, chapters);
+    expect(result[0].word_count).toBe(100);
   });
 });

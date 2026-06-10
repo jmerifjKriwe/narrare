@@ -82,6 +82,24 @@ describe("ContinueButton", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Default length
+  // -------------------------------------------------------------------------
+
+  it("defaults to medium length", async () => {
+    const user = userEvent.setup();
+    const editor = createMockEditor();
+    renderContinueButton(editor);
+
+    // Click the main button (not dropdown)
+    await user.click(screen.getByLabelText("annotation.continueWriting"));
+
+    // Verify the request was sent with length "medium"
+    expect(mockStreamExtend).toHaveBeenCalledTimes(1);
+    const request = mockStreamExtend.mock.calls[0][2] as Record<string, unknown>;
+    expect(request.length).toBe("medium");
+  });
+
+  // -------------------------------------------------------------------------
   // Rendering
   // -------------------------------------------------------------------------
 
@@ -139,6 +157,28 @@ describe("ContinueButton", () => {
     const callArgs = mockStreamExtend.mock.calls[0];
     const request = callArgs[2] as Record<string, unknown>;
     expect(request.length).toBe("long");
+  });
+
+  // -------------------------------------------------------------------------
+  // Outside click
+  // -------------------------------------------------------------------------
+
+  it("closes dropdown when clicking outside", async () => {
+    const user = userEvent.setup();
+    const editor = createMockEditor();
+    renderContinueButton(editor);
+
+    // Open dropdown
+    await user.click(screen.getByLabelText("annotation.selectLength"));
+    expect(screen.getByText("annotation.length.short")).toBeInTheDocument();
+
+    // Click outside the dropdown (on the body)
+    await user.click(document.body);
+
+    // Dropdown should close
+    await waitFor(() => {
+      expect(screen.queryByText("annotation.length.short")).not.toBeInTheDocument();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -257,6 +297,37 @@ describe("ContinueButton", () => {
     await waitFor(() => {
       expect(screen.getByText("annotation.continueWriting")).toBeDefined();
     });
+  });
+
+  it("does not trigger another extend while already streaming", async () => {
+    // Fire onChunk to trigger streaming state, but never complete
+    mockStreamExtend.mockImplementation(
+      (
+        _chId: string,
+        _nId: string,
+        _req: unknown,
+        callbacks: { onChunk: (text: string) => void },
+      ) => {
+        callbacks.onChunk("extended text");
+        return new Promise(() => {}); // Never settles
+      },
+    );
+
+    const user = userEvent.setup();
+    const editor = createMockEditor();
+    renderContinueButton(editor);
+
+    // Click to start streaming
+    await user.click(screen.getByText("annotation.continueWriting"));
+
+    // Now the button shows "stop" — clicking it should stop, not extend
+    expect(screen.getByText("aiActions.stop")).toBeInTheDocument();
+
+    // Click the stop button
+    await user.click(screen.getByText("aiActions.stop"));
+
+    // streamExtend should have been called only once
+    expect(mockStreamExtend).toHaveBeenCalledTimes(1);
   });
 
   // -------------------------------------------------------------------------

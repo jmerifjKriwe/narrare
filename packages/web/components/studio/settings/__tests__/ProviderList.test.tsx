@@ -5,15 +5,9 @@ import type { UserProvider } from "@/types";
 
 // --- Mock react-query ---
 
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useMutation: vi.fn(() => ({
-    mutate: vi.fn(),
-    isPending: false,
-  })),
-  useQueryClient: vi.fn(() => ({
-    invalidateQueries: vi.fn(),
-  })),
+vi.mock("@tanstack/react-query", () => ({
+  useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
 }));
 
 // --- Mock data ---

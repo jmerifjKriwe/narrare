@@ -42,8 +42,7 @@ vi.mock("@/lib/api/client", () => ({
   },
 }));
 
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(() => ({ data: mockPrompt, isLoading: false })),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),

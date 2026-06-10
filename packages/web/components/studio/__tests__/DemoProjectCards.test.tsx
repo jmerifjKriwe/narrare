@@ -22,17 +22,15 @@ import type { DemoProjectInfo } from "@/types";
 const mockListDemos = vi.fn<() => Promise<DemoProjectInfo[]>>();
 const mockPush = vi.fn<(url: string) => void>();
 
-vi.mock("@/lib/api/client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api/client")>()),
-  // setupApi is not exported from barrel — mock the setup module directly
+vi.mock("@/lib/api/client", () => ({
+  setupApi: { listDemos: () => mockListDemos() },
 }));
 
 vi.mock("@/lib/api/setup", () => ({
   setupApi: { listDemos: () => mockListDemos() },
 }));
 
-vi.mock("next/navigation", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("next/navigation")>()),
+vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 

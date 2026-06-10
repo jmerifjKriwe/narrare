@@ -24,8 +24,7 @@ vi.mock("@/lib/stores/authStore", () => ({
 }));
 
 // Mock react-query
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(({ queryKey }: { queryKey: string[] }) => {
     if (queryKey[0] === "auth") {
       return { data: { display_name: "Test User", email: "test@test.com" }, isLoading: false };
