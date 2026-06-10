@@ -8,6 +8,10 @@ export default defineConfig({
     // happy-dom: 3-5x faster DOM setup than jsdom (see ADR-optimization)
     environment: "happy-dom",
     setupFiles: ["./setupTests.ts"],
+    // Single-project config: test.projects was evaluated (2026-06-10) but
+    // caused ~17% runtime regression (112s → 131s) due to duplicate
+    // environment setup overhead across parallel projects. See
+    // docs/architecture/INCOMPLETE-FEATURES-PLAN.md for details.
     include: ["**/*.test.{ts,tsx}"],
     globals: true,
     testTimeout: 30_000, // default 5_000 → 30_000 (prevents premature timeout)
