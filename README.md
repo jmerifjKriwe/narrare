@@ -6,7 +6,7 @@
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 <!-- Pytest Coverage Comment:Begin -->
-<a href="https://github.com/jmerifjKriwe/narrare/blob/main/README.md"><img alt="Coverage" src="https://img.shields.io/badge/Coverage-76%25-yellow.svg" /></a>
+<a href="https://github.com/jmerifjKriwe/narrare/blob/main/README.md"><img alt="Coverage" src="https://img.shields.io/badge/Coverage-82%25-green.svg" /></a>
 <!-- Pytest Coverage Comment:End -->
 
 > AI-assisted creative writing environment — local-first, fully customizable.
