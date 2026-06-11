@@ -547,6 +547,30 @@ New gates start with a **warning phase** (non-blocking in CI) until:
 | Tracking task creation | Coordinator |
 | Grace period → blocking transition | Platform Specialist (CI) + Coordinator (approval) |
 
+### Step 6: Grace-Period-Exit Gate (MANDATORY)
+
+A new gate MUST NOT transition from warning to blocking without explicit Coordinator
+approval.
+
+**Exit criteria (ALL must be met):**
+
+1. Full baseline scan completed and stored in versioned baseline file
+2. All baseline violations have tracking tasks (AUFG-XX-YY)
+3. At least one full CI cycle completed with the gate in warning mode
+4. Coordinator has reviewed the baseline and approved blocking transition
+5. The gate is added to the Coordinator's active gate register
+
+**Process:**
+
+1. Platform Specialist proposes transition with baseline report
+2. Coordinator reviews: Are all baseline items tracked? Is the ratchet correct?
+3. Coordinator approves or requests baseline cleanup first
+4. Platform Specialist flips gate to blocking in CI
+5. Coordinator creates handoff note documenting the transition
+
+**This exists because:** Silent gate transitions create invisible baseline gaps.
+New code passes the gate, but pre-existing violations persist untracked.
+
 ### Why This Exists
 
 Without a baseline, a new gate either (a) blocks CI immediately on pre-existing

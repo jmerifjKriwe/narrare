@@ -31,6 +31,9 @@ name: CI
 # | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
 # | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
 # | --   | pnpm test (frontend tests)             | ✅ Blocking  | frontend Job                       |
+# | --   | check_test_performance.py              | ⚠️ Warning   | frontend Job (WARNING-only)        |
+# | --   | check_pytest_collection_performance.py  | ⚠️ Warning   | test-unit Job (WARNING-only)       |
+# | --   | check_current_state_facts.py (SSOT)    | ⚠️ Warning   | architecture Job (WARNING-only)    |
 # ---------------------------------------------------------------------------
 
 on:
@@ -142,6 +145,12 @@ jobs:
 
       - name: Check test coverage gaps (RULE-10)
         run: uv run python scripts/check_test_coverage_gaps.py --fail-on-missing
+
+      # WARNING-only: surfaces CURRENT_STATE.md drift without blocking CI.
+      # TODO: Transition to blocking after baseline is established (target: 2026-Q3)
+      - name: Check SSOT facts (CURRENT_STATE.md drift)
+        continue-on-error: true
+        run: uv run python scripts/check_current_state_facts.py
 
   # -------------------------------------------------------------------------
   # Lint & format (< 60s)
@@ -281,6 +290,12 @@ jobs:
         if: always() && steps.tests.outcome != 'cancelled'
         run: |
           uv run python scripts/check_module_coverage.py --warning-only
+
+      # TODO: Transition to blocking after baseline is established (target: 2026-Q3)
+      - name: Check pytest collection performance (WARNING-only)
+        if: always() && steps.tests.outcome != 'cancelled'
+        continue-on-error: true
+        run: uv run python scripts/check_pytest_collection_performance.py
 
       - name: Pytest coverage comment
         if: github.event_name == 'pull_request'
@@ -488,7 +503,25 @@ jobs:
         run: cd packages/web && pnpm type-check
 
       - name: Test
-        run: cd packages/web && pnpm test
+        id: frontend-tests
+        run: |
+          start_time=$(date +%s)
+          trap 'end_time=$(date +%s); echo "duration=$((end_time - start_time))" >> "$GITHUB_OUTPUT"' EXIT
+          cd packages/web && pnpm test
+
+      # TODO: Transition to blocking after baseline is established (target: 2026-Q3)
+      - name: Check frontend test performance (WARNING-only)
+        if: always() && steps.frontend-tests.outcome != 'cancelled'
+        continue-on-error: true
+        run: |
+          threshold=120
+          duration=${{ steps.frontend-tests.outputs.duration }}
+          if [ -z "$duration" ]; then
+            echo "⚠️ Could not determine test duration (step may have been cancelled)"
+            exit 0
+          fi
+          uv run python scripts/check_test_performance.py \
+            --duration "$duration" --threshold "$threshold"
 
       - name: Check component markers (data-testid)
         run: cd packages/web && npx tsx scripts/check-testid.ts --fail
