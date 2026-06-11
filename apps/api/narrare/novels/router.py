@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, status
 
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.novels.repository import NovelRepository
 from narrare.novels.schemas import (
     CreateNovelRequest,
@@ -19,13 +17,10 @@ from narrare.novels.schemas import (
 from narrare.novels.service import NovelService
 from narrare.volumes.repository import VolumeRepository
 
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
 router = APIRouter(prefix="/novels", tags=["novels"])
 
 
-def _get_service(session: AsyncSession = Depends(get_async_session)) -> NovelService:
+def _get_service(session: SessionDep) -> NovelService:
     return NovelService(
         repo=NovelRepository(session),
         volume_repo=VolumeRepository(session),

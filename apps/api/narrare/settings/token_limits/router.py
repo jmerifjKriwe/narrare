@@ -12,8 +12,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from narrare._app.config import get_settings
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.settings.token_limits.repository import (
     ProjectTokenLimitsRepository,
     UserTokenLimitsRepository,
@@ -24,8 +23,6 @@ from narrare.settings.token_limits.schemas import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from narrare._app.config import Settings
     from narrare.settings.token_limits.service import TokenLimitsService
 
@@ -40,7 +37,7 @@ router = APIRouter(prefix="/settings/token-limits", tags=["token-limits"])
 
 
 def _get_token_limits_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
     config: Settings = Depends(get_settings),
 ) -> TokenLimitsService:
     """Factory for TokenLimitsService with DB-backed repositories."""

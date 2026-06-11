@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import APIRouter, Depends
 
-from narrare._app.database import get_async_session
+from narrare._app.dependencies import SessionDep
 from narrare.setup.demo_loader import DemoLoader
 from narrare.setup.schemas import DemoListResponse
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["setup"])
 
 
 def _get_demo_loader(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> DemoLoader:
     return DemoLoader(session)
 

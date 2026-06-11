@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.settings.schemas import (
     CreateProviderRequest,
     ProviderResponse,
@@ -19,15 +18,13 @@ from narrare.settings.schemas import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from narrare.settings.user_providers_service import UserProvidersService
 
 router = APIRouter(tags=["settings"])
 
 
 async def _get_providers_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> UserProvidersService:
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
     from narrare.settings.user_providers_repository import UserProvidersRepository

@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.settings.router_ai_providers import router as providers_router
 from narrare.settings.schemas import (
     ProjectAiSettingsResponse,
@@ -23,8 +22,6 @@ from narrare.settings.schemas import (
 from narrare.setup.schemas import AvailableModelsResponse
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService
     from narrare.settings.user_ai_settings_service import UserAiSettingsService
     from narrare.settings.user_provider_models_service import UserProviderModelsService
@@ -36,7 +33,7 @@ router.include_router(providers_router)
 
 
 async def _get_provider_models_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> UserProviderModelsService:
     from narrare.settings.user_provider_models_service import UserProviderModelsService
     from narrare.settings.user_providers_repository import UserProvidersRepository
@@ -47,7 +44,7 @@ async def _get_provider_models_service(
 
 
 async def _get_ai_settings_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> UserAiSettingsService:
     from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
     from narrare.settings.user_ai_settings_service import UserAiSettingsService
@@ -60,7 +57,7 @@ async def _get_ai_settings_service(
 
 
 async def _get_project_ai_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> ProjectAiSettingsService:
     from narrare.settings.project_ai_settings_repository import ProjectAiSettingsRepository
     from narrare.settings.project_ai_settings_service import ProjectAiSettingsService

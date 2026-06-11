@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import APIRouter, Depends
 
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.novels.repository import NovelRepository
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
@@ -32,9 +29,6 @@ from narrare.setup.service import SetupService
 
 from .router_demos import router as demo_router
 
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
 router = APIRouter(prefix="/setup", tags=["setup"])
 
 
@@ -42,7 +36,7 @@ router.include_router(demo_router)
 
 
 def _get_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> SetupService:
     return SetupService(
         session=session,

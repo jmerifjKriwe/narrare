@@ -7,12 +7,10 @@ immediately to CustomToneService — no business logic here (RULE-06).
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, status
 
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.settings.custom_tone_service import CustomToneService
 from narrare.settings.repository import UserSettingsRepository
 from narrare.settings.schemas_tones import (
@@ -21,13 +19,10 @@ from narrare.settings.schemas_tones import (
     CustomToneUpdate,
 )
 
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
 router = APIRouter(tags=["settings"])
 
 
-def _get_service(session: AsyncSession = Depends(get_async_session)) -> CustomToneService:
+def _get_service(session: SessionDep) -> CustomToneService:
     repo = UserSettingsRepository(session)
     return CustomToneService(repo)
 

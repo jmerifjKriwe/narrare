@@ -11,13 +11,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.memory.schemas import AnalyzeRequest, AnalyzeResponse
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from narrare.memory.analysis_service import PreferenceAnalysisService
 
 router = APIRouter(tags=["memory"])
@@ -28,7 +25,7 @@ ANALYSIS_COOLDOWN = timedelta(hours=1)
 
 
 async def _get_analysis_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> PreferenceAnalysisService:
     """Async factory for PreferenceAnalysisService."""
     from narrare._app.dependencies import get_composer, get_model_registry

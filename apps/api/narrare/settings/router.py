@@ -9,12 +9,10 @@ For AI provider and settings routes, see router_ai.py.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.settings.models_router import router as models_router
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.settings.router_ai import router as ai_router
@@ -26,9 +24,6 @@ from narrare.settings.schemas import (
     UserSettingsResponse,
 )
 from narrare.settings.token_limits.router import router as token_limits_router
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -53,7 +48,7 @@ router.include_router(token_limits_router)
 @router.get("/user", response_model=UserSettingsResponse)
 async def get_user_settings(
     user_id: CurrentUserIdDep,
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> UserSettingsResponse:
     repo = UserSettingsRepository(session)
     settings = await repo.get(uuid.UUID(user_id))
@@ -64,7 +59,7 @@ async def get_user_settings(
 async def update_user_settings(
     request: UpdateUserSettingsRequest,
     user_id: CurrentUserIdDep,
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> UserSettingsResponse:
     repo = UserSettingsRepository(session)
     settings = await repo.update(uuid.UUID(user_id), request)
@@ -75,7 +70,7 @@ async def update_user_settings(
 async def get_project_settings(
     novel_id: uuid.UUID,
     user_id: CurrentUserIdDep,
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> ProjectSettingsResponse:
     repo = ProjectSettingsRepository(session)
     settings = await repo.get(novel_id)
@@ -87,7 +82,7 @@ async def update_project_settings(
     novel_id: uuid.UUID,
     request: UpdateProjectSettingsRequest,
     user_id: CurrentUserIdDep,
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
 ) -> ProjectSettingsResponse:
     repo = ProjectSettingsRepository(session)
     settings = await repo.update(novel_id, request)

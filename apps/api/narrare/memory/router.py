@@ -10,8 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
-from narrare._app.database import get_async_session
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare.memory.dependencies import get_memory_client
 from narrare.memory.schemas import (
     FeedbackRequest,
@@ -21,15 +20,13 @@ from narrare.memory.schemas import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from narrare.memory.service import MemoryFeedbackService, MemoryPreferenceService
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
 
 async def _get_feedback_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
     mem0_client: Any = Depends(get_memory_client),
 ) -> MemoryFeedbackService:
     """Async factory for MemoryFeedbackService with event publishing."""
@@ -72,7 +69,7 @@ async def _get_feedback_service(
 
 
 async def _get_preference_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
     mem0_client: Any = Depends(get_memory_client),
 ) -> MemoryPreferenceService:
     """Async factory for MemoryPreferenceService."""

@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import structlog
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi_limiter.depends import RateLimiter as _RateLimiterDep
 from pyrate_limiter import Duration, Limiter, Rate
 
 from narrare._app.config import Settings, get_settings
-from narrare._app.database import get_async_session
+from narrare._app.dependencies import SessionDep
 from narrare.auth.cookie_helpers import clear_refresh_cookie, set_refresh_cookie
 from narrare.auth.repository import AuthRepository
 from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 from narrare.auth.service import AuthService
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 
@@ -25,7 +20,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _get_auth_service(
-    session: AsyncSession = Depends(get_async_session),
+    session: SessionDep,
     settings: Settings = Depends(get_settings),
 ) -> AuthService:
     return AuthService(repo=AuthRepository(session), settings=settings)

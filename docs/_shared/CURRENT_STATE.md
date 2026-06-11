@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-09 (CR-07 Phase 2 + KEYBOARD-001 Implementation)
-Session: CR-07 Phase 2 (CR-AUFG-07-01 bis 07-06) implementiert — 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText modularisiert (ghost-text-helpers → ghost-text-suggestions). 5 Testfiles aktualisiert, 40 Tests grün. 0 manuelle AbortController in AI-Komponenten. KEYBOARD-001 implementiert: Ctrl+Enter = send, Escape = cancel/close in ChatPanel, CoAuthorPanel, ConsistencyCheckPanel. 14 neue Test-Assertions. i18n Keys für sendHint + Shortcuts in allen 3 Locales.
+Date: 2026-06-11 (Governance-Drift Correction — AUFG-01-07 + CTX-001)
+Session: Technical Review 01 identifizierte Governance-Drift in CURRENT_STATE.md. Korrekturen: (1) Regelanzahl 22→23 (RULE-23 hinzugefügt), (2) ADR-Referenz in Documentation-Section korrigiert (ADR-001–ADR-043), (3) Adoption-Debt-Claims präzisiert (109 Ratchet-Baseline-Items, nicht 0 Debt — P5 hat 0 NEW debt, aber Legacy-Baseline bleibt erhalten), (4) Feature-Spec-Anzahl aktualisiert (87 Dateien, 77 registrierte Einträge), (5) Exception-Baseline-Diskrepanz dokumentiert (10 in CONSTRAINTS.md-Tabelle vs. 14 in ai-gate-baseline.json inkl. 4 RULE-TEST-01 + 1 inline_fallback), (6) Test-Dateizahlen aktualisiert (567 Backend, 197 Frontend).
 
 ---
 
@@ -26,17 +26,18 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ## Codebase Overview
 
-### Stats (verified 2026-06-05)
+### Stats (verified 2026-06-11)
 
 - Knowledge Graph: 17,357 nodes, 122,996 edges, risk low
-- Backend tests: ~4,540 (approx. 4,015 unit + 495 integration) across 408 test files
-- Frontend tests: 1,683 across 186 test files (Vitest + MSW)
-- Total tests: ~6,240+
-- Architecture rules: 22 rules (RULE-01 through RULE-22, plus RULE-01b)
-- Architecture exceptions: 13 registered (was 14; RULE-02 exception #3 removed via bundled prompt)
-- ADRs: 43 (ADR-001 through ADR-043)
-- Feature specs: 86 individual files + INDEX.md (78 registered entries)
+- Backend tests: ~6,240+ across 567 test files (unit + integration)
+- Frontend tests: 1,683+ across 197 test files (Vitest + MSW)
+- Architecture rules: 23 rules (RULE-01b, RULE-02/02a, RULE-03 through RULE-23)
+- Architecture exceptions: 10 in CONSTRAINTS.md §7 table; 14 in ai-gate-baseline.json (incl. 4 RULE-TEST-01 test-mocking entries + 1 inline_fallback)
+- ADRs: 43 (ADR-001 through ADR-043, ADR-039 gap)
+- Feature specs: 87 individual files + INDEX.md (77 registered entries)
 - Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
+- Adoption debt: 109 ratcheted baseline items (0 new, 0 resolved — P5 achieved 0 new debt)
+- System health: 0.88 HEALTHY (feature_adoption gate at 0.50 due to baseline count, not new debt)
 
 ### Core (`packages/core/narrare_core/`)
 
@@ -63,11 +64,11 @@ Alembic migrations 0001 through ~0023
 
 ### Documentation (`docs/`)
 
-- `_shared/`: CONSTRAINTS.md (22 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
+- `_shared/`: CONSTRAINTS.md (23 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001 through ADR-042 plus implementation plans (INDEX.md)
+- `architecture/decisions/`: ADR-001 through ADR-043 plus implementation plans (INDEX.md)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 8 resolved)
-- `features/`: 83 feature spec files + INDEX.md (75 registered entries with status tracking)
+- `features/`: 87 feature spec files + INDEX.md (77 registered entries with status tracking)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
 - **PLAN-004** — Timeline Management (vollständig: DB → CRUD → AI analysis → SSE extraction → confirm endpoint → DurationImpossibilityCheck → LLM consistency via bundled prompt → character ages → visualization, 44 files, DoD-100%) ✅
 - `mvp/`: Product roadmap (Phases 0–6 + Post-MVP)
@@ -146,7 +147,7 @@ Completed in Phase 6 so far:
 43. ✅ **CR-03 / INFRA-013 P3 (ADR-041)**: FileEvidenceSink (`.evidence/invocations.jsonl`), registry drift detection (JSON Schema + `check_registry_drift.py`), doc-drift automation (`doc_drift/` package), quality metrics (`QualityReport` + joiner), CI integration (`--drift` flag, CI jobs). All P3 exit criteria satisfied. INFRA-013 complete through P3.
   44. ✅ **CR-04 Cross-Feature Coherence Remediation**: KB Context Contract with source/evidence/confidence/review_status metadata (CR-AUFG-04-01 + B1 + B3); Variable naming canonical aliases with deprecation of bare `language` (CR-AUFG-04-03 + E2 + B6); ADR Implementation Completeness Gate (Gate 12); Cross-Feature Audit Cadence; FIND-009 (Timeline→Consistency) registered. 39 new tests. Precedence confirmed in RULE-22 §7 (E3: no standalone ADR needed).
   45. ✅ **CR-03 / INFRA-013 P4 (ADR-042)**: PersistentEvidenceSink (PostgreSQL hybrid), EvidenceRepository protocol + implementation, PersistentEvidenceSink in Backend, Alembic migration 0028_invocation_evidence, 41 tests (23 unit + 18 integration). FileEvidenceSink unchanged for CI.
-   46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Modes Adopted**: All 27 feature modes fully adopted. Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json cleared (0 adoption debt). CI integration: probes run before adoption check.
+   46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Modes Adopted**: All 27 feature modes fully adopted. Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json ratcheted: 0 new adoption debt (109 baseline items preserved as ratchet floor). CI integration: probes run before adoption check.
 47. ✅ **CR-07 UX Audit Remediation — Full Implementation**: ADR-043 useAIOperation hook + mapSSEError implementiert. Alle P0/P1 AI-Flows (GenerationPanel, CoAuthorPanel, ContinueButton, TipTapEditor, KB sessions, timeline, KB _components) auf useAIOperation migriert. §16 Compliance: aiActions.* i18n keys (de/en/fr), structured AIErrorResponse, no raw AbortController, no useConnectionLost. Maschinelle Compliance-Checks + CI-Integration. RULE-04: scorer_modes.py (401→365) + compliance script (594→93) modularisiert. ONBOARD-001, PROMPT-003, KEYBOARD-001 Feature-Specs erstellt. Q-012 resolved. Commit 1001125: 84 Dateien, +5.132/-674.
 48. ✅ **CR-07 UX Audit — Phase 2**: CR-AUFG-07-01 bis CR-AUFG-07-06 abgeschlossen. 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming DEAD CODE DELETED. Migrierte Flows: Chat SSE (CHAT-001), Beta Reader (ANAL-001), Extraction (KB-007), Worldbuilding (KB-006), Name Generator (GEN-001), Consistency Check (CONS-001). KEYBOARD-001 implementiert (Ctrl+Enter, Escape-Cancel). 5 Testfiles aktualisiert, 40+14 Tests grün.
 
@@ -249,11 +250,11 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Python 3.14 missing type stubs | Low | Documented in pyproject.toml |
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
-| System Health Score (DEGRADED) | Medium | Non-blocking metric-floor/baseline artifact. CI remains warning-only for DEGRADED and fails on CRITICAL. Streaming compliance now 0 violations; baseline debt must keep shrinking for ≥0.85. |
+| System Health Score | Medium | Current: 0.88 HEALTHY. feature_adoption gate at 0.50 due to 109 ratcheted baseline items (not new debt). CI remains warning-only for DEGRADED and fails on CRITICAL. Streaming compliance now 0 violations. |
 | Frontend RULE-04 regressions | Low | All 37 legacy violations resolved (53→0). `check_frontend_file_size.py` enforces limits in CI. New violations blocked by ratchet. |
-| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: exception baseline is current at 13/13 (was 14/14; RULE-02 exception #3 removed). |
+| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: CONSTRAINTS.md §7 table has 10 entries; ai-gate-baseline.json has 14 (incl. 4 RULE-TEST-01 + 1 inline_fallback). RULE-02 exception #3 removed. |
 
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-09 (CR-07 Phase 2 + KEYBOARD-001)
+> Last content update: 2026-06-11 (Governance-Drift Correction — AUFG-01-07 + CTX-001)
