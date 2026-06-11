@@ -3,7 +3,8 @@
 Public API:
     FeedbackAction, FeedbackEvent, FeedbackCollector, PreferenceProvider,
     PreferenceProfile, MemoryFacade, FeedbackService, PreferenceService,
-    EmbeddingConfig, EmbeddingCascadeResolver, MemoryClientCache
+    EmbeddingConfig, EmbeddingCascadeResolver, MemoryClientCache,
+    ProviderEnvConfig, is_mem0_available, detect_provider_from_env
 
 The mem0 client factories (``create_memory_client``,
 ``create_memory_client_sync``) are intentionally excluded from public
@@ -12,6 +13,11 @@ service wiring.
 """
 
 from narrare_core.memory._null_client import NullMemoryClient
+from narrare_core.memory.availability import (
+    ProviderEnvConfig,
+    detect_provider_from_env,
+    is_mem0_available,
+)
 from narrare_core.memory.embedding_cascade import (
     EmbeddingCascadeResolver,
     EmbeddingConfig,
@@ -43,4 +49,7 @@ __all__ = [
     "PreferenceProfile",
     "PreferenceProvider",
     "PreferenceService",
+    "ProviderEnvConfig",
+    "detect_provider_from_env",
+    "is_mem0_available",
 ]

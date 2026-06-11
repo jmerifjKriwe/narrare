@@ -396,6 +396,11 @@ check-python-size:
     @echo "📏 Checking Python file-size limits..."
     uv run python scripts/check_python_file_size.py
 
+# Check SSOT consistency — CURRENT_STATE.md claims vs reality (warn-only)
+check-ssot:
+    @echo "📋 Checking CURRENT_STATE.md SSOT consistency..."
+    uv run python scripts/check_current_state_facts.py
+
 # Check model registry against models.dev
 check-models:
     @echo "🤖 Checking model registry..."
@@ -556,6 +561,10 @@ hooks-update:
 # Full check
 # ---------------------------------------------------------------------------
 
-# Full pre-merge check (everything, strict mode)
+# Full pre-merge check (everything, strict mode, SSOT warn-only)
+#
+# check-ssot is warn-only: it reports discrepancies but does not block the merge.
+# The `|| true` prevents its non-zero exit code from failing the entire recipe.
 check-full: check check-python-size check-streaming check-ai-ux check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
+    -uv run python scripts/check_current_state_facts.py || true
     @echo "✅ All checks passed — ready to merge"

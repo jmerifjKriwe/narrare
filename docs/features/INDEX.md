@@ -175,6 +175,24 @@
 | [STATS-001](analytics/STATS-001-writing-stats.md) | Writing Statistics | 📋 | ❌ |
 | [STATS-002](analytics/STATS-002-cost-tracking.md) | AI Cost Tracking | 📋 | ❌ |
 
+### Adapter / Integration
+| ID | Feature | Status | MVP |
+|----|---------|--------|-----|
+| ADAPTER-001 | MCP (Model Context Protocol) Adapter | 💡 | ❌ |
+| ADAPTER-002 | A2A (Agent-to-Agent) Adapter | 💡 | ❌ |
+
+> **Adapter status:** MCP and A2A are planned roadmap adapters, not yet implemented.
+> The Service Layer is designed for multi-adapter capability under RULE-12/13 (service
+> layer is the only public API; streaming/non-streaming share one interface).
+> Implementation requires resolution of Q-001 (MCP auth strategy) and Q-002 (A2A
+> streaming requirement) before adapter-specific specs can be written.
+>
+> **Contract-Test Gates (required before first adapter implementation):**
+> 1. Service contracts must be adapter-neutral (already RULE-12).
+> 2. Streaming/non-streaming signatures must work identically (already RULE-13).
+> 3. Adapter-Contract-Tests for new entry points (`apps/mcp/`, `apps/a2a/`) must be
+>    defined alongside the adapter spec, not retrofitted after implementation.
+
 ---
 
 ## Feature File Schema
@@ -252,5 +270,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-10 — Feature audit: INFRA-013, CHAT-001, WRITE-006, PLAN-004 promoted to stable; CONS-002 corrected to planned; path references fixed across multiple specs.
+> Last updated: 2026-06-11 — AUFG-01-03: ADAPTER-001 (MCP) and ADAPTER-002 (A2A) added as planned (💡 idea) with contract-test gates documented.
 > Features are specified before they are implemented — never after

@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-11 (Governance-Drift Correction — AUFG-01-07 + CTX-001)
-Session: Technical Review 01 identifizierte Governance-Drift in CURRENT_STATE.md. Korrekturen: (1) Regelanzahl 22→23 (RULE-23 hinzugefügt), (2) ADR-Referenz in Documentation-Section korrigiert (ADR-001–ADR-043), (3) Adoption-Debt-Claims präzisiert (109 Ratchet-Baseline-Items, nicht 0 Debt — P5 hat 0 NEW debt, aber Legacy-Baseline bleibt erhalten), (4) Feature-Spec-Anzahl aktualisiert (87 Dateien, 77 registrierte Einträge), (5) Exception-Baseline-Diskrepanz dokumentiert (10 in CONSTRAINTS.md-Tabelle vs. 14 in ai-gate-baseline.json inkl. 4 RULE-TEST-01 + 1 inline_fallback), (6) Test-Dateizahlen aktualisiert (567 Backend, 197 Frontend).
+Date: 2026-06-11 (SSOT Fact Check + AUFG-01-03 MCP/A2A Documentation)
+Session: (1) SSOT automated fact checker implemented (scripts/check_current_state_facts.py). Corrected drift: ADR count 43→42, test files 567→573 backend / 197→201 frontend, feature specs 87→86. (2) AUFG-01-03: MCP/A2A adapter status documented in features/INDEX.md (ADAPTER-001/002, 💡 idea status). Contract-test gates documented. Q-001/Q-002 status confirmed with adapter cross-references.
 
 ---
 
@@ -29,12 +29,12 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 ### Stats (verified 2026-06-11)
 
 - Knowledge Graph: 17,357 nodes, 122,996 edges, risk low
-- Backend tests: ~6,240+ across 567 test files (unit + integration)
-- Frontend tests: 1,683+ across 197 test files (Vitest + MSW)
+- Backend tests: ~6,240+ across 573 test files (unit + integration)
+- Frontend tests: 1,683+ across 201 test files (Vitest + MSW)
 - Architecture rules: 23 rules (RULE-01b, RULE-02/02a, RULE-03 through RULE-23)
 - Architecture exceptions: 10 in CONSTRAINTS.md §7 table; 14 in ai-gate-baseline.json (incl. 4 RULE-TEST-01 test-mocking entries + 1 inline_fallback)
-- ADRs: 43 (ADR-001 through ADR-043, ADR-039 gap)
-- Feature specs: 87 individual files + INDEX.md (77 registered entries)
+- ADRs: 42 entries in INDEX.md (ADR-001 through ADR-043, ADR-039 gap — 42 unique entries)
+- Feature specs: 86 individual files + INDEX.md (77 registered entries)
 - Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
 - Adoption debt: 109 ratcheted baseline items (0 new, 0 resolved — P5 achieved 0 new debt)
 - System health: 0.88 HEALTHY (feature_adoption gate at 0.50 due to baseline count, not new debt)
@@ -66,9 +66,10 @@ Alembic migrations 0001 through ~0023
 
 - `_shared/`: CONSTRAINTS.md (23 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001 through ADR-043 plus implementation plans (INDEX.md)
-- `architecture/questions/`: 11 questions in 6 files (3 active, 8 resolved)
-- `features/`: 87 feature spec files + INDEX.md (77 registered entries with status tracking)
+- `architecture/decisions/`: ADR-001 through ADR-043 plus implementation plans (INDEX.md, 42 entries — ADR-039 gap)
+- `architecture/questions/`: 11 questions in 6 files (3 active, 9 resolved)
+- `features/`: 86 feature spec files + INDEX.md (77 registered entries with status tracking)
+- `features/INDEX.md` → ADAPTER-001/002: MCP and A2A adapters documented as "Planned, Not Implemented" (post-MVP, Q-001/Q-002 blockers)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
 - **PLAN-004** — Timeline Management (vollständig: DB → CRUD → AI analysis → SSE extraction → confirm endpoint → DurationImpossibilityCheck → LLM consistency via bundled prompt → character ages → visualization, 44 files, DoD-100%) ✅
 - `mvp/`: Product roadmap (Phases 0–6 + Post-MVP)
@@ -257,4 +258,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-11 (Governance-Drift Correction — AUFG-01-07 + CTX-001)
+> Last content update: 2026-06-11 (SSOT Fact Check + AUFG-01-03 MCP/A2A Documentation)

@@ -6,6 +6,10 @@ This wires ``settings.memory_llm_model`` and ``settings.memory_embedding_model``
 into ``create_memory_client()`` so the hardcoded ``_PROVIDER_DEFAULT_MODELS``
 can be overridden via configuration.
 
+Provider detection is delegated to ``narrare_core.memory.availability``
+(the public API), replacing the former private ``_detect_provider_from_env``
+that lived in this module.
+
 Usage in router::
 
     @router.post("/feedback")
@@ -18,8 +22,6 @@ Usage in router::
 
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass
 from typing import Annotated, Any
 
 import structlog
@@ -27,48 +29,17 @@ from fastapi import Depends
 
 from narrare._app.config import Settings, get_settings
 from narrare_core.memory._null_client import NullMemoryClient
+from narrare_core.memory.availability import (
+    ProviderEnvConfig,
+    detect_provider_from_env,
+)
 from narrare_core.memory.mem0_client import create_memory_client
 
 logger = structlog.get_logger(__name__)
 
-# Priority-ordered list of (provider_name, env_var_key, env_var_base_url)
-# Used to detect the active LLM provider from environment variables.
-_PROVIDER_ENV_VARS: list[tuple[str, str, str]] = [
-    ("openai", "OPENAI_API_KEY", "OPENAI_BASE_URL"),
-    ("anthropic", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL"),
-]
-"""LLM provider detection order.
-
-OpenAI is checked first because the default ``memory_llm_model``
-(``gpt-4o-mini``) and ``memory_embedding_model`` (``text-embedding-3-small``)
-are both OpenAI models.
-"""
-
-
-@dataclass(frozen=True, slots=True)
-class _ProviderEnvConfig:
-    """Detected provider config from environment variables."""
-
-    provider: str
-    api_key: str
-    base_url: str | None = None
-
-
-def _detect_provider_from_env() -> _ProviderEnvConfig | None:
-    """Detect LLM provider from environment variables.
-
-    Priority: openai → anthropic.
-    Returns None if no credentials available.
-    """
-    for prov, key_env, url_env in _PROVIDER_ENV_VARS:
-        key = os.environ.get(key_env)
-        if key:
-            return _ProviderEnvConfig(
-                provider=prov,
-                api_key=key,
-                base_url=os.environ.get(url_env),
-            )
-    return None
+# Backward-compat aliases — prefer imports from narrare_core.memory.availability.
+_ProviderEnvConfig = ProviderEnvConfig
+_detect_provider_from_env = detect_provider_from_env
 
 
 async def get_memory_client(
@@ -91,7 +62,7 @@ async def get_memory_client(
         The ``Any`` return type matches ``create_memory_client()`` because
         mem0 may not be installed.
     """
-    provider_config = _detect_provider_from_env()
+    provider_config = detect_provider_from_env()
 
     if provider_config is None:
         logger.info(
@@ -116,9 +87,10 @@ async def get_memory_client(
         )
         return client
     except Exception:
-        logger.exception(
+        logger.error(
             "mem0_client_factory_failed",
             provider=provider_config.provider,
+            exc_info=True,
         )
         return NullMemoryClient()
 
