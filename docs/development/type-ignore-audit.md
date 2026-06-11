@@ -210,17 +210,6 @@ konkrete Typen statt Protocols als Parameter erwarten.
 - [x] **P5-B:** CI-Gate integriert — schlägt fehl bei nackten `type:ignore` oder unkommentierten Production-Einträgen
 - [x] **P5-C:** RULE-23 verlangt Reason-Kommentar-Pflicht; Budget 0 für neue Module
 
-### Phase 4: TypeScript prüfen
-
-- [ ] **P4-A:** `@ts-ignore` im Frontend suchen — aktuell nur 1 Fund in `KnowledgeGraphView.tsx`.
-  Frontend hat praktisch keine Suppressions, das ist vorbildlich.
-
-### Phase 5: Monitoring
-
-- [ ] **P5-A:** Monatlichen Type-Suppression-Report einführen
-- [ ] **P5-B:** Bei jedem neuen Feature die Anzahl der `type: ignore` tracken
-- [ ] **P5-C:** Einen "Type-Ignore-Budget" pro Modul definieren (aktuell z. B. 0 für neue Module)
-
 ---
 
 ## Guidelines für AI Agents
@@ -259,11 +248,12 @@ Vor dem Setzen einer Suppression MÜSSEN mindestens 2 dieser Alternativen versuc
 ```markdown
 ## Quality Gate: Type-Ignore Count
 
-- `scripts/check_type_ignores.py` (TODO: erstellen)
+- `scripts/check_type_ignores/` package — CLI via `uv run python scripts/check_type_ignores.py`
 - Prüft: Anzahl `# type: ignore` pro Datei gegen Baseline
-- Warnung: Anstieg um >5% seit letztem Commit
+- Error: Anstieg über Baseline (ratchet — nur Reduktion erlaubt)
 - Error: Neues `# type: ignore` in production code ohne Reason-Kommentar
-- Fail: `# type: ignore` ohne Error-Code
+- Fail: `# type: ignore` ohne Error-Code (naked ignore)
+- Baseline aktualisieren: `uv run python scripts/check_type_ignores.py --update`
 ```
 
 ---
