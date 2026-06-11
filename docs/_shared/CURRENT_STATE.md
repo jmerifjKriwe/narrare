@@ -32,7 +32,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Backend tests: ~6,240+ across 573 test files (unit + integration)
 - Frontend tests: 1,683+ across 201 test files (Vitest + MSW)
 - Architecture rules: 23 rules (RULE-01b, RULE-02/02a, RULE-03 through RULE-23)
-- Architecture exceptions: 10 in CONSTRAINTS.md §7 table; 14 in ai-gate-baseline.json (incl. 4 RULE-TEST-01 test-mocking entries + 1 inline_fallback)
+- Architecture exceptions: 10 in CONSTRAINTS.md §7 table; 12 in ai-gate-baseline.json (incl. 1 RULE-TEST-01 test-mocking entry + 1 inline_fallback + 1 RULE-19)
 - ADRs: 42 entries in INDEX.md (ADR-001 through ADR-043, ADR-039 gap — 42 unique entries)
 - Feature specs: 86 individual files + INDEX.md (77 registered entries)
 - Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
@@ -253,7 +253,7 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
 | System Health Score | Medium | Current: 0.88 HEALTHY. feature_adoption gate at 0.50 due to 109 ratcheted baseline items (not new debt). CI remains warning-only for DEGRADED and fails on CRITICAL. Streaming compliance now 0 violations. |
 | Frontend RULE-04 regressions | Low | All 37 legacy violations resolved (53→0). `check_frontend_file_size.py` enforces limits in CI. New violations blocked by ratchet. |
-| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: CONSTRAINTS.md §7 table has 10 entries; ai-gate-baseline.json has 14 (incl. 4 RULE-TEST-01 + 1 inline_fallback). RULE-02 exception #3 removed. |
+| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: CONSTRAINTS.md §7 table has 10 entries; ai-gate-baseline.json has 12 (incl. 1 RULE-TEST-01 + 1 inline_fallback + 1 RULE-19). RULE-02 exception #3 removed. |
 
 ---
 

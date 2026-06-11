@@ -127,9 +127,7 @@
     "pyproject | RULE-01b | packages/core/narrare_core/llm/gateway.py | Gateway._make_agent() is the approved boundary crossing.",
     "pyproject | RULE-01b | packages/core/narrare_core/planning/remap.py | Injected agent, not instantiated here",
     "pyproject | RULE-01b | packages/core/narrare_core/wiki/agent_chapter.py | WikiChapterGenerator wraps internal PydanticAgent (ADR-015)",
-    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_analysis_service.py | Mocking for service unit tests \u2014 no domain contract",
-    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_feedback_service.py | Mocking for service unit tests \u2014 no domain contract",
-    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_repository.py | Mocking for repository unit tests \u2014 no domain contract",
+    "pyproject | RULE-19 | apps/api/narrare/metrics/router.py | Health/readiness check must bypass repository layer to verify raw DB connectivity.",
     "pyproject | RULE-TEST-01 | tests/unit/api/metrics/test_metrics_router.py | Mocking SQLAlchemy Engine \u2014 no domain contract"
   ],
   "frontend_file_size_violations": [],
