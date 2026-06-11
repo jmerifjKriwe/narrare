@@ -70,6 +70,7 @@ def _build_steps() -> list[Step]:
             [
                 (["uv", "run", "python", "scripts/check_architecture.py"], None),
                 (["uv", "run", "python", "scripts/check_exception_baseline.py"], None),
+                (["uv", "run", "python", "scripts/check_python_file_size.py"], None),
             ],
         ),
         Step(

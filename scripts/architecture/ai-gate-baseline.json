@@ -114,10 +114,10 @@
     "writing | story_suggest | runtime | preference_enrichment | missing"
   ],
   "prompt_integrity_findings": [
-    "PROMPT-VARS | packages/core/narrare_core/prompts/variable_registry.py | Dead variable(s) in SYSTEM_VARS — registered but never used in any prompt template: feedback_text, mode, style_constraints"
+    "PROMPT-VARS | packages/core/narrare_core/prompts/variable_registry.py | Dead variable(s) in SYSTEM_VARS \u2014 registered but never used in any prompt template: feedback_text, mode, style_constraints"
   ],
   "approved_exceptions": [
-    "inline_fallback | packages/core/narrare_core/agents/writing_graph_prompts.py | fallback when composer=None | Test ergonomics — not a production path",
+    "inline_fallback | packages/core/narrare_core/agents/writing_graph_prompts.py | fallback when composer=None | Test ergonomics \u2014 not a production path",
     "pyproject | RULE-01 | apps/api/narrare/setup/provider_service.py | Setup-phase provider validation requires direct import of pydantic_ai Agent.",
     "pyproject | RULE-01 | packages/core/narrare_core/llm/embedding_providers.py | Batch embedding API requires direct client access for performance",
     "pyproject | RULE-01 | packages/core/narrare_core/memory/mem0_client.py | mem0 AsyncMemory requires direct LLM client for memory extraction.",
@@ -127,11 +127,15 @@
     "pyproject | RULE-01b | packages/core/narrare_core/llm/gateway.py | Gateway._make_agent() is the approved boundary crossing.",
     "pyproject | RULE-01b | packages/core/narrare_core/planning/remap.py | Injected agent, not instantiated here",
     "pyproject | RULE-01b | packages/core/narrare_core/wiki/agent_chapter.py | WikiChapterGenerator wraps internal PydanticAgent (ADR-015)",
-    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_analysis_service.py | Mocking for service unit tests — no domain contract",
-    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_feedback_service.py | Mocking for service unit tests — no domain contract",
-    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_repository.py | Mocking for repository unit tests — no domain contract",
-    "pyproject | RULE-TEST-01 | tests/unit/api/metrics/test_metrics_router.py | Mocking SQLAlchemy Engine — no domain contract"
+    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_analysis_service.py | Mocking for service unit tests \u2014 no domain contract",
+    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_feedback_service.py | Mocking for service unit tests \u2014 no domain contract",
+    "pyproject | RULE-TEST-01 | tests/unit/api/memory/test_repository.py | Mocking for repository unit tests \u2014 no domain contract",
+    "pyproject | RULE-TEST-01 | tests/unit/api/metrics/test_metrics_router.py | Mocking SQLAlchemy Engine \u2014 no domain contract"
   ],
   "frontend_file_size_violations": [],
-  "streaming_compliance_gaps": []
+  "streaming_compliance_gaps": [],
+  "python_file_size_violations": [
+    "apps/api/narrare/_app/config.py | config_schema | 200",
+    "apps/api/narrare/_app/dependencies.py | dependency | 200"
+  ]
 }

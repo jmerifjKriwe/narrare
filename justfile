@@ -391,6 +391,11 @@ check-frontend-size:
     @echo "📏 Checking frontend file-size limits..."
     uv run python scripts/check_frontend_file_size.py
 
+# Check Python file-size hard limits (RULE-04) with no-growth baseline
+check-python-size:
+    @echo "📏 Checking Python file-size limits..."
+    uv run python scripts/check_python_file_size.py
+
 # Check model registry against models.dev
 check-models:
     @echo "🤖 Checking model registry..."
@@ -552,5 +557,5 @@ hooks-update:
 # ---------------------------------------------------------------------------
 
 # Full pre-merge check (everything, strict mode)
-check-full: check check-streaming check-ai-ux check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
+check-full: check check-python-size check-streaming check-ai-ux check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
     @echo "✅ All checks passed — ready to merge"
