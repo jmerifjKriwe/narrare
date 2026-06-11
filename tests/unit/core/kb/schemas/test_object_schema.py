@@ -9,6 +9,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.kb.schemas.object import (
     ObjectMetadata,
     ObjectOrigin,
@@ -39,8 +41,10 @@ class TestObjectProperties:
         assert p.material == "Mithril"
 
     def test_extra_fields_preserved(self) -> None:
-        p = ObjectProperties(material="Steel", enchantment="Fire resistance")  # type: ignore[call-arg]
-        assert p.enchantment == "Fire resistance"  # type: ignore[attr-defined]
+        p: Any = ObjectProperties(
+            **cast("Any", {"material": "Steel", "enchantment": "Fire resistance"})
+        )
+        assert p.enchantment == "Fire resistance"
 
 
 class TestObjectOrigin:
@@ -108,8 +112,8 @@ class TestObjectMetadata:
         assert meta.significance is None
 
     def test_extra_fields_preserved(self) -> None:
-        meta = ObjectMetadata(custom_field="magic")  # type: ignore[call-arg]
-        assert meta.custom_field == "magic"  # type: ignore[attr-defined]
+        meta: Any = ObjectMetadata(**cast("Any", {"custom_field": "magic"}))
+        assert meta.custom_field == "magic"
 
     def test_empty_metadata(self) -> None:
         meta = ObjectMetadata()

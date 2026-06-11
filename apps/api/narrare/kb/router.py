@@ -6,17 +6,17 @@ from fastapi import APIRouter, Depends, Query, status
 
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare.kb.dependencies import get_kb_service
+from narrare.kb.router_references import router as _references_router
 from narrare.kb.schemas import (
     KBEntryCreate,
     KBEntryListResponse,
     KBEntryResponse,
     KBEntryUpdate,
-    ResolveReferencesRequest,
-    ResolveReferencesResponse,
 )
 from narrare.kb.service import KBService
 
 router = APIRouter(tags=["kb"])
+router.include_router(_references_router)
 
 
 @router.post(
@@ -43,6 +43,7 @@ async def list_entries(
     service: KBService = Depends(get_kb_service),
     entity_type: str | None = Query(default=None),
     tags: list[str] | None = Query(default=None),
+    review_status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
 ) -> KBEntryListResponse:
@@ -52,6 +53,7 @@ async def list_entries(
         uuid.UUID(user_id),
         entity_type=entity_type,
         tags=tags,
+        review_status=review_status,
         page=page,
         page_size=page_size,
     )
@@ -126,25 +128,3 @@ async def delete_entry(
 ) -> None:
     """Delete a KB entry."""
     await service.delete(novel_id, entry_id, uuid.UUID(user_id))
-
-
-@router.post("/novels/{novel_id}/kb/resolve-references", response_model=ResolveReferencesResponse)
-async def resolve_references(
-    novel_id: uuid.UUID,
-    request: ResolveReferencesRequest,
-    user_id: CurrentUserIdDep,
-    service: KBService = Depends(get_kb_service),
-) -> ResolveReferencesResponse:
-    """Resolve @Name mentions to KB entries."""
-    return await service.resolve_references(novel_id, uuid.UUID(user_id), request.text)
-
-
-@router.get("/novels/{novel_id}/kb/entries/autocomplete")
-async def autocomplete_entries(
-    novel_id: uuid.UUID,
-    q: str,
-    user_id: CurrentUserIdDep,
-    service: KBService = Depends(get_kb_service),
-    limit: int = Query(default=10, ge=1, le=50),
-) -> list[dict[str, str]]:
-    return await service.autocomplete(novel_id, uuid.UUID(user_id), q, limit)

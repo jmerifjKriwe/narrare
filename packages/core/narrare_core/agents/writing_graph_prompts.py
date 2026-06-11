@@ -11,7 +11,7 @@ See CONSTRAINTS.md RULE-02 (all prompts from PromptComposer).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
@@ -205,7 +205,7 @@ async def _assemble_review_context(
             project_id=UUID(state.novel_id),
             mode="full_draft",
         )
-        return result  # type: ignore[return-value]
+        return cast("WritingContext", result)
     except Exception as exc:
         logger.warning(
             "review_context_assembly_failed",

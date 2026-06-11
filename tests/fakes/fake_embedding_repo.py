@@ -10,6 +10,7 @@ import uuid
 from datetime import UTC, datetime
 
 from narrare.embeddings.models import Embedding
+from narrare.embeddings.search_queries import SearchRow
 from narrare_core.embeddings.store import EmbeddingStats
 from tests.fakes._shared import CallRecord
 
@@ -74,7 +75,7 @@ class FakeEmbeddingRepository:
         threshold: float = 0.7,
         limit: int = 20,
         model: str | None = None,
-    ) -> list[tuple[Embedding, float]]:
+    ) -> list[SearchRow]:
         """Search for similar embeddings using fake similarity scoring."""
         self.calls.append(
             CallRecord(
@@ -88,7 +89,7 @@ class FakeEmbeddingRepository:
                 },
             )
         )
-        results: list[tuple[Embedding, float]] = []
+        results: list[SearchRow] = []
         for emb in self._store.values():
             if source_type and emb.source_type != source_type:
                 continue
@@ -97,7 +98,14 @@ class FakeEmbeddingRepository:
             if source_ids and emb.source_id not in source_ids:
                 continue
             # Fake similarity — always return 0.95 for matching results
-            results.append((emb, 0.95))
+            results.append(
+                SearchRow(
+                    embedding=emb,
+                    similarity=0.95,
+                    usage_count=0,
+                    last_referenced_at=None,
+                )
+            )
         return results[:limit]
 
     async def delete(self, source_type: str, source_id: uuid.UUID) -> None:

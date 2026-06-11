@@ -10,6 +10,8 @@ Tests cover:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 from pydantic import ValidationError
 
@@ -43,11 +45,8 @@ class TestAppearanceFields:
         assert fields.hair_color == "brown"
 
     def test_extra_fields_preserved(self) -> None:
-        fields = AppearanceFields(
-            height="5'8\"",
-            tattoo="dragon",  # type: ignore[call-arg]
-        )
-        assert fields.tattoo == "dragon"  # type: ignore[attr-defined]
+        fields: Any = AppearanceFields(**cast("Any", {"height": "5'8\"", "tattoo": "dragon"}))
+        assert fields.tattoo == "dragon"
 
     def test_model_config_extra_allow(self) -> None:
         assert AppearanceFields.model_config.get("extra") == "allow"
@@ -71,8 +70,8 @@ class TestPersonalityFields:
         assert fields.strengths == ["determination"]
 
     def test_extra_fields_preserved(self) -> None:
-        fields = PersonalityFields(mbti="INTJ", traits=["analytical"])  # type: ignore[call-arg]
-        assert fields.mbti == "INTJ"  # type: ignore[attr-defined]
+        fields: Any = PersonalityFields(**cast("Any", {"mbti": "INTJ", "traits": ["analytical"]}))
+        assert fields.mbti == "INTJ"
 
 
 class TestBackgroundFields:
@@ -107,7 +106,8 @@ class TestSpeechPatterns:
             typical_phrases=["Indeed", "Fascinating"],
             dialect="Upper class",
         )
-        assert "Indeed" in fields.typical_phrases  # type: ignore[operator]
+        assert fields.typical_phrases is not None
+        assert "Indeed" in fields.typical_phrases
 
 
 class TestRelationshipFields:
@@ -208,27 +208,23 @@ class TestCharacterMetadataEnriched:
 
     def test_extra_fields_on_metadata(self) -> None:
         """Extra fields should be preserved (inherited from KBEntryMetadata)."""
-        meta = CharacterMetadata(
-            age=30,
-            custom_flag=True,  # type: ignore[call-arg]
-        )
-        assert meta.custom_flag is True  # type: ignore[attr-defined]
+        meta: Any = CharacterMetadata(**cast("Any", {"age": 30, "custom_flag": True}))
+        assert meta.custom_flag is True
 
     def test_extra_fields_in_group(self) -> None:
         """Extra fields within nested groups should be preserved."""
-        meta = CharacterMetadata(
+        meta: Any = CharacterMetadata(
             appearance=AppearanceFields(
-                height="5'5\"",
-                extra_attribute="custom",  # type: ignore[call-arg]
+                **cast("Any", {"height": "5'5\"", "extra_attribute": "custom"})
             ),
         )
         assert meta.appearance is not None
-        assert meta.appearance.extra_attribute == "custom"  # type: ignore[attr-defined]
+        assert meta.appearance.extra_attribute == "custom"
 
     def test_validation_maintained(self) -> None:
         """Type validation should still work for flat fields."""
         with pytest.raises(ValidationError, match="age"):
-            CharacterMetadata(age="not a number")  # type: ignore[arg-type]
+            CharacterMetadata.model_validate({"age": "not a number"})
 
     def test_empty_metadata(self) -> None:
         """Empty metadata should pass validation."""

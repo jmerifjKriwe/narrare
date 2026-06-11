@@ -76,6 +76,16 @@ async def get_async_session() -> AsyncGenerator[AsyncSession]:
             raise
 
 
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Return the module-level session factory for standalone sessions.
+
+    Used by infrastructure code (lifespan startup cleanup, background tasks)
+    that needs a DB session outside the FastAPI request lifecycle.
+    Prefer ``get_async_session`` for normal request handling.
+    """
+    return _async_session_factory
+
+
 async def get_engine() -> AsyncEngine:
     """Return the async engine (for migrations and health checks)."""
     return _engine

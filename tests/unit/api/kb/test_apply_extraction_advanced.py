@@ -13,6 +13,7 @@ Tests:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Literal, cast
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -23,6 +24,14 @@ from narrare.kb.extraction_service import ExtractionService
 from narrare.kb.schemas_extraction import ApplyExtractionItem, ApplyExtractionResponse
 from narrare_core.llm import ResolvedModelConfig
 
+if TYPE_CHECKING:
+    from narrare.chapters.contracts import ChapterRepositoryProtocol
+    from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.service import KBService
+    from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.prompts.composer import PromptComposer
+
 # Reuse fakes from the main test module
 from tests.unit.api.kb.test_apply_extraction import (
     _FakeKBRepoForApply,
@@ -32,7 +41,7 @@ from tests.unit.api.kb.test_apply_extraction import (
 
 
 def _item(
-    item_type: str = "new_entity",
+    item_type: Literal["new_entity", "update_entity", "relationship", "conflict"] = "new_entity",
     name: str = "Test Entity",
     entity_type: str | None = "character",
     proposed_content: dict[str, object] | None = None,
@@ -42,7 +51,7 @@ def _item(
     source_text: str = "test source",
 ) -> ApplyExtractionItem:
     return ApplyExtractionItem(
-        item_type=item_type,  # type: ignore[arg-type]
+        item_type=item_type,
         name=name,
         entity_type=entity_type,
         proposed_content=proposed_content,
@@ -115,9 +124,9 @@ async def test_apply_mixed_items_handles_all_types(
     fake_kb_service.seed("Existing One")
 
     service = ExtractionApplyService(
-        kb_service=fake_kb_service,  # type: ignore[arg-type]
-        rel_repo=fake_rel_repo,  # type: ignore[arg-type]
-        kb_repo=fake_kb_repo,  # type: ignore[arg-type]
+        kb_service=cast("KBService", fake_kb_service),
+        rel_repo=cast("RelationshipRepository", fake_rel_repo),
+        kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
     )
 
     items = [
@@ -161,9 +170,9 @@ async def test_apply_one_item_fails_others_proceed(
     fake_kb_service.fail_next_create = True
 
     service = ExtractionApplyService(
-        kb_service=fake_kb_service,  # type: ignore[arg-type]
-        rel_repo=fake_rel_repo,  # type: ignore[arg-type]
-        kb_repo=fake_kb_repo,  # type: ignore[arg-type]
+        kb_service=cast("KBService", fake_kb_service),
+        rel_repo=cast("RelationshipRepository", fake_rel_repo),
+        kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
     )
 
     items = [
@@ -202,13 +211,13 @@ async def test_extraction_service_delegates_to_apply_service() -> None:
     rel_repo = _FakeRelationshipRepo()
 
     service = ExtractionService(
-        registry=registry,  # type: ignore[arg-type]
+        registry=cast("ModelRegistry", registry),
         config=config,
-        chapter_repo=chapter_repo,  # type: ignore[arg-type]
-        kb_repo=kb_repo,  # type: ignore[arg-type]
-        composer=composer,  # type: ignore[arg-type]
-        kb_service=kb_service,  # type: ignore[arg-type]
-        rel_repo=rel_repo,  # type: ignore[arg-type]
+        chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
+        kb_repo=cast("KBRepositoryProtocol", kb_repo),
+        composer=cast("PromptComposer", composer),
+        kb_service=cast("KBService", kb_service),
+        rel_repo=cast("RelationshipRepository", rel_repo),
     )
 
     items = [
@@ -242,11 +251,11 @@ async def test_extraction_service_apply_without_deps_raises() -> None:
 
     # kb_service and rel_repo are NOT provided
     service = ExtractionService(
-        registry=registry,  # type: ignore[arg-type]
+        registry=cast("ModelRegistry", registry),
         config=config,
-        chapter_repo=chapter_repo,  # type: ignore[arg-type]
-        kb_repo=kb_repo,  # type: ignore[arg-type]
-        composer=composer,  # type: ignore[arg-type]
+        chapter_repo=cast("ChapterRepositoryProtocol", chapter_repo),
+        kb_repo=cast("KBRepositoryProtocol", kb_repo),
+        composer=cast("PromptComposer", composer),
     )
 
     with pytest.raises(ValueError, match="KBService and RelationshipRepository"):
@@ -284,7 +293,7 @@ def apply_service(
     fake_kb_repo: _FakeKBRepoForApply,
 ) -> ExtractionApplyService:
     return ExtractionApplyService(
-        kb_service=fake_kb_service,  # type: ignore[arg-type]
-        rel_repo=fake_rel_repo,  # type: ignore[arg-type]
-        kb_repo=fake_kb_repo,  # type: ignore[arg-type]
+        kb_service=cast("KBService", fake_kb_service),
+        rel_repo=cast("RelationshipRepository", fake_rel_repo),
+        kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
     )

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.kb._utils import MENTION_RE, generate_reference_html, slugify
+from narrare.kb._validators import resolve_entry_slug, validate_entry_metadata
 from narrare.kb.schemas import (
     ReferenceResolution,
     ResolveReferencesResponse,
@@ -20,9 +21,7 @@ from narrare_core.shared.errors import (
     ConflictError,
     ForbiddenError,
     NotFoundError,
-    ValidationError,
 )
-from narrare_core.templates.schema_bridge import validate_metadata
 
 if TYPE_CHECKING:
     import uuid
@@ -72,17 +71,10 @@ class KBService:
 
         # Validate metadata against core schema registry
         if data.metadata is not None:
-            try:
-                validate_metadata(data.entity_type, data.metadata)
-            except Exception as exc:
-                raise ValidationError(
-                    f"Invalid metadata for entity type '{data.entity_type}': {exc}"
-                ) from exc
+            validate_entry_metadata(data.entity_type, data.metadata)
 
         # Generate slug if not provided
-        slug = data.slug or slugify(data.name)
-        if not slug:
-            raise ValidationError("Could not generate a valid slug from the name")
+        slug = resolve_entry_slug(data.slug, data.name)
 
         # Check slug uniqueness
         existing = await self._repo.get_by_slug(novel_id, slug)
@@ -101,6 +93,8 @@ class KBService:
             metadata_=data.metadata,
             body=data.body or "",
             template_version=data.template_version,
+            source=data.source,
+            review_status=data.review_status,
         )
 
         entry = await self._repo.create(entry)
@@ -136,6 +130,7 @@ class KBService:
         user_id: uuid.UUID,
         entity_type: str | None = None,
         tags: list[str] | None = None,
+        review_status: str | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[KBEntry], int]:
@@ -145,6 +140,7 @@ class KBService:
             novel_id,
             entity_type=entity_type,
             tags=tags,
+            review_status=review_status,
             page=page,
             page_size=page_size,
         )
@@ -189,12 +185,7 @@ class KBService:
         # Re-validate metadata if changed
         effective_type = updates.get("entity_type", entry.entity_type)
         if data.metadata is not None:
-            try:
-                validate_metadata(str(effective_type), data.metadata)
-            except Exception as exc:
-                raise ValidationError(
-                    f"Invalid metadata for entity type '{effective_type}': {exc}"
-                ) from exc
+            validate_entry_metadata(str(effective_type), data.metadata)
             updates["metadata_"] = data.metadata
 
         # Check slug uniqueness if slug changed

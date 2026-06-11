@@ -7,7 +7,7 @@ Import from test files in this directory.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -80,7 +80,7 @@ def _make_wizard_state(**overrides: object) -> WizardState:
         "zai_endpoint": "general",
     }
     defaults.update(overrides)
-    return WizardState(**defaults)  # type: ignore[arg-type]
+    return cast("Any", WizardState)(**defaults)
 
 
 def _make_service(
@@ -92,13 +92,13 @@ def _make_service(
     """Create a SetupService with mocked dependencies."""
     return SetupService(
         session=mock_session or _make_mock_session(),
-        novel_repo=None,  # type: ignore[arg-type]
-        user_settings_repo=_FakeUserSettingsRepo(),  # type: ignore[arg-type]
-        project_settings_repo=_FakeProjectSettingsRepo(),  # type: ignore[arg-type]
+        novel_repo=None,  # pyright: ignore[reportArgumentType]
+        user_settings_repo=_FakeUserSettingsRepo(),  # pyright: ignore[reportArgumentType]
+        project_settings_repo=_FakeProjectSettingsRepo(),  # pyright: ignore[reportArgumentType]
         provider_service=fake_provider_service,
         demo_loader=fake_demo_loader,
-        providers_repo=_FakeProvidersRepo(),  # type: ignore[arg-type]
-        ai_settings_repo=_FakeAiSettingsRepo(settings_override=ai_settings_override),  # type: ignore[arg-type]
+        providers_repo=_FakeProvidersRepo(),  # pyright: ignore[reportArgumentType]
+        ai_settings_repo=_FakeAiSettingsRepo(settings_override=ai_settings_override),  # pyright: ignore[reportArgumentType]
     )
 
 

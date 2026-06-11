@@ -55,8 +55,8 @@ def setup_telemetry(app: FastAPI) -> None:
         from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
             OTLPSpanExporter,
         )
-        from opentelemetry.instrumentation.fastapi import (  # type: ignore[import-untyped,reportMissingTypeStubs]
-            FastAPIInstrumentor,  # type: ignore[reportUnknownVariableType]
+        from opentelemetry.instrumentation.fastapi import (  # type: ignore[import-untyped]  # reason: opentelemetry-instrumentation-fastapi has no type stubs
+            FastAPIInstrumentor,  # type: ignore[reportUnknownVariableType]  # reason: imported from untyped opentelemetry package
         )
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
@@ -70,7 +70,7 @@ def setup_telemetry(app: FastAPI) -> None:
         provider.add_span_processor(BatchSpanProcessor(exporter))
         trace.set_tracer_provider(provider)
 
-        FastAPIInstrumentor.instrument_app(app)  # type: ignore[attr-defined]
+        FastAPIInstrumentor.instrument_app(app)  # type: ignore[attr-defined]  # reason: FastAPIInstrumentor from untyped opentelemetry package
         include_content = _include_ai_content()
         configure_pydantic_ai_instrumentation(
             include_content=include_content,

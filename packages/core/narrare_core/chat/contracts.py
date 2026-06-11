@@ -79,6 +79,16 @@ class ChatServiceProtocol(Protocol):
         """Get conversation history."""
         ...
 
+    async def get_project_id_for_conversation(
+        self,
+        conversation_id: UUID,
+    ) -> UUID | None:
+        """Get the project_id associated with a conversation.
+
+        Returns the project UUID, or None if the conversation does not exist.
+        """
+        ...
+
     async def clear_history(
         self,
         conversation_id: UUID,

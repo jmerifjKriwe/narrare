@@ -74,7 +74,7 @@ class DurationImpossibilityCheck:
         for e in events:
             order = e.get("temporal_order")
             if order is not None:
-                key = int(order)  # type: ignore[arg-type]
+                key = int(cast("int | str", order))
                 by_order.setdefault(key, []).append(e)
 
         for order, group in by_order.items():
@@ -153,13 +153,13 @@ class DurationImpossibilityCheck:
                 d_order = d.get("temporal_order")
                 if d_order is None:
                     continue
-                d_order = int(d_order)  # type: ignore[arg-type]
+                d_order = int(cast("int | str", d_order))
 
                 for b in b_events:
                     b_order = b.get("temporal_order")
                     if b_order is None:
                         continue
-                    b_order = int(b_order)  # type: ignore[arg-type]
+                    b_order = int(cast("int | str", b_order))
 
                     if d_order < b_order:
                         issues.append(
@@ -193,7 +193,7 @@ class DurationImpossibilityCheck:
         # Sort globally by temporal_order
         sorted_events = sorted(
             events,
-            key=lambda e: int(e["temporal_order"]),  # type: ignore[arg-type]
+            key=lambda e: int(cast("int | str", e["temporal_order"])),
         )
 
         # Group by character — preserve global order
@@ -210,8 +210,8 @@ class DurationImpossibilityCheck:
             for i in range(len(evts) - 1):
                 a, b = evts[i], evts[i + 1]
 
-                order_a = int(a["temporal_order"])  # type: ignore[arg-type]
-                order_b = int(b["temporal_order"])  # type: ignore[arg-type]
+                order_a = int(cast("int | str", a["temporal_order"]))
+                order_b = int(cast("int | str", b["temporal_order"]))
 
                 # Only flag when consecutive (gap of 1)
                 if order_b - order_a != 1:

@@ -14,7 +14,7 @@ Follows ADR-021: deterministic analysis where possible, LLM where not.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -70,7 +70,7 @@ class TemporalOrderingCheck:
         for e in events:
             order = e.get("temporal_order")
             if order is not None:
-                order_key = int(order)  # type: ignore[arg-type]
+                order_key = int(cast("int | str", order))
                 if order_key not in order_counts:
                     order_counts[order_key] = []
                 order_counts[order_key].append(str(e.get("id", "")))

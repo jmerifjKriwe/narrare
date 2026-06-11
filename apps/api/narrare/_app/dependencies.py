@@ -8,7 +8,7 @@ Domain-specific dependencies live in their respective domain modules.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 import structlog
 from fastapi import Depends, HTTPException, status
@@ -113,7 +113,7 @@ def _get_preference_service_instance() -> PreferenceProvider | None:
 
     # 1. Check mem0 is installed
     try:
-        import mem0  # type: ignore[import-untyped]
+        import mem0  # type: ignore[import-untyped]  # reason: mem0 has no type stubs
 
         del mem0
     except ImportError:
@@ -152,7 +152,10 @@ def _get_preference_service_instance() -> PreferenceProvider | None:
         )
         return None
 
-    _preference_service_instance = PreferenceService(mem0_client=client)  # type: ignore[assignment]
+    _preference_service_instance = cast(
+        "PreferenceProvider",
+        PreferenceService(mem0_client=client),
+    )
     logger.info(
         "preference_service_initialized",
         provider=provider_config.provider,

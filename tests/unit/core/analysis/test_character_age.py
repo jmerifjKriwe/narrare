@@ -11,6 +11,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.analysis.age_check import CharacterAgeCheck
 from narrare_core.analysis.temporal import run_deterministic_checks
 from narrare_core.analysis.temporal_types import TemporalIssueSeverity
@@ -29,7 +31,7 @@ class TestCharacterAgeCheck:
             },
         ]
         character_ages = {"Frodo": "50", "Aragorn": "87"}
-        issues = CharacterAgeCheck.check(events, character_ages)  # type: ignore[arg-type]
+        issues = CharacterAgeCheck.check(cast("Any", events), cast("Any", character_ages))
         assert len(issues) == 0
 
     def test_character_without_birth_date_info_issue(self) -> None:
@@ -42,7 +44,7 @@ class TestCharacterAgeCheck:
             },
         ]
         character_ages = {"Frodo": "50"}  # Gandalf missing
-        issues = CharacterAgeCheck.check(events, character_ages)  # type: ignore[arg-type]
+        issues = CharacterAgeCheck.check(cast("Any", events), cast("Any", character_ages))
         assert len(issues) == 1
         assert issues[0].severity == TemporalIssueSeverity.INFO
         assert issues[0].rule_id == "character_missing_birth_date"
@@ -61,7 +63,7 @@ class TestCharacterAgeCheck:
             },
         ]
         character_ages = {"Frodo": "50"}
-        issues = CharacterAgeCheck.check(events, character_ages)  # type: ignore[arg-type]
+        issues = CharacterAgeCheck.check(cast("Any", events), cast("Any", character_ages))
         assert len(issues) == 1
         assert "Gandalf" in issues[0].description
         assert "Aragorn" in issues[0].description
@@ -72,7 +74,7 @@ class TestCharacterAgeCheck:
             {"id": "1", "character_refs": [{"name": "Frodo"}]},
         ]
         character_ages: dict[str, str | None] = {"Frodo": None}
-        issues = CharacterAgeCheck.check(events, character_ages)  # type: ignore[arg-type]
+        issues = CharacterAgeCheck.check(cast("Any", events), cast("Any", character_ages))
         assert len(issues) == 0
 
     def test_empty_events_no_issues(self) -> None:
@@ -86,7 +88,7 @@ class TestCharacterAgeCheck:
             {"id": "1", "event_name": "World Event"},
         ]
         character_ages = {"Frodo": "50"}
-        issues = CharacterAgeCheck.check(events, character_ages)  # type: ignore[arg-type]
+        issues = CharacterAgeCheck.check(cast("Any", events), cast("Any", character_ages))
         assert len(issues) == 0
 
     def test_empty_character_refs_list_no_issues(self) -> None:
@@ -95,7 +97,7 @@ class TestCharacterAgeCheck:
             {"id": "1", "character_refs": []},
         ]
         character_ages: dict[str, str | None] = {}
-        issues = CharacterAgeCheck.check(events, character_ages)  # type: ignore[arg-type]
+        issues = CharacterAgeCheck.check(cast("Any", events), cast("Any", character_ages))
         assert len(issues) == 0
 
 
@@ -115,7 +117,7 @@ class TestCharacterAgeInDeterministicChecks:
             },
         ]
         result = run_deterministic_checks(
-            events,  # type: ignore[arg-type]
+            cast("Any", events),
             character_ages={"Frodo": "50"},  # Gandalf missing
         )
         age_issues = [i for i in result.issues if i.rule_id == "character_missing_birth_date"]
@@ -134,6 +136,6 @@ class TestCharacterAgeInDeterministicChecks:
                 "character_refs": [{"name": "Frodo"}],
             },
         ]
-        result = run_deterministic_checks(events)  # type: ignore[arg-type]  # character_ages=None
+        result = run_deterministic_checks(cast("Any", events))  # character_ages=None
         age_issues = [i for i in result.issues if i.rule_id == "character_missing_birth_date"]
         assert len(age_issues) == 0

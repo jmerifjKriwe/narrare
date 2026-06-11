@@ -61,6 +61,7 @@ class CoAuthorService:
         api_key: str | None = None,
         base_url: str | None = None,
         relationship_repo: RelationshipRepository | None = None,
+        max_selection_words: int = 2000,
     ) -> None:
         self._repo = repo
         self._pipeline = pipeline
@@ -70,6 +71,7 @@ class CoAuthorService:
         self._api_key = api_key
         self._base_url = base_url
         self._relationship_repo = relationship_repo
+        self._max_selection_words = max_selection_words
 
     # -- Public API ------------------------------------------------------------
 
@@ -110,11 +112,9 @@ class CoAuthorService:
         if active is not None:
             raise ConflictError(f"Generation already active for chapter {chapter_id}")
 
-        # SET-005 Cascade: user → project → default (2000 words)
-        # TODO: Resolve from UserSettings/ProjectSettings when a generic
-        #       settings cascade infrastructure exists.
+        # SET-005 Cascade: user → project → env → code default (2000 words)
         word_count = len(request.selection_text.split())
-        max_words = 2000
+        max_words = self._max_selection_words
         if word_count > max_words:
             raise ValidationError(
                 f"Selection exceeds {max_words} words (got {word_count})",

@@ -19,9 +19,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from fastapi import WebSocket
+
+    from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.context import PromptContext
 
-from typing import Any
+from typing import Any, cast
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -134,7 +137,7 @@ def _make_handler(
         session_manager=session_manager,
         pipeline=pipeline,
         registry=registry,
-        composer=composer,  # type: ignore[assignment]
+        composer=cast("PromptComposer", composer),
         config=config,
         mode=mode,
     )
@@ -158,7 +161,7 @@ class TestGreeting:
         project_id = uuid4()
 
         await ws.enqueue_end_session()
-        await handler.handle(ws, chapter_id, str(user_id), project_id)  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), chapter_id, str(user_id), project_id)
 
         greeting = ws.sent[0]
         assert greeting["type"] == "greeting"
@@ -174,7 +177,7 @@ class TestGreeting:
         project_id = uuid4()
 
         await ws.enqueue_end_session()
-        await handler.handle(ws, chapter_id, str(user_id), project_id)  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), chapter_id, str(user_id), project_id)
 
         greeting = ws.sent[0]
         assert greeting["type"] == "greeting"
@@ -203,7 +206,7 @@ class TestMessageRouting:
         chapter_id = uuid4()
         user_id = uuid4()
         project_id = uuid4()
-        await handler.handle(ws, chapter_id, str(user_id), project_id)  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), chapter_id, str(user_id), project_id)
 
         # greeting + error
         assert ws.sent[0]["type"] == "greeting"
@@ -219,7 +222,7 @@ class TestMessageRouting:
         await ws.enqueue({"type": "user_direction", "content": "   "})
         await ws.enqueue_end_session()
 
-        await handler.handle(ws, uuid4(), str(uuid4()), uuid4())  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         errors = [m for m in ws.sent if m["type"] == "error"]
         assert len(errors) == 1
@@ -232,7 +235,7 @@ class TestMessageRouting:
 
         await ws.enqueue_end_session()
 
-        await handler.handle(ws, uuid4(), str(uuid4()), uuid4())  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
         assert ws._closed
 
 
@@ -252,7 +255,7 @@ class TestDirectionHandling:
         await ws.enqueue({"type": "user_direction", "content": "Write a scene"})
         await ws.enqueue_end_session()
 
-        await handler.handle(ws, uuid4(), str(uuid4()), uuid4())  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         # Verify gateway.stream was called with WRITE intent
         gateway.stream.assert_called_once()
@@ -267,7 +270,7 @@ class TestDirectionHandling:
         await ws.enqueue({"type": "user_direction", "content": "A dog dancing tango"})
         await ws.enqueue_end_session()
 
-        await handler.handle(ws, uuid4(), str(uuid4()), uuid4())  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         # Verify gateway.stream was called with CHAT intent
         gateway.stream.assert_called_once()
@@ -291,7 +294,7 @@ class TestGenerateDraft:
         await ws.enqueue({"type": "generate_draft"})
         await ws.enqueue_end_session()
 
-        await handler.handle(ws, uuid4(), str(uuid4()), uuid4())  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         errors = [m for m in ws.sent if m["type"] == "error"]
         assert len(errors) == 1
@@ -308,7 +311,7 @@ class TestGenerateDraft:
         await ws.enqueue({"type": "generate_draft"})
         await ws.enqueue_end_session()
 
-        await handler.handle(ws, uuid4(), str(uuid4()), uuid4())  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         errors = [m for m in ws.sent if m["type"] == "error"]
         assert any("no interview answers" in e["message"].lower() for e in errors)
@@ -326,7 +329,7 @@ class TestGenerateDraft:
         await ws.enqueue({"type": "generate_draft"})
         await ws.enqueue_end_session()
 
-        await handler.handle(ws, uuid4(), str(uuid4()), uuid4())  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         # Should have greeting, text_chunk(s), text_done from direction,
         # then text_chunk(s), draft_done from generate_draft
@@ -346,7 +349,7 @@ class TestGenerateDraft:
         await ws.enqueue({"type": "generate_draft"})
         await ws.enqueue_end_session()
 
-        await handler.handle(ws, uuid4(), str(uuid4()), uuid4())  # type: ignore[arg-type]
+        await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         # gateway.stream called twice:
         # 1st: CHAT for interview question

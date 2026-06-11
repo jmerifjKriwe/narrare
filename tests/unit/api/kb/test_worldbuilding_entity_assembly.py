@@ -6,6 +6,7 @@ and template/relationship-type lookup functions.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 from narrare.kb.worldbuilding_entity_assembly import (
@@ -19,6 +20,10 @@ from narrare.kb.worldbuilding_entity_assembly import (
     prioritize_entities,
 )
 from narrare_core.agents.worldbuilding_types import Phase1EntitySummary
+
+if TYPE_CHECKING:
+    from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
+    from narrare.kb.models import KBEntry
 
 # ---------------------------------------------------------------------------
 # Fake classes
@@ -172,13 +177,13 @@ class TestListEntities:
     async def test_list_entities_single_page_returns_all(self) -> None:
         entries = [_make_entry(name=f"E{i}") for i in range(3)]
         repo = FakeKBRepo(entries)
-        result = await list_entities(repo, uuid4(), None)  # type: ignore[arg-type]
+        result = await list_entities(cast("KBRepositoryProtocol", repo), uuid4(), None)
         assert len(result) == 3
 
     async def test_list_entities_multi_page_collects_all(self) -> None:
         entries = [_make_entry(name=f"E{i}") for i in range(150)]
         repo = FakeKBRepo(entries)
-        result = await list_entities(repo, uuid4(), None)  # type: ignore[arg-type]
+        result = await list_entities(cast("KBRepositoryProtocol", repo), uuid4(), None)
         assert len(result) == 150
 
     async def test_list_entities_with_type_filter_returns_matching(self) -> None:
@@ -188,14 +193,14 @@ class TestListEntities:
             _make_entry(entity_type="character", name="Bob"),
         ]
         repo = FakeKBRepo(entries)
-        result = await list_entities(repo, uuid4(), ["character"])  # type: ignore[arg-type]
+        result = await list_entities(cast("KBRepositoryProtocol", repo), uuid4(), ["character"])
         assert len(result) == 2
         assert all(e.entity_type == "character" for e in result)
 
     async def test_list_entities_without_filter_returns_all(self) -> None:
         entries = [_make_entry(entity_type="character"), _make_entry(entity_type="location")]
         repo = FakeKBRepo(entries)
-        result = await list_entities(repo, uuid4(), None)  # type: ignore[arg-type]
+        result = await list_entities(cast("KBRepositoryProtocol", repo), uuid4(), None)
         assert len(result) == 2
 
 
@@ -204,14 +209,18 @@ class TestGetAdjacencySafe:
         entity = _make_entry()
         adj = {"x": {"y"}}
         repo = FakeRelRepo(adjacency=adj)
-        result = await get_adjacency_safe(repo, uuid4(), [entity])  # type: ignore[arg-type]
+        result = await get_adjacency_safe(
+            cast("RelationshipRepositoryProtocol", repo), uuid4(), cast("list[KBEntry]", [entity])
+        )
         assert result == adj
 
     async def test_get_adjacency_safe_exception_returns_empty(self) -> None:
         entity = _make_entry()
         repo = FakeRelRepo()
         repo._raise_adjacency = True
-        result = await get_adjacency_safe(repo, uuid4(), [entity])  # type: ignore[arg-type]
+        result = await get_adjacency_safe(
+            cast("RelationshipRepositoryProtocol", repo), uuid4(), cast("list[KBEntry]", [entity])
+        )
         assert result == {}
 
 
@@ -220,18 +229,18 @@ class TestBuildEntitySummaries:
 
     def test_build_entity_summaries_correct_fields(self) -> None:
         entry = _make_entry(name="Alice", entity_type="character", usage_count=5)
-        summaries = build_entity_summaries([entry], {})  # type: ignore[arg-type]
+        summaries = build_entity_summaries(cast("list[KBEntry]", [entry]), {})
         assert len(summaries) == 1
         assert summaries[0].name == "Alice"
         assert summaries[0].chapter_references == 5
 
     def test_build_entity_summaries_zero_relationships(self) -> None:
-        summaries = build_entity_summaries([_make_entry()], {})  # type: ignore[arg-type]
+        summaries = build_entity_summaries(cast("list[KBEntry]", [_make_entry()]), {})
         assert summaries[0].relationship_count == 0
 
     def test_build_entity_summaries_empty_metadata_defaults(self) -> None:
         entry = _make_entry(metadata_=None, body="text")
-        summaries = build_entity_summaries([entry], {})  # type: ignore[arg-type]
+        summaries = build_entity_summaries(cast("list[KBEntry]", [entry]), {})
         assert summaries[0].field_fill_rate == 0.0
 
 
@@ -270,12 +279,14 @@ class TestGetRelationshipsFor:
         repo = FakeRelRepo(relationships=[rel])
         s1 = _make_summary(entry_id=str(uuid4()))
         s2 = _make_summary(entry_id=str(uuid4()))
-        result = await get_relationships_for([s1, s2], repo)  # type: ignore[arg-type]
+        result = await get_relationships_for([s1, s2], cast("RelationshipRepositoryProtocol", repo))
         assert len(result) == 1
 
     async def test_get_relationships_empty_returns_empty(self) -> None:
         repo = FakeRelRepo(relationships=[])
-        result = await get_relationships_for([_make_summary()], repo)  # type: ignore[arg-type]
+        result = await get_relationships_for(
+            [_make_summary()], cast("RelationshipRepositoryProtocol", repo)
+        )
         assert result == []
 
 

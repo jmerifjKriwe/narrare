@@ -66,7 +66,7 @@ async def run_wiki_generate_chapter(
         return False
 
     async def _gen(cid: uuid.UUID, nid: uuid.UUID) -> Any:
-        return await svc.generate_chapter_summary(cid, nid, SYSTEM_USER_ID)  # type: ignore[attr-defined]
+        return await svc.generate_chapter_summary(cid, nid, SYSTEM_USER_ID)  # type: ignore[attr-defined]  # reason: APIWikiService inherits method, type checker can't resolve through TYPE_CHECKING import chain
 
     return await _retry_generate(_gen, chapter_id, novel_id, context="wiki_chapter")
 

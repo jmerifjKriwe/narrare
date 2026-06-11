@@ -310,6 +310,33 @@ class TestEvidenceIntegration:
         assert status.value == "missing"
 
     @pytest.mark.asyncio
+    async def test_missing_status_when_no_provider(self) -> None:
+        """When no provider is configured, enrichment is skipped and evidence shows MISSING."""
+        from narrare_core.ai_invocation._evidence import _determine_kb_suggested_status
+
+        enricher = KBSuggestedContextEnricher(kb_provider=None)
+        ctx = _make_context()
+
+        result = await enricher.enrich(ctx)
+
+        status = _determine_kb_suggested_status(result)
+        assert status.value == "missing"
+
+    @pytest.mark.asyncio
+    async def test_missing_status_when_provider_returns_empty(self) -> None:
+        """When provider returns empty string, evidence shows MISSING."""
+        from narrare_core.ai_invocation._evidence import _determine_kb_suggested_status
+
+        provider = FakeKBSuggestedProvider(suggested_text="")
+        enricher = KBSuggestedContextEnricher(kb_provider=provider)
+        ctx = _make_context()
+
+        result = await enricher.enrich(ctx)
+
+        status = _determine_kb_suggested_status(result)
+        assert status.value == "missing"
+
+    @pytest.mark.asyncio
     async def test_budget_rejected_requirement_results_in_provided(self) -> None:
         """With BUDGET_REJECTED requirement, enriched context shows PROVIDED
         (the budget resolver later decides whether to reject)."""

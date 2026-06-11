@@ -7,12 +7,13 @@ Infrastructure code — only used in the API layer (RULE-08).
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
-import redis.asyncio as aioredis  # type: ignore[import-untyped]
-import structlog
+# redis has no PEP 561 type stubs — use __import__ to avoid [import-untyped]
+aioredis: Any = __import__("redis.asyncio", fromlist=["asyncio"])
+import structlog  # noqa: E402
 
-from narrare_core.events.types import EventType
+from narrare_core.events.types import EventType  # noqa: E402
 
 logger = structlog.get_logger(__name__)
 
@@ -53,15 +54,25 @@ class EventListener:
         if not self._pubsub:
             raise RuntimeError("Listener not started. Call start() first.")
 
-        async for message in self._pubsub.listen():  # type: ignore[union-attr]
-            if message["type"] != "message":  # type: ignore[index]
+        # self._pubsub is Any (redis has no stubs) — safe after None check
+        assert self._pubsub is not None
+        async for message in self._pubsub.listen():
+            # Guard: pubsub messages are dict-like
+            if not isinstance(message, dict):
+                continue
+            if cast("dict[str, Any]", message).get("type") != "message":
                 continue
 
             try:
-                raw_channel = message["channel"]  # type: ignore[index]
-                channel = raw_channel.decode() if isinstance(raw_channel, bytes) else raw_channel
+                raw_channel = cast("dict[str, Any]", message).get("channel")
+                channel = (
+                    raw_channel.decode()
+                    if isinstance(raw_channel, bytes)
+                    else str(raw_channel or "")
+                )
                 event_type = channel.removeprefix(_CHANNEL_PREFIX)
-                payload = json.loads(message["data"])  # type: ignore[index]
+                raw_data = cast("dict[str, Any]", message).get("data")
+                payload = json.loads(raw_data if isinstance(raw_data, (str, bytes)) else "{}")
 
                 task_name = _EVENT_TASK_MAP.get(event_type)
                 if not task_name:
@@ -82,6 +93,6 @@ class EventListener:
     async def stop(self) -> None:
         """Stop listening and clean up."""
         if self._pubsub:
-            await self._pubsub.unsubscribe()  # type: ignore[union-attr]
-            await self._pubsub.aclose()  # type: ignore[union-attr]
+            await self._pubsub.unsubscribe()
+            await self._pubsub.aclose()
         logger.info("event_listener_stopped")

@@ -6,7 +6,7 @@ KBImproveService via dependency_overrides.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -20,6 +20,8 @@ from narrare.kb.improve_contracts import (
 from narrare.kb.improve_service import KBImproveService
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from fastapi import FastAPI
     from httpx import AsyncClient
 
@@ -99,7 +101,9 @@ class TestImproveEndpoint:
         entry_id = uuid4()
 
         # Override the dependency
-        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = cast(
+            "Callable[[], Any]", lambda: mock_improve_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve",
@@ -132,7 +136,9 @@ class TestImproveEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = cast(
+            "Callable[[], Any]", lambda: mock_improve_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve",
@@ -150,7 +156,9 @@ class TestImproveEndpoint:
         """POST /improve returns 422 when novel_id is not a valid UUID."""
         from narrare.kb.dependencies import get_kb_improve_service
 
-        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = cast(
+            "Callable[[], Any]", lambda: mock_improve_service
+        )
 
         resp = await client.post(
             "/api/v1/novels/not-a-uuid/kb/entities/not-a-uuid/improve",
@@ -181,7 +189,9 @@ class TestImproveApplyEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = cast(
+            "Callable[[], Any]", lambda: mock_improve_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
@@ -207,7 +217,9 @@ class TestImproveApplyEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = cast(
+            "Callable[[], Any]", lambda: mock_improve_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/entities/{entry_id}/improve/apply",
@@ -229,7 +241,9 @@ class TestImproveApplyEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = cast(
+            "Callable[[], Any]", lambda: mock_improve_service
+        )
 
         # Missing suggestion_ids field
         resp = await client.post(
@@ -253,7 +267,9 @@ class TestImproveApplyEndpoint:
         novel_id = uuid4()
         entry_id = uuid4()
 
-        app.dependency_overrides[get_kb_improve_service] = lambda: mock_improve_service  # type: ignore[assignment]
+        app.dependency_overrides[get_kb_improve_service] = cast(
+            "Callable[[], Any]", lambda: mock_improve_service
+        )
 
         # suggestion_ids as string instead of list
         resp = await client.post(

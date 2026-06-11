@@ -9,9 +9,14 @@ See ADR-023 and ADR-023-Restimplementierung Phase 1 for context.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.writing.repository import GenerationRepository
+    from narrare_core.memory.protocols import FeedbackCollector
 
 import pytest
 
@@ -51,8 +56,8 @@ class TestApplyChanges:
         chapter_repo.update_content = AsyncMock(side_effect=_update_content)
         repo = MagicMock(spec=["get_by_id"])
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
         )
 
         result = await service.apply_changes(
@@ -78,8 +83,8 @@ class TestApplyChanges:
         chapter_repo.update_content = AsyncMock(return_value=chapter)
         repo = MagicMock(spec=["get_by_id"])
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
         )
 
         await service.apply_changes(
@@ -111,8 +116,8 @@ class TestApplyChanges:
         chapter_repo.update_content = AsyncMock(return_value=chapter)
         repo = MagicMock(spec=["get_by_id"])
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
         )
 
         await service.apply_changes(
@@ -141,8 +146,8 @@ class TestApplyChanges:
         chapter_repo.get_by_id = AsyncMock(return_value=None)
         repo = MagicMock(spec=["get_by_id"])
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
         )
 
         with pytest.raises(NotFoundError, match="Chapter"):
@@ -169,9 +174,9 @@ class TestApplyChanges:
         feedback_service.record = AsyncMock()
 
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
-            feedback_service=feedback_service,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
+            feedback_service=cast("FeedbackCollector", feedback_service),
         )
 
         await service.apply_changes(
@@ -197,8 +202,8 @@ class TestApplyChanges:
         chapter_repo.update_content = AsyncMock(return_value=chapter)
         repo = MagicMock(spec=["get_by_id"])
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
             feedback_service=None,
         )
 
@@ -227,9 +232,9 @@ class TestApplyChanges:
         feedback_service.record = AsyncMock()
 
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
-            feedback_service=feedback_service,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
+            feedback_service=cast("FeedbackCollector", feedback_service),
         )
 
         result = await service.apply_changes(
@@ -253,9 +258,9 @@ class TestApplyChanges:
         feedback_service = MagicMock(spec=["record"])
         feedback_service.record = AsyncMock()
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
-            feedback_service=feedback_service,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
+            feedback_service=cast("FeedbackCollector", feedback_service),
         )
 
         await service.apply_changes(
@@ -276,8 +281,8 @@ class TestApplyChanges:
         chapter_repo.update_content = AsyncMock(return_value=expected_chapter)
         repo = MagicMock(spec=["get_by_id"])
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
         )
 
         result = await service.apply_changes(

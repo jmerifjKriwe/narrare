@@ -10,6 +10,8 @@ The output token profile dimension is tested in ``test_intent_profiles.py``
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from narrare_core.llm.intent_profiles import (
@@ -195,7 +197,7 @@ class TestIntentProfileDataclass:
     def test_frozen_raises_on_attribute_assignment(self) -> None:
         profile = IntentProfile("quick", "fast", "test")
         with pytest.raises(AttributeError):
-            profile.output_profile = "balanced"  # type: ignore[misc]
+            cast("Any", profile).output_profile = "balanced"
 
     def test_has_slots(self) -> None:
         profile = IntentProfile("quick", "fast", "test")

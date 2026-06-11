@@ -17,6 +17,8 @@ Test strategy:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 from pydantic_ai import ModelRetry, RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
@@ -54,7 +56,7 @@ def _make_gap(**overrides: object) -> Phase1GapOutput:
         "description": "The character lacks a backstory.",
     }
     defaults.update(overrides)
-    return Phase1GapOutput(**defaults)  # type: ignore[arg-type]
+    return Phase1GapOutput(**cast("Any", defaults))
 
 
 def _valid_phase1(**overrides: object) -> WorldbuildingPhase1Output:
@@ -67,7 +69,7 @@ def _valid_phase1(**overrides: object) -> WorldbuildingPhase1Output:
         "candidate_pairs_for_consistency": [],
     }
     defaults.update(overrides)
-    return WorldbuildingPhase1Output(**defaults)  # type: ignore[arg-type]
+    return WorldbuildingPhase1Output(**cast("Any", defaults))
 
 
 def _make_phase2_issue(**overrides: object) -> Phase2ConsistencyOutput:
@@ -82,7 +84,7 @@ def _make_phase2_issue(**overrides: object) -> Phase2ConsistencyOutput:
         "confidence": 0.8,
     }
     defaults.update(overrides)
-    return Phase2ConsistencyOutput(**defaults)  # type: ignore[arg-type]
+    return Phase2ConsistencyOutput(**cast("Any", defaults))
 
 
 def _valid_phase2(**overrides: object) -> WorldbuildingPhase2Output:
@@ -92,7 +94,7 @@ def _valid_phase2(**overrides: object) -> WorldbuildingPhase2Output:
         "assessment": "One consistency issue found.",
     }
     defaults.update(overrides)
-    return WorldbuildingPhase2Output(**defaults)  # type: ignore[arg-type]
+    return WorldbuildingPhase2Output(**cast("Any", defaults))
 
 
 # ===========================================================================

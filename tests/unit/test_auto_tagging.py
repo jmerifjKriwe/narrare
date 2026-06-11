@@ -14,6 +14,7 @@ from __future__ import annotations
 import importlib.util
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, cast
 
 # Load root conftest as a regular module so we can test its hooks directly.
 # conftest.py is not importable via normal import machinery — pytest loads it
@@ -84,28 +85,28 @@ class TestPytestConfigureMarkerRegistration:
         """The 'unit' marker is added to config via addinivalue_line."""
         lines: list[str] = []
         config = _FakeConfig(addinivalue_lines=lines)
-        pytest_configure(config)  # type: ignore[arg-type]
+        pytest_configure(cast("Any", config))
         assert any("unit:" in line for line in lines)
 
     def test_integration_marker_registered(self) -> None:
         """The 'integration' marker is added to config."""
         lines: list[str] = []
         config = _FakeConfig(addinivalue_lines=lines)
-        pytest_configure(config)  # type: ignore[arg-type]
+        pytest_configure(cast("Any", config))
         assert any("integration:" in line for line in lines)
 
     def test_requires_db_marker_registered(self) -> None:
         """The 'requires_db' marker is added to config."""
         lines: list[str] = []
         config = _FakeConfig(addinivalue_lines=lines)
-        pytest_configure(config)  # type: ignore[arg-type]
+        pytest_configure(cast("Any", config))
         assert any("requires_db:" in line for line in lines)
 
     def test_all_three_markers_registered(self) -> None:
         """All three markers are registered in a single call."""
         lines: list[str] = []
         config = _FakeConfig(addinivalue_lines=lines)
-        pytest_configure(config)  # type: ignore[arg-type]
+        pytest_configure(cast("Any", config))
         assert len(lines) == 3
 
 
@@ -119,22 +120,22 @@ class TestAutoTaggingUnitPath:
 
     def test_unit_path_gets_unit_marker(self) -> None:
         item = FakeItem(nodeid="tests/unit/core/test_example.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert item.has_marker("unit")
 
     def test_unit_path_no_integration_marker(self) -> None:
         item = FakeItem(nodeid="tests/unit/core/test_example.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert not item.has_marker("integration")
 
     def test_unit_path_no_requires_db_marker(self) -> None:
         item = FakeItem(nodeid="tests/unit/core/test_example.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert not item.has_marker("requires_db")
 
     def test_unit_path_no_e2e_marker(self) -> None:
         item = FakeItem(nodeid="tests/unit/core/test_example.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert not item.has_marker("e2e")
 
 
@@ -143,22 +144,22 @@ class TestAutoTaggingIntegrationPath:
 
     def test_integration_path_gets_integration_marker(self) -> None:
         item = FakeItem(nodeid="tests/integration/kb/test_kb_api.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert item.has_marker("integration")
 
     def test_integration_path_gets_requires_db_marker(self) -> None:
         item = FakeItem(nodeid="tests/integration/kb/test_kb_api.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert item.has_marker("requires_db")
 
     def test_integration_path_no_unit_marker(self) -> None:
         item = FakeItem(nodeid="tests/integration/kb/test_kb_api.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert not item.has_marker("unit")
 
     def test_integration_path_no_e2e_marker(self) -> None:
         item = FakeItem(nodeid="tests/integration/kb/test_kb_api.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert not item.has_marker("e2e")
 
 
@@ -167,22 +168,22 @@ class TestAutoTaggingE2EPath:
 
     def test_e2e_path_gets_e2e_marker(self) -> None:
         item = FakeItem(nodeid="tests/e2e/test_hero_flow.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert item.has_marker("e2e")
 
     def test_e2e_path_no_unit_marker(self) -> None:
         item = FakeItem(nodeid="tests/e2e/test_hero_flow.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert not item.has_marker("unit")
 
     def test_e2e_path_no_integration_marker(self) -> None:
         item = FakeItem(nodeid="tests/e2e/test_hero_flow.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert not item.has_marker("integration")
 
     def test_e2e_path_no_requires_db_marker(self) -> None:
         item = FakeItem(nodeid="tests/e2e/test_hero_flow.py::test_foo")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert not item.has_marker("requires_db")
 
 
@@ -191,12 +192,12 @@ class TestAutoTaggingEdgeCases:
 
     def test_unknown_path_gets_no_markers(self) -> None:
         item = FakeItem(nodeid="tests/conftest.py::test_architecture_constraints")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert len(item.markers) == 0
 
     def test_empty_items_list_is_safe(self) -> None:
         """Hook must not crash on an empty list."""
-        pytest_collection_modifyitems([])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", []))
 
     def test_mixed_items_all_tagged_correctly(self) -> None:
         """A batch of items from different paths all get correct markers."""
@@ -205,7 +206,7 @@ class TestAutoTaggingEdgeCases:
         e2e = FakeItem(nodeid="tests/e2e/test_c.py::test_c")
         unknown = FakeItem(nodeid="tests/conftest.py::test_d")
 
-        pytest_collection_modifyitems([unit, integ, e2e, unknown])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [unit, integ, e2e, unknown]))
 
         assert unit.has_marker("unit")
         assert integ.has_marker("integration")
@@ -218,14 +219,14 @@ class TestAutoTaggingEdgeCases:
         item = FakeItem(
             nodeid="tests/unit/core/prompts/test_bundled_generation_prompts.py::test_foo"
         )
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
         assert item.has_marker("unit")
 
     def test_no_duplicate_markers_on_repeated_calls(self) -> None:
         """Calling the hook twice should not double-add markers."""
         item = FakeItem(nodeid="tests/unit/test_a.py::test_a")
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
-        pytest_collection_modifyitems([item])  # type: ignore[arg-type]
+        pytest_collection_modifyitems(cast("Any", [item]))
+        pytest_collection_modifyitems(cast("Any", [item]))
         unit_count = sum(1 for m in item.markers if m.name == "unit")
         # Hook adds marker each call — 2 calls = 2 markers.
         # This is expected: pytest only calls the hook once per session.

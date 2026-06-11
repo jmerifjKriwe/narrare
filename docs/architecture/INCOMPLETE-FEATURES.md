@@ -18,21 +18,84 @@ last_updated: 2026-06-10
 
 ## Summary Table
 
-| ID | Priority | Area | Description | Blocking |
-|----|----------|------|-------------|----------|
-| IF-01 | High | Tasks / Memory | TaskIQ task stubs (`process_feedback_memory`, `run_preference_analysis`) | Yes -- Phase 7 |
-| IF-02 | High | Events / Embeddings | Event listener logs but does not dispatch tasks | Yes -- depends on IF-01 |
-| IF-03 | High | Settings / Writing | Co-author word limit uses hardcoded default instead of SET-005 cascade | Partial -- ADR-023 gap |
-| IF-04 | Medium | Embeddings / Search | `ScoredCandidate` missing `usage_count` and `last_referenced_at` metadata | No |
-| IF-05 | Medium | KB / Provenance | Auto-extracted KB entries lack origin metadata | No |
-| IF-06 | Medium | KB / AI Invocation | KB suggested context uses placeholder text | No |
-| IF-07 | Medium | Wiki / Core | Core-layer `get_summaries()` returns empty dict | No |
-| IF-08 | Medium | Chat / API | Chat history response uses `UUID(int=0)` placeholder | No |
-| IF-09 | Low | Analysis / Types | Narrative arc segments untyped (`list[dict]`) | No |
-| IF-10 | Low | NLP / Emotions | Full NRC EmoLex loader raises `NotImplementedError` | No |
-| IF-11 | Low | Memory / Embeddings | Embedding cascade Tier 2 (provider-native) not implemented | No |
-| IF-12 | Low | Generation / Frontend | Name generator save-to-KB button is a console log | No |
-| IF-13 | Doc | Feature Specs | 4 feature specs with `n:` placeholder markers (36 total) | No |
+| ID | Priority | Area | Description | Status | Blocking |
+|----|----------|------|-------------|--------|----------|
+| IF-01 | High | Tasks / Memory | TaskIQ task stubs (`process_feedback_memory`, `run_preference_analysis`) | Open | Yes -- Phase 7 |
+| IF-02 | High | Events / Embeddings | Event listener logs but does not dispatch tasks | Open | Yes -- depends on IF-01 |
+| ~~IF-03~~ | ~~High~~ | ~~Settings / Writing~~ | ~~Co-author word limit uses hardcoded default~~ | **RESOLVED** | Resolved 2026-06-10 |
+| ~~IF-04~~ | ~~Medium~~ | ~~Embeddings / Search~~ | ~~`ScoredCandidate` missing metadata~~ | **RESOLVED** | Resolved 2026-06-10 |
+| ~~IF-05~~ | ~~Medium~~ | ~~KB / Provenance~~ | ~~Auto-extracted KB entries lack origin metadata~~ | **RESOLVED** | Resolved 2026-06-10 |
+| ~~IF-06~~ | ~~Medium~~ | ~~KB / AI Invocation~~ | ~~KB suggested context uses placeholder text~~ | **RESOLVED** | Resolved 2026-06-10 |
+| IF-07 | Medium | Wiki / Core | Core-layer `get_summaries()` returns empty dict | Open | No |
+| ~~IF-08~~ | ~~Medium~~ | ~~Chat / API~~ | ~~Chat history response uses `UUID(int=0)` placeholder~~ | **RESOLVED** | Resolved 2026-06-10 |
+| IF-09 | Low | Analysis / Types | Narrative arc segments untyped (`list[dict]`) | Open | No |
+| IF-10 | Low | NLP / Emotions | Full NRC EmoLex loader raises `NotImplementedError` | Open | No |
+| IF-11 | Low | Memory / Embeddings | Embedding cascade Tier 2 (provider-native) not implemented | Open | No |
+| ~~IF-12~~ | ~~Low~~ | ~~Generation / Frontend~~ | ~~Name generator save-to-KB button is a console log~~ | **RESOLVED** | Resolved 2026-06-10 |
+| ~~IF-13~~ | ~~Doc~~ | ~~Feature Specs~~ | ~~4 feature specs with `n:` placeholder markers (36 total)~~ | **RESOLVED** | Resolved 2026-06-10 |
+
+---
+
+## Resolved Items
+
+> Items resolved during Wave A + B remediation (2026-06-10). Kept for audit trail.
+
+### ~~IF-03: Settings Cascade -- Hardcoded Default~~ (RESOLVED 2026-06-10)
+
+- **Resolution:** Added `max_selection_words` to `TokenLimitOverrides` dataclass, wired through
+  SET-005 cascade into `CoAuthorService`. Replaced hardcoded `max_words = 2000` with cascade
+  resolution (user → project → default 2000). 9 tests.
+- **Files:** `settings/token_limits/contracts.py`, `settings/token_limits/service.py`,
+  `settings/token_limits/schemas.py`, `_app/config.py`, `writing/coauthor_service.py`,
+  `writing/deps.py`
+
+### ~~IF-04: Embedding Service -- Missing Metadata Wire-Up~~ (RESOLVED 2026-06-10)
+
+- **Resolution:** Extended search query to LEFT JOIN `kb_entries`, bringing `usage_count` and
+  `last_referenced_at` into `ScoredCandidate`. Introduced `SearchRow` dataclass for typed
+  results. 7 tests.
+- **Files:** `embeddings/search_queries.py`, `embeddings/contracts.py`,
+  `embeddings/repository.py`, `embeddings/service.py`
+
+### ~~IF-05: KB Extraction -- Missing Provenance~~ (RESOLVED 2026-06-10)
+
+- **Resolution:** Added `source` and `review_status` fields to `KBEntryCreate` schema and
+  `KBEntry` model. Extraction sets `source="auto_extraction"`, `review_status="pending"`.
+  Added `review_status` filter to KB listing. Alembic migration 0029. 10 tests.
+- **Files:** `kb/schemas.py`, `kb/models.py`, `kb/contracts.py`, `kb/repository.py`,
+  `kb/service.py`, `kb/router.py`, `kb/extraction_apply_service.py`,
+  new migration `0029_kb_provenance.py`
+
+### ~~IF-06: KB Suggested Context -- Placeholder Text~~ (RESOLVED 2026-06-10)
+
+- **Resolution:** Replaced `_PLACEHOLDER_TEXT` with graceful degradation -- enrichment skipped
+  (with debug log) when no provider configured. Placeholder string completely removed. 7 tests.
+- **Files:** `core/ai_invocation/enrichers/kb_suggested.py`
+
+### ~~IF-08: Chat Router -- Placeholder Project ID~~ (RESOLVED 2026-06-10)
+
+- **Resolution:** Added `get_conversation_project_id()` to `ConversationStore` ABC and
+  `ChatServiceProtocol`. Router now loads real `project_id` from conversation. Explicit
+  fallback to `UUID(int=0)` when conversation has no project. 4 tests.
+- **Files:** `core/chat/conversation_store.py`, `core/chat/contracts.py`,
+  `chat/conversation_store.py`, `chat/chat_service.py`, `chat/router.py`
+
+### ~~IF-12: Name Generator -- KB Save Not Implemented (Frontend)~~ (RESOLVED 2026-06-10)
+
+- **Resolution:** Replaced `console.log` stub with real `kbApi.createEntry` call. Added
+  per-name save state tracking (idle/saving/saved/error) with visual feedback. Reused
+  existing KB create endpoint with `source="name_generator"`. i18n keys in 3 locales.
+  6 tests.
+- **Files:** `NameResults.tsx`, `NameGenerator.tsx`, `lib/api/kb.ts`,
+  i18n files (en/de/fr)
+
+### ~~IF-13: Doc Placeholders -- Feature Spec `n:` Markers~~ (RESOLVED 2026-06-10)
+
+- **Resolution:** All 36 `n:` placeholders filled across 4 feature specs with real content
+  (tooltips, help texts, descriptions, implementation details, limitations, related
+  features).
+- **Files:** `SETUP-003-import.md`, `IO-001-export.md`, `IO-002-import.md`,
+  `IO-003-sync.md`
 
 ---
 
@@ -65,60 +128,9 @@ last_updated: 2026-06-10
 - **Affects:** Embedding updates on content change, KB entry re-indexing, wiki stale-marking.
 - **References:** ADR-012 (Event-Driven Architecture).
 
-### IF-03: Settings Cascade -- Hardcoded Default
-
-- **File:** `apps/api/narrare/writing/coauthor_service.py`
-- **Lines:** 113--117
-- **Marker:** `# TODO: Resolve from UserSettings/ProjectSettings when a generic settings cascade infrastructure exists.`
-- **Description:** The co-author word limit uses a hardcoded `max_words = 2000` instead
-  of resolving from the SET-005 settings cascade (user -> project -> default). The SET-005
-  infrastructure exists for other endpoints but the generic cascade resolver is not yet
-  wired into the co-author service.
-- **Blocker:** Requires generic settings cascade infrastructure.
-- **Affects:** Co-author validation accuracy -- all users share the same limit regardless
-  of preferences.
-- **References:** ADR-023 (Co-Author Change Engine), SET-005.
-
 ---
 
 ## Section 2: Medium Priority -- Feature Gaps
-
-### IF-04: Embedding Service -- Missing Metadata Wire-Up
-
-- **File:** `apps/api/narrare/embeddings/service.py`
-- **Lines:** 166--167
-- **Marker:** `# TODO: wire up usage_count from kb_entries`, `# TODO: wire up last_referenced_at from kb_entries`
-- **Description:** `ScoredCandidate` always has `usage_count=0` and `last_referenced_at=None`.
-  The hybrid scoring algorithm cannot use recency or usage frequency signals for ranking
-  because the data is not wired from the KB entries table.
-- **Affects:** Search result ranking quality -- candidates are scored on semantic similarity
-  alone, without recency or usage boosts.
-- **References:** INFRA-004 (Embedding Store), KB-005 (Proactive Context).
-
-### IF-05: KB Extraction -- Missing Provenance
-
-- **File:** `apps/api/narrare/kb/extraction_apply_service.py`
-- **Lines:** 172--174
-- **Marker:** `# TODO(CR-AUFG-04-B3): Once KBEntryCreate supports provenance fields...`
-- **Description:** Auto-extracted KB entries do not carry origin metadata. The
-  `KBEntryCreate` schema lacks provenance fields (`source="auto_extraction"`,
-  `review_status="pending"`). Without these, extracted entries are indistinguishable
-  from manually created ones.
-- **Affects:** KB entry provenance tracking, review workflow, extraction quality metrics.
-- **References:** CR-AUFG-04-B3, KB-007 (Extraction).
-
-### IF-06: KB Suggested Context -- Placeholder Text
-
-- **File:** `packages/core/narrare_core/ai_invocation/enrichers/kb_suggested.py`
-- **Line:** 36
-- **Marker:** `_PLACEHOLDER_TEXT: str = "[KB context will be provided in a future update]"`
-- **Description:** When no KB provider is configured, a placeholder string is injected
-  into prompts instead of real KB context. The `KBSuggestedProvider` protocol exists but
-  no real implementation wires it. All AI invocations that depend on KB context receive
-  the placeholder.
-- **Affects:** AI invocation quality without KB context -- prompts contain a visible
-  placeholder marker.
-- **References:** CR-03 (AI Invocation), INFRA-013.
 
 ### IF-07: Wiki Summaries -- Core Layer Stub
 
@@ -131,18 +143,6 @@ last_updated: 2026-06-10
 - **Affects:** Core-level wiki summary access -- unit tests must mock or skip wiki
   enrichment.
 - **References:** ADR-022 (LLM Wiki), WIKI-001.
-
-### IF-08: Chat Router -- Placeholder Project ID
-
-- **File:** `apps/api/narrare/chat/router.py`
-- **Line:** 99
-- **Marker:** `project_id=UUID(int=0),  # placeholder -- will be enriched in future`
-- **Description:** Chat history response uses `UUID(int=0)` as a project_id placeholder.
-  The real project context should come from the conversation's associated project but
-  the wire-up is not implemented.
-- **Affects:** Chat history project association -- frontend cannot link chat sessions to
-  projects.
-- **References:** CHAT-001, ADR-024 (Free-Form Chat).
 
 ---
 
@@ -184,86 +184,53 @@ last_updated: 2026-06-10
   fall back to local embeddings instead of using provider-native ones.
 - **References:** ADR-017 (superseded by ADR-033), ADR-033 (mem0 v3).
 
-### IF-12: Name Generator -- KB Save Not Implemented (Frontend)
-
-- **File:** `packages/web/components/studio/generation/NameResults.tsx`
-- **Line:** 37
-- **Marker:** `// TODO: Implement KB save when API is available`
-- **Description:** Generated name results have a save-to-KB button that only logs to
-  console. No API endpoint or frontend integration exists to persist generated names as
-  KB entries.
-- **Affects:** Name generator -> KB workflow -- users cannot save generated names to their
-  knowledge base.
-- **References:** GEN-001.
-
----
-
-## Section 4: Documentation Gaps (Feature Spec Placeholders)
-
-These feature specs contain `n:` markers indicating incomplete documentation. These are
-NOT code issues but represent feature specs that still need content for the Documentation
-Gate.
-
-| Feature Spec | `n:` Count | Status |
-|-------------|-----------|--------|
-| `SETUP-003-import.md` | 9 | Missing: tooltip, help text, description, implementation details, limitations, related features |
-| `IO-001-export.md` | 9 | Missing: tooltip, help text, description, implementation details, limitations, related features |
-| `IO-002-import.md` | 9 | Missing: tooltip, help text, description, implementation details, limitations, related features |
-| `IO-003-sync.md` | 9 | Missing: tooltip, help text, description, implementation details, limitations, related features |
-
-**Total `n:` markers:** 36 across 4 feature specs.
-
-These must be resolved before the affected features can pass the Documentation Gate and
-reach status:stable.
-
 ---
 
 ## Statistics
 
-### By Priority
+### Overall Progress
 
-| Priority | Count |
-|----------|-------|
-| High | 3 |
-| Medium | 5 |
-| Low | 4 |
-| Documentation | 1 (covering 4 specs) |
-| **Total** | **13** |
+| Metric | Count |
+|--------|-------|
+| **Total items** | **13** |
+| **Resolved** | **7** (IF-03, IF-04, IF-05, IF-06, IF-08, IF-12, IF-13) |
+| **Remaining** | **6** (IF-01, IF-02, IF-07, IF-09, IF-10, IF-11) |
 
-### By Area
+### By Priority (Remaining Only)
 
-| Area | Count | IDs |
-|------|-------|-----|
+| Priority | Resolved | Remaining | Remaining IDs |
+|----------|----------|-----------|---------------|
+| High | 1 (IF-03) | 2 | IF-01, IF-02 |
+| Medium | 4 (IF-04, IF-05, IF-06, IF-08) | 1 | IF-07 |
+| Low | 1 (IF-12) | 3 | IF-09, IF-10, IF-11 |
+| Documentation | 1 (IF-13) | 0 | — |
+
+### By Area (Remaining Only)
+
+| Area | Remaining | IDs |
+|------|-----------|-----|
 | Tasks / Memory / Events | 2 | IF-01, IF-02 |
-| Writing / Settings | 1 | IF-03 |
-| Embeddings / Search | 2 | IF-04, IF-11 |
-| Knowledge Base | 2 | IF-05, IF-06 |
 | Wiki | 1 | IF-07 |
-| Chat | 1 | IF-08 |
 | Analysis / NLP | 2 | IF-09, IF-10 |
-| Generation / Frontend | 1 | IF-12 |
-| Documentation / Specs | 1 | IF-13 |
+| Memory / Embeddings | 1 | IF-11 |
 
-### By Marker Type
+### By Marker Type (Remaining Only)
 
 | Marker Type | Count |
 |------------|-------|
 | `TODO (Phase N)` | 2 |
-| `TODO` (unqualified) | 6 |
 | `NotImplementedError` | 1 |
-| Placeholder text/string | 2 |
 | Stub comment | 1 |
-| `n:` doc marker (36 instances) | 1 grouped |
-| **Total** | **13** |
+| `TODO` (unqualified) | 1 |
+| Future hook comment | 1 |
+| **Total remaining** | **6** |
 
-### Blocking Status
+### Blocking Status (Remaining Only)
 
 | Status | Count |
 |--------|-------|
 | Blocking (depends on external infrastructure) | 2 |
-| Partial gap (works but incomplete) | 1 |
-| Non-blocking (quality gap) | 9 |
-| Documentation only | 1 |
+| Non-blocking (quality gap) | 4 |
 
 ---
 
@@ -271,8 +238,8 @@ reach status:stable.
 
 This document should be updated:
 
-1. When a TODO/stub is resolved -- move to a "Resolved" section with the resolution date
-   and PR reference, or remove if the list grows too long.
+1. When a TODO/stub is resolved -- move to the "Resolved Items" section with the resolution
+   date and summary, update the summary table and statistics.
 2. When a new TODO/stub is discovered during code review -- add an entry following the
    same format.
 3. At each phase transition -- review all entries for relevance and priority changes.

@@ -111,7 +111,9 @@ def _extract_nested_fields(
     if not _is_pydantic_model(annotation):
         return []
 
-    model_cls: type[BaseModel] = annotation  # type: ignore[assignment]
+    from typing import cast as typing_cast
+
+    model_cls = typing_cast("type[BaseModel]", annotation)
     fields: list[KBCreationField] = []
     for field_name, field_info in model_cls.model_fields.items():
         field_type_val = _map_field_type(field_info)

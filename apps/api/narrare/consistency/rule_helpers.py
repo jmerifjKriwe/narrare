@@ -10,6 +10,8 @@ See:
 
 from __future__ import annotations
 
+from typing import cast
+
 import structlog
 
 from narrare_core.agents.consistency_types import (
@@ -60,7 +62,7 @@ def rule_based_check(
         for e in entries:
             raw_fields = e.get("fields")
             if isinstance(raw_fields, dict):
-                field_maps.append(raw_fields)  # type: ignore[arg-type]
+                field_maps.append(cast("dict[str, object]", raw_fields))
 
         if len(field_maps) < 2:
             continue

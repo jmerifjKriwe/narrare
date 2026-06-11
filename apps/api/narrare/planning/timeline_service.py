@@ -9,7 +9,7 @@ Pattern: router → service → repository (RULE-06, RULE-07).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
@@ -153,10 +153,10 @@ class TimelineService:
 
         events = await self._event_repo.list_by_novel(
             novel_id,
-            event_type=filters.get("event_type"),  # type: ignore[arg-type]
-            chapter_id=filters.get("chapter_id"),  # type: ignore[arg-type]
-            source=filters.get("source"),  # type: ignore[arg-type]
-            is_confirmed=filters.get("is_confirmed"),  # type: ignore[arg-type]
+            event_type=cast("Any", filters.get("event_type")),
+            chapter_id=cast("Any", filters.get("chapter_id")),
+            source=cast("Any", filters.get("source")),
+            is_confirmed=cast("Any", filters.get("is_confirmed")),
         )
         return [TimelineEventCRUDResponse.model_validate(e) for e in events]
 

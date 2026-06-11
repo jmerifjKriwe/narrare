@@ -49,9 +49,9 @@ def verify_password(plain: str, hashed: str) -> bool:
     # Legacy bcrypt support — lazy import since bcrypt is not a dependency.
     if hashed.startswith("$2b$") or hashed.startswith("$2a$"):
         try:
-            import bcrypt as _bcrypt  # type: ignore[import-untyped]
+            import bcrypt as _bcrypt  # type: ignore[import-untyped]  # reason: bcrypt has no type stubs (lazy import, optional dependency)
 
-            return bool(_bcrypt.checkpw(plain.encode(), hashed.encode()))  # type: ignore[no-redef]
+            return bool(_bcrypt.checkpw(plain.encode(), hashed.encode()))  # type: ignore[no-redef]  # reason: checkpw returns Any from untyped bcrypt, triggers false-positive no-redef
         except Exception:
             return False
 

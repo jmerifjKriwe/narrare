@@ -21,7 +21,7 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Never, TypeVar
+from typing import NoReturn, TypeVar
 
 T = TypeVar("T")
 E = TypeVar("E", bound=Exception)
@@ -42,7 +42,7 @@ class Ok[T]:
     def unwrap(self) -> T:
         return self.value
 
-    def unwrap_err(self) -> Never:  # type: ignore[return]
+    def unwrap_err(self) -> NoReturn:
         raise ValueError("Called unwrap_err on Ok")
 
     def __bool__(self) -> bool:
@@ -61,7 +61,7 @@ class Err[E: Exception]:
     def is_err(self) -> bool:
         return True
 
-    def unwrap(self) -> Never:  # type: ignore[return]
+    def unwrap(self) -> NoReturn:
         raise self.error
 
     def unwrap_err(self) -> E:

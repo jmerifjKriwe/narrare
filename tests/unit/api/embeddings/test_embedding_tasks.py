@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from narrare.embeddings.models import Embedding
+from narrare.embeddings.search_queries import SearchRow  # noqa: TC001
 from narrare.embeddings.tasks import run_embed_source
 from narrare_core.embeddings.hash import compute_content_hash
 from narrare_core.embeddings.store import EmbeddingStats  # noqa: TC001
@@ -76,7 +77,7 @@ class FakeEmbeddingRepo:
         threshold: float = 0.7,
         limit: int = 20,
         model: str | None = None,
-    ) -> list[tuple[Embedding, float]]:
+    ) -> list[SearchRow]:
         raise NotImplementedError
 
     async def delete(self, source_type: str, source_id: uuid.UUID) -> None:

@@ -367,6 +367,7 @@ async def get_coauthor_service(
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         relationship_repo=relationship_repo,
+        max_selection_words=limits.max_selection_words,
     )
 
 

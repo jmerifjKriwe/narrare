@@ -7,6 +7,7 @@ valid creation, defaults, literal validation, and edge cases.
 
 from __future__ import annotations
 
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -80,8 +81,8 @@ class TestApplyExtractionItem:
     def test_invalid_item_type_raises(self) -> None:
         """Invalid item_type raises ValidationError."""
         with pytest.raises(ValidationError):
-            ApplyExtractionItem(
-                item_type="invalid_type",  # type: ignore[arg-type]
+            cast("Any", ApplyExtractionItem)(
+                item_type="invalid_type",
                 name="Aria",
             )
 
@@ -112,12 +113,12 @@ class TestApplyExtractionItem:
     def test_missing_name_raises(self) -> None:
         """Missing required 'name' field raises ValidationError."""
         with pytest.raises(ValidationError):
-            ApplyExtractionItem(item_type="new_entity")  # type: ignore[call-arg]
+            cast("Any", ApplyExtractionItem)(item_type="new_entity")
 
     def test_missing_item_type_raises(self) -> None:
         """Missing required 'item_type' raises ValidationError."""
         with pytest.raises(ValidationError):
-            ApplyExtractionItem(name="Aria")  # type: ignore[call-arg]
+            cast("Any", ApplyExtractionItem)(name="Aria")
 
     def test_all_item_types_valid(self) -> None:
         """All four literal values are accepted."""
@@ -160,7 +161,7 @@ class TestApplyExtractionRequest:
     def test_missing_items_raises(self) -> None:
         """Missing items field raises ValidationError."""
         with pytest.raises(ValidationError):
-            ApplyExtractionRequest()  # type: ignore[call-arg]
+            cast("Any", ApplyExtractionRequest)()
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +188,7 @@ class TestApplyExtractionEntryResult:
     def test_missing_field_raises(self) -> None:
         """Missing any required field raises ValidationError."""
         with pytest.raises(ValidationError):
-            ApplyExtractionEntryResult(id=str(uuid4()), name="Aria")  # type: ignore[call-arg]
+            cast("Any", ApplyExtractionEntryResult)(id=str(uuid4()), name="Aria")
 
 
 # ---------------------------------------------------------------------------

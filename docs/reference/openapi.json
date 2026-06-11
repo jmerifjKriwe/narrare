@@ -2805,6 +2805,144 @@
         }
       }
     },
+    "/api/v1/novels/{novel_id}/kb/resolve-references": {
+      "post": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Resolve References",
+        "description": "Resolve @Name mentions to KB entries.",
+        "operationId": "resolve_references_api_v1_novels__novel_id__kb_resolve_references_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveReferencesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveReferencesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/novels/{novel_id}/kb/entries/autocomplete": {
+      "get": {
+        "tags": [
+          "kb",
+          "kb"
+        ],
+        "summary": "Autocomplete Entries",
+        "description": "Auto-complete KB entry names by prefix.",
+        "operationId": "autocomplete_entries_api_v1_novels__novel_id__kb_entries_autocomplete_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "title": "Response Autocomplete Entries Api V1 Novels  Novel Id  Kb Entries Autocomplete Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/novels/{novel_id}/kb/entries": {
       "post": {
         "tags": [
@@ -2919,6 +3057,22 @@
                 }
               ],
               "title": "Tags"
+            }
+          },
+          {
+            "name": "review_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Review Status"
             }
           },
           {
@@ -3248,141 +3402,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/novels/{novel_id}/kb/resolve-references": {
-      "post": {
-        "tags": [
-          "kb"
-        ],
-        "summary": "Resolve References",
-        "description": "Resolve @Name mentions to KB entries.",
-        "operationId": "resolve_references_api_v1_novels__novel_id__kb_resolve_references_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "novel_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Novel Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResolveReferencesRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResolveReferencesResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/novels/{novel_id}/kb/entries/autocomplete": {
-      "get": {
-        "tags": [
-          "kb"
-        ],
-        "summary": "Autocomplete Entries",
-        "operationId": "autocomplete_entries_api_v1_novels__novel_id__kb_entries_autocomplete_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "novel_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Novel Id"
-            }
-          },
-          {
-            "name": "q",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Q"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 50,
-              "minimum": 1,
-              "default": 10,
-              "title": "Limit"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  },
-                  "title": "Response Autocomplete Entries Api V1 Novels  Novel Id  Kb Entries Autocomplete Get"
-                }
-              }
-            }
           },
           "422": {
             "description": "Validation Error",
@@ -11728,6 +11747,18 @@
               }
             ],
             "title": "Template Version"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Source",
+            "default": "manual"
+          },
+          "review_status": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Review Status",
+            "default": "approved"
           }
         },
         "type": "object",
@@ -11846,6 +11877,14 @@
             ],
             "title": "Template Version"
           },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "review_status": {
+            "type": "string",
+            "title": "Review Status"
+          },
           "embeddings_dirty": {
             "type": "boolean",
             "title": "Embeddings Dirty"
@@ -11872,6 +11911,8 @@
           "tags",
           "body",
           "template_version",
+          "source",
+          "review_status",
           "embeddings_dirty",
           "created_at",
           "updated_at"
@@ -15107,6 +15148,11 @@
             "type": "number",
             "title": "Retry Base Delay",
             "default": 1.0
+          },
+          "max_selection_words": {
+            "type": "integer",
+            "title": "Max Selection Words",
+            "default": 2000
           }
         },
         "type": "object",

@@ -126,6 +126,12 @@ vi.mock("@/components/studio/generation/NameResults", () => ({
   ),
 }));
 
+vi.mock("@/lib/api/kb", () => ({
+  kbApi: {
+    createEntry: vi.fn(),
+  },
+}));
+
 vi.mock("@/lib/constants/name-styles", () => ({
   NAME_STYLE_SUGGESTIONS: ["Fantasy", "Sci-Fi", "Nordisch"],
 }));

@@ -2,7 +2,7 @@
 
 # Architecture Rules — Behavioral Standard
 
-> **Purpose**: How to apply the 22 architecture rules in daily work.
+> **Purpose**: How to apply the 23 architecture rules in daily work.
 > **Audience**: ALL Narrare specialists. Tier-1 reading.
 > **NOT a replacement**: Always reference `docs/_shared/CONSTRAINTS.md` for full rule text.
 
@@ -34,6 +34,7 @@ Which rules are MOST relevant for which specialist layer.
 | RULE-20 (No half-implementations) | ✅ all | ✅ all | ✅ all | ✅ all |
 | RULE-21 (Re-review on material changes) | ✅ all | ✅ all | ✅ all | ✅ all |
 | RULE-22 (Cross-Feature Coherence Gate) | ✅ primary | ✅ primary | ⚠️ aware | ⚠️ aware |
+| RULE-23 (No undisciplined type suppressions) | ✅ all | ✅ all | ✅ all | ✅ all |
 
 **Roles**: ✅ primary = you own this rule; ⚠️ aware = you consume it; — = not directly applicable; ✅ all = applies to everyone; ✅ tests = relevant for test writing.
 
@@ -64,6 +65,7 @@ Which rules are MOST relevant for which specialist layer.
 - **RULE-11**: Every `except` block: re-raise, log, or convert. Never `pass`. Never silent.
 - **RULE-16**: Added `useTranslations("X")`? → Register in `request.ts` + create `X.json` in all 3 locales.
 - **RULE-17**: Changed a Pydantic response field? Update the TypeScript type in the SAME commit.
+- **RULE-23**: Every `# type: ignore` needs an error code + reason comment. Naked suppressions are build failures. Use `isinstance()` or `cast()` instead of suppressing union-attr.
 
 ### Future-Compatibility — During Architecture
 
@@ -85,12 +87,15 @@ Which rules are MOST relevant for which specialist layer.
 | File approaching 400 lines | Plan the split NOW, don't compress — RULE-04 |
 | `Any` return type without exception | All functions need typed returns — RULE-09 |
 | Silent `except: pass` | Re-raise, log, or convert — RULE-11 |
+| Naked `# type: ignore` without error code | Always specify error code + reason — RULE-23 |
+| `# type: ignore[union-attr]` instead of narrowing | Use `isinstance()` or `cast()` — RULE-23 |
+| `# type: ignore[arg-type]` for Mocks | Implement the real Protocol — RULE-23 |
 
 ## 4. Enforcement Quick Reference
 
 | Mechanism | Rules Enforced |
 |-----------|---------------|
-| **check_architecture.py** (pre-commit + CI) | RULE-01b, 02, 04, 06, 09, 11, 15, 19 |
+| **check_architecture.py** (pre-commit + CI) | RULE-01b, 02, 04, 06, 09, 11, 15, 19, 23 |
 | **check_adoption.py** + **check_prompt_structure.py** (CI) | RULE-22 (prompt variable checks) |
 | **Type system** (mypy --strict + pyright) | RULE-09 |
 | **Coverage gates** (pytest --cov) | RULE-10 |

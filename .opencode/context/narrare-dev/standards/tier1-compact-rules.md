@@ -28,6 +28,7 @@
 | RULE-19 | Use `SessionDep`, not bare `AsyncSession` | `session: AsyncSession` in dependencies.py |
 | RULE-20 | No half-implementations. Build properly or don't build | REST-only when SSE endpoint exists |
 | RULE-22 | Cross-feature coherence gate before merge | New feature reads KB without integration contract |
+| RULE-23 | No naked `# type: ignore` — must have error code + reason | `# type: ignore` without error code or reason |
 
 ## Testing Rules (docs/development/testing-standards.md)
 
@@ -76,6 +77,8 @@
 - "Let's start without streaming..."
 - Any TODO/FIXME/HACK without concrete resolution date
 - `MagicMock()` without `spec=` for a domain dependency
+- `# type: ignore` without a reason comment
+- `# type: ignore` without an error code (naked suppression)
 
 ## Context Loading Order
 

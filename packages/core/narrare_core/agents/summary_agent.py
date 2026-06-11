@@ -18,7 +18,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai import (
     ModelRetry,
@@ -126,4 +126,4 @@ class ChapterSummaryAgent(NarrareAgent[SummaryDeps, SummaryOutput]):
     ) -> SummaryOutput:
         """Execute the summary agent and return structured output."""
         result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return result.output  # type: ignore[return-value]
+        return cast("SummaryOutput", result.output)

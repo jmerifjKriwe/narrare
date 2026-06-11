@@ -11,7 +11,7 @@ default/empty instances for partial outputs (``ctx.partial_output``).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai import (
     RunContext,  # noqa: TC002
@@ -111,9 +111,9 @@ class WikiGenerationAgent(NarrareAgent[WikiGenerationDeps, WikiEntityOutput]):
         prompt_text = self._load_entity_prompt(deps)
         if stream:
             async with self._agent.run_stream(prompt_text, deps=deps) as stream_result:
-                return await stream_result.get_output()  # type: ignore[return-value]
+                return cast("WikiEntityOutput", await stream_result.get_output())
         result = await self._agent.run(prompt_text, deps=deps)
-        return result.output  # type: ignore[return-value]
+        return cast("WikiEntityOutput", result.output)
 
     # ------------------------------------------------------------------
     # Public API: generate_chapter

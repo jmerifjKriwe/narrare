@@ -30,7 +30,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 # RunContext must be at runtime — pydantic-ai calls get_type_hints()
 # on output functions passed via output_type= (TC002 suppressed)
@@ -136,7 +136,7 @@ class WorldbuildingAgent(NarrareAgent[WorldbuildingDeps, WorldbuildingPhase1Outp
     ) -> WorldbuildingPhase1Output:
         """Execute Phase 1 analysis (gaps + connections)."""
         result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return result.output  # type: ignore[return-value]
+        return cast("WorldbuildingPhase1Output", result.output)
 
     async def run_phase2(
         self,
@@ -167,7 +167,7 @@ class WorldbuildingAgent(NarrareAgent[WorldbuildingDeps, WorldbuildingPhase1Outp
         )
         phase2_agent._agent.output_validator(validate_worldbuilding_phase2)
         result = await phase2_agent.run(prompt, deps=deps)
-        return result.output  # type: ignore[return-value]
+        return result
 
     async def _process_phase2(
         self,

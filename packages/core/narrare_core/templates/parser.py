@@ -58,7 +58,7 @@ Legacy ``template_language`` keys in v2 templates are silently ignored.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from narrare_core.shared.frontmatter import parse_frontmatter
 
@@ -113,7 +113,7 @@ def _parse_flat_fields(metadata: dict[str, Any]) -> list[TemplateField]:
         if key in _META_KEYS or key in _STRUCTURED_KEYS:
             continue
         if isinstance(value, dict):
-            fields.append(_parse_field_entry(key, value))  # type: ignore[reportUnknownArgumentType]
+            fields.append(_parse_field_entry(key, cast("dict[str, Any]", value)))
         else:
             # Simple key: value → field with default type
             fields.append(TemplateField(name=key))
@@ -126,30 +126,33 @@ def _parse_field_groups(metadata: dict[str, Any]) -> list[TemplateFieldGroup]:
     Returns a list of ``TemplateFieldGroup`` objects extracted from the
     ``field_groups`` top-level key, which is a dict of group-name → group-def.
     """
-    groups_data = metadata.get("field_groups", {})
-    if not isinstance(groups_data, dict):
+    groups_data_raw = metadata.get("field_groups", {})
+    if not isinstance(groups_data_raw, dict):
         return []
 
+    groups_data: dict[str, Any] = cast("dict[str, Any]", groups_data_raw)
     groups: list[TemplateFieldGroup] = []
-    for group_name, group_def in groups_data.items():  # type: ignore[reportUnknownVariableType]
+    for group_name, group_def in groups_data.items():
         if not isinstance(group_def, dict):
             continue
-        label_key = str(group_def.get("label_key", ""))  # type: ignore[reportUnknownMemberType]
-        description_key = str(group_def.get("description_key", ""))  # type: ignore[reportUnknownMemberType]
-        order = int(group_def.get("order", 0))  # type: ignore[reportUnknownMemberType]
+        group_def_typed: dict[str, Any] = cast("dict[str, Any]", group_def)
+        label_key = str(group_def_typed.get("label_key", ""))
+        description_key = str(group_def_typed.get("description_key", ""))
+        order = int(group_def_typed.get("order", 0))
 
-        fields_data = group_def.get("fields", {})  # type: ignore[reportUnknownMemberType]
+        fields_data_raw = group_def_typed.get("fields", {})
         fields: list[TemplateField] = []
-        if isinstance(fields_data, dict):
-            for field_name, field_def in fields_data.items():  # type: ignore[reportUnknownVariableType]
+        if isinstance(fields_data_raw, dict):
+            fields_data: dict[str, Any] = cast("dict[str, Any]", fields_data_raw)
+            for field_name, field_def in fields_data.items():
                 if isinstance(field_def, dict):
-                    fields.append(_parse_field_entry(field_name, field_def))  # type: ignore[reportUnknownArgumentType]
+                    fields.append(_parse_field_entry(field_name, cast("dict[str, Any]", field_def)))
                 else:
-                    fields.append(TemplateField(name=field_name))  # type: ignore[reportUnknownArgumentType]
+                    fields.append(TemplateField(name=str(field_name)))
 
         groups.append(
             TemplateFieldGroup(
-                name=group_name,  # type: ignore[reportUnknownArgumentType]
+                name=str(group_name),
                 label_key=label_key,
                 description_key=description_key,
                 fields=fields,
@@ -173,21 +176,23 @@ def _parse_sections(metadata: dict[str, Any]) -> list[TemplateSection]:
     Returns a list of ``TemplateSection`` objects extracted from the
     ``sections`` top-level key, which is a dict of section-name → section-def.
     """
-    sections_data = metadata.get("sections", {})
-    if not isinstance(sections_data, dict):
+    sections_data_raw = metadata.get("sections", {})
+    if not isinstance(sections_data_raw, dict):
         return []
 
+    sections_data: dict[str, Any] = cast("dict[str, Any]", sections_data_raw)
     sections: list[TemplateSection] = []
-    for section_name, section_def in sections_data.items():  # type: ignore[reportUnknownVariableType]
+    for section_name, section_def in sections_data.items():
         if not isinstance(section_def, dict):
-            sections.append(TemplateSection(name=section_name))  # type: ignore[reportUnknownArgumentType]
+            sections.append(TemplateSection(name=str(section_name)))
             continue
+        section_def_typed: dict[str, Any] = cast("dict[str, Any]", section_def)
         sections.append(
             TemplateSection(
-                name=section_name,  # type: ignore[reportUnknownArgumentType]
-                label_key=str(section_def.get("label_key", "")),  # type: ignore[reportUnknownMemberType]
-                description_key=str(section_def.get("description_key", "")),  # type: ignore[reportUnknownMemberType]
-                order=int(section_def.get("order", 0)),  # type: ignore[reportUnknownMemberType]
+                name=str(section_name),
+                label_key=str(section_def_typed.get("label_key", "")),
+                description_key=str(section_def_typed.get("description_key", "")),
+                order=int(section_def_typed.get("order", 0)),
             )
         )
     return sections

@@ -90,8 +90,8 @@ class UserAiSettingsService:
         # We don't expose actual API keys here — just check if provider exists
         # The cascade resolver checks key presence, so we provide placeholder info
         for p in providers:
-            user_api_keys[p.provider_name] = "exists"  # type: ignore[assignment]
-            user_base_urls[p.provider_name] = p.base_url
+            user_api_keys[str(p.provider_name)] = "exists"
+            user_base_urls[str(p.provider_name)] = p.base_url
 
         resolver = EmbeddingCascadeResolver()
         config = resolver.resolve(
@@ -182,12 +182,11 @@ class UserAiSettingsService:
         Raises:
             ValidationError: If any referenced provider is not found or inactive.
         """
-        overrides_dict: dict[str, object] = overrides  # type: ignore[assignment]
-        for _key, value in overrides_dict.items():
+        for _key, value in overrides.items():
             if isinstance(value, dict) and "provider_id" in value:
                 from uuid import UUID
 
-                raw_str = str(value["provider_id"])  # type: ignore[arg-type]
+                raw_str = str(value["provider_id"])  # type: ignore[arg-type]  # reason: dict[object, object] subscript returns object, str() accepts it at runtime
                 try:
                     pid = UUID(raw_str)
                 except (ValueError, AttributeError) as err:

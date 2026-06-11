@@ -9,8 +9,10 @@ This enricher runs **before** the budget resolver so that the resolver can
 decide whether to keep (token budget sufficient) or reject (token budget
 exceeded) the KB-suggested content.
 
-Graceful degradation: if the provider is unavailable or no provider is
-configured, uses a placeholder or returns context unchanged.
+Graceful degradation: if no provider is configured, the provider returns
+empty content, or the provider raises, enrichment is skipped silently
+(debug-level log). The invocation continues without KB context rather than
+injecting placeholder text.
 
 See:
     ADR-039, ADR-038, INFRA-013, CONSTRAINTS.md RULE-03/RULE-06/RULE-11.
@@ -31,9 +33,6 @@ logger = structlog.get_logger(__name__)
 
 #: Well-known key for KB-suggested text in dynamic_inputs.
 KB_SOURCE_KEY: str = "kb_suggested"
-
-#: Placeholder text used when no KB provider is configured.
-_PLACEHOLDER_TEXT: str = "[KB context will be provided in a future update]"
 
 
 class KBSuggestedProvider(Protocol):
@@ -74,8 +73,12 @@ class KBSuggestedContextEnricher:
 
     Checks the adoption policy to determine whether kb_suggested is
     applicable for the current invocation. If applicable, populates
-    ``dynamic_inputs["kb_suggested"]`` with content from the provider
-    or a placeholder.
+    ``dynamic_inputs["kb_suggested"]`` with content from the provider.
+
+    Graceful degradation: when no provider is configured, the provider
+    returns empty content, or the provider raises, enrichment is skipped
+    (context returned unchanged). A debug-level log is emitted for
+    observability (RULE-11).
 
     The enricher returns a new :class:`PromptInvocationContext` via
     ``model_copy`` — the original context is never mutated (immutability
@@ -86,7 +89,7 @@ class KBSuggestedContextEnricher:
 
     Args:
         kb_provider: A KBSuggestedProvider implementation, or ``None``
-            for graceful degradation (uses placeholder text).
+            for graceful degradation (enrichment skipped).
     """
 
     def __init__(self, kb_provider: KBSuggestedProvider | None = None) -> None:
@@ -133,7 +136,21 @@ class KBSuggestedContextEnricher:
                     mode=context.mode,
                 )
             else:
-                suggested_text = _PLACEHOLDER_TEXT
+                logger.debug(
+                    "kb_suggested_enricher_noop",
+                    reason="no_provider",
+                    feature_id=context.feature_id,
+                )
+                return context
+
+            # Provider returned empty content — skip enrichment
+            if not suggested_text:
+                logger.debug(
+                    "kb_suggested_enricher_skipped",
+                    reason="empty_result",
+                    feature_id=context.feature_id,
+                )
+                return context
 
             logger.debug(
                 "kb_suggested_enricher_success",

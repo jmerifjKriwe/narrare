@@ -73,7 +73,7 @@ class RuntimeVariableValidatorImpl:
         # ensures correctness if PromptInvocationContext is ever constructed
         # without validation (e.g., via __init__ bypass or raw model_copy).
         # The isinstance check is intentionally broad to catch any non-dict.
-        if not isinstance(context.dynamic_inputs, dict):  # type: ignore[unreachable]
+        if not isinstance(context.dynamic_inputs, dict):  # type: ignore[unreachable]  # reason: defensive runtime check — Pydantic validates at construction but __init__ bypass is possible
             errors.append("dynamic_inputs must be a dict")
             logger.debug(
                 "runtime_validation_fail",

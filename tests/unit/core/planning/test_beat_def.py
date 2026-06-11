@@ -7,6 +7,8 @@ and test_adapters_registry.py.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from narrare_core.planning.adapters.base import (
@@ -100,18 +102,18 @@ class TestBeatDefImmutability:
     def test_cannot_set_attribute(self) -> None:
         beat = BeatDef(title="Opening", description="Status quo")
         with pytest.raises(AttributeError):
-            beat.title = "Changed"  # type: ignore[misc]
+            cast("Any", beat).title = "Changed"
 
     def test_cannot_set_required(self) -> None:
         beat = BeatDef(title="Opening", description="Status quo")
         with pytest.raises(AttributeError):
-            beat.required = False  # type: ignore[misc]
+            cast("Any", beat).required = False
 
     def test_cannot_add_attribute(self) -> None:
         """Slots=True prevents adding new attributes."""
         beat = BeatDef(title="Opening", description="Status quo")
         with pytest.raises((AttributeError, TypeError)):
-            beat.extra = "unexpected"  # type: ignore[attr-defined]
+            cast("Any", beat).extra = "unexpected"
 
     def test_has_no_dict_attribute(self) -> None:
         """Slots=True means no __dict__ — memory-efficient and prevents dynamic attrs."""
@@ -229,14 +231,14 @@ class TestStageDefImmutability:
             id="act-1", name="Act I", description="Setup", position=1, expected_beat_count=3
         )
         with pytest.raises(AttributeError):
-            stage.id = "changed"  # type: ignore[misc]
+            cast("Any", stage).id = "changed"
 
     def test_cannot_set_position(self) -> None:
         stage = StageDef(
             id="act-1", name="Act I", description="Setup", position=1, expected_beat_count=3
         )
         with pytest.raises(AttributeError):
-            stage.position = 99  # type: ignore[misc]
+            cast("Any", stage).position = 99
 
     def test_cannot_add_attribute(self) -> None:
         """Slots=True prevents adding new attributes."""
@@ -244,7 +246,7 @@ class TestStageDefImmutability:
             id="act-1", name="Act I", description="Setup", position=1, expected_beat_count=3
         )
         with pytest.raises((AttributeError, TypeError)):
-            stage.extra = "unexpected"  # type: ignore[attr-defined]
+            cast("Any", stage).extra = "unexpected"
 
     def test_has_no_dict_attribute(self) -> None:
         """Slots=True means no __dict__ — memory-efficient and prevents dynamic attrs."""

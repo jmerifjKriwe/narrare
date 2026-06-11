@@ -9,6 +9,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from narrare_core.profiles.models import CharacterVoiceProfile, ProjectWritingProfile
@@ -51,7 +53,7 @@ class TestCharacterVoiceProfile:
             speech_summary="dialect: Southern",
         )
         with pytest.raises(AttributeError):
-            vp.name = "Bob"  # type: ignore[misc]
+            cast("Any", vp).name = "Bob"
 
     def test_equality_by_value(self) -> None:
         vp1 = CharacterVoiceProfile(
@@ -108,7 +110,7 @@ class TestProjectWritingProfile:
     def test_frozen_immutability(self) -> None:
         pwp = ProjectWritingProfile()
         with pytest.raises(AttributeError):
-            pwp.writing_language = "fr"  # type: ignore[misc]
+            cast("Any", pwp).writing_language = "fr"
 
     # ------------------------------------------------------------------
     # has_voice_profiles

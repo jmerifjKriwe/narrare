@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-import redis.asyncio as aioredis  # type: ignore[import-untyped]
+import redis.asyncio as aioredis  # type: ignore[import-untyped]  # reason: redis.asyncio has incomplete type stubs
 import structlog
 
 if TYPE_CHECKING:

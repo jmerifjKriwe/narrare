@@ -233,6 +233,20 @@ class ChatService(ChatServiceProtocol):
         """
         return await self._store.get_history(conversation_id, limit=limit)
 
+    async def get_project_id_for_conversation(
+        self,
+        conversation_id: UUID,
+    ) -> UUID | None:
+        """Get the project_id associated with a conversation.
+
+        Args:
+            conversation_id: The conversation to look up.
+
+        Returns:
+            The project UUID, or None if the conversation does not exist.
+        """
+        return await self._store.get_conversation_project_id(conversation_id)
+
     async def clear_history(
         self,
         conversation_id: UUID,

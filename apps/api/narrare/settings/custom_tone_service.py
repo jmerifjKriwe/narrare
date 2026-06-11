@@ -6,7 +6,7 @@ Validates name uniqueness, count limits, and field constraints.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import structlog
 
@@ -89,7 +89,7 @@ class CustomToneService:
 
         await self._repo.update(
             user_id,
-            UpdateUserSettingsRequest(custom_tones=updated_tones),  # type: ignore[call-arg]
+            UpdateUserSettingsRequest(custom_tones=cast("list[dict[str, object]]", updated_tones)),
         )
 
         logger.info(
@@ -149,7 +149,7 @@ class CustomToneService:
 
         await self._repo.update(
             user_id,
-            UpdateUserSettingsRequest(custom_tones=updated_tones),  # type: ignore[call-arg]
+            UpdateUserSettingsRequest(custom_tones=cast("list[dict[str, object]]", updated_tones)),
         )
 
         logger.info(
@@ -182,7 +182,7 @@ class CustomToneService:
 
         await self._repo.update(
             user_id,
-            UpdateUserSettingsRequest(custom_tones=updated_tones),  # type: ignore[call-arg]
+            UpdateUserSettingsRequest(custom_tones=cast("list[dict[str, object]]", updated_tones)),
         )
 
         logger.info(
@@ -204,7 +204,7 @@ class CustomToneService:
         for item in raw:
             if isinstance(item, dict):
                 try:
-                    tones.append(CustomTone(**item))  # type: ignore[arg-type]
+                    tones.append(CustomTone.model_validate(item))
                 except Exception:
                     logger.warning("invalid_custom_tone_skipped", data=item)
         return tones

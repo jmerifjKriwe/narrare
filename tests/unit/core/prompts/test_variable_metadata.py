@@ -6,7 +6,7 @@ get_variables_for_names(), and registry completeness.
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Any, ClassVar, cast
 
 import pytest
 
@@ -119,18 +119,18 @@ class TestVariableMetaImmutability:
     def test_cannot_set_name(self) -> None:
         meta = VariableMeta(name="language", description="ISO code", variable_type="text")
         with pytest.raises(AttributeError):
-            meta.name = "changed"  # type: ignore[misc]
+            cast("Any", meta).name = "changed"
 
     def test_cannot_set_required(self) -> None:
         meta = VariableMeta(name="language", description="ISO code", variable_type="text")
         with pytest.raises(AttributeError):
-            meta.required = True  # type: ignore[misc]
+            cast("Any", meta).required = True
 
     def test_cannot_add_attribute(self) -> None:
         """Slots=True prevents adding new attributes."""
         meta = VariableMeta(name="language", description="ISO code", variable_type="text")
         with pytest.raises((AttributeError, TypeError)):
-            meta.extra = "unexpected"  # type: ignore[attr-defined]
+            cast("Any", meta).extra = "unexpected"
 
     def test_has_no_dict_attribute(self) -> None:
         """Slots=True means no __dict__ — memory-efficient and prevents dynamic attrs."""

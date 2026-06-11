@@ -146,7 +146,7 @@ class WikiRepository(BaseRepository):
             update(WikiSummary).where(WikiSummary.entity_id.in_(entity_ids)).values(status="stale")
         )
         await self._flush()
-        return result.rowcount  # type: ignore[return-value]
+        return getattr(result, "rowcount", 0)
 
     async def mark_all_stale(
         self,
@@ -168,7 +168,7 @@ class WikiRepository(BaseRepository):
             .values(status="stale")
         )
         await self._flush()
-        return result.rowcount  # type: ignore[return-value]
+        return getattr(result, "rowcount", 0)
 
     async def mark_related_stale(self, entity_id: uuid.UUID) -> int:
         """KARPATHY: Mark WikiSummaries STALE that reference the entity
@@ -185,7 +185,7 @@ class WikiRepository(BaseRepository):
             .values(status="stale")
         )
         await self._flush()
-        return result.rowcount  # type: ignore[return-value]
+        return getattr(result, "rowcount", 0)
 
     async def delete_summary(self, entity_id: uuid.UUID) -> None:
         """Delete a WikiSummary by ``entity_id``."""

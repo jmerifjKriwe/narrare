@@ -92,7 +92,7 @@ class TestPhase1SystemRemainsOperational:
             limit=10,
         )
         assert len(old_results) == 1
-        assert old_results[0][0].source_id == old_id
+        assert old_results[0].embedding.source_id == old_id
 
     async def test_new_embeddings_queryable_during_migration(
         self, db_session: AsyncSession
@@ -132,7 +132,7 @@ class TestPhase1SystemRemainsOperational:
             limit=10,
         )
         assert len(new_results) == 1
-        assert new_results[0][0].source_id == new_id
+        assert new_results[0].embedding.source_id == new_id
 
     async def test_both_models_queryable_simultaneously(self, db_session: AsyncSession) -> None:
         """Both old and new model searches work during Phase 1."""
@@ -166,7 +166,7 @@ class TestPhase1SystemRemainsOperational:
             limit=10,
         )
         assert len(new_results) == 1  # Only id_a has new model
-        assert new_results[0][0].source_id == id_a
+        assert new_results[0].embedding.source_id == id_a
 
 
 class TestPhase2CleanupRemovesOld:
@@ -221,7 +221,7 @@ class TestPhase2CleanupRemovesOld:
             limit=10,
         )
         assert len(new_results) == 1
-        assert new_results[0][0].source_id == entry_id
+        assert new_results[0].embedding.source_id == entry_id
 
     async def test_cleanup_does_not_affect_unmigrated_entries(
         self, db_session: AsyncSession

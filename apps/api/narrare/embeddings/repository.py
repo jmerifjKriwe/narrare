@@ -15,7 +15,7 @@ RULE-08: pgvector operations confined to the embeddings module.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import sqlalchemy
 import structlog
@@ -26,11 +26,13 @@ if TYPE_CHECKING:
     from narrare.embeddings.models import Embedding
 
 from narrare.embeddings.search_queries import (
+    SearchRow,
     build_batch_upsert_query,
     build_get_by_source_query,
     build_search_query,
     build_vector_str,
     parse_embedding_row,
+    parse_search_row,
 )
 from narrare_core.embeddings.store import EmbeddingStats
 
@@ -91,7 +93,7 @@ class EmbeddingRepository(BaseRepository):
 
         # RETURNING guarantees a row from INSERT ON CONFLICT
         assert row is not None
-        return parse_embedding_row(row)  # type: ignore[arg-type]
+        return parse_embedding_row(cast("tuple[object, ...]", row))
 
     async def search(
         self,
@@ -102,11 +104,12 @@ class EmbeddingRepository(BaseRepository):
         threshold: float = 0.7,
         limit: int = 20,
         model: str | None = None,
-    ) -> list[tuple[Embedding, float]]:
+    ) -> list[SearchRow]:
         """Search for similar embeddings using cosine distance.
 
-        Returns ``(Embedding, similarity_score)`` tuples ordered by
-        similarity descending. Only results above ``threshold`` are returned.
+        Returns ``SearchRow`` objects ordered by similarity descending.
+        Only results above ``threshold`` are returned. Each row includes
+        KB entry metadata (usage_count, last_referenced_at) via LEFT JOIN.
         """
         vec_str = build_vector_str(query_embedding)
         sql, params = build_search_query(
@@ -120,13 +123,7 @@ class EmbeddingRepository(BaseRepository):
         result = await self._session.execute(sql, params)
 
         rows = result.fetchall()
-        output: list[tuple[Embedding, float]] = []
-        for row in rows:
-            emb = parse_embedding_row(row)  # type: ignore[arg-type]
-            similarity = float(row[8])
-            output.append((emb, similarity))
-
-        return output
+        return [parse_search_row(cast("tuple[object, ...]", row)) for row in rows]
 
     async def delete(
         self,
@@ -155,7 +152,7 @@ class EmbeddingRepository(BaseRepository):
         if row is None:
             return None
 
-        return parse_embedding_row(row)  # type: ignore[arg-type]
+        return parse_embedding_row(cast("tuple[object, ...]", row))
 
     async def get_status(
         self,

@@ -26,6 +26,8 @@ class KBEntryCreate(BaseModel):
     metadata: dict[str, object] | None = Field(default=None)
     body: str | None = Field(default=None)
     template_version: str | None = Field(default=None, max_length=20)
+    source: str = Field(default="manual", max_length=50)
+    review_status: str = Field(default="approved", max_length=20)
 
 
 class KBEntryUpdate(BaseModel):
@@ -62,6 +64,8 @@ class KBEntryResponse(BaseModel):
     )
     body: str | None
     template_version: str | None
+    source: str
+    review_status: str
     embeddings_dirty: bool
     created_at: datetime
     updated_at: datetime

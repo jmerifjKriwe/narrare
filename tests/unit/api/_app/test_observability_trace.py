@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import builtins
 from types import ModuleType
-from typing import Any
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -28,9 +28,9 @@ import narrare._app.observability as _obs_mod
 def _reset_state() -> None:
     """Reset module-level cached state between tests."""
     with _obs_mod._state_lock:
-        _obs_mod._otel_available = None  # type: ignore[attr-defined]
-        _obs_mod._failure_reason = ""  # type: ignore[attr-defined]
-        _obs_mod._warning_emitted = False  # type: ignore[attr-defined]
+        cast("Any", _obs_mod)._otel_available = None
+        cast("Any", _obs_mod)._failure_reason = ""
+        cast("Any", _obs_mod)._warning_emitted = False
 
 
 def _make_fake_otel_trace(
@@ -60,8 +60,8 @@ def _make_fake_otel_trace(
     class FakeTracer:
         pass
 
-    fake_trace.get_current_span = lambda: FakeSpan()  # type: ignore[attr-defined]
-    fake_trace.get_tracer = lambda _name: FakeTracer()  # type: ignore[attr-defined]
+    cast("Any", fake_trace).get_current_span = lambda: FakeSpan()
+    cast("Any", fake_trace).get_tracer = lambda _name: FakeTracer()
     return fake_trace
 
 
@@ -80,11 +80,11 @@ class _BlockOtelImports:
                 raise ImportError(f"blocked for testing: {name}")
             return self._original_import(name, *args, **kwargs)
 
-        builtins.__import__ = _blocking_import  # type: ignore[assignment]
+        cast("Any", builtins).__import__ = _blocking_import
         return self
 
     def __exit__(self, *args: Any) -> None:
-        builtins.__import__ = self._original_import  # type: ignore[assignment]
+        cast("Any", builtins).__import__ = self._original_import
 
 
 class _RedirectOtelImports:
@@ -93,7 +93,7 @@ class _RedirectOtelImports:
     def __init__(self, fake_trace: ModuleType) -> None:
         self._fake_trace = fake_trace
         self._stub_parent = ModuleType("opentelemetry")
-        self._stub_parent.trace = fake_trace  # type: ignore[attr-defined]
+        cast("Any", self._stub_parent).trace = fake_trace
 
     def __enter__(self) -> _RedirectOtelImports:
         self._original_import = builtins.__import__
@@ -115,19 +115,22 @@ class _RedirectOtelImports:
                 return parent
             if name.startswith("opentelemetry."):
                 raise ImportError(f"blocked for testing: {name}")
-            return self._original_import(  # type: ignore[no-any-return]
-                name,
-                globals,
-                locals,
-                fromlist,
-                level,
+            return cast(
+                "ModuleType",
+                self._original_import(
+                    name,
+                    globals,
+                    locals,
+                    fromlist,
+                    level,
+                ),
             )
 
-        builtins.__import__ = _redirecting_import  # type: ignore[assignment]
+        cast("Any", builtins).__import__ = _redirecting_import
         return self
 
     def __exit__(self, *args: Any) -> None:
-        builtins.__import__ = self._original_import  # type: ignore[assignment]
+        cast("Any", builtins).__import__ = self._original_import
 
 
 # ---------------------------------------------------------------------------

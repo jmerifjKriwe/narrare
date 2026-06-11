@@ -7,7 +7,7 @@ All SQLAlchemy queries live here — services never write SQL directly.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import func, select
 
@@ -68,7 +68,9 @@ def _orm_to_domain(model: InvocationEvidenceModel) -> FeatureInvocationEvidence:
         VoiceProfileStatus,
     )
 
-    errors_raw: list[str] | list[object] = model.validation_errors or []  # type: ignore[assignment]
+    errors_raw: list[str] | list[object] = (
+        model.validation_errors if model.validation_errors is not None else []
+    )
     return FeatureInvocationEvidence(
         feature_id=model.feature_id,
         intent=model.intent,
@@ -104,7 +106,7 @@ class EvidenceRepositoryImpl(BaseRepository):
             evidence: Privacy-safe evidence record from an AI invocation.
         """
         values = _domain_to_orm(evidence)
-        model = InvocationEvidenceModel(**values)  # type: ignore[arg-type]
+        model = InvocationEvidenceModel(**cast("dict[str, Any]", values))
         self._session.add(model)
         await self._flush()
 

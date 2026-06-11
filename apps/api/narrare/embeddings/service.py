@@ -157,17 +157,17 @@ class EmbeddingService:
         if not raw_results:
             return []
 
-        # Apply hybrid scoring
+        # Apply hybrid scoring — metadata wired from kb_entries via LEFT JOIN
         candidates = [
             ScoredCandidate(
-                source_id=emb.source_id,
-                source_type=emb.source_type,
-                similarity=similarity,
-                usage_count=0,  # TODO: wire up usage_count from kb_entries
-                last_referenced_at=None,  # TODO: wire up last_referenced_at from kb_entries
-                content_hash=emb.content_hash,
+                source_id=row.embedding.source_id,
+                source_type=row.embedding.source_type,
+                similarity=row.similarity,
+                usage_count=row.usage_count,
+                last_referenced_at=row.last_referenced_at,
+                content_hash=row.embedding.content_hash,
             )
-            for emb, similarity in raw_results
+            for row in raw_results
         ]
 
         ranked = rank_candidates(

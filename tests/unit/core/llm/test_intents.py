@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from narrare_core.llm import LLMIntent
@@ -107,7 +109,7 @@ class TestResolvedModelConfig:
             provider_name="anthropic", model_id="claude-sonnet-4-5-20251020"
         )
         with pytest.raises(AttributeError):
-            config.provider_name = "openai"  # type: ignore[misc]
+            cast("Any", config).provider_name = "openai"
 
     def test_equality(self) -> None:
         a = ResolvedModelConfig(provider_name="anthropic", model_id="claude-sonnet-4-5-20251020")

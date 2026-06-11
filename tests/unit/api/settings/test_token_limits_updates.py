@@ -36,6 +36,7 @@ class _FakeConfig:
     retry_base_delay: float = 1.0
     consistency_max_chapter_tokens: int = 2000
     consistency_max_kb_entries: int = 100
+    default_max_selection_words: int = 2000
 
 
 class _FakeUserRepo:

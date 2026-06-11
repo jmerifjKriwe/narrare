@@ -6,7 +6,7 @@ and the analyze() method with mocked dependencies.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -29,6 +29,13 @@ from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.prompts.registry import ResolvedPrompt
+
+if TYPE_CHECKING:
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
+    from narrare.kb.worldbuilding_cache import WorldbuildingCache
+    from narrare_core.prompts.composer import PromptComposer
+    from narrare_core.prompts.registry import PromptRegistry
 
 # ---------------------------------------------------------------------------
 # Fake classes
@@ -118,13 +125,13 @@ def _make_analyzer(
     registry = MagicMock(spec=ModelRegistry)
     config = MagicMock(spec=ResolvedModelConfig)
     analyzer = WorldbuildingAnalyzer(
-        kb_repo=kb_repo,  # type: ignore[arg-type]
-        rel_repo=FakeRelRepo(),  # type: ignore[arg-type]
-        cache=cache,  # type: ignore[arg-type]
+        kb_repo=cast("KBRepository", kb_repo),
+        rel_repo=cast("RelationshipRepository", FakeRelRepo()),
+        cache=cast("WorldbuildingCache", cache),
         registry=registry,
         config=config,
-        composer=FakeComposer(),  # type: ignore[arg-type]
-        prompt_registry=FakePromptRegistry(),  # type: ignore[arg-type]
+        composer=cast("PromptComposer", FakeComposer()),
+        prompt_registry=cast("PromptRegistry", FakePromptRegistry()),
     )
     return analyzer, {"kb_repo": kb_repo, "cache": cache, "registry": registry}
 
@@ -213,7 +220,7 @@ class TestAnalyze:
     async def test_analyze_builds_deps_on_cache_miss(self) -> None:
         novel_id = uuid4()
         analyzer, deps = _make_analyzer(cache_data=None)
-        deps["kb_repo"]._entries = [FakeKBEntry()]  # type: ignore[attr-defined]
+        deps["kb_repo"]._entries = [FakeKBEntry()]
         mock_model = MagicMock(spec=Model)
         deps["registry"].get_model = AsyncMock(return_value=mock_model)
 
@@ -231,7 +238,7 @@ class TestAnalyze:
     async def test_analyze_skips_phase2_when_consistency_false(self) -> None:
         novel_id = uuid4()
         analyzer, deps = _make_analyzer(cache_data=None)
-        deps["kb_repo"]._entries = [FakeKBEntry()]  # type: ignore[attr-defined]
+        deps["kb_repo"]._entries = [FakeKBEntry()]
         deps["registry"].get_model = AsyncMock(return_value=MagicMock(spec=Model))
 
         with patch("narrare.kb.worldbuilding_analyzer.WorldbuildingAgent") as MockAgent:
@@ -250,7 +257,7 @@ class TestAnalyze:
     async def test_analyze_skips_phase2_when_no_candidate_pairs(self) -> None:
         novel_id = uuid4()
         analyzer, deps = _make_analyzer(cache_data=None)
-        deps["kb_repo"]._entries = [FakeKBEntry()]  # type: ignore[attr-defined]
+        deps["kb_repo"]._entries = [FakeKBEntry()]
         deps["registry"].get_model = AsyncMock(return_value=MagicMock(spec=Model))
 
         with patch("narrare.kb.worldbuilding_analyzer.WorldbuildingAgent") as MockAgent:
@@ -267,7 +274,7 @@ class TestAnalyze:
     async def test_analyze_stores_result_in_cache(self) -> None:
         novel_id = uuid4()
         analyzer, deps = _make_analyzer(cache_data=None)
-        deps["kb_repo"]._entries = [FakeKBEntry()]  # type: ignore[attr-defined]
+        deps["kb_repo"]._entries = [FakeKBEntry()]
         deps["registry"].get_model = AsyncMock(return_value=MagicMock(spec=Model))
 
         with patch("narrare.kb.worldbuilding_analyzer.WorldbuildingAgent") as MockAgent:

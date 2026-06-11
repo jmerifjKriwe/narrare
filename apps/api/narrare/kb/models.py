@@ -50,6 +50,18 @@ class KBEntry(Base):
     )
     body: Mapped[str | None] = mapped_column(Text, default="", nullable=True)
     template_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    source: Mapped[str] = mapped_column(
+        String(50),
+        default="manual",
+        server_default="manual",
+        nullable=False,
+    )
+    review_status: Mapped[str] = mapped_column(
+        String(20),
+        default="approved",
+        server_default="approved",
+        nullable=False,
+    )
     embeddings_dirty: Mapped[bool] = mapped_column(default=False, nullable=False)
     # Usage tracking for hybrid search scoring (migration 0022_embeddings)
     last_referenced_at: Mapped[datetime | None] = mapped_column(
@@ -83,6 +95,10 @@ class KBEntry(Base):
         CheckConstraint(
             "status IN ('draft', 'reviewed', 'canon', 'deprecated')",
             name="ck_kb_entries_status",
+        ),
+        CheckConstraint(
+            "review_status IN ('approved', 'pending', 'rejected')",
+            name="ck_kb_entries_review_status",
         ),
         UniqueConstraint("novel_id", "slug", name="uq_kb_entries_novel_slug"),
         Index("ix_kb_entries_entity_type", "entity_type"),

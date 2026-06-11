@@ -14,7 +14,6 @@ import pytest
 
 from narrare_core.ai_invocation._enums import KBSuggestedRequirement
 from narrare_core.ai_invocation.enrichers.kb_suggested import (
-    _PLACEHOLDER_TEXT,
     KB_SOURCE_KEY,
     KBSuggestedContextEnricher,
 )
@@ -163,40 +162,79 @@ class TestHappyPathWithProvider:
 
 
 # ---------------------------------------------------------------------------
-# 2. Happy path — without provider (placeholder)
+# 2. No provider configured — enrichment skipped
 # ---------------------------------------------------------------------------
 
 
-class TestHappyPathWithoutProvider:
-    """Enricher without a provider uses placeholder text."""
+class TestNoProviderConfigured:
+    """Enricher without a provider skips enrichment gracefully."""
 
     @pytest.mark.asyncio
-    async def test_writes_placeholder_text(self) -> None:
-        """When provider is None, enricher writes the placeholder text."""
+    async def test_no_provider_skips_enrichment(self) -> None:
+        """When provider is None, enricher returns context unchanged."""
         enricher = KBSuggestedContextEnricher(kb_provider=None)
         ctx = _make_context()
 
         result = await enricher.enrich(ctx)
 
-        assert KB_SOURCE_KEY in result.dynamic_inputs
-        assert result.dynamic_inputs[KB_SOURCE_KEY] == _PLACEHOLDER_TEXT
+        assert result is ctx
+        assert KB_SOURCE_KEY not in result.dynamic_inputs
 
     @pytest.mark.asyncio
-    async def test_placeholder_length(self) -> None:
-        """Placeholder is a non-empty string."""
-        assert isinstance(_PLACEHOLDER_TEXT, str)
-        assert len(_PLACEHOLDER_TEXT) > 0
+    async def test_no_placeholder_in_output(self) -> None:
+        """When provider is None, no placeholder text appears in dynamic_inputs."""
+        enricher = KBSuggestedContextEnricher(kb_provider=None)
+        ctx = _make_context()
+
+        result = await enricher.enrich(ctx)
+
+        # Ensure no placeholder text leaked into the output
+        for value in result.dynamic_inputs.values():
+            assert "placeholder" not in str(value).lower()
+            assert "[KB context" not in str(value)
 
     @pytest.mark.asyncio
-    async def test_default_constructor(self) -> None:
-        """Default constructor (no args) works and uses placeholder."""
+    async def test_default_constructor_skips(self) -> None:
+        """Default constructor (no args) works and skips enrichment."""
         enricher = KBSuggestedContextEnricher()
         ctx = _make_context()
 
         result = await enricher.enrich(ctx)
 
-        assert KB_SOURCE_KEY in result.dynamic_inputs
-        assert result.dynamic_inputs[KB_SOURCE_KEY] == _PLACEHOLDER_TEXT
+        assert result is ctx
+        assert KB_SOURCE_KEY not in result.dynamic_inputs
+
+
+# ---------------------------------------------------------------------------
+# 2b. Provider returns empty content — enrichment skipped
+# ---------------------------------------------------------------------------
+
+
+class TestProviderReturnsEmpty:
+    """Enricher skips enrichment when provider returns empty string."""
+
+    @pytest.mark.asyncio
+    async def test_empty_string_skips_enrichment(self) -> None:
+        """When provider returns empty string, enricher skips enrichment."""
+        provider = FakeKBSuggestedProvider(suggested_text="")
+        enricher = KBSuggestedContextEnricher(kb_provider=provider)
+        ctx = _make_context()
+
+        result = await enricher.enrich(ctx)
+
+        assert result is ctx
+        assert KB_SOURCE_KEY not in result.dynamic_inputs
+
+    @pytest.mark.asyncio
+    async def test_provider_was_called(self) -> None:
+        """Provider is still called even when it returns empty — caller sees the call."""
+        provider = FakeKBSuggestedProvider(suggested_text="")
+        enricher = KBSuggestedContextEnricher(kb_provider=provider)
+        ctx = _make_context()
+
+        await enricher.enrich(ctx)
+
+        assert len(provider.calls) == 1
 
 
 # ---------------------------------------------------------------------------

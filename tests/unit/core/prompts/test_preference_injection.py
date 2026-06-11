@@ -10,7 +10,7 @@ Verifies that:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from narrare_core.llm import LLMIntent
@@ -121,7 +121,9 @@ class TestPreferenceAutoInjection:
         registry = FakePromptRegistry(
             _make_resolved(system="Write for {{project_title}}. {{user_preferences}}")
         )
-        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(
+            cast("Any", registry), preference_service=cast("Any", pref_service)
+        )
 
         user_id = uuid4()
         project_id = uuid4()
@@ -144,7 +146,9 @@ class TestPreferenceAutoInjection:
         profile = _profile_with_preferences()
         pref_service = FakePreferenceService(profile)
         registry = FakePromptRegistry(_make_resolved(system="Write. {{user_preferences}}"))
-        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(
+            cast("Any", registry), preference_service=cast("Any", pref_service)
+        )
 
         ctx = PromptContext(
             language="en",
@@ -162,7 +166,7 @@ class TestPreferenceAutoInjection:
     async def test_no_service_backward_compatible(self) -> None:
         """When no PreferenceService configured: build proceeds normally."""
         registry = FakePromptRegistry()
-        composer = PromptComposer(registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", registry))
 
         ctx = PromptContext(
             language="en",
@@ -179,7 +183,9 @@ class TestPreferenceAutoInjection:
         (warning logged)."""
         pref_service = FailingPreferenceService()
         registry = FakePromptRegistry(_make_resolved(system="Write. {{user_preferences}}"))
-        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(
+            cast("Any", registry), preference_service=cast("Any", pref_service)
+        )
 
         ctx = PromptContext(
             language="en",
@@ -198,7 +204,9 @@ class TestPreferenceAutoInjection:
         profile = _profile_with_preferences()
         pref_service = FakePreferenceService(profile)
         registry = FakePromptRegistry()
-        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(
+            cast("Any", registry), preference_service=cast("Any", pref_service)
+        )
 
         # No user_id or project_id
         ctx = PromptContext(language="en", extra={})
@@ -211,7 +219,9 @@ class TestPreferenceAutoInjection:
         profile = _profile_with_preferences()
         pref_service = FakePreferenceService(profile)
         registry = FakePromptRegistry()
-        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(
+            cast("Any", registry), preference_service=cast("Any", pref_service)
+        )
 
         ctx = PromptContext(language="en", extra={"user_id": str(uuid4())})
         _result = await composer.build(LLMIntent.WRITE, ctx)
@@ -228,7 +238,9 @@ class TestPreferenceAutoInjection:
         )
         pref_service = FakePreferenceService(empty_profile)
         registry = FakePromptRegistry(_make_resolved(system="Write. {{user_preferences}}"))
-        composer = PromptComposer(registry, preference_service=pref_service)  # type: ignore[arg-type]
+        composer = PromptComposer(
+            cast("Any", registry), preference_service=cast("Any", pref_service)
+        )
 
         ctx = PromptContext(
             language="en",

@@ -74,7 +74,7 @@ class AIRemapService:
             deps_type = type("Deps", (), {"language": "en"})()
             try:
                 # narrare: allow-agent reason="injected agent, not instantiated here"
-                result = await agent.run(prompt=prompt, deps=deps_type)  # type: ignore[union-attr]
+                result = await agent.run(prompt=prompt, deps=deps_type)
                 stage = result.summary.strip().lower()
                 if stage:
                     return stage

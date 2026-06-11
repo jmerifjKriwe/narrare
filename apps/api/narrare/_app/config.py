@@ -139,6 +139,15 @@ class Settings(BaseSettings):
     """Maximum KB entries to include in consistency context."""
 
     # ---------------------------------------------------------------------------
+    # Co-Author Selection Limits (Operator-Config)
+    # ---------------------------------------------------------------------------
+    default_max_selection_words: int = Field(
+        default=2000,
+        alias="NARRARE_DEFAULT_MAX_SELECTION_WORDS",
+    )
+    """Default maximum word count for co-author selection text."""
+
+    # ---------------------------------------------------------------------------
     # Cost Estimation (optional override)
     # ---------------------------------------------------------------------------
     cost_rates_json: str = Field(

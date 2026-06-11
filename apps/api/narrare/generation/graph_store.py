@@ -117,9 +117,9 @@ def _serialize_state(state: object) -> dict[str, Any]:
     from dataclasses import asdict
 
     if isinstance(state, dict):
-        return dict(state)  # type: ignore[return-value]
+        return dict(state)  # type: ignore[return-value]  # reason: pgvector/SQLAlchemy dict→dict[str, Any] narrowing not inferrable
     if hasattr(state, "__dataclass_fields__"):
-        return dict(asdict(state))  # type: ignore[return-value]
+        return dict(asdict(state))  # type: ignore[return-value]  # reason: dataclass asdict() returns dict[str, Any], not inferable through dict()
     return {"data": str(state)}
 
 

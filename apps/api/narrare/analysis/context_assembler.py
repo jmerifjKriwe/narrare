@@ -10,13 +10,14 @@ NovelRepositoryProtocol. No direct DB access here.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 import structlog
 
 from narrare_core.agents.beta_reader_types import BetaReaderDeps
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.chapters.models import Chapter
     from narrare.kb.contracts import KBRepositoryProtocol
@@ -234,8 +235,8 @@ class ContextAssembler:
             if user_id is not None:
                 novel = await self._novel_repo.get_by_id(novel_id, user_id)
             else:
-                # Fallback: try without user_id (some repos may support it)
-                novel = await self._novel_repo.get_by_id(novel_id, UUID(int=0))  # type: ignore[call-arg]
+                # Fallback: system-level access without ownership check
+                novel = await self._novel_repo.get(novel_id)
             if novel is not None:
                 genre = novel.genre or ""
                 language = getattr(novel, "writing_language", "en") or "en"

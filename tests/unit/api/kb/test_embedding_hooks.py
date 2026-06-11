@@ -7,6 +7,7 @@ content-changed gating, hash comparison, and silent exception handling.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -15,6 +16,11 @@ import pytest
 from narrare.embeddings.models import Embedding
 from narrare.kb.embedding_hooks import EmbeddingHookManager
 from narrare_core.events.types import DomainEvent, EventType
+
+if TYPE_CHECKING:
+    from narrare.embeddings.contracts import EmbeddingRepositoryProtocol
+    from narrare.kb.models import KBEntry
+    from narrare_core.events.bus import EventBus
 
 # ---------------------------------------------------------------------------
 # Fake dependencies
@@ -99,7 +105,7 @@ class TestOnEntryCreated:
         # Patch _dispatch_task to track calls
         manager._dispatch_task = AsyncMock()
 
-        await manager.on_entry_created(entry)  # type: ignore[arg-type]
+        await manager.on_entry_created(cast("KBEntry", entry))
 
         manager._dispatch_task.assert_awaited_once()
         call_args = manager._dispatch_task.call_args
@@ -115,7 +121,7 @@ class TestOnEntryCreated:
         entry = FakeKBEntry(body="")
         manager._dispatch_task = AsyncMock()
 
-        await manager.on_entry_created(entry)  # type: ignore[arg-type]
+        await manager.on_entry_created(cast("KBEntry", entry))
 
         manager._dispatch_task.assert_awaited_once()
         expected_hash = _make_hash("")
@@ -126,10 +132,10 @@ class TestOnEntryCreated:
         """on_entry_created treats None body as empty string."""
         manager = EmbeddingHookManager()
         entry = FakeKBEntry()
-        entry.body = None  # type: ignore[assignment]
+        cast("Any", entry).body = None
         manager._dispatch_task = AsyncMock()
 
-        await manager.on_entry_created(entry)  # type: ignore[arg-type]
+        await manager.on_entry_created(cast("KBEntry", entry))
 
         manager._dispatch_task.assert_awaited_once()
         expected_hash = _make_hash("")
@@ -147,7 +153,7 @@ class TestOnEntryCreated:
             side_effect=RuntimeError("hash failed"),
         ):
             # Should NOT raise
-            await manager.on_entry_created(entry)  # type: ignore[arg-type]
+            await manager.on_entry_created(cast("KBEntry", entry))
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +171,7 @@ class TestOnEntryUpdated:
         entry = FakeKBEntry(body="original")
         manager._dispatch_task = AsyncMock()
 
-        await manager.on_entry_updated(entry, content_changed=False)  # type: ignore[arg-type]
+        await manager.on_entry_updated(cast("KBEntry", entry), content_changed=False)
 
         manager._dispatch_task.assert_not_awaited()
 
@@ -176,7 +182,7 @@ class TestOnEntryUpdated:
         entry = FakeKBEntry(body="updated content")
         manager._dispatch_task = AsyncMock()
 
-        await manager.on_entry_updated(entry, content_changed=True)  # type: ignore[arg-type]
+        await manager.on_entry_updated(cast("KBEntry", entry), content_changed=True)
 
         manager._dispatch_task.assert_awaited_once()
         assert manager._dispatch_task.call_args[1]["trigger"] == "update"
@@ -185,11 +191,11 @@ class TestOnEntryUpdated:
     async def test_dispatches_when_repo_returns_none(self) -> None:
         """on_entry_updated dispatches when repo has no existing embedding."""
         repo = FakeEmbeddingRepo(existing_hash=None)
-        manager = EmbeddingHookManager(embedding_repo=repo)  # type: ignore[arg-type]
+        manager = EmbeddingHookManager(embedding_repo=cast("EmbeddingRepositoryProtocol", repo))
         entry = FakeKBEntry(body="new content")
         manager._dispatch_task = AsyncMock()
 
-        await manager.on_entry_updated(entry, content_changed=True)  # type: ignore[arg-type]
+        await manager.on_entry_updated(cast("KBEntry", entry), content_changed=True)
 
         manager._dispatch_task.assert_awaited_once()
         assert repo.last_source_type == "kb_entry"
@@ -201,11 +207,11 @@ class TestOnEntryUpdated:
         content = "unchanged content"
         content_hash = _make_hash(content)
         repo = FakeEmbeddingRepo(existing_hash=content_hash)
-        manager = EmbeddingHookManager(embedding_repo=repo)  # type: ignore[arg-type]
+        manager = EmbeddingHookManager(embedding_repo=cast("EmbeddingRepositoryProtocol", repo))
         entry = FakeKBEntry(body=content)
         manager._dispatch_task = AsyncMock()
 
-        await manager.on_entry_updated(entry, content_changed=True)  # type: ignore[arg-type]
+        await manager.on_entry_updated(cast("KBEntry", entry), content_changed=True)
 
         manager._dispatch_task.assert_not_awaited()
 
@@ -213,11 +219,11 @@ class TestOnEntryUpdated:
     async def test_dispatches_when_hash_differs(self) -> None:
         """on_entry_updated dispatches when new hash differs from stored."""
         repo = FakeEmbeddingRepo(existing_hash="old_hash_value")
-        manager = EmbeddingHookManager(embedding_repo=repo)  # type: ignore[arg-type]
+        manager = EmbeddingHookManager(embedding_repo=cast("EmbeddingRepositoryProtocol", repo))
         entry = FakeKBEntry(body="modified content")
         manager._dispatch_task = AsyncMock()
 
-        await manager.on_entry_updated(entry, content_changed=True)  # type: ignore[arg-type]
+        await manager.on_entry_updated(cast("KBEntry", entry), content_changed=True)
 
         manager._dispatch_task.assert_awaited_once()
 
@@ -231,7 +237,7 @@ class TestOnEntryUpdated:
             "narrare.kb.embedding_hooks.compute_content_hash",
             side_effect=RuntimeError("hash failed"),
         ):
-            await manager.on_entry_updated(entry, content_changed=True)  # type: ignore[arg-type]
+            await manager.on_entry_updated(cast("KBEntry", entry), content_changed=True)
 
 
 # ---------------------------------------------------------------------------
@@ -267,12 +273,12 @@ class TestWikiSyncEventPublishing:
     async def test_on_entry_created_publishes_event(self) -> None:
         """on_entry_created publishes wiki.sync.requested with entity+novel IDs."""
         event_bus = FakeEventBus()
-        manager = EmbeddingHookManager(event_bus=event_bus)  # type: ignore[arg-type]
+        manager = EmbeddingHookManager(event_bus=cast("EventBus", event_bus))
         manager._dispatch_task = AsyncMock()
         novel_id = uuid4()
         entry = FakeKBEntry(body="New character", novel_id=novel_id)
 
-        await manager.on_entry_created(entry)  # type: ignore[arg-type]
+        await manager.on_entry_created(cast("KBEntry", entry))
 
         assert len(event_bus.events) == 1
         event = event_bus.events[0]
@@ -287,11 +293,11 @@ class TestWikiSyncEventPublishing:
     async def test_on_entry_updated_with_change_publishes_event(self) -> None:
         """on_entry_updated publishes wiki.sync.requested when content changed."""
         event_bus = FakeEventBus()
-        manager = EmbeddingHookManager(event_bus=event_bus)  # type: ignore[arg-type]
+        manager = EmbeddingHookManager(event_bus=cast("EventBus", event_bus))
         manager._dispatch_task = AsyncMock()
         entry = FakeKBEntry(body="Updated content")
 
-        await manager.on_entry_updated(entry, content_changed=True)  # type: ignore[arg-type]
+        await manager.on_entry_updated(cast("KBEntry", entry), content_changed=True)
 
         assert len(event_bus.events) == 1
         assert event_bus.events[0].event_type == EventType.WIKI_SYNC_REQUESTED
@@ -301,11 +307,11 @@ class TestWikiSyncEventPublishing:
     async def test_on_entry_updated_without_change_skips_event(self) -> None:
         """on_entry_updated does NOT publish event when content unchanged."""
         event_bus = FakeEventBus()
-        manager = EmbeddingHookManager(event_bus=event_bus)  # type: ignore[arg-type]
+        manager = EmbeddingHookManager(event_bus=cast("EventBus", event_bus))
         manager._dispatch_task = AsyncMock()
         entry = FakeKBEntry(body="Same content")
 
-        await manager.on_entry_updated(entry, content_changed=False)  # type: ignore[arg-type]
+        await manager.on_entry_updated(cast("KBEntry", entry), content_changed=False)
 
         assert len(event_bus.events) == 0
 
@@ -314,12 +320,12 @@ class TestWikiSyncEventPublishing:
         """When event bus publish fails, error is caught (RULE-11)."""
         event_bus = FakeEventBus()
         event_bus.set_fail(fail=True)
-        manager = EmbeddingHookManager(event_bus=event_bus)  # type: ignore[arg-type]
+        manager = EmbeddingHookManager(event_bus=cast("EventBus", event_bus))
         manager._dispatch_task = AsyncMock()
         entry = FakeKBEntry(body="Content")
 
         # Should NOT raise — failure is logged and swallowed
-        await manager.on_entry_created(entry)  # type: ignore[arg-type]
+        await manager.on_entry_created(cast("KBEntry", entry))
 
         # The embedding task was still dispatched despite publish failure
         manager._dispatch_task.assert_awaited_once()
@@ -331,7 +337,7 @@ class TestWikiSyncEventPublishing:
         manager._dispatch_task = AsyncMock()
         entry = FakeKBEntry(body="Content")
 
-        await manager.on_entry_created(entry)  # type: ignore[arg-type]
+        await manager.on_entry_created(cast("KBEntry", entry))
 
         # No event_bus → no event published, but dispatch_task still called
         manager._dispatch_task.assert_awaited_once()

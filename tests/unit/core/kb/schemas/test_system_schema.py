@@ -9,6 +9,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.kb.schemas.system import (
     SystemMechanics,
     SystemMetadata,
@@ -38,8 +40,8 @@ class TestSystemMechanics:
         assert len(m.levels or []) == 3
 
     def test_extra_fields_preserved(self) -> None:
-        m = SystemMechanics(rules=["Test"], cooldown="10 seconds")  # type: ignore[call-arg]
-        assert m.cooldown == "10 seconds"  # type: ignore[attr-defined]
+        m: Any = SystemMechanics(**cast("Any", {"rules": ["Test"], "cooldown": "10 seconds"}))
+        assert m.cooldown == "10 seconds"
 
 
 class TestSystemPractitioners:
@@ -105,8 +107,8 @@ class TestSystemMetadata:
         assert meta.origins is None
 
     def test_extra_fields_preserved(self) -> None:
-        meta = SystemMetadata(custom_energy="mana")  # type: ignore[call-arg]
-        assert meta.custom_energy == "mana"  # type: ignore[attr-defined]
+        meta: Any = SystemMetadata(**cast("Any", {"custom_energy": "mana"}))
+        assert meta.custom_energy == "mana"
 
     def test_empty_metadata(self) -> None:
         meta = SystemMetadata()

@@ -6,7 +6,7 @@ import asyncio
 import os
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from alembic.config import Config
@@ -95,10 +95,11 @@ async def _run_stale_cleanup() -> int:
     Returns:
         Number of stale requests marked as failed.
     """
-    from narrare._app.database import _async_session_factory  # pyright: ignore[reportPrivateUsage]
+    from narrare._app.database import get_session_factory
     from narrare.writing.repository import GenerationRepository
 
-    async with _async_session_factory() as session:
+    session_factory = get_session_factory()
+    async with session_factory() as session:
         try:
             repo = GenerationRepository(session)
             count = await repo.cleanup_stale()
@@ -162,10 +163,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     # TaskIQ broker startup (skip in worker process — it handles its own)
     try:
-        from narrare.tasks.broker import broker  # type: ignore[import]  # Phase 4+ module
-
-        if not broker.is_worker_process:  # type: ignore[attr-defined]  # untyped TaskIQ
-            await broker.startup()  # type: ignore[attr-defined]  # untyped TaskIQ
+        # Dynamic import — `narrare.tasks.broker` is a Phase 4+ module
+        # that may not exist yet. taskiq has no PEP 561 type stubs.
+        _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])
+        broker: Any = _broker_mod.broker
+        if not broker.is_worker_process:
+            await broker.startup()
             logger.info("taskiq_broker_started")
     except ImportError:
         pass  # Tasks not yet configured in Phase 2
@@ -240,10 +243,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         logger.warning("event_bus_shutdown_failed", exc_info=True)
 
     try:
-        from narrare.tasks.broker import broker  # type: ignore[import]  # Phase 4+ module
-
-        if not broker.is_worker_process:  # type: ignore[attr-defined]  # untyped TaskIQ
-            await broker.shutdown()  # type: ignore[attr-defined]  # untyped TaskIQ
+        _broker_mod = __import__("narrare.tasks.broker", fromlist=["broker"])
+        broker: Any = _broker_mod.broker
+        if not broker.is_worker_process:
+            await broker.shutdown()
     except ImportError:
         pass
 

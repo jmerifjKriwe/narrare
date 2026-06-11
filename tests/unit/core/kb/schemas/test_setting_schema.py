@@ -10,6 +10,8 @@ Tests cover:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 from pydantic import ValidationError
 
@@ -42,11 +44,8 @@ class TestSettingBasics:
         assert fields.tone == "dark"
 
     def test_extra_fields_preserved(self) -> None:
-        fields = SettingBasics(
-            genre="sci-fi",
-            custom_theme="cyberpunk",  # type: ignore[call-arg]
-        )
-        assert fields.custom_theme == "cyberpunk"  # type: ignore[attr-defined]
+        fields: Any = SettingBasics(**cast("Any", {"genre": "sci-fi", "custom_theme": "cyberpunk"}))
+        assert fields.custom_theme == "cyberpunk"
 
     def test_model_config_extra_allow(self) -> None:
         assert SettingBasics.model_config.get("extra") == "allow"
@@ -72,11 +71,10 @@ class TestSettingWorldRules:
         assert "dragons" in fields.supernatural_elements
 
     def test_extra_fields_preserved(self) -> None:
-        fields = SettingWorldRules(
-            magic_level="low",
-            extra_rule="no_time_travel",  # type: ignore[call-arg]
+        fields: Any = SettingWorldRules(
+            **cast("Any", {"magic_level": "low", "extra_rule": "no_time_travel"})
         )
-        assert fields.extra_rule == "no_time_travel"  # type: ignore[attr-defined]
+        assert fields.extra_rule == "no_time_travel"
 
 
 class TestSettingSociety:
@@ -99,11 +97,10 @@ class TestSettingSociety:
         assert "honor" in fields.cultural_values
 
     def test_extra_fields_preserved(self) -> None:
-        fields = SettingSociety(
-            political_structure="theocracy",
-            state_religion="official",  # type: ignore[call-arg]
+        fields: Any = SettingSociety(
+            **cast("Any", {"political_structure": "theocracy", "state_religion": "official"})
         )
-        assert fields.state_religion == "official"  # type: ignore[attr-defined]
+        assert fields.state_religion == "official"
 
 
 class TestSettingGeography:
@@ -125,11 +122,10 @@ class TestSettingGeography:
         assert len(fields.landmarks) == 2
 
     def test_extra_fields_preserved(self) -> None:
-        fields = SettingGeography(
-            central_location="Island",
-            climate_data="temperate",  # type: ignore[call-arg]
+        fields: Any = SettingGeography(
+            **cast("Any", {"central_location": "Island", "climate_data": "temperate"})
         )
-        assert fields.climate_data == "temperate"  # type: ignore[attr-defined]
+        assert fields.climate_data == "temperate"
 
 
 class TestSettingMetadata:
@@ -194,27 +190,21 @@ class TestSettingMetadata:
 
     def test_extra_fields_on_metadata(self) -> None:
         """Extra fields should be preserved (inherited from KBEntryMetadata)."""
-        meta = SettingMetadata(
-            setting_type="primary",
-            custom_flag=True,  # type: ignore[call-arg]
-        )
-        assert meta.custom_flag is True  # type: ignore[attr-defined]
+        meta: Any = SettingMetadata(**cast("Any", {"setting_type": "primary", "custom_flag": True}))
+        assert meta.custom_flag is True
 
     def test_extra_fields_in_group(self) -> None:
         """Extra fields within nested groups should be preserved."""
-        meta = SettingMetadata(
-            basics=SettingBasics(
-                genre="fantasy",
-                extra_attribute="custom",  # type: ignore[call-arg]
-            ),
+        meta: Any = SettingMetadata(
+            basics=SettingBasics(**cast("Any", {"genre": "fantasy", "extra_attribute": "custom"})),
         )
         assert meta.basics is not None
-        assert meta.basics.extra_attribute == "custom"  # type: ignore[attr-defined]
+        assert meta.basics.extra_attribute == "custom"
 
     def test_validation_maintained(self) -> None:
         """Type validation should still work for flat fields."""
         with pytest.raises(ValidationError, match="setting_type"):
-            SettingMetadata(setting_type=42)  # type: ignore[arg-type]
+            SettingMetadata.model_validate({"setting_type": 42})
 
     def test_empty_metadata(self) -> None:
         """Empty metadata should pass validation."""

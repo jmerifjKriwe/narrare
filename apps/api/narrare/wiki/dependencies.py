@@ -95,7 +95,7 @@ def make_system_wiki_factory(
     Returns:
         Callable that creates system-mode APIWikiService instances.
     """
-    from narrare._app.database import _async_session_factory  # pyright: ignore[reportPrivateUsage]
+    from narrare._app.database import get_session_factory
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
@@ -104,8 +104,10 @@ def make_system_wiki_factory(
     from narrare.wiki.repository import WikiRepository
     from narrare.wiki.service import APIWikiService
 
+    session_factory = get_session_factory()
+
     def factory() -> APIWikiService:
-        session = _async_session_factory()
+        session = session_factory()
         chapter_wiki_svc = ChapterWikiService(
             wiki_repo=WikiRepository(session),
             novel_repo=NovelRepository(session),

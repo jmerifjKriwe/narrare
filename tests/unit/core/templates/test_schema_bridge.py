@@ -9,6 +9,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.kb.schemas.base import KBEntryMetadata
 from narrare_core.templates.schema_bridge import get_form_fields, validate_metadata
 
@@ -34,30 +36,36 @@ class TestValidateMetadata:
     """validate_metadata validates metadata against entity type schema."""
 
     def test_validate_character_metadata(self) -> None:
-        result = validate_metadata("character", {"age": 30, "role": "protagonist"})
-        assert result.age == 30  # type: ignore[attr-defined]
-        assert result.role == "protagonist"  # type: ignore[attr-defined]
+        result = cast("Any", validate_metadata("character", {"age": 30, "role": "protagonist"}))
+        assert result.age == 30
+        assert result.role == "protagonist"
 
     def test_validate_location_metadata(self) -> None:
-        result = validate_metadata("location", {"climate": "Tropical"})
-        assert result.climate == "Tropical"  # type: ignore[attr-defined]
+        result = cast("Any", validate_metadata("location", {"climate": "Tropical"}))
+        assert result.climate == "Tropical"
 
     def test_validate_unknown_type_falls_back(self) -> None:
         """Unknown entity types fall back to KBEntryMetadata (extra='allow')."""
-        result = validate_metadata(
-            "unknown_type_xyz",
-            {"custom_field": "custom_value"},
+        result = cast(
+            "Any",
+            validate_metadata(
+                "unknown_type_xyz",
+                {"custom_field": "custom_value"},
+            ),
         )
         assert isinstance(result, KBEntryMetadata)
-        assert result.custom_field == "custom_value"  # type: ignore[attr-defined]
+        assert cast("Any", result).custom_field == "custom_value"
 
     def test_validate_empty_metadata(self) -> None:
         result = validate_metadata("character", {})
         assert isinstance(result, KBEntryMetadata)
 
     def test_validate_preserves_extra_fields(self) -> None:
-        result = validate_metadata(
-            "character",
-            {"age": 25, "future_field": "some_value"},
+        result = cast(
+            "Any",
+            validate_metadata(
+                "character",
+                {"age": 25, "future_field": "some_value"},
+            ),
         )
-        assert result.future_field == "some_value"  # type: ignore[attr-defined]
+        assert result.future_field == "some_value"

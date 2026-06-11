@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
 from datetime import datetime
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -53,7 +54,7 @@ class TestEntityMetadata:
             last_referenced_at=None,
         )
         with pytest.raises(FrozenInstanceError):
-            meta.name = "Changed"  # type: ignore[misc]
+            cast("Any", meta).name = "Changed"
 
     def test_equality_by_value(self) -> None:
         ts = datetime(2026, 1, 1, 0, 0, 0)
@@ -149,7 +150,7 @@ class TestSuggestion:
             last_referenced_at=None,
         )
         with pytest.raises(FrozenInstanceError):
-            suggestion.relevance_score = 0.5  # type: ignore[misc]
+            cast("Any", suggestion).relevance_score = 0.5
 
     def test_equality_by_value(self) -> None:
         eid = uuid4()

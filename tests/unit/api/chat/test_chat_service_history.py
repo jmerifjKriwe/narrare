@@ -8,10 +8,15 @@ See conftest.py for shared fixtures.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from narrare_core.agents.base import StreamEvent
 from narrare_core.chat.chat_agent import ChatAgent
+
+if TYPE_CHECKING:
+    from narrare.chat.chat_service import ChatService
+    from narrare_core.chat.conversation_store import InMemoryConversationStore
 
 # ---------------------------------------------------------------------------
 # Test ChatService.ask — ProcessHistory Continuity
@@ -23,7 +28,7 @@ class TestProcessHistory:
 
     async def test_process_history_accumulates_across_turns(
         self,
-        service: object,
+        service: ChatService,
     ) -> None:
         """Multiple turns to the same conversation accumulate ProcessHistory."""
         from uuid import UUID, uuid4
@@ -56,7 +61,7 @@ class TestProcessHistory:
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent1):
             events1 = []
-            async for event in await service.ask(request1, user_id):  # type: ignore[union-attr]
+            async for event in await service.ask(request1, user_id):
                 events1.append(event)
 
         # Get the conversation ID from the meta event
@@ -84,7 +89,7 @@ class TestProcessHistory:
         mock_agent2.run_stream = _stream_turn2
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent2):
-            async for _ in await service.ask(request2, user_id):  # type: ignore[union-attr]
+            async for _ in await service.ask(request2, user_id):
                 pass
 
         # Turn 1 should have been called with no message_history
@@ -100,8 +105,8 @@ class TestProcessHistory:
 
     async def test_process_history_clears_on_clear_history(
         self,
-        service: object,
-        in_memory_store: object,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
     ) -> None:
         """Clearing conversation history also clears the ProcessHistory."""
         from uuid import UUID, uuid4
@@ -126,16 +131,16 @@ class TestProcessHistory:
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent1):
             events1 = []
-            async for event in await service.ask(request1, user_id):  # type: ignore[union-attr]
+            async for event in await service.ask(request1, user_id):
                 events1.append(event)
 
         conv_id = UUID(events1[0]["conversation_id"])
 
         # Clear history
-        await service.clear_history(conv_id)  # type: ignore[union-attr]
+        await service.clear_history(conv_id)
 
         # Verify the store was cleared
-        history = await in_memory_store.get_history(conv_id)  # type: ignore[union-attr]
+        history = await in_memory_store.get_history(conv_id)
         assert len(history) == 0
 
 
@@ -149,8 +154,8 @@ class TestHistoryManagement:
 
     async def test_get_history_delegates_to_store(
         self,
-        service: object,
-        in_memory_store: object,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
     ) -> None:
         """get_history returns messages from the store."""
         from uuid import uuid4
@@ -158,11 +163,9 @@ class TestHistoryManagement:
         # Create a conversation with a message
         project_id = uuid4()
         user_id = uuid4()
-        conv_id = await in_memory_store.create_conversation(  # type: ignore[union-attr]
-            project_id, user_id, "Test msg"
-        )
+        conv_id = await in_memory_store.create_conversation(project_id, user_id, "Test msg")
 
-        result = await service.get_history(conv_id)  # type: ignore[union-attr]
+        result = await service.get_history(conv_id)
 
         assert len(result) == 1
         assert result[0].role == "user"
@@ -170,22 +173,20 @@ class TestHistoryManagement:
 
     async def test_get_history_with_limit(
         self,
-        service: object,
-        in_memory_store: object,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
     ) -> None:
         """get_history respects the limit parameter."""
         from uuid import uuid4
 
         project_id = uuid4()
         user_id = uuid4()
-        conv_id = await in_memory_store.create_conversation(  # type: ignore[union-attr]
-            project_id, user_id, "Msg 1"
-        )
-        await in_memory_store.add_message(conv_id, "user", "Msg 2")  # type: ignore[union-attr]
-        await in_memory_store.add_message(conv_id, "assistant", "Resp 1")  # type: ignore[union-attr]
-        await in_memory_store.add_message(conv_id, "user", "Msg 3")  # type: ignore[union-attr]
+        conv_id = await in_memory_store.create_conversation(project_id, user_id, "Msg 1")
+        await in_memory_store.add_message(conv_id, "user", "Msg 2")
+        await in_memory_store.add_message(conv_id, "assistant", "Resp 1")
+        await in_memory_store.add_message(conv_id, "user", "Msg 3")
 
-        result = await service.get_history(conv_id, limit=2)  # type: ignore[union-attr]
+        result = await service.get_history(conv_id, limit=2)
 
         assert len(result) == 2
         assert result[0].content == "Resp 1"
@@ -193,22 +194,18 @@ class TestHistoryManagement:
 
     async def test_clear_history_delegates_to_store(
         self,
-        service: object,
-        in_memory_store: object,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
     ) -> None:
         """clear_history removes all messages via the store."""
         from uuid import uuid4
 
         project_id = uuid4()
         user_id = uuid4()
-        conv_id = await in_memory_store.create_conversation(  # type: ignore[union-attr]
-            project_id, user_id, "To be deleted"
-        )
-        await in_memory_store.add_message(  # type: ignore[union-attr]
-            conv_id, "assistant", "Gone soon"
-        )
+        conv_id = await in_memory_store.create_conversation(project_id, user_id, "To be deleted")
+        await in_memory_store.add_message(conv_id, "assistant", "Gone soon")
 
-        await service.clear_history(conv_id)  # type: ignore[union-attr]
+        await service.clear_history(conv_id)
 
-        history = await in_memory_store.get_history(conv_id)  # type: ignore[union-attr]
+        history = await in_memory_store.get_history(conv_id)
         assert len(history) == 0

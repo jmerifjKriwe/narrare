@@ -10,6 +10,7 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
 from typing import Protocol as TypingProtocol
 
 import pytest
@@ -127,7 +128,7 @@ class TestEntityTypeCheck:
             status=ConsistencyStatus.PRESENT,
         )
         with pytest.raises(AttributeError, match="cannot assign to field"):
-            check.entity_type = "item"  # type: ignore[misc]
+            cast("Any", check).entity_type = "item"
 
     def test_frozen_cannot_be_appended(self) -> None:
         """EntityTypeCheck frozen dataclass rejects mutation attempts."""
@@ -136,7 +137,7 @@ class TestEntityTypeCheck:
             status=ConsistencyStatus.STALE,
         )
         with pytest.raises(AttributeError, match="cannot assign to field"):
-            check.status = ConsistencyStatus.PRESENT  # type: ignore[misc]
+            cast("Any", check).status = ConsistencyStatus.PRESENT
 
     def test_equality(self) -> None:
         """Two EntityTypeCheck instances with same fields are equal."""
@@ -250,7 +251,7 @@ class TestKBConsistencyResult:
         """KBConsistencyResult is frozen — attribute assignment raises."""
         result = KBConsistencyResult(has_all_required_types=True)
         with pytest.raises(AttributeError, match="cannot assign to field"):
-            result.has_all_required_types = False  # type: ignore[misc]
+            cast("Any", result).has_all_required_types = False
 
     def test_equality(self) -> None:
         """Two KBConsistencyResult instances with same fields are equal."""

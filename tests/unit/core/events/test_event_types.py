@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any, cast
 
 import pytest
 
@@ -158,14 +159,14 @@ class TestDomainEventImmutability:
     def test_cannot_mutate_event_type(self) -> None:
         event = DomainEvent(event_type=EventType.CHAPTER_CREATED, aggregate_id=uuid.uuid4())
         with pytest.raises(AttributeError):
-            event.event_type = EventType.CHAPTER_DELETED  # type: ignore[misc]
+            cast("Any", event).event_type = EventType.CHAPTER_DELETED
 
     def test_cannot_mutate_payload(self) -> None:
         event = DomainEvent(event_type=EventType.CHAPTER_CREATED, aggregate_id=uuid.uuid4())
         with pytest.raises(AttributeError):
-            event.payload = {"new": "data"}  # type: ignore[misc]
+            cast("Any", event).payload = {"new": "data"}
 
     def test_cannot_mutate_aggregate_id(self) -> None:
         event = DomainEvent(event_type=EventType.CHAPTER_CREATED, aggregate_id=uuid.uuid4())
         with pytest.raises(AttributeError):
-            event.aggregate_id = uuid.uuid4()  # type: ignore[misc]
+            cast("Any", event).aggregate_id = uuid.uuid4()

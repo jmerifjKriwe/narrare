@@ -187,4 +187,4 @@ class KBMergeAgent(NarrareAgent[KBMergeDeps, MergeOutput]):
     ) -> MergeOutput:
         """Execute the KB merge agent and return structured output."""
         result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return result.output  # type: ignore[return-value]
+        return cast("MergeOutput", result.output)

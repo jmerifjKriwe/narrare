@@ -13,6 +13,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from narrare_core.writing.change_engine import (
@@ -250,7 +252,7 @@ class TestDiffOpDataclass:
             content_revised="Greets",
         )
         with pytest.raises(AttributeError):
-            op.type = "insert"  # type: ignore[misc]
+            cast("Any", op).type = "insert"
 
     def test_slots(self) -> None:
         op = DiffOp(
@@ -263,7 +265,7 @@ class TestDiffOpDataclass:
             content_revised="Foo",
         )
         with pytest.raises(AttributeError):
-            _ = op.__dict__  # type: ignore[attr-defined]
+            _ = cast("Any", op).__dict__
 
 
 # ---------------------------------------------------------------------------
@@ -281,4 +283,4 @@ class TestDiffResultDataclass:
     def test_frozen(self) -> None:
         result = DiffResult(original="a", revised="b", has_changes=True)
         with pytest.raises(AttributeError):
-            result.has_changes = False  # type: ignore[misc]
+            cast("Any", result).has_changes = False

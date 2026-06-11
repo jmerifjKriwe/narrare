@@ -10,12 +10,15 @@ first flush, then returning a pre-existing row on re-select.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
 
 from narrare.settings.models import ProjectSettings, UserSettings
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 # ======================================================================
 # Minimal fake for SQLAlchemy Result proxy
@@ -146,7 +149,7 @@ class TestUserSettingsRepositoryRaceCondition:
         user_id = uuid4()
         winner = UserSettings(user_id=user_id)
         session = _RaceConditionSession(winner)
-        repo = UserSettingsRepository(session)  # type: ignore[arg-type]
+        repo = UserSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(user_id)
 
@@ -160,7 +163,7 @@ class TestUserSettingsRepositoryRaceCondition:
 
         user_id = uuid4()
         session = _NormalSession()
-        repo = UserSettingsRepository(session)  # type: ignore[arg-type]
+        repo = UserSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(user_id)
 
@@ -175,7 +178,7 @@ class TestUserSettingsRepositoryRaceCondition:
         user_id = uuid4()
         existing = UserSettings(user_id=user_id)
         session = _ExistingRowSession(existing)
-        repo = UserSettingsRepository(session)  # type: ignore[arg-type]
+        repo = UserSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(user_id)
 
@@ -197,7 +200,7 @@ class TestProjectSettingsRepositoryRaceCondition:
         novel_id = uuid4()
         winner = ProjectSettings(novel_id=novel_id)
         session = _RaceConditionSession(winner)
-        repo = ProjectSettingsRepository(session)  # type: ignore[arg-type]
+        repo = ProjectSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(novel_id)
 
@@ -211,7 +214,7 @@ class TestProjectSettingsRepositoryRaceCondition:
 
         novel_id = uuid4()
         session = _NormalSession()
-        repo = ProjectSettingsRepository(session)  # type: ignore[arg-type]
+        repo = ProjectSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(novel_id)
 
@@ -226,7 +229,7 @@ class TestProjectSettingsRepositoryRaceCondition:
         novel_id = uuid4()
         existing = ProjectSettings(novel_id=novel_id)
         session = _ExistingRowSession(existing)
-        repo = ProjectSettingsRepository(session)  # type: ignore[arg-type]
+        repo = ProjectSettingsRepository(cast("AsyncSession", session))
 
         result = await repo.get(novel_id)
 

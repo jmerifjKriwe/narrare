@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import uuid
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -161,7 +162,7 @@ class TestKBQueryServiceAdapter:
         result = await adapter.get_related(entity_id, relation_type="ally")
 
         assert len(result) == 1
-        assert result[0].target_name == "Peter"  # type: ignore[union-attr]
+        assert cast("Any", result[0]).target_name == "Peter"
 
     @pytest.mark.asyncio
     async def test_get_related_returns_all_when_no_filter(

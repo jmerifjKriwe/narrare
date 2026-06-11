@@ -100,8 +100,8 @@ class WritingContext:
     wiki_summaries_stale: int = 0
 
     # Warnings (populated by assembler)
-    voice_profile_warnings: list[str] = field(default_factory=lambda: [])  # type: ignore[type-arg]
-    orphan_reference_warnings: list[str] = field(default_factory=lambda: [])  # type: ignore[type-arg]
+    voice_profile_warnings: list[str] = field(default_factory=list[str])
+    orphan_reference_warnings: list[str] = field(default_factory=list[str])
 
     # Flags
     is_first_chapter: bool = False

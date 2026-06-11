@@ -8,12 +8,17 @@ See conftest.py for shared fixtures.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from narrare_core.agents.base import StreamEvent
 from narrare_core.chat.chat_agent import ChatAgent
+
+if TYPE_CHECKING:
+    from narrare.chat.chat_service import ChatService
+    from narrare_core.chat.conversation_store import InMemoryConversationStore
 
 # ---------------------------------------------------------------------------
 # Test Error Handling
@@ -44,7 +49,7 @@ class TestErrorHandling:
         mock_agent.run_stream = lambda *a, **kw: _failing_stream()
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent):
-            gen = await service.ask(request, uuid4())  # type: ignore[union-attr]
+            gen = await cast("ChatService", service).ask(request, uuid4())
             with pytest.raises(RuntimeError, match="Simulated mid-stream failure"):
                 async for _ in gen:
                     pass
@@ -68,14 +73,15 @@ class TestErrorHandling:
         )
 
         # Simulate a failure after streaming
+        conv_id: UUID = uuid4()  # fallback — overwritten inside loop
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent):
-            gen = await service.ask(request, uuid4())  # type: ignore[union-attr]
+            gen = await cast("ChatService", service).ask(request, uuid4())
             async for event in gen:
                 if event.get("type") == "meta":
-                    conv_id = UUID(event["conversation_id"])
+                    conv_id = UUID(str(event["conversation_id"]))
 
         # The user message should still be persisted
-        history = await in_memory_store.get_history(conv_id)  # type: ignore[union-attr]
+        history = await cast("InMemoryConversationStore", in_memory_store).get_history(conv_id)
         user_messages = [m for m in history if m.role == "user"]
         assert any("Save this even on failure" in m.content for m in user_messages)
 
@@ -104,7 +110,7 @@ class TestErrorHandling:
             ),
             pytest.raises(ValueError, match="Agent init failed"),
         ):
-            gen = await service.ask(request, uuid4())  # type: ignore[union-attr]
+            gen = await cast("ChatService", service).ask(request, uuid4())
             async for _ in gen:
                 pass
 
@@ -126,7 +132,7 @@ class TestErrorHandling:
         )
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent):
-            gen = await service.ask(request, uuid4())  # type: ignore[union-attr]
+            gen = await cast("ChatService", service).ask(request, uuid4())
             # Even unexpected event types should not crash the service,
             # they should just be passed through as-is
             events = []

@@ -20,7 +20,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai import (
     ModelRetry,
@@ -163,4 +163,4 @@ class KBImproveAgent(NarrareAgent[KBImproveDeps, KBImproveOutput]):
     ) -> KBImproveOutput:
         """Execute the improve agent and return structured output."""
         result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return result.output  # type: ignore[return-value]
+        return cast("KBImproveOutput", result.output)

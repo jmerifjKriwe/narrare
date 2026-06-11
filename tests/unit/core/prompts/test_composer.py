@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -79,7 +80,7 @@ def fake_registry() -> FakePromptRegistry:
 
 @pytest.fixture
 def composer(fake_registry: FakePromptRegistry) -> PromptComposer:
-    return PromptComposer(fake_registry)  # type: ignore[arg-type]
+    return PromptComposer(cast("Any", fake_registry))
 
 
 class TestPromptComposerBuild:
@@ -97,14 +98,14 @@ class TestPromptComposerBuild:
 
     async def test_variables_substituted_in_system(self) -> None:
         fake_registry = FakePromptRegistry(_make_resolved(system="Write for {{project_title}}."))
-        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", fake_registry))
         ctx = PromptContext(language="en", project_title="Echoes of the Thornwall")
         result = await composer.build(LLMIntent.WRITE, ctx)
         assert "Echoes of the Thornwall" in result.system
 
     async def test_strict_preflight_rejects_missing_required_route_variable(self) -> None:
         fake_registry = FakePromptRegistry(_make_resolved(system="Outline: {{chapter_outline}}"))
-        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", fake_registry))
 
         with pytest.raises(PromptVariableError, match="chapter_outline"):
             await composer.build(LLMIntent.WRITE, PromptContext(language="en"))
@@ -113,7 +114,7 @@ class TestPromptComposerBuild:
         fake_registry = FakePromptRegistry(
             _make_resolved(system="Optional lower-priority suggestions: {{kb_suggested}}")
         )
-        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", fake_registry))
 
         result = await composer.build(LLMIntent.WRITE, PromptContext(language="en"))
 
@@ -155,7 +156,7 @@ class TestPromptRouteGovernance:
 
     async def test_context_mode_required_intent_uses_supplied_mode(self) -> None:
         fake_registry = FakePromptRegistry()
-        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", fake_registry))
 
         await composer.build(
             LLMIntent.EXTRACT,
@@ -167,7 +168,7 @@ class TestPromptRouteGovernance:
 
     async def test_kb_create_allows_only_documented_aggregate_modes(self) -> None:
         fake_registry = FakePromptRegistry()
-        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", fake_registry))
 
         with pytest.raises(PromptRouteNotConfiguredError, match="unsupported_mode"):
             await composer.build(
@@ -183,7 +184,7 @@ class TestPromptRouteGovernance:
         fake_registry: FakePromptRegistry,
         intent: LLMIntent,
     ) -> None:
-        composer = PromptComposer(fake_registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", fake_registry))
 
         with pytest.raises(PromptRouteNotConfiguredError, match=intent.value):
             await composer.build(intent, PromptContext(language="en"))

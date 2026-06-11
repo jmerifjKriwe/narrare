@@ -7,6 +7,7 @@ Tests are skipped if pgvector is not available.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -76,7 +77,7 @@ class TestEmbeddingRepositorySearch:
 
         assert len(results) >= 1
         # The first result should be more similar to vec1
-        assert results[0][0].source_id == sid1
+        assert results[0].embedding.source_id == sid1
 
     async def test_search_filters_by_source_type(
         self,
@@ -121,7 +122,7 @@ class TestEmbeddingRepositorySearch:
         )
 
         assert len(results) == 1
-        assert results[0][0].source_id == sid1
+        assert results[0].embedding.source_id == sid1
 
     async def test_search_respects_threshold(
         self,
@@ -239,3 +240,117 @@ class TestEmbeddingRepositoryBatchUpsert:
         repo = EmbeddingRepository(db_session)
         count = await repo.batch_upsert([])
         assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# Search metadata tests (IF-04: usage_count, last_referenced_at wiring)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    True,
+    reason="Requires pgvector extension in test database",
+)
+class TestEmbeddingRepositorySearchMetadata:
+    """Verifies that search results include KB entry metadata."""
+
+    async def test_search_returns_usage_count_for_kb_entries(
+        self,
+        db_session: AsyncSession,
+    ) -> None:
+        """Search results for kb_entry sources include non-zero usage_count."""
+        if not await _pgvector_available(db_session):
+            pytest.skip("pgvector not available")
+
+        repo = EmbeddingRepository(db_session)
+        entry_id = uuid.uuid4()
+        novel_id = uuid.uuid4()
+
+        # Create a KB entry with non-zero usage_count
+        await db_session.execute(
+            sqlalchemy.text(
+                "INSERT INTO kb_entries "
+                "(id, novel_id, entity_type, name, slug, status, usage_count) "
+                "VALUES (:id, :novel_id, 'character', 'Test Char', "
+                "'test-char', 'draft', :usage_count)"
+            ),
+            {"id": str(entry_id), "novel_id": str(novel_id), "usage_count": 10},
+        )
+        await db_session.flush()
+
+        # Create an embedding for this KB entry
+        await repo.upsert("kb_entry", entry_id, "h1", _make_vector(), "test-model", 1536)
+
+        results = await repo.search(
+            _make_vector(),
+            source_type="kb_entry",
+            model="test-model",
+            threshold=0.0,
+        )
+
+        assert len(results) == 1
+        assert results[0].usage_count == 10
+
+    async def test_search_returns_last_referenced_at_for_kb_entries(
+        self,
+        db_session: AsyncSession,
+    ) -> None:
+        """Search results for referenced kb_entry sources have non-null last_referenced_at."""
+        if not await _pgvector_available(db_session):
+            pytest.skip("pgvector not available")
+
+        repo = EmbeddingRepository(db_session)
+        entry_id = uuid.uuid4()
+        novel_id = uuid.uuid4()
+        ref_time = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
+
+        # Create a KB entry with last_referenced_at set
+        await db_session.execute(
+            sqlalchemy.text(
+                "INSERT INTO kb_entries "
+                "(id, novel_id, entity_type, name, slug, status, usage_count, last_referenced_at) "
+                "VALUES (:id, :novel_id, 'character', 'Test Char', 'test-char', 'draft', "
+                "1, :last_ref)"
+            ),
+            {"id": str(entry_id), "novel_id": str(novel_id), "last_ref": ref_time},
+        )
+        await db_session.flush()
+
+        # Create an embedding for this KB entry
+        await repo.upsert("kb_entry", entry_id, "h1", _make_vector(), "test-model", 1536)
+
+        results = await repo.search(
+            _make_vector(),
+            source_type="kb_entry",
+            model="test-model",
+            threshold=0.0,
+        )
+
+        assert len(results) == 1
+        assert results[0].last_referenced_at is not None
+        assert results[0].last_referenced_at.year == 2026
+
+    async def test_search_returns_defaults_for_non_kb_entry_sources(
+        self,
+        db_session: AsyncSession,
+    ) -> None:
+        """Non-kb_entry sources get usage_count=0 and last_referenced_at=None."""
+        if not await _pgvector_available(db_session):
+            pytest.skip("pgvector not available")
+
+        repo = EmbeddingRepository(db_session)
+        source_id = uuid.uuid4()
+
+        # Create an embedding with a non-kb_entry source_type
+        await repo.upsert("chapter", source_id, "h1", _make_vector(), "test-model", 1536)
+
+        results = await repo.search(
+            _make_vector(),
+            source_type="chapter",
+            model="test-model",
+            threshold=0.0,
+        )
+
+        assert len(results) == 1
+        assert results[0].usage_count == 0
+        assert results[0].last_referenced_at is None

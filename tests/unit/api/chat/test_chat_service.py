@@ -20,6 +20,9 @@ from narrare_core.chat.chat_agent import ChatAgent
 if TYPE_CHECKING:
     from unittest.mock import AsyncMock
 
+    from narrare.chat.chat_service import ChatService
+    from narrare_core.chat.conversation_store import InMemoryConversationStore
+
 # ---------------------------------------------------------------------------
 # Test ChatService.ask — New Conversation
 # ---------------------------------------------------------------------------
@@ -30,7 +33,7 @@ class TestAskNewConversation:
 
     async def test_ask_new_conversation_yields_stream_events(
         self,
-        service: object,
+        service: ChatService,
     ) -> None:
         """Happy path: a brand-new conversation streams meta, token, and done events."""
         from tests.unit.api.chat.conftest import _async_gen, _make_request
@@ -53,7 +56,7 @@ class TestAskNewConversation:
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent):
             events = []
-            async for event in await service.ask(request, user_id):  # type: ignore[union-attr]
+            async for event in await service.ask(request, user_id):
                 events.append(event)
 
         # Assert event structure
@@ -73,8 +76,8 @@ class TestAskNewConversation:
 
     async def test_ask_new_conversation_creates_conversation_in_store(
         self,
-        service: object,
-        in_memory_store: object,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
     ) -> None:
         """A new conversation is persisted via the store."""
         from uuid import UUID, uuid4
@@ -94,7 +97,7 @@ class TestAskNewConversation:
         conv_id_from_meta: str | None = None
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent):
-            gen = await service.ask(request, user_id)  # type: ignore[union-attr]
+            gen = await service.ask(request, user_id)
             async for event in gen:
                 if event.get("type") == "meta":
                     conv_id_from_meta = str(event.get("conversation_id", ""))
@@ -103,7 +106,7 @@ class TestAskNewConversation:
         store_conv_id = UUID(conv_id_from_meta)
 
         # Verify the user message and assistant response were stored
-        history = await in_memory_store.get_history(store_conv_id)  # type: ignore[union-attr]
+        history = await in_memory_store.get_history(store_conv_id)
         assert len(history) >= 2  # user message + assistant response
         assert history[0].role == "user"
         assert history[0].content == "First message!"
@@ -112,7 +115,7 @@ class TestAskNewConversation:
 
     async def test_ask_new_conversation_passes_model_to_chat_agent(
         self,
-        service: object,
+        service: ChatService,
         mock_registry: AsyncMock,
     ) -> None:
         """Verifies that ChatAgent receives the model from ModelRegistry."""
@@ -136,7 +139,7 @@ class TestAskNewConversation:
             "narrare_core.chat.chat_agent.ChatAgent",
             return_value=mock_agent,
         ) as mock_cls:
-            async for _ in await service.ask(request, user_id):  # type: ignore[union-attr]
+            async for _ in await service.ask(request, user_id):
                 pass
 
         # ChatAgent should have been constructed with the model from registry
@@ -153,8 +156,8 @@ class TestAskExistingConversation:
 
     async def test_ask_existing_conversation_uses_history(
         self,
-        service: object,
-        in_memory_store: object,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
     ) -> None:
         """An existing conversation loads prior messages and uses them for context."""
         from uuid import uuid4
@@ -164,12 +167,10 @@ class TestAskExistingConversation:
         # Arrange: create a conversation with some history
         project_id = uuid4()
         user_id = uuid4()
-        conv_id = await in_memory_store.create_conversation(  # type: ignore[union-attr]
-            project_id, user_id, "Earlier msg"
-        )
+        conv_id = await in_memory_store.create_conversation(project_id, user_id, "Earlier msg")
 
         # Add an assistant message
-        await in_memory_store.add_message(conv_id, "assistant", "Earlier response")  # type: ignore[union-attr]
+        await in_memory_store.add_message(conv_id, "assistant", "Earlier response")
 
         request = _make_request(
             message="Tell me more!",
@@ -190,7 +191,7 @@ class TestAskExistingConversation:
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent):
             events = []
-            async for event in await service.ask(request, user_id):  # type: ignore[union-attr]
+            async for event in await service.ask(request, user_id):
                 events.append(event)
 
         # Assert events are streamed correctly
@@ -200,15 +201,15 @@ class TestAskExistingConversation:
         assert events[-1]["type"] == "done"
 
         # Verify the user message was stored
-        history = await in_memory_store.get_history(conv_id)  # type: ignore[union-attr]
+        history = await in_memory_store.get_history(conv_id)
         assert history[-2].role == "user"
         assert history[-2].content == "Tell me more!"
         assert history[-1].role == "assistant"
 
     async def test_ask_existing_conversation_passes_history_to_agent(
         self,
-        service: object,
-        in_memory_store: object,
+        service: ChatService,
+        in_memory_store: InMemoryConversationStore,
     ) -> None:
         """ProcessHistory from prior turns is passed as message_history to ChatAgent."""
         from uuid import uuid4
@@ -217,9 +218,7 @@ class TestAskExistingConversation:
 
         project_id = uuid4()
         user_id = uuid4()
-        conv_id = await in_memory_store.create_conversation(  # type: ignore[union-attr]
-            project_id, user_id, "First msg"
-        )
+        conv_id = await in_memory_store.create_conversation(project_id, user_id, "First msg")
 
         request = _make_request(
             message="Second message",
@@ -233,11 +232,11 @@ class TestAskExistingConversation:
         )
 
         with patch("narrare_core.chat.chat_agent.ChatAgent", return_value=mock_agent):
-            async for _ in await service.ask(request, user_id):  # type: ignore[union-attr]
+            async for _ in await service.ask(request, user_id):
                 pass
 
         # The new user message should have been saved before streaming
-        history = await in_memory_store.get_history(conv_id)  # type: ignore[union-attr]
+        history = await in_memory_store.get_history(conv_id)
         assert len(history) >= 2
 
 

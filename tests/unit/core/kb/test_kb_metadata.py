@@ -11,6 +11,8 @@ Tests cover:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 from pydantic import ValidationError
 
@@ -43,13 +45,13 @@ class TestKBEntryMetadata:
 
     def test_extra_fields_preserved(self) -> None:
         """Unknown fields should be accepted and accessible."""
-        meta = KBEntryMetadata(custom_field="value", another=42)  # type: ignore[call-arg]
-        assert meta.custom_field == "value"  # type: ignore[attr-defined]
-        assert meta.another == 42  # type: ignore[attr-defined]
+        meta = cast("Any", KBEntryMetadata.model_validate({"custom_field": "value", "another": 42}))
+        assert meta.custom_field == "value"
+        assert meta.another == 42
 
     def test_model_dump_includes_extras(self) -> None:
         """Serialisation should include extra fields."""
-        meta = KBEntryMetadata(unknown="test")  # type: ignore[call-arg]
+        meta = cast("Any", KBEntryMetadata.model_validate({"unknown": "test"}))
         dumped = meta.model_dump()
         assert dumped["unknown"] == "test"
 
@@ -92,23 +94,23 @@ class TestCharacterMetadata:
 
     def test_extra_fields_preserved(self) -> None:
         """Extra fields should pass through."""
-        meta = CharacterMetadata(hair_color="red", age=25)  # type: ignore[call-arg]
-        assert meta.hair_color == "red"  # type: ignore[attr-defined]
+        meta = cast("Any", CharacterMetadata.model_validate({"hair_color": "red", "age": 25}))
+        assert meta.hair_color == "red"
 
     def test_invalid_age_type_rejected(self) -> None:
         """Non-integer age should fail validation."""
         with pytest.raises(ValidationError, match="age"):
-            CharacterMetadata(age="not a number")  # type: ignore[arg-type]
+            CharacterMetadata.model_validate({"age": "not a number"})
 
     def test_invalid_aliases_type_rejected(self) -> None:
         """Non-list aliases should fail validation."""
         with pytest.raises(ValidationError, match="aliases"):
-            CharacterMetadata(aliases="not a list")  # type: ignore[arg-type]
+            CharacterMetadata.model_validate({"aliases": "not a list"})
 
     def test_pov_character_int_validation(self) -> None:
         """Non-boolean pov_character should fail validation with a list."""
         with pytest.raises(ValidationError, match="pov_character"):
-            CharacterMetadata(pov_character=[1, 2, 3])  # type: ignore[arg-type]
+            CharacterMetadata.model_validate({"pov_character": [1, 2, 3]})
 
 
 # ---------------------------------------------------------------------------
@@ -137,8 +139,10 @@ class TestLocationMetadata:
         assert meta.location_type is None
 
     def test_extra_fields_preserved(self) -> None:
-        meta = LocationMetadata(population=10000, terrain="mountain")  # type: ignore[call-arg]
-        assert meta.population == 10000  # type: ignore[attr-defined]
+        meta = cast(
+            "Any", LocationMetadata.model_validate({"population": 10000, "terrain": "mountain"})
+        )
+        assert meta.population == 10000
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +169,7 @@ class TestFactionMetadata:
 
     def test_invalid_members_type_rejected(self) -> None:
         with pytest.raises(ValidationError, match="members"):
-            FactionMetadata(members="not a list")  # type: ignore[arg-type]
+            FactionMetadata.model_validate({"members": "not a list"})
 
 
 # ---------------------------------------------------------------------------
@@ -324,6 +328,6 @@ class TestCrossSchemaValidation:
     )
     def test_all_schemas_allow_extras(self, schema_cls: type[KBEntryMetadata]) -> None:
         """Every schema should accept arbitrary extra fields."""
-        instance = schema_cls(custom_unknown_field="anything")  # type: ignore[call-arg]
+        instance = cast("Any", schema_cls.model_validate({"custom_unknown_field": "anything"}))
         dumped = instance.model_dump()
         assert dumped["custom_unknown_field"] == "anything"

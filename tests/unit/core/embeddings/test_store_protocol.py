@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -75,7 +76,7 @@ class TestSearchResult:
             content_hash="hash",
         )
         with pytest.raises(FrozenInstanceError):
-            result.score = 0.8  # type: ignore[misc]
+            cast("Any", result).score = 0.8
 
     def test_search_result_equality_by_value(self) -> None:
         sid = _uuid()
@@ -152,7 +153,7 @@ class TestEmbeddingStats:
     def test_embedding_stats_is_frozen(self) -> None:
         stats = EmbeddingStats(total=10, embedded=5, pending=3, failed=2, coverage_percentage=50.0)
         with pytest.raises(FrozenInstanceError):
-            stats.total = 20  # type: ignore[misc]
+            cast("Any", stats).total = 20
 
     def test_embedding_stats_equality_by_value(self) -> None:
         a = EmbeddingStats(total=10, embedded=5, pending=3, failed=2, coverage_percentage=50.0)

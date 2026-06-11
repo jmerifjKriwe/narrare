@@ -16,7 +16,7 @@ Embedding cascade (resolved by ``EmbeddingCascadeResolver``):
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import structlog
 
@@ -292,8 +292,8 @@ async def create_memory_client(
         return NullMemoryClient()
 
     try:
-        from mem0 import (  # type: ignore[import-untyped,reportMissingTypeStubs]
-            AsyncMemory,  # type: ignore[reportUnknownVariableType]  # narrare: allow-mem0-import  reason="RULE-08: mem0 adapter location"
+        from mem0 import (  # pyright: ignore[reportMissingTypeStubs,reportMissingImports]
+            AsyncMemory,  # type: ignore[import-untyped,reportMissingTypeStubs]  # reason: mem0 has no type stubs (RULE-08: mem0 adapter location)
         )
     except ImportError:
         logger.warning(
@@ -303,13 +303,13 @@ async def create_memory_client(
         return NullMemoryClient()
 
     try:
-        client = AsyncMemory.from_config(config_dict=config)  # type: ignore[reportUnknownVariableType,reportUnknownMemberType]
+        client = cast("Any", AsyncMemory).from_config(config_dict=config)
         logger.info(
             "mem0_client_created",
             provider=provider,
             embedding_provider=config.get("embedder", {}).get("provider"),
         )
-        return client  # type: ignore[reportUnknownVariableType]
+        return client
     except Exception:
         logger.exception(
             "mem0_client_creation_failed",
@@ -359,17 +359,17 @@ def create_memory_client_sync(
         return NullMemoryClient()
 
     try:
-        from mem0 import (  # type: ignore[import-untyped,reportMissingTypeStubs]
-            AsyncMemory,  # type: ignore[reportUnknownVariableType]  # narrare: allow-mem0-import  reason="RULE-08: mem0 adapter location"
+        from mem0 import (  # pyright: ignore[reportMissingTypeStubs,reportMissingImports]
+            AsyncMemory,  # type: ignore[import-untyped,reportMissingTypeStubs]  # reason: mem0 has no type stubs (RULE-08: mem0 adapter location)
         )
     except ImportError:
         logger.warning("mem0_not_installed_sync")
         return NullMemoryClient()
 
     try:
-        client = AsyncMemory.from_config(config_dict=config)  # type: ignore[reportUnknownVariableType,reportUnknownMemberType]
+        client = cast("Any", AsyncMemory).from_config(config_dict=config)
         logger.info("mem0_client_created_sync", provider=provider)
-        return client  # type: ignore[reportUnknownVariableType]
+        return client
     except Exception:
         logger.exception("mem0_client_creation_failed_sync", provider=provider)
         return NullMemoryClient()

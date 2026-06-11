@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai.models.test import TestModel
 
@@ -113,7 +113,7 @@ class TestNarrareAgentHistoryPolicyProperty:
         agent = DummyAgent(model=TestModel(), deps_type=type(None), output_type=str)
 
         try:
-            agent.history_policy = HistoryPolicy.CONVERSATIONAL  # type: ignore[misc]
+            cast("Any", agent).history_policy = HistoryPolicy.CONVERSATIONAL
         except AttributeError:
             pass  # expected — property is read-only
         else:

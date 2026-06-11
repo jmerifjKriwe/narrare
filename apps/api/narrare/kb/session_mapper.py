@@ -11,7 +11,7 @@ Strategy:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from narrare.kb.schemas import KBEntryCreate
 
@@ -75,7 +75,7 @@ def _unflatten_fields(flat: dict[str, str]) -> dict[str, object]:
                 if not isinstance(nested, dict):
                     nested = {}
                     current[part] = nested
-                current = nested  # type: ignore[assignment]
+                current = cast("dict[str, object]", nested)
             current[parts[-1]] = value
     return result
 

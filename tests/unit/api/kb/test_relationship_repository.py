@@ -7,10 +7,13 @@ SQLAlchemy query results — no real DB required.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from narrare.kb.models import KBEntry, KBRelationship
 from narrare.kb.relationship_repository import RelationshipRepository
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -104,7 +107,7 @@ class TestGetAdjacencyMap:
 
         rows = [FakeRow(source.id, target.id)]
         session = FakeSession(rows)
-        repo = RelationshipRepository(session)  # type: ignore[arg-type]
+        repo = RelationshipRepository(cast("AsyncSession", session))
 
         result = await repo.get_adjacency_map(novel_id)
 
@@ -121,7 +124,7 @@ class TestGetAdjacencyMap:
         """No relationships returns an empty dict."""
         novel_id = _uuid()
         session = FakeSession([])
-        repo = RelationshipRepository(session)  # type: ignore[arg-type]
+        repo = RelationshipRepository(cast("AsyncSession", session))
 
         result = await repo.get_adjacency_map(novel_id)
 
@@ -142,7 +145,7 @@ class TestGetAdjacencyMap:
             FakeRow(carol.id, _uuid()),
         ]
         session = FakeSession(rows)
-        repo = RelationshipRepository(session)  # type: ignore[arg-type]
+        repo = RelationshipRepository(cast("AsyncSession", session))
 
         # Filter to only Alice and Carol
         result = await repo.get_adjacency_map(
@@ -180,7 +183,7 @@ class TestGetAdjacencyMap:
         # Only novel A relationship should appear for novel A
         rows = [FakeRow(alice.id, bob.id)]
         session = FakeSession(rows)
-        repo = RelationshipRepository(session)  # type: ignore[arg-type]
+        repo = RelationshipRepository(cast("AsyncSession", session))
 
         result = await repo.get_adjacency_map(novel_a)
 
@@ -204,7 +207,7 @@ class TestGetAdjacencyMap:
             FakeRow(alice.id, carol.id),
         ]
         session = FakeSession(rows)
-        repo = RelationshipRepository(session)  # type: ignore[arg-type]
+        repo = RelationshipRepository(cast("AsyncSession", session))
 
         result = await repo.get_adjacency_map(novel_id)
 

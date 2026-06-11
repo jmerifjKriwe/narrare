@@ -21,7 +21,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai import (
     ModelRetry,
@@ -188,4 +188,4 @@ class ExtractionAgent(NarrareAgent[ExtractionDeps, ExtractionOutput]):
     ) -> ExtractionOutput:
         """Execute the extraction agent and return structured output."""
         result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return result.output  # type: ignore[return-value]
+        return cast("ExtractionOutput", result.output)

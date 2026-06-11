@@ -9,6 +9,7 @@ See ADR-023 and ADR-023-Restimplementierung Phase 1 for context.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -20,6 +21,11 @@ from narrare_core.shared.errors import NotFoundError
 from tests.unit.api.writing._test_coauthor_helpers import (
     _make_generation_request,
 )
+
+if TYPE_CHECKING:
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.writing.repository import GenerationRepository
+    from narrare_core.memory.protocols import FeedbackCollector
 
 # ---------------------------------------------------------------------------
 # record_feedback
@@ -41,9 +47,9 @@ class TestRecordFeedback:
         feedback_service.record = AsyncMock()
 
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
-            feedback_service=feedback_service,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
+            feedback_service=cast("FeedbackCollector", feedback_service),
         )
 
         feedback_items = [
@@ -80,9 +86,9 @@ class TestRecordFeedback:
         feedback_service.record = AsyncMock()
 
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
-            feedback_service=feedback_service,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
+            feedback_service=cast("FeedbackCollector", feedback_service),
         )
 
         with pytest.raises(NotFoundError, match="GenerationRequest"):
@@ -104,8 +110,8 @@ class TestRecordFeedback:
 
         # No feedback service
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
             feedback_service=None,
         )
 
@@ -135,9 +141,9 @@ class TestRecordFeedback:
         feedback_service.record = AsyncMock()
 
         service: CoAuthorApplyService = CoAuthorApplyService(
-            repo=repo,  # type: ignore[arg-type]
-            chapter_repo=chapter_repo,  # type: ignore[arg-type]
-            feedback_service=feedback_service,  # type: ignore[arg-type]
+            repo=cast("GenerationRepository", repo),
+            chapter_repo=cast("ChapterRepository", chapter_repo),
+            feedback_service=cast("FeedbackCollector", feedback_service),
         )
 
         await service.record_feedback(

@@ -13,13 +13,13 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import structlog
 
+from narrare.settings.token_limits._validators import validate_token_overrides
 from narrare.settings.token_limits.contracts import TokenLimitOverrides
 from narrare_core.llm.cost_rates import ModelLimits, get_model_limits
-from narrare_core.shared.errors import ValidationError
 
 if TYPE_CHECKING:
     from narrare._app.config import Settings
@@ -29,25 +29,6 @@ if TYPE_CHECKING:
     )
 
 logger = structlog.get_logger(__name__)
-
-# Valid token profile names — matches narrare.settings.token_profiles
-_VALID_PROFILES: set[str] = {"quick", "balanced", "long_texts", "custom"}
-
-# Valid fields that can be overridden
-_VALID_OVERRIDE_FIELDS: set[str] = {
-    "output_limit",
-    "token_profile",
-    "tier_percentages",
-    "ws_timeout",
-    "retry_max_attempts",
-    "retry_base_delay",
-    # Legacy migration key — stores old-format per-category overrides
-    # during the SET-005 dual-write transition period.
-    "legacy_per_category_overrides",
-    # Consistency context caps
-    "max_chapter_tokens",
-    "max_kb_entries",
-}
 
 
 class TokenLimitsService:
@@ -126,7 +107,7 @@ class TokenLimitsService:
         Raises:
             ValidationError: If any field name is invalid.
         """
-        self._validate_overrides(overrides)
+        validate_token_overrides(overrides)
         await self._user_repo.update(user_id, overrides)
         logger.info(
             "user_token_limits_updated",
@@ -148,7 +129,7 @@ class TokenLimitsService:
         Raises:
             ValidationError: If any field name is invalid.
         """
-        self._validate_overrides(overrides)
+        validate_token_overrides(overrides)
         await self._project_repo.update(project_id, overrides)
         logger.info(
             "project_token_limits_updated",
@@ -179,28 +160,6 @@ class TokenLimitsService:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _validate_overrides(self, overrides: dict[str, object]) -> None:
-        """Validate override field names and values.
-
-        Args:
-            overrides: Dict of fields to validate.
-
-        Raises:
-            ValidationError: If a field name is unknown or value is invalid.
-        """
-        for key, value in overrides.items():
-            if key not in _VALID_OVERRIDE_FIELDS:
-                raise ValidationError(
-                    f"Unknown token limit override field: {key}",
-                    code="INVALID_OVERRIDE_FIELD",
-                )
-            if key == "token_profile" and value not in _VALID_PROFILES:
-                raise ValidationError(
-                    f"Invalid token profile: {value}. "
-                    f"Must be one of: {', '.join(sorted(_VALID_PROFILES))}",
-                    code="INVALID_TOKEN_PROFILE",
-                )
-
     def _apply_env_layer(self, base: TokenLimitOverrides) -> TokenLimitOverrides:
         """Merge operator-env settings on top of code defaults.
 
@@ -220,6 +179,7 @@ class TokenLimitsService:
             retry_base_delay=cfg.retry_base_delay,
             max_chapter_tokens=cfg.consistency_max_chapter_tokens,
             max_kb_entries=cfg.consistency_max_kb_entries,
+            max_selection_words=cfg.default_max_selection_words,
         )
 
     async def _apply_project_layer(
@@ -279,20 +239,28 @@ class TokenLimitsService:
         Returns:
             A new TokenLimitOverrides with overrides merged in.
         """
-        kwargs: dict[str, object] = {}
-
-        for field_name in _VALID_OVERRIDE_FIELDS:
-            current_value = getattr(base, field_name)
-            override_value = overrides.get(field_name)
-            kwargs[field_name] = override_value if override_value is not None else current_value
-
+        # Each field is extracted with cast() — the override value
+        # either has the correct type (validated by _validate_overrides
+        # at write time) or we fall back to base.* which is already typed.
         return TokenLimitOverrides(
-            output_limit=kwargs.get("output_limit", base.output_limit),  # type: ignore[arg-type]
-            token_profile=kwargs.get("token_profile", base.token_profile),  # type: ignore[arg-type]
-            tier_percentages=kwargs.get("tier_percentages", base.tier_percentages),  # type: ignore[arg-type]
-            ws_timeout=kwargs.get("ws_timeout", base.ws_timeout),  # type: ignore[arg-type]
-            retry_max_attempts=kwargs.get("retry_max_attempts", base.retry_max_attempts),  # type: ignore[arg-type]
-            retry_base_delay=kwargs.get("retry_base_delay", base.retry_base_delay),  # type: ignore[arg-type]
-            max_chapter_tokens=kwargs.get("max_chapter_tokens", base.max_chapter_tokens),  # type: ignore[arg-type]
-            max_kb_entries=kwargs.get("max_kb_entries", base.max_kb_entries),  # type: ignore[arg-type]
+            output_limit=cast("int", overrides.get("output_limit", base.output_limit)),
+            token_profile=cast("str", overrides.get("token_profile", base.token_profile)),
+            tier_percentages=cast(
+                "dict[str, float]",
+                overrides.get("tier_percentages", base.tier_percentages),
+            ),
+            ws_timeout=cast("int", overrides.get("ws_timeout", base.ws_timeout)),
+            retry_max_attempts=cast(
+                "int", overrides.get("retry_max_attempts", base.retry_max_attempts)
+            ),
+            retry_base_delay=cast(
+                "float", overrides.get("retry_base_delay", base.retry_base_delay)
+            ),
+            max_chapter_tokens=cast(
+                "int", overrides.get("max_chapter_tokens", base.max_chapter_tokens)
+            ),
+            max_kb_entries=cast("int", overrides.get("max_kb_entries", base.max_kb_entries)),
+            max_selection_words=cast(
+                "int", overrides.get("max_selection_words", base.max_selection_words)
+            ),
         )

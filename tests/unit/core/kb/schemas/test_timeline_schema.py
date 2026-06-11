@@ -9,6 +9,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.kb.schemas.timeline import (
     TimelineEvents,
     TimelineMetadata,
@@ -37,8 +39,8 @@ class TestTimelinePeriod:
         assert p.duration == "200 years"
 
     def test_extra_fields_preserved(self) -> None:
-        p = TimelinePeriod(era_name="Test", calendar_system="Lunar")  # type: ignore[call-arg]
-        assert p.calendar_system == "Lunar"  # type: ignore[attr-defined]
+        p: Any = TimelinePeriod(**cast("Any", {"era_name": "Test", "calendar_system": "Lunar"}))
+        assert p.calendar_system == "Lunar"
 
 
 class TestTimelineEvents:
@@ -62,8 +64,10 @@ class TestTimelineEvents:
         assert len(e.key_figures or []) == 2
 
     def test_extra_fields_preserved(self) -> None:
-        e = TimelineEvents(major_events=["Test"], cultural_impact="High")  # type: ignore[call-arg]
-        assert e.cultural_impact == "High"  # type: ignore[attr-defined]
+        e: Any = TimelineEvents(
+            **cast("Any", {"major_events": ["Test"], "cultural_impact": "High"})
+        )
+        assert e.cultural_impact == "High"
 
 
 class TestTimelineMetadata:
@@ -93,8 +97,8 @@ class TestTimelineMetadata:
         assert meta.events is None
 
     def test_extra_fields_preserved(self) -> None:
-        meta = TimelineMetadata(custom_tag="important")  # type: ignore[call-arg]
-        assert meta.custom_tag == "important"  # type: ignore[attr-defined]
+        meta: Any = TimelineMetadata(**cast("Any", {"custom_tag": "important"}))
+        assert meta.custom_tag == "important"
 
     def test_empty_metadata(self) -> None:
         meta = TimelineMetadata()

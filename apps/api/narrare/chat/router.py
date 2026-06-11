@@ -93,10 +93,11 @@ async def get_history(
         ChatHistoryResponse with messages, timestamps, and project info.
     """
     messages = await service.get_history(conversation_id)
+    project_id = await service.get_project_id_for_conversation(conversation_id)
 
     return ChatHistoryResponse(
         conversation_id=conversation_id,
-        project_id=UUID(int=0),  # placeholder — will be enriched in future
+        project_id=project_id if project_id is not None else UUID(int=0),
         messages=[
             ChatMessageSchema(
                 message_id=m.conversation_id,

@@ -6,6 +6,7 @@ with validation rules (no self-ref, uniqueness, entry ownership).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -13,6 +14,9 @@ import pytest
 from narrare.kb.relationship_service import RelationshipService
 from narrare.kb.schemas import KBRelationshipCreate
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+
+if TYPE_CHECKING:
+    from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
 
 # ---------------------------------------------------------------------------
 # Fake classes
@@ -123,8 +127,8 @@ def _make_service(
     rel_repo._exists_flag = rel_exists
 
     service = RelationshipService(
-        rel_repo=rel_repo,  # type: ignore[arg-type]
-        entry_repo=entry_repo,  # type: ignore[arg-type]
+        rel_repo=cast("RelationshipRepositoryProtocol", rel_repo),
+        entry_repo=cast("KBRepositoryProtocol", entry_repo),
     )
     return service, entry_repo, rel_repo
 
@@ -161,7 +165,9 @@ class TestCreate:
         entry_repo.seed(source)
         entry_repo.seed(target)
 
-        data = _make_create_data(source_id=source.id, target_id=target.id)  # type: ignore[arg-type]
+        data = _make_create_data(
+            source_id=cast("UUID", source.id), target_id=cast("UUID", target.id)
+        )
         result = await service.create(novel_id, user_id, data)
 
         assert result.source_id == source.id
@@ -188,7 +194,7 @@ class TestCreate:
         source = FakeKBEntry(novel_id=novel_id)
         entry_repo.seed(source)
 
-        data = _make_create_data(source_id=source.id, target_id=uuid4())  # type: ignore[arg-type]
+        data = _make_create_data(source_id=cast("UUID", source.id), target_id=uuid4())
 
         with pytest.raises(NotFoundError, match="KBEntry"):
             await service.create(novel_id, user_id, data)
@@ -202,7 +208,7 @@ class TestCreate:
         entry = FakeKBEntry(novel_id=novel_id)
         entry_repo.seed(entry)
 
-        data = _make_create_data(source_id=entry.id, target_id=entry.id)  # type: ignore[arg-type]
+        data = _make_create_data(source_id=cast("UUID", entry.id), target_id=cast("UUID", entry.id))
 
         with pytest.raises(ValidationError, match="Self-referencing"):
             await service.create(novel_id, user_id, data)
@@ -218,7 +224,9 @@ class TestCreate:
         entry_repo.seed(source)
         entry_repo.seed(target)
 
-        data = _make_create_data(source_id=source.id, target_id=target.id)  # type: ignore[arg-type]
+        data = _make_create_data(
+            source_id=cast("UUID", source.id), target_id=cast("UUID", target.id)
+        )
 
         with pytest.raises(ConflictError, match="already exists"):
             await service.create(novel_id, user_id, data)
@@ -242,7 +250,7 @@ class TestListForEntry:
         rel = FakeKBRelationship(source_id=entry.id, target_id=uuid4())
         rel_repo.seed_rel(rel)
 
-        result = await service.list_for_entry(novel_id, entry.id, uuid4())  # type: ignore[arg-type]
+        result = await service.list_for_entry(novel_id, cast("UUID", entry.id), uuid4())
 
         assert len(result) == 1
 

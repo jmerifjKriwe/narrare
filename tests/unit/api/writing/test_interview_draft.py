@@ -16,9 +16,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from fastapi import WebSocket
+
+    from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.context import PromptContext
 
-from typing import Any
+from typing import Any, cast
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -98,7 +101,7 @@ def _make_generator() -> tuple[InterviewDraftGenerator, SessionManager, Mock]:
     generator = InterviewDraftGenerator(
         session_manager=session_manager,
         registry=gateway,
-        composer=composer,  # type: ignore[assignment]
+        composer=cast("PromptComposer", composer),
         config=config,
     )
     return generator, session_manager, gateway
@@ -175,7 +178,7 @@ class TestDraftGeneration:
         await session_manager.add_message(session_id, "assistant", "What happens to the cats?")
         await session_manager.add_message(session_id, "user", "They learn to fly")
 
-        await generator.generate(ws, session_id)  # type: ignore[arg-type]
+        await generator.generate(cast("WebSocket", ws), session_id)
 
         # Should have text_chunk(s) and draft_done
         draft_done = [m for m in ws.sent if m["type"] == "draft_done"]
@@ -188,7 +191,7 @@ class TestDraftGeneration:
         generator, _, _ = _make_generator()
         ws = MockWebSocket()
 
-        await generator.generate(ws, uuid4())  # type: ignore[arg-type]
+        await generator.generate(cast("WebSocket", ws), uuid4())
 
         errors = [m for m in ws.sent if m["type"] == "error"]
         assert len(errors) == 1
@@ -202,7 +205,7 @@ class TestDraftGeneration:
         session_id = await session_manager.create_session(uuid4(), uuid4(), uuid4())
         # Don't add any messages
 
-        await generator.generate(ws, session_id)  # type: ignore[arg-type]
+        await generator.generate(cast("WebSocket", ws), session_id)
 
         errors = [m for m in ws.sent if m["type"] == "error"]
         assert len(errors) == 1
@@ -218,7 +221,7 @@ class TestDraftGeneration:
         await session_manager.add_message(session_id, "user", "A story")
         await session_manager.add_message(session_id, "assistant", "Question?")
 
-        await generator.generate(ws, session_id)  # type: ignore[arg-type]
+        await generator.generate(cast("WebSocket", ws), session_id)
 
         errors = [m for m in ws.sent if m["type"] == "error"]
         assert len(errors) == 1
@@ -233,7 +236,7 @@ class TestDraftGeneration:
         await session_manager.add_message(session_id, "user", "A story")
         await session_manager.add_message(session_id, "assistant", "Question?")
 
-        await generator.generate(ws, session_id)  # type: ignore[arg-type]
+        await generator.generate(cast("WebSocket", ws), session_id)
 
         # Verify draft was saved to session
         state = await session_manager.get_session(session_id)
@@ -296,7 +299,7 @@ class TestInterviewDraftTokenBudget:
         for msg in self._long_qa_pairs(30):
             await session_manager.add_message(session_id, msg["role"], msg["content"])
 
-        await generator.generate(ws, session_id)  # type: ignore[arg-type]
+        await generator.generate(cast("WebSocket", ws), session_id)
 
         # Draft should complete successfully (no crash).
         draft_done = [m for m in ws.sent if m["type"] == "draft_done"]
@@ -313,7 +316,7 @@ class TestInterviewDraftTokenBudget:
         await session_manager.add_message(session_id, "assistant", "Tell me more?")
         await session_manager.add_message(session_id, "user", "Brief detail")
 
-        await generator.generate(ws, session_id)  # type: ignore[arg-type]
+        await generator.generate(cast("WebSocket", ws), session_id)
 
         draft_done = [m for m in ws.sent if m["type"] == "draft_done"]
         assert len(draft_done) == 1

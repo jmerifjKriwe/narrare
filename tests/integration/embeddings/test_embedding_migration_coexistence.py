@@ -98,7 +98,7 @@ class TestSideBySideCoexistence:
         )
 
         assert len(results) == 1
-        assert results[0][0].model == "new-model"
+        assert results[0].embedding.model == "new-model"
 
 
 class TestSearchContinuityDuringMigration:
@@ -127,7 +127,7 @@ class TestSearchContinuityDuringMigration:
         )
 
         assert len(results) == 1
-        assert results[0][0].source_id == new_id
+        assert results[0].embedding.source_id == new_id
 
 
 class TestMigrationRollbackSafety:
@@ -177,4 +177,4 @@ class TestMigrationRollbackSafety:
             limit=10,
         )
         assert len(results) == 1
-        assert results[0][0].source_id == old_id
+        assert results[0].embedding.source_id == old_id

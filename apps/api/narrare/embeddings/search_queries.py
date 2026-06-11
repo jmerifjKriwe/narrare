@@ -9,7 +9,9 @@ RULE-06: One responsibility — query builders only, no DB execution.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from datetime import datetime
+from typing import TYPE_CHECKING, cast
 
 import sqlalchemy
 from sqlalchemy import TextClause
@@ -18,6 +20,32 @@ from narrare.embeddings.models import Embedding
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+
+# ---------------------------------------------------------------------------
+# Search result row — carries embedding + KB entry metadata
+# ---------------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class SearchRow:
+    """Enriched result from embedding vector search.
+
+    Combines the embedding row with similarity score and KB entry metadata
+    (usage tracking) needed for hybrid scoring.
+
+    Attributes:
+        embedding: The matched Embedding ORM object.
+        similarity: Cosine similarity score in [0.0, 1.0].
+        usage_count: Number of times the KB entry was referenced.
+            0 for non-kb_entry sources or unreferenced entries.
+        last_referenced_at: Timestamp of last reference, or None.
+    """
+
+    embedding: Embedding
+    similarity: float
+    usage_count: int
+    last_referenced_at: datetime | None
 
 
 def build_vector_str(embedding: list[float]) -> str:
@@ -41,6 +69,35 @@ def parse_embedding_row(row: tuple[object, ...]) -> Embedding:
         model=row[5],
         dimension=row[6],
         generated_at=row[7],
+    )
+
+
+def parse_search_row(row: tuple[object, ...]) -> SearchRow:
+    """Convert a search result row to a SearchRow.
+
+    Expects row columns in order:
+    ``(id, source_type, source_id, content_hash, embedding, model,
+    dimension, generated_at, similarity, usage_count, last_referenced_at)``
+    """
+    embedding = Embedding(
+        id=row[0],
+        source_type=row[1],
+        source_id=row[2],
+        content_hash=row[3],
+        embedding=row[4],
+        model=row[5],
+        dimension=row[6],
+        generated_at=row[7],
+    )
+    similarity_value = cast("float | None", row[8])
+    usage_value = cast("int | None", row[9])
+    referenced_at = cast("datetime | None", row[10])
+
+    return SearchRow(
+        embedding=embedding,
+        similarity=float(similarity_value) if similarity_value is not None else 0.0,
+        usage_count=int(usage_value) if usage_value is not None else 0,
+        last_referenced_at=referenced_at if isinstance(referenced_at, datetime) else None,
     )
 
 
@@ -81,10 +138,13 @@ def build_search_query(
     where_clause = " AND ".join(conditions)
 
     sql = sqlalchemy.text(
-        "SELECT id, source_type, source_id, content_hash, "  # nosec B608
-        "embedding, model, dimension, generated_at, "
-        "1 - (embedding <=> :query_vec::vector) AS similarity "
-        "FROM embeddings "
+        "SELECT e.id, e.source_type, e.source_id, e.content_hash, "  # nosec B608
+        "e.embedding, e.model, e.dimension, e.generated_at, "
+        "1 - (e.embedding <=> :query_vec::vector) AS similarity, "
+        "COALESCE(kb.usage_count, 0) AS usage_count, "
+        "kb.last_referenced_at "
+        "FROM embeddings e "
+        "LEFT JOIN kb_entries kb ON e.source_id = kb.id AND e.source_type = 'kb_entry' "
         "WHERE " + where_clause + " "
         "ORDER BY similarity DESC "
         "LIMIT :limit"

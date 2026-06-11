@@ -7,9 +7,13 @@ a fake session that captures SQL executions.
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock
 
 from narrare.kb.usage_service import ContextUsageService
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 # ---------------------------------------------------------------------------
 # Fake session — captures execute calls for assertions
@@ -56,7 +60,7 @@ class TestRecordAccept:
     async def test_accept_inserts_event_and_updates_counters(self) -> None:
         """record_accept inserts an event and updates kb_entries."""
         session = FakeSession()
-        service = ContextUsageService(session)  # type: ignore[arg-type]  # type: ignore[arg-type]
+        service = ContextUsageService(cast("AsyncSession", session))
 
         novel_id = uuid.uuid4()
         entry_id = uuid.uuid4()
@@ -82,7 +86,7 @@ class TestRecordAccept:
     async def test_accept_without_chapter_id(self) -> None:
         """record_accept works with chapter_id=None."""
         session = FakeSession()
-        service = ContextUsageService(session)  # type: ignore[arg-type]
+        service = ContextUsageService(cast("AsyncSession", session))
 
         await service.record_accept(uuid.uuid4(), uuid.uuid4(), None, "search")
 
@@ -92,7 +96,7 @@ class TestRecordAccept:
     async def test_double_accept_increments_twice(self) -> None:
         """Two accepts result in two counter updates."""
         session = FakeSession()
-        service = ContextUsageService(session)  # type: ignore[arg-type]
+        service = ContextUsageService(cast("AsyncSession", session))
 
         entry_id = uuid.uuid4()
 
@@ -112,7 +116,7 @@ class TestRecordDismiss:
     async def test_dismiss_inserts_event_only(self) -> None:
         """record_dismiss inserts an event but does NOT update kb_entries."""
         session = FakeSession()
-        service = ContextUsageService(session)  # type: ignore[arg-type]
+        service = ContextUsageService(cast("AsyncSession", session))
 
         novel_id = uuid.uuid4()
         entry_id = uuid.uuid4()
@@ -130,7 +134,7 @@ class TestRecordDismiss:
     async def test_dismiss_does_not_update_usage_count(self) -> None:
         """Verify no UPDATE kb_entries on dismiss."""
         session = FakeSession()
-        service = ContextUsageService(session)  # type: ignore[arg-type]
+        service = ContextUsageService(cast("AsyncSession", session))
 
         await service.record_dismiss(uuid.uuid4(), uuid.uuid4(), None, "search")
 
@@ -144,7 +148,7 @@ class TestGetUsageStats:
     async def test_stats_returns_accept_and_dismiss_counts(self) -> None:
         """get_usage_stats returns correct accept/dismiss counts."""
         session = FakeSession()
-        service = ContextUsageService(session)  # type: ignore[arg-type]
+        service = ContextUsageService(cast("AsyncSession", session))
 
         entry_id = uuid.uuid4()
 
@@ -161,7 +165,7 @@ class TestGetUsageStats:
         ) -> FakeResult:
             return fake_result
 
-        session.execute = mock_execute  # type: ignore[assignment]
+        cast("Any", session).execute = mock_execute
 
         stats = await service.get_usage_stats(entry_id)
 
@@ -170,7 +174,7 @@ class TestGetUsageStats:
     async def test_stats_returns_zeros_when_no_events(self) -> None:
         """get_usage_stats returns zeros for entries with no events."""
         session = FakeSession()
-        service = ContextUsageService(session)  # type: ignore[arg-type]
+        service = ContextUsageService(cast("AsyncSession", session))
 
         fake_result = FakeResult([])
 
@@ -179,7 +183,7 @@ class TestGetUsageStats:
         ) -> FakeResult:
             return fake_result
 
-        session.execute = mock_execute  # type: ignore[assignment]
+        cast("Any", session).execute = mock_execute
 
         stats = await service.get_usage_stats(uuid.uuid4())
 
@@ -188,7 +192,7 @@ class TestGetUsageStats:
     async def test_stats_only_counts_known_actions(self) -> None:
         """get_usage_stats ignores unknown action types."""
         session = FakeSession()
-        service = ContextUsageService(session)  # type: ignore[arg-type]
+        service = ContextUsageService(cast("AsyncSession", session))
 
         # pinned is in the DB but not in our stats dict
         fake_result = FakeResult(
@@ -203,7 +207,7 @@ class TestGetUsageStats:
         ) -> FakeResult:
             return fake_result
 
-        session.execute = mock_execute  # type: ignore[assignment]
+        cast("Any", session).execute = mock_execute
 
         stats = await service.get_usage_stats(uuid.uuid4())
 

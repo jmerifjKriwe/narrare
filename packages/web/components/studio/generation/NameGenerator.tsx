@@ -143,7 +143,7 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
         )}
       </div>
 
-      <NameResults results={results} isLoading={isPending} />
+      <NameResults results={results} isLoading={isPending} novelId={novelId} nameType={nameType} />
     </div>
   );
 }

@@ -51,6 +51,8 @@ export interface KBEntryCreateRequest {
   tags?: string[];
   status?: KBEntryStatus;
   metadata?: Record<string, unknown>;
+  source?: string;
+  review_status?: string;
 }
 
 export interface KBEntryUpdateRequest {

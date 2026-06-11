@@ -24,7 +24,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai import (
     ModelRetry,
@@ -155,10 +155,10 @@ class KBAssistAgent(NarrareAgent[KBAssistDeps, KBAssistOutput]):
         During streaming (ctx.partial_output), returns minimal result.
         """
         if ctx.partial_output:
-            return KBAssistOutput(mode=mode)  # type: ignore[arg-type]
+            return KBAssistOutput(mode=cast("Any", mode))
 
         return KBAssistOutput(
-            mode=mode,  # type: ignore[arg-type]
+            mode=cast("Any", mode),
             question=question,
             field_key=field_key,
             suggestion=suggestion,
@@ -177,4 +177,4 @@ class KBAssistAgent(NarrareAgent[KBAssistDeps, KBAssistOutput]):
     ) -> KBAssistOutput:
         """Execute the assist agent and return structured output."""
         result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return result.output  # type: ignore[return-value]
+        return cast("KBAssistOutput", result.output)

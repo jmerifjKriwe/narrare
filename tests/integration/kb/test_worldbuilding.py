@@ -7,7 +7,7 @@ WorldbuildingService via dependency_overrides.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -20,6 +20,8 @@ from narrare.kb.worldbuilding_contracts import (
 from narrare.kb.worldbuilding_service import WorldbuildingService
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from fastapi import FastAPI
     from httpx import AsyncClient
 
@@ -88,7 +90,9 @@ class TestAnalyzeEndpoint:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_worldbuilding_service] = lambda: mock_worldbuilding_service  # type: ignore[assignment]
+        app.dependency_overrides[get_worldbuilding_service] = cast(
+            "Callable[[], Any]", lambda: mock_worldbuilding_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/worldbuilding/analyze",
@@ -115,7 +119,9 @@ class TestAnalyzeEndpoint:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_worldbuilding_service] = lambda: mock_worldbuilding_service  # type: ignore[assignment]
+        app.dependency_overrides[get_worldbuilding_service] = cast(
+            "Callable[[], Any]", lambda: mock_worldbuilding_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/worldbuilding/analyze",
@@ -145,7 +151,9 @@ class TestApplyEndpoint:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_worldbuilding_service] = lambda: mock_worldbuilding_service  # type: ignore[assignment]
+        app.dependency_overrides[get_worldbuilding_service] = cast(
+            "Callable[[], Any]", lambda: mock_worldbuilding_service
+        )
 
         # The apply endpoint requires the analysis response body
         analysis_body = {
@@ -186,7 +194,9 @@ class TestApplyEndpoint:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_worldbuilding_service] = lambda: mock_worldbuilding_service  # type: ignore[assignment]
+        app.dependency_overrides[get_worldbuilding_service] = cast(
+            "Callable[[], Any]", lambda: mock_worldbuilding_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/worldbuilding/apply",
@@ -220,7 +230,9 @@ class TestApplyEndpoint:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_worldbuilding_service] = lambda: mock_worldbuilding_service  # type: ignore[assignment]
+        app.dependency_overrides[get_worldbuilding_service] = cast(
+            "Callable[[], Any]", lambda: mock_worldbuilding_service
+        )
 
         # Missing analysis field
         resp = await client.post(

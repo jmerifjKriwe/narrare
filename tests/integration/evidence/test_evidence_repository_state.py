@@ -9,7 +9,7 @@ See ADR-042 § Repository for the contract design.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest_asyncio
 
@@ -33,18 +33,25 @@ if TYPE_CHECKING:
 def make_invocation_evidence(**overrides: object) -> FeatureInvocationEvidence:
     """Create a ``FeatureInvocationEvidence`` with sensible defaults."""
     return FeatureInvocationEvidence(
-        feature_id=overrides.pop("feature_id", "writing"),  # type: ignore[arg-type]
-        intent=overrides.pop("intent", "write"),  # type: ignore[arg-type]
-        mode=overrides.pop("mode", "chat"),  # type: ignore[arg-type]
-        prompt_route=overrides.pop("prompt_route", "writing/en/chat"),  # type: ignore[arg-type]
-        preference_status=overrides.pop("preference_status", PreferenceStatus.NOT_APPLICABLE),  # type: ignore[arg-type]
-        kb_suggested_status=overrides.pop("kb_suggested_status", KBSuggestedStatus.NOT_APPLICABLE),  # type: ignore[arg-type]
-        voice_profile_status=overrides.pop("voice_profile_status", None),  # type: ignore[arg-type]
-        output_budget_profile=overrides.pop("output_budget_profile", None),  # type: ignore[arg-type]
-        final_prompt_validated=overrides.pop("final_prompt_validated", True),  # type: ignore[arg-type]
-        validation_errors=overrides.pop("validation_errors", ()),  # type: ignore[arg-type]
-        audit_state=overrides.pop("audit_state", AuditState.ADOPTED),  # type: ignore[arg-type]
-        **overrides,  # type: ignore[arg-type]
+        feature_id=cast("str", overrides.pop("feature_id", "writing")),
+        intent=cast("str", overrides.pop("intent", "write")),
+        mode=cast("str", overrides.pop("mode", "chat")),
+        prompt_route=cast("str", overrides.pop("prompt_route", "writing/en/chat")),
+        preference_status=cast(
+            "PreferenceStatus", overrides.pop("preference_status", PreferenceStatus.NOT_APPLICABLE)
+        ),
+        kb_suggested_status=cast(
+            "KBSuggestedStatus",
+            overrides.pop("kb_suggested_status", KBSuggestedStatus.NOT_APPLICABLE),
+        ),
+        voice_profile_status=cast(
+            "VoiceProfileStatus | None", overrides.pop("voice_profile_status", None)
+        ),
+        output_budget_profile=cast("str | None", overrides.pop("output_budget_profile", None)),
+        final_prompt_validated=cast("bool", overrides.pop("final_prompt_validated", True)),
+        validation_errors=cast("tuple[str, ...]", overrides.pop("validation_errors", ())),
+        audit_state=cast("AuditState", overrides.pop("audit_state", AuditState.ADOPTED)),
+        **cast("Any", overrides),
     )
 
 

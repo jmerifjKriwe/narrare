@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -13,7 +13,10 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID
 
+    from narrare.chat.chat_service import ChatService
+    from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare_core.agents.base import StreamEvent
+    from narrare_core.chat.conversation_store import InMemoryConversationStore
 
 from narrare_core.chat.contracts import ChatRequest
 
@@ -97,7 +100,7 @@ def mock_config() -> MagicMock:
 
 
 @pytest.fixture
-def in_memory_store():
+def in_memory_store() -> InMemoryConversationStore:
     """InMemoryConversationStore — no DB needed for unit tests."""
     from narrare_core.chat.conversation_store import InMemoryConversationStore
 
@@ -108,15 +111,15 @@ def in_memory_store():
 def service(
     mock_composer: AsyncMock,
     mock_registry: AsyncMock,
-    in_memory_store: MagicMock,
+    in_memory_store: InMemoryConversationStore,
     mock_config: MagicMock,
-) -> object:
+) -> ChatService:
     """Create a ``ChatService`` with fully mocked dependencies."""
     from narrare.chat.chat_service import ChatService
 
     return ChatService(
         prompt_composer=mock_composer,
         model_registry=mock_registry,
-        conversation_store=in_memory_store,
+        conversation_store=cast("SQLAlchemyConversationStore", in_memory_store),
         config=mock_config,
     )

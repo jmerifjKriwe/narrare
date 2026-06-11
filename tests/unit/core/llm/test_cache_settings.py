@@ -9,6 +9,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.llm import CacheSettings, ResolvedModelConfig
 from narrare_core.llm._providers.cache_settings import build_model_settings
 
@@ -31,7 +33,7 @@ class TestCacheSettings:
         """CacheSettings is frozen (immutable)."""
         cs = CacheSettings()
         try:
-            cs.enabled = False  # type: ignore[misc]
+            cast("Any", cs).enabled = False
             raise AssertionError("Should have raised FrozenInstanceError")
         except AttributeError:
             pass  # expected

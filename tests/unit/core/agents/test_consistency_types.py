@@ -5,6 +5,8 @@ See consistency_types.py CONS-001 — cross-entity and cross-chapter consistency
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from pydantic import ValidationError
 
@@ -60,13 +62,15 @@ def _make_issue(**overrides: object) -> ConsistencyIssue:
     desc = "Anna is described as blue-eyed in Ch.3 but green-eyed in Ch.1."
     facts = ["Anna has green eyes (Ch.1)", "Anna has blue eyes (Ch.3)"]
     return ConsistencyIssue(
-        check_type=overrides.get("check_type", ConsistencyCheckType.CHARACTER),  # type: ignore[arg-type]
-        severity=overrides.get("severity", ConsistencySeverity.ERROR),  # type: ignore[arg-type]
-        description=overrides.get("description", desc),  # type: ignore[arg-type]
-        locations=overrides.get("locations", ["Chapter 1", "Chapter 3"]),  # type: ignore[arg-type]
-        conflicting_facts=overrides.get("conflicting_facts", facts),  # type: ignore[arg-type]
-        suggestion=overrides.get("suggestion"),  # type: ignore[arg-type]
-        confidence=overrides.get("confidence", 0.92),  # type: ignore[arg-type]
+        check_type=cast(
+            "ConsistencyCheckType", overrides.get("check_type", ConsistencyCheckType.CHARACTER)
+        ),
+        severity=cast("ConsistencySeverity", overrides.get("severity", ConsistencySeverity.ERROR)),
+        description=cast("str", overrides.get("description", desc)),
+        locations=cast("list[str]", overrides.get("locations", ["Chapter 1", "Chapter 3"])),
+        conflicting_facts=cast("list[str]", overrides.get("conflicting_facts", facts)),
+        suggestion=cast("str | None", overrides.get("suggestion")),
+        confidence=cast("float", overrides.get("confidence", 0.92)),
     )
 
 

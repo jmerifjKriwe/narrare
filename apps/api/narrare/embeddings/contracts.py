@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.embeddings.models import Embedding
+    from narrare.embeddings.search_queries import SearchRow
     from narrare_core.embeddings.store import EmbeddingStats
 
 
@@ -59,7 +60,7 @@ class EmbeddingRepositoryProtocol(Protocol):
         threshold: float = 0.7,
         limit: int = 20,
         model: str | None = None,
-    ) -> list[tuple[Embedding, float]]:
+    ) -> list[SearchRow]:
         """Search for similar embeddings using cosine distance.
 
         Args:
@@ -71,8 +72,9 @@ class EmbeddingRepositoryProtocol(Protocol):
             model: Optional model filter.
 
         Returns:
-            List of (Embedding, similarity_score) tuples ordered by
-            similarity descending.
+            List of SearchRow objects ordered by similarity descending.
+            Each row includes KB entry metadata (usage_count, last_referenced_at)
+            for hybrid scoring.
         """
         ...
 

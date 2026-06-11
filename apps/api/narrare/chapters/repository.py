@@ -183,7 +183,7 @@ class ChapterRepository(BaseRepository):
             )
         )
         await self._flush()
-        return result.rowcount  # type: ignore[union-attr]
+        return getattr(result, "rowcount", 0)
 
 
 def count_words(text: str) -> int:

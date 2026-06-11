@@ -11,6 +11,7 @@ Covers:
 from __future__ import annotations
 
 import json
+from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
@@ -69,7 +70,7 @@ class TestOutputBudget:
         """OutputBudget is immutable."""
         budget = OutputBudget(max_tokens=100)
         with pytest.raises(ValidationError, match="frozen"):
-            budget.max_tokens = 200  # type: ignore[misc]
+            cast("Any", budget).max_tokens = 200
 
     def test_known_profiles(self) -> None:
         """Known profiles from PROFILE_OUTPUT_LIMITS are valid values."""
@@ -149,7 +150,7 @@ class TestOutputBudgetDecision:
             reason="default budget",
         )
         with pytest.raises(ValidationError, match="frozen"):
-            decision.source = "changed"  # type: ignore[misc]
+            cast("Any", decision).source = "changed"
 
     def test_decision_json_roundtrip(self) -> None:
         """Full decision survives JSON roundtrip."""

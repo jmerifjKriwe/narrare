@@ -40,6 +40,7 @@ class KBRepositoryProtocol(Protocol):
         novel_id: uuid.UUID,
         entity_type: str | None = None,
         tags: list[str] | None = None,
+        review_status: str | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[KBEntry], int]: ...
@@ -76,6 +77,7 @@ class KBServiceProtocol(Protocol):
         user_id: uuid.UUID,
         entity_type: str | None = None,
         tags: list[str] | None = None,
+        review_status: str | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[KBEntry], int]: ...

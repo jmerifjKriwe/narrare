@@ -84,10 +84,13 @@ class KBMergeService:
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
 
-        # Get model from registry
+        # Get model from registry — None config falls back to default
         from narrare_core.agents.merge_agent import KBMergeAgent, KBMergeDeps
 
-        model = await self._registry.get_model(self._config)  # type: ignore[arg-type]
+        if self._config is None:
+            raise NotFoundError("Model config", identifier="no_model_config")
+
+        model = await self._registry.get_model(self._config)
 
         # Record invocation evidence (ADR-040)
         from narrare._app.invocation_context import safe_record_evidence

@@ -9,6 +9,8 @@ Tests cover:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.kb.schemas import (
     LocationFeatures,
     LocationHistory,
@@ -33,15 +35,15 @@ class TestLocationFeatures:
             atmosphere="Mysterious",
         )
         assert fields.architecture == "Gothic"
-        assert "river" in fields.natural_features  # type: ignore[operator]
+        assert fields.natural_features is not None
+        assert "river" in fields.natural_features
         assert fields.atmosphere == "Mysterious"
 
     def test_extra_fields_preserved(self) -> None:
-        fields = LocationFeatures(
-            architecture="Baroque",
-            weather="rainy",  # type: ignore[call-arg]
+        fields: Any = LocationFeatures(
+            **cast("Any", {"architecture": "Baroque", "weather": "rainy"})
         )
-        assert fields.weather == "rainy"  # type: ignore[attr-defined]
+        assert fields.weather == "rainy"
 
     def test_model_config_extra_allow(self) -> None:
         assert LocationFeatures.model_config.get("extra") == "allow"
@@ -123,21 +125,19 @@ class TestLocationMetadataEnriched:
         assert meta.history is None
 
     def test_extra_fields_on_metadata(self) -> None:
-        meta = LocationMetadata(
-            location_type="city",
-            magic_level="high",  # type: ignore[call-arg]
+        meta: Any = LocationMetadata(
+            **cast("Any", {"location_type": "city", "magic_level": "high"})
         )
-        assert meta.magic_level == "high"  # type: ignore[attr-defined]
+        assert meta.magic_level == "high"
 
     def test_extra_fields_in_group(self) -> None:
-        meta = LocationMetadata(
+        meta: Any = LocationMetadata(
             features=LocationFeatures(
-                architecture="Modern",
-                hidden_ruins=True,  # type: ignore[call-arg]
+                **cast("Any", {"architecture": "Modern", "hidden_ruins": True})
             ),
         )
         assert meta.features is not None
-        assert meta.features.hidden_ruins is True  # type: ignore[attr-defined]
+        assert meta.features.hidden_ruins is True
 
     def test_empty_metadata(self) -> None:
         meta = LocationMetadata()

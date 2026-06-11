@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -27,7 +28,7 @@ class TestNarrareObservability:
     async def test_for_run_returns_fresh_instance(self) -> None:
         """for_run erzeugt frische Instanz."""
         obs = NarrareObservability()
-        fresh = await obs.for_run(_FakeRunContext())  # type: ignore[arg-type]
+        fresh = await obs.for_run(cast("Any", _FakeRunContext()))
         assert fresh is not obs
         assert isinstance(fresh, NarrareObservability)
 
@@ -35,8 +36,8 @@ class TestNarrareObservability:
         """before_model_request setzt _start_time."""
         obs = NarrareObservability()
         result = await obs.before_model_request(
-            None,  # type: ignore[arg-type]
-            None,  # type: ignore[arg-type]
+            cast("Any", None),
+            cast("Any", None),
         )
         assert obs._start_time > 0
         assert result is None  # passes through
@@ -56,9 +57,9 @@ class TestNarrareObservability:
             usage = FakeUsage()
 
         await obs.after_model_request(
-            FakeCtx(),  # type: ignore[arg-type]
-            request_context=None,  # type: ignore[arg-type]
-            response=None,  # type: ignore[arg-type]
+            cast("Any", FakeCtx()),
+            request_context=cast("Any", None),
+            response=cast("Any", None),
         )
         mock_record.assert_called_once()
 
@@ -72,8 +73,8 @@ class TestNarrareObservability:
 
         with pytest.raises(ValueError, match="test error"):
             await obs.on_model_request_error(
-                None,  # type: ignore[arg-type]
-                request_context=None,  # type: ignore[arg-type]
+                cast("Any", None),
+                request_context=cast("Any", None),
                 error=ValueError("test error"),
             )
         mock_record.assert_called_once()
@@ -94,7 +95,7 @@ class TestNarrareObservability:
             model_config = FakeModelConfig()
 
         ctx = _FakeRunContext(deps=FakeDeps())
-        fresh = await obs.for_run(ctx)  # type: ignore[arg-type]
+        fresh = await obs.for_run(cast("Any", ctx))
 
         assert fresh._provider_name == "test_provider"
         assert fresh._model_id == "test-model-v1"
@@ -113,7 +114,7 @@ class TestNarrareObservability:
             pass
 
         ctx = _FakeRunContext(deps=FakeDepsWithoutConfig())
-        fresh = await obs.for_run(ctx)  # type: ignore[arg-type]
+        fresh = await obs.for_run(cast("Any", ctx))
 
         # Kein model_config in deps → Werte bleiben unverändert (leer)
         assert fresh._provider_name == ""
@@ -151,9 +152,9 @@ class TestNarrareObservability:
             usage = FakeUsage()
 
         await obs.after_model_request(
-            FakeCtx(),  # type: ignore[arg-type]
-            request_context=None,  # type: ignore[arg-type]
-            response=None,  # type: ignore[arg-type]
+            cast("Any", FakeCtx()),
+            request_context=cast("Any", None),
+            response=cast("Any", None),
         )
 
         # record_cache_usage wurde mit extrahierten Werten aufgerufen

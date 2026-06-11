@@ -78,7 +78,10 @@ class CharacterArcService:
         # Get model from registry — None config falls back to default
         from narrare_core.agents.character_arc_agent import CharacterArcAgent, CharacterArcDeps
 
-        model = await self._registry.get_model(self._config)  # type: ignore[arg-type]
+        if self._config is None:
+            raise NotFoundError("Model config", identifier="no_model_config")
+
+        model = await self._registry.get_model(self._config)
 
         # Build agent dependencies
         deps = CharacterArcDeps(

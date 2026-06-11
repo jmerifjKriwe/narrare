@@ -74,6 +74,7 @@ class KBRepository(BaseRepository):
         novel_id: uuid.UUID,
         entity_type: str | None = None,
         tags: list[str] | None = None,
+        review_status: str | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[KBEntry], int]:
@@ -88,6 +89,10 @@ class KBRepository(BaseRepository):
         if tags:
             query = query.where(KBEntry.tags.contains(tags))
             count_query = count_query.where(KBEntry.tags.contains(tags))
+
+        if review_status is not None:
+            query = query.where(KBEntry.review_status == review_status)
+            count_query = count_query.where(KBEntry.review_status == review_status)
 
         # Total count
         total_result = await self._session.execute(count_query)

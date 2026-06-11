@@ -9,7 +9,7 @@ dedup and generated names are flagged if they match existing KB entries.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
@@ -166,7 +166,7 @@ class NameGeneratorService:
             cleaned = cleaned.strip()
 
         try:
-            raw = json.loads(cleaned)  # type: ignore[reportUnknownVariableType]
+            raw: Any = json.loads(cleaned)
         except json.JSONDecodeError:
             logger.warning(
                 "name_parse_failed_json",
@@ -175,27 +175,37 @@ class NameGeneratorService:
             )
             return []
 
-        raw_items: list[object]
+        # Collect raw items as fully typed dicts.
+        # isinstance() on ``Any`` narrows to ``list[Unknown]`` / ``dict[str, Unknown]``,
+        # so we use ``cast()`` to get properly typed containers.
+        raw_items: list[dict[str, Any]] = []
         if isinstance(raw, list):
-            raw_items = raw  # type: ignore[reportUnknownVariableType]
+            raw_list: list[Any] = cast("list[Any]", raw)
+            for item in raw_list:
+                if isinstance(item, dict):
+                    raw_items.append(cast("dict[str, Any]", item))
         elif isinstance(raw, dict):
-            names_key = raw.get("names", [])  # type: ignore[reportUnknownVariableType,reportUnknownMemberType]
-            raw_items = names_key if isinstance(names_key, list) else [raw]  # type: ignore[reportUnknownVariableType]
-        else:
-            raw_items = [raw]
+            raw_dict: dict[str, Any] = cast("dict[str, Any]", raw)
+            names_key = raw_dict.get("names", [])
+            if isinstance(names_key, list):
+                names_list: list[Any] = cast("list[Any]", names_key)
+                for item in names_list:
+                    if isinstance(item, dict):
+                        raw_items.append(cast("dict[str, Any]", item))
+            else:
+                raw_items.append(raw_dict)
+        # else: non-dict non-list JSON → empty result (no names to parse)
 
         names: list[GeneratedName] = []
         for item in raw_items:
-            if not isinstance(item, dict):
-                continue
-            name_val = item.get("name", "")  # type: ignore[reportUnknownMemberType]
-            pron_val = item.get("pronunciation")  # type: ignore[reportUnknownMemberType]
-            mean_val = item.get("meaning")  # type: ignore[reportUnknownMemberType]
+            name_val: Any = item.get("name", "")
+            pron_val: Any = item.get("pronunciation")
+            mean_val: Any = item.get("meaning")
             names.append(
                 GeneratedName(
-                    name=str(name_val) if name_val is not None else "",  # type: ignore[reportUnknownArgumentType]
-                    pronunciation=str(pron_val) if pron_val is not None else None,  # type: ignore[reportUnknownArgumentType]
-                    meaning=str(mean_val) if mean_val is not None else None,  # type: ignore[reportUnknownArgumentType]
+                    name=str(name_val) if name_val is not None else "",
+                    pronunciation=str(pron_val) if pron_val is not None else None,
+                    meaning=str(mean_val) if mean_val is not None else None,
                     type=request.name_type.value,
                     name_style=request.name_style,
                 ),

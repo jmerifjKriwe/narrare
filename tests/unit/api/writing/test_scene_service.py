@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import pytest
 
 from narrare.writing.scene_service import SceneService
+
+if TYPE_CHECKING:
+    from narrare.writing.models import GenerationRequest
+    from narrare.writing.repository import GenerationRepository
+    from narrare_core.memory.protocols import FeedbackCollector
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -43,9 +49,9 @@ class _FakeRepo:
 class TestNextScene:
     @pytest.mark.asyncio
     async def test_next_scene_returns_current_state(self) -> None:
-        service = SceneService(repo=_FakeRepo())  # type: ignore[arg-type]
+        service = SceneService(repo=cast("GenerationRepository", _FakeRepo()))
         request = _FakeRequestModel()
-        result = await service.next_scene(request)  # type: ignore[arg-type]
+        result = await service.next_scene(cast("GenerationRequest", request))
         assert result.request_id == request.id
         assert result.scene_number == 1
         assert result.status == "streaming"
@@ -54,9 +60,9 @@ class TestNextScene:
 class TestAcceptScene:
     @pytest.mark.asyncio
     async def test_accept_scene_returns_accept_response(self) -> None:
-        service = SceneService(repo=_FakeRepo())  # type: ignore[arg-type]
+        service = SceneService(repo=cast("GenerationRepository", _FakeRepo()))
         request = _FakeRequestModel()
-        result = await service.accept_scene(request, scene_number=1)  # type: ignore[arg-type]
+        result = await service.accept_scene(cast("GenerationRequest", request), scene_number=1)
         assert result.request_id == request.id
         assert result.chapter_id == request.chapter_id
         assert result.word_count == 150
@@ -64,14 +70,19 @@ class TestAcceptScene:
     @pytest.mark.asyncio
     async def test_accept_scene_records_feedback_when_available(self) -> None:
         feedback = _FakeFeedbackCollector()
-        service = SceneService(repo=_FakeRepo(), feedback_service=feedback)  # type: ignore[arg-type]
+        service = SceneService(
+            repo=cast("GenerationRepository", _FakeRepo()),
+            feedback_service=cast("FeedbackCollector", feedback),
+        )
         request = _FakeRequestModel()
-        await service.accept_scene(request, scene_number=1)  # type: ignore[arg-type]
+        await service.accept_scene(cast("GenerationRequest", request), scene_number=1)
         assert len(feedback.recorded) == 1
 
     @pytest.mark.asyncio
     async def test_accept_scene_no_feedback_when_none(self) -> None:
-        service = SceneService(repo=_FakeRepo(), feedback_service=None)  # type: ignore[arg-type]
+        service = SceneService(
+            repo=cast("GenerationRepository", _FakeRepo()), feedback_service=None
+        )
         request = _FakeRequestModel()
-        result = await service.accept_scene(request, scene_number=1)  # type: ignore[arg-type]
+        result = await service.accept_scene(cast("GenerationRequest", request), scene_number=1)
         assert result.request_id == request.id

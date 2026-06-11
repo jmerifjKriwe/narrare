@@ -38,14 +38,14 @@ def service(
     mock_providers_repo = AsyncMock()
     mock_ai_settings_repo = AsyncMock()
     return SetupService(
-        session=None,  # type: ignore[arg-type]
-        novel_repo=None,  # type: ignore[arg-type]
-        user_settings_repo=None,  # type: ignore[arg-type]
-        project_settings_repo=None,  # type: ignore[arg-type]
+        session=None,  # pyright: ignore[reportArgumentType]
+        novel_repo=None,  # pyright: ignore[reportArgumentType]
+        user_settings_repo=None,  # pyright: ignore[reportArgumentType]
+        project_settings_repo=None,  # pyright: ignore[reportArgumentType]
         provider_service=fake_provider_service,
         demo_loader=fake_demo_loader,
-        providers_repo=mock_providers_repo,  # type: ignore[arg-type]
-        ai_settings_repo=mock_ai_settings_repo,  # type: ignore[arg-type]
+        providers_repo=mock_providers_repo,
+        ai_settings_repo=mock_ai_settings_repo,
     )
 
 

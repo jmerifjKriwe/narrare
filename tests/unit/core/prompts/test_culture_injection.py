@@ -8,6 +8,8 @@ Verifies that:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.llm import LLMIntent
 from narrare_core.prompts.composer import PromptComposer
 from narrare_core.prompts.context import PromptContext
@@ -75,7 +77,7 @@ class TestCultureInjection:
             resolved=_make_resolved(system="Write a chapter. {{culture_guidelines}}\nEnd."),
             culture_content=culture_text,
         )
-        composer = PromptComposer(registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", registry))
 
         ctx = PromptContext(language="de", extra={"name_style": "german_literary"})
         result = await composer.build(LLMIntent.WRITE, ctx)
@@ -91,7 +93,7 @@ class TestCultureInjection:
         registry = FakePromptRegistry(
             resolved=_make_resolved(system="Write. {{culture_guidelines}}\nDone."),
         )
-        composer = PromptComposer(registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", registry))
 
         ctx = PromptContext(language="en")
         result = await composer.build(LLMIntent.WRITE, ctx)
@@ -105,7 +107,7 @@ class TestCultureInjection:
         registry = FakePromptRegistry(
             resolved=_make_resolved(system="Write a chapter."),
         )
-        composer = PromptComposer(registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", registry))
 
         ctx = PromptContext(language="en", extra={"name_style": "german_literary"})
         result = await composer.build(LLMIntent.WRITE, ctx)
@@ -121,7 +123,7 @@ class TestCultureInjection:
             resolved=_make_resolved(system="Write. {{culture_guidelines}}"),
             culture_content="French style.",
         )
-        composer = PromptComposer(registry)  # type: ignore[arg-type]
+        composer = PromptComposer(cast("Any", registry))
 
         ctx = PromptContext(language="fr", extra={"name_style": "french_existential"})
         await composer.build(LLMIntent.WRITE, ctx)

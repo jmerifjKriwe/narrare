@@ -113,6 +113,9 @@
     "pronunciation": "Prononciation",
     "meaning": "Signification",
     "saveToKb": "Sauver dans BC",
+    "saving": "Enregistrement...",
+    "saved": "Enregistré",
+    "saveError": "Erreur",
     "close": "Fermer"
   },
   "bubble": {

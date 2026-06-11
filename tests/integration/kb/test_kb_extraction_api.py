@@ -7,7 +7,7 @@ ExtractionService via dependency_overrides.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -18,6 +18,8 @@ from narrare.kb.schemas_extraction import ApplyExtractionEntryResult, ApplyExtra
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from fastapi import FastAPI
     from httpx import AsyncClient
 
@@ -115,7 +117,9 @@ class TestExtractChapter:
         novel_id = uuid4()
         chapter_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: mock_extraction_service  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
@@ -148,7 +152,9 @@ class TestExtractChapter:
         novel_id = uuid4()
         chapter_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: mock_extraction_service_empty  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service_empty
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
@@ -172,7 +178,9 @@ class TestExtractChapter:
         novel_id = uuid4()
         chapter_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: mock_extraction_service  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/extract/{chapter_id}",
@@ -192,7 +200,9 @@ class TestExtractChapter:
 
         chapter_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: mock_extraction_service  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/not-a-uuid/kb/extract/{chapter_id}",
@@ -222,7 +232,9 @@ class TestApplyExtraction:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: mock_extraction_service  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/extract/apply",
@@ -262,9 +274,9 @@ class TestApplyExtraction:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: (
-            mock_extraction_service_empty_apply
-        )  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service_empty_apply
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/extract/apply",
@@ -296,7 +308,9 @@ class TestApplyExtraction:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: mock_extraction_service  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/extract/apply",
@@ -325,7 +339,9 @@ class TestApplyExtraction:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: mock_extraction_service  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service
+        )
 
         # Missing "items" field entirely
         resp = await client.post(
@@ -348,7 +364,9 @@ class TestApplyExtraction:
 
         novel_id = uuid4()
 
-        app.dependency_overrides[get_extraction_service] = lambda: mock_extraction_service  # type: ignore[assignment]
+        app.dependency_overrides[get_extraction_service] = cast(
+            "Callable[[], Any]", lambda: mock_extraction_service
+        )
 
         resp = await client.post(
             f"/api/v1/novels/{novel_id}/kb/extract/apply",

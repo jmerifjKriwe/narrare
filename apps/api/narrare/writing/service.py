@@ -15,7 +15,7 @@ Implements :class:`WritingServiceProtocol` from ``contracts.py`` (RULE-03).
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
 import structlog
@@ -123,7 +123,7 @@ class WritingService:
     ) -> AsyncIterator[StreamChunk]:
         """Stream generated text chunks for an existing request."""
         from narrare_core.writing._enums import GenerationMode
-        from narrare_core.writing.models import GenerationRequest
+        from narrare_core.writing.models import GenerationRequest as GenRequest
 
         request_model = await self._get_validated_request(request_id, user_id)
         await self._repo.update_status(
@@ -135,7 +135,7 @@ class WritingService:
         )
 
         mode = GenerationMode(request_model.mode)
-        pipeline_request = GenerationRequest(
+        pipeline_request = GenRequest(
             id=request_model.id,
             chapter_id=request_model.chapter_id,
             project_id=request_model.novel_id,
@@ -167,7 +167,7 @@ class WritingService:
                 base_url=self._base_url,
                 custom_tone_instructions=custom_tone_instructions,
                 kb_relationships=kb_relationships,
-                **context_kwargs,  # type: ignore[arg-type]
+                **cast("dict[str, Any]", context_kwargs),
             ):
                 if chunk.is_final:
                     raw_text = "".join(accumulated) + chunk.text

@@ -12,6 +12,7 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -116,7 +117,7 @@ class TestPromptInvocationContext:
     def test_frozen_immutability(self) -> None:
         ctx = PromptInvocationContext(feature_id="test", intent=LLMIntent.WRITE)
         with pytest.raises(ValidationError, match="frozen"):
-            ctx.feature_id = "changed"  # type: ignore[misc]
+            cast("Any", ctx).feature_id = "changed"
 
     def test_model_copy_returns_new_instance(self) -> None:
         ctx = PromptInvocationContext(feature_id="test", intent=LLMIntent.WRITE)
@@ -130,7 +131,7 @@ class TestPromptInvocationContext:
 
     def test_missing_feature_id_fails(self) -> None:
         with pytest.raises(ValidationError, match="feature_id"):
-            PromptInvocationContext(intent=LLMIntent.WRITE)  # type: ignore[call-arg]
+            cast("Any", PromptInvocationContext)(intent=LLMIntent.WRITE)
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +162,7 @@ class TestAdoptionPolicy:
     def test_frozen(self) -> None:
         policy = AdoptionPolicy()
         with pytest.raises(ValidationError, match="frozen"):
-            policy.preference_requirement = PreferenceRequirement.REQUIRED  # type: ignore[misc]
+            cast("Any", policy).preference_requirement = PreferenceRequirement.REQUIRED
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +193,7 @@ class TestInvocationWarning:
     def test_frozen(self) -> None:
         warning = InvocationWarning(code="test", message="msg")
         with pytest.raises(ValidationError, match="frozen"):
-            warning.code = "changed"  # type: ignore[misc]
+            cast("Any", warning).code = "changed"
 
 
 # ---------------------------------------------------------------------------

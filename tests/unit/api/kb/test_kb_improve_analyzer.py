@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -11,6 +11,14 @@ from pydantic_ai.models import Model
 
 from narrare.kb.improve_contracts import KBImproveAnalysisResponse
 from narrare_core.prompts.composer import ComposedPrompt
+
+if TYPE_CHECKING:
+    from narrare.kb.improve_cache import KBImproveCache
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.repository import KBRepository
+    from narrare_core.context.contracts import ProactiveContextProtocol
+    from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.prompts.composer import PromptComposer
 
 # ---------------------------------------------------------------------------
 # Fake classes
@@ -88,13 +96,13 @@ def _make_analyzer(
     cache = _FakeImproveCache(data=cache_data)
     config = ResolvedModelConfig(provider_name="test", model_id="test-model")
     analyzer = KBImproveAnalyzer(
-        registry=_FakeRegistry(),  # type: ignore[arg-type]
+        registry=cast("ModelRegistry", _FakeRegistry()),
         config=config,
-        proactive_context=_FakeProactiveContext(),  # type: ignore[arg-type]
-        prompt_composer=_FakeComposer(),  # type: ignore[arg-type]
-        kb_repo=_FakeKBRepo(entry=entry),  # type: ignore[arg-type]
-        rel_repo=_FakeRelRepo(),  # type: ignore[arg-type]
-        improve_cache=cache,  # type: ignore[arg-type]
+        proactive_context=cast("ProactiveContextProtocol", _FakeProactiveContext()),
+        prompt_composer=cast("PromptComposer", _FakeComposer()),
+        kb_repo=cast("KBRepository", _FakeKBRepo(entry=entry)),
+        rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
+        improve_cache=cast("KBImproveCache", cache),
         kb_agent=kb_agent,
     )
     return analyzer, {"cache": cache}
@@ -122,12 +130,12 @@ class TestHasCachedAnalysis:
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(
-            registry=_FakeRegistry(),  # type: ignore[arg-type]
+            registry=cast("ModelRegistry", _FakeRegistry()),
             config=config,
-            proactive_context=_FakeProactiveContext(),  # type: ignore[arg-type]
-            prompt_composer=_FakeComposer(),  # type: ignore[arg-type]
-            kb_repo=_FakeKBRepo(),  # type: ignore[arg-type]
-            rel_repo=_FakeRelRepo(),  # type: ignore[arg-type]
+            proactive_context=cast("ProactiveContextProtocol", _FakeProactiveContext()),
+            prompt_composer=cast("PromptComposer", _FakeComposer()),
+            kb_repo=cast("KBRepository", _FakeKBRepo()),
+            rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
             improve_cache=None,
         )
         assert await analyzer.has_cached_analysis(uuid4()) is False
@@ -152,12 +160,12 @@ class TestGetCachedAnalysis:
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(
-            registry=_FakeRegistry(),  # type: ignore[arg-type]
+            registry=cast("ModelRegistry", _FakeRegistry()),
             config=config,
-            proactive_context=_FakeProactiveContext(),  # type: ignore[arg-type]
-            prompt_composer=_FakeComposer(),  # type: ignore[arg-type]
-            kb_repo=_FakeKBRepo(),  # type: ignore[arg-type]
-            rel_repo=_FakeRelRepo(),  # type: ignore[arg-type]
+            proactive_context=cast("ProactiveContextProtocol", _FakeProactiveContext()),
+            prompt_composer=cast("PromptComposer", _FakeComposer()),
+            kb_repo=cast("KBRepository", _FakeKBRepo()),
+            rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
             improve_cache=None,
         )
         assert await analyzer.get_cached_analysis(uuid4()) is None
@@ -179,12 +187,12 @@ class TestInvalidateCache:
 
         config = ResolvedModelConfig(provider_name="test", model_id="test")
         analyzer = KBImproveAnalyzer(
-            registry=_FakeRegistry(),  # type: ignore[arg-type]
+            registry=cast("ModelRegistry", _FakeRegistry()),
             config=config,
-            proactive_context=_FakeProactiveContext(),  # type: ignore[arg-type]
-            prompt_composer=_FakeComposer(),  # type: ignore[arg-type]
-            kb_repo=_FakeKBRepo(),  # type: ignore[arg-type]
-            rel_repo=_FakeRelRepo(),  # type: ignore[arg-type]
+            proactive_context=cast("ProactiveContextProtocol", _FakeProactiveContext()),
+            prompt_composer=cast("PromptComposer", _FakeComposer()),
+            kb_repo=cast("KBRepository", _FakeKBRepo()),
+            rel_repo=cast("RelationshipRepository", _FakeRelRepo()),
             improve_cache=None,
         )
         await analyzer.invalidate_cache(uuid4())  # should not raise
@@ -224,14 +232,14 @@ class TestAnalyze:
         analyzer, deps = _make_analyzer(cache_data=None, entry=entry)
 
         from narrare_core.agents.kb_improve_types import (
+            ImprovementSuggestion,
             KBImproveOutput,
-            KBImproveSuggestion,  # type: ignore[attr-defined]
             SuggestionType,
         )
 
         output = KBImproveOutput(
             suggestions=[
-                KBImproveSuggestion(
+                ImprovementSuggestion(
                     type=SuggestionType.ADD_FIELD,
                     target="role",
                     description="Add role field",

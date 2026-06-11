@@ -14,6 +14,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from narrare_core.writing.alternative_parser import Alternative, parse_alternatives
@@ -246,7 +248,7 @@ class TestAlternativeDataclass:
     def test_frozen(self) -> None:
         alt = Alternative(label="test", text="content")
         with pytest.raises(AttributeError):
-            alt.label = "changed"  # type: ignore[misc]
+            cast("Any", alt).label = "changed"
 
     def test_equality(self) -> None:
         a1 = Alternative(label="test", text="content")

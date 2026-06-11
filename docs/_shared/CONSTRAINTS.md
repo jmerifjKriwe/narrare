@@ -802,6 +802,106 @@ with other features. The Semantic Review (Stage 2.5) verifies completion.
 
 ---
 
+### RULE-23 · No undisciplined type suppressions
+
+`# type: ignore` is a last resort, not a workaround tool.
+
+Every `# type: ignore` suppression in the codebase must be disciplined:
+no naked suppressions, no suppress-and-forget, no silencing instead of fixing.
+
+**1. Naked `# type: ignore` is forbidden.**
+
+Every suppression MUST include a specific error code. A bare `# type: ignore`
+suppresses ALL type errors on that line — including errors the developer didn't
+intend to suppress.
+
+```python
+# FORBIDDEN — suppresses everything
+x = unsafe_call()  # type: ignore
+
+# REQUIRED — explicit about what is being suppressed
+x = unsafe_call()  # type: ignore[arg-type]
+```
+
+**2. `arg-type` / `call-arg` for Mocks is forbidden.**
+
+Using `# type: ignore[arg-type]` or `# type: ignore[call-arg]` to silence
+type errors when passing a Mock or incomplete fake instead of implementing
+the correct protocol is not acceptable. Fakes and stubs MUST implement the
+correct Protocol (see RULE-TEST-01).
+
+```python
+# FORBIDDEN — silencing a protocol violation
+repo = MagicMock(spec=KBRepository)
+result = await service.generate(repo)  # type: ignore[arg-type]
+
+# REQUIRED — implement the protocol
+class FakeKBRepository(KBRepository):
+    async def get(self, id: str) -> KBDocument: ...
+```
+
+**3. `union-attr` / `assignment` is forbidden.**
+
+Suppressing type errors that arise from missing `isinstance()` narrowing or
+incorrect type assignments hides real type safety issues. Use `isinstance()`
+narrowing or `cast()` instead.
+
+```python
+# FORBIDDEN — hiding a missing narrowing
+result: str | None = get_possibly()
+print(result.upper())  # type: ignore[union-attr]
+
+# REQUIRED — proper narrowing
+result = get_possibly()
+if isinstance(result, str):
+    print(result.upper())
+```
+
+**4. Documentation requirement.**
+
+Every permitted `# type: ignore` MUST be accompanied by an inline reason
+comment explaining why the suppression is necessary and under what conditions
+it could be removed.
+
+```python
+# REQUIRED format:
+result = await third_party.query(...)  # type: ignore[arg-type]  # reason: third-party-lib has no stubs
+```
+
+**5. Permitted exceptions.**
+
+The following error codes MAY be suppressed with a documented reason:
+
+| Error Code | When Permitted | Reason Format |
+|------------|---------------|---------------|
+| `import-untyped` / `reportMissingTypeStubs` | Third-party packages without type stubs | `# reason: <package> has no stubs` |
+| `attr-defined` | Dynamic attributes on untyped third-party objects | `# reason: <package> uses dynamic __getattr__` |
+
+All other error codes require an architecture review exception.
+
+**6. CI enforcement (Ratchet principle).**
+
+`scripts/check_architecture.py` scans for `# type: ignore` comments and:
+- Counts total suppressions
+- FAILS the build if the count INCREASES compared to the last stable baseline
+- Reports each naked suppression (without error code) as a hard failure
+- Reports each suppression without an inline reason as a warning
+
+The baseline is defined in `pyproject.toml [tool.narrare.architecture.type_ignore_baseline]`.
+A PR that reduces the suppression count is approved. A PR that increases it
+without explicit Architecture Agent approval is blocked.
+
+**Why:** There are currently 887 `# type: ignore` suppressions in the codebase
+(see `docs/development/type-ignore-audit.md`). Many are naked suppressions that
+hide real type errors. Without discipline, `# type: ignore` becomes "just make
+it compile" — which defeats the purpose of `mypy --strict` type checking. The
+ratchet principle ensures the count only goes down, not up.
+
+**Enforcement:** `check_architecture.py` — regex scan for `# type: ignore` patterns.
+Baseline tracked in `pyproject.toml`. Architecture Agent enforces during PR review.
+
+---
+
 ## 5. Future-Compatibility Rules
 
 ### RULE-12 · The Service Layer is the only public API.
@@ -863,6 +963,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-19 SessionDep in dependency factories | `check_architecture.py` — AST scan for bare AsyncSession |
 | RULE-20 No half-implementations | PR review by Architecture Agent + test coverage audit |
 | RULE-22 Cross-Feature Coherence Gate | Stage 2.5 Semantic Review by Architecture Specialist |
+| RULE-23 No undisciplined type suppressions | `check_architecture.py` — `# type: ignore` scan + baseline comparison in CI |
 | All rules | PR review by Architecture Agent |
 
 ---
@@ -1004,6 +1105,6 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 ---
 
-> Last updated: 2026-06-05 — RULE-22 prompt variable provenance and context precedence clarified for INFRA-012
+> Last updated: 2026-06-10 — RULE-23 type suppression discipline added
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import patch
 
 if TYPE_CHECKING:
@@ -286,7 +286,7 @@ class TestGetModelLimits:
         """ModelLimits is immutable (frozen dataclass)."""
         limits = ModelLimits(context=128000, output=16384)
         with pytest.raises(AttributeError):
-            limits.context = 64000  # type: ignore[misc]
+            cast("Any", limits).context = 64000
 
     def test_returns_limits_from_cache(self, sample_models_with_limits: dict[str, object]) -> None:
         """When cache has model with limits, return ModelLimits."""

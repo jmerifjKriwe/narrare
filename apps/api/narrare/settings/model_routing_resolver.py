@@ -15,7 +15,7 @@ See: openspec/changes/configurable-model-routing/specs/model-routing-cascade/spe
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import structlog
 
@@ -186,16 +186,19 @@ class ModelRoutingResolverImpl:
             logger.warning("invalid_override_data", source=source, data=override_data)
             return None
 
-        provider_id_raw: object = override_data.get("provider_id")  # type: ignore[union-attr]
-        model_id: object = override_data.get("model_id")  # type: ignore[union-attr]
+        # Narrow to typed dict after isinstance guard
+        data = cast("dict[str, object]", override_data)
+        provider_id_raw: object = data.get("provider_id")
+        model_id_raw: object = data.get("model_id")
 
-        if not provider_id_raw or not model_id:
+        if not provider_id_raw or not model_id_raw:
             return None
 
         from uuid import UUID
 
         try:
-            provider_id = UUID(str(provider_id_raw))  # type: ignore[arg-type]
+            provider_id_str = str(provider_id_raw)
+            provider_id = UUID(provider_id_str)
         except ValueError, AttributeError:
             logger.warning(
                 "invalid_provider_id_in_override",
@@ -216,10 +219,11 @@ class ModelRoutingResolverImpl:
         api_key = self._decrypt_key(provider.api_key_encrypted)
         profile = get_default_profile_for_intent(intent)
         intent_profile = get_intent_profile(intent)
+        model_id = str(model_id_raw)
         return ResolvedModel(
             config=ResolvedModelConfig(
                 provider_name=provider.provider_name,
-                model_id=str(model_id),  # type: ignore[arg-type]
+                model_id=model_id,
                 token_limit_profile=profile,
             ),
             api_key=api_key,

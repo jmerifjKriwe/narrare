@@ -6,7 +6,7 @@ live here — services never write SQL directly.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import delete, select
 
@@ -92,7 +92,7 @@ class TimelineEventRepository(BaseRepository):
         Returns:
             The created ``TimelineEvent`` with server-generated fields populated.
         """
-        event = TimelineEvent(**fields)  # type: ignore[arg-type]
+        event = TimelineEvent(**cast("dict[str, Any]", fields))
         self._session.add(event)
         await self._flush_and_refresh(event)
         return event
@@ -134,7 +134,7 @@ class TimelineEventRepository(BaseRepository):
             delete(TimelineEvent).where(TimelineEvent.id == event_id)
         )
         await self._flush()
-        return result.rowcount > 0  # type: ignore[union-attr]
+        return getattr(result, "rowcount", 0) > 0
 
     async def bulk_create(self, events: list[dict[str, object]]) -> list[TimelineEvent]:
         """Create multiple timeline events in a single flush.
@@ -149,7 +149,7 @@ class TimelineEventRepository(BaseRepository):
         """
         created: list[TimelineEvent] = []
         for fields in events:
-            event = TimelineEvent(**fields)  # type: ignore[arg-type]
+            event = TimelineEvent(**cast("dict[str, Any]", fields))
             self._session.add(event)
             created.append(event)
         await self._flush()

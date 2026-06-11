@@ -47,6 +47,22 @@ class ConversationStore(ABC):
     ) -> UUID: ...
 
     @abstractmethod
+    async def get_conversation_project_id(
+        self,
+        conversation_id: UUID,
+    ) -> UUID | None:
+        """Return the project_id for a conversation, or None if not found.
+
+        Args:
+            conversation_id: The conversation to look up.
+
+        Returns:
+            The project UUID associated with the conversation, or None
+            if the conversation does not exist.
+        """
+        ...
+
+    @abstractmethod
     async def clear_history(
         self,
         conversation_id: UUID,
@@ -108,6 +124,17 @@ class InMemoryConversationStore(ConversationStore):
         }
         await self.add_message(conv_id, "user", first_message)
         return conv_id
+
+    async def get_conversation_project_id(
+        self,
+        conversation_id: UUID,
+    ) -> UUID | None:
+        """Return the project_id for a conversation, or None if not found."""
+        conv = self._conversations.get(conversation_id)
+        if conv is None:
+            return None
+        project_id = conv.get("project_id")
+        return project_id if isinstance(project_id, UUID) else None
 
     async def clear_history(
         self,

@@ -25,7 +25,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai import (
     ModelRetry,
@@ -176,4 +176,4 @@ class POVDetectionAgent(NarrareAgent[POVDeps, POVDetectionOutput]):
     ) -> POVDetectionOutput:
         """Execute the POV detection agent and return structured output."""
         result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return result.output  # type: ignore[return-value]
+        return cast("POVDetectionOutput", result.output)

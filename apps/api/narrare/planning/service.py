@@ -38,7 +38,9 @@ from narrare_core.shared.errors import NotFoundError
 if TYPE_CHECKING:
     import uuid
 
+    from narrare.chapters.contracts import ChapterRepositoryProtocol
     from narrare.chapters.models import Chapter
+    from narrare.novels.contracts import NovelRepositoryProtocol
     from narrare.novels.models import Novel
     from narrare.planning.contracts import OutlineRepositoryProtocol
     from narrare_core.llm import ResolvedModelConfig
@@ -58,8 +60,8 @@ class StoryboardService:
     def __init__(
         self,
         outline_repo: OutlineRepositoryProtocol,
-        chapter_repo: object,
-        novel_repo: object,
+        chapter_repo: ChapterRepositoryProtocol,
+        novel_repo: NovelRepositoryProtocol,
         ai_remap_service: AIRemapService | None = None,
         model_registry: ModelRegistry | None = None,
         model_config: ResolvedModelConfig | None = None,
@@ -93,7 +95,8 @@ class StoryboardService:
             stage_chapters = [
                 chapter_in_storyboard(ch, outline_map, idx, adapter, total)
                 for idx, ch in enumerate(chapters, start=1)
-                if outline_map.get(ch.id) and outline_map[ch.id].stage_assignment == stage_def.id  # type: ignore[union-attr]
+                if (outline := outline_map.get(ch.id)) is not None
+                and outline.stage_assignment == stage_def.id
             ]
             stages.append(
                 StoryboardStageResponse(
@@ -279,19 +282,17 @@ class StoryboardService:
                     )
             from narrare.novels.schemas import UpdateNovelRequest
 
-            await self._novel_repo.update(  # type: ignore[union-attr]
-                novel, UpdateNovelRequest(story_structure=new_structure)
-            )
+            await self._novel_repo.update(novel, UpdateNovelRequest(story_structure=new_structure))
 
         return RemapResponse(new_structure=new_structure, remapped=items, confirmed=confirm)
 
     async def _get_novel(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> Novel:
         """Fetch a novel by ID or raise NotFoundError."""
-        novel = await self._novel_repo.get_by_id(novel_id, user_id)  # type: ignore[union-attr]
+        novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
-        return novel  # type: ignore[no-any-return]
+        return novel
 
     async def _list_chapters(self, novel_id: uuid.UUID) -> list[Chapter]:
         """List all chapters for a novel, ordered by position."""
-        return await self._chapter_repo.list_by_novel(novel_id)  # type: ignore[union-attr]
+        return await self._chapter_repo.list_by_novel(novel_id)

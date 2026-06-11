@@ -15,6 +15,12 @@ vi.mock("@/lib/api/client", () => ({
   },
 }));
 
+vi.mock("@/lib/api/kb", () => ({
+  kbApi: {
+    createEntry: vi.fn(),
+  },
+}));
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -86,6 +92,8 @@ describe("NameResults", () => {
             name_type: "character",
           }}
           isLoading={false}
+          novelId="novel-1"
+          nameType="character"
         />,
       );
 
@@ -95,7 +103,9 @@ describe("NameResults", () => {
     });
 
     it("renders empty state when no names", async () => {
-      renderWithProviders(<NameResults results={null} isLoading={false} />);
+      renderWithProviders(
+        <NameResults results={null} isLoading={false} novelId="novel-1" nameType="character" />,
+      );
 
       await waitFor(() => {
         expect(document.querySelector("div")).toBeInTheDocument();

@@ -8,6 +8,7 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 from narrare_core.agents.capabilities.observability import NarrareObservability
@@ -197,9 +198,9 @@ class TestNarrareObservabilityCache:
             usage = FakeUsage()
 
         await obs.after_model_request(
-            FakeCtx(),  # type: ignore[arg-type]
-            request_context=None,  # type: ignore[arg-type]
-            response=None,  # type: ignore[arg-type]
+            cast("Any", FakeCtx()),
+            request_context=cast("Any", None),
+            response=cast("Any", None),
         )
 
         # record_cache_usage should be called with extracted cache stats
@@ -234,9 +235,9 @@ class TestNarrareObservabilityCache:
             usage = FakeUsage()
 
         await obs.after_model_request(
-            FakeCtx(),  # type: ignore[arg-type]
-            request_context=None,  # type: ignore[arg-type]
-            response=None,  # type: ignore[arg-type]
+            cast("Any", FakeCtx()),
+            request_context=cast("Any", None),
+            response=cast("Any", None),
         )
 
         mock_cache_usage.assert_not_called()
@@ -262,9 +263,9 @@ class TestNarrareObservabilityCache:
             usage = FakeUsage()
 
         await obs.after_model_request(
-            FakeCtx(),  # type: ignore[arg-type]
-            request_context=None,  # type: ignore[arg-type]
-            response=None,  # type: ignore[arg-type]
+            cast("Any", FakeCtx()),
+            request_context=cast("Any", None),
+            response=cast("Any", None),
         )
 
         mock_cache_usage.assert_not_called()
@@ -298,9 +299,9 @@ class TestNarrareObservabilityCache:
             usage = FakeUsage()
 
         await obs.after_model_request(
-            FakeCtx(),  # type: ignore[arg-type]
-            request_context=None,  # type: ignore[arg-type]
-            response=None,  # type: ignore[arg-type]
+            cast("Any", FakeCtx()),
+            request_context=cast("Any", None),
+            response=cast("Any", None),
         )
 
         # Verify record_success was called with TokenUsage that has cache fields

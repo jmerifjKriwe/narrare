@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
 
+# Re-exported from _consistency_deps for backward compatibility.
+# Consumers (router_consistency, tests) still import from this module.
+from narrare.kb._consistency_deps import (
+    get_consistency_service as get_consistency_service,
+)
+
 if TYPE_CHECKING:
-    from narrare.kb.consistency_service import KBConsistencyService
     from narrare.kb.extraction_service import ExtractionService
     from narrare.kb.graph_service import GraphService
     from narrare.kb.improve_service import KBImproveService
@@ -18,6 +23,7 @@ if TYPE_CHECKING:
     from narrare.kb.session_service import KBSessionService
     from narrare.kb.suggest_service import KBSuggestService
     from narrare.kb.worldbuilding_service import WorldbuildingService
+    from narrare_core.embeddings.store import EmbeddingStoreProtocol
 
 
 def get_kb_repository(session: SessionDep) -> KBRepository:
@@ -122,7 +128,9 @@ def get_kb_suggest_service(session: SessionDep) -> KBSuggestService:
     # LSP flags reprocess() return-type mismatch, but ProactiveContextService
     # never calls reprocess — the four methods it uses are structurally compatible.
     embedding_service = EmbeddingService(EmbeddingRepository(session))
-    proactive = ProactiveContextService(embedding_store=embedding_service)  # type: ignore[arg-type]
+    proactive = ProactiveContextService(
+        embedding_store=cast("EmbeddingStoreProtocol", embedding_service)
+    )
     return KBSuggestService(
         proactive_context=proactive,
         chapter_repo=ChapterRepository(session),
@@ -160,7 +168,9 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
 
     # ProactiveContextService with real embedding service
     embedding_service = EmbeddingService(EmbeddingRepository(session))
-    proactive = ProactiveContextService(embedding_store=embedding_service)  # type: ignore[arg-type]
+    proactive = ProactiveContextService(
+        embedding_store=cast("EmbeddingStoreProtocol", embedding_service)
+    )
 
     # KBAssistService with real ModelRegistry + PromptComposer.
     registry = get_model_registry()
@@ -216,7 +226,9 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
 
     kb_repo = KBRepository(session)
     embedding_service = EmbeddingService(EmbeddingRepository(session))
-    proactive = ProactiveContextService(embedding_store=embedding_service)  # type: ignore[arg-type]
+    proactive = ProactiveContextService(
+        embedding_store=cast("EmbeddingStoreProtocol", embedding_service)
+    )
     kb_service = get_kb_service(session)
 
     # Redis-backed improve cache with 10min TTL
@@ -313,83 +325,4 @@ def get_graph_service(session: SessionDep) -> GraphService:
     return GraphService(
         kb_repo=KBRepository(session),
         rel_repo=RelationshipRepository(session),
-    )
-
-
-def get_consistency_service(session: SessionDep) -> KBConsistencyService:
-    """Create a KBConsistencyService with injected dependencies.
-
-    Production wiring: uses ModelRegistry for LLM model, PromptComposer
-    for system prompts, PromptRegistry for prompt resolution, and
-    KBRepository + RelationshipRepository for data access.
-    Reuses WorldbuildingAnalyzer for cross-entity Phase 2 consistency.
-    Uses Redis-backed ConsistencyCache for 10min TTL on results.
-    Includes InvocationPipeline for invocation evidence (ADR-040).
-    """
-    from narrare._app.config import get_settings
-    from narrare._app.dependencies import (
-        get_composer,
-        get_invocation_pipeline,
-        get_model_registry,
-        get_registry,
-    )
-    from narrare._app.dependencies_services import build_system_default_config
-    from narrare.kb.consistency_analyzer import KBConsistencyAnalyzer
-    from narrare.kb.consistency_cache import ConsistencyCache
-    from narrare.kb.consistency_service import KBConsistencyService
-    from narrare.kb.relationship_asymmetry import RelationshipAsymmetryChecker
-    from narrare.kb.relationship_repository import RelationshipRepository
-    from narrare.kb.repository import KBRepository
-    from narrare.kb.worldbuilding_analyzer import WorldbuildingAnalyzer
-    from narrare.kb.worldbuilding_cache import WorldbuildingCache
-    from narrare_core.cache.redis_client import RedisSessionCache
-
-    registry = get_model_registry()
-    composer = get_composer()
-    prompt_registry = get_registry()
-    config = build_system_default_config("analysis")
-
-    kb_repo = KBRepository(session)
-    rel_repo = RelationshipRepository(session)
-
-    # Redis-backed consistency cache with 10min TTL
-    settings = get_settings()
-    redis_cache = RedisSessionCache(settings.redis_url)
-    consistency_cache = ConsistencyCache(redis_cache)
-
-    # Entry-internal analyzer (LLM per entry)
-    consistency_analyzer = KBConsistencyAnalyzer(
-        kb_repo=kb_repo,
-        registry=registry,
-        config=config,
-        composer=composer,
-    )
-
-    # Relationship asymmetry checker (algorithmic, no LLM)
-    rel_service = get_rel_service(session)
-    asymmetry_checker = RelationshipAsymmetryChecker(
-        rel_repo=rel_repo,
-        rel_service=rel_service,
-    )
-
-    # Worldbuilding analyzer (reused for cross-entity Phase 2)
-    worldbuilding_cache = WorldbuildingCache(redis_cache)
-    worldbuilding_analyzer = WorldbuildingAnalyzer(
-        kb_repo=kb_repo,
-        rel_repo=rel_repo,
-        cache=worldbuilding_cache,
-        registry=registry,
-        config=config,
-        composer=composer,
-        prompt_registry=prompt_registry,
-    )
-
-    return KBConsistencyService(
-        analyzer=consistency_analyzer,
-        asymmetry_checker=asymmetry_checker,
-        worldbuilding_analyzer=worldbuilding_analyzer,
-        kb_repo=kb_repo,
-        rel_repo=rel_repo,
-        cache=consistency_cache,
-        invocation_pipeline=get_invocation_pipeline(),
     )

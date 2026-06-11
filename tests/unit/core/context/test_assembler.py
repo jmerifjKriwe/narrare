@@ -6,7 +6,7 @@ with WritingContextAssembler as the first concrete implementation.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -213,7 +213,7 @@ class TestTierBudgetDataclass:
         """TierBudget is frozen (immutable)."""
         tb = TierBudget(tier_name="test", percentage=0.5, token_limit=3000)
         with pytest.raises(AttributeError):
-            tb.tier_name = "other"  # type: ignore[misc]
+            cast("Any", tb).tier_name = "other"
 
     def test_defaults(self) -> None:
         """pinned_bypass defaults to False."""

@@ -10,6 +10,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from narrare_core.kb.schemas.faction import (
     FactionHistory,
     FactionIdeology,
@@ -38,11 +40,10 @@ class TestFactionStructure:
         assert s.leadership == "Council of Elders"
 
     def test_extra_fields_preserved(self) -> None:
-        s = FactionStructure(
-            leadership="King",
-            succession_rule="Primogeniture",  # type: ignore[call-arg]
+        s: Any = FactionStructure(
+            **cast("Any", {"leadership": "King", "succession_rule": "Primogeniture"})
         )
-        assert s.succession_rule == "Primogeniture"  # type: ignore[attr-defined]
+        assert s.succession_rule == "Primogeniture"
 
 
 class TestFactionIdeology:
@@ -62,8 +63,10 @@ class TestFactionIdeology:
         assert len(i.beliefs or []) == 2
 
     def test_extra_fields_preserved(self) -> None:
-        i = FactionIdeology(motto="Liberty or Death", beliefs=["Freedom"])  # type: ignore[call-arg]
-        assert i.motto == "Liberty or Death"  # type: ignore[attr-defined]
+        i: Any = FactionIdeology(
+            **cast("Any", {"motto": "Liberty or Death", "beliefs": ["Freedom"]})
+        )
+        assert i.motto == "Liberty or Death"
 
 
 class TestFactionHistory:
@@ -113,11 +116,8 @@ class TestFactionMetadata:
         assert meta.history is None
 
     def test_extra_fields_preserved(self) -> None:
-        meta = FactionMetadata(
-            founded="1200",
-            custom_flag=True,  # type: ignore[call-arg]
-        )
-        assert meta.custom_flag is True  # type: ignore[attr-defined]
+        meta: Any = FactionMetadata(**cast("Any", {"founded": "1200", "custom_flag": True}))
+        assert meta.custom_flag is True
 
     def test_empty_metadata(self) -> None:
         meta = FactionMetadata()

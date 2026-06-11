@@ -113,6 +113,9 @@
     "pronunciation": "Pronunciation",
     "meaning": "Meaning",
     "saveToKb": "Save to KB",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "saveError": "Error",
     "close": "Close"
   },
   "bubble": {

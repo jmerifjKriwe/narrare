@@ -18,26 +18,27 @@ from narrare_core.planning.sync import StructuralSyncChecker
 if TYPE_CHECKING:
     import uuid
     from collections.abc import Mapping
+    from typing import Protocol
 
     from narrare.chapters.models import Chapter
     from narrare.planning.models import ChapterOutline
     from narrare.planning.schemas import ChapterInStoryboard
 
-if TYPE_CHECKING:
-    import uuid
+    class _OutlineRepoProtocol(Protocol):
+        """Minimal outline repository interface — duck-typing for ensure_outlines."""
 
-    from narrare.chapters.models import Chapter
-    from narrare.planning.models import ChapterOutline
-    from narrare.planning.schemas import ChapterInStoryboard
+        async def get_all_for_novel(self, novel_id: uuid.UUID) -> list[ChapterOutline]: ...
+        async def create(self, chapter_id: uuid.UUID, stage_assignment: str) -> ChapterOutline: ...
+
 
 _logger = logging.getLogger(__name__)
 
 _checker = StructuralSyncChecker()
 
 
-def to_outline_response(outline: object) -> OutlineResponse:
+def to_outline_response(outline: ChapterOutline) -> OutlineResponse:
     """Convert a ChapterOutline ORM object to OutlineResponse."""
-    raw_beats = cast("list[dict[str, str | bool]]", outline.planned_beats or [])  # type: ignore[union-attr]
+    raw_beats = cast("list[dict[str, str | bool]]", outline.planned_beats or [])
     beats = [
         BeatSchema(
             title=str(b.get("title", "")),
@@ -47,17 +48,17 @@ def to_outline_response(outline: object) -> OutlineResponse:
         for b in raw_beats
     ]
     return OutlineResponse(
-        id=outline.id,  # type: ignore[union-attr]
-        chapter_id=outline.chapter_id,  # type: ignore[union-attr]
-        stage_assignment=outline.stage_assignment,  # type: ignore[union-attr]
+        id=outline.id,
+        chapter_id=outline.chapter_id,
+        stage_assignment=outline.stage_assignment,
         planned_beats=beats,
-        outline_notes=outline.outline_notes,  # type: ignore[union-attr]
-        created_at=outline.created_at,  # type: ignore[union-attr]
-        updated_at=outline.updated_at,  # type: ignore[union-attr]
+        outline_notes=outline.outline_notes,
+        created_at=outline.created_at,
+        updated_at=outline.updated_at,
     )
 
 
-def build_outline_data(chapter: Chapter, outline: object | None) -> ChapterOutlineData:
+def build_outline_data(chapter: Chapter, outline: ChapterOutline | None) -> ChapterOutlineData:
     """Build ChapterOutlineData for sync status computation."""
     if outline is None:
         return ChapterOutlineData(
@@ -69,7 +70,7 @@ def build_outline_data(chapter: Chapter, outline: object | None) -> ChapterOutli
             word_count=chapter.word_count,
             has_summary=bool(chapter.summary),
         )
-    raw_beats = cast("list[dict[str, str | bool]]", outline.planned_beats or [])  # type: ignore[union-attr]
+    raw_beats = cast("list[dict[str, str | bool]]", outline.planned_beats or [])
     beats = [
         BeatDef(
             title=str(b.get("title", "")),
@@ -80,16 +81,18 @@ def build_outline_data(chapter: Chapter, outline: object | None) -> ChapterOutli
     ]
     return ChapterOutlineData(
         chapter_id=chapter.id,
-        stage_assignment=outline.stage_assignment,  # type: ignore[union-attr]
+        stage_assignment=outline.stage_assignment,
         planned_beats=beats,
-        outline_notes=outline.outline_notes,  # type: ignore[union-attr]
+        outline_notes=outline.outline_notes,
         has_content=bool(chapter.content),
         word_count=chapter.word_count,
         has_summary=bool(chapter.summary),
     )
 
 
-def compute_sync(chapter: Chapter, outline: object | None, suggested_stage: str) -> SyncStatus:
+def compute_sync(
+    chapter: Chapter, outline: ChapterOutline | None, suggested_stage: str
+) -> SyncStatus:
     """Calculate sync status for a single chapter."""
     data = build_outline_data(chapter, outline)
     return _checker.calculate_sync_status(data, suggested_stage)
@@ -139,7 +142,7 @@ async def should_use_ai_remap(
 
 
 async def ensure_outlines(
-    outline_repo: object,
+    outline_repo: _OutlineRepoProtocol,
     novel_id: uuid.UUID,
     chapters: list[Chapter],
     adapter: object,
@@ -147,8 +150,8 @@ async def ensure_outlines(
     """Ensure every chapter has an outline, auto-creating missing ones."""
     from narrare_core.planning.adapters.base import StructureAdapter
 
-    raw = await outline_repo.get_all_for_novel(novel_id)  # type: ignore[union-attr]
-    outlines = cast("list[ChapterOutline]", raw or [])
+    raw = await outline_repo.get_all_for_novel(novel_id)
+    outlines = raw or []
     outline_map: dict[uuid.UUID, ChapterOutline] = {o.chapter_id: o for o in outlines}
     total = max(len(chapters), 1)
 
@@ -158,16 +161,14 @@ async def ensure_outlines(
                 suggested = adapter.suggest_stage(idx, total)
             else:
                 suggested = ""
-            outline = await outline_repo.create(  # type: ignore[union-attr]
-                chapter_id=ch.id, stage_assignment=suggested
-            )
+            outline = await outline_repo.create(chapter_id=ch.id, stage_assignment=suggested)
             outline_map[ch.id] = outline
     return outline_map
 
 
 def chapter_in_storyboard(
     chapter: Chapter,
-    outline_map: Mapping[uuid.UUID, object],
+    outline_map: Mapping[uuid.UUID, ChapterOutline],
     idx: int,
     adapter: object,
     total: int,

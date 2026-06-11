@@ -33,7 +33,7 @@ Usage:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from narrare_core.agents.base import NarrareAgent
 from narrare_core.agents.beta_reader_processors import (
@@ -85,7 +85,7 @@ class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
     ) -> BetaReaderPhase1Output:
         """Execute Phase 1 analysis (full chapter feedback)."""
         result = await self._agent.run(prompt, deps=deps, **kwargs)
-        return result.output  # type: ignore[return-value]
+        return cast("BetaReaderPhase1Output", result.output)
 
     async def run_phase2(
         self,
@@ -107,7 +107,7 @@ class BetaReaderAgent(NarrareAgent[BetaReaderDeps, BetaReaderPhase1Output]):
         )
         phase2_agent._agent.output_validator(validate_beta_reader_phase2)
         result = await phase2_agent.run(prompt, deps=deps)
-        return result.output  # type: ignore[return-value]
+        return result
 
     async def run(
         self,

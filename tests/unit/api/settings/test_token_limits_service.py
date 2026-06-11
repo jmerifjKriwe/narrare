@@ -48,6 +48,7 @@ class _FakeConfig:
     retry_base_delay = 1.0
     consistency_max_chapter_tokens = 2000
     consistency_max_kb_entries = 100
+    default_max_selection_words = 2000
 
 
 # ---------------------------------------------------------------------------

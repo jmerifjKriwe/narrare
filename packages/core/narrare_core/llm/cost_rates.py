@@ -14,7 +14,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 import structlog
@@ -191,7 +191,7 @@ def get_rates(provider: str, model_id: str) -> dict[str, float] | None:
     # 2. Look up model_id in models.dev data
     # models.dev structure: {"models": {"<model_id>": {"cost": {"input": ..., "output": ...}}}}
     # data is guaranteed to be a dict here (None case handled above)
-    models: dict[str, Any] = data.get("models", {})  # type: ignore[assignment]
+    models = cast("dict[str, Any]", data.get("models", {}))
     model_entry: dict[str, Any] = models.get(model_id, {})
     cost: dict[str, Any] = model_entry.get("cost", {})
 
@@ -247,7 +247,7 @@ def get_model_limits(provider: str, model_id: str) -> ModelLimits | None:
             return None
 
     # 2. Look up model_id in models.dev data
-    models: dict[str, Any] = data.get("models", {})  # type: ignore[assignment]
+    models = cast("dict[str, Any]", data.get("models", {}))
     model_entry: dict[str, Any] = models.get(model_id, {})
     limit: dict[str, Any] = model_entry.get("limit", {})
 

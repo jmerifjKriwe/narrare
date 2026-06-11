@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from narrare_core.project.profile import ProjectWritingProfile
@@ -19,7 +21,7 @@ class TestProjectWritingProfile:
     def test_frozen_immutability(self) -> None:
         profile = ProjectWritingProfile(genre="Fantasy")
         with pytest.raises(AttributeError):
-            profile.genre = "Sci-Fi"  # type: ignore[misc]
+            cast("Any", profile).genre = "Sci-Fi"
 
     def test_to_prompt_variables_with_data(self) -> None:
         profile = ProjectWritingProfile(

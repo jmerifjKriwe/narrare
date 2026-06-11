@@ -7,7 +7,7 @@ has a different schema than WikiEntityOutput.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai import (
     Agent as PydanticAgent,
@@ -55,11 +55,11 @@ class WikiChapterGenerator:
         agent = self._get_agent()
         if stream:
             async with agent.run_stream(prompt_text, deps=deps) as stream_result:
-                return await stream_result.get_output()  # type: ignore[return-value]
+                return cast("WikiChapterOutput", await stream_result.get_output())
         result = await agent.run(  # narrare: allow-agent reason="internal PydanticAgent (ADR-015)"
             prompt_text, deps=deps
         )
-        return result.output  # type: ignore[return-value]
+        return cast("WikiChapterOutput", result.output)
 
     def _get_agent(self) -> Any:
         """Get or create the internal chapter agent (lazy)."""

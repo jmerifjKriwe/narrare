@@ -104,6 +104,21 @@ class SQLAlchemyConversationStore(ConversationStore):
         await self.add_message(conv.id, "user", first_message)
         return conv.id
 
+    async def get_conversation_project_id(
+        self,
+        conversation_id: UUID,
+    ) -> UUID | None:
+        """Return the project_id for a conversation, or None if not found."""
+        from narrare.chat.models import ChatConversation as ChatConversationModel
+
+        result = await self._session.execute(
+            select(ChatConversationModel.project_id).where(
+                ChatConversationModel.id == conversation_id
+            )
+        )
+        row = result.scalar_one_or_none()
+        return row
+
     async def clear_history(
         self,
         conversation_id: UUID,

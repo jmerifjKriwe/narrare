@@ -57,6 +57,8 @@ class TokenLimitOverrides:
     """Maximum tokens per chapter preview in consistency checks."""
     max_kb_entries: int = 100
     """Maximum KB entries to include in consistency context."""
+    max_selection_words: int = 2000
+    """Maximum word count for co-author selection text (SET-005 cascade)."""
 
 
 # ---------------------------------------------------------------------------

@@ -16,7 +16,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
+from pgvector.sqlalchemy import (  # pyright: ignore[reportMissingTypeStubs]  # reason: pgvector has no type stubs
+    Vector,  # type: ignore[import-untyped]  # reason: pgvector has no type stubs
+)
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
@@ -47,7 +49,7 @@ class Embedding(Base):
     source_type: Mapped[str] = mapped_column(Text, nullable=False)
     source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     content_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    embedding: Mapped[list[float]] = mapped_column(Vector(1536), nullable=False)  # type: ignore[assignment]
+    embedding: Mapped[list[float]] = mapped_column(Vector(1536), nullable=False)  # type: ignore[assignment]  # reason: pgvector Vector() column type not assignable to Mapped[list[float]]
     model: Mapped[str] = mapped_column(Text, nullable=False)
     dimension: Mapped[int] = mapped_column(Integer, nullable=False)
     generated_at: Mapped[datetime] = mapped_column(

@@ -16,13 +16,18 @@ Scenarios (RULE-20):
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, Literal, cast
 from uuid import UUID, uuid4
 
 import pytest
 
 from narrare.kb.extraction_apply_service import ExtractionApplyService
 from narrare.kb.schemas_extraction import ApplyExtractionItem
+
+if TYPE_CHECKING:
+    from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare.kb.service import KBService
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -169,14 +174,14 @@ def apply_service(
     fake_kb_repo: _FakeKBRepoForApply,
 ) -> ExtractionApplyService:
     return ExtractionApplyService(
-        kb_service=fake_kb_service,  # type: ignore[arg-type]
-        rel_repo=fake_rel_repo,  # type: ignore[arg-type]
-        kb_repo=fake_kb_repo,  # type: ignore[arg-type]
+        kb_service=cast("KBService", fake_kb_service),
+        rel_repo=cast("RelationshipRepository", fake_rel_repo),
+        kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
     )
 
 
 def _item(
-    item_type: str = "new_entity",
+    item_type: Literal["new_entity", "update_entity", "relationship", "conflict"] = "new_entity",
     name: str = "Test Entity",
     entity_type: str | None = "character",
     proposed_content: dict[str, Any] | None = None,
@@ -186,7 +191,7 @@ def _item(
     source_text: str = "test source",
 ) -> ApplyExtractionItem:
     return ApplyExtractionItem(
-        item_type=item_type,  # type: ignore[arg-type]
+        item_type=item_type,
         name=name,
         entity_type=entity_type,
         proposed_content=proposed_content,
@@ -251,7 +256,7 @@ async def test_apply_new_entity_passes_proposed_content_as_metadata(
 
     created_data = fake_kb_service.created[0]["data"]
     assert hasattr(created_data, "metadata")
-    assert created_data.metadata == proposed  # type: ignore[attr-defined]
+    assert cast("Any", created_data).metadata == proposed
 
 
 # ---------------------------------------------------------------------------
@@ -318,9 +323,9 @@ async def test_apply_relationship_creates_relationship(
     fake_kb_repo.seed("Anna", entity_type="character")
     fake_kb_repo.seed("Dark Forest", entity_type="location")
     service = ExtractionApplyService(
-        kb_service=_FakeKBService(),  # type: ignore[arg-type]
-        rel_repo=fake_rel_repo,  # type: ignore[arg-type]
-        kb_repo=fake_kb_repo,  # type: ignore[arg-type]
+        kb_service=cast("KBService", _FakeKBService()),
+        rel_repo=cast("RelationshipRepository", fake_rel_repo),
+        kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
     )
 
     items = [
@@ -367,9 +372,9 @@ async def test_apply_relationship_source_not_found_skipped(
     fake_kb_repo = _FakeKBRepoForApply()
     fake_kb_repo.seed("Dark Forest", entity_type="location")
     service = ExtractionApplyService(
-        kb_service=_FakeKBService(),  # type: ignore[arg-type]
-        rel_repo=fake_rel_repo,  # type: ignore[arg-type]
-        kb_repo=fake_kb_repo,  # type: ignore[arg-type]
+        kb_service=cast("KBService", _FakeKBService()),
+        rel_repo=cast("RelationshipRepository", fake_rel_repo),
+        kb_repo=cast("KBRepositoryProtocol", fake_kb_repo),
     )
 
     items = [

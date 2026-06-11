@@ -73,7 +73,7 @@ def _configure_development_logging(
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
             structlog.dev.ConsoleRenderer(),
         ],
-        foreign_pre_chain=shared_processors,  # type: ignore[arg-type]
+        foreign_pre_chain=shared_processors,
     )
 
     # Console handler — INFO and above (terminal stays clean)
@@ -107,7 +107,7 @@ def _configure_development_logging(
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 structlog.dev.ConsoleRenderer(),
             ],
-            foreign_pre_chain=shared_processors,  # type: ignore[arg-type]
+            foreign_pre_chain=shared_processors,
         )
     )
     root.addHandler(error_file_handler)
@@ -124,7 +124,7 @@ def _configure_development_logging(
 
     # Configure structlog to use stdlib logging
     structlog.configure(
-        processors=[  # type: ignore[arg-type]
+        processors=[
             *shared_processors,
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
@@ -153,7 +153,7 @@ def _configure_production_logging(
             structlog.processors.dict_tracebacks,
             structlog.processors.JSONRenderer(),
         ],
-        foreign_pre_chain=shared_processors,  # type: ignore[arg-type]
+        foreign_pre_chain=shared_processors,
     )
 
     handler = logging.StreamHandler()
@@ -175,7 +175,7 @@ def _configure_production_logging(
     root.addHandler(error_file_handler)
 
     structlog.configure(
-        processors=[  # type: ignore[arg-type]
+        processors=[
             *shared_processors,
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],

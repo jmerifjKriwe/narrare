@@ -17,6 +17,8 @@ See: ADR-038, INFRA-013.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from narrare_core.ai_invocation.budgets import (
@@ -39,7 +41,7 @@ def _make_context(**overrides: object) -> PromptInvocationContext:
         "intent": LLMIntent.WRITE,
     }
     defaults.update(overrides)
-    return PromptInvocationContext(**defaults)  # type: ignore[arg-type]
+    return cast("Any", PromptInvocationContext)(**defaults)
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +273,7 @@ class TestIntentOutputBudgetResolverAllIntents:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError, match="frozen"):
-            decision.source = "changed"  # type: ignore[misc]
+            cast("Any", decision).source = "changed"
 
 
 class TestIntentOutputBudgetResolverConcurrency:

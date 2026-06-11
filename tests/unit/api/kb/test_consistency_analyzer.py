@@ -6,6 +6,7 @@ and the analyze_entries method with mocked registry.run.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -23,6 +24,11 @@ from narrare.kb.worldbuilding_contracts import (
 )
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
+
+if TYPE_CHECKING:
+    from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare.kb.models import KBEntry
+    from narrare_core.prompts.composer import PromptComposer
 
 # ---------------------------------------------------------------------------
 # Fake classes
@@ -111,10 +117,10 @@ def _make_analyzer(
     composer = FakeComposer()
 
     analyzer = KBConsistencyAnalyzer(
-        kb_repo=kb_repo,  # type: ignore[arg-type]
+        kb_repo=cast("KBRepositoryProtocol", kb_repo),
         registry=registry,
         config=config,
-        composer=composer,  # type: ignore[arg-type]
+        composer=cast("PromptComposer", composer),
     )
 
     return analyzer, {
@@ -164,7 +170,7 @@ class TestBuildEntryContent:
             tags=["protagonist"],
         )
 
-        result = _build_entry_content(entry)  # type: ignore[arg-type]
+        result = _build_entry_content(cast("KBEntry", entry))
 
         assert result["name"] == "Alice"
         assert result["entity_type"] == "character"
@@ -176,15 +182,15 @@ class TestBuildEntryContent:
         long_body = "x" * 6000
         entry = FakeKBEntry(body=long_body)
 
-        result = _build_entry_content(entry)  # type: ignore[arg-type]
+        result = _build_entry_content(cast("KBEntry", entry))
 
-        assert len(result["body"]) == 5000  # type: ignore[arg-type]
+        assert len(cast("str", result["body"])) == 5000
 
     def test_build_entry_content_empty_body(self) -> None:
         """None body becomes empty string."""
         entry = FakeKBEntry(body=None)
 
-        result = _build_entry_content(entry)  # type: ignore[arg-type]
+        result = _build_entry_content(cast("KBEntry", entry))
 
         assert result["body"] == ""
 
@@ -192,7 +198,7 @@ class TestBuildEntryContent:
         """None metadata becomes empty dict."""
         entry = FakeKBEntry(metadata_=None)
 
-        result = _build_entry_content(entry)  # type: ignore[arg-type]
+        result = _build_entry_content(cast("KBEntry", entry))
 
         assert result["metadata"] == {}
 

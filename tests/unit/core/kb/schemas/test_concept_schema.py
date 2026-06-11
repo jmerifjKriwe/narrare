@@ -10,6 +10,8 @@ Tests cover:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 from pydantic import ValidationError
 
@@ -43,11 +45,10 @@ class TestConceptDefinition:
         assert "Cannot create matter" in fields.rules
 
     def test_extra_fields_preserved(self) -> None:
-        fields = ConceptDefinition(
-            category="technology",
-            custom_field="extra",  # type: ignore[call-arg]
+        fields: Any = ConceptDefinition(
+            **cast("Any", {"category": "technology", "custom_field": "extra"})
         )
-        assert fields.custom_field == "extra"  # type: ignore[attr-defined]
+        assert fields.custom_field == "extra"
 
     def test_model_config_extra_allow(self) -> None:
         assert ConceptDefinition.model_config.get("extra") == "allow"
@@ -73,8 +74,8 @@ class TestConceptHistory:
         assert len(fields.key_figures) == 2
 
     def test_extra_fields_preserved(self) -> None:
-        fields = ConceptHistory(origin="Unknown", source="tablet")  # type: ignore[call-arg]
-        assert fields.source == "tablet"  # type: ignore[attr-defined]
+        fields: Any = ConceptHistory(**cast("Any", {"origin": "Unknown", "source": "tablet"}))
+        assert fields.source == "tablet"
 
 
 class TestConceptMetadata:
@@ -126,27 +127,25 @@ class TestConceptMetadata:
 
     def test_extra_fields_on_metadata(self) -> None:
         """Extra fields should be preserved (inherited from KBEntryMetadata)."""
-        meta = ConceptMetadata(
-            concept_type="philosophy",
-            custom_flag=True,  # type: ignore[call-arg]
+        meta: Any = ConceptMetadata(
+            **cast("Any", {"concept_type": "philosophy", "custom_flag": True})
         )
-        assert meta.custom_flag is True  # type: ignore[attr-defined]
+        assert meta.custom_flag is True
 
     def test_extra_fields_in_group(self) -> None:
         """Extra fields within nested groups should be preserved."""
-        meta = ConceptMetadata(
+        meta: Any = ConceptMetadata(
             definition=ConceptDefinition(
-                category="magic",
-                extra_attribute="custom",  # type: ignore[call-arg]
+                **cast("Any", {"category": "magic", "extra_attribute": "custom"})
             ),
         )
         assert meta.definition is not None
-        assert meta.definition.extra_attribute == "custom"  # type: ignore[attr-defined]
+        assert meta.definition.extra_attribute == "custom"
 
     def test_validation_maintained(self) -> None:
         """Type validation should still work for flat fields."""
         with pytest.raises(ValidationError, match="concept_type"):
-            ConceptMetadata(concept_type=42)  # type: ignore[arg-type]
+            ConceptMetadata.model_validate({"concept_type": 42})
 
     def test_empty_metadata(self) -> None:
         """Empty metadata should pass validation."""
