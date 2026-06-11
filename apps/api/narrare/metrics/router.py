@@ -33,6 +33,7 @@ async def ready() -> Response:
     try:
         engine = await get_engine()
         async with engine.connect() as conn:
+            # narrare: allow reason="Health check bypasses repository to verify raw DB connectivity"
             await conn.execute(text("SELECT 1"))
         return JSONResponse(content={"status": "ready"})
     except Exception as e:

@@ -352,3 +352,10 @@ file = "apps/api/narrare/setup/provider_service.py"
 reason = "Setup-phase provider validation requires direct pydantic-ai Agent."
 approved_by = "ADR-015"
 date = "2026-05-20"
+
+[[tool.narrare.architecture.exceptions.entries]]
+rule = "RULE-19"
+file = "apps/api/narrare/metrics/router.py"
+reason = "Health/readiness check must bypass repository layer to verify raw DB connectivity."
+approved_by = "platform-review-01"
+date = "2026-06-11"

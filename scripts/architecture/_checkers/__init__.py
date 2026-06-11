@@ -19,6 +19,7 @@ from scripts.architecture._checkers.inline_prompts import check_inline_prompts
 from scripts.architecture._checkers.llm import check_llm_imports, check_llm_urls
 from scripts.architecture._checkers.model_config import check_hardcoded_model_config
 from scripts.architecture._checkers.prompts import check_prompt_building
+from scripts.architecture._checkers.router_queries import check_router_queries
 from scripts.architecture._checkers.sessions import check_bare_async_session
 from scripts.architecture._checkers.testing import check_bare_magic_mock
 from scripts.architecture.agent_checks import (
@@ -44,6 +45,7 @@ __all__ = [
     "check_llm_imports",
     "check_llm_urls",
     "check_prompt_building",
+    "check_router_queries",
     "scan_file",
 ]
 
@@ -150,6 +152,7 @@ def scan_file(
         + check_file_size(rel_path, source_lines, size_limits)
         + check_bare_magic_mock(rel_path, tree, source_lines)
         + check_bare_async_session(rel_path, tree, source_lines)
+        + check_router_queries(rel_path, tree, source_lines)
         + check_hardcoded_model_config(rel_path, tree, source_lines)
         + check_hardcoded_constants(rel_path, tree, source_lines, hardcoded_config)
     )

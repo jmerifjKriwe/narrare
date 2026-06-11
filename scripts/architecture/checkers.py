@@ -18,6 +18,7 @@ from scripts.architecture._checkers import (
     check_llm_imports,
     check_llm_urls,
     check_prompt_building,
+    check_router_queries,
     scan_file,
 )
 
@@ -32,5 +33,6 @@ __all__ = [
     "check_llm_imports",
     "check_llm_urls",
     "check_prompt_building",
+    "check_router_queries",
     "scan_file",
 ]
