@@ -499,6 +499,63 @@ durchgesetzt. Wiederholte Verstöße (Forschen statt Fixen) sind ein Prozessvers
 
 ---
 
+## Baseline Process for New Gates
+
+When a new gate is introduced, the following process MUST be followed to prevent
+governance gaps and ensure deterministic CI behavior from day one.
+
+### Step 1: Baseline Scan
+
+When a new gate is introduced, a **full scan of all existing files** MUST be
+performed. The scan captures every current violation against the new rule — not
+a sample, not a subset.
+
+### Step 2: Baseline Documentation
+
+All existing violations are recorded as a **baseline snapshot** with:
+- File path, line count or range, violation reason
+- Stored in a versioned baseline file (e.g. `scripts/architecture/<gate>-baseline.json`)
+- Committed alongside the gate implementation
+
+### Step 3: Ratchet Integration
+
+The baseline is loaded by the gate's ratchet mechanism:
+- **No reduction** without an explicit tracking task (proves the fix)
+- **No growth** without coordinator approval (prevents silent regression)
+- Baseline count = current known debt ceiling
+
+### Step 4: Tracking Tasks
+
+Every baseline violation gets a **tracking task** (`AUFG-XX-YY`) so that:
+- Debt is visible in the task system
+- Progress is measurable (open tasks → resolved tasks)
+- No violation is forgotten or silently accepted
+
+### Step 5: Grace Period
+
+New gates start with a **warning phase** (non-blocking in CI) until:
+- The baseline is validated against the actual codebase
+- The ratchet file is reviewed and approved
+- The gate transitions to **blocking** after one successful validation cycle
+
+### Responsibilities
+
+| Step | Owner |
+|------|-------|
+| Baseline scan + documentation | Architecture Specialist |
+| Ratchet integration + CI wiring | Platform Specialist |
+| Tracking task creation | Coordinator |
+| Grace period → blocking transition | Platform Specialist (CI) + Coordinator (approval) |
+
+### Why This Exists
+
+Without a baseline, a new gate either (a) blocks CI immediately on pre-existing
+violations (halting all work), or (b) runs as warning forever (ignored). The
+baseline process ensures new gates are introduced with controlled, visible debt
+that shrinks over time.
+
+---
+
 **Reference**: `docs/development/testing-standards.md` (1224 lines)
 **Related**: narrare-dev/guides/testing · narrare-dev/examples/testing-patterns · narrare-dev/constraints/rules
 **Adoption Spec**: `docs/architecture/decisions/025-feature-adoption-infrastructure.md`
