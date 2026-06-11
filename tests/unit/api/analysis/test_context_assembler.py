@@ -78,6 +78,7 @@ def _make_assembler(
     novel = _make_novel(novel_genre)
     novel_repo = AsyncMock()
     novel_repo.get_by_id = AsyncMock(return_value=novel)
+    novel_repo.get = AsyncMock(return_value=novel)
 
     return ContextAssembler(
         chapter_repo=chapter_repo,
