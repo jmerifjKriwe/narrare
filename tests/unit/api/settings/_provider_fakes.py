@@ -95,6 +95,10 @@ class FakeProvidersRepo:
     async def delete(self, provider_id: uuid.UUID) -> None:
         self._providers.pop(provider_id, None)
 
+    async def count_by_user(self, user_id: uuid.UUID) -> int:
+        """Count providers for a user. Returns 0 if none exist."""
+        return sum(1 for p in self._providers.values() if p.user_id == user_id)
+
 
 class FakeAiSettingsRepo:
     def __init__(self) -> None:

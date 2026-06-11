@@ -23,6 +23,7 @@ import type {
   UseAIOperationOptions,
   UseAIOperationReturn,
 } from "@/lib/hooks/use-ai-operation";
+import { createAbortSignal } from "./helpers/ai-test-helpers";
 
 // ---------------------------------------------------------------------------
 // Hoisted mock data and helpers
@@ -212,7 +213,7 @@ describe("NameGenerator", () => {
     mockedUseAIOperation.mockImplementation((options: UseAIOperationOptions<unknown>) => {
       const start = vi.fn(() => {
         options
-          .execute(new AbortController().signal)
+          .execute(createAbortSignal())
           .then((data) => options.onSuccess?.(data as typeof mockNameResponse))
           .catch(() => {});
       });
@@ -254,7 +255,7 @@ describe("NameGenerator", () => {
     // Simulate a failed AI operation: start() calls execute → errorMapper → onError → setError
     mockedUseAIOperation.mockImplementation((options: UseAIOperationOptions<unknown>) => {
       const start = vi.fn(() => {
-        options.execute(new AbortController().signal).catch((err) => {
+        options.execute(createAbortSignal()).catch((err) => {
           const mapped = options.errorMapper?.(err);
           if (mapped) options.onError?.(mapped);
         });

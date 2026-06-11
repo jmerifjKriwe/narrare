@@ -28,14 +28,16 @@ export function getErrorMessage(err: unknown, fallback: string): string {
 
 /**
  * Shared error handler for extraction mutation catches (mount effect + retry).
- * Handles abort → close, otherwise marks connection lost and shows error.
+ *
+ * Handles abort → close; otherwise shows error. Connection-loss detection
+ * is managed internally by useAIOperation (via useExtractChapter), so this
+ * handler no longer needs to call markConnectionLost explicitly.
  */
 export function handleExtractionError(
   err: unknown,
   fallbackMsg: string,
   actions: {
     onClose: () => void;
-    markConnectionLost: () => void;
     setErrorMsg: (msg: string) => void;
     setPhase: (phase: ExtractionPhase) => void;
   },
@@ -44,7 +46,6 @@ export function handleExtractionError(
     actions.onClose();
     return;
   }
-  actions.markConnectionLost();
   actions.setErrorMsg(getErrorMessage(err, fallbackMsg));
   actions.setPhase("error");
 }

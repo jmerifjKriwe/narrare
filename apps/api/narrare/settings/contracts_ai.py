@@ -73,6 +73,10 @@ class UserProvidersRepositoryProtocol(Protocol):
         """List active providers for a user."""
         ...
 
+    async def count_by_user(self, user_id: uuid.UUID) -> int:
+        """Count providers for a user. Returns 0 if none exist."""
+        ...
+
 
 @runtime_checkable
 class UserAiSettingsRepositoryProtocol(Protocol):

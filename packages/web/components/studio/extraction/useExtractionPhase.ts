@@ -6,15 +6,16 @@
  * Manages the loading → review → applying → done | error lifecycle.
  * On mount: triggers extractChapter mutation.
  * On apply: calls applyExtraction with selected items.
- * On success: calls onApplied, auto-closes after 2s.
+ * On success: auto-closes after 2s (via useExtractionAutoClose).
  *
- * §16 compliance: AbortController cancel, useConnectionLost,
- * actionable error messages.
+ * §16 compliance: All AI operations run through useAIOperation via
+ * useExtractChapter/useApplyExtraction. No raw AbortController or
+ * deprecated useConnectionLost. Connection-loss state and retry come
+ * directly from the useAIOperation-backed mutation hooks.
  */
 
 import type { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useConnectionLost } from "@/lib/hooks/use-connection-lost";
+import { useCallback, useEffect, useState } from "react";
 import { useApplyExtraction, useExtractChapter } from "@/lib/hooks/useExtraction";
 import { useExtractionSelection } from "@/lib/hooks/useExtractionSelection";
 import {
@@ -24,6 +25,7 @@ import {
   isAbortError,
   mapSelectedItems,
 } from "./extraction-utils";
+import { useExtractionAutoClose } from "./useExtractionAutoClose";
 
 export type { ExtractionPhase };
 
@@ -48,21 +50,15 @@ export function useExtractionPhase({
 }: UseExtractionPhaseParams) {
   const [phase, setPhase] = useState<ExtractionPhase>("loading");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // AI operation mutations — both backed by useAIOperation (§16).
+  // isConnectionLost and retry come from the extract mutation.
   const extractMutation = useExtractChapter(novelId, chapterId);
   const applyMutation = useApplyExtraction(novelId);
   const selection = useExtractionSelection();
 
-  // Connection lost detection. The onRetry closure captures handleRetry by reference —
-  // safe because handleRetry is defined before onRetry is ever invoked.
-  const {
-    isConnectionLost,
-    markConnectionLost,
-    retry: retryConnection,
-  } = useConnectionLost({
-    onRetry: () => handleRetry(),
-  });
+  // Auto-close on "done" phase after a short delay.
+  useExtractionAutoClose(phase, "done", onClose);
 
   // Mount-only trigger: extract on open.
   useEffect(() => {
@@ -79,7 +75,6 @@ export function useExtractionPhase({
         if (cancelled) return;
         handleExtractionError(err, t("kb.extractionFailed"), {
           onClose,
-          markConnectionLost,
           setErrorMsg,
           setPhase,
         });
@@ -88,15 +83,7 @@ export function useExtractionPhase({
     return () => {
       cancelled = true;
     };
-  }, [extractMutation.mutateAsync, markConnectionLost, t, selection.loadResults, onClose]);
-
-  // Auto-close after successful apply
-  useEffect(() => {
-    if (phase === "done") autoCloseTimer.current = setTimeout(onClose, 2000);
-    return () => {
-      if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
-    };
-  }, [phase, onClose]);
+  }, [extractMutation.mutateAsync, t, selection.loadResults, onClose]);
 
   const handleApply = useCallback(() => {
     const selected = mapSelectedItems(selection.items, selection.selectedIndices);
@@ -128,12 +115,11 @@ export function useExtractionPhase({
       .catch((err) => {
         handleExtractionError(err, t("kb.extractionFailed"), {
           onClose,
-          markConnectionLost,
           setErrorMsg,
           setPhase,
         });
       });
-  }, [extractMutation, selection, onClose, t, markConnectionLost]);
+  }, [extractMutation, selection, onClose, t]);
 
   const handleCancelExtraction = useCallback(() => {
     extractMutation.abort();
@@ -143,14 +129,14 @@ export function useExtractionPhase({
   return {
     phase,
     errorMsg,
-    isConnectionLost,
+    isConnectionLost: extractMutation.isConnectionLost,
     selectedItems: selection.items,
     selectedIndices: selection.selectedIndices,
     analysisNotes: selection.analysisNotes,
     handleApply,
     handleRetry,
     handleCancelExtraction,
-    retryConnection,
+    retryConnection: extractMutation.retry,
     // Selection actions forwarded for the UI
     toggleItem: selection.toggleItem,
     selectAll: selection.selectAll,

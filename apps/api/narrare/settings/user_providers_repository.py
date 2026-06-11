@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from narrare._app.base_repository import BaseRepository
 from narrare.settings.models import UserProvider
@@ -143,3 +143,17 @@ class UserProvidersRepository(BaseRepository):
             )
         )
         return result.scalar_one_or_none()
+
+    async def count_by_user(self, user_id: uuid.UUID) -> int:
+        """Count all providers for a user.
+
+        Args:
+            user_id: The user's UUID.
+
+        Returns:
+            Number of provider entries for this user (0 if none).
+        """
+        result = await self._session.execute(
+            select(func.count()).select_from(UserProvider).where(UserProvider.user_id == user_id)
+        )
+        return result.scalar() or 0
