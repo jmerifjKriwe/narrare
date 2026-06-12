@@ -1,4 +1,9 @@
-"""Tests for memory/dependencies.py provider detection."""
+"""Tests for provider detection — now via narrare_core.memory.availability.
+
+Historically tested via ``memory/dependencies._detect_provider_from_env``.
+The backward-compat aliases have been removed; these tests now import
+directly from the canonical source.
+"""
 
 from __future__ import annotations
 
@@ -7,17 +12,17 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import pytest
 
-from narrare.memory.dependencies import _detect_provider_from_env
+from narrare_core.memory.availability import detect_provider_from_env
 
 
 class TestDetectProviderFromEnv:
-    """Tests for the _detect_provider_from_env helper."""
+    """Tests for the detect_provider_from_env helper."""
 
     def test_openai_env_detected(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         monkeypatch.setenv("OPENAI_BASE_URL", "https://custom.openai.com")
 
-        result = _detect_provider_from_env()
+        result = detect_provider_from_env()
 
         assert result is not None
         assert result.provider == "openai"
@@ -28,7 +33,7 @@ class TestDetectProviderFromEnv:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
 
-        result = _detect_provider_from_env()
+        result = detect_provider_from_env()
 
         assert result is not None
         assert result.provider == "anthropic"
@@ -38,7 +43,7 @@ class TestDetectProviderFromEnv:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
-        result = _detect_provider_from_env()
+        result = detect_provider_from_env()
 
         assert result is None
 
@@ -46,7 +51,7 @@ class TestDetectProviderFromEnv:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
 
-        result = _detect_provider_from_env()
+        result = detect_provider_from_env()
 
         assert result is not None
         assert result.provider == "openai"
@@ -55,7 +60,7 @@ class TestDetectProviderFromEnv:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
 
-        result = _detect_provider_from_env()
+        result = detect_provider_from_env()
 
         assert result is not None
         assert result.base_url is None
@@ -65,7 +70,7 @@ class TestDetectProviderFromEnv:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
         monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://custom.anthropic.com")
 
-        result = _detect_provider_from_env()
+        result = detect_provider_from_env()
 
         assert result is not None
         assert result.provider == "anthropic"

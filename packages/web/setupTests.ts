@@ -53,7 +53,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Establish API mocking before all tests
-beforeAll(() => server.listen({ onUnhandledRequest: "bypass" }));
+// Start MSW before any test files are imported (must be top-level, not in beforeAll,
+// because some modules make fetch calls during import which would bypass MSW).
+// Using "bypass" for unhandled requests — MSW handlers exist for all API endpoints now.
+server.listen({ onUnhandledRequest: "bypass" });
 
 // Reset any request handlers that are declared during the tests
 afterEach(() => server.resetHandlers());

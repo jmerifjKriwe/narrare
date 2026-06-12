@@ -4,6 +4,7 @@ import { handlers as kbHandlers } from "./kb";
 import { handlers as kbSessionsHandlers } from "./kb-sessions";
 import { handlers as novelsHandlers } from "./novels";
 import { handlers as settingsHandlers } from "./settings";
+import { handlers as wikiHandlers } from "./wiki";
 
 export const handlers = [
   ...authHandlers,
@@ -12,4 +13,5 @@ export const handlers = [
   ...settingsHandlers,
   ...kbSessionsHandlers,
   ...generationHandlers,
+  ...wikiHandlers,
 ];

@@ -1,4 +1,4 @@
-"""Auth service — business logic for registration, login, token refresh."""
+"""Auth service — business logic for registration, login, token refresh, profile."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
+from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from narrare.auth.security import (
     create_access_token,
     create_refresh_token,
@@ -18,18 +18,26 @@ from narrare.auth.security import (
 from narrare_core.shared.errors import AuthenticationError, ConflictError
 
 if TYPE_CHECKING:
+    import uuid
+
     from narrare._app.config import Settings
-    from narrare.auth.contracts import AuthRepositoryProtocol
+    from narrare.auth.contracts import AuthRepositoryProtocol, UserProvidersCountProtocol
 
 logger = structlog.get_logger(__name__)
 
 
 class AuthService:
-    """Handles user registration, login, and token refresh."""
+    """Handles user registration, login, token refresh, and profile retrieval."""
 
-    def __init__(self, repo: AuthRepositoryProtocol, settings: Settings) -> None:
+    def __init__(
+        self,
+        repo: AuthRepositoryProtocol,
+        settings: Settings,
+        providers_repo: UserProvidersCountProtocol | None = None,
+    ) -> None:
         self._repo = repo
         self._settings = settings
+        self._providers_repo = providers_repo
 
     async def register(self, request: RegisterRequest) -> TokenResponse:
         """
@@ -132,6 +140,31 @@ class AuthService:
         for clearing the httpOnly refresh cookie.
         """
         logger.info("user_logged_out")
+
+    async def get_current_user_profile(self, user_id: uuid.UUID) -> UserResponse:
+        """Fetch the current user's profile including provider status.
+
+        Args:
+            user_id: The authenticated user's UUID.
+
+        Returns:
+            UserResponse with profile data and ``has_providers`` flag.
+
+        Raises:
+            AuthenticationError: If the user does not exist.
+        """
+        user = await self._repo.get_by_id(user_id)
+        if user is None:
+            raise AuthenticationError("User not found")
+
+        has_providers = False
+        if self._providers_repo is not None:
+            count = await self._providers_repo.count_by_user(user_id)
+            has_providers = count > 0
+
+        resp = UserResponse.model_validate(user)
+        resp.has_providers = has_providers
+        return resp
 
     def _create_tokens(self, user_id: str) -> TokenResponse:
         """Create access + refresh token pair."""

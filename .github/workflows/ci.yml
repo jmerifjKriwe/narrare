@@ -26,7 +26,9 @@ name: CI
 # | --   | check_quality_metrics.py               | ⚠️ Warning   | architecture Job (opt-in)          |
 # | --   | check_frontend_file_size.py (RULE-04)  | ✅ Blocking  | frontend Job                       |
 # | --   | check_test_coverage_gaps.py (RULE-10)  | ✅ Blocking  | architecture Job                   |
-# | --   | check_module_coverage.py (RULE-10)    | ⚠️ Warning   | test-unit Job (--warning-only)     |
+# | --   | evals smoke (pydantic-evals)            | ✅ Blocking  | architecture Job (secret-free)     |
+# | --   | check_eval_drift.py                     | ⚠️ Warning   | architecture Job (WARNING-only)    |
+# | --   | check_module_coverage.py (RULE-10)    | ✅ Blocking   | test-unit Job (--fail, ratcheted baselines) |
 # | --   | check-testid.ts (data-testid gate)      | ✅ Blocking  | frontend Job                       |
 # | --   | bandit + pip-audit                     | ✅ Blocking  | security Job                       |
 # | --   | biome check (frontend lint/format)     | ✅ Blocking  | frontend Job                       |
@@ -145,6 +147,16 @@ jobs:
 
       - name: Check test coverage gaps (RULE-10)
         run: uv run python scripts/check_test_coverage_gaps.py --fail-on-missing
+
+      # Eval smoke tests — deterministic, no provider secrets needed.
+      # Runtime evals (with real LLM calls) run in nightly workflow, not PR CI.
+      # See docs/development/testing-standards.md § "LLM Prompt Evaluation".
+      - name: Run eval smoke tests
+        run: uv run python -m evals run --suite all --mode smoke
+
+      - name: Check eval drift (WARNING-only)
+        continue-on-error: true
+        run: uv run python scripts/check_eval_drift.py
 
       # WARNING-only: surfaces CURRENT_STATE.md drift without blocking CI.
       # TODO: Transition to blocking after baseline is established (target: 2026-Q3)
@@ -286,10 +298,10 @@ jobs:
               print(f'Coverage {pct:.1f}% meets the 80% target threshold')
            "
 
-      - name: Check per-module coverage (RULE-10)
+      - name: Check per-module coverage (RULE-10 + ratchet)
         if: always() && steps.tests.outcome != 'cancelled'
         run: |
-          uv run python scripts/check_module_coverage.py --warning-only
+          uv run python scripts/check_module_coverage.py --fail
 
       # TODO: Transition to blocking after baseline is established (target: 2026-Q3)
       - name: Check pytest collection performance (WARNING-only)

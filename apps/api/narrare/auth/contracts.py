@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     import uuid
 
     from narrare.auth.models import User
-    from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
+    from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 
 
 @runtime_checkable
@@ -21,8 +21,16 @@ class AuthRepositoryProtocol(Protocol):
 
 
 @runtime_checkable
+class UserProvidersCountProtocol(Protocol):
+    """Protocol for counting user providers — repository query only."""
+
+    async def count_by_user(self, user_id: uuid.UUID) -> int: ...
+
+
+@runtime_checkable
 class AuthServiceProtocol(Protocol):
     async def register(self, request: RegisterRequest) -> TokenResponse: ...
     async def login(self, request: LoginRequest) -> TokenResponse: ...
     async def refresh(self, refresh_token: str) -> TokenResponse: ...
     async def logout(self) -> None: ...
+    async def get_current_user_profile(self, user_id: uuid.UUID) -> UserResponse: ...

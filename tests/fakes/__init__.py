@@ -38,6 +38,7 @@ from tests.fakes.fake_services import (
     FakeNovelService,
 )
 from tests.fakes.fake_setup import FakeDemoLoader, FakeProviderService
+from tests.fakes.fake_user_providers_repository import FakeUserProvidersRepository
 from tests.fakes.fake_user_settings_repo import FakeUserSettingsRepository
 from tests.fakes.fake_volume_repo import FakeVolumeRepository
 from tests.fakes.fake_wiki_repo import FakeWikiRepository
@@ -62,6 +63,7 @@ __all__ = [
     "FakePromptComposer",
     "FakeProviderService",
     "FakeRelationshipRepository",
+    "FakeUserProvidersRepository",
     "FakeUserSettingsRepository",
     "FakeVolumeRepository",
     "FakeWikiRepository",

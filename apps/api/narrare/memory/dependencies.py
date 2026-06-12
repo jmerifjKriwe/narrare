@@ -7,8 +7,8 @@ into ``create_memory_client()`` so the hardcoded ``_PROVIDER_DEFAULT_MODELS``
 can be overridden via configuration.
 
 Provider detection is delegated to ``narrare_core.memory.availability``
-(the public API), replacing the former private ``_detect_provider_from_env``
-that lived in this module.
+(the public API).  Import ``detect_provider_from_env`` and
+``ProviderEnvConfig`` directly from there — not from this module.
 
 Usage in router::
 
@@ -29,17 +29,10 @@ from fastapi import Depends
 
 from narrare._app.config import Settings, get_settings
 from narrare_core.memory._null_client import NullMemoryClient
-from narrare_core.memory.availability import (
-    ProviderEnvConfig,
-    detect_provider_from_env,
-)
+from narrare_core.memory.availability import detect_provider_from_env
 from narrare_core.memory.mem0_client import create_memory_client
 
 logger = structlog.get_logger(__name__)
-
-# Backward-compat aliases — prefer imports from narrare_core.memory.availability.
-_ProviderEnvConfig = ProviderEnvConfig
-_detect_provider_from_env = detect_provider_from_env
 
 
 async def get_memory_client(

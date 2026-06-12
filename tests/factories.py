@@ -95,6 +95,8 @@ def make_volume(**overrides: Any) -> Any:
 
 def make_user(**overrides: Any) -> Any:
     """Create a User instance with sensible defaults."""
+    from datetime import UTC, datetime
+
     from narrare.auth.models import User
 
     user = User()
@@ -107,6 +109,8 @@ def make_user(**overrides: Any) -> Any:
             "display_name": overrides.pop("display_name", "Test User"),
             "is_active": overrides.pop("is_active", True),
             "is_verified": overrides.pop("is_verified", False),
+            "created_at": overrides.pop("created_at", datetime.now(UTC)),
+            "updated_at": overrides.pop("updated_at", datetime.now(UTC)),
             **overrides,
         },
     )

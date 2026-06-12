@@ -533,17 +533,8 @@ cleanup:
     docker image prune --all --force 2>/dev/null || true
     @echo "  Pruning pnpm store..."
     pnpm store prune 2>/dev/null || true
-    python3 -c "
-import os, subprocess
-# Also clean __pycache__ outside the project
-for home in [os.path.expanduser('~')]:
-    for root, dirs, files in os.walk(home):
-        dirs[:] = [d for d in dirs if d not in ('node_modules', '.venv', '.git', '.pnpm-store')]
-        if '__pycache__' in dirs:
-            path = os.path.join(root, '__pycache__')
-            subprocess.run(['rm', '-rf', path], capture_output=True)
-            print(f'  Removed {path}')
-" 2>/dev/null || true
+    @echo "  Cleaning __pycache__ outside project dirs..."
+    find ~ -name __pycache__ -type d -not -path '*/node_modules/*' -not -path '*/.venv/*' -not -path '*/.git/*' -not -path '*/pnpm-store/*' -exec rm -rf {} + 2>/dev/null || true
     @echo "✅ Cleanup complete"
 
 # Tail all service logs

@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-11 (SSOT Fact Check + AUFG-01-03 MCP/A2A Documentation)
-Session: (1) SSOT automated fact checker implemented (scripts/check_current_state_facts.py). Corrected drift: ADR count 43→42, test files 567→573 backend / 197→201 frontend, feature specs 87→86. (2) AUFG-01-03: MCP/A2A adapter status documented in features/INDEX.md (ADAPTER-001/002, 💡 idea status). Contract-test gates documented. Q-001/Q-002 status confirmed with adapter cross-references.
+Date: 2026-06-12 (AUFG-01-07 Adoption/Health Ratchet Sync)
+Session: Adoption/health ratchet semantics synchronized with CURRENT_STATE.md. Key fix: "27/27 fully adopted" was factually incorrect — checker shows adopted ❌ for all 27 modes (runtime evidence incomplete). Corrected to "27/27 static adoption" (probes wired). The 109 ratcheted baseline items are real: 63 runtime-evidence gaps (missing), 27 not_adopted markers, 18 design-level not_applicable, 1 inline_fallback counter. 0 new items above ratchet floor.
 
 ---
 
@@ -36,8 +36,8 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - ADRs: 42 entries in INDEX.md (ADR-001 through ADR-043, ADR-039 gap — 42 unique entries)
 - Feature specs: 86 individual files + INDEX.md (77 registered entries)
 - Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
-- Adoption debt: 109 ratcheted baseline items (0 new, 0 resolved — P5 achieved 0 new debt)
-- System health: 0.88 HEALTHY (feature_adoption gate at 0.50 due to baseline count, not new debt)
+- Adoption debt: 109 ratcheted baseline items — 0 new above baseline, 0 resolved (breakdown: 27 not_adopted markers, 63 real runtime-evidence gaps [missing], 18 design-level not_applicable, 1 inline_fallback counter). All 27 modes pass static adoption (probes wired) but 0 of 27 pass full runtime adoption.
+- System health: 0.88 HEALTHY (feature_adoption gate at 0.50 — reflects 109 ratcheted baseline items; no new debt above ratchet floor. CI remains warning-only for DEGRADED, fails on CRITICAL.)
 
 ### Core (`packages/core/narrare_core/`)
 
@@ -95,7 +95,7 @@ Alembic migrations 0001 through ~0023
 - **Remaining governed debt:** frontend RULE-04 legacy file-size debt fully resolved (`53 → 38 → 37 → 0`). All TS/TSX files within limits.
 - **Still blocked by governance:** new prompt/adoption warning growth, new architecture exceptions without ADR/user approval, new frontend file-size violations, REST-only frontend paths for SSE-capable AI backends, and workaround/quick-fix implementations.
 - **Streaming compliance:** 0 violations (baseline was 2: unused KB sessions SSE + timeline analysis without frontend consumer; both resolved).
-- **Health note:** System Health reflects baseline debt; streaming compliance is now 0 violations and RULE-02 exception count reduced from 1 to 0. DEGRADED is warning-only for freeze status; CRITICAL blocks.
+- **Health note:** System Health reflects ratcheted baseline debt (109 adoption items, 12 architecture exceptions). feature_adoption gate at 0.50 due to 63 real runtime-evidence gaps in baseline (not new debt above ratchet). Streaming compliance is 0 violations. DEGRADED is warning-only; CRITICAL blocks.
 
 ---
 
@@ -148,7 +148,7 @@ Completed in Phase 6 so far:
 43. ✅ **CR-03 / INFRA-013 P3 (ADR-041)**: FileEvidenceSink (`.evidence/invocations.jsonl`), registry drift detection (JSON Schema + `check_registry_drift.py`), doc-drift automation (`doc_drift/` package), quality metrics (`QualityReport` + joiner), CI integration (`--drift` flag, CI jobs). All P3 exit criteria satisfied. INFRA-013 complete through P3.
   44. ✅ **CR-04 Cross-Feature Coherence Remediation**: KB Context Contract with source/evidence/confidence/review_status metadata (CR-AUFG-04-01 + B1 + B3); Variable naming canonical aliases with deprecation of bare `language` (CR-AUFG-04-03 + E2 + B6); ADR Implementation Completeness Gate (Gate 12); Cross-Feature Audit Cadence; FIND-009 (Timeline→Consistency) registered. 39 new tests. Precedence confirmed in RULE-22 §7 (E3: no standalone ADR needed).
   45. ✅ **CR-03 / INFRA-013 P4 (ADR-042)**: PersistentEvidenceSink (PostgreSQL hybrid), EvidenceRepository protocol + implementation, PersistentEvidenceSink in Backend, Alembic migration 0028_invocation_evidence, 41 tests (23 unit + 18 integration). FileEvidenceSink unchanged for CI.
-   46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Modes Adopted**: All 27 feature modes fully adopted. Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json ratcheted: 0 new adoption debt (109 baseline items preserved as ratchet floor). CI integration: probes run before adoption check.
+   46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Static Adoption Achieved**: All 27 feature modes have adoption infrastructure wired (probes, registry entries, static adoption passes). Runtime adoption incomplete: 63 runtime-evidence gaps remain (final_validation, preference_enrichment, budget_resolution, evidence_sink missing for various modes). Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json ratcheted: 0 new adoption debt above 109-item baseline floor. CI integration: probes run before adoption check.
 47. ✅ **CR-07 UX Audit Remediation — Full Implementation**: ADR-043 useAIOperation hook + mapSSEError implementiert. Alle P0/P1 AI-Flows (GenerationPanel, CoAuthorPanel, ContinueButton, TipTapEditor, KB sessions, timeline, KB _components) auf useAIOperation migriert. §16 Compliance: aiActions.* i18n keys (de/en/fr), structured AIErrorResponse, no raw AbortController, no useConnectionLost. Maschinelle Compliance-Checks + CI-Integration. RULE-04: scorer_modes.py (401→365) + compliance script (594→93) modularisiert. ONBOARD-001, PROMPT-003, KEYBOARD-001 Feature-Specs erstellt. Q-012 resolved. Commit 1001125: 84 Dateien, +5.132/-674.
 48. ✅ **CR-07 UX Audit — Phase 2**: CR-AUFG-07-01 bis CR-AUFG-07-06 abgeschlossen. 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming DEAD CODE DELETED. Migrierte Flows: Chat SSE (CHAT-001), Beta Reader (ANAL-001), Extraction (KB-007), Worldbuilding (KB-006), Name Generator (GEN-001), Consistency Check (CONS-001). KEYBOARD-001 implementiert (Ctrl+Enter, Escape-Cancel). 5 Testfiles aktualisiert, 40+14 Tests grün.
 
@@ -163,7 +163,7 @@ Completed in Phase 6 so far:
 7. ✅ **Frontend-Hubs modularisiert (AUFG-01-02)** — All frontend RULE-04 violations resolved (`53 → 38 → 37 → 0`). EditorView modularized (764→146 lines). File-size check reports 0 current, 0 baseline, 0 new.
 8. ✅ **E2E test patterns** — Playwright-based E2E tests established (16 test files, 3.3k lines). Auth proxy pattern, wizard robustness, editor persistence, warmup fixture, `NARRARE_E2E_TEST=1` mode. Documented in testing-standards.md.
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
-10. ✅ **CR-03 / INFRA-013 P0–P5** — Core ai_invocation module implemented through P5. P0 (pipeline + contracts), P1 (User/Project IDs), P2 (profiles + KG consistency), P3 (FileEvidenceSink + drift detection + quality metrics), P4 (PersistentEvidenceSink + PostgreSQL), P5 (27/27 modes adopted — all runtime blockers resolved). INFRA-013 complete.
+10. ✅ **CR-03 / INFRA-013 P0–P5** — Core ai_invocation module implemented through P5. P0 (pipeline + contracts), P1 (User/Project IDs), P2 (profiles + KG consistency), P3 (FileEvidenceSink + drift detection + quality metrics), P4 (PersistentEvidenceSink + PostgreSQL), P5 (27/27 modes static adoption — probes wired, 63 runtime-evidence gaps ratcheted as baseline). INFRA-013 complete.
 11. ✅ **CR-07 UX Audit — Full Implementation** — ADR-043 implementiert, alle P0/P1 flows migriert, §16 compliance durchgesetzt, maschinelle Checks + CI.
 12. ✅ **ONBOARD-001: Onboarding & AI-Einführung** — Demo-Discovery im Dashboard, KI-Tour (1–2 Min.), kontextuelle Tooltips. Post-MVP. Implementiert: GET /setup/demos, DemoProjectCards, useSeenTooltips, Tour-Replay.
 13. ⏳ **PROMPT-003: Prompt Customization UX** — Variablen-Erklärung, Preview/Test-Modus, Reset-to-Default. Post-MVP (nicht vor Phase 6).
@@ -200,7 +200,7 @@ Completed in Phase 6 so far:
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
 | ADR-024 | Free-Form Chat for Writing Craft | ✅ Implemented — ChatAgent + ChatDeps + HistoryPolicy.CONVERSATIONAL |
-| ADR-025 | Feature Adoption Infrastructure | ✅ Implemented — 27/27 modes adopted; INFRA-013 complete |
+| ADR-025 | Feature Adoption Infrastructure | ✅ Implemented — 27/27 modes static adoption (probes wired); 63 runtime-evidence gaps ratcheted; INFRA-013 complete |
 | ADR-026 | Capability-Based Prompt Injection Pattern | ✅ Implemented |
 | ADR-027 | AI Feature Stabilization Gates | ✅ Completed — freeze lifted; ratcheted post-freeze governance retained |
 | ADR-028 | Architecture Exception Register SSOT | ✅ Implemented |
@@ -213,7 +213,7 @@ Completed in Phase 6 so far:
 | ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ Accepted — CR-01 prompt surface contract for manifest-routeable intents (INFRA-012) |
-| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0–P5) — CR-03 runtime evidence contract complete through P5; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; core/profiles/ (ProjectWritingProfile SSOT); KBConsistencyEnricher; AuditReport; FileEvidenceSink; PersistentEvidenceSink (PostgreSQL hybrid); registry drift detection; doc-drift automation; quality metrics; CI integration; 27/27 modes adopted — INFRA-013 complete |
+| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0–P5) — CR-03 runtime evidence contract complete through P5; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; core/profiles/ (ProjectWritingProfile SSOT); KBConsistencyEnricher; AuditReport; FileEvidenceSink; PersistentEvidenceSink (PostgreSQL hybrid); registry drift detection; doc-drift automation; quality metrics; CI integration; 27/27 modes static adoption (probes wired), 63 runtime-evidence gaps ratcheted as baseline — INFRA-013 complete |
 | ADR-040 | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ Accepted — P2 architecture for ProjectWritingProfile SSOT, KG consistency evidence, audit lifecycle reporting, mode runtime proof expansion (24/27 modes) |
 | ADR-041 | Typed Manifests / Doc-Drift Automation / Quality Metrics / Persistent Evidence | ✅ Accepted — P3 architecture for registry drift detection (JSON Schema + check_registry_drift.py), doc-drift automation (doc_drift/ package), quality metrics (QualityReport + joiner), and file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl) |
 | ADR-042 | PostgreSQL Evidence Upgrade | ✅ Implemented (P4) — hybrid FileEvidenceSink (CI) + PersistentEvidenceSink (production) |
@@ -251,11 +251,11 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Python 3.14 missing type stubs | Low | Documented in pyproject.toml |
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
-| System Health Score | Medium | Current: 0.88 HEALTHY. feature_adoption gate at 0.50 due to 109 ratcheted baseline items (not new debt). CI remains warning-only for DEGRADED and fails on CRITICAL. Streaming compliance now 0 violations. |
+| System Health Score | Medium | Current: 0.88 HEALTHY. feature_adoption gate at 0.50 (109 ratcheted baseline items: 27 not_adopted markers + 63 real runtime-evidence gaps + 18 design-level N/A + 1 counter). No growth above ratchet floor. CI remains warning-only for DEGRADED and fails on CRITICAL. |
 | Frontend RULE-04 regressions | Low | All 37 legacy violations resolved (53→0). `check_frontend_file_size.py` enforces limits in CI. New violations blocked by ratchet. |
 | Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: CONSTRAINTS.md §7 table has 10 entries; ai-gate-baseline.json has 12 (incl. 1 RULE-TEST-01 + 1 inline_fallback + 1 RULE-19). RULE-02 exception #3 removed. |
 
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-11 (SSOT Fact Check + AUFG-01-03 MCP/A2A Documentation)
+> Last content update: 2026-06-12 (AUFG-01-07 Adoption/Health Ratchet Sync)

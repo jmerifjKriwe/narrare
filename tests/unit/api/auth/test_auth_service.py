@@ -11,12 +11,17 @@ from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 from narrare.auth.service import AuthService
 from narrare_core.shared.errors import AuthenticationError, ConflictError
 from tests.factories import make_user
-from tests.fakes import FakeAuthRepository
+from tests.fakes import FakeAuthRepository, FakeUserProvidersRepository
 
 
 @pytest.fixture
 def fake_repo() -> FakeAuthRepository:
     return FakeAuthRepository()
+
+
+@pytest.fixture
+def fake_providers_repo() -> FakeUserProvidersRepository:
+    return FakeUserProvidersRepository()
 
 
 class _FakeSettings:
@@ -28,8 +33,15 @@ class _FakeSettings:
 
 
 @pytest.fixture
-def service(fake_repo: FakeAuthRepository) -> AuthService:
-    return AuthService(repo=fake_repo, settings=_FakeSettings())  # type: ignore[arg-type]
+def service(
+    fake_repo: FakeAuthRepository,
+    fake_providers_repo: FakeUserProvidersRepository,
+) -> AuthService:
+    return AuthService(
+        repo=fake_repo,
+        settings=_FakeSettings(),  # type: ignore[arg-type]
+        providers_repo=fake_providers_repo,
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -743,6 +743,37 @@ Use `just test-single` when:
 - Stepping through tests with a debugger
 - Isolating a flaky test
 
+### Fast Developer Feedback (Pytest Collection Fastpath)
+
+Full pytest collection gathers ~6,600+ tests across unit, integration, and e2e
+directories. For the local developer loop, unit-only testing is the primary
+fast-feedback path:
+
+| Command | Scope | Collection time | Run time |
+|---------|-------|----------------|----------|
+| `just test-unit` | `tests/unit/` only (~6,160 tests) | ~14s | ~2.5min |
+| `just test` | `tests/` all levels (~6,670 tests) | ~17s | varies |
+
+**Integration and E2E tests are separate explicit gates**, not mixed into the
+unit test loop. They run in CI (`test-integration` and `test-e2e` jobs) or
+locally via explicit commands:
+
+```bash
+just test-integration   # Requires Docker services
+just test-e2e           # Requires full stack (main branch CI only)
+```
+
+**Pre-merge checklist**: `just test-unit` passes locally → CI runs
+architecture, lint, typecheck, security, unit + integration + e2e.
+
+### Eval Types (Pydantic Evals)
+
+| Type | Secrets needed | When | CI location |
+|------|---------------|------|-------------|
+| Smoke | None (deterministic) | Every PR | `architecture` job |
+| Runtime | Provider API key | Nightly / manual | Separate workflow |
+| Judge | LLM judge model key | Nightly / manual | Separate workflow |
+
 ---
 
 ## Coverage Standards
@@ -1159,10 +1190,12 @@ uv run python -m evals run --suite kb_extraction --mode runtime
 
 ### CI Integration
 
-- **Nightly:** Runs automatically at 3 AM UTC on main branch
+- **PR CI (architecture job):** Smoke evals run as a blocking gate — deterministic, no secrets needed
+- **Nightly:** Runtime evals run automatically at 3 AM UTC on main branch (needs provider secrets)
 - **Manual:** `workflow_dispatch` with optional test case filter
+- **Drift check:** `check_eval_drift.py` runs in PR CI (warning-only initially)
 - **Results:** Uploaded as GitHub Actions artifacts (30-day retention)
-- **Not blocking:** Eval failures don't block PRs (advisory only)
+- **Runtime evals are NOT in the PR CI pipeline** — they need real API keys
 
 ### Baseline Strategy
 
