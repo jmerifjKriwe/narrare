@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "framework": "pydantic-evals",
+  "suite": "rewrite_selection",
+  "mode": "smoke",
+  "report_name": "rewrite_selection_task",
+  "created_at": "2026-06-12T06:25:57.637404+00:00",
+  "cases": [
+    {
+      "name": "tone-soften",
+      "scores": {
+        "RewriteModeMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "selected_mode": "tone",
+        "rewritten_text": "[tone] You failed us, and everyone knows it.",
+        "rationale": "Smoke rewrite validates mode routing without external model calls."
+      }
+    },
+    {
+      "name": "voice-character",
+      "scores": {
+        "RewriteModeMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "selected_mode": "voice",
+        "rewritten_text": "[voice] We should leave before sunrise.",
+        "rationale": "Smoke rewrite validates mode routing without external model calls."
+      }
+    }
+  ],
+  "failures": [],
+  "rendered": "                   Evaluation Summary: rewrite_selection_task                   \n┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓\n┃ Case ID       ┃ Inputs         ┃ Outputs       ┃ Scores         ┃ Assertions ┃\n┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩\n│ tone-soften   │ selection_text │ selected_mode │ RewriteModeMat │ ✔          │\n│               │ ='You failed   │ ='tone'       │ ch: 1.00       │            │\n│               │ us, and        │ rewritten_tex │                │            │\n│               │ everyone knows │ t=' You       │                │            │\n│               │ it.'           │ failed us,    │                │            │\n│               │ context_before │ and everyone  │                │            │\n│               │ ='The council  │ knows it.'    │                │            │\n│               │ room fell      │ rationale='Sm │                │            │\n│               │ silent.'       │ oke rewrite   │                │            │\n│               │ context_after= │ validates     │                │            │\n│               │ 'Mara looked   │ mode routing  │                │            │\n│               │ away first.'   │ without       │                │            │\n│               │ rewrite_mode=' │ external      │                │            │\n│               │ tone'          │ model calls.' │                │            │\n│               │ instruction='M │               │                │            │\n│               │ ake the        │               │                │            │\n│               │ accusation     │               │                │            │\n│               │ less cruel but │               │                │            │\n│               │ still tense.'  │               │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ voice-charac… │ selection_text │ selected_mode │ RewriteModeMat │ ✔          │\n│               │ ='We should    │ ='voice'      │ ch: 1.00       │            │\n│               │ leave before   │ rewritten_tex │                │            │\n│               │ sunrise.'      │ t=' We should │                │            │\n│               │ context_before │ leave before  │                │            │\n│               │ ='Iven checked │ sunrise.'     │                │            │\n│               │ the saddle     │ rationale='Sm │                │            │\n│               │ straps.'       │ oke rewrite   │                │            │\n│               │ context_after= │ validates     │                │            │\n│               │ 'The horses    │ mode routing  │                │            │\n│               │ stamped in the │ without       │                │            │\n│               │ cold.'         │ external      │                │            │\n│               │ rewrite_mode=' │ model calls.' │                │            │\n│               │ voice'         │               │                │            │\n│               │ instruction=\"U │               │                │            │\n│               │ se Captain     │               │                │            │\n│               │ Iven's clipped │               │                │            │\n│               │ soldier        │               │                │            │\n│               │ voice.\"        │               │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ Averages      │                │               │ RewriteModeMat │ 100.0% ✔   │\n│               │                │               │ ch: 1.00       │            │\n└───────────────┴────────────────┴───────────────┴────────────────┴────────────┘\n"
+}

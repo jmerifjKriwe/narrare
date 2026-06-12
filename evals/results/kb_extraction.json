@@ -1,0 +1,138 @@
+{
+  "version": 2,
+  "framework": "pydantic-evals",
+  "suite": "kb_extraction",
+  "mode": "smoke",
+  "report_name": "kb_extraction_task",
+  "created_at": "2026-06-12T06:25:57.605243+00:00",
+  "cases": [
+    {
+      "name": "new-character-and-location",
+      "scores": {
+        "KBExtractionCoverage": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "results": [
+          {
+            "item_type": "new_entity",
+            "name": "Mara",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Mara"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Moon Gate",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Moon Gate"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Gate",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Gate"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Solenne Her",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Solenne Her"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Her",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Her"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Captain Iven",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Captain Iven"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Iven",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Iven"
+          }
+        ],
+        "analysis_notes": "Smoke extraction uses deterministic title-case phrase detection."
+      }
+    },
+    {
+      "name": "relationship-update",
+      "scores": {
+        "KBExtractionCoverage": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "results": [
+          {
+            "item_type": "update_entity",
+            "name": "Vellum House",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Vellum House"
+          },
+          {
+            "item_type": "update_entity",
+            "name": "Ardent Circle",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Ardent Circle"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Detective Noor",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Detective Noor"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Noor",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Noor"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "House",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "House"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Circle Jonas",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Circle Jonas"
+          },
+          {
+            "item_type": "new_entity",
+            "name": "Jonas",
+            "entity_type": "entity",
+            "confidence": 0.9,
+            "source_text": "Jonas"
+          }
+        ],
+        "analysis_notes": "Smoke extraction uses deterministic title-case phrase detection."
+      }
+    }
+  ],
+  "failures": [],
+  "rendered": "                     Evaluation Summary: kb_extraction_task                     \n┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓\n┃ Case ID        ┃ Inputs        ┃ Outputs        ┃ Scores        ┃ Assertions ┃\n┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩\n│ new-character… │ chapter_title │ results=[KBExt │ KBExtractionC │ ✔          │\n│                │ ='The Gate'   │ ractionItem(it │ overage: 1.00 │            │\n│                │ genre='Fantas │ em_type='new_e │               │            │\n│                │ y'            │ ntity',        │               │            │\n│                │ chapter_text= │ name='Mara',   │               │            │\n│                │ 'Mara crossed │ entity_type='e │               │            │\n│                │ the Moon Gate │ ntity',        │               │            │\n│                │ beneath the   │ confidence=0.9 │               │            │\n│                │ ruined city   │ ,              │               │            │\n│                │ of Solenne.   │ source_text='M │               │            │\n│                │ Her silver    │ ara'),         │               │            │\n│                │ oathmark      │ KBExtractionIt │               │            │\n│                │ burned when   │ em(item_type=' │               │            │\n│                │ Captain Iven  │ new_entity',   │               │            │\n│                │ raised his    │ name='Moon     │               │            │\n│                │ lantern.'     │ Gate',         │               │            │\n│                │ existing_enti │ entity_type='e │               │            │\n│                │ ty_names=[]   │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='M │               │            │\n│                │               │ oon Gate'),    │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Gate',   │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='G │               │            │\n│                │               │ ate'),         │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Solenne  │               │            │\n│                │               │ Her',          │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='S │               │            │\n│                │               │ olenne Her'),  │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Her',    │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='H │               │            │\n│                │               │ er'),          │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Captain  │               │            │\n│                │               │ Iven',         │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='C │               │            │\n│                │               │ aptain Iven'), │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Iven',   │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='I │               │            │\n│                │               │ ven')]         │               │            │\n│                │               │ analysis_notes │               │            │\n│                │               │ ='Smoke        │               │            │\n│                │               │ extraction     │               │            │\n│                │               │ uses           │               │            │\n│                │               │ deterministic  │               │            │\n│                │               │ title-case     │               │            │\n│                │               │ phrase         │               │            │\n│                │               │ detection.'    │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ relationship-… │ chapter_title │ results=[KBExt │ KBExtractionC │ ✔          │\n│                │ ='Old Debts'  │ ractionItem(it │ overage: 1.00 │            │\n│                │ genre='Myster │ em_type='updat │               │            │\n│                │ y'            │ e_entity',     │               │            │\n│                │ chapter_text= │ name='Vellum   │               │            │\n│                │ 'Detective    │ House',        │               │            │\n│                │ Noor admitted │ entity_type='e │               │            │\n│                │ that Vellum   │ ntity',        │               │            │\n│                │ House funded  │ confidence=0.9 │               │            │\n│                │ the Ardent    │ ,              │               │            │\n│                │ Circle. Jonas │ source_text='V │               │            │\n│                │ kept the      │ ellum House'), │               │            │\n│                │ receipt       │ KBExtractionIt │               │            │\n│                │ hidden inside │ em(item_type=' │               │            │\n│                │ the blue      │ update_entity' │               │            │\n│                │ ledger.'      │ , name='Ardent │               │            │\n│                │ existing_enti │ Circle',       │               │            │\n│                │ ty_names=['Ve │ entity_type='e │               │            │\n│                │ llum House',  │ ntity',        │               │            │\n│                │ 'Ardent       │ confidence=0.9 │               │            │\n│                │ Circle']      │ ,              │               │            │\n│                │               │ source_text='A │               │            │\n│                │               │ rdent          │               │            │\n│                │               │ Circle'),      │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Detectiv │               │            │\n│                │               │ e Noor',       │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='D │               │            │\n│                │               │ etective       │               │            │\n│                │               │ Noor'),        │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Noor',   │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='N │               │            │\n│                │               │ oor'),         │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='House',  │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='H │               │            │\n│                │               │ ouse'),        │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Circle   │               │            │\n│                │               │ Jonas',        │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='C │               │            │\n│                │               │ ircle Jonas'), │               │            │\n│                │               │ KBExtractionIt │               │            │\n│                │               │ em(item_type=' │               │            │\n│                │               │ new_entity',   │               │            │\n│                │               │ name='Jonas',  │               │            │\n│                │               │ entity_type='e │               │            │\n│                │               │ ntity',        │               │            │\n│                │               │ confidence=0.9 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ source_text='J │               │            │\n│                │               │ onas')]        │               │            │\n│                │               │ analysis_notes │               │            │\n│                │               │ ='Smoke        │               │            │\n│                │               │ extraction     │               │            │\n│                │               │ uses           │               │            │\n│                │               │ deterministic  │               │            │\n│                │               │ title-case     │               │            │\n│                │               │ phrase         │               │            │\n│                │               │ detection.'    │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ Averages       │               │                │ KBExtractionC │ 100.0% ✔   │\n│                │               │                │ overage: 1.00 │            │\n└────────────────┴───────────────┴────────────────┴───────────────┴────────────┘\n"
+}

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -73,4 +73,59 @@ class PreferenceAnalysisResult(BaseModel):
     content_patterns: list[str] = Field(default_factory=list)
     avoidance_patterns: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
+    summary: str = ""
+
+
+# ---------------------------------------------------------------------------
+# chat_generation suite
+# ---------------------------------------------------------------------------
+
+
+class DraftOutputField(BaseModel):
+    """Subset of DraftOutput fields used by chat_generation eval for draft type."""
+
+    text: str
+    title: str | None = None
+    scene_breaks: list[int] = []
+    word_count: int = 0
+    metadata: dict[str, Any] = {}
+
+
+class ChatGenerationInput(BaseModel):
+    """Input for chat/agent eval cases."""
+
+    agent_type: Literal["chat", "draft", "inline_suggest"]
+    prompt_text: str
+    genre: str = "Fantasy"
+    language: str = "en"
+
+
+class ChatGenerationResult(BaseModel):
+    """Normalized chat/agent generation result."""
+
+    text: str
+    draft_output: DraftOutputField | None = None  # only for draft_agent
+    word_count: int = 0
+
+
+# ---------------------------------------------------------------------------
+# analysis_feedback suite
+# ---------------------------------------------------------------------------
+
+
+class AnalysisFeedbackInput(BaseModel):
+    """Input for analysis/feedback agent eval cases."""
+
+    agent_type: Literal["beta_reader", "review", "consistency"]
+    text_content: str
+    genre: str = "Fantasy"
+    language: str = "en"
+
+
+class AnalysisFeedbackResult(BaseModel):
+    """Normalized analysis/feedback result."""
+
+    passed: bool = False
+    issues_found: int = 0
+    quality_score: int = 0
     summary: str = ""

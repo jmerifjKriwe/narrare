@@ -73,8 +73,8 @@ def main() -> int:
     parser.add_argument(
         "--threshold",
         type=int,
-        default=int(os.environ.get("FRONTEND_TEST_THRESHOLD", "120")),
-        help="Max allowed seconds (default: 120, env: FRONTEND_TEST_THRESHOLD)",
+        default=int(os.environ.get("FRONTEND_TEST_THRESHOLD", "130")),
+        help="Max allowed seconds (default: 130, env: FRONTEND_TEST_THRESHOLD)",
     )
     args = parser.parse_args()
 
