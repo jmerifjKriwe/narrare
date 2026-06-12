@@ -1,9 +1,9 @@
-<!-- Context: narrare-dev/standards/prompt-standards | Priority: high | Version: 1.1 | Updated: 2026-06-05 -->
+<!-- Context: narrare-dev/standards/prompt-standards | Priority: high | Version: 1.2 | Updated: 2026-06-12 -->
 
 # Prompt Engineering Standard — Quick Reference
 
 > **Full document**: `docs/development/prompt-standards.md`
-> **Enforcement**: `check_architecture.py` + Pydantic Evals (ADR-032) + Prompt Surface Contract manifest checker (ADR-037)
+> **Enforcement**: `check_architecture.py` + `prompt_governance_checks.py` + Pydantic Evals (ADR-032) + Prompt Surface Contract manifest checker (ADR-037)
 > **Related**: RULE-02, RULE-02a, ADR-002, ADR-019, ADR-026, ADR-037, INFRA-012
 
 ---
@@ -46,14 +46,25 @@ conflict resolution are now in `NarrareUniversalRules` Capability, not meta temp
 
 ## Security Requirements
 
-- All user-content variables MUST be wrapped in XML tags (e.g., `<user_provided_text>`)
-- User content vars: `{{existing_content}}`, `{{chapter_text}}`, `{{entry_content}}`,
+- All user-content variables MUST be explicitly wrapped in approved XML tags:
+  `<user_provided_text>`, `<user_provided_data>`, `<user_instructions>`.
+- User content vars include: `{{existing_content}}`, `{{chapter_text}}`, `{{entry_content}}`,
   `{{existing_answers}}`, `{{selection_text}}`, `{{context_before/after}}`,
-  `{{text_before/after}}`, `{{author_instructions}}`, `{{conversation_history}}`
-- Register new user-content vars in `_USER_CONTENT_VARS` (`variable_engine.py`)
+  `{{text_before/after}}`, `{{author_instructions}}`, `{{conversation_history}}`, `{{entity_name}}`.
+- Register new user-content vars in `variable_registry.USER_CONTENT_VARS` — this is the SSOT.
+- The composer/variable engine does NOT auto-wrap user content; bundled templates must wrap explicitly.
 - Classify every prompt variable as user-authored, system-generated, or feature-dynamic;
   new unregistered variables are CI failures, not warnings
 - Meta-prompt MUST include anti-injection directive
+
+---
+
+## Governance Rules Added by CR-01 Remediation
+
+- `{{writing_language}}` is canonical for output language. `{{language}}` is deprecated and not allowed in bundled system prompts.
+- Any `{{kb_suggested}}` section MUST say the data is generated, unaccepted, lower-priority, and must not override author instructions, scene/timeline context, project settings, or curated KB.
+- Analysis prompts that emit issues/suggestions need evidence, confidence, or false-positive gates.
+- Runtime manuscript/user text is data to analyze or transform, not instructions to obey.
 
 ---
 
@@ -98,8 +109,11 @@ and consumed according to its security class.
 - [ ] Output format = JSON with example object
 - [ ] Do NOT >=4 items, Quality Rules >=3 items
 - [ ] `{{user_preferences}}` + `{{avoidance_patterns}}` included (where applicable)
-- [ ] User content in XML tags
+- [ ] User content in approved XML tags; unsafe vars align with `variable_registry.USER_CONTENT_VARS`
 - [ ] All variables registered/classified with provenance and security; no new unregistered variables
+- [ ] Bundled prompts use `{{writing_language}}`, not `{{language}}`
+- [ ] `{{kb_suggested}}` uses generated-candidate boilerplate where present
+- [ ] Analysis prompts include evidence/confidence/false-positive gates where applicable
 - [ ] Declared localized families: all locale variants updated, same version. Feature prompts: EN-only (no locale variants)
 - [ ] Version bumped appropriately
 - [ ] Manifest conformance (ADR-037): intent registered, routeable status correct, no production inline fallback

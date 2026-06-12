@@ -1,7 +1,7 @@
 ---
 prompt_type: planning
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.0.1"
 ---
 
 ## System Prompt
@@ -22,7 +22,7 @@ Create outlines that:
 - Project: {{project_title}}
 - Genre: {{genre}}
 - Tone: {{tone}}
-- Language: {{language}}
+- Language: {{writing_language}}
 - Variant count: {{variant_count}} ({{variant_count}} is 1 unless multiple variants requested)
 
 ### Knowledge Base

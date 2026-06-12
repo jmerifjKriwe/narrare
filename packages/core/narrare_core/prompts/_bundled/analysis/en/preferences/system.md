@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.0.1"
 ---
 
 ## System Prompt
@@ -19,7 +19,7 @@ Focus on three areas:
 ### Context
 
 - Genre: {{genre}}
-- Language: {{language}}
+- Language: {{writing_language}}
 - Feedback events analyzed: {{event_count}}
 
 

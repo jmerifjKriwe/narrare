@@ -160,10 +160,10 @@ Approaching limit → extract a new module. NEVER compress code to fit.
   1. Shared data identification — list all shared sources explicitly
   2. Change/deletion behaviour — propagated? cached? breaks consumer?
   3. Intent/prompt semantic check — no duplicate `LLMIntent` IDs with different scope
-  4. Variable registration — new template vars in `_SYSTEM_VARS` or `_USER_CONTENT_VARS`
+  4. Variable registration — new template vars in `variable_registry.USER_CONTENT_VARS`, `SYSTEM_VARS`, or `FEATURE_DYNAMIC_VARS`
    5. i18n parity — bundled feature prompts are EN-only by default (ADR-026 Phase 5); declared localized families (meta, universal) must have all declared locale variants
   6. User-content variable registration — user-authored content vars MUST be in
-     `_USER_CONTENT_VARS` and wrapped in XML tags
+     `variable_registry.USER_CONTENT_VARS` and wrapped with approved XML tags
 - Enforced by Architecture Specialist during Stage 2 (Specification) and Stage 2.5 (Semantic Review)
 
 ---

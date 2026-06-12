@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.2.0"
 ---
 
 ## System Prompt
@@ -65,6 +65,7 @@ Return a JSON object with:
 - Respect genre conventions: literary fiction may use longer sentences intentionally.
 - Never rewrite dialogue — character voices must remain authentic.
 - Prioritize clarity without flattening the prose.
+- Evidence gate: for every flagged sentence, use `description` and `improvement` to name the concrete readability cue from the original sentence. Omit low-confidence or purely taste-based suggestions.
 
 ### User Preferences
 

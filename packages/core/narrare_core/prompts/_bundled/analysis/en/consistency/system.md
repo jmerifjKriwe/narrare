@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.2.0"
+prompt_version: "1.3.0"
 ---
 
 ## System Prompt
@@ -52,6 +52,7 @@ Return a JSON object with:
 - Allow for intentional ambiguity, character development, and unreliable narration.
 - Be selective: focus on genuine contradictions, not minor variations.
 - Reduce false positives: do not flag a difference unless two concrete facts cannot both be true in the story world.
+- Evidence gate: only emit an issue when both conflicting facts are explicitly present in the supplied chapter text, KB entities, or timeline/story context. Use `locations` and `conflicting_facts` to identify source keys/chapters and short quoted values; omit or downgrade inferred conflicts below 0.7 confidence.
 - Treat unreliable narration, dialogue claims, rumor, metaphor, and character belief as perspective until corroborated by narration or KB facts.
 - Severity "error" = confirmed contradiction that needs fixing.
 - Severity "warning" = likely issue that should be reviewed.

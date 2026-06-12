@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-12 (Review-03 AUFG-03-06/09/10 Doc-Gate Sync)
-Session: Review-03 tasks AUFG-03-06 (agent error classification), AUFG-03-09 (AI-UX-gate governance + exclude Pflichtfeld-Schema), and AUFG-03-10 (TipTap AI-UX/i18n consistency) marked as completed in Phase 6. Core agents/errors.py + error_translator.py implement typed error classification (31 tests). Exclude registry migrated to ADR-043 Note 6 Pflichtfeld-format; `just check-ai-ux` reports 0 Violations, 6 Governed Exclusions. GhostText hints localized via Extension-Options (en/de/fr); CoAuthor action vocabulary migrated to `studio.aiActions.*` (acceptAll/rejectAll/applySelected). §16.8 vocabulary table updated with new keys. Adoption debt (109 items) and system health (0.88) unchanged.
+Date: 2026-06-12 (CR-01 Prompt Governance Remediation Docs Sync)
+Session: CR-01 prompt governance remediation documented after verified core/platform implementation. Prompt standards now state template-level explicit wrapping, `variable_registry.USER_CONTENT_VARS` as SSOT, approved wrappers, canonical `{{writing_language}}`, `{{kb_suggested}}` generated-candidate boilerplate, and checker/eval/manual-review enforcement mapping. Previous Review-03 AUFG-03-06/09/10 state remains completed. Adoption debt (109 items) and system health (0.88) unchanged.
 
 ---
 
@@ -29,7 +29,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 ### Stats (verified 2026-06-11)
 
 - Knowledge Graph: 17,357 nodes, 122,996 edges, risk low
-- Backend tests: ~6,240+ across 573 test files (unit + integration)
+- Backend tests: ~6,240+ across 579 test files (unit + integration)
 - Frontend tests: 1,683+ across 201 test files (Vitest + MSW)
 - Architecture rules: 23 rules (RULE-01b, RULE-02/02a, RULE-03 through RULE-23)
 - Architecture exceptions: 10 in CONSTRAINTS.md §7 table; 12 in ai-gate-baseline.json (incl. 1 RULE-TEST-01 test-mocking entry + 1 inline_fallback + 1 RULE-19)
@@ -83,6 +83,7 @@ Alembic migrations 0001 through ~0023
 - `docs/development/observability-guide.md` — End-to-End Observability-Trace-Kette dokumentiert
 - `scripts/architecture/streaming_compliance.py` — Streaming compliance checker with nested router prefix resolution (`build_effective_router_prefixes()`)
 - `scripts/check_streaming_compliance.py` — Pre-commit hook for streaming compliance
+- `scripts/prompt_governance_checks.py` — Prompt governance checker for approved XML wrappers, deprecated output-language aliases, and generated-candidate boilerplate
 - `.github/workflows/` — CI is the blocking architecture/setup gate SSOT; release workflow publishes GHCR image + SBOM; Pydantic Evals are the ADR-032 target for AI quality gates
 - Docker Compose: PostgreSQL (pgvector) + Redis + pgBouncer (prod profile)
 - OpenTelemetry-only trace standard for API and LLM/agent observability (ADR-031)
@@ -154,6 +155,7 @@ Completed in Phase 6 so far:
 49. ✅ **AUFG-03-06 Agent Error Classification**: Core `agents/errors.py` (AgentError, ModelExecutionError, ModelRetryExhaustedError, AgentTimeoutError, AgentCancelledError) + `agents/error_translator.py` (single translation point for `run()`/`run_stream()`) + `agents/base.py` updated to use classified errors. Privacy-safe log attributes, no raw provider exceptions past agent boundary. 31 unit tests in `test_agent_error_classification.py`. Cancel≠error semantics enforced.
 50. ✅ **AUFG-03-09 AI-UX-Gate-Governance + ADR-043 Exclude Pflichtfeld-Schema**: `.ai_interaction_exclude` migrated to ADR-043 Note 6 mandatory-field format (file, owner, gate, reason, exit, added, re_evaluated). Checker updated: malformed entries rejected. `just check-ai-ux` reports 0 Violations, 6 Governed Exclusions. Stale review findings (useExtractionPhase/useConnectionLost, NameGenerator.test.tsx) no longer tracked as current violations. Baseline entries carry owner + exit criteria.
 51. ✅ **AUFG-03-10 TipTap-AI-UX/i18n Consistency**: GhostText hint localized via Extension-Options (`t("ghostText.hint")` → hintText in en/de/fr). CoAuthor action vocabulary migrated to `studio.aiActions.*` (`acceptAll`, `rejectAll`, `applySelected` in all 3 locales). BetaReaderPanel + useWorldbuildingAnalysis freed from useConnectionLost. Exclude list updated (2 stale entries removed, 2 new governed entries added). §16.8 canonical vocabulary table updated.
+52. ✅ **CR-01 Prompt Governance Remediation**: 23 bundled prompt templates remediated; user-content wrapping standardized to approved template-level XML wrappers; bundled output-language variables migrated to `{{writing_language}}`; `{{kb_suggested}}` boilerplate normalized; evidence/confidence/false-positive gates added to relevant prompts; `UNSAFE_USER_VARS` derives from `variable_registry.USER_CONTENT_VARS`; `scripts/prompt_governance_checks.py` added and documented. Validation reported PASS: Ruff, 34 script tests, `check_prompt_structure.py --strict`, `check_architecture.py`.
 
 ## What's Next
 
@@ -261,4 +263,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-12 (Review-03 AUFG-03-06/09/10 Doc-Gate Sync)
+> Last content update: 2026-06-12 (CR-01 Prompt Governance Remediation Docs Sync)

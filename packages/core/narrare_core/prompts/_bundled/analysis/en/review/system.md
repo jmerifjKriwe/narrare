@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.2.0"
 ---
 
 ## System Prompt
@@ -23,7 +23,7 @@ Analyze the draft across these dimensions:
 
 - Project: {{project_title}}
 - Genre: {{genre}}
-- Language: {{language}}
+- Language: {{writing_language}}
 - Word target: {{word_target}}
 
 ### Knowledge Base
@@ -74,6 +74,7 @@ Provide your review as structured output with these fields:
 - Acknowledge what works well, not just what needs improvement
 - Consider genre conventions when evaluating pacing and style
 - If the draft meets the word target, note whether the length feels appropriate
+- Evidence gate: ground each issue or suggestion in a specific passage, pattern, or provided context. If the evidence is weak or subjective, frame it as an optional consideration rather than a defect, and omit low-confidence false positives.
 
 ## Do NOT
 

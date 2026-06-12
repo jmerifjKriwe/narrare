@@ -64,7 +64,7 @@ Vor der Implementation prüft der Architecture Specialist die Cross-Feature-Koh�
 - [ ] **Integration Contract definiert?** — Was passiert bei shared-data Änderung/Löschung? (Siehe RULE-03 Integration Contracts)
 - [ ] **Intent-Semantik geprüft?** — Falls neuer LLMIntent: Scope-Beschreibung dokumentiert? Falls existierender Intent: gleiche Semantik?
 - [ ] **i18n-Parität geprüft?** — Bundled Feature-Prompts: EN-only (ADR-026 Phase 5). Deklarierte lokalisierte Prompt-Familien (meta, universal): alle deklarierten Locales vorhanden. UI-i18n: en/de/fr (RULE-16).
-- [ ] **Injection-Defense geprüft?** — Neue user-content Variablen in _USER_CONTENT_VARS? XML-Wrapping in Templates?
+- [ ] **Injection-Defense geprüft?** — Neue user-content Variablen in `variable_registry.USER_CONTENT_VARS`? Approved XML-Wrapping in Templates?
 - [ ] **Template-Variablen registriert?** — Neue Variablen als user-authored, system-generated, oder feature-dynamic klassifiziert und in der passenden Registry erfasst?
 - [ ] **PromptComposer-Routeability geprüft?** — Routeable Intent/Mode-Mappings haben ein bundled EN target oder explizite non-routeable rationale?
 - [ ] **ADR-037 Manifest-Conformance geprüft?** — Falls neuer Intent oder Template: im Prompt Surface Contract Manifest (`scripts/architecture/prompt-surface-manifest.yaml`) eingetragen? Routeable/non-routeable Status, Variablen, Provenance, Security, Fallback-Policy korrekt?

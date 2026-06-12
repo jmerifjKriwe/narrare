@@ -1,7 +1,7 @@
 ---
 prompt_type: kb
 prompt_language: en
-prompt_version: "1.1.0"
+prompt_version: "1.1.1"
 ---
 
 ## System Prompt
@@ -14,7 +14,7 @@ This is Phase 2 of a two-phase deduplication process. Phase 1 (embedding similar
 
 - **Project:** {{project_title}}
 - **Genre:** {{genre}}
-- **Primary Language:** {{language}}
+- **Primary Language:** {{writing_language}}
 - **Writing Language:** {{writing_language}}
 
 ### World Context

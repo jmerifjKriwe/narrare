@@ -294,8 +294,8 @@ Architecture Specialist during Stage 2.5 (Semantic Review).
 - [ ] **Integration Contract defined** — For each shared source, behaviour on change and deletion is documented per RULE-03 Integration Contracts
 - [ ] **Intent semantic scope verified** — No existing intent/prompt has the same ID with different semantic scope. New intents have Scope/Input/Output/NOT documented
 - [ ] **i18n parity checked** — Bundled feature prompts: EN-only by default (ADR-026 Phase 5). Declared localized prompt families: all declared locales exist and are in sync. UI i18n: en/de/fr required per RULE-16.
-- [ ] **Injection defence verified** — All user-content variables registered in `_USER_CONTENT_VARS` and wrapped in XML tags in prompt templates
-- [ ] **Template variables registered** — New variables added to `_SYSTEM_VARS` in `variable_engine.py`
+- [ ] **Injection defence verified** — All user-content variables registered in `variable_registry.USER_CONTENT_VARS` and explicitly wrapped with approved XML tags in prompt templates
+- [ ] **Template variables registered** — New variables classified in `variable_registry.USER_CONTENT_VARS`, `SYSTEM_VARS`, or `FEATURE_DYNAMIC_VARS`
 - [ ] **Prompt Surface Manifest conformance** — Intent registered in manifest with correct routeable/non-routeable status, variables, provenance, security class, and fallback policy (ADR-037)
 - [ ] **KB status filtering considered** — If feature reads KB data, deprecated/archived entities are excluded
 - [ ] **Token budget defined** — String-truncation limits or TokenBudgetManager usage defined

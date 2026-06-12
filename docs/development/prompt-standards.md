@@ -8,7 +8,8 @@
 > evaluating prompt PRs.
 >
 > **Enforcement**: `scripts/check_architecture.py` (prompt content checker);
-> Pydantic Evals (ADR-032); PR review checklist.
+> `scripts/prompt_governance_checks.py`; Prompt Surface Contract manifest
+> validation (ADR-037); Pydantic Evals (ADR-032); PR review checklist.
 >
 > **Companion document**: `docs/development/prompt-content-standards.md` — the
 > machine-checkable quality rules. This standard is the authoritative reference;
@@ -73,7 +74,7 @@ Common context variables by category (see §2 for full lists):
 |----------|---------|---------|
 | `{{project_title}}` | Project name | All categories |
 | `{{genre}}` | Genre of the novel | Writing, Analysis |
-| `{{language}}` | Output language | All categories |
+| `{{writing_language}}` | Output language for creative/user-facing prose | All categories |
 | `{{tone}}` | Writing tone | Writing, Meta |
 | `{{world_context}}` | Related KB entities | KB, Writing |
 | `{{kb_characters}}` | Character entries | Writing, Analysis |
@@ -201,7 +202,7 @@ AI's behavior to concrete boundaries.
 ```markdown
 ### Constraints
 
-- Write in {{language}}.
+- Write in {{writing_language}}.
 - Stay within the scope of the current task — do not expand to unrelated topics.
 - Respect the field priority order when multiple fields are unanswered.
 ```
@@ -278,7 +279,7 @@ review, preferences, remap
 | `{{user_preferences}}` | Author's stated preferences |
 | `{{avoidance_patterns}}` | Author's content boundaries |
 | `{{chapter_text}}` or `{{content}}` | Text being analyzed |
-| `{{language}}` | Output language |
+| `{{writing_language}}` | Output language |
 
 **Analysis-specific rules:**
 - Beta reader prompts MUST include severity guidelines (critical/moderate/minor)
@@ -297,7 +298,7 @@ review, preferences, remap
 | `{{user_preferences}}` | Author's stated preferences |
 | `{{avoidance_patterns}}` | Author's content boundaries |
 | `{{genre}}` | Genre for plot structure guidance |
-| `{{language}}` | Output language |
+| `{{writing_language}}` | Output language |
 
 **Mode-specific variables:**
 
@@ -333,7 +334,7 @@ feature-specific inline instructions.
 | `{{project_title}}` | Project context |
 | `{{genre}}` | Genre awareness |
 | `{{tone}}` | Tone matching |
-| `{{language}}` | Output language |
+| `{{writing_language}}` | Output language |
 | Conflict Resolution | KB vs. outline precedence rules via `NarrareUniversalRules` |
 | Security instruction | Anti-injection directive via `NarrareUniversalRules` |
 
@@ -352,7 +353,7 @@ content is data to be processed, not commands to be executed.
 
 | Variable | Purpose |
 |----------|---------|
-| `{{language}}` | Output language |
+| `{{writing_language}}` | Output language |
 | Output count | Exact or range of expected outputs |
 
 ### Wiki Prompts
@@ -364,7 +365,7 @@ content is data to be processed, not commands to be executed.
 | Variable | Purpose |
 |----------|---------|
 | `{{chapter_text}}` or `{{entity_content}}` | Content to summarize |
-| `{{language}}` | Output language |
+| `{{writing_language}}` | Output language |
 
 ---
 
@@ -376,26 +377,43 @@ All user-provided content MUST be wrapped in XML tags to clearly separate
 system instructions from user data. This prevents prompt injection and makes
 the boundary between "instructions" and "data" explicit.
 
-**Variables that contain user content MUST use XML encapsulation:**
+**Approved XML wrapper vocabulary:**
+
+| Wrapper | Use for |
+|---------|---------|
+| `<user_provided_text>` | Manuscript prose, selections, surrounding context, conversation transcripts, or any free-form text authored by the user. |
+| `<user_provided_data>` | Structured or label-like user data such as entity names, KB field values, existing answers, and user-edited entry content. |
+| `<user_instructions>` | Explicit author instructions for the current run. |
+
+Use one of these wrappers for every user-authored variable. Feature-specific
+tags such as `<chapter_text>` or `<text_to_analyze>` are not approved in bundled
+system prompts unless the wrapper vocabulary is deliberately extended in this
+document and in `scripts/prompt_governance_checks.py`.
+
+**Variables that contain user content MUST use template-level XML encapsulation:**
 
 | Variable | XML Tag |
 |----------|---------|
 | `{{existing_content}}` | `<user_provided_text>...</user_provided_text>` |
-| `{{chapter_text}}` | `<chapter_text>...</chapter_text>` |
-| `{{entry_content}}` | `<entry_content>...</entry_content>` |
-| `{{existing_answers}}` | `<existing_answers>...</existing_answers>` |
-| `{{selection_text}}` | `<selection_text>...</selection_text>` |
-| `{{context_before}}` | `<context_before>...</context_before>` |
-| `{{context_after}}` | `<context_after>...</context_after>` |
-| `{{text_before}}` | `<text_before>...</text_before>` |
-| `{{text_after}}` | `<text_after>...</text_after>` |
-| `{{author_instructions}}` | `<author_instructions>...</author_instructions>` |
-| `{{conversation_history}}` | `<conversation_history>...</conversation_history>` |
+| `{{chapter_text}}` | `<user_provided_text>...</user_provided_text>` |
+| `{{entry_content}}` | `<user_provided_data>...</user_provided_data>` |
+| `{{existing_answers}}` | `<user_provided_data>...</user_provided_data>` |
+| `{{selection_text}}` | `<user_provided_text>...</user_provided_text>` |
+| `{{context_before}}` | `<user_provided_text>...</user_provided_text>` |
+| `{{context_after}}` | `<user_provided_text>...</user_provided_text>` |
+| `{{text_before}}` | `<user_provided_text role="before_cursor">...</user_provided_text>` |
+| `{{text_after}}` | `<user_provided_text role="after_cursor">...</user_provided_text>` |
+| `{{author_instructions}}` | `<user_instructions>...</user_instructions>` |
+| `{{conversation_history}}` | `<user_provided_text>...</user_provided_text>` |
+| `{{entity_name}}` | `<user_provided_data>...</user_provided_data>` |
 
-**Implementation:** The variable engine (`core/prompts/variable_engine.py`)
-maintains `_USER_CONTENT_VARS` — a registry of variables that contain user
-content. When a new user-content variable is added, it MUST be registered
-there. The prompt composer wraps these variables in XML tags at build time.
+**Implementation:** `packages/core/narrare_core/prompts/variable_registry.py`
+maintains `USER_CONTENT_VARS`, the SSOT for variables that contain user content.
+`scripts/prompt_governance_checks.py` derives its unsafe-variable checks from
+that registry. When a new user-content variable is added, it MUST be registered
+there. The variable engine substitutes values as-is; current governance relies
+on **explicit template-level wrapping**, not automatic composer or variable-engine
+wrapping.
 
 ### System/User Separation
 
@@ -422,19 +440,20 @@ INFRA-012 for the full variable taxonomy and security classification table.
 
 | Class | Definition | Registry | XML requirement |
 |-------|------------|----------|-----------------|
-| User-authored content | Text or structured content authored directly by the user/author: prose, selections, author instructions, conversation history, KB entity body/name supplied by a user | `_USER_CONTENT_VARS` | MUST be XML-wrapped in templates |
-| System-generated data | Trusted data assembled from persisted/project system state: curated KB summaries, project settings, computed counts, generated profiles accepted by a service | `_SYSTEM_VARS` | Not required by default |
-| Feature-dynamic data | Per-feature runtime data that is neither globally reusable nor directly user-authored, e.g. candidate pairs, timeline position, entity events, variant count, explanation language | `_FEATURE_DYNAMIC_VARS` or the approved feature-variable registry | Required if the value can contain user-authored text |
+| User-authored content | Text or structured content authored directly by the user/author: prose, selections, author instructions, conversation history, KB entity body/name supplied by a user | `variable_registry.USER_CONTENT_VARS` | MUST be XML-wrapped in templates |
+| System-generated data | Trusted data assembled from persisted/project system state: curated KB summaries, project settings, computed counts, generated profiles accepted by a service | `variable_registry.SYSTEM_VARS` | Not required by default |
+| Feature-dynamic data | Per-feature runtime data that is neither globally reusable nor directly user-authored, e.g. candidate pairs, timeline position, entity events, variant count, explanation language | `variable_registry.FEATURE_DYNAMIC_VARS` or the approved feature-variable registry | Required if the value can contain user-authored text |
 
 **Rules:**
 
 - A variable may not be used in a prompt before it is classified.
 - User-authored variables MUST be XML-wrapped even if they are optional.
 - Feature-dynamic variables MUST document the feature/mode that owns them.
-- Output-language variables such as `{{writing_language}}`, `{{language}}`, and
+- Output-language variables such as `{{writing_language}}` and
   `{{explanation_language}}` are system/feature-dynamic language-control data;
   they satisfy ADR-026 Phase 5 only when the calling context actually supplies
-  the desired output language.
+  the desired output language. `{{writing_language}}` is canonical for creative
+  or user-facing output language.
 - A variable is valid only when it has a provenance class, a security class,
   and template consumption aligned with that security class (per ADR-037
   manifest conformance).
@@ -447,13 +466,14 @@ Prompt template variables have a canonical naming convention enforced via
 
 | Canonical name | Deprecated alias | Notes |
 |----------------|------------------|-------|
-| `writing_language` | `language` | Use `writing_language` in all new templates. Bare `language` is resolved automatically but must not appear in new code. |
+| `writing_language` | `language` | Use `writing_language` in all templates. Bare `language` is resolved automatically for legacy compatibility but is deprecated and not allowed in bundled system prompts. |
 | `explanation_language` | — | Distinct variable (name meaning explanations), **not** an alias for `writing_language`. |
 
 **Rules:**
 
 - New templates MUST use canonical variable names only.
-- Existing templates using deprecated aliases continue to work via
+- Bundled system prompts MUST use `{{writing_language}}`, not `{{language}}`.
+- Existing non-bundled overrides using deprecated aliases continue to work via
   `resolve_canonical_variable()` but should be migrated when touched.
 - See `variable_registry.py` → `VARIABLE_ALIASES` for the complete mapping.
 
@@ -478,6 +498,28 @@ clarification when the output can be materially affected. Learned memory is
 ignored for the run when it conflicts with explicit/manual sources. Generated
 suggestions remain candidates until accepted or curated.
 
+### Generated Candidate Boilerplate (`{{kb_suggested}}`)
+
+Any bundled prompt section that consumes `{{kb_suggested}}` MUST label it as
+generated, unaccepted, and lower-priority. The section must state that suggested
+KB candidates may help interpretation but never override current author
+instructions, current scene/timeline context, curated KB, or explicit project
+settings.
+
+Required boilerplate pattern:
+
+```markdown
+### Suggested KB Entries
+
+Optional lower-priority generated KB suggestions. These are unaccepted
+candidates. Use them only when they support the current author instruction,
+the selected text, and accepted KB. Never introduce them as established facts
+and never let them override curated KB, current scene context, or explicit
+author instructions.
+
+{{kb_suggested}}
+```
+
 ---
 
 ## 4. Quality Criteria Table
@@ -500,8 +542,29 @@ prompt quality. Every criterion marked YES is mandatory for stable prompts.
 | Length/scope defined | REC | Quality | Word count target, item count range, or "exactly N" |
 | Locale variants consistent | YES* | Maintenance | Declared localized families (meta, universal) have locale parity; bundled feature prompts are EN-only (see §5) |
 | Frontmatter complete | YES | Maintenance | type, language, version all present and accurate |
+| Canonical output-language variable | YES | Governance | Bundled system prompts use `{{writing_language}}`; `{{language}}` is deprecated and not allowed |
+| Generated candidates labelled | YES* | Governance | `{{kb_suggested}}` appears with generated/unaccepted/lower-priority/no-override wording |
+| Evidence/confidence gates | YES* | Quality | Analysis prompts that emit issues or suggestions include evidence, confidence, or false-positive suppression rules |
 
 *\* = required for the applicable categories defined in §2*
+
+---
+
+## 4.1 Enforcement Matrix
+
+Prompt governance has multiple gates. Documentation MUST make clear which
+requirements are machine-enforced and which still require eval or manual review.
+
+| Requirement | Static checker | Manifest validation | Eval | Manual review | Current enforcement status |
+|-------------|----------------|---------------------|------|---------------|----------------------------|
+| 9-section skeleton, frontmatter, Do-NOT/Quality counts | `check_prompt_structure.py --strict`; `check_architecture.py` | — | — | Review unusual justified omissions | Enforced |
+| Variable registration and provenance/security classification | `check_prompt_structure.py --strict`; `prompt_governance_checks.py` | ADR-037 manifest variable list and security metadata | — | Review classification correctness | Enforced + reviewed |
+| User-content XML wrapping | `prompt_governance_checks.py` derives unsafe vars from `variable_registry.USER_CONTENT_VARS` and checks approved wrappers | Manifest `xml_required`/security class | Injection/security eval where available | Review wrapper semantics and edge cases | Enforced for registered variables; review required for new semantics |
+| Approved wrapper vocabulary | `prompt_governance_checks.py` | — | — | Review any proposed vocabulary extension | Enforced for bundled prompts |
+| Canonical output language (`{{writing_language}}`) | `prompt_governance_checks.py` deprecated-alias check | Manifest `output_language_variable` | Output-language eval | Review prompt wording | Enforced for bundled system prompts |
+| `{{kb_suggested}}` generated-candidate boilerplate | `prompt_governance_checks.py` | Adoption manifest/policy where applicable | Context precedence eval | Review wording fits prompt mode | Enforced for bundled prompts using `{{kb_suggested}}` |
+| Evidence/confidence/false-positive gates in analysis prompts | Partial structural checks when fields/rules are detectable | Output schema where structured | Pydantic Evals for output quality | Required content review | Partially enforced; eval + review required |
+| Runtime-input contract: user content is data, not instructions | Wrapper checks where variables are in template | Invocation/adoption validators | Injection/security eval | Required for prompts with runtime user prompts | Partially enforced; review required |
 
 ### Scoring
 
@@ -577,18 +640,18 @@ must pass before merge.
 - [ ] `{{user_preferences}}` included (for applicable categories per §2)
 - [ ] `{{avoidance_patterns}}` included (for applicable categories per §2)
 - [ ] Category-specific mandatory variables present (per §2)
-- [ ] All template variables classified in `_USER_CONTENT_VARS`, `_SYSTEM_VARS`, or the approved feature-dynamic registry
-- [ ] All new user-content variables registered in `_USER_CONTENT_VARS`
+- [ ] All template variables classified in `variable_registry.USER_CONTENT_VARS`, `SYSTEM_VARS`, `FEATURE_DYNAMIC_VARS`, or the approved feature-dynamic registry
+- [ ] All new user-content variables registered in `variable_registry.USER_CONTENT_VARS`
 - [ ] New unregistered variables are treated as CI failures, not warnings
 - [ ] Variable provenance matches ADR-037 manifest (required/optional, source, security class)
 - [ ] Variables marked `xml_required` in the manifest are wrapped in explicit XML tags in the template
 
 ### Security
 
-- [ ] User content wrapped in XML tags (via variable engine or explicit)
+- [ ] User content explicitly wrapped in approved XML tags (`<user_provided_text>`, `<user_provided_data>`, `<user_instructions>`)
 - [ ] System instructions clearly separated from user content
 - [ ] Meta-prompt includes anti-injection instruction
-- [ ] Generated suggestions labelled as unaccepted/lower-priority where applicable (per INFRA-12)
+- [ ] `{{kb_suggested}}` sections include generated/unaccepted/lower-priority/no-override boilerplate where applicable (per INFRA-012)
 
 ### Manifest Conformance (ADR-037)
 
@@ -617,7 +680,9 @@ must pass before merge.
 - [ ] Instructions are concrete and unambiguous
 - [ ] Quality rules are measurable where possible
 - [ ] Do NOT rules are specific, not vague ("be careful")
-- [ ] Constraints include language directive (`Write in {{language}}`)
+- [ ] Constraints include language directive (`Write in {{writing_language}}`)
+- [ ] Analysis prompts include evidence/confidence/false-positive gates where they emit issues or suggestions
+- [ ] Runtime manuscript/user content is described as data to analyze, not instructions to follow
 - [ ] Cross-feature context precedence is respected or conflicts are explicitly surfaced
 
 ---
@@ -631,35 +696,29 @@ packages/core/narrare_core/prompts/_bundled/
 │   ├── en/system.lite.md     ← Short variant for token-constrained contexts
 │   ├── de/system.md
 │   └── fr/system.md
+├── universal/
+│   ├── en/system.md          ← Guaranteed universal rules capability
+│   ├── de/system.md
+│   └── fr/system.md
 ├── writing/
-│   ├── en/<mode>/system.md   ← Writing prompts by mode
-│   ├── de/<mode>/system.md
-│   └── fr/<mode>/system.md
+│   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
 ├── kb/
-│   ├── en/<mode>/system.md   ← KB prompts by mode
-│   ├── de/<mode>/system.md
-│   └── fr/<mode>/system.md
+│   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
 ├── analysis/
-│   ├── en/<mode>/system.md   ← Analysis prompts by mode
-│   ├── de/<mode>/system.md
-│   └── fr/<mode>/system.md
+│   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
 ├── planning/
-│   ├── en/<mode>/system.md   ← Planning prompts by mode
-│   ├── de/<mode>/system.md
-│   └── fr/<mode>/system.md
+│   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
+├── chat/
+│   └── en/system.md          ← Bundled feature prompt (EN-only)
 ├── generation/
-│   ├── en/<mode>/system.md   ← Generation prompts by mode
-│   ├── de/<mode>/system.md
-│   └── fr/<mode>/system.md
+│   └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
 └── wiki/
-    ├── en/<mode>/system.md   ← Wiki prompts by mode
-    ├── de/<mode>/system.md
-    └── fr/<mode>/system.md
+    └── en/<mode>/system.md   ← Bundled feature prompts by mode (EN-only)
 ```
 
 Each `system.md` follows the skeleton defined in §1. Tone files in
-`writing/tones/` are an exception — they are content snippets, not full
-prompts, and follow a simpler format.
+`writing/tones/` and name-style snippets in `generation/` are exceptions — they
+are content snippets, not full system prompts, and follow a simpler format.
 
 ---
 
@@ -675,10 +734,11 @@ prompts, and follow a simpler format.
 | INFRA-012 (Prompt Governance Hardening) | Feature spec implementing ADR-037 gates and variable taxonomy. This standard references the taxonomy for provenance/security classification. |
 | ADR-032 (Pydantic Evals as Evaluation SSOT) | Runtime prompt quality testing. This standard defines the structural baseline; Pydantic Evals verifies output quality through Narrare's Python agent/runtime paths. |
 | ADR-019 (System-Prompt Consistency) | Meta-prompt guardrails and persona consistency. This standard extends those requirements to all prompt categories. |
-| `core/prompts/variable_engine.py` | Implementation of user-content variable registry (`_USER_CONTENT_VARS`). |
+| `core/prompts/variable_registry.py` | SSOT for user-content variable registry (`USER_CONTENT_VARS`) and canonical aliases. |
+| `scripts/prompt_governance_checks.py` | Static governance checker for approved wrappers, deprecated aliases, and generated-candidate boilerplate. |
 
 ---
 
-> **Last updated:** 2026-06-05 — ADR-037 manifest conformance added to review checklist and variable governance; INFRA-012 provenance taxonomy referenced.
+> **Last updated:** 2026-06-12 — CR-01 remediation: explicit template-level wrapper governance, `writing_language` canonical enforcement, `kb_suggested` boilerplate, and enforcement matrix added.
 > **Maintained by:** Architecture Agent + Documentation Agent
 > **Review trigger:** When a new prompt category is added, or when ADR-002/019/037 is revised

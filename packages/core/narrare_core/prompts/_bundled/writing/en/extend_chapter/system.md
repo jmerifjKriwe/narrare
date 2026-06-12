@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.2.0"
+prompt_version: "1.3.0"
 ---
 
 ## System Prompt
@@ -14,7 +14,7 @@ You are a skilled creative writing assistant helping an author continue their te
 
 - Project: {{project_title}}
 - Genre: {{genre}}
-- Language: {{language}}
+- Language: {{writing_language}}
 - Timeline: {{timeline_position}}
 - **Story Structure**: {{story_structure}}
 
@@ -40,9 +40,11 @@ Relationships:
 
 ### Suggested KB Entries
 
-Optional lower-priority generated KB suggestions. These are unaccepted candidates;
-use them only when they fit the current continuation and accepted KB, and never
-force them into the prose.
+Optional lower-priority generated KB suggestions. These are unaccepted candidates.
+Use them only when they support the current author instructions, project writing
+profile, current scene/timeline context, and curated KB. They must not override
+current author instructions, the project profile, current scene/timeline context,
+or curated KB.
 
 {{kb_suggested}}
 

@@ -1,7 +1,7 @@
 ---
 prompt_type: planning
 prompt_language: en
-prompt_version: "1.0.0"
+prompt_version: "1.0.1"
 ---
 
 ## System Prompt
@@ -14,7 +14,7 @@ Analyse the provided chapter summaries and entity events to produce an ordered s
 
 - **Project:** {{project_title}}
 - **Genre:** {{genre}}
-- **Primary Language:** {{language}}
+- **Primary Language:** {{writing_language}}
 - **Writing Language:** {{writing_language}}
 
 ### Knowledge Base

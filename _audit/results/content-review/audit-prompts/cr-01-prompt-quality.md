@@ -8,6 +8,49 @@ Method: graph-first prompt inventory, then targeted reads of KB, writing, analys
 
 The earlier CR-01 result is partly stale because several architecture-level prompt problems were fixed since the last audit: route governance exists, mem0 preferences are wired, `kb_suggested` is consumed by writing templates, and the project writing profile is now assembled. The remaining root cause is narrower: **prompt quality now depends on individual bundled templates consistently applying the standards**. Because `variable_engine.substitute()` substitutes values as-is, every user-authored variable must be wrapped and every generated-candidate block must explain its lower precedence inside the template itself.
 
+## Remediation / Status Addendum — 2026-06-12
+
+This addendum preserves the original 2026-06-11 audit evidence while recording
+the approved CR-01 remediation that has since been implemented. Do not read the
+sections below as if the original gaps never existed; they document why the
+remediation was needed.
+
+### Implemented prompt/template remediation
+
+- 23 bundled prompt templates were remediated.
+- `{{entity_name}}` in KB consistency is now wrapped with approved user-data XML.
+- POV/runtime input wrappers were standardized to the approved
+  `<user_provided_text>` vocabulary.
+- Bundled `{{language}}` usages were migrated to canonical `{{writing_language}}`.
+- `{{kb_suggested}}` sections were normalized with generated/unaccepted,
+  lower-priority, no-override boilerplate.
+- Evidence, confidence, and false-positive gates were added to relevant analysis
+  prompts.
+- Inline suggest before/after context labels were added.
+- Summarize runtime-input contract now clarifies that manuscript/user content is
+  data, not instructions.
+- Chat `conversation_history` wrapper was corrected to `<user_provided_text>` and
+  the prompt version was bumped to 1.3.0.
+
+### Implemented platform gates
+
+- `UNSAFE_USER_VARS` now derives from `variable_registry.USER_CONTENT_VARS`, making
+  the registry the SSOT for user-content variable security checks.
+- `scripts/prompt_governance_checks.py` was added to enforce approved wrapper
+  vocabulary, deprecated alias usage, and `{{kb_suggested}}` boilerplate.
+- Validation passed after implementation: Ruff, 34 script tests,
+  `check_prompt_structure.py --strict`, and `check_architecture.py`.
+
+### Documentation/root-cause remediation
+
+The root cause was not only weak template wording. The standards already existed,
+but enforcement status was not mapped clearly enough to executable gates. The
+follow-up documentation changes therefore make the current model explicit:
+template-level user-content wrapping, `variable_registry.USER_CONTENT_VARS` as
+SSOT, canonical `{{writing_language}}`, generated-candidate boilerplate, and an
+enforcement matrix distinguishing static checks, manifest validation, evals, and
+manual review.
+
 **Alternatives considered:**
 
 1. **Keep the previous CR-01 and append corrections.** Rejected because stale findings such as missing route targets and missing `kb_suggested` would remain misleading.
@@ -246,12 +289,12 @@ Remaining risks:
 
 ## Aufgaben
 
-- **CR-AUFG-01-01:** Wrap `{{entity_name}}` in `kb/en/consistency/system.md` anywhere it appears as user-provided data, including the first message, or reclassify it with a documented rationale.
-- **CR-AUFG-01-02:** Standardize user-content wrapper vocabulary in analysis prompts; prefer `<user_provided_text>` over feature-specific tags unless universal/meta guidance is extended.
-- **CR-AUFG-01-03:** Add lower-priority generated-candidate boilerplate to every prompt section that consumes `{{kb_suggested}}` bare.
-- **CR-AUFG-01-04:** Migrate prompt context labels from deprecated `{{language}}` to canonical `{{writing_language}}` when touching templates.
-- **CR-AUFG-01-05:** Add evidence/confidence fields or equivalent false-positive gates to analysis prompts that emit subjective suggestions or defects.
-- **CR-AUFG-01-06:** Design a staged consistency strategy for long projects: fact extraction/timeline normalization first, contradiction comparison second.
+- **CR-AUFG-01-01:** Wrap `{{entity_name}}` in `kb/en/consistency/system.md` anywhere it appears as user-provided data, including the first message, or reclassify it with a documented rationale. **Status 2026-06-12:** implemented; covered by prompt governance wrapper checks.
+- **CR-AUFG-01-02:** Standardize user-content wrapper vocabulary in analysis prompts; prefer `<user_provided_text>` over feature-specific tags unless universal/meta guidance is extended. **Status 2026-06-12:** implemented; approved wrapper vocabulary now documented and statically checked.
+- **CR-AUFG-01-03:** Add lower-priority generated-candidate boilerplate to every prompt section that consumes `{{kb_suggested}}` bare. **Status 2026-06-12:** implemented; `prompt_governance_checks.py` now checks the boilerplate.
+- **CR-AUFG-01-04:** Migrate prompt context labels from deprecated `{{language}}` to canonical `{{writing_language}}` when touching templates. **Status 2026-06-12:** implemented for bundled prompts; deprecated alias check added.
+- **CR-AUFG-01-05:** Add evidence/confidence fields or equivalent false-positive gates to analysis prompts that emit subjective suggestions or defects. **Status 2026-06-12:** implemented for relevant prompts; remains an eval/manual-review concern for future prompt categories.
+- **CR-AUFG-01-06:** Design a staged consistency strategy for long projects: fact extraction/timeline normalization first, contradiction comparison second. **Status 2026-06-12:** not part of the prompt-governance remediation; remains a future product/design task unless superseded by CR-02+ evidence.
 
 ## Next Prompt Recommendation
 

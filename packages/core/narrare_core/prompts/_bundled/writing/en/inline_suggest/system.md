@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "2.3.0"
+prompt_version: "2.4.0"
 ---
 
 ## System Prompt
@@ -57,7 +57,10 @@ Story Structure: {{story_structure}}
 
 ### Optional Lower-Priority Generated KB Suggestions
 
-These are unaccepted generated candidates. Use them only if they naturally fit the next few words.
+These are unaccepted generated candidates. Use them only when they support the
+current author instructions, project writing profile, current scene/timeline
+context, and curated KB. They must not override current author instructions, the
+project profile, current scene/timeline context, curated KB, or the immediate text.
 
 {{kb_suggested}}
 
@@ -68,8 +71,14 @@ If the text before the cursor is mid-dialogue:
 - Use established speech patterns if available via {{character_voice_profiles}}
 - Do not switch speakers mid-quotation
 
-### Text to Continue
+### Text Before Cursor
 
-<user_provided_text>{{text_before}}</user_provided_text>
+Continue from this manuscript text only.
 
-<user_provided_text>{{text_after}}</user_provided_text>
+<user_provided_text role="before_cursor">{{text_before}}</user_provided_text>
+
+### Text After Cursor
+
+Use this only to avoid contradictions, duplicated wording, or broken continuity. Do not continue from this text directly.
+
+<user_provided_text role="after_cursor">{{text_after}}</user_provided_text>

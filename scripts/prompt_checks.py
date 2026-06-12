@@ -12,12 +12,12 @@ from __future__ import annotations
 import re
 
 from prompt_check_types import Issue, PromptFile
+from prompt_governance_checks import check_prompt_governance
 from prompt_vars import (
     MODE_EXEMPT_VARS,
     MODE_REQUIRED_VARS,
     REQUIRED_VARS_BY_CATEGORY,
     SHOULD_VARS_BY_CATEGORY,
-    UNSAFE_USER_VARS,
 )
 
 # ── Constants ──────────────────────────────────────────────────
@@ -237,37 +237,8 @@ def _check_required_vars(pf: PromptFile, group_key: str, issues: list[Issue]) ->
 
 
 def check_security(pf: PromptFile, issues: list[Issue]) -> None:
-    """Check 4: User-content variables must be XML-wrapped."""
-    if not pf.is_system_md:
-        return
-
-    for var in UNSAFE_USER_VARS:
-        # Check if variable exists in the file at all
-        var_tag = "{{" + var + "}}"
-        if var_tag not in pf.content:
-            continue
-
-        # Build regex that matches XML-wrapped variable, allowing whitespace/newlines
-        # between the tag and the variable. Matches patterns like:
-        #   <tag>{{var}}</tag>          (same line)
-        #   <tag>\n{{var}}\n</tag>      (multi-line)
-        wrapped_pattern = r"<\w+[^>]*>\s*\{\{" + re.escape(var) + r"\}\}\s*</\w+>"
-        if re.search(wrapped_pattern, pf.content):
-            continue
-
-        # Variable exists but is not XML-wrapped — find the line number for reporting
-        for i, line in enumerate(pf.content.splitlines(), 1):
-            if var_tag in line:
-                issues.append(
-                    Issue(
-                        "FAIL",
-                        pf.display_path,
-                        f"Variable {{{{{var}}}}} on line {i} is not wrapped "
-                        f"in XML tags (user-content must be in "
-                        f"<tag>{{{{var}}}}</tag> for safety)",
-                    )
-                )
-                break  # Only report first occurrence
+    """Check 4: Prompt security and CR-01 governance gates."""
+    check_prompt_governance(pf, issues)
 
 
 def check_file_size(pf: PromptFile, issues: list[Issue]) -> None:

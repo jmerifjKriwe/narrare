@@ -3,15 +3,19 @@
 Variable-map constants for Narrare prompt structure validation.
 
 Defines tiered variable requirements (MUST / mode-specific / SHOULD) per
-prompt category, plus the set of user-content variables that require
-XML-wrapping for injection safety.
+prompt category, plus the prompt-governance alias for user-content variables
+that require XML-wrapping for injection safety.
 
 Extracted from prompt_checks.py per RULE-04 (modularize, not compress).
 
-ADR-025 Decision 2 is the authoritative source for these definitions.
+ADR-025 Decision 2 is the authoritative source for category/mode requirements.
+``narrare_core.prompts.variable_registry.USER_CONTENT_VARS`` is the SSOT for
+user-content variable classification.
 """
 
 from __future__ import annotations
+
+from narrare_core.prompts.variable_registry import USER_CONTENT_VARS
 
 # ── MUST: Base variables required per category ──────────────────
 # WARN level when missing — existing behaviour preserved.
@@ -82,23 +86,8 @@ SHOULD_VARS_BY_CATEGORY: dict[str, set[str]] = {
 }
 
 # ── Security: User-content variables that MUST be XML-wrapped ──
-# Keep in sync with packages/core/narrare_core/prompts/variable_engine.py _USER_CONTENT_VARS
-UNSAFE_USER_VARS = frozenset(
-    {
-        "existing_content",
-        "chapter_text",
-        "chapter_texts",
-        "entry_content",
-        "selection_text",
-        "context_before",
-        "context_after",
-        "text_before",
-        "text_after",
-        "author_instructions",
-        "conversation_history",
-        "existing_answers",
-    }
-)
+# Derived from the core prompt variable registry; do not duplicate this list here.
+UNSAFE_USER_VARS = USER_CONTENT_VARS
 
 # ── Universal Rules: Key phrases that MUST NOT appear in templates ──
 # These are now injected by NarrareUniversalRules Capability.
