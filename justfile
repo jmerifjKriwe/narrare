@@ -280,6 +280,11 @@ test-cov:
     uv run pytest tests/ --cov --cov-report=term-missing --cov-report=html
     @echo "Coverage report: htmlcov/index.html"
 
+# Run unit tests with coverage report
+test-unit-cov:
+    uv run pytest tests/unit/ --cov --cov-report=term-missing
+    @echo "Unit coverage complete."
+
 # Run one or more specific test files
 # Usage: just test-file tests/unit/core/llm/test_gateway.py
 # Usage: just test-file tests/unit/core/llm/test_gateway.py tests/unit/core/llm/test_other.py

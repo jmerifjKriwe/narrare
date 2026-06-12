@@ -766,6 +766,24 @@ just test-e2e           # Requires full stack (main branch CI only)
 **Pre-merge checklist**: `just test-unit` passes locally → CI runs
 architecture, lint, typecheck, security, unit + integration + e2e.
 
+### Coverage Run Guidance
+
+When running coverage locally, use the `just` recipes — they work from any
+directory and match the allowed opencode bash permission patterns:
+
+| Command | Scope | Use |
+|---------|-------|-----|
+| `just test-cov` | All tests | Full coverage report with HTML output |
+| `just test-unit-cov` | Unit tests only | Fast coverage feedback (no Docker needed) |
+| `uv run pytest tests/ --cov --cov-report=term-missing` | All tests | Same as `just test-cov` but without HTML |
+
+**Avoid** environment variable prefixes like `COVERAGE_FILE=/tmp/.coverage uv run pytest tests/ --cov` — these do not match allowed bash patterns (`just*` and `uv*` are allowed, but `COVERAGE_FILE=... uv*` is not).
+
+**Permission model:** The opencode bash permission system allows `just*` and
+`uv*` command patterns. All commands above use these prefixes. If a different
+coverage command pattern is needed, it must be added to the global opencode
+permission config (outside this project's scope).
+
 ### Eval Types (Pydantic Evals)
 
 | Type | Secrets needed | When | CI location |
