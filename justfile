@@ -524,6 +524,28 @@ clean:
     find . -type f -name ".coverage" -delete 2>/dev/null || true
     @echo "✅ Cleaned"
 
+# Aggressive cleanup: free disk space by clearing caches and dangling data
+cleanup:
+    @echo "🧹 Cleaning up disk space..."
+    @echo "  Clearing uv cache..."
+    uv cache clean --force 2>/dev/null || true
+    @echo "  Pruning Docker dangling images..."
+    docker image prune --all --force 2>/dev/null || true
+    @echo "  Pruning pnpm store..."
+    pnpm store prune 2>/dev/null || true
+    python3 -c "
+import os, subprocess
+# Also clean __pycache__ outside the project
+for home in [os.path.expanduser('~')]:
+    for root, dirs, files in os.walk(home):
+        dirs[:] = [d for d in dirs if d not in ('node_modules', '.venv', '.git', '.pnpm-store')]
+        if '__pycache__' in dirs:
+            path = os.path.join(root, '__pycache__')
+            subprocess.run(['rm', '-rf', path], capture_output=True)
+            print(f'  Removed {path}')
+" 2>/dev/null || true
+    @echo "✅ Cleanup complete"
+
 # Tail all service logs
 logs:
     @if command -v docker >/dev/null 2>&1; then \

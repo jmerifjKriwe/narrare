@@ -15,8 +15,7 @@
     "code-review-graph": {
       "type": "local",
       "command": [
-        "uvx",
-        "code-review-graph",
+        "/home/kiesow/.local/share/pipx/venvs/code-review-graph/bin/code-review-graph",
         "serve"
       ],
       "timeout": 120000
