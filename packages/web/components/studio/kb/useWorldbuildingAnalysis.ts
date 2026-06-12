@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type { WorldbuildingAnalysisResponse } from "@/lib/api/worldbuilding";
-import { useConnectionLost } from "@/lib/hooks/use-connection-lost";
 import { useWorldbuildingAnalyze, useWorldbuildingApply } from "@/lib/hooks/useWorldbuilding";
 
 export type AnalysisTab = "gaps" | "connections" | "consistency";
@@ -27,11 +26,6 @@ export function useWorldbuildingAnalysis(novelId: string) {
 
   const analyzeMutation = useWorldbuildingAnalyze(novelId);
   const applyMutation = useWorldbuildingApply(novelId);
-  const {
-    isConnectionLost,
-    markConnectionLost,
-    retry: retryConnection,
-  } = useConnectionLost({ onRetry: () => void runAnalysis(false) });
 
   const runAnalysis = useCallback(
     async (refresh = false) => {
@@ -45,12 +39,11 @@ export function useWorldbuildingAnalysis(novelId: string) {
         setState("results");
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        markConnectionLost();
         setError(err instanceof Error ? err : new Error(String(err)));
         setState("error");
       }
     },
-    [analyzeMutation, markConnectionLost],
+    [analyzeMutation],
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
@@ -119,8 +112,8 @@ export function useWorldbuildingAnalysis(novelId: string) {
     applyMessage,
     analyzeMutation,
     applyMutation,
-    isConnectionLost,
-    retryConnection,
+    isConnectionLost: analyzeMutation.isConnectionLost,
+    retryConnection: () => analyzeMutation.retry(),
     runAnalysis,
     toggleConnection,
     handleCancel,

@@ -3,7 +3,7 @@
 
 Verifies 5 machine-checkable rules across TSX components and i18n files:
   Check 1 — Every TSX file importing SSE API values must also import useAIOperation
-  Check 2 — No raw new AbortController() in Studio components
+  Check 2 — No raw new AbortController() in feature code (classified allowed/violation)
   Check 3 — All 7 aiActions.error* i18n keys exist in all 3 locales (de/en/fr)
   Check 4 — No hardcoded (err|error).message in Studio TSX files
   Check 5 — No deprecated useConnectionLost imports (Phase 3 completed)
@@ -17,6 +17,7 @@ from pathlib import Path
 
 from _ai_interaction_checks import (
     ComplianceReport,
+    ExcludeRegistry,
     check_error_i18n_keys,
     check_no_hardcoded_errors,
     check_no_raw_abort_controller,
@@ -26,6 +27,13 @@ from _ai_interaction_checks import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+# Gate names matching the ``gate=`` field in ``.ai_interaction_exclude``.
+GATE_CHECK_1 = "check_1_use_ai_operation"
+GATE_CHECK_2 = "check_2_no_raw_abort"
+GATE_CHECK_3 = "check_3_error_i18n_keys"
+GATE_CHECK_4 = "check_4_no_hardcoded_errors"
+GATE_CHECK_5 = "check_5_no_use_connection_lost"
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -56,29 +64,43 @@ def main() -> int:
     parser = build_arg_parser()
     args = parser.parse_args()
 
-    excludes = load_exclude_list(args.exclude_file)
+    registry: ExcludeRegistry = load_exclude_list(args.exclude_file)
 
     report = ComplianceReport()
 
-    c1_p, c1_v = check_use_ai_operation_usage(excludes)
+    # Report malformed exclude entries (global, not per-check).
+    if registry.malformed:
+        report.add_malformed(registry.malformed)
+
+    # -- Check 1 ---------------------------------------------------------
+    c1_p, c1_v = check_use_ai_operation_usage(registry)
     report.add("Check 1: useAIOperation in AI components", c1_p, c1_v)
+    report.add_governed("Check 1", registry.get_entries_for_gate(GATE_CHECK_1))
 
-    c2_p, c2_v = check_no_raw_abort_controller(excludes)
-    report.add("Check 2: No raw AbortController in Studio", c2_p, c2_v)
+    # -- Check 2 ---------------------------------------------------------
+    c2_p, c2_v = check_no_raw_abort_controller(registry)
+    report.add("Check 2: No raw AbortController (classified)", c2_p, c2_v)
+    report.add_governed("Check 2", registry.get_entries_for_gate(GATE_CHECK_2))
 
-    c3_p, c3_v = check_error_i18n_keys(excludes)
+    # -- Check 3 ---------------------------------------------------------
+    c3_p, c3_v = check_error_i18n_keys(registry)
     report.add("Check 3: aiActions.error* keys in all locales", c3_p, c3_v)
+    report.add_governed("Check 3", registry.get_entries_for_gate(GATE_CHECK_3))
 
-    c4_p, c4_v = check_no_hardcoded_errors(excludes)
+    # -- Check 4 ---------------------------------------------------------
+    c4_p, c4_v = check_no_hardcoded_errors(registry)
     report.add("Check 4: No hardcoded error.message in TSX", c4_p, c4_v)
+    report.add_governed("Check 4", registry.get_entries_for_gate(GATE_CHECK_4))
 
-    c5_p, c5_v, c5_f = check_no_use_connection_lost(excludes, fix=args.fix)
+    # -- Check 5 ---------------------------------------------------------
+    c5_p, c5_v, c5_f = check_no_use_connection_lost(registry, fix=args.fix)
     report.add(
         "Check 5: No deprecated useConnectionLost (Phase 3)",
         c5_p,
         c5_v,
         c5_f if args.fix else None,
     )
+    report.add_governed("Check 5", registry.get_entries_for_gate(GATE_CHECK_5))
 
     if args.json:
         print(report.format_json())

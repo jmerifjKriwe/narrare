@@ -1678,11 +1678,15 @@
     "max": "16K"
   },
   "ghostText": {
-    "onboardingHint": "Tab = Accepter | → = Mot par mot | Esc = Rejeter"
+    "onboardingHint": "Tab = Accepter | → = Mot par mot | Esc = Rejeter",
+    "hint": "Tab accepter · Esc rejeter · → mot"
   },
   "aiActions": {
     "accept": "Accepter",
+    "acceptAll": "Tout accepter",
     "reject": "Rejeter",
+    "rejectAll": "Tout rejeter",
+    "applySelected": "Appliquer la sélection",
     "retry": "Réessayer",
     "stop": "Arrêter",
     "addToDraft": "Ajouter au brouillon",
@@ -1757,5 +1761,29 @@
     "label": "Démarrage rapide",
     "creating": "Création du projet…",
     "defaultProjectName": "Mon roman"
+  },
+  "coAuthor": {
+    "title": "Co-auteur",
+    "close": "Fermer",
+    "start": "Démarrer",
+    "stop": "Arrêter",
+    "retry": "Réessayer",
+    "done": "Modifications appliquées avec succès",
+    "cancel": "Annuler",
+    "errorGeneric": "Une erreur s'est produite lors de la co-écriture",
+    "streaming": "Le co-auteur écrit…",
+    "wordsReceived": "{count} mots reçus",
+    "improvementsFound": "{count} améliorations trouvées",
+    "reasoning": "Raisonnement IA",
+    "reviewPhase": "Révision",
+    "selectionWords": "{count} mots sélectionnés",
+    "focusLabel": "Axes d'amélioration",
+    "focusWordChoice": "Choix des mots",
+    "focusSentence": "Phrases",
+    "focusDialogue": "Dialogue",
+    "focusDescription": "Description",
+    "acceptAll": "Tout accepter",
+    "rejectAll": "Tout rejeter",
+    "applySelected": "Appliquer la sélection"
   }
 }

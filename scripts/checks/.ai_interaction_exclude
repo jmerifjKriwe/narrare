@@ -1,14 +1,24 @@
-# ADR-043 / §16 AI Interaction Compliance — Exclude List
+# ADR-043 / §16 AI Interaction Compliance — Governed Exclude List
 #
-# One relative path (from repo root) per line. Lines starting with # are comments.
-# Use this for files undergoing migration, with a tracking issue reference.
+# Each entry must include all mandatory fields (ADR-043 Note 6):
+#   <path>  owner=<owner> gate=<check> reason="<grund>" exit="<kriterium>" added=YYYY-MM-DD re_evaluated=YYYY-MM-DD
 #
-# Format: <path/from/repo/root>  # ISSUE-123: reason
+# Mandatory fields:
+#   file          — Relative path from repo root
+#   owner         — Responsible specialist or role
+#   gate          — Checker that validates this entry (e.g. check_1_use_ai_operation)
+#   reason        — ADR-043-compatible category (hook-internals | non-react-extension | central-test-helper | migration-in-progress)
+#   exit          — Criterion or trigger for removal
+#   added         — Date the exclude was added (ISO format)
+#   re_evaluated  — Date of last re-evaluation (quarterly refresh minimum)
+#
+# Malformed entries will be reported as errors by the checker.
 #
 # Current baseline (2026-06-08):
-packages/web/components/studio/generation/NameGenerator.tsx
-packages/web/components/studio/kb/ConsistencyCheckPanel.tsx
-packages/web/components/studio/analysis/BetaReaderPanel.tsx
-packages/web/components/studio/extraction/ExtractionPanel.tsx
-packages/web/components/studio/kb/useWorldbuildingAnalysis.ts
-packages/web/__tests__/connection-lost.test.tsx
+
+packages/web/components/studio/generation/NameGenerator.tsx  owner=Frontend gate=check_1_use_ai_operation reason="migration-in-progress: SSE callback-based generation not yet migrated to useAIOperation" exit="NameGenerator migrated to useAIOperation" added=2026-06-08 re_evaluated=2026-06-08
+packages/web/components/studio/kb/ConsistencyCheckPanel.tsx  owner=Frontend gate=check_1_use_ai_operation reason="migration-in-progress: TanStack Query mutation flow, SSE migration deferred" exit="ConsistencyCheckPanel migrated to useAIOperation or TanStack+useAIOperation adapter" added=2026-06-08 re_evaluated=2026-06-08
+packages/web/components/studio/extraction/ExtractionPanel.tsx  owner=Frontend gate=check_1_use_ai_operation reason="migration-in-progress: timeline extraction uses callback-based SSE accumulation" exit="ExtractionPanel migrated to useAIOperation or adapter for callback SSE" added=2026-06-08 re_evaluated=2026-06-08
+packages/web/__tests__/connection-lost.test.tsx  owner=Platform gate=check_5_no_use_connection_lost reason="central-test-helper: integration test for useConnectionLost deprecation behavior" exit="useConnectionLost fully removed and test updated or deleted" added=2026-06-08 re_evaluated=2026-06-08
+packages/web/components/studio/editor/extensions/ghost-text-helpers.ts  owner=Frontend gate=check_2_no_raw_abort reason="non-react-extension: TipTap extensions run outside React lifecycle; AbortController managed via Extension storage, no React hook possible" exit="GhostText receives AbortSignal from React controller via Extension options" added=2026-06-12 re_evaluated=2026-06-12
+packages/web/lib/hooks/useTimelineExtraction.ts  owner=Frontend gate=check_2_no_raw_abort reason="non-react-transport: callback-based SSE accumulation with onEvent/onComplete/onError; useAIOperation does not support callback-based SSE — partial migration applied (§16.5 errors, §16.2 cancel)" exit="useAIOperation supports callback-based SSE or adapter exists" added=2026-06-12 re_evaluated=2026-06-12

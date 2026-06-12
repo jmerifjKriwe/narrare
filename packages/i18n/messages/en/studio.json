@@ -1678,11 +1678,15 @@
     "max": "16K"
   },
   "ghostText": {
-    "onboardingHint": "Tab = Accept | → = Word-by-word | Esc = Dismiss"
+    "onboardingHint": "Tab = Accept | → = Word-by-word | Esc = Dismiss",
+    "hint": "Tab accept · Esc dismiss · → word"
   },
   "aiActions": {
     "accept": "Accept",
+    "acceptAll": "Accept All",
     "reject": "Reject",
+    "rejectAll": "Reject All",
+    "applySelected": "Apply Selected",
     "retry": "Retry",
     "stop": "Stop",
     "addToDraft": "Add to Draft",
@@ -1757,5 +1761,29 @@
     "label": "Quick Start",
     "creating": "Creating project…",
     "defaultProjectName": "My Novel"
+  },
+  "coAuthor": {
+    "title": "Co-Author",
+    "close": "Close",
+    "start": "Start",
+    "stop": "Stop",
+    "retry": "Retry",
+    "done": "Changes applied successfully",
+    "cancel": "Cancel",
+    "errorGeneric": "An error occurred during co-authoring",
+    "streaming": "Co-Author is writing…",
+    "wordsReceived": "{count} words received",
+    "improvementsFound": "{count} improvements found",
+    "reasoning": "AI Reasoning",
+    "reviewPhase": "Review",
+    "selectionWords": "{count} words selected",
+    "focusLabel": "Focus Areas",
+    "focusWordChoice": "Word Choice",
+    "focusSentence": "Sentence",
+    "focusDialogue": "Dialogue",
+    "focusDescription": "Description",
+    "acceptAll": "Accept All",
+    "rejectAll": "Reject All",
+    "applySelected": "Apply Selected"
   }
 }

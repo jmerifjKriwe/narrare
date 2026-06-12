@@ -59,14 +59,14 @@ export function CoAuthorReviewPhase({
             onClick={onAcceptAll}
             className={`${btnSm} ${allAccepted ? "bg-primary text-primary-foreground shadow-sm" : "border border-border hover:bg-accent"}`}
           >
-            {t("coAuthor.acceptAll")}
+            {t("aiActions.acceptAll")}
           </button>
           <button
             type="button"
             onClick={onRejectAll}
             className={`${btnSm} ${allRejected ? "bg-destructive/10 text-destructive border border-destructive/30" : "border border-border hover:bg-accent"}`}
           >
-            {t("coAuthor.rejectAll")}
+            {t("aiActions.rejectAll")}
           </button>
         </div>
       </div>
@@ -113,7 +113,7 @@ export function CoAuthorReviewPhase({
           ) : (
             <Check className="w-4 h-4" />
           )}
-          <span>{allAccepted ? t("coAuthor.acceptAll") : t("coAuthor.applySelected")}</span>
+          <span>{allAccepted ? t("aiActions.acceptAll") : t("aiActions.applySelected")}</span>
         </button>
       </div>
     </div>

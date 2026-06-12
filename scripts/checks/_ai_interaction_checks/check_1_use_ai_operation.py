@@ -4,7 +4,7 @@ import re
 import subprocess  # nosec
 from pathlib import Path
 
-from ._shared import WEB_DIR, display_path, is_excluded
+from ._shared import WEB_DIR, ExcludeRegistry, display_path
 
 SSE_API_MODULES = [
     "generation",
@@ -15,6 +15,8 @@ SSE_API_MODULES = [
     "kb-sessions",
     "timeline",
 ]
+
+GATE = "check_1_use_ai_operation"
 
 
 def _find_sse_api_importing_tsx_files() -> list[Path]:
@@ -63,7 +65,9 @@ def _file_imports_use_ai_operation(filepath: Path) -> bool:
         return False
 
 
-def check_use_ai_operation_usage(excludes: set[str]) -> tuple[list[str], list[str]]:
+def check_use_ai_operation_usage(
+    registry: ExcludeRegistry,
+) -> tuple[list[str], list[str]]:
     passes: list[str] = []
     violations: list[str] = []
 
@@ -75,8 +79,8 @@ def check_use_ai_operation_usage(excludes: set[str]) -> tuple[list[str], list[st
 
     for filepath in importing_files:
         rel = display_path(filepath)
-        if is_excluded(rel, excludes):
-            passes.append(f"[EXCLUDED] {rel} — excluded from Check 1")
+        if registry.is_excluded(rel, gate=GATE):
+            # Governed exclusion — reported separately by main checker.
             continue
         if _file_imports_use_ai_operation(filepath):
             passes.append(f"{rel} uses useAIOperation +")

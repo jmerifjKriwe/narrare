@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ._shared import WEB_DIR, display_path, is_excluded, rg_files, rg_lines
+from ._shared import WEB_DIR, ExcludeRegistry, display_path, rg_files, rg_lines
+
+GATE = "check_5_no_use_connection_lost"
 
 
 def check_no_use_connection_lost(
-    excludes: set[str],
+    registry: ExcludeRegistry,
     fix: bool = False,
 ) -> tuple[list[str], list[str], list[str]]:
     passes: list[str] = []
@@ -21,8 +23,7 @@ def check_no_use_connection_lost(
     for filepath_str in files:
         fp = Path(filepath_str)
         rel = display_path(fp)
-        if is_excluded(rel, excludes):
-            passes.append(f"[EXCLUDED] {rel} -- excluded from Check 5")
+        if registry.is_excluded(rel, gate=GATE):
             continue
 
         lines = rg_lines(r"useConnectionLost", str(fp))

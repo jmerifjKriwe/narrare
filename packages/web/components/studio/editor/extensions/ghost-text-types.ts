@@ -22,6 +22,9 @@ export interface GhostTextOptions {
   minChars?: number;
   /** Whether ghost text functionality is enabled. */
   enabled?: boolean;
+  /** Localized keyboard shortcut hint text (e.g. "Tab accept · Esc dismiss · → word").
+   *  Injected from React via Extension options. Falls back to English default. */
+  hintText?: string;
 }
 
 export interface GhostTextStorage {

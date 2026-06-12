@@ -830,8 +830,8 @@ Large components are a sign of mixed responsibilities. Split them per RULE-06.
 > **Reference language**: German (de). All user-facing strings must use canonical
 > i18n keys from `studio.aiActions.*` (see §16.8).
 >
-> **Last updated**: 2026-06-02
-> **Source**: CR-07 UX Audit — systemic inconsistency in AI interaction patterns
+> **Last updated**: 2026-06-12
+> **Source**: CR-07 UX Audit — systemic inconsistency in AI interaction patterns; AUFG-03-10 vocabulary extension (acceptAll/rejectAll/applySelected)
 
 ### 16.1 Streaming Rule
 
@@ -917,7 +917,10 @@ All AI action labels under `studio.aiActions` namespace:
 | i18n key | DE | EN | FR |
 |----------|----|----|----|
 | `aiActions.accept` | Übernehmen | Accept | Accepter |
+| `aiActions.acceptAll` | Alle übernehmen | Accept All | Tout accepter |
 | `aiActions.reject` | Verwerfen | Reject | Rejeter |
+| `aiActions.rejectAll` | Alle verwerfen | Reject All | Tout rejeter |
+| `aiActions.applySelected` | Auswahl übernehmen | Apply Selected | Appliquer la sélection |
 | `aiActions.retry` | Erneut versuchen | Retry | Réessayer |
 | `aiActions.stop` | Stoppen | Stop | Arrêter |
 | `aiActions.addToDraft` | Zum Entwurf hinzufügen | Add to Draft | Ajouter au brouillon |
@@ -951,6 +954,9 @@ Deprecated keys (DO NOT use):
 - `kb.sessions.accept` → `aiActions.accept`
 - `kb.sessions.reject` → `aiActions.reject`
 - `learning.rating` → `aiActions.rating`
+- `coAuthor.acceptAll` → `aiActions.acceptAll`
+- `coAuthor.rejectAll` → `aiActions.rejectAll`
+- `coAuthor.applySelected` → `aiActions.applySelected`
 
 ### 16.9 Machine-Checkability
 

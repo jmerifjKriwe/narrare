@@ -149,7 +149,7 @@ export function CoAuthorPanel({
                   className={`${btnPrimary} flex-1 flex items-center justify-center gap-2`}
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span>{t("coAuthor.retry")}</span>
+                  <span>{t("aiActions.retry")}</span>
                 </button>
               </div>
             </div>

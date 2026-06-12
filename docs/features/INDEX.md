@@ -188,10 +188,14 @@
 > streaming requirement) before adapter-specific specs can be written.
 >
 > **Contract-Test Gates (required before first adapter implementation):**
-> 1. Service contracts must be adapter-neutral (already RULE-12).
-> 2. Streaming/non-streaming signatures must work identically (already RULE-13).
-> 3. Adapter-Contract-Tests for new entry points (`apps/mcp/`, `apps/a2a/`) must be
->    defined alongside the adapter spec, not retrofitted after implementation.
+> 1. Service contracts must be adapter-neutral (see CONSTRAINTS.md RULE-12).
+> 2. Streaming/non-streaming signatures must work identically (see CONSTRAINTS.md RULE-13).
+> 3. Adapter specs must define contract tests for Service Layer calls, auth/identity
+>    mapping, protocol error mapping, streaming/non-streaming parity, and the invariant
+>    that adapter files contain no business logic.
+> 4. No `apps/mcp/` or `apps/a2a/` skeleton is created only to satisfy a review item;
+>    implementation starts only after Q-001/Q-002 are resolved or explicitly scoped in
+>    an approved adapter spec.
 
 ---
 
@@ -270,5 +274,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-11 — AUFG-01-03: ADAPTER-001 (MCP) and ADAPTER-002 (A2A) added as planned (💡 idea) with contract-test gates documented.
+> Last updated: 2026-06-12 — Review-03 refresh: ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers and contract-test gates were clarified.
 > Features are specified before they are implemented — never after

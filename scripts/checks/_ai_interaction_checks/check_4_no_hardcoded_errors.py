@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ._shared import WEB_DIR, display_path, is_excluded, rg_files, rg_lines
+from ._shared import WEB_DIR, ExcludeRegistry, display_path, rg_files, rg_lines
+
+GATE = "check_4_no_hardcoded_errors"
 
 
-def check_no_hardcoded_errors(excludes: set[str]) -> tuple[list[str], list[str]]:
+def check_no_hardcoded_errors(
+    registry: ExcludeRegistry,
+) -> tuple[list[str], list[str]]:
     passes: list[str] = []
     violations: list[str] = []
 
@@ -22,8 +26,7 @@ def check_no_hardcoded_errors(excludes: set[str]) -> tuple[list[str], list[str]]
     for filepath_str in files:
         fp = Path(filepath_str)
         rel = display_path(fp)
-        if is_excluded(rel, excludes):
-            passes.append(f"[EXCLUDED] {rel} -- excluded from Check 4")
+        if registry.is_excluded(rel, gate=GATE):
             continue
 
         lines = rg_lines(r"(err|error)\.message", str(fp))

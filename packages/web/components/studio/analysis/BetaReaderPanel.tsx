@@ -3,7 +3,7 @@
 /**
  * BetaReaderPanel — collapsible analysis results panel with 4 tabs.
  * Tabs: Strengths | Issues | Questions | Overall. Deep Dive on category tabs.
- * §16 compliance: AbortController cancel, useConnectionLost, studio.aiActions.* labels.
+ * §16 compliance: useAIOperation-backed mutations for connection state.
  */
 
 import { Info } from "lucide-react";
@@ -11,7 +11,6 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
 import type { BetaReaderResponse, FeedbackCategory } from "@/lib/api/analysis";
-import { useConnectionLost } from "@/lib/hooks/use-connection-lost";
 import { useBetaReaderAnalyze, useBetaReaderDeepDive } from "@/lib/hooks/useBetaReader";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { BetaReaderDeepDiveFooter } from "./BetaReaderDeepDiveFooter";
@@ -37,13 +36,6 @@ export function BetaReaderPanel({ novelId, chapterIds, onClose }: BetaReaderPane
   const deepDiveMutation = useBetaReaderDeepDive(novelId);
   const setBetaReaderResult = useEditorStore((s) => s.setBetaReaderResult);
   const setBetaReaderLoading = useEditorStore((s) => s.setBetaReaderLoading);
-  const {
-    isConnectionLost,
-    markConnectionLost,
-    retry: retryConnection,
-  } = useConnectionLost({
-    onRetry: () => void runAnalysis(false),
-  });
 
   const runAnalysis = useCallback(
     async (refresh = false) => {
@@ -62,14 +54,13 @@ export function BetaReaderPanel({ novelId, chapterIds, onClose }: BetaReaderPane
         setViewState("results");
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        markConnectionLost();
         setError(err instanceof Error ? err : new Error(String(err)));
         setViewState("error");
       } finally {
         setBetaReaderLoading(false);
       }
     },
-    [chapterIds, analyzeMutation, setBetaReaderResult, setBetaReaderLoading, markConnectionLost],
+    [chapterIds, analyzeMutation, setBetaReaderResult, setBetaReaderLoading],
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
@@ -117,9 +108,9 @@ export function BetaReaderPanel({ novelId, chapterIds, onClose }: BetaReaderPane
           {t("betaReader.aiDisclaimer")}
         </p>
       </div>
-      {isConnectionLost && (
+      {analyzeMutation.isConnectionLost && (
         <div className="p-4 pb-0">
-          <ConnectionLostBanner onRetry={retryConnection} />
+          <ConnectionLostBanner onRetry={() => analyzeMutation.retry()} />
         </div>
       )}
       {viewState === "results" && (

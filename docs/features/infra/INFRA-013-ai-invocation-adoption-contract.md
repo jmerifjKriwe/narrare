@@ -28,22 +28,28 @@ requires: [INFRA-002, INFRA-003, INFRA-005, INFRA-011, INFRA-012, PROMPT-001, PR
 
 ## Status and Decision Summary
 
-- **Status:** P0 through P5 fully implemented. Core `ai_invocation` module,
+- **Status:** P0 through P5 implementation work is complete for the adoption
+  infrastructure and static/probe wiring. Core `ai_invocation` module,
   InvocationPipeline, enrichers, validators, budget resolver,
-  LoggingEvidenceSink, WritingPipeline integration, `core/profiles/` module
+  LoggingEvidenceSink, WritingPipeline integration, `core/profiles` module
   (ProjectWritingProfile SSOT), KBConsistencyEnricher, VoiceProfileStatus,
   AuditReport, KG Consistency Checker, and `requires_runtime_evidence` flag
-  are all in production. 27/27 modes wired. User/Project IDs flow through
-  InvocationContext. P2 (KG/voice/profile SSOT, audit lifecycle) implemented.
+  are all in production. 27/27 modes are statically wired. User/Project IDs flow
+  through InvocationContext. P2 (KG/voice/profile SSOT, audit lifecycle) implemented.
   P3 (ADR-041) fully implemented: registry drift detection (JSON Schema + drift checker),
   doc-drift automation (ADR/spec/RULE-XX cross-reference validation),
   quality metrics (QualityReport joining eval results with invocation evidence),
   file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl),
-  and CI integration (--drift flag, CI jobs). P5 completion: all 27/27 modes
-  have runtime evidence wiring.
+  and CI integration (--drift flag, CI jobs). P5 completion means all 27/27 modes
+  have static adoption/probe wiring; it does **not** by itself mean 27/27 modes are
+  fully runtime-adopted.
 - **Governing ADR:** [ADR-038 — AI Invocation Adoption Contract](../../architecture/decisions/ADR-038-ai-invocation-adoption-contract.md).
-- **CR-03 state:** P0 through P5 fully implemented. 27/27 modes have runtime evidence
-  wiring. CR-03 P5 exit criteria satisfied.
+- **Current report semantics (2026-06-12):** 27/27 modes pass static adoption
+  (probes wired), 0/27 modes pass full runtime adoption in the standalone mode list,
+  and 109 ratcheted baseline items remain real baseline debt (63 runtime-evidence
+  gaps, 27 not-adopted markers, 18 design-level not-applicable items, 1 inline-
+  fallback counter). A mode may be documented as `adopted` only when both static and
+  runtime evidence are present.
 
 ## Scope
 
@@ -308,6 +314,26 @@ migration and integration tests in the same implementation slice.
   target date/trigger.
 - Audit files must not claim CR-03 resolved until P1–P3 exit criteria and runtime
   evidence gates pass.
+
+### Current Ratcheted Baseline Lifecycle (2026-06-12)
+
+| Category | Count | Owner | Exit criterion |
+|----------|------:|-------|----------------|
+| `runtime_evidence_missing` | 63 | Platform + owning feature specialist | Probe produces privacy-safe evidence for the mode and `runtime_verified` becomes true. |
+| `not_adopted` | 27 | Platform | Mode has both `static_verified` and `runtime_verified`; report no longer emits not-adopted marker. |
+| `not_applicable` | 18 | Architecture + Platform | Rationale remains valid and is machine-readable; remove if the mode starts requiring the category. |
+| `inline_fallback` | 1 | Frontend + Platform | Inline fallback is removed or documented as a scoped ADR-043-compatible exception with a checker-recognized exit. |
+
+Baseline items are allowed to ratchet down only. A green aggregate score or static
+probe pass must not be described as full adoption while any mode lacks runtime proof.
+
+### Doc-Claim Gate
+
+Derived docs and audit reports may use `adopted`, `fully migrated`, `complete`, or
+`no violations` for AI adoption/UX gates only when they cite a current command/report
+with date or explicitly qualify the claim as static-only, planned, blocked, or
+ratcheted debt. This gate references CONSTRAINTS.md/ADRs; it does not introduce a new
+RULE-XX.
 
 ### Doc Gates
 
@@ -594,5 +620,8 @@ suggestions. High-impact conflicts are surfaced rather than silently resolved.
   with doc_drift/ package (Layer 3), quality metrics with QualityReport + joiner
   (Layer 4), and CI integration with --drift flag (Layer 5). All P3 exit criteria
   satisfied. INFRA-013 complete through P3.
-- 2026-06-10 — P5 completed: all 27/27 modes have runtime evidence wiring.
-  INFRA-013 fully complete. Promoted to stable.
+- 2026-06-10 — P5 completed: all 27/27 modes have static adoption/probe wiring.
+  INFRA-013 promoted to stable for infrastructure completion.
+- 2026-06-12 — Review-03 semantics refresh: static wiring is not full runtime
+  adoption. Current baseline remains 109 real ratcheted items; docs must distinguish
+  `static_verified`, `runtime_verified`, and `adopted`.

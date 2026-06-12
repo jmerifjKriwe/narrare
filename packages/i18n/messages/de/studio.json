@@ -1678,11 +1678,15 @@
     "max": "16K"
   },
   "ghostText": {
-    "onboardingHint": "Tab = Übernehmen | → = Wortweise | Esc = Verwerfen"
+    "onboardingHint": "Tab = Übernehmen | → = Wortweise | Esc = Verwerfen",
+    "hint": "Tab übernehmen · Esc verwerfen · → Wort"
   },
   "aiActions": {
     "accept": "Übernehmen",
+    "acceptAll": "Alle übernehmen",
     "reject": "Verwerfen",
+    "rejectAll": "Alle verwerfen",
+    "applySelected": "Auswahl übernehmen",
     "retry": "Erneut versuchen",
     "stop": "Stoppen",
     "addToDraft": "Zum Entwurf hinzufügen",
@@ -1757,5 +1761,29 @@
     "label": "Sofort loslegen",
     "creating": "Projekt wird erstellt…",
     "defaultProjectName": "Mein Roman"
+  },
+  "coAuthor": {
+    "title": "Co-Autor",
+    "close": "Schließen",
+    "start": "Starten",
+    "stop": "Stoppen",
+    "retry": "Erneut versuchen",
+    "done": "Änderungen erfolgreich übernommen",
+    "cancel": "Abbrechen",
+    "errorGeneric": "Beim Co-Authoring ist ein Fehler aufgetreten",
+    "streaming": "Co-Autor schreibt…",
+    "wordsReceived": "{count} Wörter empfangen",
+    "improvementsFound": "{count} Verbesserungen gefunden",
+    "reasoning": "KI-Begründung",
+    "reviewPhase": "Überprüfung",
+    "selectionWords": "{count} Wörter ausgewählt",
+    "focusLabel": "Fokusbereiche",
+    "focusWordChoice": "Wortwahl",
+    "focusSentence": "Satzbau",
+    "focusDialogue": "Dialog",
+    "focusDescription": "Beschreibung",
+    "acceptAll": "Alle übernehmen",
+    "rejectAll": "Alle verwerfen",
+    "applySelected": "Auswahl übernehmen"
   }
 }

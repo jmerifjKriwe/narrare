@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-12 (AUFG-01-07 Adoption/Health Ratchet Sync)
-Session: Adoption/health ratchet semantics synchronized with CURRENT_STATE.md. Key fix: "27/27 fully adopted" was factually incorrect — checker shows adopted ❌ for all 27 modes (runtime evidence incomplete). Corrected to "27/27 static adoption" (probes wired). The 109 ratcheted baseline items are real: 63 runtime-evidence gaps (missing), 27 not_adopted markers, 18 design-level not_applicable, 1 inline_fallback counter. 0 new items above ratchet floor.
+Date: 2026-06-12 (Review-03 AUFG-03-06/09/10 Doc-Gate Sync)
+Session: Review-03 tasks AUFG-03-06 (agent error classification), AUFG-03-09 (AI-UX-gate governance + exclude Pflichtfeld-Schema), and AUFG-03-10 (TipTap AI-UX/i18n consistency) marked as completed in Phase 6. Core agents/errors.py + error_translator.py implement typed error classification (31 tests). Exclude registry migrated to ADR-043 Note 6 Pflichtfeld-format; `just check-ai-ux` reports 0 Violations, 6 Governed Exclusions. GhostText hints localized via Extension-Options (en/de/fr); CoAuthor action vocabulary migrated to `studio.aiActions.*` (acceptAll/rejectAll/applySelected). §16.8 vocabulary table updated with new keys. Adoption debt (109 items) and system health (0.88) unchanged.
 
 ---
 
@@ -151,6 +151,9 @@ Completed in Phase 6 so far:
    46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Static Adoption Achieved**: All 27 feature modes have adoption infrastructure wired (probes, registry entries, static adoption passes). Runtime adoption incomplete: 63 runtime-evidence gaps remain (final_validation, preference_enrichment, budget_resolution, evidence_sink missing for various modes). Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json ratcheted: 0 new adoption debt above 109-item baseline floor. CI integration: probes run before adoption check.
 47. ✅ **CR-07 UX Audit Remediation — Full Implementation**: ADR-043 useAIOperation hook + mapSSEError implementiert. Alle P0/P1 AI-Flows (GenerationPanel, CoAuthorPanel, ContinueButton, TipTapEditor, KB sessions, timeline, KB _components) auf useAIOperation migriert. §16 Compliance: aiActions.* i18n keys (de/en/fr), structured AIErrorResponse, no raw AbortController, no useConnectionLost. Maschinelle Compliance-Checks + CI-Integration. RULE-04: scorer_modes.py (401→365) + compliance script (594→93) modularisiert. ONBOARD-001, PROMPT-003, KEYBOARD-001 Feature-Specs erstellt. Q-012 resolved. Commit 1001125: 84 Dateien, +5.132/-674.
 48. ✅ **CR-07 UX Audit — Phase 2**: CR-AUFG-07-01 bis CR-AUFG-07-06 abgeschlossen. 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming DEAD CODE DELETED. Migrierte Flows: Chat SSE (CHAT-001), Beta Reader (ANAL-001), Extraction (KB-007), Worldbuilding (KB-006), Name Generator (GEN-001), Consistency Check (CONS-001). KEYBOARD-001 implementiert (Ctrl+Enter, Escape-Cancel). 5 Testfiles aktualisiert, 40+14 Tests grün.
+49. ✅ **AUFG-03-06 Agent Error Classification**: Core `agents/errors.py` (AgentError, ModelExecutionError, ModelRetryExhaustedError, AgentTimeoutError, AgentCancelledError) + `agents/error_translator.py` (single translation point for `run()`/`run_stream()`) + `agents/base.py` updated to use classified errors. Privacy-safe log attributes, no raw provider exceptions past agent boundary. 31 unit tests in `test_agent_error_classification.py`. Cancel≠error semantics enforced.
+50. ✅ **AUFG-03-09 AI-UX-Gate-Governance + ADR-043 Exclude Pflichtfeld-Schema**: `.ai_interaction_exclude` migrated to ADR-043 Note 6 mandatory-field format (file, owner, gate, reason, exit, added, re_evaluated). Checker updated: malformed entries rejected. `just check-ai-ux` reports 0 Violations, 6 Governed Exclusions. Stale review findings (useExtractionPhase/useConnectionLost, NameGenerator.test.tsx) no longer tracked as current violations. Baseline entries carry owner + exit criteria.
+51. ✅ **AUFG-03-10 TipTap-AI-UX/i18n Consistency**: GhostText hint localized via Extension-Options (`t("ghostText.hint")` → hintText in en/de/fr). CoAuthor action vocabulary migrated to `studio.aiActions.*` (`acceptAll`, `rejectAll`, `applySelected` in all 3 locales). BetaReaderPanel + useWorldbuildingAnalysis freed from useConnectionLost. Exclude list updated (2 stale entries removed, 2 new governed entries added). §16.8 canonical vocabulary table updated.
 
 ## What's Next
 
@@ -258,4 +261,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-12 (AUFG-01-07 Adoption/Health Ratchet Sync)
+> Last content update: 2026-06-12 (Review-03 AUFG-03-06/09/10 Doc-Gate Sync)

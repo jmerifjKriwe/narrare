@@ -31,6 +31,13 @@ from narrare_core.agents.consistency_types import (
 from narrare_core.agents.contracts import AgentRegistryProtocol
 from narrare_core.agents.draft_agent import DraftAgent
 from narrare_core.agents.draft_types import DraftConfig, DraftDeps, DraftOutput
+from narrare_core.agents.errors import (
+    AgentCancelledError,
+    AgentError,
+    AgentTimeoutError,
+    ModelExecutionError,
+    ModelRetryExhaustedError,
+)
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.agents.graph_store import GraphStateStore
@@ -112,13 +119,16 @@ from narrare_core.agents.writing_graph import (
 from narrare_core.agents.writing_graph_types import create_writing_graph
 
 __all__ = [
+    "AgentCancelledError",
     "AgentDeepDiveFeedback",
+    "AgentError",
     "AgentFeedbackItem",
     "AgentOverallAssessment",
     "AgentReaderQuestion",
     "AgentRegistry",
     "AgentRegistryProtocol",
     "AgentStrength",
+    "AgentTimeoutError",
     "Approved",
     "ArcPhase",
     "BetaReaderAgent",
@@ -163,6 +173,8 @@ __all__ = [
     "MergeDecision",
     "MergeOutput",
     "MergeStrategy",
+    "ModelExecutionError",
+    "ModelRetryExhaustedError",
     "NarrareAgent",
     "NeedsRevision",
     "OutlineAgent",

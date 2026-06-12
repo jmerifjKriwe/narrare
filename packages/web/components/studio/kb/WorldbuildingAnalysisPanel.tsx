@@ -7,7 +7,7 @@
  * plus a score header. Auto-triggers analysis on mount.
  * Sub-components: AnalysisLoading, AnalysisError, AnalysisScoreHeader, AnalysisTabs.
  *
- * §16 compliance: AbortController cancel, useConnectionLost, studio.aiActions.* labels.
+ * §16 compliance: useAIOperation-backed mutations for connection state.
  */
 
 import { ArrowLeft, Check, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
@@ -119,7 +119,7 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
               message={
                 "userMessage" in error
                   ? (error as { userMessage: string }).userMessage
-                  : error["message"]
+                  : error.message
               }
               onRetry={() => void runAnalysis(false)}
             />

@@ -218,9 +218,10 @@ state machine becomes more complex.
    This is intentional — features have different layouts (panels, inline, modals).
    §16 compliance is enforced at the state level, not the visual level.
 
-3. **Existing `useConnectionLost` continues**: The new hook absorbs the
-   `useConnectionLost` functionality. The existing hook can be deprecated after
-   migration (it has only 3 consumers).
+3. **Historical migration trade-off — `useConnectionLost`**: The new hook absorbed
+   `useConnectionLost` functionality. As of the 2026-06-12 Review-03 refresh,
+   production AI flows must not import/use the deprecated hook; comments mentioning
+   the migration are not violations, but imports/usage are.
 
 ---
 
@@ -728,6 +729,10 @@ After all flows are migrated:
 | `packages/web/lib/hooks/use-connection-lost.ts` | **DEPRECATE** — Add `@deprecated See useAIOperation (ADR-043)` |
 | All `useConnectionLost` consumers | **MIGRATE** to `useAIOperation` |
 
+**Status (2026-06-12 Review-03 refresh):** Production AI-flow imports/usages of
+`useConnectionLost` are no longer allowed. Any future occurrence is a current AI-UX
+gate violation and must not be reported from stale Review output.
+
 ---
 
 ## RULE-XX Compliance
@@ -805,6 +810,21 @@ rg "new AbortController" packages/web/components/studio/ --type tsx -l
 # Should return empty (or only excluded files)
 ```
 
+#### Scoped allowed raw `AbortController` categories
+
+The following categories are ADR-043-compatible and are not permission to reintroduce
+manual lifecycle handling in React components:
+
+1. **`useAIOperation` internals** — the primitive owns controller creation/cleanup.
+2. **Non-React transport or TipTap/ProseMirror extension adapters** — code such as a
+   factory used outside React hooks may own a controller only when it cannot legally
+   call React hooks and still preserves the same cancel/error semantics.
+3. **Central test helpers** — a shared helper may create an `AbortSignal` for mocks so
+   component tests do not duplicate controller creation at call sites.
+
+Every other raw controller in Studio React components or per-component tests must use
+`useAIOperation`/the shared test helper or be rejected during review.
+
 ### Check 3: Error message i18n keys exist
 
 ```bash
@@ -858,6 +878,28 @@ rg "useConnectionLost" packages/web/ --type ts -l
    `i18nKey` and a default `userMessage` (DE). Components should prefer using
    `useTranslations("studio")` to resolve `state.error.i18nKey` at render time for
    proper locale support. The default `userMessage` is a fallback for non-render contexts.
+
+6. **Exclude-/baseline governance.** `.ai_interaction_exclude` and any future AI-UX
+   baseline are not permanent waivers. Each entry must include the following
+   mandatory fields; missing lifecycle metadata means the exclude is not
+   architecture-approved and will be rejected by the checker:
+
+   | Field | Description |
+   |-------|-------------|
+   | `file` | File path (relative to repo root) |
+   | `owner` | Responsible specialist or role (e.g. `Frontend`, `Platform`) |
+   | `gate` | Checker command that validates this entry (e.g. `just check-ai-ux`) |
+   | `reason` | ADR-043-compatible category: `hook-internals`, `non-react-extension`, or `central-test-helper` |
+   | `exit` | Criterion or trigger for removal (e.g. "GhostText rewritten as React hook", "mode gains runtime evidence") |
+   | `added` | Date the exclude was added (ISO format) |
+   | `re_evaluated` | Date of last re-evaluation (initially same as `added`; quarterly refresh minimum) |
+
+   This is an ADR-043 implementation governance rule, not a new CONSTRAINTS.md RULE-XX.
+
+7. **Visible TipTap extension text.** Non-React extensions may receive localized UI
+   strings through extension options from their React controller. Visible hints (for
+   example GhostText shortcuts) must not hardcode English text in ProseMirror DOM;
+   `aria-hidden` does not make visible user text exempt from i18n expectations.
 
 ---
 

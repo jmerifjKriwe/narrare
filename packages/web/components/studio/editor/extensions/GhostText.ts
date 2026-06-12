@@ -63,6 +63,7 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
       suggestionDelay: 800,
       minChars: 5,
       enabled: true,
+      hintText: "Tab accept · Esc dismiss · → word",
     };
   },
 
@@ -208,7 +209,8 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
 
             // Build the keyboard shortcut hint (fades in via CSS)
             const hintSpan = document.createElement("span");
-            hintSpan.textContent = "Tab accept · Esc dismiss · → word";
+            hintSpan.textContent =
+              extension.options.hintText ?? "Tab accept · Esc dismiss · → word";
             hintSpan.className = "ghost-text-hint";
             hintSpan.setAttribute("aria-hidden", "true");
 

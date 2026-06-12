@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from ._shared import I18N_DIR, display_path, is_excluded
+from ._shared import I18N_DIR, ExcludeRegistry, display_path
 
 REQUIRED_ERROR_KEYS = [
     "errorApiKey",
@@ -17,7 +17,9 @@ REQUIRED_ERROR_KEYS = [
 REQUIRED_LOCALES = ["de", "en", "fr"]
 
 
-def check_error_i18n_keys(excludes: set[str]) -> tuple[list[str], list[str]]:
+def check_error_i18n_keys(
+    registry: ExcludeRegistry,
+) -> tuple[list[str], list[str]]:
     passes: list[str] = []
     violations: list[str] = []
 
@@ -37,13 +39,9 @@ def check_error_i18n_keys(excludes: set[str]) -> tuple[list[str], list[str]]:
             if re.search(rf'"{key}"\s*:', content):
                 passes.append(f"{locale}/studio.json has aiActions.{key} +")
             else:
-                exclude_key = f"{locale}/{key}"
-                if is_excluded(exclude_key, excludes):
-                    passes.append(f"[EXCLUDED] {exclude_key} -- excluded from Check 3")
-                else:
-                    violations.append(
-                        f"{locale}/studio.json MISSING aiActions.{key}\n"
-                        f'  -> Add: "{key}": "<translated message>" to aiActions block'
-                    )
+                violations.append(
+                    f"{locale}/studio.json MISSING aiActions.{key}\n"
+                    f'  -> Add: "{key}": "<translated message>" to aiActions block'
+                )
 
     return passes, violations

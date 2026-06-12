@@ -139,8 +139,9 @@ export function useTipTapEditorController({
         enabled: true,
         minChars: 5,
         suggestionDelay: 800,
+        hintText: t("ghostText.hint"),
       }) satisfies Partial<import("./extensions/GhostText").GhostTextOptions>,
-    [],
+    [t],
   );
 
   const editor = useEditor({

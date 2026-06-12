@@ -5,7 +5,7 @@ status: planned
 area: prompts
 mvp: false
 
-ui_tooltip: "Passe KI-Prompts an deinen Schreibstil an — mit Variablen-Erklärung und Vorschau."
+ui_tooltip: "Passe KI-Prompts an deinen Schreibstil an — mit Variablen-Erklärung, sicherer Vorschau und optionalem Live-Test."
 ui_help_short: |
   In den AI-Einstellungen kannst du Prompts für jede KI-Funktion anpassen.
   Dieses Feature macht diese Anpassung verständlich: Variablen wie
@@ -25,10 +25,14 @@ ui_help_long: |
   Beschreibung und Beispielwert angezeigt. Du siehst, welche Daten
   an der Stelle eingefügt werden.
 
-  **Änderungen testen:** Bevor du einen Prompt speicherst, kannst du
-  ihn mit aktuellen Projektdaten in einer Vorschau ausprobieren. Die
-  Vorschau zeigt, wie der fertige Prompt (mit eingefügten Variablen)
-  aussehen würde.
+  **Änderungen prüfen:** Bevor du einen Prompt speicherst, kannst du
+  eine sichere Vorschau ohne KI-Anfrage öffnen. Sie zeigt den fertigen
+  Prompt mit eingefügten Variablen, Provenance und Validierungsdiagnostik.
+
+  **Optionaler Live-Test:** Wenn deine KI-Einstellungen vollständig sind,
+  kannst du zusätzlich einen echten Testlauf starten. Dieser verbraucht
+  Tokens und sendet die angezeigten Projektdaten an den konfigurierten
+  Provider.
 
   **Zurücksetzen:** Jeder Prompt hat einen „Auf Standard zurücksetzen"-
   Button. Damit kehrst du jederzeit zum Ausgangsprompt zurück — ohne
@@ -45,8 +49,9 @@ ui_available_in: [settings]
 
 Macht die bestehende Prompt-Anpassung (PROMPT-001/PROMPT-002) für
 Endnutzer verständlich und sicher. Zeigt Prompt-Variablen mit
-Erklärungen und Beispielwerten, bietet einen Preview/Test-Modus
-vor dem Speichern und ermöglicht Reset-to-Default pro Intent.
+Erklärungen, Provenance, Security-Klassen und Beispielwerten, bietet
+eine providerfreie Preview vor dem Speichern, optional einen gated Live-
+Test und ermöglicht Reset-to-Default pro Intent.
 
 ## Why it exists
 
@@ -56,9 +61,11 @@ vor dem Speichern und ermöglicht Reset-to-Default pro Intent.
    `{{chapter_text}}` werden in der Settings-UI nicht erklärt. Nutzer
    wissen nicht, welche Daten dort eingefügt werden.
 
-2. **Kein Preview/Test-Modus:** Änderungen am Prompt werden blind
-   gespeichert. Es gibt keine Möglichkeit zu sehen, wie der finale
-   Prompt (mit aufgelösten Variablen) vor der ersten KI-Anfrage aussieht.
+2. **Kein sicher getrennter Preview/Test-Modus:** Änderungen am Prompt werden
+   blind gespeichert. Es gibt keine providerfreie Möglichkeit zu sehen, wie der
+   finale Prompt (mit aufgelösten Variablen) aussieht; ein optionaler Live-Test
+   muss davon klar getrennt, provider-/secret-gated und als tokenverbrauchend
+   markiert sein.
 
 3. **Kein Reset-to-Default:** Einmal geänderte Custom Instructions
    können nicht auf die Standardwerte zurückgesetzt werden — außer
@@ -91,29 +98,43 @@ Grundlage — dieses Feature macht sie nutzerfreundlich.
      - Beschreibung („Das aktuell relevante Wissen aus deiner Welt")
      - Beispielwert (z. B. „Anna Müller — eine Lehrerin, die …")
      - Datenquelle („Knowledge Base, Kapitel {chapter.title}")
-   - **Vorschau-Button:** „Getesteten Prompt anzeigen" → öffnet ein
-     Panel mit dem vollständig aufgelösten Prompt (Variable → echte
-     Projektdaten)
+    - **Vorschau-Button:** „Prompt-Vorschau anzeigen" → öffnet ein
+      Panel mit dem vollständig aufgelösten Prompt (Variable → echte
+      Projektdaten), Provenance und Validierungsdiagnostik; kein LLM-Aufruf
+      und keine Provider-Secrets erforderlich
+    - **Optionaler Live-Test:** „Prompt live testen" → nur aktiv, wenn Provider-
+      Konfiguration vorhanden ist und der Nutzer Token-/Privacy-Hinweis bestätigt
    - **Reset-Button:** „Auf Standard zurücksetzen" → setzt den Prompt
      auf den ursprünglichen, systemdefinierten Wert zurück (mit
      Bestätigungsdialog)
 
-3. **Test-Lauf (Preview-Modus):**
-   - Klick auf „Testen" → eine echte KI-Anfrage wird mit dem
-     bearbeiteten Prompt gestartet
+3. **Providerfreie Preview:**
+   - Klick auf „Vorschau" → Core/API löst Variablen mit aktuellem Projektkontext
+     auf und liefert Diagnostik (fehlende Variablen, Security/Provenance,
+     verwendete Cascade-Stufe)
+   - Es wird kein Modell aufgerufen und kein Provider-Secret benötigt
+   - Die Preview ist kein Qualitäts-/Eval-Ergebnis, sondern ein Debug-/Verständnis-
+     Werkzeug für den Prompt
+
+4. **Optionaler Live-Test:**
+   - Klick auf „Live-Test" → eine echte KI-Anfrage wird mit dem bearbeiteten
+     Prompt gestartet
    - Das Ergebnis erscheint in einer Vorschau (nicht im Dokument)
-   - Der Nutzer kann das Ergebnis bewerten ohne es zu speichern
-   - Nach dem Test kann der Prompt gespeichert oder verworfen werden
+   - Der Nutzer kann das Ergebnis bewerten, ohne den Prompt zu speichern
+   - Der Test ist provider-/secret-gated, rate-limited und nutzt die normale
+     Agent/ModelRegistry-/PromptComposer-Strecke
 
-### Privacy-Hinweis
+### Privacy- und Kostenhinweis
 
-Der Preview-Modus sendet eine echte KI-Anfrage — das verbraucht Tokens.
-Ein Hinweis weist den Nutzer darauf hin, bevor der Test gestartet wird.
+Die providerfreie Preview zeigt echte Projektdaten lokal in der UI/API-Antwort,
+sendet aber keine Modellanfrage. Nur der optionale Live-Test sendet die angezeigten
+Daten an den konfigurierten Provider und verbraucht Tokens; davor ist ein klarer
+Hinweis erforderlich.
 
 ## How it works (Technical)
 
 **Entry point:** Settings AI tab → `IntentOverrides.tsx` (erweitert)
-**Backend:** Bestehende Routen + neuer `POST /api/v1/settings/prompts/{intent}/preview`
+**Backend:** Bestehende Routen + providerfreie Preview und optionaler Live-Test
 **Service:** `PromptPreviewService` in `apps/api/narrare/prompts/`
 **Contract:** `PromptCustomizationProtocol` in `prompts/contracts_prompt_ux.py`
 **Prompt:** Verwendet bestehende Prompts aus `core/prompts/_bundled/`
@@ -122,9 +143,19 @@ Ein Hinweis weist den Nutzer darauf hin, bevor der Test gestartet wird.
 
 | Endpoint | Methode | Beschreibung |
 |----------|---------|-------------|
-| `/api/v1/settings/prompts/{intent}/preview` | POST | Liefert den vollständig aufgelösten Prompt (Variable → Projektdaten) ohne KI-Aufruf |
-| `/api/v1/settings/prompts/{intent}/test` | POST | Führt eine KI-Anfrage mit dem bearbeiteten Prompt aus (Preview-Modus, Ergebnis wird nicht persistiert) |
+| `/api/v1/settings/prompts/{intent}/preview` | POST | Providerfreie Preview: vollständig aufgelöster Prompt, Variable-Provenance, Security-Klassen, Validierungsdiagnostik; kein KI-Aufruf |
+| `/api/v1/settings/prompts/{intent}/test` | SSE/POST+SSE | Optionaler Live-Test: echte KI-Anfrage mit bearbeitetem Prompt; provider-/secret-gated, rate-limited, Ergebnis wird nicht persistiert |
 | `/api/v1/settings/prompts/{intent}/reset` | POST | Setzt den Prompt-Override auf den systemdefinierten Standard zurück |
+
+### Contract-Semantik
+
+| Operation | Provider nötig? | Darf Tokens verbrauchen? | Output | Gate |
+|-----------|-----------------|--------------------------|--------|------|
+| Preview | Nein | Nein | Resolved Prompt + Diagnostics | PromptComposer/Variable-Validator; keine Modellroute |
+| Live-Test | Ja | Ja | Gestreamtes Test-Ergebnis + Diagnostics | Normale Agent/ModelRegistry-Route, §16-UX, Rate-Limit, Token-/Privacy-Hinweis |
+
+Die Preview darf nicht als „adopted", Eval-Abdeckung oder Runtime-Qualitätsbeweis
+gezählt werden. Runtime-/Eval-Claims benötigen separate Evidence gemäß INFRA-013.
 
 ### Frontend-Änderungen
 
@@ -181,17 +212,17 @@ Neue Schlüssel in `studio.json` unter `settings.ai.promptCustomization.*`:
 ### Streaming
 | Question | Answer |
 |----------|--------|
-| Backend SSE endpoint exists? | Preview: nein (nur Prompt-Auflösung). Test: ja (KI-Anfrage) |
-| Frontend uses SSE? | Test: ja — Streaming-Vorschau des KI-Ergebnisses |
-| REST endpoint also needed? | Preview: ja (POST). Test: nein (SSE reicht) |
+| Backend SSE endpoint exists? | Preview: nein (nur Prompt-Auflösung). Live-Test: ja, wenn KI-Ausgabe erzeugt wird |
+| Frontend uses SSE? | Preview: nein. Live-Test: ja — Streaming-Vorschau des KI-Ergebnisses |
+| REST endpoint also needed? | Preview: ja (POST). Live-Test: höchstens Start/metadata; Ausgabe über SSE |
 
 ### User Controls
 | Control | Required? | i18n key |
 |---------|-----------|----------|
-| Cancel/Abort | Test-Modus: ja | `studio.aiActions.stop` |
+| Cancel/Abort | Live-Test: ja | `studio.aiActions.stop` |
 | Accept | nein (Preview wird nicht persistiert) | — |
 | Reject | nein | — |
-| Retry | Test-Modus: ja | `studio.aiActions.retry` |
+| Retry | Live-Test: ja | `studio.aiActions.retry` |
 | Rating | nein | — |
 
 ### Loading States
@@ -225,11 +256,13 @@ Neue Schlüssel in `studio.json` unter `settings.ai.promptCustomization.*`:
 
 ## Constraints & Edge Cases
 
-- **Preview-Modus verwendet ECHTE Projektdaten.** Der Nutzer muss
-  eingeweiht sein, dass sensible Projektdaten im Preview sichtbar werden.
-- **Test-Modus verbraucht Tokens.** Warnhinweis vor dem ersten Test.
-- **Kein unbegrenztes Testen:** Optionales Rate-Limiting für den
-  Test-Endpoint (max. 5 Tests pro Minute).
+- **Preview-Modus verwendet ECHTE Projektdaten, aber keinen Provider.** Der Nutzer
+  muss verstehen, dass sensible Projektdaten sichtbar werden; es wird jedoch keine
+  Modellanfrage ausgelöst.
+- **Live-Test verbraucht Tokens und sendet Daten an den Provider.** Warnhinweis vor
+  jedem ersten Test pro Session/Prompt.
+- **Kein unbegrenztes Testen:** Rate-Limiting für den Live-Test-Endpoint (max. 5
+  Tests pro Minute oder projektweiter Settings-Wert).
 - **Reset ist immer möglich:** Der Original-Prompt ist im Code definiert
   (`core/prompts/_bundled/`) und kann nicht überschrieben werden. Reset
   löscht nur den User-Override.
@@ -250,17 +283,19 @@ Neue Schlüssel in `studio.json` unter `settings.ai.promptCustomization.*`:
 ## Status & History
 
 - `2026-06-08` — Added to registry (CR-07 UX Audit §6 Remediation)
+- `2026-06-12` — Review-03 refresh: providerfreie Preview und optionaler,
+  provider-/secret-gated Live-Test als getrennte Verträge präzisiert.
 
 ## Definition of Done
 
 - [ ] Prompt-Variablen-Panel zeigt alle `{{variablen}}` mit Beschreibung + Beispielwert
-- [ ] Preview-Modus (Prompt-Auflösung ohne KI) implementiert
-- [ ] Test-Modus (KI-Anfrage + Streaming-Vorschau) implementiert
+- [ ] Providerfreie Preview (Prompt-Auflösung + Provenance + Diagnostics ohne KI) implementiert
+- [ ] Optionaler Live-Test (KI-Anfrage + Streaming-Vorschau) provider-/secret-gated implementiert
 - [ ] Reset-to-Default pro Intent mit Bestätigungsdialog implementiert
-- [ ] Warnhinweis vor KI-Test (Token-Verbrauch)
+- [ ] Warnhinweis vor Live-Test (Token-Verbrauch + Projektdaten an Provider)
 - [ ] i18n: Alle neuen UI-Texte in studio.json (de/en/fr)
 - [ ] Prompt-Variable-Metadaten (Beschreibung, Datenquelle) in Manifest-Datei gepflegt
-- [ ] Rate-Limiting für Test-Endpoint (max. 5/min)
+- [ ] Rate-Limiting für Live-Test-Endpoint (max. 5/min oder Settings-Wert)
 - [ ] Tests: Preview- + Test-Endpoint (Integration), Frontend-Komponenten (Vitest)
 - [ ] Bestehende PROMPT-001/PROMPT-002 funktionieren unverändert
 - [ ] Dokumentation: Feature-Spec auf stable gesetzt

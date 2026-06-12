@@ -45,7 +45,7 @@ export function CoAuthorStreamingPhase({ streamedText, onStop }: CoAuthorStreami
         className={`${btnSecondary} flex items-center justify-center gap-2 w-full`}
       >
         <X className="w-4 h-4" />
-        <span>{t("coAuthor.stop")}</span>
+        <span>{t("aiActions.stop")}</span>
       </button>
     </div>
   );

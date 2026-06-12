@@ -34,7 +34,6 @@ vi.mock("../_components/useCoAuthorPanel", () => ({
         "coAuthor.title": "Co-Author",
         "coAuthor.close": "Close",
         "coAuthor.errorGeneric": "An error occurred",
-        "coAuthor.retry": "Retry",
       };
       return translations[key] || key;
     },

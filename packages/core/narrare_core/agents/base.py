@@ -3,7 +3,7 @@
 Stellt sicher:
 - Model kommt aus ModelRegistry (nie direkt instantiiert)
 - Standard-Capabilities werden immer injected (Observability, UniversalRules, Meta)
-- Fehler werden einheitlich klassifiziert
+- Fehler werden einheitlich klassifiziert (agents/errors.py, error_translator.py)
 
 Usage:
     # Direct instantiation (system_prompt from caller — tests, PromptComposer):
@@ -36,6 +36,7 @@ from narrare_core.agents.capabilities import (
     NarrareObservability,
     NarrareUniversalRules,
 )
+from narrare_core.agents.error_translator import classify_error
 from narrare_core.agents.history_policy import HistoryPolicy
 
 if TYPE_CHECKING:
@@ -127,13 +128,19 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         """Führe den Agent aus.
 
         Delegiert an pydantic-ai run() mit Fehlerklassifizierung.
+        Alle Exceptions werden in typisierte NarrareAgent-Fehler
+        übersetzt (siehe ``agents/errors.py``).
         """
         try:
             result = await self._agent.run(prompt, deps=deps, **kwargs)
             return result.output
-        except Exception:
-            # Phase 1: Ersetzen durch klassifizierte Fehler
-            raise
+        except BaseException as exc:
+            # CancelledError is BaseException, not Exception — must be
+            # caught here to translate into AgentCancelledError.
+            # KeyboardInterrupt/SystemExit are re-raised as-is.
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            raise classify_error(exc, agent_name=type(self).__qualname__) from exc
 
     async def run_stream(
         self,
@@ -196,6 +203,10 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
                     usage=usage,
                     new_messages=result.new_messages(),
                 )
-        except Exception:
-            # Phase 1: Ersetzen durch klassifizierte Fehler
-            raise
+        except BaseException as exc:
+            # CancelledError is BaseException, not Exception — must be
+            # caught here to translate into AgentCancelledError.
+            # KeyboardInterrupt/SystemExit are re-raised as-is.
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            raise classify_error(exc, agent_name=type(self).__qualname__) from exc
