@@ -766,6 +766,11 @@ just test-e2e           # Requires full stack (main branch CI only)
 **Pre-merge checklist**: `just test-unit` passes locally → CI runs
 architecture, lint, typecheck, security, unit + integration + e2e.
 
+> **Tip:** The pre-commit fast-path can speed up local commit cycles during
+> test development. See
+> [Pre-commit Fast-Path](deployment-guide.md#fast-path-for-quick-iterations)
+> in the Deployment Guide. **Always validate with `just check` before pushing.**
+
 ### Coverage Run Guidance
 
 When running coverage locally, use the `just` recipes — they work from any

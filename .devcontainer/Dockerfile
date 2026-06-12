@@ -25,7 +25,7 @@ RUN su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh \
     && nvm alias default ${NODE_VERSION}" 2>&1
 
 # Install pnpm
-ARG PNPM_VERSION=10.24.0
+ARG PNPM_VERSION=11.5.2
 RUN su vscode -c ". /usr/local/share/nvm/nvm.sh && npm install -g pnpm@${PNPM_VERSION}" 2>&1
 
 # Install pre-commit

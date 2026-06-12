@@ -738,6 +738,8 @@ The AI can change plans faster than humans can read them — this rule prevents
 | Missing `CHANGES FROM PREVIOUS REVIEW` section | Re-review is blocked until provided |
 | Coordinator bypass (presenting unreviewed plan to user) | Escalation — user must decide |
 
+**Enforcement:** Manual process step. CI gates (check_architecture.py, check_exception_baseline.py, pyright, etc.) provide post-hoc coverage of most material changes. The review-changes-template at `.opencode/context/narrare-dev/templates/review-changes-template.md` structures the manual assessment.
+
 ---
 
 ### RULE-22 · Cross-Feature Coherence Gate
@@ -999,6 +1001,7 @@ See ADR-028 for the SSOT decision and checker enforcement specification.
 | 12 | RULE-01b | `packages/core/narrare_core/llm/gateway.py` | Gateway._make_agent() is the approved boundary crossing | ADR-015 | 2026-05-20 |
 | 13 | RULE-01 | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct import of pydantic_ai Agent | ADR-015 | 2026-05-20 |
 | 14 | RULE-01b | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct pydantic-ai Agent | ADR-015 | 2026-05-20 |
+| 15 | RULE-19 | `apps/api/narrare/metrics/router.py` | Health/readiness check must bypass repository layer to verify raw DB connectivity | platform-review-01 | 2026-06-11 |
 
 ### Detailed Exception Justifications
 
@@ -1050,6 +1053,14 @@ architectural benefit.
 creates pydantic_ai Agent instances — this is its design purpose per ADR-015.
 The setup provider validation service similarly requires direct Agent access
 for validating user-configured providers during initial setup.
+
+#### Exception #15: Metrics router raw DB connectivity (RULE-19)
+
+The `/health` and `/ready` endpoints in the metrics router bypass the repository
+layer to verify raw database connectivity. This is intentional: these endpoints
+serve as infrastructure-level liveness/readiness probes that must detect database
+failures at the connection level, not through the repository abstraction which
+may mask connection issues behind retry logic or fallback behavior.
 
 *Every exception is a debt that should be paid down. Revisit when the Gateway
 supports infrastructure-level calls with different routing rules.*

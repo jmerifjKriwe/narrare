@@ -231,7 +231,7 @@ No Langfuse/Logfire dependency for core runtime observability.
 **Not:** Node 22 or lower — CI tests against 24 only. Older versions are unsupported.
 **Canonical source:** This document. All other docs (README, deployment-guide, DevContainer) reference this version.
 
-### pnpm `10.24.0`
+### pnpm `11.5.2`
 **Why:** Deterministic frontend installs across VM-first development, optional
 DevContainer bootstrap, and CI.
 **Role:** JavaScript package manager for the root workspace and `packages/web/`.

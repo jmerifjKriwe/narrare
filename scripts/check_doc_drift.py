@@ -6,10 +6,11 @@ Validates that documented version numbers, ADR cross-references,
 spec/RULE-XX alignment, and checker terminology match reality.
 
 Check families:
-  - Node.js version consistency (Phase 1)
-  - ADR cross-reference and status consistency (Phase 2)
-  - Spec/RULE-XX reference alignment (Phase 2)
-  - Checker terminology alignment (Phase 2)
+  - Node.js version consistency (via doc_drift.tool_version_checks)
+  - pnpm version consistency (via doc_drift.tool_version_checks)
+  - ADR cross-reference and status consistency
+  - Spec/RULE-XX reference alignment
+  - Checker terminology alignment
 
 Exit codes:
   0: No drift detected — all checks passed.
@@ -19,7 +20,7 @@ Usage:
   python scripts/check_doc_drift.py                        # human-readable
   python scripts/check_doc_drift.py --json                 # JSON for CI
   python scripts/check_doc_drift.py --verbose              # detailed steps
-  python scripts/check_doc_drift.py --governance-only      # skip Node checks
+  python scripts/check_doc_drift.py --governance-only      # skip tool checks
 
 See: docs/_shared/CONSTRAINTS.md (RULE-04, RULE-06)
      docs/architecture/decisions/ADR-041 (Phase 2)
@@ -29,13 +30,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 from pathlib import Path
 
 # Allow importing from scripts/ sub-packages.
@@ -44,24 +40,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from doc_drift.adr_checks import DocDriftFinding, check_adr_consistency
 from doc_drift.spec_checks import check_spec_references
 from doc_drift.terminology_checks import check_terminology_alignment
-
-# ── Constants ──────────────────────────────────────────────────
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-EXPECTED_NODE_VERSION = "24"
-
+from doc_drift.tool_version_checks import CheckResult, register_tool_checks
 
 # ── Data structures ────────────────────────────────────────────
-
-
-@dataclass
-class CheckResult:
-    """Result of a single drift check against one file/pattern pair."""
-
-    file: str
-    pattern: str
-    passed: bool
-    detail: str = ""
 
 
 @dataclass
@@ -82,164 +63,6 @@ class DriftReport:
     @property
     def failures(self) -> int:
         return sum(1 for c in self.checks if not c.passed)
-
-
-# ── Check helpers ──────────────────────────────────────────────
-
-
-def _read_file(path: str) -> str | None:
-    """Read a file relative to REPO_ROOT."""
-    full_path = REPO_ROOT / path
-    if not full_path.exists():
-        return None
-    try:
-        return full_path.read_text(encoding="utf-8")
-    except Exception:
-        return None
-
-
-def node_check(
-    path: str,
-    pattern: str,
-    *,
-    min_count: int = 1,
-    label: str | None = None,
-) -> CheckResult:
-    """Check a file for a Node-version-related pattern."""
-    display_name = label or path
-    full_path = REPO_ROOT / path
-
-    if not full_path.exists():
-        return CheckResult(
-            file=display_name,
-            pattern=pattern,
-            passed=True,
-            detail="⚠  File not found — skipped",
-        )
-
-    content = _read_file(path)
-    if content is None:
-        return CheckResult(
-            file=display_name,
-            pattern=pattern,
-            passed=False,
-            detail=f"Error reading {path}",
-        )
-
-    matches = re.findall(pattern, content)
-    match_count = len(matches)
-
-    if match_count >= min_count:
-        return CheckResult(
-            file=display_name,
-            pattern=pattern,
-            passed=True,
-            detail=f"Found {match_count} match(es) matching /{pattern}/",
-        )
-
-    return CheckResult(
-        file=display_name,
-        pattern=pattern,
-        passed=False,
-        detail=(f"Expected ≥{min_count} match(es) of /{pattern}/ but found {match_count}"),
-    )
-
-
-# ── Node check registry ────────────────────────────────────────
-
-CHECKS: list[tuple[str, Callable[[], list[CheckResult]]]] = []
-
-
-def register_checks() -> None:
-    """Register Node.js version drift checks."""
-    v = EXPECTED_NODE_VERSION
-
-    CHECKS.append(
-        (
-            "README.md Node version",
-            lambda v=v: [
-                node_check(
-                    "README.md",
-                    rf"Node\.js\s+(?:{v}\+|≥\s*{v})",
-                    label="README.md",
-                ),
-            ],
-        )
-    )
-    CHECKS.append(
-        (
-            "Deployment guide Node version (x2)",
-            lambda v=v: [
-                node_check(
-                    "docs/development/deployment-guide.md",
-                    rf"Node\.js\s+{v}\+",
-                    min_count=2,
-                    label="docs/development/deployment-guide.md",
-                ),
-            ],
-        )
-    )
-    CHECKS.append(
-        (
-            "Context deployment guide Node version",
-            lambda v=v: [
-                node_check(
-                    ".opencode/context/narrare-dev/guides/deployment.md",
-                    rf"Node\.js\s+{v}\+",
-                    label=".opencode/context/narrare-dev/guides/deployment.md",
-                ),
-            ],
-        )
-    )
-    CHECKS.append(
-        (
-            "Evals README Node version",
-            lambda v=v: [
-                node_check(
-                    "evals/README.md",
-                    rf"Node\.js\s+≥\s*{v}",
-                    label="evals/README.md",
-                ),
-            ],
-        )
-    )
-    CHECKS.append(
-        (
-            "CI workflow Node version (x2)",
-            lambda v=v: [
-                node_check(
-                    ".github/workflows/ci.yml",
-                    rf'node-version:\s*"{v}"',
-                    min_count=2,
-                    label=".github/workflows/ci.yml",
-                ),
-            ],
-        )
-    )
-    CHECKS.append(
-        (
-            "Eval workflow Node version",
-            lambda v=v: [
-                node_check(
-                    ".github/workflows/eval.yml",
-                    rf'node-version:\s*"{v}"',
-                    label=".github/workflows/eval.yml",
-                ),
-            ],
-        )
-    )
-    CHECKS.append(
-        (
-            "Web package.json engines.node",
-            lambda v=v: [
-                node_check(
-                    "packages/web/package.json",
-                    rf'">={v}',
-                    label="packages/web/package.json (engines.node)",
-                ),
-            ],
-        )
-    )
 
 
 # ── Governance checks ──────────────────────────────────────────
@@ -342,7 +165,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--governance-only",
         action="store_true",
-        help="Run only governance checks (ADR/spec/terminology), skip Node checks",
+        help="Run only governance checks (ADR/spec/terminology), skip tool version checks",
     )
     return parser.parse_args(argv)
 
@@ -352,11 +175,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     has_critical = False
 
-    # ── Phase 1: Node.js version checks ──────────────────────
+    # ── Phase 1: Tool version checks (Node.js + pnpm) ────────
     if not args.governance_only:
-        register_checks()
+        tool_checks = register_tool_checks()
         report = DriftReport()
-        for _name, check_fn in CHECKS:
+        for _name, check_fn in tool_checks:
             results = check_fn()
             report.checks.extend(results)
 

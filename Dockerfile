@@ -50,7 +50,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM node:24-slim-bookworm AS build-frontend
 
 # Enable pnpm via corepack
-ARG PNPM_VERSION=10.24.0
+ARG PNPM_VERSION=11.5.2
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 WORKDIR /app

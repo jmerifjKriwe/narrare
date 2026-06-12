@@ -32,6 +32,10 @@ just dev-setup
 just dev
 ```
 
+> **Note:** If you run `uv sync` manually instead of `just dev-setup`, use
+> `uv sync --frozen --all-packages --group dev --extra nlp`. See
+> [deployment-guide.md](docs/development/deployment-guide.md) for details.
+
 Open [http://localhost:3000](http://localhost:3000) and complete the Setup Wizard.
 
 **Dev login** (created automatically):

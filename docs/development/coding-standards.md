@@ -595,6 +595,11 @@ Types: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `perf`, `ci`
 Scope: domain module name or `core`, `deps`, `infra`
 Breaking changes: add `!` after type/scope, add `BREAKING CHANGE:` footer
 
+> **Tip:** For rapid local iteration, the pre-commit fast-path can skip the
+> slowest hooks. See
+> [Pre-commit Fast-Path](deployment-guide.md#fast-path-for-quick-iterations)
+> in the Deployment Guide. **Always run `just check` before pushing.**
+
 ---
 
 > Maintained by: Implementation Agent + Architecture Agent

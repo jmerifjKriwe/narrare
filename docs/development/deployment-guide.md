@@ -10,7 +10,7 @@
 - Docker and Docker Compose v2.24+ (required for release compose validation without a committed `.env`)
 - Python 3.14+
 - Node.js 24+
-- pnpm 10.24.0 via the root `package.json` `packageManager` pin
+- pnpm 11.5.2 via the root `package.json` `packageManager` pin
 - just (command runner)
 
 Canonical runtime and package-manager versions live in
@@ -191,6 +191,45 @@ Current hook groups:
 | Frontend quality | pre-commit | Biome, i18n validation, TypeScript type check |
 | File hygiene | pre-commit | Whitespace, EOF, YAML/TOML/JSON, merge-conflict, large-file checks |
 | Commit message | commit-msg | Conventional commit validation |
+
+### Fast-Path for Quick Iterations
+
+The full pre-commit suite runs architecture, prompt, adoption, pyright,
+TypeScript, Biome, and bandit checks on every commit. That is intentional —
+it catches regressions early. During rapid local iteration, however, the full
+gate can slow you down.
+
+**Fast-path option — skip heavy hooks:**
+
+```bash
+SKIP=pyright,architecture-constraints,adoption-score,prompt-structure git commit -m "feat(core): …"
+```
+
+This skips the four slowest hooks (type checker, architecture constraints,
+adoption score, prompt structure) while keeping lint, format, file hygiene,
+and commit-message checks active.
+
+**Rules for using the fast-path:**
+
+1. **CI is the authoritative gate.** The full check suite runs in CI on every
+   push and PR. Fast-path commits still get validated.
+2. **Run `just check` before pushing.** After using the fast-path, you **must**
+   run the complete check locally (or verify CI is green) before pushing:
+   ```bash
+   just check            # architecture + lint + typecheck + security
+   just check-frontend   # frontend lint + format + type + test
+   ```
+3. **Never push without validation.** Pushing fast-path commits without
+   running the full checks locally or confirming CI green is a violation.
+4. **Merge requests require all CI jobs green regardless.** No bypass.
+
+**Why this exists:** Local iteration speed matters. CI remains the
+non-negotiable quality gate — the fast-path is a convenience, not an
+exemption.
+
+> **Cross-reference:** See also `docs/development/coding-standards.md`
+> (Git Commit Convention) and `docs/development/testing-standards.md`
+> (Fast Developer Feedback).
 
 ## Architecture Checker
 

@@ -19,6 +19,7 @@
         "bradlc.vscode-tailwindcss",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
+        "biomejs.biome",
         "ms-azuretools.vscode-docker",
         "eamodio.gitlens",
         "streetsidesoftware.code-spell-checker",
@@ -44,10 +45,10 @@
           "editor.defaultFormatter": "charliermarsh.ruff"
         },
         "[typescript]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
+          "editor.defaultFormatter": "biomejs.biome"
         },
         "[typescriptreact]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
+          "editor.defaultFormatter": "biomejs.biome"
         },
         "terminal.integrated.defaultProfile.linux": "bash",
         "git.autofetch": true

@@ -107,5 +107,55 @@ Even then: query the graph first to narrow down, then use Read for the specific 
 
 ---
 
+## Known Limitations
+
+The code knowledge graph MCP server can be intermittently unavailable in
+certain contexts:
+
+- **Review sessions** — the MCP may report "Not connected" during code reviews.
+- **Subagent sessions** — some subagent contexts do not have MCP access.
+- **Cold starts** — the first query after a period of inactivity may time out.
+
+### Fallback Protocol
+
+When the graph is unavailable:
+
+1. **Attempt graph-first anyway.** Call the tool; if it returns an error or
+   empty results, proceed to step 2.
+2. **Fall back to targeted Read/Glob/Grep.** Use the most specific tool for
+   the job:
+   - `Glob` for file discovery (e.g., `**/*.py` in a known directory).
+   - `Grep` for content search with specific patterns.
+   - `Read` for known file paths.
+3. **Narrow the scope.** Use the graph's expected structure (module boundaries,
+   file naming conventions) to limit your search even when the graph itself is
+   unavailable.
+4. **Document the fallback.** If you worked around the graph, note it in your
+   session summary so the gap is visible.
+
+### Session Startup Check
+
+At the beginning of every session, verify graph availability:
+
+```
+code-review-graph_list_graph_stats_tool
+```
+
+If this returns valid stats (node count > 0), the graph is available. If it
+fails or returns 0 nodes, build/update first:
+
+```
+code-review-graph_build_or_update_graph_tool
+```
+
+If the build also fails, the graph is unavailable for this session — use the
+fallback protocol above.
+
+**The standard remains: graph-first, then fallback.** The graph is not
+optional — it is the preferred tool. Fallback is a temporary measure, not
+a replacement.
+
+---
+
 **Reference**: `AGENTS.md` (MCP Tools section), code-review-graph documentation
 **Related**: narrare-dev/constraints/rules · narrare-dev/domain/module-map

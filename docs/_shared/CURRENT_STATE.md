@@ -7,7 +7,7 @@
 
 ## Last Updated
 
-Date: 2026-06-12 (CR-01 Prompt Governance Remediation Docs Sync)
+Date: 2026-06-12 (Review-04 Docs: Pre-commit Fastpath + Graph MCP Known Issue)
 Session: CR-01 prompt governance remediation documented after verified core/platform implementation. Prompt standards now state template-level explicit wrapping, `variable_registry.USER_CONTENT_VARS` as SSOT, approved wrappers, canonical `{{writing_language}}`, `{{kb_suggested}}` generated-candidate boilerplate, and checker/eval/manual-review enforcement mapping. Previous Review-03 AUFG-03-06/09/10 state remains completed. Adoption debt (109 items) and system health (0.88) unchanged.
 
 ---
@@ -32,7 +32,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - Backend tests: ~6,240+ across 579 test files (unit + integration)
 - Frontend tests: 1,683+ across 201 test files (Vitest + MSW)
 - Architecture rules: 23 rules (RULE-01b, RULE-02/02a, RULE-03 through RULE-23)
-- Architecture exceptions: 10 in CONSTRAINTS.md §7 table; 12 in ai-gate-baseline.json (incl. 1 RULE-TEST-01 test-mocking entry + 1 inline_fallback + 1 RULE-19)
+- Architecture exceptions: 11 in CONSTRAINTS.md §7 table; 12 in ai-gate-baseline.json (incl. 1 RULE-TEST-01 test-mocking entry + 1 inline_fallback + 1 RULE-19)
 - ADRs: 42 entries in INDEX.md (ADR-001 through ADR-043, ADR-039 gap — 42 unique entries)
 - Feature specs: 86 individual files + INDEX.md (77 registered entries)
 - Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
@@ -256,11 +256,12 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Python 3.14 missing type stubs | Low | Documented in pyproject.toml |
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
-| System Health Score | Medium | Current: 0.88 HEALTHY. feature_adoption gate at 0.50 (109 ratcheted baseline items: 27 not_adopted markers + 63 real runtime-evidence gaps + 18 design-level N/A + 1 counter). No growth above ratchet floor. CI remains warning-only for DEGRADED and fails on CRITICAL. |
+| System Health Score | Medium | Current: 0.88 HEALTHY. feature_adoption gate at 0.50 (109 ratcheted baseline items: 27 not_adopted markers + 63 real runtime-evidence gaps + 18 design-level N/A + 1 counter). No growth above ratchet floor. CI remains warning-only for DEGRADED and fails on CRITICAL. CI coverage gate: 60% (ramp to 80% by 2026-10, see gate-exceptions.json). |
 | Frontend RULE-04 regressions | Low | All 37 legacy violations resolved (53→0). `check_frontend_file_size.py` enforces limits in CI. New violations blocked by ratchet. |
-| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: CONSTRAINTS.md §7 table has 10 entries; ai-gate-baseline.json has 12 (incl. 1 RULE-TEST-01 + 1 inline_fallback + 1 RULE-19). RULE-02 exception #3 removed. |
+| Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: CONSTRAINTS.md §7 table has 11 entries; ai-gate-baseline.json has 12 (incl. 1 RULE-TEST-01 + 1 inline_fallback + 1 RULE-19). RULE-02 exception #3 removed. RULE-19 sync now enforced by `--check-sync`. |
+| Code Knowledge Graph MCP intermittently unavailable | Medium | Agents fall back to Read/Glob/Grep, losing structural context (callers, dependents, test coverage). Fallback protocol documented in `code-graph-first.md`. Session startup check via `list_graph_stats_tool` recommended. Reported in Reviews 01–04. |
 
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-12 (CR-01 Prompt Governance Remediation Docs Sync)
+> Last content update: 2026-06-12 (Review-04 Docs: Pre-commit Fastpath + Graph MCP Known Issue)

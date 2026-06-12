@@ -14,7 +14,12 @@
       "baseline_global_pct": 82.45,
       "baseline_modules_below_target": 14,
       "baseline_modules_total": 49,
-      "exit_criteria": "All modules meet RULE-10 targets: core/ >= 90% (llm/prompts >= 95%), apps/api/ >= 80%. Exception can be closed when 0 modules are below target."
+      "exit_criteria": "All modules meet RULE-10 targets: core/ >= 90% (llm/prompts >= 95%), apps/api/ >= 80%. Exception can be closed when 0 modules are below target.",
+      "ramp_steps": [
+        {"date": "2026-08-01", "ci_fail_under": 70, "trigger": "baseline_modules_below_target < 10"},
+        {"date": "2026-10-01", "ci_fail_under": 80, "trigger": "baseline_modules_below_target == 0 or time expired"},
+        {"date": "2026-12-01", "ci_fail_under": null, "trigger": "Exception closed — CI aligns with pyproject.toml"}
+      ]
     },
     {
       "id": "mypy-not-configured",
