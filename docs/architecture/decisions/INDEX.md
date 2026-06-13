@@ -67,6 +67,7 @@
 | [ADR-042](ADR-042-persistent-evidence-upgrade.md) | PostgreSQL Evidence Upgrade | ✅ | 2026-06-07 | `apps/api/narrare/evidence/`, `apps/api/alembic/versions/0028_invocation_evidence.py`, CR-03 P4 |
 | [ADR-043](043-ai-interaction-primitives.md) | Shared AI Interaction Primitives (`useAIOperation` hook) | ✅ Implemented | 2026-06-08 | `packages/web/lib/hooks/`, `packages/web/lib/api/`, §16 compliance, CR-07 |
 | [ADR-044](ADR-044-staged-consistency.md) | Staged Multi-Agent Consistency Pipeline (FactExtractor → ConsistencyAgent) | ✅ Implemented | 2026-06-12 | `core/agents/`, `apps/api/narrare/consistency/`, `evals/`, CONS-001, FIND-009, KB-007, ANAL-005 |
+| [ADR-047](ADR-047-governance-drift-automation.md) | Governance Drift Automation for Review Findings and AUFG Lifecycle | 🔄 | 2026-06-13 | `docs/architecture/governance/`, `_audit/results/technical-review/`, `scripts/governance/`, CI governance gates |
 
 ---
 

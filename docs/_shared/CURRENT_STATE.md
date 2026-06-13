@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-13 (ADR-044 Staged Consistency Implementation)
-Session: ADR-044 / CR-AUFG-01-06 implementation documented after Slices S0-S5 completed: FactExtractorAgent, enriched TimelineEventEnvelope, staged consistency orchestrator, SSE stage endpoint, and Pydantic Evals `consistency_staged` coverage. Validations reported: 57 core tests, 77 backend consistency tests, 9 eval tests; Ruff, Pyright, architecture, prompt checks, and smoke evals passed.
+Date: 2026-06-13 (ADR-047 Governance Drift Automation — P0 docs sync)
+Session: P0 documentation sync after ADR-047/AUFG-05-07..10 architecture work. ADR-047 is Proposed and indexed because ADR-044 is already occupied; ADR-046/ADR-047 are now reflected in CURRENT_STATE decision summaries. Counts updated for ADR entries, backend test files, and feature spec files. No AUFG registry, CONSTRAINTS.md §8, RULE-24, or governance-checker changes were made before ADR-047 user approval; no commit made.
 
 ---
 
@@ -26,17 +26,18 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ## Codebase Overview
 
-### Stats (verified 2026-06-11)
+### Stats (verified 2026-06-13)
 
 - Knowledge Graph: 17,357 nodes, 122,996 edges, risk low
-- Backend tests: ~6,240+ across 594 test files (unit + integration)
+- Backend tests: ~6,240+ across 645 test files (unit + integration)
 - Frontend tests: 1,683+ across 201 test files (Vitest + MSW)
 - Architecture rules: 23 rules (RULE-01b, RULE-02/02a, RULE-03 through RULE-23)
 - Architecture exceptions: 11 in CONSTRAINTS.md §7 table; 12 in ai-gate-baseline.json (incl. 1 RULE-TEST-01 test-mocking entry + 1 inline_fallback + 1 RULE-19)
-- ADRs: 43 entries in INDEX.md (ADR-001 through ADR-044, ADR-039 gap — 43 unique entries)
-- Feature specs: 86 individual files + INDEX.md (77 registered entries)
+- ADRs: 46 entries in INDEX.md (ADR-001 through ADR-047, ADR-039 gap — 46 unique entries)
+- Feature specs: 87 individual files + INDEX.md (77 registered entries)
 - Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
 - Adoption debt: 109 ratcheted baseline items — 0 new above baseline, 0 resolved (breakdown: 27 not_adopted markers, 63 real runtime-evidence gaps [missing], 18 design-level not_applicable, 1 inline_fallback counter). All 27 modes pass static adoption (probes wired) but 0 of 27 pass full runtime adoption.
+  - **Runtime adoption status terminology (ADR-045):** "Infrastructure complete" ≠ "Runtime adopted." Infrastructure complete means contracts, probes, checkers, and registry exist. Runtime adopted means correlated production-path evidence proves the invocation pipeline, prompt merge, budget enforcement, and evidence recording all fire for real AI calls. The adoption gate is now status-bearing: `just check-adoption` returns `STATIC_ONLY`; `--evidence-dir .evidence` returns `GOVERNED_DEBT` (baseline-approved runtime debt, not PASS). `PASS` requires zero unapproved runtime gaps.
 - System health: 0.88 HEALTHY (feature_adoption gate at 0.50 — reflects 109 ratcheted baseline items; no new debt above ratchet floor. CI remains warning-only for DEGRADED, fails on CRITICAL.)
 
 ### Core (`packages/core/narrare_core/`)
@@ -51,7 +52,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 37 router files covering all CRUD + SSE + WebSocket endpoints (KB sessions SSE removed — unused)
 
-Alembic migrations 0001 through ~0023
+Alembic migrations 0001 through 0030 (0028: invocation_evidence table; 0030: evidence correlation columns from ADR-045 — `invocation_id`, `prepared_context_fingerprint`, `prompt_fingerprint`, `budget_decision_fingerprint`, `model_call_marker`, `streaming`)
 
 ### Frontend (`packages/web/`)
 
@@ -66,9 +67,9 @@ Alembic migrations 0001 through ~0023
 
 - `_shared/`: CONSTRAINTS.md (23 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001 through ADR-044 plus implementation plans (INDEX.md, 43 entries — ADR-039 gap)
+- `architecture/decisions/`: ADR-001 through ADR-047 plus implementation plans (INDEX.md, 46 entries — ADR-039 gap; ADR-046 and ADR-047 Proposed)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 9 resolved)
-- `features/`: 86 feature spec files + INDEX.md (77 registered entries with status tracking)
+- `features/`: 87 feature spec files + INDEX.md (77 registered entries with status tracking)
 - `features/INDEX.md` → ADAPTER-001/002: MCP and A2A adapters documented as "Planned, Not Implemented" (post-MVP, Q-001/Q-002 blockers)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
 - **PLAN-004** — Timeline Management (vollständig: DB → CRUD → AI analysis → SSE extraction → confirm endpoint → DurationImpossibilityCheck → LLM consistency via bundled prompt → character ages → visualization, 44 files, DoD-100%) ✅
@@ -157,6 +158,7 @@ Completed in Phase 6 so far:
 51. ✅ **AUFG-03-10 TipTap-AI-UX/i18n Consistency**: GhostText hint localized via Extension-Options (`t("ghostText.hint")` → hintText in en/de/fr). CoAuthor action vocabulary migrated to `studio.aiActions.*` (`acceptAll`, `rejectAll`, `applySelected` in all 3 locales). BetaReaderPanel + useWorldbuildingAnalysis freed from useConnectionLost. Exclude list updated (2 stale entries removed, 2 new governed entries added). §16.8 canonical vocabulary table updated.
 52. ✅ **CR-01 Prompt Governance Remediation**: 23 bundled prompt templates remediated; user-content wrapping standardized to approved template-level XML wrappers; bundled output-language variables migrated to `{{writing_language}}`; `{{kb_suggested}}` boilerplate normalized; evidence/confidence/false-positive gates added to relevant prompts; `UNSAFE_USER_VARS` derives from `variable_registry.USER_CONTENT_VARS`; `scripts/prompt_governance_checks.py` added and documented. Validation reported PASS: Ruff, 34 script tests, `check_prompt_structure.py --strict`, `check_architecture.py`.
 53. ✅ **ADR-044 / CR-AUFG-01-06 Staged Consistency**: FactExtractorAgent + typed `ExtractedFact`/`TimelineEventEnvelope`, `FACT_EXTRACT` intent/route, enriched `ConsistencyDeps`, backend `ConsistencyOrchestrator`, `timeline_envelope.py`, `checker_context.py`, `stage_schemas.py`, `/consistency/check/stream`, and Pydantic Evals `consistency_staged` smoke/runtime tasks implemented. FIND-009 resolved by integration contract. Validation reported: 57 core tests, 77 backend consistency tests, 9 eval tests; Ruff, Pyright, architecture, prompt checks, and smoke evals passed.
+54. 🔧 **ADR-045 Runtime Adoption Enforcement (in progress)**: Core: invocation correlation (`invocation_id` + fingerprints), prompt context merge (RULE-22 precedence), run-limit enforcement (`RunLimitResolver`/`ResolvedRunLimits`), mem0 learning events, direct-agent helper. Platform: runtime gaps status-bearing (`PASS`/`GOVERNED_DEBT`/`STATIC_ONLY`/`FAIL`), `--evidence-repo` threading, placeholder evidence rejection. Backend: WebSocket handler modularized (354 lines, transport-only), turn service with user/project/chapter/session IDs, evidence schema migration 0030 (correlation columns), `comprehensive`+`conservative` profiles. Tests: 447+ core, 67 platform, 463 backend passed. **Follow-up:** 34 direct-agent call sites need migration, PersistentEvidenceSink production wiring, `_handle_generate_draft` bypass. `just check-adoption` now `STATIC_ONLY`; `--evidence-dir .evidence` returns `GOVERNED_DEBT`.
 
 ## What's Next
 
@@ -169,7 +171,7 @@ Completed in Phase 6 so far:
 7. ✅ **Frontend-Hubs modularisiert (AUFG-01-02)** — All frontend RULE-04 violations resolved (`53 → 38 → 37 → 0`). EditorView modularized (764→146 lines). File-size check reports 0 current, 0 baseline, 0 new.
 8. ✅ **E2E test patterns** — Playwright-based E2E tests established (16 test files, 3.3k lines). Auth proxy pattern, wizard robustness, editor persistence, warmup fixture, `NARRARE_E2E_TEST=1` mode. Documented in testing-standards.md.
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
-10. ✅ **CR-03 / INFRA-013 P0–P5** — Core ai_invocation module implemented through P5. P0 (pipeline + contracts), P1 (User/Project IDs), P2 (profiles + KG consistency), P3 (FileEvidenceSink + drift detection + quality metrics), P4 (PersistentEvidenceSink + PostgreSQL), P5 (27/27 modes static adoption — probes wired, 63 runtime-evidence gaps ratcheted as baseline). INFRA-013 complete.
+10. ✅ **CR-03 / INFRA-013 P0–P5** — Core ai_invocation module implemented through P5. P0 (pipeline + contracts), P1 (User/Project IDs), P2 (profiles + KG consistency), P3 (FileEvidenceSink + drift detection + quality metrics), P4 (PersistentEvidenceSink + PostgreSQL), P5 (27/27 modes static adoption — probes wired, 63 runtime-evidence gaps ratcheted as baseline). INFRA-013 infrastructure complete. **Runtime adoption in progress (ADR-045):** static adoption ≠ runtime adopted; see Phase 6 item 54.
 11. ✅ **CR-07 UX Audit — Full Implementation** — ADR-043 implementiert, alle P0/P1 flows migriert, §16 compliance durchgesetzt, maschinelle Checks + CI.
 12. ✅ **ONBOARD-001: Onboarding & AI-Einführung** — Demo-Discovery im Dashboard, KI-Tour (1–2 Min.), kontextuelle Tooltips. Post-MVP. Implementiert: GET /setup/demos, DemoProjectCards, useSeenTooltips, Tour-Replay.
 13. ⏳ **PROMPT-003: Prompt Customization UX** — Variablen-Erklärung, Preview/Test-Modus, Reset-to-Default. Post-MVP (nicht vor Phase 6).
@@ -206,7 +208,7 @@ Completed in Phase 6 so far:
 | ADR-022 | LLM Wiki — Precomputed Context Layer: core/wiki/ module, TaskIQ-generated WikiSummaries, Prompt versioning, stale/fresh/pending, 9 repository methods, 6 API endpoints, 4 background tasks, 4 event listeners, wiki-optimized token budget. WIKI-001 Feature Spec. | ✅ Implemented (full stack) |
 | ADR-023 | Co-Author Change Engine | ✅ Implemented |
 | ADR-024 | Free-Form Chat for Writing Craft | ✅ Implemented — ChatAgent + ChatDeps + HistoryPolicy.CONVERSATIONAL |
-| ADR-025 | Feature Adoption Infrastructure | ✅ Implemented — 27/27 modes static adoption (probes wired); 63 runtime-evidence gaps ratcheted; INFRA-013 complete |
+| ADR-025 | Feature Adoption Infrastructure | ✅ Implemented — 27/27 modes static adoption (probes wired); 63 runtime-evidence gaps ratcheted; INFRA-013 infrastructure complete. Runtime adoption enforced per ADR-045 (status-bearing: STATIC_ONLY/GOVERNED_DEBT, not PASS) |
 | ADR-026 | Capability-Based Prompt Injection Pattern | ✅ Implemented |
 | ADR-027 | AI Feature Stabilization Gates | ✅ Completed — freeze lifted; ratcheted post-freeze governance retained |
 | ADR-028 | Architecture Exception Register SSOT | ✅ Implemented |
@@ -219,12 +221,15 @@ Completed in Phase 6 so far:
 | ADR-035 | Agent Output Validation Policy | ✅ Implemented (all 17 structured-output agents) |
 | ADR-036 | Durable Execution Boundary | ✅ Accepted; gated before adoption |
 | ADR-037 | Prompt Surface Contract Manifest | ✅ Accepted — CR-01 prompt surface contract for manifest-routeable intents (INFRA-012) |
-| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0–P5) — CR-03 runtime evidence contract complete through P5; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; core/profiles/ (ProjectWritingProfile SSOT); KBConsistencyEnricher; AuditReport; FileEvidenceSink; PersistentEvidenceSink (PostgreSQL hybrid); registry drift detection; doc-drift automation; quality metrics; CI integration; 27/27 modes static adoption (probes wired), 63 runtime-evidence gaps ratcheted as baseline — INFRA-013 complete |
+| ADR-038 | AI Invocation Adoption Contract | ✅ Implemented (P0–P5) — CR-03 runtime evidence contract complete through P5; core ai_invocation module with InvocationPipeline, enrichers, validators, budget resolver, LoggingEvidenceSink; User/Project IDs in InvocationContext; core/profiles/ (ProjectWritingProfile SSOT); KBConsistencyEnricher; AuditReport; FileEvidenceSink; PersistentEvidenceSink (PostgreSQL hybrid); registry drift detection; doc-drift automation; quality metrics; CI integration; 27/27 modes static adoption (probes wired), 63 runtime-evidence gaps ratcheted as baseline — INFRA-013 infrastructure complete. **Runtime adoption is status-bearing per ADR-045:** static adoption ≠ runtime adopted; `just check-adoption` returns `STATIC_ONLY`, not PASS |
 | ADR-040 | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ Accepted — P2 architecture for ProjectWritingProfile SSOT, KG consistency evidence, audit lifecycle reporting, mode runtime proof expansion (24/27 modes) |
 | ADR-041 | Typed Manifests / Doc-Drift Automation / Quality Metrics / Persistent Evidence | ✅ Accepted — P3 architecture for registry drift detection (JSON Schema + check_registry_drift.py), doc-drift automation (doc_drift/ package), quality metrics (QualityReport + joiner), and file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl) |
 | ADR-042 | PostgreSQL Evidence Upgrade | ✅ Implemented (P4) — hybrid FileEvidenceSink (CI) + PersistentEvidenceSink (production) |
 | ADR-043 | `useAIOperation` Primitives | ✅ Implemented — shared streaming client, cancel/error/loading primitives, canonical `studio.aiActions.*` labels, §16 compliance checks, P0/P1 flows migrated (Commit 1001125) |
 | ADR-044 | Staged Multi-Agent Consistency Pipeline | ✅ Implemented — FactExtractorAgent → ConsistencyAgent, enriched TimelineEventEnvelope integration, SSE stage endpoint, and `consistency_staged` Pydantic Evals |
+| ADR-045 | Runtime Adoption Enforcement and Invocation Evidence Correlation | 🔧 In progress (Proposed, user-approved) — runtime gaps status-bearing (PASS/GOVERNED_DEBT/STATIC_ONLY); correlated evidence contract (`invocation_id` + fingerprints); prompt-context merge with RULE-22 precedence; run-limit enforcement (`RunLimitResolver`); WebSocket turn service modularization; mem0 learning events. Follow-up: 34 direct-agent call site migration, PersistentEvidenceSink wiring, `_handle_generate_draft` bypass |
+| ADR-046 | Prompt-Path-Compliance: Resolution-Path Retrofit & Prevention | 🔄 Proposed — resolution-path retrofit and prevention for prompt loading compliance across core prompts, chat, KB, planning, and architecture checks |
+| ADR-047 | Governance Drift Automation for Review Findings and AUFG Lifecycle | 🔄 Proposed — governance-health path for review findings, AUFG lifecycle, accepted-risk/enhancement states, and future SSOT drift aggregation. No registry, CONSTRAINTS.md §8, RULE-24, or governance-checker implementation before approval |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -266,4 +271,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-13 (ADR-044 Staged Consistency Implementation)
+> Last content update: 2026-06-13 (ADR-047 Governance Drift Automation — P0 docs sync)
