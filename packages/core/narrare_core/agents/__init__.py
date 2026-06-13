@@ -40,6 +40,14 @@ from narrare_core.agents.errors import (
 )
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
+from narrare_core.agents.fact_extractor_agent import FactExtractorAgent
+from narrare_core.agents.fact_extractor_types import (
+    ExtractedFact,
+    FactExtractorDeps,
+    FactExtractorOutput,
+    FactExtractorProtocol,
+    TimelineEventEnvelope,
+)
 from narrare_core.agents.graph_store import GraphStateStore
 from narrare_core.agents.history_policy import HistoryPolicy
 from narrare_core.agents.inline_suggest_agent import InlineSuggestAgent
@@ -149,11 +157,16 @@ __all__ = [
     "DraftConfig",
     "DraftDeps",
     "DraftOutput",
+    "ExtractedFact",
     "ExtractedTemporalExpression",
     "ExtractionAgent",
     "ExtractionDeps",
     "ExtractionItem",
     "ExtractionOutput",
+    "FactExtractorAgent",
+    "FactExtractorDeps",
+    "FactExtractorOutput",
+    "FactExtractorProtocol",
     "GraphStateStore",
     "HistoryPolicy",
     "ImprovementSuggestion",
@@ -209,6 +222,7 @@ __all__ = [
     "TimelineAgent",
     "TimelineDeps",
     "TimelineEvent",
+    "TimelineEventEnvelope",
     "TimelineOutput",
     "WorldbuildingAgent",
     "WorldbuildingDeps",

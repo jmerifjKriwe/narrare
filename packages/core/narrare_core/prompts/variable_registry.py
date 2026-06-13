@@ -135,7 +135,9 @@ FEATURE_DYNAMIC_VARS: frozenset[str] = frozenset(
         "candidate_pairs",
         "entity_events",
         "explanation_language",
+        "extracted_facts",
         "relationships",
+        "timeline_events",
         "timeline_position",
         "variant_count",
     }

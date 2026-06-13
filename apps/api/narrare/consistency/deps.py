@@ -1,7 +1,8 @@
 """Consistency dependency injection factories.
 
-Replaces dependencies.py — adds TokenLimitsService injection for dynamic
-consistency context caps (CR-AUFG-08-02).
+Updated for ADR-044: injects ``ConsistencyOrchestrator`` for the staged
+pipeline. When the orchestrator is present, the service uses the two-stage
+flow (FactExtractor → ConsistencyAgent). Otherwise falls back to legacy.
 """
 
 from __future__ import annotations
@@ -20,10 +21,8 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     Production wiring:
     - ModelRegistry for LLM model resolution
     - PromptComposer for system prompt assembly
-    - ChapterRepository for chapter content fetching
-    - NovelRepository for novel access control + language resolution
-    - KBRepository for KB entity summaries
-    - TimelineEventRepository for temporal consistency context
+    - ConsistencyOrchestrator for staged pipeline (ADR-044)
+    - Repositories for data access
     - TokenLimitsService for dynamic context cap resolution
     """
     from narrare._app.config import get_settings
@@ -34,6 +33,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     from narrare._app.dependencies_services import build_system_default_config
     from narrare.chapters.repository import ChapterRepository
     from narrare.consistency.checker_service import ConsistencyCheckerService
+    from narrare.consistency.consistency_orchestrator import ConsistencyOrchestrator
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
@@ -45,13 +45,24 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
 
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config("analysis", temperature=0.3)
+    consistency_config = build_system_default_config("analysis", temperature=0.3)
+
+    # Fact extractor config for staged pipeline (ADR-044)
+    fact_extractor_config = build_system_default_config("analysis", temperature=0.2)
 
     # Repositories
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
     kb_repo = KBRepository(session)
     timeline_repo = TimelineEventRepository(session)
+
+    # Orchestrator for staged pipeline
+    orchestrator = ConsistencyOrchestrator(
+        registry=registry,
+        fact_extractor_config=fact_extractor_config,
+        consistency_config=consistency_config,
+        composer=composer,
+    )
 
     # TokenLimitsService for dynamic context caps
     settings = get_settings()
@@ -67,7 +78,8 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
         kb_repo=kb_repo,
         timeline_repo=timeline_repo,
         registry=registry,
-        config=config,
+        config=consistency_config,
         composer=composer,
         token_limits_service=token_limits_service,
+        orchestrator=orchestrator,
     )

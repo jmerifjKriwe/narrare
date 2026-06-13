@@ -331,8 +331,15 @@ class LLMIntent(StrEnum):
     thematic elements.
     Input: Source text + extraction schema/parameters.
     Output: Structured data matching the schema.
-    NOT: KB-specific entity extraction (use KB_EXTRACT).
-    NOT: General analysis (use ANALYSE).
+    NOT: KB extraction (KB_EXTRACT), analysis (ANALYSE),
+    structured fact extraction (FACT_EXTRACT).
+    """
+
+    FACT_EXTRACT = "fact_extract"
+    """Structured fact extraction with provenance (ADR-044 Stage 1).
+
+    Extract facts from prose, KB, timeline with provenance+confidence.
+    Reusable for KB-007, ANAL-005. NOT: KB_EXTRACT, CONSISTENCY.
     """
 
     SUGGEST = "suggest"

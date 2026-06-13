@@ -17,12 +17,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
     from uuid import UUID
 
     from narrare.consistency.schemas import (
         ConsistencyRequest,
         ConsistencyResponse,
     )
+    from narrare.consistency.stage_schemas import ConsistencyStageEvent
+    from narrare_core.agents.consistency_types import ConsistencyDeps
+    from narrare_core.agents.fact_extractor_types import TimelineEventEnvelope
 
 
 @runtime_checkable
@@ -98,4 +102,40 @@ class ConsistencyCheckerProtocol(Protocol):
             narrare_core.shared.errors.ForbiddenError: If user does not
                 have access to the novel.
         """
+        ...
+
+
+@runtime_checkable
+class ConsistencyOrchestratorProtocol(Protocol):
+    """Protocol for ADR-044 staged consistency orchestration.
+
+    The orchestrator is internal to the consistency service. It preserves
+    the external ``ConsistencyCheckerProtocol`` response type while splitting
+    work into fact extraction and consistency analysis stages.
+    """
+
+    async def run_staged_check(
+        self,
+        *,
+        novel_id: UUID,
+        deps: ConsistencyDeps,
+        kb_summaries: list[dict[str, object]],
+        timeline_envelopes: list[TimelineEventEnvelope],
+        language: str,
+        max_chapter_tokens: int,
+    ) -> ConsistencyResponse:
+        """Run Stage 1 and Stage 2, returning the final response."""
+        ...
+
+    def stream_staged_check(
+        self,
+        *,
+        novel_id: UUID,
+        deps: ConsistencyDeps,
+        kb_summaries: list[dict[str, object]],
+        timeline_envelopes: list[TimelineEventEnvelope],
+        language: str,
+        max_chapter_tokens: int,
+    ) -> AsyncIterator[ConsistencyStageEvent | ConsistencyResponse]:
+        """Stream stage progress events and the final response."""
         ...

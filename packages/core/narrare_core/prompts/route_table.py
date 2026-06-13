@@ -25,6 +25,7 @@ INTENT_TO_CATEGORY: dict[LLMIntent, str] = {
     LLMIntent.SUMMARIZE: "analysis",
     LLMIntent.NAME_GENERATE: "generation",
     LLMIntent.EXTRACT: "analysis",
+    LLMIntent.FACT_EXTRACT: "analysis",
     LLMIntent.SUGGEST: "writing",
     LLMIntent.CHAT: "chat",
 }
@@ -47,6 +48,7 @@ INTENT_TO_MODE: dict[LLMIntent, str] = {
     LLMIntent.PLAN: "outline",
     LLMIntent.SUMMARIZE: "summarize",
     LLMIntent.NAME_GENERATE: "names",
+    LLMIntent.FACT_EXTRACT: "fact_extraction",
     LLMIntent.SUGGEST: "inline_suggest",
     LLMIntent.CHAT: "",
 }
@@ -130,7 +132,7 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
     LLMIntent.CONSISTENCY: PromptRouteConfig(
         "analysis",
         "consistency",
-        optional_variables=frozenset({"user_preferences", "avoidance_patterns"}),
+        optional_variables=frozenset({"user_preferences", "avoidance_patterns", "extracted_facts"}),
     ),
     LLMIntent.BETA_READ: PromptRouteConfig("analysis", "beta_reader"),
     LLMIntent.PLAN: PromptRouteConfig("planning", "outline"),
@@ -141,6 +143,20 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         None,
         optional_variables=frozenset({"user_preferences", "avoidance_patterns"}),
         allowed_context_modes=frozenset({"preferences", "remap"}),
+    ),
+    LLMIntent.FACT_EXTRACT: PromptRouteConfig(
+        "analysis",
+        "fact_extraction",
+        optional_variables=frozenset(
+            {
+                "user_preferences",
+                "avoidance_patterns",
+                "genre",
+                "kb_entities",
+                "existing_entity_names",
+                "timeline_events",
+            }
+        ),
     ),
     LLMIntent.CHAT: PromptRouteConfig("chat", ""),
 }

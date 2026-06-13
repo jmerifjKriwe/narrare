@@ -42,6 +42,35 @@ _TABLE_ROW_RE = re.compile(
     re.MULTILINE,
 )
 
+# Extended regex capturing reason column (4th column) as well.
+_TABLE_ROW_FULL_RE = re.compile(
+    r"^\|\s*\d+\s*\|\s*(RULE-[\w-]+)\s*\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|",
+    re.MULTILINE,
+)
+
+
+def _normalize_reason(text: str) -> str:
+    """Normalize reason text for fuzzy comparison (case-insensitive, strip trailing period)."""
+    return text.strip().rstrip(".").rstrip().lower()
+
+
+def _key_terms(text: str) -> set[str]:
+    """Extract significant terms (>= 4 chars, excluding common stopwords)."""
+    stopwords = frozenset(
+        {
+            "that",
+            "this",
+            "with",
+            "from",
+            "here",
+            "have",
+            "been",
+            "were",
+            "will",
+        }
+    )
+    return set(re.findall(r"[a-zA-Z0-9_-]{4,}", text.lower())) - stopwords
+
 
 def _load_pyproject(path: Path) -> dict[str, Any]:
     with path.open("rb") as fh:
@@ -57,8 +86,8 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
     return cast("dict[str, Any]", data)
 
 
-def _parse_pyproject_pairs(pyproject_path: Path) -> set[tuple[str, str]]:
-    """Extract (rule, file) pairs from pyproject.toml exception entries."""
+def _parse_pyproject_entries(pyproject_path: Path) -> dict[tuple[str, str], str]:
+    """Extract (rule, file) -> reason mapping from pyproject.toml exception entries."""
     pyproject = _load_pyproject(pyproject_path)
     entries_raw: Any = (
         pyproject.get("tool", {})
@@ -67,35 +96,52 @@ def _parse_pyproject_pairs(pyproject_path: Path) -> set[tuple[str, str]]:
         .get("exceptions", {})
         .get("entries", [])
     )
-    pairs: set[tuple[str, str]] = set()
+    entries: dict[tuple[str, str], str] = {}
     if isinstance(entries_raw, list):
         for raw_entry in cast("list[object]", entries_raw):
             entry = cast("dict[str, object]", raw_entry) if isinstance(raw_entry, dict) else None
             if isinstance(entry, dict):
                 rule = str(entry.get("rule", ""))
                 file_ = str(entry.get("file", ""))
+                reason = str(entry.get("reason", ""))
                 if rule and file_:
-                    pairs.add((rule, file_))
-    return pairs
+                    entries[(rule, file_)] = reason
+    return entries
+
+
+def _parse_constraints_entries(constraints_path: Path) -> dict[tuple[str, str], str]:
+    """Extract (rule, file) -> reason mapping from CONSTRAINTS.md §7 table."""
+    text = constraints_path.read_text(encoding="utf-8")
+    entries: dict[tuple[str, str], str] = {}
+    for match in _TABLE_ROW_FULL_RE.finditer(text):
+        rule = match.group(1).strip()
+        file_ = match.group(2).strip()
+        reason = match.group(3).strip()
+        if rule and file_:
+            entries[(rule, file_)] = reason
+    return entries
+
+
+def _parse_pyproject_pairs(pyproject_path: Path) -> set[tuple[str, str]]:
+    """Extract (rule, file) pairs from pyproject.toml exception entries."""
+    return set(_parse_pyproject_entries(pyproject_path).keys())
 
 
 def _parse_constraints_pairs(constraints_path: Path) -> set[tuple[str, str]]:
     """Extract (rule, file) pairs from CONSTRAINTS.md §7 table."""
-    text = constraints_path.read_text(encoding="utf-8")
-    pairs: set[tuple[str, str]] = set()
-    for match in _TABLE_ROW_RE.finditer(text):
-        rule = match.group(1).strip()
-        file_ = match.group(2).strip()
-        if rule and file_:
-            pairs.add((rule, file_))
-    return pairs
+    return set(_parse_constraints_entries(constraints_path).keys())
 
 
 def check_sync(
     pyproject_path: Path = PYPROJECT_PATH,
     constraints_path: Path = CONSTRAINTS_PATH,
 ) -> int:
-    """Verify pyproject.toml exceptions ↔ CONSTRAINTS.md §7 table are in sync."""
+    """Verify pyproject.toml exceptions ↔ CONSTRAINTS.md §7 table are in sync.
+
+    Checks:
+      1. Existence: every (rule, file) pair exists in both sources (blocking).
+      2. Consistency: reason text matches between sources (non-blocking warnings).
+    """
     pyproject_pairs = _parse_pyproject_pairs(pyproject_path)
     constraints_pairs = _parse_constraints_pairs(constraints_path)
 
@@ -116,8 +162,45 @@ def check_sync(
         for rule, file_ in sorted(missing_in_pyproject):
             print(f"  {rule} {file_}")
 
+    # --- Reason consistency check (warnings only, non-blocking) ---
+    common_pairs = pyproject_pairs & constraints_pairs
+    warnings: list[str] = []
+    if common_pairs:
+        pp_entries = _parse_pyproject_entries(pyproject_path)
+        cm_entries = _parse_constraints_entries(constraints_path)
+
+        for pair in sorted(common_pairs):
+            pp_reason = pp_entries.get(pair, "")
+            cm_reason = cm_entries.get(pair, "")
+
+            if not cm_reason:
+                warnings.append(f"{pair[0]} {pair[1]}: empty reason in CONSTRAINTS.md")
+            elif _normalize_reason(pp_reason) != _normalize_reason(cm_reason):
+                # Fuzzy check: compare key-term overlap
+                pp_terms = _key_terms(pp_reason)
+                cm_terms = _key_terms(cm_reason)
+                if pp_terms and cm_terms:
+                    overlap = pp_terms & cm_terms
+                    ratio = len(overlap) / max(len(pp_terms), len(cm_terms))
+                    if ratio < 0.5:
+                        warnings.append(
+                            f"{pair[0]} {pair[1]}: reason text differs significantly "
+                            f"(overlap {ratio:.0%})"
+                        )
+                elif not cm_terms:
+                    warnings.append(
+                        f"{pair[0]} {pair[1]}: no significant terms in CONSTRAINTS.md reason"
+                    )
+
+    if warnings:
+        print("\nWARNINGS — Reason text mismatch (non-blocking):")
+        for w in warnings:
+            print(f"  {w}")
+
     if ok:
-        print(f"RESULT: Exception sync OK — {len(pyproject_pairs)} entries match")
+        n_warnings = len(warnings)
+        suffix = f" ({n_warnings} warning{'s' if n_warnings != 1 else ''})" if n_warnings else ""
+        print(f"RESULT: Exception sync OK — {len(pyproject_pairs)} entries match{suffix}")
         return 0
 
     print(

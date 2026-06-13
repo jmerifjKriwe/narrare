@@ -1,37 +1,35 @@
 """Consistency checker service — orchestrates consistency analysis.
 
-Orchestrates: validate → collect content + KB + timeline → compose prompt
-→ run ConsistencyAgent → map to API response. Follows BetaReaderService pattern.
+Orchestrates: validate → collect context → staged pipeline or legacy
+single-pass → map to API response.
+
+Updated for ADR-044: delegates to ``ConsistencyOrchestrator`` for the
+two-stage pipeline (FactExtractor → ConsistencyAgent) when an orchestrator
+is injected. Falls back to legacy single-pass when no orchestrator is provided,
+preserving the external ``ConsistencyCheckerProtocol`` interface unchanged.
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.consistency.checker_helpers import fetch_chapters, fetch_kb_summaries
-from narrare.consistency.prompt_builder import (
-    compose_consistency_prompt,
-)
-from narrare.consistency.rule_helpers import deduplicate_issues, rule_based_check
+from narrare.consistency.checker_context import CheckContext, collect_check_context
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
-from narrare.consistency.timeline_fetch import fetch_timeline_events
 from narrare_core.agents.consistency_agent import ConsistencyAgent
-from narrare_core.agents.consistency_types import (
-    ConsistencyCheckType,
-    ConsistencyDeps,
-)
-from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import AsyncIterator
 
     from narrare.chapters.repository import ChapterRepository
+    from narrare.consistency.contracts import ConsistencyOrchestratorProtocol
+    from narrare.consistency.stage_schemas import ConsistencyStageEvent
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
+    from narrare.settings.token_limits.contracts import TokenLimitsServiceProtocol
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.prompts import PromptComposer
 
@@ -42,7 +40,10 @@ class ConsistencyCheckerService:
     """Implements ConsistencyCheckerProtocol.
 
     Orchestrates: validate → collect chapters + KB + timeline → build deps
-    → run agent → map response.
+    → run staged pipeline or legacy single-pass → map response.
+
+    When an orchestrator is provided, uses the ADR-044 two-stage pipeline.
+    Otherwise, falls back to legacy single-pass ConsistencyAgent invocation.
 
     Args:
         chapter_repo: Chapter persistence (fetch chapter content).
@@ -53,6 +54,7 @@ class ConsistencyCheckerService:
         config: Default ResolvedModelConfig for CONSISTENCY intent.
         composer: PromptComposer for system prompt assembly.
         token_limits_service: Optional TokenLimitsService for dynamic limit resolution.
+        orchestrator: Optional ConsistencyOrchestrator for staged pipeline.
     """
 
     def __init__(
@@ -64,7 +66,8 @@ class ConsistencyCheckerService:
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         composer: PromptComposer,
-        token_limits_service: Any = None,
+        token_limits_service: TokenLimitsServiceProtocol | None = None,
+        orchestrator: ConsistencyOrchestratorProtocol | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -74,6 +77,7 @@ class ConsistencyCheckerService:
         self._config = config
         self._composer = composer
         self._token_limits_service = token_limits_service
+        self._orchestrator = orchestrator
 
     async def check(
         self,
@@ -84,9 +88,8 @@ class ConsistencyCheckerService:
     ) -> ConsistencyResponse:
         """Run consistency check on the requested scope.
 
-        Cross-chapter and cross-entity consistency analysis. Compares facts
-        extracted from chapter prose against KB entity data and across
-        chapters. Returns issues grouped by severity and type.
+        Uses staged pipeline when orchestrator is available (ADR-044).
+        Falls back to legacy single-pass otherwise.
 
         Args:
             novel_id: The novel to analyze.
@@ -94,8 +97,7 @@ class ConsistencyCheckerService:
             request: Check parameters (check types, chapter scope, KB inclusion).
 
         Returns:
-            Consistency response with issues grouped by severity and type,
-            including error/warning/info counts and overall assessment.
+            Consistency response with issues grouped by severity and type.
 
         Raises:
             NotFoundError: If novel does not exist or user lacks access.
@@ -105,101 +107,24 @@ class ConsistencyCheckerService:
             novel_id=str(novel_id),
             chapter_count=len(request.chapter_ids),
             include_kb=request.include_kb,
+            staged=self._orchestrator is not None,
         )
 
-        # 1. Resolve token limits (with fallback to defaults)
-        max_chapter_tokens = 2000
-        max_kb_entries = 100
-        if self._token_limits_service is not None:
-            resolved = await self._token_limits_service.get_resolved_limits(
-                str(user_id),
-                str(novel_id),
-            )
-            max_chapter_tokens = resolved.max_chapter_tokens
-            max_kb_entries = resolved.max_kb_entries
-
-        # 2. Validate novel access
-        novel = await self._novel_repo.get_by_id(novel_id, user_id)
-        if novel is None:
-            raise NotFoundError("Novel", identifier=str(novel_id))
-
-        # 3. Fetch chapter content
-        chapter_texts, resolved_ids = await fetch_chapters(
-            self._chapter_repo,
+        context = await collect_check_context(
             novel_id,
-            request.chapter_ids,
-        )
-        if not chapter_texts:
-            raise NotFoundError("Chapters", identifier=f"novel {novel_id}")
-
-        # 4. Fetch KB entity summaries if requested
-        kb_summaries: list[dict[str, object]] = []
-        if request.include_kb:
-            kb_summaries = await fetch_kb_summaries(
-                self._kb_repo,
-                novel_id,
-                max_kb_entries=max_kb_entries,
-            )
-
-        # 4b. Fetch timeline events for temporal consistency context
-        timeline_events = await fetch_timeline_events(self._timeline_repo, novel_id)
-
-        # 5. Rule-based pre-check (deterministic, no LLM needed)
-        rule_issues = rule_based_check(kb_summaries)
-
-        # 6. Resolve language and check types
-        language = novel.writing_language or "en"
-        check_types = request.check_types or list(ConsistencyCheckType)
-
-        # 7. Build ConsistencyDeps
-        deps = ConsistencyDeps(
-            language=language,
-            novel_id=str(novel_id),
-            chapter_texts=chapter_texts,
-            kb_entity_summaries=kb_summaries,
-            timeline_events=timeline_events,
-            check_types=check_types,
-            existing_issue_count=len(rule_issues),
+            user_id,
+            request,
+            chapter_repo=self._chapter_repo,
+            novel_repo=self._novel_repo,
+            kb_repo=self._kb_repo,
+            timeline_repo=self._timeline_repo,
+            token_limits_service=self._token_limits_service,
+            include_timeline_envelopes=self._orchestrator is not None,
         )
 
-        # 8. Compose prompt through PromptComposer.
-        system_prompt, user_prompt = await compose_consistency_prompt(
-            self._composer,
-            language,
-            deps,
-            check_types,
-            max_chapter_tokens=max_chapter_tokens,
-        )
-
-        # 9. Run ConsistencyAgent
-        model = await self._registry.get_model(self._config)
-        agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
-        result = await agent.run(prompt=user_prompt, deps=deps)
-
-        # 10. Combine rule-based (confidence=1.0) + LLM issues, then deduplicate
-        all_issues = rule_issues + result.issues
-        deduped_issues = deduplicate_issues(all_issues)
-
-        # 11. Map to response (severity counts auto-computed via model_post_init)
-        now = datetime.now(tz=UTC).isoformat()
-        response = ConsistencyResponse(
-            novel_id=novel_id,
-            chapter_ids=resolved_ids,
-            check_types=result.checked_types,
-            issues=deduped_issues,
-            overall_assessment=result.overall_assessment,
-            analyzed_at=now,
-        )
-
-        logger.info(
-            "consistency_check_complete",
-            novel_id=str(novel_id),
-            issue_count=response.total_issues,
-            error_count=response.error_count,
-            warning_count=response.warning_count,
-        )
-
-        return response
+        if self._orchestrator is not None:
+            return await self._run_staged(novel_id, context)
+        return await self._run_legacy(novel_id, context)
 
     async def check_chapter(
         self,
@@ -212,13 +137,13 @@ class ConsistencyCheckerService:
         """Run consistency check focused on a single chapter.
 
         Delegates to ``check()`` with the chapter_id injected into a
-        scoped request. Useful for targeted checking after a writing session.
+        scoped request.
 
         Args:
             novel_id: The novel containing the chapter.
             chapter_id: The chapter to analyze.
-            user_id: The user requesting analysis (for access control).
-            request: Check parameters (check types, KB inclusion).
+            user_id: The user requesting analysis.
+            request: Check parameters.
 
         Returns:
             Consistency response scoped to the single chapter.
@@ -237,15 +162,119 @@ class ConsistencyCheckerService:
             request=scoped_request,
         )
 
+    async def stream_check(
+        self,
+        *,
+        novel_id: uuid.UUID,
+        user_id: uuid.UUID,
+        request: ConsistencyRequest,
+    ) -> AsyncIterator[ConsistencyStageEvent | ConsistencyResponse]:
+        """Stream staged consistency check with progressive results (RULE-13).
+
+        Only available when orchestrator is injected. Yields stage events
+        then the final ConsistencyResponse.
+
+        Args:
+            novel_id: The novel to analyze.
+            user_id: The user requesting analysis.
+            request: Check parameters.
+
+        Yields:
+            ConsistencyStageEvent for progress, then final ConsistencyResponse.
+
+        Raises:
+            NotFoundError: If novel does not exist or user lacks access.
+            RuntimeError: If no orchestrator is configured.
+        """
+        if self._orchestrator is None:
+            raise RuntimeError(
+                "Streaming consistency check requires an orchestrator. "
+                "Inject ConsistencyOrchestrator via deps.py."
+            )
+
+        context = await collect_check_context(
+            novel_id,
+            user_id,
+            request,
+            chapter_repo=self._chapter_repo,
+            novel_repo=self._novel_repo,
+            kb_repo=self._kb_repo,
+            timeline_repo=self._timeline_repo,
+            token_limits_service=self._token_limits_service,
+            include_timeline_envelopes=True,
+        )
+
+        async for event in self._orchestrator.stream_staged_check(
+            novel_id=novel_id,
+            deps=context.deps,
+            kb_summaries=context.kb_summaries,
+            timeline_envelopes=context.timeline_envelopes,
+            language=context.language,
+            max_chapter_tokens=context.max_chapter_tokens,
+        ):
+            yield event
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
 
+    async def _run_staged(
+        self,
+        novel_id: uuid.UUID,
+        context: CheckContext,
+    ) -> ConsistencyResponse:
+        """Run staged pipeline via orchestrator (ADR-044)."""
+        assert self._orchestrator is not None
+        return await self._orchestrator.run_staged_check(
+            novel_id=novel_id,
+            deps=context.deps,
+            kb_summaries=context.kb_summaries,
+            timeline_envelopes=context.timeline_envelopes,
+            language=context.language,
+            max_chapter_tokens=context.max_chapter_tokens,
+        )
+
+    async def _run_legacy(
+        self,
+        novel_id: uuid.UUID,
+        context: CheckContext,
+    ) -> ConsistencyResponse:
+        """Run legacy single-pass consistency check."""
+        from datetime import UTC, datetime
+
+        from narrare.consistency.prompt_builder import compose_consistency_prompt
+        from narrare.consistency.rule_helpers import deduplicate_issues
+
+        system_prompt, user_prompt = await compose_consistency_prompt(
+            self._composer,
+            context.language,
+            context.deps,
+            context.deps.check_types,
+            max_chapter_tokens=context.max_chapter_tokens,
+        )
+
+        model = await self._registry.get_model(self._config)
+        agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
+        result = await agent.run(prompt=user_prompt, deps=context.deps)
+
+        all_issues = context.rule_issues + result.issues
+        deduped_issues = deduplicate_issues(all_issues)
+
+        now = datetime.now(tz=UTC).isoformat()
+        return ConsistencyResponse(
+            novel_id=novel_id,
+            chapter_ids=context.resolved_ids,
+            check_types=result.checked_types,
+            issues=deduped_issues,
+            overall_assessment=result.overall_assessment,
+            analyzed_at=now,
+        )
+
     async def _resolve_system_prompt(self, language: str) -> str:
         """Resolve the system prompt for the consistency agent.
 
-        Uses the bundled prompt cascade. Locale fallback to English is handled
-        by PromptRegistry — no production inline fallback needed.
+        Uses the bundled prompt cascade. Locale fallback to English is
+        handled by PromptRegistry — no production inline fallback needed.
         """
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext

@@ -2,13 +2,25 @@
 
 See CONS-001 — cross-entity and cross-chapter consistency checking.
 Detects contradictions in characters, timeline, world facts, and plot logic.
+
+Extended for ADR-044 staged pipeline:
+- ConsistencyDeps now optionally accepts ExtractedFact and TimelineEventEnvelope
+- When structured input is present, the agent uses it preferentially
+- Backward-compatible: structured fields default to None
 """
 
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from narrare_core.agents.fact_extractor_types import (
+        ExtractedFact,
+        TimelineEventEnvelope,
+    )
 
 
 class ConsistencyCheckType(StrEnum):
@@ -69,6 +81,11 @@ class ConsistencyDeps:
     This is a plain class (not Pydantic) — follows the existing pattern
     used by ExtractionDeps, ReviewDeps, and SummaryDeps.
 
+    Extended for ADR-044 staged pipeline: optionally accepts structured
+    facts and timeline envelopes from Stage 1 (FactExtractorAgent).
+    When present, the agent uses structured data preferentially over
+    raw text. When absent, falls back to current single-pass behavior.
+
     Attributes:
         novel_id: The novel being checked.
         language: Language code for prompt construction.
@@ -79,6 +96,12 @@ class ConsistencyDeps:
             Each entry has event_name, timestamp, character, and location.
         check_types: Which check types to run. If empty, runs all.
         existing_issue_count: Number of previously found issues (for dedup context).
+        extracted_facts: Structured facts from FactExtractorAgent (Stage 1).
+            When provided, the agent reasons about these instead of extracting
+            facts from raw text.
+        timeline_envelopes: Enriched timeline events with provenance (FIND-009).
+            When provided, the agent uses full provenance data for temporal
+            consistency checking.
     """
 
     def __init__(
@@ -90,6 +113,8 @@ class ConsistencyDeps:
         timeline_events: list[dict[str, str]] | None = None,
         check_types: list[ConsistencyCheckType] | None = None,
         existing_issue_count: int = 0,
+        extracted_facts: list[ExtractedFact] | None = None,
+        timeline_envelopes: list[TimelineEventEnvelope] | None = None,
     ) -> None:
         self.language = language
         self.novel_id = novel_id
@@ -98,6 +123,13 @@ class ConsistencyDeps:
         self.timeline_events = timeline_events or []
         self.check_types = check_types or list(ConsistencyCheckType)
         self.existing_issue_count = existing_issue_count
+        self.extracted_facts = extracted_facts
+        self.timeline_envelopes = timeline_envelopes
+
+    @property
+    def has_structured_input(self) -> bool:
+        """Whether structured Stage 1 data is available."""
+        return self.extracted_facts is not None and len(self.extracted_facts) > 0
 
 
 class ConsistencyOutput(BaseModel):

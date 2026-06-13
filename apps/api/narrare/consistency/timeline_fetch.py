@@ -15,7 +15,9 @@ import structlog
 if TYPE_CHECKING:
     import uuid
 
+    from narrare.kb.repository import KBRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
+    from narrare_core.agents.fact_extractor_types import TimelineEventEnvelope
 
 logger = structlog.get_logger(__name__)
 
@@ -75,3 +77,45 @@ async def fetch_timeline_events(
             }
         )
     return formatted
+
+
+async def fetch_timeline_event_envelopes(
+    timeline_repo: TimelineEventRepository,
+    kb_repo: KBRepository,
+    novel_id: uuid.UUID,
+) -> list[TimelineEventEnvelope]:
+    """Fetch enriched timeline envelopes for ADR-044 staged consistency.
+
+    This is the structured companion to ``fetch_timeline_events()``. It keeps
+    the legacy compact list unchanged while exposing the FIND-009 metadata that
+    the staged pipeline needs: normalized timestamps, temporal order, chapter
+    provenance, causality, source, confidence, confirmation, and KB status.
+
+    KB liveness note: current KB entries expose ``draft``, ``reviewed``,
+    ``canon``, and ``deprecated`` statuses. They do not expose rename targets or
+    deleted tombstones. Existing non-deprecated entries are therefore represented
+    as ``active``; missing references are represented as ``unknown`` rather than
+    falsely labeled ``deleted``.
+
+    Args:
+        timeline_repo: Repository for timeline event persistence.
+        kb_repo: KB repository for entity status lookups.
+        novel_id: The novel whose timeline events to fetch.
+
+    Returns:
+        Enriched timeline envelopes. Empty when the timeline fetch fails, with a
+        warning log entry so the degradation is visible.
+    """
+    from narrare.consistency.timeline_envelope import enrich_timeline_envelopes
+
+    try:
+        events = await timeline_repo.list_by_novel(novel_id, is_confirmed=True)
+    except Exception:
+        logger.warning(
+            "timeline_envelopes_fetch_failed",
+            novel_id=str(novel_id),
+            exc_info=True,
+        )
+        return []
+
+    return await enrich_timeline_envelopes(events, kb_repo, novel_id)
