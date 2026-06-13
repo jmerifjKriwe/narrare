@@ -312,6 +312,55 @@ class TestResolveErrors:
         with pytest.raises(ConfigurationError):
             await resolver.resolve(LLMIntent.WRITE, user_id, None)
 
+    async def test_skips_non_dict_override_falls_through(
+        self,
+        user_id: uuid.UUID,
+    ) -> None:
+        """Non-dict override data is skipped (line 186-187)."""
+        resolver = _make_resolver(
+            user_settings=FakeUserAiSettings(
+                intent_overrides={"write": "not-a-dict"},
+            ),
+            project_settings=FakeProjectSettings(),
+        )
+
+        with pytest.raises(ConfigurationError):
+            await resolver.resolve(LLMIntent.WRITE, user_id, None)
+
+    async def test_skips_override_with_missing_fields(
+        self,
+        user_id: uuid.UUID,
+    ) -> None:
+        """Override dict missing provider_id/model_id is skipped (line 195)."""
+        resolver = _make_resolver(
+            user_settings=FakeUserAiSettings(
+                intent_overrides={
+                    "write": {"model_id": "gpt-4"},  # missing provider_id
+                },
+            ),
+            project_settings=FakeProjectSettings(),
+        )
+
+        with pytest.raises(ConfigurationError):
+            await resolver.resolve(LLMIntent.WRITE, user_id, None)
+
+    async def test_skips_override_with_invalid_uuid(
+        self,
+        user_id: uuid.UUID,
+    ) -> None:
+        """Override with invalid provider_id UUID is skipped (lines 202-208)."""
+        resolver = _make_resolver(
+            user_settings=FakeUserAiSettings(
+                intent_overrides={
+                    "write": {"provider_id": "not-a-uuid", "model_id": "gpt-4"},
+                },
+            ),
+            project_settings=FakeProjectSettings(),
+        )
+
+        with pytest.raises(ConfigurationError):
+            await resolver.resolve(LLMIntent.WRITE, user_id, None)
+
 
 class TestDecryptKey:
     def test_decrypt_key_returns_none_for_empty(self) -> None:

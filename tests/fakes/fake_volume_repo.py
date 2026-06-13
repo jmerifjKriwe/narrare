@@ -62,6 +62,8 @@ class FakeVolumeRepository:
                 },
             )
         )
+        from datetime import UTC, datetime
+
         volume = Volume()
         _apply_setattr(
             volume,
@@ -71,6 +73,7 @@ class FakeVolumeRepository:
                 "title": title,
                 "position": position,
                 "is_default": is_default,
+                "created_at": datetime.now(UTC),
             },
         )
         self._store[(volume.id, novel_id)] = volume

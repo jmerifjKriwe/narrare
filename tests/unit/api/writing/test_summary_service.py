@@ -198,6 +198,32 @@ class TestSummarize:
 
         mock_chapter_repo.update_summary.assert_not_called()
 
+    async def test_summarize_when_agent_raises_not_found_re_raises(
+        self,
+        service: ChapterSummaryService,
+        mock_chapter_repo: AsyncMock,
+    ) -> None:
+        """NotFoundError from agent is re-raised (line 152)."""
+        from narrare_core.shared.errors import NotFoundError
+        from tests.factories import make_chapter
+
+        chapter = make_chapter(content="Some content here...", title="Test")
+        mock_chapter_repo.get = AsyncMock(return_value=chapter)
+
+        mock_agent = AsyncMock()
+        mock_agent.run = AsyncMock(
+            side_effect=NotFoundError("Chapter", identifier=str(chapter.id)),
+        )
+
+        with (
+            patch(
+                "narrare.writing.summary_service.ChapterSummaryAgent",
+                return_value=mock_agent,
+            ),
+            pytest.raises(NotFoundError, match="Chapter"),
+        ):
+            await service.summarize(chapter_id=chapter.id)
+
     async def test_summarize_uses_composer_for_prompt(
         self,
         service: ChapterSummaryService,

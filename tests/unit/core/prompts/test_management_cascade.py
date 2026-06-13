@@ -115,3 +115,26 @@ class TestCascadeInfo:
 
         result = await svc.cascade_info("invalid")
         assert result == []
+
+    async def test_cascade_info_without_project_root(
+        self,
+        tmp_bundled: Path,
+    ) -> None:
+        """cascade_info with project_root=None skips project-level path (branch 207->211)."""
+        _write_bundled(
+            tmp_bundled,
+            "generation",
+            "en",
+            "names",
+            "---\n---\n\nBundled.",
+        )
+        registry = _make_registry(tmp_bundled, project_root=None)
+        svc = PromptManagementService(registry)
+
+        cascade = await svc.cascade_info("generation/en/names")
+
+        assert len(cascade) == 2  # user + bundled (no project)
+        levels = {c.level for c in cascade}
+        assert "project" not in levels
+        assert "user" in levels
+        assert "bundled" in levels

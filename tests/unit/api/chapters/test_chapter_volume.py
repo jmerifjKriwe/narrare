@@ -148,3 +148,20 @@ class TestChapterServiceCreateDefaultVolume:
         result = await service.create(novel_id, user_id, request)
 
         assert result.volume_id is None
+
+    async def test_create_keeps_none_when_no_default_volume(
+        self,
+        service_with_volumes: ChapterService,
+        fake_repo: FakeChapterRepository,
+        fake_novel_service: FakeNovelService,
+        fake_volume_repo: FakeVolumeRepository,
+    ) -> None:
+        """When volume_repo has no default volume, chapter gets volume_id=None."""
+        novel_id, user_id = _seed_ownership(fake_novel_service)
+        # Don't seed any volumes — get_default_volume returns None
+
+        request = CreateChapterRequest(title="No Default Vol", content="text")
+        result = await service_with_volumes.create(novel_id, user_id, request)
+
+        assert result.volume_id is None
+        fake_volume_repo.assert_called("get_default_volume", novel_id=novel_id)

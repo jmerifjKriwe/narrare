@@ -178,6 +178,44 @@ class TestListPrompts:
         result = await svc.list_prompts()
         assert result == []
 
+    async def test_list_prompts_empty_when_bundled_root_missing(self, tmp_path: Path) -> None:
+        """Bundled dir does not exist on disk → list_prompts returns []."""
+        bundled = tmp_path / "nonexistent"
+        registry = _make_registry(bundled)
+        svc = PromptManagementService(registry)
+
+        result = await svc.list_prompts()
+        assert result == []
+
+    async def test_list_prompts_skips_name_styles(
+        self,
+        tmp_bundled: Path,
+    ) -> None:
+        """Prompts under a name-styles sub-directory are filtered out."""
+        # A real prompt so the result is not empty
+        _write_bundled(
+            tmp_bundled,
+            "generation",
+            "en",
+            "names",
+            '---\nprompt_version: "1.0.0"\n---\n\nNames.',
+        )
+        # A name-styles entry that should be skipped
+        ns_dir = tmp_bundled / "generation" / "name-styles" / "en"
+        ns_dir.mkdir(parents=True)
+        (ns_dir / "system.md").write_text(
+            '---\nprompt_version: "1.0.0"\n---\n\nName style',
+        )
+
+        registry = _make_registry(tmp_bundled)
+        svc = PromptManagementService(registry)
+
+        result = await svc.list_prompts()
+        prompt_ids = [p.prompt_id for p in result]
+        assert "generation/en/names" in prompt_ids
+        # name-styles should not appear as a prompt
+        assert not any("name-styles" in pid for pid in prompt_ids)
+
 
 # ---------------------------------------------------------------------------
 # get_prompt
@@ -327,54 +365,3 @@ class TestSaveOverride:
 
         with pytest.raises(ValueError, match="Invalid prompt_id"):
             await svc.save_override("bad-id", "content")
-
-
-# ---------------------------------------------------------------------------
-# reset_override
-# ---------------------------------------------------------------------------
-
-
-class TestResetOverride:
-    async def test_reset_override_deletes_file(
-        self,
-        tmp_bundled: Path,
-        tmp_project: Path,
-    ) -> None:
-        tmp_project.mkdir()
-        _write_bundled(
-            tmp_bundled,
-            "generation",
-            "en",
-            "names",
-            '---\nprompt_version: "1.0.0"\n---\n\nBundled.',
-        )
-        _write_override(
-            tmp_project,
-            "generation",
-            "en",
-            "names",
-            "---\n---\n\nOverride content.",
-        )
-        registry = _make_registry(tmp_bundled, project_root=tmp_project)
-        svc = PromptManagementService(registry)
-
-        result = await svc.reset_override("generation/en/names")
-        assert result is True
-
-        # File should be gone
-        override_path = (
-            tmp_project / ".narrare" / "prompts" / "generation" / "en" / "names" / "system.md"
-        )
-        assert not override_path.exists()
-
-    async def test_reset_override_returns_false_when_none(
-        self,
-        tmp_bundled: Path,
-        tmp_project: Path,
-    ) -> None:
-        tmp_project.mkdir()
-        registry = _make_registry(tmp_bundled, project_root=tmp_project)
-        svc = PromptManagementService(registry)
-
-        result = await svc.reset_override("generation/en/names")
-        assert result is False

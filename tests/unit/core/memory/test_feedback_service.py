@@ -1,4 +1,10 @@
-"""Tests for memory/feedback_service.py — FeedbackService."""
+"""Tests for memory/feedback_service.py — FeedbackService.
+
+Service-behavior tests (record, get_history, unknown-action fallback).
+Translation-logic tests live in ``test_feedback_service_translation.py``.
+
+See: ADR-045 Decision 8, CONSTRAINTS.md RULE-08/RULE-22.
+"""
 
 from __future__ import annotations
 
@@ -93,70 +99,6 @@ class TestFeedbackServiceRecord:
         persist_fn.assert_awaited_once_with(event)
 
 
-class TestFeedbackServiceTranslateToMemoryText:
-    """Tests for FeedbackService._translate_to_memory_text()."""
-
-    def test_accept_action(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.ACCEPT,
-            intent="rewrite",
-            suggestion_text="The sun set over the hills.",
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "accepted a rewrite suggestion" in text
-        assert "The sun set over the hills." in text
-
-    def test_reject_action_without_modification(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.REJECT,
-            intent="character",
-            suggestion_text="He walked away slowly.",
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "rejected a character suggestion" in text
-        assert "He walked away slowly." in text
-
-    def test_reject_action_with_modification_as_reason(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.REJECT,
-            intent="plot",
-            suggestion_text="Suddenly a dragon appeared.",
-            modification="Too clichéd",
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "rejected a plot suggestion" in text
-        assert "reason: Too clichéd" in text
-
-    def test_modify_action(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.MODIFY,
-            intent="dialogue",
-            suggestion_text="Hello there.",
-            modification="Hey, how are you?",
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "modified a dialogue suggestion" in text
-        assert "Original:" in text
-        assert "Their version:" in text
-        assert "Hello there." in text
-        assert "Hey, how are you?" in text
-
-    def test_long_suggestion_text_is_truncated(self) -> None:
-        long_text = "x" * 500
-        event = _make_event(
-            action=FeedbackAction.ACCEPT,
-            suggestion_text=long_text,
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        # The suggestion text portion should be truncated to 200 chars
-        assert len(text) < 500
-
-
 class TestFeedbackServiceGetHistory:
     """Tests for FeedbackService.get_history()."""
 
@@ -181,111 +123,17 @@ class TestFeedbackServiceGetHistory:
         assert result == []
 
 
-class TestFeedbackServiceTranslateWithRating:
-    """Tests for rating inclusion in _translate_to_memory_text()."""
+class TestFeedbackServiceUnknownAction:
+    """Tests for the else-branch fallback in _translate_to_memory_text()."""
 
-    def test_accept_with_rating_5(self) -> None:
+    def test_unknown_action_falls_to_generic_text(self) -> None:
+        """A non-enum action falls back to the generic 'interacted with' text."""
         event = _make_event(
-            action=FeedbackAction.ACCEPT,
+            action="unknown",  # type: ignore[arg-type]
             intent="rewrite",
-            suggestion_text="The sun set over the hills.",
-            rating=5,
+            suggestion_text="Some text.",
         )
         text = FeedbackService._translate_to_memory_text(event)
-
-        assert "accepted a rewrite suggestion" in text
-        assert "rating: 5/5" in text
-
-    def test_reject_with_rating_2(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.REJECT,
-            intent="plot",
-            suggestion_text="Suddenly a dragon appeared.",
-            modification="Too clichéd",
-            rating=2,
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "rejected a plot suggestion" in text
-        assert "reason: Too clichéd" in text
-        assert "rating: 2/5" in text
-
-    def test_no_rating_excludes_rating_text(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.ACCEPT,
-            suggestion_text="Simple text.",
-            rating=None,
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "rating" not in text
-
-
-class TestFeedbackServiceTranslateWithContext:
-    """Tests for enriched context in _translate_to_memory_text()."""
-
-    def test_reject_with_genre_and_mode(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.REJECT,
-            intent="character",
-            suggestion_text="He walked away slowly.",
-            modification="Out of character",
-            context={"genre": "Sci-Fi", "mode": "dialogue"},
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "rejected a character suggestion" in text
-        assert "genre: Sci-Fi" in text
-        assert "mode: dialogue" in text
-
-    def test_modify_with_chapter_id(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.MODIFY,
-            intent="dialogue",
-            suggestion_text="Hello there.",
-            modification="Hey, how are you?",
-            context={"chapter_id": "ch-042"},
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "modified a dialogue suggestion" in text
-        assert "chapter: ch-042" in text
-
-    def test_accept_with_all_context_fields(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.ACCEPT,
-            intent="rewrite",
-            suggestion_text="A brilliant sentence.",
-            rating=4,
-            context={
-                "chapter_id": "ch-007",
-                "genre": "Fantasy",
-                "mode": "narrative",
-            },
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "rating: 4/5" in text
-        assert "chapter: ch-007" in text
-        assert "genre: Fantasy" in text
-        assert "mode: narrative" in text
-
-    def test_empty_context_excludes_brackets(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.ACCEPT,
-            suggestion_text="Simple text.",
-            context={},
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "[" not in text
-
-    def test_context_with_unrelated_keys_excludes_them(self) -> None:
-        event = _make_event(
-            action=FeedbackAction.ACCEPT,
-            suggestion_text="Text.",
-            context={"random_key": "value"},
-        )
-        text = FeedbackService._translate_to_memory_text(event)
-
-        assert "[" not in text
+        assert "interacted with a rewrite suggestion" in text
+        # The else branch does not include suggestion_text
+        assert "User interacted with" in text

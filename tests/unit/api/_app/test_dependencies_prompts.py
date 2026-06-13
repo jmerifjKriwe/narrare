@@ -1,0 +1,199 @@
+"""Unit tests for ``narrare._app.dependencies_prompts`` — preference service,
+prompt registry, and prompt composer singletons.
+
+Covers:
+- ``_get_preference_service_instance()`` graceful-degradation paths
+  (mem0 not installed, no credentials, NullMemoryClient)
+- ``_get_preference_service_instance()`` success path
+- ``_get_prompt_registry_instance()`` / ``get_registry()``
+- ``_get_composer_instance()`` / ``get_composer()``
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+import narrare._app.dependencies_prompts as prompts_mod
+from narrare_core.memory._null_client import NullMemoryClient
+from narrare_core.memory.availability import ProviderEnvConfig
+from narrare_core.prompts import PromptComposer, PromptRegistry
+
+
+@pytest.fixture(autouse=True)
+def _reset_preference_state() -> Any:  # pyright: ignore[reportUnusedFunction]
+    """Reset module-level singleton state between tests."""
+    original_instance = prompts_mod._preference_service_instance
+    original_tried = prompts_mod._preference_service_init_tried
+    prompts_mod._preference_service_instance = None
+    prompts_mod._preference_service_init_tried = False
+    yield
+    prompts_mod._preference_service_instance = original_instance
+    prompts_mod._preference_service_init_tried = original_tried
+
+
+def _provider_config() -> ProviderEnvConfig:
+    """A stand-in provider config for testing."""
+    return ProviderEnvConfig(provider="openai", api_key="test-key", base_url=None)
+
+
+# ---------------------------------------------------------------------------
+# Preference service — disabled paths
+# ---------------------------------------------------------------------------
+
+
+class TestPreferenceServiceDisabled:
+    def test_returns_none_when_mem0_not_available(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When mem0 is not installed, preference service is disabled."""
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.is_mem0_available",
+            lambda: False,
+        )
+
+        result = prompts_mod._get_preference_service_instance()
+
+        assert result is None
+
+    def test_returns_none_when_no_provider_credentials(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When provider detection returns None, service is disabled."""
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.is_mem0_available",
+            lambda: True,
+        )
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.detect_provider_from_env",
+            lambda: None,
+        )
+
+        result = prompts_mod._get_preference_service_instance()
+
+        assert result is None
+
+    def test_caches_result_after_first_call(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """After first call, _preference_service_init_tried prevents re-init."""
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.is_mem0_available",
+            lambda: False,
+        )
+
+        first = prompts_mod._get_preference_service_instance()
+        assert first is None
+        assert prompts_mod._preference_service_init_tried is True
+
+        # Second call should return cached None without re-checking
+        second = prompts_mod._get_preference_service_instance()
+        assert second is None
+
+
+# ---------------------------------------------------------------------------
+# Preference service — NullMemoryClient path
+# ---------------------------------------------------------------------------
+
+
+class TestPreferenceServiceNullClient:
+    def test_returns_none_when_client_is_null(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """NullMemoryClient from create_memory_client_sync disables the service."""
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.is_mem0_available",
+            lambda: True,
+        )
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.detect_provider_from_env",
+            _provider_config,
+        )
+        monkeypatch.setattr(
+            "narrare_core.memory.mem0_client.create_memory_client_sync",
+            lambda **_kw: NullMemoryClient(),
+        )
+
+        result = prompts_mod._get_preference_service_instance()
+
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Preference service — success path
+# ---------------------------------------------------------------------------
+
+
+class _FakePreferenceService:
+    """Stand-in for PreferenceService."""
+
+    pass
+
+
+class TestPreferenceServiceSuccess:
+    def test_creates_service_when_client_available(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When mem0 + credentials + valid client, PreferenceService is created."""
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.is_mem0_available",
+            lambda: True,
+        )
+        monkeypatch.setattr(
+            "narrare._app.dependencies_prompts.detect_provider_from_env",
+            _provider_config,
+        )
+        monkeypatch.setattr(
+            "narrare_core.memory.mem0_client.create_memory_client_sync",
+            lambda **_kw: object(),  # non-NullMemoryClient
+        )
+        monkeypatch.setattr(
+            "narrare_core.memory.preference_service.PreferenceService",
+            lambda mem0_client: _FakePreferenceService(),
+        )
+
+        result = prompts_mod._get_preference_service_instance()
+
+        assert result is not None
+        assert isinstance(result, _FakePreferenceService)
+
+
+# ---------------------------------------------------------------------------
+# Prompt Registry singleton
+# ---------------------------------------------------------------------------
+
+
+class TestPromptRegistry:
+    def test_get_registry_returns_prompt_registry(self) -> None:
+        """get_registry() returns a PromptRegistry instance."""
+        prompts_mod._get_prompt_registry_instance.cache_clear()
+
+        registry = prompts_mod.get_registry()
+
+        assert isinstance(registry, PromptRegistry)
+
+    def test_registry_cached_on_repeated_calls(self) -> None:
+        """@lru_cache returns the same instance on second call."""
+        prompts_mod._get_prompt_registry_instance.cache_clear()
+
+        first = prompts_mod.get_registry()
+        second = prompts_mod.get_registry()
+
+        assert first is second
+
+
+# ---------------------------------------------------------------------------
+# Prompt Composer singleton
+# ---------------------------------------------------------------------------
+
+
+class TestPromptComposer:
+    def test_get_composer_returns_prompt_composer(self) -> None:
+        """get_composer() returns a PromptComposer instance."""
+        prompts_mod._get_composer_instance.cache_clear()
+
+        composer = prompts_mod.get_composer()
+
+        assert isinstance(composer, PromptComposer)
+
+    def test_composer_cached_on_repeated_calls(self) -> None:
+        """@lru_cache returns the same instance on second call."""
+        prompts_mod._get_composer_instance.cache_clear()
+
+        first = prompts_mod.get_composer()
+        second = prompts_mod.get_composer()
+
+        assert first is second

@@ -241,3 +241,97 @@ class TestGetDiff:
 
         diff = await svc.get_diff("invalid")
         assert diff is None
+
+
+# ---------------------------------------------------------------------------
+# list_prompts — unreadable file handling
+# ---------------------------------------------------------------------------
+
+
+class TestListPromptsUnreadable:
+    """Coverage for edge cases in list_prompts that require mocking."""
+
+    async def test_skips_unreadable_prompt(self, tmp_path: Path) -> None:
+        """When read_text_or_none returns None, skip that prompt (line 96)."""
+        from unittest.mock import patch
+
+        bundled = tmp_path / "bundled"
+        bundled.mkdir()
+        p = bundled / "generation" / "en" / "names"
+        p.mkdir(parents=True)
+        (p / "system.md").write_text("---\nprompt_version: '1.0.0'\n---\n\nNames.")
+
+        registry = PromptRegistry()
+        registry._bundled_root = bundled
+        svc = PromptManagementService(registry)
+
+        target = "narrare_core.prompts.management.read_text_or_none"
+        with patch(target, return_value=None):
+            result = await svc.list_prompts()
+
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# reset_override
+# ---------------------------------------------------------------------------
+
+
+class TestResetOverride:
+    async def test_reset_override_deletes_file(
+        self,
+        tmp_bundled: Path,
+        tmp_project: Path,
+    ) -> None:
+        tmp_project.mkdir()
+        _write_bundled(
+            tmp_bundled,
+            "generation",
+            "en",
+            "names",
+            '---\nprompt_version: "1.0.0"\n---\n\nBundled.',
+        )
+        _write_override(
+            tmp_project,
+            "generation",
+            "en",
+            "names",
+            "---\n---\n\nOverride content.",
+        )
+        registry = _make_registry(tmp_bundled, project_root=tmp_project)
+        svc = PromptManagementService(registry)
+
+        result = await svc.reset_override("generation/en/names")
+        assert result is True
+
+        # File should be gone
+        override_path = (
+            tmp_project / ".narrare" / "prompts" / "generation" / "en" / "names" / "system.md"
+        )
+        assert not override_path.exists()
+
+    async def test_reset_override_returns_false_when_none(
+        self,
+        tmp_bundled: Path,
+        tmp_project: Path,
+    ) -> None:
+        tmp_project.mkdir()
+        registry = _make_registry(tmp_bundled, project_root=tmp_project)
+        svc = PromptManagementService(registry)
+
+        result = await svc.reset_override("generation/en/names")
+        assert result is False
+
+    async def test_reset_override_returns_false_for_invalid_id(
+        self,
+        tmp_bundled: Path,
+    ) -> None:
+        """Invalid prompt_id (not 3 parts) → return False."""
+        registry = _make_registry(tmp_bundled)
+        svc = PromptManagementService(registry)
+
+        result = await svc.reset_override("invalid")
+        assert result is False
+
+        result = await svc.reset_override("a/b")
+        assert result is False

@@ -244,6 +244,26 @@ class TestCreateMemoryClientCascade:
         assert config["embedder"]["config"]["model"] == "text-embedding-3-small"
         assert config["embedder"]["config"]["api_key"] == "sk-test"
 
+    async def test_openai_embedding_base_url_from_cascade(self) -> None:
+        """OpenAI cascade with base_url → base_url flows to embedder config."""
+        mock_client = _make_mock_client()
+        mock_mem0 = _make_mock_mem0_module(from_config_return_value=mock_client)
+
+        with patch.dict("sys.modules", {"mem0": mock_mem0}):
+            result = await create_memory_client(
+                provider="openai",
+                api_key="sk-test",
+                user_providers=["openai"],
+                user_api_keys={"openai": "sk-test"},
+                user_base_urls={"openai": "https://api.openai.com/v1"},
+            )
+
+        assert result is mock_client
+        call_args = mock_mem0.AsyncMemory.from_config.call_args
+        config = call_args.kwargs.get("config_dict") or call_args[0][0]
+        assert config["embedder"]["provider"] == "openai"
+        assert config["embedder"]["config"]["base_url"] == "https://api.openai.com/v1"
+
     async def test_anthropic_user_gets_local_embeddings(self) -> None:
         """Anthropic user (no embedding API) → Tier 3 local."""
         mock_client = _make_mock_client()

@@ -129,6 +129,26 @@ class TestTrailingSentence:
         result = processor.process(text, is_partial=True)
         assert "incom" in result
 
+    def test_trailing_quote_after_period_included_in_sentence(
+        self,
+        processor: DraftProcessor,
+    ) -> None:
+        """Closing quote after period is included as part of sentence (line 174)."""
+        text = 'She said, "I will return." Then she started to say something'
+        result = processor.process(text)
+        assert "return." in result
+        assert result.endswith('"')
+        assert "something" not in result
+
+    def test_public_trailing_quote_included(
+        self,
+        processor: DraftProcessor,
+    ) -> None:
+        """remove_incomplete_trailing preserves closing quotes after period."""
+        text = 'He thought, "Maybe not." And then he paused'
+        result = processor.remove_incomplete_trailing(text)
+        assert result.endswith('"')
+
 
 # ---------------------------------------------------------------------------
 # 3. Word count enforcement
@@ -162,6 +182,18 @@ class TestWordCount:
         # Should end at a sentence boundary
         assert result.endswith(".")
         assert not result.rstrip().endswith("w")
+
+    def test_word_target_truncates_including_trailing_quote(
+        self,
+        processor: DraftProcessor,
+    ) -> None:
+        """Truncation preserves closing quotes after sentence boundary (line 210)."""
+        # Build text where the 110th word (or near there) ends with ."
+        # so that _enforce_word_target scans back and finds . followed by "
+        words = ["hello." for _ in range(100)] + ['said, "word."' for _ in range(20)]
+        text = " ".join(words)
+        result = processor.process(text, word_target=100)
+        assert 90 <= len(result.split()) <= 110
 
     def test_below_target_not_truncated(self, processor: DraftProcessor) -> None:
         text = "Short text here."

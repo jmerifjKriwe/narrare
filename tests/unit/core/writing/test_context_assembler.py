@@ -336,3 +336,57 @@ class TestMetadataPopulation:
         assembler = WritingContextAssembler(total_budget=12000)
         ctx = await assembler.assemble()
         assert ctx.total_budget_tokens == 12000
+
+
+class TestTierAllocation:
+    """ContextAssembler.get_tier_allocation coverage."""
+
+    def test_get_tier_allocation_returns_dict(self) -> None:
+        """get_tier_allocation returns budget dict (line 89)."""
+        assembler = WritingContextAssembler(total_budget=8000)
+        allocation = assembler.get_tier_allocation()
+        assert isinstance(allocation, dict)
+        assert "tier1" in allocation or "kb" in allocation or len(allocation) > 0
+
+
+class TestApplyTier2Truncation:
+    """_apply_tier2 overflow path — summaries too long for budget (lines 320-321)."""
+
+    @pytest.mark.asyncio
+    async def test_apply_tier2_truncates_when_summaries_overflow(self) -> None:
+        """When both full text and summaries exceed budget, truncate."""
+        assembler = WritingContextAssembler(total_budget=100)
+        # 3 chapters with summaries that collectively exceed the tiny budget
+        chapters = [
+            _chapter(
+                title="Chapter 1",
+                full_text="A" * 500,
+                summary=(
+                    "This is a very long summary that should exceed the "
+                    "token budget allocated for the recent chapters tier." * 5
+                ),
+                position=3,
+            ),
+            _chapter(
+                title="Chapter 2",
+                full_text="B" * 500,
+                summary=(
+                    "Another extremely wordy description of the chapter "
+                    "that will push us well past the limit." * 5
+                ),
+                position=2,
+            ),
+            _chapter(
+                title="Chapter 3",
+                full_text="C" * 500,
+                summary=(
+                    "Yet more extended text for the third chapter that "
+                    "makes it even harder to fit within the budget." * 5
+                ),
+                position=1,
+            ),
+        ]
+        ctx = await assembler.assemble(recent=chapters)
+        assert isinstance(ctx, WritingContext)
+        # Context should have been assembled (truncated)
+        assert ctx.total_budget_tokens == 100

@@ -159,3 +159,42 @@ class TestChapterServiceDelete:
 
         with pytest.raises(NotFoundError):
             await service.delete(uuid.uuid4(), novel_id, user_id)
+
+
+# ---------------------------------------------------------------------------
+# Model __repr__ coverage
+# ---------------------------------------------------------------------------
+
+
+class TestChapterModelRepr:
+    def test_chapter_repr_includes_title_and_position(self) -> None:
+        from tests.factories import make_chapter as _make_chapter
+
+        chapter = _make_chapter(title="My Chapter", position=3)
+        result = repr(chapter)
+        assert "Chapter" in result
+        assert "My Chapter" in result
+        assert "position=3" in result
+
+    def test_chapter_version_repr_includes_version_and_source(self) -> None:
+        import uuid as _uuid
+
+        from sqlalchemy.orm.attributes import set_attribute
+
+        from narrare.chapters.models import ChapterVersion
+
+        version = ChapterVersion()
+        for k, v in {
+            "id": _uuid.uuid4(),
+            "chapter_id": _uuid.uuid4(),
+            "content": "test",
+            "word_count": 1,
+            "version_number": 5,
+            "source": "manual",
+        }.items():
+            set_attribute(version, k, v)
+
+        result = repr(version)
+        assert "ChapterVersion" in result
+        assert "version=5" in result
+        assert "manual" in result

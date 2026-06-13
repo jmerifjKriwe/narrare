@@ -64,3 +64,15 @@ class TestSearch:
 
         with pytest.raises(EmbeddingError, match="Query embedding failed"):
             await service.search("test query")
+
+    @patch("narrare.embeddings.service.embed_texts")
+    async def test_search_raises_on_empty_vectors(
+        self,
+        mock_embed: AsyncMock,
+        service: EmbeddingService,
+    ) -> None:
+        """Service.search raises when embed_texts returns empty list."""
+        mock_embed.return_value = []
+
+        with pytest.raises(EmbeddingError, match="Query embedding returned no vectors"):
+            await service.search("test query")

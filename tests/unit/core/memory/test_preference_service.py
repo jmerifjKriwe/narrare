@@ -116,6 +116,25 @@ class TestPreferenceServiceGetPreferences:
             assert call_kwargs["filters"]["user_id"] == str(user_id)
             assert call_kwargs["filters"]["agent_id"] == str(project_id)
 
+    async def test_skips_empty_memory_text(self) -> None:
+        """Empty memory text is skipped (continue at line 77)."""
+        mem0 = AsyncMock()
+        mem0.search.side_effect = [
+            {"results": [{"memory": ""}, {"memory": "Valid style"}]},
+            {"results": []},
+            {"results": []},
+        ]
+        service = PreferenceService(mem0_client=mem0)
+
+        profile = await service.get_preferences(uuid4(), uuid4())
+
+        # Only the non-empty text was kept; event_count counts ALL results
+        # (including skipped ones) so it's 2
+        assert len(profile.style) == 1
+        assert "Valid style" in profile.style.values()
+        assert profile.event_count == 2
+        assert profile.confidence == 0.1  # 2 / 20
+
     async def test_handles_memory_text_in_text_field(self) -> None:
         """Some mem0 results use 'text' key instead of 'memory'."""
         mem0 = AsyncMock()

@@ -248,6 +248,28 @@ class TestRetryBehavior:
         sleep_calls = [call[0][0] for call in mock_sleep.call_args_list]
         assert sleep_calls == [30.0, 120.0, 300.0]
 
+    @patch("narrare.embeddings.tasks.asyncio.sleep", new_callable=AsyncMock)
+    @patch("narrare.embeddings.tasks.embed_texts")
+    async def test_retry_on_empty_vectors(
+        self,
+        mock_embed: AsyncMock,
+        mock_sleep: AsyncMock,
+    ) -> None:
+        """Empty vectors from embed_texts triggers retry."""
+        mock_embed.return_value = []
+        repo = FakeEmbeddingRepo()
+
+        with pytest.raises(EmbeddingError, match="3 retries"):
+            await run_embed_source(
+                "kb_entry",
+                uuid.uuid4(),
+                "content",
+                repo=repo,
+            )
+
+        # Should have tried initial + 3 retries = 4 attempts
+        assert mock_embed.call_count == 4
+
 
 # ---------------------------------------------------------------------------
 # Success path tests

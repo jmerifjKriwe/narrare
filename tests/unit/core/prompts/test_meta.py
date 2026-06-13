@@ -127,6 +127,40 @@ class TestMetaPromptLoaderLoad:
         assert isinstance(content, str)
         assert "Narrare" in content
 
+    async def test_load_returns_empty_when_cascade_finds_nothing(self, tmp_path: Path) -> None:
+        """When no prompt exists at any cascade level including EN fallback, return ''."""
+        loader = MetaPromptLoader()
+        # Point to non-existent bundled root so nothing resolves
+        loader._bundled_root = tmp_path / "nonexistent"
+
+        content = await loader.load("xx")
+        assert content == ""
+
+    async def test_load_returns_empty_from_cache(self, tmp_path: Path) -> None:
+        """After caching an empty result, subsequent load returns ''."""
+        loader = MetaPromptLoader()
+        loader._bundled_root = tmp_path / "nonexistent"
+
+        content1 = await loader.load("xx")
+        content2 = await loader.load("xx")
+        assert content1 == content2 == ""
+
+
+class TestMetaPromptLoaderFindBundledRoot:
+    """_find_bundled_root exception handler (lines 49-50)."""
+
+    def test_falls_back_when_importlib_resources_fails(self) -> None:
+        """When importlib.resources.files raises, fall back to relative path."""
+        from unittest.mock import patch
+
+        target = "importlib.resources.files"
+        with patch(target, side_effect=Exception("mock import error")):
+            loader = MetaPromptLoader()
+
+        # The fallback path points to meta.py's parent/_bundled
+        assert loader._bundled_root.name == "_bundled"
+        assert str(loader._bundled_root).endswith("prompts/_bundled")
+
 
 class TestMetaPromptLoaderShouldUseLite:
     def test_returns_true_when_below_threshold(self) -> None:

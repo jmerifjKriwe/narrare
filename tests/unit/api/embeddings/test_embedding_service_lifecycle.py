@@ -107,6 +107,29 @@ class TestReprocess:
 
         assert queued == 0
 
+    @patch("narrare.embeddings.service.embed_texts")
+    async def test_reprocess_handles_partial_failures(
+        self,
+        mock_embed: AsyncMock,
+        service: EmbeddingService,
+        fake_repo: FakeEmbeddingRepository,
+    ) -> None:
+        """reprocess continues when individual items fail."""
+        mock_embed.side_effect = [[[0.1] * 1536], Exception("API error")]
+        sid1 = uuid.uuid4()
+        sid2 = uuid.uuid4()
+
+        queued = await service.reprocess(
+            novel_id=uuid.uuid4(),
+            source_ids=[(sid1, "content1"), (sid2, "content2")],
+        )
+
+        # First item succeeded, second failed — should still continue
+        assert queued == 1
+        # First item should be in the repo
+        result = await fake_repo.get_by_source("kb_entry", sid1)
+        assert result is not None
+
 
 class TestProperties:
     def test_model_property(self, service: EmbeddingService) -> None:
