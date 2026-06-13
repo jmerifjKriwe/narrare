@@ -31,6 +31,7 @@ class SmokeTaskFactory:
         tasks: dict[str, SmokeTask] = {
             "analysis_feedback": self.analysis_feedback_task,
             "chat_generation": self.chat_generation_task,
+            "consistency_staged": self.consistency_staged_task,
             "kb_extraction": self.kb_extraction_task,
             "preference_analysis": self.preference_analysis_task,
             "rewrite_selection": self.rewrite_selection_task,
@@ -48,6 +49,11 @@ class SmokeTaskFactory:
 
     async def preference_analysis_task(self, inputs: object) -> object:
         return await self.preference_analysis(PreferenceAnalysisInput.model_validate(inputs))
+
+    async def consistency_staged_task(self, inputs: object) -> object:
+        from evals.tasks.consistency_smoke import consistency_staged_task
+
+        return await consistency_staged_task(inputs)
 
     async def kb_extraction(self, inputs: KBExtractionInput) -> KBExtractionResult:
         """Extract title-cased entity-like phrases deterministically."""

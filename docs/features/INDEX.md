@@ -274,5 +274,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-12 — Review-03 refresh: ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers and contract-test gates were clarified.
+> Last updated: 2026-06-13 — CONS-001 remains stable; ADR-044 staged consistency implementation recorded with enriched timeline/fact extraction flow. ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

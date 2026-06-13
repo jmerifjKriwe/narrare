@@ -1,7 +1,7 @@
 ---
 prompt_type: analysis
 prompt_language: en
-prompt_version: "1.3.0"
+prompt_version: "2.0.0"
 ---
 
 ## System Prompt
@@ -32,6 +32,14 @@ Check types: {{check_types}}
 Timeline context: {{timeline_position}}
 Story structure: {{story_structure}}
 
+### Extracted Facts (Stage 1 — when available)
+
+{{extracted_facts}}
+
+When the above section contains structured extracted facts, prefer reasoning about those facts over extracting facts yourself from the raw chapter text. Each fact includes provenance (chapter_id, evidence_text, confidence). Use this structured data to identify contradictions more reliably.
+
+If the section is empty or unavailable, extract facts directly from the chapter text above — this is the standard single-pass mode.
+
 ### Output Format
 
 Return a JSON object with:
@@ -52,8 +60,9 @@ Return a JSON object with:
 - Allow for intentional ambiguity, character development, and unreliable narration.
 - Be selective: focus on genuine contradictions, not minor variations.
 - Reduce false positives: do not flag a difference unless two concrete facts cannot both be true in the story world.
-- Evidence gate: only emit an issue when both conflicting facts are explicitly present in the supplied chapter text, KB entities, or timeline/story context. Use `locations` and `conflicting_facts` to identify source keys/chapters and short quoted values; omit or downgrade inferred conflicts below 0.7 confidence.
+- Evidence gate: only emit an issue when both conflicting facts are explicitly present in the supplied chapter text, KB entities, extracted facts, or timeline/story context. Use `locations` and `conflicting_facts` to identify source keys/chapters and short quoted values; omit or downgrade inferred conflicts below 0.7 confidence.
 - Treat unreliable narration, dialogue claims, rumor, metaphor, and character belief as perspective until corroborated by narration or KB facts.
+- When structured extracted facts are provided, cross-reference their evidence_text and chapter_id for more precise contradiction identification.
 - Severity "error" = confirmed contradiction that needs fixing.
 - Severity "warning" = likely issue that should be reviewed.
 - Severity "info" = subtle note the author might want to consider.
@@ -74,3 +83,4 @@ Return a JSON object with:
 - Do NOT compare against KB entries' internal fields — that's handled by the KB consistency check.
 - Do NOT flag intentional ambiguity as a contradiction.
 - Do NOT flag stylistic variation, evolving character understanding, unreliable narration, or unconfirmed rumors as contradictions unless the provided facts explicitly prove conflict.
+- Do NOT ignore structured extracted facts when they are provided — prefer them over raw text extraction.

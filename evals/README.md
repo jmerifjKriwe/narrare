@@ -11,6 +11,8 @@ that can exercise Narrare runtime paths.
 - `kb_extraction` — evaluates entity/relation extraction quality.
 - `rewrite_selection` — evaluates rewrite mode routing and usable output.
 - `preference_analysis` — evaluates writing-preference signal extraction.
+- `consistency_staged` — evaluates ADR-044 fact extraction, contradiction detection,
+  and false-positive guards for staged consistency.
 
 ## Run smoke evals without provider secrets
 
@@ -53,6 +55,7 @@ evals/
 ├── __main__.py          # python -m evals
 ├── runner.py            # CLI runner
 ├── models.py            # typed case input/output models
+├── consistency_models.py # ADR-044 staged consistency models
 ├── datasets/            # code-first Dataset/Case definitions
 ├── evaluators/          # custom Evaluator implementations
 ├── tasks/               # smoke and runtime task entrypoints

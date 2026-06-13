@@ -294,7 +294,7 @@ Remaining risks:
 - **CR-AUFG-01-03:** Add lower-priority generated-candidate boilerplate to every prompt section that consumes `{{kb_suggested}}` bare. **Status 2026-06-12:** implemented; `prompt_governance_checks.py` now checks the boilerplate.
 - **CR-AUFG-01-04:** Migrate prompt context labels from deprecated `{{language}}` to canonical `{{writing_language}}` when touching templates. **Status 2026-06-12:** implemented for bundled prompts; deprecated alias check added.
 - **CR-AUFG-01-05:** Add evidence/confidence fields or equivalent false-positive gates to analysis prompts that emit subjective suggestions or defects. **Status 2026-06-12:** implemented for relevant prompts; remains an eval/manual-review concern for future prompt categories.
-- **CR-AUFG-01-06:** Design a staged consistency strategy for long projects: fact extraction/timeline normalization first, contradiction comparison second. **Status 2026-06-12:** not part of the prompt-governance remediation; remains a future product/design task unless superseded by CR-02+ evidence.
+- **CR-AUFG-01-06:** Design a staged consistency strategy for long projects: fact extraction/timeline normalization first, contradiction comparison second. **Status 2026-06-13:** implemented via ADR-044 (FactExtractorAgent → ConsistencyAgent, enriched `TimelineEventEnvelope`, `/consistency/check/stream`, and `consistency_staged` Pydantic Evals).
 
 ## Next Prompt Recommendation
 

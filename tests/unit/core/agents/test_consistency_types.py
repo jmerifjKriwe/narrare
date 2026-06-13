@@ -1,6 +1,8 @@
 """Tests for ConsistencyAgent types — validation, modes, defaults.
 
 See consistency_types.py CONS-001 — cross-entity and cross-chapter consistency checking.
+
+Extended for ADR-044 staged pipeline: tests for extracted_facts and timeline_envelopes.
 """
 
 from __future__ import annotations
@@ -16,6 +18,10 @@ from narrare_core.agents.consistency_types import (
     ConsistencyIssue,
     ConsistencyOutput,
     ConsistencySeverity,
+)
+from narrare_core.agents.fact_extractor_types import (
+    ExtractedFact,
+    TimelineEventEnvelope,
 )
 
 # --- A. ConsistencyCheckType enum ---
@@ -251,3 +257,86 @@ class TestSerialization:
         assert restored.issues[0].check_type == ConsistencyCheckType.WORLD
         assert restored.overall_assessment == original.overall_assessment
         assert restored.checked_types == original.checked_types
+
+
+# --- G. Enriched ConsistencyDeps (ADR-044) ---
+
+
+class TestEnrichedConsistencyDeps:
+    """ConsistencyDeps with optional structured Stage 1 data (ADR-044)."""
+
+    def test_extracted_facts_default_none(self) -> None:
+        """extracted_facts defaults to None (backward-compatible)."""
+        deps = ConsistencyDeps()
+        assert deps.extracted_facts is None
+
+    def test_timeline_envelopes_default_none(self) -> None:
+        """timeline_envelopes defaults to None (backward-compatible)."""
+        deps = ConsistencyDeps()
+        assert deps.timeline_envelopes is None
+
+    def test_has_structured_input_false_when_none(self) -> None:
+        deps = ConsistencyDeps()
+        assert not deps.has_structured_input
+
+    def test_has_structured_input_false_when_empty_list(self) -> None:
+        deps = ConsistencyDeps(extracted_facts=[])
+        assert not deps.has_structured_input
+
+    def test_has_structured_input_true_when_facts_present(self) -> None:
+        fact = ExtractedFact(
+            fact_type="character_state",
+            subject="Anna",
+            predicate="has eye color",
+            object_value="green",
+            chapter_id="ch-1",
+            evidence_text="Anna's green eyes sparkled.",
+            confidence=0.9,
+        )
+        deps = ConsistencyDeps(extracted_facts=[fact])
+        assert deps.has_structured_input
+
+    def test_enriched_deps_with_both(self) -> None:
+        """Both extracted_facts and timeline_envelopes can be provided."""
+        fact = ExtractedFact(
+            fact_type="event",
+            subject="Anna",
+            predicate="arrived at",
+            object_value="The Tower",
+            chapter_id="ch-2",
+            evidence_text="Anna pushed open the gate.",
+            confidence=0.85,
+        )
+        envelope = TimelineEventEnvelope(
+            event_id="evt-1",
+            event_name="Arrival",
+            timestamp_raw="day 3",
+        )
+        deps = ConsistencyDeps(
+            language="en",
+            novel_id="novel-123",
+            extracted_facts=[fact],
+            timeline_envelopes=[envelope],
+        )
+        assert deps.has_structured_input
+        assert deps.extracted_facts is not None
+        assert len(deps.extracted_facts) == 1
+        assert deps.timeline_envelopes is not None
+        assert len(deps.timeline_envelopes) == 1
+        assert deps.timeline_envelopes[0].event_name == "Arrival"
+
+    def test_backward_compatible_construction(self) -> None:
+        """Existing construction without new fields still works."""
+        deps = ConsistencyDeps(
+            language="de",
+            novel_id="test-novel",
+            chapter_texts={"ch1": "Am Anfang war das Licht."},
+            kb_entity_summaries=[{"entity_type": "character", "name": "Elena"}],
+            check_types=[ConsistencyCheckType.CHARACTER],
+            existing_issue_count=2,
+        )
+        assert deps.language == "de"
+        assert deps.extracted_facts is None
+        assert deps.timeline_envelopes is None
+        assert not deps.has_structured_input
+        assert deps.existing_issue_count == 2

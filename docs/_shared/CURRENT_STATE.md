@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-12 (Review-04 Docs: Pre-commit Fastpath + Graph MCP Known Issue)
-Session: CR-01 prompt governance remediation documented after verified core/platform implementation. Prompt standards now state template-level explicit wrapping, `variable_registry.USER_CONTENT_VARS` as SSOT, approved wrappers, canonical `{{writing_language}}`, `{{kb_suggested}}` generated-candidate boilerplate, and checker/eval/manual-review enforcement mapping. Previous Review-03 AUFG-03-06/09/10 state remains completed. Adoption debt (109 items) and system health (0.88) unchanged.
+Date: 2026-06-13 (ADR-044 Staged Consistency Implementation)
+Session: ADR-044 / CR-AUFG-01-06 implementation documented after Slices S0-S5 completed: FactExtractorAgent, enriched TimelineEventEnvelope, staged consistency orchestrator, SSE stage endpoint, and Pydantic Evals `consistency_staged` coverage. Validations reported: 57 core tests, 77 backend consistency tests, 9 eval tests; Ruff, Pyright, architecture, prompt checks, and smoke evals passed.
 
 ---
 
@@ -29,11 +29,11 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 ### Stats (verified 2026-06-11)
 
 - Knowledge Graph: 17,357 nodes, 122,996 edges, risk low
-- Backend tests: ~6,240+ across 579 test files (unit + integration)
+- Backend tests: ~6,240+ across 594 test files (unit + integration)
 - Frontend tests: 1,683+ across 201 test files (Vitest + MSW)
 - Architecture rules: 23 rules (RULE-01b, RULE-02/02a, RULE-03 through RULE-23)
 - Architecture exceptions: 11 in CONSTRAINTS.md §7 table; 12 in ai-gate-baseline.json (incl. 1 RULE-TEST-01 test-mocking entry + 1 inline_fallback + 1 RULE-19)
-- ADRs: 42 entries in INDEX.md (ADR-001 through ADR-043, ADR-039 gap — 42 unique entries)
+- ADRs: 43 entries in INDEX.md (ADR-001 through ADR-044, ADR-039 gap — 43 unique entries)
 - Feature specs: 86 individual files + INDEX.md (77 registered entries)
 - Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
 - Adoption debt: 109 ratcheted baseline items — 0 new above baseline, 0 resolved (breakdown: 27 not_adopted markers, 63 real runtime-evidence gaps [missing], 18 design-level not_applicable, 1 inline_fallback counter). All 27 modes pass static adoption (probes wired) but 0 of 27 pass full runtime adoption.
@@ -43,7 +43,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 19 submodules: agents, ai_invocation, analysis, cache, chat, context, embeddings, events, kb, llm, memory, nlp, planning, prompts, schemas, shared, templates, wiki, writing
 
-19 AI agents (pydantic-ai): beta_reader, character_arc, chat (ChatAgent), consistency, draft, extraction, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, pov_detection, preference_analysis, readability, review, summary, timeline, worldbuilding
+20 AI agents (pydantic-ai): beta_reader, character_arc, chat (ChatAgent), consistency, draft, extraction, fact_extractor, inline_suggest, kb, kb_assist, kb_improve, merge (KBMergeAgent), outline, pov_detection, preference_analysis, readability, review, summary, timeline, worldbuilding
 
 ### Backend (`apps/api/narrare/`)
 
@@ -66,7 +66,7 @@ Alembic migrations 0001 through ~0023
 
 - `_shared/`: CONSTRAINTS.md (23 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001 through ADR-043 plus implementation plans (INDEX.md, 42 entries — ADR-039 gap)
+- `architecture/decisions/`: ADR-001 through ADR-044 plus implementation plans (INDEX.md, 43 entries — ADR-039 gap)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 9 resolved)
 - `features/`: 86 feature spec files + INDEX.md (77 registered entries with status tracking)
 - `features/INDEX.md` → ADAPTER-001/002: MCP and A2A adapters documented as "Planned, Not Implemented" (post-MVP, Q-001/Q-002 blockers)
@@ -156,6 +156,7 @@ Completed in Phase 6 so far:
 50. ✅ **AUFG-03-09 AI-UX-Gate-Governance + ADR-043 Exclude Pflichtfeld-Schema**: `.ai_interaction_exclude` migrated to ADR-043 Note 6 mandatory-field format (file, owner, gate, reason, exit, added, re_evaluated). Checker updated: malformed entries rejected. `just check-ai-ux` reports 0 Violations, 6 Governed Exclusions. Stale review findings (useExtractionPhase/useConnectionLost, NameGenerator.test.tsx) no longer tracked as current violations. Baseline entries carry owner + exit criteria.
 51. ✅ **AUFG-03-10 TipTap-AI-UX/i18n Consistency**: GhostText hint localized via Extension-Options (`t("ghostText.hint")` → hintText in en/de/fr). CoAuthor action vocabulary migrated to `studio.aiActions.*` (`acceptAll`, `rejectAll`, `applySelected` in all 3 locales). BetaReaderPanel + useWorldbuildingAnalysis freed from useConnectionLost. Exclude list updated (2 stale entries removed, 2 new governed entries added). §16.8 canonical vocabulary table updated.
 52. ✅ **CR-01 Prompt Governance Remediation**: 23 bundled prompt templates remediated; user-content wrapping standardized to approved template-level XML wrappers; bundled output-language variables migrated to `{{writing_language}}`; `{{kb_suggested}}` boilerplate normalized; evidence/confidence/false-positive gates added to relevant prompts; `UNSAFE_USER_VARS` derives from `variable_registry.USER_CONTENT_VARS`; `scripts/prompt_governance_checks.py` added and documented. Validation reported PASS: Ruff, 34 script tests, `check_prompt_structure.py --strict`, `check_architecture.py`.
+53. ✅ **ADR-044 / CR-AUFG-01-06 Staged Consistency**: FactExtractorAgent + typed `ExtractedFact`/`TimelineEventEnvelope`, `FACT_EXTRACT` intent/route, enriched `ConsistencyDeps`, backend `ConsistencyOrchestrator`, `timeline_envelope.py`, `checker_context.py`, `stage_schemas.py`, `/consistency/check/stream`, and Pydantic Evals `consistency_staged` smoke/runtime tasks implemented. FIND-009 resolved by integration contract. Validation reported: 57 core tests, 77 backend consistency tests, 9 eval tests; Ruff, Pyright, architecture, prompt checks, and smoke evals passed.
 
 ## What's Next
 
@@ -223,6 +224,7 @@ Completed in Phase 6 so far:
 | ADR-041 | Typed Manifests / Doc-Drift Automation / Quality Metrics / Persistent Evidence | ✅ Accepted — P3 architecture for registry drift detection (JSON Schema + check_registry_drift.py), doc-drift automation (doc_drift/ package), quality metrics (QualityReport + joiner), and file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl) |
 | ADR-042 | PostgreSQL Evidence Upgrade | ✅ Implemented (P4) — hybrid FileEvidenceSink (CI) + PersistentEvidenceSink (production) |
 | ADR-043 | `useAIOperation` Primitives | ✅ Implemented — shared streaming client, cancel/error/loading primitives, canonical `studio.aiActions.*` labels, §16 compliance checks, P0/P1 flows migrated (Commit 1001125) |
+| ADR-044 | Staged Multi-Agent Consistency Pipeline | ✅ Implemented — FactExtractorAgent → ConsistencyAgent, enriched TimelineEventEnvelope integration, SSE stage endpoint, and `consistency_staged` Pydantic Evals |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -264,4 +266,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-12 (Review-04 Docs: Pre-commit Fastpath + Graph MCP Known Issue)
+> Last content update: 2026-06-13 (ADR-044 Staged Consistency Implementation)

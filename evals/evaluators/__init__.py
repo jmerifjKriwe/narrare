@@ -2,6 +2,12 @@
 
 from evals.evaluators.analysis import AnalysisFeedbackContent, AnalysisFeedbackValidator
 from evals.evaluators.chat import ChatDraftStructureMatch, ChatGenerationOutputValidator
+from evals.evaluators.consistency import (
+    ContradictionRecall,
+    FactExtractionPrecision,
+    FactExtractionRecall,
+    FalsePositiveGuard,
+)
 from evals.evaluators.kb import KBExtractionCoverage
 from evals.evaluators.preference import PreferenceSignalCoverage
 from evals.evaluators.rewrite import RewriteModeMatch
@@ -11,6 +17,10 @@ __all__ = [
     "AnalysisFeedbackValidator",
     "ChatDraftStructureMatch",
     "ChatGenerationOutputValidator",
+    "ContradictionRecall",
+    "FactExtractionPrecision",
+    "FactExtractionRecall",
+    "FalsePositiveGuard",
     "KBExtractionCoverage",
     "PreferenceSignalCoverage",
     "RewriteModeMatch",
