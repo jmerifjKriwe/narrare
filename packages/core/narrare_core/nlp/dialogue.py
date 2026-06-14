@@ -196,6 +196,10 @@ def count_dialogue_ratio(text: str) -> float:
 def _detect_speaker(before: str, after: str) -> str | None:
     """Try to identify the speaker from context around a quote.
 
+    The ``_SPEAKER_PATTERNS`` use unnamed capture groups (the speaker name
+    is the sole captured group), so the name is recovered via
+    :pyattr:`re.Match.groups` rather than a named-group lookup.
+
     Args:
         before: Text immediately before the quoted passage.
         after: Text immediately after the quoted passage.
@@ -203,33 +207,30 @@ def _detect_speaker(before: str, after: str) -> str | None:
     Returns:
         Detected speaker name, or ``None``.
     """
-    # Check "before" context: "quote," she said → speaker before quote
     for pattern in _SPEAKER_PATTERNS:
-        # Look in both directions
-        match_before = pattern.search(before)
-        if match_before:
-            # The named group is always the last group
-            speaker = match_before.lastgroup
-            if speaker:
-                name = match_before.group(speaker)
-            else:
-                groups = [g for g in match_before.groups() if g is not None]
-                name = groups[-1] if groups else None
-            if name:
-                return name
-
-        match_after = pattern.search(after)
-        if match_after:
-            speaker = match_after.lastgroup
-            if speaker:
-                name = match_after.group(speaker)
-            else:
-                groups = [g for g in match_after.groups() if g is not None]
-                name = groups[-1] if groups else None
-            if name:
-                return name
+        # Check "before" context first: "quote," she said → speaker before quote
+        name = _first_captured(pattern.search(before))
+        if name:
+            return name
+        # Then "after" context: she said, "quote"
+        name = _first_captured(pattern.search(after))
+        if name:
+            return name
 
     return None
+
+
+def _first_captured(match: re.Match[str] | None) -> str | None:
+    """Return the last non-None captured group from *match*, or ``None``.
+
+    ``_SPEAKER_PATTERNS`` capture exactly one group (the speaker name), so
+    ``groups()[-1]`` yields it.  Falls back to ``None`` when there is no
+    match or no captured group.
+    """
+    if match is None:
+        return None
+    groups = [g for g in match.groups() if g is not None]
+    return groups[-1] if groups else None
 
 
 def _overlaps_any(

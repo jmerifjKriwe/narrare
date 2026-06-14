@@ -96,6 +96,61 @@ class PreferenceProfile:
         return "\n\n".join(parts)
 
 
+class MemoryPrecedenceLevel(StrEnum):
+    """Source precedence for a memory entry."""
+
+    LEARNED_MEMORY = "learned_memory"
+    DETAIL_MEMORY = "detail_memory"
+    CORE_MEMORY = "core_memory"
+
+
+class LearningEventKind(StrEnum):
+    """ADT-style variant tag — what triggered this learning event."""
+
+    SUGGESTION_MODIFIED = "suggestion_modified"
+    REPEATED_STEERING = "repeated_steering"
+
+
+@dataclass(frozen=True, slots=True)
+class LearningEvent:
+    """A learning event extracted from a user interaction.
+
+    Records what was learned (the preference_summary) without exposing
+    raw prose (raw_excerpt must not be included in memory_text).
+    """
+
+    user_id: UUID
+    project_id: UUID
+    kind: LearningEventKind
+    intent: str
+    mode: str
+    preference_summary: str
+    source_event_id: UUID | None = None
+    raw_excerpt: str | None = None
+    confidence: float = 1.0
+
+    def to_memory_text(self) -> str:
+        """Build privacy-safe memory text (no raw_excerpt)."""
+        prefix = (
+            "learned preference"
+            if self.precedence_level == MemoryPrecedenceLevel.LEARNED_MEMORY
+            else "memory"
+        )
+        return f"[{prefix}] {self.preference_summary}"
+
+    @property
+    def precedence_level(self) -> MemoryPrecedenceLevel:
+        """Derive precedence from event kind."""
+        return MemoryPrecedenceLevel.LEARNED_MEMORY
+
+    def to_mem0_metadata(self) -> dict[str, object]:
+        return {
+            "kind": self.kind.value,
+            "precedence_level": self.precedence_level.value,
+            "confidence": self.confidence,
+        }
+
+
 def _humanise_key(key: str) -> str:
     """Convert a snake_case key to a human-readable label.
 

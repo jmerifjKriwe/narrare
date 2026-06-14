@@ -119,6 +119,20 @@ class TestEnglishCorrections:
 # unreachable with the current pyphen API usage.
 
 
+class FakePyphenDictionary:
+    """Fake pyphen dictionary returning a preset hyphenation.
+
+    Replaces ``mock.MagicMock(spec=["inserted"])`` for the pyphen
+    ``dic.inserted(word)`` call (ADR-030: no MagicMock).
+    """
+
+    def __init__(self, hyphenated: str) -> None:
+        self._hyphenated = hyphenated
+
+    def inserted(self, word: str) -> str:
+        return self._hyphenated
+
+
 class TestPyphenCodePaths:
     """Pyphen-specific branches reached via mocking (lines 97, 122-133)."""
 
@@ -164,18 +178,16 @@ class TestPyphenCodePaths:
 
     def test_pyphen_hyphenation_success(self) -> None:
         """Lines 130-131: hyphenated word returns segment count."""
-        mock_dic = mock.MagicMock(spec=["inserted"])
-        mock_dic.inserted.return_value = "beau-ti-ful"
+        fake_dic = FakePyphenDictionary("beau-ti-ful")
 
-        with mock.patch("pyphen.language_fallback", return_value=mock_dic):
+        with mock.patch("pyphen.language_fallback", return_value=fake_dic):
             result = _count_syllables_pyphen("beautiful", "en")
         assert result == 3  # 2 hyphens → 3 segments
 
     def test_pyphen_no_hyphenation_returns_none(self) -> None:
         """Line 133: unchanged word makes pyphen return None."""
-        mock_dic = mock.MagicMock(spec=["inserted"])
-        mock_dic.inserted.return_value = "cat"
+        fake_dic = FakePyphenDictionary("cat")
 
-        with mock.patch("pyphen.language_fallback", return_value=mock_dic):
+        with mock.patch("pyphen.language_fallback", return_value=fake_dic):
             result = _count_syllables_pyphen("cat", "en")
         assert result is None

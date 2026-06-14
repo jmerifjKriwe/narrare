@@ -16,7 +16,6 @@ from __future__ import annotations
 import contextlib  # type: ignore[reportAttributeAccessIssue]
 import importlib
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -99,7 +98,7 @@ class TestIsAvailable:
         """Language with cached model returns True."""
         provider = SpacyNLPProvider()
         # Simulate a previously loaded model
-        provider._models["en"] = MagicMock(spec=object)
+        provider._models["en"] = FakeSpacyModel()
         assert provider.is_available(language="en") is True
 
 
@@ -187,21 +186,30 @@ class TestCountSyllables:
 # ---------------------------------------------------------------------------
 
 
+class FakeSpacyModel:
+    """Placeholder for a loaded spaCy ``Language`` model in cache tests.
+
+    ``SpacyNLPProvider._models`` holds spaCy ``Language`` objects.  The
+    caching tests only verify cache presence/identity — not NLP behaviour —
+    so a plain sentinel instance suffices (ADR-030: no MagicMock).
+    """
+
+
 class TestModelCaching:
     """Model loading and caching behavior with mocked spaCy."""
 
     def test_cached_model_reused(self) -> None:
         """Second call to _get_model returns cached model (requires spaCy)."""
         provider = SpacyNLPProvider()
-        mock_nlp = MagicMock(spec=object)
-        provider._models["en"] = mock_nlp
+        fake_model = FakeSpacyModel()
+        provider._models["en"] = fake_model
 
         # When spaCy is installed, this returns the cached model.
         # When spaCy is NOT installed, import spacy raises ModuleNotFoundError
         # at the top of _get_model before the cache check.
         try:
             result = provider._get_model("en")
-            assert result is mock_nlp
+            assert result is fake_model
         except ModuleNotFoundError:
             pytest.skip("spaCy not installed — cache check unreachable")
 

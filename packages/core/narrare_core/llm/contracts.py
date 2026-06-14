@@ -78,6 +78,7 @@ class ModelRegistryProtocol(Protocol):
         config: ResolvedModelConfig,
         api_key: str | None = ...,
         base_url: str | None = ...,
+        usage_limits: UsageLimits | None = ...,
     ) -> AsyncIterator[StreamChunk]:
         """Execute a streaming LLM call.
 

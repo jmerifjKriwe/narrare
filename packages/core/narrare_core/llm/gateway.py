@@ -228,6 +228,7 @@ class ModelRegistry:
         config: ResolvedModelConfig,
         api_key: str | None = None,
         base_url: str | None = None,
+        usage_limits: UsageLimits | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Convenience: create ephemeral Agent, stream text output.
 
@@ -258,7 +259,9 @@ class ModelRegistry:
 
         # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
         model_settings = self.get_cache_settings(config) or None
-        async with agent.run_stream(user_prompt, model_settings=model_settings) as stream_result:
+        async with agent.run_stream(
+            user_prompt, model_settings=model_settings, usage_limits=usage_limits
+        ) as stream_result:
             async for text in stream_result.stream_text(delta=True):
                 yield StreamChunk(text=text)
 

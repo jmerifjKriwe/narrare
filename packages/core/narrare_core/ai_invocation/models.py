@@ -30,8 +30,11 @@ from narrare_core.ai_invocation._enums import (
     VoiceProfileStatus,
 )
 from narrare_core.ai_invocation.budgets import OutputBudget, OutputBudgetDecision
+from narrare_core.ai_invocation.evidence_models import FeatureInvocationEvidence
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from narrare_core.llm.intents import LLMIntent
     from narrare_core.prompts.context import PromptContext
 
@@ -139,6 +142,7 @@ class PromptInvocationContext(BaseModel):
     mode: str | None = Field(default=None, description="Mode within the feature.")
     user_id: object | None = None
     project_id: object | None = None
+    invocation_id: UUID | None = None
     language: str = Field(default="en", min_length=2, max_length=5)
     output_language: str | None = None
     streaming: bool = False
@@ -149,36 +153,16 @@ class PromptInvocationContext(BaseModel):
     prompt_context: PromptContext | None = None
 
 
-class FeatureInvocationEvidence(BaseModel):
-    """Privacy-safe evidence record for an AI invocation.
-
-    Proves that an invocation satisfied adoption requirements without
-    exposing raw prompt text or user prose. Contains only identifiers,
-    statuses, booleans, and structured metadata.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    feature_id: str = Field(min_length=1)
-    intent: str = Field(min_length=1, description="Intent value string.")
-    mode: str | None = None
-    prompt_route: str = Field(min_length=1, description="Resolved prompt route.")
-    preference_status: PreferenceStatus
-    kb_suggested_status: KBSuggestedStatus
-    voice_profile_status: VoiceProfileStatus | None = None
-    output_budget_profile: str | None = None
-    final_prompt_validated: bool
-    validation_errors: tuple[str, ...] = ()
-    audit_state: AuditState
-
-
 def _rebuild_forward_refs() -> None:
     """Resolve Pydantic forward refs after moving type imports under TYPE_CHECKING."""
+    from uuid import UUID as _UUID
+
     from narrare_core.llm.intents import LLMIntent
     from narrare_core.prompts.context import PromptContext
 
     PromptInvocationContext.model_rebuild(
         _types_namespace={
+            "UUID": _UUID,
             "LLMIntent": LLMIntent,
             "PromptContext": PromptContext,
         },

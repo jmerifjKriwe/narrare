@@ -4,7 +4,7 @@
     {
       "id": "coverage-threshold",
       "gate": "G2",
-      "description": "Ratcheted baselines enforce no-regression (blocking in --fail). RULE-10 targets are aspirational (warning-only). Current: ~82% global, 6 modules below target, 0 regressions. Stage 1 ACHIEVED (14→6). Stage 2 approaching (CI fail <80%). See scripts/coverage_baselines.json.",
+      "description": "Ratcheted baselines enforce no-regression (blocking in --fail). RULE-10 targets are aspirational (warning-only). Current: ~82% global, 1 module below target (planning 78.4%), 0 regressions. Stage 1 ACHIEVED (14→1). Stage 2 approaching (CI fail <80%). See scripts/coverage_baselines.json.",
       "set_date": "2026-06-04",
       "expires": "2026-12-01",
       "review_after": "2026-09-13",
@@ -12,7 +12,7 @@
       "approved_by": "user",
       "baseline_measured": "2026-06-13",
       "baseline_global_pct": 82.45,
-      "baseline_modules_below_target": 3,
+      "baseline_modules_below_target": 1,
       "baseline_modules_total": 49,
       "exit_criteria": "All modules meet RULE-10 targets: core/ >= 90% (llm/prompts >= 95%), apps/api/ >= 80%. Exception can be closed when 0 modules are below target.",
       "ramp_steps": [

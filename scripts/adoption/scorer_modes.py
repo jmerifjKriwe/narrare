@@ -9,10 +9,7 @@ Introduced with the v2.0.0 adoption-registry.yaml format.
 
 from __future__ import annotations
 
-import json
-import logging
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from adoption._scorer_evidence import apply_evidence_override
@@ -21,10 +18,10 @@ from adoption.scorer import (
     PASS_THRESHOLD,
     WEIGHT_MUST,
     WEIGHT_SHOULD,
-    CheckDetail,
     status,
 )
 from adoption.scorer_checks import check_infrastructure
+from adoption.scorer_models import CheckDetail
 
 
 @dataclass
@@ -72,34 +69,10 @@ _RUNTIME_NOTE: dict[str, str] = {
 
 
 def load_probe_evidence(evidence_dir: str) -> dict[str, set[str]]:
-    """Load probe evidence from an ``invocations.jsonl`` file.
+    """Backward-compatible wrapper for the central evidence loader."""
+    from adoption.scorer_evidence import load_probe_evidence as _load_probe_evidence
 
-    Reads each line of ``<evidence_dir>/invocations.jsonl`` as a JSON object
-    with ``feature_id`` and ``mode`` fields, and returns a dict grouping
-    modes by feature_id.
-
-    Returns an empty dict if the directory or file does not exist.
-    Skips lines that are empty or not valid JSON.
-    """
-    ev_path = Path(evidence_dir) / "invocations.jsonl"
-    if not ev_path.is_file():
-        return {}
-
-    result: dict[str, set[str]] = {}
-    for line in ev_path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        try:
-            record = json.loads(stripped)
-        except json.JSONDecodeError:
-            logging.debug("Skipping invalid JSON line in %s: %s", ev_path, line)
-            continue
-        feature_id = record.get("feature_id")
-        mode = record.get("mode")
-        if feature_id is not None and mode is not None:
-            result.setdefault(feature_id, set()).add(mode)
-    return result
+    return _load_probe_evidence(evidence_dir=evidence_dir)
 
 
 def _check_runtime_requirements(

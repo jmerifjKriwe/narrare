@@ -113,7 +113,13 @@ def load_registry(path: Path) -> dict[str, Any]:
 
 # ── Output formatting ──────────────────────────────────────────────
 
-_STATUS_ICON = {"PASS": "✅", "WARN": "⚠️ ", "FAIL": "❌"}  # nosec B105
+_STATUS_ICON = {
+    "PASS": "✅",
+    "WARN": "⚠️ ",
+    "FAIL": "❌",
+    "STATIC_ONLY": "i ",
+    "GOVERNED_DEBT": "⚠️ ",
+}  # nosec B105
 
 
 def _format_human(report: AdoptionReport) -> str:
@@ -235,9 +241,9 @@ def _format_json(report: AdoptionReport) -> str:
 
 
 def _exit_code(status: str) -> int:
-    if status == "PASS":
+    if status in {"PASS", "STATIC_ONLY"}:
         return 0
-    if status == "WARN":
+    if status in {"WARN", "GOVERNED_DEBT"}:
         return 2
     return 1
 
@@ -300,7 +306,28 @@ def main() -> int:
         default=False,
         help="Use EvidenceRepository for probe evidence (production mode).",
     )
+    parser.add_argument(
+        "--static-only",
+        action="store_true",
+        default=False,
+        help=(
+            "Explicitly run without runtime evidence and label runtime-required modes STATIC_ONLY."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.evidence_repo:
+        print(
+            "ERROR: --evidence-repo is not supported by this standalone script until "
+            "a script-side EvidenceRepository adapter is wired. Use --evidence-dir "
+            "or --static-only.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.static_only and args.evidence_dir is not None:
+        print("ERROR: --static-only cannot be combined with --evidence-dir.", file=sys.stderr)
+        return 1
 
     registry = load_registry(args.registry)
 
@@ -324,6 +351,7 @@ def main() -> int:
     else:
         print(_format_human(report))
 
+    exit_code = _exit_code(report.status)
     if not args.no_baseline:
         comparison = compare_section(
             adoption_debt_fingerprints(report),
@@ -333,6 +361,8 @@ def main() -> int:
         print(format_comparison(comparison, "Adoption debt ratchet"))
         if not comparison.ok:
             return 1
+        if report.status == "GOVERNED_DEBT":
+            exit_code = 0
 
     if args.audit:
         audit = build_audit_report(report, registry, args.baseline)
@@ -362,7 +392,7 @@ def main() -> int:
         if doc_result != 0:
             print(f"\n⚠️  Doc drift check returned exit code {doc_result}")
 
-    return _exit_code(report.status)
+    return exit_code
 
 
 if __name__ == "__main__":

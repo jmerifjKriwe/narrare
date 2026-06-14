@@ -23,20 +23,19 @@ Thresholds:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from adoption import report_status
 from adoption.scorer_checks import check_infrastructure
+from adoption.scorer_models import AdoptionReport, CategoryScore, CheckDetail
 
 if TYPE_CHECKING:
     from prompt_checks import PromptFile
 
-    from adoption.scorer_modes import ModeScore
-
 # ── Constants ──────────────────────────────────────────────────────
 
-PASS_THRESHOLD = 0.85
-WARN_THRESHOLD = 0.70
+PASS_THRESHOLD = report_status.PASS_THRESHOLD
+WARN_THRESHOLD = report_status.WARN_THRESHOLD
 
 WEIGHT_MUST = 1.0
 WEIGHT_SHOULD = 0.3
@@ -60,58 +59,7 @@ def _required_locales_for(category: str) -> set[str]:
     return {"en"}
 
 
-# ── Data structures ────────────────────────────────────────────────
-
-
-@dataclass
-class CheckDetail:
-    """One dimension of the adoption check."""
-
-    name: str
-    weight: float
-    adopted: float  # 0.0-1.0 (for partial: 0.5 when missing)
-    applicable: bool = True
-    note: str = ""
-
-
-@dataclass
-class CategoryScore:
-    """Adoption score for a single feature category."""
-
-    category: str
-    score: float
-    status: str  # "PASS" | "WARN" | "FAIL"
-    details: list[CheckDetail] = field(default_factory=list[CheckDetail])
-    missing_must: list[str] = field(default_factory=list[str])
-    missing_should: list[str] = field(default_factory=list[str])
-    missing_locales: dict[str, list[str]] = field(default_factory=dict[str, list[str]])
-    inline_fallbacks: int = 0
-    modes: list[ModeScore] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType] — circular TYPE_CHECKING dep
-
-
-@dataclass
-class AdoptionReport:
-    """Complete adoption report across all feature categories."""
-
-    overall_score: float
-    status: str  # "PASS" | "WARN" | "FAIL"
-    categories: list[CategoryScore] = field(default_factory=list[CategoryScore])
-    total_inline_fallbacks: int = 0
-    mode_count: int = 0
-    runtime_verified_count: int = 0
-    adopted_count: int = 0
-    runtime_evidence_gap_count: int = 0
-
-
 # ── Helpers ────────────────────────────────────────────────────────
-
-
-def status(score: float) -> str:
-    if score >= PASS_THRESHOLD:
-        return "PASS"
-    if score >= WARN_THRESHOLD:
-        return "WARN"
-    return "FAIL"
 
 
 def _collect_category_vars(
@@ -225,6 +173,7 @@ def compute_adoption_report(
     probe_evidence: dict[str, set[str]] = {}
     val_evidence: dict[str, set[str]] = {}
     budget_evidence: dict[str, set[str]] = {}
+    evidence_source_declared = evidence_dir is not None or evidence_repo is not None
     if evidence_dir:
         pref_evidence = load_preference_enrichment_evidence(evidence_dir)
         probe_evidence = load_probe_evidence(evidence_dir=evidence_dir)
@@ -348,11 +297,16 @@ def compute_adoption_report(
             validation_evidence=val_evidence or None,
             budget_evidence=budget_evidence or None,
         )
+        static_cat_status = report_status.status(score)
         categories.append(
             CategoryScore(
                 category=cat_name,
                 score=score,
-                status=status(score),
+                status=report_status.classify_category_status(
+                    static_cat_status,
+                    mode_scores,
+                    evidence_source_declared=evidence_source_declared,
+                ),
                 details=details,
                 missing_must=missing_must,
                 missing_should=missing_should,
@@ -363,15 +317,23 @@ def compute_adoption_report(
         )
 
     overall = (sum(c.score for c in categories) / len(categories)) if categories else 1.0
+    static_report_status = report_status.status(overall)
     return AdoptionReport(
         overall_score=overall,
-        status=status(overall),
+        status=report_status.classify_report_status(
+            static_report_status,
+            categories,
+            evidence_source_declared=evidence_source_declared,
+        ),
         categories=categories,
         total_inline_fallbacks=len(fallbacks),
         mode_count=sum(len(c.modes) for c in categories),
         runtime_verified_count=sum(1 for c in categories for m in c.modes if m.runtime_verified),
         adopted_count=sum(1 for c in categories for m in c.modes if m.adopted),
-        runtime_evidence_gap_count=sum(
-            1 for c in categories for m in c.modes if m.requires_runtime_evidence and not m.adopted
-        ),
+        runtime_evidence_gap_count=report_status.runtime_gap_count(categories),
     )
+
+
+def status(score: float) -> str:
+    """Backward-compatible export for static adoption status."""
+    return report_status.status(score)

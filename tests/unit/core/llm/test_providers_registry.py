@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic_ai.models.test import TestModel
 
 from narrare_core.llm._providers.registry import (
     available,
@@ -203,3 +204,34 @@ class TestProviderFactoryCredentials:
         params = sig.parameters
         assert "api_key" in params, f"{provider_name} factory missing api_key param"
         assert "base_url" in params, f"{provider_name} factory missing base_url param"
+
+
+class TestE2ETestMode:
+    """When NARRARE_E2E_TEST is set, get() returns a TestModel factory.
+
+    This overrides all registered providers with pydantic-ai's TestModel so
+    no real LLM calls are made during E2E tests (prevents 401 from unset keys).
+    """
+
+    @pytest.fixture(autouse=True)
+    def _set_e2e_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("NARRARE_E2E_TEST", "1")
+
+    def test_e2e_env_returns_test_model_factory(self) -> None:
+        factory = get("openai")
+        model = factory("gpt-4o")
+        assert isinstance(model, TestModel)
+
+    def test_e2e_factory_ignores_credentials(self) -> None:
+        """The E2E factory ignores api_key/base_url — always returns TestModel."""
+        factory = get("anthropic")
+        model = factory("claude-sonnet-4-5", api_key="sk-test", base_url="https://proxy")
+        assert isinstance(model, TestModel)
+
+    @pytest.mark.parametrize(
+        "provider_name",
+        ["anthropic", "openai", "google", "groq", "openrouter", "zai", "ollama"],
+    )
+    def test_e2e_env_works_for_all_providers(self, provider_name: str) -> None:
+        factory = get(provider_name)
+        assert isinstance(factory("test-model"), TestModel)
