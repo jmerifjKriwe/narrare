@@ -26,21 +26,27 @@ def _get_auth_service(
     return AuthService(repo=AuthRepository(session), settings=settings)
 
 
-def _register_rate_limiter() -> _RateLimiterDep:
-    """Lazy rate limiter for registration — 3 requests/minute."""
-    return _RateLimiterDep(Limiter(Rate(3, Duration.MINUTE * 1)))
+_REGISTER_LIMITER = _RateLimiterDep(Limiter(Rate(3, Duration.MINUTE * 1)))
+"""Module-level rate limiter for registration — 3 requests/minute.
 
+Must be a module-level singleton (not a factory function) so the same
+``Limiter`` instance is shared across all requests.  A factory function
+would create a new ``Limiter`` per request and rate limits would never
+accumulate — see ``narrare._app.rate_limits`` docstring for details.
+"""
 
-def _login_rate_limiter() -> _RateLimiterDep:
-    """Lazy rate limiter for login — 5 requests/minute."""
-    return _RateLimiterDep(Limiter(Rate(5, Duration.MINUTE * 1)))
+_LOGIN_LIMITER = _RateLimiterDep(Limiter(Rate(5, Duration.MINUTE * 1)))
+"""Module-level rate limiter for login — 5 requests/minute.
+
+Same singleton requirement as ``_REGISTER_LIMITER``.
+"""
 
 
 @router.post(
     "/register",
     response_model=TokenResponse,
     status_code=201,
-    dependencies=[Depends(_register_rate_limiter)],
+    dependencies=[Depends(_REGISTER_LIMITER)],
 )
 async def register(
     request: RegisterRequest,
@@ -57,7 +63,7 @@ async def register(
 @router.post(
     "/login",
     response_model=TokenResponse,
-    dependencies=[Depends(_login_rate_limiter)],
+    dependencies=[Depends(_LOGIN_LIMITER)],
 )
 async def login(
     request: LoginRequest,
