@@ -17,7 +17,7 @@ dev = [
   "pytest-asyncio==1.4.0",
   "pytest-cov==7.1.0",
   "bandit==1.9.4",
-  "pip-audit==2.10.0",
+  "pip-audit==2.10.1",
   "pytest-xdist>=3.6",
   "pytest-randomly==4.1.0",
   "pytest-timeout>=2.3",
