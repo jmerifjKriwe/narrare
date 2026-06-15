@@ -73,6 +73,9 @@ logs/
 # Coverage
 .coverage.*
 
+# Coverage reports (root level)
+coverage.*.xml
+
 # pytest-cov intermediate files
 *,cover
 

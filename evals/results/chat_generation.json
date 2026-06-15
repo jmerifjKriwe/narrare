@@ -1,0 +1,174 @@
+{
+  "version": 2,
+  "framework": "pydantic-evals",
+  "suite": "chat_generation",
+  "mode": "smoke",
+  "report_name": "chat_generation_task",
+  "created_at": "2026-06-13T08:19:25.368934+00:00",
+  "cases": [
+    {
+      "name": "chat-mood-and-atmosphere",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "Describe walking through a misty graveyard at midnight.",
+        "draft_output": null,
+        "word_count": 8
+      }
+    },
+    {
+      "name": "chat-character-backstory",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "Three backstories for a blacksmith who finds a magical anvil.",
+        "draft_output": null,
+        "word_count": 10
+      }
+    },
+    {
+      "name": "chat-worldbuilding-question",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "Explain how a floating city collects rainwater and grows food.",
+        "draft_output": null,
+        "word_count": 10
+      }
+    },
+    {
+      "name": "draft-chapter-opening",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "The city of Aethra was not built so much as grown — coral-like spires of obsidian and pearl that rose from the desert floor over centuries. Kaelen pressed his palm against the gate, and the stone remembered him.",
+        "draft_output": {
+          "text": "The city of Aethra was not built so much as grown — coral-like spires of obsidian and pearl that rose from the desert floor over centuries. Kaelen pressed his palm against the gate, and the stone remembered him.",
+          "title": "Draft: The city of Aethra was not bui",
+          "scene_breaks": [
+            15,
+            30
+          ],
+          "word_count": 38,
+          "metadata": {}
+        },
+        "word_count": 38
+      }
+    },
+    {
+      "name": "draft-dialogue-scene",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "\"You cannot cross the Veil,\" said the ferryman, his voice like dry leaves scraping stone. \"Not without payment.\" Lyra held up a single silver coin. \"Will this suffice?\" The ferryman's hollow eyes gleamed.",
+        "draft_output": {
+          "text": "\"You cannot cross the Veil,\" said the ferryman, his voice like dry leaves scraping stone. \"Not without payment.\" Lyra held up a single silver coin. \"Will this suffice?\" The ferryman's hollow eyes gleamed.",
+          "title": "Draft: \"You cannot cross the Veil,\" s",
+          "scene_breaks": [
+            15,
+            30
+          ],
+          "word_count": 33,
+          "metadata": {}
+        },
+        "word_count": 33
+      }
+    },
+    {
+      "name": "draft-action-sequence",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "The wyrm's tail smashed through the colonnade, sending pillars of veined marble crashing into the courtyard. Sera rolled sideways, came up with her blade glowing white-hot, and charged before the beast could reorient.",
+        "draft_output": {
+          "text": "The wyrm's tail smashed through the colonnade, sending pillars of veined marble crashing into the courtyard. Sera rolled sideways, came up with her blade glowing white-hot, and charged before the beast could reorient.",
+          "title": "Draft: The wyrm's tail smashed throug",
+          "scene_breaks": [
+            15,
+            30
+          ],
+          "word_count": 33,
+          "metadata": {}
+        },
+        "word_count": 33
+      }
+    },
+    {
+      "name": "suggest-forest-description",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "The ancient forest was silent except for the",
+        "draft_output": null,
+        "word_count": 8
+      }
+    },
+    {
+      "name": "suggest-dialogue-beat",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "\"I never meant to betray you,\" she whispered, her voice",
+        "draft_output": null,
+        "word_count": 10
+      }
+    },
+    {
+      "name": "suggest-transition",
+      "scores": {
+        "ChatGenerationOutputValidator": 1.0,
+        "ChatDraftStructureMatch": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "text": "Days turned into weeks, and the mountain pass showed no",
+        "draft_output": null,
+        "word_count": 10
+      }
+    }
+  ],
+  "failures": [],
+  "rendered": "                    Evaluation Summary: chat_generation_task                    \n┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓\n┃ Case ID       ┃ Inputs         ┃ Outputs       ┃ Scores         ┃ Assertions ┃\n┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩\n│ chat-mood-an… │ agent_type='ch │ text='Describ │ ChatGeneration │ ✔          │\n│               │ at'            │ e walking     │ OutputValidato │            │\n│               │ prompt_text='D │ through a     │ r: 1.00        │            │\n│               │ escribe        │ misty         │ ChatDraftStruc │            │\n│               │ walking        │ graveyard at  │ tureMatch:     │            │\n│               │ through a      │ midnight.'    │ 1.00           │            │\n│               │ misty          │ draft_output= │                │            │\n│               │ graveyard at   │ None          │                │            │\n│               │ midnight.'     │ word_count=8  │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ chat-charact… │ agent_type='ch │ text='Three   │ ChatGeneration │ ✔          │\n│               │ at'            │ backstories   │ OutputValidato │            │\n│               │ prompt_text='T │ for a         │ r: 1.00        │            │\n│               │ hree           │ blacksmith    │ ChatDraftStruc │            │\n│               │ backstories    │ who finds a   │ tureMatch:     │            │\n│               │ for a          │ magical       │ 1.00           │            │\n│               │ blacksmith who │ anvil.'       │                │            │\n│               │ finds a        │ draft_output= │                │            │\n│               │ magical        │ None          │                │            │\n│               │ anvil.'        │ word_count=10 │                │            │\n│               │ genre='Fantasy │               │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ chat-worldbu… │ agent_type='ch │ text='Explain │ ChatGeneration │ ✔          │\n│               │ at'            │ how a         │ OutputValidato │            │\n│               │ prompt_text='E │ floating city │ r: 1.00        │            │\n│               │ xplain how a   │ collects      │ ChatDraftStruc │            │\n│               │ floating city  │ rainwater and │ tureMatch:     │            │\n│               │ collects       │ grows food.'  │ 1.00           │            │\n│               │ rainwater and  │ draft_output= │                │            │\n│               │ grows food.'   │ None          │                │            │\n│               │ genre='Fantasy │ word_count=10 │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ draft-chapte… │ agent_type='dr │ text='The     │ ChatGeneration │ ✔          │\n│               │ aft'           │ city of       │ OutputValidato │            │\n│               │ prompt_text='T │ Aethra was    │ r: 1.00        │            │\n│               │ he city of     │ not built so  │ ChatDraftStruc │            │\n│               │ Aethra was not │ much as grown │ tureMatch:     │            │\n│               │ built so much  │ — coral-like  │ 1.00           │            │\n│               │ as grown —     │ spires of     │                │            │\n│               │ coral-like     │ obsidian and  │                │            │\n│               │ spires of      │ pearl that    │                │            │\n│               │ obsidian and   │ rose from the │                │            │\n│               │ pearl that     │ desert floor  │                │            │\n│               │ rose from the  │ over          │                │            │\n│               │ desert floor   │ centuries.    │                │            │\n│               │ over           │ Kaelen        │                │            │\n│               │ centuries.     │ pressed his   │                │            │\n│               │ Kaelen pressed │ palm against  │                │            │\n│               │ his palm       │ the gate, and │                │            │\n│               │ against the    │ the stone     │                │            │\n│               │ gate, and the  │ remembered    │                │            │\n│               │ stone          │ him.'         │                │            │\n│               │ remembered     │ draft_output= │                │            │\n│               │ him.'          │ DraftOutputFi │                │            │\n│               │ genre='Fantasy │ eld(text='The │                │            │\n│               │ '              │  city of      │                │            │\n│               │ language='en'  │ Aethra was    │                │            │\n│               │                │ not built so  │                │            │\n│               │                │ much as grown │                │            │\n│               │                │ — coral-like  │                │            │\n│               │                │ spires of     │                │            │\n│               │                │ obsidian and  │                │            │\n│               │                │ pearl that    │                │            │\n│               │                │ rose from the │                │            │\n│               │                │ desert floor  │                │            │\n│               │                │ over          │                │            │\n│               │                │ centuries.    │                │            │\n│               │                │ Kaelen        │                │            │\n│               │                │ pressed his   │                │            │\n│               │                │ palm against  │                │            │\n│               │                │ the gate, and │                │            │\n│               │                │ the stone     │                │            │\n│               │                │ remembered    │                │            │\n│               │                │ him.',        │                │            │\n│               │                │ title='Draft: │                │            │\n│               │                │ The city of   │                │            │\n│               │                │ Aethra was    │                │            │\n│               │                │ not bui',     │                │            │\n│               │                │ scene_breaks= │                │            │\n│               │                │ [15, 30],     │                │            │\n│               │                │ word_count=38 │                │            │\n│               │                │ ,             │                │            │\n│               │                │ metadata={})  │                │            │\n│               │                │ word_count=38 │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ draft-dialog… │ agent_type='dr │ text='\"You    │ ChatGeneration │ ✔          │\n│               │ aft'           │ cannot cross  │ OutputValidato │            │\n│               │ prompt_text='\" │ the Veil,\"    │ r: 1.00        │            │\n│               │ You cannot     │ said the      │ ChatDraftStruc │            │\n│               │ cross the      │ ferryman, his │ tureMatch:     │            │\n│               │ Veil,\" said    │ voice like    │ 1.00           │            │\n│               │ the ferryman,  │ dry leaves    │                │            │\n│               │ his voice like │ scraping      │                │            │\n│               │ dry leaves     │ stone. \"Not   │                │            │\n│               │ scraping       │ without       │                │            │\n│               │ stone. \"Not    │ payment.\"     │                │            │\n│               │ without        │ Lyra held up  │                │            │\n│               │ payment.\" Lyra │ a single      │                │            │\n│               │ held up a      │ silver coin.  │                │            │\n│               │ single silver  │ \"Will this    │                │            │\n│               │ coin. \"Will    │ suffice?\" The │                │            │\n│               │ this suffice?\" │ ferryman\\'s   │                │            │\n│               │ The            │ hollow eyes   │                │            │\n│               │ ferryman\\'s    │ gleamed.'     │                │            │\n│               │ hollow eyes    │ draft_output= │                │            │\n│               │ gleamed.'      │ DraftOutputFi │                │            │\n│               │ genre='Fantasy │ eld(text='\"Yo │                │            │\n│               │ '              │ u cannot      │                │            │\n│               │ language='en'  │ cross the     │                │            │\n│               │                │ Veil,\" said   │                │            │\n│               │                │ the ferryman, │                │            │\n│               │                │ his voice     │                │            │\n│               │                │ like dry      │                │            │\n│               │                │ leaves        │                │            │\n│               │                │ scraping      │                │            │\n│               │                │ stone. \"Not   │                │            │\n│               │                │ without       │                │            │\n│               │                │ payment.\"     │                │            │\n│               │                │ Lyra held up  │                │            │\n│               │                │ a single      │                │            │\n│               │                │ silver coin.  │                │            │\n│               │                │ \"Will this    │                │            │\n│               │                │ suffice?\" The │                │            │\n│               │                │ ferryman\\'s   │                │            │\n│               │                │ hollow eyes   │                │            │\n│               │                │ gleamed.',    │                │            │\n│               │                │ title='Draft: │                │            │\n│               │                │ \"You cannot   │                │            │\n│               │                │ cross the     │                │            │\n│               │                │ Veil,\" s',    │                │            │\n│               │                │ scene_breaks= │                │            │\n│               │                │ [15, 30],     │                │            │\n│               │                │ word_count=33 │                │            │\n│               │                │ ,             │                │            │\n│               │                │ metadata={})  │                │            │\n│               │                │ word_count=33 │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ draft-action… │ agent_type='dr │ text=\"The     │ ChatGeneration │ ✔          │\n│               │ aft'           │ wyrm's tail   │ OutputValidato │            │\n│               │ prompt_text=\"T │ smashed       │ r: 1.00        │            │\n│               │ he wyrm's tail │ through the   │ ChatDraftStruc │            │\n│               │ smashed        │ colonnade,    │ tureMatch:     │            │\n│               │ through the    │ sending       │ 1.00           │            │\n│               │ colonnade,     │ pillars of    │                │            │\n│               │ sending        │ veined marble │                │            │\n│               │ pillars of     │ crashing into │                │            │\n│               │ veined marble  │ the           │                │            │\n│               │ crashing into  │ courtyard.    │                │            │\n│               │ the courtyard. │ Sera rolled   │                │            │\n│               │ Sera rolled    │ sideways,     │                │            │\n│               │ sideways, came │ came up with  │                │            │\n│               │ up with her    │ her blade     │                │            │\n│               │ blade glowing  │ glowing       │                │            │\n│               │ white-hot, and │ white-hot,    │                │            │\n│               │ charged before │ and charged   │                │            │\n│               │ the beast      │ before the    │                │            │\n│               │ could          │ beast could   │                │            │\n│               │ reorient.\"     │ reorient.\"    │                │            │\n│               │ genre='Fantasy │ draft_output= │                │            │\n│               │ '              │ DraftOutputFi │                │            │\n│               │ language='en'  │ eld(text=\"The │                │            │\n│               │                │  wyrm's tail  │                │            │\n│               │                │ smashed       │                │            │\n│               │                │ through the   │                │            │\n│               │                │ colonnade,    │                │            │\n│               │                │ sending       │                │            │\n│               │                │ pillars of    │                │            │\n│               │                │ veined marble │                │            │\n│               │                │ crashing into │                │            │\n│               │                │ the           │                │            │\n│               │                │ courtyard.    │                │            │\n│               │                │ Sera rolled   │                │            │\n│               │                │ sideways,     │                │            │\n│               │                │ came up with  │                │            │\n│               │                │ her blade     │                │            │\n│               │                │ glowing       │                │            │\n│               │                │ white-hot,    │                │            │\n│               │                │ and charged   │                │            │\n│               │                │ before the    │                │            │\n│               │                │ beast could   │                │            │\n│               │                │ reorient.\",   │                │            │\n│               │                │ title=\"Draft: │                │            │\n│               │                │ The wyrm's    │                │            │\n│               │                │ tail smashed  │                │            │\n│               │                │ throug\",      │                │            │\n│               │                │ scene_breaks= │                │            │\n│               │                │ [15, 30],     │                │            │\n│               │                │ word_count=33 │                │            │\n│               │                │ ,             │                │            │\n│               │                │ metadata={})  │                │            │\n│               │                │ word_count=33 │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ suggest-fore… │ agent_type='in │ text='The     │ ChatGeneration │ ✔          │\n│               │ line_suggest'  │ ancient       │ OutputValidato │            │\n│               │ prompt_text='T │ forest was    │ r: 1.00        │            │\n│               │ he ancient     │ silent except │ ChatDraftStruc │            │\n│               │ forest was     │ for the'      │ tureMatch:     │            │\n│               │ silent except  │ draft_output= │ 1.00           │            │\n│               │ for the'       │ None          │                │            │\n│               │ genre='Fantasy │ word_count=8  │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ suggest-dial… │ agent_type='in │ text='\"I      │ ChatGeneration │ ✔          │\n│               │ line_suggest'  │ never meant   │ OutputValidato │            │\n│               │ prompt_text='\" │ to betray     │ r: 1.00        │            │\n│               │ I never meant  │ you,\" she     │ ChatDraftStruc │            │\n│               │ to betray      │ whispered,    │ tureMatch:     │            │\n│               │ you,\" she      │ her voice'    │ 1.00           │            │\n│               │ whispered, her │ draft_output= │                │            │\n│               │ voice'         │ None          │                │            │\n│               │ genre='Fantasy │ word_count=10 │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ suggest-tran… │ agent_type='in │ text='Days    │ ChatGeneration │ ✔          │\n│               │ line_suggest'  │ turned into   │ OutputValidato │            │\n│               │ prompt_text='D │ weeks, and    │ r: 1.00        │            │\n│               │ ays turned     │ the mountain  │ ChatDraftStruc │            │\n│               │ into weeks,    │ pass showed   │ tureMatch:     │            │\n│               │ and the        │ no'           │ 1.00           │            │\n│               │ mountain pass  │ draft_output= │                │            │\n│               │ showed no'     │ None          │                │            │\n│               │ genre='Fantasy │ word_count=10 │                │            │\n│               │ '              │               │                │            │\n│               │ language='en'  │               │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ Averages      │                │               │ ChatGeneration │ 100.0% ✔   │\n│               │                │               │ OutputValidato │            │\n│               │                │               │ r: 1.00        │            │\n│               │                │               │ ChatDraftStruc │            │\n│               │                │               │ tureMatch:     │            │\n│               │                │               │ 1.00           │            │\n└───────────────┴────────────────┴───────────────┴────────────────┴────────────┘\n"
+}
