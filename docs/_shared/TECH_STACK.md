@@ -184,8 +184,8 @@ for existing hashes during migration.
 **Role:** Password hashing and verification in `auth/security.py`.
 
 ### fastapi-limiter `>=0.1.6`
-**Why:** Redis-based, async-native rate limiting for FastAPI. No sync bottlenecks.
-**Role:** Per-endpoint and per-user rate limits. Uses existing Redis infrastructure.
+**Why:** Async-native rate limiting for FastAPI via `pyrate_limiter`.
+**Role:** Per-endpoint rate limits for AI-cost-bearing endpoints (AUFG-05-12). Currently in-memory only (no Redis init) — accepted risk AR-05-02 for local-first single-user deployment. Redis backend can be enabled when multi-user deployment requires distributed rate tracking.
 
 ---
 
@@ -346,7 +346,7 @@ Selection, Preference Analysis, and future suites that run through Narrare agent
 | node_semver | Was in dependencies, purpose unclear, removed |
 | `axios` | Native `fetch` handles all HTTP + SSE streaming — no extra library needed |
 | `styled-jsx` | Tailwind CSS v4 is the sole styling system — no CSS-in-JS |
-| `slowapi` | Replaced by fastapi-limiter (async-native, Redis-based) |
+| `slowapi` | Replaced by fastapi-limiter (async-native, in-memory via pyrate_limiter) |
 | `bcrypt` | Replaced by argon2-cffi (PHC winner, stronger against GPU/ASIC) |
 | `prometheus-client` | Replaced by OpenTelemetry SDK (vendor-neutral, distributed tracing) |
 | Langfuse | Superseded by OpenTelemetry-only tracing (ADR-031); no core runtime dependency |
