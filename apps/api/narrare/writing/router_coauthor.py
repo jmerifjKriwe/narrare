@@ -10,16 +10,15 @@ metadata in the final SSE event.
 
 from __future__ import annotations
 
-import json
 import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter type resolution
-from typing import TYPE_CHECKING
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
-from narrare._app.observability import enrich_sse_data
+from narrare._app.rate_limits import AI_WRITE_LIMITER
 from narrare.chapters.schemas import ChapterResponse
+from narrare.writing._coauthor_sse import coauthor_event_stream
 from narrare.writing.deps import get_coauthor_apply_service, get_coauthor_service
 from narrare.writing.schemas_coauthor import (
     ApplyChangesRequest,
@@ -27,14 +26,13 @@ from narrare.writing.schemas_coauthor import (
     CoAuthorRequest,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-    from typing import Any
-
 router = APIRouter(prefix="/writing", tags=["writing"])
 
 
-@router.post("/chapters/{chapter_id}/co-author")
+@router.post(
+    "/chapters/{chapter_id}/co-author",
+    dependencies=[Depends(AI_WRITE_LIMITER)],
+)
 async def coauthor_chapter(
     chapter_id: uuid.UUID,
     novel_id: uuid.UUID,
@@ -70,46 +68,10 @@ async def coauthor_chapter(
     # when ConflictError/NotFoundError fires after headers are sent.
     await service.validate_coauthor(chapter_id, novel_id, request)
 
-    async def event_stream() -> AsyncIterator[str]:
-        async for chunk in service.stream_coauthor(
-            chapter_id,
-            novel_id,
-            user_id,
-            request,
-        ):
-            # CR-07 context metadata event — always the first chunk from
-            # the pipeline (is_final=False, context_meta has KB context data).
-            if chunk.context_meta is not None and not chunk.is_final:
-                meta_data: dict[str, Any] = {"type": "context_meta"}
-                meta_data.update(chunk.context_meta)
-                yield f"data: {json.dumps(enrich_sse_data(meta_data))}\n\n"
-                continue
-
-            # Normal text chunk (includes the final chunk with diff metadata)
-            data: dict[str, Any] = {"text": chunk.text}
-            if chunk.is_final:
-                data["is_final"] = True
-                # Co-author diff metadata from pipeline_coauthor
-                if chunk.context_meta is not None:
-                    for key in (
-                        "changes",
-                        "total_changes",
-                        "has_changes",
-                        "reasoning",
-                        "request_id",
-                    ):
-                        if key in chunk.context_meta:
-                            data[key] = chunk.context_meta[key]
-            if chunk.usage is not None:
-                data["usage"] = {
-                    "prompt_tokens": chunk.usage.prompt_tokens,
-                    "completion_tokens": chunk.usage.completion_tokens,
-                    "total_tokens": chunk.usage.total_tokens,
-                }
-            yield f"data: {json.dumps(enrich_sse_data(data))}\n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        coauthor_event_stream(service, chapter_id, novel_id, user_id, request),
+        media_type="text/event-stream",
+    )
 
 
 @router.post("/chapters/{chapter_id}/co-author/apply")

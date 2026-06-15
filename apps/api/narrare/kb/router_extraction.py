@@ -11,6 +11,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies import get_extraction_service
 from narrare.kb.extraction_service import ExtractionService
 from narrare.kb.schemas_extraction import ApplyExtractionRequest, ApplyExtractionResponse
@@ -46,7 +47,10 @@ async def apply_extraction(
         raise HTTPException(status_code=500, detail="Apply extraction failed") from exc
 
 
-@router.post("/novels/{novel_id}/kb/extract/{chapter_id}")
+@router.post(
+    "/novels/{novel_id}/kb/extract/{chapter_id}",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
+)
 async def extract_chapter(
     novel_id: UUID,
     chapter_id: UUID,

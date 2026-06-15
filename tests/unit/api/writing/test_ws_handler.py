@@ -32,8 +32,10 @@ from fastapi import WebSocketDisconnect
 
 from narrare.writing._ws_cache import InMemorySessionCache
 from narrare.writing.ws_handler import WritingSessionHandler
+from narrare_core.ai_invocation.pipeline import InvocationPipeline
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
+from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.writing.session_manager import SessionManager
 
@@ -123,7 +125,11 @@ def _make_config() -> ResolvedModelConfig:
 def _make_handler(
     mode: str = "interactive_session",
 ) -> tuple[WritingSessionHandler, SessionManager, Mock, _FakeComposer]:
-    """Create a WritingSessionHandler with mock dependencies."""
+    """Create a WritingSessionHandler with mock dependencies.
+
+    Wires a real (no-op) InvocationPipeline and DefaultRunLimitResolver
+    so the full invocation contract runs for draft generation (ADR-045).
+    """
     cache = InMemorySessionCache()
     session_manager = SessionManager(cache=cache)
     registry = Mock()
@@ -139,6 +145,8 @@ def _make_handler(
         registry=registry,
         composer=cast("PromptComposer", composer),
         config=config,
+        invocation_pipeline=InvocationPipeline(),
+        run_limit_resolver=DefaultRunLimitResolver(),
         mode=mode,
     )
     return handler, session_manager, registry, composer
@@ -338,7 +346,7 @@ class TestGenerateDraft:
         assert draft_done[0]["word_count"] > 0
 
     async def test_generate_draft_uses_write_intent(self) -> None:
-        """generate_draft calls LLM with WRITE intent and new_chapter mode."""
+        """generate_draft calls LLM with WRITE intent and enforced limits."""
         handler, _, gateway, _ = _make_handler(mode="interview_assisted")
         gateway.stream = Mock(side_effect=_fake_stream_hello)
         ws = MockWebSocket()

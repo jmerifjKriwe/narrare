@@ -13,6 +13,7 @@ import uuid
 from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.analysis.beta_reader_service import BetaReaderService
 from narrare.analysis.dependencies import (
     get_beta_reader_service,
@@ -39,6 +40,7 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
     "/beta-reader",
     response_model=BetaReaderResponse,
     summary="Run beta reader analysis on chapter(s)",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
 )
 async def analyze_chapter(
     novel_id: uuid.UUID,
@@ -62,6 +64,7 @@ async def analyze_chapter(
     "/beta-reader/deep-dive",
     response_model=BetaReaderDeepDiveResponse,
     summary="Run Phase 2 deep-dive on a specific category",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
 )
 async def deep_dive_category(
     novel_id: uuid.UUID,

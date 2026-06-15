@@ -24,9 +24,11 @@ import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
 if TYPE_CHECKING:
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.result import StreamChunk
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.pipeline import WritingPipeline
     from narrare_core.writing.session_manager import SessionManager
@@ -48,6 +50,8 @@ class WritingSessionHandler:
         registry: ModelRegistry,
         composer: PromptComposer,
         config: ResolvedModelConfig,
+        invocation_pipeline: InvocationPipeline | None,
+        run_limit_resolver: DefaultRunLimitResolver,
         api_key: str | None = None,
         base_url: str | None = None,
         mode: str = "interactive_session",
@@ -58,10 +62,17 @@ class WritingSessionHandler:
         self._registry = registry
         self._composer = composer
         self._config = config
+        self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver
         self._api_key = api_key
         self._base_url = base_url
         self._mode = mode
         self._ws_idle_timeout = ws_idle_timeout
+        # Connection-scoped identifiers — populated by ``handle()`` and
+        # threaded into the invocation contract (ADR-045 Decision 6).
+        self._ctx_user_id: UUID | None = None
+        self._ctx_project_id: UUID | None = None
+        self._ctx_chapter_id: UUID | None = None
 
     async def handle(
         self,
@@ -76,6 +87,13 @@ class WritingSessionHandler:
         message loop.  Cleans up on disconnect or timeout.
         """
         await websocket.accept()
+
+        # Connection-scoped identifiers — threaded into the invocation
+        # contract for draft generation (ADR-045 Decision 6). The handler
+        # instance is per-connection, so this is safe single-use state.
+        self._ctx_user_id = UUID(user_id)
+        self._ctx_project_id = project_id
+        self._ctx_chapter_id = chapter_id
 
         session_id: UUID | None = None
         try:
@@ -161,9 +179,13 @@ class WritingSessionHandler:
                     }
                 )
         elif msg_type == "user_feedback":
-            await self._handle_feedback(websocket, session_id, data)
+            from narrare.writing._ws_session_handlers import handle_feedback
+
+            await handle_feedback(websocket, session_id, data, self._session_manager)
         elif msg_type == "save_to_chapter":
-            await self._handle_save(websocket, session_id)
+            from narrare.writing._ws_session_handlers import handle_save
+
+            await handle_save(websocket, session_id, self._session_manager)
         elif msg_type == "generate_draft" and self._mode == "interview_assisted":
             await self._handle_generate_draft(websocket, session_id)
         elif msg_type == "end_session":
@@ -260,62 +282,6 @@ class WritingSessionHandler:
                 }
             await websocket.send_json(msg)
 
-    async def _handle_feedback(
-        self,
-        websocket: WebSocket,
-        session_id: UUID,
-        data: dict[str, object],
-    ) -> None:
-        """Handle user feedback on generated text."""
-        action = data.get("action", "")
-        text = data.get("text", "")
-
-        if action == "accept" and isinstance(text, str) and text.strip():
-            await self._session_manager.append_prose(session_id, text)
-            await websocket.send_json(
-                {
-                    "type": "feedback_acknowledged",
-                    "action": "accept",
-                }
-            )
-        elif action == "reject":
-            await websocket.send_json(
-                {
-                    "type": "feedback_acknowledged",
-                    "action": "reject",
-                }
-            )
-        else:
-            await websocket.send_json(
-                {
-                    "type": "error",
-                    "message": f"Invalid feedback action: {action}",
-                }
-            )
-
-    async def _handle_save(
-        self,
-        websocket: WebSocket,
-        session_id: UUID,
-    ) -> None:
-        """Save prose buffer to chapter."""
-        try:
-            content = await self._session_manager.save_to_chapter(session_id)
-            await websocket.send_json(
-                {
-                    "type": "saved",
-                    "content": content,
-                    "word_count": len(content.split()),
-                }
-            )
-        except ValueError as e:
-            await websocket.send_json(
-                {
-                    "type": "error",
-                    "message": str(e),
-                }
-            )
-
     async def _handle_generate_draft(
         self,
         websocket: WebSocket,
@@ -323,20 +289,33 @@ class WritingSessionHandler:
     ) -> None:
         """Generate a full draft from collected interview answers.
 
-        Delegates to :class:`InterviewDraftGenerator` for transcript
-        formatting and draft streaming.
+        Delegates to :func:`dispatch_interview_draft`, which runs the
+        transport-agnostic generator through the invocation contract and
+        maps the result to WebSocket DTOs (ADR-045 Decision 6/7).
         """
-        from narrare.writing._interview_draft import InterviewDraftGenerator
+        from narrare.writing._ws_draft_dispatch import dispatch_interview_draft
 
-        generator = InterviewDraftGenerator(
+        # Connection identifiers are set in ``handle()`` before the message
+        # loop; this handler is only reachable from the loop.
+        assert self._ctx_user_id is not None
+        assert self._ctx_project_id is not None
+        assert self._ctx_chapter_id is not None
+
+        await dispatch_interview_draft(
+            websocket=websocket,
+            session_id=session_id,
+            user_id=self._ctx_user_id,
+            project_id=self._ctx_project_id,
+            chapter_id=self._ctx_chapter_id,
             session_manager=self._session_manager,
             registry=self._registry,
             composer=self._composer,
             config=self._config,
+            invocation_pipeline=self._invocation_pipeline,
+            run_limit_resolver=self._run_limit_resolver,
             api_key=self._api_key,
             base_url=self._base_url,
         )
-        await generator.generate(websocket, session_id)
 
     async def _handle_timeout(
         self,

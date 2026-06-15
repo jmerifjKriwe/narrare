@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.chat.dependencies import get_chat_service
 from narrare.chat.schemas import (
     ChatDeleteResponse,
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-@router.post("")
+@router.post("", dependencies=[Depends(AI_ANALYSIS_LIMITER)])
 async def chat(
     request: ChatRequest,
     user_id: CurrentUserIdDep,

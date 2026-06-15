@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-13 (ADR-047 Governance Drift Automation — P0 docs sync)
-Session: P0 documentation sync after ADR-047/AUFG-05-07..10 architecture work. ADR-047 is Proposed and indexed because ADR-044 is already occupied; ADR-046/ADR-047 are now reflected in CURRENT_STATE decision summaries. Counts updated for ADR entries, backend test files, and feature spec files. No AUFG registry, CONSTRAINTS.md §8, RULE-24, or governance-checker changes were made before ADR-047 user approval; no commit made.
+Date: 2026-06-15 (AUFG-05-12, AUFG-05-13, AUFG-05-14 — docs sync)
+Session: Documentation sync after AUFG-05-12/13/14 implementation. Three AUFGs resolved with exit evidence in aufg-registry.md. Observability guide /health response updated with severity vocabulary. Security audit and CSRF strategy documents updated to reflect completed implementation. Deployment guide updated with NARRARE_CSRF_TRUSTED_ORIGINS env var. ADR-047 status bumped to Implemented.
 
 ---
 
@@ -159,6 +159,9 @@ Completed in Phase 6 so far:
 52. ✅ **CR-01 Prompt Governance Remediation**: 23 bundled prompt templates remediated; user-content wrapping standardized to approved template-level XML wrappers; bundled output-language variables migrated to `{{writing_language}}`; `{{kb_suggested}}` boilerplate normalized; evidence/confidence/false-positive gates added to relevant prompts; `UNSAFE_USER_VARS` derives from `variable_registry.USER_CONTENT_VARS`; `scripts/prompt_governance_checks.py` added and documented. Validation reported PASS: Ruff, 34 script tests, `check_prompt_structure.py --strict`, `check_architecture.py`.
 53. ✅ **ADR-044 / CR-AUFG-01-06 Staged Consistency**: FactExtractorAgent + typed `ExtractedFact`/`TimelineEventEnvelope`, `FACT_EXTRACT` intent/route, enriched `ConsistencyDeps`, backend `ConsistencyOrchestrator`, `timeline_envelope.py`, `checker_context.py`, `stage_schemas.py`, `/consistency/check/stream`, and Pydantic Evals `consistency_staged` smoke/runtime tasks implemented. FIND-009 resolved by integration contract. Validation reported: 57 core tests, 77 backend consistency tests, 9 eval tests; Ruff, Pyright, architecture, prompt checks, and smoke evals passed.
 54. 🔧 **ADR-045 Runtime Adoption Enforcement (in progress)**: Core: invocation correlation (`invocation_id` + fingerprints), prompt context merge (RULE-22 precedence), run-limit enforcement (`RunLimitResolver`/`ResolvedRunLimits`), mem0 learning events, direct-agent helper. Platform: runtime gaps status-bearing (`PASS`/`GOVERNED_DEBT`/`STATIC_ONLY`/`FAIL`), `--evidence-repo` threading, placeholder evidence rejection. Backend: WebSocket handler modularized (354 lines, transport-only), turn service with user/project/chapter/session IDs, evidence schema migration 0030 (correlation columns), `comprehensive`+`conservative` profiles. Tests: 447+ core, 67 platform, 463 backend passed. **Follow-up:** 34 direct-agent call sites need migration, PersistentEvidenceSink production wiring, `_handle_generate_draft` bypass. `just check-adoption` now `STATIC_ONLY`; `--evidence-dir .evidence` returns `GOVERNED_DEBT`.
+55. ✅ **AUFG-05-12 — Rate-Limiting for AI endpoints**: Shared module at `apps/api/narrare/_app/rate_limits.py` provides 3 reusable AI limiters (`AI_WRITE_LIMITER` 3/min, `AI_ANALYSIS_LIMITER` 5/min, `AI_LIGHT_LIMITER` 10/min, `AI_WS_LIMITER` 3/min) plus `SETUP_MODELS_LIMITER` (10/min, IP-based). 17 router files wired via `Depends()`. WebSocket inline check in `router_sessions.py`. 14 unit tests. Uses in-memory `pyrate_limiter` per AR-05-02.
+56. ✅ **AUFG-05-13 — Origin/Referer validation + WebSocket Origin check**: `OriginValidationMiddleware` in `_app/middleware.py` validates Origin/Referer on all POST/PUT/PATCH/DELETE; Bearer-authenticated requests without Origin exempt. `Settings.csrf_trusted_origins` (`NARRARE_CSRF_TRUSTED_ORIGINS`). WebSocket Origin check in `router_sessions.py` (close code 4001). 12 unit tests.
+57. ✅ **AUFG-05-14 — OTel Health-Severity Implementation**: `get_observability_status()` extended with `state`/`severity`/`endpoint_configured` keys. `record_otel_setup_outcome()` records setup outcomes thread-safely. `setup_telemetry()` calls it on all 3 paths. `/health` returns `status: obs["severity"]` instead of hardcoded `"ok"`. 13 unit tests. RULE-11 silent-failure gap closed.
 
 ## What's Next
 
@@ -229,7 +232,7 @@ Completed in Phase 6 so far:
 | ADR-044 | Staged Multi-Agent Consistency Pipeline | ✅ Implemented — FactExtractorAgent → ConsistencyAgent, enriched TimelineEventEnvelope integration, SSE stage endpoint, and `consistency_staged` Pydantic Evals |
 | ADR-045 | Runtime Adoption Enforcement and Invocation Evidence Correlation | 🔧 In progress (Proposed, user-approved) — runtime gaps status-bearing (PASS/GOVERNED_DEBT/STATIC_ONLY); correlated evidence contract (`invocation_id` + fingerprints); prompt-context merge with RULE-22 precedence; run-limit enforcement (`RunLimitResolver`); WebSocket turn service modularization; mem0 learning events. Follow-up: 34 direct-agent call site migration, PersistentEvidenceSink wiring, `_handle_generate_draft` bypass |
 | ADR-046 | Prompt-Path-Compliance: Resolution-Path Retrofit & Prevention | 🔄 Proposed — resolution-path retrofit and prevention for prompt loading compliance across core prompts, chat, KB, planning, and architecture checks |
-| ADR-047 | Governance Drift Automation for Review Findings and AUFG Lifecycle | 🔄 Proposed — governance-health path for review findings, AUFG lifecycle, accepted-risk/enhancement states, and future SSOT drift aggregation. No registry, CONSTRAINTS.md §8, RULE-24, or governance-checker implementation before approval |
+| ADR-047 | Governance Drift Automation for Review Findings and AUFG Lifecycle | ✅ Implemented — Phase 1 (policy + docs) and Phase 2 (governance health checker) complete; AUFG-05-12/13/14 implementation complete |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 

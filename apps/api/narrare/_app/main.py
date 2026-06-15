@@ -14,7 +14,11 @@ from fastapi.responses import JSONResponse
 
 from narrare._app.config import get_settings
 from narrare._app.lifespan import lifespan
-from narrare._app.middleware import RequestLoggingMiddleware
+from narrare._app.middleware import (
+    OriginValidationMiddleware,
+    RequestLoggingMiddleware,
+    get_trusted_origins,
+)
 from narrare._app.telemetry import setup_telemetry
 from narrare_core.shared.errors import NarrareError
 
@@ -45,6 +49,15 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # --- CSRF Origin/Referer validation (defense-in-depth, AUFG-05-13) ---
+    # Skipped in test environment — TestClient simulates programmatic API
+    # calls which never carry an Origin header.
+    if not settings.is_test:
+        app.add_middleware(
+            OriginValidationMiddleware,
+            trusted_origins=get_trusted_origins(settings),
+        )
 
     # --- Request logging ---
     app.add_middleware(RequestLoggingMiddleware)

@@ -19,6 +19,7 @@ from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep
 from narrare._app.observability import enrich_sse_data
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.consistency.checker_service import ConsistencyCheckerService
 from narrare.consistency.deps import get_consistency_service
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
@@ -35,6 +36,7 @@ logger = structlog.get_logger(__name__)
     "/check",
     response_model=ConsistencyResponse,
     summary="Run consistency check on chapter(s)",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
 )
 async def check_consistency(
     novel_id: uuid.UUID,
@@ -58,6 +60,7 @@ async def check_consistency(
 @router.post(
     "/check/stream",
     summary="Stream staged consistency check with progressive results",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
 )
 async def stream_consistency_check(
     novel_id: uuid.UUID,
@@ -114,6 +117,7 @@ async def stream_consistency_check(
     "/chapters/{chapter_id}/check",
     response_model=ConsistencyResponse,
     summary="Check a single chapter for consistency",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
 )
 async def check_chapter(
     novel_id: uuid.UUID,

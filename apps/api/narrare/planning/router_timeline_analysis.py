@@ -9,13 +9,14 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.planning._timeline_analysis_factory import get_timeline_analysis_service
 from narrare.planning._timeline_consistency_factory import get_timeline_consistency_service
 from narrare.planning._timeline_extraction_factory import get_timeline_extraction_service
@@ -49,7 +50,7 @@ async def get_timeline_analysis(
 # Phase 2 endpoints — extraction and consistency (PLAN-004)
 
 
-@router.post("/{novel_id}/extract")
+@router.post("/{novel_id}/extract", dependencies=[Depends(AI_ANALYSIS_LIMITER)])
 async def extract_temporal_expressions(
     novel_id: uuid.UUID,
     request: ExtractionRequest,

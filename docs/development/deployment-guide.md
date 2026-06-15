@@ -479,6 +479,10 @@ OTEL_SERVICE_NAME=narrare-api
 # Include prompt/completion content in Pydantic-AI spans.
 # Defaults to true outside production and false when ENVIRONMENT=production.
 NARRARE_OTEL_INCLUDE_CONTENT=
+
+# CSRF protection — trusted origins for Origin/Referer validation
+# Comma-separated list; default: http://localhost:3000
+NARRARE_CSRF_TRUSTED_ORIGINS=http://localhost:3000
 ```
 
 ### NARRARE_ENCRYPTION_KEY
@@ -494,6 +498,22 @@ Required for AI provider features (multi-provider support, user API key storage)
 | Rotation | To rotate: generate new key, decrypt all keys with old key, re-encrypt with new key, update env var |
 
 The key is used by `core/shared/crypto.py` to encrypt API keys before storing them in the `user_providers` table and decrypt them only when constructing a provider instance for an LLM call. Keys are never logged or returned via API.
+
+### NARRARE_CSRF_TRUSTED_ORIGINS
+
+Configures trusted origins for the CSRF defense-in-depth Origin/Referer validation
+middleware. Requests from non-trusted origins receive HTTP 403.
+
+| Property | Value |
+|----------|-------|
+| Required | No |
+| Default | `http://localhost:3000` |
+| Description | Comma-separated list of allowed origins for state-changing requests (POST/PUT/PATCH/DELETE). Bearer-authenticated requests without Origin are exempt (programmatic clients). |
+| Production | Set to your deployed origin, e.g. `https://narrare.example.com` |
+| WebSocket | Same origin list used for WebSocket handshake validation (close code 4001 on mismatch) |
+
+Implemented by `OriginValidationMiddleware` in `apps/api/narrare/_app/middleware.py`
+per AUFG-05-13.
 
 ### Dev Login
 

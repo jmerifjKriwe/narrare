@@ -11,6 +11,7 @@ from uuid import UUID  # noqa: TC003 — needed at runtime for FastAPI path para
 from fastapi import APIRouter, Depends, HTTPException
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies import get_kb_session_service
 from narrare.kb.session_schemas import KBSessionCompleteResponse
 from narrare.kb.session_service import KBSessionService
@@ -18,7 +19,10 @@ from narrare.kb.session_service import KBSessionService
 router = APIRouter(tags=["kb-sessions"])
 
 
-@router.post("/novels/{novel_id}/kb/sessions/{session_id}/complete")
+@router.post(
+    "/novels/{novel_id}/kb/sessions/{session_id}/complete",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
+)
 async def complete_session(
     novel_id: UUID,
     session_id: UUID,

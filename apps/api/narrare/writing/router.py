@@ -10,10 +10,11 @@ import json
 import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter type resolution
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare._app.rate_limits import AI_WRITE_LIMITER
 from narrare.writing.deps import get_writing_service
 
 if TYPE_CHECKING:
@@ -33,7 +34,11 @@ router = APIRouter(prefix="/writing", tags=["writing"])
 # -- Generation lifecycle ---------------------------------------------
 
 
-@router.post("/chapters/{chapter_id}/generate", response_model=GenerateResponse)
+@router.post(
+    "/chapters/{chapter_id}/generate",
+    response_model=GenerateResponse,
+    dependencies=[Depends(AI_WRITE_LIMITER)],
+)
 async def start_generation(
     chapter_id: uuid.UUID,
     novel_id: uuid.UUID,

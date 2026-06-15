@@ -6,7 +6,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import (
     CurrentUserIdDep,
@@ -15,6 +15,7 @@ from narrare._app.dependencies import (
     get_model_registry,
 )
 from narrare._app.dependencies_services import get_model_routing_resolver
+from narrare._app.rate_limits import AI_LIGHT_LIMITER
 from narrare.generation.schemas import NameGenerateRequest, NameGenerateResponse
 
 if TYPE_CHECKING:
@@ -60,7 +61,9 @@ async def _get_service(
     )
 
 
-@router.post("/names", response_model=NameGenerateResponse)
+@router.post(
+    "/names", response_model=NameGenerateResponse, dependencies=[Depends(AI_LIGHT_LIMITER)]
+)
 async def generate_names(
     request: NameGenerateRequest,
     user_id: CurrentUserIdDep,

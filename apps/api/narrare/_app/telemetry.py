@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare._app.observability import record_otel_setup_outcome
 from narrare_core.agents.instrumentation import configure_pydantic_ai_instrumentation
 
 if TYPE_CHECKING:
@@ -48,6 +49,7 @@ def setup_telemetry(app: FastAPI) -> None:
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
     if not endpoint:
         logger.info("otel_disabled_no_endpoint")
+        record_otel_setup_outcome(endpoint_configured=False, succeeded=True)
         return
 
     try:
@@ -77,6 +79,7 @@ def setup_telemetry(app: FastAPI) -> None:
             tracer_provider=provider,
         )
 
+        record_otel_setup_outcome(endpoint_configured=True, succeeded=True)
         logger.info(
             "otel_configured",
             endpoint=endpoint,
@@ -84,5 +87,10 @@ def setup_telemetry(app: FastAPI) -> None:
             pydantic_ai_instrumented=True,
             include_content=include_content,
         )
-    except Exception:
+    except Exception as exc:
         logger.warning("otel_setup_failed", exc_info=True)
+        record_otel_setup_outcome(
+            endpoint_configured=True,
+            succeeded=False,
+            failure_reason=f"OTLP exporter setup raised: {exc}",
+        )

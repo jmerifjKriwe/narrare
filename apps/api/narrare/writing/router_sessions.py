@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, WebSocket
 
 from narrare._app.dependencies import get_agent_registry, get_composer, get_model_registry
+from narrare._app.rate_limits import AI_WS_LIMITER
 
 router = APIRouter(tags=["writing"])
 
@@ -46,6 +47,36 @@ async def interactive_session(
         await websocket.close(code=4001, reason="Missing user_id or project_id")
         return
 
+    # Origin validation (CSRF defense-in-depth, AUFG-05-13)
+    from narrare._app.config import get_settings
+
+    _settings = get_settings()
+    _trusted = _settings.csrf_trusted_origins
+    _origin = websocket.headers.get("origin", "")
+    if _origin and _origin not in _trusted:
+        await websocket.accept()
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "Origin not allowed",
+            }
+        )
+        await websocket.close(code=4001, reason="Origin not allowed")
+        return
+
+    # Rate-limit check (in-memory, AR-05-02)
+    ws_key = f"ws:writing:{user_id}:{chapter_id}"
+    if not AI_WS_LIMITER.try_acquire(ws_key, blocking=False):
+        await websocket.accept()
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "Rate limited — too many writing sessions. Try again later.",
+            }
+        )
+        await websocket.close(code=4003, reason="Rate limited")
+        return
+
     cache = InMemorySessionCache()
     session_manager = SessionManager(cache=cache)
     registry = get_model_registry()
@@ -54,6 +85,7 @@ async def interactive_session(
     # Resolve token limits from DB — replaces hardcoded defaults
     from narrare._app.config import get_settings
     from narrare._app.database import get_async_session
+    from narrare._app.dependencies_pipeline import get_invocation_pipeline
     from narrare.settings.token_limits.repository import (
         ProjectTokenLimitsRepository,
         UserTokenLimitsRepository,
@@ -78,6 +110,7 @@ async def interactive_session(
 
         from narrare._app.dependencies_services import get_model_routing_resolver
         from narrare_core.llm.intents import LLMIntent
+        from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
         resolver = get_model_routing_resolver(session)
         resolved = await resolver.resolve(
@@ -108,6 +141,8 @@ async def interactive_session(
         registry=registry,
         composer=composer,
         config=config,
+        invocation_pipeline=get_invocation_pipeline(),
+        run_limit_resolver=DefaultRunLimitResolver(),
         mode=mode,
         ws_idle_timeout=limits.ws_timeout,
     )

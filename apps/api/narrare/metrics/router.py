@@ -21,10 +21,16 @@ logger = structlog.get_logger(__name__)
 async def health() -> dict[str, Any]:
     """Liveness check — confirms the process is running.
 
-    Includes OTel availability status so operators can detect degraded
+    Includes OTel health-severity status so operators can detect degraded
     observability from the health endpoint.
+
+    ``status`` reflects the OTel severity (``healthy`` | ``degraded`` |
+    ``critical``).  HTTP 200 is returned for both ``healthy`` and ``degraded``
+    per liveness semantics (INV-OH-5).  ``critical`` semantics are reserved for
+    a future mandatory-telemetry deployment profile.
     """
-    return {"status": "ok", "observability": get_observability_status()}
+    obs = get_observability_status()
+    return {"status": obs["severity"], "observability": obs}
 
 
 @router.get("/ready")

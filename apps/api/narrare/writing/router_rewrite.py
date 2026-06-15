@@ -13,11 +13,12 @@ import json
 import uuid  # noqa: TC003 — needed at runtime for FastAPI path parameter type resolution
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
 from narrare._app.observability import enrich_sse_data
+from narrare._app.rate_limits import AI_WRITE_LIMITER
 from narrare.writing.deps import get_rewrite_service
 from narrare.writing.schemas_rewrite import RewriteRequest
 
@@ -28,7 +29,10 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/writing", tags=["writing"])
 
 
-@router.post("/chapters/{chapter_id}/rewrite")
+@router.post(
+    "/chapters/{chapter_id}/rewrite",
+    dependencies=[Depends(AI_WRITE_LIMITER)],
+)
 async def rewrite_chapter(
     chapter_id: uuid.UUID,
     novel_id: uuid.UUID,

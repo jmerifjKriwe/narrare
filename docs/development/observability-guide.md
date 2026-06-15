@@ -103,31 +103,58 @@ Observability must degrade visibly, not silently.
 - If OpenTelemetry imports or tracer lookup fail, helpers return empty trace
   context or no-op tracers instead of crashing request handling.
 - The first unavailable/degraded state emits one structured warning via structlog.
-- `/health` includes the current observability state:
+- `/health` includes the current observability state with severity vocabulary:
 
 ```json
 {
-  "status": "ok",
+  "status": "healthy",
   "observability": {
     "available": true,
+    "state": "configured_ok",
+    "severity": "healthy",
+    "endpoint_configured": true,
     "failure_reason": "",
     "warning_emitted": false
   }
 }
 ```
 
-When OTel is unavailable:
+When OTel is unavailable (package not installed):
 
 ```json
 {
-  "status": "ok",
+  "status": "degraded",
   "observability": {
     "available": false,
+    "state": "package_unavailable",
+    "severity": "degraded",
+    "endpoint_configured": false,
     "failure_reason": "ImportError: No module named 'opentelemetry.trace'",
     "warning_emitted": true
   }
 }
 ```
+
+When OTel is configured but setup failed:
+
+```json
+{
+  "status": "degraded",
+  "observability": {
+    "available": false,
+    "state": "configured_failed",
+    "severity": "degraded",
+    "endpoint_configured": true,
+    "failure_reason": "OTel setup failed: connection refused",
+    "warning_emitted": true
+  }
+}
+```
+
+**Severity values:** `healthy`/`degraded`/`critical` map to the CI governance
+vocabulary in `scripts/check_system_health.py`. DEGRADED is warning-only, returns
+HTTP 200 (liveness). CRITICAL is reserved for a future mandatory-telemetry
+deployment profile (none exists in the current local-first single-user model).
 
 ---
 

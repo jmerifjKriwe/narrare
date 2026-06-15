@@ -11,6 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.kb.dependencies import get_kb_session_service
 from narrare.kb.session_models import KBCreationSession
 from narrare.kb.session_schemas import AnswerFieldRequest, CreateSessionRequest
@@ -71,7 +72,10 @@ async def answer_field(
     return _session_to_response(session)
 
 
-@router.post("/novels/{novel_id}/kb/sessions/{session_id}/suggest/{field_key}")
+@router.post(
+    "/novels/{novel_id}/kb/sessions/{session_id}/suggest/{field_key}",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
+)
 async def request_suggestion(
     novel_id: UUID,
     session_id: UUID,
@@ -87,7 +91,10 @@ async def request_suggestion(
     return {"session": _session_to_response(session), "suggestion": suggestion}
 
 
-@router.post("/novels/{novel_id}/kb/sessions/{session_id}/interview")
+@router.post(
+    "/novels/{novel_id}/kb/sessions/{session_id}/interview",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
+)
 async def request_interview_question(
     novel_id: UUID,
     session_id: UUID,
@@ -102,7 +109,10 @@ async def request_interview_question(
     return {"session": _session_to_response(session), "question": question}
 
 
-@router.post("/novels/{novel_id}/kb/sessions/{session_id}/enhance")
+@router.post(
+    "/novels/{novel_id}/kb/sessions/{session_id}/enhance",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
+)
 async def request_enhancement(
     novel_id: UUID,
     session_id: UUID,

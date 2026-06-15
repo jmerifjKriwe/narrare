@@ -64,6 +64,11 @@ _otel_available: bool | None = None  # ``None`` = not yet probed
 _failure_reason: str = ""
 _warning_emitted: bool = False
 
+# OTel setup-outcome state (AUFG-05-14)
+_otel_state: str | None = None  # ``None`` = not recorded yet, then one of:
+# "not_configured" | "configured_ok" | "configured_failed" | "package_unavailable"
+_endpoint_configured: bool = False
+
 
 def _probe_once() -> None:
     """Probe OTel availability exactly once; cache the result.
@@ -73,7 +78,7 @@ def _probe_once() -> None:
     any other exception the module is marked unavailable and exactly one
     structured warning is emitted.  Subsequent calls are a no-op.
     """
-    global _otel_available, _failure_reason, _warning_emitted
+    global _otel_available, _failure_reason, _warning_emitted, _otel_state
 
     with _state_lock:
         if _otel_available is not None:
@@ -87,9 +92,11 @@ def _probe_once() -> None:
             _otel_available = True
         except ImportError as exc:
             _otel_available = False
+            _otel_state = "package_unavailable"
             _failure_reason = f"ImportError: {exc}"
         except Exception as exc:
             _otel_available = False
+            _otel_state = "package_unavailable"
             _failure_reason = f"{type(exc).__name__}: {exc}"
 
         if not _otel_available and not _warning_emitted:
@@ -102,22 +109,86 @@ def _probe_once() -> None:
 
 
 def get_observability_status() -> dict[str, Any]:
-    """Return the current OTel availability status.
+    """Return the current OTel availability and health-severity status.
 
     Returns:
         A dict with the following keys:
 
-        - ``available`` (bool): ``True`` if OTel was successfully probed.
-        - ``failure_reason`` (str): Non-empty when *available* is ``False``.
+        - ``available`` (bool): Backward-compat.  ``True`` iff *severity* is
+          ``"healthy"``.
+        - ``state`` (str): One of ``not_configured``, ``configured_ok``,
+          ``configured_failed``, ``package_unavailable``.
+        - ``severity`` (str): ``healthy`` | ``degraded`` | ``critical``.
+          Derived from *state* per the OTel Health-Severity Policy.
+        - ``endpoint_configured`` (bool): ``True`` iff
+          ``OTEL_EXPORTER_OTLP_ENDPOINT`` was set when setup was attempted.
+        - ``failure_reason`` (str): Non-empty when *state* is a failure state.
         - ``warning_emitted`` (bool): Whether the one-shot warning was fired.
     """
     _probe_once()
     with _state_lock:
+        # Determine state — default when no outcome recorded yet
+        if _otel_state is not None:
+            state = _otel_state
+        elif _otel_available is True:
+            state = "not_configured"
+        else:
+            state = "package_unavailable"
+
+        # Map state → severity (§2.1 of the policy)
+        if state in ("not_configured", "configured_ok"):
+            severity: str = "healthy"
+        elif state in ("configured_failed", "package_unavailable"):
+            severity = "degraded"
+        else:
+            severity = "critical"  # reserved for S5 mandatory-telemetry profiles
+
         return {
-            "available": bool(_otel_available),
+            "available": severity == "healthy",
+            "state": state,
+            "severity": severity,
+            "endpoint_configured": _endpoint_configured,
             "failure_reason": _failure_reason,
             "warning_emitted": _warning_emitted,
         }
+
+
+def record_otel_setup_outcome(
+    *,
+    endpoint_configured: bool,
+    succeeded: bool,
+    failure_reason: str = "",
+) -> None:
+    """Record the OTLP exporter setup outcome.
+
+    Called by ``setup_telemetry`` exactly once after attempting configuration.
+    Transitions internal state to ``configured_ok`` / ``configured_failed`` /
+    ``not_configured`` and updates severity accordingly.  Thread-safe.
+
+    If the package was already determined unavailable (via ``_probe_once`` or
+    ``_mark_unavailable``), that state takes priority and this is a no-op.
+
+    Args:
+        endpoint_configured: Whether ``OTEL_EXPORTER_OTLP_ENDPOINT`` was set.
+        succeeded: Whether OTLP exporter configuration succeeded.
+        failure_reason: Human-readable reason when *succeeded* is ``False``.
+    """
+    global _otel_state, _endpoint_configured, _failure_reason
+
+    with _state_lock:
+        # ``package_unavailable`` takes priority — stronger signal
+        if _otel_state == "package_unavailable":
+            return
+
+        _endpoint_configured = endpoint_configured
+
+        if not endpoint_configured and succeeded:
+            _otel_state = "not_configured"
+        elif endpoint_configured and succeeded:
+            _otel_state = "configured_ok"
+        elif endpoint_configured and not succeeded:
+            _otel_state = "configured_failed"
+            _failure_reason = failure_reason
 
 
 def get_tracer(name: str) -> Any:
@@ -177,12 +248,13 @@ def get_current_trace_context() -> dict[str, str]:
 
 def _mark_unavailable(reason: str) -> None:
     """Transition to unavailable state; emit warning on first occurrence."""
-    global _otel_available, _failure_reason, _warning_emitted
+    global _otel_available, _failure_reason, _warning_emitted, _otel_state
 
     with _state_lock:
         if _otel_available is False:
             return  # already degraded — no further logging
         _otel_available = False
+        _otel_state = "package_unavailable"
         _failure_reason = reason
         if not _warning_emitted:
             logger.warning(

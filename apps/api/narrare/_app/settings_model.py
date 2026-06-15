@@ -185,6 +185,20 @@ class Settings(BaseSettings):
     smtp_from: str = "noreply@narrare.local"
 
     # ---------------------------------------------------------------------------
+    # CSRF Origin Validation (AUFG-05-13)
+    # ---------------------------------------------------------------------------
+    csrf_trusted_origins: list[str] = Field(
+        default=["http://localhost:3000"],
+        alias="NARRARE_CSRF_TRUSTED_ORIGINS",
+    )
+    """Trusted origins for CSRF Origin/Referer validation (defense-in-depth).
+
+    JSON-serialized list of origin strings.  Set via env var:
+    ``NARRARE_CSRF_TRUSTED_ORIGINS='["https://narrare.example.com"]'``
+    Defaults to ``["http://localhost:3000"]`` for local development.
+    """
+
+    # ---------------------------------------------------------------------------
     # Dev
     # ---------------------------------------------------------------------------
     dev_user_email: str = "dev@narrare.dev"

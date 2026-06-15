@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare._app.rate_limits import SETUP_MODELS_LIMITER
 from narrare.novels.repository import NovelRepository
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
@@ -96,7 +97,11 @@ async def validate_step4(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/providers/{provider}/models", response_model=AvailableModelsResponse)
+@router.get(
+    "/providers/{provider}/models",
+    response_model=AvailableModelsResponse,
+    dependencies=[Depends(SETUP_MODELS_LIMITER)],
+)
 async def list_provider_models(
     provider: AIProvider,
     api_key: str = "",

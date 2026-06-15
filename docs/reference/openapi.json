@@ -7027,7 +7027,7 @@
           "monitoring"
         ],
         "summary": "Health",
-        "description": "Liveness check — confirms the process is running.\n\nIncludes OTel availability status so operators can detect degraded\nobservability from the health endpoint.",
+        "description": "Liveness check — confirms the process is running.\n\nIncludes OTel health-severity status so operators can detect degraded\nobservability from the health endpoint.\n\n``status`` reflects the OTel severity (``healthy`` | ``degraded`` |\n``critical``).  HTTP 200 is returned for both ``healthy`` and ``degraded``\nper liveness semantics (INV-OH-5).  ``critical`` semantics are reserved for\na future mandatory-telemetry deployment profile.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
