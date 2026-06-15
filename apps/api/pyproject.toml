@@ -22,7 +22,7 @@ dependencies = [
   "pgvector==0.4.2",
 
   # LLM
-  "pydantic-ai-slim[openai,anthropic,google,groq]==1.106.0",
+  "pydantic-ai-slim[openai,anthropic,google,groq]==1.107.0",
 
   # Background tasks
   "taskiq==0.12.4",
