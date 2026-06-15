@@ -56,6 +56,7 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
         config=config,
         composer=composer,
         prompt_registry=prompt_registry,
+        invocation_pipeline=get_invocation_pipeline(),
     )
 
     return WorldbuildingService(

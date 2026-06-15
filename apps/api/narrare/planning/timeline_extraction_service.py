@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 import structlog
 
 from narrare.planning.timeline_schemas import ExtractedEventResponse
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -27,10 +28,23 @@ if TYPE_CHECKING:
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: TemporalExtractionAgent composes its prompt
+# internally from TemporalExtractionDeps (genre, language, existing events)
+# and chapter content passed as the user prompt.
+_TIMELINE_EXTRACTION_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "TemporalExtractionAgent composes its prompt internally from "
+        "TemporalExtractionDeps (genre, language, existing events)."
+    ),
+    variables=("genre", "language", "existing_events"),
+    injection_mechanism="agent_deps",
+)
 
 
 class TimelineExtractionService:
@@ -55,12 +69,14 @@ class TimelineExtractionService:
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
         event_repo: TimelineEventRepository | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
         self._registry = model_registry
         self._config = model_config
         self._event_repo = event_repo
+        self._invocation_pipeline = invocation_pipeline
 
     async def stream_extraction(
         self,
@@ -114,6 +130,17 @@ class TimelineExtractionService:
             genre=novel.genre or "",
             language=novel.writing_language or "en",
             existing_events=existing_event_names,
+        )
+
+        from narrare._app.invocation_context import safe_compose_invocation
+        from narrare_core.llm.intents import LLMIntent
+
+        await safe_compose_invocation(
+            self._invocation_pipeline,
+            feature_id="planning_timeline_extraction",
+            intent=LLMIntent.PLAN,
+            project_id=novel_id,
+            manual_injection=_TIMELINE_EXTRACTION_INJECTION,
         )
 
         for chapter in chapters:

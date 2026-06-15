@@ -16,11 +16,13 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.planning._prompt_loader import load_temporal_consistency_prompt
+from narrare.planning._timeline_event_utils import events_to_dicts
 from narrare.planning.timeline_schemas import (
     CharacterAgeReport,
     TemporalConsistencyResponse,
     TemporalIssueResponse,
 )
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.analysis.temporal import run_deterministic_checks
 from narrare_core.shared.errors import NotFoundError
 
@@ -31,10 +33,22 @@ if TYPE_CHECKING:
     from narrare.planning.character_age_service import CharacterAgeService
     from narrare.planning.models import TimelineEvent
     from narrare.planning.timeline_repository import TimelineEventRepository
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: TimelineAgent composes its consistency-check
+# prompt internally from TimelineDeps and the bundled temporal prompt.
+_TEMPORAL_CONSISTENCY_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "TimelineAgent composes its consistency-check prompt internally from "
+        "TimelineDeps (genre, language) and the bundled temporal prompt."
+    ),
+    variables=("genre", "language"),
+    injection_mechanism="agent_deps",
+)
 
 
 class TimelineConsistencyService:
@@ -60,12 +74,14 @@ class TimelineConsistencyService:
         character_age_service: CharacterAgeService | None = None,
         model_registry: ModelRegistry | None = None,
         model_config: ResolvedModelConfig | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._event_repo = event_repo
         self._novel_repo = novel_repo
         self._character_age_service = character_age_service
         self._registry = model_registry
         self._config = model_config
+        self._invocation_pipeline = invocation_pipeline
 
     async def check_consistency(
         self,
@@ -99,7 +115,7 @@ class TimelineConsistencyService:
         events = await self._event_repo.list_by_novel(novel_id)
 
         # Step 2: Convert to dicts for deterministic checks
-        event_dicts = self._events_to_dicts(events)
+        event_dicts = events_to_dicts(events)
 
         # Step 3: Load character birth dates from KB
         character_ages = await self._load_character_ages(novel_id)
@@ -162,36 +178,6 @@ class TimelineConsistencyService:
         if self._character_age_service is None:
             raise NotFoundError("CharacterAgeService", identifier="not_configured")
         return await self._character_age_service.get_character_ages(novel_id, user_id)
-
-    def _events_to_dicts(self, events: list[TimelineEvent]) -> list[dict[str, object]]:
-        """Convert TimelineEvent ORM objects to dicts for deterministic checks.
-
-        The core analysis functions expect plain dicts with specific keys:
-        id, event_name, temporal_order, causes, consequences,
-        timestamp_raw, chapter_reference, character_refs,
-        location_ref, event_type.
-
-        ``location_ref`` comes from JSONB (dict or None).
-        ``event_type`` is a plain string field from the model.
-        """
-        result: list[dict[str, object]] = []
-        for event in events:
-            result.append(
-                {
-                    "id": str(event.id),
-                    "event_name": event.event_name,
-                    "temporal_order": event.temporal_order,
-                    "causes": event.causes,
-                    "consequences": event.consequences,
-                    "timestamp_raw": event.timestamp_raw,
-                    "timestamp_normalized": event.timestamp_normalized,
-                    "chapter_reference": str(event.chapter_id) if event.chapter_id else "",
-                    "character_refs": event.character_refs or [],
-                    "location_ref": event.location_ref or None,
-                    "event_type": event.event_type,
-                }
-            )
-        return result
 
     async def _load_character_ages(self, novel_id: uuid.UUID) -> dict[str, str | None] | None:
         """Load character birth dates via CharacterAgeService.
@@ -258,6 +244,16 @@ class TimelineConsistencyService:
             )
 
             agent = TimelineAgent(model=model)
+            from narrare._app.invocation_context import safe_compose_invocation
+            from narrare_core.llm.intents import LLMIntent
+
+            await safe_compose_invocation(
+                self._invocation_pipeline,
+                feature_id="planning_timeline_consistency",
+                intent=LLMIntent.PLAN,
+                project_id=novel_id,
+                manual_injection=_TEMPORAL_CONSISTENCY_INJECTION,
+            )
             result = await agent.run(
                 prompt=event_context,
                 system_prompt=system_prompt_text,

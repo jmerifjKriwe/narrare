@@ -13,6 +13,7 @@ import structlog
 
 from narrare.writing.summary_contracts import SummaryResult
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import NotFoundError, WritingError
@@ -21,11 +22,25 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.chapters.repository import ChapterRepository
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: ChapterSummaryAgent composes its prompt internally
+# from SummaryDeps (language, genre, chapter title, max_sentences). The chapter
+# text is passed as the user prompt. Evidence is recorded at the service layer.
+_SUMMARY_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "ChapterSummaryAgent composes its prompt internally from SummaryDeps "
+        "(language, genre, chapter title, max_sentences). Chapter text is "
+        "passed as the user prompt."
+    ),
+    variables=("chapter_text", "chapter_title", "language"),
+    injection_mechanism="agent_deps",
+)
 
 
 class ChapterSummaryService:
@@ -42,6 +57,7 @@ class ChapterSummaryService:
         _composer: PromptComposer for building system and user prompts.
         _api_key: Optional per-user API key override.
         _base_url: Optional per-user base URL override.
+        _invocation_pipeline: Optional InvocationPipeline for evidence recording.
     """
 
     def __init__(
@@ -53,6 +69,7 @@ class ChapterSummaryService:
         *,
         api_key: str | None = None,
         base_url: str | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         """Initialize ChapterSummaryService with all dependencies.
 
@@ -63,6 +80,7 @@ class ChapterSummaryService:
             composer: PromptComposer for building prompts (RULE-02).
             api_key: Optional per-user API key override.
             base_url: Optional per-user base URL override.
+            invocation_pipeline: Optional InvocationPipeline for evidence recording.
         """
         self._registry = registry
         self._config = config
@@ -70,6 +88,7 @@ class ChapterSummaryService:
         self._composer = composer
         self._api_key = api_key
         self._base_url = base_url
+        self._invocation_pipeline = invocation_pipeline
 
     async def summarize(
         self,
@@ -131,6 +150,15 @@ class ChapterSummaryService:
                 max_sentences=max_sentences,
             )
 
+            from narrare._app.invocation_context import safe_compose_invocation
+
+            await safe_compose_invocation(
+                self._invocation_pipeline,
+                feature_id="writing_summary",
+                intent=LLMIntent.SUMMARIZE,
+                project_id=chapter.novel_id,
+                manual_injection=_SUMMARY_INJECTION,
+            )
             result = await agent.run(prompt=composed.user, deps=deps)
 
             # 4. Persist summary to chapter

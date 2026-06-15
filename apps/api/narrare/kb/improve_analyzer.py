@@ -17,6 +17,7 @@ import structlog
 
 from narrare_core.agents.kb_improve_agent import KBImproveAgent
 from narrare_core.agents.kb_improve_types import KBImproveDeps, KBImproveOutput
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 
 from .improve_contracts import (
@@ -33,12 +34,25 @@ if TYPE_CHECKING:
     from narrare.kb.improve_cache import KBImproveCache
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.context.contracts import ProactiveContextProtocol
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: KBImproveAnalyzer composes its prompt internally
+# from KBImproveDeps (entry content, template structure, world context,
+# adjacency map). Evidence is recorded at the analyzer layer.
+_IMPROVE_ANALYZER_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "KBImproveAnalyzer composes its prompt internally from KBImproveDeps "
+        "(entry content, template structure, world context, adjacency map)."
+    ),
+    variables=("entity_type", "entry_content", "template_structure", "world_context"),
+    injection_mechanism="agent_deps",
+)
 
 
 class KBImproveAnalyzer:
@@ -69,6 +83,7 @@ class KBImproveAnalyzer:
         rel_repo: RelationshipRepository,
         improve_cache: KBImproveCache | None = None,
         kb_agent: object | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         from narrare_core.agents.kb_agent import KBAgent
 
@@ -80,6 +95,7 @@ class KBImproveAnalyzer:
         self._rel_repo = rel_repo
         self._improve_cache = improve_cache
         self._kb_agent = kb_agent if isinstance(kb_agent, KBAgent) else None
+        self._invocation_pipeline = invocation_pipeline
 
     async def _build_deps(
         self,
@@ -241,6 +257,15 @@ class KBImproveAnalyzer:
             "Analyze the " + str(deps.entity_type) + " entry "
             "'" + str(entry_name) + "' "
             "and identify improvement opportunities."
+        )
+        from narrare._app.invocation_context import safe_compose_invocation
+
+        await safe_compose_invocation(
+            self._invocation_pipeline,
+            feature_id="kb_improve",
+            intent=LLMIntent.KB_IMPROVE,
+            project_id=novel_id,
+            manual_injection=_IMPROVE_ANALYZER_INJECTION,
         )
         result: KBImproveOutput = await agent.run(prompt=user_prompt, deps=deps)
 

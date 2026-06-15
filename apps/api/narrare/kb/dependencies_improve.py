@@ -63,6 +63,7 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
         kb_repo=kb_repo,
         rel_repo=RelationshipRepository(session),
         improve_cache=improve_cache,
+        invocation_pipeline=get_invocation_pipeline(),
     )
 
     return KBImproveService(

@@ -28,7 +28,11 @@ async def _get_analysis_service(
     session: SessionDep,
 ) -> PreferenceAnalysisService:
     """Async factory for PreferenceAnalysisService."""
-    from narrare._app.dependencies import get_composer, get_model_registry
+    from narrare._app.dependencies import (
+        get_composer,
+        get_invocation_pipeline,
+        get_model_registry,
+    )
     from narrare.memory.analysis_service import PreferenceAnalysisService
     from narrare.memory.repository import FeedbackRepository, PreferenceProfileRepository
 
@@ -41,6 +45,7 @@ async def _get_analysis_service(
         feedback_repo=feedback_repo,
         profile_repo=profile_repo,
         composer=composer,
+        invocation_pipeline=get_invocation_pipeline(),
     )
 
 

@@ -17,7 +17,6 @@ import structlog
 
 from narrare.consistency.checker_context import CheckContext, collect_check_context
 from narrare.consistency.schemas import ConsistencyRequest, ConsistencyResponse
-from narrare_core.agents.consistency_agent import ConsistencyAgent
 
 if TYPE_CHECKING:
     import uuid
@@ -30,6 +29,7 @@ if TYPE_CHECKING:
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
     from narrare.settings.token_limits.contracts import TokenLimitsServiceProtocol
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.prompts import PromptComposer
 
@@ -55,6 +55,7 @@ class ConsistencyCheckerService:
         composer: PromptComposer for system prompt assembly.
         token_limits_service: Optional TokenLimitsService for dynamic limit resolution.
         orchestrator: Optional ConsistencyOrchestrator for staged pipeline.
+        invocation_pipeline: Optional InvocationPipeline for evidence recording.
     """
 
     def __init__(
@@ -68,6 +69,7 @@ class ConsistencyCheckerService:
         composer: PromptComposer,
         token_limits_service: TokenLimitsServiceProtocol | None = None,
         orchestrator: ConsistencyOrchestratorProtocol | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
@@ -78,6 +80,7 @@ class ConsistencyCheckerService:
         self._composer = composer
         self._token_limits_service = token_limits_service
         self._orchestrator = orchestrator
+        self._invocation_pipeline = invocation_pipeline
 
     async def check(
         self,
@@ -239,35 +242,20 @@ class ConsistencyCheckerService:
         novel_id: uuid.UUID,
         context: CheckContext,
     ) -> ConsistencyResponse:
-        """Run legacy single-pass consistency check."""
-        from datetime import UTC, datetime
+        """Run legacy single-pass consistency check.
 
-        from narrare.consistency.prompt_builder import compose_consistency_prompt
-        from narrare.consistency.rule_helpers import deduplicate_issues
+        Delegates to :func:`narrare.consistency.legacy_check_runner.run_legacy_check`
+        (RULE-04 extraction).
+        """
+        from narrare.consistency.legacy_check_runner import run_legacy_check
 
-        system_prompt, user_prompt = await compose_consistency_prompt(
-            self._composer,
-            context.language,
-            context.deps,
-            context.deps.check_types,
-            max_chapter_tokens=context.max_chapter_tokens,
-        )
-
-        model = await self._registry.get_model(self._config)
-        agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
-        result = await agent.run(prompt=user_prompt, deps=context.deps)
-
-        all_issues = context.rule_issues + result.issues
-        deduped_issues = deduplicate_issues(all_issues)
-
-        now = datetime.now(tz=UTC).isoformat()
-        return ConsistencyResponse(
+        return await run_legacy_check(
+            registry=self._registry,
+            config=self._config,
+            composer=self._composer,
             novel_id=novel_id,
-            chapter_ids=context.resolved_ids,
-            check_types=result.checked_types,
-            issues=deduped_issues,
-            overall_assessment=result.overall_assessment,
-            analyzed_at=now,
+            context=context,
+            invocation_pipeline=self._invocation_pipeline,
         )
 
     async def _resolve_system_prompt(self, language: str) -> str:

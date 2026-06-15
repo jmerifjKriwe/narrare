@@ -11,16 +11,35 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.planning.schemas import ArcPhaseResponse, CharacterArcRequest, CharacterArcResponse
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
     import uuid
 
     from narrare.novels.repository import NovelRepository
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: CharacterArcAgent composes its prompt internally
+# from CharacterArcDeps (character state, goal, genre, language).
+_CHARACTER_ARC_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "CharacterArcAgent composes its prompt internally from CharacterArcDeps "
+        "(character name, current/goal state, genre, language)."
+    ),
+    variables=(
+        "character_name",
+        "character_current_state",
+        "character_goal_state",
+        "genre",
+        "language",
+    ),
+    injection_mechanism="agent_deps",
+)
 
 
 class CharacterArcService:
@@ -45,12 +64,14 @@ class CharacterArcService:
         *,
         api_key: str | None = None,
         base_url: str | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._registry = model_registry
         self._config = model_config
         self._api_key = api_key
         self._base_url = base_url
+        self._invocation_pipeline = invocation_pipeline
 
     async def generate_character_arc(
         self,
@@ -94,6 +115,16 @@ class CharacterArcService:
 
         # Run agent
         agent = CharacterArcAgent(model=model)
+        from narrare._app.invocation_context import safe_compose_invocation
+        from narrare_core.llm.intents import LLMIntent
+
+        await safe_compose_invocation(
+            self._invocation_pipeline,
+            feature_id="planning_character_arc",
+            intent=LLMIntent.PLAN,
+            project_id=novel_id,
+            manual_injection=_CHARACTER_ARC_INJECTION,
+        )
         result = await agent.run(
             prompt=f"Generate a character arc for {request.character_name} in {novel.title}",
             deps=deps,

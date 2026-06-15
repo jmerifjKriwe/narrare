@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare._app.dependencies import get_model_registry
+from narrare._app.dependencies import get_invocation_pipeline, get_model_registry
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.chapters.repository import ChapterRepository
 from narrare.novels.repository import NovelRepository
@@ -83,4 +83,5 @@ async def get_timeline_analysis_service(
         event_repo=TimelineEventRepository(session),
         api_key=api_key,
         base_url=base_url,
+        invocation_pipeline=get_invocation_pipeline(),
     )

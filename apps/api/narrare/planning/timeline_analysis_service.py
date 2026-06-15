@@ -19,6 +19,7 @@ import structlog
 
 from narrare.planning.schemas import TimelineEventResponse, TimelineResponse
 from narrare.planning.timeline_schemas import TimelineEventCRUDResponse
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -28,10 +29,22 @@ if TYPE_CHECKING:
     from narrare.novels.repository import NovelRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
     from narrare_core.agents.temporal_extraction_types import ExtractedTemporalExpression
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: TimelineAgent composes its prompt internally
+# from TimelineDeps (genre, language) and chapter context passed as user prompt.
+_TIMELINE_ANALYSIS_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "TimelineAgent composes its prompt internally from TimelineDeps "
+        "(genre, language) and chapter context passed as the user prompt."
+    ),
+    variables=("genre", "language"),
+    injection_mechanism="agent_deps",
+)
 
 
 class TimelineAnalysisService:
@@ -60,6 +73,7 @@ class TimelineAnalysisService:
         *,
         api_key: str | None = None,
         base_url: str | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._novel_repo = novel_repo
         self._chapter_repo = chapter_repo
@@ -68,6 +82,7 @@ class TimelineAnalysisService:
         self._event_repo = event_repo
         self._api_key = api_key
         self._base_url = base_url
+        self._invocation_pipeline = invocation_pipeline
 
     async def generate_timeline(
         self,
@@ -123,6 +138,16 @@ class TimelineAnalysisService:
         )
 
         agent = TimelineAgent(model=model)
+        from narrare._app.invocation_context import safe_compose_invocation
+        from narrare_core.llm.intents import LLMIntent
+
+        await safe_compose_invocation(
+            self._invocation_pipeline,
+            feature_id="planning_timeline_analysis",
+            intent=LLMIntent.PLAN,
+            project_id=novel_id,
+            manual_injection=_TIMELINE_ANALYSIS_INJECTION,
+        )
         result = await agent.run(
             prompt=(
                 f"Analyze the timeline for '{novel.title}'.\n\n"

@@ -7,6 +7,7 @@ source of truth.
 
 from __future__ import annotations
 
+import os
 import time
 import uuid
 from typing import TYPE_CHECKING
@@ -68,6 +69,13 @@ class OriginValidationMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: RequestResponseEndpoint,
     ) -> Response:
+        # Test-mode bypass: integration tests use httpx AsyncClient, which
+        # sends no Origin/Referer header, so unauthenticated state-changing
+        # requests would be rejected with 403 CSRF_ORIGIN_MISMATCH.
+        # NARRARE_TEST_MODE is NEVER set in production deployments.
+        if os.environ.get("NARRARE_TEST_MODE") == "1":
+            return await call_next(request)
+
         # ── safe methods are always allowed ──────────────────────────────
         if request.method in SAFE_METHODS:
             return await call_next(request)

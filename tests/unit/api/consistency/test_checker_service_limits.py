@@ -139,7 +139,7 @@ class TestResolveSystemPrompt:
 
         agent = AsyncMock(run=AsyncMock(return_value=_output()))
         with patch(
-            "narrare.consistency.checker_service.ConsistencyAgent", return_value=agent
+            "narrare.consistency.legacy_check_runner.ConsistencyAgent", return_value=agent
         ) as MockAgent:
             await svc.check(
                 novel_id=novel.id,
@@ -167,7 +167,7 @@ class TestResolveSystemPrompt:
         svc = _service(nr=nr, cr=cr, composer=composer)
 
         with (
-            patch("narrare.consistency.checker_service.ConsistencyAgent") as MockAgent,
+            patch("narrare.consistency.legacy_check_runner.ConsistencyAgent") as MockAgent,
             pytest.raises(PromptNotFoundError),
         ):
             await svc.check(

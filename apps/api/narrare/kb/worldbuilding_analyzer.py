@@ -40,17 +40,40 @@ from narrare.kb.worldbuilding_entity_assembly import (
 )
 from narrare_core.agents.worldbuilding_agent import WorldbuildingAgent
 from narrare_core.agents.worldbuilding_types import WorldbuildingDeps
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
     from narrare.kb.contracts import KBRepositoryProtocol, RelationshipRepositoryProtocol
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.registry import PromptRegistry
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declarations: WorldbuildingAnalyzer composes its prompts
+# internally from WorldbuildingDeps across both phases. Per-phase evidence
+# is recorded at the analyzer layer (closer to the actual LLM calls).
+_WORLDBUILDING_PHASE1_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "WorldbuildingAnalyzer Phase 1 composes its prompt internally from "
+        "WorldbuildingDeps (entity summaries, template structures, relationships)."
+    ),
+    variables=("entity_summaries", "template_structures", "existing_relationships"),
+    injection_mechanism="agent_deps",
+)
+
+_WORLDBUILDING_PHASE2_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "WorldbuildingAnalyzer Phase 2 composes its consistency-check prompt "
+        "internally from phase2 deps (candidate pairs, entity details)."
+    ),
+    variables=("candidate_pairs", "entity_details"),
+    injection_mechanism="agent_deps",
+)
 
 
 class WorldbuildingAnalyzer:
@@ -82,6 +105,7 @@ class WorldbuildingAnalyzer:
         prompt_registry: PromptRegistry,
         *,
         max_phase2_pairs: int = 15,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._kb_repo = kb_repo
         self._rel_repo = rel_repo
@@ -91,6 +115,7 @@ class WorldbuildingAnalyzer:
         self._composer = composer
         self._prompt_registry = prompt_registry
         self._max_phase2_pairs = max_phase2_pairs
+        self._invocation_pipeline = invocation_pipeline
 
     async def analyze(
         self,
@@ -107,11 +132,11 @@ class WorldbuildingAnalyzer:
                 return WorldbuildingAnalysisResponse.model_validate_json(cached)
 
         deps, total_count = await self._build_deps(novel_id, request.entity_types)
-        gaps, connections, pairs, score, assessment = await self._run_phase1(deps)
+        gaps, connections, pairs, score, assessment = await self._run_phase1(deps, novel_id)
 
         issues: list[ConsistencyIssue] = []
         if request.include_consistency and pairs:
-            issues = await self._run_phase2(deps, pairs)
+            issues = await self._run_phase2(deps, pairs, novel_id)
 
         response = WorldbuildingAnalysisResponse(
             novel_id=novel_str,
@@ -170,8 +195,11 @@ class WorldbuildingAnalyzer:
     async def _run_phase1(
         self,
         deps: WorldbuildingDeps,
+        novel_id: UUID,
     ) -> tuple[list[GapFinding], list[ConnectionSuggestion], list[tuple[str, str]], float, str]:
         """Execute Phase 1: gap detection + connection suggestions."""
+        from narrare._app.invocation_context import safe_compose_invocation
+
         ctx = PromptContext(
             language="en",
             mode=LLMIntent.KB_WORLDBUILD.value,
@@ -184,6 +212,13 @@ class WorldbuildingAnalyzer:
 
         model = await self._registry.get_model(self._config)
         agent = WorldbuildingAgent(model=model, system_prompt=composed.system)
+        await safe_compose_invocation(
+            self._invocation_pipeline,
+            feature_id="kb_worldbuilding_phase1",
+            intent=LLMIntent.KB_WORLDBUILD,
+            project_id=novel_id,
+            manual_injection=_WORLDBUILDING_PHASE1_INJECTION,
+        )
         result = await agent.run_phase1(
             prompt=(
                 f"Analyze worldbuilding for {len(deps.entity_summaries)} entities. "
@@ -222,8 +257,11 @@ class WorldbuildingAnalyzer:
         self,
         deps: WorldbuildingDeps,
         candidate_pairs: list[tuple[str, str]],
+        novel_id: UUID,
     ) -> list[ConsistencyIssue]:
         """Execute Phase 2: consistency checking on candidate pairs."""
+        from narrare._app.invocation_context import safe_compose_invocation
+
         pairs = candidate_pairs[: self._max_phase2_pairs]
 
         # Load full entity details for pair entities
@@ -264,6 +302,13 @@ class WorldbuildingAnalyzer:
 
         model = await self._registry.get_model(self._config)
         agent = WorldbuildingAgent(model=model)
+        await safe_compose_invocation(
+            self._invocation_pipeline,
+            feature_id="kb_worldbuilding_phase2",
+            intent=LLMIntent.KB_WORLDBUILD,
+            project_id=novel_id,
+            manual_injection=_WORLDBUILDING_PHASE2_INJECTION,
+        )
         result = await agent.run_phase2(
             prompt=f"Check consistency for {len(pairs)} entity pairs.",
             deps=phase2_deps,

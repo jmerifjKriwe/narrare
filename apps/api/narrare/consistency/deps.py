@@ -28,6 +28,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     from narrare._app.config import get_settings
     from narrare._app.dependencies import (
         get_composer,
+        get_invocation_pipeline,
         get_model_registry,
     )
     from narrare._app.dependencies_services import build_system_default_config
@@ -45,6 +46,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
 
     registry = get_model_registry()
     composer = get_composer()
+    invocation_pipeline = get_invocation_pipeline()
     consistency_config = build_system_default_config("analysis", temperature=0.3)
 
     # Fact extractor config for staged pipeline (ADR-044)
@@ -62,6 +64,7 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
         fact_extractor_config=fact_extractor_config,
         consistency_config=consistency_config,
         composer=composer,
+        invocation_pipeline=invocation_pipeline,
     )
 
     # TokenLimitsService for dynamic context caps
@@ -82,4 +85,5 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
         composer=composer,
         token_limits_service=token_limits_service,
         orchestrator=orchestrator,
+        invocation_pipeline=invocation_pipeline,
     )

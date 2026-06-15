@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare._app.dependencies import get_model_registry
+from narrare._app.dependencies import get_invocation_pipeline, get_model_registry
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.kb.repository import KBRepository
 from narrare.novels.repository import NovelRepository
@@ -88,4 +88,5 @@ async def get_timeline_consistency_service(
         character_age_service=character_age_service,
         model_registry=registry,
         model_config=model_config,
+        invocation_pipeline=get_invocation_pipeline(),
     )

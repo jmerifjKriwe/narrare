@@ -85,7 +85,7 @@ class TestCheck:
     async def test_check_returns_response(self) -> None:
         novel, (ch, *_), svc = _setup()
         agent = AsyncMock(run=AsyncMock(return_value=_output()))
-        with patch("narrare.consistency.checker_service.ConsistencyAgent", return_value=agent):
+        with patch("narrare.consistency.legacy_check_runner.ConsistencyAgent", return_value=agent):
             result = await svc.check(
                 novel_id=novel.id,
                 user_id=novel.user_id,
@@ -106,7 +106,7 @@ class TestCheck:
             novel=novel, chapters=[make_chapter(novel_id=novel.id), make_chapter(novel_id=novel.id)]
         )
         agent = AsyncMock(run=AsyncMock(return_value=_output()))
-        with patch("narrare.consistency.checker_service.ConsistencyAgent", return_value=agent):
+        with patch("narrare.consistency.legacy_check_runner.ConsistencyAgent", return_value=agent):
             result = await svc.check(
                 novel_id=novel.id, user_id=novel.user_id, request=ConsistencyRequest(chapter_ids=[])
             )
@@ -121,7 +121,7 @@ class TestCheck:
             novel=novel, chapters=[make_chapter(novel_id=novel.id), make_chapter(novel_id=novel.id)]
         )
         agent = AsyncMock(run=AsyncMock(return_value=_output()))
-        with patch("narrare.consistency.checker_service.ConsistencyAgent", return_value=agent):
+        with patch("narrare.consistency.legacy_check_runner.ConsistencyAgent", return_value=agent):
             result = await svc.check(
                 novel_id=novel.id,
                 user_id=novel.user_id,
@@ -142,7 +142,7 @@ class TestCheck:
         svc._chapter_repo = cr
 
         agent = AsyncMock(run=AsyncMock(return_value=_output()))
-        with patch("narrare.consistency.checker_service.ConsistencyAgent", return_value=agent):
+        with patch("narrare.consistency.legacy_check_runner.ConsistencyAgent", return_value=agent):
             await svc.check(
                 novel_id=novel.id,
                 user_id=novel.user_id,
@@ -167,7 +167,7 @@ class TestCheckChapter:
             confidence=0.85,
         )
         agent = AsyncMock(run=AsyncMock(return_value=_output(issues=[issue])))
-        with patch("narrare.consistency.checker_service.ConsistencyAgent", return_value=agent):
+        with patch("narrare.consistency.legacy_check_runner.ConsistencyAgent", return_value=agent):
             result = await svc.check_chapter(
                 novel_id=novel.id,
                 chapter_id=ch.id,

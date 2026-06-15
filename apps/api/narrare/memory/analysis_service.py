@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, cast
 import structlog
 
 from narrare.memory.schemas import AnalyzeResponse
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from narrare.memory.models import FeedbackEventModel
     from narrare.memory.repository import FeedbackRepository, PreferenceProfileRepository
     from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
 
@@ -31,6 +33,18 @@ logger = structlog.get_logger(__name__)
 
 # Minimum feedback events required before analysis can run
 MIN_EVENTS_FOR_ANALYSIS = 5
+
+# ADR-048 Mode 2 declaration: PreferenceAnalysisAgent composes its prompt
+# internally from PreferenceAnalysisDeps (language, genre, event_count,
+# feedback_text). Evidence is recorded at the service layer.
+_PREFERENCE_ANALYSIS_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "PreferenceAnalysisAgent composes its prompt internally from "
+        "PreferenceAnalysisDeps (language, genre, event_count, feedback_text)."
+    ),
+    variables=("conversation_text", "user_id"),
+    injection_mechanism="agent_deps",
+)
 
 
 class PreferenceAnalysisService:
@@ -41,6 +55,7 @@ class PreferenceAnalysisService:
         feedback_repo: Repository for querying feedback events.
         profile_repo: Repository for persisting analysis results.
         composer: PromptComposer for building prompts (RULE-02).
+        invocation_pipeline: Optional InvocationPipeline for evidence recording.
     """
 
     def __init__(
@@ -49,11 +64,13 @@ class PreferenceAnalysisService:
         feedback_repo: FeedbackRepository,
         profile_repo: PreferenceProfileRepository,
         composer: PromptComposer,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._registry = registry
         self._feedback_repo = feedback_repo
         self._profile_repo = profile_repo
         self._composer = composer
+        self._invocation_pipeline = invocation_pipeline
 
     async def analyze(self, user_id: UUID, project_id: UUID) -> AnalyzeResponse:
         """Run PreferenceAnalysisAgent on accumulated feedback.
@@ -84,7 +101,12 @@ class PreferenceAnalysisService:
         feedback_text = self._format_events_for_agent(events)
 
         # 3. Create and run the agent
-        result = await self._run_agent(feedback_text, event_count)
+        result = await self._run_agent(
+            feedback_text,
+            event_count,
+            user_id=user_id,
+            project_id=project_id,
+        )
 
         # 4. Persist result to preference_profiles
         profile = PreferenceProfileModel(
@@ -170,7 +192,14 @@ class PreferenceAnalysisService:
 
         return "\n".join(parts)
 
-    async def _run_agent(self, feedback_text: str, event_count: int) -> PreferenceAnalysisOutput:
+    async def _run_agent(
+        self,
+        feedback_text: str,
+        event_count: int,
+        *,
+        user_id: UUID,
+        project_id: UUID,
+    ) -> PreferenceAnalysisOutput:
         """Run the PreferenceAnalysisAgent with the given feedback.
 
         Falls back to a basic analysis if the agent fails.
@@ -178,6 +207,8 @@ class PreferenceAnalysisService:
         Args:
             feedback_text: Formatted feedback text.
             event_count: Number of events being analyzed.
+            user_id: The user whose feedback is being analyzed.
+            project_id: The project scope for the analysis.
 
         Returns:
             PreferenceAnalysisOutput with analysis results.
@@ -221,6 +252,16 @@ class PreferenceAnalysisService:
             feedback_text=feedback_text,
         )
 
+        from narrare._app.invocation_context import safe_compose_invocation
+
+        await safe_compose_invocation(
+            self._invocation_pipeline,
+            feature_id="memory_preference_analysis",
+            intent=LLMIntent.EXTRACT,
+            user_id=user_id,
+            project_id=project_id,
+            manual_injection=_PREFERENCE_ANALYSIS_INJECTION,
+        )
         try:
             return await agent.run(
                 prompt=composed.user,

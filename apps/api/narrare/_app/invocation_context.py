@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 if TYPE_CHECKING:
+    from narrare_core.ai_invocation.manual_injection import ManualInjectionDeclaration
     from narrare_core.ai_invocation.models import PromptInvocationContext
     from narrare_core.ai_invocation.pipeline import (
         FinalizedInvocation,
@@ -177,6 +178,50 @@ async def safe_record_evidence(
     except Exception:
         logger.warning(
             "invocation_evidence_recording_failed",
+            feature_id=feature_id,
+            exc_info=True,
+        )
+
+
+async def safe_compose_invocation(
+    pipeline: InvocationPipeline | None,
+    *,
+    feature_id: str,
+    intent: LLMIntent,
+    user_id: object | None = None,
+    project_id: object | None = None,
+    language: str = "en",
+    manual_injection: ManualInjectionDeclaration,
+) -> None:
+    """Compose invocation (Mode 2) for evidence recording. Silently no-ops when pipeline is None.
+
+    Non-deprecated replacement for safe_record_evidence() per ADR-048.
+    Uses compose_invocation() with ManualInjectionDeclaration (Mode 2 -- agent-internal).
+
+    Failures are logged and swallowed -- the service proceeds with the agent call
+    regardless of evidence recording issues.
+    """
+    if pipeline is None:
+        return
+
+    from narrare_core.ai_invocation import compose_invocation
+
+    context = build_invocation_context(
+        feature_id=feature_id,
+        intent=intent,
+        user_id=user_id,
+        project_id=project_id,
+        language=language,
+    )
+    try:
+        await compose_invocation(
+            invocation_pipeline=pipeline,
+            invocation_context=context,
+            manual_injection=manual_injection,
+        )
+    except Exception:
+        logger.warning(
+            "invocation_composition_failed",
             feature_id=feature_id,
             exc_info=True,
         )

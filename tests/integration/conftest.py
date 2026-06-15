@@ -34,6 +34,29 @@ TEST_DATABASE_URL = os.environ.get(
 # (e.g. postgres_test:5432/narrare_test) — tables never get created.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
+# Test-mode bypass for CSRF OriginValidationMiddleware (never set in prod).
+# httpx AsyncClient sends no Origin/Referer header, so unauthenticated
+# POST/PUT/PATCH/DELETE would otherwise be rejected with 403.
+os.environ["NARRARE_TEST_MODE"] = "1"
+
+
+@pytest.fixture(autouse=True)
+def _disable_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]
+    """Disable rate limiting in integration tests.
+
+    Module-level rate-limiter singletons (``AI_WRITE_LIMITER`` etc.) accumulate
+    state across rapid test requests, causing false 429 failures. This patches
+    ``RateLimiter.__call__`` (the FastAPI dependency entry point used by every
+    HTTP limiter) to a no-op. Production behaviour is unaffected — the patch is
+    scoped to the test process via ``monkeypatch``.
+    """
+    from fastapi_limiter.depends import RateLimiter
+
+    async def _noop_call(self: object, *args: object, **kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(RateLimiter, "__call__", _noop_call)
+
 
 @pytest.fixture(autouse=True)
 def _set_encryption_key(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright: ignore[reportUnusedFunction]

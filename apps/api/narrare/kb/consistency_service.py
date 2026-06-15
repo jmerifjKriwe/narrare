@@ -266,4 +266,4 @@ class KBConsistencyService:
             return []
 
         # Reuses WorldbuildingAnalyzer._run_phase2() per KB-004 spec (Option C).
-        return await self._worldbuilding_analyzer._run_phase2(deps, pairs)  # pyright: ignore[reportPrivateUsage]
+        return await self._worldbuilding_analyzer._run_phase2(deps, pairs, novel_id)  # pyright: ignore[reportPrivateUsage]
