@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Established by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-15 (AUFG-05-12, AUFG-05-13, AUFG-05-14 resolved — implementation complete)
+> **Last updated:** 2026-06-15 (AUFG-05-11 resolved — CURRENT_STATE volatile stats cleanup complete)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -324,7 +324,7 @@ contract specification only).
 | ID | AUFG-05-11 |
 | Title | CURRENT_STATE Volatile Stats De-duplication |
 | Source | ADR-047 `CURRENT_STATE Volatility Policy`; repeated `just check-ssot` drift from generated counts such as backend test-file totals. |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P1 |
 | Area | Documentation SSOT, Governance checks, Platform tooling |
 | Owner role | Docs Specialist for `CURRENT_STATE.md`; Platform Specialist for checker/test changes; Architecture Specialist for policy validation |
@@ -353,8 +353,20 @@ contract specification only).
 - Registry status is updated with exit evidence and either `resolved` or a documented
   governed-debt state.
 
-**Exit evidence:** Pending. Expected evidence: `CURRENT_STATE.md` diff, checker/test diff,
-and `just check-ssot` output showing no false requirement to duplicate generated counts.
+**Exit evidence (2026-06-15):** Implementation complete. All 14 volatile count claims
+removed from `docs/_shared/CURRENT_STATE.md`: Knowledge Graph node/edge counts,
+backend/frontend test-file counts, architecture rule counts, ADR/feature inventory
+counts, adoption-debt and health-score counts, router inventory counts. Replaced with
+authoritative commands and index links: `code-review-graph list-graph-stats`, `just test`,
+`just test-frontend`, `docs/_shared/CONSTRAINTS.md`, `docs/architecture/decisions/INDEX.md`,
+`docs/features/INDEX.md`, `docs/architecture/questions/INDEX.md`, `just check-adoption`,
+`just check-health`, `docs/architecture/governance/aufg-registry.md`.
+`scripts/check_current_state_facts.py` (updated in prior session) enforces the policy
+with forbidden-pattern detection and required-authority checks. `just check-ssot` now
+passes cleanly: "✅ No forbidden volatile count claims found. ✅ Required authority
+references/commands are present. ✅ CURRENT_STATE.md follows the volatility policy."
+Human-curated content preserved: ADR-045 runtime adoption terminology note, Phase 6
+summaries, Decisions/Open Questions/Risks tables.
 
 ---
 

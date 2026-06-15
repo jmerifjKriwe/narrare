@@ -8,7 +8,7 @@
 ## Last Updated
 
 Date: 2026-06-15 (AUFG-05-12, AUFG-05-13, AUFG-05-14 — docs sync)
-Session: Documentation sync after AUFG-05-12/13/14 implementation. Three AUFGs resolved with exit evidence in aufg-registry.md. Observability guide /health response updated with severity vocabulary. Security audit and CSRF strategy documents updated to reflect completed implementation. Deployment guide updated with NARRARE_CSRF_TRUSTED_ORIGINS env var. ADR-047 status bumped to Implemented.
+Session: Documentation sync after AUFG-05-12/13/14 implementation. Three AUFGs resolved with exit evidence in `docs/architecture/governance/aufg-registry.md`. Observability guide /health response updated with severity vocabulary. Security audit and CSRF strategy documents updated to reflect completed implementation. Deployment guide updated with NARRARE_CSRF_TRUSTED_ORIGINS env var. ADR-047 status bumped to Implemented.
 
 ---
 
@@ -26,19 +26,19 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 ## Codebase Overview
 
-### Stats (verified 2026-06-13)
+### Stats (authoritative sources only)
 
-- Knowledge Graph: 17,357 nodes, 122,996 edges, risk low
-- Backend tests: ~6,240+ across 645 test files (unit + integration)
-- Frontend tests: 1,683+ across 201 test files (Vitest + MSW)
-- Architecture rules: 23 rules (RULE-01b, RULE-02/02a, RULE-03 through RULE-23)
-- Architecture exceptions: 11 in CONSTRAINTS.md §7 table; 12 in ai-gate-baseline.json (incl. 1 RULE-TEST-01 test-mocking entry + 1 inline_fallback + 1 RULE-19)
-- ADRs: 46 entries in INDEX.md (ADR-001 through ADR-047, ADR-039 gap — 46 unique entries)
-- Feature specs: 87 individual files + INDEX.md (77 registered entries)
-- Open questions: 3 active (Q-001, Q-002, Q-011), 9 resolved
-- Adoption debt: 109 ratcheted baseline items — 0 new above baseline, 0 resolved (breakdown: 27 not_adopted markers, 63 real runtime-evidence gaps [missing], 18 design-level not_applicable, 1 inline_fallback counter). All 27 modes pass static adoption (probes wired) but 0 of 27 pass full runtime adoption.
+- Knowledge Graph: run `just code-review-graph list-graph-stats` for current node/edge counts
+- Backend tests: see `tests/unit/api/` and `tests/integration/`; run `just test` for results
+- Frontend tests: see `tests/` (Vitest); run `just test-frontend` for results
+- Architecture rules: see `docs/_shared/CONSTRAINTS.md` (§Rules)
+- Architecture exceptions: see `docs/_shared/CONSTRAINTS.md` (§7 table)
+- ADRs: see `docs/architecture/decisions/INDEX.md`
+- Feature specs: see `docs/features/INDEX.md`
+- Open questions: see `docs/architecture/questions/INDEX.md`
+- Adoption debt: run `just check-adoption` for current status
   - **Runtime adoption status terminology (ADR-045):** "Infrastructure complete" ≠ "Runtime adopted." Infrastructure complete means contracts, probes, checkers, and registry exist. Runtime adopted means correlated production-path evidence proves the invocation pipeline, prompt merge, budget enforcement, and evidence recording all fire for real AI calls. The adoption gate is now status-bearing: `just check-adoption` returns `STATIC_ONLY`; `--evidence-dir .evidence` returns `GOVERNED_DEBT` (baseline-approved runtime debt, not PASS). `PASS` requires zero unapproved runtime gaps.
-- System health: 0.88 HEALTHY (feature_adoption gate at 0.50 — reflects 109 ratcheted baseline items; no new debt above ratchet floor. CI remains warning-only for DEGRADED, fails on CRITICAL.)
+- System health: run `just check-health` for current score
 
 ### Core (`packages/core/narrare_core/`)
 
@@ -50,7 +50,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 
 20 domain modules: analysis, auth, chapters, consistency, embeddings, events, generation, kb, memory, metrics, novels, planning, prompts, settings, setup, tasks, templates, volumes, writing (+ _app infrastructure)
 
-37 router files covering all CRUD + SSE + WebSocket endpoints (KB sessions SSE removed — unused)
+Router files for all CRUD + SSE + WebSocket endpoints in domain modules (KB sessions SSE removed — unused)
 
 Alembic migrations 0001 through 0030 (0028: invocation_evidence table; 0030: evidence correlation columns from ADR-045 — `invocation_id`, `prepared_context_fingerprint`, `prompt_fingerprint`, `budget_decision_fingerprint`, `model_call_marker`, `streaming`)
 
@@ -67,9 +67,9 @@ Alembic migrations 0001 through 0030 (0028: invocation_evidence table; 0030: evi
 
 - `_shared/`: CONSTRAINTS.md (23 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001 through ADR-047 plus implementation plans (INDEX.md, 46 entries — ADR-039 gap; ADR-046 and ADR-047 Proposed)
+- `architecture/decisions/`: ADR-001–ADR-047 plus implementation plans (INDEX.md — ADR-039 gap; ADR-046 and ADR-047 Proposed)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 9 resolved)
-- `features/`: 87 feature spec files + INDEX.md (77 registered entries with status tracking)
+- `features/`: Feature specs with status tracking; see `docs/features/INDEX.md`
 - `features/INDEX.md` → ADAPTER-001/002: MCP and A2A adapters documented as "Planned, Not Implemented" (post-MVP, Q-001/Q-002 blockers)
 - **WIKI-001** — LLM Wiki (Precomputed Context Layer, fully implemented) ✅
 - **PLAN-004** — Timeline Management (vollständig: DB → CRUD → AI analysis → SSE extraction → confirm endpoint → DurationImpossibilityCheck → LLM consistency via bundled prompt → character ages → visualization, 44 files, DoD-100%) ✅
@@ -150,7 +150,7 @@ Completed in Phase 6 so far:
 43. ✅ **CR-03 / INFRA-013 P3 (ADR-041)**: FileEvidenceSink (`.evidence/invocations.jsonl`), registry drift detection (JSON Schema + `check_registry_drift.py`), doc-drift automation (`doc_drift/` package), quality metrics (`QualityReport` + joiner), CI integration (`--drift` flag, CI jobs). All P3 exit criteria satisfied. INFRA-013 complete through P3.
   44. ✅ **CR-04 Cross-Feature Coherence Remediation**: KB Context Contract with source/evidence/confidence/review_status metadata (CR-AUFG-04-01 + B1 + B3); Variable naming canonical aliases with deprecation of bare `language` (CR-AUFG-04-03 + E2 + B6); ADR Implementation Completeness Gate (Gate 12); Cross-Feature Audit Cadence; FIND-009 (Timeline→Consistency) registered. 39 new tests. Precedence confirmed in RULE-22 §7 (E3: no standalone ADR needed).
   45. ✅ **CR-03 / INFRA-013 P4 (ADR-042)**: PersistentEvidenceSink (PostgreSQL hybrid), EvidenceRepository protocol + implementation, PersistentEvidenceSink in Backend, Alembic migration 0028_invocation_evidence, 41 tests (23 unit + 18 integration). FileEvidenceSink unchanged for CI.
-   46. ✅ **CR-03 / INFRA-013 P5 — 27/27 Static Adoption Achieved**: All 27 feature modes have adoption infrastructure wired (probes, registry entries, static adoption passes). Runtime adoption incomplete: 63 runtime-evidence gaps remain (final_validation, preference_enrichment, budget_resolution, evidence_sink missing for various modes). Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl (already existed) + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. 24 new mode probes (writing 9, analysis 7, kb 8) + preference enrichment probe + validation+budget probes. ai-gate-baseline.json ratcheted: 0 new adoption debt above 109-item baseline floor. CI integration: probes run before adoption check.
+   46. ✅ **CR-03 / INFRA-013 P5 — Full Static Adoption Achieved**: All feature modes have adoption infrastructure wired (probes, registry entries, static adoption passes). Runtime adoption: baseline-approved gaps remain (final_validation, preference_enrichment, budget_resolution, evidence_sink). Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. New mode probes + preference enrichment probe + validation+budget probes. ai-gate-baseline.json ratcheted: no new adoption debt above baseline floor. CI integration: probes run before adoption check.
 47. ✅ **CR-07 UX Audit Remediation — Full Implementation**: ADR-043 useAIOperation hook + mapSSEError implementiert. Alle P0/P1 AI-Flows (GenerationPanel, CoAuthorPanel, ContinueButton, TipTapEditor, KB sessions, timeline, KB _components) auf useAIOperation migriert. §16 Compliance: aiActions.* i18n keys (de/en/fr), structured AIErrorResponse, no raw AbortController, no useConnectionLost. Maschinelle Compliance-Checks + CI-Integration. RULE-04: scorer_modes.py (401→365) + compliance script (594→93) modularisiert. ONBOARD-001, PROMPT-003, KEYBOARD-001 Feature-Specs erstellt. Q-012 resolved. Commit 1001125: 84 Dateien, +5.132/-674.
 48. ✅ **CR-07 UX Audit — Phase 2**: CR-AUFG-07-01 bis CR-AUFG-07-06 abgeschlossen. 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming DEAD CODE DELETED. Migrierte Flows: Chat SSE (CHAT-001), Beta Reader (ANAL-001), Extraction (KB-007), Worldbuilding (KB-006), Name Generator (GEN-001), Consistency Check (CONS-001). KEYBOARD-001 implementiert (Ctrl+Enter, Escape-Cancel). 5 Testfiles aktualisiert, 40+14 Tests grün.
 49. ✅ **AUFG-03-06 Agent Error Classification**: Core `agents/errors.py` (AgentError, ModelExecutionError, ModelRetryExhaustedError, AgentTimeoutError, AgentCancelledError) + `agents/error_translator.py` (single translation point for `run()`/`run_stream()`) + `agents/base.py` updated to use classified errors. Privacy-safe log attributes, no raw provider exceptions past agent boundary. 31 unit tests in `test_agent_error_classification.py`. Cancel≠error semantics enforced.
@@ -159,7 +159,7 @@ Completed in Phase 6 so far:
 52. ✅ **CR-01 Prompt Governance Remediation**: 23 bundled prompt templates remediated; user-content wrapping standardized to approved template-level XML wrappers; bundled output-language variables migrated to `{{writing_language}}`; `{{kb_suggested}}` boilerplate normalized; evidence/confidence/false-positive gates added to relevant prompts; `UNSAFE_USER_VARS` derives from `variable_registry.USER_CONTENT_VARS`; `scripts/prompt_governance_checks.py` added and documented. Validation reported PASS: Ruff, 34 script tests, `check_prompt_structure.py --strict`, `check_architecture.py`.
 53. ✅ **ADR-044 / CR-AUFG-01-06 Staged Consistency**: FactExtractorAgent + typed `ExtractedFact`/`TimelineEventEnvelope`, `FACT_EXTRACT` intent/route, enriched `ConsistencyDeps`, backend `ConsistencyOrchestrator`, `timeline_envelope.py`, `checker_context.py`, `stage_schemas.py`, `/consistency/check/stream`, and Pydantic Evals `consistency_staged` smoke/runtime tasks implemented. FIND-009 resolved by integration contract. Validation reported: 57 core tests, 77 backend consistency tests, 9 eval tests; Ruff, Pyright, architecture, prompt checks, and smoke evals passed.
 54. 🔧 **ADR-045 Runtime Adoption Enforcement (in progress)**: Core: invocation correlation (`invocation_id` + fingerprints), prompt context merge (RULE-22 precedence), run-limit enforcement (`RunLimitResolver`/`ResolvedRunLimits`), mem0 learning events, direct-agent helper. Platform: runtime gaps status-bearing (`PASS`/`GOVERNED_DEBT`/`STATIC_ONLY`/`FAIL`), `--evidence-repo` threading, placeholder evidence rejection. Backend: WebSocket handler modularized (354 lines, transport-only), turn service with user/project/chapter/session IDs, evidence schema migration 0030 (correlation columns), `comprehensive`+`conservative` profiles. Tests: 447+ core, 67 platform, 463 backend passed. **Follow-up:** 34 direct-agent call sites need migration, PersistentEvidenceSink production wiring, `_handle_generate_draft` bypass. `just check-adoption` now `STATIC_ONLY`; `--evidence-dir .evidence` returns `GOVERNED_DEBT`.
-55. ✅ **AUFG-05-12 — Rate-Limiting for AI endpoints**: Shared module at `apps/api/narrare/_app/rate_limits.py` provides 3 reusable AI limiters (`AI_WRITE_LIMITER` 3/min, `AI_ANALYSIS_LIMITER` 5/min, `AI_LIGHT_LIMITER` 10/min, `AI_WS_LIMITER` 3/min) plus `SETUP_MODELS_LIMITER` (10/min, IP-based). 17 router files wired via `Depends()`. WebSocket inline check in `router_sessions.py`. 14 unit tests. Uses in-memory `pyrate_limiter` per AR-05-02.
+55. ✅ **AUFG-05-12 — Rate-Limiting for AI endpoints**: Shared module at `apps/api/narrare/_app/rate_limits.py` provides reusable AI limiters (`AI_WRITE_LIMITER`, `AI_ANALYSIS_LIMITER`, `AI_LIGHT_LIMITER`, `AI_WS_LIMITER`) plus `SETUP_MODELS_LIMITER` (IP-based). All AI-cost-bearing router files wired via `Depends()`. WebSocket inline check in `router_sessions.py`. Uses in-memory `pyrate_limiter` per AR-05-02.
 56. ✅ **AUFG-05-13 — Origin/Referer validation + WebSocket Origin check**: `OriginValidationMiddleware` in `_app/middleware.py` validates Origin/Referer on all POST/PUT/PATCH/DELETE; Bearer-authenticated requests without Origin exempt. `Settings.csrf_trusted_origins` (`NARRARE_CSRF_TRUSTED_ORIGINS`). WebSocket Origin check in `router_sessions.py` (close code 4001). 12 unit tests.
 57. ✅ **AUFG-05-14 — OTel Health-Severity Implementation**: `get_observability_status()` extended with `state`/`severity`/`endpoint_configured` keys. `record_otel_setup_outcome()` records setup outcomes thread-safely. `setup_telemetry()` calls it on all 3 paths. `/health` returns `status: obs["severity"]` instead of hardcoded `"ok"`. 13 unit tests. RULE-11 silent-failure gap closed.
 
@@ -266,7 +266,7 @@ Full details: `docs/architecture/questions/INDEX.md`
 | Python 3.14 missing type stubs | Low | Documented in pyproject.toml |
 | TipTap v3 API changes | Medium | Pin exact version |
 | Editor h-full in flex container | Low | Follow DashboardView pattern |
-| System Health Score | Medium | Current: 0.88 HEALTHY. feature_adoption gate at 0.50 (109 ratcheted baseline items: 27 not_adopted markers + 63 real runtime-evidence gaps + 18 design-level N/A + 1 counter). No growth above ratchet floor. CI remains warning-only for DEGRADED and fails on CRITICAL. CI coverage gate: 60% (ramp to 80% by 2026-10, see gate-exceptions.json). |
+| System Health Score | Medium | Run `just check-health` for current score. feature_adoption gate reflects ratcheted baseline debt (no new above ratchet floor). CI remains warning-only for DEGRADED and fails on CRITICAL. CI coverage gate target documented in `gate-exceptions.json`. |
 | Frontend RULE-04 regressions | Low | All 37 legacy violations resolved (53→0). `check_frontend_file_size.py` enforces limits in CI. New violations blocked by ratchet. |
 | Architecture exception baseline drift | Low | Resolved/revalidated by option B blocker cleanup: CONSTRAINTS.md §7 table has 11 entries; ai-gate-baseline.json has 12 (incl. 1 RULE-TEST-01 + 1 inline_fallback + 1 RULE-19). RULE-02 exception #3 removed. RULE-19 sync now enforced by `--check-sync`. |
 | Code Knowledge Graph MCP intermittently unavailable | Medium | Agents fall back to Read/Glob/Grep, losing structural context (callers, dependents, test coverage). Fallback protocol documented in `code-graph-first.md`. Session startup check via `list_graph_stats_tool` recommended. Reported in Reviews 01–04. |
