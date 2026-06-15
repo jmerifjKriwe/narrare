@@ -62,7 +62,7 @@ dependencies = [
   "jinja2==3.1.6",
 
   # File operations
-  "filelock==3.29.0",
+  "filelock==3.29.4",
   "aiofiles==25.1.0",
 
   # YAML
