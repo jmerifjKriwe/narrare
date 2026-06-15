@@ -1,0 +1,20 @@
+title = "Narrare secret-scanning gate"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Only explicitly fake local/test values approved for docs, examples, and CI fixtures."
+regexTarget = "match"
+regexes = [
+  '''sk-test-dummy''',
+  '''sk-test-''',               # Broader: covers sk-test-key-1234, sk-test-key-6789
+  '''sk-or-key''',              # Test OpenRouter key fixture
+  '''test-secret-key-not-for-production''',
+  '''test-secret-key-at-least-32-(characters|chars)-long''',  # JWT test fixture (2 forms: characters-long & chars-long)
+  '''result\d\.key_points''',   # Python attribute false positive (not a secret)
+  '''narrare-dev''',
+  '''postgresql\+asyncpg://narrare:narrare@localhost:5432/narrare_(dev|test)''',
+  '''redis://localhost:6379/0''',
+  '''WYcr1iULJse2Oo6GPpmw1Au4ovp_fXZwbrNF11C12ZQ=''',
+]
