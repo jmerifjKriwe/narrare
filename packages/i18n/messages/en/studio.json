@@ -374,6 +374,8 @@
       "tokenProfileQuick": "Quick (max 500 tokens)",
       "tokenProfileBalanced": "Balanced (max 2000 tokens)",
       "tokenProfileLong": "Long Texts (max 8000 tokens)",
+      "tokenProfileConservative": "Conservative (max 2000 tokens)",
+      "tokenProfileComprehensive": "Comprehensive (max 16000 tokens)",
       "tokenProfileCustom": "Custom",
       "promptsInfo": "System prompts can be customized per writing intent. This feature will be available through the prompt editor.",
       "apiKeyUpdated": "API key updated",
@@ -1673,6 +1675,8 @@
     "profileQuick": "Quick",
     "profileBalanced": "Balanced",
     "profileLong": "Long texts",
+    "profileConservative": "Conservative",
+    "profileComprehensive": "Comprehensive",
     "profileCustom": "Custom",
     "outputLimit": "Output limit",
     "max": "16K"

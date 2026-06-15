@@ -374,6 +374,8 @@
       "tokenProfileQuick": "Rapide (max 500 tokens)",
       "tokenProfileBalanced": "Équilibré (max 2000 tokens)",
       "tokenProfileLong": "Textes longs (max 8000 tokens)",
+      "tokenProfileConservative": "Conservateur (max 2000 tokens)",
+      "tokenProfileComprehensive": "Complet (max 16000 tokens)",
       "tokenProfileCustom": "Personnalisé",
       "promptsInfo": "Les prompts système peuvent être personnalisés par intention d'écriture. Cette fonctionnalité sera disponible via l'éditeur de prompts.",
       "apiKeyUpdated": "Clé API mise à jour",
@@ -1673,6 +1675,8 @@
     "profileQuick": "Rapide",
     "profileBalanced": "Équilibré",
     "profileLong": "Textes longs",
+    "profileConservative": "Conservateur",
+    "profileComprehensive": "Complet",
     "profileCustom": "Personnalisé",
     "outputLimit": "Limite de sortie",
     "max": "16K"

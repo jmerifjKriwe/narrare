@@ -187,6 +187,26 @@ describe("AiTab", () => {
     expect((select as HTMLSelectElement).value).toBe("balanced");
   });
 
+  it("renders all token profile options including comprehensive and conservative", async () => {
+    renderWithProviders(<AiTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("provider-list")).toBeDefined();
+    });
+
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+
+    expect(optionValues).toEqual([
+      "quick",
+      "balanced",
+      "conservative",
+      "long_texts",
+      "comprehensive",
+      "custom",
+    ]);
+  });
+
   it("token profile change triggers mutation", async () => {
     const user = userEvent.setup();
     renderWithProviders(<AiTab />);

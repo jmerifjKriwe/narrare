@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { tokenLimitsApi } from "@/lib/api/client";
 import type { TokenLimitProfile, TokenLimitsResponse } from "@/types";
+import { TOKEN_PROFILE_VALUES } from "../settings/aiTabConstants";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,6 +25,23 @@ interface TokenSettingsProps {
   /** Optional callback when output limit changes. */
   onOutputLimitChange?: (limit: number) => void;
 }
+
+/**
+ * Label keys for the editor panel's compact profile selector.
+ *
+ * Uses the `tokenSettings.*` namespace (shorter labels than the settings
+ * page's `settings.ai.tokenProfile*`). A `Record<TokenLimitProfile, string>`
+ * enforces at compile time that every profile has a label — adding a new
+ * profile to the type without adding it here is a type error.
+ */
+const EDITOR_PROFILE_LABELS: Record<TokenLimitProfile, string> = {
+  quick: "tokenSettings.profileQuick",
+  balanced: "tokenSettings.profileBalanced",
+  conservative: "tokenSettings.profileConservative",
+  long_texts: "tokenSettings.profileLong",
+  comprehensive: "tokenSettings.profileComprehensive",
+  custom: "tokenSettings.profileCustom",
+};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -134,10 +152,11 @@ export function TokenSettings({ onOutputLimitChange }: TokenSettingsProps) {
           onChange={(e) => handleProfileChange(e.target.value)}
           className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
         >
-          <option value="quick">{t("tokenSettings.profileQuick")}</option>
-          <option value="balanced">{t("tokenSettings.profileBalanced")}</option>
-          <option value="long_texts">{t("tokenSettings.profileLong")}</option>
-          <option value="custom">{t("tokenSettings.profileCustom")}</option>
+          {TOKEN_PROFILE_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {t(EDITOR_PROFILE_LABELS[value])}
+            </option>
+          ))}
         </select>
       </div>
 

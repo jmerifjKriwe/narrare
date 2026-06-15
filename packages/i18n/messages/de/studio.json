@@ -374,6 +374,8 @@
       "tokenProfileQuick": "Schnell (max 500 Tokens)",
       "tokenProfileBalanced": "Ausgewogen (max 2000 Tokens)",
       "tokenProfileLong": "Lange Texte (max 8000 Tokens)",
+      "tokenProfileConservative": "Konservativ (max 2000 Tokens)",
+      "tokenProfileComprehensive": "Umfassend (max 16000 Tokens)",
       "tokenProfileCustom": "Benutzerdefiniert",
       "promptsInfo": "System-Prompts können pro Schreibabsicht angepasst werden. Diese Funktion wird über den Prompt-Editor verfügbar sein.",
       "apiKeyUpdated": "API-Key aktualisiert",
@@ -1673,6 +1675,8 @@
     "profileQuick": "Schnell",
     "profileBalanced": "Ausgeglichen",
     "profileLong": "Lange Texte",
+    "profileConservative": "Konservativ",
+    "profileComprehensive": "Umfassend",
     "profileCustom": "Benutzerdefiniert",
     "outputLimit": "Ausgabelimit",
     "max": "16K"

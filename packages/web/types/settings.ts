@@ -54,7 +54,13 @@ export type IntentCategory =
   | "chat"
   | "research";
 
-export type TokenLimitProfile = "quick" | "balanced" | "long_texts" | "custom";
+export type TokenLimitProfile =
+  | "quick"
+  | "balanced"
+  | "conservative"
+  | "long_texts"
+  | "comprehensive"
+  | "custom";
 
 export interface ModelOverride {
   provider_id: string;
