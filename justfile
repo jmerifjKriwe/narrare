@@ -343,8 +343,15 @@ lint-check:
 typecheck:
     uv run pyright
 
+# Run secret-scanning gate (Gitleaks) — AUFG-05-09
+# Blocks on new unapproved secrets; returns 127 with install guidance if the
+# gitleaks binary is missing locally.
+check-secrets:
+    @echo "🔐 Checking for leaked secrets (Gitleaks)..."
+    uv run python scripts/check_secrets.py
+
 # Run security checks
-security:
+security: check-secrets
     uv run bandit -c pyproject.toml -r apps/api/narrare packages/core/narrare_core
     uv run pip-audit
 
@@ -384,7 +391,7 @@ check-frontend:
 # Check feature adoption score (>= 0.85 PASS, 0.70-0.85 WARN, < 0.70 FAIL)
 check-adoption:
     @echo "📈 Checking feature adoption score..."
-    uv run python scripts/check_adoption.py
+    uv run python scripts/check_adoption.py --evidence-dir .evidence
 
 # Check approved architecture exceptions do not grow without ADR/user approval
 check-exceptions:
@@ -464,6 +471,11 @@ check-prompts-de:
 check-health:
     @echo "🏥 Checking system health..."
     uv run python scripts/check_system_health.py
+
+# Check governance health — review-finding coverage vs AUFG lifecycle (ADR-047 Phase 2, warning-only)
+check-governance:
+    @echo "🏛️ Checking governance health..."
+    uv run python scripts/check_governance_health.py
 
 # List all bundled prompt modes with locale coverage
 prompt-list:
@@ -583,6 +595,6 @@ hooks-update:
 #
 # check-ssot is warn-only: it reports discrepancies but does not block the merge.
 # The `|| true` prevents its non-zero exit code from failing the entire recipe.
-check-full: check check-python-size check-streaming check-ai-ux check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
+check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
     -uv run python scripts/check_current_state_facts.py || true
     @echo "✅ All checks passed — ready to merge"
