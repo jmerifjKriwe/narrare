@@ -11,6 +11,7 @@ import uuid
 from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.analysis.dependencies import get_readability_service
 from narrare.analysis.schemas_readability import ReadabilityRequest
 from narrare.analysis.services.readability_service import ReadabilityService
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
     "/readability",
     response_model=list[ReadabilityResult],
     summary="Analyze chapter(s) readability — deterministic metrics + AI sentence analysis",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
 )
 async def analyze_readability(
     novel_id: uuid.UUID,

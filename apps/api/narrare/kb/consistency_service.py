@@ -19,15 +19,16 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.kb._consistency_helpers import (
+    asymmetry_to_issue,
+    generate_candidate_pairs,
+)
 from narrare.kb.consistency_contracts import (
     ConsistencyCheckRequest,
     ConsistencyCheckResponse,
-    RelationshipAsymmetry,
 )
-from narrare.kb.worldbuilding_contracts import (
-    ConsistencyCategory,
-    ConsistencyIssue,
-)
+from narrare.kb.worldbuilding_contracts import ConsistencyCategory, ConsistencyIssue
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -40,6 +41,21 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: KBConsistencyAnalyzer and WorldbuildingAnalyzer
+# compose their prompts internally from deps (entity summaries, template
+# structures, existing relationships). Evidence is recorded at the parent
+# service layer, covering both Phase 2 (entry-internal) and Phase 3
+# (cross-entity) LLM calls.
+_CONSISTENCY_MANUAL_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "KBConsistencyAnalyzer and WorldbuildingAnalyzer compose their prompts "
+        "internally from deps (entity summaries, template structures, "
+        "existing relationships). See ADR-044 staged consistency pipeline."
+    ),
+    variables=("entity_summaries", "template_structures", "existing_relationships"),
+    injection_mechanism="agent_deps",
+)
 
 _SEVERITY_ORDER: dict[str, int] = {
     "critical": 0,
@@ -116,18 +132,32 @@ class KBConsistencyService:
             asymmetry_issues = await self._run_asymmetry(novel_id)
             all_issues.extend(asymmetry_issues)
 
-        # 2a. Record invocation evidence for LLM phases (ADR-040)
+        # 2a. Compose invocation (Mode 2 — agent-internal) and record evidence
+        # for LLM phases (ADR-048). Replaces the former placeholder-evidence
+        # path. Covers both Phase 2 (entry-internal) and Phase 3 (cross-entity).
         has_llm_phase = request.include_entry_internal or request.include_cross_entity
         if has_llm_phase:
-            from narrare._app.invocation_context import safe_record_evidence
+            from narrare._app.invocation_context import build_invocation_context
+            from narrare_core.ai_invocation import compose_invocation
             from narrare_core.llm.intents import LLMIntent
 
-            await safe_record_evidence(
-                self._invocation_pipeline,
+            invocation_context = build_invocation_context(
                 feature_id="kb_consistency",
                 intent=LLMIntent.KB_CONSISTENCY,
                 project_id=novel_id,
             )
+            try:
+                await compose_invocation(
+                    invocation_pipeline=self._invocation_pipeline,
+                    invocation_context=invocation_context,
+                    manual_injection=_CONSISTENCY_MANUAL_INJECTION,
+                )
+            except Exception:
+                logger.warning(
+                    "invocation_composition_failed",
+                    feature_id="kb_consistency",
+                    exc_info=True,
+                )
 
         # 3. Phase 2: Entry-internal check (LLM per entry)
         if request.include_entry_internal:
@@ -196,7 +226,7 @@ class KBConsistencyService:
     async def _run_asymmetry(self, novel_id: UUID) -> list[ConsistencyIssue]:
         """Run Phase 1: relationship asymmetry detection (algorithmic)."""
         asymmetries = await self._asymmetry_checker.check(novel_id)
-        return [_asymmetry_to_issue(idx, a) for idx, a in enumerate(asymmetries)]
+        return [asymmetry_to_issue(idx, a) for idx, a in enumerate(asymmetries)]
 
     async def _run_cross_entity(
         self,
@@ -231,64 +261,9 @@ class KBConsistencyService:
             existing_relationships=relationships,
         )
 
-        pairs = _generate_candidate_pairs(adjacency, self._max_phase2_pairs)
+        pairs = generate_candidate_pairs(adjacency, self._max_phase2_pairs)
         if not pairs:
             return []
 
         # Reuses WorldbuildingAnalyzer._run_phase2() per KB-004 spec (Option C).
         return await self._worldbuilding_analyzer._run_phase2(deps, pairs)  # pyright: ignore[reportPrivateUsage]
-
-
-# ---------------------------------------------------------------------------
-# Module-level helpers
-# ---------------------------------------------------------------------------
-
-
-def _asymmetry_to_issue(idx: int, a: RelationshipAsymmetry) -> ConsistencyIssue:
-    """Convert a :class:`RelationshipAsymmetry` to a :class:`ConsistencyIssue`."""
-    return ConsistencyIssue(
-        finding_index=idx,
-        category=ConsistencyCategory.RELATIONSHIP_ASYMMETRY,
-        entity_ids=[a.source_id, a.target_id],
-        entity_names=[a.source_name, a.target_name],
-        description=(
-            f"Asymmetric relationship: {a.source_name} \u2192 {a.target_name} "
-            f"({a.forward_rel_type})"
-        ),
-        contradiction=(
-            f"Forward: {a.forward_rel_type}, "
-            f"Reverse: {a.reverse_rel_type or 'none'}, "
-            f"Expected: {a.expected_inverse or 'none'}"
-        ),
-        suggested_resolution=(
-            f"Add {a.expected_inverse} relationship from {a.target_name} to {a.source_name}"
-        )
-        if a.expected_inverse
-        else None,
-        severity=a.severity,
-        confidence=1.0,  # Algorithmic — deterministic
-    )
-
-
-def _generate_candidate_pairs(
-    adjacency: dict[str, set[str]],
-    max_pairs: int = 15,
-) -> list[tuple[str, str]]:
-    """Generate entity pairs from existing relationships for cross-entity check.
-
-    Uses the adjacency map to find connected entity pairs, deduplicating
-    by unordered pair.  Only pairs with actual relationships are included —
-    the most likely source of cross-entity consistency issues.
-    """
-    pairs: list[tuple[str, str]] = []
-    seen: set[frozenset[str]] = set()
-
-    for entity_id, connected in adjacency.items():
-        for other_id in connected:
-            pair = frozenset({entity_id, other_id})
-            if pair not in seen:
-                seen.add(pair)
-                pairs.append((entity_id, other_id))
-                if len(pairs) >= max_pairs:
-                    return pairs
-    return pairs

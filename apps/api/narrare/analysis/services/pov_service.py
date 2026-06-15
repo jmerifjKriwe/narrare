@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare.analysis.services.pov_mapper import build_deps, map_output_to_result
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.analysis.types import POVResult
 from narrare_core.shared.errors import NotFoundError
 
@@ -30,6 +31,17 @@ if TYPE_CHECKING:
     from narrare_core.llm.model_config import ResolvedModelConfig
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: POVDetectionAgent composes its prompt internally
+# from deps (combined text, known characters, POV type hint, language).
+_POV_MANUAL_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "POVDetectionAgent composes its prompt internally from deps "
+        "(combined chapter text, known characters, POV type hint, language)."
+    ),
+    variables=("text", "known_characters", "pov_type"),
+    injection_mechanism="agent_deps",
+)
 
 
 class POVService:
@@ -142,18 +154,31 @@ class POVService:
 
         # 4. Run POVDetectionAgent
         try:
-            # 4a. Record invocation evidence (ADR-040)
-            from narrare._app.invocation_context import safe_record_evidence
+            # 4a. Compose invocation (Mode 2 — agent-internal) and record
+            # evidence (ADR-048). Replaces the former placeholder path.
+            from narrare._app.invocation_context import build_invocation_context
+            from narrare_core.ai_invocation import compose_invocation
             from narrare_core.llm.intents import LLMIntent
 
-            await safe_record_evidence(
-                self._invocation_pipeline,
+            invocation_context = build_invocation_context(
                 feature_id="analysis_pov",
                 intent=LLMIntent.ANALYSE,
                 user_id=user_id,
                 project_id=novel_id,
                 language=effective_language,
             )
+            try:
+                await compose_invocation(
+                    invocation_pipeline=self._invocation_pipeline,
+                    invocation_context=invocation_context,
+                    manual_injection=_POV_MANUAL_INJECTION,
+                )
+            except Exception:
+                logger.warning(
+                    "invocation_composition_failed",
+                    feature_id="analysis_pov",
+                    exc_info=True,
+                )
 
             agent = self._get_agent()
             deps = build_deps(

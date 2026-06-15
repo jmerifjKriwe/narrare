@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.agents.kb_assist_agent import KBAssistAgent, KBAssistDeps
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 
 from .assist_contracts import (
@@ -36,6 +37,18 @@ if TYPE_CHECKING:
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: KBAssistAgent composes its prompt internally
+# from KBAssistDeps (entity type, template structure, existing answers,
+# world context). The system prompt is composed separately via PromptComposer.
+_ASSIST_MANUAL_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "KBAssistAgent composes its prompt internally from KBAssistDeps "
+        "(entity type, template structure, existing answers, world context)."
+    ),
+    variables=("entity_type", "template_structure", "existing_answers", "world_context"),
+    injection_mechanism="agent_deps",
+)
 
 # Intent mapping for each assist mode.
 _INTENT_MAP = {
@@ -166,17 +179,30 @@ class KBAssistService:
     ) -> KBAssistOutput:
         """Run KBAssistAgent with composed system prompt and user prompt.
 
-        Records invocation evidence when the pipeline is wired (ADR-040).
+        Composes the invocation (Mode 2 — agent-internal) and records
+        evidence when the pipeline is wired (ADR-048).
         """
-        # Record invocation evidence before agent execution (ADR-040)
-        from narrare._app.invocation_context import safe_record_evidence
-        from narrare_core.llm.intents import LLMIntent
+        # Compose invocation (Mode 2 — agent-internal) and record evidence
+        # (ADR-048). Replaces the former placeholder-evidence path.
+        from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.ai_invocation import compose_invocation
 
-        await safe_record_evidence(
-            self._invocation_pipeline,
+        invocation_context = build_invocation_context(
             feature_id="kb_assist",
             intent=LLMIntent.KB_CREATE,
         )
+        try:
+            await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                manual_injection=_ASSIST_MANUAL_INJECTION,
+            )
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="kb_assist",
+                exc_info=True,
+            )
 
         model = await self._get_model()
         agent = KBAssistAgent(

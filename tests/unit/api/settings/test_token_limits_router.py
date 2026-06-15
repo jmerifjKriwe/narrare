@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from narrare.settings.token_limits.models import UserTokenLimits
 from narrare.settings.token_limits.router import (
@@ -226,3 +227,31 @@ class TestUpdateProjectLimitsEndpoint:
 
         assert exc_info.value.status_code == 422
         assert "At least one field" in str(exc_info.value.detail)
+
+
+# ======================================================================
+# Tests: UpdateTokenLimitsRequest schema validation
+# ======================================================================
+
+
+class TestUpdateTokenLimitsRequestSchema:
+    """Schema-level validation for UpdateTokenLimitsRequest.token_profile.
+
+    Regression test: comprehensive and conservative profiles were added to
+    Core (run_limits.py, model_config.py, intent_profiles.py) but the API
+    schema regex rejected them. All 6 profiles must be accepted.
+    """
+
+    @pytest.mark.parametrize(
+        "profile",
+        ["quick", "balanced", "long_texts", "comprehensive", "conservative", "custom"],
+    )
+    def test_all_six_profiles_accepted(self, profile: str) -> None:
+        """The schema must accept all 6 token profiles."""
+        req = UpdateTokenLimitsRequest(token_profile=profile)
+        assert req.token_profile == profile
+
+    def test_invalid_profile_rejected(self) -> None:
+        """Unknown profiles must be rejected by the schema."""
+        with pytest.raises(ValidationError):
+            UpdateTokenLimitsRequest(token_profile="ultra_fast")

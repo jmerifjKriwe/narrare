@@ -41,6 +41,8 @@ def _reset_state() -> None:
         cast("Any", _obs_mod)._otel_available = None
         cast("Any", _obs_mod)._failure_reason = ""
         cast("Any", _obs_mod)._warning_emitted = False
+        cast("Any", _obs_mod)._otel_state = None
+        cast("Any", _obs_mod)._endpoint_configured = False
 
 
 def _make_fake_otel_trace(

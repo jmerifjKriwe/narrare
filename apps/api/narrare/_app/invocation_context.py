@@ -17,6 +17,7 @@ See:
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import structlog
@@ -103,6 +104,14 @@ async def record_invocation_evidence(
     Returns:
         A :class:`FinalizedInvocation` with validation and evidence state.
     """
+    warnings.warn(
+        "record_invocation_evidence() is deprecated per ADR-048 Phase 1: it "
+        "finalizes the pipeline with a placeholder prompt and discards "
+        "enrichment. Use compose_invocation() instead. This function will be "
+        "removed in ADR-048 Phase 3.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from narrare_core.prompts.composer import ComposedPrompt
 
     # Phase 1: prepare (validate + enrich + resolve budget)
@@ -145,6 +154,14 @@ async def safe_record_evidence(
     null-check / try-except / logging boilerplate in every ``_record_evidence``
     method (ADR-040, RULE-04).
     """
+    warnings.warn(
+        "safe_record_evidence() is deprecated per ADR-048 Phase 1: it records "
+        "placeholder evidence with discarded enrichment. Use "
+        "compose_invocation() instead. This function will be removed in "
+        "ADR-048 Phase 3.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if pipeline is None:
         return
 

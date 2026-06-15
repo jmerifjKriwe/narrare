@@ -15,6 +15,10 @@ from uuid import UUID
 
 import structlog
 
+from narrare.analysis._beta_reader_helpers import (
+    compose_phase1_invocation,
+    compose_phase2_invocation,
+)
 from narrare.analysis.beta_reader_agent_run import run_phase1, run_phase2
 from narrare.analysis.beta_reader_cache import BetaReaderCache
 from narrare.analysis.beta_reader_mapper import (
@@ -136,15 +140,12 @@ class BetaReaderService:
         composed = await self._compose_prompt(deps.language, "beta_reader")
         model = await self._registry.get_model(self._config)
 
-        # 6a. Record invocation evidence (ADR-040)
-        from narrare._app.invocation_context import safe_record_evidence
-
-        await safe_record_evidence(
+        # 6a. Compose invocation (Mode 2 — agent-internal) and record evidence
+        # (ADR-048). Replaces the former placeholder-evidence path.
+        await compose_phase1_invocation(
             self._invocation_pipeline,
-            feature_id="analysis_beta_read",
-            intent=LLMIntent.BETA_READ,
+            novel_id=novel_id,
             user_id=user_id,
-            project_id=novel_id,
             language=deps.language,
         )
 
@@ -218,15 +219,12 @@ class BetaReaderService:
         composed = await self._compose_prompt(deps.language, "beta_reader_deepdive")
         model = await self._registry.get_model(self._config)
 
-        # 3a. Record invocation evidence for deep-dive (ADR-040)
-        from narrare._app.invocation_context import safe_record_evidence
-
-        await safe_record_evidence(
+        # 3a. Compose invocation (Mode 2 — agent-internal) and record evidence
+        # for deep-dive (ADR-048). Replaces the former placeholder-evidence path.
+        await compose_phase2_invocation(
             self._invocation_pipeline,
-            feature_id="analysis_beta_read_deepdive",
-            intent=LLMIntent.BETA_READ,
+            novel_id=novel_id,
             user_id=user_id,
-            project_id=novel_id,
             language=deps.language,
         )
 

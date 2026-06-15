@@ -15538,7 +15538,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^(quick|balanced|long_texts|custom)$"
+                "pattern": "^(quick|balanced|long_texts|comprehensive|conservative|custom)$"
               },
               {
                 "type": "null"

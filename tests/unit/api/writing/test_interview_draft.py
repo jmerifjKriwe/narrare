@@ -1,111 +1,23 @@
-"""Tests for InterviewDraftGenerator — interview-assisted draft generation.
+"""Tests for InterviewDraftGenerator — transcript formatting and streaming.
 
 Covers:
 - Transcript formatting from conversation history
-- Draft generation with valid transcript
-- Error when session not found
-- Error when transcript is empty
-- LLM gateway failure during streaming
-- Draft persistence (message + prose buffer)
+- ``stream_draft`` yields ``StreamChunk`` instances (transport-agnostic)
+- Error handling: session not found, empty transcript, LLM failure
+
+Contract regression tests (limits enforced, pipeline involvement) live
+in ``test_interview_draft_contract.py`` (split for RULE-04).
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from fastapi import WebSocket
-
-    from narrare_core.prompts.composer import PromptComposer
-    from narrare_core.prompts.context import PromptContext
-
-from typing import Any, cast
-from unittest.mock import Mock
 from uuid import uuid4
 
+import pytest
+
 from narrare.writing._interview_draft import InterviewDraftGenerator
-from narrare.writing._ws_cache import InMemorySessionCache
-from narrare_core.llm import LLMIntent, ResolvedModelConfig
-from narrare_core.llm.result import StreamChunk, TokenUsage
-from narrare_core.prompts.composer import ComposedPrompt
-from narrare_core.writing.session_manager import SessionManager
-
-# ---------------------------------------------------------------------------
-# Mock helpers
-# ---------------------------------------------------------------------------
-
-
-class MockWebSocket:
-    """Simplified async WebSocket mock for unit tests."""
-
-    def __init__(self) -> None:
-        self.sent: list[dict[str, Any]] = []
-        self._closed = False
-
-    async def accept(self) -> None:
-        """Accept the WebSocket connection."""
-
-    async def send_json(self, data: dict[str, Any]) -> None:
-        self.sent.append(data)
-
-    async def close(self, code: int = 1000, reason: str = "") -> None:
-        self._closed = True
-
-    async def receive_text(self) -> str:
-        return "{}"
-
-    async def send_text(self, message: str) -> None:
-        pass
-
-
-class _FakeComposer:
-    """Stub PromptComposer that returns a fixed prompt."""
-
-    async def build(
-        self,
-        intent: LLMIntent,
-        context: PromptContext,
-        *,
-        db_content: str | None = None,
-        user_prompt: str = "",
-    ) -> ComposedPrompt:
-        return ComposedPrompt(system="system-prompt", user="user-prompt")
-
-
-async def _fake_stream_hello(*args: object, **kwargs: object) -> AsyncIterator[StreamChunk]:
-    """Yield text chunks then a final chunk."""
-    yield StreamChunk(text="Once upon a time ")
-    yield StreamChunk(text="there was a dog.", is_final=True, usage=TokenUsage(10, 20, 30))
-
-
-def _make_config() -> ResolvedModelConfig:
-    return ResolvedModelConfig(
-        provider_name="test",
-        model_id="test-model",
-        temperature=0.7,
-        max_tokens=100,
-    )
-
-
-def _make_generator() -> tuple[InterviewDraftGenerator, SessionManager, Mock]:
-    """Create an InterviewDraftGenerator with mock dependencies."""
-    cache = InMemorySessionCache()
-    session_manager = SessionManager(cache=cache)
-    gateway = Mock()
-    gateway.stream = Mock(side_effect=_fake_stream_hello)
-    composer = _FakeComposer()
-    config = _make_config()
-
-    generator = InterviewDraftGenerator(
-        session_manager=session_manager,
-        registry=gateway,
-        composer=cast("PromptComposer", composer),
-        config=config,
-    )
-    return generator, session_manager, gateway
-
+from narrare_core.shared.errors import WritingError
+from tests.unit.api.writing._interview_draft_fakes import identifiers, make_generator
 
 # ---------------------------------------------------------------------------
 # Transcript formatting
@@ -157,167 +69,103 @@ class TestTranscriptFormatting:
 
 
 # ---------------------------------------------------------------------------
-# Draft generation
+# Draft generation via stream_draft (transport-agnostic)
 # ---------------------------------------------------------------------------
 
 
-class TestDraftGeneration:
-    """Full draft generation from interview transcript."""
+class TestStreamDraft:
+    """stream_draft yields StreamChunk instances via the invocation contract."""
 
-    async def test_generate_with_valid_transcript(self) -> None:
-        """Valid transcript produces draft_done with word count."""
-        generator, session_manager, _ = _make_generator()
-        ws = MockWebSocket()
-
-        # Create session and add Q&A
-        chapter_id = uuid4()
-        project_id = uuid4()
-        user_id = uuid4()
+    async def test_stream_draft_yields_chunks_from_transcript(self) -> None:
+        """Valid transcript produces streamed chunks."""
+        generator, session_manager, _, _ = make_generator()
+        chapter_id, user_id, project_id = identifiers()
         session_id = await session_manager.create_session(chapter_id, project_id, user_id)
         await session_manager.add_message(session_id, "user", "A story about cats")
-        await session_manager.add_message(session_id, "assistant", "What happens to the cats?")
-        await session_manager.add_message(session_id, "user", "They learn to fly")
+        await session_manager.add_message(session_id, "assistant", "What happens?")
 
-        await generator.generate(cast("WebSocket", ws), session_id)
+        chunks = [
+            c
+            async for c in generator.stream_draft(
+                session_id=session_id,
+                user_id=user_id,
+                project_id=project_id,
+                chapter_id=chapter_id,
+            )
+        ]
 
-        # Should have text_chunk(s) and draft_done
-        draft_done = [m for m in ws.sent if m["type"] == "draft_done"]
-        assert len(draft_done) == 1
-        assert draft_done[0]["word_count"] > 0
-        assert "Once upon a time" in draft_done[0]["text"]
+        texts = [c.text for c in chunks if not c.is_final]
+        assert "Once upon a time " in texts
+        assert chunks[-1].is_final
 
-    async def test_generate_session_not_found(self) -> None:
-        """Missing session returns error."""
-        generator, _, _ = _make_generator()
-        ws = MockWebSocket()
+    async def test_stream_draft_session_not_found_raises(self) -> None:
+        """Missing session raises WritingError."""
+        generator, _, _, _ = make_generator()
+        chapter_id, user_id, project_id = identifiers()
 
-        await generator.generate(cast("WebSocket", ws), uuid4())
+        with pytest.raises(WritingError, match=r"(?i)not found"):
+            async for _ in generator.stream_draft(
+                session_id=uuid4(),
+                user_id=user_id,
+                project_id=project_id,
+                chapter_id=chapter_id,
+            ):
+                pass
 
-        errors = [m for m in ws.sent if m["type"] == "error"]
-        assert len(errors) == 1
-        assert "not found" in errors[0]["message"].lower()
+    async def test_stream_draft_empty_transcript_raises(self) -> None:
+        """Session with no Q&A raises WritingError about empty answers."""
+        generator, session_manager, _, _ = make_generator()
+        chapter_id, user_id, project_id = identifiers()
+        session_id = await session_manager.create_session(chapter_id, project_id, user_id)
 
-    async def test_generate_empty_transcript(self) -> None:
-        """Session with no Q&A returns error about empty answers."""
-        generator, session_manager, _ = _make_generator()
-        ws = MockWebSocket()
+        with pytest.raises(WritingError, match=r"(?i)no interview answers"):
+            async for _ in generator.stream_draft(
+                session_id=session_id,
+                user_id=user_id,
+                project_id=project_id,
+                chapter_id=chapter_id,
+            ):
+                pass
 
-        session_id = await session_manager.create_session(uuid4(), uuid4(), uuid4())
-        # Don't add any messages
+    async def test_stream_draft_llm_failure_propagates(self) -> None:
+        """LLM gateway failure propagates to the consumer (no silent swallow)."""
+        from unittest.mock import Mock
 
-        await generator.generate(cast("WebSocket", ws), session_id)
-
-        errors = [m for m in ws.sent if m["type"] == "error"]
-        assert len(errors) == 1
-        assert "no interview answers" in errors[0]["message"].lower()
-
-    async def test_generate_llm_failure_sends_error(self) -> None:
-        """LLM gateway failure sends error message."""
-        generator, session_manager, gateway = _make_generator()
+        generator, session_manager, gateway, _ = make_generator()
         gateway.stream = Mock(side_effect=RuntimeError("LLM down"))
-        ws = MockWebSocket()
-
-        session_id = await session_manager.create_session(uuid4(), uuid4(), uuid4())
+        chapter_id, user_id, project_id = identifiers()
+        session_id = await session_manager.create_session(chapter_id, project_id, user_id)
         await session_manager.add_message(session_id, "user", "A story")
         await session_manager.add_message(session_id, "assistant", "Question?")
 
-        await generator.generate(cast("WebSocket", ws), session_id)
+        with pytest.raises(RuntimeError, match="LLM down"):
+            async for _ in generator.stream_draft(
+                session_id=session_id,
+                user_id=user_id,
+                project_id=project_id,
+                chapter_id=chapter_id,
+            ):
+                pass
 
-        errors = [m for m in ws.sent if m["type"] == "error"]
-        assert len(errors) == 1
-        assert "draft generation failed" in errors[0]["message"].lower()
+    async def test_stream_draft_has_no_websocket_dependency(self) -> None:
+        """stream_draft is transport-agnostic (RULE-12/RULE-13).
 
-    async def test_generate_persists_to_session(self) -> None:
-        """Generated draft is added to conversation history and prose buffer."""
-        generator, session_manager, _ = _make_generator()
-        ws = MockWebSocket()
+        It accepts only identifiers and yields StreamChunk — no WebSocket.
+        The caller is responsible for DTO mapping and persistence.
+        """
+        generator, session_manager, _, _ = make_generator()
+        chapter_id, user_id, project_id = identifiers()
+        session_id = await session_manager.create_session(chapter_id, project_id, user_id)
+        await session_manager.add_message(session_id, "user", "Content")
 
-        session_id = await session_manager.create_session(uuid4(), uuid4(), uuid4())
-        await session_manager.add_message(session_id, "user", "A story")
-        await session_manager.add_message(session_id, "assistant", "Question?")
-
-        await generator.generate(cast("WebSocket", ws), session_id)
-
-        # Verify draft was saved to session
-        state = await session_manager.get_session(session_id)
-        assert state is not None
-        # Should have: user message, assistant question, + generated draft
-        assert len(state.conversation_history) == 3
-        assert state.conversation_history[-1]["role"] == "assistant"
-        assert state.prose_buffer  # non-empty
-
-
-# ---------------------------------------------------------------------------
-# Token-budget enforcement
-# ---------------------------------------------------------------------------
-
-
-class TestInterviewDraftTokenBudget:
-    """Token-budget enforcement for interview transcript capping."""
-
-    @staticmethod
-    def _long_qa_pairs(count: int) -> list[dict[str, str]]:
-        """Build *count* Q&A pairs with deliberately verbose answers."""
-        history: list[dict[str, str]] = []
-        for i in range(count):
-            history.append(
-                {
-                    "role": "assistant",
-                    "content": (
-                        f"Question {i}: Tell me about the political landscape "
-                        f"of the kingdom and how the various noble houses "
-                        f"interact with each other?"
-                    ),
-                }
+        # Consume without any WebSocket — proves transport-agnosticism.
+        chunks = [
+            c
+            async for c in generator.stream_draft(
+                session_id=session_id,
+                user_id=user_id,
+                project_id=project_id,
+                chapter_id=chapter_id,
             )
-            history.append(
-                {
-                    "role": "user",
-                    "content": (
-                        f"Answer {i}: The kingdom is divided into five major "
-                        f"houses, each controlling vast territories and armies. "
-                        f"House Aldric rules the northern mountains, House "
-                        f"Brennick controls the eastern shores, House Carthan "
-                        f"holds the central plains, House Delvane governs the "
-                        f"southern forests, and House Edwyr maintains the "
-                        f"western deserts. Their alliances shift with the "
-                        f"seasons, but currently Aldric and Carthan are united "
-                        f"against Brennick's expansionist policies."
-                    ),
-                }
-            )
-        return history
-
-    async def test_long_transcript_capped_to_budget(self) -> None:
-        """30 Q&A pairs produce a transcript that still generates successfully."""
-        generator, session_manager, _ = _make_generator()
-        ws = MockWebSocket()
-
-        session_id = await session_manager.create_session(uuid4(), uuid4(), uuid4())
-
-        # Add 30 verbose Q&A pairs — would be thousands of tokens uncapped.
-        for msg in self._long_qa_pairs(30):
-            await session_manager.add_message(session_id, msg["role"], msg["content"])
-
-        await generator.generate(cast("WebSocket", ws), session_id)
-
-        # Draft should complete successfully (no crash).
-        draft_done = [m for m in ws.sent if m["type"] == "draft_done"]
-        assert len(draft_done) == 1
-        assert draft_done[0]["word_count"] > 0
-
-    async def test_short_transcript_not_capped(self) -> None:
-        """Short transcript (2-3 Q&A) passes through unchanged."""
-        generator, session_manager, _ = _make_generator()
-        ws = MockWebSocket()
-
-        session_id = await session_manager.create_session(uuid4(), uuid4(), uuid4())
-        await session_manager.add_message(session_id, "user", "A short answer")
-        await session_manager.add_message(session_id, "assistant", "Tell me more?")
-        await session_manager.add_message(session_id, "user", "Brief detail")
-
-        await generator.generate(cast("WebSocket", ws), session_id)
-
-        draft_done = [m for m in ws.sent if m["type"] == "draft_done"]
-        assert len(draft_done) == 1
-        assert "Once upon a time" in draft_done[0]["text"]
+        ]
+        assert any(c.text for c in chunks)

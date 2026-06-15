@@ -75,7 +75,8 @@ async def test_record_invocation_evidence_calls_prepare_and_finalize() -> None:
         intent=LLMIntent.ANALYSE,
     )
 
-    result = await record_invocation_evidence(mock_pipeline, ctx)
+    with pytest.deprecated_call():
+        result = await record_invocation_evidence(mock_pipeline, ctx)
 
     mock_pipeline.prepare.assert_awaited_once_with(ctx)
     mock_pipeline.finalize.assert_awaited_once()
@@ -90,13 +91,14 @@ async def test_record_invocation_evidence_calls_prepare_and_finalize() -> None:
 @pytest.mark.anyio
 async def test_safe_record_evidence_noop_when_pipeline_none() -> None:
     """safe_record_evidence returns None silently when pipeline is None."""
-    result = await safe_record_evidence(
-        None,
-        feature_id="test_feature",
-        intent=LLMIntent.ANALYSE,
-        user_id="u1",
-        project_id="p1",
-    )
+    with pytest.deprecated_call():
+        result = await safe_record_evidence(
+            None,
+            feature_id="test_feature",
+            intent=LLMIntent.ANALYSE,
+            user_id="u1",
+            project_id="p1",
+        )
 
     assert result is None
 
@@ -112,14 +114,15 @@ async def test_safe_record_evidence_records_when_pipeline_provided() -> None:
     mock_pipeline.prepare = AsyncMock(return_value=mock_prepared)
     mock_pipeline.finalize = AsyncMock(return_value=mock_finalized)
 
-    await safe_record_evidence(
-        mock_pipeline,
-        feature_id="kb_extract",
-        intent=LLMIntent.KB_EXTRACT,
-        user_id="u1",
-        project_id="p1",
-        language="en",
-    )
+    with pytest.deprecated_call():
+        await safe_record_evidence(
+            mock_pipeline,
+            feature_id="kb_extract",
+            intent=LLMIntent.KB_EXTRACT,
+            user_id="u1",
+            project_id="p1",
+            language="en",
+        )
 
     mock_pipeline.prepare.assert_awaited_once()
     mock_pipeline.finalize.assert_awaited_once()
@@ -132,8 +135,9 @@ async def test_safe_record_evidence_handles_pipeline_errors() -> None:
     mock_pipeline.prepare = AsyncMock(side_effect=RuntimeError("boom"))
 
     # Should NOT raise — the error is caught and logged
-    await safe_record_evidence(
-        mock_pipeline,
-        feature_id="failing_feature",
-        intent=LLMIntent.CONSISTENCY,
-    )
+    with pytest.deprecated_call():
+        await safe_record_evidence(
+            mock_pipeline,
+            feature_id="failing_feature",
+            intent=LLMIntent.CONSISTENCY,
+        )

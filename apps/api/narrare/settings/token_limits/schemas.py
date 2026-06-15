@@ -42,7 +42,7 @@ class UpdateTokenLimitsRequest(BaseModel):
     output_limit: int | None = Field(default=None, ge=1, le=131072)
     token_profile: str | None = Field(
         default=None,
-        pattern=r"^(quick|balanced|long_texts|custom)$",
+        pattern=r"^(quick|balanced|long_texts|comprehensive|conservative|custom)$",
     )
     tier_percentages: dict[str, float] | None = None
     ws_timeout: int | None = Field(default=None, ge=60, le=86400)

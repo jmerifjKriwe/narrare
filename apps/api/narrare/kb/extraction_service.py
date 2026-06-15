@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -36,6 +37,17 @@ if TYPE_CHECKING:
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: ExtractionAgent composes its prompt internally
+# from ExtractionDeps (chapter content, existing entity names, chapter title).
+_EXTRACTION_MANUAL_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "ExtractionAgent composes its prompt internally from ExtractionDeps "
+        "(chapter content, existing entity names, chapter title, genre)."
+    ),
+    variables=("existing_entity_names", "chapter_title", "genre"),
+    injection_mechanism="agent_deps",
+)
 
 
 class ExtractionService:
@@ -112,17 +124,30 @@ class ExtractionService:
         # 4. Get model from registry.
         model = await self._registry.get_model(self._config)
 
-        # 4a. Record invocation evidence (ADR-040)
-        from narrare._app.invocation_context import safe_record_evidence
+        # 4a. Compose invocation (Mode 2 — agent-internal) and record evidence
+        # (ADR-048). Replaces the former placeholder-evidence path.
+        from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.ai_invocation import compose_invocation
         from narrare_core.llm.intents import LLMIntent
 
-        await safe_record_evidence(
-            self._invocation_pipeline,
+        invocation_context = build_invocation_context(
             feature_id="kb_extract",
             intent=LLMIntent.KB_EXTRACT,
             user_id=user_id,
             project_id=novel_id,
         )
+        try:
+            await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                manual_injection=_EXTRACTION_MANUAL_INJECTION,
+            )
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="kb_extract",
+                exc_info=True,
+            )
 
         # 5. Run ExtractionAgent over the chapter text.
         agent = ExtractionAgent(model=model, system_prompt=system_prompt)

@@ -16,6 +16,7 @@ from narrare.kb.schemas_merge import (
     MergeResponse,
     MergeStrategyRequest,
 )
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -27,6 +28,17 @@ if TYPE_CHECKING:
     from narrare_core.llm.gateway import ModelRegistry
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: KBMergeAgent composes its prompt internally
+# from KBMergeDeps (entity type, genre, language, candidate pairs).
+_MERGE_MANUAL_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "KBMergeAgent composes its prompt internally from KBMergeDeps "
+        "(entity type, genre, language) and the candidate-pairs user prompt."
+    ),
+    variables=("entity_type", "genre", "candidate_pairs"),
+    injection_mechanism="agent_deps",
+)
 
 
 class KBMergeService:
@@ -92,17 +104,30 @@ class KBMergeService:
 
         model = await self._registry.get_model(self._config)
 
-        # Record invocation evidence (ADR-040)
-        from narrare._app.invocation_context import safe_record_evidence
+        # Compose invocation (Mode 2 — agent-internal) and record evidence
+        # (ADR-048). Replaces the former placeholder-evidence path.
+        from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.ai_invocation import compose_invocation
         from narrare_core.llm.intents import LLMIntent
 
-        await safe_record_evidence(
-            self._invocation_pipeline,
+        invocation_context = build_invocation_context(
             feature_id="kb_merge",
             intent=LLMIntent.KB_CONSISTENCY,
             project_id=novel_id,
             user_id=user_id,
         )
+        try:
+            await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                manual_injection=_MERGE_MANUAL_INJECTION,
+            )
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="kb_merge",
+                exc_info=True,
+            )
 
         # Build deps
         deps = KBMergeDeps(

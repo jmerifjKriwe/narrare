@@ -5,17 +5,24 @@ session factory and the underlying session. Verifies that the sink
 correctly acquires sessions, delegates to the repository, commits,
 and handles errors gracefully.
 
+Also tests the ``get_evidence_sink()`` factory that wires the sink into
+the production InvocationPipeline based on the ``use_persistent_evidence``
+setting (ADR-042 § Wiring in Production).
+
 See ADR-042 § Hybrid Evidence Architecture.
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from narrare.evidence.dependencies import get_evidence_sink
 from narrare.evidence.sink import PersistentEvidenceSink
+from narrare_core.ai_invocation import LoggingEvidenceSink
 from narrare_core.ai_invocation.models import FeatureInvocationEvidence
 
 
@@ -98,3 +105,39 @@ class TestPersistentEvidenceSink:
 
         # Must not raise despite the commit error
         await sink.record(sample_evidence)
+
+
+class TestGetEvidenceSinkFactory:
+    """Factory selection tests for ``get_evidence_sink()`` (ADR-042 wiring)."""
+
+    def test_default_returns_logging_sink(self) -> None:
+        """When ``use_persistent_evidence`` is False, return LoggingEvidenceSink."""
+        fake_settings = SimpleNamespace(use_persistent_evidence=False)
+
+        with patch(
+            "narrare.evidence.dependencies.get_settings",
+            return_value=fake_settings,
+        ):
+            sink = get_evidence_sink()
+
+        assert isinstance(sink, LoggingEvidenceSink)
+
+    def test_persistent_flag_returns_persistent_sink(self) -> None:
+        """When ``use_persistent_evidence`` is True, return PersistentEvidenceSink.
+
+        The sink must hold the real session factory from
+        ``get_session_factory()`` so each ``record()`` call can acquire its
+        own session and evidence reaches the ``invocation_evidence`` table.
+        """
+        fake_settings = SimpleNamespace(use_persistent_evidence=True)
+
+        with patch(
+            "narrare.evidence.dependencies.get_settings",
+            return_value=fake_settings,
+        ):
+            sink = get_evidence_sink()
+
+        assert isinstance(sink, PersistentEvidenceSink)
+        # The sink must hold a callable session factory (not None) so that
+        # evidence actually persists to the invocation_evidence table.
+        assert callable(sink._session_factory)

@@ -73,6 +73,9 @@ logs/
 # Coverage
 .coverage.*
 
+# pytest-cov intermediate files
+*,cover
+
 # local stuff
 .devcontainer/post-create.local.sh
 scripts/local/

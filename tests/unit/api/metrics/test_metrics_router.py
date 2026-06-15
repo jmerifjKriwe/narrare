@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -12,7 +12,19 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
     from types import TracebackType
 
+# Module-level state is shared across test files; reset before health checks.
+import narrare._app.observability as _obs_mod
 from narrare._app.main import app
+
+
+def _reset_observability_state() -> None:
+    """Reset observability module state to pristine."""
+    with _obs_mod._state_lock:
+        cast("Any", _obs_mod)._otel_available = None
+        cast("Any", _obs_mod)._failure_reason = ""
+        cast("Any", _obs_mod)._warning_emitted = False
+        cast("Any", _obs_mod)._otel_state = None
+        cast("Any", _obs_mod)._endpoint_configured = False
 
 
 class FakeConnection:
@@ -66,17 +78,42 @@ async def client() -> AsyncGenerator[AsyncClient]:
 
 
 class TestHealth:
-    async def test_returns_200_with_ok(self, client: AsyncClient) -> None:
+    async def test_returns_200_with_healthy_status(self, client: AsyncClient) -> None:
+        """Health endpoint returns 200 with severity-based status.
+
+        In the test environment OTel is importable but no endpoint is
+        configured, so the state defaults to ``not_configured`` →
+        ``severity == "healthy"``.
+        """
+        _reset_observability_state()
         response = await client.get("/health")
         assert response.status_code == 200
         body = response.json()
-        assert body["status"] == "ok"
+        assert body["status"] == "healthy"
 
         observability = body["observability"]
-        assert set(observability) == {"available", "failure_reason", "warning_emitted"}
+        expected_keys = {
+            "available",
+            "failure_reason",
+            "warning_emitted",
+            "state",
+            "severity",
+            "endpoint_configured",
+        }
+        assert set(observability) == expected_keys
         assert isinstance(observability["available"], bool)
         assert isinstance(observability["failure_reason"], str)
         assert isinstance(observability["warning_emitted"], bool)
+        assert isinstance(observability["state"], str)
+        assert isinstance(observability["severity"], str)
+        assert isinstance(observability["endpoint_configured"], bool)
+        assert observability["state"] in {
+            "not_configured",
+            "configured_ok",
+            "configured_failed",
+            "package_unavailable",
+        }
+        assert observability["severity"] in {"healthy", "degraded", "critical"}
 
 
 class TestReady:

@@ -11,11 +11,17 @@ TOKEN_LIMIT_PROFILES: dict[str, dict[str, TokenLimitOverride]] = {
     "quick": {
         "default": TokenLimitOverride(max_tokens=500, temperature=0.7),
     },
+    "conservative": {
+        "default": TokenLimitOverride(max_tokens=1000, temperature=0.7),
+    },
     "balanced": {
         "default": TokenLimitOverride(max_tokens=2000, temperature=0.7),
     },
     "long_texts": {
         "default": TokenLimitOverride(max_tokens=8000, temperature=0.7),
+    },
+    "comprehensive": {
+        "default": TokenLimitOverride(max_tokens=16000, temperature=0.7),
     },
     "custom": {},
 }

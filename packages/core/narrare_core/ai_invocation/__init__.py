@@ -39,6 +39,7 @@ from narrare_core.ai_invocation.contracts import (
     RuntimeVariableValidator,
 )
 from narrare_core.ai_invocation.evidence import LoggingEvidenceSink
+from narrare_core.ai_invocation.manual_injection import ManualInjectionDeclaration
 from narrare_core.ai_invocation.models import (
     AdoptionPolicy,
     ContextEnrichmentResult,
@@ -46,6 +47,10 @@ from narrare_core.ai_invocation.models import (
     InvocationWarning,
     PromptInvocationContext,
     ValidationResult,
+)
+from narrare_core.ai_invocation.non_writing_adapter import (
+    ComposedInvocation,
+    compose_invocation,
 )
 from narrare_core.ai_invocation.pipeline import (
     FinalizedInvocation,
@@ -60,6 +65,7 @@ from narrare_core.ai_invocation.validators import (
 __all__ = [
     "AdoptionPolicy",
     "AuditState",
+    "ComposedInvocation",
     "ConsistencyStatus",
     "ContextEnricher",
     "ContextEnrichmentResult",
@@ -79,6 +85,7 @@ __all__ = [
     "KBSuggestedRequirement",
     "KBSuggestedStatus",
     "LoggingEvidenceSink",
+    "ManualInjectionDeclaration",
     "OutputBudget",
     "OutputBudgetDecision",
     "PreferenceContextEnricher",
@@ -92,4 +99,5 @@ __all__ = [
     "ValidationResult",
     "ValidationStatus",
     "VoiceProfileStatus",
+    "compose_invocation",
 ]

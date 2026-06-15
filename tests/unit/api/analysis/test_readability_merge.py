@@ -1,14 +1,12 @@
-"""Unit tests for ReadabilityService._merge_agent_result and _build_deps.
+"""Unit tests for ReadabilityService._merge_agent_result and build_deps.
 
 Extracted from test_readability_service.py for RULE-04 compliance.
 """
 
 from __future__ import annotations
 
-from narrare.analysis.services.readability_service import (
-    ReadabilityService,
-    _build_deps,
-)
+from narrare.analysis.services._readability_helpers import build_deps
+from narrare.analysis.services.readability_service import ReadabilityService
 from narrare_core.analysis.types import ReadabilityMetrics, ReadabilityResult
 
 # ---------------------------------------------------------------------------
@@ -181,16 +179,16 @@ class TestMergeAgentResult:
 
 
 # ---------------------------------------------------------------------------
-# _build_deps — module-level helper
+# build_deps — module-level helper
 # ---------------------------------------------------------------------------
 
 
 class TestBuildDeps:
     def test_creates_deps_with_text_and_language(self) -> None:
-        deps = _build_deps("Some text.", "fr")
+        deps = build_deps("Some text.", "fr")
         assert deps.text == "Some text."
         assert deps.language == "fr"
 
     def test_default_language(self) -> None:
-        deps = _build_deps("Text.", "en")
+        deps = build_deps("Text.", "en")
         assert deps.language == "en"

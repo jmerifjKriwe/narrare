@@ -5,7 +5,15 @@ from __future__ import annotations
 from narrare_core.shared.errors import ValidationError
 
 # Valid token profile names — matches narrare.settings.token_profiles
-VALID_PROFILES: set[str] = {"quick", "balanced", "long_texts", "custom"}
+# and narrare_core.llm.run_limits.profile_to_usage_limits (6 profiles).
+VALID_PROFILES: set[str] = {
+    "quick",
+    "balanced",
+    "long_texts",
+    "comprehensive",
+    "conservative",
+    "custom",
+}
 
 # Valid fields that can be overridden
 VALID_OVERRIDE_FIELDS: set[str] = {

@@ -10,12 +10,13 @@ LLM calls go through ``ReadabilityAgent`` via ``ModelRegistry`` (RULE-01).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.analysis.services._readability_helpers import build_deps
+from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.analysis.readability import FormulaReadabilityAnalyzer
-from narrare_core.analysis.types import ReadabilityResult
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -23,12 +24,24 @@ if TYPE_CHECKING:
 
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
-    from narrare_core.agents.readability_agent import ReadabilityAgent, ReadabilityDeps
+    from narrare_core.agents.readability_agent import ReadabilityAgent
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
+    from narrare_core.analysis.types import ReadabilityResult
     from narrare_core.llm import ModelRegistry
     from narrare_core.llm.model_config import ResolvedModelConfig
 
 logger = structlog.get_logger(__name__)
+
+# ADR-048 Mode 2 declaration: ReadabilityAgent composes its prompt internally
+# from ReadabilityDeps (chapter text, language).
+_READABILITY_MANUAL_INJECTION = ManualInjectionDeclaration(
+    reason=(
+        "ReadabilityAgent composes its prompt internally from ReadabilityDeps "
+        "(chapter text, language) and the runtime user prompt."
+    ),
+    variables=("text", "language"),
+    injection_mechanism="agent_deps",
+)
 
 
 class ReadabilityService:
@@ -164,21 +177,34 @@ class ReadabilityService:
         # 3. Phase 2: AI sentence analysis (skip for empty content)
         if content.strip():
             try:
-                # 3a. Record invocation evidence (ADR-040)
-                from narrare._app.invocation_context import safe_record_evidence
+                # 3a. Compose invocation (Mode 2 — agent-internal) and record
+                # evidence (ADR-048). Replaces the former placeholder path.
+                from narrare._app.invocation_context import build_invocation_context
+                from narrare_core.ai_invocation import compose_invocation
                 from narrare_core.llm.intents import LLMIntent
 
-                await safe_record_evidence(
-                    self._invocation_pipeline,
+                invocation_context = build_invocation_context(
                     feature_id="analysis_readability",
                     intent=LLMIntent.ANALYSE,
                     language=language,
                 )
+                try:
+                    await compose_invocation(
+                        invocation_pipeline=self._invocation_pipeline,
+                        invocation_context=invocation_context,
+                        manual_injection=_READABILITY_MANUAL_INJECTION,
+                    )
+                except Exception:
+                    logger.warning(
+                        "invocation_composition_failed",
+                        feature_id="analysis_readability",
+                        exc_info=True,
+                    )
 
                 agent = self._get_agent()
                 agent_result = await agent.run(
                     prompt="Analyze readability of this text.",
-                    deps=_build_deps(content, language),
+                    deps=build_deps(content, language),
                 )
 
                 # Merge AI results into the formula result
@@ -226,9 +252,8 @@ class ReadabilityService:
     ) -> ReadabilityResult:
         """Merge AI sentence analyses into the deterministic result.
 
-        Maps ``ReadabilityAgentOutput.problematic_sentences`` to
-        ``list[SentenceAnalysis]`` and carries over the
-        ``overall_assessment``.
+        Delegates to :func:`narrare.analysis.services._readability_helpers.merge_agent_result`
+        (RULE-04 extraction).
 
         Args:
             formula_result: Deterministic result from ``FormulaReadabilityAnalyzer``.
@@ -237,62 +262,6 @@ class ReadabilityService:
         Returns:
             Merged ``ReadabilityResult`` with both metrics and AI analysis.
         """
-        from narrare_core.agents.readability_types import ReadabilityAgentOutput
-        from narrare_core.analysis.types import SentenceAnalysis
+        from narrare.analysis.services._readability_helpers import merge_agent_result
 
-        output = ReadabilityAgentOutput.model_validate(agent_output)
-
-        sentence_analyses: list[SentenceAnalysis] = []
-        for ps in output.problematic_sentences:
-            raw_issues: Any = ps.get("issues", [])
-            if isinstance(raw_issues, list):
-                issue_list = cast("list[Any]", raw_issues)
-                issue_strs: list[str] = [str(i) for i in issue_list]
-            else:
-                issue_strs = [str(raw_issues)]
-
-            raw_suggestions: Any = ps.get("suggestions", [])
-            suggestion_strs: list[str] = []
-            if isinstance(raw_suggestions, list):
-                sugg_list = cast("list[Any]", raw_suggestions)
-                for s in sugg_list:
-                    if isinstance(s, dict):
-                        s_dict = cast("dict[str, Any]", s)
-                        alt: str = str(s_dict.get("alternative", s))
-                        suggestion_strs.append(alt)
-                    else:
-                        suggestion_strs.append(str(s))
-            else:
-                suggestion_strs = [str(raw_suggestions)]
-
-            sentence_analyses.append(
-                SentenceAnalysis(
-                    sentence=str(ps.get("sentence", "")),
-                    sentence_index=int(ps.get("sentence_index", 0)),
-                    issues=issue_strs,
-                    readability_score=float(ps.get("readability_score", 0.5)),
-                    suggestions=suggestion_strs,
-                )
-            )
-
-        return ReadabilityResult(
-            metrics=formula_result.metrics,
-            genre_benchmarks=formula_result.genre_benchmarks,
-            sentence_analyses=sentence_analyses,
-            overall_assessment=output.overall_assessment or None,
-        )
-
-
-def _build_deps(text: str, language: str) -> ReadabilityDeps:
-    """Build ``ReadabilityDeps`` — helper to keep import out of module top-level.
-
-    Args:
-        text: Chapter content.
-        language: Resolved language code.
-
-    Returns:
-        A ``ReadabilityDeps`` instance.
-    """
-    from narrare_core.agents.readability_agent import ReadabilityDeps
-
-    return ReadabilityDeps(text=text, language=language)
+        return merge_agent_result(formula_result, agent_output)

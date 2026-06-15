@@ -11,6 +11,7 @@ import uuid
 from fastapi import APIRouter, Depends
 
 from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.rate_limits import AI_ANALYSIS_LIMITER
 from narrare.analysis.dependencies import get_pov_service
 from narrare.analysis.schemas_pov import POVRequest
 from narrare.analysis.services.pov_service import POVService
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
     "/pov",
     response_model=POVResult,
     summary="Analyze POV consistency — scene detection + head-hopping + knowledge leakage",
+    dependencies=[Depends(AI_ANALYSIS_LIMITER)],
 )
 async def analyze_pov(
     novel_id: uuid.UUID,

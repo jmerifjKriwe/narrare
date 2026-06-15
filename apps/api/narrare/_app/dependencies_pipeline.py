@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from narrare._app.dependencies_prompts import (
     _get_preference_service_instance,  # pyright: ignore[reportPrivateUsage]
 )
+from narrare.evidence.dependencies import get_evidence_sink
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation import ContextEnricher
@@ -28,14 +29,14 @@ def get_invocation_pipeline() -> InvocationPipeline:
     - PreferenceContextEnricherImpl (if preference service available)
 
     Note:
-        ``evidence_sink`` is a :class:`LoggingEvidenceSink` that records
-        structured logs for each invocation. Can be disabled via log level.
+        The ``evidence_sink`` is resolved by ``get_evidence_sink()`` based on
+        the ``use_persistent_evidence`` setting: ``PersistentEvidenceSink``
+        (PostgreSQL) when enabled, ``LoggingEvidenceSink`` otherwise (default).
     """
     from narrare_core.ai_invocation import (
         FinalPromptValidatorImpl,
         IntentOutputBudgetResolverImpl,
         InvocationPipeline,
-        LoggingEvidenceSink,
         RuntimeVariableValidatorImpl,
     )
     from narrare_core.ai_invocation.enrichers import (
@@ -60,5 +61,5 @@ def get_invocation_pipeline() -> InvocationPipeline:
         variable_validator=RuntimeVariableValidatorImpl(),
         budget_resolver=IntentOutputBudgetResolverImpl(),
         final_validator=FinalPromptValidatorImpl(),
-        evidence_sink=LoggingEvidenceSink(),
+        evidence_sink=get_evidence_sink(),
     )

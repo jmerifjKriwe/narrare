@@ -75,3 +75,28 @@ def test_main_invokes_gitleaks_with_required_secret_scan_flags(
             False,
         )
     ]
+
+
+def test_default_config_resolves_to_project_root_gitleaks_toml() -> None:
+    """Default config path must point at the tracked project .gitleaks.toml."""
+    expected = _ROOT / ".gitleaks.toml"
+    assert expected == check_secrets.DEFAULT_CONFIG
+    assert check_secrets.DEFAULT_CONFIG.is_file(), (
+        f"Expected tracked config at {expected}, but file is missing."
+    )
+
+
+def test_main_returns_wrapper_error_when_config_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Missing config file must fail with a configuration error (exit 2)."""
+    monkeypatch.setattr(check_secrets.shutil, "which", lambda _name: "/usr/local/bin/gitleaks")
+    missing_config = tmp_path / "does_not_exist.toml"
+
+    exit_code = check_secrets.main(["--source", str(tmp_path), "--config", str(missing_config)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "Gitleaks config not found" in captured.err

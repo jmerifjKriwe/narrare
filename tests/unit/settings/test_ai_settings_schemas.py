@@ -83,7 +83,14 @@ class TestUpdateProjectAiSettingsRequest:
 
 class TestTokenLimitProfiles:
     def test_all_expected_profiles_exist(self) -> None:
-        expected = {"quick", "balanced", "long_texts", "custom"}
+        expected = {
+            "quick",
+            "balanced",
+            "long_texts",
+            "comprehensive",
+            "conservative",
+            "custom",
+        }
         assert expected == VALID_TOKEN_LIMIT_PROFILES
 
     def test_quick_profile_has_defaults(self) -> None:
@@ -100,6 +107,16 @@ class TestTokenLimitProfiles:
         profile = TOKEN_LIMIT_PROFILES["long_texts"]
         assert "default" in profile
         assert profile["default"].max_tokens == 8000
+
+    def test_comprehensive_profile_has_defaults(self) -> None:
+        profile = TOKEN_LIMIT_PROFILES["comprehensive"]
+        assert "default" in profile
+        assert profile["default"].max_tokens == 16000
+
+    def test_conservative_profile_has_defaults(self) -> None:
+        profile = TOKEN_LIMIT_PROFILES["conservative"]
+        assert "default" in profile
+        assert profile["default"].max_tokens == 1000
 
     def test_custom_profile_starts_empty(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["custom"]
