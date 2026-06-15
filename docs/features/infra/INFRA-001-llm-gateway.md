@@ -86,6 +86,7 @@ interface that all features can rely on.
 7. `LLMResult` returned with text and token usage
 
 **Streaming:** `gateway.stream()` returns async iterator of `StreamChunk` objects.
+`ModelRegistry.stream()` also accepts `usage_limits` for streaming token budget enforcement.
 
 **Retry logic:** Configurable `RetryConfig` — defaults to 3 attempts with exponential
 backoff. Only retries transient failures (rate limits, network errors).

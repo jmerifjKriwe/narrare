@@ -105,7 +105,20 @@ Most users don't need to think about it — it just gets better. Power users can
 
 **Core modules (`packages/core/narrare_core/memory/`):**
 - `protocols.py` — Protocol definitions: `MemoryClientProtocol`, `FeedbackServiceProtocol`, `PreferenceServiceProtocol`
-- `models.py` — Data models: `FeedbackEvent`, `Preference`, `FeedbackAction` enum
+- `models.py` — Data models: `FeedbackEvent`, `Preference`, `FeedbackAction` enum, `LearningEvent`, `LearningEventKind`, `MemoryPrecedenceLevel`
+  - `LearningEvent` — captures learned preferences from user interaction patterns. Privacy-safe: only `preference_summary` is stored in mem0, `raw_excerpt` is never included in memory text.
+  - `LearningEventKind` — ADT variant: `suggestion_modified` (user edited an AI suggestion before accepting), `repeated_steering` (user repeatedly corrected the same pattern).
+  - `MemoryPrecedenceLevel` — source precedence enum: `learned_memory` (inferred by learning system), `detail_memory` (explicit user detail), `core_memory` (foundational user info).
+
+### Learning Flow
+
+User interaction → LearningEvent → mem0 storage:
+
+1. **Pattern detection**: The system detects learning-significant events (e.g., user modifies a suggestion, or repeatedly steers the AI away from a pattern).
+2. **LearningEvent creation**: A `LearningEvent` is created with the detected `kind`, a `preference_summary` describing what was learned, and metadata (confidence, source event ID).
+3. **Privacy-safe transformation**: `LearningEvent.to_memory_text()` produces a privacy-safe string that excludes `raw_excerpt`. Only the summary is persisted.
+4. **mem0 storage**: `LearningEvent.to_mem0_metadata()` packages kind, precedence level, and confidence for mem0's metadata system.
+5. **Preference extraction**: `PreferenceService` queries mem0 for learned preferences alongside explicit feedback, using `MemoryPrecedenceLevel` to rank sources (learned memory has lower precedence than detail/core memory).
 - `mem0_client.py` — `Mem0Client` factory and `NullMemoryClient` for graceful degradation (approved RULE-01 exception)
 - `feedback_service.py` — `FeedbackService` — records feedback events to both `feedback_events` table and mem0
 - `preference_service.py` — `PreferenceService` — extracts preferences from mem0, formats for prompt injection
@@ -210,3 +223,4 @@ returns empty results. This ensures:
 - `project-init` — Added to registry as planned feature
 - `2026-05-15` — Core memory module implemented: mem0 AsyncMemory integration, dual storage (PostgreSQL + mem0), FeedbackService, PreferenceService, NullMemoryClient, API endpoints (POST /feedback, GET /preferences, DELETE /preferences), migration 0006
 - `2026-05-21` — **Full implementation complete.** 4-tier embedding cascade (ADR-017) enables mem0 for all users regardless of LLM provider. Rating field added to FeedbackEvent. PreferenceAnalysisAgent for deep pattern analysis. Event-driven mem0 processing (FeedbackRecorded → TaskIQ). POST /memory/analyze endpoint with min-event guard. Frontend: modify-tracking, RatingPrompt, LearningTab preference profile, LearningStatus indicator. See LEARN-001 for full details.
+- `2026-06-14` — Learning event models added: `LearningEvent`, `LearningEventKind` (suggestion_modified, repeated_steering), `MemoryPrecedenceLevel` (learned_memory, detail_memory, core_memory). Learning flow: user interaction → pattern detection → LearningEvent → privacy-safe mem0 storage with precedence-based ranking.

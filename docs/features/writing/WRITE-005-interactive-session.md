@@ -68,7 +68,7 @@ service: writing/service.py
 contract: writing/contracts.py#WritingServiceProtocol, core/writing/contracts.py#SessionManagerProtocol
 router: writing/router_sessions.py
 prompt: core/prompts/_bundled/writing/{en,de,fr}/interactive_session/system.md
-requires: [INFRA-001, INFRA-002, KB-001]
+requires: [INFRA-001, INFRA-002, INFRA-013, KB-001]
 ---
 
 # WRITE-005 — Interactive Writing Session
@@ -106,12 +106,25 @@ when the session ends. Save important prose to your chapter.
 **API module:** `apps/api/narrare/writing/`
 
 **Entry point:** `writing/router_sessions.py` → WebSocket `WS /api/v1/writing/sessions/{chapter_id}`
-**WebSocket handler:** `ws_handler.py` — real-time bidirectional messaging
+**WebSocket turn orchestrator:** `ws_turn_service.py` → `WritingTurnService` — transport-agnostic turn orchestration that flows through the invocation contract (RULE-12/RULE-13)
+**WebSocket handler:** `ws_handler.py` — delegates to `WritingTurnService` for each turn
 **Service:** `WritingService` in `writing/service.py` (orchestrates session + pipeline + feedback)
 **Session manager:** `SessionManager` in `core/writing/session_manager.py` — cache-backed persistence via `SessionCacheProtocol`
 **Contract:** `SessionManagerProtocol` in `core/writing/contracts.py`
 **LLM Intent:** `LLMIntent.GENERATE`
 **Protocol:** WebSocket for real-time bidirectional messaging
+**Invocation contract:** `WritingTurnService.stream_turn()` builds a `PromptInvocationContext` with user/project/chapter/session identifiers, then runs the `InvocationPipeline` (prepare → merge → compose → finalize), resolves run limits, and streams via `ModelRegistry.stream()` with `UsageLimits` enforcement. This design is transport-agnostic — any transport adapter (WebSocket, SSE, MCP) can consume the same service.
+
+**Turn flow (via WritingTurnService — invocation contract integration):**
+1. `ws_handler.py` receives a `user_direction` message
+2. Delegates to `WritingTurnService.stream_turn()` which:
+   - Builds `PromptInvocationContext` with identifiers + `invocation_id`
+   - Invokes `InvocationPipeline.prepare()` — enrich/validate/resolve budgets
+   - Invokes `InvocationPipeline.finalize()` — final validation + evidence recording
+   - Calls `ModelRegistry.stream()` with resolved `UsageLimits`
+   - Yields `StreamChunk` instances back to the WebSocket handler
+3. The handler sends each chunk as `ai_prose` messages
+4. Evidence is recorded via `FeatureInvocationEvidenceSink` for audit/runtime-proof tracking
 
 **Session state (core models):**
 ```python
@@ -178,3 +191,4 @@ class SessionState:
 - `project-init` — Added to registry as planned feature
 - `2026-05-17` — Implementation started (in-progress). WebSocket endpoint with session handler, Redis-backed persistence via SessionCacheProtocol, 30-min inactivity timeout, frontend SessionPanel + ChatMessage components, core SessionManager with cache abstraction.
 - `2026-05-18` — Fully implemented (stable). WebSocket bidirectional messaging operational, session persistence working, frontend session UI complete.
+- `2026-06-14` — Invocation contract integration: `WritingTurnService` wraps the turn flow through `PromptInvocationContext` → `InvocationPipeline` (enrich/validate/budget/evidence) → `ModelRegistry.stream()` with `UsageLimits`. Transport-agnostic design per RULE-12/RULE-13. Runtime evidence recording for audit tracking.

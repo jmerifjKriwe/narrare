@@ -152,6 +152,18 @@ class ValidationError(NarrareError):
     """Domain validation error (distinct from Pydantic's ValidationError)."""
 
 
+class InvocationValidationError(NarrareError):
+    """Raised when invocation pipeline validation fails.
+
+    Domain-agnostic counterpart to :class:`WritingError` for the non-writing
+    invocation adapter (ADR-048). Raised when variable validation or final
+    prompt validation fails in Mode 1 (composer-driven) invocations routed
+    through :func:`~narrare_core.ai_invocation.non_writing_adapter.compose_invocation`.
+
+    See: ADR-045 Decision 3, ADR-048, CONSTRAINTS.md RULE-11.
+    """
+
+
 class ConfigurationError(NarrareError):
     """Missing or invalid configuration.
 

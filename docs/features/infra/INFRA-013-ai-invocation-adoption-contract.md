@@ -625,3 +625,4 @@ suggestions. High-impact conflicts are surfaced rather than silently resolved.
 - 2026-06-12 — Review-03 semantics refresh: static wiring is not full runtime
   adoption. Current baseline remains 109 real ratcheted items; docs must distinguish
   `static_verified`, `runtime_verified`, and `adopted`.
+- 2026-06-14 — `evidence_recording.py` extracted from `pipeline.py` (RULE-04 compliance — keeps pipeline orchestration under module size limits). `invocation_id` field (`UUID | None`) added to `PromptInvocationContext` for per-invocation correlation across evidence records.

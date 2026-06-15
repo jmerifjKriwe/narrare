@@ -65,6 +65,22 @@ class Settings(BaseSettings):
     otel_endpoint: str = ""
 
     # ---------------------------------------------------------------------------
+    # Invocation Evidence (ADR-042)
+    # ---------------------------------------------------------------------------
+    use_persistent_evidence: bool = Field(
+        default=False,
+        alias="NARRARE_USE_PERSISTENT_EVIDENCE",
+    )
+    """Select the production PostgreSQL evidence sink when ``True``.
+
+    When enabled, the InvocationPipeline records each
+    ``FeatureInvocationEvidence`` to the ``invocation_evidence`` table via
+    ``PersistentEvidenceSink``. When disabled (default), the pipeline uses the
+    ephemeral ``LoggingEvidenceSink`` and dev/test environments are unaffected.
+    See ADR-042 § Wiring in Production.
+    """
+
+    # ---------------------------------------------------------------------------
     # Auth
     # ---------------------------------------------------------------------------
     access_token_expire_minutes: int = 60
