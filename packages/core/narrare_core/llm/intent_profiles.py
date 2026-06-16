@@ -111,6 +111,9 @@ INTENT_PROFILES: dict[LLMIntent, IntentProfile] = {
     # Extraction
     # ------------------------------------------------------------------
     LLMIntent.EXTRACT: IntentProfile("balanced", "reasoning", "Structured extraction"),
+    LLMIntent.FACT_EXTRACT: IntentProfile(
+        "balanced", "reasoning", "Structured fact extraction with provenance"
+    ),
     LLMIntent.SUGGEST: IntentProfile("quick", "fast", "Inline suggestions"),
     # ------------------------------------------------------------------
     # Chat

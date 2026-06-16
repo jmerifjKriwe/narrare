@@ -10,6 +10,10 @@ from typing import TYPE_CHECKING
 import pytest
 import pytest_asyncio
 import sqlalchemy
+from fastapi import (  # noqa: TC002 — needed at runtime for get_type_hints resolution (see _disable_rate_limiting)
+    Request,
+    Response,
+)
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -52,7 +56,7 @@ def _disable_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright:
     """
     from fastapi_limiter.depends import RateLimiter
 
-    async def _noop_call(self: object, *args: object, **kwargs: object) -> None:
+    async def _noop_call(self: object, request: Request, response: Response) -> None:
         return None
 
     monkeypatch.setattr(RateLimiter, "__call__", _noop_call)

@@ -61,6 +61,7 @@ INTENT_CATEGORY_MAP: dict[LLMIntent, IntentCategory] = {
     LLMIntent.TITLE_GENERATE: IntentCategory.GENERATION,
     # Extraction
     LLMIntent.EXTRACT: IntentCategory.EXTRACTION,
+    LLMIntent.FACT_EXTRACT: IntentCategory.EXTRACTION,
     LLMIntent.SUGGEST: IntentCategory.EXTRACTION,
     # Chat
     LLMIntent.CHAT: IntentCategory.CHAT,
@@ -105,6 +106,7 @@ _INTENT_PROFILE_DEFAULTS: dict[LLMIntent, str] = {
     LLMIntent.TITLE_GENERATE: "quick",
     # Extraction
     LLMIntent.EXTRACT: "balanced",
+    LLMIntent.FACT_EXTRACT: "balanced",
     LLMIntent.SUGGEST: "quick",
     # Chat
     LLMIntent.CHAT: "balanced",
