@@ -79,6 +79,23 @@ def _extract_speech_parts(  # pyright: ignore[reportUnknownParameterType]
 # ---------------------------------------------------------------------------
 
 
+def has_speech_block(metadata: object) -> bool:
+    """Return True if metadata contains a non-empty ``speech`` sub-dict.
+
+    Unlike :func:`get_speech_data`, this ignores ``personality`` data.
+    Voice-profile *freshness* tracking only applies to characters with
+    explicit speech patterns (dialect, vocabulary, phrases, body
+    language); a personality-only character has no voice profile that
+    can go stale.
+    """
+    if not isinstance(metadata, dict):
+        return False
+    speech_raw = metadata.get("speech")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+    if not isinstance(speech_raw, dict):
+        return False
+    return bool(speech_raw)  # pyright: ignore[reportUnknownArgumentType]
+
+
 def get_speech_data(metadata: object) -> str:
     """Extract speech-relevant info from entity metadata.
 

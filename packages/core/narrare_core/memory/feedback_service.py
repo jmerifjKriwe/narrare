@@ -98,18 +98,19 @@ class FeedbackService:
         preferences from. Includes rating and enriched context when
         available.
         """
+        # Privacy-safe: never include raw suggestion text or the user's
+        # rewritten text in the memory record (ADR-045 Decision 8,
+        # CONSTRAINTS.md RULE-22). Only the action, intent, and — for
+        # REJECT — the user-supplied reason are recorded so mem0 can
+        # extract semantic preferences without persisting draft content.
         if event.action == FeedbackAction.ACCEPT:
-            text = f'User accepted a {event.intent} suggestion: "{event.suggestion_text[:200]}"'
+            text = f"User accepted a {event.intent} suggestion"
         elif event.action == FeedbackAction.REJECT:
-            text = f'User rejected a {event.intent} suggestion: "{event.suggestion_text[:200]}"'
+            text = f"User rejected a {event.intent} suggestion"
             if event.modification:
                 text += f" (reason: {event.modification})"
         elif event.action == FeedbackAction.MODIFY:
-            text = (
-                f"User modified a {event.intent} suggestion. "
-                f'Original: "{event.suggestion_text[:100]}". '
-                f'Their version: "{event.modification[:100]}"'
-            )
+            text = f"User modified a {event.intent} suggestion"
         else:
             text = f"User interacted with a {event.intent} suggestion."
 

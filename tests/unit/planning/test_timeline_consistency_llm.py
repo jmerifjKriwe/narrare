@@ -91,13 +91,24 @@ def service_with_llm(
     mock_novel_repo: AsyncMock,
 ) -> TimelineConsistencyService:
     """Service with LLM configured."""
+    from narrare_core.prompts.composer import ComposedPrompt
+
     mock_registry = AsyncMock()
     mock_config = MagicMock(spec=["provider_name", "model_id"])
+    # PromptComposer is required by the production guard (_run_llm_checks skips
+    # when _composer is None). The service calls ``await composer.build(...)``
+    # and reads ``.system``, so return a real ComposedPrompt.
+    mock_composer = AsyncMock()
+    mock_composer.build.return_value = ComposedPrompt(
+        system="You are a temporal consistency checker.",
+        user="",
+    )
     return TimelineConsistencyService(
         event_repo=mock_event_repo,
         novel_repo=mock_novel_repo,
         model_registry=mock_registry,
         model_config=mock_config,
+        composer=mock_composer,
     )
 
 

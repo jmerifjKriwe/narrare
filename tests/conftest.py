@@ -28,9 +28,11 @@ os.environ.setdefault(
     "postgresql+asyncpg://narrare:narrare@localhost:5433/narrare_test",
 )
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
-# Test-mode bypass for CSRF OriginValidationMiddleware. Harmless for unit
-# tests (the app's middleware never runs there); never set in production.
-os.environ.setdefault("NARRARE_TEST_MODE", "1")
+# NOTE: NARRARE_TEST_MODE is intentionally NOT set here. It was previously
+# set globally, which leaked the CSRF bypass into unit tests that explicitly
+# test OriginValidationMiddleware rejection behaviour. The env var is now set
+# only by the session-scoped ``_set_test_mode`` fixture in
+# ``tests/integration/conftest.py``, so it applies to integration tests only.
 
 # Set dummy API keys for LLM providers to prevent import errors in unit tests.
 # Unit tests mock the gateway's _make_agent method, so real API calls are never made.

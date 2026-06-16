@@ -15,7 +15,7 @@ See CONSTRAINTS.md RULE-01b and ADR-015.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import structlog
 
@@ -24,6 +24,12 @@ from pydantic_ai import Agent
 from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.usage import UsageLimits
 
+from narrare_core.llm._model_settings import (
+    build_runtime_model_settings,
+)
+from narrare_core.llm._model_settings import (
+    get_cache_settings as _get_cache_settings,
+)
 from narrare_core.llm._providers.registry import get as get_provider
 from narrare_core.llm.result import StreamChunk, TokenUsage
 
@@ -128,11 +134,11 @@ class ModelRegistry:
     def get_cache_settings(self, config: ResolvedModelConfig) -> ModelSettings:
         """Build provider-specific ModelSettings for prompt caching.
 
-        Returned as kwargs dict for Agent.run(model_settings=...).
+        Delegates to
+        :func:`narrare_core.llm._model_settings.get_cache_settings`.
+        Returned as kwargs dict for ``Agent.run(model_settings=...)``.
         """
-        from narrare_core.llm._providers.cache_settings import build_model_settings
-
-        return cast("ModelSettings", build_model_settings(config.provider_name, config.cache))
+        return _get_cache_settings(config)
 
     async def run(
         self,
@@ -184,7 +190,7 @@ class ModelRegistry:
             output_type=output_type or str,
         )
         try:
-            model_settings = self.get_cache_settings(config) or None
+            model_settings = build_runtime_model_settings(config, usage_limits)
             # narrare: allow-agent reason="ModelRegistry run() passes model_settings (ADR-016)"
             result = await agent.run(
                 prompt,
@@ -258,7 +264,7 @@ class ModelRegistry:
         start = time.monotonic()
 
         # narrare: allow-agent reason="ModelRegistry convenience stream() (ADR-015)"
-        model_settings = self.get_cache_settings(config) or None
+        model_settings = build_runtime_model_settings(config, usage_limits)
         async with agent.run_stream(
             user_prompt, model_settings=model_settings, usage_limits=usage_limits
         ) as stream_result:

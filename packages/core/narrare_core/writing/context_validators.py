@@ -72,10 +72,12 @@ def check_voice_profile_freshness(
     for char in characters:
         if not char.metadata:
             continue
-        # Only check freshness for characters with voice data
-        from narrare_core.profiles._voice_extraction import get_speech_data
+        # Only check freshness for characters with an actual speech block
+        # (a voice profile). Personality-only characters have no voice
+        # profile that can go stale, so they are skipped.
+        from narrare_core.profiles._voice_extraction import has_speech_block
 
-        if not get_speech_data(char.metadata):
+        if not has_speech_block(char.metadata):
             continue
         warning = check_freshness_warning(char.name, char.updated_at, max_age_days)
         if warning:
