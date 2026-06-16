@@ -48,6 +48,15 @@ def _domain_to_orm(evidence: FeatureInvocationEvidence) -> dict[str, object]:
         "final_prompt_validated": evidence.final_prompt_validated,
         "validation_errors": list(evidence.validation_errors),
         "audit_state": str(evidence.audit_state),
+        # streaming: ORM column is non-nullable; coerce None → False.
+        "streaming": evidence.streaming if evidence.streaming is not None else False,
+        # ADR-045 §2: correlation fields.
+        "invocation_id": evidence.invocation_id,
+        "prepared_context_fingerprint": evidence.prepared_context_fingerprint,
+        "prompt_fingerprint": evidence.prompt_fingerprint,
+        "budget_decision_fingerprint": evidence.budget_decision_fingerprint,
+        "model_call_marker": evidence.model_call_marker,
+        "manual_injection_exception": evidence.manual_injection_exception,
     }
 
 
@@ -85,6 +94,14 @@ def _orm_to_domain(model: InvocationEvidenceModel) -> FeatureInvocationEvidence:
         final_prompt_validated=model.final_prompt_validated,
         validation_errors=tuple(str(e) for e in errors_raw),
         audit_state=AuditState(model.audit_state),
+        streaming=model.streaming,
+        # ADR-045 §2: correlation fields.
+        invocation_id=model.invocation_id,
+        prepared_context_fingerprint=model.prepared_context_fingerprint,
+        prompt_fingerprint=model.prompt_fingerprint,
+        budget_decision_fingerprint=model.budget_decision_fingerprint,
+        model_call_marker=model.model_call_marker,
+        manual_injection_exception=model.manual_injection_exception,
     )
 
 

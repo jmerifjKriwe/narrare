@@ -12,7 +12,9 @@ class TestHealthEndpoint:
     async def test_health_returns_ok(self, client: AsyncClient) -> None:
         response = await client.get("/health")
         assert response.status_code == 200
-        assert response.json()["status"] == "ok"
+        # status reflects OTel severity: "healthy" (HTTP 200) or "degraded"
+        # (HTTP 200, per INV-OH-5 liveness semantics). Never "ok".
+        assert response.json()["status"] in ("healthy", "degraded")
 
     async def test_health_no_auth_required(self, client: AsyncClient) -> None:
         """Health endpoint must not require authentication."""

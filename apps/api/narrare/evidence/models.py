@@ -54,6 +54,33 @@ class InvocationEvidenceModel(Base):
     )
     prompt_route: Mapped[str] = mapped_column(String(200), nullable=False)
 
+    # ADR-045 §2: correlation fields (nullable for backward compatibility).
+    invocation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
+    prepared_context_fingerprint: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+    )
+    prompt_fingerprint: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+    )
+    budget_decision_fingerprint: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+    )
+    model_call_marker: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+    )
+    manual_injection_exception: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+    )
+
     def __repr__(self) -> str:
         return (
             f"InvocationEvidenceModel(id={self.id}, feature_id={self.feature_id!r}, "

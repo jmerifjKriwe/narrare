@@ -63,16 +63,29 @@ def _disable_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright:
 
     Module-level rate-limiter singletons (``AI_WRITE_LIMITER`` etc.) accumulate
     state across rapid test requests, causing false 429 failures. This patches
-    ``RateLimiter.__call__`` (the FastAPI dependency entry point used by every
-    HTTP limiter) to a no-op. Production behaviour is unaffected — the patch is
-    scoped to the test process via ``monkeypatch``.
+    two separate limiter surfaces:
+
+    1. ``RateLimiter.__call__`` — the FastAPI dependency entry point used by
+       every HTTP limiter (write/analysis/light/setup).
+    2. ``AI_WS_LIMITER.try_acquire`` — the raw ``pyrate_limiter.Limiter``
+       method used directly by WebSocket handlers (NOT a FastAPI Dep, so the
+       ``__call__`` patch does not cover it). Without this, 3+ WS connections
+       within one minute trip ``Rate(3, LONG_WINDOW_MS)`` → close code 4003.
+
+    Production behaviour is unaffected — both patches are scoped to the test
+    process via ``monkeypatch``.
     """
     from fastapi_limiter.depends import RateLimiter
+
+    from narrare._app.rate_limits import AI_WS_LIMITER
 
     async def _noop_call(self: object, request: Request, response: Response) -> None:
         return None
 
     monkeypatch.setattr(RateLimiter, "__call__", _noop_call)
+    # WebSocket limiter is a raw pyrate_limiter.Limiter, not a FastAPI Dep —
+    # patch its try_acquire directly to prevent cross-test state accumulation.
+    monkeypatch.setattr(AI_WS_LIMITER, "try_acquire", lambda *a, **kw: True)
 
 
 @pytest.fixture(autouse=True)

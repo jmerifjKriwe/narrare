@@ -22,14 +22,33 @@ from narrare_core.ai_invocation.models import FeatureInvocationEvidence
 # ---------------------------------------------------------------------------
 
 
+# Defaults for every attribute ``_orm_to_domain`` reads off the ORM model.
+# Kept in sync with ``InvocationEvidenceModel`` (apps/api/narrare/evidence/models.py)
+# and the correlation fields added by ADR-045 §2. ``MagicMock(spec=[])`` blocks
+# access to unset attributes, so callers that don't care about a field still
+# need a default here or the repository mapping raises ``AttributeError``.
+_ORM_MODEL_DEFAULTS: dict[str, object] = {
+    # ADR-045 §2 correlation fields (migration 0030) + streaming (migration 0028).
+    "streaming": False,
+    "invocation_id": None,
+    "prepared_context_fingerprint": None,
+    "prompt_fingerprint": None,
+    "budget_decision_fingerprint": None,
+    "model_call_marker": None,
+    "manual_injection_exception": None,
+}
+
+
 def _make_orm_model_mock(**kwargs: object) -> MagicMock:
     """Create a mock ORM model instance with the given attributes.
 
     The mock mimics an ``InvocationEvidenceModel`` instance, providing
     attribute access that ``_orm_to_domain`` reads during conversion.
+    Caller-supplied ``kwargs`` override ``_ORM_MODEL_DEFAULTS`` so tests can
+    exercise specific correlation-field values without repeating the defaults.
     """
     model = MagicMock(spec=[])
-    for key, value in kwargs.items():
+    for key, value in {**_ORM_MODEL_DEFAULTS, **kwargs}.items():
         setattr(model, key, value)
     return model
 
