@@ -77,9 +77,13 @@ class TestWritingDeps:
     """C. Deps-Instantiation (1 Test)."""
 
     def test_writing_deps_minimal(self) -> None:
-        """WritingDeps kann nur mit registry erstellt werden."""
-        deps = WritingDeps(registry="mock_registry")
+        """WritingDeps requires registry + composer (CR-AUFG-02-07)."""
+        deps = WritingDeps(
+            registry="mock_registry",
+            composer="mock_composer",  # type: ignore[arg-type]
+        )
         assert deps.registry == "mock_registry"
+        assert deps.composer == "mock_composer"
         assert deps.context_assembler is None
         assert deps.model_config is None
         assert deps.api_key is None

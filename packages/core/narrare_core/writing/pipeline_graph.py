@@ -20,7 +20,9 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from narrare_core.agents.graph_store import GraphStateStore
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
+    from narrare_core.prompts.composer import PromptComposer
     from narrare_core.writing.models import GenerationRequest, WritingContext
 
 logger = structlog.get_logger(__name__)
@@ -32,8 +34,10 @@ async def stream_via_writing_graph(
     config: ResolvedModelConfig,
     *,
     registry: object,
+    composer: PromptComposer,
     context_assembler: object,
     agent_registry: object | None = None,
+    invocation_pipeline: InvocationPipeline | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
 ) -> AsyncIterator[StreamChunk]:
@@ -52,6 +56,7 @@ async def stream_via_writing_graph(
 
     deps = WritingDeps(
         registry=registry,
+        composer=composer,
         agent_registry=agent_registry,
         context_assembler=context_assembler,
         model_config=config,
@@ -64,6 +69,8 @@ async def stream_via_writing_graph(
         tone=context.tone,
         language=request.writing_language,
         writing_language=context.writing_language,
+        user_id=str(request.user_id),
+        invocation_pipeline=invocation_pipeline,
     )
 
     state = WritingState(
@@ -83,8 +90,10 @@ async def run_with_persistence(
     config: ResolvedModelConfig,
     *,
     registry: object,
+    composer: PromptComposer,
     context_assembler: object,
     agent_registry: object | None = None,
+    invocation_pipeline: InvocationPipeline | None = None,
     store: GraphStateStore | None = None,
     run_id: str | None = None,
     api_key: str | None = None,
@@ -120,6 +129,7 @@ async def run_with_persistence(
 
     deps = WritingDeps(
         registry=registry,
+        composer=composer,
         agent_registry=agent_registry,
         context_assembler=context_assembler,
         model_config=config,
@@ -134,6 +144,8 @@ async def run_with_persistence(
         writing_language=context.writing_language,
         store=store,
         run_id=current_run_id,
+        user_id=str(request.user_id),
+        invocation_pipeline=invocation_pipeline,
     )
 
     result = await graph.run(state=initial_state, deps=deps)

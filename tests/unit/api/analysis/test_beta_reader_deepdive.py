@@ -6,8 +6,9 @@ Split from test_beta_reader_service.py to stay under 300 lines (RULE-04).
 
 from __future__ import annotations
 
-from typing import Protocol
-from unittest.mock import AsyncMock, MagicMock
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Protocol
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -20,8 +21,17 @@ from narrare.analysis.errors import (
     ExcessiveWordCountError,
     InsufficientWordCountError,
 )
-from narrare.analysis.schemas import BetaReaderDeepDiveRequest, BetaReaderRequest
-from narrare_core.agents.beta_reader_types import BetaReaderDeps
+from narrare.analysis.schemas import (
+    BetaReaderDeepDiveRequest,
+    BetaReaderOverallAssessment,
+    BetaReaderRequest,
+    BetaReaderResponse,
+)
+from narrare_core.agents.beta_reader_types import BetaReaderDeps, BetaReaderPhase2Output
+from tests.unit.api.analysis._fakes import SpyInvocationPipeline
+
+if TYPE_CHECKING:
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 # Minimal protocols for spec'd mocks (RULE-TEST-01)
 
@@ -42,6 +52,7 @@ class _ComposedPromptProto(Protocol):
 def _make_service(
     cache_hit: str | None = None,
     word_count: int = 3000,
+    invocation_pipeline: InvocationPipeline | None = None,
 ) -> BetaReaderService:
     """Create a BetaReaderService with mocked dependencies.
 
@@ -91,6 +102,7 @@ def _make_service(
         registry=registry,
         config=config,
         composer=composer,
+        invocation_pipeline=invocation_pipeline,
     )
 
 
@@ -150,3 +162,68 @@ class TestWordCountValidation:
                 user_id=uuid4(),
                 request=BetaReaderRequest(chapter_ids=[str(uuid4())]),
             )
+
+
+# ---------------------------------------------------------------------------
+# Invocation composition — verifies compose_invocation (ADR-048 Mode 2)
+# ---------------------------------------------------------------------------
+
+
+class TestInvocationComposition:
+    """Verify Phase 2 routes through compose_invocation, not safe_record_evidence."""
+
+    @pytest.mark.asyncio
+    async def test_phase2_compose_invocation_called(self) -> None:
+        """Deep-dive invokes compose_invocation with feature_id analysis_beta_read_deepdive."""
+        phase1_cached = BetaReaderResponse(
+            novel_id=str(uuid4()),
+            chapter_ids=[str(uuid4())],
+            total_word_count=3000,
+            strengths=[],
+            feedback=[],
+            questions=[],
+            overall=BetaReaderOverallAssessment(
+                summary="Good",
+                reader_engagement=5,
+                emotional_impact=5,
+                pacing_score=5,
+                prose_quality=5,
+                plot_progression=5,
+                character_development=5,
+            ),
+            analyzed_at=datetime.now(tz=UTC).isoformat(),
+            cache_key="abc123",
+        )
+
+        spy = SpyInvocationPipeline()
+        service = _make_service(
+            cache_hit=phase1_cached.model_dump_json(),
+            invocation_pipeline=spy,
+        )
+
+        mock_agent_instance = AsyncMock()
+        mock_agent_instance.run_phase2 = AsyncMock(
+            return_value=BetaReaderPhase2Output(
+                detailed_feedback=[],
+                revision_suggestions=[],
+                category_score=5,
+            )
+        )
+
+        with patch(
+            "narrare.analysis.beta_reader_service.BetaReaderAgent",
+            return_value=mock_agent_instance,
+        ):
+            await service.deep_dive(
+                novel_id=uuid4(),
+                user_id=uuid4(),
+                request=BetaReaderDeepDiveRequest(
+                    chapter_ids=[str(uuid4())],
+                    category=FeedbackCategory.PLOT,
+                    cache_key="abc123",
+                ),
+            )
+
+        assert len(spy.prepare_calls) == 1
+        assert spy.prepare_calls[0].feature_id == "analysis_beta_read_deepdive"
+        assert len(spy.finalize_calls) == 1

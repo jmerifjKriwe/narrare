@@ -8,6 +8,7 @@ Tests:
 - Real composer integration with runtime context
 - PromptNotFoundError propagation (no silent fallback)
 - KB repo error graceful degradation (empty dedup list, extraction continues)
+- Invocation composition via compose_invocation (ADR-048 Mode 2)
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from uuid import uuid4
 
 import pytest
 
+from narrare.kb.extraction_service import _EXTRACTION_MANUAL_INJECTION
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts import PromptComposer, PromptRegistry
 from narrare_core.shared.errors import PromptNotFoundError
@@ -205,3 +207,48 @@ async def test_extract_when_existing_entities_lookup_fails_degrades_gracefully(
         # Agent was called with empty dedup list
         deps = mock_agent.run.call_args.kwargs["deps"]
         assert deps.existing_entity_names == []
+
+
+# ---------------------------------------------------------------------------
+# Invocation composition — ADR-048 Mode 2 (agent-internal)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_extract_from_chapter_calls_compose_invocation_mode2(
+    mock_registry: FakeModelRegistry,
+    config: ResolvedModelConfig,
+    mock_chapter_repo: FakeChapterRepo,
+    mock_kb_repo: FakeKBRepo,
+    mock_composer: FakeComposer,
+) -> None:
+    """extract_from_chapter routes through compose_invocation (Mode 2) per ADR-048.
+
+    Replaces the deprecated safe_record_evidence() placeholder path. The
+    service must call compose_invocation with the ExtractionAgent's
+    ManualInjectionDeclaration and the kb_extract feature_id.
+    """
+    chapter = make_chapter()
+    mock_chapter_repo.get_by_id.return_value = chapter
+
+    with (
+        patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent,
+        patch("narrare_core.ai_invocation.compose_invocation", new=AsyncMock()) as mock_compose,
+    ):
+        mock_agent = MagicMock(spec=["run"])
+        mock_agent.run = AsyncMock(return_value=make_extraction_output())
+        MockAgent.return_value = mock_agent
+
+        service = make_service(
+            mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer
+        )
+        await service.extract_from_chapter(
+            novel_id=uuid4(),
+            chapter_id=chapter.id,
+            user_id=uuid4(),
+        )
+
+    mock_compose.assert_awaited_once()
+    kwargs = mock_compose.call_args.kwargs
+    assert kwargs["manual_injection"] is _EXTRACTION_MANUAL_INJECTION
+    assert kwargs["invocation_context"].feature_id == "kb_extract"

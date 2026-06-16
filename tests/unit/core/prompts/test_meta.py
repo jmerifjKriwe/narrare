@@ -1,4 +1,10 @@
-"""Tests for prompts/meta.py — meta-prompt loading and caching."""
+"""Tests for prompts/meta.py — meta-prompt loading and caching.
+
+.. note::
+    ``MetaPromptLoader`` is deprecated per ADR-046 (CR-AUFG-02-07). These
+    tests are retained until the class is removed — they verify the cascade
+    mechanics that the ``NarrareMeta`` Capability relies on internally.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +16,9 @@ if TYPE_CHECKING:
 import pytest
 
 from narrare_core.prompts.meta import MetaPromptLoader
+
+# MetaPromptLoader is @deprecated (ADR-046); suppress during its own tests.
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 
 @pytest.fixture

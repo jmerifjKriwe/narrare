@@ -14,14 +14,14 @@ import pytest
 from pydantic_ai import RunContext, RunUsage
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import FunctionToolset
+
+from narrare_core.agents.kb_agent import KBAgent, KBDeps
 from tests.unit.core.agents._kb_mocks import (
     BrokenGetByNameService,
     BrokenGetRelatedService,
     BrokenSearchService,
     MockKBService,
 )
-
-from narrare_core.agents.kb_agent import KBAgent, KBDeps
 
 
 @pytest.fixture()

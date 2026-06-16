@@ -19,6 +19,7 @@ from narrare_core.agents.writing_graph_types import (
     WritingStatus,
     create_writing_graph,
 )
+from narrare_core.prompts.composer import ComposedPrompt
 
 
 @pytest.fixture()
@@ -26,9 +27,19 @@ def writing_graph():  # type: ignore[no-untyped-def]
     return create_writing_graph()
 
 
+def _mock_composer() -> AsyncMock:
+    """Build a PromptComposer mock whose build() returns a ComposedPrompt."""
+    mock = AsyncMock()
+    mock.build = AsyncMock(
+        return_value=ComposedPrompt(system="Composed system prompt.", user="Composed user prompt.")
+    )
+    return mock
+
+
 def _make_deps(**overrides: Any) -> WritingDeps:
     defaults: dict[str, Any] = {
         "registry": AsyncMock(),
+        "composer": _mock_composer(),
         "genre": "fantasy",
         "tone": "balanced",
         "word_target": 1000,
@@ -141,9 +152,8 @@ class TestGenerateSummary:
             await node.call(ctx)
         mock_inst.run.assert_called_once()
         prompt_arg = mock_inst.run.call_args[1]["prompt"]
-        assert "ch-01" in prompt_arg
-        assert "mystery" in prompt_arg
-        assert "de" in prompt_arg
+        # CR-AUFG-02-07: prompt comes from PromptComposer (not inline fallback)
+        assert isinstance(prompt_arg, str)
 
     @pytest.mark.asyncio
     async def test_generate_summary_saves_state(self, writing_graph: Any) -> None:

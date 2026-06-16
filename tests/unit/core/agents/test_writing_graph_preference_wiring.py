@@ -12,8 +12,20 @@ Test strategy:
 
 from __future__ import annotations
 
+from typing import Any
+from unittest.mock import AsyncMock
+
 from narrare_core.agents.writing_graph_prompts import _base_context
 from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
+
+# CR-AUFG-02-07: WritingDeps.composer is required. These tests exercise
+# _base_context only, so a placeholder mock is sufficient.
+_COMPOSER: Any = AsyncMock()
+
+
+def _deps(**overrides: Any) -> WritingDeps:
+    """Build WritingDeps with a placeholder composer for _base_context tests."""
+    return WritingDeps(registry=None, composer=_COMPOSER, **overrides)
 
 
 class TestBaseContextPreferenceWiring:
@@ -21,7 +33,7 @@ class TestBaseContextPreferenceWiring:
 
     def test_no_user_id_empty_extra(self) -> None:
         """When user_id is not set, extra should not contain user_id."""
-        deps = WritingDeps(registry=None)
+        deps = _deps()
         state = WritingState()
         ctx = _base_context(deps, state)
         assert "user_id" not in ctx.extra
@@ -29,21 +41,21 @@ class TestBaseContextPreferenceWiring:
 
     def test_user_id_populated_in_extra(self) -> None:
         """When user_id is set, extra should contain it."""
-        deps = WritingDeps(registry=None, user_id="user-123")
+        deps = _deps(user_id="user-123")
         state = WritingState()
         ctx = _base_context(deps, state)
         assert ctx.extra["user_id"] == "user-123"
 
     def test_novel_id_populated_in_extra(self) -> None:
         """When novel_id is in state, extra should contain project_id."""
-        deps = WritingDeps(registry=None)
+        deps = _deps()
         state = WritingState(novel_id="novel-456")
         ctx = _base_context(deps, state)
         assert ctx.extra["project_id"] == "novel-456"
 
     def test_both_ids_populated(self) -> None:
         """Both user_id and project_id should appear when available."""
-        deps = WritingDeps(registry=None, user_id="user-abc")
+        deps = _deps(user_id="user-abc")
         state = WritingState(novel_id="novel-xyz")
         ctx = _base_context(deps, state)
         assert ctx.extra["user_id"] == "user-abc"
@@ -51,7 +63,7 @@ class TestBaseContextPreferenceWiring:
 
     def test_empty_user_id_not_in_extra(self) -> None:
         """Empty string user_id should not be in extra (falsy check)."""
-        deps = WritingDeps(registry=None, user_id="")
+        deps = _deps(user_id="")
         state = WritingState(novel_id="novel-123")
         ctx = _base_context(deps, state)
         assert "user_id" not in ctx.extra
@@ -59,8 +71,7 @@ class TestBaseContextPreferenceWiring:
 
     def test_other_fields_unchanged(self) -> None:
         """Adding user_id/project_id should not affect other context fields."""
-        deps = WritingDeps(
-            registry=None,
+        deps = _deps(
             user_id="u1",
             language="de",
             genre="Fantasy",

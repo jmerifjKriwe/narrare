@@ -38,7 +38,12 @@ def _output(**kw) -> ConsistencyOutput:
     return ConsistencyOutput(**defaults)
 
 
-def _service(nr=None, cr=None, kb=None, composer=None) -> ConsistencyCheckerService:
+def _service(
+    nr=None,
+    cr=None,
+    kb=None,
+    composer=None,
+) -> ConsistencyCheckerService:
     from narrare_core.llm import ResolvedModelConfig
 
     kb = kb or AsyncMock(list_entries=AsyncMock(return_value=([], 0)))

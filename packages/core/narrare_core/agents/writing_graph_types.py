@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from narrare_core.prompts.composer import PromptComposer
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -40,6 +43,7 @@ class WritingDeps:
 
     Attributes:
         registry: ModelRegistry für Agent-Modelle.
+        composer: PromptComposer (required — RULE-02/RULE-11, no fallback).
         context_assembler: Assembliert Writing-Kontext.
         model_config: ResolvedModelConfig für den aktuellen LLM-Call.
         api_key: Optionaler API-Key.
@@ -53,7 +57,7 @@ class WritingDeps:
     """
 
     registry: Any  # ModelRegistry (Any zur Vermeidung von Zirkelimporten)
-    composer: Any = None  # PromptComposer (RULE-02, Any zur Vermeidung von Zirkelimporten)
+    composer: PromptComposer  # required (CR-AUFG-02-07 / ADR-046: no None-fallback)
     context_assembler: Any = None  # WritingContextAssembler
     model_config: Any = None  # ResolvedModelConfig
     api_key: str | None = None
@@ -69,6 +73,7 @@ class WritingDeps:
     run_id: str = ""
     user_id: str = ""  # User identity for preference auto-injection
     agent_registry: Any = None  # AgentRegistry (optional, ADR-016 Phase 3)
+    invocation_pipeline: Any = None  # InvocationPipeline (Any zur Vermeidung von Zirkelimporten)
 
 
 # ---------------------------------------------------------------------------

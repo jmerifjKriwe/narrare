@@ -81,7 +81,7 @@
     "writing | inline_fallback_count | 1",
     "writing | inline_suggest | not_adopted",
     "writing | inline_suggest | runtime | kb_suggested | missing",
-    "writing | inline_suggest | runtime | preference_enrichment | missing",
+    "writing | inline_suggest | runtime | preference_enrichment | not_applicable",
     "writing | interactive_session | not_adopted",
     "writing | interactive_session | runtime | budget_resolution | missing",
     "writing | interactive_session | runtime | evidence_sink | missing",

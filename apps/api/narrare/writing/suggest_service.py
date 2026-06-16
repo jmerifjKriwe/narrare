@@ -122,6 +122,25 @@ class InlineSuggestService:
         primary completion trigger, ``text_after`` for forward context,
         and minimal chapter metadata (title, POV).
 
+        ADR-045 Decision 3 Option C exception — intentional pipeline bypass:
+            This method intentionally does NOT use ``InvocationPipeline``
+            (prepare/finalize) or ``compose_invocation()``.  The pipeline
+            overhead (enricher network calls for mem0 preferences, KB
+            retrieval, budget resolution) exceeds the <500 ms latency
+            target for inline ghost text.  The adoption registry declares
+            this exception for the ``inline_suggest`` mode:
+
+            - ``budget_resolution: none``
+            - ``final_validation: optional``
+            - ``evidence_sink: optional``
+            - ``preference_enrichment: not_applicable``
+
+            A lightweight log event (``inline_suggest_invocation``)
+            provides observability without pipeline overhead.  If latency
+            budgets improve (e.g., cached enrichers), migrate to
+            ``compose_invocation()`` Mode 1 with ``invocation_pipeline``
+            wired in ``deps_suggest.py``.
+
         Args:
             chapter_id: Chapter the user is editing (for routing context).
             user_id: Authenticated user identifier.
@@ -135,6 +154,17 @@ class InlineSuggestService:
             narrare_core.shared.errors.PromptNotFoundError: If no prompt
                 file exists for ``LLMIntent.SUGGEST``.
         """
+        # Lightweight evidence — invocation tracked via log event (ADR-045
+        # Decision 3 Option C exception for low-latency inline suggest).
+        logger.info(
+            "inline_suggest_invocation",
+            feature_id="writing_suggest",
+            intent=LLMIntent.SUGGEST.value,
+            user_id=str(user_id),
+            chapter_id=str(chapter_id),
+            pipeline_bypass_reason="latency_target_sub_500ms",
+        )
+
         # Soft rate-limit check (non-blocking).
         _track_request(chapter_id, user_id)
 

@@ -25,9 +25,8 @@ Apply these culture-specific writing and temporal convention guidelines when eva
 
 ### Timeline Events
 
-The following events exist in the timeline:
-
-{{event_context}}
+The timeline events to analyse are provided in the user prompt (as runtime
+data). Examine them there — they are NOT duplicated here.
 
 ### Instructions
 

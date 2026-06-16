@@ -12,6 +12,7 @@ from narrare._app.dependencies import (
     CurrentUserIdDep,
     SessionDep,
     get_composer,
+    get_invocation_pipeline,
     get_model_registry,
 )
 from narrare._app.dependencies_services import get_model_routing_resolver
@@ -58,6 +59,7 @@ async def _get_service(
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         kb_repo=kb_repo,
+        invocation_pipeline=get_invocation_pipeline(),
     )
 
 

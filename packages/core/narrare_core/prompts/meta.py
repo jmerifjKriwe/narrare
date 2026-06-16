@@ -5,6 +5,14 @@ The meta-prompt is a global persona/system prompt prepended to all
 feature-specific prompts. It defines the AI's overall writing philosophy
 and character. One implementation used by all features.
 
+.. deprecated:: CR-AUFG-02-07
+    ``MetaPromptLoader`` is the **pre-ADR-026** mechanism for loading
+    meta-prompt content. ADR-026 Phase 3 replaced it with the
+    ``NarrareMeta`` Capability (auto-injected by every ``NarrareAgent``).
+    ADR-046 removed the last production caller (``_get_fallback_meta``
+    in ``writing_graph_prompts.py``). The class is retained solely for
+    test-only usage and will be removed in a future release.
+
 Cascade:
 1. {project}/.narrare/prompts/meta/{language}/system.md
 2. ~/.config/narrare/prompts/meta/{language}/system.md
@@ -16,6 +24,7 @@ from __future__ import annotations
 
 import importlib.resources
 from pathlib import Path
+from warnings import deprecated
 
 import structlog
 
@@ -26,6 +35,11 @@ from narrare_core.shared.frontmatter import strip_frontmatter
 logger = structlog.get_logger(__name__)
 
 
+@deprecated(
+    "MetaPromptLoader is deprecated per ADR-046 (CR-AUFG-02-07). "
+    "Use the NarrareMeta Capability instead. "
+    "Removal target: post-ADR-046 full rollout."
+)
 class MetaPromptLoader:
     """Loads and caches the meta-prompt for a given language."""
 

@@ -9,13 +9,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from narrare._app.dependencies import SessionDep  # noqa: TC001 - needed at runtime for FastAPI DI
+from narrare._app.dependencies import (
+    SessionDep,
+    get_invocation_pipeline,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from narrare.wiki.repository import WikiRepository
     from narrare.wiki.service import APIWikiService
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.wiki.contracts import WikiServiceProtocol
 
 
@@ -26,8 +30,18 @@ def get_wiki_repository(session: SessionDep) -> WikiRepository:
     return WikiRepository(session)
 
 
-async def build_core_wiki_service() -> WikiServiceProtocol:
-    """Create the core WikiService with agent and NullEventBus."""
+async def build_core_wiki_service(
+    invocation_pipeline: InvocationPipeline | None = None,
+) -> WikiServiceProtocol:
+    """Create the core WikiService with agent, event bus, and optional pipeline.
+
+    Args:
+        invocation_pipeline: Optional InvocationPipeline for evidence
+            recording (ADR-048). When ``None``, pipeline is skipped.
+
+    Returns:
+        A configured WikiService instance.
+    """
     from narrare._app.dependencies import get_model_registry
     from narrare._app.dependencies_services import build_system_default_config
     from narrare_core.events.bus import NullEventBus
@@ -38,14 +52,19 @@ async def build_core_wiki_service() -> WikiServiceProtocol:
     config = build_system_default_config("writing", temperature=0.7, max_tokens=4096)
     model = await registry.get_model(config)
     agent = WikiGenerationAgent(model=model)
-    return WikiService(agent=agent, event_bus=NullEventBus())
+    return WikiService(
+        agent=agent,
+        event_bus=NullEventBus(),
+        invocation_pipeline=invocation_pipeline,
+    )
 
 
 async def get_wiki_service(session: SessionDep) -> APIWikiService:
     """Create APIWikiService with all injected dependencies.
 
     Production wiring: WikiGenerationAgent for core WikiService,
-    NullEventBus for event publishing, and all repositories
+    NullEventBus for event publishing, invocation pipeline for
+    evidence recording (ADR-048), and all repositories
     for data access.  Uses normal ownership checks (system_mode=False).
     """
     from narrare.chapters.repository import ChapterRepository
@@ -56,7 +75,8 @@ async def get_wiki_service(session: SessionDep) -> APIWikiService:
     from narrare.wiki.repository import WikiRepository
     from narrare.wiki.service import APIWikiService
 
-    core_service = await build_core_wiki_service()
+    pipeline = get_invocation_pipeline()
+    core_service = await build_core_wiki_service(invocation_pipeline=pipeline)
 
     chapter_wiki_svc = ChapterWikiService(
         wiki_repo=WikiRepository(session),

@@ -18,40 +18,25 @@ import structlog
 from narrare_core.agents.writing_graph_types import Approved, NeedsRevision
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
-from narrare_core.prompts.meta import MetaPromptLoader
+from narrare_core.shared.errors import ConfigurationError
 
 if TYPE_CHECKING:
     from pydantic_graph import StepContext
 
     from narrare_core.agents.writing_graph_types import WritingDeps, WritingState
-    from narrare_core.prompts.composer import ComposedPrompt
+    from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
     from narrare_core.writing.models import WritingContext
 
 logger = structlog.get_logger(__name__)
 
-# Module-level lazy meta loader for fallback paths (ADR-019 compliance).
-# When PromptComposer is unavailable (e.g. tests, bare-bones setups),
-# this ensures agents still get the Narrare identity meta-prompt.
-_meta_loader: MetaPromptLoader | None = None
-_cached_meta: dict[str, str] = {}
-
-
-async def _get_fallback_meta(language: str = "en") -> str:
-    """Get meta-prompt for fallback paths (when PromptComposer unavailable).
-
-    Lazy-loads and caches the meta-prompt per language via MetaPromptLoader.
-    Returns empty string if loading fails (graceful degradation).
-    """
-    global _meta_loader, _cached_meta
-    if language not in _cached_meta:
-        try:
-            if _meta_loader is None:
-                _meta_loader = MetaPromptLoader()
-            _cached_meta[language] = await _meta_loader.load(language)
-        except Exception:
-            logger.warning("fallback_meta_load_failed", language=language)
-            _cached_meta[language] = ""
-    return _cached_meta[language]
+# CR-AUFG-02-07 / ADR-046: The ``composer is None`` fallback paths were
+# removed. ``PromptComposer`` is now a required dependency (RULE-11:
+# fail-fast, never silently degrade to inline prompts + MetaPromptLoader).
+_COMPOSER_MISSING_MSG = (
+    "PromptComposer is required for writing graph production paths — "
+    "WritingDeps.composer must be wired by the DI container."
+)
+_COMPOSER_MISSING_CODE = "writing_graph_missing_composer"
 
 
 # ---------------------------------------------------------------------------
@@ -120,25 +105,19 @@ def _base_context(deps: WritingDeps, state: WritingState) -> PromptContext:
 
 
 async def get_outline_prompt(
-    composer: Any,
+    composer: PromptComposer,
     deps: WritingDeps,
     state: WritingState,
 ) -> tuple[str, str]:
     """Return (system_prompt, user_prompt) for the plan_outline step.
 
-    Uses PromptComposer when available; falls back to inline prompt.
+    Raises:
+        ConfigurationError: If ``composer`` is ``None`` — a DI-wiring error.
+            Per ADR-046 / RULE-11 this fails fast rather than silently
+            degrading to an inline prompt.
     """
-    if composer is None:
-        instruction = (
-            f"Create a chapter outline for chapter {state.chapter_id}.\n"
-            f"Genre: {deps.genre}\n"
-            f"Tone: {deps.tone}\n"
-            f"Writing language: {deps.writing_language}\n"
-        )
-        if deps.chapter_content:
-            instruction += f"Existing content context:\n{deps.chapter_content[:500]}\n"
-        meta = await _get_fallback_meta(deps.language)
-        return (meta, instruction)
+    if cast("Any", composer) is None:
+        raise ConfigurationError(_COMPOSER_MISSING_MSG, code=_COMPOSER_MISSING_CODE)
 
     context = _base_context(deps, state)
     context.mode = "outline"
@@ -150,23 +129,17 @@ async def get_outline_prompt(
 
 
 async def get_draft_prompt(
-    composer: Any,
+    composer: PromptComposer,
     deps: WritingDeps,
     state: WritingState,
 ) -> tuple[str, str]:
-    """Return (system_prompt, user_prompt) for the write_draft step."""
-    if composer is None:
-        parts = [
-            "Write chapter " + state.chapter_id,
-            "Genre: " + deps.genre,
-            "Tone: " + deps.tone,
-        ]
-        if state.outline:
-            parts.append("Outline:\n" + state.outline)
-        if deps.chapter_content:
-            parts.append("Existing content:\n" + deps.chapter_content)
-        meta = await _get_fallback_meta(deps.language)
-        return (meta, "\n".join(parts))
+    """Return (system_prompt, user_prompt) for the write_draft step.
+
+    Raises:
+        ConfigurationError: If ``composer`` is ``None`` — a DI-wiring error.
+    """
+    if cast("Any", composer) is None:
+        raise ConfigurationError(_COMPOSER_MISSING_MSG, code=_COMPOSER_MISSING_CODE)
 
     context = _base_context(deps, state)
     context.mode = "new_chapter"
@@ -215,22 +188,6 @@ async def _assemble_review_context(
         return None
 
 
-def _enrich_review_prompt_with_context(
-    review_prompt: str,
-    writing_context: WritingContext,
-) -> str:
-    """Append KB context fields to an inline review prompt."""
-    if writing_context.kb_characters:
-        review_prompt += f"\nCharacters:\n{writing_context.kb_characters}\n"
-    if writing_context.kb_locations:
-        review_prompt += f"\nLocations:\n{writing_context.kb_locations}\n"
-    if writing_context.kb_factions:
-        review_prompt += f"\nFactions:\n{writing_context.kb_factions}\n"
-    if writing_context.recent_chapters:
-        review_prompt += f"\nRecent chapters:\n{writing_context.recent_chapters}\n"
-    return review_prompt
-
-
 def _enrich_prompt_context_with_kb(
     context: PromptContext,
     writing_context: WritingContext,
@@ -251,7 +208,7 @@ def _enrich_prompt_context_with_kb(
 
 
 async def get_review_prompt(
-    composer: Any,
+    composer: PromptComposer,
     deps: WritingDeps,
     state: WritingState,
     word_count: int,
@@ -261,28 +218,17 @@ async def get_review_prompt(
     Assembles WritingContext from the context_assembler when available
     and enriches the prompt with KB data for consistency checks.
     Returns the assembled context so the caller can pass it to ReviewDeps.
+
+    Raises:
+        ConfigurationError: If ``composer`` is ``None`` — a DI-wiring error.
     """
+    if cast("Any", composer) is None:
+        raise ConfigurationError(_COMPOSER_MISSING_MSG, code=_COMPOSER_MISSING_CODE)
+
     draft_text = state.draft or ""
 
     # Assemble KB context — graceful degradation on failure
     writing_context = await _assemble_review_context(deps, state)
-
-    if composer is None:
-        review_prompt = (
-            f"Review the following draft text.\n"
-            f"Genre: {deps.genre}\n"
-            f"Tone: {deps.tone}\n"
-            f"Target word count: {deps.word_target}\n"
-            f"Actual word count: {word_count}\n"
-        )
-        if writing_context is not None:
-            review_prompt = _enrich_review_prompt_with_context(
-                review_prompt,
-                writing_context,
-            )
-        review_prompt += f"\nDraft:\n{draft_text}\n"
-        meta = await _get_fallback_meta(deps.language)
-        return (meta, review_prompt, writing_context)
 
     context = _base_context(deps, state)
     context.mode = "review"
@@ -303,16 +249,19 @@ async def get_review_prompt(
 
 
 async def get_revise_prompt(
-    composer: Any,
+    composer: PromptComposer,
     deps: WritingDeps,
     state: WritingState,
 ) -> tuple[str, str]:
-    """Return (system_prompt, user_prompt) for the revise_draft step."""
-    revise_content = "Revise based on feedback: " + state.feedback + "\n\n" + state.draft
+    """Return (system_prompt, user_prompt) for the revise_draft step.
 
-    if composer is None:
-        meta = await _get_fallback_meta(deps.language)
-        return (meta, revise_content)
+    Raises:
+        ConfigurationError: If ``composer`` is ``None`` — a DI-wiring error.
+    """
+    if cast("Any", composer) is None:
+        raise ConfigurationError(_COMPOSER_MISSING_MSG, code=_COMPOSER_MISSING_CODE)
+
+    revise_content = "Revise based on feedback: " + state.feedback + "\n\n" + state.draft
 
     context = _base_context(deps, state)
     context.mode = "new_chapter"
@@ -330,24 +279,20 @@ async def get_revise_prompt(
 
 
 async def get_summary_prompt(
-    composer: Any,
+    composer: PromptComposer,
     deps: WritingDeps,
     state: WritingState,
 ) -> tuple[str, str]:
-    """Return (system_prompt, user_prompt) for the generate_summary step."""
+    """Return (system_prompt, user_prompt) for the generate_summary step.
+
+    Raises:
+        ConfigurationError: If ``composer`` is ``None`` — a DI-wiring error.
+    """
+    if cast("Any", composer) is None:
+        raise ConfigurationError(_COMPOSER_MISSING_MSG, code=_COMPOSER_MISSING_CODE)
+
     content = state.final or state.draft
     chapter_title = state.outline[:100] if state.outline else ""
-
-    if composer is None:
-        instruction = (
-            f"Summarize chapter {state.chapter_id}.\n"
-            f"Genre: {deps.genre}\n"
-            f"Writing language: {deps.writing_language}\n"
-            f"Chapter title: {chapter_title}\n\n"
-            f"Content:\n{content[:3000]}\n"
-        )
-        meta = await _get_fallback_meta(deps.language)
-        return (meta, instruction)
 
     context = _base_context(deps, state)
     context.mode = "summarize"

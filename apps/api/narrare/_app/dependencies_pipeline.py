@@ -27,12 +27,19 @@ def get_invocation_pipeline() -> InvocationPipeline:
     - IntentOutputBudgetResolverImpl (budget resolution)
     - FinalPromptValidatorImpl (post-composition checks)
     - PreferenceContextEnricherImpl (if preference service available)
+    - KBSuggestedContextEnricher (backed by KB repository)
 
     Note:
         The ``evidence_sink`` is resolved by ``get_evidence_sink()`` based on
         the ``use_persistent_evidence`` setting: ``PersistentEvidenceSink``
         (PostgreSQL) when enabled, ``LoggingEvidenceSink`` otherwise (default).
+
+        The ``KBSuggestedProviderImpl`` uses ``get_session_factory()`` to
+        create per-call database sessions because this function is cached
+        (singleton) and cannot depend on request-scoped sessions.
     """
+    from narrare._app.database import get_session_factory
+    from narrare.kb.kb_suggested_provider import KBSuggestedProviderImpl
     from narrare_core.ai_invocation import (
         FinalPromptValidatorImpl,
         IntentOutputBudgetResolverImpl,
@@ -54,7 +61,11 @@ def get_invocation_pipeline() -> InvocationPipeline:
 
     # KB-suggested enricher runs before budget resolution so the resolver
     # can decide whether token budget allows KB context inclusion.
-    enrichers.append(KBSuggestedContextEnricher(kb_provider=None))
+    # Uses get_session_factory() to avoid coupling the singleton pipeline
+    # to request-scoped sessions — each get_suggested_context() call
+    # creates its own session (lightweight, read-only query).
+    kb_provider = KBSuggestedProviderImpl(session_factory=get_session_factory())
+    enrichers.append(KBSuggestedContextEnricher(kb_provider=kb_provider))
 
     return InvocationPipeline(
         enrichers=enrichers,

@@ -50,6 +50,7 @@ class ConsistencyCheckerService:
         novel_repo: Novel persistence (access control + language).
         kb_repo: KB persistence (fetch entity summaries for context).
         timeline_repo: Timeline event persistence (temporal context).
+        token_limits_service: TokenLimitsServiceProtocol for resolving consistency token budgets.
         registry: ModelRegistry for LLM model resolution.
         config: Default ResolvedModelConfig for CONSISTENCY intent.
         composer: PromptComposer for system prompt assembly.

@@ -4,6 +4,12 @@ Implements WikiServiceProtocol with dependency injection for the agent
 and event bus. Graceful degradation on all generation paths (RULE-11).
 
 RULE-12: WikiService is the single public API for the wiki subsystem.
+
+Invocation pipeline (ADR-048): The service integrates ``compose_invocation()``
+with Mode 2 (agent-internal composition) because ``WikiGenerationAgent``
+and ``WikiChapterGenerator`` compose their own prompts internally via
+``WikiPromptLoader``. When ``invocation_pipeline`` is ``None`` (backward-
+compatible default), the pipeline is gracefully skipped.
 """
 
 from __future__ import annotations
@@ -15,8 +21,11 @@ import structlog
 
 from narrare_core.events.bus import NullEventBus
 from narrare_core.events.types import DomainEvent, EventType
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.wiki.invocation import compose_wiki_invocation
 
 if TYPE_CHECKING:
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.events.bus import EventBus
     from narrare_core.wiki.contracts import WikiAgentProtocol
     from narrare_core.wiki.types import (
@@ -45,6 +54,7 @@ class WikiService:
         agent: WikiAgentProtocol,
         event_bus: EventBus | None = None,
         *,
+        invocation_pipeline: InvocationPipeline | None = None,
         max_summary_tokens: int = 60,
     ) -> None:
         """Initialize the WikiService.
@@ -53,11 +63,15 @@ class WikiService:
             agent: Wiki generation agent (implements WikiAgentProtocol).
             event_bus: Event bus for publishing domain events.
                 Defaults to NullEventBus when not provided.
+            invocation_pipeline: Optional InvocationPipeline for evidence
+                recording (ADR-048). When ``None``, pipeline is skipped
+                (backward-compatible default).
             max_summary_tokens: Maximum tokens for entity narrative_summary
                 before a truncation warning is logged.
         """
         self._agent = agent
         self._event_bus = event_bus or NullEventBus()
+        self._invocation_pipeline = invocation_pipeline
         self._max_summary_tokens = max_summary_tokens
 
     # ------------------------------------------------------------------
@@ -93,6 +107,17 @@ class WikiService:
             return None
 
         try:
+            # Record invocation evidence via pipeline (ADR-048 Mode 2).
+            # WikiGenerationAgent composes its prompt internally, so we use
+            # a manual-injection declaration. Failures are logged and swallowed
+            # — generation proceeds regardless (backward-compatible, RULE-11).
+            await compose_wiki_invocation(
+                self._invocation_pipeline,
+                feature_id="wiki_generate_entity",
+                intent=LLMIntent.SUMMARIZE,
+                project_id=novel_id,
+            )
+
             result = await self._agent.generate_entity(deps=deps)
             self._check_token_limit(result, entity_id)
             logger.info(
@@ -219,6 +244,14 @@ class WikiService:
             The generated chapter summary, or None on failure.
         """
         try:
+            # Record invocation evidence via pipeline (ADR-048 Mode 2).
+            await compose_wiki_invocation(
+                self._invocation_pipeline,
+                feature_id="wiki_generate_chapter",
+                intent=LLMIntent.SUMMARIZE,
+                project_id=deps.entity_name,  # best available project-ish id
+            )
+
             result = await self._agent.generate_chapter(deps=deps, stream=stream)
             logger.info(
                 "wiki_chapter_summary_generated",
@@ -232,10 +265,6 @@ class WikiService:
                 entity_name=deps.entity_name,
             )
             return None
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
 
     def _check_token_limit(
         self,

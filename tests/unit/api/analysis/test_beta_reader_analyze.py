@@ -7,7 +7,7 @@ Split from test_beta_reader_service.py to stay under 300 lines (RULE-04).
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -28,6 +28,10 @@ from narrare_core.agents.beta_reader_types import (
     BetaReaderPhase1Output,
     BetaReaderPhase2Output,
 )
+from tests.unit.api.analysis._fakes import SpyInvocationPipeline
+
+if TYPE_CHECKING:
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 # Minimal protocols for spec'd mocks (RULE-TEST-01)
 
@@ -50,6 +54,7 @@ def _make_service(
     phase1_output: BetaReaderPhase1Output | None = None,
     phase2_output: BetaReaderPhase2Output | None = None,
     word_count: int = 3000,
+    invocation_pipeline: InvocationPipeline | None = None,
 ) -> BetaReaderService:
     """Create a BetaReaderService with mocked dependencies.
 
@@ -103,6 +108,7 @@ def _make_service(
         registry=registry,
         config=config,
         composer=composer,
+        invocation_pipeline=invocation_pipeline,
     )
 
     return service
@@ -277,3 +283,49 @@ class TestResponseMapping:
         assert result.feedback[0].severity.value == "moderate"
         assert len(result.questions) == 1
         assert result.overall.reader_engagement == 8
+
+
+# ---------------------------------------------------------------------------
+# Invocation composition — verifies compose_invocation (ADR-048 Mode 2)
+# ---------------------------------------------------------------------------
+
+
+class TestInvocationComposition:
+    """Verify Phase 1 routes through compose_invocation, not safe_record_evidence."""
+
+    @pytest.mark.asyncio
+    async def test_phase1_compose_invocation_called(self) -> None:
+        """Phase 1 analysis invokes compose_invocation with feature_id analysis_beta_read."""
+        spy = SpyInvocationPipeline()
+        service = _make_service(cache_hit=None, word_count=3000, invocation_pipeline=spy)
+
+        phase1_output = BetaReaderPhase1Output(
+            strengths=[],
+            feedback=[],
+            questions=[],
+            overall=AgentOverallAssessment(
+                summary="Test",
+                reader_engagement=5,
+                emotional_impact=5,
+                pacing_score=5,
+                prose_quality=5,
+                plot_progression=5,
+                character_development=5,
+            ),
+        )
+        mock_agent_instance = AsyncMock()
+        mock_agent_instance.run_phase1 = AsyncMock(return_value=phase1_output)
+
+        with patch(
+            "narrare.analysis.beta_reader_service.BetaReaderAgent",
+            return_value=mock_agent_instance,
+        ):
+            await service.analyze(
+                novel_id=uuid4(),
+                user_id=uuid4(),
+                request=BetaReaderRequest(chapter_ids=[str(uuid4())]),
+            )
+
+        assert len(spy.prepare_calls) == 1
+        assert spy.prepare_calls[0].feature_id == "analysis_beta_read"
+        assert len(spy.finalize_calls) == 1

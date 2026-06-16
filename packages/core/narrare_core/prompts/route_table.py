@@ -135,7 +135,11 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         optional_variables=frozenset({"user_preferences", "avoidance_patterns", "extracted_facts"}),
     ),
     LLMIntent.BETA_READ: PromptRouteConfig("analysis", "beta_reader"),
-    LLMIntent.PLAN: PromptRouteConfig("planning", "outline"),
+    LLMIntent.PLAN: PromptRouteConfig(
+        "planning",
+        "outline",
+        allowed_context_modes=frozenset({"outline", "temporal_consistency"}),
+    ),
     LLMIntent.SUMMARIZE: PromptRouteConfig("analysis", "summarize"),
     LLMIntent.NAME_GENERATE: PromptRouteConfig("generation", "names"),
     LLMIntent.EXTRACT: PromptRouteConfig(

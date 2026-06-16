@@ -129,6 +129,8 @@ def _make_handler(
 
     Wires a real (no-op) InvocationPipeline and DefaultRunLimitResolver
     so the full invocation contract runs for draft generation (ADR-045).
+    The handler constructs WritingTurnService internally from these deps,
+    so direction handling also runs the invocation contract.
     """
     cache = InMemorySessionCache()
     session_manager = SessionManager(cache=cache)

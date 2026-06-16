@@ -35,6 +35,7 @@ from narrare_core.agents.writing_graph_types import (
 def _make_deps(**overrides: Any) -> WritingDeps:
     defaults: dict[str, Any] = {
         "registry": AsyncMock(),
+        "composer": AsyncMock(),
         "genre": "fantasy",
         "tone": "balanced",
         "word_target": 1000,
@@ -135,12 +136,12 @@ class TestWritingDepsBackwardCompat:
     """WritingDeps.agent_registry=None preserves old behavior."""
 
     def test_default_agent_registry_is_none(self) -> None:
-        deps = WritingDeps(registry=AsyncMock())
+        deps = WritingDeps(registry=AsyncMock(), composer=AsyncMock())
         assert deps.agent_registry is None
 
     def test_agent_registry_can_be_set(self) -> None:
         mock_registry = AsyncMock()
-        deps = WritingDeps(registry=AsyncMock(), agent_registry=mock_registry)
+        deps = WritingDeps(registry=AsyncMock(), composer=AsyncMock(), agent_registry=mock_registry)
         assert deps.agent_registry is mock_registry
 
 
@@ -354,3 +355,19 @@ class TestPipelineGraphPassthrough:
         sig = inspect.signature(run_with_persistence)
         param = sig.parameters["agent_registry"]
         assert param.default is None
+
+    def test_stream_signature_requires_composer(self) -> None:
+        """CR-AUFG-02-07: composer is a required parameter (no default)."""
+        from narrare_core.writing.pipeline_graph import stream_via_writing_graph
+
+        sig = inspect.signature(stream_via_writing_graph)
+        param = sig.parameters["composer"]
+        assert param.default is inspect.Parameter.empty
+
+    def test_run_with_persistence_signature_requires_composer(self) -> None:
+        """CR-AUFG-02-07: composer is a required parameter (no default)."""
+        from narrare_core.writing.pipeline_graph import run_with_persistence
+
+        sig = inspect.signature(run_with_persistence)
+        param = sig.parameters["composer"]
+        assert param.default is inspect.Parameter.empty

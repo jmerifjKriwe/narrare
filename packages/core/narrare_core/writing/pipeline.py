@@ -164,10 +164,12 @@ class WritingPipeline:
                     context,
                     config,
                     registry=self._registry,
+                    composer=self._composer,
                     context_assembler=self._context_assembler,
                     api_key=api_key,
                     base_url=base_url,
                     agent_registry=self._agent_registry,
+                    invocation_pipeline=self._invocation_pipeline,
                 ):
                     yield chunk
 

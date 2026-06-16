@@ -30,7 +30,9 @@ from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
+    from narrare_core.llm.run_limits import DefaultRunLimitResolver
     from narrare_core.prompts import PromptComposer
     from narrare_core.prompts.composer import ComposedPrompt
     from narrare_core.prompts.context import PromptContext
@@ -55,6 +57,8 @@ class ChatService(ChatServiceProtocol):
         model_registry: ModelRegistry,
         conversation_store: SQLAlchemyConversationStore,
         config: ResolvedModelConfig,
+        invocation_pipeline: InvocationPipeline | None = None,
+        run_limit_resolver: DefaultRunLimitResolver | None = None,
     ) -> None:
         """Initialize the chat service with injected dependencies.
 
@@ -63,11 +67,17 @@ class ChatService(ChatServiceProtocol):
             model_registry: For LLM model resolution and agent creation.
             conversation_store: For message persistence.
             config: Resolved model configuration (provider, model, params).
+            invocation_pipeline: Optional pipeline for chat-invocation evidence
+                and enrichment (ADR-045/ADR-048); ``None`` (default) is a no-op.
+            run_limit_resolver: Optional run-limit resolver (ADR-045 Decision 4);
+                ``None`` (default) applies no limits to the stream.
         """
         self._composer = prompt_composer
         self._registry = model_registry
         self._store = conversation_store
         self._config = config
+        self._invocation_pipeline = invocation_pipeline
+        self._run_limit_resolver = run_limit_resolver
         self._histories: dict[UUID, ProcessHistory] = {}
 
     async def ask(
@@ -123,7 +133,14 @@ class ChatService(ChatServiceProtocol):
         )
 
         # 3. Return the async generator that streams events via ChatAgent
-        return self._stream_agent_response(conv_id, composed, context, request.message)
+        return self._stream_agent_response(
+            conv_id,
+            composed,
+            context,
+            request.message,
+            user_id=user_id,
+            project_id=request.project_id,
+        )
 
     async def _stream_agent_response(
         self,
@@ -131,35 +148,53 @@ class ChatService(ChatServiceProtocol):
         composed: ComposedPrompt,
         context: PromptContext,
         user_prompt: str,
+        *,
+        user_id: UUID,
+        project_id: UUID,
     ) -> AsyncIterator[dict[str, object]]:
-        """Async generator that streams the chat response via ``ChatAgent.run_stream()``.
+        """Stream the chat response via ``ChatAgent.run_stream()`` (ADR-024).
 
-        Replaces the old ``_stream_response`` which used ``ModelRegistry.stream()``
-        directly (violating ADR-015). Now uses ``ChatAgent`` for agent-based
-        streaming with ``ProcessHistory`` for conversational continuity.
+        Composes the ADR-048 Mode 2 invocation first for evidence + enrichment
+        (flows to ``ChatDeps``); a no-op when ``invocation_pipeline`` is
+        ``None`` (backward compatible). See ``chat._invocation`` for details.
 
         Args:
             conv_id: The conversation UUID.
             composed: The composed prompt (system + user prompts).
             context: The prompt context with project metadata.
             user_prompt: The raw user message text.
+            user_id: The authenticated user's UUID (ADR-045 Decision 6).
+            project_id: The project UUID for enrichment correlation.
 
         Yields:
             Dict-based SSE events for the streaming response.
         """
+        from narrare.chat._invocation import compose_chat_invocation, resolve_chat_run_limits
+        from narrare.chat._response_helpers import save_assistant_response
         from narrare_core.chat.chat_agent import ChatAgent
         from narrare_core.chat.chat_deps import ChatDeps
 
         # Get model from registry
         model = await self._registry.get_model(self._config)
 
+        # Compose the invocation (Mode 2) → enriched context for ChatDeps.
+        invocation_id = uuid4()
+        effective_context = await compose_chat_invocation(
+            invocation_pipeline=self._invocation_pipeline,
+            prompt_ctx=context,
+            user_id=user_id,
+            project_id=project_id,
+            conv_id=conv_id,
+            invocation_id=invocation_id,
+        )
+
         # Create ChatAgent (uses HistoryPolicy.CONVERSATIONAL by design)
         agent = ChatAgent(model=model)
 
-        # Create ChatDeps for the agent
+        # ChatDeps carries the enriched context to the agent (ADR-048 Mode 2).
         deps = ChatDeps(
             prompt_composer=self._composer,
-            context=context,
+            context=effective_context,
             user_prompt=user_prompt,
         )
 
@@ -168,6 +203,14 @@ class ChatService(ChatServiceProtocol):
 
         # Get or create ProcessHistory for this conversation
         history = self._histories.get(conv_id, ProcessHistory())
+
+        # Resolve run limits when a resolver is wired (ADR-045 Decision 4).
+        message_history = history.messages if not history.is_empty else None
+        stream_kwargs = resolve_chat_run_limits(
+            resolver=self._run_limit_resolver,
+            config=self._config,
+            invocation_id=invocation_id,
+        )
 
         # Yield meta event with conversation ID
         yield {
@@ -182,7 +225,8 @@ class ChatService(ChatServiceProtocol):
             async for event in agent.run_stream(
                 prompt=full_prompt,
                 deps=deps,
-                message_history=history.messages if not history.is_empty else None,
+                message_history=message_history,
+                **stream_kwargs,
             ):
                 if event.type == "token":
                     yield {"type": "token", "text": event.text}
@@ -207,14 +251,10 @@ class ChatService(ChatServiceProtocol):
                 error=str(exc),
                 exc_info=True,
             )
-            # Save partial response before re-raising
-            if full_response:
-                await self._store.add_message(conv_id, "assistant", full_response)
+            await save_assistant_response(self._store, conv_id, full_response)
             raise
 
-        # Save assistant response
-        if full_response:
-            await self._store.add_message(conv_id, "assistant", full_response)
+        await save_assistant_response(self._store, conv_id, full_response)
 
     async def get_history(
         self,

@@ -107,6 +107,12 @@ def mock_assembler() -> MagicMock:
     return MagicMock(spec=WritingContextAssembler)
 
 
+@pytest.fixture()
+def mock_composer() -> AsyncMock:
+    """PromptComposer mock (CR-AUFG-02-07: composer is required)."""
+    return AsyncMock()
+
+
 _PATCH_TARGET = "narrare_core.agents.writing_graph_types.create_writing_graph"
 
 
@@ -120,7 +126,7 @@ class TestStreamViaWritingGraph:
 
     @pytest.mark.asyncio
     async def test_yields_single_final_chunk(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """Returns exactly one StreamChunk with final text."""
         graph = _mock_graph("Hello World")
@@ -131,6 +137,7 @@ class TestStreamViaWritingGraph:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                 )
             )
@@ -141,7 +148,7 @@ class TestStreamViaWritingGraph:
 
     @pytest.mark.asyncio
     async def test_constructs_writing_deps_correctly(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """WritingDeps passed to graph.run() carries the right fields."""
         graph = _mock_graph("text")
@@ -153,6 +160,7 @@ class TestStreamViaWritingGraph:
                     context,
                     config,
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                     api_key="key-123",
                     base_url="https://api.test",
@@ -160,6 +168,7 @@ class TestStreamViaWritingGraph:
             )
         deps: WritingDeps = graph.run.call_args.kwargs["deps"]
         assert deps.registry is mock_registry
+        assert deps.composer is mock_composer
         assert deps.context_assembler is mock_assembler
         assert deps.model_config is config
         assert deps.api_key == "key-123"
@@ -173,7 +182,7 @@ class TestStreamViaWritingGraph:
 
     @pytest.mark.asyncio
     async def test_constructs_initial_state_with_ids(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """WritingState passed to graph.run() has correct IDs from request."""
         graph = _mock_graph("text")
@@ -185,6 +194,7 @@ class TestStreamViaWritingGraph:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                 )
             )
@@ -203,7 +213,7 @@ class TestRunWithPersistence:
 
     @pytest.mark.asyncio
     async def test_no_store_yields_final_chunk(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """Without a store, still yields the final chunk."""
         graph = _mock_graph("Final output")
@@ -214,6 +224,7 @@ class TestRunWithPersistence:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                 )
             )
@@ -223,7 +234,7 @@ class TestRunWithPersistence:
 
     @pytest.mark.asyncio
     async def test_with_store_and_run_id_loads_state(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """When store returns a saved WritingState, it is used as initial_state."""
         saved = WritingState(chapter_id="ch-1", novel_id="nv-1", draft="existing draft")
@@ -236,6 +247,7 @@ class TestRunWithPersistence:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                     store=store,
                     run_id="resume-123",
@@ -248,7 +260,7 @@ class TestRunWithPersistence:
 
     @pytest.mark.asyncio
     async def test_with_store_no_saved_state_uses_new_state(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """When store.load() returns None, a fresh WritingState is created."""
         store = FakeGraphStore(saved_state=None)
@@ -261,6 +273,7 @@ class TestRunWithPersistence:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                     store=store,
                     run_id="run-456",
@@ -274,7 +287,7 @@ class TestRunWithPersistence:
 
     @pytest.mark.asyncio
     async def test_with_store_saves_final_state(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """After completion, store.save() is called with run_id and result."""
         graph = _mock_graph("final text")
@@ -286,6 +299,7 @@ class TestRunWithPersistence:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                     store=store,
                     run_id="save-test",
@@ -299,7 +313,7 @@ class TestRunWithPersistence:
 
     @pytest.mark.asyncio
     async def test_generates_run_id_when_none(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """When run_id is None, a UUID is generated for store.save()."""
         graph = _mock_graph("auto-id")
@@ -311,6 +325,7 @@ class TestRunWithPersistence:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                     store=store,
                     run_id=None,
@@ -323,7 +338,7 @@ class TestRunWithPersistence:
 
     @pytest.mark.asyncio
     async def test_uses_provided_run_id(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """When run_id is provided, store.save() receives it exactly."""
         graph = _mock_graph("provided-id")
@@ -335,6 +350,7 @@ class TestRunWithPersistence:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                     store=store,
                     run_id="test-123",
@@ -345,7 +361,7 @@ class TestRunWithPersistence:
 
     @pytest.mark.asyncio
     async def test_store_load_not_called_when_no_run_id(
-        self, mock_registry: MagicMock, mock_assembler: MagicMock
+        self, mock_registry: MagicMock, mock_assembler: MagicMock, mock_composer: AsyncMock
     ) -> None:
         """When run_id is None, store.load() is never called."""
         graph = _mock_graph("no-load")
@@ -365,6 +381,7 @@ class TestRunWithPersistence:
                     _default_context(),
                     _config(),
                     registry=mock_registry,
+                    composer=mock_composer,
                     context_assembler=mock_assembler,
                     store=store,
                     run_id=None,

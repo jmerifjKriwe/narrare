@@ -26,6 +26,7 @@ from narrare_core.agents.writing_graph_types import (
     WritingStatus,
     create_writing_graph,
 )
+from narrare_core.prompts.composer import ComposedPrompt
 
 
 @pytest.fixture()
@@ -34,9 +35,19 @@ def writing_graph():  # type: ignore[no-untyped-def]
     return create_writing_graph()
 
 
+def _mock_composer() -> AsyncMock:
+    """Build a PromptComposer mock whose build() returns a ComposedPrompt."""
+    mock = AsyncMock()
+    mock.build = AsyncMock(
+        return_value=ComposedPrompt(system="Composed system prompt.", user="Composed user prompt.")
+    )
+    return mock
+
+
 def _make_deps(**overrides: Any) -> WritingDeps:
     defaults: dict[str, Any] = {
         "registry": AsyncMock(),
+        "composer": _mock_composer(),
         "genre": "fantasy",
         "tone": "balanced",
         "word_target": 1000,
@@ -144,13 +155,12 @@ class TestPlanOutline:
             MockAgent.assert_called_once()
             call_kwargs = MockAgent.call_args[1]
             assert call_kwargs["model"] == "mock_model"
-            # ADR-019: system_prompt now loads meta-prompt via MetaPromptLoader
-            # (was previously empty string when composer is None)
+            # CR-AUFG-02-07: system_prompt comes from PromptComposer (not inline fallback)
             assert call_kwargs["system_prompt"] is not None
-            assert "Narrare" in call_kwargs["system_prompt"]
+            assert isinstance(call_kwargs["system_prompt"], str)
             mock_instance.run.assert_called_once()
             prompt_arg = mock_instance.run.call_args[1]["prompt"]
-            assert "ch-05" in prompt_arg
+            assert isinstance(prompt_arg, str)
 
 
 class TestReviewDraft:

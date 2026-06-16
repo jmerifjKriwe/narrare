@@ -5,6 +5,7 @@ optional LLM checks (TimelineAgent) to produce a combined consistency
 report. Phase 3 delegates character age logic to CharacterAgeService.
 
 Follows ADR-021: deterministic where possible, LLM where not.
+Follows ADR-046: system prompt resolved via PromptComposer (RULE-02b).
 
 Pattern: service → core/analysis (deterministic) + core/agents (LLM).
 """
@@ -15,7 +16,6 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.planning._prompt_loader import load_temporal_consistency_prompt
 from narrare.planning._timeline_event_utils import events_to_dicts
 from narrare.planning.timeline_schemas import (
     CharacterAgeReport,
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
 
@@ -65,6 +66,10 @@ class TimelineConsistencyService:
         model_registry: Shared LLM model registry (optional — LLM
             checks are skipped when not configured).
         model_config: Resolved model config for LLM checks.
+        invocation_pipeline: For ADR-048 invocation evidence recording.
+        composer: PromptComposer for resolving the temporal consistency
+            system prompt via the governed cascade (RULE-02b). Required
+            for LLM checks; ignored when LLM is not configured.
     """
 
     def __init__(
@@ -75,6 +80,7 @@ class TimelineConsistencyService:
         model_registry: ModelRegistry | None = None,
         model_config: ResolvedModelConfig | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        composer: PromptComposer | None = None,
     ) -> None:
         self._event_repo = event_repo
         self._novel_repo = novel_repo
@@ -82,6 +88,7 @@ class TimelineConsistencyService:
         self._registry = model_registry
         self._config = model_config
         self._invocation_pipeline = invocation_pipeline
+        self._composer = composer
 
     async def check_consistency(
         self,
@@ -200,15 +207,17 @@ class TimelineConsistencyService:
     ) -> list[TemporalIssueResponse]:
         """Run LLM-based consistency checks via TimelineAgent.
 
-        Loads the system prompt from the bundled prompt registry (RULE-02)
-        in the novel's writing language. Falls back to English when the
-        language-specific prompt is not available.
+        Resolves the system prompt through ``PromptComposer.build()`` with
+        ``mode="temporal_consistency"`` (RULE-02b / ADR-046). The cascade
+        handles language fallback, user overrides, and governed variable
+        substitution. Event context is passed as the user prompt (dynamic
+        data) — it is NOT baked into the system prompt.
 
         Returns an empty list when LLM is not configured or when no
         events exist to check. LLM checks are supplementary — they
         find contextual issues that deterministic rules cannot detect.
         """
-        if self._config is None or self._registry is None:
+        if self._config is None or self._registry is None or self._composer is None:
             logger.debug("llm_checks_skipped_no_provider", novel_id=str(novel_id))
             return []
 
@@ -217,10 +226,14 @@ class TimelineConsistencyService:
 
         try:
             from narrare_core.agents.timeline_agent import TimelineAgent, TimelineDeps
+            from narrare_core.llm.intents import LLMIntent
+            from narrare_core.prompts.context import PromptContext
 
             model = await self._registry.get_model(self._config)
 
-            # Build a compact event context for the LLM (user prompt — data-driven)
+            # Build a compact event context for the LLM (user prompt — dynamic data).
+            # Per AC-2 (CR-AUFG-02-06): event data goes in the user channel,
+            # NOT in the system prompt.
             event_context = "\n".join(
                 f"- {e.event_name} (order: {e.temporal_order}, timestamp: {e.timestamp_raw})"
                 for e in events[:50]  # Limit context size
@@ -230,13 +243,18 @@ class TimelineConsistencyService:
             genre = getattr(novel, "genre", "") or ""
             language = getattr(novel, "writing_language", "") or "en"
 
-            # Load bundled prompt via importlib.resources (RULE-02 compliance)
-            system_prompt_text = load_temporal_consistency_prompt(
+            # Resolve system prompt via PromptComposer (RULE-02b — ADR-046).
+            # The temporal_consistency template carries instructions and project
+            # metadata only; event data is delivered as the user prompt below.
+            ctx = PromptContext(
                 language=language,
-                novel_title=novel_title,
+                writing_language=language,
+                project_title=novel_title,
                 genre=genre,
-                language_code=language,
+                mode="temporal_consistency",
             )
+            composed = await self._composer.build(LLMIntent.PLAN, ctx)
+            system_prompt_text = composed.system
 
             deps = TimelineDeps(
                 genre=genre,
@@ -245,7 +263,6 @@ class TimelineConsistencyService:
 
             agent = TimelineAgent(model=model)
             from narrare._app.invocation_context import safe_compose_invocation
-            from narrare_core.llm.intents import LLMIntent
 
             await safe_compose_invocation(
                 self._invocation_pipeline,

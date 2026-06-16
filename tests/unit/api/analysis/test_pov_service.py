@@ -5,7 +5,7 @@ Uses Fake classes for all dependencies (no MagicMock).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import pytest
@@ -17,7 +17,10 @@ from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeModelRegistry, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
-from tests.unit.api.analysis._fakes import FakePOVAgent, SeededKBRepository
+from tests.unit.api.analysis._fakes import FakePOVAgent, SeededKBRepository, SpyInvocationPipeline
+
+if TYPE_CHECKING:
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -42,6 +45,7 @@ def _make_service(
     content: str = "Alice saw the light.",
     kb_names: list[str] | None = None,
     writing_language: str = "en",
+    invocation_pipeline: InvocationPipeline | None = None,
 ) -> tuple[Any, Any, POVService]:
     novel = make_novel(writing_language=writing_language)
     ch = make_chapter(novel_id=novel.id, content=content)
@@ -54,6 +58,7 @@ def _make_service(
         kb_repo=kb,
         model_registry=FakeModelRegistry(),
         model_config=_CONFIG,
+        invocation_pipeline=invocation_pipeline,
     )
     return novel, ch, svc
 
@@ -210,3 +215,25 @@ class TestMultipleChapters:
         await svc.analyze(novel_id=novel.id, chapter_ids=[ch1.id, ch2.id], user_id=novel.user_id)
         assert "First scene." in fake.last_deps.text
         assert "Second scene." in fake.last_deps.text
+
+
+# ---------------------------------------------------------------------------
+# E. Invocation composition — verifies compose_invocation (ADR-048 Mode 2)
+# ---------------------------------------------------------------------------
+
+
+class TestInvocationComposition:
+    """Verify the service routes through compose_invocation, not safe_record_evidence."""
+
+    @pytest.mark.asyncio
+    async def test_compose_invocation_called_with_pov_feature_id(self) -> None:
+        """The pipeline prepare/finalize are invoked with feature_id analysis_pov."""
+        spy = SpyInvocationPipeline()
+        novel, ch, svc = _make_service(invocation_pipeline=spy)
+        _inject(svc, FakePOVAgent(output=_pov_output()))
+        await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
+
+        assert len(spy.prepare_calls) == 1
+        assert spy.prepare_calls[0].feature_id == "analysis_pov"
+        assert len(spy.finalize_calls) == 1
+        assert spy.finalize_calls[0].feature_id == "analysis_pov"

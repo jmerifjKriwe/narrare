@@ -6,7 +6,7 @@ The deterministic FormulaReadabilityAnalyzer is used as-is (pure math).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import pytest
@@ -18,7 +18,10 @@ from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeModelRegistry, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
-from tests.unit.api.analysis._fakes import FakeReadabilityAgent
+from tests.unit.api.analysis._fakes import FakeReadabilityAgent, SpyInvocationPipeline
+
+if TYPE_CHECKING:
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -30,13 +33,18 @@ _CONFIG = ResolvedModelConfig(provider_name="anthropic", model_id="test-model")
 def _make_service(
     content: str = "The cat sat on the mat. The dog ran to the park.",
     writing_language: str = "en",
+    invocation_pipeline: InvocationPipeline | None = None,
 ) -> tuple[Any, Any, ReadabilityService]:
     novel = make_novel(writing_language=writing_language)
     ch = make_chapter(novel_id=novel.id, content=content)
     nr, cr = FakeNovelRepository(), FakeChapterRepository()
     seed_repos(novel, ch, novel_repo=nr, chapter_repo=cr)
     svc = ReadabilityService(
-        chapter_repo=cr, novel_repo=nr, model_registry=FakeModelRegistry(), model_config=_CONFIG
+        chapter_repo=cr,
+        novel_repo=nr,
+        model_registry=FakeModelRegistry(),
+        model_config=_CONFIG,
+        invocation_pipeline=invocation_pipeline,
     )
     return novel, ch, svc
 
@@ -163,3 +171,25 @@ class TestReadabilityEmptyContent:
         _inject(svc, fake)
         await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
         assert not fake.run_called
+
+
+# ---------------------------------------------------------------------------
+# D. Invocation composition — verifies compose_invocation (ADR-048 Mode 2)
+# ---------------------------------------------------------------------------
+
+
+class TestInvocationComposition:
+    """Verify the service routes through compose_invocation, not safe_record_evidence."""
+
+    @pytest.mark.asyncio
+    async def test_compose_invocation_called_with_readability_feature_id(self) -> None:
+        """The pipeline prepare/finalize are invoked with feature_id analysis_readability."""
+        spy = SpyInvocationPipeline()
+        novel, ch, svc = _make_service(invocation_pipeline=spy)
+        _inject(svc, FakeReadabilityAgent())
+        await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
+
+        assert len(spy.prepare_calls) == 1
+        assert spy.prepare_calls[0].feature_id == "analysis_readability"
+        assert len(spy.finalize_calls) == 1
+        assert spy.finalize_calls[0].feature_id == "analysis_readability"

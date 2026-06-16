@@ -23,6 +23,8 @@ from uuid import UUID
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
+from narrare_core.shared.errors import WritingError
+
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
@@ -73,6 +75,20 @@ class WritingSessionHandler:
         self._ctx_user_id: UUID | None = None
         self._ctx_project_id: UUID | None = None
         self._ctx_chapter_id: UUID | None = None
+        # WritingTurnService wraps the same injected deps (composer,
+        # invocation_pipeline, registry, config, run_limit_resolver) into
+        # the invocation-contract turn orchestrator (ADR-045 Decision 6).
+        # Constructed here rather than injected separately to avoid
+        # redundant DI wiring in the router (RULE-04 — router ≤150 lines).
+        from narrare.writing.ws_turn_service import WritingTurnService
+
+        self._turn_service = WritingTurnService(
+            composer=composer,
+            invocation_pipeline=invocation_pipeline,
+            registry=registry,
+            config=config,
+            run_limit_resolver=run_limit_resolver,
+        )
 
     async def handle(
         self,
@@ -210,34 +226,33 @@ class WritingSessionHandler:
     ) -> None:
         """Handle user direction — generate text and stream back.
 
+        Delegates turn orchestration to :class:`WritingTurnService`, which
+        runs the full invocation contract (prepare → compose → finalize
+        with enrichment, budget resolution, and correlated evidence) per
+        ADR-045 Decision 6.  The handler retains only the transport
+        mapping (chunks → WebSocket DTOs) and session transcript updates.
+
         In ``interactive_session`` mode, generates prose directly.
         In ``interview_assisted`` mode, asks follow-up questions.
         """
         await self._session_manager.add_message(session_id, "user", content)
 
-        # Determine prompt mode based on session mode
-        prompt_mode = "interview" if self._mode == "interview_assisted" else "interactive_session"
+        # Connection identifiers are set in ``handle()`` before the message
+        # loop; this handler is only reachable from the loop.
+        assert self._ctx_user_id is not None
+        assert self._ctx_project_id is not None
+        assert self._ctx_chapter_id is not None
 
-        # Stream generated response
         accumulated: list[str] = []
         final_chunk: StreamChunk | None = None
         try:
-            from narrare_core.llm.intents import LLMIntent
-            from narrare_core.prompts.context import PromptContext
-
-            ctx = PromptContext(
-                language="en",
-                mode=prompt_mode,
-                author_instructions=content,
-            )
-            intent = LLMIntent.CHAT if self._mode == "interview_assisted" else LLMIntent.WRITE
-            prompt = await self._composer.build(intent, ctx)
-
-            async for chunk in self._registry.stream(
-                intent=intent,
-                system_prompt=prompt.system,
-                user_prompt=prompt.user,
-                config=self._config,
+            async for chunk in self._turn_service.stream_turn(
+                content=content,
+                session_mode=self._mode,
+                user_id=self._ctx_user_id,
+                project_id=self._ctx_project_id,
+                chapter_id=self._ctx_chapter_id,
+                session_id=session_id,
                 api_key=self._api_key,
                 base_url=self._base_url,
             ):
@@ -252,6 +267,19 @@ class WritingSessionHandler:
                     }
                 )
 
+        except WritingError as e:
+            logger.error(
+                "direction_generation_failed",
+                session_id=str(session_id),
+                error=str(e),
+            )
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": str(e),
+                }
+            )
+            return
         except Exception as e:
             logger.error(
                 "direction_generation_failed",

@@ -34,6 +34,10 @@ from narrare_core.agents.writing_graph_types import (
     WritingState,
     WritingStatus,
 )
+from narrare_core.ai_invocation.manual_injection import ManualInjectionDeclaration
+from narrare_core.ai_invocation.models import PromptInvocationContext
+from narrare_core.ai_invocation.non_writing_adapter import compose_invocation
+from narrare_core.llm.intents import LLMIntent
 
 __all__ = [
     "Approved",
@@ -43,6 +47,57 @@ __all__ = [
     "WritingStatus",
     "build_writing_graph",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Invocation pipeline helper (Mode 2 — agent-internal composition)
+# ---------------------------------------------------------------------------
+
+
+async def _run_invocation_pipeline(
+    deps: WritingDeps,
+    state: WritingState,
+    step_name: str,
+    intent: LLMIntent,
+) -> None:
+    """Run the invocation pipeline (prepare+finalize) for a Mode 2 graph step.
+
+    When ``deps.invocation_pipeline`` is ``None``, this is a no-op
+    (backward-compatible with callers that have not wired the pipeline).
+
+    When wired, runs prepare (validation + enrichment + budget) and finalize
+    (evidence recording) for the agent-internal invocation. The step's agent
+    composes its own prompt from deps, so composition is skipped.
+
+    Raises:
+        InvocationValidationError: If prepare or finalize validation fails.
+    """
+    if deps.invocation_pipeline is None:
+        return
+
+    invocation_context = PromptInvocationContext(
+        feature_id=f"writing_graph_{step_name}",
+        intent=intent,
+        mode=step_name,
+        user_id=deps.user_id or None,
+        project_id=state.novel_id or None,
+        language=deps.language,
+        output_language=deps.writing_language or None,
+        streaming=False,
+    )
+
+    await compose_invocation(
+        invocation_pipeline=deps.invocation_pipeline,
+        invocation_context=invocation_context,
+        manual_injection=ManualInjectionDeclaration(
+            reason=(
+                f"WritingGraph '{step_name}' step composes prompt internally "
+                f"via agent system prompt from PromptComposer"
+            ),
+            variables=("kb_suggested", "user_preferences", "extra"),
+            injection_mechanism="agent_deps",
+        ),
+    )
 
 
 def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, WritingState]:
@@ -63,6 +118,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             await save_state(ctx)
             return
 
+        await _run_invocation_pipeline(ctx.deps, ctx.state, "plan_outline", LLMIntent.PLAN)
         model = await get_model(ctx.deps)
         system_prompt, user_prompt = await get_outline_prompt(
             ctx.deps.composer,
@@ -84,6 +140,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
     @g.step
     async def write_draft(ctx: StepContext[WritingState, WritingDeps, None]) -> None:
         """Generiere Draft via DraftAgent."""
+        await _run_invocation_pipeline(ctx.deps, ctx.state, "write_draft", LLMIntent.WRITE)
         model = await get_model(ctx.deps)
         system_prompt, user_prompt = await get_draft_prompt(
             ctx.deps.composer,
@@ -122,6 +179,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
                 feedback=f"Draft too short ({word_count} words, expected ~{target}).",
             )
 
+        await _run_invocation_pipeline(ctx.deps, ctx.state, "review_draft", LLMIntent.BETA_READ)
         model = await get_model(ctx.deps)
         system_prompt, user_prompt, writing_context = await get_review_prompt(
             ctx.deps.composer,
@@ -155,6 +213,7 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
     ) -> None:
         """Überarbeite den Draft basierend auf Feedback."""
         ctx.state.feedback = ctx.inputs.feedback
+        await _run_invocation_pipeline(ctx.deps, ctx.state, "revise_draft", LLMIntent.REWRITE)
         model = await get_model(ctx.deps)
         system_prompt, user_prompt = await get_revise_prompt(
             ctx.deps.composer,
@@ -194,6 +253,12 @@ def build_writing_graph() -> GraphBuilder[WritingState, WritingDeps, None, Writi
             await save_state(ctx)
             return End(ctx.state)
 
+        await _run_invocation_pipeline(
+            ctx.deps,
+            ctx.state,
+            "generate_summary",
+            LLMIntent.SUMMARIZE,
+        )
         model = await get_model(ctx.deps)
         system_prompt, user_prompt = await get_summary_prompt(
             ctx.deps.composer,

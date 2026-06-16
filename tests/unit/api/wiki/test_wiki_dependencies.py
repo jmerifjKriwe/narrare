@@ -115,8 +115,10 @@ class TestBuildCoreWikiService:
             # Verify event bus created
             mock_bus_cls.assert_called_once_with()
 
-            # Verify service created with agent + event bus
-            mock_svc_cls.assert_called_once_with(agent=mock_agent, event_bus=mock_bus)
+            # Verify service created with agent + event bus + optional pipeline
+            mock_svc_cls.assert_called_once_with(
+                agent=mock_agent, event_bus=mock_bus, invocation_pipeline=None
+            )
 
             # Verify return value
             assert result is mock_svc

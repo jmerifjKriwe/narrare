@@ -92,7 +92,9 @@ features:
             should:
               - kb_suggested
           runtime_requirements:
-            preference_enrichment: required
+            # not_applicable: pipeline bypassed for <500ms latency target
+            # (ADR-045 Decision 3 Option C). See suggest_service.py docstring.
+            preference_enrichment: not_applicable
             kb_suggested: budget_rejected
             budget_resolution: none
             final_validation: optional

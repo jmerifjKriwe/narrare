@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from pydantic_ai.models.test import TestModel
 
 from narrare_core.agents import NarrareAgent
@@ -212,6 +213,7 @@ class TestNarrareUniversalRulesInAgent:
 class TestNoDuplicationWithMeta:
     """Integration test: universal rules appear once, not duplicated."""
 
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_meta_prompt_does_not_contain_universal_rules(self) -> None:
         """Meta-prompt files no longer contain universal rules content.
 

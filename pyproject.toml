@@ -67,6 +67,10 @@ reportUnknownLambdaType = false
 reportUnknownParameterType = false
 reportMissingParameterType = false
 
+# ADR-046 transition: MetaPromptLoader is @deprecated but still tested.
+# Re-enable reportDeprecated after MetaPromptLoader removal.
+reportDeprecated = false
+
 # Was geprüft wird
 include = [
   "apps/api",

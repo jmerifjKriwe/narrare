@@ -18,6 +18,9 @@ from narrare_core.agents.capabilities import NarrareUniversalRules
 from narrare_core.agents.capabilities.universal_rules import _load_universal_rules
 from narrare_core.prompts.meta import MetaPromptLoader
 
+# MetaPromptLoader is @deprecated (ADR-046); suppress during transition tests.
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
 
 class TestConflictResolutionMovedToCapability:
     """Verify conflict resolution has been moved from meta to NarrareUniversalRules."""

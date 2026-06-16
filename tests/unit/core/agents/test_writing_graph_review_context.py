@@ -22,7 +22,6 @@ from narrare_core.agents.review_types import ReviewOutput
 from narrare_core.agents.writing_graph_prompts import (
     _assemble_review_context,
     _enrich_prompt_context_with_kb,
-    _enrich_review_prompt_with_context,
     get_review_prompt,
 )
 from narrare_core.agents.writing_graph_types import (
@@ -31,6 +30,7 @@ from narrare_core.agents.writing_graph_types import (
     WritingState,
     create_writing_graph,
 )
+from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.prompts.context import PromptContext
 from narrare_core.writing.models import WritingContext
 
@@ -45,6 +45,7 @@ _NOVEL_ID = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 def _make_deps(**overrides: Any) -> WritingDeps:
     defaults: dict[str, Any] = {
         "registry": AsyncMock(),
+        "composer": AsyncMock(),
         "genre": "fantasy",
         "tone": "balanced",
         "word_target": 1000,
@@ -164,37 +165,7 @@ class TestAssembleReviewContext:
 
 
 # ---------------------------------------------------------------------------
-# B. Prompt Enrichment — Inline Fallback
-# ---------------------------------------------------------------------------
-
-
-class TestEnrichReviewPromptInline:
-    """Inline prompt fallback gets KB context appended."""
-
-    def test_enriches_with_characters(self) -> None:
-        ctx = _make_writing_context(kb_characters="Elena, Marcus", kb_locations="")
-        result = _enrich_review_prompt_with_context("Base.\n", ctx)
-        assert "Characters:\nElena, Marcus" in result
-        assert "Locations:" not in result
-
-    def test_enriches_with_multiple_fields(self) -> None:
-        ctx = _make_writing_context(
-            kb_characters="Elena",
-            kb_locations="Dark Forest",
-            recent_chapters="Chapter 1",
-        )
-        result = _enrich_review_prompt_with_context("Review:\n", ctx)
-        assert "Characters:\nElena" in result
-        assert "Locations:\nDark Forest" in result
-        assert "Recent chapters:\nChapter 1" in result
-
-    def test_no_enrichment_when_empty(self) -> None:
-        result = _enrich_review_prompt_with_context("Review:\n", WritingContext())
-        assert result == "Review:\n"
-
-
-# ---------------------------------------------------------------------------
-# C. Prompt Enrichment — PromptComposer Path
+# B. Prompt Enrichment — PromptComposer Path
 # ---------------------------------------------------------------------------
 
 
@@ -232,38 +203,44 @@ class TestGetReviewPromptWithContext:
 
     @pytest.mark.asyncio
     async def test_returns_writing_context_in_tuple(self) -> None:
-        deps = _make_deps(context_assembler=None)
+        """With no assembler, writing_ctx is None and composed prompt returned."""
+        mock_composer = AsyncMock()
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="SYS", user="USER"))
+        deps = _make_deps(context_assembler=None, composer=mock_composer)
         state = _make_state(draft="A brave hero sets out.")
         sys_prompt, user_prompt, writing_ctx = await get_review_prompt(
-            composer=None,
+            composer=mock_composer,
             deps=deps,
             state=state,
             word_count=5,
         )
-        assert sys_prompt != ""  # ADR-019: meta-prompt loaded via MetaPromptLoader
-        assert "Narrare" in sys_prompt
-        assert "A brave hero sets out." in user_prompt
+        assert sys_prompt == "SYS"
+        assert user_prompt == "USER"
         assert writing_ctx is None
 
     @pytest.mark.asyncio
-    async def test_inline_prompt_enriched_with_kb(self) -> None:
-        """Inline fallback prompt includes KB data when context available."""
+    async def test_composer_path_enriches_context_with_kb(self) -> None:
+        """PromptComposer path enriches PromptContext.extra with KB data."""
         writing_ctx = _make_writing_context()
         assembler = AsyncMock()
         assembler.assemble = AsyncMock(return_value=writing_ctx)
-        deps = _make_deps(context_assembler=assembler, word_target=1000)
+        mock_composer = AsyncMock()
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="SYS", user="USER"))
+        deps = _make_deps(context_assembler=assembler, word_target=1000, composer=mock_composer)
         state = _make_state(draft="The hero fights.", chapter_id=_CH_ID, novel_id=_NOVEL_ID)
 
-        _, user_prompt, returned_ctx = await get_review_prompt(
-            composer=None,
+        _, _, returned_ctx = await get_review_prompt(
+            composer=mock_composer,
             deps=deps,
             state=state,
             word_count=3,
         )
         assert returned_ctx is writing_ctx
-        assert "Characters:\nElena — warrior queen" in user_prompt
-        assert "Locations:\nDark Forest" in user_prompt
-        assert "Recent chapters:\nChapter 1: The hero arrived." in user_prompt
+        # Verify PromptContext.extra was enriched with KB data
+        called_ctx = mock_composer.build.call_args.args[1]
+        assert called_ctx.extra["kb_characters"] == "Elena — warrior queen"
+        assert called_ctx.extra["kb_locations"] == "Dark Forest"
+        assert called_ctx.extra["recent_chapters"] == "Chapter 1: The hero arrived."
 
 
 # ---------------------------------------------------------------------------

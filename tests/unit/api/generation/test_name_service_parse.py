@@ -19,12 +19,12 @@ from .conftest import (
 )
 
 # ---------------------------------------------------------------------------
-# _parse_names — JSON parsing edge cases
+# parse_generated_names — JSON parsing edge cases
 # ---------------------------------------------------------------------------
 
 
 class TestParseNames:
-    """Tests for the _parse_names method — all JSON shapes the LLM might return."""
+    """Tests for parse_generated_names — all JSON shapes the LLM might return."""
 
     async def test_parses_json_array(
         self,

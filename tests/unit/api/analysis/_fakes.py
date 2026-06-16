@@ -10,10 +10,18 @@ from typing import TYPE_CHECKING, Any
 
 from narrare_core.agents.pov_types import POVDetectionOutput
 from narrare_core.agents.readability_types import ReadabilityAgentOutput
+from narrare_core.ai_invocation.pipeline import InvocationPipeline
 from tests.fakes._shared import CallRecord
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+    from narrare_core.ai_invocation.models import PromptInvocationContext
+    from narrare_core.ai_invocation.pipeline import (
+        FinalizedInvocation,
+        PreparedInvocation,
+    )
+    from narrare_core.prompts.composer import ComposedPrompt
 
 
 class FakePOVAgent:
@@ -80,3 +88,36 @@ class SeededKBRepository:
         self.calls.append(CallRecord("list_entries"))
         entries = [type("Entry", (), {"name": n})() for n in self._names]
         return entries, len(entries)
+
+
+class SpyInvocationPipeline(InvocationPipeline):
+    """InvocationPipeline that records prepare/finalize calls for assertions.
+
+    Subclasses the real :class:`InvocationPipeline` so it is type-compatible
+    with the ``invocation_pipeline`` parameter on analysis services. All
+    components default to ``None``, so ``prepare``/``finalize`` return PASS
+    results and ``compose_invocation`` proceeds without error.
+
+    Used to verify that analysis services route through ``compose_invocation``
+    (ADR-048 Mode 2) with the expected ``feature_id``, rather than the
+    deprecated ``safe_record_evidence`` placeholder-evidence path.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.prepare_calls: list[PromptInvocationContext] = []
+        self.finalize_calls: list[PromptInvocationContext] = []
+
+    async def prepare(self, context: PromptInvocationContext) -> PreparedInvocation:
+        self.prepare_calls.append(context)
+        return await super().prepare(context)
+
+    async def finalize(
+        self,
+        prompt: ComposedPrompt,
+        context: PromptInvocationContext,
+        *,
+        prepared: PreparedInvocation | None = None,
+    ) -> FinalizedInvocation:
+        self.finalize_calls.append(context)
+        return await super().finalize(prompt, context, prepared=prepared)

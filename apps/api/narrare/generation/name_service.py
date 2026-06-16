@@ -8,11 +8,12 @@ dedup and generated names are flagged if they match existing KB entries.
 
 from __future__ import annotations
 
-import json
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.generation._name_invocation import compose_name_invocation
+from narrare.generation.name_parsing import parse_generated_names
 from narrare.generation.schemas import (
     GeneratedName,
     NameGenerateRequest,
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.kb.contracts import KBRepositoryProtocol
+    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
@@ -62,6 +64,7 @@ class NameGeneratorService:
         api_key: str | None = None,
         base_url: str | None = None,
         kb_repo: KBRepositoryProtocol | None = None,
+        invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._registry = registry
         self._composer = composer
@@ -69,6 +72,7 @@ class NameGeneratorService:
         self._api_key = api_key
         self._base_url = base_url
         self._kb_repo = kb_repo
+        self._invocation_pipeline = invocation_pipeline
 
     async def generate_names(self, request: NameGenerateRequest) -> NameGenerateResponse:
         """Generate names based on request parameters.
@@ -101,9 +105,20 @@ class NameGeneratorService:
             },
         )
 
+        # ADR-048: route through the InvocationPipeline (Mode 2 -- the name
+        # generator composes its prompt inline). prepare() enriches the context
+        # (preferences, kb_suggested) and finalize() records correlated evidence.
+        # pipeline=None is a backward-compatible no-op returning the original context.
+        enriched_context = await compose_name_invocation(
+            self._invocation_pipeline,
+            project_id=request.project_id,
+            language=request.explanation_language,
+            prompt_context=context,
+        )
+
         prompt = await self._composer.build(
             LLMIntent.NAME_GENERATE,
-            context,
+            enriched_context,
             user_prompt=self._build_user_prompt(request),
         )
 
@@ -116,7 +131,7 @@ class NameGeneratorService:
             base_url=self._base_url,
         )
 
-        names = self._parse_names(result, request)
+        names = parse_generated_names(result, request)
         names = self._check_duplicates(names, existing_names)
 
         logger.info(
@@ -143,74 +158,6 @@ class NameGeneratorService:
             f"Language: {request.explanation_language}. "
             f"Return as JSON array with fields: name, pronunciation, meaning."
         )
-
-    def _parse_names(self, text: str, request: NameGenerateRequest) -> list[GeneratedName]:
-        """Parse LLM JSON response into GeneratedName objects.
-
-        Args:
-            text: Raw LLM response text.
-            request: Original request for type/name_style metadata.
-
-        Returns:
-            List of GeneratedName objects.
-        """
-        # Strip markdown code fences if present (```json ... ```)
-        cleaned = text.strip()
-        if cleaned.startswith("```"):
-            # Remove opening fence (```json or ```)
-            first_newline = cleaned.index("\n") if "\n" in cleaned else len(cleaned)
-            cleaned = cleaned[first_newline + 1 :]
-            # Remove closing fence (```)
-            if cleaned.endswith("```"):
-                cleaned = cleaned[:-3]
-            cleaned = cleaned.strip()
-
-        try:
-            raw: Any = json.loads(cleaned)
-        except json.JSONDecodeError:
-            logger.warning(
-                "name_parse_failed_json",
-                text_length=len(text),
-                text_preview=text[:200],
-            )
-            return []
-
-        # Collect raw items as fully typed dicts.
-        # isinstance() on ``Any`` narrows to ``list[Unknown]`` / ``dict[str, Unknown]``,
-        # so we use ``cast()`` to get properly typed containers.
-        raw_items: list[dict[str, Any]] = []
-        if isinstance(raw, list):
-            raw_list: list[Any] = cast("list[Any]", raw)
-            for item in raw_list:
-                if isinstance(item, dict):
-                    raw_items.append(cast("dict[str, Any]", item))
-        elif isinstance(raw, dict):
-            raw_dict: dict[str, Any] = cast("dict[str, Any]", raw)
-            names_key = raw_dict.get("names", [])
-            if isinstance(names_key, list):
-                names_list: list[Any] = cast("list[Any]", names_key)
-                for item in names_list:
-                    if isinstance(item, dict):
-                        raw_items.append(cast("dict[str, Any]", item))
-            else:
-                raw_items.append(raw_dict)
-        # else: non-dict non-list JSON → empty result (no names to parse)
-
-        names: list[GeneratedName] = []
-        for item in raw_items:
-            name_val: Any = item.get("name", "")
-            pron_val: Any = item.get("pronunciation")
-            mean_val: Any = item.get("meaning")
-            names.append(
-                GeneratedName(
-                    name=str(name_val) if name_val is not None else "",
-                    pronunciation=str(pron_val) if pron_val is not None else None,
-                    meaning=str(mean_val) if mean_val is not None else None,
-                    type=request.name_type.value,
-                    name_style=request.name_style,
-                ),
-            )
-        return names
 
     async def _fetch_existing_names(
         self,
