@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "created_at": "2026-06-17T17:29:37.490627+00:00",
+  "source_file": "analysis_feedback",
+  "test_cases": {
+    "beta-reader-character-intro": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "beta-reader-climax-scene": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "review-rough-draft": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "review-polished-chapter": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "consistency-character-contradiction": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "consistency-world-facts": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    }
+  },
+  "summary": {
+    "avg_score": 1.0,
+    "total_test_cases": 6
+  }
+}
