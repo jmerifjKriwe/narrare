@@ -31,6 +31,7 @@ permission:
     "git switch*": "allow"
     "git pull*": "allow"
     "git fetch*": "allow"
+    "git rebase*": "allow"
     "ls*": "allow"
     "cat *": "allow"
     "find*": "allow"
