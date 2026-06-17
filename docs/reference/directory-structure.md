@@ -118,7 +118,7 @@ packages/core/narrare_core/
 │   ├── result.py               ← LLMResult, StreamChunk, LLMError types
 │   ├── retry.py                ← Retry logic, backoff, error classification
 │   ├── metrics.py              ← Cost tracking, token counting, telemetry hooks
-│   ├── embeddings.py           ← Embedding calls (approved RULE-01 exception)
+│   ├── embeddings.py           ← Embedding calls (approved RULE-01b exception)
 │   └── _providers/             ← Provider-specific adapters (internal only)
 │       ├── openai.py
 │       ├── anthropic.py

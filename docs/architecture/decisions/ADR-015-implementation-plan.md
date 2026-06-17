@@ -1,6 +1,7 @@
 # ADR-015 — Implementation Plan: Agents as First-Class Citizens
 
 > **Companion to ADR-015.** Phased migration plan mit Layer-Zuordnung, Definition of Done und Risikobewertung.
+> **Status:** ✅ Accepted (companion to ADR-015)
 >
 > Location: `docs/architecture/decisions/ADR-015-implementation-plan.md`
 
@@ -37,7 +38,7 @@ Phase 4: ✅ 🕸️ Pydantic Graph für Writing-Workflows (abgeschlossen)
 `docs/_shared/CONSTRAINTS.md` aktualisieren:
 
 ```diff
-- RULE-01 · LLM calls go through the Gateway. Always.
+- RULE-01b · LLM calls go through the Gateway. Always.
 + RULE-01b · Agents are the way to use LLMs. Models come from the Gateway. Always.
 ```
 

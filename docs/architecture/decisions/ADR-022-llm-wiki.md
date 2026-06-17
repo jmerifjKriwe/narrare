@@ -1,6 +1,6 @@
 # ADR-022: LLM Wiki — Precomputed Context Layer
 
-**Status**: Accepted
+**Status:** ✅ Accepted
 **Date**: 2026-05-29
 **Implemented**: 2026-05-29
 **Decision Maker**: Architecture Agent

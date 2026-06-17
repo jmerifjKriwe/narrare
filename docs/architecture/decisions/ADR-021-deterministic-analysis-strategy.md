@@ -203,7 +203,7 @@ The tiering follows a clear principle:
 
 | Rule | Impact | How we satisfy it |
 |------|--------|-------------------|
-| RULE-01 | No impact — spaCy is not an LLM. LLM calls for understanding features still go through `core/agents/` → `core/llm/gateway.py` | ✅ |
+| RULE-01b | No impact — spaCy is not an LLM. LLM calls for understanding features still go through `core/agents/` → `core/llm/gateway.py` | ✅ |
 | RULE-02 | No impact — spaCy has no prompts. LLM prompts for understanding features still built in `core/prompts/` | ✅ |
 | RULE-03 | New `NLPProvider` Protocol in `core/nlp/contracts.py` before implementation begins | Required |
 | RULE-04 | New modules appropriately scoped: `nlp/` for NLP infrastructure, `analysis/` for computation. Each file < 200 lines target | Required |
@@ -253,7 +253,7 @@ packages/core/narrare_core/
 core/analysis/ ──→ core/nlp/ (NLPProvider Protocol)
                 ──→ core/embeddings/ (optional, for ANAL-009 voice drift)
 
-core/agents/ ────→ core/llm/ (gateway, per RULE-01)
+core/agents/ ────→ core/llm/ (gateway, per RULE-01b)
                 ──→ core/analysis/ (deterministic metrics for hybrid features)
 
 apps/api/ ───────→ core/analysis/ (via service layer)
@@ -327,7 +327,7 @@ The NRC Emotion Lexicon (EmoLex) provides word-level emotion associations for ~1
 Register the new module in the architecture exceptions if needed:
 
 ```toml
-# No RULE-01 exception needed — spaCy is not an LLM.
+# No RULE-01b exception needed — spaCy is not an LLM.
 # The NLPProvider Protocol satisfies RULE-08 (external integration abstraction).
 ```
 

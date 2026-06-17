@@ -10,7 +10,7 @@
 ## Context
 
 Currently `packages/core/narrare_core/llm/embeddings.py` imports `openai.AsyncOpenAI()`
-directly and calls `client.embeddings.create()` — this is an approved RULE-01 exception
+directly and calls `client.embeddings.create()` — this is an approved RULE-01b exception
 (document via `# narrare: allow-direct-llm` inline comment).
 
 The module is called from:
@@ -26,7 +26,7 @@ open since project init. The following developments now force resolution:
    Ollama embeddings) require a pluggable embedding interface.
 3. **TECH_STACK.md** documents the intention: "Provider-agnostic embedding interface planned"
    (line 132).
-4. **RULE-01** requires that all LLM calls stay within `core/llm/`, but the current
+4. **RULE-01b** requires that all LLM calls stay within `core/llm/`, but the current
    exception is undocumented in `pyproject.toml [tool.narrare.architecture.exceptions]`.
 
 The LLM Gateway already has a well-established provider abstraction pattern:
@@ -49,7 +49,7 @@ However, embedding providers differ from chat model providers:
   (sentence-transformers), and future providers (Ollama, GLM/Z.AI embedding models).
 - **Simplicity:** A Protocol + registry + convenience wrapper is sufficient — no
   over-engineering for hypothetical future needs.
-- **RULE-01 compliance:** All direct LLM imports stay in `core/llm/`; the approved
+- **RULE-01b compliance:** All direct LLM imports stay in `core/llm/`; the approved
   exception moves to the new provider file.
 - **Pattern consistency:** Follow the existing `_providers/registry.py` pattern where
   appropriate, but adapted for embedding-specific needs (class instances, not factories).
@@ -143,7 +143,7 @@ preserving the exact public API signature (plus an optional `provider=` paramete
    or Ollama providers, we can extract them into a `_providers/embedding/` directory
    (same pattern as the existing `_providers/` evolution).
 
-4. **RULE-01 exception is explicit:** The `# narrare: allow-direct-llm` comment moves
+4. **RULE-01b exception is explicit:** The `# narrare: allow-direct-llm` comment moves
    to `embedding_providers.py`, and the exception is registered in `pyproject.toml
    [tool.narrare.architecture.exceptions]`.
 
@@ -159,7 +159,7 @@ preserving the exact public API signature (plus an optional `provider=` paramete
 - **Consistency with ADR-017** — the embedding cascade can plug into this abstraction
   for its "provider-native" tier
 - **Backward compatible** — no changes needed in `embedding_service.py` or any caller
-- **RULE-01 compliance is cleaner** — exception is documented in both inline comment
+- **RULE-01b compliance is cleaner** — exception is documented in both inline comment
   and `pyproject.toml`
 
 ### Negative / Tradeoffs
@@ -172,7 +172,7 @@ preserving the exact public API signature (plus an optional `provider=` paramete
 
 | Rule | Status | How we satisfy it |
 |------|--------|-------------------|
-| RULE-01 | ✅ | All LLM imports stay in `core/llm/embedding_providers.py` |
+| RULE-01b | ✅ | All LLM imports stay in `core/llm/embedding_providers.py` |
 | RULE-03 | ✅ | `EmbeddingProvider` Protocol defined before implementation |
 | RULE-04 | ✅ | Single file under limit; `_providers/embedding/` extracted when >300 lines |
 | RULE-06 | ✅ | `embedding_providers.py` = one responsibility (provider abstraction) |
@@ -291,11 +291,11 @@ if "openai" not in _REGISTRY:
 
 ### pyproject.toml Update
 
-The RULE-01 exception entry in `[tool.narrare.architecture.exceptions]` must be updated:
+The RULE-01b exception entry in `[tool.narrare.architecture.exceptions]` must be updated:
 
 ```toml
 [[tool.narrare.architecture.exceptions.entries]]
-rule = "RULE-01"
+rule = "RULE-01b"
 file = "packages/core/narrare_core/llm/embedding_providers.py"
 reason = "Batch embedding API requires direct client access for performance"
 approved_by = "architecture-review"

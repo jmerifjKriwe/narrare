@@ -1,6 +1,6 @@
 # ADR-029 — VM-First Setup Contract and Optional DevContainer Cleanup
 
-> **Status:** Accepted — implemented
+> **Status:** ✅ Accepted — implemented
 > **Date:** 2026-06-03
 > **Deciders:** Architecture Agent, Narrare Dev Coordinator
 > **Supersedes:** —

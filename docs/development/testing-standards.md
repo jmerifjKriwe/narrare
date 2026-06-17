@@ -550,7 +550,7 @@ tool_calls = [
 assert any(tc.tool_name == "lookup_character" for tc in tool_calls)
 ```
 
-### RULE-01 Exception Pattern for Test Files
+### RULE-01b Exception Pattern for Test Files
 
 Test files that import `pydantic_ai` must add `# narrare: allow reason="..."` as a
 **standalone comment on the line immediately before** the import. This is because

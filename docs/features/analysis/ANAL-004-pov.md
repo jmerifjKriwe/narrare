@@ -80,7 +80,7 @@ service: analysis/pov_service.py
 contract: analysis/contracts.py#POVDetector
 agent: core/analysis/pov_agent.py#POVDetectionAgent
 router: analysis/router.py
-prompt: core/prompts/_bundled/analysis/en/pov
+prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
 requires: [INFRA-001, INFRA-002, KB-001]
 ---
 

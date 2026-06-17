@@ -119,7 +119,7 @@ User interaction → LearningEvent → mem0 storage:
 3. **Privacy-safe transformation**: `LearningEvent.to_memory_text()` produces a privacy-safe string that excludes `raw_excerpt`. Only the summary is persisted.
 4. **mem0 storage**: `LearningEvent.to_mem0_metadata()` packages kind, precedence level, and confidence for mem0's metadata system.
 5. **Preference extraction**: `PreferenceService` queries mem0 for learned preferences alongside explicit feedback, using `MemoryPrecedenceLevel` to rank sources (learned memory has lower precedence than detail/core memory).
-- `mem0_client.py` — `Mem0Client` factory and `NullMemoryClient` for graceful degradation (approved RULE-01 exception)
+- `mem0_client.py` — `Mem0Client` factory and `NullMemoryClient` for graceful degradation (approved RULE-01b exception)
 - `feedback_service.py` — `FeedbackService` — records feedback events to both `feedback_events` table and mem0
 - `preference_service.py` — `PreferenceService` — extracts preferences from mem0, formats for prompt injection
 
@@ -163,7 +163,7 @@ class Mem0Client:
 - **LLM provider**: Configurable via user's AI settings (same provider/model as the gateway)
 - **Cost-efficient defaults**: Haiku (Anthropic), GPT-4.1-nano (OpenAI), Llama3.2 (Ollama)
 - **pgvector backend**: Uses existing PostgreSQL + pgvector for memory storage
-- **RULE-01 exception**: mem0 requires direct LLM client for internal extraction
+- **RULE-01b exception**: mem0 requires direct LLM client for internal extraction
 
 ### NullMemoryClient — Graceful Degradation
 
@@ -208,7 +208,7 @@ returns empty results. This ensures:
 - Reset required for major creative direction changes
 - Learning can be disabled (fallback to default behavior via NullMemoryClient)
 - Privacy: All data stored locally in PostgreSQL, never transmitted
-- mem0 LLM calls are infrastructure-level (RULE-01 exception) — cost-efficient models only
+- mem0 LLM calls are infrastructure-level (RULE-01b exception) — cost-efficient models only
 - If mem0 is unavailable, feedback events still recorded to PostgreSQL for later processing
 
 ## Related Features

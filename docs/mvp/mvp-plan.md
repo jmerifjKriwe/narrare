@@ -173,7 +173,7 @@ packages/core/narrare_core/
     ✓ _providers/openai.py (OpenAI + OpenAI-compatible adapter)
     ✓ _providers/anthropic.py (Anthropic adapter)
     ✓ _providers/zai.py (Z.AI OpenAI-compatible adapter)
-    ✓ embeddings.py (embed_texts — approved RULE-01 exception)
+    ✓ embeddings.py (embed_texts — approved RULE-01b exception)
     ✓ gateway.py (LLMGateway — full implementation)
 
   prompts/

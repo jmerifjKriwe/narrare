@@ -59,7 +59,7 @@ only path to any LLM API, enforced by tooling — not by convention.
 - Simple one-off LLM calls (e.g., a health check) require going through the gateway
 
 **Constraints introduced:**
-- RULE-01 in `CONSTRAINTS.md`
+- RULE-01b in `CONSTRAINTS.md`
 
 ## Implementation Notes
 

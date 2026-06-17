@@ -134,7 +134,7 @@ Der Umbau erfolgt in 4 Phasen:
 
 | Phase | Inhalt | Aufwand |
 |-------|--------|---------|
-| 0 | ADR + RULE-01b + `core/agents/` Struktur + Gateway als ModelRegistry | 2–3 Tage |
+| 0 | ADR + RULE-01 + `core/agents/` Struktur + Gateway als ModelRegistry | 2–3 Tage |
 | 1 | Usage Limits + Hooks für Observability | 3–4 Tage |
 | 2 | Output Functions für DraftProcessor → `DraftAgent` | 5–7 Tage |
 | 3 | KB-Tools + ToolSearch → ContextAssembler als Tool | 8–10 Tage |

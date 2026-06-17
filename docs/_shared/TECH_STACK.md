@@ -118,7 +118,7 @@ rejection feedback, and session history across conversations.
     product dependencies.
   - Users can override embedding behavior via the approved settings cascade.
 **Flow:** Feedback collection (`FeedbackService`) → preference extraction (mem0 AsyncMemory) → prompt injection (`PreferenceService` → `PromptComposer`)
-**Location:** Only used via `core/memory/mem0_client.py` (singleton factory, approved RULE-01 exception).
+**Location:** Only used via `core/memory/mem0_client.py` (singleton factory, approved RULE-01b exception).
 **Not:** mem0 Platform as a core dependency; custom memory service. ADR-033
 compatibility gates passed with 2.0.x.
 **Note:** Graceful degradation is mandatory. If mem0 is unavailable, the system
@@ -127,7 +127,7 @@ continues without memory features. Never a hard dependency at request time.
 ### Embeddings (OpenAI `text-embedding-3-small`)
 **Why:** Fast, cheap, good quality for semantic similarity tasks.
 **Role:** KB entry embeddings, chapter summary embeddings, style profile embeddings.
-**Location:** Only via `core/llm/embeddings.py` (approved RULE-01 exception).
+**Location:** Only via `core/llm/embeddings.py` (approved RULE-01b exception).
 **Future:** Provider-agnostic embedding interface planned — model swappable via config.
 
 ### sentence-transformers `all-MiniLM-L6-v2` (optional)

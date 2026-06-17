@@ -1087,16 +1087,14 @@ See ADR-028 for the SSOT decision and checker enforcement specification.
 
 | # | Rule | File | Reason | Approved By | Date |
 |---|------|------|--------|-------------|------|
-| 1 | RULE-01 | `packages/core/narrare_core/llm/embedding_providers.py` | Batch embedding API requires direct client access for performance | architecture-review | 2026-05-27 |
-| 2 | RULE-01 | `packages/core/narrare_core/memory/mem0_client.py` | mem0 AsyncMemory requires direct LLM client for memory extraction | generation-prompt-memory-foundation | 2026-05-15 |
+| 1 | RULE-01b | `packages/core/narrare_core/llm/embedding_providers.py` | Batch embedding API requires direct client access for performance | architecture-review | 2026-05-27 |
+| 2 | RULE-01b | `packages/core/narrare_core/memory/mem0_client.py` | mem0 AsyncMemory requires direct LLM client for memory extraction | generation-prompt-memory-foundation | 2026-05-15 |
 | 4 | RULE-01b | `packages/core/narrare_core/planning/remap.py` | Injected agent, not instantiated here | architecture-review | 2026-06-03 |
-| 5 | RULE-01 | `packages/core/narrare_core/wiki/agent.py` | WikiGenerationAgent uses RunContext for pydantic_ai internals | architecture-review | 2026-06-03 |
-| 6 | RULE-01 | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
-| 7 | RULE-01b | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
+| 5 | RULE-01b | `packages/core/narrare_core/wiki/agent.py` | WikiGenerationAgent uses RunContext for pydantic_ai internals | architecture-review | 2026-06-03 |
+| 6 | RULE-01b | `packages/core/narrare_core/wiki/agent_chapter.py` | WikiChapterGenerator wraps internal PydanticAgent (ADR-015) | ADR-015 | 2026-06-03 |
 | 11 | RULE-TEST-01 | `tests/unit/api/metrics/test_metrics_router.py` | Mocking SQLAlchemy Engine — no domain contract | architecture-review | 2026-06-03 |
 | 12 | RULE-01b | `packages/core/narrare_core/llm/gateway.py` | Gateway._make_agent() is the approved boundary crossing | ADR-015 | 2026-05-20 |
-| 13 | RULE-01 | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct import of pydantic_ai Agent | ADR-015 | 2026-05-20 |
-| 14 | RULE-01b | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct pydantic-ai Agent | ADR-015 | 2026-05-20 |
+| 13 | RULE-01b | `apps/api/narrare/setup/provider_service.py` | Setup-phase provider validation requires direct pydantic-ai Agent | ADR-015 | 2026-05-20 |
 | 15 | RULE-19 | `apps/api/narrare/metrics/router.py` | Health/readiness check must bypass repository layer to verify raw DB connectivity | platform-review-01 | 2026-06-11 |
 
 ### Detailed Exception Justifications

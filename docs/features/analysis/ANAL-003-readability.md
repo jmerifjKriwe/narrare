@@ -80,7 +80,7 @@ service: analysis/readability_service.py
 contract: analysis/contracts.py#ReadabilityAnalyzer
 agent: core/analysis/readability_agent.py#ReadabilityAgent
 router: analysis/router.py
-prompt: core/prompts/_bundled/analysis/en/readability
+prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
 requires: [INFRA-001, INFRA-002]
 ---
 

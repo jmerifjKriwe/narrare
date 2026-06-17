@@ -89,7 +89,7 @@ ui_available_in: [planning, kb]
 service: planning/timeline_service.py
 contract: planning/contracts.py#TimelineServiceProtocol
 router: planning/router.py → GET /planning/timeline/{novel_id}
-prompt: prompts/_bundled/planning/{lang}/timeline/system.md
+prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
 requires: [KB-001, INFRA-001, INFRA-002]
 
 core_agent: agents/timeline_agent.py (TimelineAgent)
@@ -139,7 +139,7 @@ timeline entries.
 **Service:** `TimelineService` in `planning/timeline_service.py`
 **Contract:** `TimelineServiceProtocol` in `planning/contracts.py`
 **Core Agent:** `TimelineAgent` in `core/agents/timeline_agent.py`
-**Prompts:** `prompts/_bundled/planning/{lang}/timeline/system.md` (3 locales: en, de, fr)
+**Prompts:** ADR-048 Mode 2 — `TimelineAgent` composes its prompt internally from `TimelineDeps`. No bundled cascade prompt; user cannot override via PromptComposer.
 **Storage:** KB timeline entries + chapter frontmatter + chapter summaries
 
 **Flow:**
@@ -206,7 +206,7 @@ optional temporal metadata that future timeline features can build on.
 
 **Phase 4 implemented (AI timeline analysis):**
 - ✅ AI-powered timeline analysis via `TimelineAgent` — chronological ordering, temporal conflict detection, coverage gap analysis
-- ✅ Timeline prompts in 3 locales (`prompts/_bundled/planning/{lang}/timeline/system.md`)
+- ✅ Timeline prompt: ADR-048 Mode 2 (agent-internal from `TimelineDeps`)
 - ✅ `GET /planning/timeline/{novel_id}` endpoint in `planning/router.py`
 - ✅ TimelineService with chapter summary gathering + TimelineAgent invocation
 

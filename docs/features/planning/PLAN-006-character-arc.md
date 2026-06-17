@@ -55,7 +55,7 @@ ui_available_in: [planning]
 service: planning/character_arc_service.py
 contract: planning/contracts.py#CharacterArcServiceProtocol
 router: planning/router.py → POST /planning/character-arc/{novel_id}
-prompt: prompts/_bundled/planning/{lang}/character_arc/system.md
+prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
 requires: [INFRA-001, INFRA-002, INFRA-003]
 ---
 
@@ -105,7 +105,7 @@ planning that catches flat or inconsistent character development early.
 - Output types: `ArcPhase` (phase_name, description, emotional_state, turning_point, chapters_suggested)
 - Uses Output Function pattern (`_process_output`) for structured generation
 
-**Prompts:** `prompts/_bundled/planning/{lang}/character_arc/system.md` (3 locales: en, de, fr)
+**Prompts:** ADR-048 Mode 2 — `CharacterArcAgent` composes its prompt internally from `CharacterArcDeps`. No bundled cascade prompt; user cannot override via PromptComposer.
 
 **Variables:**
 - `{{character_name}}` — Character being analysed

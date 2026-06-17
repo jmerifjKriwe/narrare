@@ -36,6 +36,7 @@ Phase 6: Post-MVP Features         ⏳ IN PROGRESS
 - ADRs: see `docs/architecture/decisions/INDEX.md`
 - Feature specs: see `docs/features/INDEX.md`
 - Open questions: see `docs/architecture/questions/INDEX.md`
+- AUFG lifecycle: see `docs/architecture/governance/aufg-registry.md`
 - Adoption debt: run `just check-adoption` for current status
   - **Runtime adoption status terminology (ADR-045):** "Infrastructure complete" ≠ "Runtime adopted." Infrastructure complete means contracts, probes, checkers, and registry exist. Runtime adopted means correlated production-path evidence proves the invocation pipeline, prompt merge, budget enforcement, and evidence recording all fire for real AI calls. The adoption gate is now status-bearing: `just check-adoption` returns `STATIC_ONLY`; `--evidence-dir .evidence` returns `GOVERNED_DEBT` (baseline-approved runtime debt, not PASS). `PASS` requires zero unapproved runtime gaps.
 - System health: run `just check-health` for current score

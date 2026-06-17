@@ -234,7 +234,7 @@ exemption.
 ## Architecture Checker
 
 `scripts/check_architecture.py` enforces:
-- RULE-01: LLM imports
+- RULE-01b: LLM imports
 - RULE-02: Prompt building
 - RULE-04: File size limits
 - RULE-06: Router purity

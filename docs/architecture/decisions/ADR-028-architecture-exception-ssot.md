@@ -1,6 +1,6 @@
 # ADR-028 — Architecture Exception Register: Single Source of Truth
 
-> **Status:** Accepted
+> **Status:** ✅ Accepted
 > **Date:** 2026-06-03
 > **Deciders:** Architecture Agent, Narrare Dev Coordinator
 > **Supersedes:** — (codifies existing practice with corrections)
@@ -11,7 +11,7 @@
 
 Architecture exceptions in Narrare are currently maintained in **three parallel sources** with inconsistent content:
 
-1. **`pyproject.toml [tool.narrare.architecture.exceptions]`** — 1 entry (`embedding_providers.py`, RULE-01)
+1. **`pyproject.toml [tool.narrare.architecture.exceptions]`** — 1 entry (`embedding_providers.py`, RULE-01b)
 2. **`CONSTRAINTS.md §7`** — 4 entries (different set: `mem0_client.py`, `gateway.py`, `provider_service.py`, plus in §7 text)
 3. **Inline `# narrare: allow` comments** — ~26 approved markers across the codebase (the only source the checker actually reads)
 
@@ -132,7 +132,7 @@ The tradeoff accepted: the ~26 existing inline markers need to be audited and ba
 ### Phase 1 — Register sync (this task)
 
 1. Add the 3 missing entries to `pyproject.toml [tool.narrare.architecture.exceptions]`:
-   - `packages/core/narrare_core/memory/mem0_client.py` (RULE-01)
+   - `packages/core/narrare_core/memory/mem0_client.py` (RULE-01b)
    - `packages/core/narrare_core/llm/gateway.py` (RULE-01b)
    - `apps/api/narrare/setup/provider_service.py` (RULE-01b)
 2. Replace structured list in `CONSTRAINTS.md §7` with SSOT reference
@@ -172,7 +172,7 @@ The `# narrare: allow` comment must follow this format for the checker to valida
 
 Variant markers also remain valid:
 - `# narrare: allow-agent` — for RULE-01b agent exceptions
-- `# narrare: allow-direct-llm` — for RULE-01 LLM client exceptions
+- `# narrare: allow-direct-llm` — for RULE-01b LLM client exceptions
 - `# narrare: allow-fstring` — for RULE-02 f-string exceptions
 
 All variant markers MUST also have a corresponding pyproject.toml entry.

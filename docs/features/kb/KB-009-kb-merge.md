@@ -59,7 +59,7 @@ ui_available_in: [kb]
 service: kb/merge_service.py
 contract: kb/merge_contracts.py#KBMergeServiceProtocol
 router: kb/router_merge.py → POST /novels/{novel_id}/kb/merge
-prompt: prompts/_bundled/kb/{lang}/merge/system.md
+prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
 requires: [KB-001, INFRA-001, INFRA-002]
 ---
 
@@ -111,7 +111,7 @@ and decision-making process while keeping the author in control.
 - Strategy: `MergeStrategy` — `keep_name`, `merge_fields`, `preserve_aliases`, `merge_relationships`
 - Uses Output Function pattern (`_process_output`) for structured generation
 
-**Prompts:** `prompts/_bundled/kb/{lang}/merge/system.md` (3 locales: en, de, fr)
+**Prompts:** ADR-048 Mode 2 — `KBMergeAgent` composes its prompt internally from `KBMergeDeps`. No bundled cascade prompt; user cannot override via PromptComposer.
 
 **Variables:**
 - `{{world_context}}` — Related KB entities for context
