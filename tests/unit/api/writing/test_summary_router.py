@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import status
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import get_current_user_id
@@ -33,7 +32,7 @@ def app():
 
     # Override get_async_session to prevent DB connection attempts
     async def _mock_session():
-        mock = AsyncMock(spec=AsyncSession)
+        mock = AsyncMock()
         mock.execute = AsyncMock()
         yield mock
 
@@ -50,7 +49,9 @@ def app():
 async def client(app):
     """Async HTTP client for testing."""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=transport, base_url="http://test", headers={"Origin": "http://localhost:3000"}
+    ) as ac:
         yield ac
 
     app.dependency_overrides.clear()

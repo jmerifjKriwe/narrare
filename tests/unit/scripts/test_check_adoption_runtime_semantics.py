@@ -74,9 +74,6 @@ def _runtime_registry(
             },
         },
         "inline_fallbacks": [],
-        "prompt_path_compliance": {
-            "writing/new_chapter": True,
-        },
     }
 
 
@@ -204,6 +201,7 @@ class TestEvidenceRepoCli:
         monkeypatch.setattr(
             check_adoption, "format_comparison", lambda *_args, **_kwargs: "baseline ok"
         )
+        monkeypatch.setattr(check_adoption, "check_prompt_path_adoption", lambda _registry: [])
 
         assert check_adoption.main() == 0
 

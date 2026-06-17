@@ -67,7 +67,9 @@ def app():
 async def client(app):
     """Async HTTP client for testing."""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=transport, base_url="http://test", headers={"Origin": "http://localhost:3000"}
+    ) as ac:
         yield ac
     app.dependency_overrides.clear()
 
