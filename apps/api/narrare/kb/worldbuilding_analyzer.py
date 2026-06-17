@@ -203,7 +203,7 @@ class WorldbuildingAnalyzer:
 
         ctx = PromptContext(
             language="en",
-            mode=LLMIntent.KB_WORLDBUILD.value,
+            mode="worldbuilding/phase1",
             extra={
                 "entity_count": str(len(deps.entity_summaries)),
                 "entity_types": ", ".join(sorted(deps.template_structures.keys())),
