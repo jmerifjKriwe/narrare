@@ -29,6 +29,22 @@ ADR_DIR = REPO_ROOT / "docs" / "architecture" / "decisions"
 # Extracted dynamically from the file to stay in sync.
 _RULE_PATTERN = re.compile(r"###\s+RULE-(\d+[a-z]?)\s+·")
 
+# YAML frontmatter block at the very top of a spec file: ``---\n...\n---\n``.
+# Captures the block body (group 1) so the ``status:`` line can be extracted
+# from it without consulting prose in the document body.
+_FRONTMATTER_RE = re.compile(r"\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)", re.DOTALL)
+
+# ``status:`` line inside a frontmatter block. Matches the full value to the
+# end of the line so multi-word statuses (e.g. "in progress") are captured
+# intact rather than truncated to the first word.
+_STATUS_LINE_RE = re.compile(r"^status:[ \t]*(.+?)[ \t]*$", re.MULTILINE | re.IGNORECASE)
+
+# Frontmatter statuses whose file-path references are intentionally
+# aspirational. Such specs are design documents describing future or retired
+# work; their referenced paths need not exist on disk. File-reference
+# validation is skipped for these to avoid false-positive warnings.
+_SKIP_FILE_REF_STATUSES: frozenset[str] = frozenset({"planned", "idea", "deprecated"})
+
 
 def _extract_rule_numbers(constraints_content: str) -> set[str]:
     """Extract all RULE-XX identifiers from CONSTRAINTS.md."""
@@ -68,6 +84,38 @@ def _get_spec_files(specs_dir: Path) -> list[Path]:
         for p in specs_dir.rglob("*.md")
         if p.is_file() and p.name != "INDEX.md" and not p.name.startswith("_")
     )
+
+
+def _extract_spec_status(content: str) -> str | None:
+    """Extract the frontmatter ``status:`` value from a spec markdown file.
+
+    Feature specs use YAML frontmatter delimited by ``---`` lines at the top
+    of the file. The ``status:`` field records the implementation maturity of
+    the spec (e.g. ``planned``, ``idea``, ``implemented``, ``stable``).
+
+    Specs with a status of ``planned``, ``idea``, or ``deprecated`` contain
+    *intentional* references to files that may not yet exist — they are design
+    documents, not existence claims. The spec-checker uses this helper to skip
+    file-reference validation for such specs.
+
+    Only YAML frontmatter is consulted. Specs that use a blockquote status
+    (``> **Status:** ...``) have no YAML frontmatter, so this returns ``None``
+    and they continue to be checked (they claim existence).
+
+    Args:
+        content: The full text of the spec markdown file.
+
+    Returns:
+        The lowercased, stripped status value (e.g. ``"planned"``), or ``None``
+        if the file has no frontmatter block or no ``status:`` field.
+    """
+    fm_match = _FRONTMATTER_RE.search(content)
+    if not fm_match:
+        return None
+    status_match = _STATUS_LINE_RE.search(fm_match.group(1))
+    if not status_match:
+        return None
+    return status_match.group(1).strip().lower()
 
 
 # ── Check functions ────────────────────────────────────────────
@@ -142,6 +190,14 @@ def _check_file_path_references(
         try:
             content = spec_path.read_text(encoding="utf-8")
         except OSError:
+            continue
+
+        # Specs whose frontmatter status is aspirational (planned, idea,
+        # deprecated) intentionally reference not-yet-existing files. Skip
+        # the file-reference check for them to avoid false positives. Specs
+        # without frontmatter (or with an existence-claiming status) keep the
+        # default check behaviour.
+        if _extract_spec_status(content) in _SKIP_FILE_REF_STATUSES:
             continue
 
         for m in path_pattern.finditer(content):
