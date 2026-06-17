@@ -12,7 +12,33 @@ to preserve backward compatibility for existing import paths.
 
 from __future__ import annotations
 
+__all__ = [
+    "CharacterAgeServiceProtocol",
+    "CharacterArcServiceProtocol",
+    "OutlineRepositoryProtocol",
+    "StoryboardServiceProtocol",
+    "SyncCheckerProtocol",
+    "TemporalConsistencyServiceProtocol",
+    "TimelineAnalysisServiceProtocol",
+    "TimelineEventRepositoryProtocol",
+    "TimelineEventServiceProtocol",
+    "TimelineServiceProtocol",
+]
+
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+# ---------------------------------------------------------------------------
+# Timeline protocol re-exports — split to timeline_contracts.py (RULE-04)
+from narrare.planning.timeline_contracts import (  # re-export for backward compat
+    CharacterAgeServiceProtocol,
+    TemporalConsistencyServiceProtocol,
+    TimelineAnalysisServiceProtocol,
+    TimelineEventRepositoryProtocol,
+    TimelineEventServiceProtocol,
+    TimelineServiceProtocol,
+)
+
+# ---------------------------------------------------------------------------
 
 if TYPE_CHECKING:
     import uuid
@@ -98,8 +124,3 @@ class CharacterArcServiceProtocol(Protocol):
         user_id: uuid.UUID,
         request: object,  # CharacterArcRequest from schemas
     ) -> object: ...  # CharacterArcResponse from schemas
-
-
-# ---------------------------------------------------------------------------
-# Timeline protocol re-exports — split to timeline_contracts.py (RULE-04)
-# ---------------------------------------------------------------------------
