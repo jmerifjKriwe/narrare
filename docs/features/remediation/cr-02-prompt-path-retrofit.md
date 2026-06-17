@@ -1,7 +1,7 @@
 # CR-02 Remediation — Prompt-Path-Compliance Retrofit Task Specs
 
-> **Status:** draft — awaiting coordinator review
-> **Date:** 2026-06-13
+> **Status:** stable — implementation complete; see ADR-046 for prevention infrastructure
+> **Date:** 2026-06-13 (draft) → 2026-06-17 (stable — all 4 drift paths remediated)
 > **Author:** Architecture Specialist
 > **Related ADR:** [ADR-046](../../architecture/decisions/ADR-046-prompt-path-compliance.md)
 > **Source Audit:** [CR-02 System-Prompt](../../../_audit/results/content-review/coherence/cr-02-system-prompt.md)

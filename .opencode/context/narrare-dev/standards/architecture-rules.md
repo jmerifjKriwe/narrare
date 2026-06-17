@@ -79,6 +79,11 @@ Which rules are MOST relevant for which specialist layer.
 | Violation | Prevention |
 |-----------|-----------|
 | f-string prompt in service | Use `PromptComposer` — if tempted, it's a RULE-02 violation |
+| `PromptRegistry.resolve()` in apps/ or agents/ | Route through `PromptComposer.build()` only — RULE-02b |
+| App-layer prompt loader (`importlib.resources` + `.replace()`) | Move loader into `core/prompts/`, add a route — RULE-02b |
+| Feature system prompt concatenated into user channel | Pass `composed.system` as agent instructions, `composed.user` as user prompt — RULE-02b |
+| Inline production fallback prompt string | Fail-fast on config error; remove degraded fallback — RULE-02b |
+| `MetaPromptLoader` outside `core/prompts/` + capabilities/ | Use `NarrareMeta` Capability instead — RULE-02b |
 | Service without Protocol | Write `contracts.py` FIRST — RULE-03 |
 | Bare `AsyncSession` in deps | Always use `SessionDep` — RULE-19 |
 | Hardcoded provider in router | Use settings cascade — RULE-18 |
@@ -95,7 +100,7 @@ Which rules are MOST relevant for which specialist layer.
 
 | Mechanism | Rules Enforced |
 |-----------|---------------|
-| **check_architecture.py** (pre-commit + CI) | RULE-01b, 02, 04, 06, 09, 11, 15, 19, 23 |
+| **check_architecture.py** (pre-commit + CI) | RULE-01b, 02, 02b, 04, 06, 09, 11, 15, 19, 23 |
 | **check_adoption.py** + **check_prompt_structure.py** (CI) | RULE-22 (prompt variable checks) |
 | **Type system** (mypy --strict + pyright) | RULE-09 |
 | **Coverage gates** (pytest --cov) | RULE-10 |

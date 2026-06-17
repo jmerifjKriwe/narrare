@@ -71,6 +71,9 @@ RULE-02: Prompts werden nur in core/prompts/ gebaut
          → Keine f-Strings für Prompts in Services
 RULE-02a: Prompt-Content-Kategorien (ADR-026)
          → Garantiert: Capability | Anpassbar: Cascade | Dynamisch: @agent.instructions
+RULE-02b: Prompt-Resolution-Path (ADR-046)
+         → Auflösung exklusiv in core/prompts/ — kein direkter Registry-Zugriff,
+           kein App-Layer-Loader, kein System-Prompt im User-Channel, kein Inline-Fallback
 
 RULE-03: Contract (Protocol) vor Implementation
          → contracts.py existiert bevor service.py geschrieben wird

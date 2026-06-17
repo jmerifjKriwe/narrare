@@ -38,6 +38,11 @@ from narrare.kb.worldbuilding_entity_assembly import (
     list_entities,
     prioritize_entities,
 )
+from narrare.kb.worldbuilding_prompt_formatting import (
+    format_candidate_pairs,
+    format_entity_details,
+    format_relationships,
+)
 from narrare_core.agents.worldbuilding_agent import WorldbuildingAgent
 from narrare_core.agents.worldbuilding_types import WorldbuildingDeps
 from narrare_core.ai_invocation import ManualInjectionDeclaration
@@ -50,7 +55,6 @@ if TYPE_CHECKING:
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
-    from narrare_core.prompts.registry import PromptRegistry
 
 logger = structlog.get_logger(__name__)
 
@@ -89,8 +93,7 @@ class WorldbuildingAnalyzer:
         cache: Redis-backed worldbuilding cache.
         registry: Model registry for LLM access.
         config: Resolved model configuration.
-        composer: Prompt composer for building prompts.
-        prompt_registry: Prompt registry for Phase 2 prompt lookup.
+        composer: Prompt composer for building prompts (both phases).
         max_phase2_pairs: Maximum number of entity pairs for Phase 2 consistency check.
     """
 
@@ -102,7 +105,6 @@ class WorldbuildingAnalyzer:
         registry: ModelRegistry,
         config: ResolvedModelConfig,
         composer: PromptComposer,
-        prompt_registry: PromptRegistry,
         *,
         max_phase2_pairs: int = 15,
         invocation_pipeline: InvocationPipeline | None = None,
@@ -113,7 +115,6 @@ class WorldbuildingAnalyzer:
         self._registry = registry
         self._config = config
         self._composer = composer
-        self._prompt_registry = prompt_registry
         self._max_phase2_pairs = max_phase2_pairs
         self._invocation_pipeline = invocation_pipeline
 
@@ -288,17 +289,28 @@ class WorldbuildingAnalyzer:
             candidate_pairs=pairs,
         )
 
-        # Resolve Phase 2 prompt from registry (different mode from Phase 1)
-        try:
-            resolved = await self._prompt_registry.resolve(
-                category="kb",
-                language="en",
-                mode="worldbuilding/phase2",
-            )
-            system_prompt = resolved.system_prompt
-        except Exception:
-            logger.warning("phase2_prompt_fallback", exc_info=True)
-            system_prompt = "Check entity pairs for worldbuilding contradictions."
+        # Compose Phase 2 prompt via PromptComposer (ADR-046).
+        # "worldbuilding/phase2" is a governed route for KB_WORLDBUILD (see
+        # route_table.py allowed_context_modes). Phase2 mirrors Phase1's
+        # pattern: build a PromptContext and call composer.build().
+        ctx = PromptContext(
+            language="en",
+            mode="worldbuilding/phase2",
+            extra={
+                "candidate_pairs": format_candidate_pairs(pairs, entity_details),
+                "entity_details": format_entity_details(entity_details),
+                "existing_relationships": format_relationships(
+                    deps.existing_relationships,
+                ),
+            },
+        )
+        # Fail fast on a missing/invalid route — no inline fallback (RULE-11).
+        # A missing route raises PromptRouteNotConfiguredError (typed PromptError).
+        composed = await self._composer.build(
+            LLMIntent.KB_WORLDBUILD,
+            ctx,
+            user_prompt=f"Check consistency for {len(pairs)} entity pairs.",
+        )
 
         model = await self._registry.get_model(self._config)
         agent = WorldbuildingAgent(model=model)
@@ -310,10 +322,10 @@ class WorldbuildingAnalyzer:
             manual_injection=_WORLDBUILDING_PHASE2_INJECTION,
         )
         result = await agent.run_phase2(
-            prompt=f"Check consistency for {len(pairs)} entity pairs.",
+            prompt=composed.user,
             deps=phase2_deps,
             model=model,
-            system_prompt=system_prompt,
+            system_prompt=composed.system,
         )
 
         return [

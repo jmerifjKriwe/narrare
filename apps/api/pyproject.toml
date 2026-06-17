@@ -42,9 +42,6 @@ dependencies = [
   # HTTP client
   "httpx==0.28.1",
 
-  # Memory layer
-  "mem0ai==2.0.4",
-
   # Observability
   "structlog==26.1.0",
   "opentelemetry-api>=1.39.0,<1.43.0",
@@ -71,18 +68,6 @@ dependencies = [
   # Workspace packages
   "narrare-core",
   "narrare-i18n",
-]
-
-[dependency-groups]
-dev = [
-  "pytest==9.0.3",
-  "pytest-asyncio==1.4.0",
-  "pytest-cov==7.1.0",
-  "httpx==0.28.1",
-  "pyright==1.1.410",
-  "ruff==0.15.16",
-  "bandit==1.9.4",
-  "pip-audit==2.10.0",
 ]
 
 [tool.uv.sources]

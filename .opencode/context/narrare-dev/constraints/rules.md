@@ -1,8 +1,8 @@
-<!-- Context: narrare-dev/constraints/rules | Priority: critical | Source: docs/_shared/CONSTRAINTS.md | Updated: 2026-06-03 -->
+<!-- Context: narrare-dev/constraints/rules | Priority: critical | Source: docs/_shared/CONSTRAINTS.md | Updated: 2026-06-17 -->
 
 # Architecture Constraints — Rules Summary
 
-**Core Idea**: 22 machine-enforced rules governing all Narrare code. Enforced via `scripts/check_architecture.py` (pre-commit + CI). Changes require ADR + PR approval.
+**Core Idea**: 23 machine-enforced rules governing all Narrare code. Enforced via `scripts/check_architecture.py` (pre-commit + CI). Changes require ADR + PR approval.
 
 **Reference**: `docs/_shared/CONSTRAINTS.md` (995 lines, full rationale + examples)
 
@@ -36,6 +36,32 @@ Three categories with distinct injection mechanisms. Wrong mechanism = RULE-02 v
 3. **Dynamic per-invocation content** — MAY use `@agent.instructions` or `AbstractCapability.for_run()`.
    Includes: KB data, style profiles, voice profiles. Varies per invocation (depends on Deps).
    Is data not instructions. Assembled from runtime data, not prompt templates.
+
+### RULE-02b: Prompt-Resolution-Path Compliance (ADR-046)
+Prompt-Resolution is exclusively the responsibility of `core/prompts/`. No
+app-layer module may load, resolve, substitute, or construct prompts directly.
+RULE-02 governs the assembly METHOD, RULE-02a the content CATEGORY, RULE-02b
+the resolution PATH. What constitutes a violation:
+
+1. **Direct `PromptRegistry` access outside `core/prompts/`** — apps/ or
+   agents/ calling `PromptRegistry.resolve()` instead of `PromptComposer.build()`.
+2. **App-layer prompt loaders** — files in `apps/` that load templates from disk
+   (`importlib.resources`, `Path.read_text()`) and do manual `.replace()`/`.format()`
+   variable substitution. App layer must delegate to core, not reimplement cascade.
+3. **Feature prompts injected into user-channel** — resolving a feature system
+   prompt via PromptComposer but concatenating `composed.system` into the user
+   prompt instead of passing it as agent system/instructions.
+4. **Inline fallback prompts in production code** — hardcoded prompt string used
+   as degraded fallback when PromptComposer fails/unavailable. Production must
+   fail-fast on config errors.
+5. **`MetaPromptLoader` usage outside `core/prompts/` and `core/agents/capabilities/`** —
+   `core/prompts/` internal that must not be imported by agents, services, graph helpers.
+
+**Enforcement boundary:** `core/prompts/` is the ONLY module that may import
+`PromptRegistry`, load `_bundled/` template files, perform `{{variable}}`
+substitution, or cascade-resolve prompts. Approved exceptions are dual-registered
+in `pyproject.toml [tool.narrare.architecture]` with inline
+`# narrare: allow-prompt-path reason="..."` comments (ADR-028).
 
 ### RULE-03: Contracts before implementation
 - Every service needs a `Protocol` in `contracts.py` or `_types.py` FIRST
@@ -186,6 +212,7 @@ Approaching limit → extract a new module. NEVER compress code to fit.
 | RULE-01b LLM URLs | `check_architecture.py` — string scan |
 | RULE-02 prompt building | `check_architecture.py` — AST scan |
 | RULE-02a content categories | `check_architecture.py` — AST scan (Capability f-string) + PR review |
+| RULE-02b prompt-resolution-path | `check_architecture.py` — AST scan (registry access, app-layer loaders, user-channel injection, inline fallbacks, off-scope MetaPromptLoader) + PR review |
 | RULE-04 file size | `check_architecture.py` — line count |
 | RULE-06 router purity | `check_architecture.py` — complexity heuristic |
 | RULE-09 type signatures | `mypy --strict` + `pyright` in CI |

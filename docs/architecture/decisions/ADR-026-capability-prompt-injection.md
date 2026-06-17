@@ -434,6 +434,22 @@ before a feature claims adopted status.
 
 ---
 
+## Retrofit-Plan (Cross-Reference)
+
+> ADR-026 originally described the correct three-mechanism prompt injection model
+> but did not include a Retrofit-Plan for existing feature-prompt resolution
+> paths (the four drift paths identified in the CR-02 audit). ADR-046 closes
+> that gap and codifies RULE-02b (Prompt-Resolution-Path Compliance).
+
+**Retrofit-Plan:** See [ADR-046](ADR-046-prompt-path-compliance.md) for the
+retrofit plan that brings all pre-existing prompt paths into ADR-026
+compliance. ADR-046 also adds RULE-02b to `CONSTRAINTS.md` and makes the
+Retrofit-Plan a mandatory section for future prompt-mechanics ADRs (see
+`.opencode/context/narrare-dev/processes/adr-process.md` — "Mandatory
+Retrofit-Plan for Prompt-Mechanics ADRs").
+
+---
+
 ## Review Trigger
 
 - [x] ~~Phase 1: Verify universal rules present in all agent outputs~~ (done — d1432d1)

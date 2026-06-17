@@ -18,7 +18,12 @@ from scripts.architecture._checkers.hardcoded_values import check_hardcoded_cons
 from scripts.architecture._checkers.inline_prompts import check_inline_prompts
 from scripts.architecture._checkers.llm import check_llm_imports, check_llm_urls
 from scripts.architecture._checkers.model_config import check_hardcoded_model_config
-from scripts.architecture._checkers.prompts import check_prompt_building
+from scripts.architecture._checkers.prompt_channel import check_prompt_channel_injection
+from scripts.architecture._checkers.prompt_path import check_prompt_registry_access
+from scripts.architecture._checkers.prompts import (
+    check_app_layer_prompt_loader,
+    check_prompt_building,
+)
 from scripts.architecture._checkers.router_queries import check_router_queries
 from scripts.architecture._checkers.sessions import check_bare_async_session
 from scripts.architecture._checkers.testing import check_bare_magic_mock
@@ -35,6 +40,7 @@ from scripts.architecture.types import CheckResult, Violation
 _validated_keys: set[tuple[str, str]] = set()
 
 __all__ = [
+    "check_app_layer_prompt_loader",
     "check_bare_async_session",
     "check_bare_except",
     "check_bare_magic_mock",
@@ -45,6 +51,8 @@ __all__ = [
     "check_llm_imports",
     "check_llm_urls",
     "check_prompt_building",
+    "check_prompt_channel_injection",
+    "check_prompt_registry_access",
     "check_router_queries",
     "scan_file",
 ]
@@ -147,6 +155,9 @@ def scan_file(
         + check_agent_imports(rel_path, tree, source_lines, allowed_agents)
         + check_agent_instantiation(rel_path, tree, source_lines, allowed_agents)
         + check_prompt_building(rel_path, tree, source_lines, allowed_prompts)
+        + check_app_layer_prompt_loader(rel_path, tree, source_lines)
+        + check_prompt_registry_access(rel_path, tree, source_lines)
+        + check_prompt_channel_injection(rel_path, tree, source_lines)
         + check_inline_prompts(rel_path, tree, source_lines)
         + check_bare_except(rel_path, tree)
         + check_file_size(rel_path, source_lines, size_limits)

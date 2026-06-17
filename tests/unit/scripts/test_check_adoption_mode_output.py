@@ -21,11 +21,11 @@ _SCRIPTS = str(Path(__file__).resolve().parent.parent.parent.parent / "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
-from adoption.scorer import compute_adoption_report  # noqa: E402
-from check_adoption import (  # noqa: E402
-    _format_human,
-    _format_json,
+from adoption.report_format import (  # noqa: E402
+    format_human,
+    format_json,
 )
+from adoption.scorer import compute_adoption_report  # noqa: E402
 from prompt_checks import PromptFile  # noqa: E402
 
 # ── Helpers ────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ def _minimal_registry_v2(
 
 
 class TestHumanModeOutput:
-    """Verify _format_human and _format_json include mode breakdown."""
+    """Verify format_human and format_json include mode breakdown."""
 
     def test_human_output_shows_mode_count(self) -> None:
         """Human-readable output includes '[N modes' marker."""
@@ -97,7 +97,7 @@ class TestHumanModeOutput:
             _make_prompt("writing", "en", "inline_suggest", {"user_preferences"}),
         ]
         report = compute_adoption_report(registry, prompts)
-        output = _format_human(report)
+        output = format_human(report)
         assert "[2 modes" in output
 
     def test_human_output_shows_mode_scores(self) -> None:
@@ -105,7 +105,7 @@ class TestHumanModeOutput:
         registry = _minimal_registry_v2()
         prompts = [_make_prompt("writing", "en", "new_chapter", {"user_preferences"})]
         report = compute_adoption_report(registry, prompts)
-        output = _format_human(report)
+        output = format_human(report)
         assert "new_chapter" in output
         assert "static" in output
         assert "runtime" in output
@@ -118,7 +118,7 @@ class TestHumanModeOutput:
         )
         prompts = [_make_prompt("writing", "en", "new_chapter", {"user_preferences"})]
         report = compute_adoption_report(registry, prompts)
-        output = _format_human(report)
+        output = format_human(report)
         assert "feature_a" in output
         assert "required" in output
 
@@ -127,7 +127,7 @@ class TestHumanModeOutput:
         registry = _minimal_registry_v2()
         prompts = [_make_prompt("writing", "en", "new_chapter", {"user_preferences"})]
         report = compute_adoption_report(registry, prompts)
-        data = json.loads(_format_json(report))
+        data = json.loads(format_json(report))
         assert len(data["categories"]) == 1
         cat = data["categories"][0]
         assert "modes" in cat
@@ -141,7 +141,7 @@ class TestHumanModeOutput:
         )
         prompts = [_make_prompt("writing", "en", "new_chapter", {"user_preferences"})]
         report = compute_adoption_report(registry, prompts)
-        data = json.loads(_format_json(report))
+        data = json.loads(format_json(report))
         mode = data["categories"][0]["modes"][0]
         assert "runtime_details" in mode
         assert len(mode["runtime_details"]) == 1

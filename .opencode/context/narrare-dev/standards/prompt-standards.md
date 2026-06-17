@@ -4,7 +4,7 @@
 
 > **Full document**: `docs/development/prompt-standards.md`
 > **Enforcement**: `check_architecture.py` + `prompt_governance_checks.py` + Pydantic Evals (ADR-032) + Prompt Surface Contract manifest checker (ADR-037)
-> **Related**: RULE-02, RULE-02a, ADR-002, ADR-019, ADR-026, ADR-037, INFRA-012
+> **Related**: RULE-02, RULE-02a, RULE-02b, ADR-002, ADR-019, ADR-026, ADR-037, ADR-046, INFRA-012
 
 ---
 

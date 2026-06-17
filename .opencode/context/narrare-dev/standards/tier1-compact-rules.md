@@ -12,6 +12,7 @@
 | RULE-01b | Agents in `core/agents/`, Models from `core/llm/` only | `import openai` outside core/llm/ |
 | RULE-02 | Prompts built in `core/prompts/` only | f-string prompts in services |
 | RULE-02a | Capabilities for guaranteed, cascade for customizable, `@agent.instructions` for dynamic | f-string in `get_instructions()` |
+| RULE-02b | Prompt-Resolution is exclusively `core/prompts/` — no app-layer loaders, no direct registry, no user-channel injection, no inline fallbacks | `PromptRegistry.resolve()` in apps/; `importlib.resources`+`.replace()` loader in apps/ |
 | RULE-03 | Protocol/Contract before implementation | Service without contracts.py |
 | RULE-04 | Split at soft target (250 lines), fail at hard limit (400) | Removing comments to fit limit |
 | RULE-05 | Module boundaries are ownership boundaries — no `_internal` imports | `from narrare.writing._internal import X` |

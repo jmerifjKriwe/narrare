@@ -28,14 +28,12 @@ from narrare.kb.worldbuilding_contracts import (
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.gateway import ModelRegistry
 from narrare_core.prompts.composer import ComposedPrompt
-from narrare_core.prompts.registry import ResolvedPrompt
 
 if TYPE_CHECKING:
     from narrare.kb.relationship_repository import RelationshipRepository
     from narrare.kb.repository import KBRepository
     from narrare.kb.worldbuilding_cache import WorldbuildingCache
     from narrare_core.prompts.composer import PromptComposer
-    from narrare_core.prompts.registry import PromptRegistry
 
 # ---------------------------------------------------------------------------
 # Fake classes
@@ -102,16 +100,6 @@ class FakeComposer:
         return MagicMock(spec=ComposedPrompt, system="fake system prompt")
 
 
-class FakePromptRegistry:
-    def __init__(self, fail: bool = False) -> None:
-        self._fail = fail
-
-    async def resolve(self, **kwargs: object) -> object:
-        if self._fail:
-            raise RuntimeError("prompt not found")
-        return MagicMock(spec=ResolvedPrompt, system_prompt="phase2 system prompt")
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -131,7 +119,6 @@ def _make_analyzer(
         registry=registry,
         config=config,
         composer=cast("PromptComposer", FakeComposer()),
-        prompt_registry=cast("PromptRegistry", FakePromptRegistry()),
     )
     return analyzer, {"kb_repo": kb_repo, "cache": cache, "registry": registry}
 

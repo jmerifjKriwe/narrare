@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-15 (AUFG-05-12, AUFG-05-13, AUFG-05-14 — docs sync)
-Session: Documentation sync after AUFG-05-12/13/14 implementation. Three AUFGs resolved with exit evidence in `docs/architecture/governance/aufg-registry.md`. Observability guide /health response updated with severity vocabulary. Security audit and CSRF strategy documents updated to reflect completed implementation. Deployment guide updated with NARRARE_CSRF_TRUSTED_ORIGINS env var. ADR-047 status bumped to Implemented.
+Date: 2026-06-17 (CR-02 Prompt-Path-Compliance — documentation sync)
+Session: Doc Gate update after CR-02 prompt-path-compliance remediation completion. 4 drift paths fixed (writing graph fallbacks, temporal consistency loader, worldbuilding phase2 registry access, chat channel injection). RULE-02b added, ADR-046 implemented with prevention infrastructure (3 checker modules, 4 convention tests, adoption metric extension). CURRENT_STATE.md updated with CR-02 completion; INDEX.md corrected to include ADR-045/046 entries.
 
 ---
 
@@ -67,7 +67,7 @@ Alembic migrations 0001 through 0030 (0028: invocation_evidence table; 0030: evi
 
 - `_shared/`: CONSTRAINTS.md (23 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001–ADR-047 plus implementation plans (INDEX.md — ADR-039 gap; ADR-046 and ADR-047 Proposed)
+- `architecture/decisions/`: ADR-001–ADR-048 plus implementation plans (INDEX.md — ADR-039 gap; ADR-046 Implemented, ADR-047 Proposed)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 9 resolved)
 - `features/`: Feature specs with status tracking; see `docs/features/INDEX.md`
 - `features/INDEX.md` → ADAPTER-001/002: MCP and A2A adapters documented as "Planned, Not Implemented" (post-MVP, Q-001/Q-002 blockers)
@@ -162,6 +162,7 @@ Completed in Phase 6 so far:
 55. ✅ **AUFG-05-12 — Rate-Limiting for AI endpoints**: Shared module at `apps/api/narrare/_app/rate_limits.py` provides reusable AI limiters (`AI_WRITE_LIMITER`, `AI_ANALYSIS_LIMITER`, `AI_LIGHT_LIMITER`, `AI_WS_LIMITER`) plus `SETUP_MODELS_LIMITER` (IP-based). All AI-cost-bearing router files wired via `Depends()`. WebSocket inline check in `router_sessions.py`. Uses in-memory `pyrate_limiter` per AR-05-02.
 56. ✅ **AUFG-05-13 — Origin/Referer validation + WebSocket Origin check**: `OriginValidationMiddleware` in `_app/middleware.py` validates Origin/Referer on all POST/PUT/PATCH/DELETE; Bearer-authenticated requests without Origin exempt. `Settings.csrf_trusted_origins` (`NARRARE_CSRF_TRUSTED_ORIGINS`). WebSocket Origin check in `router_sessions.py` (close code 4001). 12 unit tests.
 57. ✅ **AUFG-05-14 — OTel Health-Severity Implementation**: `get_observability_status()` extended with `state`/`severity`/`endpoint_configured` keys. `record_otel_setup_outcome()` records setup outcomes thread-safely. `setup_telemetry()` calls it on all 3 paths. `/health` returns `status: obs["severity"]` instead of hardcoded `"ok"`. 13 unit tests. RULE-11 silent-failure gap closed.
+58. ✅ **CR-02 / ADR-046 — Prompt-Path-Compliance Remediation**: 4 prompt-path drift paths fixed (CR-AUFG-02-04 Chat channel injection — system/user channel separation via `system_prompt` kwarg; CR-AUFG-02-05 Worldbuilding Phase2 direct `PromptRegistry.resolve()` replaced with `PromptComposer.build()`; CR-AUFG-02-06 Temporal Consistency `_prompt_loader.py` deleted, replaced with `PromptComposer` route; CR-AUFG-02-07 Writing Graph `composer is None` fallbacks + `_get_fallback_meta()` + `MetaPromptLoader` removed, fail-fast on missing composer). RULE-02b added to CONSTRAINTS.md. Prevention infrastructure: 3 checker modules (`prompt_path.py`, `prompt_channel.py`, extended `prompts.py`), 4 convention test files, adoption metric extension (`prompt_path_compliant` field), ADR Retrofit-Plan requirement in adr-process.md. `prompt_path_compliant` field added to adoption registry. 42 new/updated tests. ADR-046 implemented; derived docs (rules.md, architecture-rules.md, tier1-compact-rules.md, AGENTS.md) synced.
 
 ## What's Next
 
@@ -231,7 +232,7 @@ Completed in Phase 6 so far:
 | ADR-043 | `useAIOperation` Primitives | ✅ Implemented — shared streaming client, cancel/error/loading primitives, canonical `studio.aiActions.*` labels, §16 compliance checks, P0/P1 flows migrated (Commit 1001125) |
 | ADR-044 | Staged Multi-Agent Consistency Pipeline | ✅ Implemented — FactExtractorAgent → ConsistencyAgent, enriched TimelineEventEnvelope integration, SSE stage endpoint, and `consistency_staged` Pydantic Evals |
 | ADR-045 | Runtime Adoption Enforcement and Invocation Evidence Correlation | 🔧 In progress (Proposed, user-approved) — runtime gaps status-bearing (PASS/GOVERNED_DEBT/STATIC_ONLY); correlated evidence contract (`invocation_id` + fingerprints); prompt-context merge with RULE-22 precedence; run-limit enforcement (`RunLimitResolver`); WebSocket turn service modularization; mem0 learning events. Follow-up: 34 direct-agent call site migration, PersistentEvidenceSink wiring, `_handle_generate_draft` bypass |
-| ADR-046 | Prompt-Path-Compliance: Resolution-Path Retrofit & Prevention | 🔄 Proposed — resolution-path retrofit and prevention for prompt loading compliance across core prompts, chat, KB, planning, and architecture checks |
+| ADR-046 | Prompt-Path-Compliance: Resolution-Path Retrofit & Prevention | ✅ Implemented — 4 drift paths fixed; RULE-02b codified; prevention infrastructure (3 checker modules, 4 convention tests, adoption metric) built; `_prompt_loader.py` deleted; `MetaPromptLoader` deprecated; `composer is None` fallbacks removed; chat channel injection fixed |
 | ADR-047 | Governance Drift Automation for Review Findings and AUFG Lifecycle | ✅ Implemented — Phase 1 (policy + docs) and Phase 2 (governance health checker) complete; AUFG-05-12/13/14 implementation complete |
 
 Full details: `docs/architecture/decisions/INDEX.md`
@@ -274,4 +275,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-13 (ADR-047 Governance Drift Automation — P0 docs sync)
+> Last content update: 2026-06-17 (CR-02 Prompt-Path-Compliance — Doc Gate update, INDEX.md corrected)

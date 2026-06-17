@@ -118,7 +118,12 @@ class TestAskNewConversation:
         service: ChatService,
         mock_registry: AsyncMock,
     ) -> None:
-        """Verifies that ChatAgent receives the model from ModelRegistry."""
+        """Verifies that ChatAgent receives the model and feature system prompt.
+
+        ADR-046: ChatAgent is constructed with both the model (from
+        ModelRegistry) and the feature system prompt (from PromptComposer,
+        injected into the system channel).
+        """
         from uuid import uuid4
 
         from tests.unit.api.chat.conftest import _async_gen, _make_request
@@ -143,7 +148,13 @@ class TestAskNewConversation:
                 pass
 
         # ChatAgent should have been constructed with the model from registry
-        mock_cls.assert_called_once_with(model=mock_model)
+        # and the feature system prompt from the composed prompt.
+        mock_cls.assert_called_once()
+        assert mock_cls.call_args.kwargs["model"] is mock_model
+        # The mock composer (conftest) returns a known system prompt body.
+        assert mock_cls.call_args.kwargs["system_prompt"] == (
+            "You are a helpful writing assistant."
+        )
 
 
 # ---------------------------------------------------------------------------

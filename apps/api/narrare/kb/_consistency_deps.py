@@ -25,7 +25,6 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
-        get_registry,
     )
     from narrare._app.dependencies_services import build_system_default_config
     from narrare.kb.consistency_analyzer import KBConsistencyAnalyzer
@@ -41,7 +40,6 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
 
     registry = get_model_registry()
     composer = get_composer()
-    prompt_registry = get_registry()
     config = build_system_default_config("analysis")
 
     kb_repo = KBRepository(session)
@@ -76,7 +74,6 @@ def get_consistency_service(session: SessionDep) -> KBConsistencyService:
         registry=registry,
         config=config,
         composer=composer,
-        prompt_registry=prompt_registry,
     )
 
     return KBConsistencyService(

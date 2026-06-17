@@ -57,6 +57,52 @@ category_defaults:
       final_validation: optional
       evidence_sink: optional
 
+# ── Prompt-Path Compliance (ADR-046 D.5) ──────────────────────────────────────
+# Per-intent (mode) declaration that prompt resolution conforms to RULE-02b:
+# prompts resolve exclusively through core/prompts/ (PromptComposer) — no direct
+# PromptRegistry access, no app-layer loaders, no user-channel injection, no
+# inline production fallbacks.
+#
+# A mode is `prompt_path_compliant: true` when BOTH hold:
+#   1. D.1 — a *_prompt_path_compliance.py test exists for the resolving service.
+#   2. D.2 — check_architecture.py reports 0 RULE-02b violations for the module.
+# Keys are "{category}/{mode}". check_adoption.py fails if a feature mode is
+# missing from this map or set to false.
+
+prompt_path_compliance:
+  # writing
+  writing/new_chapter: true
+  writing/extend_chapter: true
+  writing/rewrite_selection: true
+  writing/story_suggest: true
+  writing/interactive_session: true
+  writing/interview: true
+  writing/scene_by_scene: true
+  writing/chat: true
+  writing/inline_suggest: true
+  writing/co_author: true
+  # analysis
+  analysis/beta_reader: true
+  analysis/beta_reader_deepdive: true
+  analysis/review: true
+  analysis/preferences: true
+  analysis/summarize: true
+  analysis/remap: true
+  analysis/consistency: true
+  # kb
+  kb/consistency: true
+  kb/worldbuilding/phase1: true
+  kb/worldbuilding/phase2: true
+  kb/improve: true
+  kb/suggest: true
+  kb/interview: true
+  kb/extract: true
+  kb/enhance: true
+  # planning
+  planning/outline: true
+  # generation
+  generation/names: true
+
 # ── Feature Categories ────────────────────────────────────────────────────────
 # Each category maps to a _bundled/{category}/ directory.
 # Modes map to subdirectories under _bundled/{category}/{locale}/.

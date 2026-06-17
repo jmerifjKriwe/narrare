@@ -1,7 +1,7 @@
 # ADR-046 — Prompt-Path-Compliance: Resolution-Path Retrofit & Prevention
 
-> **Status:** 🔄 Proposed (awaiting coordinator review + user approval)
-> **Date:** 2026-06-13
+> **Status:** ✅ Implemented
+> **Date:** 2026-06-13 (Proposed) → 2026-06-17 (Implemented)
 > **Deciders:** Architecture Specialist
 > **Related:** ADR-026 (Capability-Based Prompt Injection), ADR-002 (Unified Prompt System), ADR-025 (Feature Adoption Infrastructure), ADR-028 (Architecture Exception SSOT), ADR-038 (AI Invocation Adoption Contract), INFRA-012 (Prompt Governance Hardening), CR-02 (Prompt-Architektur Audit)
 > **Supersedes:** None (extends ADR-026 enforcement)

@@ -8,6 +8,7 @@ This module re-exports the public API so existing imports continue to work::
 """
 
 from scripts.architecture._checkers import (
+    check_app_layer_prompt_loader,
     check_bare_async_session,
     check_bare_except,
     check_bare_magic_mock,
@@ -18,11 +19,14 @@ from scripts.architecture._checkers import (
     check_llm_imports,
     check_llm_urls,
     check_prompt_building,
+    check_prompt_channel_injection,
+    check_prompt_registry_access,
     check_router_queries,
     scan_file,
 )
 
 __all__ = [
+    "check_app_layer_prompt_loader",
     "check_bare_async_session",
     "check_bare_except",
     "check_bare_magic_mock",
@@ -33,6 +37,8 @@ __all__ = [
     "check_llm_imports",
     "check_llm_urls",
     "check_prompt_building",
+    "check_prompt_channel_injection",
+    "check_prompt_registry_access",
     "check_router_queries",
     "scan_file",
 ]

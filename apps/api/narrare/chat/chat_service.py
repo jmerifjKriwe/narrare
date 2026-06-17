@@ -188,8 +188,10 @@ class ChatService(ChatServiceProtocol):
             invocation_id=invocation_id,
         )
 
-        # Create ChatAgent (uses HistoryPolicy.CONVERSATIONAL by design)
-        agent = ChatAgent(model=model)
+        # Create ChatAgent (HistoryPolicy.CONVERSATIONAL). ADR-046: inject the
+        # feature system prompt into the SYSTEM channel via the constructor,
+        # never concatenated into the user prompt.
+        agent = ChatAgent(model=model, system_prompt=composed.system or None)
 
         # ChatDeps carries the enriched context to the agent (ADR-048 Mode 2).
         deps = ChatDeps(
@@ -197,9 +199,6 @@ class ChatService(ChatServiceProtocol):
             context=effective_context,
             user_prompt=user_prompt,
         )
-
-        # Combine system + user prompt as the agent prompt
-        full_prompt = f"{composed.system}\n\n{composed.user}" if composed.system else composed.user
 
         # Get or create ProcessHistory for this conversation
         history = self._histories.get(conv_id, ProcessHistory())
@@ -219,11 +218,12 @@ class ChatService(ChatServiceProtocol):
             "request_id": str(uuid4()),
         }
 
-        # Stream agent response
+        # Stream agent response. ADR-046: only composed.user (user channel) is
+        # passed as prompt; the system prompt is injected via the constructor.
         full_response = ""
         try:
             async for event in agent.run_stream(
-                prompt=full_prompt,
+                prompt=composed.user,
                 deps=deps,
                 message_history=message_history,
                 **stream_kwargs,

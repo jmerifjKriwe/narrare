@@ -171,6 +171,101 @@ class NarrareKBContext(AbstractCapability):
 
 **See also:** ADR-026 (Capability-Based Prompt Injection Pattern)
 
+#### RULE-02b · Prompt-Resolution-Path Compliance
+
+**Prompt-Resolution is exclusively the responsibility of `core/prompts/`. No
+app-layer module may load, resolve, substitute, or construct prompts directly.**
+
+RULE-02 governs the **assembly METHOD** of prompts (no f-string/concatenation
+outside `core/prompts/`). RULE-02a governs the content **CATEGORY** (which
+injection mechanism fits which content type). RULE-02b governs the resolution
+**PATH** — which abstraction layer is allowed to load, resolve, substitute, or
+construct prompts at all. These are distinct concerns:
+
+| Aspect | Rule | What it prevents |
+|--------|------|-----------------|
+| Assembly METHOD | RULE-02 | f-string/concatenation prompt assembly outside `core/prompts/` |
+| Content CATEGORY | RULE-02a | Using the wrong injection mechanism for a content type |
+| Resolution PATH | **RULE-02b** | Direct registry access, app-layer loaders, user-channel injection, inline fallbacks, off-limits `MetaPromptLoader` use |
+
+RULE-02b makes the path-compliance requirement explicit and machine-checkable.
+Without it, a checker has no normative basis for detecting path violations —
+it would be flagging "violations" of an unstated rule.
+
+**What constitutes a Prompt-Path violation (RULE-02b):**
+
+1. **Direct `PromptRegistry` access outside `core/prompts/`** — any module in
+   `apps/`, `packages/core/narrare_core/agents/`, or
+   `packages/core/narrare_core/*/` that imports and calls
+   `PromptRegistry.resolve()` directly, instead of going through
+   `PromptComposer.build()`.
+
+2. **App-layer prompt loaders** — any file in `apps/` that loads a prompt
+   template from disk (`importlib.resources`, `Path.read_text()`, etc.) and
+   performs template variable substitution (`.replace()`, `.format()`, f-string
+   interpolation with `{{variable}}` syntax).
+
+3. **Feature prompts injected into user-channel** — any service that resolves a
+   feature system prompt via PromptComposer but then concatenates
+   `composed.system` into the user prompt instead of passing it as agent
+   system/instructions.
+
+4. **Inline fallback prompts in production code** — any production path that
+   uses a hardcoded prompt string as a degraded fallback when PromptComposer
+   fails or is unavailable. Production code must fail-fast on configuration
+   errors, not degrade to an inline prompt.
+
+5. **`MetaPromptLoader` usage outside `core/prompts/` and
+   `core/agents/capabilities/`** — the `MetaPromptLoader` is a `core/prompts/`
+   internal that must not be imported by agents, services, or graph helpers.
+
+**Enforcement boundary:** `core/prompts/` is the ONLY module that may:
+- Import `PromptRegistry`
+- Load prompt template files from `_bundled/`
+- Perform `{{variable}}` substitution via the variable engine
+- Cascade-resolve prompts
+
+```python
+# CORRECT: prompt resolution flows through core/prompts/ (PromptComposer)
+prompt = await composer.build(intent=LLMIntent.WRITE, context=ctx)
+# composed.system  → agent system/instructions or Capability
+# composed.user    → user-channel prompt only
+
+# FORBIDDEN (RULE-02b · violation 1): direct registry access in app layer
+from narrare_core.prompts.registry import PromptRegistry  # apps/ may NOT import this
+prompt = await self._prompt_registry.resolve(category="kb", mode="worldbuilding/phase2")
+
+# FORBIDDEN (RULE-02b · violation 2): app-layer prompt loader with manual substitution
+template = importlib.resources.files(...).joinpath("system.md").read_text()
+system_prompt = template.replace("{{project_title}}", title)  # cascade logic in apps/
+
+# FORBIDDEN (RULE-02b · violation 3): feature system prompt concatenated into user channel
+full_prompt = f"{composed.system}\n\n{composed.user}"  # system lands in user channel
+await agent.run(prompt=full_prompt)
+
+# FORBIDDEN (RULE-02b · violation 4): inline production fallback prompt
+try:
+    prompt = await composer.build(...)
+except Exception:
+    prompt = "Check entity pairs for worldbuilding contradictions."  # masks config failure
+
+# FORBIDDEN (RULE-02b · violation 5): MetaPromptLoader outside its approved scope
+from narrare_core.prompts.meta import MetaPromptLoader  # only core/prompts/ + capabilities/
+```
+
+**Approved exceptions:** Listed in `pyproject.toml [tool.narrare.architecture]`
+with inline `# narrare: allow-prompt-path reason="..."` comments, per ADR-028.
+
+**Enforcement:** `check_architecture.py` — AST scan for direct
+`PromptRegistry` imports/calls outside `core/prompts/`, app-layer prompt
+loaders (`importlib.resources` + `.replace()` in `apps/`), user-channel
+concatenation of `composed.system` + `composed.user`, and `MetaPromptLoader`
+imports outside its approved scope. See ADR-046 §D.2 for the three checker
+modules (`prompt_path.py`, extended `prompts.py`, `prompt_channel.py`).
+
+**See also:** ADR-046 (Prompt-Path-Compliance), ADR-026 (Capability-Based
+Prompt Injection Pattern), ADR-028 (Architecture Exception SSOT)
+
 ---
 
 ### RULE-03 · Contracts before implementation.
@@ -952,6 +1047,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-01b LLM URLs | `check_architecture.py` — string scan |
 | RULE-02 Prompt building | `check_architecture.py` — AST scan |
 | RULE-02a Prompt content categories | `check_architecture.py` — AST scan (Capability f-string check) + PR review |
+| RULE-02b Prompt-Resolution-Path Compliance | `check_architecture.py` — AST scan (direct registry access, app-layer loaders, user-channel injection, inline fallbacks, off-scope MetaPromptLoader) + PR review |
 | RULE-04 File size | `check_architecture.py` — line count |
 | RULE-06 Router purity | `check_architecture.py` — complexity heuristic |
 | RULE-09 Type signatures | `mypy --strict` in CI |
@@ -1116,6 +1212,6 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 ---
 
-> Last updated: 2026-06-10 — RULE-23 type suppression discipline added
+> Last updated: 2026-06-17 — RULE-02b Prompt-Resolution-Path Compliance added (ADR-046)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

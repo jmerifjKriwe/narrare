@@ -24,7 +24,6 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
         get_composer,
         get_invocation_pipeline,
         get_model_registry,
-        get_registry,
     )
     from narrare._app.dependencies_services import build_system_default_config
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -36,7 +35,6 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
 
     registry = get_model_registry()
     composer = get_composer()
-    prompt_registry = get_registry()
     config = build_system_default_config("analysis")
 
     kb_repo = KBRepository(session)
@@ -55,7 +53,6 @@ def get_worldbuilding_service(session: SessionDep) -> WorldbuildingService:
         registry=registry,
         config=config,
         composer=composer,
-        prompt_registry=prompt_registry,
         invocation_pipeline=get_invocation_pipeline(),
     )
 
