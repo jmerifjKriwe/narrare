@@ -90,7 +90,7 @@ async def update_user_limits(
     overrides = request.model_dump(exclude_none=True)
     if not overrides:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="At least one field must be provided",
         )
     await service.update_user_limits(
@@ -110,7 +110,7 @@ async def update_project_limits(
     overrides = request.model_dump(exclude_none=True)
     if not overrides:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="At least one field must be provided",
         )
     await service.update_project_limits(

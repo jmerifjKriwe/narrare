@@ -181,7 +181,6 @@ class TestUpdateUserLimitsEndpoint:
 
         assert result is None
 
-    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     async def test_update_user_limits_with_empty_body_raises_422(self, service) -> None:
         """Empty request (all None fields) should raise HTTP 422."""
         with pytest.raises(HTTPException) as exc_info:
@@ -214,7 +213,6 @@ class TestUpdateProjectLimitsEndpoint:
 
         assert result is None
 
-    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     async def test_update_project_limits_with_empty_body_raises_422(self, service) -> None:
         """Empty request (all None fields) should raise HTTP 422."""
         with pytest.raises(HTTPException) as exc_info:

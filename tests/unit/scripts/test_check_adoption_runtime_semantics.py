@@ -74,6 +74,9 @@ def _runtime_registry(
             },
         },
         "inline_fallbacks": [],
+        "prompt_path_compliance": {
+            "writing/new_chapter": True,
+        },
     }
 
 

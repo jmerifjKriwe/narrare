@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import status
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from narrare._app.database import get_async_session
 from narrare._app.dependencies import get_current_user_id
@@ -43,7 +44,7 @@ def app():
 
     # Override get_async_session to prevent DB connection attempts
     async def _mock_session():
-        mock = AsyncMock()
+        mock = AsyncMock(spec=AsyncSession)
         mock.execute = AsyncMock()
         yield mock
 
@@ -365,7 +366,7 @@ class TestUnauthorized:
         bare_app = create_app()
 
         async def _no_auth_session():
-            mock = AsyncMock()
+            mock = AsyncMock(spec=AsyncSession)
             mock.execute = AsyncMock()
             yield mock
 
