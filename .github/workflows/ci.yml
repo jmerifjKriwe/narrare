@@ -8,7 +8,7 @@ name: CI
 # | Gate | Tool / Check                          | CI Status   | Notes                              |
 # |------|----------------------------------------|-------------|------------------------------------|
 # | G1   | pytest unit + integration + e2e        | ✅ Blocking  | Unit/Integration in separaten Jobs |
-# | G2   | --cov-fail-under (Coverage)            | ⚠️ Warning (≥60%) | Übergangsausnahme: --cov-fail-under=60, target 80% |
+# | G2   | --cov-fail-under (Coverage)            | ✅ Blocking (≥80%) | Target 80% erreicht (global 82.51%) |
 # | G3   | check_architecture.py                  | ✅ Blocking  | architecture Job                   |
 # | G3b  | check_exception_baseline.py            | ✅ Blocking  | architecture Job                   |
 # | G3c  | export_openapi.py --check              | ✅ Blocking  | architecture Job                   |
@@ -294,7 +294,7 @@ jobs:
             --cov-report=xml \
             --cov-report=term-missing:skip-covered \
             --junitxml=pytest.xml \
-            --cov-fail-under=60 \
+            --cov-fail-under=80 \
             -n auto \
             -v | tee pytest-coverage.txt
 
@@ -308,11 +308,9 @@ jobs:
           rate = float(tree.getroot().attrib['line-rate'])
           pct = rate * 100
           print(f'Coverage: {pct:.1f}%')
-          if pct < 60:
-              print(f'::error::Coverage {pct:.1f}% is below the 60% minimum threshold')
+          if pct < 80:
+              print(f'::error::Coverage {pct:.1f}% is below the 80% target threshold')
               sys.exit(1)
-          elif pct < 80:
-              print(f'::warning::Coverage {pct:.1f}% is below the 80% target threshold')
           else:
               print(f'Coverage {pct:.1f}% meets the 80% target threshold')
            "
