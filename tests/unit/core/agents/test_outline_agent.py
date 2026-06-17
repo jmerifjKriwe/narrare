@@ -3,7 +3,7 @@
 Test-Strategie:
 - TestModel für deterministische Agent-Tests
 - Output Function wird direkt via ``_process_outline`` getestet
-- Keine echten LLM-Calls (RULE-01)
+- Keine echten LLM-Calls (RULE-01b)
 """
 
 from __future__ import annotations

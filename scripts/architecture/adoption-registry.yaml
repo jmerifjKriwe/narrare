@@ -89,6 +89,7 @@ prompt_path_compliance:
   analysis/summarize: true
   analysis/remap: true
   analysis/consistency: true
+  analysis/fact_extraction: true
   # kb
   kb/consistency: true
   kb/worldbuilding/phase1: true
@@ -100,6 +101,7 @@ prompt_path_compliance:
   kb/enhance: true
   # planning
   planning/outline: true
+  planning/temporal_consistency: true
   # generation
   generation/names: true
 
@@ -202,6 +204,8 @@ features:
         requires_runtime_evidence: true
       consistency:
         requires_runtime_evidence: true
+      fact_extraction:
+        requires_runtime_evidence: true
     required_infrastructure:
       token_budget: required
       prompt_composer: required
@@ -258,6 +262,8 @@ features:
     modes:
       outline:
         requires_runtime_evidence: true  # P3 probes active
+      temporal_consistency:
+        requires_runtime_evidence: true
     required_infrastructure:
       token_budget: partial
       prompt_composer: required

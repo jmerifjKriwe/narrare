@@ -170,7 +170,7 @@ async def stream_coauthor(
         project_id=request.project_id,
     )
 
-    # Stream from LLM via RULE-01
+    # Stream from LLM via RULE-01b
     accumulated: list[str] = []
     async for chunk in pipeline._registry.stream(  # pyright: ignore[reportPrivateUsage]
         intent=LLMIntent.CO_AUTHOR,

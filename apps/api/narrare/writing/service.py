@@ -2,7 +2,7 @@
 
 This is the main business logic layer for chapter generation.  It delegates:
 - DB operations to :class:`GenerationRepository`
-- LLM calls to :class:`WritingPipeline` (via gateway — RULE-01)
+- LLM calls to :class:`WritingPipeline` (via gateway — RULE-01b)
 - Post-processing to :class:`DraftProcessor`
 - Feedback recording to :class:`FeedbackCollector`
 - Scene operations to :class:`SceneService`

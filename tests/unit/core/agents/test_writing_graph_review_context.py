@@ -4,7 +4,7 @@ Verifies that the review step assembles KB context, enriches the prompt,
 and gracefully degrades when context assembly fails.
 
 Node-Tests via StepContext + graph.nodes[...].call() with mocked agents.
-No real LLM calls (RULE-01).
+No real LLM calls (RULE-01b).
 """
 
 from __future__ import annotations

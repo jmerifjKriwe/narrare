@@ -3,7 +3,7 @@
 Test strategy:
 - TestModel for deterministic agent tests
 - Output functions tested directly via _process_phase1
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 
 Split from test_beta_reader_agent.py to stay under 200 lines (RULE-04).
 """

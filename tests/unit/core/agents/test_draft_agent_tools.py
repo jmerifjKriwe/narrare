@@ -1,7 +1,7 @@
 """Tests für DraftAgent — Tool und End-to-End (E2E).
 
 Testet get_kb_context-Tool und vollständige agent.run()-Durchläufe
-mit TestModel (keine echten LLM-Calls, RULE-01 eingehalten).
+mit TestModel (keine echten LLM-Calls, RULE-01b eingehalten).
 """
 
 from __future__ import annotations

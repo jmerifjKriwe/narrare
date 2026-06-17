@@ -60,7 +60,7 @@ def test_exception_baseline_collects_pyproject_and_inline_fallbacks(tmp_path: Pa
             """
             [tool.narrare.architecture.exceptions]
             [[tool.narrare.architecture.exceptions.entries]]
-            rule = "RULE-01"
+            rule = "RULE-01b"
             file = "packages/core/example.py"
             reason = "ADR-approved adapter"
             """
@@ -80,7 +80,7 @@ def test_exception_baseline_collects_pyproject_and_inline_fallbacks(tmp_path: Pa
 
     fingerprints = collect_exception_fingerprints(pyproject, registry)
 
-    assert "pyproject | RULE-01 | packages/core/example.py | ADR-approved adapter" in fingerprints
+    assert "pyproject | RULE-01b | packages/core/example.py | ADR-approved adapter" in fingerprints
     assert (
         "inline_fallback | apps/api/example.py | FALLBACK | packages/core/prompts/example.md"
         in fingerprints

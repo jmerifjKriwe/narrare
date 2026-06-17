@@ -3,7 +3,7 @@
 Test-Strategie:
 - TestModel für deterministische Tests
 - RunContext wie in test_draft_agent.py konstruiert
-- Keine echten LLM-Calls (RULE-01)
+- Keine echten LLM-Calls (RULE-01b)
 """
 
 from __future__ import annotations

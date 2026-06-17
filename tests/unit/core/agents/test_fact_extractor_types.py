@@ -6,7 +6,7 @@ Test strategy:
 - Pydantic model validation for ExtractedFact and TimelineEventEnvelope
 - Plain class defaults for FactExtractorDeps
 - Protocol compliance check
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 """
 
 from __future__ import annotations

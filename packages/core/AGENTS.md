@@ -25,7 +25,7 @@ narrare_core/
 ├── agents/      ← Agents (pydantic-ai) — PRIMÄRER Weg zu LLMs
 │                   Agents sind erste-Klasse-Bürger (ADR-015)
 ├── llm/         ← ModelRegistry, Intents, Provider-Adapter
-│                   NUR HIER dürfen LLM-Clients importiert werden (RULE-01)
+│                   NUR HIER dürfen LLM-Clients importiert werden (RULE-01b)
 ├── prompts/     ← Registry, Composer, Context, Variable Engine
 │                   NUR HIER werden Prompts gebaut (RULE-02)
 ├── shared/      ← Errors, Result-Types, Frontmatter, Pagination

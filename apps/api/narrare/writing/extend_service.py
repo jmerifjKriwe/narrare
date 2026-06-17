@@ -231,7 +231,7 @@ class ExtendService:
             novel_id,
         )
 
-        # Step 6: Stream via pipeline (RULE-01, RULE-02).
+        # Step 6: Stream via pipeline (RULE-01b, RULE-02).
         accumulated: list[str] = []
         try:
             async for chunk in self._pipeline.generate(

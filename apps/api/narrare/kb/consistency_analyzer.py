@@ -77,7 +77,7 @@ class KBConsistencyAnalyzer:
 
     Args:
         kb_repo: KB entry repository for listing entities.
-        registry: Model registry for LLM calls (RULE-01).
+        registry: Model registry for LLM calls (RULE-01b).
         config: Resolved model configuration.
         composer: PromptComposer for building system prompts (RULE-02).
     """

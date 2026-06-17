@@ -1,4 +1,4 @@
-"""RULE-01 · LLM calls go through the Gateway."""
+"""RULE-01b · LLM calls go through the Gateway."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def check_llm_imports(
                         Violation(
                             file=Path(rel_path),
                             line=node.lineno,
-                            rule="RULE-01",
+                            rule="RULE-01b",
                             detail=f"Direct LLM import '{name}' outside gateway",
                             approved=approved,
                             approval_reason=reason,
@@ -77,7 +77,7 @@ def check_llm_urls(
                     Violation(
                         file=Path(rel_path),
                         line=i,
-                        rule="RULE-01",
+                        rule="RULE-01b",
                         detail=f"Direct HTTP call to LLM endpoint '{url}'",
                         approved=approved,
                         approval_reason=reason,

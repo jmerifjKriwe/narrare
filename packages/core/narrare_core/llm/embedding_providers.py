@@ -1,7 +1,7 @@
 """
 Embedding provider abstraction — Protocol, implementations, and registry.
 
-This module is an approved RULE-01 exception: it imports the OpenAI client
+This module is an approved RULE-01b exception: it imports the OpenAI client
 directly because the batch embedding API requires direct client access for
 performance (the pydantic-ai agent abstraction does not expose batch embedding).
 

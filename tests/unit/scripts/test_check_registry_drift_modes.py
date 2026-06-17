@@ -1,7 +1,10 @@
-"""Tests for scripts/check_registry_drift.py — mode-prompt alignment & drift.
+"""Tests for scripts/check_registry_drift.py — drift *detection* behaviour.
 
-Validates mode-prompt alignment, missing prompts, unregistered prompt files,
-drift finding severity, and reporting per ADR-041 Decision 1.
+Covers mode-prompt alignment, missing prompts, and unregistered prompt files.
+The reporting surface (DriftReport, severity sort, exit-code semantics) lives
+in ``test_check_registry_drift_report.py`` (split for RULE-04 file-size limit).
+
+Validates drift detection per ADR-041 Decision 1.
 """
 
 from __future__ import annotations
@@ -20,16 +23,12 @@ if _DIR not in sys.path:
     sys.path.insert(0, _DIR)
 
 from scripts.check_registry_drift import (  # noqa: E402
-    DriftFinding,
-    DriftReport,
     check_registry_drift,
-    validate_registry_schema,
 )
 from test_check_registry_drift import (  # noqa: E402
     _make_prompt_file,
     _make_registry,
     _write_env,
-    _write_schema_only,
 )
 
 # ── TestModePromptAlignment ────────────────────────────────────────────
@@ -263,35 +262,13 @@ class TestUnregisteredPromptFile:
         assert not any("meta" in f.message for f in warnings)
         assert not any("universal" in f.message for f in warnings)
 
+    def test_skip_subsystem_categories(self, tmp_path: Path) -> None:
+        """Subsystem categories (e.g. wiki) with own loaders must not produce warnings.
 
-# ── TestDriftFindingSeverity ───────────────────────────────────────────
-
-
-class TestDriftFindingSeverity:
-    """Critical findings cause non-zero exit code."""
-
-    def test_critical_produces_exit_1(self, tmp_path: Path) -> None:
-        reg = _make_registry(
-            features={
-                "writing": {
-                    "modes": {
-                        "missing": {"requires_runtime_evidence": True},
-                    },
-                    "required_infrastructure": {"prompt_composer": "required"},
-                    "context_variables": {"must": [], "should": []},
-                },
-            }
-        )
-        reg_path, prompts_dir = _write_env(tmp_path, reg)
-
-        findings = check_registry_drift(
-            registry_path=reg_path,
-            prompts_dir=prompts_dir,
-        )
-        report = DriftReport(findings=findings)
-        assert report.has_critical
-
-    def test_warnings_only_exit_0(self, tmp_path: Path) -> None:
+        Regression for ADR-022 (LLM Wiki): wiki/chapter_summary and
+        wiki/entity_summary are loaded by WikiPromptLoader, not by the main
+        PromptComposer cascade. They must be excluded from drift detection.
+        """
         reg = _make_registry(
             features={
                 "writing": {
@@ -305,66 +282,15 @@ class TestDriftFindingSeverity:
         )
         reg_path, prompts_dir = _write_env(tmp_path, reg)
         _make_prompt_file(prompts_dir, "writing", "draft")
-        _make_prompt_file(prompts_dir, "writing", "orphan")
+        # Create subsystem prompts -- should be ignored (own loader per ADR-022).
+        _make_prompt_file(prompts_dir, "wiki", "chapter_summary")
+        _make_prompt_file(prompts_dir, "wiki", "entity_summary")
 
         findings = check_registry_drift(
             registry_path=reg_path,
             prompts_dir=prompts_dir,
         )
-        report = DriftReport(findings=findings)
-        assert not report.has_critical
-        assert report.has_warnings
-
-    def test_schema_failure_returns_critical(self, tmp_path: Path) -> None:
-        bad_reg: dict[str, object] = {"version": "bad", "features": "not_a_dict"}
-        findings = validate_registry_schema(bad_reg, _write_schema_only(tmp_path))
-        assert any(f.severity == "critical" for f in findings)
-
-    def test_drift_findings_sorted_by_severity(self, tmp_path: Path) -> None:
-        """check_registry_drift returns findings sorted: critical -> warning -> info."""
-        reg = _make_registry(
-            features={
-                "writing": {
-                    "modes": {
-                        "draft": {"requires_runtime_evidence": True},
-                    },
-                    "required_infrastructure": {"prompt_composer": "required"},
-                    "context_variables": {"must": [], "should": []},
-                },
-            }
+        warnings = [f for f in findings if f.severity == "warning"]
+        assert not any("wiki" in f.message for f in warnings), (
+            f"Wiki subsystem prompts must be skipped, got: {warnings}"
         )
-        reg_path, prompts_dir = _write_env(tmp_path, reg)
-        _make_prompt_file(prompts_dir, "writing", "draft")
-        _make_prompt_file(prompts_dir, "writing", "orphan")
-        _make_prompt_file(prompts_dir, "unknown_cat", "mode")
-
-        findings = check_registry_drift(
-            registry_path=reg_path,
-            prompts_dir=prompts_dir,
-        )
-        severities = [f.severity for f in findings]
-        # All warnings should come before any info.
-        if "warning" in severities and "info" in severities:
-            warn_idx = severities.index("warning")
-            info_idx = severities.index("info")
-            assert warn_idx < info_idx
-
-    def test_report_summary_counts(self) -> None:
-        findings = [
-            DriftFinding(severity="critical", category="a", mode="", message="c"),
-            DriftFinding(severity="warning", category="b", mode="", message="w"),
-            DriftFinding(severity="info", category="c", mode="", message="i"),
-        ]
-        report = DriftReport(findings=findings)
-        assert "1 critical" in report.summary()
-        assert "1 warnings" in report.summary()
-        assert "1 info" in report.summary()
-
-    def test_report_no_critical(self) -> None:
-        findings = [
-            DriftFinding(severity="warning", category="b", mode="", message="w"),
-            DriftFinding(severity="info", category="c", mode="", message="i"),
-        ]
-        report = DriftReport(findings=findings)
-        assert not report.has_critical
-        assert report.has_warnings

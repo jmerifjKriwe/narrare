@@ -5,7 +5,7 @@ ADR-044 — Staged Multi-Agent Consistency Pipeline.
 Test strategy:
 - Output function tested directly via _process_output
 - Validation tested directly via _validate_output
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 """Provider model fetcher — delegates to ModelCatalogClient.
 
 Extracted from provider_service.py per RULE-04 (file size limits).
-All HTTP calls are handled by core/llm/model_listing.py (RULE-01, RULE-08).
+All HTTP calls are handled by core/llm/model_listing.py (RULE-01b, RULE-08).
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ async def fetch_models(
 ) -> list[ProviderModel]:
     """Fetch available models for a provider via ModelCatalogClient.
 
-    Delegates all HTTP calls to ``ModelCatalogClient`` (RULE-01, RULE-08).
+    Delegates all HTTP calls to ``ModelCatalogClient`` (RULE-01b, RULE-08).
     Falls back to hardcoded models on any error (RULE-11).
 
     Args:

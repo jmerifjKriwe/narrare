@@ -7,7 +7,7 @@ MODES:
     - ``interview_assisted``  Delegates to pipeline_interview module.
     - ``interactive_session`` Handled via WebSocket (raises ValueError here).
 
-RULE-01: All LLM calls go through the injected registry.
+RULE-01b: All LLM calls go through the injected registry.
 RULE-02: All prompts built through the injected composer.
 """
 

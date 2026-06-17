@@ -1,4 +1,4 @@
-"""LLM Gateway — the only path to any LLM provider. See CONSTRAINTS.md RULE-01."""
+"""LLM Gateway — the only path to any LLM provider. See CONSTRAINTS.md RULE-01b."""
 
 from narrare_core.llm.contracts import ModelCatalogProtocol, ModelRegistryProtocol
 from narrare_core.llm.cost_rates import (

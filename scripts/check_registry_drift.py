@@ -39,6 +39,19 @@ _DEFAULT_PROMPTS = (
 # Categories that are infrastructure, not feature prompts.
 _SKIP_CATEGORIES = frozenset({"meta", "universal"})
 
+# Categories that belong to architecturally separate subsystems with their own
+# prompt-loading infrastructure (not routed through PromptComposer / the main
+# adoption-registry). These categories have dedicated loaders and are governed
+# by their own ADRs, so the main drift checker must not flag their modes.
+#
+# See:
+#   - ADR-022 (LLM Wiki) — wiki/chapter_summary and wiki/entity_summary are
+#     loaded directly by WikiPromptLoader.read_bundled_prompt() in
+#     core/wiki/prompt_loader.py. The wiki subsystem intentionally bypasses
+#     the PromptComposer cascade (it has its own frontmatter + conditional
+#     rendering + variable substitution pipeline).
+_SUBSYSTEM_CATEGORIES = frozenset({"wiki"})
+
 # Subdirectories that are auxiliary resources, not modes.
 _SKIP_SUBDIRS = frozenset({"tones", "name-styles"})
 
@@ -149,6 +162,10 @@ def _discover_prompts(prompts_dir: Path) -> list[PromptRef]:
 
         # Skip infrastructure categories.
         if category in _SKIP_CATEGORIES:
+            continue
+
+        # Skip architecturally separate subsystems (own loader, own ADR).
+        if category in _SUBSYSTEM_CATEGORIES:
             continue
 
         # Must have locale as second component.

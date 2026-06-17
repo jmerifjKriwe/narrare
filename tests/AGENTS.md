@@ -114,7 +114,7 @@ Dieser Test läuft immer mit:
 ```python
 # In tests/conftest.py bereits definiert
 def test_architecture_constraints() -> None:
-    """RULE-01, 02, 04, 11: Alle Architektur-Constraints bestehen."""
+    """RULE-01b, 02, 04, 11: Alle Architektur-Constraints bestehen."""
     result = subprocess.run(["python", "scripts/check_architecture.py"])
     assert result.returncode == 0
 ```

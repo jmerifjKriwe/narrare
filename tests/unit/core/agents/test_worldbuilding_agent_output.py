@@ -2,7 +2,7 @@
 
 Test-Strategie:
 - Output Functions tested directly via _process_phase1 / _process_phase2
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 """
 
 from __future__ import annotations

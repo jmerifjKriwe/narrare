@@ -3,7 +3,7 @@
 Test-Strategie:
 - Node-Tests via StepContext + graph.nodes[...].call()
 - LLM-Mocking via unittest.mock (DraftAgent, _get_model)
-- Keine echten LLM-Calls (RULE-01)
+- Keine echten LLM-Calls (RULE-01b)
 - Coverage-Ziel: writing_graph.py > 85%
 """
 

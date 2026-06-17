@@ -6,7 +6,7 @@ place in core/ that makes HTTP calls to provider catalog endpoints —
 CONSTRAINTS.md RULE-01b and RULE-08.
 
 Catalog queries are read-only GET requests; they do **not** invoke LLM
-inference.  For inference, see ``gateway.py`` (RULE-01).
+inference.  For inference, see ``gateway.py`` (RULE-01b).
 
 Contract: ``ModelCatalogProtocol`` in ``contracts.py`` (RULE-03).
 """

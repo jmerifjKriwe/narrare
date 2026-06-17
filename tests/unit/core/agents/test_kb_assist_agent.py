@@ -4,7 +4,7 @@ Test strategy:
 - FunctionModel with ToolCallPart for agent run tests
   (TestModel cannot produce valid Literal values)
 - TestModel for instantiation tests
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 
 See also: test_kb_assist_agent_output.py — _process_output tests
 """

@@ -12,7 +12,7 @@ Phase 2:
 
 Test strategy:
 - Call validators directly with mocked RunContext
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 """
 
 from __future__ import annotations

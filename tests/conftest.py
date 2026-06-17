@@ -88,7 +88,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 def test_architecture_constraints() -> None:
     """
-    RULE-01, RULE-02, RULE-04, RULE-11:
+    RULE-01b, RULE-02, RULE-04, RULE-11:
     Verify all architecture constraints pass.
     This test ensures the CI and local pre-commit hooks are consistent.
     """

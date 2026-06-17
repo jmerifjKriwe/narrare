@@ -5,7 +5,7 @@ access control. Delegates computation to core's ``FormulaReadabilityAnalyzer``
 and ``ReadabilityAgent``.
 
 No DB queries — delegated to repositories (RULE-06).
-LLM calls go through ``ReadabilityAgent`` via ``ModelRegistry`` (RULE-01).
+LLM calls go through ``ReadabilityAgent`` via ``ModelRegistry`` (RULE-01b).
 """
 
 from __future__ import annotations

@@ -5,7 +5,7 @@ access control, and character resolution from KB.  Delegates AI analysis to
 ``POVDetectionAgent`` via ``ModelRegistry``.
 
 No DB queries — delegated to repositories (RULE-06).
-LLM calls go through ``POVDetectionAgent`` via ``ModelRegistry`` (RULE-01).
+LLM calls go through ``POVDetectionAgent`` via ``ModelRegistry`` (RULE-01b).
 """
 
 from __future__ import annotations

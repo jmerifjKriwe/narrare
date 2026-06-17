@@ -3,7 +3,7 @@
 Test-Strategie:
 - Coverage und Confidence sind reine Mathematik (keine Mocks nötig)
 - analyze_chapter_role testet mit/ohne Agent, empty summary
-- Keine echten LLM-Calls (RULE-01)
+- Keine echten LLM-Calls (RULE-01b)
 """
 
 from __future__ import annotations

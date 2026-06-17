@@ -4,7 +4,7 @@ ADR-044 — Staged Multi-Agent Consistency Pipeline.
 
 Test strategy:
 - TestModel for deterministic agent tests
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 """
 
 from __future__ import annotations

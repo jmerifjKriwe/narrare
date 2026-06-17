@@ -188,3 +188,67 @@ class TestRenderPrompt:
         rendered = WikiPromptLoader.render_prompt(raw, deps_location)
         # Character arc instruction should NOT be in the rendered prompt
         assert "Character Arc" not in rendered
+
+
+# ---------------------------------------------------------------------------
+# E. Exception-Handling Contract
+# ---------------------------------------------------------------------------
+#
+# These tests characterize the multi-exception catch tuple in
+# ``read_bundled_prompt`` (``except (ModuleNotFoundError, FileNotFoundError,
+# OSError)``). They pin two properties:
+#   1. Exceptions *in* the tuple are caught so the loader can fall back to the
+#      English prompt instead of crashing.
+#   2. Exceptions *outside* the tuple are NOT swallowed/masked — they propagate
+#      to the caller. This is the property that distinguishes a precise
+#      multi-except clause from a bare ``except:`` (the Python 2 footgun).
+#
+# Note: Python treats ``except A, B, C:`` and ``except (A, B, C):`` identically
+# (the comma form builds a tuple expression). These tests therefore pass for
+# either spelling; they document the intended behaviour, not a specific syntax.
+
+
+class TestExceptionContract:
+    """Behavioural contract of ``read_bundled_prompt``'s exception handling."""
+
+    def test_missing_mode_raises_filenotfounderror(self) -> None:
+        """When neither the requested language nor English has the prompt,
+        ``FileNotFoundError`` is raised with a descriptive message."""
+        with pytest.raises(FileNotFoundError, match="EN fallback also failed"):
+            WikiPromptLoader.read_bundled_prompt("wiki", "en", "does_not_exist_mode")
+
+    def test_caught_oserror_in_language_probe_falls_back_to_en(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An OSError raised while probing the requested language is caught
+        (it is in the catch tuple) and the loader falls back to English."""
+        from pathlib import Path
+
+        real_exists = Path.exists
+        probe = {"count": 0}
+
+        def fake_exists(self: object) -> bool:
+            probe["count"] += 1
+            if probe["count"] == 1:
+                raise OSError("simulated probe failure")
+            return real_exists(self)  # type: ignore[arg-type]
+
+        monkeypatch.setattr("narrare_core.wiki.prompt_loader.Path.exists", fake_exists)
+
+        text = WikiPromptLoader.read_bundled_prompt("wiki", "xx", "entity_summary")
+        assert isinstance(text, str)
+        assert len(text) > 0
+        # Fell back to the English entity_summary prompt.
+        assert "narrative wiki generator" in text
+
+    def test_uncaught_valueerror_is_not_masked(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An exception NOT in the catch tuple must propagate, proving the
+        clause does not over-broadly swallow errors."""
+
+        def boom(self: object) -> bool:
+            raise ValueError("not in the catch tuple")
+
+        monkeypatch.setattr("narrare_core.wiki.prompt_loader.Path.exists", boom)
+
+        with pytest.raises(ValueError, match="not in the catch tuple"):
+            WikiPromptLoader.read_bundled_prompt("wiki", "xx", "entity_summary")

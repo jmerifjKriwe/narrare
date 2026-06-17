@@ -1,7 +1,7 @@
 """
 Contracts for the LLM subsystem.
 
-Every LLM call goes through the gateway — CONSTRAINTS.md RULE-01.
+Every LLM call goes through the gateway — CONSTRAINTS.md RULE-01b.
 Contract-first design — CONSTRAINTS.md RULE-03.
 """
 
@@ -31,7 +31,7 @@ class ModelRegistryProtocol(Protocol):
 
     See Also
     --------
-    CONSTRAINTS.md RULE-01 — LLM calls go through the Gateway.
+    CONSTRAINTS.md RULE-01b — LLM calls go through the Gateway.
     CONSTRAINTS.md RULE-03 — Contracts before implementation.
     ADR-015 — Model Registry migration.
     """

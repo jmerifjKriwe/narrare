@@ -10,7 +10,7 @@ Supports two modes:
   user answers, then LLM generates a draft.  Draft generation is
   delegated to :class:`InterviewDraftGenerator`.
 
-All LLM calls go through :class:`ModelRegistry` (RULE-01).
+All LLM calls go through :class:`ModelRegistry` (RULE-01b).
 All prompts built through :class:`PromptComposer` (RULE-02).
 """
 

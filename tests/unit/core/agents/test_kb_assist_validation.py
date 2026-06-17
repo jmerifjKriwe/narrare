@@ -9,7 +9,7 @@ Tests the deterministic invariants enforced by _validate_output:
 
 Test strategy:
 - Call _validate_output directly with mocked RunContext
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 """
 
 from __future__ import annotations

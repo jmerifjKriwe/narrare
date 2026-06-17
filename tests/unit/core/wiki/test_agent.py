@@ -3,7 +3,7 @@
 Test-Strategie:
 - TestModel für deterministische Agent-Tests
 - Output Functions werden direkt via ``_process_entity_output`` getestet
-- Keine echten LLM-Calls (RULE-01)
+- Keine echten LLM-Calls (RULE-01b)
 - Prompt loading tests in ``test_prompt_loader.py``
 - Chapter tests in ``test_agent_chapter.py``
 """

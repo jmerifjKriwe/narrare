@@ -150,7 +150,7 @@ class TestRealRegistry:
             + "; ".join(f"{f.mode_key}: {f.message}" for f in findings)
         )
 
-    def test_real_registry_covers_27_modes(self) -> None:
+    def test_real_registry_covers_29_modes(self) -> None:
         import yaml
 
         registry_path = Path(_ROOT) / "scripts" / "architecture" / "adoption-registry.yaml"
@@ -163,5 +163,8 @@ class TestRealRegistry:
             for cfg in features.values()
             if isinstance(cfg.get("modes"), dict)
         )
-        # ADR-046 references 27 intents (modes).
-        assert mode_count == 27, f"expected 27 feature modes, got {mode_count}"
+        # Ratchet: the registry must cover all implemented feature modes.
+        # When adding a mode, update this count. As of the CR-02 prompt-path
+        # retrofit (ADR-046) the registry covers 29 modes (analysis gained
+        # fact_extraction; planning gained temporal_consistency).
+        assert mode_count == 29, f"expected 29 feature modes, got {mode_count}"

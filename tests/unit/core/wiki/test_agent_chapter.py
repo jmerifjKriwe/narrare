@@ -4,7 +4,7 @@ Test-Strategie:
 - TestModel für deterministische Agent-Tests
 - Output Function (``_process_output``) wird direkt via WikiChapterGenerator getestet
 - generate_chapter auf WikiGenerationAgent testet die Integration
-- Keine echten LLM-Calls (RULE-01)
+- Keine echten LLM-Calls (RULE-01b)
 """
 
 from __future__ import annotations

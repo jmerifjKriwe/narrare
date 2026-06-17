@@ -219,7 +219,7 @@ class CoAuthorService:
             novel_id,
         )
 
-        # Step 6: Stream via pipeline (RULE-01, RULE-02).
+        # Step 6: Stream via pipeline (RULE-01b, RULE-02).
         # The pipeline_coauthor module handles diff computation internally
         # and sends change metadata in the final chunk's context_meta.
         accumulated: list[str] = []

@@ -3,7 +3,7 @@
 Test strategy:
 - TestModel for deterministic agent tests
 - FunctionModel for specific output tests
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 
 See test_summary_agent.py for the pattern reference.
 """

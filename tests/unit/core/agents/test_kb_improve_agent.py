@@ -3,7 +3,7 @@
 Test-Strategie:
 - TestModel for deterministic agent tests
 - Output Function tested directly via _process_output
-- No real LLM calls (RULE-01)
+- No real LLM calls (RULE-01b)
 """
 
 from __future__ import annotations

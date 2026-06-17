@@ -59,9 +59,9 @@ class TestExtractRuleNumbers:
     """Test RULE extraction from CONSTRAINTS.md."""
 
     def test_extracts_numbered_rules(self) -> None:
-        content = "### RULE-01 · First\n### RULE-02 · Second\n### RULE-15 · Middleware\n"
+        content = "### RULE-01b · First\n### RULE-02 · Second\n### RULE-15 · Middleware\n"
         rules = _extract_rule_numbers(content)
-        assert rules == {"01", "02", "15"}
+        assert rules == {"01b", "02", "15"}
 
     def test_extracts_letter_suffix(self) -> None:
         content = "### RULE-01b · Variant\n### RULE-02a · Another\n"
@@ -73,11 +73,11 @@ class TestSpecRULEValid:
     """RULE-XX with invalid number = warning."""
 
     def test_invalid_rule_number_warning(self, tmp_path: Path) -> None:
-        constraints = _make_constraints_file(tmp_path, ["01", "02", "03"])
+        constraints = _make_constraints_file(tmp_path, ["01b", "02", "03"])
         _make_spec_file(
             tmp_path,
             "test-spec.md",
-            "This spec references RULE-99 and RULE-01.\n",
+            "This spec references RULE-99 and RULE-01b.\n",
         )
         spec_dir = tmp_path / "specs"
 
@@ -89,11 +89,11 @@ class TestSpecRULEValid:
         assert any(f.severity == "warning" and "RULE-99" in f.message for f in findings)
 
     def test_valid_rule_no_finding(self, tmp_path: Path) -> None:
-        constraints = _make_constraints_file(tmp_path, ["01", "02", "22"])
+        constraints = _make_constraints_file(tmp_path, ["01b", "02", "22"])
         _make_spec_file(
             tmp_path,
             "test-spec.md",
-            "This spec references RULE-01 and RULE-22.\n",
+            "This spec references RULE-01b and RULE-22.\n",
         )
         spec_dir = tmp_path / "specs"
 
@@ -104,6 +104,36 @@ class TestSpecRULEValid:
         )
         rule_findings = [f for f in findings if "does not exist in CONSTRAINTS" in f.message]
         assert len(rule_findings) == 0
+
+    def test_legacy_rule_01_without_suffix_warns(self, tmp_path: Path) -> None:
+        """Regression: after RULE-01 → RULE-01b migration, bare 'RULE-01' is invalid.
+
+        The canonical identifier is RULE-01b. A spec referencing the legacy
+        'RULE-01' (without the 'b' suffix) must produce a warning because
+        RULE-01 no longer exists as a header in CONSTRAINTS.md.
+        """
+        constraints = _make_constraints_file(tmp_path, ["01b", "02", "22"])
+        _make_spec_file(
+            tmp_path,
+            "test-spec.md",
+            "This spec references RULE-01 and RULE-01b.\n",
+        )
+        spec_dir = tmp_path / "specs"
+
+        findings = check_spec_references(
+            specs_dir=spec_dir,
+            constraints_path=constraints,
+            adr_dir=tmp_path,
+        )
+        rule_findings = [f for f in findings if "does not exist in CONSTRAINTS" in f.message]
+        # RULE-01 (legacy, without 'b') must warn; RULE-01b must not.
+        assert any(
+            "RULE-01 " in f.message or f.message.endswith("RULE-01 which does not exist")
+            for f in rule_findings
+        ), f"Expected warning for legacy RULE-01 reference, got: {rule_findings}"
+        assert not any("RULE-01b" in f.message for f in rule_findings), (
+            f"RULE-01b should be valid, but got warning: {rule_findings}"
+        )
 
 
 class TestSpecADRReferences:
@@ -170,8 +200,8 @@ class TestExtractRuleRefs:
     """Test RULE-XX extraction from arbitrary text."""
 
     def test_extracts_rules(self) -> None:
-        text = "See RULE-01 and RULE-22 for details."
-        assert _extract_rule_refs_from_text(text) == {"01", "22"}
+        text = "See RULE-01b and RULE-22 for details."
+        assert _extract_rule_refs_from_text(text) == {"01b", "22"}
 
     def test_extracts_letter_suffix(self) -> None:
         text = "RULE-01b and RULE-02a are relevant."

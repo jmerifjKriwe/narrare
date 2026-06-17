@@ -77,7 +77,7 @@ class ChapterSummaryService:
         return SummaryResult(summary=result.summary)
 
 # ❌ Verboten: direkter LLM-Import
-import openai  # RULE-01 Verletzung → CI schlägt fehl
+import openai  # RULE-01b Verletzung → CI schlägt fehl
 
 # ❌ Verboten: Prompt-Bau im Service (RULE-02/RULE-02a)
 #

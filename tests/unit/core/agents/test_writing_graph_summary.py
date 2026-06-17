@@ -1,7 +1,7 @@
 """Tests für WritingGraph generate_summary Step.
 
 Node-Tests via StepContext + graph.nodes[...].call() mit gemocktem ChapterSummaryAgent.
-Keine echten LLM-Calls (RULE-01).
+Keine echten LLM-Calls (RULE-01b).
 """
 
 from __future__ import annotations

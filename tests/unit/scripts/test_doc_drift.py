@@ -109,7 +109,7 @@ class TestParseRelatedADRs:
     """Test Related: line parsing."""
 
     def test_multiple_refs(self) -> None:
-        content = "> **Related:** ADR-002, ADR-015, CONSTRAINTS.md RULE-01\n"
+        content = "> **Related:** ADR-002, ADR-015, CONSTRAINTS.md RULE-01b\n"
         assert _parse_related_adrs(content) == ["ADR-002", "ADR-015"]
 
     def test_no_refs(self) -> None:

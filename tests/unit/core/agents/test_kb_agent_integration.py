@@ -3,7 +3,7 @@
 Test-Strategie:
 - TestModel für deterministische Tests
 - DraftAgent mit/ohne KBAgent-Konstruktor-Argument
-- Keine echten LLM-Calls (RULE-01)
+- Keine echten LLM-Calls (RULE-01b)
 """
 
 from __future__ import annotations
