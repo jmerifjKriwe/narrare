@@ -10,48 +10,15 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "python"
     groups:
-      pydantic:
-        patterns:
-          - "pydantic*"
-      fastapi:
-        patterns:
-          - "fastapi"
-          - "uvicorn"
-          - "starlette"
-          - "python-multipart"
-      sqlalchemy:
-        patterns:
-          - "sqlalchemy"
-          - "alembic"
-          - "asyncpg"
-          - "pgvector"
-      taskiq:
-        patterns:
-          - "taskiq*"
-      llm-ecosystem:
-        patterns:
-          - "pydantic-ai*"
-          - "openai"
-          - "anthropic"
-          - "mem0ai"
-          - "langfuse"
-      opentelemetry:
-        patterns:
-          - "opentelemetry*"
-      auth:
-        patterns:
-          - "PyJWT"
-          - "argon2-cffi"
-      testing:
-        patterns:
-          - "pytest*"
-          - "playwright*"
-          - "hypothesis"
-          - "pip-audit"
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
       major-updates:
         update-types:
           - "version-update:semver-major"
@@ -66,50 +33,16 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "python"
       - "api"
     groups:
-      pydantic:
-        patterns:
-          - "pydantic*"
-      fastapi:
-        patterns:
-          - "fastapi"
-          - "uvicorn"
-          - "starlette"
-          - "python-multipart"
-          - "fastapi-limiter"
-      sqlalchemy:
-        patterns:
-          - "sqlalchemy"
-          - "alembic"
-          - "asyncpg"
-          - "pgvector"
-          - "psycopg*"
-      taskiq:
-        patterns:
-          - "taskiq*"
-      llm-ecosystem:
-        patterns:
-          - "pydantic-ai*"
-          - "openai"
-          - "anthropic"
-          - "mem0ai"
-          - "langfuse"
-      opentelemetry:
-        patterns:
-          - "opentelemetry*"
-      auth:
-        patterns:
-          - "PyJWT"
-          - "argon2-cffi"
-      testing:
-        patterns:
-          - "pytest*"
-          - "playwright*"
-          - "hypothesis"
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
       major-updates:
         update-types:
           - "version-update:semver-major"
@@ -124,25 +57,22 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "python"
       - "core"
     groups:
-      pydantic:
-        patterns:
-          - "pydantic*"
-      llm-ecosystem:
-        patterns:
-          - "pydantic-ai*"
-          - "langfuse"
-          - "mem0ai"
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
       major-updates:
         update-types:
           - "version-update:semver-major"
 
   # =============================================================================
-  # Python — i18n package (single dep: pydantic, no groups needed)
+  # Python — i18n package
   # =============================================================================
   - package-ecosystem: "pip"
     directory: "/packages/i18n"
@@ -151,10 +81,19 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "python"
       - "i18n"
+    groups:
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+      major-updates:
+        update-types:
+          - "version-update:semver-major"
 
   # =============================================================================
   # npm — root workspace (dev scripts: ts-morph, tsx)
@@ -166,9 +105,18 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "npm"
+    groups:
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+      major-updates:
+        update-types:
+          - "version-update:semver-major"
 
   # =============================================================================
   # npm — Frontend (Next.js 16, React 19, TipTap 3, ~50 deps)
@@ -180,60 +128,22 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "npm"
       - "frontend"
     groups:
-      # Next.js only — React has independent release cycles, separate group
-      nextjs:
-        patterns:
-          - "next"
-      # React ecosystem — separate from Next.js to avoid major-version surprises
-      react:
-        patterns:
-          - "react"
-          - "react-dom"
-          - "@types/react"
-          - "@types/react-dom"
-      # TipTap editor
-      tiptap:
-        patterns:
-          - "@tiptap*"
-      # Tailwind CSS + PostCSS plugin
-      tailwind:
-        patterns:
-          - "tailwindcss"
-          - "@tailwindcss*"
-          - "tw-animate-css"
-      # Frontend testing: vitest, testing-library, playwright, msw
-      testing-frontend:
-        patterns:
-          - "vitest"
-          - "@vitest*"
-          - "@testing-library*"
-          - "@playwright/test"
-          - "jsdom"
-          - "msw"
-      # UI libraries: dnd, animation, icons, charts, graph, styling utils
-      ui-libs:
-        patterns:
-          - "@dnd-kit*"
-          - "@base-ui*"
-          - "motion"
-          - "lucide-react"
-          - "recharts"
-          - "cytoscape*"
-          - "class-variance-authority"
-          - "clsx"
-          - "tailwind-merge"
-          - "shadcn"
+      minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
       major-updates:
         update-types:
           - "version-update:semver-major"
 
   # =============================================================================
-  # Docker — production image (python:3.14-slim-bookworm + node:24-slim-bookworm)
+  # Docker — production image
   # =============================================================================
   - package-ecosystem: "docker"
     directory: "/"
@@ -247,7 +157,7 @@ updates:
       - "docker"
 
   # =============================================================================
-  # Docker — devcontainer image (mcr.microsoft.com/devcontainers/python)
+  # Docker — devcontainer image
   # =============================================================================
   - package-ecosystem: "docker"
     directory: "/.devcontainer"
@@ -261,7 +171,7 @@ updates:
       - "docker"
 
   # =============================================================================
-  # GitHub Actions — all workflows in .github/workflows/
+  # GitHub Actions
   # =============================================================================
   - package-ecosystem: "github-actions"
     directory: "/"

@@ -15,7 +15,8 @@
       "baseline_modules_below_target": 0,
       "baseline_modules_total": 49,
       "exit_criteria": "ACHIEVED — all 49 modules meet RULE-10 targets.",
-      "ramp_steps": []
+      "ramp_steps": [],
+      "approved_by": "user"
 
     },
     {
