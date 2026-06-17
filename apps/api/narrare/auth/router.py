@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import structlog
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-from fastapi_limiter.depends import RateLimiter as _RateLimiterDep
 from pyrate_limiter import Duration, Limiter, Rate
 
 from narrare._app.config import Settings, get_settings
 from narrare._app.dependencies import SessionDep
+from narrare._app.rate_limiter_dep import RateLimiter as _RateLimiterDep
 from narrare.auth.cookie_helpers import clear_refresh_cookie, set_refresh_cookie
 from narrare.auth.repository import AuthRepository
 from narrare.auth.schemas import LoginRequest, RegisterRequest, TokenResponse

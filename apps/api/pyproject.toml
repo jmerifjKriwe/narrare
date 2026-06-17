@@ -50,7 +50,7 @@ dependencies = [
   "opentelemetry-exporter-otlp>=1.39.0,<1.43.0",
 
   # Rate limiting
-  "fastapi-limiter>=0.2.0",
+  "pyrate-limiter>=4.0,<5",
 
   # Email
   "aiosmtplib==5.1.1",

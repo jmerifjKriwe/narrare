@@ -723,19 +723,6 @@ wheels = [
 ]
 
 [[package]]
-name = "fastapi-limiter"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "fastapi" },
-    { name = "pyrate-limiter" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/32/81f64b69a79345caca0a90d1601ae7c84c39438145793514ee82daac4fc6/fastapi_limiter-0.2.0.tar.gz", hash = "sha256:b042259f6280056b5b2b3f506edd76c8e0648d7a5ce86c3485216a4a0fd0ec14", size = 7401, upload-time = "2026-02-06T07:00:09.831Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/9b/35278a18254f187d55bb450ded6bc9a59c7b3010d164e1796f3dfb7aa73d/fastapi_limiter-0.2.0-py3-none-any.whl", hash = "sha256:e576ebb29cc9614c2f38471c60ed0e849024e9a1b7a2aeb4c2a31a6d708b4aea", size = 5219, upload-time = "2026-02-06T07:00:07.824Z" },
-]
-
-[[package]]
 name = "filelock"
 version = "3.29.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1464,7 +1451,6 @@ dependencies = [
     { name = "asyncpg" },
     { name = "email-validator" },
     { name = "fastapi" },
-    { name = "fastapi-limiter" },
     { name = "filelock" },
     { name = "httpx" },
     { name = "jinja2" },
@@ -1479,6 +1465,7 @@ dependencies = [
     { name = "pydantic-ai-slim", extra = ["anthropic", "google", "groq", "openai"] },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
+    { name = "pyrate-limiter" },
     { name = "python-multipart" },
     { name = "pyyaml" },
     { name = "redis" },
@@ -1500,7 +1487,6 @@ requires-dist = [
     { name = "asyncpg", specifier = "==0.31.0" },
     { name = "email-validator", specifier = "==2.3.0" },
     { name = "fastapi", specifier = "==0.137.0" },
-    { name = "fastapi-limiter", specifier = ">=0.2.0" },
     { name = "filelock", specifier = "==3.29.4" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jinja2", specifier = "==3.1.6" },
@@ -1515,6 +1501,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["openai", "anthropic", "google", "groq"], specifier = "==1.107.0" },
     { name = "pydantic-settings", specifier = "==2.14.1" },
     { name = "pyjwt", specifier = "==2.13.0" },
+    { name = "pyrate-limiter", specifier = ">=4.0,<5" },
     { name = "python-multipart", specifier = "==0.0.32" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "redis", specifier = ">=7.0.0,<9" },

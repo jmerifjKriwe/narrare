@@ -75,8 +75,7 @@ def _disable_rate_limiting(monkeypatch: pytest.MonkeyPatch) -> None:  # pyright:
     Production behaviour is unaffected — both patches are scoped to the test
     process via ``monkeypatch``.
     """
-    from fastapi_limiter.depends import RateLimiter
-
+    from narrare._app.rate_limiter_dep import RateLimiter
     from narrare._app.rate_limits import AI_WS_LIMITER
 
     async def _noop_call(self: object, request: Request, response: Response) -> None:

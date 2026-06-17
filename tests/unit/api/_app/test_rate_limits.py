@@ -18,9 +18,9 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from fastapi_limiter.depends import RateLimiter as _RateLimiterDep
 from pyrate_limiter import Duration, Limiter, Rate
 
+from narrare._app.rate_limiter_dep import RateLimiter as _RateLimiterDep
 from narrare._app.rate_limits import (
     AI_ANALYSIS_LIMITER,
     AI_LIGHT_LIMITER,

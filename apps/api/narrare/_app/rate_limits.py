@@ -25,21 +25,26 @@ IMPORTANT — module-level instances vs factory functions:
 
 Architecture decision AR-05-02:
     Uses **in-memory ``pyrate_limiter``** (same as auth), NOT Redis.
-    ``FastAPILimiter.init(redis)`` is never called. This is the accepted
-    risk — functional for single-instance, revisit if multi-instance
-    deployment is pursued.
+    This is the accepted risk — functional for single-instance, revisit if
+    multi-instance deployment is pursued.
 
 Per-user vs per-IP:
-    ``fastapi_limiter``'s default key is client IP. Given this is
-    local-first single-user, IP-based is functionally equivalent to
-    per-user. The ``GET /setup/providers/{p}/models`` endpoint has no
-    authentication and uses IP-based rate limiting (default behavior).
+    The default rate-limit key is client IP (see ``RateLimiter._identifier``
+    in ``rate_limiter_dep.py``). Given this is local-first single-user,
+    IP-based is functionally equivalent to per-user. The
+    ``GET /setup/providers/{p}/models`` endpoint has no authentication and
+    uses IP-based rate limiting (default behavior).
+
+    Note: with the default in-memory ``Limiter(Rate(...))`` (single shared
+    bucket), the key is informational — isolation between endpoint groups
+    comes from using separate ``RateLimiter`` instances (below), not the key.
 """
 
 from __future__ import annotations
 
-from fastapi_limiter.depends import RateLimiter as _RateLimiterDep
 from pyrate_limiter import Duration, Limiter, Rate
+
+from narrare._app.rate_limiter_dep import RateLimiter as _RateLimiterDep
 
 LONG_WINDOW_MS = Duration.MINUTE * 1
 
@@ -70,7 +75,7 @@ SETUP_MODELS_LIMITER = _RateLimiterDep(Limiter(Rate(10, LONG_WINDOW_MS)))
 requests/minute.
 
 Applies to: ``GET /setup/providers/{provider}/models`` (no auth).
-The default ``fastapi_limiter`` key is client IP, which is the correct
+The default ``RateLimiter`` key is client IP, which is the correct
 behaviour for unauthenticated endpoints.
 """
 
@@ -81,8 +86,8 @@ AI_WS_LIMITER = Limiter(Rate(3, LONG_WINDOW_MS))
 """Rate limiter for WebSocket writing sessions — 3 requests/minute.
 
 Returns a raw :class:`pyrate_limiter.Limiter` (not a FastAPI dependency)
-because ``fastapi_limiter`` WebSocket support requires Redis which is
-excluded by AR-05-02.
+because it is used directly inside WebSocket handlers (a ``RateLimiter`` dep
+cannot be injected into a WebSocket receive loop).
 
 Usage inside a WebSocket handler::
 
