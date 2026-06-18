@@ -15,8 +15,31 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def _run_suites_safe(*args, **kwargs) -> int:
+    """Run ``run_suites`` without destroying the pytest-asyncio session event loop.
+
+    ``pydantic_evals.Dataset.evaluate_sync()`` calls ``asyncio.get_event_loop()``
+    which — when called from sync code with the pytest-asyncio session loop set
+    in the policy — *reuses* the session loop. The loop-closing cleanup in
+    ``run_suites`` must not close the session loop; this helper provides an
+    additional safety layer by clearing the session loop from the policy before
+    the call and restoring it afterward.
+    """
+    try:
+        saved = asyncio.get_event_loop()
+    except RuntimeError:
+        saved = None
+
+    asyncio.set_event_loop(None)
+    try:
+        return run_suites(*args, **kwargs)
+    finally:
+        if saved is not None and not saved.is_closed():
+            asyncio.set_event_loop(saved)
+
+
 def test_runner_writes_smoke_report(tmp_path: Path) -> None:
-    exit_code = run_suites(
+    exit_code = _run_suites_safe(
         suite="rewrite_selection",
         mode="smoke",
         results_dir=tmp_path,
@@ -33,7 +56,7 @@ def test_runner_writes_smoke_report(tmp_path: Path) -> None:
 
 
 def test_runner_writes_staged_consistency_smoke_report(tmp_path: Path) -> None:
-    exit_code = run_suites(
+    exit_code = _run_suites_safe(
         suite="consistency_staged",
         mode="smoke",
         results_dir=tmp_path,

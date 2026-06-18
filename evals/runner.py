@@ -58,27 +58,52 @@ def run_suites(
 
     suites = available_suites() if suite == "all" else [suite]
     failed = False
+
+    # Save the current event loop (may be pytest-asyncio session loop).
+    # pydantic-evals' evaluate_sync may create or reuse an event loop;
+    # we must not close the session loop if evaluate_sync reused it.
+    saved_loop = _get_current_loop_safe()
+
     for suite_name in suites:
         dataset = DATASET_FACTORIES[suite_name]()
         add_optional_llm_judge(dataset, suite_name, judge_model)
         task = get_task(suite_name, mode)
         report = dataset.evaluate_sync(task)
-        # pydantic-evals' ``evaluate_sync`` → ``_utils.get_event_loop()``
-        # creates a new asyncio event loop when invoked from sync code but
-        # never closes it. The leaked loop holds a unix-socket self-pair
-        # that triggers ``ResourceWarning`` at GC time — surfacing as
-        # ``PytestUnraisableExceptionWarning`` at pytest session teardown
-        # and as stderr noise at interpreter shutdown. Close it
-        # deterministically so ``run_suites`` is safe to call from
-        # long-running processes and from tests.
-        _close_pydantic_evals_leaked_event_loop()
+        # Close any loop that pydantic-evals created — but NOT the saved
+        # session loop (pytest-asyncio's session-scoped event loop).
+        _close_pydantic_evals_leaked_event_loop(saved_loop=saved_loop)
         report.print(include_input=True, include_output=True, include_durations=False)
         write_report_json(report, results_dir / f"{suite_name}.json", suite=suite_name, mode=mode)
         failed = _has_failures(report) or _average_score(report) < minimum_score or failed
+
+    # Restore the saved event loop if it's still valid.
+    _restore_loop_safe(saved_loop)
+
     return 1 if failed else 0
 
 
-def _close_pydantic_evals_leaked_event_loop() -> None:
+def _get_current_loop_safe():
+    """Get the current event loop from the policy, or None if not set.
+
+    Suppresses DeprecationWarning for ``get_event_loop_policy`` (slated
+    for removal in Python 3.16).
+    """
+    import asyncio
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r".*get_event_loop_policy.*",
+            category=DeprecationWarning,
+        )
+        try:
+            return asyncio.get_event_loop_policy().get_event_loop()
+        except RuntimeError:
+            return None
+
+
+def _close_pydantic_evals_leaked_event_loop(saved_loop=None) -> None:
     """Close the event loop leaked by ``pydantic_evals.Dataset.evaluate_sync``.
 
     pydantic-evals' ``_utils.get_event_loop()`` calls
@@ -98,6 +123,13 @@ def _close_pydantic_evals_leaked_event_loop() -> None:
 
     Safe to call when there is no leaked loop (no-op) and when called
     from within a running loop (no-op — the running loop is left alone).
+
+    Args:
+        saved_loop: The event loop that was current BEFORE evaluate_sync
+            was called, or None. If provided and matching the current
+            loop, the loop is left alone (pydantic-evals reused the
+            existing loop rather than creating a new one). If None,
+            any available loop is closed (backward-compatible behavior).
 
     Implementation note: accessing the policy's thread-local "current
     event loop" in Python 3.14 requires ``asyncio.get_event_loop_policy``
@@ -119,19 +151,62 @@ def _close_pydantic_evals_leaked_event_loop() -> None:
             category=DeprecationWarning,
         )
         try:
-            loop = asyncio.get_event_loop_policy().get_event_loop()
+            current_loop = asyncio.get_event_loop_policy().get_event_loop()
         except RuntimeError:
-            # No current event loop set — nothing to close.
-            asyncio.set_event_loop(None)
+            # No current event loop — nothing to close.
             return
-    if loop.is_running():
+    if current_loop.is_running():
         # Don't close a loop that's actively running — that would break
         # the caller. (Shouldn't happen for ``evaluate_sync`` from sync
         # code, but guard anyway.)
         return
-    if not loop.is_closed():
-        loop.close()
+
+    # If saved_loop is provided and matches current_loop, pydantic-evals
+    # reused the existing loop — don't close it! Only close if
+    # pydantic-evals created a NEW loop.
+    if saved_loop is not None and current_loop is saved_loop:
+        return
+
+    if not current_loop.is_closed():
+        current_loop.close()
     asyncio.set_event_loop(None)
+
+
+def _restore_loop_safe(saved_loop) -> None:
+    """Restore a previously saved event loop if it's still valid.
+
+    Args:
+        saved_loop: The event loop to restore, or None. If None, cleans
+            up any leaked loop and ensures clean state.
+    """
+    import asyncio
+    import warnings
+
+    if saved_loop is None:
+        # No saved loop — ensure clean state by clearing any leaked loop.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*get_event_loop_policy.*",
+                category=DeprecationWarning,
+            )
+            try:
+                current = asyncio.get_event_loop_policy().get_event_loop()
+            except RuntimeError:
+                current = None
+            if current is not None and not current.is_running() and not current.is_closed():
+                current.close()
+        asyncio.set_event_loop(None)
+        return
+
+    if not saved_loop.is_closed():
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*get_event_loop_policy.*",
+                category=DeprecationWarning,
+            )
+            asyncio.set_event_loop(saved_loop)
 
 
 def _has_failures(report: object) -> bool:

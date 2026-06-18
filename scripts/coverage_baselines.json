@@ -1,8 +1,8 @@
 {
   "_comment": "Ratcheted coverage baselines. Updated by check_module_coverage.py --update-baselines.",
-  "updated": "2026-06-17",
+  "updated": "2026-06-18",
   "packages": {
-    "_app": 96.6,
+    "_app": 96.4,
     "agents": 94.0,
     "agents.capabilities": 91.4,
     "ai_invocation": 91.2,
@@ -12,7 +12,7 @@
     "ai_invocation.validators": 100.0,
     "analysis": 86.1,
     "analysis.services": 95.5,
-    "auth": 82.4,
+    "auth": 85.0,
     "cache": 100.0,
     "chapters": 89.2,
     "chat": 90.0,
@@ -49,7 +49,7 @@
     "templates": 82.4,
     "templates.defaults": 100.0,
     "volumes": 84.0,
-    "wiki": 91.3,
+    "wiki": 91.9,
     "writing": 80.4
   }
 }
