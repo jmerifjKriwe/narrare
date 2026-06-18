@@ -879,8 +879,9 @@ rg "useConnectionLost" packages/web/ --type ts -l
    `useTranslations("studio")` to resolve `state.error.i18nKey` at render time for
    proper locale support. The default `userMessage` is a fallback for non-render contexts.
 
-6. **Exclude-/baseline governance.** `.ai_interaction_exclude` and any future AI-UX
-   baseline are not permanent waivers. Each entry must include the following
+6. **Exclude-/baseline governance.** `scripts/checks/.ai_interaction_exclude` (the
+   `.ai_interaction_exclude` file in `scripts/checks/`) and any future AI-UX baseline
+   are not permanent waivers. Each entry must include the following
    mandatory fields; missing lifecycle metadata means the exclude is not
    architecture-approved and will be rejected by the checker:
 

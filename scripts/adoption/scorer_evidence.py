@@ -234,3 +234,16 @@ def load_budget_resolution_evidence(evidence_dir: str | Path) -> dict[str, set[s
             )
         ),
     )
+
+
+def load_evidence_sink_evidence(evidence_dir: str | Path) -> dict[str, set[str]]:
+    """Load evidence sink marker file.
+
+    Reads evidence from ``evidence_sink.json``.
+    Returns ``{feature_id: {mode, ...}}`` or empty dict.
+    """
+    marker_path = Path(evidence_dir) / "evidence_sink.json"
+    return _load_marker_modes(
+        marker_path,
+        lambda record: not _is_placeholder_record(record),
+    )

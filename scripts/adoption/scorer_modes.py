@@ -83,6 +83,7 @@ def _check_runtime_requirements(
     preference_evidence: dict[str, set[str]] | None = None,
     validation_evidence: dict[str, set[str]] | None = None,
     budget_evidence: dict[str, set[str]] | None = None,
+    evidence_sink_evidence: dict[str, set[str]] | None = None,
 ) -> tuple[list[RuntimeCheckDetail], bool]:
     """Check runtime requirements; return (details, all_verified).
 
@@ -109,12 +110,11 @@ def _check_runtime_requirements(
     details, all_verified = apply_evidence_override(
         details,
         all_verified,
-        probe_evidence,
+        evidence_sink_evidence,
         mode_feature_id,
         mode_name,
         "evidence_sink",
-        "verified by probe evidence",
-        optional_requirement_name="final_validation",
+        "verified by evidence sink probe",
     )
     details, all_verified = apply_evidence_override(
         details,
@@ -172,6 +172,7 @@ def compute_mode_score(
     preference_evidence: dict[str, set[str]] | None = None,
     validation_evidence: dict[str, set[str]] | None = None,
     budget_evidence: dict[str, set[str]] | None = None,
+    evidence_sink_evidence: dict[str, set[str]] | None = None,
 ) -> ModeScore:
     """Compute adoption score for a single mode.
 
@@ -249,6 +250,7 @@ def compute_mode_score(
             preference_evidence=preference_evidence,
             validation_evidence=validation_evidence,
             budget_evidence=budget_evidence,
+            evidence_sink_evidence=evidence_sink_evidence,
         )
     else:
         runtime_details, runtime_verified = [], False
@@ -297,6 +299,7 @@ def compute_all_mode_scores(
     preference_evidence: dict[str, set[str]] | None = None,
     validation_evidence: dict[str, set[str]] | None = None,
     budget_evidence: dict[str, set[str]] | None = None,
+    evidence_sink_evidence: dict[str, set[str]] | None = None,
 ) -> list[ModeScore]:
     """Compute ModeScores for all modes in a category."""
     scores: list[ModeScore] = []
@@ -333,6 +336,7 @@ def compute_all_mode_scores(
             preference_evidence=preference_evidence,
             validation_evidence=validation_evidence,
             budget_evidence=budget_evidence,
+            evidence_sink_evidence=evidence_sink_evidence,
         )
         scores.append(ms)
     return scores

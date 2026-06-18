@@ -1,9 +1,9 @@
 # AUFG Registry — Architecture Governance Lifecycle
 
 > **Status:** Active registry
-> **Established by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md)
+> **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-18 (AUFG-04-01 added — writing/story_suggest orphan template disposition)
+> **Last updated:** 2026-06-18 (CR-08 configuration/effect drift AUFGs and CR-AUFG-07-07 through CR-AUFG-07-13 AI UX compliance lifecycle added)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -34,11 +34,74 @@ dependencies, acceptance criteria, Definition of Done, exit evidence, and review
 trigger/date where relevant.
 
 Priorities use `P0` (release/security blocking), `P1` (high governance priority),
-`P2` (planned hardening), and `P3` (strategic/post-MVP exploration).
+`P2` (planned hardening), `P3` (strategic/post-MVP exploration), and `P4`
+(documentation/status-taxonomy/gate hardening that prevents future drift but does not
+block the immediate runtime remediation once P0/P1 are complete).
 
 ---
 
 ## Active AUFGs
+
+### CR-08 Configuration/Effect Drift AUFG Set
+
+| Field | Value |
+|-------|-------|
+| IDs | CR-AUFG-08-01 through CR-AUFG-08-14 |
+| Title | Configuration/Effect Drift Remediation |
+| Source | CR-08 hardcoded-values audit and candidate ADR-051 Configuration Effect Adoption Contract |
+| Status | `open` |
+| Priority | P0–P4 by phase |
+| Area | Settings, Core LLM runtime, Writing context assembly, Provider catalogs, Frontend settings UI, Platform governance, Docs |
+| Owner role | Architecture Specialist (contract), Core/Backend/Frontend/Platform/Docs Specialists by phase |
+| Dependencies | ADR-045 run-limit enforcement, SET-005 token-limit cascade, `TokenLimitsService`, `ModelRoutingResolverImpl`, provider catalog/cache paths |
+| Review trigger/date | Re-review after P0/P1 completion, before any claim that SET-005 is stable/runtime-adopted, or by 2026-07-31 if still open. |
+
+**Lifecycle decision:**
+
+CR-08 findings are not allowed to remain as prose-only audit notes. The durable lifecycle
+surface is the implementation-ready remediation specification at
+`docs/features/remediation/cr-08-configuration-effect-drift.md`, tracked against
+candidate ADR-051. ADR-051 must be accepted or superseded before these tasks can be
+marked resolved.
+
+**Phase summary:**
+
+- **P0:** CR-AUFG-08-09 Configuration Adoption Matrix; CR-AUFG-08-01 output-limit
+  runtime enforcement (FIND-001); CR-AUFG-08-02 context tier runtime application
+  (FIND-012).
+- **P1:** CR-AUFG-08-03 token vocabulary unification; CR-AUFG-08-10 token settings
+  UI/API/Core parity (FIND-013); CR-AUFG-08-07 model-limit calibration;
+  CR-AUFG-08-11 model suitability policy.
+- **P2:** CR-AUFG-08-04 inline suggest cap; CR-AUFG-08-05 consistency caps layer;
+  CR-AUFG-08-06 setup fallback catalogs/Ollama defaults; CR-AUFG-08-08 system model
+  resolver; CR-AUFG-08-12 operator/default governance.
+- **P3:** CR-AUFG-08-13 governed defaults manifest for long-tail defaults.
+- **P4:** CR-AUFG-08-14 docs/status taxonomy and audit-template/gate hardening.
+
+**Acceptance criteria:**
+
+- Every CR-08 value is classified as formal finding, implementation task, governed
+  default with tests/rationale, covered existing path, not-applicable, or accepted risk
+  with owner/exit criteria.
+- No exposed/user-facing setting may be marked resolved without source → resolver →
+  runtime consumer → enforcement regression evidence.
+- SET-005 status wording remains qualified until runtime-effect adoption evidence exists.
+- Platform governance blocks new unclassified P0/P1 configuration/effect findings once
+  baseline is established.
+
+**Definition of Done:**
+
+- ADR-051 accepted or superseded by an equivalent contract.
+- `docs/features/remediation/cr-08-configuration-effect-drift.md` phase DoD complete.
+- FIND-001, FIND-012, and FIND-013 have implementation-on-disk, enforcement, and
+  cross-feature integration evidence before being marked resolved.
+- Governance registry entry updated with exit evidence and status `resolved` or with
+  any remaining items split into accepted risks/enhancements with owner and review date.
+
+**Exit evidence:** Pending — specification created; implementation not started in this
+architecture-only slice.
+
+---
 
 ### AUFG-04-01 — writing/story_suggest Orphan Template Disposition
 
@@ -92,6 +155,230 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 - This registry entry is updated with exit evidence and status `resolved`.
 
 **Exit evidence:** Pending — open until WRITE-009 planning or a descoping decision.
+
+---
+
+### CR-AUFG-07-07 — KB Field Suggest AI-UX Lifecycle Compliance
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-07-07 |
+| Title | KB Field Suggest AI-UX Lifecycle Compliance |
+| Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; KB Field Suggest (`useKBSessionSuggest` in `packages/web/lib/hooks/useKBSessions.ts`) uses raw TanStack mutation with unhandled errors and no visible cancel. |
+| Status | `open` |
+| Priority | P1 |
+| Area | Frontend, KB assisted creation, AI UX, §16 compliance |
+| Owner role | Frontend Specialist; Platform Specialist for checker/test enforcement |
+| Dependencies | ADR-043; `docs/architecture/governance/ai-ux-compliance-v2.md`; `suggestField` SSE transport; KBAssistedCreationController UI. |
+| Review trigger/date | Re-review when KB assisted creation AI flow changes, or before any CR-07 full-compliance claim. |
+
+**Acceptance criteria:**
+
+- KB Field Suggest is represented in the AI Operation Inventory.
+- The flow either uses `useAIOperation` or a documented adapter with equivalent structured error mapping, visible loading state, and user-visible cancel.
+- Cancellation reaches the `AbortSignal` passed to the `suggestField` transport; UI-only cancellation is not sufficient.
+- Errors are mapped to structured `AIErrorResponse`/`studio.aiActions.*` messages.
+- Component/hook tests prove loading, cancel, error mapping, and successful suggestion application.
+
+**Definition of Done:**
+
+- Frontend implementation and tests are present on disk.
+- Platform AI-UX checks cover the operation inventory and signal/cancel requirements.
+- Any linked `.ai_interaction_exclude` entry is removed or converted to a justified structural category.
+- Registry status is updated with implementation + enforcement exit evidence.
+
+**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+
+---
+
+### CR-AUFG-07-08 — KB Improve AI-UX Lifecycle Compliance
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-07-08 |
+| Title | KB Improve AI-UX Lifecycle Compliance |
+| Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; KB Improve (`useKBImprove.ts`, `KBImprovePanel.tsx`) uses TanStack mutation/error mapping but lacks `useAIOperation` lifecycle and cancel support. |
+| Status | `open` |
+| Priority | P1 |
+| Area | Frontend, KB improve, AI UX, §16 compliance |
+| Owner role | Frontend Specialist; Platform Specialist for checker/test enforcement |
+| Dependencies | ADR-043; `docs/architecture/governance/ai-ux-compliance-v2.md`; KB improve API contract; existing `mapSSEError`/REST error adapter. |
+| Review trigger/date | Re-review when KB improve API or panel lifecycle changes, or before any CR-07 full-compliance claim. |
+
+**Acceptance criteria:**
+
+- KB Improve is represented in the AI Operation Inventory.
+- The operation uses `useAIOperation` or an equivalent documented adapter for lifecycle, cancel, retry, and structured error state.
+- A visible cancel control exists for the long-running AI operation and reaches the transport/API cancellation mechanism.
+- Structured error mapping remains actionable and i18n-backed.
+- Tests cover loading state, cancel behavior, error display, and apply/selection behavior after remediation.
+
+**Definition of Done:**
+
+- Frontend implementation and tests are present on disk.
+- Platform gates can detect future missing lifecycle/cancel/error coverage for KB Improve.
+- Registry status is updated with implementation + enforcement exit evidence.
+
+**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+
+---
+
+### CR-AUFG-07-09 — Timeline Extraction useAIOperation or Governed Adapter
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-07-09 |
+| Title | Timeline Extraction useAIOperation or Governed Adapter |
+| Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; `useTimelineExtraction.ts` uses manual AbortController for callback-based SSE and is currently excluded in `scripts/checks/.ai_interaction_exclude`. |
+| Status | `open` |
+| Priority | P1 |
+| Area | Frontend, Timeline extraction, SSE, AI UX, exclude governance |
+| Owner role | Frontend Specialist; Platform Specialist for stale-exclude and signal-propagation checks |
+| Dependencies | ADR-043 note on callback SSE wrappers; `extractExpressionsSSE`; `docs/architecture/governance/ai-ux-compliance-v2.md`; current exclude entry for `packages/web/lib/hooks/useTimelineExtraction.ts`. |
+| Review trigger/date | Re-review when timeline extraction SSE wrapper changes, when `useAIOperation` callback adapter is introduced, or before any CR-07 full-compliance claim. |
+
+**Acceptance criteria:**
+
+- Timeline Extraction is represented in the AI Operation Inventory.
+- Preferred path: migrate callback SSE lifecycle to `useAIOperation` by converting callback errors to Promise rejection.
+- If a non-hook adapter remains necessary, the exception is justified as a governed adapter with visible cancel, structured error mapping, partial output preservation, retry behavior, and linked AUFG evidence.
+- `cancelExtraction` is exposed in the visible UI where extraction can exceed 2 seconds.
+- The linked `.ai_interaction_exclude` entry is removed or updated with AUFG-linked, non-stale governance metadata.
+
+**Definition of Done:**
+
+- Frontend implementation/tests prove cancel reaches `AbortSignal` and errors are structured.
+- Platform stale-exclude and lifecycle sync gates cover this AUFG.
+- Registry status is updated with implementation + enforcement exit evidence.
+
+**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+
+---
+
+### CR-AUFG-07-10 — GhostText Visible Loading/Status Indicator
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-07-10 |
+| Title | GhostText Visible Loading/Status Indicator |
+| Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; GhostText fetches SSE suggestions from a TipTap extension without visible loading indication. |
+| Status | `open` |
+| Priority | P1 |
+| Area | Frontend, TipTap GhostText, AI UX, non-React extension governance |
+| Owner role | Frontend Specialist; Platform Specialist for inventory/exclude enforcement |
+| Dependencies | ADR-043 structural exclude category for non-React extensions; `GhostText.ts` / ghost-text helpers; `createSseSuggestionFetcher`; `docs/architecture/governance/ai-ux-compliance-v2.md`. |
+| Review trigger/date | Re-review when GhostText extension lifecycle changes, when a React controller can pass lifecycle state, or before any CR-07 full-compliance claim. |
+
+**Acceptance criteria:**
+
+- GhostText Suggestion Fetch is represented in the AI Operation Inventory.
+- Users receive visible loading/status feedback during suggestion fetch without hardcoded visible strings.
+- Any visible text is provided through localized extension options, not hardcoded in ProseMirror DOM.
+- Existing non-React AbortController governance remains constrained to the extension adapter and does not leak manual lifecycle patterns into React components.
+- Tests or targeted extension assertions prove loading/status state appears and clears.
+
+**Definition of Done:**
+
+- Frontend implementation and tests are present on disk.
+- Platform inventory/stale-exclude checks keep the non-React exception governed.
+- Registry status is updated with implementation + enforcement exit evidence.
+
+**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+
+---
+
+### CR-AUFG-07-11 — KB Enhance Cancel Signal Propagation
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-07-11 |
+| Title | KB Enhance Cancel Signal Propagation |
+| Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben plus coordinator discovery; `EnhanceLoadingState` has cancel UI, but `execute: () => onRequestEnhance()` and mutation calls may not pass the `AbortSignal` to transport. |
+| Status | `open` |
+| Priority | P1 |
+| Area | Frontend, KB enhance, signal propagation, AI UX |
+| Owner role | Frontend Specialist; Platform Specialist for signal-propagation checker |
+| Dependencies | ADR-043; `KBEnhanceReview.tsx`; `EnhanceLoadingState`; `requestEnhance` transport; `docs/architecture/governance/ai-ux-compliance-v2.md`. |
+| Review trigger/date | Re-review when KB enhance request lifecycle changes, or before any CR-07 full-compliance claim. |
+
+**Acceptance criteria:**
+
+- KB Enhance is represented in the AI Operation Inventory.
+- `useAIOperation.execute(signal)` passes the signal through every intermediate callback to the API wrapper/transport.
+- The visible cancel control aborts the in-flight transport, not only local UI state.
+- Tests prove cancel invokes the transport with an abort signal and stops the loading state.
+
+**Definition of Done:**
+
+- Frontend implementation and tests are present on disk.
+- Platform signal-propagation gate can detect this class of regression.
+- Registry status is updated with implementation + enforcement exit evidence.
+
+**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+
+---
+
+### CR-AUFG-07-12 — Deprecated AI-Action i18n Alias Prevention
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-07-12 |
+| Title | Deprecated AI-Action i18n Alias Prevention |
+| Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; `ui-principles.md` §16.8 marks exact aliases such as `aiModal.accept`, `generation.stop`, `annotation.keep`, and `rewrite.replace` as deprecated, but prevention is incomplete. |
+| Status | `open` |
+| Priority | P1 |
+| Area | Frontend i18n, AI action vocabulary, Platform lint/checker |
+| Owner role | Frontend Specialist for key migration/removal; Platform Specialist for lint/checker; Docs Specialist for §16.9 sync |
+| Dependencies | RULE-16; `packages/web/messages/{de,en,fr}/studio.json`; `docs/development/ui-principles.md` §16.8; `docs/architecture/governance/ai-ux-compliance-v2.md`. |
+| Review trigger/date | Re-review when studio i18n namespaces change, or before any CR-07 full-compliance claim. |
+
+**Acceptance criteria:**
+
+- The exact deprecated §16.8 AI-action aliases are absent from TS/TSX usage or blocked by a CI-visible checker.
+- Broader namespaces (`generation.*`, `rewrite.*`, etc.) are not blanket-banned when used for non-action copy; the gate targets exact deprecated AI-action aliases.
+- If stale key definitions remain in locale JSON files for compatibility, the checker still forbids usage and the inventory records the compatibility rationale.
+- 3-locale parity for canonical `studio.aiActions.*` remains green.
+
+**Definition of Done:**
+
+- Frontend removes or stops using deprecated aliases and updates tests as needed.
+- Platform checker/lint rule prevents reintroduction of exact deprecated aliases.
+- Docs update §16.9 to reflect the implemented gate.
+- Registry status is updated with implementation + enforcement exit evidence.
+
+**Exit evidence:** Pending — open until Frontend migration and Platform enforcement exist.
+
+---
+
+### CR-AUFG-07-13 — Consistent Keyboard Shortcuts for AI Output Actions
+
+| Field | Value |
+|-------|-------|
+| ID | CR-AUFG-07-13 |
+| Title | Consistent Keyboard Shortcuts for AI Output Actions |
+| Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; rewrite modal, generation review, KB enhance review, and co-author panel have inconsistent or incomplete keyboard shortcuts for accept/reject/retry actions. |
+| Status | `open` |
+| Priority | P1 |
+| Area | Frontend, accessibility, keyboard UX, AI action consistency |
+| Owner role | Frontend Specialist; Docs Specialist for shortcut documentation; Platform Specialist for tests/gate evidence |
+| Dependencies | KEYBOARD-001 precedent; `docs/development/ui-principles.md` §16; `docs/architecture/governance/ai-ux-compliance-v2.md`; affected AI output action components. |
+| Review trigger/date | Re-review when AI output action patterns change, or before any CR-07 full-compliance claim. |
+
+**Acceptance criteria:**
+
+- The AI Operation Inventory records keyboard behavior for rewrite, generation review, KB enhance review, and co-author actions.
+- A consistent shortcut scheme is implemented and documented for applicable accept/reject/retry/cancel actions.
+- Shortcuts do not conflict with text-entry contexts or existing TipTap shortcuts; focus handling remains accessible.
+- Tests prove shortcuts trigger the same handlers as visible buttons.
+
+**Definition of Done:**
+
+- Frontend implementation and tests are present on disk.
+- Docs reflect the final shortcut scheme in user-facing/developer guidance where applicable.
+- Platform test/check evidence prevents silent regression for the covered components.
+- Registry status is updated with implementation + enforcement exit evidence.
+
+**Exit evidence:** Pending — open until Frontend implementation, Platform evidence, and Docs updates exist.
 
 ---
 

@@ -1,27 +1,26 @@
 ---
 id: SET-005
 title: "Configurable Token Limits"
-status: stable
+status: in-progress
 phase: 1
 area: settings
-mvp: true
+mvp: false
 
-ui_tooltip: "Customize token budgets and output limits for every AI feature."
+ui_tooltip: "Review token budget settings; runtime adoption is in progress."
 ui_help_short: |
-  Just like you can customize prompts, you can now adjust every token
-  limit in Narrare — output lengths per feature, context budget tiers,
-  and timeouts — all from the Settings UI without editing code.
+  View and edit token-limit settings. Some controls are still being
+  wired to runtime behavior under CR-08.
 ui_help_long: |
-  Every AI feature in Narrare uses token limits and budgets that determine
-  how much the AI writes, how much context it sees, and when it times out.
+  SET-005 gives Narrare a storage/API/UI cascade for output-limit profiles,
+  context-budget percentages, and system timeout visibility. Defaults and saved
+  overrides live in one place instead of being scattered through code or env files.
 
-  With this feature, you can tune every single one of these values from
-  the Settings UI — no config files, no environment variables, no code changes.
-  Narrare provides sensible defaults, but power users and self-hosters can
-  override anything.
+  CR-08 found that some saved settings are not yet proven at the runtime boundary.
+  Treat these controls as configuration surfaces until CR-AUFG-08-01/02/03/09/10
+  have implementation-on-disk, enforcement, and cross-layer evidence.
 
-  There are three groups of settings:
-  - **Output Limits** — How many tokens each feature can generate per call
+  The Settings tab shows three groups:
+  - **Output Limits** — Stored per-call generation limit profiles and values
     (quick/balanced/long profiles, or raw token values)
   - **Context Budget** — How the total token budget is distributed across
     context tiers (immediate chapter, recent history, KB entities, pinned items)
@@ -33,9 +32,16 @@ ui_available_in: [settings]
 
 ## What it does
 
-Lets users (and operators) view and adjust every token limit, budget
-percentage, and timeout in Narrare through a dedicated Settings tab —
-without editing code, env vars, or YAML files.
+Provides a Settings surface and persistence/API cascade for token limits, budget
+percentages, and timeout-related configuration. Runtime-effect adoption remains
+open for the CR-08 items listed below; a control must not be described as effective
+until its source → resolver → runtime consumer → enforcement evidence exists.
+
+> **CR-08 status note (2026-06-18):** SET-005's storage/API/UI cascade exists, but
+> CR-08 found runtime-effect gaps. Do not claim that every control changes production
+> behavior until CR-AUFG-08-01/02/03/09/10 have implementation-on-disk, enforcement,
+> and cross-layer evidence. Remediation is specified in
+> [`docs/features/remediation/cr-08-configuration-effect-drift.md`](../remediation/cr-08-configuration-effect-drift.md).
 
 ## Why it exists
 
@@ -57,7 +63,7 @@ makes Narrare adaptable by its users.
 3. **Output Limits** shows a table of features (Draft, Summary, Suggest, Continue, Consistency, etc.) each with a dropdown: *quick* / *balanced* / *long* — or a raw token input for precise control
 4. **Context Budget** shows the 5-tier pie chart (immediate/recent/kb_referenced/kb_suggested/pinned) with percentage sliders that automatically adjust to total 100%
 5. **System** shows WebSocket timeout (seconds), retry count, API timeout
-6. Every change saves immediately and takes effect on the next AI call
+6. Changes save through the Settings cascade; only controls with adoption evidence may be described as taking effect on the next AI call. Open CR-08 controls remain pending runtime-effect adoption.
 7. A **"Reset to defaults"** button restores all factory values
 
 ## How it works (Technical)
@@ -76,12 +82,15 @@ Operator env var (config.py / .env)
 Code default (hardcoded in core/)
 ```
 
-**Model Data Source:** All token limit suggestions (max context, max output per model) are derived from [models.dev](https://models.dev) data. See [Model Data Reference](../../reference/model-data.md) for details on how model specifications are fetched, cached, and refreshed.
+**Model Data Source:** Model-limit suggestions use [models.dev](https://models.dev) data where available. See [Model Data Reference](../../reference/model-data.md) for details on how model specifications are fetched, cached, and refreshed. CR-AUFG-08-07/11 remain open for calibration and suitability-warning policy.
 
 ### Core Changes
 
+Core has budget override mechanics, but the Settings-to-runtime adoption is not fully
+closed until CR-AUFG-08-01/02/03/09/10 provide enforcement evidence.
+
 **`packages/core/narrare_core/writing/budget.py`:**
-- `TokenBudgetManager` constructor accepts optional `token_budget_overrides` dict
+- `TokenBudgetManager` constructor accepts optional `tier_overrides` dict
 - `_BASE_PERCENTAGES` and `_FIRST_CHAPTER_PERCENTAGES` become overridable
 - API: `TokenBudgetManager(total_budget=6000, tier_overrides={"immediate": 0.40})`
 
@@ -113,9 +122,12 @@ budget_tier_percentages: str = ""  # optional JSON: '{"immediate":30,"recent":20
 | `token_limits/service.py` | Cascade resolution logic + merge with env/code defaults |
 | `token_limits/router.py` | REST endpoints under `/api/v1/settings/token-limits` |
 
-### Backend Deps-Integration
+### Backend Resolver Integration
 
-All writing deps now use `TokenLimitsService` instead of raw `resolve_output_limit()`:
+Several writing dependency factories resolve settings through `TokenLimitsService`
+instead of raw `resolve_output_limit()`. These resolver integrations do not by
+themselves prove model-boundary enforcement; CR-AUFG-08-01 remains open until the
+effective limit is enforced at `run()`/`stream()`/agent boundaries with evidence.
 
 - `apps/api/narrare/writing/deps.py`: `get_writing_service()`, `get_extend_service()`, `get_rewrite_service()` resolve limits via `TokenLimitsService.get_resolved_limits()`
 - `apps/api/narrare/writing/summary_deps.py`: `get_summary_service()` uses `TokenLimitsService` instead of `resolve_output_limit()`
@@ -153,9 +165,10 @@ The old columns (`user_ai_settings.token_limit_overrides`, `project_ai_settings.
 
 ## Implementation
 
-See the [Data Migration & Deprecation Plan](../architecture/implementation-plans/SET-005-data-migration-plan.md) for detailed implementation steps and migration strategy.
+See the [Data Migration & Deprecation Plan](../../architecture/implementation-plans/SET-005-data-migration-plan.md) for detailed implementation steps and migration strategy.
 
-Phase 1 (SET-005) delivered:
+SET-005 storage/API/UI foundation delivered (legacy SET-005 work; not full CR-08
+runtime-effect closure):
 - `token_limits/` module: contracts, models, schemas, repository, service, router
 - Data migration from old columns → new tables (non-destructive, idempotent)
 - Three-layer resolution cascade
@@ -166,22 +179,32 @@ Phase 1 (SET-005) delivered:
 - Model limits validation via `get_model_limits()`
 - Frontend profile read/write via `TokenLimitsApi`
 
-Phase 2 (CR-AUFG-08-02) delivered:
+Historical consistency integration delivered (legacy SET-005 work; not the current
+CR-AUFG-08-02 P0 task for `tier_percentages` → `WritingContextAssembler`):
 - Consistency module integration: `checker_service.py` resolves limits via `TokenLimitsService`
 - `prompt_builder.py` accepts `max_chapter_tokens` parameter instead of hardcoded `MAX_CONSISTENCY_CONTEXT_TOKENS`
 - `checker_helpers.py` accepts `max_kb_entries` parameter instead of hardcoded `MAX_KB_ENTRIES`
 - `consistency/deps.py` factory wires TokenLimitsService injection
 - New fields: `max_chapter_tokens: int = 2000`, `max_kb_entries: int = 100`
 
+Current CR-08 blockers are tracked in
+[`CR-08 Remediation — Configuration/Effect Drift`](../remediation/cr-08-configuration-effect-drift.md).
+In particular, CR-AUFG-08-02 remains open until `TokenLimitOverrides.tier_percentages`
+changes `WritingContextAssembler` tier budgets with implementation, enforcement, and
+cross-layer evidence.
+
 ## Related Features
 
 - [SET-001](SET-001-user-settings.md) — User settings base
 - [SET-003](SET-003-model-config.md) — Per-task Model Configuration (token_limit_profile)
-- [CR-08 audit](../../_audit/results/content-review/cr-08-hardcoded-values.md) — Audit that motivated this feature
-- [INFRA-005](../../../docs/features/infra/INFRA-005-memory-layer.md) — Memory Layer (mem0 embedding model config)
+- [CR-08 audit](../../../_audit/results/content-review/cr-08-hardcoded-values.md) — Audit that motivated this feature
+- [INFRA-005](../infra/INFRA-005-memory-layer.md) — Memory Layer (mem0 embedding model config)
 
 ## Status & History
 
-- `2026-05-24` — Created from CR-08 audit findings
-| 2026-05-26 | Phase 1 implemented | Stable |
-| 2026-06-08 | Phase 2 implemented (CR-AUFG-08-02) | Stable |
+| Date | Change | Status |
+|---|---|---|
+| 2026-05-24 | Created from CR-08 audit findings | In Progress |
+| 2026-05-26 | Storage/API/UI foundation implemented as legacy SET-005 work | In Progress |
+| 2026-06-08 | Historical consistency integration implemented as legacy SET-005 work; not current CR-AUFG-08-02 closure | In Progress |
+| 2026-06-18 | CR-08 reclassified runtime-effect adoption gaps; status remains in-progress until false controls are closed | In Progress |

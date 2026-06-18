@@ -21,7 +21,8 @@
       "preferences",
       "summarize",
       "remap",
-      "consistency"
+      "consistency",
+      "fact_extraction"
     ],
     "kb": [
       "consistency",
@@ -34,7 +35,8 @@
       "enhance"
     ],
     "planning": [
-      "outline"
+      "outline",
+      "temporal_consistency"
     ],
     "generation": [
       "names"

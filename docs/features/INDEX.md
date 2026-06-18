@@ -166,7 +166,7 @@
 | [SET-001](settings/SET-001-user-settings.md) | User Settings | ✅ | ✅ |
 | [SET-002](settings/SET-002-project-settings.md) | Project Settings | ✅ | ✅ |
 | [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | ✅ | ✅ |
-| [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | ✅ | ❌ |
+| [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | 🔨 | ❌ |
 | [KEYBOARD-001](keyboard-consistency.md) | Tastatur-Konsistenz | ✅ | ❌ |
 
 ### Analytics & Cost
@@ -274,5 +274,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-13 — CONS-001 remains stable; ADR-044 staged consistency implementation recorded with enriched timeline/fact extraction flow. ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-18 — SET-005 remains in-progress: storage/API/UI cascade exists, but CR-08 runtime-effect adoption blockers stay open until implementation, enforcement, and cross-layer evidence close CR-AUFG-08-01/02/03/09/10. ADR-051 is proposed/candidate only. ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

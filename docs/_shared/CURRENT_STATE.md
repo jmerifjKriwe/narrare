@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-18 (CR-04 Phase E — Documentation/Governance closure)
-Session: Phase E documentation completion of CR-04 remediation. FIND-010 and FIND-011 marked ✅ Resolved with implementation + enforcement evidence (ADR-049 Phase C/D). ADR-049 and ADR-050 added to the Decisions table. CR-04 core remediation is complete (implemented + enforced); known ratcheted follow-up debt is recorded explicitly rather than concealed: 3 inline f-string services (character_arc, timeline_extraction, kb/merge — ratcheted baseline), the `writing/story_suggest` orphan template (tracked as AUFG-04-01), the ADR-037 latent AST-parsing bug (fixed in Phase D), and the `prompt-standards.md` enumeration gap (now corrected). Stale `_bundled/chat/` references in active docs cleaned up. Status-Taxonomie standard added; future-agent hint added. Q-013 i18n tone drift corrected.
+Date: 2026-06-18 (CR-08 SET-005 docs-gate correction)
+Session: SET-005 remains in-progress: storage/API/UI cascade exists, but CR-08 runtime-effect adoption gaps are open. ADR-051 is a proposed/candidate contract, not an accepted governing ADR; CR-AUFG-08 tasks require implementation-on-disk, enforcement, cross-layer evidence, and ADR-051 acceptance or supersession before they can be marked resolved. CR-07 remains conservatively tracked: ADR-043 primitives and CR-AUFG-07-01 through CR-AUFG-07-06 are implemented, while CR-AUFG-07-07 through CR-AUFG-07-13 stay open in `docs/architecture/governance/aufg-registry.md`.
 
 ---
 
@@ -68,7 +68,7 @@ Alembic migrations 0001 through 0030 (0028: invocation_evidence table; 0030: evi
 
 - `_shared/`: CONSTRAINTS.md (23 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001–ADR-048 plus implementation plans (INDEX.md — ADR-039 gap; ADR-046 Implemented, ADR-047 Proposed)
+- `architecture/decisions/`: ADR-001–ADR-051 plus implementation plans (INDEX.md — ADR-039 gap; ADR-047/ADR-048/ADR-051 Proposed; ADR-046/ADR-049/ADR-050 implemented or accepted as listed there)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 9 resolved)
 - `features/`: Feature specs with status tracking; see `docs/features/INDEX.md`
 - `features/INDEX.md` → ADAPTER-001/002: MCP and A2A adapters documented as "Planned, Not Implemented" (post-MVP, Q-001/Q-002 blockers)
@@ -118,7 +118,7 @@ Completed in Phase 6 so far:
 10. ✅ ANAL-001: Beta Reader Simulation — BetaReaderAgent + ScoreRadar + 4-tab panel
 11. ✅ ANAL-002: Sentiment Analysis — LexiconSentimentAnalyzer + arc trajectory graphs
 12. ✅ CONS-001: Consistency Checker — ConsistencyAgent + rule-based pre-check + actions
-13. ✅ SET-005: Configurable Token Limits — 3-layer resolution cascade
+13. 🔧 SET-005: Configurable Token Limits — storage/API/UI cascade exists; CR-08 runtime-effect adoption gaps are specified by the candidate ADR-051 contract and `docs/features/remediation/cr-08-configuration-effect-drift.md` before the feature can return to stable status
 14. ✅ CR-01 through CR-04: Prompt quality audits + preference wiring + meta-prompt guardrails
 15. ✅ Coverage Uplift: 1,045+ new tests across all layers
 16. ✅ ADR-016: Prompt Caching — Implemented across all 4 phases (Phase 0: AgentRegistry, Phase 1: CacheSettings+ModelSettings, Phase 2: Cache Observability, Phase 3: WritingGraph Backend DI)
@@ -152,8 +152,8 @@ Completed in Phase 6 so far:
   44. ✅ **CR-04 Cross-Feature Coherence Remediation**: KB Context Contract with source/evidence/confidence/review_status metadata (CR-AUFG-04-01 + B1 + B3); Variable naming canonical aliases with deprecation of bare `language` (CR-AUFG-04-03 + E2 + B6); ADR Implementation Completeness Gate (Gate 12); Cross-Feature Audit Cadence; FIND-009 (Timeline→Consistency) registered. 39 new tests. Precedence confirmed in RULE-22 §7 (E3: no standalone ADR needed). **Note (2026-06-18, ADR-050):** FIND-009 was split into FIND-009a (resolved by ADR-044 for the Consistency consumer) and FIND-009b (open; closed by ADR-050 P1-B `CrossFeatureRefIndex` for all other consumers).
   45. ✅ **CR-03 / INFRA-013 P4 (ADR-042)**: PersistentEvidenceSink (PostgreSQL hybrid), EvidenceRepository protocol + implementation, PersistentEvidenceSink in Backend, Alembic migration 0028_invocation_evidence, 41 tests (23 unit + 18 integration). FileEvidenceSink unchanged for CI.
    46. ✅ **CR-03 / INFRA-013 P5 — Full Static Adoption Achieved**: All feature modes have adoption infrastructure wired (probes, registry entries, static adoption passes). Runtime adoption: baseline-approved gaps remain (final_validation, preference_enrichment, budget_resolution, evidence_sink). Universal blocker (preference_enrichment) cracked via PreferenceContextEnricherImpl + preference enrichment probe + marker file + scorer override. Validation probe (RuntimeVariableValidatorImpl + FinalPromptValidatorImpl) + budget probe (IntentOutputBudgetResolverImpl) + scorer overrides for final_validation, budget_resolution, kb_suggested. Scorer bugfix: not_applicable no longer blocks adoption. New mode probes + preference enrichment probe + validation+budget probes. ai-gate-baseline.json ratcheted: no new adoption debt above baseline floor. CI integration: probes run before adoption check.
-47. ✅ **CR-07 UX Audit Remediation — Full Implementation**: ADR-043 useAIOperation hook + mapSSEError implementiert. Alle P0/P1 AI-Flows (GenerationPanel, CoAuthorPanel, ContinueButton, TipTapEditor, KB sessions, timeline, KB _components) auf useAIOperation migriert. §16 Compliance: aiActions.* i18n keys (de/en/fr), structured AIErrorResponse, no raw AbortController, no useConnectionLost. Maschinelle Compliance-Checks + CI-Integration. RULE-04: scorer_modes.py (401→365) + compliance script (594→93) modularisiert. ONBOARD-001, PROMPT-003, KEYBOARD-001 Feature-Specs erstellt. Q-012 resolved. Commit 1001125: 84 Dateien, +5.132/-674.
-48. ✅ **CR-07 UX Audit — Phase 2**: CR-AUFG-07-01 bis CR-AUFG-07-06 abgeschlossen. 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming DEAD CODE DELETED. Migrierte Flows: Chat SSE (CHAT-001), Beta Reader (ANAL-001), Extraction (KB-007), Worldbuilding (KB-006), Name Generator (GEN-001), Consistency Check (CONS-001). KEYBOARD-001 implementiert (Ctrl+Enter, Escape-Cancel). 5 Testfiles aktualisiert, 40+14 Tests grün.
+47. 🔧 **CR-07 UX Audit Remediation — ADR-043 primitives implemented; full §16 closure pending**: ADR-043 `useAIOperation` hook + `mapSSEError` primitives are implemented and many AI flows were migrated. The earlier "Full Implementation" wording is intentionally downgraded: refreshed CR-07 evidence keeps CR-AUFG-07-07 through CR-AUFG-07-13 open (KB Field Suggest, KB Improve, Timeline Extraction, GhostText loading, KB Enhance signal propagation, deprecated AI-action aliases, keyboard shortcuts). Lifecycle SSOT: `docs/architecture/governance/aufg-registry.md`; governance contract: `docs/architecture/governance/ai-ux-compliance-v2.md`.
+48. ✅ **CR-07 UX Audit — Phase 2**: CR-AUFG-07-01 bis CR-AUFG-07-06 abgeschlossen. 8 AI-Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming DEAD CODE DELETED. Migrierte Flows: Chat SSE (CHAT-001), Beta Reader (ANAL-001), Extraction (KB-007), Worldbuilding (KB-006), Name Generator (GEN-001), Consistency Check (CONS-001). Initiale KEYBOARD-001-Shortcut-Abdeckung implementiert; vollständige AI-Output-Shortcut-Konsistenz bleibt CR-AUFG-07-13. 5 Testfiles aktualisiert, 40+14 Tests grün.
 49. ✅ **AUFG-03-06 Agent Error Classification**: Core `agents/errors.py` (AgentError, ModelExecutionError, ModelRetryExhaustedError, AgentTimeoutError, AgentCancelledError) + `agents/error_translator.py` (single translation point for `run()`/`run_stream()`) + `agents/base.py` updated to use classified errors. Privacy-safe log attributes, no raw provider exceptions past agent boundary. 31 unit tests in `test_agent_error_classification.py`. Cancel≠error semantics enforced.
 50. ✅ **AUFG-03-09 AI-UX-Gate-Governance + ADR-043 Exclude Pflichtfeld-Schema**: `.ai_interaction_exclude` migrated to ADR-043 Note 6 mandatory-field format (file, owner, gate, reason, exit, added, re_evaluated). Checker updated: malformed entries rejected. `just check-ai-ux` reports 0 Violations, 6 Governed Exclusions. Stale review findings (useExtractionPhase/useConnectionLost, NameGenerator.test.tsx) no longer tracked as current violations. Baseline entries carry owner + exit criteria.
 51. ✅ **AUFG-03-10 TipTap-AI-UX/i18n Consistency**: GhostText hint localized via Extension-Options (`t("ghostText.hint")` → hintText in en/de/fr). CoAuthor action vocabulary migrated to `studio.aiActions.*` (`acceptAll`, `rejectAll`, `applySelected` in all 3 locales). BetaReaderPanel + useWorldbuildingAnalysis freed from useConnectionLost. Exclude list updated (2 stale entries removed, 2 new governed entries added). §16.8 canonical vocabulary table updated.
@@ -183,6 +183,24 @@ The CR-04 core remediation is **implemented + enforced** (FIND-010/011 resolved,
 
 ---
 
+### CR-07 Follow-up Debt (open — recorded, not concealed)
+
+ADR-043 primitives are implemented, and CR-AUFG-07-01 through CR-AUFG-07-06 were remediated. Full CR-07/§16 closure is **not** currently true because the refreshed CR-07 audit found the following open lifecycle items:
+
+| Item | Nature | Tracking | Required closure evidence |
+|------|--------|----------|---------------------------|
+| CR-AUFG-07-07 | KB Field Suggest lacks governed lifecycle/cancel/error handling | AUFG registry + AI UX Compliance v2 | Frontend implementation + tests + Platform cancel/signal/inventory gate |
+| CR-AUFG-07-08 | KB Improve lacks governed lifecycle/cancel handling | AUFG registry + AI UX Compliance v2 | Frontend implementation + tests + Platform inventory gate |
+| CR-AUFG-07-09 | Timeline Extraction manual callback SSE lifecycle/exclude needs migration or governed adapter | AUFG registry + AI UX Compliance v2 | Frontend migration/adapter + stale-exclude/signal enforcement |
+| CR-AUFG-07-10 | GhostText has no visible loading/status during suggestion fetch | AUFG registry + AI UX Compliance v2 | Frontend status UI + tests + governed non-React inventory |
+| CR-AUFG-07-11 | KB Enhance cancel may be UI-only unless signal propagation is proved | AUFG registry + AI UX Compliance v2 | Signal propagation implementation + regression gate |
+| CR-AUFG-07-12 | Deprecated AI-action aliases need removal or exact-key usage gate | AUFG registry + AI UX Compliance v2 | Frontend key migration plus Platform checker; broader namespaces not blanket-banned |
+| CR-AUFG-07-13 | AI output action keyboard shortcuts are inconsistent | AUFG registry + AI UX Compliance v2 | Frontend shortcuts + tests + Docs update |
+
+Do not mark these `resolved` from audit prose, checker green, or ADR existence alone. Per `docs/development/finding-lifecycle.md`, closure requires implementation + enforcement evidence.
+
+---
+
 1. ✅ **AI Feature Freeze lifted** — new AI feature work may resume under ratcheted governance.
 2. ✅ **Backend-Unit-Failures behoben (AUFG-02-01)** — 7 Failures → 0.
 3. ✅ **Prompt-Warnungen reduziert (AUFG-03-01)** — 79 → 35; no-growth ratchet aktiv.
@@ -193,10 +211,10 @@ The CR-04 core remediation is **implemented + enforced** (FIND-010/011 resolved,
 8. ✅ **E2E test patterns** — Playwright-based E2E tests established (16 test files, 3.3k lines). Auth proxy pattern, wizard robustness, editor persistence, warmup fixture, `NARRARE_E2E_TEST=1` mode. Documented in testing-standards.md.
 9. ⏳ **ANAL-005: Coreference Analysis** — may resume after Architecture/Implementation planning under post-freeze governance.
 10. ✅ **CR-03 / INFRA-013 P0–P5** — Core ai_invocation module implemented through P5. P0 (pipeline + contracts), P1 (User/Project IDs), P2 (profiles + KG consistency), P3 (FileEvidenceSink + drift detection + quality metrics), P4 (PersistentEvidenceSink + PostgreSQL), P5 (27/27 modes static adoption — probes wired, 63 runtime-evidence gaps ratcheted as baseline). INFRA-013 infrastructure complete. **Runtime adoption in progress (ADR-045):** static adoption ≠ runtime adopted; see Phase 6 item 54.
-11. ✅ **CR-07 UX Audit — Full Implementation** — ADR-043 implementiert, alle P0/P1 flows migriert, §16 compliance durchgesetzt, maschinelle Checks + CI.
+11. 🔧 **CR-07 UX Audit — follow-up implementation required** — ADR-043 primitives and CR-AUFG-07-01 through CR-AUFG-07-06 are implemented, but CR-AUFG-07-07 through CR-AUFG-07-13 remain open under `ai-ux-compliance-v2.md` and the AUFG registry.
 12. ✅ **ONBOARD-001: Onboarding & AI-Einführung** — Demo-Discovery im Dashboard, KI-Tour (1–2 Min.), kontextuelle Tooltips. Post-MVP. Implementiert: GET /setup/demos, DemoProjectCards, useSeenTooltips, Tour-Replay.
 13. ⏳ **PROMPT-003: Prompt Customization UX** — Variablen-Erklärung, Preview/Test-Modus, Reset-to-Default. Post-MVP (nicht vor Phase 6).
-14. ✅ **KEYBOARD-001: Tastatur-Konsistenz** — Ctrl+Enter für alle AI-Aktionen, Escape für Cancel, Tab für GhostText-Accept. Post-MVP. Implementiert: ChatPanel (Ctrl+Enter send, Escape cancel/close), CoAuthorPanel (Escape close), ConsistencyCheckPanel (Escape close). 14 neue Test-Assertions. i18n Keys für sendHint + Shortcuts in allen 3 Locales.
+14. 🔧 **KEYBOARD-001: Tastatur-Konsistenz** — initiale Shortcut-Abdeckung ist implementiert (ChatPanel Ctrl+Enter send, Escape cancel/close; CoAuthorPanel Escape close; ConsistencyCheckPanel Escape close; GhostText Tab accept). Vollständige Konsistenz für AI-Output-Aktionen ist noch offen und wird durch CR-AUFG-07-13 verfolgt.
 15. ✅ **CR-07 UX Audit — Phase 2 (Implementation)** — CR-AUFG-07-01 bis CR-AUFG-07-06: 8 Files auf useAIOperation migriert (useChat.ts, useBetaReader.ts, useExtraction.ts, useWorldbuilding.ts, NameGenerator.tsx, ConsistencyCheckPanel.tsx). GhostText RULE-04 Split (ghost-text-helpers 389→351, ghost-text-suggestions NEW). coauthor-streaming gelöscht (dead code). 5 Testfiles aktualisiert, 40 Tests grün. 0 manuelle AbortController in AI-Komponenten.
 
 ---
@@ -246,13 +264,14 @@ The CR-04 core remediation is **implemented + enforced** (FIND-010/011 resolved,
 | ADR-040 | KG Consistency / Voice Profile SSOT / Audit Lifecycle | ✅ Accepted — P2 architecture for ProjectWritingProfile SSOT, KG consistency evidence, audit lifecycle reporting, mode runtime proof expansion (24/27 modes) |
 | ADR-041 | Typed Manifests / Doc-Drift Automation / Quality Metrics / Persistent Evidence | ✅ Accepted — P3 architecture for registry drift detection (JSON Schema + check_registry_drift.py), doc-drift automation (doc_drift/ package), quality metrics (QualityReport + joiner), and file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl) |
 | ADR-042 | PostgreSQL Evidence Upgrade | ✅ Implemented (P4) — hybrid FileEvidenceSink (CI) + PersistentEvidenceSink (production) |
-| ADR-043 | `useAIOperation` Primitives | ✅ Implemented — shared streaming client, cancel/error/loading primitives, canonical `studio.aiActions.*` labels, §16 compliance checks, P0/P1 flows migrated (Commit 1001125) |
+| ADR-043 | `useAIOperation` Primitives | ✅ Implemented for the shared primitive — hook/error/loading/cancel primitives exist. Full §16 adoption is not complete until CR-AUFG-07-07 through CR-AUFG-07-13 close with implementation + enforcement evidence. |
 | ADR-044 | Staged Multi-Agent Consistency Pipeline | ✅ Implemented — FactExtractorAgent → ConsistencyAgent, enriched TimelineEventEnvelope integration, SSE stage endpoint, and `consistency_staged` Pydantic Evals |
 | ADR-045 | Runtime Adoption Enforcement and Invocation Evidence Correlation | 🔧 In progress (Proposed, user-approved) — runtime gaps status-bearing (PASS/GOVERNED_DEBT/STATIC_ONLY); correlated evidence contract (`invocation_id` + fingerprints); prompt-context merge with RULE-22 precedence; run-limit enforcement (`RunLimitResolver`); WebSocket turn service modularization; mem0 learning events. Follow-up: 34 direct-agent call site migration, PersistentEvidenceSink wiring, `_handle_generate_draft` bypass |
 | ADR-046 | Prompt-Path-Compliance: Resolution-Path Retrofit & Prevention | ✅ Implemented — 4 drift paths fixed; RULE-02b codified; prevention infrastructure (3 checker modules, 4 convention tests, adoption metric) built; `_prompt_loader.py` deleted; `MetaPromptLoader` deprecated; `composer is None` fallbacks removed; chat channel injection fixed |
-| ADR-047 | Governance Drift Automation for Review Findings and AUFG Lifecycle | ✅ Implemented — Phase 1 (policy + docs) and Phase 2 (governance health checker) complete; AUFG-05-12/13/14 implementation complete |
+| ADR-047 | Governance Drift Automation for Review Findings and AUFG Lifecycle | 🔄 Proposed — active registry/checker artifacts exist, but ADR acceptance is not recorded in the ADR index; do not treat it as a final constitutional contract until accepted or superseded. |
 | ADR-049 | Prompt-Surface Identity & Path Contract Retrofit (FIND-010 + FIND-011) | ✅ Implemented — Phase C (CHAT routing restored to ADR-024 `writing/chat`; `_bundled/chat/` deleted; `_bundled/planning/en/timeline/system.md` created; `timeline_analysis_service.py` migrated to PromptComposer Mode 1; premature ADR-048 Mode 2 declaration removed) + Phase D checkers (PROMPT-IDENTITY/ROOT-MODE/PATH-DERIVABILITY/FRONTMATTER-MATCH/CONTEXT-MODES/ORPHAN-TEMPLATE/INLINE-FEATURE-PROMPT) CI-blocking. FIND-010 + FIND-011 resolved. ADR-037 latent AST bug (only `ast.Assign` visited, never `ast.AnnAssign`) found and fixed. |
 | ADR-050 | Cross-Feature Context Contracts (KB Envelope, Ref Lifecycle, kb_pinned Governance) | ✅ Accepted + Core contracts implemented — `KBContextEnvelope`/`RenderedKBContext`, `KBEntityLifecycleObserver`/`CrossFeatureRefIndex`/per-consumer Protocols in `core/context/`, `VoiceProfileConsumer` in `core/profiles/`, `kb_pinned`/`kb_timelines`/`kb_systems` registered. Backend wiring (Renderer→RenderedKBContext + KB-Lifecycle-Observer) implemented. FIND-009 split: FIND-009a resolved via ADR-044 (Consistency consumer); FIND-009b closed by ADR-050 P1-A/B. |
+| ADR-051 | Configuration Effect Adoption Contract | 🔄 Proposed — candidate CR-08 remediation contract. A configurable/default value is not implemented until source → resolver → runtime consumer → enforcement evidence exists, or it is explicitly classified as a governed default/operator default with owner, rationale, tests, and review trigger. It proposes the contract used by `docs/features/remediation/cr-08-configuration-effect-drift.md` and FIND-013; task resolution requires ADR-051 acceptance or supersession. |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -294,4 +313,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-18 (CR-04 Phase E — Documentation/Governance closure; FIND-010/011 resolved with evidence; ADR-049/050 in Decisions table; ratcheted follow-up debt disclosed)
+> Last content update: 2026-06-18 (CR-08 SET-005 docs-gate correction; ADR-051 qualified as proposed/candidate; runtime-effect adoption blockers remain open)

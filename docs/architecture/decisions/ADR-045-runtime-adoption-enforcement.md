@@ -1,6 +1,6 @@
 # ADR-045 — Runtime Adoption Enforcement and Invocation Evidence Correlation
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Accepted
 > **Date:** 2026-06-13
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —
