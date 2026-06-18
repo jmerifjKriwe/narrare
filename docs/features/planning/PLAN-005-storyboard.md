@@ -196,6 +196,7 @@ Also benefits INFRA-003 Context Assembly (Tier 2 Recent History uses summaries i
 - [WRITE-001](../writing/WRITE-001-editor.md) — Editor where storyboard panel lives
 - [WRITE-012](../writing/WRITE-012-chapter-summary.md) — Provides chapter summaries consumed by enhanced sync status + AI-powered structure remap
 - [INFRA-003](../infra/INFRA-003-context-assembly.md) — Consumes chapter summaries for Tier 2 Recent History (context assembly)
+- [ADR-050](../../architecture/decisions/ADR-050-cross-feature-context-contracts.md) — Cross-feature ref lifecycle contract. The Storyboard is a `StoryboardRefConsumer` of KB entity lifecycle events. The Storyboard holds NO direct KB entity refs (it reads `chapter_outlines` with `stage_assignment`, `planned_beats`, `outline_notes` and `chapter.position`); references to KB entities in planned-beats free text are surfaced as `RefIntegrityIssue` and are NEVER auto-rewritten (RULE-22 §7: explicit/manual sources are not auto-rewritten).
 
 ## Status & History
 

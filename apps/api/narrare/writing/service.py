@@ -166,7 +166,7 @@ class WritingService:
                 api_key=self._api_key,
                 base_url=self._base_url,
                 custom_tone_instructions=custom_tone_instructions,
-                kb_relationships=kb_relationships,
+                kb_relationships=kb_relationships.text,
                 **cast("dict[str, Any]", context_kwargs),
             ):
                 if chunk.is_final:

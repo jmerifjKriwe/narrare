@@ -11,12 +11,13 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare.kb.relationship_repository import RelationshipRepository
+    from narrare_core.context.contracts import RenderedKBContext
 
 
 async def fetch_formatted_relationships(
     relationship_repo: RelationshipRepository | None,
     novel_id: UUID,
-) -> str:
+) -> RenderedKBContext:
     """Fetch KB relationships and format them for prompt context.
 
     Shared by all writing services (WritingService, ExtendService,
@@ -29,11 +30,19 @@ async def fetch_formatted_relationships(
         novel_id: The novel to fetch relationships for.
 
     Returns:
-        Formatted relationship text, or empty string when no
-        relationships found or repo is unavailable.
+        Rendered relationship context. ``.text`` contains the legacy
+        formatted relationship text.
     """
+    from narrare_core.context.contracts import RenderedKBContext
+
     if relationship_repo is None:
-        return ""
+        return RenderedKBContext(
+            text="",
+            preserved_fields=frozenset(),
+            omitted_fields=(),
+            entry_count=0,
+            render_path="narrare.writing._relationship_helpers.fetch_formatted_relationships",
+        )
 
     from narrare_core.writing._relationship_format import format_relationships
 

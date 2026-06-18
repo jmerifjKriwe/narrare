@@ -275,11 +275,11 @@ class TestVoiceProfilesInAssembly:
         assert ctx.character_voice_profiles == ""
 
     @pytest.mark.asyncio
-    async def test_character_voice_profiles_present_with_metadata(
+    async def test_character_voice_profiles_require_consumer_with_metadata(
         self,
         assembler: WritingContextAssembler,
     ) -> None:
-        """Assembly with characters and speech metadata → populated profiles."""
+        """Speech metadata alone does not bypass the voice consumer."""
         entities = [
             _entity(
                 "char-1",
@@ -307,9 +307,8 @@ class TestVoiceProfilesInAssembly:
             chapter_content="Content.",
             kb_entities=entities,
         )
-        assert ctx.character_voice_profiles != ""
-        assert "**Alice**" in ctx.character_voice_profiles
-        assert "dialect: Southern" in ctx.character_voice_profiles
+        assert ctx.character_voice_profiles == ""
+        assert ctx.voice_profile_warnings == []
 
 
 class TestMetadataPopulation:

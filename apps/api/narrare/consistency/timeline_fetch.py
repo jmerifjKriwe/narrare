@@ -8,18 +8,85 @@ Extracted from checker_service.py for RULE-04 compliance (300-line limit).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, cast
 
 import structlog
 
+from narrare_core.context.contracts import OmissionReason, ProvenanceField, RenderedKBContext
+
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Iterable
 
     from narrare.kb.repository import KBRepository
     from narrare.planning.timeline_repository import TimelineEventRepository
     from narrare_core.agents.fact_extractor_types import TimelineEventEnvelope
 
 logger = structlog.get_logger(__name__)
+
+
+class _TimelineEventForRender(Protocol):
+    """Structural shape needed by the timeline legacy formatter."""
+
+    event_name: str
+    timestamp_raw: str
+    character_refs: list[dict[str, object]] | None
+    location_ref: dict[str, object] | None
+
+
+_TIMELINE_OMISSIONS: tuple[tuple[ProvenanceField, OmissionReason], ...] = (
+    ("provenance", "consumer_cannot_act"),
+    ("evidence", "consumer_cannot_act"),
+    ("review_state", "consumer_cannot_act"),
+    ("freshness", "consumer_cannot_act"),
+    ("kb_lifecycle", "consumer_cannot_act"),
+)
+
+
+def _format_timeline_events(
+    events: Iterable[_TimelineEventForRender],
+) -> tuple[list[dict[str, str]], RenderedKBContext]:
+    """Format timeline events for legacy deps and ADR-050 accounting.
+
+    Args:
+        events: Iterable of timeline event objects from the repository.
+
+    Returns:
+        Tuple of legacy event dictionaries and a RenderedKBContext audit
+        envelope. The legacy dictionaries are unchanged for existing
+        consumers; the envelope records metadata omitted by that legacy
+        wire shape.
+    """
+    formatted: list[dict[str, str]] = []
+    text_lines: list[str] = []
+    for event in events:
+        char_names = ", ".join(
+            str(ref.get("name", "")) for ref in (event.character_refs or []) if ref.get("name")
+        )
+        loc_name = ""
+        if event.location_ref:
+            loc_name = str(event.location_ref.get("name", ""))
+
+        formatted_event = {
+            "event_name": event.event_name,
+            "timestamp": event.timestamp_raw,
+            "character": char_names,
+            "location": loc_name,
+        }
+        formatted.append(formatted_event)
+        text_lines.append(
+            f"{formatted_event['event_name']} @ {formatted_event['timestamp']}"
+            f" | {formatted_event['character']} | {formatted_event['location']}"
+        )
+
+    rendered = RenderedKBContext(
+        text="\n".join(text_lines),
+        preserved_fields=frozenset(),
+        omitted_fields=_TIMELINE_OMISSIONS if formatted else (),
+        entry_count=len(formatted),
+        render_path="narrare.consistency.timeline_fetch._format_timeline_events",
+    )
+    return formatted, rendered
 
 
 async def fetch_timeline_events(
@@ -57,25 +124,10 @@ async def fetch_timeline_events(
         )
         return []
 
-    formatted: list[dict[str, str]] = []
-    for event in events:
-        # Extract character names from refs: [{"id": "uuid", "name": "Aria"}, ...]
-        char_names = ", ".join(
-            str(ref.get("name", "")) for ref in (event.character_refs or []) if ref.get("name")
-        )
-        # Extract location name from ref: {"id": "uuid", "name": "Castle"}
-        loc_name = ""
-        if event.location_ref:
-            loc_name = str(event.location_ref.get("name", ""))
-
-        formatted.append(
-            {
-                "event_name": event.event_name,
-                "timestamp": event.timestamp_raw,
-                "character": char_names,
-                "location": loc_name,
-            }
-        )
+    # SQLAlchemy Mapped attributes satisfy the runtime shape, but static
+    # analysis sees descriptors; narrow to the render protocol at the boundary.
+    renderable_events = cast("Iterable[_TimelineEventForRender]", events)
+    formatted, _rendered = _format_timeline_events(renderable_events)
     return formatted
 
 

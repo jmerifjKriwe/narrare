@@ -13,6 +13,7 @@ from narrare._app.dependencies import SessionDep  # noqa: TC001 — needed at ru
 
 if TYPE_CHECKING:
     from narrare.consistency.checker_service import ConsistencyCheckerService
+    from narrare.consistency.ref_index import CrossFeatureRefIndexImpl
 
 
 def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
@@ -86,4 +87,20 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
         token_limits_service=token_limits_service,
         orchestrator=orchestrator,
         invocation_pipeline=invocation_pipeline,
+    )
+
+
+def get_cross_feature_ref_index(session: SessionDep) -> CrossFeatureRefIndexImpl:
+    """Create the read-side ADR-050 cross-feature ref index."""
+    from narrare.chapters.repository import ChapterRepository
+    from narrare.consistency.ref_index import CrossFeatureRefIndexImpl
+    from narrare.kb.repository import KBRepository
+    from narrare.planning.repository import OutlineRepository
+    from narrare.planning.timeline_repository import TimelineEventRepository
+
+    return CrossFeatureRefIndexImpl(
+        kb_repo=KBRepository(session),
+        timeline_repo=TimelineEventRepository(session),
+        outline_repo=OutlineRepository(session),
+        chapter_repo=ChapterRepository(session),
     )

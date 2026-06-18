@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-__all__ = ["ManifestEntry", "ManifestSecurity"]
+__all__ = ["ManifestContextMode", "ManifestEntry", "ManifestSecurity"]
 
 
 class ManifestSecurity(TypedDict, total=False):
@@ -17,6 +17,22 @@ class ManifestSecurity(TypedDict, total=False):
 
     xml_required: list[str]
     generated_suggestions_must_be_labelled: list[str]
+
+
+class ManifestContextMode(TypedDict, total=False):
+    """A single ``context_modes`` sub-entry (ADR-049 D11).
+
+    Each context-mode declares its own template, variables, and security
+    constraints, parallel to the top-level manifest entry shape.
+    """
+
+    mode: str
+    template: str
+    content_type: str
+    required_variables: list[str]
+    optional_variables: list[str]
+    security: ManifestSecurity
+    fallback_policy: str
 
 
 class ManifestEntry(TypedDict, total=False):
@@ -34,3 +50,5 @@ class ManifestEntry(TypedDict, total=False):
     security: ManifestSecurity
     fallback_policy: str
     rationale: str
+    # ADR-049 D11: optional context_modes list for multi-template intents.
+    context_modes: list[ManifestContextMode]

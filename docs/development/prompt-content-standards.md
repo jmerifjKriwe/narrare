@@ -112,6 +112,22 @@ important for prompts whose system template does not contain a literal input
 slot (for example summarize-style calls where the runtime user prompt carries
 the manuscript content).
 
+### 8. Formality Register (DE/FR bundled prompts)
+
+Bundled prompts in German (`de`) and French (`fr`) MUST use the **informal**
+register consistently within a single file: **Du** (German) and **tu** (French).
+Do not mix *Du/Sie* or *tu/vous* in the same prompt — mixed register reads as
+incoherent to native speakers and drifts the assistant's voice.
+
+**Rationale:** the `meta/{de,fr}/system.md` identity prompts already commit to
+*Du* / *tu* ("Du bist Narrare" / "Tu es Narrare"). Aligning all bundled DE/FR
+prompts to the same register gives one consistent voice that matches the
+collaborative, co-author positioning in `docs/reference/project-vision.md`.
+English has no Tu/Vous distinction, so this rule is DE/FR-only.
+
+**Check:** `_check_i18n.py` and prompt review catch mixed-register imperatives.
+This rule resolves Q-013 (i18n Tone Drift).
+
 ---
 
 ## Recommended Elements

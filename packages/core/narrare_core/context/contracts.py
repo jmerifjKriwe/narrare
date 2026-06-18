@@ -3,17 +3,42 @@
 Defines the interface for proactive context suggestion services and
 the generic ContextAssembler protocol (ADR-025 Decision 3).
 Contracts are written before implementation (RULE-03).
+
+The **KBContextEnvelope** contract (ADR-050 P1-A) lives in
+:mod:`narrare_core.context._kb_envelope` and is re-exported here for
+public API stability. Every KB-context render path must satisfy it:
+provenance metadata must either be preserved in the rendered text OR
+explicitly omitted with a documented rationale (RULE-22).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
+from narrare_core.context._kb_envelope import (
+    KBContextEnvelope,
+    KBContextSource,
+    OmissionReason,
+    ProvenanceField,
+    RenderedKBContext,
+)
+
 if TYPE_CHECKING:
     from uuid import UUID
 
     from narrare_core.context.suggestion import EntityMetadata, Suggestion
     from narrare_core.context.types import TierBudget
+
+
+__all__ = [
+    "ContextAssemblerProtocol",
+    "KBContextEnvelope",
+    "KBContextSource",
+    "OmissionReason",
+    "ProactiveContextProtocol",
+    "ProvenanceField",
+    "RenderedKBContext",
+]
 
 
 @runtime_checkable

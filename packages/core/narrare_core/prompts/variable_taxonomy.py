@@ -91,6 +91,12 @@ def _classification_overrides() -> dict[str, VariableClassification]:
                 "kb_entities",
                 "kb_summary",
                 "kb_context_entries",
+                # ADR-050 P1-D: classify the previously-unregistered
+                # KB-tier variables under CURATED_KB so their
+                # security handling matches the other kb_* siblings.
+                "kb_pinned",
+                "kb_timelines",
+                "kb_systems",
             )
         },
         **{
@@ -112,6 +118,13 @@ def _classification_overrides() -> dict[str, VariableClassification]:
                 ("genre", VariableSecurity.SYSTEM_ONLY),
                 ("tone", VariableSecurity.SYSTEM_ONLY),
                 ("style_profile", VariableSecurity.LABEL_REQUIRED),
+                # ADR-050 P1-D / ADR-040 §1 Decision A: voice profiles
+                # belong to the project writing profile provenance,
+                # not the generic SYSTEM_ONLY bucket that SYSTEM_VARS
+                # would otherwise assign. LABEL_REQUIRED because the
+                # rendered voice text is data the LLM must treat as
+                # labelled context, not as system instruction.
+                ("character_voice_profiles", VariableSecurity.LABEL_REQUIRED),
             )
         },
         **{

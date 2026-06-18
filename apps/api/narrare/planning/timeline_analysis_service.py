@@ -8,7 +8,14 @@ Temporal expression extraction (``extract_temporal_expressions``,
 ``stream_extraction``) moved to ``timeline_extraction_service.py``
 to keep files under the 300-line limit (RULE-04).
 
-Pattern: Service → Core Agent (RULE-01b).
+Prompt resolution is Mode 1 (composer-driven) per ADR-049 FIND-011 / D9:
+the service resolves its system prompt via
+``PromptComposer.build(LLMIntent.PLAN, mode="timeline")`` and passes the
+composed system prompt to the ``TimelineAgent`` constructor. The previous
+inline f-string feature prompt and the premature ADR-048 Mode 2
+``_TIMELINE_ANALYSIS_INJECTION`` declaration were removed (ADR-049 D10).
+
+Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 """
 
 from __future__ import annotations
@@ -19,7 +26,6 @@ import structlog
 
 from narrare.planning.schemas import TimelineEventResponse, TimelineResponse
 from narrare.planning.timeline_schemas import TimelineEventCRUDResponse
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -32,19 +38,9 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: TimelineAgent composes its prompt internally
-# from TimelineDeps (genre, language) and chapter context passed as user prompt.
-_TIMELINE_ANALYSIS_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "TimelineAgent composes its prompt internally from TimelineDeps "
-        "(genre, language) and chapter context passed as the user prompt."
-    ),
-    variables=("genre", "language"),
-    injection_mechanism="agent_deps",
-)
 
 
 class TimelineAnalysisService:
@@ -53,14 +49,31 @@ class TimelineAnalysisService:
     Generates a structured timeline via the TimelineAgent and persists
     confirmed extracted expressions as timeline events.
 
+    The timeline prompt is resolved through ``PromptComposer`` in Mode 1
+    (ADR-049 FIND-011 / D9): the governed
+    ``_bundled/planning/en/timeline/system.md`` template carries the task
+    framing, project metadata, and KB context variables; chapter summaries
+    are supplied as a template variable; the chapter data additionally
+    flows as the agent run prompt (runtime data, RULE-02a category 3). No
+    inline f-string feature prompt is assembled in the service
+    (RULE-02 / RULE-02a).
+
     Args:
         novel_repo: For novel metadata (genre, language).
         chapter_repo: For listing chapters and their summaries.
         model_registry: Shared LLM model registry.
         model_config: Resolved model config (provider + model ID).
+        composer: PromptComposer for resolving the governed timeline system
+            prompt via the cascade (RULE-02b / ADR-049 D9). Required for
+            ``generate_timeline``.
         event_repo: For persisting confirmed extracted events.
         api_key: Optional API key override.
         base_url: Optional base URL override.
+        invocation_pipeline: Retained for DI-contract stability. Per ADR-049
+            D10 the premature ADR-048 Mode 2 ``ManualInjectionDeclaration``
+            was removed; Mode 1 evidence adoption is deferred (the sibling
+            ``KBConsistencyAnalyzer`` operates without a pipeline call, which
+            is the pattern followed here).
     """
 
     def __init__(
@@ -69,6 +82,7 @@ class TimelineAnalysisService:
         chapter_repo: ChapterRepository,
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
+        composer: PromptComposer | None = None,
         event_repo: TimelineEventRepository | None = None,
         *,
         api_key: str | None = None,
@@ -79,6 +93,7 @@ class TimelineAnalysisService:
         self._chapter_repo = chapter_repo
         self._registry = model_registry
         self._config = model_config
+        self._composer = composer
         self._event_repo = event_repo
         self._api_key = api_key
         self._base_url = base_url
@@ -115,8 +130,66 @@ class TimelineAnalysisService:
                 code="NO_AI_PROVIDER",
             )
 
+        if self._composer is None:
+            # Defensive: the factory always wires a composer, but fail loudly
+            # (RULE-11) rather than silently falling back to inline assembly.
+            raise ConfigurationError(
+                "PromptComposer is not configured for timeline analysis.",
+                code="NO_COMPOSER",
+            )
+
         # Gather chapters with summaries
         chapters = await self._chapter_repo.list_by_novel(novel_id)
+
+        # Build a compact chapter summary context. This is runtime data
+        # (RULE-02a category 3): it populates the governed template's
+        # ``{{chapter_summaries}}`` variable AND serves as the agent run
+        # prompt (the user channel) below.
+        chapter_context = "\n\n".join(
+            f"Chapter {ch.position + 1}: {ch.title}\n"
+            f"Summary: {ch.summary or '(no summary yet)'}\n"
+            f"Timeline: {ch.timeline_position or '(not set)'}"
+            for ch in chapters
+        )
+
+        language = novel.writing_language or "en"
+
+        # Runtime imports kept local to match this module's existing import
+        # convention (see TimelineAgent import below) and avoid any module-load
+        # circular-import risk.
+        from narrare_core.llm.intents import LLMIntent
+        from narrare_core.prompts.context import PromptContext
+
+        # Resolve the governed timeline system prompt via PromptComposer
+        # (RULE-02 / ADR-049 D9). The template
+        # ``_bundled/planning/en/timeline/system.md`` carries the task framing,
+        # project metadata, and KB context variables.
+        #
+        # KB context variables (kb_characters, kb_locations, kb_factions,
+        # kb_relationships, culture_guidelines) and ``entity_events`` are
+        # supplied as empty strings because no KB/entity-event assembler is
+        # wired into this call path yet. They are declared here explicitly
+        # (not silently omitted) so the template's variable substitution
+        # succeeds and the gap is visible for a future assembler integration.
+        ctx = PromptContext(
+            language=language,
+            writing_language=language,
+            project_title=novel.title,
+            genre=novel.genre or "",
+            mode="timeline",
+            extra={
+                "chapter_summaries": chapter_context,
+                # No entity-event source wired yet (see ADR-049 D8 notes).
+                "entity_events": "",
+                # No KB assembler wired for this call path yet.
+                "kb_characters": "",
+                "kb_locations": "",
+                "kb_factions": "",
+                "kb_relationships": "",
+                "culture_guidelines": "",
+            },
+        )
+        composed = await self._composer.build(LLMIntent.PLAN, ctx)
 
         # Get model from registry
         from narrare_core.agents.timeline_agent import TimelineAgent, TimelineDeps
@@ -126,35 +199,15 @@ class TimelineAnalysisService:
         # Build deps
         deps = TimelineDeps(
             genre=novel.genre or "",
-            language=novel.writing_language or "en",
+            language=language,
         )
 
-        # Build a compact chapter summary context
-        chapter_context = "\n\n".join(
-            f"Chapter {ch.position + 1}: {ch.title}\n"
-            f"Summary: {ch.summary or '(no summary yet)'}\n"
-            f"Timeline: {ch.timeline_position or '(not set)'}"
-            for ch in chapters
-        )
-
-        agent = TimelineAgent(model=model)
-        from narrare._app.invocation_context import safe_compose_invocation
-        from narrare_core.llm.intents import LLMIntent
-
-        await safe_compose_invocation(
-            self._invocation_pipeline,
-            feature_id="planning_timeline_analysis",
-            intent=LLMIntent.PLAN,
-            project_id=novel_id,
-            manual_injection=_TIMELINE_ANALYSIS_INJECTION,
-        )
+        # pydantic-ai binds ``system_prompt`` at agent construction, so the
+        # composed system prompt is supplied to the constructor (not to
+        # ``run()``). Chapter data flows as the run prompt (user channel).
+        agent = TimelineAgent(model=model, system_prompt=composed.system)
         result = await agent.run(
-            prompt=(
-                f"Analyze the timeline for '{novel.title}'.\n\n"
-                f"Genre: {novel.genre or 'Unspecified'}\n"
-                f"Language: {novel.writing_language or 'en'}\n\n"
-                f"Chapters:\n{chapter_context}"
-            ),
+            prompt=composed.user or chapter_context,
             deps=deps,
         )
 

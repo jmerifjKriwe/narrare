@@ -1,4 +1,4 @@
-<!-- Context: narrare-dev/standards/architectural-discipline | Priority: critical | Version: 2.0 | Updated: 2026-05-24 -->
+<!-- Context: narrare-dev/standards/architectural-discipline | Priority: critical | Version: 2.1 | Updated: 2026-06-18 -->
 
 # Architectural Discipline Standard
 
@@ -170,6 +170,53 @@ Wenn ein CI-Gate, Hook oder Check fehlschlägt, gilt ausschließlich:
 
 Diese Regel ist Teil des Architectural Discipline Standards und gilt für ALLE Subagents.
 Der Coordinator setzt sie durch. Verstöße sind Prozessverstöße.
+
+---
+
+## 7. Dokumentiert ≠ Implementiert — Verify reality, not claims
+
+**Mandatory for every specialist, especially during review/governance closure.**
+
+Three distinctions that must never be collapsed:
+
+| Tempting shortcut | The truth |
+|-------------------|-----------|
+| "It's documented" | Documentation describes intent. Verify the code matches the doc. |
+| "The template exists" | A file on disk is not "runtime uses it". Trace the load path end-to-end. |
+| "The check is green" | A green check covers **only the layer it inspects**. Green ≠ the whole system is correct. |
+
+### Concrete lessons (relearned in CR-04, do not relearn again)
+
+- **FIND-010 / FIND-011:** A governed prompt template sat on disk while the
+  service sent an inline f-string; every prompt checker was green because each
+  validated one slice and none validated that all slices referred to the same
+  file. "Template exists" ≠ "runtime loads it".
+- **ADR-037 latent bug:** the manifest checker's AST parser visited only
+  `ast.Assign` and silently skipped `ast.AnnAssign` — so the manifest's
+  annotated table was never actually validated. "Check is green" covered the
+  parser's blind spot, not the manifest.
+- **ADR-048 premature reference:** production code cited "ADR-048 Mode 2" while
+  ADR-048 was still 🔄 Proposed. A Proposed ADR's contract cannot be relied on
+  by production code.
+
+### Mandatory verification protocol
+
+Before marking anything `resolved` / `✅ Implemented` / "done":
+
+1. **Implementation on disk** — point at the files that exist (read them; do not
+   trust a claim). See `.opencode/context/narrare-dev/standards/finding-lifecycle.md`.
+2. **Enforcement** — name the CI-blocking checker or regression test that
+   prevents reintroduction, and the ratchet baseline it set.
+3. **Cross-feature integration** — when a change crosses a feature boundary,
+   verify the *integration contract* (does the other consumer actually receive
+   the data?), not just that each feature passes its own local tests. ADR-050
+   exists because feature-local green hid a cross-feature coherence gap.
+4. **ADR status discipline** — `✅ Accepted` ≠ `✅ Implemented`. `🔄 Proposed`
+   is not a contract you may depend on. INDEX.md and CURRENT_STATE.md reflect
+   the more conservative of the two.
+
+**Red flag — stop and escalate:** "We have an ADR for this" used as the entire
+evidence that a runtime behaviour is fixed.
 
 ---
 

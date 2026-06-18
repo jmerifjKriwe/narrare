@@ -37,12 +37,16 @@ from narrare.kb.dependencies_session import (
 from narrare.kb.dependencies_worldbuilding import (
     get_worldbuilding_service as get_worldbuilding_service,
 )
+from narrare.kb.lifecycle_dependencies import (
+    get_kb_lifecycle_dispatcher as get_kb_lifecycle_dispatcher,
+)
 
 __all__ = [
     "get_consistency_service",
     "get_extraction_service",
     "get_graph_service",
     "get_kb_improve_service",
+    "get_kb_lifecycle_dispatcher",
     "get_kb_repository",
     "get_kb_service",
     "get_kb_session_service",

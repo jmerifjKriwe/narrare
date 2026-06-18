@@ -1,8 +1,10 @@
 # FIND-010 — Chat prompt surface drifts across runtime, manifest, and prompt management
 
 Priority: 🔴 High
-Status: identified / open
+Status: ✅ Resolved (2026-06-18)
 Source: CR-02 §2, CR-04 §3–§4 (2026-06-12)
+
+> **Resolution:** Closed by [ADR-049](../../../../docs/architecture/decisions/ADR-049-prompt-surface-identity-path-contract.md) (Prompt-Surface Identity & Path Contract). Phase C implemented all Retrofit-Plan steps (route-table reverted to ADR-024 `category="writing", mode="chat"`; the orphan `_bundled/chat/` duplicate deleted; manifest/route aligned). Phase D enforces the fix via four machine-checkable gates (see "Resolution evidence" below). "Resolved" here means *implemented + enforced*, not merely *documented*.
 
 ## Finding
 
@@ -46,3 +48,24 @@ Fix the contract rather than patching one caller:
 ## Related Findings
 
 - Cross-references FIND-011 because both findings expose prompt-surface artifacts that pass structural checks while runtime uses a different prompt path.
+
+---
+
+## Resolution evidence (2026-06-18)
+
+**Design (ADR):** ADR-049 Decisions D1–D6 — restored ADR-024 CHAT routing as canonical (`category="writing", mode="chat"`), forbade root-mode for routeable intents (D3), and added four identity invariants: path derivability (D4), frontmatter `prompt_type` == manifest category (D5), management-id derivability (D6).
+
+**Implementation (Phase C — verified on disk):**
+- `_bundled/chat/` directory and `_bundled/chat/en/system.md` **deleted** (the orphan duplicate that runtime previously loaded).
+- `_bundled/writing/en/chat/system.md` is now the sole canonical CHAT template (3784 bytes, frontmatter `prompt_type: writing`).
+- Route table, manifest, and management layer all resolve to the same file.
+
+**Enforcement (Phase D — CI-blocking checkers):**
+- `PROMPT-IDENTITY` (gate A1): full identity chain manifest ↔ route-table ↔ frontmatter ↔ management-id ↔ Composer resolution.
+- `PROMPT-ROOT-MODE` (gate A2): no routeable intent may carry `default_mode == ""` (the root-mode shape that hid CHAT from the management UI).
+- `PROMPT-PATH-DERIVABILITY` (gate A3): manifest `template:` path must equal `_bundled/{category}/{lang}/{mode}/system.md`.
+- `PROMPT-FRONTMATTER-MATCH` (gate A4): frontmatter `prompt_type` must equal the manifest category and be a canonical enumeration value.
+- `ORPHAN-TEMPLATE` (gate A6): every `system.md` under `_bundled/` must be reachable by a manifest entry or be a documented capability-loaded exemption.
+- Root-cause bonus: the latent ADR-037 checker bug was found and fixed during Phase D — its AST parser only visited `ast.Assign` nodes, silently skipping `ast.AnnAssign`; the manifest's `context_modes` table was therefore never actually validated. Now fixed.
+
+**Follow-up status:** None open for FIND-010. FIND-011 (the paired finding) is also resolved (see its file).

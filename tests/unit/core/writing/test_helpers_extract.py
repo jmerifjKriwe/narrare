@@ -45,7 +45,7 @@ class TestFormatEntities:
 
     def test_empty_list_returns_empty_string(self) -> None:
         result = format_entities([])
-        assert result == ""
+        assert result.text == ""
 
     def test_single_entity_formatted(self) -> None:
         entity = KBEntity(
@@ -55,5 +55,5 @@ class TestFormatEntities:
             content="Description of Anna.",
         )
         result = format_entities([entity])
-        assert "Character: Anna" in result
-        assert "Description of Anna." in result
+        assert "Character: Anna" in result.text
+        assert "Description of Anna." in result.text

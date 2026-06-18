@@ -68,6 +68,14 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "kb_relationships",
         "kb_entities",
         "kb_suggested",
+        # ADR-050 P1-D: kb_pinned / kb_timelines / kb_systems are
+        # produced by WritingContext.to_prompt_variables() but were
+        # absent from the registry, leaving the ratcheted baseline
+        # with an undocumented gap. Registered here so future
+        # templates that reference them resolve cleanly.
+        "kb_pinned",
+        "kb_timelines",
+        "kb_systems",
         "existing_names",
         "existing_relationships",
         "existing_entity_names",

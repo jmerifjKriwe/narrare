@@ -18,8 +18,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple
 
+from narrare_core.context.contracts import OmissionReason, ProvenanceField, RenderedKBContext
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+_RELATIONSHIP_OMISSIONS: tuple[tuple[ProvenanceField, OmissionReason], ...] = (
+    ("provenance", "tier_does_not_require"),
+    ("evidence", "tier_does_not_require"),
+    ("review_state", "tier_does_not_require"),
+    ("freshness", "tier_does_not_require"),
+    ("kb_lifecycle", "tier_does_not_require"),
+)
 
 
 class RelationshipEdge(NamedTuple):
@@ -38,7 +49,7 @@ class RelationshipEdge(NamedTuple):
 
 def format_relationships(
     edges: Sequence[tuple[str, str, str | None, str, str]] | None,
-) -> str:
+) -> RenderedKBContext:
     """Format relationship edges into human-readable text for prompts.
 
     Accepts any sequence of 5-tuples ``(source_name, rel_type, label,
@@ -51,12 +62,19 @@ def format_relationships(
             ``(source_name, rel_type, label, target_name, direction)``.
 
     Returns:
-        Formatted relationship text with one line per edge, grouped
-        by source entity and sorted alphabetically.  Empty string when
-        *edges* is ``None`` or empty.
+        Rendered relationship context. ``.text`` is the legacy formatted
+        text with one line per edge, grouped by source entity and sorted
+        alphabetically.
     """
+    render_path = "narrare_core.writing._relationship_format.format_relationships"
     if not edges:
-        return ""
+        return RenderedKBContext(
+            text="",
+            preserved_fields=frozenset(),
+            omitted_fields=(),
+            entry_count=0,
+            render_path=render_path,
+        )
 
     # Sort for deterministic output: by source_name, then rel_type, then target_name
     sorted_edges = sorted(edges, key=lambda e: (e[0], e[1], e[3]))
@@ -66,4 +84,10 @@ def format_relationships(
         display_label = label or rel_type
         lines.append(f"{source_name} → [{display_label}] → {target_name}")
 
-    return "\n".join(lines)
+    return RenderedKBContext(
+        text="\n".join(lines),
+        preserved_fields=frozenset(),
+        omitted_fields=_RELATIONSHIP_OMISSIONS,
+        entry_count=len(sorted_edges),
+        render_path=render_path,
+    )

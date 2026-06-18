@@ -88,6 +88,16 @@ RULE-06: Eine Verantwortlichkeit pro Datei
 Alle 13 Regeln: `docs/_shared/CONSTRAINTS.md`
 Enforcement: `scripts/check_architecture.py` (läuft in pre-commit und CI)
 
+### Dokumentiert ≠ Implementiert (CR-04-Lektion, verbindlich)
+
+"Dokumentiert" ≠ "implementiert"; "Template existiert" ≠ "Runtime nutzt es";
+"Check grün" = nur die geprüfte Ebene ist grün. Bei Cross-Feature-Änderungen
+den Integration-Contract prüfen, nicht nur Feature-lokale Korrektheit. Eine
+`resolved`/`✅ Implemented`-Behauptung braucht **Implementation + Enforcement**
+(also echte Dateien + CI-Blocker). Siehe
+`.opencode/context/narrare-dev/standards/architectural-discipline.md` §7 und
+`docs/development/finding-lifecycle.md`.
+
 ---
 
 ## Rules — Verbindliche Standards

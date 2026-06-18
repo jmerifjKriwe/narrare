@@ -1,7 +1,7 @@
 ---
 id: ASSIST-003
 title: "Story Chat Assistant"
-status: planned
+status: deprecated
 area: ai_assist
 mvp: false
 
@@ -62,9 +62,18 @@ ui_available_in: [global, cli]
 service: chat/service.py
 contract: chat/contracts.py#ChatServiceProtocol
 router: chat/router.py
-prompt: core/prompts/_bundled/chat/en/conversation
+prompt: core/prompts/_bundled/writing/en/chat/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003]
 ---
+
+> **⚠️ SUPERSEDED by [CHAT-001](../chat/CHAT-001-free-form-chat.md).**
+> This spec is retained for history only. ASSIST-003 was never implemented as
+> designed; it was replaced by CHAT-001 (Free-Form Chat) with a scoped,
+> architecturally grounded design. The `prompt:` path above reflects the
+> current canonical chat template (relocated under `writing/` by ADR-024 and
+> confirmed by ADR-049); the original aspirational path
+> `_bundled/chat/en/conversation` never existed and the `_bundled/chat/`
+> directory has been deleted. Do not implement against this spec.
 
 # ASSIST-003 — Story Chat Assistant
 

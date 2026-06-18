@@ -13,7 +13,10 @@ import structlog
 from narrare_core.profiles.models import ProjectWritingProfile
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from narrare_core.profiles.contracts import VoiceProfileProvider
+    from narrare_core.profiles.models import CharacterVoiceProfile
 
 logger = structlog.get_logger(__name__)
 
@@ -37,9 +40,22 @@ class ProfileAssembler:
     def __init__(self, provider: VoiceProfileProvider | None = None) -> None:
         self._provider = provider
 
+    @property
+    def provider(self) -> VoiceProfileProvider:
+        """Return the bound voice profile provider.
+
+        Raises:
+            RuntimeError: If no provider is configured. A provider-less
+                assembler can still build a minimal profile, but it does
+                not satisfy the consumer binding requirement at runtime.
+        """
+        if self._provider is None:
+            raise RuntimeError("VoiceProfileProvider is not configured")
+        return self._provider
+
     async def assemble(
         self,
-        project_id: object,
+        project_id: UUID,
         *,
         writing_language: str = "en",
         genre: str | None = None,
@@ -60,7 +76,10 @@ class ProfileAssembler:
                 style_profile=style_profile,
             )
 
-        voices = await self._provider.get_character_voices(project_id)
+        voices = await self._provider.get_character_voices(
+            project_id,
+            max_age_days=max_age_days,
+        )
 
         freshness_warnings: list[str] = []
         for vp in voices:
@@ -77,4 +96,27 @@ class ProfileAssembler:
             style_profile=style_profile,
             character_voice_profiles=tuple(voices),
             freshness_warnings=tuple(freshness_warnings),
+        )
+
+    async def assemble_for_generation(
+        self,
+        project_id: UUID,
+        *,
+        max_age_days: int = 30,
+    ) -> ProjectWritingProfile:
+        """Assemble the generation projection for VoiceProfileConsumer."""
+        return await self.assemble(project_id=project_id, max_age_days=max_age_days)
+
+    async def assemble_for_checking(
+        self,
+        project_id: UUID,
+        *,
+        max_age_days: int = 30,
+    ) -> list[CharacterVoiceProfile]:
+        """Return structured voice profiles for checking consumers."""
+        if self._provider is None:
+            return []
+        return await self._provider.get_character_voices(
+            project_id,
+            max_age_days=max_age_days,
         )

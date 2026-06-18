@@ -34,6 +34,7 @@ def create_pipeline(draft_processor: DraftProcessor) -> WritingPipeline:
     Returns:
         Configured WritingPipeline with InvocationPipeline attached.
     """
+    from narrare.writing.voice_profile_adapter import make_voice_profile_consumer
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.pipeline import WritingPipeline
 
@@ -44,4 +45,5 @@ def create_pipeline(draft_processor: DraftProcessor) -> WritingPipeline:
         draft_processor=draft_processor,
         agent_registry=get_agent_registry(),
         invocation_pipeline=get_invocation_pipeline(),
+        voice_profile_consumer_factory=make_voice_profile_consumer,
     )

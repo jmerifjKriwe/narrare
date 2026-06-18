@@ -582,3 +582,59 @@ Insert the following into `INFRA-013-ai-invocation-adoption-contract.md` under �
 | RULE-11 | ✅ | KBConsistencyEnricher records `not_applicable` when provider is missing — no silent failures. |
 | RULE-20 | ✅ | `requires_runtime_evidence` flag prevents static-only adopted claims. |
 | RULE-22 | ✅ | Profile, KG, and audit vocabulary is shared across Core/Platform without conflicting definitions. |
+
+---
+
+## Extension Note — ADR-050 P1-C (2026-06-18)
+
+> **Status of this extension:** Informational. It does not change the
+> decision; it documents the unfinished half of Layer 4 and the
+> contract that closes it.
+
+### The Layer 4 gap
+
+ADR-040 §1 Decision A says: *"All 6 WritingPipeline variants that
+reference `character_voice_profiles` need updates to use the new
+model."* This is recorded under **Consequences / Negative** and
+under the **Implementation Plan Layer 4** table.
+
+**Verified state (2026-06-18):**
+
+* Layer 1 — `core/profiles/` exists: `models.py`, `contracts.py`,
+  `assembly.py`, `_voice_extraction.py`, `_freshness.py`. ✅
+* Layer 4 — `WritingContextAssembler.assemble()` line 200 still
+  calls `extract_voice_profiles(entities)` directly via the
+  backward-compat shim at `writing/_voice_profiles.py`. The
+  `VoiceProfileProvider` Protocol declared in Layer 1 has **0
+  callers** per the code knowledge graph.
+
+This is not a violation of ADR-040 (the ADR's Gate 12 scope was
+"P2 architecture spec complete"). It is unfinished follow-up work
+that ADR-040 anticipated but did not name with its own contract.
+
+### The closing contract
+
+[ADR-050](ADR-050-cross-feature-context-contracts.md) Decision 3
+adds the `VoiceProfileConsumer` Protocol to
+`packages/core/narrare_core/profiles/contracts.py`. The contract
+splits producer (`VoiceProfileProvider`, already declared here)
+from consumer (new). Generation and checking paths both bind to a
+single provider per invocation through the consumer.
+
+This does not supersede ADR-040. It extends ADR-040 §1 with the
+consumer-side SSOT that the original Implementation Plan Layer 4
+implied but did not specify.
+
+### Migration
+
+When ADR-050 Phase C lands:
+
+* `WritingContextAssembler` consumes a `VoiceProfileConsumer`
+  instead of calling `extract_voice_profiles` directly.
+* The backward-compat shim remains for any out-of-tree caller but
+  its docstring already directs new code to `ProfileAssembler`.
+* WRITE-010 (Voice Consistency Checker) and ANAL-008 (Character
+  Voice Profiling) implement the consumer contract from day one.
+
+Until then, ADR-040's ✅ Accepted status is preserved; the gap is
+tracked under ADR-050 Phase C acceptance criteria.

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare_core.context.contracts import OmissionReason, ProvenanceField, RenderedKBContext
 from narrare_core.shared.frontmatter import parse_frontmatter
 
 if TYPE_CHECKING:
@@ -61,12 +62,39 @@ def extract_frontmatter_references(frontmatter: str) -> set[str]:
     return ids
 
 
-def format_entities(entities: list[KBEntity]) -> str:
-    """Format entities as a readable text block."""
+_COMPACT_ENTITY_OMISSIONS: tuple[tuple[ProvenanceField, OmissionReason], ...] = (
+    ("priority", "tier_does_not_require"),
+    ("provenance", "tier_does_not_require"),
+    ("review_state", "tier_does_not_require"),
+    ("freshness", "tier_does_not_require"),
+    ("kb_lifecycle", "tier_does_not_require"),
+)
+
+
+def format_entities(entities: list[KBEntity]) -> RenderedKBContext:
+    """Format entities as a readable text block with provenance accounting.
+
+    The prompt-bound text remains the historical compact format:
+    ``### Type: Name\nContent``. ADR-050 P1-A accounting is carried in
+    the returned :class:`RenderedKBContext` so metadata loss is explicit.
+    """
+    render_path = "narrare_core.writing._helpers.format_entities"
     if not entities:
-        return ""
+        return RenderedKBContext(
+            text="",
+            preserved_fields=frozenset(),
+            omitted_fields=(),
+            entry_count=0,
+            render_path=render_path,
+        )
     parts: list[str] = []
     for entity in entities:
         header = f"### {entity.entity_type.title()}: {entity.name}"
         parts.append(f"{header}\n{entity.content}")
-    return "\n\n".join(parts)
+    return RenderedKBContext(
+        text="\n\n".join(parts),
+        preserved_fields=frozenset(),
+        omitted_fields=_COMPACT_ENTITY_OMISSIONS,
+        entry_count=len(entities),
+        render_path=render_path,
+    )

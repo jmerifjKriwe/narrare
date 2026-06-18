@@ -84,8 +84,12 @@ routes:
 
   - intent: CHAT
     routeable: true
-    category: chat
-    mode: ""
+    # ADR-024 / ADR-049 D1: CHAT is a writing-craft assistant under category
+    # "writing", mode "chat". The earlier `category: chat, mode: ""` was an
+    # unauthorised drift from ADR-024 that produced an orphan root-mode
+    # template (`_bundled/chat/en/system.md`). See ADR-049 FIND-010.
+    category: writing
+    mode: chat
     template: packages/core/narrare_core/prompts/_bundled/writing/en/chat/system.md
     content_type: customizable_feature_prompt
     output_language_variable: null
@@ -284,6 +288,21 @@ routes:
     fallback_policy: raise_route_not_configured
     note: "General extraction has no canonical bundled template; callers must provide a governed mode."
 
+  - intent: FACT_EXTRACT
+    routeable: true
+    category: analysis
+    mode: fact_extraction
+    template: packages/core/narrare_core/prompts/_bundled/analysis/en/fact_extraction/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: []
+    optional_variables: [genre, writing_language, kb_entities, kb_characters, kb_locations, kb_factions, kb_relationships, existing_entity_names, timeline_events, chapter_texts, user_preferences, avoidance_patterns]
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+    note: "ADR-049 Phase D: manifest entry added — the governed template existed but had no manifest coverage (governance gap exposed by the Phase D PROMPT-IDENTITY checker)."
+
   # ── Planning operations ────────────────────────────────────────────
 
   - intent: PLAN
@@ -299,6 +318,37 @@ routes:
       xml_required: []
       generated_suggestions_must_be_labelled: []
     fallback_policy: fail_loudly_if_bundled_missing
+    # ADR-049 D11 — optional context_modes list. PLAN is the first intent to
+    # use this shape: the default mode (outline) is a structure tool;
+    # temporal_consistency detects conflicts on EXISTING timeline events;
+    # timeline GENERATES a chronological timeline from chapter summaries.
+    # Backward-compatible: entries without context_modes keep using the
+    # top-level template. The current PROMPT-SURFACE checker does NOT yet
+    # validate context_modes sub-entries (ADR-049 A3/A6 / PROMPT-CONTEXT-MODES
+    # gate is a Phase-D Platform deliverable); these declarations are
+    # governance-only until that checker lands.
+    context_modes:
+      - mode: outline
+        template: packages/core/narrare_core/prompts/_bundled/planning/en/outline/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: []
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      - mode: temporal_consistency
+        template: packages/core/narrare_core/prompts/_bundled/planning/en/temporal_consistency/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      - mode: timeline
+        template: packages/core/narrare_core/prompts/_bundled/planning/en/timeline/system.md
+        content_type: customizable_feature_prompt
+        required_variables: [chapter_summaries]
+        optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, entity_events, culture_guidelines, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
 
   # ── Generation operations ──────────────────────────────────────────
 

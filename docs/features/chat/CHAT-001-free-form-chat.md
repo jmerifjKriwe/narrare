@@ -37,7 +37,7 @@ ui_available_in: [global, cli]
 service: chat/service.py
 contract: chat/contracts.py#ChatServiceProtocol
 router: chat/router.py
-prompt: core/prompts/_bundled/chat/en/system.md
+prompt: core/prompts/_bundled/writing/en/chat/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003, KB-001, ADR-034]
 ---
 
@@ -93,10 +93,17 @@ earlier planned feature with a scoped, architecturally grounded design.
 The PromptComposer maps intents to prompt file locations:
 
 ```
-LLMIntent.CHAT → category: "chat" → mode: "" (default)
+LLMIntent.CHAT → category: "writing" → mode: "chat"
 ```
 
-Resolution path: `_bundled/chat/{language}/system.md`
+Resolution path: `_bundled/writing/{language}/chat/system.md`
+
+> **Path identity (ADR-049):** The canonical CHAT template lives under
+> `writing/` because CHAT is a writing-craft assistant (ADR-024 §Decision 3).
+> An earlier duplicate under `_bundled/chat/` was a route-table drift and has
+> been deleted; the Prompt-Surface Identity checkers (PROMPT-IDENTITY,
+> PROMPT-ROOT-MODE, ORPHAN-TEMPLATE) now enforce one routeable intent → one
+> bundled template.
 
 The composer automatically:
 1. Prepends the meta-prompt (Narrare identity + role flexibility)

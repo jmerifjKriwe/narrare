@@ -12,6 +12,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field, fields
 from typing import Any
 
+from narrare_core.context._kb_envelope import (
+    OmissionReason,
+    ProvenanceField,
+    RenderedKBContext,
+)
+
 
 @dataclass(slots=True)
 class KBContextEntry:
@@ -151,7 +157,8 @@ class PromptContext:
             if isinstance(value, list):
                 # Format KB entries as readable text block
                 if value and isinstance(value[0], KBContextEntry):
-                    variables[f.name] = self._format_kb_entries(value)  # pyright: ignore[reportUnknownArgumentType]
+                    rendered = self._format_kb_entries(value)  # pyright: ignore[reportUnknownArgumentType]
+                    variables[f.name] = rendered.text
                 else:
                     variables[f.name] = "\n".join(str(v) for v in value)  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]
             else:
@@ -168,11 +175,59 @@ class PromptContext:
         return variables
 
     @staticmethod
-    def _format_kb_entries(entries: list[KBContextEntry]) -> str:
-        """Format KB entries as a readable text block for injection."""
+    def _format_kb_entries(entries: list[KBContextEntry]) -> RenderedKBContext:
+        """Format KB entries as a readable text block for injection.
+
+        Returns a :class:`RenderedKBContext` per ADR-050 P1-A
+        (CR-AUFG-04-01). The wire format (``### Type: Name\\nContent``)
+        is preserved unchanged — this is a provenance-accounting
+        migration, not a wire-format change. There is no prompt
+        regression: ``result.text`` is byte-for-byte identical to the
+        pre-C2a ``str`` return value for the same input.
+
+        **Provenance accounting (RULE-22):** ``KBContextEntry`` carries
+        ``source``, ``evidence``, ``confidence``, ``review_status`` and
+        ``freshness``. The compact immediate-context wire format renders
+        none of these into the prompt. All are explicitly omitted with
+        reason ``tier_does_not_require`` (the format is tier-1/tier-4
+        immediate/suggested context where provenance is not rendered).
+        Without this accounting the metadata was silently dropped at
+        the render boundary — the gap ADR-050 P1-A closes.
+
+        KBContextEntry provenance fields → ProvenanceField literals::
+
+            source + confidence → "provenance" (combined source marker)
+            evidence            → "evidence"
+            review_status       → "review_state"
+            freshness           → "freshness"
+
+        ``priority`` and ``kb_lifecycle`` are not carried by
+        ``KBContextEntry`` and therefore cannot be lost — they are not
+        listed in ``omitted_fields``.
+        """
+        render_path = "narrare_core.prompts.context.PromptContext._format_kb_entries"
         if not entries:
-            return ""
+            return RenderedKBContext(
+                text="",
+                preserved_fields=frozenset(),
+                omitted_fields=(),
+                entry_count=0,
+                render_path=render_path,
+            )
         parts: list[str] = []
         for entry in entries:
             parts.append(f"### {entry.entity_type.title()}: {entry.name}\n{entry.content}")
-        return "\n\n".join(parts)
+
+        omitted: tuple[tuple[ProvenanceField, OmissionReason], ...] = (
+            ("provenance", "tier_does_not_require"),
+            ("evidence", "tier_does_not_require"),
+            ("review_state", "tier_does_not_require"),
+            ("freshness", "tier_does_not_require"),
+        )
+        return RenderedKBContext(
+            text="\n\n".join(parts),
+            preserved_fields=frozenset(),
+            omitted_fields=omitted,
+            entry_count=len(entries),
+            render_path=render_path,
+        )

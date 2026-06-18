@@ -25,7 +25,7 @@ from narrare_core.writing._invocation_adapter import build_and_validate_prompt
 from narrare_core.writing._tone_data import TONE_INSTRUCTIONS
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Callable
     from uuid import UUID
 
     from narrare_core.ai_invocation.models import PromptInvocationContext
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.llm.intents import LLMIntent
+    from narrare_core.profiles.contracts import VoiceProfileConsumer
     from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
     from narrare_core.writing.context_assembler import WritingContextAssembler
     from narrare_core.writing.context_models import KBEntity, RecentChapter
@@ -56,6 +57,8 @@ class WritingPipeline:
         draft_processor: DraftProcessor,
         agent_registry: object | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
+        voice_profile_consumer_factory: Callable[[list[KBEntity]], VoiceProfileConsumer]
+        | None = None,
     ) -> None:
         self._registry = registry
         self._composer = composer
@@ -63,6 +66,7 @@ class WritingPipeline:
         self._draft_processor = draft_processor
         self._agent_registry = agent_registry
         self._invocation_pipeline = invocation_pipeline
+        self._voice_profile_consumer_factory = voice_profile_consumer_factory
         self._stop_signals: set[UUID] = set()
 
     # -- Public API --
@@ -132,10 +136,15 @@ class WritingPipeline:
                 ``["dialogue", "description"]``).  ``None`` means no
                 specific focus.
         """
+        voice_profile_consumer = None
+        if self._voice_profile_consumer_factory is not None and kb_entities:
+            voice_profile_consumer = self._voice_profile_consumer_factory(kb_entities)
+
         context = await self._context_assembler.assemble(
             chapter_content=chapter_content,
             chapter_frontmatter=chapter_frontmatter,
             chapter_outline=chapter_outline,
+            project_id=request.project_id,
             recent_chapters=recent_chapters,
             kb_entities=kb_entities,
             entity_connections=entity_connections,
@@ -149,6 +158,7 @@ class WritingPipeline:
             user_preferences=user_preferences,
             avoidance_patterns=avoidance_patterns,
             mode=str(request.mode),
+            voice_profile_consumer=voice_profile_consumer,
         )
 
         # CR-07: Send context metadata as first chunk (Context Inspector)

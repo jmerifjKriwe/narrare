@@ -10,6 +10,8 @@ Covers:
 
 from __future__ import annotations
 
+from uuid import UUID, uuid4
+
 import pytest
 
 from narrare_core.profiles.assembly import ProfileAssembler
@@ -29,8 +31,11 @@ class FakeVoiceProfileProvider:
 
     async def get_character_voices(
         self,
-        project_id: object,
+        project_id: UUID,
+        *,
+        max_age_days: int = 30,
     ) -> list[CharacterVoiceProfile]:
+        del max_age_days
         self.calls.append(project_id)
         return list(self._voices)
 
@@ -46,7 +51,7 @@ class TestProfileAssemblerNoProvider:
     @pytest.mark.asyncio
     async def test_returns_minimal_profile(self) -> None:
         assembler = ProfileAssembler(provider=None)
-        profile = await assembler.assemble(project_id="proj-1")
+        profile = await assembler.assemble(project_id=uuid4())
         assert isinstance(profile, ProjectWritingProfile)
         assert profile.writing_language == "en"
         assert profile.character_voice_profiles == ()
@@ -56,7 +61,7 @@ class TestProfileAssemblerNoProvider:
     async def test_passes_through_settings(self) -> None:
         assembler = ProfileAssembler(provider=None)
         profile = await assembler.assemble(
-            project_id="proj-1",
+            project_id=uuid4(),
             writing_language="de",
             genre="fantasy",
             tone="dark",
@@ -70,7 +75,7 @@ class TestProfileAssemblerNoProvider:
     @pytest.mark.asyncio
     async def test_no_voice_profiles(self) -> None:
         assembler = ProfileAssembler(provider=None)
-        profile = await assembler.assemble(project_id="proj-1")
+        profile = await assembler.assemble(project_id=uuid4())
         assert profile.has_voice_profiles is False
         assert profile.formatted_voice_profiles == ""
 
@@ -87,14 +92,15 @@ class TestProfileAssemblerWithProvider:
     async def test_delegates_to_provider(self) -> None:
         provider = FakeVoiceProfileProvider()
         assembler = ProfileAssembler(provider=provider)
-        await assembler.assemble(project_id="proj-1")
-        assert provider.calls == ["proj-1"]
+        project_id = uuid4()
+        await assembler.assemble(project_id=project_id)
+        assert provider.calls == [project_id]
 
     @pytest.mark.asyncio
     async def test_empty_voices_returns_no_profiles(self) -> None:
         provider = FakeVoiceProfileProvider(voices=[])
         assembler = ProfileAssembler(provider=provider)
-        profile = await assembler.assemble(project_id="proj-1")
+        profile = await assembler.assemble(project_id=uuid4())
         assert profile.has_voice_profiles is False
         assert profile.formatted_voice_profiles == ""
 
@@ -106,7 +112,7 @@ class TestProfileAssemblerWithProvider:
         ]
         provider = FakeVoiceProfileProvider(voices=voices)
         assembler = ProfileAssembler(provider=provider)
-        profile = await assembler.assemble(project_id="proj-1")
+        profile = await assembler.assemble(project_id=uuid4())
         assert profile.has_voice_profiles is True
         assert len(profile.character_voice_profiles) == 2
         assert profile.freshness_warnings == ()
@@ -124,7 +130,7 @@ class TestProfileAssemblerWithProvider:
         ]
         provider = FakeVoiceProfileProvider(voices=voices)
         assembler = ProfileAssembler(provider=provider)
-        profile = await assembler.assemble(project_id="proj-1", max_age_days=30)
+        profile = await assembler.assemble(project_id=uuid4(), max_age_days=30)
         assert len(profile.freshness_warnings) == 1
         assert "Voice profile for 'Alice'" in profile.freshness_warnings[0]
 
@@ -142,7 +148,7 @@ class TestProfileAssemblerWithProvider:
         ]
         provider = FakeVoiceProfileProvider(voices=voices)
         assembler = ProfileAssembler(provider=provider)
-        profile = await assembler.assemble(project_id="proj-1", max_age_days=30)
+        profile = await assembler.assemble(project_id=uuid4(), max_age_days=30)
         assert profile.freshness_warnings == ()
 
     @pytest.mark.asyncio
@@ -159,7 +165,7 @@ class TestProfileAssemblerWithProvider:
         ]
         provider = FakeVoiceProfileProvider(voices=voices)
         assembler = ProfileAssembler(provider=provider)
-        profile = await assembler.assemble(project_id="proj-1")
+        profile = await assembler.assemble(project_id=uuid4())
         assert len(profile.character_voice_profiles) == 2
         assert len(profile.freshness_warnings) == 1
         assert "Bob" in profile.freshness_warnings[0]
@@ -170,7 +176,7 @@ class TestProfileAssemblerWithProvider:
         provider = FakeVoiceProfileProvider(voices=voices)
         assembler = ProfileAssembler(provider=provider)
         profile = await assembler.assemble(
-            project_id="proj-1",
+            project_id=uuid4(),
             writing_language="fr",
             genre="mystery",
             tone="suspenseful",

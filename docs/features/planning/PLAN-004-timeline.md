@@ -192,6 +192,7 @@ class TimelineEvent(BaseModel):
 - [KB-007](../kb/KB-007-extraction.md) — Fact extraction
 - [PLAN-005](PLAN-005-storyboard.md) — Storyboard view (uses `timeline_position` field for chronological context in stage layout)
 - [CONS-001](../consistency/CONS-001-checker.md) — Temporal consistency checks
+- [ADR-050](../../architecture/decisions/ADR-050-cross-feature-context-contracts.md) — Cross-feature ref lifecycle contract. Timeline is a `TimelineRefConsumer` of KB entity lifecycle events (rename / deprecate / delete). The hybrid JSON `{id, name}` refs in `timeline_events.character_refs` and `timeline_events.location_ref` are updated on rename, marked `status: "deprecated"` on deprecate, and surfaced as `RefIntegrityIssue` on hard delete.
 
 ## Timeline Integration Point
 

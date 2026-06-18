@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare_core.context.contracts import OmissionReason, ProvenanceField, RenderedKBContext
 from narrare_core.wiki.types import WikiSummaryStatus
 
 if TYPE_CHECKING:
@@ -19,10 +20,19 @@ if TYPE_CHECKING:
     from narrare_core.writing.context_models import KBEntity
 
 
+_WIKI_ENTITY_OMISSIONS: tuple[tuple[ProvenanceField, OmissionReason], ...] = (
+    ("priority", "tier_does_not_require"),
+    ("provenance", "tier_does_not_require"),
+    ("review_state", "tier_does_not_require"),
+    ("freshness", "tier_does_not_require"),
+    ("kb_lifecycle", "tier_does_not_require"),
+)
+
+
 def format_entities_with_wiki(
     entities: list[KBEntity],
     wiki_summaries: dict[str, WikiSummaryData] | None,
-) -> tuple[str, int, int]:
+) -> tuple[RenderedKBContext, int, int]:
     """Format entities, preferring wiki summaries when fresh.
 
     For entities with a FRESH wiki summary, uses the compressed narrative
@@ -36,10 +46,21 @@ def format_entities_with_wiki(
             When ``None`` or empty, all entities use the raw content format.
 
     Returns:
-        Tuple of ``(formatted_text, fresh_count, stale_count)``.
+        Tuple of ``(rendered_context, fresh_count, stale_count)``.
     """
+    render_path = "narrare_core.writing.context_wiki.format_entities_with_wiki"
     if not entities:
-        return "", 0, 0
+        return (
+            RenderedKBContext(
+                text="",
+                preserved_fields=frozenset(),
+                omitted_fields=(),
+                entry_count=0,
+                render_path=render_path,
+            ),
+            0,
+            0,
+        )
 
     parts: list[str] = []
     fresh = 0
@@ -67,4 +88,14 @@ def format_entities_with_wiki(
         # Fall back to raw entity content
         parts.append(f"{header}\n{entity.content}")
 
-    return "\n\n".join(parts), fresh, stale
+    return (
+        RenderedKBContext(
+            text="\n\n".join(parts),
+            preserved_fields=frozenset(),
+            omitted_fields=_WIKI_ENTITY_OMISSIONS,
+            entry_count=len(entities),
+            render_path=render_path,
+        ),
+        fresh,
+        stale,
+    )

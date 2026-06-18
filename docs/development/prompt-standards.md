@@ -39,7 +39,7 @@ sections). When in doubt, include the section.
 
 ```yaml
 ---
-prompt_type: <category>         # writing | kb | analysis | planning | meta | generation | wiki
+prompt_type: <category>         # writing | kb | analysis | planning | meta | generation | wiki | universal
 prompt_language: <locale>       # en | de | fr
 prompt_version: "<MAJOR>.<MINOR>.<PATCH>"
 ---

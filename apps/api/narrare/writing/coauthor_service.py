@@ -234,7 +234,7 @@ class CoAuthorService:
                 context_before=request.context_before or "",
                 context_after=request.context_after or "",
                 co_author_focus=focus_list,
-                kb_relationships=kb_relationships,
+                kb_relationships=kb_relationships.text,
             ):
                 if chunk.is_final:
                     # Inject request_id into context_meta for feedback

@@ -67,10 +67,12 @@
 | [ADR-042](ADR-042-persistent-evidence-upgrade.md) | PostgreSQL Evidence Upgrade | ✅ | 2026-06-07 | `apps/api/narrare/evidence/`, `apps/api/alembic/versions/0028_invocation_evidence.py`, CR-03 P4 |
 | [ADR-043](043-ai-interaction-primitives.md) | Shared AI Interaction Primitives (`useAIOperation` hook) | ✅ Implemented | 2026-06-08 | `packages/web/lib/hooks/`, `packages/web/lib/api/`, §16 compliance, CR-07 |
 | [ADR-044](ADR-044-staged-consistency.md) | Staged Multi-Agent Consistency Pipeline (FactExtractor → ConsistencyAgent) | ✅ Implemented | 2026-06-12 | `core/agents/`, `apps/api/narrare/consistency/`, `evals/`, CONS-001, FIND-009, KB-007, ANAL-005 |
-| [ADR-045](ADR-045-runtime-adoption-enforcement.md) | Runtime Adoption Enforcement and Invocation Evidence Correlation | 🔧 | 2026-06-12 | `core/ai_invocation/`, `evidence/`, `scripts/architecture/`, ADR-038, CR-03 P5 |
+| [ADR-045](ADR-045-runtime-adoption-enforcement.md) | Runtime Adoption Enforcement and Invocation Evidence Correlation | 🔄 | 2026-06-12 | `core/ai_invocation/`, `evidence/`, `scripts/architecture/`, ADR-038, CR-03 P5 |
 | [ADR-046](ADR-046-prompt-path-compliance.md) | Prompt-Path-Compliance: Resolution-Path Retrofit & Prevention | ✅ Implemented | 2026-06-17 | `core/prompts/`, `core/agents/`, `apps/api/`, `scripts/architecture/_checkers/`, RULE-02b, CR-02 |
 | [ADR-047](ADR-047-governance-drift-automation.md) | Governance Drift Automation for Review Findings and AUFG Lifecycle | 🔄 | 2026-06-13 | `docs/architecture/governance/`, `_audit/results/technical-review/`, `scripts/governance/`, CI governance gates |
 | [ADR-048](ADR-048-non-writing-invocation-adapter.md) | Non-Writing Invocation Adapter (Domain-Agnostic Pipeline Composition) | 🔄 | 2026-06-14 | `core/ai_invocation/`, `apps/api/`, ADR-045 Decision 7, non-writing domains |
+| [ADR-049](ADR-049-prompt-surface-identity-path-contract.md) | Prompt-Surface Identity & Path Contract Retrofit (FIND-010 + FIND-011) | ✅ | 2026-06-18 | `core/prompts/`, `scripts/architecture/`, `apps/api/narrare/planning/`, ADR-024, ADR-037, RULE-02/02a/02b |
+| [ADR-050](ADR-050-cross-feature-context-contracts.md) | Cross-Feature Context Contracts (KB Envelope, Ref Lifecycle, kb_pinned Governance) | ✅ | 2026-06-18 | `core/context/`, `core/profiles/`, KB, PLAN-004, PLAN-005, CONS-001, FIND-009, CR-AUFG-04 |
 
 ---
 

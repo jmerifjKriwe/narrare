@@ -66,7 +66,7 @@ class TestFormatEntitiesWithWikiEmpty:
 
     def test_format_entities_with_wiki_empty(self) -> None:
         text, fresh, stale = format_entities_with_wiki([], None)
-        assert text == ""
+        assert text.text == ""
         assert fresh == 0
         assert stale == 0
 
@@ -74,7 +74,7 @@ class TestFormatEntitiesWithWikiEmpty:
         """Empty entities + non-empty wiki dict → still empty."""
         wikis = {"ent-1": _wiki("ent-1")}
         text, fresh, stale = format_entities_with_wiki([], wikis)
-        assert text == ""
+        assert text.text == ""
         assert fresh == 0
         assert stale == 0
 

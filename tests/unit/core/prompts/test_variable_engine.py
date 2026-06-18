@@ -182,9 +182,14 @@ class TestVariableConstants:
         assert "entity_current_content" in _USER_CONTENT_VARS
 
     def test_kb_vars_not_in_system_vars(self) -> None:
-        """KB collection vars are NOT in _SYSTEM_VARS (they are user-authored)."""
-        assert "kb_systems" not in _SYSTEM_VARS
-        assert "kb_timelines" not in _SYSTEM_VARS
+        """KB entity-subtype vars are NOT in _SYSTEM_VARS (they are not
+        produced as separate template variables).
+
+        Note: ``kb_systems`` and ``kb_timelines`` WERE added to
+        ``_SYSTEM_VARS`` per ADR-049 P1-D because ``WritingContext``
+        produces them as prompt variables. The remaining entity
+        subtypes below are not produced and must not be registered.
+        """
         assert "kb_objects" not in _SYSTEM_VARS
         assert "kb_concepts" not in _SYSTEM_VARS
         assert "kb_settings" not in _SYSTEM_VARS
@@ -261,6 +266,32 @@ class TestVariableTaxonomy:
                 VariableProvenance.PROJECT_WRITING_PROFILE,
                 VariableSecurity.SYSTEM_ONLY,
             ),
+            # ADR-050 P1-D: kb_pinned / kb_timelines / kb_systems are
+            # CURATED_KB variables (same provenance as kb_characters).
+            (
+                "kb_pinned",
+                VariableProvenance.CURATED_KB,
+                VariableSecurity.XML_SECTION_REQUIRED,
+            ),
+            (
+                "kb_timelines",
+                VariableProvenance.CURATED_KB,
+                VariableSecurity.XML_SECTION_REQUIRED,
+            ),
+            (
+                "kb_systems",
+                VariableProvenance.CURATED_KB,
+                VariableSecurity.XML_SECTION_REQUIRED,
+            ),
+            # ADR-050 P1-D / ADR-040 §1: voice profiles are project
+            # writing profile data, NOT generic SYSTEM_ONLY. LABEL_REQUIRED
+            # because the rendered voice text is data the LLM must treat
+            # as labelled context, not as system instruction.
+            (
+                "character_voice_profiles",
+                VariableProvenance.PROJECT_WRITING_PROFILE,
+                VariableSecurity.LABEL_REQUIRED,
+            ),
         ],
     )
     def test_prompt_variables_have_provenance_and_security_metadata(
@@ -280,3 +311,22 @@ class TestVariableTaxonomy:
         missing = [name for name in sorted(registered) if get_variable_classification(name) is None]
 
         assert missing == []
+
+    def test_kb_pinned_kb_timelines_kb_systems_registered_in_system_vars(self) -> None:
+        """ADR-050 P1-D: previously-unregistered KB-tier variables are
+        now in SYSTEM_VARS so future templates that reference them
+        resolve cleanly (RULE-22 §4)."""
+        for name in ("kb_pinned", "kb_timelines", "kb_systems"):
+            assert name in _SYSTEM_VARS, f"'{name}' must be in SYSTEM_VARS (ADR-050 P1-D)"
+
+    def test_character_voice_profiles_not_system_only(self) -> None:
+        """ADR-050 P1-D / ADR-040 §1: character_voice_profiles is NOT
+        SYSTEM_ONLY — it is PROJECT_WRITING_PROFILE / LABEL_REQUIRED.
+
+        This test guards against regression to the old mis-classification
+        where SYSTEM_VARS membership defaulted it to SYSTEM_ONLY.
+        """
+        classification = get_variable_classification("character_voice_profiles")
+        assert classification is not None
+        assert classification.provenance is VariableProvenance.PROJECT_WRITING_PROFILE
+        assert classification.security is VariableSecurity.LABEL_REQUIRED

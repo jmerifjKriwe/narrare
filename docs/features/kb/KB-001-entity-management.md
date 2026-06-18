@@ -152,6 +152,14 @@ class KBEntry:
 - Deleted entities: relationships cascade or preserve based on user choice
 - AI interview requires LLM to be available
 - Very large KBs (1000+ entries) may have slower search
+- **KB lifecycle (rename / deprecate / delete) is observer-notified** per
+  [ADR-050](../../architecture/decisions/ADR-050-cross-feature-context-contracts.md).
+  Consumers (Timeline, Storyboard, Chapter frontmatter) register a
+  `KBEntityLifecycleObserver` and are notified when an entity is
+  renamed, deprecated, or hard-deleted. Hard delete remains hard
+  delete (no `deleted_at` column); consumers that need tombstone
+  semantics implement them in their own storage and surface a
+  `RefIntegrityIssue(reason="deleted_ref_without_tombstone")`.
 
 ## Related Features
 
@@ -160,8 +168,10 @@ class KBEntry:
 - [KB-008](KB-008-knowledge-graph.md) — Visualizes entity relationships
 - [INFRA-003](../infra/INFRA-003-context-assembly.md) — Context includes KB entries
 - [WRITE-002](../writing/WRITE-002-new-chapter.md) — Writing consumes KB context
+- [ADR-050](../../architecture/decisions/ADR-050-cross-feature-context-contracts.md) — Cross-feature ref lifecycle contract. KB entity lifecycle changes (rename, deprecate, hard delete) emit observer events to all registered consumers.
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Marked as implemented. CRUD, search, relationships, templates, @mentions, 8 entity types, frontend editor all present. AI Interview creation mode moves to KB-002.
+- `2026-06-18` — ADR-050 specified the cross-feature ref lifecycle contract. KB entity lifecycle (rename, deprecate, delete) will emit `KBEntityLifecycleObserver` events once Phase C of ADR-050 lands. Until then, hard delete stays destructive and consumers must rely on read-side `CrossFeatureRefIndex` checks at consistency-check time.

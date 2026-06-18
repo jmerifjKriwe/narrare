@@ -27,7 +27,10 @@ INTENT_TO_CATEGORY: dict[LLMIntent, str] = {
     LLMIntent.EXTRACT: "analysis",
     LLMIntent.FACT_EXTRACT: "analysis",
     LLMIntent.SUGGEST: "writing",
-    LLMIntent.CHAT: "chat",
+    # ADR-024 / ADR-049: CHAT is a writing-craft assistant (category "writing",
+    # mode "chat"). The earlier `category="chat", mode=""` drift was an
+    # unauthorised deviation from ADR-024 §Decision 3 — see ADR-049 FIND-010.
+    LLMIntent.CHAT: "writing",
 }
 
 INTENT_TO_MODE: dict[LLMIntent, str] = {
@@ -50,7 +53,9 @@ INTENT_TO_MODE: dict[LLMIntent, str] = {
     LLMIntent.NAME_GENERATE: "names",
     LLMIntent.FACT_EXTRACT: "fact_extraction",
     LLMIntent.SUGGEST: "inline_suggest",
-    LLMIntent.CHAT: "",
+    # ADR-024 / ADR-049: CHAT mode is "chat" (not root-mode ""). Root-mode is
+    # forbidden for routeable intents per ADR-049 D3.
+    LLMIntent.CHAT: "chat",
 }
 
 _COMMON_OPTIONAL_VARIABLES = frozenset(
@@ -134,11 +139,21 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         "consistency",
         optional_variables=frozenset({"user_preferences", "avoidance_patterns", "extracted_facts"}),
     ),
-    LLMIntent.BETA_READ: PromptRouteConfig("analysis", "beta_reader"),
+    LLMIntent.BETA_READ: PromptRouteConfig(
+        "analysis",
+        "beta_reader",
+        # ADR-049 Phase D: beta_reader_deepdive is loaded by beta_reader_service
+        # as a deeper-review sub-mode. Declared here so the ORPHAN-TEMPLATE
+        # gate recognises it as reachable (previously undeclared governance gap).
+        allowed_context_modes=frozenset({"beta_reader", "beta_reader_deepdive"}),
+    ),
     LLMIntent.PLAN: PromptRouteConfig(
         "planning",
         "outline",
-        allowed_context_modes=frozenset({"outline", "temporal_consistency"}),
+        # ADR-049 D7: "timeline" added for timeline-analysis (FIND-011).
+        # "temporal_consistency" remains for conflict-detection on existing
+        # events (separate use-case; governed template already exists).
+        allowed_context_modes=frozenset({"outline", "temporal_consistency", "timeline"}),
     ),
     LLMIntent.SUMMARIZE: PromptRouteConfig("analysis", "summarize"),
     LLMIntent.NAME_GENERATE: PromptRouteConfig("generation", "names"),
@@ -162,7 +177,11 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
             }
         ),
     ),
-    LLMIntent.CHAT: PromptRouteConfig("chat", ""),
+    # ADR-024 / ADR-049 D1: CHAT routing restored to the authorised ADR-024
+    # values. The previous `PromptRouteConfig("chat", "")` was an unauthorised
+    # drift that created a root-mode path (`chat/en/system.md`) invisible to
+    # PromptManagement and inconsistent with the manifest template path.
+    LLMIntent.CHAT: PromptRouteConfig("writing", "chat"),
 }
 
 CONTEXT_MODE_REQUIRED_INTENTS: dict[LLMIntent, str] = {

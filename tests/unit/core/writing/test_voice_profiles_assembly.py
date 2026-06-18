@@ -5,13 +5,20 @@ Extracted from ``test_voice_profiles.py`` for RULE-04 compliance.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from uuid import UUID, uuid4
 
 import pytest
 
+from narrare_core.profiles._voice_extraction import build_character_voice_profile
+from narrare_core.profiles.assembly import ProfileAssembler
 from narrare_core.writing.context_assembler import WritingContextAssembler
 from narrare_core.writing.context_models import KBEntity
 from narrare_core.writing.models import WritingContext
+
+if TYPE_CHECKING:
+    from narrare_core.profiles.contracts import VoiceProfileProvider
+    from narrare_core.profiles.models import CharacterVoiceProfile
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,6 +50,41 @@ def _entity(
         is_referenced=is_referenced,
         metadata=metadata,
     )
+
+
+class _EntityVoiceProvider:
+    """Test provider that exposes KBEntity voice data through the contract."""
+
+    def __init__(self, entities: list[KBEntity]) -> None:
+        self._entities = entities
+
+    async def get_character_voices(
+        self,
+        project_id: UUID,
+        *,
+        max_age_days: int = 30,
+    ) -> list[CharacterVoiceProfile]:
+        del project_id
+        voices: list[CharacterVoiceProfile] = []
+        for entity in self._entities:
+            if entity.entity_type != "character":
+                continue
+            profile = build_character_voice_profile(
+                entity_id=entity.entity_id,
+                name=entity.name,
+                metadata=entity.metadata,
+                updated_at=entity.updated_at,
+                max_age_days=max_age_days,
+            )
+            if profile is not None:
+                voices.append(profile)
+        return voices
+
+
+def _consumer_for_entities(entities: list[KBEntity]) -> ProfileAssembler:
+    """Build the VoiceProfileConsumer used by assembler tests."""
+    provider: VoiceProfileProvider = _EntityVoiceProvider(entities)
+    return ProfileAssembler(provider=provider)
 
 
 @pytest.fixture()
@@ -98,12 +140,14 @@ class TestAssemblerEndToEnd:
         ]
 
         ctx = await assembler.assemble(
+            project_id=uuid4(),
             chapter_content="The chapter begins.",
             chapter_frontmatter=(
                 "---\npov_character: char-1\ncharacters:\n  - char-1\n  - char-2\n---\n"
             ),
             chapter_outline="Alice and Bob meet.",
             kb_entities=entities,
+            voice_profile_consumer=_consumer_for_entities(entities),
             project_title="Test",
             genre="fantasy",
         )
@@ -132,8 +176,10 @@ class TestAssemblerEndToEnd:
         ]
 
         ctx = await assembler.assemble(
+            project_id=uuid4(),
             chapter_content="The chapter begins.",
             kb_entities=entities,
+            voice_profile_consumer=_consumer_for_entities(entities),
             project_title="Test",
             genre="fantasy",
         )
@@ -152,8 +198,10 @@ class TestAssemblerEndToEnd:
         ]
 
         ctx = await assembler.assemble(
+            project_id=uuid4(),
             chapter_content="The chapter begins.",
             kb_entities=entities,
+            voice_profile_consumer=_consumer_for_entities(entities),
             project_title="Test",
             genre="fantasy",
         )
@@ -179,8 +227,10 @@ class TestAssemblerEndToEnd:
         ]
 
         ctx = await assembler.assemble(
+            project_id=uuid4(),
             chapter_content="The chapter begins.",
             kb_entities=entities,
+            voice_profile_consumer=_consumer_for_entities(entities),
             project_title="Test",
             genre="fantasy",
             avoidance_patterns="No cliches.",

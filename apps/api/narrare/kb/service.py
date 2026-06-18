@@ -11,12 +11,11 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare.kb._utils import MENTION_RE, generate_reference_html, slugify
-from narrare.kb._validators import resolve_entry_slug, validate_entry_metadata
-from narrare.kb.schemas import (
-    ReferenceResolution,
-    ResolveReferencesResponse,
+from narrare.kb._reference_resolution import (
+    resolve_references as resolve_references_impl,
 )
+from narrare.kb._utils import slugify
+from narrare.kb._validators import resolve_entry_slug, validate_entry_metadata
 from narrare_core.shared.errors import (
     ConflictError,
     ForbiddenError,
@@ -28,10 +27,12 @@ if TYPE_CHECKING:
 
     from narrare.kb.contracts import KBRepositoryProtocol
     from narrare.kb.embedding_hooks import EmbeddingHookManager
+    from narrare.kb.lifecycle_dispatcher import KBLifecycleDispatcher
     from narrare.kb.models import KBEntry
     from narrare.kb.schemas import (
         KBEntryCreate,
         KBEntryUpdate,
+        ResolveReferencesResponse,
     )
     from narrare.novels.contracts import NovelRepositoryProtocol
 
@@ -46,10 +47,12 @@ class KBService:
         repo: KBRepositoryProtocol,
         novel_repo: NovelRepositoryProtocol | None = None,
         embedding_hooks: EmbeddingHookManager | None = None,
+        lifecycle: KBLifecycleDispatcher | None = None,
     ) -> None:
         self._repo = repo
         self._novel_repo = novel_repo
         self._embedding_hooks = embedding_hooks
+        self._lifecycle = lifecycle
 
     async def _verify_novel_ownership(self, novel_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """Raise ForbiddenError if the novel does not belong to the user."""
@@ -154,6 +157,9 @@ class KBService:
     ) -> KBEntry:
         """Update entry — re-validate metadata, regenerate slug on name change."""
         entry = await self.get(novel_id, entry_id, user_id)
+        # Snapshot pre-update identity for ADR-050 P1-B lifecycle dispatch.
+        old_name = entry.name
+        was_deprecated = entry.status == "deprecated"
         updates: dict[str, object] = {}
 
         if data.name is not None:
@@ -206,6 +212,17 @@ class KBService:
                 content_changed=content_changed,
             )
 
+        # ADR-050 P1-B: notify cross-feature observers of rename/deprecate.
+        if self._lifecycle is not None:
+            await self._lifecycle.dispatch_kb_update(
+                novel_id=novel_id,
+                entity_id=entry_id,
+                old_name=old_name,
+                was_deprecated=was_deprecated,
+                new_name=data.name,
+                new_status=data.status,
+            )
+
         return updated
 
     async def delete(self, novel_id: uuid.UUID, entry_id: uuid.UUID, user_id: uuid.UUID) -> None:
@@ -213,6 +230,11 @@ class KBService:
         entry = await self.get(novel_id, entry_id, user_id)
         await self._repo.delete(entry)
         logger.info("kb_entry_deleted", entry_id=str(entry_id))
+
+        # ADR-050 P1-B: hard delete stays hard delete — observers surface
+        # dangling refs as RefIntegrityIssue (no tombstone column on KBEntry).
+        if self._lifecycle is not None:
+            await self._lifecycle.notify_deleted(novel_id=novel_id, entity_id=entry_id)
 
     async def resolve_references(
         self,
@@ -222,33 +244,12 @@ class KBService:
     ) -> ResolveReferencesResponse:
         """Find all @Name mentions in text and resolve them to KB entries.
 
-        Mentions that match an entry name (case-insensitive) are linked;
+        Delegates to :func:`narrare.kb._reference_resolution.resolve_references`
+        (RULE-04 extraction). Mentions matching an entry name are linked;
         unmatched mentions are returned without an entry_id.
-        All mentions are optional — missing entries never cause errors.
         """
         await self._verify_novel_ownership(novel_id, user_id)
-
-        mentions = {m.group(1).strip() for m in MENTION_RE.finditer(text)}
-        resolved: list[ReferenceResolution] = []
-
-        for mention in mentions:
-            entry = await self._repo.get_by_name(novel_id, mention)
-            if entry is not None:
-                resolved.append(
-                    ReferenceResolution(
-                        mention=mention,
-                        entry_id=str(entry.id),
-                        entry_name=entry.name,
-                        entity_type=entry.entity_type,
-                        slug=entry.slug,
-                    )
-                )
-            else:
-                resolved.append(ReferenceResolution(mention=mention))
-
-        html = generate_reference_html(text, resolved, novel_id)
-
-        return ResolveReferencesResponse(resolved=resolved, html=html)
+        return await resolve_references_impl(self._repo, novel_id, text)
 
     async def autocomplete(
         self,

@@ -241,7 +241,7 @@ class ExtendService:
                 base_url=self._base_url,
                 chapter_content=chapter_content,
                 custom_tone_instructions=custom_tone_instructions,
-                kb_relationships=kb_relationships,
+                kb_relationships=kb_relationships.text,
             ):
                 if chunk.is_final:
                     raw_text = "".join(accumulated) + chunk.text

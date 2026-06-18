@@ -1,8 +1,10 @@
 # FIND-011 — Timeline analysis bypasses the governed planning timeline template
 
 Priority: 🔴 High
-Status: identified / open
+Status: ✅ Resolved (2026-06-18)
 Source: CR-04 §3, §4 (2026-06-12)
+
+> **Resolution:** Closed by [ADR-049](../../../../docs/architecture/decisions/ADR-049-prompt-surface-identity-path-contract.md) (Prompt-Surface Identity & Path Contract). Phase C implemented all Retrofit-Plan steps (added `timeline` to PLAN's `allowed_context_modes`, created the governed `_bundled/planning/en/timeline/system.md` template, migrated `timeline_analysis_service.py` to PromptComposer Mode 1, removed the premature ADR-048 Mode 2 `ManualInjectionDeclaration`). Phase D enforces the fix via the `INLINE-FEATURE-PROMPT` gate. "Resolved" here means *implemented + enforced*, not merely *documented*.
 
 ## Finding
 
@@ -45,3 +47,20 @@ Acceptance criteria:
 ## Related Findings
 
 - Cross-references FIND-010 because both findings require prompt-surface contract/checker strengthening: existing prompt artifacts are valid, but runtime does not use the audited surface.
+
+---
+
+## Resolution evidence (2026-06-18)
+
+**Design (ADR):** ADR-049 Decisions D7–D11 — added `"timeline"` to PLAN's `allowed_context_modes` (D7), specified the governed `_bundled/planning/en/timeline/system.md` template (D8), migrated `timeline_analysis_service.py` to PromptComposer Mode 1 (D9), removed the premature ADR-048 Mode 2 `_TIMELINE_ANALYSIS_INJECTION` declaration (D10), and extended the manifest schema with an optional `context_modes` list (D11). This honours the PLAN intent's own docstring ("timeline analysis uses PLAN") rather than inventing a new intent.
+
+**Implementation (Phase C — verified on disk):**
+- `_bundled/planning/en/timeline/system.md` **created** (4126 bytes, frontmatter `prompt_type: planning`, `prompt_version: "1.0.0"`), encoding the task framing previously inlined in the service f-string.
+- `timeline_analysis_service.py` migrated to Mode 1: it now calls `composer.build(LLMIntent.PLAN, ctx_with_mode="timeline")` and passes `composed.system`/`composed.user` to the agent instead of an f-string.
+- `_TIMELINE_ANALYSIS_INJECTION` and the `manual_injection=` kwarg **deleted** — production code no longer depends on ADR-048's Proposed-only Mode 2 contract.
+
+**Enforcement (Phase D — CI-blocking checker):**
+- `INLINE-FEATURE-PROMPT` (gate A5): service-layer f-string/concatenation containing feature/task framing passed to `agent.run(prompt=...)` is forbidden when a governed template exists for the intent. Pure runtime-data prompts (chapter text, user messages) remain allowed. The ratchet baseline is set post-migration, so this gate would now flag a regression of the FIND-011 bypass pattern.
+- `PROMPT-CONTEXT-MODES` (gate D11): each manifest `context_modes` sub-entry must be in the route-table's `allowed_context_modes` and have a valid template.
+
+**Follow-up status:** None open for FIND-011. FIND-010 (the paired finding) is also resolved (see its file).

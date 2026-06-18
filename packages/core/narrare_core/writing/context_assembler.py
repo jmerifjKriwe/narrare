@@ -26,15 +26,16 @@ from narrare_core.writing._token_utils import (
     enforce_budget,
     truncate_to_budget,
 )
-from narrare_core.writing._voice_profiles import extract_voice_profiles
 from narrare_core.writing.budget import TokenBudgetManager
 from narrare_core.writing.context_validators import check_orphan_references, extract_entity_names
 from narrare_core.writing.models import WritingContext
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from uuid import UUID
 
     from narrare_core.context.types import TierBudget
+    from narrare_core.profiles.contracts import VoiceProfileConsumer
     from narrare_core.project.profile import ProjectWritingProfile
     from narrare_core.wiki.types import WikiSummaryData
     from narrare_core.writing.context_models import KBEntity, RecentChapter
@@ -98,6 +99,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         chapter_content: str = "",
         chapter_frontmatter: str = "",
         chapter_outline: str = "",
+        project_id: UUID | None = None,
         recent_chapters: list[RecentChapter] | None = None,
         kb_entities: list[KBEntity] | None = None,
         entity_connections: dict[str, set[str]] | None = None,
@@ -115,6 +117,7 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
         timeline_position: str = "",
         story_structure: str = "",
         profile: ProjectWritingProfile | None = None,
+        voice_profile_consumer: VoiceProfileConsumer | None = None,
         **_extra: Any,
     ) -> WritingContext:
         """Assemble writing context with budget enforcement.
@@ -190,14 +193,23 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
 
         # Tier 4: KB Suggested
         t4_limit = budgets["kb_suggested"].token_limit + overflow
-        suggested_raw = format_entities(suggested)
-        suggested_text, overflow = enforce_budget(suggested_raw, t4_limit, self._count_tokens)
+        suggested_rendered = format_entities(suggested)
+        suggested_text, overflow = enforce_budget(
+            suggested_rendered.text,
+            t4_limit,
+            self._count_tokens,
+        )
 
         # Tier 5: Pinned (bypass — always included)
-        pinned_text = format_entities(pinned)
+        pinned_text = format_entities(pinned).text
 
-        # Extract character voice profiles from character entities
-        character_voice_profiles, voice_profile_warnings = extract_voice_profiles(entities)
+        # Voice profiles are assembled through the ADR-050 consumer SSOT.
+        character_voice_profiles = ""
+        voice_profile_warnings: list[str] = []
+        if voice_profile_consumer is not None and project_id is not None:
+            voice_profile = await voice_profile_consumer.assemble_for_generation(project_id)
+            character_voice_profiles = voice_profile.formatted_voice_profiles
+            voice_profile_warnings = list(voice_profile.freshness_warnings)
 
         # Check for orphan references (referenced in frontmatter but not in KB)
         all_classified = pinned + referenced + connected + suggested

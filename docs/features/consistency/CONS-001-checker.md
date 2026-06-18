@@ -216,6 +216,21 @@ guard to avoid false positives.
 
 ### FIND-009 Integration Contract: Timeline → Consistency
 
+> **Status clarification (ADR-050):** FIND-009 is split into two halves.
+>
+> * **FIND-009a (resolved by ADR-044):** Timeline→Consistency provenance
+>   preservation. The Consistency consumer (this feature) consumes
+>   Timeline data via `TimelineEventEnvelope` with full provenance.
+> * **FIND-009b (open; closed by ADR-050 P1-B):** KB→Consumer ref
+>   lifecycle (rename, deprecate, delete, tombstone) across Timeline,
+>   Storyboard, and Chapter frontmatter. The Consistency consumer
+>   surfaces these via `RefIntegrityIssue` once the
+>   `CrossFeatureRefIndex` is implemented.
+>
+> ADR-044 is ✅ Implemented, not Proposed. The "Timeline not consumed"
+> statement in older reviews is stale for CONS-001 and was stale the
+> moment ADR-044 shipped on 2026-06-13.
+
 **Shared data source:** TimelineEvent records (planning module)
 **Data direction:** Consistency → reads ← Timeline writes
 
@@ -258,6 +273,7 @@ The `FactExtractorAgent` (Stage 1) is designed for reuse beyond CONS-001:
 - `2026-05-28` — Moved to `in_progress`. Full implementation: ConsistencyAgent (pydantic-ai) with core types, API endpoints, frontend panel. All spec requirements implemented: issue actions (dismiss/mark intentional/copy), loading progress with elapsed timer, rule-based KB pre-check (deterministic, confidence=1.0), scope selector (current/selected/all), fact deduplication. LLMIntent.CONSISTENCY confirmed in intents.py. 22 rule helper tests + 6 service tests.
 - `2026-06-12` — ADR-044 proposed: staged multi-agent pipeline (FactExtractorAgent → ConsistencyAgent). FIND-009 integration contract with TimelineEventEnvelope. SSE stage events. Spec updated to reflect staged flow, new types, and cross-feature reuse.
 - `2026-06-13` — ADR-044 implemented: core FactExtractor types/agent/prompt and `FACT_EXTRACT` route, backend staged orchestrator + enriched timeline envelopes + SSE endpoint, and Pydantic Evals `consistency_staged` smoke/runtime suite. Validation reported: 57 core tests, 77 backend consistency tests, 9 eval tests; Ruff, Pyright, architecture, prompt checks, and smoke evals passed.
+- `2026-06-18` — ADR-050 clarified FIND-009 status: FIND-009a (this consumer) is resolved by ADR-044; FIND-009b (cross-feature ref lifecycle) is open and closed by ADR-050 P1-B `CrossFeatureRefIndex`. The Consistency consumer will surface `RefIntegrityIssue` records from the read-side index once Phase C of ADR-050 lands.
 
 ## RULE-XX Compliance
 

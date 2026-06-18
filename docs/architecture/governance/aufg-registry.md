@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Established by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-15 (AUFG-05-11 resolved — CURRENT_STATE volatile stats cleanup complete)
+> **Last updated:** 2026-06-18 (AUFG-04-01 added — writing/story_suggest orphan template disposition)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -39,6 +39,61 @@ Priorities use `P0` (release/security blocking), `P1` (high governance priority)
 ---
 
 ## Active AUFGs
+
+### AUFG-04-01 — writing/story_suggest Orphan Template Disposition
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-01 |
+| Title | writing/story_suggest Orphan Template Disposition |
+| Source | CR-04 Phase D ORPHAN-TEMPLATE gate (ADR-049 A6). The `writing/story_suggest` template has no production Python consumer; acknowledged as documented ratcheted debt in `scripts/architecture/_checkers/_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`. |
+| Status | `open` |
+| Priority | P2 |
+| Area | Prompts, Writing features, Prompt-surface governance |
+| Owner role | Architecture Specialist (disposition decision) + Implementation Specialist (rewire or delete) |
+| Dependencies | WRITE-009 (Writer's Block Tools) feature planning; ADR-049 ORPHAN-TEMPLATE gate; `writing/story_suggest/system.md` (v1.3.0, 113 lines). |
+| Review trigger/date | Re-review when WRITE-009 (or a dedicated story-suggestions feature) enters implementation, or by 2026-09-30 if no consumer is planned. |
+
+**Background:**
+
+`packages/core/narrare_core/prompts/_bundled/writing/en/story_suggest/system.md`
+exists at v1.3.0 (113 lines, well-developed) but no service or agent loads it.
+It is a `writing` sub-mode template that generates 3–5 distinct story
+suggestions (plot developments, character moments, dialogue options, stylistic
+alternatives). It appears to be a remnant of an earlier or redesigned
+story-suggestions feature. Three probe scripts reference it
+(`writing_probes.py`, `mode_data.py`, `validation_budget_probes.py`) but those
+are test/probe harnesses, not production consumers.
+
+**Disposition decision (Architecture, 2026-06-18):**
+
+**Do NOT delete now.** The template is substantial, well-structured, and maps
+plausibly to [WRITE-009 (Writer's Block Tools)](../../features/writing/WRITE-009-unblock.md),
+which is `📋 planned`. Deleting it would discard meaningful work for a feature
+that may still be implemented. The ORPHAN-TEMPLATE gate already acknowledges it
+as documented ratcheted debt, so it is not silently suppressing CI.
+
+**Acceptance criteria (one of):**
+
+- **Rewire** — when WRITE-009 (or a dedicated story-suggestions feature) is
+  implemented, route a `story_suggest` context-mode under an existing writing
+  intent through PromptComposer so the template becomes runtime-loaded. Update
+  the manifest and route-table; remove the `_ORPHAN_EXEMPTIONS` entry.
+- **Delete** — if WRITE-009 is permanently descoped or redesigned to not use
+  this prompt shape, delete the template and remove the `_ORPHAN_EXEMPTIONS`
+  entry. Record the descoping rationale here.
+
+**Definition of Done:**
+
+- The `("writing", "story_suggest")` entry is removed from
+  `_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS` because it is either reachable
+  by a manifest/route entry OR deleted.
+- `just check-architecture` remains green with one fewer orphan exemption.
+- This registry entry is updated with exit evidence and status `resolved`.
+
+**Exit evidence:** Pending — open until WRITE-009 planning or a descoping decision.
+
+---
 
 ### AUFG-05-07 — CORS-/Rate-Limiting-Security-Audit
 

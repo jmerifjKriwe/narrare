@@ -252,7 +252,7 @@ class RewriteService:
                 rewrite_mode=rewrite_mode,
                 custom_instructions=custom_instructions,
                 rewrite_count=request.count,
-                kb_relationships=kb_relationships,
+                kb_relationships=kb_relationships.text,
             ):
                 if chunk.is_final:
                     raw_text = "".join(accumulated) + chunk.text
