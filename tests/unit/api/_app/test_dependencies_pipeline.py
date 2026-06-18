@@ -6,6 +6,8 @@ Tests that ``get_invocation_pipeline()`` returns a fully configured
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import narrare._app.dependencies_pipeline as pipeline_mod
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
@@ -28,3 +30,34 @@ class TestGetInvocationPipeline:
         second = pipeline_mod.get_invocation_pipeline()
 
         assert first is second
+
+
+class TestNoRealMem0InPipelineTests:
+    """Regression: ``get_invocation_pipeline()`` must not create real mem0
+    clients (RULE-20).
+
+    ``get_invocation_pipeline()`` delegates to
+    ``_get_preference_service_instance()`` which, without the
+    ``tests/unit/conftest.py`` isolation fixture, would create a real
+    ``AsyncMemory`` / ``QdrantClient`` because mem0 is installed and
+    conftest sets dummy API keys.
+    """
+
+    def test_pipeline_does_not_call_create_memory_client_sync(self) -> None:
+        """get_invocation_pipeline() must not trigger real mem0 client creation."""
+        import narrare._app.dependencies_prompts as prompts_mod
+
+        # Reset preference-service singleton so the spy observes a fresh
+        # assembly path, not a cached result.
+        prompts_mod._preference_service_instance = None
+        prompts_mod._preference_service_init_tried = False
+        pipeline_mod.get_invocation_pipeline.cache_clear()
+
+        with patch("narrare_core.memory.mem0_client.create_memory_client_sync") as spy_create:
+            pipeline_mod.get_invocation_pipeline()
+
+        assert not spy_create.called, (
+            "get_invocation_pipeline() triggered create_memory_client_sync() — "
+            "a real mem0/Qdrant client would be created. "
+            "Unit tests must never create real external resources (RULE-20)."
+        )

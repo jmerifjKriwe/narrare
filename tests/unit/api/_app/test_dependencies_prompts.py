@@ -197,3 +197,57 @@ class TestPromptComposer:
         second = prompts_mod.get_composer()
 
         assert first is second
+
+
+# ---------------------------------------------------------------------------
+# Regression: no real mem0/Qdrant clients in unit tests (RULE-20)
+# ---------------------------------------------------------------------------
+
+
+class TestNoRealMem0InUnitTests:
+    """Regression guard: unit tests must never create real mem0 clients.
+
+    Bug history: ``TestPromptComposer`` and ``TestGetInvocationPipeline``
+    called ``get_composer()`` / ``get_invocation_pipeline()`` without
+    mocking the preference-service DI path. Since mem0 IS installed in
+    the test environment and ``conftest.py`` sets dummy ``OPENAI_API_KEY``
+    / ``ANTHROPIC_API_KEY``, ``_get_preference_service_instance()``
+    reached ``create_memory_client_sync()`` and created real
+    ``AsyncMemory`` instances backed by local Qdrant. This leaked:
+
+    - ``~/.mem0/migrations_qdrant/.lock``  (file handle)
+    - ``/tmp/qdrant/.lock``                (file handle)
+    - sqlite connections                   (mem0 history store)
+    - QdrantClient ``__del__`` tracebacks at interpreter shutdown
+      (``ImportError: sys.meta_path is None, Python is likely shutting down``)
+
+    Root cause: ``is_mem0_available()`` returned ``True`` in unit tests.
+
+    Fix: ``tests/unit/conftest.py`` mocks ``is_mem0_available`` to
+    ``False`` so ``_get_preference_service_instance()`` short-circuits
+    before reaching ``create_memory_client_sync()``.
+    """
+
+    def test_get_composer_does_not_call_create_memory_client_sync(self) -> None:
+        """get_composer() must not trigger real mem0 client creation.
+
+        Spies on ``create_memory_client_sync`` — if the preference-service
+        DI path is not properly isolated, this spy fires.
+        """
+        from unittest.mock import patch
+
+        # Reset singleton + clear lru_cache so the spy observes a fresh
+        # composer assembly (not a cached result from an earlier test).
+        prompts_mod._preference_service_instance = None
+        prompts_mod._preference_service_init_tried = False
+        prompts_mod._get_composer_instance.cache_clear()
+
+        with patch("narrare_core.memory.mem0_client.create_memory_client_sync") as spy_create:
+            prompts_mod.get_composer()
+
+        assert not spy_create.called, (
+            "get_composer() triggered create_memory_client_sync() — "
+            "a real mem0/Qdrant client would be created. "
+            "Unit tests must never create real external resources (RULE-20). "
+            "Ensure tests/unit/conftest.py mocks is_mem0_available() to False."
+        )
