@@ -119,7 +119,7 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
               message={
                 "userMessage" in error
                   ? (error as { userMessage: string }).userMessage
-                  : t("worldbuilding.error")
+                  : error.message || t("worldbuilding.error")
               }
               onRetry={() => void runAnalysis(false)}
             />

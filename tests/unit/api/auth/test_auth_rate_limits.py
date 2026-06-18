@@ -26,10 +26,14 @@ Regression test strategy:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+if TYPE_CHECKING:
+    import pytest
 
 from narrare.auth.router import _get_auth_service, router
 from narrare.auth.schemas import TokenResponse
@@ -40,12 +44,14 @@ class TestAuthRegisterRateLimiter:
 
     def test_register_ratelimit_allows_first_three_blocks_fourth(
         self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Verify the /auth/register rate limiter is a shared singleton.
 
         Sends 3 requests (should succeed within the 3/min limit) then
         a 4th (must be rejected with 429).
         """
+        monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
         # Arrange
         app = FastAPI()
         app.include_router(router)
@@ -80,12 +86,14 @@ class TestAuthLoginRateLimiter:
 
     def test_login_ratelimit_allows_first_five_blocks_sixth(
         self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Verify the /auth/login rate limiter is a shared singleton.
 
         Sends 5 requests (should succeed within the 5/min limit) then
         a 6th (must be rejected with 429).
         """
+        monkeypatch.delenv("NARRARE_E2E_TEST", raising=False)
         # Arrange
         app = FastAPI()
         app.include_router(router)

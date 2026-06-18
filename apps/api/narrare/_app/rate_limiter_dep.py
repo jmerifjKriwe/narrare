@@ -19,6 +19,7 @@ See ``rate_limits.py`` for the module-level limiter instances.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
@@ -86,6 +87,10 @@ class RateLimiter:
             HTTPException: With status 429 if the rate limit is exceeded and
                 ``blocking`` is ``False``.
         """
+        # E2E test mode: disable all rate limiting (prevents false 429 failures)
+        if os.environ.get("NARRARE_E2E_TEST"):
+            return None
+
         del response  # signature compatibility only; unused.
         rate_key = await self._identifier(request)
         acquired = await self.limiter.try_acquire_async(rate_key, blocking=self.blocking)
