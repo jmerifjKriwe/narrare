@@ -22,7 +22,7 @@ from narrare._app.database import get_async_session
 from narrare._app.main import create_app
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from fastapi import FastAPI
 
@@ -37,24 +37,6 @@ TEST_DATABASE_URL = os.environ.get(
 # (e.g. postgres:5432/narrare_dev) while tests use TEST_DATABASE_URL
 # (e.g. postgres_test:5432/narrare_test) — tables never get created.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
-
-
-@pytest.fixture(autouse=True, scope="session")
-def _set_test_mode() -> Generator[None]:  # pyright: ignore[reportUnusedFunction]
-    """Set NARRARE_TEST_MODE for integration tests only.
-
-    Must be session-scoped and autouse so it applies before the app
-    fixture builds the middleware.  Module-level os.environ assignment
-    was removed because pytest imports all conftest.py files during
-    collection, leaking the env var into unit tests.
-
-    Test-mode bypass for CSRF OriginValidationMiddleware (never set in prod):
-    httpx AsyncClient sends no Origin/Referer header, so unauthenticated
-    POST/PUT/PATCH/DELETE would otherwise be rejected with 403.
-    """
-    os.environ["NARRARE_TEST_MODE"] = "1"
-    yield
-    os.environ.pop("NARRARE_TEST_MODE", None)
 
 
 @pytest.fixture(autouse=True)
@@ -236,7 +218,7 @@ async def app() -> AsyncGenerator[FastAPI]:
     from narrare.memory.dependencies import get_memory_client
     from narrare_core.memory._null_client import NullMemoryClient
 
-    app = create_app()
+    app = create_app(test_mode=True)
 
     async def override_memory_client():
         return NullMemoryClient()

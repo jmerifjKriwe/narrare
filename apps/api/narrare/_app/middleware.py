@@ -7,7 +7,6 @@ source of truth.
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from typing import TYPE_CHECKING
@@ -59,10 +58,20 @@ class OriginValidationMiddleware(BaseHTTPMiddleware):
     * **No Origin, no Referer, no Bearer** — HTTP 403.
     """
 
-    def __init__(self, app: object, trusted_origins: list[str]) -> None:
-        """Initialise with a list of origin strings (no trailing slash)."""
+    def __init__(
+        self, app: object, trusted_origins: list[str], *, _test_mode: bool = False
+    ) -> None:
+        """Initialise with a list of origin strings (no trailing slash).
+
+        Args:
+            app: The ASGI application.
+            trusted_origins: List of allowed origin strings (no trailing slash).
+            _test_mode: If ``True``, bypass origin validation (for integration
+                tests where httpx sends no Origin/Referer header).
+        """
         super().__init__(app)  # type: ignore[arg-type]
         self.trusted_origins = trusted_origins
+        self._test_mode = _test_mode
 
     async def dispatch(
         self,
@@ -72,8 +81,8 @@ class OriginValidationMiddleware(BaseHTTPMiddleware):
         # Test-mode bypass: integration tests use httpx AsyncClient, which
         # sends no Origin/Referer header, so unauthenticated state-changing
         # requests would be rejected with 403 CSRF_ORIGIN_MISMATCH.
-        # NARRARE_TEST_MODE is NEVER set in production deployments.
-        if os.environ.get("NARRARE_TEST_MODE") == "1":
+        # ``_test_mode`` is never set to ``True`` in production deployments.
+        if self._test_mode:
             return await call_next(request)
 
         # ── safe methods are always allowed ──────────────────────────────

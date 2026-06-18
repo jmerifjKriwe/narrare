@@ -47,7 +47,7 @@ def ws_env():
         user="Continue the story based on the user's direction.",
     )
 
-    app = create_app()
+    app = create_app(test_mode=True)
 
     with (
         patch(

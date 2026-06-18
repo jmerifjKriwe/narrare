@@ -25,8 +25,15 @@ from narrare_core.shared.errors import NarrareError
 logger = structlog.get_logger(__name__)
 
 
-def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
+def create_app(*, test_mode: bool = False) -> FastAPI:
+    """Create and configure the FastAPI application.
+
+    Args:
+        test_mode: If ``True``, pass ``_test_mode`` to
+            :class:`OriginValidationMiddleware <narrare._app.middleware.OriginValidationMiddleware>`
+            so state-changing requests without Origin/Referer headers (e.g.
+            httpx ``AsyncClient``) are not rejected with 403.
+    """
     settings = get_settings()
 
     app = FastAPI(
@@ -57,6 +64,7 @@ def create_app() -> FastAPI:
         app.add_middleware(
             OriginValidationMiddleware,
             trusted_origins=get_trusted_origins(settings),
+            _test_mode=test_mode,
         )
 
     # --- Request logging ---
