@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "narrare://configuration-adoption-matrix.schema",
+  "title": "Narrare Configuration Adoption Matrix",
+  "description": "Validates configuration-adoption-matrix.yaml structure per ADR-051. Every material configuration value must have exactly one lifecycle classification and, where applicable, a source -> resolver -> runtime-consumer -> evidence chain.",
+  "type": "object",
+  "required": ["version", "adr", "expected_setting_ids", "entries"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Matrix schema version — must be 1.0.0."
+    },
+    "adr": {
+      "type": "string",
+      "description": "Governing ADR reference (e.g. ADR-051)."
+    },
+    "spec": {
+      "type": "string",
+      "description": "Path to the remediation specification."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable purpose of the matrix."
+    },
+    "expected_setting_ids": {
+      "type": "array",
+      "description": "Every CR-08 setting_id that MUST appear in entries. The checker fails if any is missing or if an entry references an id not listed here.",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/matrix_entry" }
+    }
+  },
+  "$defs": {
+    "lifecycle": {
+      "type": "string",
+      "enum": [
+        "adopted",
+        "governed_default",
+        "operator_default",
+        "formal_finding",
+        "covered_by_existing",
+        "not_applicable"
+      ],
+      "description": "ADR-051 lifecycle state: the adoption state of the value."
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "user",
+        "project",
+        "operator",
+        "runtime-derived",
+        "governed_default",
+        "test-only"
+      ],
+      "description": "ADR-051 matrix-row classification: the kind/layer of the setting. user/project require runtime_consumer + enforcement_evidence."
+    },
+    "matrix_entry": {
+      "type": "object",
+      "required": [
+        "setting_id",
+        "classification",
+        "lifecycle",
+        "source",
+        "resolver_service",
+        "effect_semantics",
+        "fallback_policy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "setting_id": {
+          "type": "string",
+          "description": "Stable name used by docs, tests, and evidence."
+        },
+        "classification": { "$ref": "#/$defs/classification" },
+        "lifecycle": { "$ref": "#/$defs/lifecycle" },
+        "source": {
+          "type": "string",
+          "description": "UI/API/DB/env/catalog/code default path."
+        },
+        "resolver_service": {
+          "type": "string",
+          "description": "Single resolver that normalizes the value."
+        },
+        "runtime_consumer": {
+          "type": "string",
+          "description": "Function/class that applies the value at the runtime boundary. Required when classification is user or project."
+        },
+        "effect_semantics": {
+          "type": "string",
+          "description": "What observable runtime behavior changes when the value changes."
+        },
+        "fallback_policy": {
+          "type": "string",
+          "description": "Fail-fast, warning, cap, offline/unknown label, or last-resort default."
+        },
+        "enforcement_evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Unit/integration/contract/checker evidence that blocks regressions. Required (non-empty) when lifecycle is adopted or classification is user/project."
+        },
+        "cross_layer_evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Proof that frontend/backend/core/platform vocabulary agrees when applicable."
+        },
+        "cr_task": {
+          "type": "string",
+          "description": "Tracking CR-AUFG-08-XX task reference."
+        },
+        "finding": {
+          "type": "string",
+          "description": "Formal FIND-XXX reference, if applicable."
+        },
+        "phase": {
+          "type": "string",
+          "description": "Remediation phase (P0-P4)."
+        },
+        "review_trigger": {
+          "type": "string",
+          "description": "Condition under which this classification must be re-evaluated."
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Justification for the lifecycle classification."
+        }
+      }
+    }
+  }
+}

@@ -68,7 +68,7 @@ async def get_extend_service(
     )
 
     draft_processor = DraftProcessor()
-    pipeline = create_pipeline(draft_processor)
+    pipeline = create_pipeline(draft_processor, tier_overrides=limits.tier_percentages)
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
     tone_service = CustomToneService(repo=UserSettingsRepository(session))

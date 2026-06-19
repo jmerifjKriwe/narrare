@@ -162,6 +162,27 @@ class TestGetResolvedLimitsEndpoint:
         assert isinstance(result, TokenLimitOverridesResponse)
         assert result.ws_timeout == 1800
 
+    async def test_get_returns_default_tier_percentages_when_not_configured(self, service) -> None:
+        """FIND-012: the API always returns a complete tier_percentages dict.
+
+        The resolved ``TokenLimitOverrides.tier_percentages`` is ``None`` when
+        no user/project override is configured (so the assembler preserves
+        mode-specific allocations).  The public API must still present a
+        complete distribution to the frontend.
+        """
+        from narrare.settings.token_limits.contracts import DEFAULT_TIER_PERCENTAGES
+
+        # Fresh resolution → tier_percentages is None internally.
+        result = await get_resolved_limits(
+            user_id="unconfigured_user",
+            project_id=None,
+            service=service,
+        )
+
+        assert isinstance(result, TokenLimitOverridesResponse)
+        assert result.tier_percentages == DEFAULT_TIER_PERCENTAGES
+        assert sum(result.tier_percentages.values()) == pytest.approx(1.0)
+
 
 # ======================================================================
 # Tests: update_user_limits endpoint

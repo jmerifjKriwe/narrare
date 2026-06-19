@@ -65,15 +65,40 @@ class WritingContextAssembler(ContextAssembler[WritingContext]):
             kb_entities=[...],
             recent_chapters=[...],
         )
+
+    Tier overrides:
+        ``tier_overrides`` lets the caller redistribute the per-tier token
+        budget without changing code defaults.  Non-overridden tiers keep
+        their default proportions, rescaled so the shares still sum to 1.0.
+        In production these should originate from the resolved token-limit
+        settings (backend ``TokenLimitsService.get_resolved_limits()
+        .tier_percentages``); core itself is backend-agnostic and accepts
+        the plain ``dict[str, float]`` mapping.  See FIND-012.
     """
 
     def __init__(
         self,
         total_budget: int = TokenBudgetManager.DEFAULT_TOTAL_BUDGET,
         token_counter: Callable[[str], int] | None = None,
+        tier_overrides: dict[str, float] | None = None,
     ) -> None:
+        """Initialise the assembler.
+
+        Args:
+            total_budget: Total token budget across all tiers.
+            token_counter: Optional custom token counter for budget
+                enforcement.  Defaults to a heuristic estimator.
+            tier_overrides: Optional per-tier percentage overrides forwarded
+                verbatim to :class:`TokenBudgetManager`.  Keys are tier
+                names (``immediate``, ``recent``, ``kb_referenced``,
+                ``kb_suggested``, ``pinned``).  When ``None`` (default) the
+                code-default tier distribution is used unchanged.
+        """
         super().__init__(total_budget)
-        self._budget_manager = TokenBudgetManager(total_budget)
+        self._budget_manager = TokenBudgetManager(
+            total_budget,
+            tier_overrides=tier_overrides,
+        )
         self._count_tokens = token_counter or default_token_counter
         self._truncate = partial(truncate_to_budget, token_counter=self._count_tokens)
 

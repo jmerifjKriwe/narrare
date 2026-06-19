@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from narrare.settings.token_limits.contracts import DEFAULT_TIER_PERCENTAGES
+
 
 class TokenLimitOverridesResponse(BaseModel):
     """Fully resolved token limit configuration.
@@ -19,13 +21,7 @@ class TokenLimitOverridesResponse(BaseModel):
     output_limit: int = 4096
     token_profile: str = "balanced"
     tier_percentages: dict[str, float] = Field(
-        default_factory=lambda: {
-            "immediate": 0.30,
-            "recent": 0.20,
-            "kb_referenced": 0.25,
-            "kb_suggested": 0.15,
-            "pinned": 0.10,
-        }
+        default_factory=lambda: dict(DEFAULT_TIER_PERCENTAGES)
     )
     ws_timeout: int = 1800
     retry_max_attempts: int = 3

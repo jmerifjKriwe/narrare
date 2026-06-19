@@ -246,7 +246,7 @@ class TokenLimitsService:
             output_limit=cast("int", overrides.get("output_limit", base.output_limit)),
             token_profile=cast("str", overrides.get("token_profile", base.token_profile)),
             tier_percentages=cast(
-                "dict[str, float]",
+                "dict[str, float] | None",
                 overrides.get("tier_percentages", base.tier_percentages),
             ),
             ws_timeout=cast("int", overrides.get("ws_timeout", base.ws_timeout)),

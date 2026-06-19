@@ -1,0 +1,646 @@
+# =============================================================================
+# Narrare Configuration Adoption Matrix (ADR-051)
+# =============================================================================
+# Machine-readable classification of every CR-08 configuration value.
+# Loaded by: scripts/check_configuration_matrix.py
+# Spec: docs/features/remediation/cr-08-configuration-effect-drift.md
+# ADR:  docs/architecture/decisions/ADR-051-configuration-effect-adoption-contract.md
+#
+# Two classification dimensions (per ADR-051):
+#   lifecycle      — the *adoption state* of the value (adopted, governed_default,
+#                    operator_default, formal_finding, covered_by_existing,
+#                    not_applicable).
+#   classification — the *kind/layer* of the setting (user, project, operator,
+#                    runtime-derived, governed_default, test-only).
+#
+# Enforcement (P0 baseline):
+#   * classification user/project  => runtime_consumer + enforcement_evidence
+#                                     are required (checker FAILs otherwise).
+#   * lifecycle adopted            => enforcement_evidence required.
+#   * every expected_setting_ids   => must appear exactly once in entries.
+# =============================================================================
+
+version: "1.0.0"
+adr: "ADR-051"
+spec: "docs/features/remediation/cr-08-configuration-effect-drift.md"
+description: >-
+  Configuration Effect Adoption Matrix. Every material configuration value
+  exposed, stored, resolved, or documented in Narrare must have exactly one
+  lifecycle classification and, when user/project-facing, a proven
+  source -> resolver -> runtime-consumer -> evidence chain.
+
+# ── Expected CR-08 setting_ids ────────────────────────────────────────────────
+# Every id listed here MUST appear in `entries`. An entry referencing an id
+# not listed here is rejected (typo guard). This is the "no unclassified
+# value" guarantee (P0 DoD).
+expected_setting_ids:
+  # P0 — high-risk runtime binding
+  - output_limit_enforcement          # FIND-001 / CR-AUFG-08-01
+  - tier_percentages_consumption      # FIND-012 / CR-AUFG-08-02
+  - configuration_adoption_matrix     # CR-AUFG-08-09 (this artifact)
+  # P1 — vocabulary & UI/API drift
+  - token_profile_vocabulary          # CR-AUFG-08-03 / FIND-013
+  - token_settings_ui_api_parity      # CR-AUFG-08-10 / FIND-013
+  - model_limit_calibration           # CR-AUFG-08-07
+  - model_suitability_policy          # CR-AUFG-08-11
+  # P2 — operator defaults, catalogs, system resolvers
+  - inline_suggest_cap                # CR-AUFG-08-04
+  - consistency_caps                  # CR-AUFG-08-05
+  - setup_fallback_catalogs           # CR-AUFG-08-06
+  - system_background_model_defaults  # CR-AUFG-08-08
+  - operator_default_governance       # CR-AUFG-08-12
+  - profile_output_limits_defaults    # governed code defaults
+  - resolved_model_config_fallback    # 4096 fallback
+  - provider_inference_prefixes       # dev/debug utility
+  - cost_rate_fallback_defaults       # operator fallback
+  # P3 — long-tail governed defaults
+  - governed_defaults_manifest        # CR-AUFG-08-13
+  - embedding_threshold_search_limit  # CR-AUFG-08-13
+  - name_dedup_context_cap            # CR-AUFG-08-13
+  - sse_connect_retry_defaults        # CR-AUFG-08-13
+  # P4 / covered-by-existing
+  - websocket_idle_retry_cascade      # settings cascade + UI
+  - default_model_per_feature         # ModelRoutingResolverImpl cascade
+  - mem0_defaults                     # Settings/mem0 config
+  - feature_flags_kill_switches       # per current config paths
+  - status_doc_taxonomy               # CR-AUFG-08-14
+
+# ── Matrix entries ────────────────────────────────────────────────────────────
+entries:
+  # ── P0 ────────────────────────────────────────────────────────────────────
+  - setting_id: output_limit_enforcement
+    classification: project
+    lifecycle: adopted
+    source: >-
+      UI TokenSettings slider; DB token-limit overrides
+      (TokenLimitOverrides.output_limit); operator Settings.default_max_tokens.
+    resolver_service: TokenLimitsService.get_resolved_limits
+    runtime_consumer: >-
+      ModelRegistry.run / ModelRegistry.stream via DefaultRunLimitResolver ->
+      pydantic-ai model_settings["max_tokens"] + UsageLimits.output_tokens_limit.
+    effect_semantics: >-
+      Changing the output profile or custom limit changes the max_tokens passed
+      to the model call and caps completion tokens.
+    fallback_policy: >-
+      Cap to known provider max output (models.dev); warn/label on unknown or
+      offline provider. Never silently exceed a resolved limit.
+    enforcement_evidence:
+      - "tests/unit/core/llm/test_run_limits.py::TestModelRegistryLimitEnforcement.test_run_passes_resolved_usage_limits_and_model_settings"
+      - "tests/unit/core/llm/test_run_limits.py::TestModelRegistryLimitEnforcement.test_stream_passes_resolved_usage_limits_and_model_settings"
+      - "tests/unit/core/llm/test_run_limits.py::TestDefaultRunLimitResolver"
+      - "tests/unit/core/llm/test_run_limits.py::test_comprehensive_profile_is_recognized_by_gateway_profile_mapping"
+    cross_layer_evidence:
+      - "ADR-045 ResolvedRunLimits (core run_limits.py) consumed by backend agents + gateway."
+      - "TokenLimitsService API returns resolved output_limit; frontend TokenSettings writes it."
+    cr_task: CR-AUFG-08-01
+    finding: FIND-001
+    phase: P0
+    rationale: >-
+      Enforcement exists on disk at the model boundary with regression tests
+      proving changed profile/limit changes model-call settings (ADR-045).
+
+  - setting_id: tier_percentages_consumption
+    classification: project
+    lifecycle: adopted
+    source: >-
+      UI ContextBudget / useAiTabData; DB TokenLimitOverrides.tier_percentages
+      (user/project); core TokenBudgetManager tier_overrides.
+    resolver_service: TokenLimitsService.get_resolved_limits (.tier_percentages)
+    runtime_consumer: >-
+      WritingContextAssembler (tier_overrides) -> TokenBudgetManager ->
+      emitted tier budgets in WritingContext metadata and assemble() output.
+    effect_semantics: >-
+      Changing a tier percentage changes the token budget allocated to that
+      writing-context tier and the amount of content that survives truncation.
+    fallback_policy: >-
+      tier_percentages=None (not configured) preserves mode-specific default
+      allocations; invalid sums raise ValueError at construction (fail-fast).
+    enforcement_evidence:
+      - "tests/unit/core/writing/test_context_assembler_tier_overrides.py::TestWritingContextAssemblerTierOverrides"
+      - "tests/unit/core/writing/test_context_assembler_tier_overrides.py::TestWritingPipelineForwardsOverrides"
+      - "tests/unit/api/writing/test_deps_tier_overrides.py (create_pipeline forwards tier_percentages)"
+    cross_layer_evidence:
+      - "Core WritingContextAssembler.tier_overrides mirrors backend TokenLimitOverrides.tier_percentages (dict[str, float])."
+      - "Backend DI factories resolve limits and forward at factory time; core stays backend-agnostic."
+    cr_task: CR-AUFG-08-02
+    finding: FIND-012
+    phase: P0
+    rationale: >-
+      Source -> resolver -> consumer chain is wired end-to-end with tests
+      proving changing the UI setting changes emitted tier budgets.
+
+  - setting_id: configuration_adoption_matrix
+    classification: governed_default
+    lifecycle: adopted
+    source: docs/architecture/governance/configuration-adoption-matrix.yaml
+    resolver_service: scripts/governance/configuration_matrix.py
+    runtime_consumer: scripts/check_configuration_matrix.py (CI + just check)
+    effect_semantics: >-
+      Adding/removing a CR-08 setting_id changes whether the checker passes;
+      a user/project setting without runtime_consumer/evidence fails the gate.
+    fallback_policy: fail-fast — unclassified or malformed matrix fails CI.
+    enforcement_evidence:
+      - "tests/unit/scripts/governance/test_configuration_matrix.py"
+    cross_layer_evidence:
+      - "Platform gate (RULE-07): reads the manifest, imports no application runtime modules."
+    cr_task: CR-AUFG-08-09
+    phase: P0
+    rationale: >-
+      This artifact is the prevention gate itself; its checker and tests are
+      delivered in the same slice (CR-AUFG-08-09).
+
+  # ── P1 ────────────────────────────────────────────────────────────────────
+  - setting_id: token_profile_vocabulary
+    classification: user
+    lifecycle: formal_finding
+    source: >-
+      Core PROFILE_OUTPUT_LIMITS; gateway _profile_to_limits; API schemas;
+      frontend profile enums/types.
+    resolver_service: (pending) unified token-profile contract/enum
+    runtime_consumer: >-
+      ModelRegistry profile mapping; API token-limit schemas; frontend
+      TokenSettings profile selector.
+    effect_semantics: >-
+      Selecting a profile (quick/balanced/long_texts/comprehensive/custom)
+      should select a single canonical output limit across all layers.
+    fallback_policy: >-
+      Until unified: stale `conservative` and missing `comprehensive` produce
+      cross-layer drift; `custom` semantics ambiguous (profile vs raw limit).
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-03
+    finding: FIND-013
+    phase: P1
+    review_trigger: >-
+      Becomes `adopted` when a single typed profile contract exists with
+      frontend/backend/core parity tests.
+    rationale: >-
+      Formal cross-layer vocabulary drift; tracked remediation required.
+
+  - setting_id: token_settings_ui_api_parity
+    classification: user
+    lifecycle: formal_finding
+    source: >-
+      Frontend TokenSettings slider max (16000); API max_tokens ceiling
+      (131072); profile visibility in UI vs API schema.
+    resolver_service: (pending) shared UI/API cap + profile contract
+    runtime_consumer: Frontend TokenSettings; API token-limit validators.
+    effect_semantics: >-
+      UI hard caps and profile visibility should match backend/core or be
+      explicitly labelled UX-protective.
+    fallback_policy: >-
+      Until unified: UI may hide larger model capacity; profile parity gaps
+      remain.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-10
+    finding: FIND-013
+    phase: P1
+    review_trigger: Becomes `adopted` when UI/API/core cap+profile parity tests pass.
+    rationale: >-
+      Formal UI/API drift; FIND-013 tracks the slider-max / profile drift.
+
+  - setting_id: model_limit_calibration
+    classification: operator
+    lifecycle: formal_finding
+    source: >-
+      models.dev cache (get_model_limits); TokenLimitsService.get_model_limits;
+      selected provider/model from DB settings.
+    resolver_service: DefaultRunLimitResolver (caps to known provider max)
+    runtime_consumer: >-
+      ModelRegistry run/stream (caps applied); calibration warnings (pending).
+    effect_semantics: >-
+      Too-high limits are now capped to known provider max; too-low/unknown/
+      offline states should emit warning labels rather than imply calibration.
+    fallback_policy: >-
+      Cap to known max when available; warn on unknown/offline. No silent
+      calibrated claim when source is stale.
+    enforcement_evidence:
+      - "tests/unit/core/llm/test_run_limits.py::TestDefaultRunLimitResolver.test_caps_to_known_provider_max_output"
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-07
+    phase: P1
+    review_trigger: >-
+      Becomes `adopted` when too-low/unknown/offline calibration warnings are
+      tested at settings/runtime boundaries.
+    rationale: >-
+      Capping exists; warning/label surface for unknown/offline is pending.
+
+  - setting_id: model_suitability_policy
+    classification: operator
+    lifecycle: formal_finding
+    source: >-
+      Intent profiles (get_intent_profile); ResolvedModel.recommended_tier;
+      provider/model capability metadata.
+    resolver_service: (pending) model-suitability policy table
+    runtime_consumer: >-
+      Advisory only — recommended_tier stored but does not constrain/select
+      model.
+    effect_semantics: >-
+      Selecting a model below recommended tier should surface advisory vs
+      warning vs hard block per intent tier.
+    fallback_policy: >-
+      Until policy exists: suitability is advisory-only; no hard block except
+      impossible/unsafe calls.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-11
+    phase: P1
+    review_trigger: Becomes `adopted` when policy table + warning/block tests exist.
+    rationale: >-
+      Advisory-only drift; tracked remediation required.
+
+  # ── P2 ────────────────────────────────────────────────────────────────────
+  - setting_id: inline_suggest_cap
+    classification: governed_default
+    lifecycle: governed_default
+    source: >-
+      apps/api/narrare/writing/deps_suggest.py (raw max_tokens=60);
+      deps_writing dependency factories.
+    resolver_service: (pending) named low-latency output cap resolver
+    runtime_consumer: Inline suggest dependency factory (max_tokens).
+    effect_semantics: >-
+      Caps inline suggestion length for <500ms latency target (ADR-045 D3 C).
+    fallback_policy: >-
+      Until CR-AUFG-08-04: immutable UX cap rationale must be documented with
+      a failing-if-changed-without-review test.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-04
+    phase: P2
+    review_trigger: >-
+      Becomes `adopted` when raw 60 is replaced by a named cap resolved from
+      the token-limit/profile system, OR documented as an immutable UX cap
+      with regression tests.
+    rationale: >-
+      Intentional low-latency cap; currently a raw factory value. Classified
+      governed_default pending named-cap or immutable-cap test (CR-AUFG-08-04).
+
+  - setting_id: consistency_caps
+    classification: operator
+    lifecycle: formal_finding
+    source: >-
+      Operator env + service field (max_chapter_tokens, max_kb_entries,
+      max_selection_words); not in API response/update schema.
+    resolver_service: TokenLimitsService (operator fields)
+    runtime_consumer: consistency/prompt_builder.
+    effect_semantics: >-
+      Caps consistency input context per chapter/KB/selection.
+    fallback_policy: Operator default retained; user/project exposure incomplete.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-05
+    phase: P2
+    review_trigger: >-
+      Becomes `adopted`/`operator_default` when caps are user/project-tunable
+      with API/UI parity OR documented operator-only with no misleading UI.
+    rationale: >-
+      Cross-layer drift: exposed as operator field but not in response/update
+      schema. Tracked remediation required.
+
+  - setting_id: setup_fallback_catalogs
+    classification: operator
+    lifecycle: formal_finding
+    source: >-
+      apps/api/narrare/setup/provider_service.py static fallback catalog;
+      repeated Ollama default URL (localhost:11434).
+    resolver_service: (pending) catalog/settings abstraction
+    runtime_consumer: Setup provider/model listing.
+    effect_semantics: >-
+      Fallback model list shown when provider API unavailable.
+    fallback_policy: >-
+      Must carry freshness/source labels; stale/offline fallback explicitly
+      marked.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-06
+    phase: P2
+    review_trigger: >-
+      Becomes `adopted`/`operator_default` when behind catalog/settings
+      abstraction with freshness labels and single-sourced Ollama URL.
+    rationale: >-
+      Static fallback catalog with high change likelihood; stale-source risk.
+      Tracked remediation required.
+
+  - setting_id: system_background_model_defaults
+    classification: operator
+    lifecycle: formal_finding
+    source: >-
+      apps/api/narrare/_app/dependencies_services.py build_system_default_config
+      (category="writing" string branch; max_tokens 4096).
+    resolver_service: (pending) named system-model resolver
+    runtime_consumer: Wiki/background task model config.
+    effect_semantics: >-
+      Selects model for background summarization tasks.
+    fallback_policy: Operator default; bypasses user/project resolver by design.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-08
+    phase: P2
+    review_trigger: >-
+      Becomes `adopted` when a typed system-model resolver replaces the
+      two-branch category string; background tasks have tests.
+    rationale: >-
+      Two-value category string acts as policy boundary; tracked remediation.
+
+  - setting_id: operator_default_governance
+    classification: operator
+    lifecycle: formal_finding
+    source: >-
+      Catalog timeout (10.0); OpenRouter cap (30); models.dev TTL (86400);
+      wiki retry delays ([30,120,300]); cost fallback staleness.
+    resolver_service: (pending) centralized operator-default manifest
+    runtime_consumer: >-
+      ModelCatalogClient; cost_rates cache; wiki task retry; model listing.
+    effect_semantics: >-
+      Controls timeouts, catalog caps, cache freshness, retry backoff.
+    fallback_policy: >-
+      Constructor/function parameters exist; not surfaced as operator settings
+      with freshness/diagnostic semantics.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-12
+    phase: P2
+    review_trigger: >-
+      Becomes `operator_default` when centralized, documented, and tested as
+      operator defaults or governed code defaults with review triggers.
+    rationale: >-
+      Operator/governed defaults not yet centralized; tracked remediation.
+
+  - setting_id: profile_output_limits_defaults
+    classification: governed_default
+    lifecycle: governed_default
+    source: >-
+      packages/core/narrare_core/llm/model_config.py PROFILE_OUTPUT_LIMITS
+      (quick 500, balanced 2000, long_texts 8000, comprehensive 16000).
+    resolver_service: ModelRegistry profile mapping; DefaultRunLimitResolver.
+    runtime_consumer: ModelRegistry run/stream via resolved output budget.
+    effect_semantics: >-
+      Per-profile default output token ceilings.
+    fallback_policy: >-
+      Acceptable as code defaults only after profile contract tests and
+      provider-ceiling calibration (CR-AUFG-08-07).
+    enforcement_evidence:
+      - "tests/unit/core/llm/test_run_limits.py::test_comprehensive_profile_is_recognized_by_gateway_profile_mapping"
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-07
+    phase: P2
+    review_trigger: Re-evaluate when provider ceilings change or profiles are re-tuned.
+    rationale: >-
+      Code-default output profiles consumed at the model boundary; calibration
+      pending CR-AUFG-08-07.
+
+  - setting_id: resolved_model_config_fallback
+    classification: operator
+    lifecycle: covered_by_existing
+    source: >-
+      ResolvedModelConfig.max_tokens=4096 fallback (model_config.py);
+      Settings.default_max_tokens.
+    resolver_service: DefaultRunLimitResolver
+    runtime_consumer: ModelRegistry run/stream.
+    effect_semantics: >-
+      Last-resort output ceiling when no profile/override resolved.
+    fallback_policy: >-
+      Must not be the only enforcement path — covered by output_limit_enforcement.
+    enforcement_evidence:
+      - "tests/unit/core/llm/test_run_limits.py::TestModelRegistryLimitEnforcement"
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-01
+    phase: P0
+    rationale: >-
+      Delegated to output_limit_enforcement (FIND-001 resolved); the fallback
+      is no longer the sole enforcement path. No duplicate task.
+
+  - setting_id: provider_inference_prefixes
+    classification: governed_default
+    lifecycle: governed_default
+    source: >-
+      packages/core/narrare_core/llm/_providers/registry.py provider inference
+      prefixes.
+    resolver_service: Explicit provider resolver (runtime path).
+    runtime_consumer: Provider registry inference (dev/debug only).
+    effect_semantics: >-
+      Infers provider from model id prefix for dev/debug convenience.
+    fallback_policy: >-
+      Acceptable only for dev/debug inference; runtime resolver uses explicit
+      provider.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    phase: P2
+    review_trigger: Re-evaluate if inference prefixes affect production routing.
+    rationale: >-
+      Governed utility default; runtime resolver uses explicit provider, so
+      inference is dev/debug convenience only.
+
+  - setting_id: cost_rate_fallback_defaults
+    classification: operator
+    lifecycle: operator_default
+    source: >-
+      packages/core/narrare_core/llm/cost_rates.py default provider rates;
+      Settings.cost_rates_json operator override.
+    resolver_service: get_model_limits / cost-rate cache.
+    runtime_consumer: Cost estimation.
+    effect_semantics: >-
+      Fallback cost rates when models.dev unavailable.
+    fallback_policy: >-
+      Operator override via Settings.cost_rates_json; source/freshness labels
+      required (CR-AUFG-08-12).
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-12
+    phase: P2
+    review_trigger: Re-evaluate when provider pricing changes or cache is stale.
+    rationale: >-
+      Operator-configurable fallback; freshness labels pending CR-AUFG-08-12.
+
+  # ── P3 ────────────────────────────────────────────────────────────────────
+  - setting_id: governed_defaults_manifest
+    classification: governed_default
+    lifecycle: formal_finding
+    source: >-
+      Long-tail defaults (embedding threshold/limit, name dedup caps,
+      SSE/connect retry, WebSocket reconnect) awaiting a governed-defaults
+      manifest.
+    resolver_service: (pending) governed-defaults manifest (CR-AUFG-08-13)
+    runtime_consumer: Various services.
+    effect_semantics: >-
+      Governs classification of retained defaults with owner/rationale/tests.
+    fallback_policy: >-
+      A retained default must have a failing-if-changed-without-review test or
+      explicit contract test proving override path exists.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-13
+    phase: P3
+    review_trigger: >-
+      Becomes `governed_default` (lifecycle) when the manifest exists with
+      rationale/tests/review triggers for every long-tail default.
+    rationale: >-
+      Manifest does not yet exist; tracked remediation required.
+
+  - setting_id: embedding_threshold_search_limit
+    classification: governed_default
+    lifecycle: governed_default
+    source: >-
+      apps/api/narrare/embeddings/service.py defaults (threshold 0.7, limit 20).
+    resolver_service: Embedding service method parameters.
+    runtime_consumer: Vector search (embedding similarity).
+    effect_semantics: >-
+      Controls similarity threshold and result count for vector search.
+    fallback_policy: Method-parameter overrides are acceptable if tested.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-13
+    phase: P3
+    review_trigger: Re-evaluate if large KBs degrade recall/precision.
+    rationale: >-
+      Code defaults with method-parameter override path; governed-default
+      rationale/test pending CR-AUFG-08-13.
+
+  - setting_id: name_dedup_context_cap
+    classification: governed_default
+    lifecycle: governed_default
+    source: >-
+      apps/api/narrare/generation/name_service.py page size 1000 + token cap
+      500.
+    resolver_service: Name service context assembly.
+    runtime_consumer: Name generation dedup context.
+    effect_semantics: >-
+      Caps existing-names context for name generation.
+    fallback_policy: >-
+      Reasonable for typical projects; scale review trigger if large KBs suffer.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-13
+    phase: P3
+    review_trigger: Re-evaluate for very large projects (scale trigger).
+    rationale: >-
+      Project-size dependent cap; governed-default rationale/test/review
+      pending CR-AUFG-08-13.
+
+  - setting_id: sse_connect_retry_defaults
+    classification: governed_default
+    lifecycle: governed_default
+    source: >-
+      Frontend DEFAULT_CONNECT_TIMEOUT_MS (30000); connection-loss timeout
+      (15000); WritingSessionSocket reconnect defaults.
+    resolver_service: useAIOperation hook options / socket options.
+    runtime_consumer: Frontend SSE connect / reconnect cascade.
+    effect_semantics: >-
+      Controls connect timeout and retry behaviour for streaming operations.
+    fallback_policy: Caller option override; UX rationale required.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-13
+    phase: P3
+    review_trigger: Re-evaluate if UX latency targets change.
+    rationale: >-
+      UI/runtime defaults with hook option overrides; UX rationale tests
+      pending CR-AUFG-08-13.
+
+  # ── P4 / covered-by-existing ──────────────────────────────────────────────
+  - setting_id: websocket_idle_retry_cascade
+    classification: operator
+    lifecycle: adopted
+    source: >-
+      Settings.ws_idle_timeout_seconds -> TokenLimitsService ->
+      WritingSessionHandler.
+    resolver_service: TokenLimitsService
+    runtime_consumer: WritingSessionHandler (WebSocket idle timeout).
+    effect_semantics: >-
+      Controls WebSocket idle timeout and retry cascade.
+    fallback_policy: Operator/user/project via token limits.
+    enforcement_evidence:
+      - "tests/unit/api/writing/test_ws_turn_budget.py"
+      - "tests/unit/api/writing/test_ws_handler.py"
+    cross_layer_evidence:
+      - "Settings -> TokenLimitsService -> handler cascade."
+    phase: P4
+    rationale: >-
+      Settings cascade reaches the handler with tests; adopted.
+
+  - setting_id: default_model_per_feature
+    classification: project
+    lifecycle: adopted
+    source: >-
+      User/project model routing (DB settings); ModelRoutingResolverImpl
+      cascade.
+    resolver_service: ModelRoutingResolverImpl
+    runtime_consumer: >-
+      ResolvedModel.provider/model used by ModelRegistry run/stream.
+    effect_semantics: >-
+      Changing user/project model routing changes the model used for a feature.
+    fallback_policy: >-
+      Cascade: project intent -> project category -> user intent -> user
+      category -> user default -> configuration error (fail-fast).
+    enforcement_evidence:
+      - "apps/api/narrare/settings/model_routing_resolver.py (cascade implemented)"
+    cross_layer_evidence:
+      - "User/project DB settings -> resolver -> ModelRegistry."
+    phase: P4
+    rationale: >-
+      Strong RULE-18 compliance; resolver cascade reaches runtime. Model
+      suitability warnings remain P1 (model_suitability_policy).
+
+  - setting_id: mem0_defaults
+    classification: operator
+    lifecycle: operator_default
+    source: >-
+      apps/api/narrare/_app/settings_model.py mem0 defaults; core mem0_client
+      provider default memory models.
+    resolver_service: Settings (mem0 config); API DI.
+    runtime_consumer: mem0 memory client.
+    effect_semantics: >-
+      Controls mem0 provider/model/embeddings for user memory.
+    fallback_policy: >-
+      Acceptable as fallback; API override exists. Freshness/suitability only
+      if provider model list changes.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    phase: P4
+    review_trigger: Re-evaluate if provider model list changes.
+    rationale: >-
+      Operator-configurable; covered by Settings/mem0 config.
+
+  - setting_id: feature_flags_kill_switches
+    classification: operator
+    lifecycle: covered_by_existing
+    source: >-
+      mem0 conditional (credentials/package); embedding provider auto/openai/
+      local/disabled; CacheSettings.enabled; NARRARE_E2E_TEST; useAIOperation
+      options.
+    resolver_service: Settings / factory parameters.
+    runtime_consumer: Various service factories.
+    effect_semantics: >-
+      Toggles memory, embeddings, prompt caching, E2E suppression, streaming
+      cancel behaviour.
+    fallback_policy: Per current config paths.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    phase: P4
+    rationale: >-
+      Mostly covered by existing config paths. Inline fallback prompt paths
+      are governed by CR-02/CR-04, not a CR-08 duplicate task.
+
+  - setting_id: status_doc_taxonomy
+    classification: operator
+    lifecycle: formal_finding
+    source: >-
+      docs/_shared/CURRENT_STATE.md, SET-005, testing standards, audit
+      templates.
+    resolver_service: (pending) truthful status taxonomy (CR-AUFG-08-14)
+    runtime_consumer: Documentation / governance health.
+    effect_semantics: >-
+      Status claims must distinguish cascade/storage from runtime-effect
+      adoption.
+    fallback_policy: >-
+      Until CR-AUFG-08-14: no "every setting takes effect" wording may remain.
+    enforcement_evidence: []
+    cross_layer_evidence: []
+    cr_task: CR-AUFG-08-14
+    phase: P4
+    review_trigger: >-
+      Becomes `adopted` when SET-005/CURRENT_STATE distinguish cascade from
+      runtime-effect adoption and audit templates require classification.
+    rationale: >-
+      Documentation drift; tracked remediation required (CR-AUFG-08-14).

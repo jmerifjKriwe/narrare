@@ -478,6 +478,12 @@ check-governance:
     @echo "🏛️ Checking governance health..."
     uv run python scripts/check_governance_health.py
 
+# Check configuration adoption matrix (ADR-051 / CR-AUFG-08-09)
+# Blocking gate: no exposed user/project setting without runtime consumer/evidence.
+check-configuration-matrix:
+    @echo "📐 Checking configuration adoption matrix (ADR-051)..."
+    uv run python scripts/check_configuration_matrix.py
+
 # List all bundled prompt modes with locale coverage
 prompt-list:
     #!/usr/bin/env bash
@@ -596,6 +602,6 @@ hooks-update:
 #
 # check-ssot is warn-only: it reports discrepancies but does not block the merge.
 # The `|| true` prevents its non-zero exit code from failing the entire recipe.
-check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-models check-health
+check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-configuration-matrix check-models check-health
     -uv run python scripts/check_current_state_facts.py || true
     @echo "✅ All checks passed — ready to merge"

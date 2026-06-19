@@ -67,7 +67,7 @@ async def get_coauthor_service(
     )
 
     draft_processor = DraftProcessor()
-    pipeline = create_pipeline(draft_processor)
+    pipeline = create_pipeline(draft_processor, tier_overrides=limits.tier_percentages)
     repo = GenerationRepository(session)
     relationship_repo = RelationshipRepository(session)
 

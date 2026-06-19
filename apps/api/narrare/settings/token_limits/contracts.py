@@ -8,7 +8,7 @@ Three-layer resolution: User-DB → Project-DB → Operator-Env → Code-Default
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -18,6 +18,23 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Domain model — fully resolved token limit configuration
 # ---------------------------------------------------------------------------
+
+#: The code-default per-tier budget distribution (the writing base).
+#:
+#: This is the single source of truth for the default distribution.  The
+#: API response schema and any normalisation reference this constant so the
+#: default cannot drift between layers.  Note that the *resolved*
+#: :attr:`TokenLimitOverrides.tier_percentages` is ``None`` (not this dict)
+#: when the user has not configured overrides — ``None`` is the sentinel that
+#: tells ``WritingContextAssembler`` to keep mode-specific allocations
+#: (extend / rewrite / first-chapter).  See FIND-012 / CR-AUFG-08-02.
+DEFAULT_TIER_PERCENTAGES: dict[str, float] = {
+    "immediate": 0.30,
+    "recent": 0.20,
+    "kb_referenced": 0.25,
+    "kb_suggested": 0.15,
+    "pinned": 0.10,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,16 +50,18 @@ class TokenLimitOverrides:
     """Maximum output tokens for LLM calls."""
     token_profile: str = "balanced"
     """Active token profile name (quick, balanced, long, custom)."""
-    tier_percentages: dict[str, float] = field(
-        default_factory=lambda: {
-            "immediate": 0.30,
-            "recent": 0.20,
-            "kb_referenced": 0.25,
-            "kb_suggested": 0.15,
-            "pinned": 0.10,
-        }
-    )
-    """Token budget distribution across context tiers (must sum to 1.0)."""
+    tier_percentages: dict[str, float] | None = None
+    """Per-tier token-budget distribution override (must sum to 1.0).
+
+    ``None`` (the default) means *not configured*: no user/project override
+    supplied tier percentages, so the consumer should fall back to the
+    code-default behaviour.  This is deliberately distinct from
+    :data:`DEFAULT_TIER_PERCENTAGES` because core's
+    ``WritingContextAssembler(tier_overrides=None)`` preserves mode-specific
+    allocations (extend / rewrite / first-chapter), whereas passing the full
+    default dict would clobber them.  The API boundary normalises ``None``
+    back to :data:`DEFAULT_TIER_PERCENTAGES` for the frontend (FIND-012).
+    """
     ws_timeout: int = 1800
     """WebSocket idle timeout in seconds."""
     retry_max_attempts: int = 3

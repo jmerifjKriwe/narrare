@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from narrare._app.config import get_settings
 from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare.settings.token_limits.contracts import DEFAULT_TIER_PERCENTAGES
 from narrare.settings.token_limits.repository import (
     ProjectTokenLimitsRepository,
     UserTokenLimitsRepository,
@@ -73,7 +74,7 @@ async def get_resolved_limits(
     return TokenLimitOverridesResponse(
         output_limit=limits.output_limit,
         token_profile=limits.token_profile,
-        tier_percentages=limits.tier_percentages,
+        tier_percentages=limits.tier_percentages or dict(DEFAULT_TIER_PERCENTAGES),
         ws_timeout=limits.ws_timeout,
         retry_max_attempts=limits.retry_max_attempts,
         retry_base_delay=limits.retry_base_delay,
