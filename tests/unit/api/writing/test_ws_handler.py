@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
     from fastapi import WebSocket
 
+    from narrare.writing.ws_handler import WritingSessionHandler
     from narrare_core.prompts.composer import PromptComposer
     from narrare_core.prompts.context import PromptContext
 
@@ -31,7 +32,7 @@ from uuid import uuid4
 from fastapi import WebSocketDisconnect
 
 from narrare.writing._ws_cache import InMemorySessionCache
-from narrare.writing.ws_handler import WritingSessionHandler
+from narrare.writing.ws_factory import build_writing_session_handler
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
@@ -139,11 +140,8 @@ def _make_handler(
     registry.stream = Mock(side_effect=_fake_stream_hello)
     composer = _FakeComposer()
     config = _make_config()
-    pipeline = Mock()
-
-    handler = WritingSessionHandler(
+    handler = build_writing_session_handler(
         session_manager=session_manager,
-        pipeline=pipeline,
         registry=registry,
         composer=cast("PromptComposer", composer),
         config=config,
