@@ -28,28 +28,19 @@ requires: [INFRA-002, INFRA-003, INFRA-005, INFRA-011, INFRA-012, PROMPT-001, PR
 
 ## Status and Decision Summary
 
-- **Status:** P0 through P5 implementation work is complete for the adoption
-  infrastructure and static/probe wiring. Core `ai_invocation` module,
-  InvocationPipeline, enrichers, validators, budget resolver,
-  LoggingEvidenceSink, WritingPipeline integration, `core/profiles` module
-  (ProjectWritingProfile SSOT), KBConsistencyEnricher, VoiceProfileStatus,
-  AuditReport, KG Consistency Checker, and `requires_runtime_evidence` flag
-  are all in production. 27/27 modes are statically wired. User/Project IDs flow
-  through InvocationContext. P2 (KG/voice/profile SSOT, audit lifecycle) implemented.
-  P3 (ADR-041) fully implemented: registry drift detection (JSON Schema + drift checker),
-  doc-drift automation (ADR/spec/RULE-XX cross-reference validation),
-  quality metrics (QualityReport joining eval results with invocation evidence),
-  file-based evidence persistence (FileEvidenceSink with .evidence/invocations.jsonl),
-  and CI integration (--drift flag, CI jobs). P5 completion means all 27/27 modes
-  have static adoption/probe wiring; it does **not** by itself mean 27/27 modes are
-  fully runtime-adopted.
-- **Governing ADR:** [ADR-038 — AI Invocation Adoption Contract](../../architecture/decisions/ADR-038-ai-invocation-adoption-contract.md).
-- **Current report semantics (2026-06-12):** 27/27 modes pass static adoption
-  (probes wired), 0/27 modes pass full runtime adoption in the standalone mode list,
-  and 109 ratcheted baseline items remain real baseline debt (63 runtime-evidence
-  gaps, 27 not-adopted markers, 18 design-level not-applicable items, 1 inline-
-  fallback counter). A mode may be documented as `adopted` only when both static and
-  runtime evidence are present.
+- **Status:** P0 through P5 infrastructure/static adoption work is complete, and
+  ADR-045 completed the runtime-adoption layer. Core `ai_invocation`,
+  InvocationPipeline, enrichers, validators, budget resolver, evidence sinks,
+  WritingPipeline integration, `core/profiles` (ProjectWritingProfile SSOT),
+  KBConsistencyEnricher, AuditReport, drift/doc/quality tooling, and persistent
+  evidence are all in production. Static adoption is verified and all 29 required
+  modes are now `runtime_verified` + `adopted`.
+- **Governing ADRs:** [ADR-038 — AI Invocation Adoption Contract](../../architecture/decisions/ADR-038-ai-invocation-adoption-contract.md) defines the adoption contract; [ADR-045 — Runtime Adoption Enforcement](../../architecture/decisions/ADR-045-runtime-adoption-enforcement.md) defines correlated evidence and PASS semantics.
+- **Current report semantics (2026-06-19):** adoption score `PASS 0.97`; 29/29 modes
+  pass static adoption and runtime adoption. The debt ratchet resolved 116 items; 1
+  registered inline-fallback baseline remains governed adoption debt. A mode may be
+  documented as `adopted` only when both static and correlated runtime evidence are
+  present.
 
 ## Scope
 
@@ -626,3 +617,8 @@ suggestions. High-impact conflicts are surfaced rather than silently resolved.
   adoption. Current baseline remains 109 real ratcheted items; docs must distinguish
   `static_verified`, `runtime_verified`, and `adopted`.
 - 2026-06-14 — `evidence_recording.py` extracted from `pipeline.py` (RULE-04 compliance — keeps pipeline orchestration under module size limits). `invocation_id` field (`UUID | None`) added to `PromptInvocationContext` for per-invocation correlation across evidence records.
+- 2026-06-19 — ADR-045 runtime adoption enforcement completed: evidence markers,
+  `--evidence-repo`, invocation correlation fields, prompt-context merge, run-limit
+  enforcement coverage, WebSocket modularization, and learning event taxonomy are in
+  place. Adoption reports `PASS 0.97` with all 29 modes `runtime_verified` + `adopted`;
+  1 governed inline-fallback baseline remains.

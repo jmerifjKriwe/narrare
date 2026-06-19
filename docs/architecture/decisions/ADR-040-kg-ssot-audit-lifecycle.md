@@ -4,7 +4,7 @@
 > **Date:** 2026-06-06
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —
-> **Related:** ADR-038, INFRA-013, CONSTRAINTS.md RULE-03/RULE-04/RULE-06/RULE-07/RULE-20/RULE-22
+> **Related:** ADR-038, ADR-045, INFRA-013, CONSTRAINTS.md RULE-03/RULE-04/RULE-06/RULE-07/RULE-20/RULE-22
 
 ---
 
@@ -39,6 +39,10 @@ This ADR completes the **P2 architecture specification** for the CR-03 AI Invoca
 | KG consistency enricher | ❌ | — | No runtime evidence |
 | AuditReport model | ❌ | — | No lifecycle reporting |
 | Mode registry `requires_runtime_evidence` | ❌ | — | No forward flag |
+
+> **ADR-045 status update:** Runtime proof semantics are now status-bearing. ADR-040's
+> audit lifecycle remains the vocabulary, while ADR-045 defines when a runtime mode can
+> count as `PASS`, `GOVERNED_DEBT`, `STATIC_ONLY`, or `FAIL`.
 
 ---
 

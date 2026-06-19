@@ -1,10 +1,10 @@
 # ADR-038 — AI Invocation Adoption Contract
 
-> **Status:** ✅ Implemented (P0.3e, P1 partial)
+> **Status:** ✅ Implemented (P0–P5; ADR-045 completes runtime enforcement)
 > **Date:** 2026-06-05
 > **Deciders:** User, Architecture Specialist
 > **Supersedes:** —
-> **Related:** ADR-025, ADR-026, ADR-032, ADR-037, INFRA-013, CONSTRAINTS.md RULE-02/RULE-03/RULE-20/RULE-21/RULE-22
+> **Related:** ADR-025, ADR-026, ADR-032, ADR-037, ADR-045, INFRA-013, CONSTRAINTS.md RULE-02/RULE-03/RULE-20/RULE-21/RULE-22
 
 ---
 
@@ -275,6 +275,11 @@ Adoption/audit items move through these states:
 
 CR-03 is not resolved by creating this ADR. It moves to `specified` for the P0–P3
 work described in INFRA-013.
+
+**ADR-045 refinement:** ADR-045 makes these lifecycle terms status-bearing. A mode is
+`runtime_verified` only when correlated invocation evidence proves the prepared context,
+prompt, budget decision, model-call marker, and evidence record belong to the same
+invocation. `adopted` requires both static verification and that runtime evidence.
 
 ---
 

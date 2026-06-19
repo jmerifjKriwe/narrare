@@ -4,7 +4,7 @@
 > **Date:** 2026-06-07
 > **Deciders:** Architecture Specialist
 > **Supersedes:** ADR-041 Decision 4 (selectively — upgrades file-based to hybrid approach)
-> **Related:** ADR-038, ADR-041, ADR-040, INFRA-013 §P4, CONSTRAINTS.md RULE-03/RULE-06/RULE-07/RULE-14/RULE-20
+> **Related:** ADR-038, ADR-041, ADR-040, ADR-045, INFRA-013 §P4, CONSTRAINTS.md RULE-03/RULE-06/RULE-07/RULE-14/RULE-20
 
 ---
 
@@ -83,6 +83,11 @@ class FeatureInvocationEvidence(BaseModel):
 
 The model is **privacy-safe** (ADR-038): no raw prompt text, no user prose, no eval case
 content. Only identifiers, statuses, booleans, and structured metadata.
+
+> **ADR-045 status update:** Persistent evidence records also carry correlation
+> metadata (`invocation_id`, fingerprints, budget decision marker, model-call marker,
+> streaming flag) so database-backed evidence can prove the same runtime invocation path
+> that the adoption gate evaluates.
 
 ---
 
@@ -772,7 +777,7 @@ Evaluated during P4 ongoing implementation after initial P4b deployment.
 ### Spec
 - Typ: ADR (ADR-042)
 - Path: `docs/architecture/decisions/ADR-042-persistent-evidence-upgrade.md`
-- Status: Proposed
+- Status: Accepted / implemented through P4; ADR-045 adds correlation columns and runtime adoption semantics.
 
 ### Root Cause
 File-based evidence (`.evidence/invocations.jsonl`) lacks durability, concurrent write safety,

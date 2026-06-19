@@ -4,7 +4,7 @@
 > **Date:** 2026-06-07
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —
-> **Related:** ADR-038, ADR-040, ADR-032, ADR-035, INFRA-013, CONSTRAINTS.md RULE-03/RULE-04/RULE-06/RULE-07/RULE-14/RULE-20/RULE-22
+> **Related:** ADR-038, ADR-040, ADR-045, ADR-032, ADR-035, INFRA-013, CONSTRAINTS.md RULE-03/RULE-04/RULE-06/RULE-07/RULE-14/RULE-20/RULE-22
 
 ---
 
@@ -61,6 +61,10 @@ concerns remain:
 | Doc cross-reference checker | ❌ | — | No ADR↔spec↔checker cross-validation |
 | Quality metrics report | ❌ | — | No eval↔evidence join |
 | Persistent evidence store | ❌ | — | No storage beyond logs |
+
+> **ADR-045 status update:** Drift and quality reports that reference runtime adoption
+> must use correlated invocation evidence. Placeholder/static-only evidence cannot
+> satisfy required runtime adoption.
 
 ---
 

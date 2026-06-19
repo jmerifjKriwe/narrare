@@ -72,14 +72,14 @@ Coverage below minimum = CI failure. No exceptions.
 The full CI pipeline runs these gates in order. See `.github/workflows/ci.yml`
 for the authoritative source.
 
-### Gate Status in CI (Stand: 2026-06-03)
+### Gate Status in CI (Stand: 2026-06-19)
 
 | # | Gate | CI Status | Notes |
 |---|------|-----------|-------|
 | 1 | `ruff` format + lint | ✅ Blocking | `lint` Job |
 | 2 | `check_architecture.py` | ✅ Blocking | `architecture` Job |
 | 3 | `check_exception_baseline.py` | ✅ Blocking | `architecture` Job |
-| 4 | `check_adoption.py` + `check_prompt_structure.py` | ✅ Blocking | `architecture` Job |
+| 4 | `check_adoption.py` + `check_prompt_structure.py` | ✅ Blocking | `architecture` Job — adoption PASS requires runtime-adopted evidence where required (ADR-045) |
 | 4a | `check_prompt_surface.py` (ADR-037) | ✅ Blocking | `architecture` Job — P0 Prompt Surface Manifest conformance |
 | 5 | `check_streaming_compliance.py` (RULE-20) | ✅ Blocking | `architecture` Job |
 | 6 | `check_locale_sync.py` | ✅ Blocking | `architecture` Job (previously: warning) |
@@ -179,12 +179,28 @@ pnpm test           # Frontend tests
 
 Runs `scripts/check_adoption.py` in CI. WARN-level adoption debt is ratcheted
 against `scripts/architecture/ai-gate-baseline.json`: existing debt may shrink,
-but new missing variables, locale gaps, WARN categories, or inline fallback debt
-fail until fixed or ADR/user-approved in the baseline.
+but new missing variables, locale gaps, WARN categories, runtime-evidence gaps,
+or inline fallback debt fail until fixed or ADR/user-approved in the baseline.
 
-Reads the adoption registry at `scripts/architecture/adoption-registry.yaml` and validates that every registered feature adopts its required core infrastructure. Computes a weighted adoption score per feature and overall.
+Reads the adoption registry at `scripts/architecture/adoption-registry.yaml` and
+validates that every registered feature adopts its required core infrastructure.
+Per ADR-045, static adoption is necessary but not sufficient: modes with
+`requires_runtime_evidence: true` must also have correlated runtime evidence before
+the gate can report `PASS`.
 
-### Thresholds
+### Runtime status semantics (ADR-045)
+
+| Status | Meaning | CI Behavior |
+|--------|---------|-------------|
+| `PASS` | Static checks pass and all required runtime modes are runtime-adopted. | CI continues |
+| `GOVERNED_DEBT` / `WARN` | Static checks pass; only baseline-approved runtime/adoption debt remains. | CI follows ratchet policy; new debt fails |
+| `STATIC_ONLY` | Explicit static-only report; cannot be treated as adoption PASS. | Not sufficient for stable feature claims |
+| `FAIL` | Static failure, malformed/missing evidence, or new/unapproved runtime gap. | CI stops |
+
+### Static score thresholds
+
+These thresholds still apply to the static/adoption score, but `PASS` is capped by
+the runtime status semantics above when runtime evidence is required.
 
 | Score | Result | CI Behavior |
 |-------|--------|-------------|
@@ -208,7 +224,7 @@ Reads the adoption registry at `scripts/architecture/adoption-registry.yaml` and
 1. Register it in `scripts/architecture/adoption-registry.yaml` under the correct feature category
 2. Include all required infrastructure entries
 3. List all `must` and `should` context variables
-4. Verify `check_adoption.py` scores ≥ 0.85
+4. Verify `check_adoption.py` scores ≥ 0.85 and, where required, reports runtime-adopted evidence
 5. If the feature uses an inline prompt fallback, register it under `inline_fallbacks` with a migration target
 
 ### CI Pipeline Position
@@ -227,7 +243,7 @@ Reads the adoption registry at `scripts/architecture/adoption-registry.yaml` and
 
 ### Validated by
 
-`scripts/check_adoption.py` — reads registry, scans bundled prompts for variable presence, scans service files for infrastructure usage via import analysis, computes per-feature and overall scores, outputs JSON + human-readable summary, exits 0/1/2 based on thresholds.
+`scripts/check_adoption.py` — reads registry, scans bundled prompts for variable presence, scans service files for infrastructure usage via import analysis, loads runtime evidence from the configured file/repository source, computes per-feature and overall scores, and outputs JSON + human-readable status using `PASS`/`GOVERNED_DEBT`/`STATIC_ONLY`/`FAIL` semantics.
 
 **Spec**: `docs/architecture/decisions/025-feature-adoption-infrastructure.md` (Decision 5)
 

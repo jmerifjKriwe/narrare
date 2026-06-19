@@ -246,7 +246,7 @@ INFRA-011 adds ratcheted/no-growth checks for AI-feature stabilization:
 
 | Command | Checker | Purpose |
 |---------|---------|---------|
-| `just check-adoption` | `scripts/check_adoption.py` | Validates feature adoption scores and ratchets prompt/adoption WARN debt against `scripts/architecture/ai-gate-baseline.json`. |
+| `just check-adoption` | `scripts/check_adoption.py` | Validates static + runtime adoption, requires correlated evidence for ADR-045 PASS, and ratchets prompt/adoption debt against `scripts/architecture/ai-gate-baseline.json`. |
 | `just check-exceptions` | `scripts/check_exception_baseline.py` | Prevents approved architecture exceptions from growing without ADR/user approval. |
 | `just check-frontend-size` | `scripts/check_frontend_file_size.py` | Enforces/report-ratchets TypeScript/TSX RULE-04 file-size debt for touched frontend hubs. |
 | `just check-streaming` | `scripts/check_streaming_compliance.py` | Ensures backend SSE-capable AI endpoints use frontend `connectSSE()` coverage. |

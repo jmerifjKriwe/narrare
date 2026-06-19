@@ -4,7 +4,17 @@ Audit date: 2026-06-12
 Scope: current adoption of mem0, context/token budgets, Knowledge Graph context, prompt enrichment, and machine gates.
 Method: graph-first restart, required Narrare context loaded, CR-00/CR-01/CR-02 baselines reviewed, then targeted reads of `ai_invocation`, memory, writing context, token-limit, KG, and adoption-check paths. `just check-adoption` and `uv run python scripts/check_adoption.py --evidence-dir .evidence` were run for gate evidence.
 
-## Root Cause Summary
+## Status Addendum — 2026-06-19 (ADR-045 complete)
+
+ADR-045 closed the runtime-adoption enforcement layer identified by this audit.
+Current adoption status is `PASS 0.97`: all 29 modes are `runtime_verified` and
+`adopted`. Runtime evidence is correlated by invocation, enriched dynamic inputs
+merge into the prompt context, run-limit enforcement is covered, WebSocket writing was
+modularized, and `--evidence-repo` is wired. The debt ratchet resolved 116 items; 1
+registered inline-fallback baseline remains as governed adoption debt. Historical
+findings below are kept for audit traceability.
+
+## Original Root Cause Summary (2026-06-12)
 
 INFRA-013 has built the right adoption vocabulary: `InvocationPipeline`, enrichers, validators, budget resolver, evidence sinks, registry modes, and `.evidence` files exist. The remaining root cause is **semantic/runtime alignment**, not missing static infrastructure: several runtime proofs show that components exist, but some production paths either do not consume the enriched context, do not wire the pipeline, or do not enforce the resolved output budget at the actual model call.
 
@@ -188,7 +198,7 @@ They are feature-/intent-specific at the profile mapping layer: every routeable 
 
 ---
 
-## Gesamtbewertung Feature-Adoption
+## Original Gesamtbewertung Feature-Adoption (2026-06-12)
 
 **Bewertung:** ⭐⭐⭐
 **Vorherige Bewertung:** ⭐⭐⭐ | **Trend:** ↗️ Besser in Infrastruktur, ➡️ Gleich im Risiko
@@ -208,9 +218,21 @@ Previously stale CR-03 tasks from the old result are superseded; do not reopen r
 - **CR-AUFG-03-06:** Fix token-limit enforcement at the LLM gateway/agent boundary so resolved intent/user/project output limits are applied to `agent.run()` / `agent.run_stream()` or provider model settings.
 - **CR-AUFG-03-07:** Reconcile token profile configurability: expose/validate `comprehensive` consistently where cross-chapter consistency needs it, and document how UI `output_limit` maps to model/provider maximums.
 
+### ADR-045 closure status (2026-06-19)
+
+| Task | Status | Evidence |
+|------|--------|----------|
+| CR-AUFG-03-01 | ✅ Resolved | Runtime gaps are status-bearing; adoption reports `PASS 0.97` only with 29/29 modes runtime-verified + adopted. |
+| CR-AUFG-03-02 | ✅ Resolved | Prepared dynamic inputs merge into `PromptContext` before prompt composition. |
+| CR-AUFG-03-03 | ✅ Resolved | Runtime evidence records canonical adoption paths; no placeholder evidence satisfies runtime adoption. |
+| CR-AUFG-03-04 | ✅ Resolved | WebSocket handler modularized; turn service carries user/project/chapter/session IDs and evidence. |
+| CR-AUFG-03-05 | ✅ Resolved for ADR-045 adoption gate | Runtime adoption evidence is complete; deeper KG reasoning enhancements remain future feature work, not an adoption blocker. |
+| CR-AUFG-03-06 | ✅ Resolved | `ResolvedRunLimits` / `DefaultRunLimitResolver` coverage proves run/stream usage-limit enforcement. |
+| CR-AUFG-03-07 | ✅ Resolved | `comprehensive`/runtime profile handling is covered in run-limit enforcement and adoption evidence. |
+
 ## FINDs
 
-- **FIND-001:** `_audit/results/content-review/findings/FIND-001-output-limits-not-enforced.md` — output token profiles and limits are configured/evidenced but not reliably enforced at actual model calls.
+- **FIND-001:** `_audit/results/content-review/findings/FIND-001-output-limits-not-enforced.md` — resolved by ADR-045 run-limit enforcement (`ResolvedRunLimits`, `DefaultRunLimitResolver`, ModelRegistry run/stream tests).
 
 ## Next Prompt Recommendation
 

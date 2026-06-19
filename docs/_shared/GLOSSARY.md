@@ -200,6 +200,11 @@ Used to build the `WritingGraph` with nodes, edges, decisions, and forks.
 Preferred over the deprecated `Graph()` constructor. Factory function:
 `create_writing_graph()` in `core/agents/writing_graph.py`. Part of ADR-015 Phase 4.
 
+**Governed Adoption Debt**
+Known adoption debt that is explicitly baselined, owned, and ratcheted. It may remain
+temporarily without hiding the debt, but any new or unapproved adoption gap fails the
+gate. Governed debt is not the same as `PASS`.
+
 **Gateway (LLM Gateway)**
 The single entry point for all LLM calls in the system.
 Lives in `core/llm/gateway.py`. Enforces: cost tracking, retry, error
@@ -216,6 +221,17 @@ modifiers.
 ---
 
 ## I
+
+**Infrastructure Complete**
+The contracts, probes, checkers, registry entries, and evidence sinks for a feature or
+adoption layer exist. This does not by itself mean static checks pass or that runtime
+production paths are adopted. See ADR-045.
+
+**Invocation Evidence Correlation**
+Privacy-safe linkage proving that preparation, prompt composition, budget resolution,
+model/agent execution, and evidence recording belong to the same AI invocation. Uses
+an `invocation_id`, fingerprints, and model-call markers instead of raw prompt text or
+user prose.
 
 **InvocationPipeline**
 The orchestrator for the AI Invocation Adoption Contract (ADR-038). Coordinates:
@@ -395,6 +411,12 @@ Lives in `*/repository.py` within each domain module.
 from the cascade for a given category, language, and mode.
 Previously: three competing implementations. Now: one.
 
+**Runtime Adopted**
+An adoption state where static checks pass and correlated runtime evidence proves the
+required production invocation path used the intended context enrichment, prompt merge,
+budget enforcement, model/agent call, and evidence recording. Static adoption alone is
+not runtime adoption.
+
 ---
 
 ## S
@@ -535,6 +557,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-06-06 — Added AI invocation adoption terms (ADR-038 / INFRA-013 P0)
+> Last updated: 2026-06-19 — Added ADR-045 runtime adoption terminology
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

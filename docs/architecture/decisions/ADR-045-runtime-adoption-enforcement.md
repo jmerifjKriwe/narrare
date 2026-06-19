@@ -661,6 +661,16 @@ No production fix is accepted until these tests fail for the current behavior.
 - Update quality-gates docs to reflect runtime-adoption status semantics.
 - Update ADR-038/040/041/042 references if implementation changes their status wording.
 
+### Implementation status (2026-06-19)
+
+ADR-045 implementation phases are complete. Runtime evidence markers are in place;
+`--evidence-repo` is threaded; invocation correlation fields are populated;
+prepared dynamic inputs merge into `PromptContext`; run-limit enforcement is covered;
+the WebSocket handler is modularized; and the learning event taxonomy is completed.
+Current adoption status is `PASS 0.97`: all 29 modes are `runtime_verified` and
+`adopted`. The adoption debt ratchet resolved 116 items; 1 inline-fallback baseline
+item remains governed debt.
+
 ---
 
 ## Specialist Handoff
