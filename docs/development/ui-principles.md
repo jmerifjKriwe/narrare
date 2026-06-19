@@ -830,8 +830,8 @@ Large components are a sign of mixed responsibilities. Split them per RULE-06.
 > **Reference language**: German (de). All user-facing strings must use canonical
 > i18n keys from `studio.aiActions.*` (see §16.8).
 >
-> **Last updated**: 2026-06-12
-> **Source**: CR-07 UX Audit — systemic inconsistency in AI interaction patterns; AUFG-03-10 vocabulary extension (acceptAll/rejectAll/applySelected)
+> **Last updated**: 2026-06-19
+> **Source**: CR-07 UX Audit — systemic inconsistency in AI interaction patterns; AUFG-03-10 vocabulary extension (acceptAll/rejectAll/applySelected); CR-07 UX Closure v2 — 11 platform gates implemented (see §16.9)
 
 ### 16.1 Streaming Rule
 
@@ -960,10 +960,30 @@ Deprecated keys (DO NOT use):
 
 ### 16.9 Machine-Checkability
 
-Checks that CAN and SHOULD be automated:
-- No feature-local AI action labels → grep deprecated keys in TSX
-- aiActions namespace registered → i18n test
-- 3-locale parity for aiActions → validate-i18n.ts
-- SSE usage for SSE-capable endpoints → compare fetch vs SSE routers
-- AbortController present on AI operations → static analysis
-- No hardcoded AI error messages → grep patterns
+§16 compliance is **enforced, not aspirational**. The rules in §16.1–§16.8 are
+checked by 11 automated gates in `scripts/checks/check_ai_interaction_compliance.py`,
+run via `just check-ai-ux` (also part of `just check`). The governance contract and
+the machine-readable inventory live at `docs/architecture/governance/ai-ux-compliance-v2.md`
+and `scripts/checks/ai_operation_inventory.yaml` (17 operations, all carrying the §4
+required fields). Checks 6–11 were added for the CR-07 UX Closure v2; checks 1–5
+predate it.
+
+| # | Check | Enforces |
+|---|-------|----------|
+| 1 | `useAIOperation` in AI components | §16 lifecycle/loading/error — AI flows use the shared primitive |
+| 2 | No raw `AbortController` in React AI components | §16.2 cancel via the hook (structural excludes only for non-React extensions) |
+| 3 | `aiActions.*` error keys present in all locales | §16.5 i18n-backed, actionable errors (DE/EN/FR parity) |
+| 4 | No hardcoded AI `error.message` in TSX | §16.5 structured error mapping via `mapSSEError` |
+| 5 | No deprecated `useConnectionLost` | §16.7 connection-loss handling via the shared primitive |
+| 6 | No deprecated §16.8 AI-action aliases | §16.4 canonical vocabulary (exact alias gate, not a whole-namespace ban) |
+| 7 | `useAIOperation.execute` propagates the signal | §16.2 cancel reaches transport, not just local UI state |
+| 8 | `.ai_interaction_exclude` entries fresh + AUFG-linked | governed exceptions cannot silently rot |
+| 9 | CR-AUFG IDs referenced in audit exist in the registry | lifecycle SSOT stays in sync |
+| 10 | Operation inventory has required §4 fields | every AI operation is documented (transport, lifecycle, cancel, error, keyboard, …) |
+| 11 | Resolved AUFG entries have implementation + enforcement evidence | no `resolved` without on-disk files + a regression gate (finding-lifecycle §5) |
+
+Each check ships with unit tests under `tests/unit/scripts/checks/test_check_{1..11}_*.py`.
+Structural exceptions (non-React extensions, callback-SSE transports) are tracked as
+governed baseline debt in `.ai_interaction_exclude` with owner, reason, exit criteria, and
+an AUFG link; Check 8 rejects stale or unlinked exceptions. Current state: `just check-ai-ux`
+reports 0 violations and 3 governed exclusions; Check 11 validates all resolved AUFG entries.

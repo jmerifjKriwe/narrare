@@ -1,12 +1,11 @@
 /**
  * RewriteSuggestionModal tests — Keyboard shortcuts for rewrite suggestions.
  *
- * Tests the keyboard shortcut handler (KEYBOARD-001):
- * 1. Ctrl+Y calls onAccept
- * 2. Ctrl+N calls onReject
- * 3. Escape when streaming calls onNewSuggestions
- * 4. Escape when NOT streaming calls onReject
- * 5. Cmd+Y (Mac) also calls onAccept
+ * Tests the standardized keyboard shortcut scheme (KEYBOARD-001, CR-AUFG-07-13):
+ * 1. Ctrl/Cmd+Enter calls onAccept (consistent across all AI-output reviews)
+ * 2. Escape when streaming calls onNewSuggestions
+ * 3. Escape when NOT streaming calls onReject
+ * 4. Legacy Ctrl+Y / Ctrl+N no longer trigger (standardized away)
  */
 
 import { fireEvent, render } from "@testing-library/react";
@@ -54,31 +53,40 @@ describe("RewriteSuggestionModal", () => {
   });
 
   describe("keyboard shortcuts", () => {
-    it("calls onAccept on Ctrl+Y", () => {
+    it("calls onAccept on Ctrl+Enter", () => {
+      const onAccept = vi.fn();
+      render(<RewriteSuggestionModal {...defaultProps} onAccept={onAccept} />);
+
+      fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
+
+      expect(onAccept).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onAccept on Cmd+Enter (Mac)", () => {
+      const onAccept = vi.fn();
+      render(<RewriteSuggestionModal {...defaultProps} onAccept={onAccept} />);
+
+      fireEvent.keyDown(window, { key: "Enter", metaKey: true });
+
+      expect(onAccept).toHaveBeenCalledTimes(1);
+    });
+
+    it("does NOT call onAccept on legacy Ctrl+Y (standardized away)", () => {
       const onAccept = vi.fn();
       render(<RewriteSuggestionModal {...defaultProps} onAccept={onAccept} />);
 
       fireEvent.keyDown(window, { key: "y", ctrlKey: true });
 
-      expect(onAccept).toHaveBeenCalledTimes(1);
+      expect(onAccept).not.toHaveBeenCalled();
     });
 
-    it("calls onAccept on Cmd+Y (Mac)", () => {
-      const onAccept = vi.fn();
-      render(<RewriteSuggestionModal {...defaultProps} onAccept={onAccept} />);
-
-      fireEvent.keyDown(window, { key: "y", metaKey: true });
-
-      expect(onAccept).toHaveBeenCalledTimes(1);
-    });
-
-    it("calls onReject on Ctrl+N", () => {
+    it("does NOT call onReject on legacy Ctrl+N (standardized away)", () => {
       const onReject = vi.fn();
       render(<RewriteSuggestionModal {...defaultProps} onReject={onReject} />);
 
       fireEvent.keyDown(window, { key: "n", ctrlKey: true });
 
-      expect(onReject).toHaveBeenCalledTimes(1);
+      expect(onReject).not.toHaveBeenCalled();
     });
 
     it("calls onReject on Escape when NOT streaming", () => {

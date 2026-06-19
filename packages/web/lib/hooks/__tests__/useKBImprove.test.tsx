@@ -102,15 +102,32 @@ describe("useKBImproveAnalysis", () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate();
+    result.current.mutate(undefined);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockAnalyzeEntry).toHaveBeenCalledWith("novel-1", "entry-1");
+    expect(mockAnalyzeEntry).toHaveBeenCalledWith("novel-1", "entry-1", undefined);
     expect(result.current.data?.suggestions).toHaveLength(1);
     expect(result.current.data?.completeness_score).toBe(0.55);
+  });
+
+  it("passes abort signal to analyzeEntry", async () => {
+    mockAnalyzeEntry.mockResolvedValueOnce(mockAnalysisResponse);
+
+    const { result } = renderHook(() => useKBImproveAnalysis("novel-1", "entry-1"), {
+      wrapper: createWrapper(),
+    });
+
+    const controller = new AbortController();
+    result.current.mutate(controller.signal);
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockAnalyzeEntry).toHaveBeenCalledWith("novel-1", "entry-1", controller.signal);
   });
 
   it("caches analysis result in query cache on success", async () => {
@@ -125,7 +142,7 @@ describe("useKBImproveAnalysis", () => {
       wrapper: createWrapperWithClient(queryClient),
     });
 
-    result.current.mutate();
+    result.current.mutate(undefined);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -144,7 +161,7 @@ describe("useKBImproveAnalysis", () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate();
+    result.current.mutate(undefined);
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);

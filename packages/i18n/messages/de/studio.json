@@ -124,8 +124,7 @@
     "aiRewrite": "KI umformulieren"
   },
   "aiModal": {
-    "title": "KI-Vorschläge",
-    "original": "Original: \"{text}\""
+    "title": "KI-Vorschläge"
   },
   "worldbuilding": {
     "categories": "KATEGORIEN",
@@ -1708,6 +1707,7 @@
     "connectionLostRetry": "Erneut verbinden",
     "newSuggestions": "Neue Vorschläge",
     "original": "Original",
+    "quotedOriginal": "„{text}\u201C",
     "suggested": "Vorschlag",
     "errorApiKey": "Dein API-Schlüssel ist ungültig. Überprüfe deine KI-Einstellungen.",
     "errorTextTooLong": "Der Text ist zu lang für die KI. Kürze die Auswahl und versuche es erneut.",

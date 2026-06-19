@@ -137,7 +137,7 @@ describe("KBImprovePanel", () => {
   // 1. Loading state
   // -----------------------------------------------------------------------
 
-  it("shows loading state on mount", () => {
+  it("shows loading state on mount", async () => {
     const mockAnalyze = vi.fn().mockReturnValue(new Promise(() => {}));
     (useKBImproveAnalysis as ReturnType<typeof vi.fn>).mockReturnValue({
       mutateAsync: mockAnalyze,
@@ -148,7 +148,11 @@ describe("KBImprovePanel", () => {
 
     expect(screen.getByText("kb.improve.running")).toBeDefined();
     expect(screen.getByText("kb.aiEnhancingDesc")).toBeDefined();
-    expect(mockAnalyze).toHaveBeenCalledTimes(1);
+
+    // start() defers execute via queueMicrotask — wait for it
+    await waitFor(() => {
+      expect(mockAnalyze).toHaveBeenCalledTimes(1);
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -440,5 +444,58 @@ describe("KBImprovePanel", () => {
     fireEvent.click(backButtons[0]);
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // CR-AUFG-07-08: Lifecycle via useAIOperation — cancel + signal propagation
+  // -------------------------------------------------------------------------
+
+  it("shows visible cancel control during analysis (§16.2 cancel_ui)", async () => {
+    const mockAnalyze = vi.fn().mockReturnValue(new Promise(() => {}));
+    (useKBImproveAnalysis as ReturnType<typeof vi.fn>).mockReturnValue({
+      mutateAsync: mockAnalyze,
+      isPending: false,
+    });
+
+    renderPanel();
+
+    // Loading state appears, and the cancel button must be visible
+    await waitFor(() => {
+      expect(screen.getByText("kb.improve.running")).toBeDefined();
+    });
+    expect(screen.getByText("aiActions.stop")).toBeDefined();
+  });
+
+  it("cancel aborts in-flight analysis via AbortSignal (signal propagation)", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    const mockAnalyze = vi.fn().mockImplementation((signal?: AbortSignal) => {
+      capturedSignal = signal;
+      // Never resolves — stays loading so cancel button is visible
+      return new Promise(() => {});
+    });
+    (useKBImproveAnalysis as ReturnType<typeof vi.fn>).mockReturnValue({
+      mutateAsync: mockAnalyze,
+      isPending: false,
+    });
+
+    renderPanel();
+
+    // Wait for analysis to start
+    await waitFor(() => {
+      expect(mockAnalyze).toHaveBeenCalledTimes(1);
+    });
+
+    // The AbortSignal from useAIOperation must have been propagated to the
+    // transport layer — not undefined (signal_propagation gate, CR-AUFG-07-08).
+    expect(capturedSignal).toBeDefined();
+    expect(capturedSignal?.aborted).toBe(false);
+
+    // Click cancel — this must abort the in-flight transport, not just UI state
+    fireEvent.click(screen.getByText("aiActions.stop"));
+
+    // The signal must now be aborted — proving real transport-level cancellation
+    await waitFor(() => {
+      expect(capturedSignal?.aborted).toBe(true);
+    });
   });
 });

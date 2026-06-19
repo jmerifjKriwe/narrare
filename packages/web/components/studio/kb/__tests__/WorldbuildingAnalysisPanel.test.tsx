@@ -160,7 +160,7 @@ describe("WorldbuildingAnalysisPanel", () => {
     expect(screen.getByText("worldbuilding.consistency")).toBeDefined();
   });
 
-  it("shows error state on failure", async () => {
+  it("shows error state on failure with structured i18n message", async () => {
     mockMutateAsync.mockRejectedValue(new Error("Analysis failed"));
 
     renderWithProviders(<WorldbuildingAnalysisPanel {...defaultProps} />);
@@ -168,7 +168,11 @@ describe("WorldbuildingAnalysisPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("worldbuilding.error")).toBeDefined();
     });
-    expect(screen.getByText("Analysis failed")).toBeDefined();
+    // §16.5/Check 4: a raw Error is mapped via mapSSEError to an i18n key
+    // (generic Error → aiActions.errorConnection), never the raw exception text.
+    expect(screen.getByText("aiActions.errorConnection")).toBeDefined();
+    // Regression: the raw exception text must NOT leak to the UI.
+    expect(screen.queryByText("Analysis failed")).toBeNull();
   });
 
   it("shows retry button in error state", async () => {

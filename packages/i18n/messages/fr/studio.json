@@ -124,8 +124,7 @@
     "aiRewrite": "Réécriture IA"
   },
   "aiModal": {
-    "title": "Suggestions IA",
-    "original": "Original : \"{text}\""
+    "title": "Suggestions IA"
   },
   "worldbuilding": {
     "categories": "CATÉGORIES",
@@ -1708,6 +1707,7 @@
     "connectionLostRetry": "Reconnecter",
     "newSuggestions": "Nouvelles suggestions",
     "original": "Original",
+    "quotedOriginal": "« {text} »",
     "suggested": "Suggestion",
     "errorApiKey": "Votre clé API est invalide. Vérifiez vos paramètres IA.",
     "errorTextTooLong": "Le texte est trop long pour l'IA. Raccourcissez votre sélection et réessayez.",

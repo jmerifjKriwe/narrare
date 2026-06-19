@@ -1,10 +1,11 @@
 /**
- * GenerationPanel tests — Keyboard shortcuts (Escape handler).
+ * GenerationPanel tests — Keyboard shortcuts (Escape + Ctrl/Cmd+Enter handler).
  *
- * Tests the Escape keyboard shortcut for different panel phases:
+ * Tests the keyboard shortcuts for different panel phases (KEYBOARD-001, CR-AUFG-07-13):
  * 1. Escape when streaming calls handleStop
  * 2. Escape when reviewing calls onClose
  * 3. Escape when configuring does nothing
+ * 4. Ctrl/Cmd+Enter when reviewing calls acceptDraft (CR-AUFG-07-13)
  *
  * Uses a mock for useGenerationPanelController to control phase.
  * Separated from GenerationPanel.test.tsx to avoid mocking conflicts.
@@ -20,6 +21,7 @@ import { GenerationPanel } from "@/components/studio/editor/GenerationPanel";
 // ---------------------------------------------------------------------------
 
 const mockHandleStop = vi.fn();
+const mockAcceptDraft = vi.fn();
 const mockOnClose = vi.fn();
 let mockPhase: "config" | "streaming" | "review" | "error" = "config";
 
@@ -31,7 +33,7 @@ vi.mock("../generationPanelController", () => ({
     handleRegenerate: vi.fn(),
     handleRetry: vi.fn(),
     handleRatingDone: vi.fn(),
-    acceptDraft: vi.fn(),
+    acceptDraft: mockAcceptDraft,
     rejectDraft: vi.fn(),
     setMode: vi.fn(),
     setOutline: vi.fn(),
@@ -198,5 +200,41 @@ describe("GenerationPanel — keyboard shortcuts", () => {
     // Escape should work
     fireEvent.keyDown(window, { key: "Escape" });
     expect(mockHandleStop).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls acceptDraft on Ctrl+Enter when reviewing (CR-AUFG-07-13)", () => {
+    mockPhase = "review";
+    renderWithProviders(<GenerationPanel {...defaultProps} />);
+
+    fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
+
+    expect(mockAcceptDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls acceptDraft on Cmd+Enter when reviewing (Mac)", () => {
+    mockPhase = "review";
+    renderWithProviders(<GenerationPanel {...defaultProps} />);
+
+    fireEvent.keyDown(window, { key: "Enter", metaKey: true });
+
+    expect(mockAcceptDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT call acceptDraft on Ctrl+Enter during config phase", () => {
+    mockPhase = "config";
+    renderWithProviders(<GenerationPanel {...defaultProps} />);
+
+    fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
+
+    expect(mockAcceptDraft).not.toHaveBeenCalled();
+  });
+
+  it("does NOT call acceptDraft on plain Enter (without modifier)", () => {
+    mockPhase = "review";
+    renderWithProviders(<GenerationPanel {...defaultProps} />);
+
+    fireEvent.keyDown(window, { key: "Enter" });
+
+    expect(mockAcceptDraft).not.toHaveBeenCalled();
   });
 });

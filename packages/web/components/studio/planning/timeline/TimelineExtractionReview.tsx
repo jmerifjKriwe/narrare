@@ -22,6 +22,7 @@ export function TimelineExtractionReview({ novelId, onClose }: TimelineExtractio
     extractedEvents,
     extractError,
     startExtraction,
+    cancelExtraction,
     reset: resetExtraction,
   } = useSSEExtraction(novelId);
   const confirmMutation = useConfirmExtractedEvent(novelId);
@@ -102,6 +103,7 @@ export function TimelineExtractionReview({ novelId, onClose }: TimelineExtractio
         extractError={extractError?.userMessage ?? null}
         onToggleChapter={handleToggleChapter}
         onExtract={handleExtract}
+        onCancel={cancelExtraction}
       />
 
       <div className="flex-1 overflow-auto px-4 py-3">

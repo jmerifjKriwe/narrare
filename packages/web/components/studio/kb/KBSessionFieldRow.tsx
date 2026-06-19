@@ -11,12 +11,17 @@ import { Check, Edit3, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { KBCreationField } from "@/lib/api/kb-sessions";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
+import { FieldSuggestionReview } from "./_components/FieldSuggestionReview";
 import { KBFieldSourceBadge } from "./KBFieldSourceBadge";
 
 interface KBSessionFieldRowProps {
   field: KBCreationField;
   isEmpty?: boolean;
   suggestingFieldKey?: string | null;
+  suggestionError?: AIErrorResponse | null;
+  suggestionErrorFieldKey?: string | null;
+  onCancelSuggest?: () => void;
   onSuggest: (fieldKey: string) => void;
   onAnswer: (fieldKey: string, value: string) => void;
   onAcceptSuggestion: (fieldKey: string, value: string) => void;
@@ -27,6 +32,9 @@ export function KBSessionFieldRow({
   field,
   isEmpty = false,
   suggestingFieldKey,
+  suggestionError,
+  suggestionErrorFieldKey,
+  onCancelSuggest,
   onSuggest,
   onAnswer,
   onAcceptSuggestion,
@@ -38,6 +46,8 @@ export function KBSessionFieldRow({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isSuggesting = suggestingFieldKey === field.field_key;
+  const fieldSuggestionError =
+    suggestionError && suggestionErrorFieldKey === field.field_key ? suggestionError : null;
   const displayValue = field.final_value || field.user_value || field.ai_suggested_value || "";
 
   useEffect(() => {
@@ -75,15 +85,28 @@ export function KBSessionFieldRow({
         </div>
         <div className="flex items-center gap-1">
           {isEmpty && (
-            <button
-              type="button"
-              onClick={() => onSuggest(field.field_key)}
-              disabled={isSuggesting}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-md transition-colors disabled:opacity-50"
-            >
-              <Sparkles className="w-3 h-3" />
-              {t("kb.suggestAI")}
-            </button>
+            <div className="flex items-center gap-1">
+              {isSuggesting && onCancelSuggest ? (
+                <button
+                  type="button"
+                  onClick={onCancelSuggest}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-muted transition-colors"
+                  aria-label={t("aiActions.stop")}
+                >
+                  <X className="w-3 h-3" />
+                  {t("aiActions.stop")}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onSuggest(field.field_key)}
+                disabled={isSuggesting}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-md transition-colors disabled:opacity-50"
+              >
+                <Sparkles className="w-3 h-3" />
+                {isSuggesting ? t("aiActions.generating") : t("kb.suggestAI")}
+              </button>
+            </div>
           )}
           {!isEmpty && !isEditing && (
             <button
@@ -128,53 +151,39 @@ export function KBSessionFieldRow({
           </div>
         </div>
       ) : isEmpty ? (
-        <textarea
-          placeholder={`Enter ${field.label.toLowerCase()}...`}
-          className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
-          onBlur={(e) => {
-            if (e.target.value.trim()) {
-              onAnswer(field.field_key, e.target.value.trim());
-              e.target.value = "";
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              const target = e.target as HTMLTextAreaElement;
-              if (target.value.trim()) {
-                onAnswer(field.field_key, target.value.trim());
-                target.value = "";
+        <div className="space-y-2">
+          <textarea
+            placeholder={t("kb.fieldPlaceholder", { field: field.label.toLowerCase() })}
+            className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
+            onBlur={(e) => {
+              if (e.target.value.trim()) {
+                onAnswer(field.field_key, e.target.value.trim());
+                e.target.value = "";
               }
-            }
-          }}
-        />
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                const target = e.target as HTMLTextAreaElement;
+                if (target.value.trim()) {
+                  onAnswer(field.field_key, target.value.trim());
+                  target.value = "";
+                }
+              }
+            }}
+          />
+          {fieldSuggestionError && (
+            <p className="text-xs text-destructive" role="alert">
+              {t(fieldSuggestionError.i18nKey)}
+            </p>
+          )}
+        </div>
       ) : field.ai_suggested_value && field.source === "ai" && !field.final_value ? (
         // AI suggestion pending review
-        <div className="space-y-2">
-          <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-md border border-green-200 dark:border-green-900/30">
-            <div className="text-sm whitespace-pre-wrap">{field.ai_suggested_value}</div>
-          </div>
-          {field.ai_reasoning && (
-            <div className="text-xs text-muted-foreground italic px-1">{field.ai_reasoning}</div>
-          )}
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => onRejectSuggestion(field.field_key)}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-muted transition-colors"
-            >
-              <X className="w-3 h-3" />
-              {t("aiActions.reject")}
-            </button>
-            <button
-              type="button"
-              onClick={() => onAcceptSuggestion(field.field_key, field.ai_suggested_value!)}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-              <Check className="w-3 h-3" />
-              {t("aiActions.accept")}
-            </button>
-          </div>
-        </div>
+        <FieldSuggestionReview
+          field={field}
+          onAcceptSuggestion={onAcceptSuggestion}
+          onRejectSuggestion={onRejectSuggestion}
+        />
       ) : (
         // Display filled value
         <div className="text-sm text-muted-foreground whitespace-pre-wrap">{displayValue}</div>

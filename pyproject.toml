@@ -267,6 +267,10 @@ ignored_modules = [
   "scripts/check_gate_expirations.py",
   "scripts/checks/_ai_interaction_checks/_shared.py",
   "scripts/checks/_ai_interaction_checks/check_1_use_ai_operation.py",
+  # Governance checker modules — subprocess timeouts and policy windows
+  # (STALE_WINDOW_DAYS=90 from §7) are tooling constants, not runtime config:
+  "scripts/checks/_ai_interaction_checks/check_6_deprecated_alias.py",
+  "scripts/checks/_ai_interaction_checks/check_8_stale_exclude.py",
   "scripts/prompt_checks.py",
   "scripts/run_checks.py",
 ]

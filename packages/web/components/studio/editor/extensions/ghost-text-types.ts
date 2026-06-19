@@ -25,6 +25,11 @@ export interface GhostTextOptions {
   /** Localized keyboard shortcut hint text (e.g. "Tab accept · Esc dismiss · → word").
    *  Injected from React via Extension options. Falls back to English default. */
   hintText?: string;
+  /** Localized status text shown while a suggestion is being fetched
+   *  (e.g. "AI is thinking..."). Injected from React via Extension options so
+   *  the non-React extension never hardcodes a visible locale string
+   *  (CR-AUFG-07-10, ADR-043 Note 7). */
+  fetchingStatusText?: string;
 }
 
 export interface GhostTextStorage {
@@ -36,6 +41,8 @@ export interface GhostTextStorage {
   _fullSuggestion: string | null;
   /** AbortController for the pending fetchSuggestion call */
   _abortController: AbortController | null;
+  /** Whether a suggestion fetch is currently in-flight (visible status indicator) */
+  _isFetching: boolean;
   /** setInterval timer for character-by-character streaming */
   _streamTimer: ReturnType<typeof setInterval> | null;
   /** setTimeout timer for auto-trigger debounce */

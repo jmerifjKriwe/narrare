@@ -140,6 +140,10 @@ export function useTipTapEditorController({
         minChars: 5,
         suggestionDelay: 800,
         hintText: t("ghostText.hint"),
+        // Localized fetching status — injected into the non-React extension via
+        // options so no hardcoded English appears in ProseMirror DOM
+        // (CR-AUFG-07-10, ADR-043 Note 7).
+        fetchingStatusText: t("aiActions.aiThinking"),
       }) satisfies Partial<import("./extensions/GhostText").GhostTextOptions>,
     [t],
   );

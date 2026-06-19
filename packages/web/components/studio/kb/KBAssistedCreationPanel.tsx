@@ -142,6 +142,9 @@ export function KBAssistedCreationPanel({
             onStartInterview={() => controller.setView("interview")}
             onEnhance={() => controller.setView("enhance")}
             suggestingFieldKey={controller.suggestingFieldKey}
+            suggestionError={controller.suggestionError}
+            suggestionErrorFieldKey={controller.suggestionErrorFieldKey}
+            onCancelSuggest={controller.handleCancelSuggest}
           />
         </div>
       </div>

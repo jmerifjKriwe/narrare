@@ -11,6 +11,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
 import type { KBCreationSession, KBEnhancementResult } from "@/lib/api/kb-sessions";
 import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 
@@ -19,12 +20,17 @@ import { EnhanceReviewCard } from "./_components/EnhanceReviewCard";
 import { EnhanceReviewFooter } from "./_components/EnhanceReviewFooter";
 import { EnhanceReviewHeader } from "./_components/EnhanceReviewHeader";
 import { EnhanceErrorState, EnhanceLoadingState } from "./_components/EnhanceReviewStates";
+import { useEnhanceSelection } from "./_components/useEnhanceSelection";
 
 type EnhancePhase = "idle" | "review" | "complete";
 
 interface KBEnhanceReviewProps {
   session: KBCreationSession;
-  onRequestEnhance: () => Promise<KBEnhancementResult[]>;
+  /**
+   * Request AI enhancement for all fields. Receives the AbortSignal from
+   * useAIOperation so cancel reaches the transport layer (CR-AUFG-07-11).
+   */
+  onRequestEnhance: (signal?: AbortSignal) => Promise<KBEnhancementResult[]>;
   onAcceptEnhancement: (fieldKey: string, value: string) => void;
   onApplySelected: () => void;
   onBack: () => void;
@@ -40,11 +46,23 @@ export function KBEnhanceReview({
   const t = useTranslations("studio");
   const [phase, setPhase] = useState<EnhancePhase>("idle");
   const [enhancements, setEnhancements] = useState<KBEnhancementResult[]>([]);
-  const [selectedFieldKeys, setSelectedFieldKeys] = useState<Set<string>>(new Set());
+
+  const {
+    selectedFieldKeys,
+    setSelectedFieldKeys,
+    toggleFieldSelection,
+    selectAll,
+    selectNone,
+    applySelected,
+    applySelectedCb,
+    getFieldLabel,
+    handleCardAccept,
+    handleCardReject,
+  } = useEnhanceSelection(enhancements, session, onAcceptEnhancement, onApplySelected);
 
   // --- AI operation lifecycle via useAIOperation ---
   const enhanceOp = useAIOperation<KBEnhancementResult[]>({
-    execute: () => onRequestEnhance(),
+    execute: (signal) => onRequestEnhance(signal),
     onSuccess: (results) => {
       setEnhancements(results);
       setSelectedFieldKeys(new Set(results.map((e) => e.field_key)));
@@ -59,60 +77,14 @@ export function KBEnhanceReview({
     enhanceOp.start();
   }, []);
 
-  // --- Selection management ---
-
-  function toggleFieldSelection(fieldKey: string) {
-    setSelectedFieldKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(fieldKey)) {
-        next.delete(fieldKey);
-      } else {
-        next.add(fieldKey);
-      }
-      return next;
-    });
-  }
-
-  function selectAll() {
-    setSelectedFieldKeys(new Set(enhancements.map((e) => e.field_key)));
-  }
-
-  function selectNone() {
-    setSelectedFieldKeys(new Set());
-  }
-
-  function applySelected() {
-    for (const fieldKey of selectedFieldKeys) {
-      const enhancement = enhancements.find((e) => e.field_key === fieldKey);
-      if (enhancement) {
-        onAcceptEnhancement(fieldKey, enhancement.suggested);
-      }
-    }
-    onApplySelected();
-  }
-
-  function getFieldLabel(fieldKey: string): string {
-    return session.fields.find((f) => f.field_key === fieldKey)?.label || fieldKey;
-  }
-
-  function handleCardAccept(fieldKey: string) {
-    setSelectedFieldKeys((prev) => new Set(prev).add(fieldKey));
-  }
-
-  function handleCardReject(fieldKey: string) {
-    setSelectedFieldKeys((prev) => {
-      const next = new Set(prev);
-      next.delete(fieldKey);
-      return next;
-    });
-  }
-
   // --- Derive display state ---
   const isLoading = enhanceOp.isLoading || enhanceOp.isStreaming;
   const isError = enhanceOp.isError || enhanceOp.isConnectionLost;
   const error = enhanceOp.state.error;
 
-  // Escape-Cancel Handler (KEYBOARD-001)
+  // Keyboard Shortcuts (KEYBOARD-001, CR-AUFG-07-13)
+  // Escape: cancel (loading) / back (review)
+  // Ctrl/Cmd+Enter: apply selected enhancements (review)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isLoading) {
@@ -123,10 +95,14 @@ export function KBEnhanceReview({
         e.preventDefault();
         onBack();
       }
+      if (isApplyShortcut(e) && phase === "review") {
+        e.preventDefault();
+        applySelectedCb();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLoading, enhanceOp.cancel, onBack]);
+  }, [isLoading, phase, enhanceOp.cancel, onBack, applySelectedCb]);
 
   // --- Render ---
 

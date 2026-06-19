@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """§16 AI Interaction Standards Compliance Check (ADR-043).
 
-Verifies 5 machine-checkable rules across TSX components and i18n files:
-  Check 1 — Every TSX file importing SSE API values must also import useAIOperation
-  Check 2 — No raw new AbortController() in feature code (classified allowed/violation)
-  Check 3 — All 7 aiActions.error* i18n keys exist in all 3 locales (de/en/fr)
-  Check 4 — No hardcoded (err|error).message in Studio TSX files
-  Check 5 — No deprecated useConnectionLost imports (Phase 3 completed)
+Verifies 11 machine-checkable rules across TSX components and i18n files:
+  Check 1  — Every TSX file importing SSE API values must also import useAIOperation
+  Check 2  — No raw new AbortController() in feature code (classified allowed/violation)
+  Check 3  — All 7 aiActions.error* i18n keys exist in all 3 locales (de/en/fr)
+  Check 4  — No hardcoded (err|error).message in Studio TSX files
+  Check 5  — No deprecated useConnectionLost imports (Phase 3 completed)
+  Check 6  — No deprecated §16.8 AI-action aliases in TS/TSX (CR-AUFG-07-12)
+  Check 7  — useAIOperation execute callbacks must propagate signal (CR-AUFG-07-11)
+  Check 8  — Exclude entries must be fresh and AUFG-linked (§7 stale-exclude policy)
+  Check 9  — CR-AUFG IDs in audit must exist in registry (§8 lifecycle sync)
+  Check 10 — Operation inventory must have required §4 fields and AUFG links
+  Check 11 — Resolved AUFG entries need implementation + enforcement evidence
 """
 
 from __future__ import annotations
@@ -18,10 +24,16 @@ from pathlib import Path
 from _ai_interaction_checks import (
     ComplianceReport,
     ExcludeRegistry,
+    check_deprecated_aliases,
     check_error_i18n_keys,
+    check_lifecycle_sync,
     check_no_hardcoded_errors,
     check_no_raw_abort_controller,
     check_no_use_connection_lost,
+    check_operation_inventory,
+    check_resolution_evidence,
+    check_signal_propagation,
+    check_stale_exclude,
     check_use_ai_operation_usage,
     load_exclude_list,
 )
@@ -34,6 +46,9 @@ GATE_CHECK_2 = "check_2_no_raw_abort"
 GATE_CHECK_3 = "check_3_error_i18n_keys"
 GATE_CHECK_4 = "check_4_no_hardcoded_errors"
 GATE_CHECK_5 = "check_5_no_use_connection_lost"
+GATE_CHECK_6 = "check_6_deprecated_alias"
+GATE_CHECK_7 = "check_7_signal_propagation"
+GATE_CHECK_8 = "check_8_stale_exclude"
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -101,6 +116,33 @@ def main() -> int:
         c5_f if args.fix else None,
     )
     report.add_governed("Check 5", registry.get_entries_for_gate(GATE_CHECK_5))
+
+    # -- Check 6 ---------------------------------------------------------
+    c6_p, c6_v = check_deprecated_aliases(registry)
+    report.add("Check 6: No deprecated §16.8 AI-action aliases", c6_p, c6_v)
+    report.add_governed("Check 6", registry.get_entries_for_gate(GATE_CHECK_6))
+
+    # -- Check 7 ---------------------------------------------------------
+    c7_p, c7_v = check_signal_propagation(registry)
+    report.add("Check 7: useAIOperation execute propagates signal", c7_p, c7_v)
+    report.add_governed("Check 7", registry.get_entries_for_gate(GATE_CHECK_7))
+
+    # -- Check 8 ---------------------------------------------------------
+    c8_p, c8_v = check_stale_exclude(registry)
+    report.add("Check 8: Exclude entries fresh and AUFG-linked", c8_p, c8_v)
+    report.add_governed("Check 8", registry.get_entries_for_gate(GATE_CHECK_8))
+
+    # -- Check 9 ---------------------------------------------------------
+    c9_p, c9_v = check_lifecycle_sync()
+    report.add("Check 9: CR-AUFG IDs in audit exist in registry", c9_p, c9_v)
+
+    # -- Check 10 --------------------------------------------------------
+    c10_p, c10_v = check_operation_inventory()
+    report.add("Check 10: Operation inventory has required §4 fields", c10_p, c10_v)
+
+    # -- Check 11 --------------------------------------------------------
+    c11_p, c11_v = check_resolution_evidence()
+    report.add("Check 11: Resolved AUFG entries have evidence", c11_p, c11_v)
 
     if args.json:
         print(report.format_json())

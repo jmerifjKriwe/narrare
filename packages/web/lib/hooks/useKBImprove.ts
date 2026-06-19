@@ -29,8 +29,8 @@ const improveKeys = {
  */
 export function useKBImproveAnalysis(novelId: string, entryId: string) {
   const queryClient = useQueryClient();
-  return useMutation<KBImproveAnalysisResponse, Error>({
-    mutationFn: () => kbImproveApi.analyzeEntry(novelId, entryId),
+  return useMutation<KBImproveAnalysisResponse, Error, AbortSignal | undefined>({
+    mutationFn: (signal) => kbImproveApi.analyzeEntry(novelId, entryId, signal),
     onSuccess: (data) => {
       queryClient.setQueryData(improveKeys.analysis(novelId, entryId), data);
     },

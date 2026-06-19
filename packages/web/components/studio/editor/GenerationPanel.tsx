@@ -4,6 +4,7 @@ import { AlertTriangle, RotateCcw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { LearningStatus } from "@/components/studio/learning/LearningStatus";
+import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
 import { ContextInspector } from "./ContextInspector";
 import { GenerationConfig } from "./GenerationConfig";
 import { GenerationDraft } from "./GenerationDraft";
@@ -30,7 +31,9 @@ export function GenerationPanel({
   const t = useTranslations("studio");
   const controller = useGenerationPanelController({ novelId, chapterId, onDraftAccepted, t });
 
-  // Escape-Cancel Handler (KEYBOARD-001)
+  // Keyboard Shortcuts (KEYBOARD-001, CR-AUFG-07-13)
+  // Escape: stop (streaming) / close (review)
+  // Ctrl/Cmd+Enter: accept draft (review)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && controller.phase === "streaming") {
@@ -41,10 +44,14 @@ export function GenerationPanel({
         e.preventDefault();
         onClose();
       }
+      if (isApplyShortcut(e) && controller.phase === "review") {
+        e.preventDefault();
+        controller.acceptDraft();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [controller.phase, controller.handleStop, onClose]);
+  }, [controller.phase, controller.handleStop, controller.acceptDraft, onClose]);
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-card w-80">

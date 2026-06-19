@@ -13,6 +13,7 @@
 import { ArrowLeft, Check, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { AnalysisError } from "./AnalysisError";
 import { AnalysisLoading } from "./AnalysisLoading";
 import { AnalysisScoreHeader } from "./AnalysisScoreHeader";
@@ -46,6 +47,15 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
     applySelectedConnections,
     hasNoFindings,
   } = useWorldbuildingAnalysis(novelId);
+
+  // Structured, i18n-ready error message (§16.5/Check 4): map the raw Error to
+  // an AIErrorResponse, then prefer the i18n key over the fallback userMessage.
+  const mappedError = error ? mapSSEError(error) : null;
+  const errorMessage = mappedError
+    ? mappedError.i18nKey
+      ? t(mappedError.i18nKey)
+      : mappedError.userMessage
+    : t("worldbuilding.error");
 
   return (
     <div className="flex flex-col h-full border-l border-border bg-background">
@@ -115,14 +125,7 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
         <div className="max-w-3xl mx-auto p-6 space-y-4">
           {state === "loading" && <AnalysisLoading onCancel={handleCancel} />}
           {state === "error" && error && (
-            <AnalysisError
-              message={
-                "userMessage" in error
-                  ? (error as { userMessage: string }).userMessage
-                  : error.message || t("worldbuilding.error")
-              }
-              onRetry={() => void runAnalysis(false)}
-            />
+            <AnalysisError message={errorMessage} onRetry={() => void runAnalysis(false)} />
           )}
           {state === "results" && hasNoFindings && (
             <div className="flex flex-col items-center justify-center py-12 text-center">

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 class ComplianceReport:
-    """Aggregated compliance report for all 5 checks."""
+    """Aggregated compliance report for all 11 checks."""
 
     def __init__(self) -> None:
         self.checks: dict[str, dict[str, list[str]]] = {}

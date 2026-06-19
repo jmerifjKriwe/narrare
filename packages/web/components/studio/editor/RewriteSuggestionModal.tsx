@@ -3,6 +3,7 @@
 import { AlertTriangle, Check, Loader2, Sparkles } from "lucide-react";
 import type { useTranslations } from "next-intl";
 import { useEffect } from "react";
+import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
 import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 import { InlineDiff } from "./InlineDiff";
 import { RewriteModalFooter } from "./RewriteModalFooter";
@@ -41,16 +42,14 @@ export function RewriteSuggestionModal({
   onAccept,
   t,
 }: RewriteSuggestionModalProps) {
-  // Keyboard Shortcuts Handler (KEYBOARD-001)
+  // Keyboard Shortcuts Handler (KEYBOARD-001, CR-AUFG-07-13)
+  // Standardized scheme: Ctrl/Cmd+Enter = accept, Escape = reject/close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+      // Accept: Ctrl/Cmd+Enter (consistent across all AI-output reviews)
+      if (isApplyShortcut(e)) {
         e.preventDefault();
         onAccept();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
-        e.preventDefault();
-        onReject();
       }
       if (e.key === "Escape" && isRewriteStreaming) {
         e.preventDefault();
@@ -74,7 +73,10 @@ export function RewriteSuggestionModal({
             <h3 className="font-medium">{t("aiModal.title")}</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            {t("aiModal.original", { text: aiSuggestion.original })}
+            <span className="font-medium">{t("aiActions.original")}:</span>{" "}
+            <span className="italic">
+              {t("aiActions.quotedOriginal", { text: aiSuggestion.original })}
+            </span>
           </p>
         </div>
 

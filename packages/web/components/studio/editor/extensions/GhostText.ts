@@ -64,6 +64,7 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
       minChars: 5,
       enabled: true,
       hintText: "Tab accept · Esc dismiss · → word",
+      fetchingStatusText: "",
     };
   },
 
@@ -73,6 +74,7 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
       suggestionPos: null as number | null,
       _fullSuggestion: null as string | null,
       _abortController: null as AbortController | null,
+      _isFetching: false as boolean,
       _streamTimer: null as ReturnType<typeof setInterval> | null,
       _pendingTimer: null as ReturnType<typeof setTimeout> | null,
 
@@ -190,7 +192,33 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
         key: new PluginKey("ghostText"),
         props: {
           decorations(state: EditorState) {
-            const { currentSuggestion, suggestionPos } = extension.storage;
+            const { currentSuggestion, suggestionPos, _isFetching } = extension.storage;
+
+            // ── Fetching status indicator (before suggestion arrives) ──────
+            // Shown while a suggestion request is in-flight so the user gets
+            // immediate visual feedback (§16.3, CR-AUFG-07-10). The visible
+            // text comes from the React-controlled `fetchingStatusText`
+            // option (ADR-043 Note 7) — never hardcoded English.
+            if (
+              _isFetching &&
+              !currentSuggestion &&
+              suggestionPos !== null &&
+              state.selection.head === suggestionPos
+            ) {
+              const statusText = extension.options.fetchingStatusText ?? "";
+              if (statusText) {
+                const fetchSpan = document.createElement("span");
+                fetchSpan.textContent = statusText;
+                fetchSpan.className = "ghost-text-fetching";
+                fetchSpan.setAttribute("aria-hidden", "true");
+                return DecorationSet.create(state.doc, [
+                  Decoration.widget(suggestionPos, fetchSpan, {
+                    side: 1,
+                    key: "ghost-fetching",
+                  }),
+                ]);
+              }
+            }
 
             if (!currentSuggestion || suggestionPos === null) {
               return DecorationSet.empty;

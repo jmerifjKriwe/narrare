@@ -92,9 +92,14 @@ describe("KBSessionFieldList — interactions", () => {
       />,
     );
 
-    const suggestButtons = screen.getAllByText("kb.suggestAI");
-    const disabledButtons = suggestButtons.filter((btn) => btn.closest("button")?.disabled);
-    expect(disabledButtons.length).toBeGreaterThanOrEqual(1);
+    // When suggesting, the field's button text changes to "generating" and is
+    // disabled (§16.3 loading state). The non-suggesting field keeps "suggestAI".
+    const generatingButton = screen.getByText("aiActions.generating").closest("button");
+    expect(generatingButton?.disabled).toBe(true);
+
+    // The other field's button should NOT be disabled
+    const suggestButton = screen.getByText("kb.suggestAI").closest("button");
+    expect(suggestButton?.disabled).toBe(false);
   });
 
   it("allows inline editing of filled fields", () => {

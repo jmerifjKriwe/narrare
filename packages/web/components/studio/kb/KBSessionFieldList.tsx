@@ -10,6 +10,8 @@
 import { MessageSquare, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { KBCreationSession } from "@/lib/api/kb-sessions";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
+import { groupFieldsByStatus, isFieldFilled } from "./_components/field-grouping";
 import { FieldGroupSection } from "./FieldGroupSection";
 import { KBSessionFieldRow } from "./KBSessionFieldRow";
 
@@ -22,6 +24,9 @@ interface KBSessionFieldListProps {
   onStartInterview: () => void;
   onEnhance: () => void;
   suggestingFieldKey?: string | null;
+  suggestionError?: AIErrorResponse | null;
+  suggestionErrorFieldKey?: string | null;
+  onCancelSuggest?: () => void;
 }
 
 export function KBSessionFieldList({
@@ -33,26 +38,23 @@ export function KBSessionFieldList({
   onStartInterview,
   onEnhance,
   suggestingFieldKey = null,
+  suggestionError = null,
+  suggestionErrorFieldKey = null,
+  onCancelSuggest,
 }: KBSessionFieldListProps) {
   const t = useTranslations("studio");
 
   // Calculate progress
   const totalFields = session.fields.length;
-  const filledFields = session.fields.filter(
-    (f) => f.final_value || f.user_value || f.ai_suggested_value,
-  ).length;
+  const filledFields = session.fields.filter(isFieldFilled).length;
 
-  // Group fields
-  const emptyFields = session.fields.filter(
-    (f) => !f.final_value && !f.user_value && !f.ai_suggested_value,
-  );
-  const userFields = session.fields.filter(
-    (f) => (f.user_value || f.final_value) && f.source === "user",
-  );
-  const aiFields = session.fields.filter((f) => f.ai_suggested_value && f.source === "ai");
-  const mergedFields = session.fields.filter(
-    (f) => f.source === "merged" || f.source === "world_derived",
-  );
+  // Group fields by status
+  const {
+    empty: emptyFields,
+    ai: aiFields,
+    user: userFields,
+    merged: mergedFields,
+  } = groupFieldsByStatus(session.fields);
 
   return (
     <div className="space-y-4">
@@ -105,6 +107,9 @@ export function KBSessionFieldList({
                 field={field}
                 isEmpty
                 suggestingFieldKey={suggestingFieldKey}
+                suggestionError={suggestionError}
+                suggestionErrorFieldKey={suggestionErrorFieldKey}
+                onCancelSuggest={onCancelSuggest}
                 onSuggest={onSuggest}
                 onAnswer={onAnswer}
                 onAcceptSuggestion={onAcceptSuggestion}
@@ -126,6 +131,9 @@ export function KBSessionFieldList({
                 key={field.field_key}
                 field={field}
                 suggestingFieldKey={suggestingFieldKey}
+                suggestionError={suggestionError}
+                suggestionErrorFieldKey={suggestionErrorFieldKey}
+                onCancelSuggest={onCancelSuggest}
                 onSuggest={onSuggest}
                 onAnswer={onAnswer}
                 onAcceptSuggestion={onAcceptSuggestion}
@@ -147,6 +155,9 @@ export function KBSessionFieldList({
                 key={field.field_key}
                 field={field}
                 suggestingFieldKey={suggestingFieldKey}
+                suggestionError={suggestionError}
+                suggestionErrorFieldKey={suggestionErrorFieldKey}
+                onCancelSuggest={onCancelSuggest}
                 onSuggest={onSuggest}
                 onAnswer={onAnswer}
                 onAcceptSuggestion={onAcceptSuggestion}
@@ -168,6 +179,9 @@ export function KBSessionFieldList({
                 key={field.field_key}
                 field={field}
                 suggestingFieldKey={suggestingFieldKey}
+                suggestionError={suggestionError}
+                suggestionErrorFieldKey={suggestionErrorFieldKey}
+                onCancelSuggest={onCancelSuggest}
                 onSuggest={onSuggest}
                 onAnswer={onAnswer}
                 onAcceptSuggestion={onAcceptSuggestion}

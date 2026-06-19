@@ -53,6 +53,7 @@ export function clearAll(storage: GhostTextStorage, editor: Editor): void {
   storage.currentSuggestion = null;
   storage.suggestionPos = null;
   storage._fullSuggestion = null;
+  storage._isFetching = false;
 
   // Dispatch empty transaction to ensure decorations re-render
   if (!editor.isDestroyed) {
@@ -238,6 +239,15 @@ export async function fetchAndStreamSuggestion(
   const abortController = new AbortController();
   storage._abortController = abortController;
 
+  // ── Show visible fetching status until the suggestion arrives ─────────
+  // Anchor the status decoration at the current cursor position so the user
+  // sees immediate feedback (§16.3, CR-AUFG-07-10).
+  storage._isFetching = true;
+  storage.suggestionPos = editor.state.selection.head;
+  if (!editor.isDestroyed) {
+    editor.view.dispatch(editor.state.tr);
+  }
+
   const fetchFn = options.fetchSuggestion ?? simulateSuggestion;
 
   try {
@@ -260,8 +270,13 @@ export async function fetchAndStreamSuggestion(
     // For other unexpected errors, clear state as a safety measure
     clearAll(storage, editor);
   } finally {
+    storage._isFetching = false;
     if (storage._abortController === abortController) {
       storage._abortController = null;
+    }
+    // Re-render decorations so the status indicator disappears
+    if (!editor.isDestroyed) {
+      editor.view.dispatch(editor.state.tr);
     }
   }
 }
@@ -348,4 +363,5 @@ export function cleanup(storage: GhostTextStorage): void {
   storage.currentSuggestion = null;
   storage.suggestionPos = null;
   storage._fullSuggestion = null;
+  storage._isFetching = false;
 }

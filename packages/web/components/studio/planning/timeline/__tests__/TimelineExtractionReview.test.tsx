@@ -46,6 +46,7 @@ let mockExtractedEventsState: ExtractedEvent[] = [];
 let mockExtractError: { userMessage: string } | null = null;
 const mockStartExtraction = vi.fn();
 const mockResetExtraction = vi.fn();
+const mockCancelExtraction = vi.fn();
 
 // Confirm mutation mock state
 const mockConfirmMutate = vi.fn();
@@ -57,6 +58,7 @@ vi.mock("@/lib/hooks/useTimeline", () => ({
     extractedEvents: mockExtractedEventsState,
     extractError: mockExtractError,
     startExtraction: mockStartExtraction,
+    cancelExtraction: mockCancelExtraction,
     reset: mockResetExtraction,
   }),
   useConfirmExtractedEvent: () => ({
@@ -146,6 +148,43 @@ describe("TimelineExtractionReview", () => {
     await waitFor(() => {
       expect(screen.getByText("extracting")).toBeDefined();
     });
+  });
+
+  it("shows a visible stop button while extracting (CR-AUFG-07-09 §16.2)", async () => {
+    mockIsExtracting = true;
+    render(<TimelineExtractionReview novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("extracting")).toBeDefined();
+    });
+
+    // The cancel button is visible during extraction
+    const stopButton = screen.getByTestId("timeline-extract-stop");
+    expect(stopButton).toBeDefined();
+  });
+
+  it("calls cancelExtraction when stop button is clicked during extraction", async () => {
+    mockIsExtracting = true;
+    render(<TimelineExtractionReview novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("timeline-extract-stop")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId("timeline-extract-stop"));
+
+    expect(mockCancelExtraction).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT show a stop button when not extracting", async () => {
+    mockIsExtracting = false;
+    render(<TimelineExtractionReview novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Chapter 1")).toBeDefined();
+    });
+
+    expect(screen.queryByTestId("timeline-extract-stop")).toBeNull();
   });
 
   it("shows spinner when extracting with no events yet", async () => {

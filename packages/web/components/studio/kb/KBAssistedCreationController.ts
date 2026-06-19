@@ -3,7 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import type { KBEntityType } from "@/lib/api/kb";
-import type { KBEnhancementResult, KBInterviewResult } from "@/lib/api/kb-sessions";
+import type {
+  KBEnhancementResult,
+  KBInterviewResult,
+  KBSuggestionResult,
+} from "@/lib/api/kb-sessions";
+import { type AIErrorResponse, useAIOperation } from "@/lib/hooks/use-ai-operation";
 import {
   clearPendingInterview,
   isInterviewResumePersistenceDisabled,
@@ -44,12 +49,15 @@ export function useKBAssistedCreationController({
   const [view, setView] = useState<AssistedView>("fields");
   const [sessionId, setSessionId] = useState<string | null>(resumeSessionId ?? null);
   const [suggestingFieldKey, setSuggestingFieldKey] = useState<string | null>(null);
+  const [suggestionError, setSuggestionError] = useState<AIErrorResponse | null>(null);
+  const [suggestionErrorFieldKey, setSuggestionErrorFieldKey] = useState<string | null>(null);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [entryName, setEntryName] = useState("");
   const [resumePersistenceEnabled, setResumePersistenceEnabled] = useState(
     () => !isInterviewResumePersistenceDisabled(),
   );
   const initializedSessionId = useRef<string | null>(null);
+  const pendingSuggestFieldKey = useRef<string | null>(null);
 
   const createSessionMutation = useCreateKBSession(novelId);
   const answerFieldMutation = useAnswerField(novelId, sessionId ?? "");
@@ -59,6 +67,28 @@ export function useKBAssistedCreationController({
   const interviewMutation = useKBSessionInterview(novelId, sessionId ?? "");
   const enhanceMutation = useKBSessionEnhance(novelId, sessionId ?? "");
   const { data: session, isLoading: sessionLoading } = useKBSession(novelId, sessionId);
+
+  const suggestOp = useAIOperation<KBSuggestionResult>({
+    execute: async (signal) => {
+      const fieldKey = pendingSuggestFieldKey.current;
+      if (!sessionId || !fieldKey) throw new Error("No active field suggestion");
+      return suggestMutation.mutateAsync({ fieldKey, signal });
+    },
+    errorMapper: mapSSEError,
+    onSuccess: () => {
+      pendingSuggestFieldKey.current = null;
+      setSuggestingFieldKey(null);
+      setSuggestionError(null);
+      setSuggestionErrorFieldKey(null);
+    },
+    onError: (error) => {
+      const fieldKey = pendingSuggestFieldKey.current;
+      pendingSuggestFieldKey.current = null;
+      setSuggestingFieldKey(null);
+      setSuggestionError(error);
+      setSuggestionErrorFieldKey(fieldKey);
+    },
+  });
 
   useEffect(() => {
     if (!sessionId && !createSessionMutation.isPending) {
@@ -94,8 +124,17 @@ export function useKBAssistedCreationController({
 
   function handleSuggest(fieldKey: string): void {
     if (!sessionId) return;
+    setSuggestionError(null);
+    setSuggestionErrorFieldKey(null);
     setSuggestingFieldKey(fieldKey);
-    suggestMutation.mutate({ fieldKey }, { onSettled: () => setSuggestingFieldKey(null) });
+    pendingSuggestFieldKey.current = fieldKey;
+    suggestOp.start();
+  }
+
+  function handleCancelSuggest(): void {
+    suggestOp.cancel();
+    pendingSuggestFieldKey.current = null;
+    setSuggestingFieldKey(null);
   }
 
   function handleAcceptSuggestion(fieldKey: string, value: string): void {
@@ -117,10 +156,10 @@ export function useKBAssistedCreationController({
     handleAnswer(fieldKey, answer);
   }
 
-  async function handleRequestEnhance(): Promise<KBEnhancementResult[]> {
+  async function handleRequestEnhance(signal?: AbortSignal): Promise<KBEnhancementResult[]> {
     if (!sessionId) throw new Error("No active session");
     return new Promise((resolve, reject) => {
-      enhanceMutation.mutate(undefined, { onSuccess: resolve, onError: reject });
+      enhanceMutation.mutate(signal, { onSuccess: resolve, onError: reject });
     });
   }
 
@@ -160,6 +199,9 @@ export function useKBAssistedCreationController({
       : undefined,
     completePending: completeSessionMutation.isPending,
     handleSuggest,
+    handleCancelSuggest,
+    suggestionError,
+    suggestionErrorFieldKey,
     handleAnswer,
     handleAcceptSuggestion,
     handleRejectSuggestion,

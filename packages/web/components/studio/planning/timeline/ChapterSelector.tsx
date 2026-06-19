@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, StopCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,8 @@ interface ChapterSelectorProps {
   readonly extractError: string | null;
   readonly onToggleChapter: (chapterId: string) => void;
   readonly onExtract: () => void;
+  /** Cancel an in-flight extraction (§16.2 visible cancel). */
+  readonly onCancel?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -38,8 +40,10 @@ export function ChapterSelector({
   extractError,
   onToggleChapter,
   onExtract,
+  onCancel,
 }: ChapterSelectorProps) {
   const t = useTranslations("timeline");
+  const tAction = useTranslations("studio.aiActions");
   const hasSelection = selectedChapterIds.size > 0;
 
   return (
@@ -89,6 +93,20 @@ export function ChapterSelector({
           t("extractButton")
         )}
       </button>
+
+      {/* Visible cancel control while extraction is in flight (§16.2 / CR-AUFG-07-09) */}
+      {isExtracting && onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          data-testid="timeline-extract-stop"
+          aria-label={tAction("stop")}
+          className="mt-2 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border text-foreground hover:bg-[var(--color-bg-secondary)] transition-colors"
+        >
+          <StopCircle className="w-3.5 h-3.5" />
+          {tAction("stop")}
+        </button>
+      )}
 
       {extractError && <p className="text-xs text-[var(--color-error)] mt-2">{extractError}</p>}
     </div>

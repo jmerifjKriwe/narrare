@@ -43,9 +43,10 @@ export interface KBImproveApplyResponse {
 
 export const kbImproveApi = {
   /** Analyze a KB entry and return improvement suggestions. */
-  analyzeEntry: (novelId: string, entryId: string) =>
+  analyzeEntry: (novelId: string, entryId: string, signal?: AbortSignal) =>
     fetchApi<KBImproveAnalysisResponse>(`/novels/${novelId}/kb/entities/${entryId}/improve`, {
       method: "POST",
+      signal,
     }),
 
   /** Apply selected improvement suggestions to an entry. */

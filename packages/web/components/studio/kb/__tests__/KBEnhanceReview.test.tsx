@@ -402,4 +402,100 @@ describe("KBEnhanceReview", () => {
       expect(screen.getByText("kb.enhancementsFound")).toBeDefined();
     });
   });
+
+  // -------------------------------------------------------------------------
+  // CR-AUFG-07-11: Signal propagation — cancel must reach the transport
+  // -------------------------------------------------------------------------
+
+  it("passes AbortSignal to onRequestEnhance and aborts on cancel (signal propagation)", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    const onRequestEnhance = vi.fn().mockImplementation((signal?: AbortSignal) => {
+      capturedSignal = signal;
+      // Never resolves — stays in loading state so the cancel button is visible
+      return new Promise<KBEnhancementResult[]>(() => {});
+    });
+
+    render(
+      <KBEnhanceReview
+        session={mockSession}
+        onRequestEnhance={onRequestEnhance}
+        onAcceptEnhancement={vi.fn()}
+        onApplySelected={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    // Wait for start() to invoke execute → onRequestEnhance
+    await waitFor(() => {
+      expect(onRequestEnhance).toHaveBeenCalledTimes(1);
+    });
+
+    // Visible cancel control must be present during loading (§16.2 cancel_ui)
+    expect(screen.getByText("aiActions.stop")).toBeDefined();
+
+    // The AbortSignal from useAIOperation must have been propagated to the
+    // transport layer — not undefined (signal_propagation gate, CR-AUFG-07-11).
+    expect(capturedSignal).toBeDefined();
+    expect(capturedSignal?.aborted).toBe(false);
+
+    // Click cancel — this must abort the in-flight transport, not just UI state
+    fireEvent.click(screen.getByText("aiActions.stop"));
+
+    // The signal must now be aborted — proving real transport-level cancellation
+    await waitFor(() => {
+      expect(capturedSignal?.aborted).toBe(true);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // CR-AUFG-07-13: Consistent keyboard shortcuts — Ctrl/Cmd+Enter = apply
+  // -------------------------------------------------------------------------
+
+  it("calls onApplySelected on Ctrl+Enter during review phase (CR-AUFG-07-13)", async () => {
+    const onApplySelected = vi.fn();
+    const onAcceptEnhancement = vi.fn();
+    const onRequestEnhance = vi.fn().mockResolvedValue(mockEnhancements);
+
+    render(
+      <KBEnhanceReview
+        session={mockSession}
+        onRequestEnhance={onRequestEnhance}
+        onAcceptEnhancement={onAcceptEnhancement}
+        onApplySelected={onApplySelected}
+        onBack={vi.fn()}
+      />,
+    );
+
+    // Wait for review phase to be active
+    await waitFor(() => {
+      expect(screen.getByText("kb.applySelected")).toBeDefined();
+    });
+
+    fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
+
+    expect(onApplySelected).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onApplySelected on Cmd+Enter during review phase (Mac)", async () => {
+    const onApplySelected = vi.fn();
+    const onRequestEnhance = vi.fn().mockResolvedValue(mockEnhancements);
+
+    render(
+      <KBEnhanceReview
+        session={mockSession}
+        onRequestEnhance={onRequestEnhance}
+        onAcceptEnhancement={vi.fn()}
+        onApplySelected={onApplySelected}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("kb.applySelected")).toBeDefined();
+    });
+
+    fireEvent.keyDown(window, { key: "Enter", metaKey: true });
+
+    expect(onApplySelected).toHaveBeenCalledTimes(1);
+  });
 });

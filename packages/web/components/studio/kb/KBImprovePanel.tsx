@@ -6,8 +6,12 @@
  * Analyzes a KB entry and presents suggestions (add_field, connect,
  * expand, reorganize) with per-suggestion selection and bulk apply.
  *
- * Auto-triggers analysis on mount. Follows the same patterns as
- * KBEnhanceReview.tsx for consistency.
+ * Auto-triggers analysis on mount. Uses useAIOperation for lifecycle
+ * management (§16, CR-AUFG-07-08): structured errors via mapSSEError,
+ * visible cancel, AbortSignal propagation to the transport.
+ *
+ * Apply is a short REST call and remains a plain TanStack mutation
+ * (not an AI operation requiring streaming lifecycle).
  */
 
 import { ArrowLeft, Sparkles } from "lucide-react";
@@ -16,14 +20,13 @@ import { useEffect, useState } from "react";
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import type { ImproveSuggestion, KBImproveAnalysisResponse } from "@/lib/api/kb-improve";
 import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useKBImproveAnalysis, useKBImproveApply } from "@/lib/hooks/useKBImprove";
 
 import { ImproveErrorState } from "./_components/ImproveErrorState";
 import { ImproveFooterActions } from "./_components/ImproveFooterActions";
 import { ImproveLoadingState } from "./_components/ImproveLoadingState";
 import { ImproveReviewSection } from "./_components/ImproveReviewSection";
-
-type ImproveViewState = "idle" | "loading" | "review" | "error";
 
 interface KBImprovePanelProps {
   novelId: string;
@@ -34,22 +37,21 @@ interface KBImprovePanelProps {
 
 export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImprovePanelProps) {
   const t = useTranslations("studio");
-  const [state, setState] = useState<ImproveViewState>("idle");
+  const [phase, setPhase] = useState<"idle" | "review">("idle");
   const [suggestions, setSuggestions] = useState<ImproveSuggestion[]>([]);
   const [assessment, setAssessment] = useState("");
   const [completenessScore, setCompletenessScore] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [error, setError] = useState<AIErrorResponse | null>(null);
+  const [applyError, setApplyError] = useState<AIErrorResponse | null>(null);
 
   const analyzeMutation = useKBImproveAnalysis(novelId, entryId);
   const applyMutation = useKBImproveApply(novelId, entryId);
 
-  async function runAnalysis() {
-    setState("loading");
-    setError(null);
-
-    try {
-      const result: KBImproveAnalysisResponse = await analyzeMutation.mutateAsync();
+  // --- AI operation lifecycle via useAIOperation (CR-AUFG-07-08) ---
+  const analyzeOp = useAIOperation<KBImproveAnalysisResponse>({
+    execute: (signal) => analyzeMutation.mutateAsync(signal),
+    errorMapper: mapSSEError,
+    onSuccess: (result) => {
       setSuggestions(result.suggestions);
       setAssessment(result.overall_assessment);
       setCompletenessScore(result.completeness_score);
@@ -57,23 +59,23 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
       setSelectedIds(
         new Set(result.suggestions.filter((s) => s.confidence >= 0.7).map((s) => s.suggestion_id)),
       );
-      setState("review");
-    } catch (err) {
-      const mapped = mapSSEError(err);
-      if (mapped) {
-        setError(mapped);
-        setState("error");
-      }
-      // Abort errors are silently ignored
-    }
-  }
+      setPhase("review");
+    },
+  });
 
   // Auto-trigger analysis on mount — intentional mount-trigger pattern
   // biome-ignore lint/correctness/useExhaustiveDependencies: Runs once on mount
   useEffect(() => {
-    if (state !== "idle") return;
-    void runAnalysis();
+    if (phase !== "idle") return;
+    analyzeOp.start();
   }, []);
+
+  // --- Derived display state ---
+  const isAnalyzing = analyzeOp.isLoading || analyzeOp.isStreaming;
+  const analysisError =
+    analyzeOp.isError || analyzeOp.isConnectionLost ? analyzeOp.state.error : null;
+
+  // --- Selection management ---
 
   function toggleSuggestion(id: number) {
     setSelectedIds((prev) => {
@@ -108,6 +110,7 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
   }
 
   async function applySelected() {
+    setApplyError(null);
     try {
       const result = await applyMutation.mutateAsync(Array.from(selectedIds));
       if (result.success) {
@@ -116,8 +119,7 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
     } catch (err) {
       const mapped = mapSSEError(err);
       if (mapped) {
-        setError(mapped);
-        setState("error");
+        setApplyError(mapped);
       }
     }
   }
@@ -136,15 +138,15 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
           </button>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-500" />
-            <h3 className="font-medium">{t("kb.improve.title") || "AI Suggestions"}</h3>
+            <h3 className="font-medium">{t("kb.improve.title")}</h3>
           </div>
         </div>
-        {state === "review" && (
+        {phase === "review" && (
           <div className="text-sm text-muted-foreground">
             {t("kb.improve.selectedCount", {
               count: selectedIds.size,
               total: suggestions.length,
-            }) || `${selectedIds.size} of ${suggestions.length} selected`}
+            })}
           </div>
         )}
       </div>
@@ -152,11 +154,13 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto space-y-6">
-          {state === "loading" && <ImproveLoadingState />}
+          {isAnalyzing && <ImproveLoadingState onCancel={analyzeOp.cancel} />}
 
-          {state === "error" && error && <ImproveErrorState error={error} onRetry={runAnalysis} />}
+          {analysisError && <ImproveErrorState error={analysisError} onRetry={analyzeOp.retry} />}
 
-          {state === "review" && (
+          {applyError && <ImproveErrorState error={applyError} onRetry={applySelected} />}
+
+          {phase === "review" && (
             <ImproveReviewSection
               completenessScore={completenessScore}
               assessment={assessment}
@@ -173,7 +177,7 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
       </div>
 
       {/* Footer */}
-      {state === "review" && (
+      {phase === "review" && (
         <ImproveFooterActions
           hasSuggestions={suggestions.length > 0}
           selectedCount={selectedIds.size}

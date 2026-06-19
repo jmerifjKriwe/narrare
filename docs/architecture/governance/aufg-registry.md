@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-18 (CR-08 configuration/effect drift AUFGs and CR-AUFG-07-07 through CR-AUFG-07-13 AI UX compliance lifecycle added)
+> **Last updated:** 2026-06-19 (CR-AUFG-07-07 through CR-AUFG-07-13 resolved with implementation + enforcement exit evidence — Phase 6 "CR-07 UX Closure v2")
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -165,7 +165,7 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 | ID | CR-AUFG-07-07 |
 | Title | KB Field Suggest AI-UX Lifecycle Compliance |
 | Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; KB Field Suggest (`useKBSessionSuggest` in `packages/web/lib/hooks/useKBSessions.ts`) uses raw TanStack mutation with unhandled errors and no visible cancel. |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P1 |
 | Area | Frontend, KB assisted creation, AI UX, §16 compliance |
 | Owner role | Frontend Specialist; Platform Specialist for checker/test enforcement |
@@ -187,7 +187,10 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 - Any linked `.ai_interaction_exclude` entry is removed or converted to a justified structural category.
 - Registry status is updated with implementation + enforcement exit evidence.
 
-**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+**Exit evidence (2026-06-19):** Resolved — implementation + enforcement complete.
+- **Design:** ADR-043 (`useAIOperation` primitive); `docs/architecture/governance/ai-ux-compliance-v2.md` §4 inventory.
+- **Implementation:** `packages/web/lib/hooks/useKBSessions.ts` (`useKBSessionSuggest` runs via `execute: (signal) => suggestMutation.mutateAsync({ fieldKey, signal })` — the signal reaches the `suggestField` SSE transport); `packages/web/components/studio/kb/KBAssistedCreationController.ts` (visible cancel wiring); `packages/web/components/studio/kb/KBSessionFieldRow.tsx` (structured error rendering).
+- **Enforcement:** Check 7 (`scripts/checks/_ai_interaction_checks/check_7_signal_propagation.py`) + Check 8 (`check_8_stale_exclude.py`); inventory entry `kb.field_suggest` (status `compliant`) in `scripts/checks/ai_operation_inventory.yaml`. Tests: `packages/web/components/studio/kb/__tests__/KBSessionFieldRow.test.tsx`, `packages/web/lib/hooks/__tests__/useKBSessions.actions.test.tsx`. `just check-ai-ux` reports 0 violations and 0 stale excludes.
 
 ---
 
@@ -198,7 +201,7 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 | ID | CR-AUFG-07-08 |
 | Title | KB Improve AI-UX Lifecycle Compliance |
 | Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; KB Improve (`useKBImprove.ts`, `KBImprovePanel.tsx`) uses TanStack mutation/error mapping but lacks `useAIOperation` lifecycle and cancel support. |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P1 |
 | Area | Frontend, KB improve, AI UX, §16 compliance |
 | Owner role | Frontend Specialist; Platform Specialist for checker/test enforcement |
@@ -219,7 +222,10 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 - Platform gates can detect future missing lifecycle/cancel/error coverage for KB Improve.
 - Registry status is updated with implementation + enforcement exit evidence.
 
-**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+**Exit evidence (2026-06-19):** Resolved — implementation + enforcement complete.
+- **Design:** ADR-043; `docs/architecture/governance/ai-ux-compliance-v2.md` §4.
+- **Implementation:** `packages/web/components/studio/kb/KBImprovePanel.tsx` migrated to `useAIOperation` with `execute: (signal) => analyzeMutation.mutateAsync(signal)`; `packages/web/components/studio/kb/_components/ImproveLoadingState.tsx` (cancel UI); `packages/web/lib/hooks/useKBImprove.ts` (signal support).
+- **Enforcement:** Check 7 (`check_7_signal_propagation.py`) + Check 8 (`check_8_stale_exclude.py`); inventory entry `kb.improve` (status `compliant`). Tests: `packages/web/components/studio/kb/__tests__/KBImprovePanel.test.tsx`, `packages/web/lib/hooks/__tests__/useKBImprove.test.tsx`. `just check-ai-ux` reports 0 violations.
 
 ---
 
@@ -230,7 +236,7 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 | ID | CR-AUFG-07-09 |
 | Title | Timeline Extraction useAIOperation or Governed Adapter |
 | Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; `useTimelineExtraction.ts` uses manual AbortController for callback-based SSE and is currently excluded in `scripts/checks/.ai_interaction_exclude`. |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P1 |
 | Area | Frontend, Timeline extraction, SSE, AI UX, exclude governance |
 | Owner role | Frontend Specialist; Platform Specialist for stale-exclude and signal-propagation checks |
@@ -251,7 +257,10 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 - Platform stale-exclude and lifecycle sync gates cover this AUFG.
 - Registry status is updated with implementation + enforcement exit evidence.
 
-**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+**Exit evidence (2026-06-19):** Resolved via governed adapter — partial migration plus justified exception.
+- **Design:** ADR-043 non-react-transport exception category; `docs/architecture/governance/ai-ux-compliance-v2.md` §4.
+- **Implementation:** `packages/web/components/studio/planning/timeline/TimelineExtractionReview.tsx` and `ChapterSelector.tsx` expose a visible `cancelExtraction` control that reaches the callback-SSE `AbortController`; structured error mapping via `mapSSEError` is applied. The callback-based SSE transport cannot adopt the React `useAIOperation` hook, so a justified governed exception remains (§16.2 cancel + §16.5 error migration applied).
+- **Enforcement:** Inventory entry `extraction.timeline` (status `governed_exception`) carries an AUFG link; the `.ai_interaction_exclude` entry for `packages/web/lib/hooks/useTimelineExtraction.ts` is fresh (re-evaluated 2026-06-19), AUFG-linked, and structural (non-react-transport). Check 8 (`check_8_stale_exclude.py`) rejects stale/unlinked excludes; Check 9 (`check_9_lifecycle_sync.py`) keeps the AUFG ID in sync. Test: `packages/web/components/studio/planning/timeline/__tests__/TimelineExtractionReview.test.tsx`. `just check-ai-ux` reports 0 violations and 0 stale excludes.
 
 ---
 
@@ -262,7 +271,7 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 | ID | CR-AUFG-07-10 |
 | Title | GhostText Visible Loading/Status Indicator |
 | Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; GhostText fetches SSE suggestions from a TipTap extension without visible loading indication. |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P1 |
 | Area | Frontend, TipTap GhostText, AI UX, non-React extension governance |
 | Owner role | Frontend Specialist; Platform Specialist for inventory/exclude enforcement |
@@ -283,7 +292,10 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 - Platform inventory/stale-exclude checks keep the non-React exception governed.
 - Registry status is updated with implementation + enforcement exit evidence.
 
-**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+**Exit evidence (2026-06-19):** Resolved via governed non-React extension + visible status indicator.
+- **Design:** ADR-043 non-react-extension structural category; `docs/architecture/governance/ai-ux-compliance-v2.md` §4.
+- **Implementation:** `packages/web/components/studio/editor/extensions/GhostText.ts` (+ `ghost-text-helpers.ts`, `ghost-text-types.ts`) renders a localized fetching-status ProseMirror decoration driven by `_isFetching` extension storage. The visible text comes from the React-controlled `fetchingStatusText` Extension option (`packages/web/components/studio/editor/TipTapEditorController.ts` → `t("aiActions.aiThinking")`), not from hardcoded ProseMirror DOM strings.
+- **Enforcement:** Inventory entry `editor.ghost_text` (status `governed_exception`, lifecycle `non_react_extension`); the exclude entry for `ghost-text-helpers.ts` is fresh, structural, and AUFG-linked. Check 8 (`check_8_stale_exclude.py`) + Check 10 (`check_10_operation_inventory.py`) keep the non-React exception governed and the inventory complete. Test: `packages/web/components/studio/editor/extensions/__tests__/ghost-text-fetching.test.ts`. `just check-ai-ux` reports 0 violations.
 
 ---
 
@@ -294,7 +306,7 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 | ID | CR-AUFG-07-11 |
 | Title | KB Enhance Cancel Signal Propagation |
 | Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben plus coordinator discovery; `EnhanceLoadingState` has cancel UI, but `execute: () => onRequestEnhance()` and mutation calls may not pass the `AbortSignal` to transport. |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P1 |
 | Area | Frontend, KB enhance, signal propagation, AI UX |
 | Owner role | Frontend Specialist; Platform Specialist for signal-propagation checker |
@@ -314,7 +326,10 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 - Platform signal-propagation gate can detect this class of regression.
 - Registry status is updated with implementation + enforcement exit evidence.
 
-**Exit evidence:** Pending — open until Frontend implementation and Platform enforcement exist.
+**Exit evidence (2026-06-19):** Resolved — the cancel signal now reaches transport.
+- **Design:** ADR-043; `docs/architecture/governance/ai-ux-compliance-v2.md` §4.
+- **Implementation:** `packages/web/components/studio/kb/KBEnhanceReview.tsx` (`execute: (signal) => onRequestEnhance(signal)`); `packages/web/components/studio/kb/KBAssistedCreationController.ts` (`handleRequestEnhance(signal?: AbortSignal)` → `enhanceMutation.mutate(signal, …)` — the signal propagates to the `requestEnhance` SSE transport). `packages/web/components/studio/kb/_components/EnhanceLoadingState.tsx` provides the visible cancel.
+- **Enforcement:** Check 7 (`scripts/checks/_ai_interaction_checks/check_7_signal_propagation.py`) flags `execute` signatures that drop the signal; inventory entry `kb.enhance` (status `compliant`). Test: `packages/web/components/studio/kb/__tests__/KBEnhanceReview.test.tsx` (signal-propagation case). `just check-ai-ux` reports 0 violations.
 
 ---
 
@@ -325,7 +340,7 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 | ID | CR-AUFG-07-12 |
 | Title | Deprecated AI-Action i18n Alias Prevention |
 | Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; `ui-principles.md` §16.8 marks exact aliases such as `aiModal.accept`, `generation.stop`, `annotation.keep`, and `rewrite.replace` as deprecated, but prevention is incomplete. |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P1 |
 | Area | Frontend i18n, AI action vocabulary, Platform lint/checker |
 | Owner role | Frontend Specialist for key migration/removal; Platform Specialist for lint/checker; Docs Specialist for §16.9 sync |
@@ -346,7 +361,10 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 - Docs update §16.9 to reflect the implemented gate.
 - Registry status is updated with implementation + enforcement exit evidence.
 
-**Exit evidence:** Pending — open until Frontend migration and Platform enforcement exist.
+**Exit evidence (2026-06-19):** Resolved — deprecated aliases removed and CI-gated.
+- **Design:** RULE-16; ADR-043; `docs/development/ui-principles.md` §16.8/§16.9; `docs/architecture/governance/ai-ux-compliance-v2.md` §4.
+- **Implementation:** `packages/web/components/studio/editor/RewriteSuggestionModal.tsx` migrated `aiModal.original` → `t("aiActions.original")`; the 16 exact §16.8 deprecated AI-action aliases are absent from TS/TSX usage; locale files (`packages/web/messages/{de,en,fr}/studio.json`) cleaned.
+- **Enforcement:** Check 6 (`scripts/checks/_ai_interaction_checks/check_6_deprecated_alias.py`) blocks the exact deprecated aliases (whole namespaces are NOT blanket-banned); inventory entry `vocabulary.ai_actions` (status `compliant`). Platform tests: `tests/unit/scripts/checks/test_check_6_deprecated_alias.py`. §16.9 documents the implemented gate. `just check-ai-ux` reports 0 violations.
 
 ---
 
@@ -357,7 +375,7 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 | ID | CR-AUFG-07-13 |
 | Title | Consistent Keyboard Shortcuts for AI Output Actions |
 | Source | `_audit/results/content-review/cr-07-ux.md` §Aufgaben; rewrite modal, generation review, KB enhance review, and co-author panel have inconsistent or incomplete keyboard shortcuts for accept/reject/retry actions. |
-| Status | `open` |
+| Status | `resolved` |
 | Priority | P1 |
 | Area | Frontend, accessibility, keyboard UX, AI action consistency |
 | Owner role | Frontend Specialist; Docs Specialist for shortcut documentation; Platform Specialist for tests/gate evidence |
@@ -378,7 +396,10 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 - Platform test/check evidence prevents silent regression for the covered components.
 - Registry status is updated with implementation + enforcement exit evidence.
 
-**Exit evidence:** Pending — open until Frontend implementation, Platform evidence, and Docs updates exist.
+**Exit evidence (2026-06-19):** Resolved — consistent shortcut scheme + per-operation inventory.
+- **Design:** KEYBOARD-001 precedent; ADR-043; `docs/architecture/governance/ai-ux-compliance-v2.md` §4.
+- **Implementation:** shared `packages/web/lib/ai-action-shortcuts.ts` (`Ctrl/Cmd+Enter` → accept/apply) consumed by `packages/web/components/studio/editor/GenerationPanel.tsx`, `packages/web/components/studio/kb/KBEnhanceReview.tsx`, `packages/web/components/studio/editor/_components/CoAuthorReviewPhase.tsx`, and `packages/web/components/studio/editor/RewriteSuggestionModal.tsx`.
+- **Enforcement:** Inventory entries (`writing.rewrite`, `writing.generation`, `writing.co_author`, `kb.enhance`, `vocabulary.keyboard_shortcuts`) record per-operation keyboard behaviour (status `compliant`); Check 10 (`check_10_operation_inventory.py`) validates the inventory fields. Tests: `packages/web/components/studio/editor/__tests__/GenerationPanel.keyboard.test.tsx`, `CoAuthorReviewPhase.keyboard.test.tsx`, `packages/web/components/studio/kb/__tests__/KBEnhanceReview.test.tsx`, `packages/web/components/studio/editor/__tests__/RewriteSuggestionModal.test.tsx`. `just check-ai-ux` reports 0 violations.
 
 ---
 

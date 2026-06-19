@@ -2,7 +2,8 @@
 
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
-
+import { useEffect } from "react";
+import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
 import type { ChangeDetail } from "@/lib/api/coauthor";
 
 import { ChangeReview } from "../ChangeReview";
@@ -43,6 +44,21 @@ export function CoAuthorReviewPhase({
 
   const allAccepted = changes.length > 0 && changes.every((c) => acceptance[c.id] !== false);
   const allRejected = changes.length > 0 && changes.every((c) => acceptance[c.id] === false);
+
+  // Keyboard Shortcut: Ctrl/Cmd+Enter applies accepted changes (CR-AUFG-07-13).
+  // NOTE: Escape → close is handled by the parent CoAuthorPanel's global Escape
+  // handler (which calls handleCancel). Adding a second Escape listener here
+  // would cause the handler to fire twice — so only the apply shortcut is local.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isApplyShortcut(e) && !submitting) {
+        e.preventDefault();
+        onApply();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [submitting, onApply]);
 
   return (
     <div className="space-y-4">
@@ -106,6 +122,7 @@ export function CoAuthorReviewPhase({
           type="button"
           onClick={onApply}
           disabled={submitting}
+          title="Ctrl/⌘+Enter"
           className={`${btnPrimary} flex-1 flex items-center justify-center gap-2 disabled:opacity-50`}
         >
           {submitting ? (

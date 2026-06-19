@@ -136,6 +136,26 @@
   animation: ghost-text-hint-fade-in 0.3s ease 0.5s forwards;
 }
 
+/* Ghost Text Fetching Status Indicator — shown while a suggestion request
+   is in-flight, before any text arrives (§16.3 immediate feedback,
+   CR-AUFG-07-10). Localized text is injected via extension options. */
+.ghost-text-fetching {
+  display: inline-block;
+  font-size: 0.75rem;        /* text-xs */
+  color: #6b7280;            /* text-gray-500 */
+  font-style: italic;
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+  margin-left: 2px;
+  animation: ghost-text-fetching-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ghost-text-fetching-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
 @keyframes ghost-text-hint-fade-in {
   from { opacity: 0; }
   to { opacity: 0.5; }

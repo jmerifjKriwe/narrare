@@ -112,6 +112,7 @@ export function GenerationDraft({
               type="button"
               onClick={onAccept}
               disabled={isAcceptPending}
+              title="Ctrl/⌘+Enter"
               className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {t("aiActions.accept")}
