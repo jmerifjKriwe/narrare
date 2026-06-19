@@ -58,7 +58,7 @@ class FileEvidenceSink:
         """
         try:
             self._evidence_dir.mkdir(parents=True, exist_ok=True)
-            evidence_data = evidence.model_dump()
+            evidence_data = evidence.model_dump(mode="json")
             evidence_data["timestamp"] = datetime.now(UTC).isoformat()
             line = json.dumps(evidence_data, sort_keys=True)
 

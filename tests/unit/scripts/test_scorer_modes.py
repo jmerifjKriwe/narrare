@@ -105,7 +105,7 @@ class TestRuntimeCheckWithProbeEvidence:
         )
         es = next(d for d in details if d.requirement == "evidence_sink")
         assert es.evidence_status == "verified"
-        assert es.note == "verified by probe evidence"
+        assert es.note == "verified by evidence sink probe"
         # But overall is still False because preference_enrichment and
         # final_validation are still "required" = "missing"
         assert verified is False
@@ -198,7 +198,7 @@ class TestComputeModeScoreWithEvidence:
         )
         es = next(d for d in ms.runtime_details if d.requirement == "evidence_sink")
         assert es.evidence_status == "verified"
-        assert es.note == "verified by probe evidence"
+        assert es.note == "verified by evidence sink probe"
         # Still not fully verified (preference_enrichment and
         # final_validation remain missing)
         assert ms.runtime_verified is False

@@ -106,6 +106,10 @@ def _check_runtime_requirements(
             )
         )
 
+    # ── Backward compat: map probe_evidence → evidence_sink_evidence ──
+    if evidence_sink_evidence is None and probe_evidence is not None:
+        evidence_sink_evidence = probe_evidence
+
     # ── Evidence overrides ──────────────────────────────────────────
     details, all_verified = apply_evidence_override(
         details,
@@ -241,16 +245,20 @@ def compute_mode_score(
     static_verified = score >= PASS_THRESHOLD
 
     # Runtime checks.
+    # Backward compat: map probe_evidence → evidence_sink_evidence
+    if evidence_sink_evidence is None and probe_evidence is not None:
+        evidence_sink_evidence = probe_evidence
+
     if runtime_reqs:
         runtime_details, runtime_verified = _check_runtime_requirements(
             runtime_reqs,
+            evidence_sink_evidence=evidence_sink_evidence,
             probe_evidence=probe_evidence,
             mode_feature_id=mode_feature_id,
             mode_name=mode_name,
             preference_evidence=preference_evidence,
             validation_evidence=validation_evidence,
             budget_evidence=budget_evidence,
-            evidence_sink_evidence=evidence_sink_evidence,
         )
     else:
         runtime_details, runtime_verified = [], False
