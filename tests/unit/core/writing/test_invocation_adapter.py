@@ -28,6 +28,7 @@ from narrare_core.ai_invocation.models import (
     PromptInvocationContext,
     ValidationResult,
 )
+from narrare_core.ai_invocation.pipeline import PreparedInvocation
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.prompts.context import PromptContext
@@ -55,10 +56,16 @@ def _mock_composer(return_value: ComposedPrompt | None = None) -> MagicMock:
     return composer
 
 
-def _passing_prepared() -> MagicMock:
-    m = MagicMock(spec=["validation"])
-    m.validation = ValidationResult(status=ValidationStatus.PASS)
-    return m
+def _passing_prepared() -> PreparedInvocation:
+    """Real PreparedInvocation with an empty-context so the merge step works.
+
+    Phase 2 (ADR-045 Decision 3) reads ``prepared.context.dynamic_inputs``;
+    a bare MagicMock has no ``.context`` and would raise at merge time.
+    """
+    return PreparedInvocation(
+        context=_invocation_ctx(),
+        validation=ValidationResult(status=ValidationStatus.PASS),
+    )
 
 
 def _passing_finalized() -> MagicMock:
@@ -286,32 +293,12 @@ class TestEvidenceRecording:
 
 
 # ---------------------------------------------------------------------------
-# Composer receives original context
-# ---------------------------------------------------------------------------
-
-
-class TestComposerReceivesOriginalContext:
-    """Enriched context must NOT override the prompt_ctx passed to composer."""
-
-    @pytest.mark.asyncio
-    async def test_enricher_does_not_affect_composer_input(self) -> None:
-        original_ctx = _prompt_ctx()
-        composer = _mock_composer()
-        mock_pipeline = _mock_pipeline_pass()
-
-        await build_and_validate_prompt(
-            composer=composer,
-            invocation_pipeline=mock_pipeline,
-            intent=LLMIntent.EXTEND,
-            prompt_ctx=original_ctx,
-            invocation_context=_invocation_ctx(),
-        )
-        composer.build.assert_called_once_with(LLMIntent.EXTEND, original_ctx)
-
-
-# ---------------------------------------------------------------------------
 # Call order
 # ---------------------------------------------------------------------------
+
+
+# ADR-045 Decision 3 merge-behaviour tests live in
+# ``test_invocation_adapter_merge.py`` (split per RULE-04).
 
 
 class TestCallOrder:

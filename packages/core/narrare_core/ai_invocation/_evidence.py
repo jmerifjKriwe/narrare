@@ -3,13 +3,20 @@
 Pure functions that construct :class:`FeatureInvocationEvidence` from
 pipeline state. Extracted from :mod:`pipeline` per RULE-04.
 
+ADR-045 Phase 3 correlation fields (invocation_id, streaming, and the
+three privacy-safe fingerprints) are populated here from the canonical
+:mod:`correlation` helpers. The fingerprints are one-way digests over
+*structural* metadata only (keys, lengths, profile names) — never raw
+prompt text or user prose.
+
 See:
-    ADR-038, INFRA-013, CONSTRAINTS.md RULE-04/RULE-06.
+    ADR-038, ADR-045, INFRA-013, CONSTRAINTS.md RULE-04/RULE-06/RULE-20.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
 from narrare_core.ai_invocation._enums import (
     AuditState,
@@ -17,6 +24,11 @@ from narrare_core.ai_invocation._enums import (
     KBSuggestedStatus,
     PreferenceRequirement,
     PreferenceStatus,
+)
+from narrare_core.ai_invocation.correlation import (
+    fingerprint_budget_decision,
+    fingerprint_prepared_context,
+    fingerprint_prompt,
 )
 from narrare_core.ai_invocation.models import (
     FeatureInvocationEvidence,
@@ -26,6 +38,7 @@ from narrare_core.ai_invocation.models import (
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import PreparedInvocation
+    from narrare_core.prompts.composer import ComposedPrompt
 
 
 def build_invocation_evidence(
@@ -33,14 +46,32 @@ def build_invocation_evidence(
     prepared: PreparedInvocation | None,
     final_validation: ValidationResult,
     final_validator_ran: bool,
+    *,
+    prompt: ComposedPrompt | None = None,
 ) -> FeatureInvocationEvidence:
     """Build a privacy-safe evidence record from pipeline state.
+
+    Populates ADR-045 Phase 3 correlation fields:
+
+    - ``invocation_id``: ``context.invocation_id`` (generated if absent) so
+      evidence can be correlated across prepare → compose → model boundary.
+    - ``streaming``: ``context.streaming``.
+    - ``prepared_context_fingerprint``: digest from
+      :func:`correlation.fingerprint_prepared_context` over the *prepared*
+      (enriched) context's dynamic-input keys/counts — not their values.
+    - ``prompt_fingerprint``: digest from :func:`correlation.fingerprint_prompt`
+      when a ``prompt`` is supplied (lengths + presence, never raw text).
+    - ``budget_decision_fingerprint``: digest from
+      :func:`correlation.fingerprint_budget_decision` (profile + max tokens +
+      source, never the free-form reason).
 
     Args:
         context: The invocation context that produced the prompt.
         prepared: Optional prepared invocation from the prepare phase.
         final_validation: Final prompt validation result.
         final_validator_ran: Whether the final validator actually ran.
+        prompt: Optional composed prompt, used only to derive the
+            privacy-safe prompt fingerprint. Never stored.
 
     Returns:
         FeatureInvocationEvidence with all metadata populated.
@@ -69,7 +100,27 @@ def build_invocation_evidence(
     # Whether final validation ran and passed
     final_validated = final_validator_ran and final_validation.is_valid
 
+    # --- ADR-045 Phase 3: correlation fields ---------------------------
+    # invocation_id: preserve the caller's id, else mint one so every
+    # evidence record is correlatable even when the caller forgot to set it.
+    invocation_id: UUID = context.invocation_id or uuid4()
+
+    # Fingerprint the *prepared* (enriched) context when available, since
+    # that is what actually flowed into prompt composition. Falls back to
+    # the bare invocation context when prepare() did not run.
+    fingerprinted_context = prepared.context if prepared is not None else context
+    prepared_context_fingerprint = fingerprint_prepared_context(fingerprinted_context).digest
+
+    prompt_fingerprint = fingerprint_prompt(prompt).digest if prompt is not None else None
+
+    budget_fp: str | None = None
+    if prepared is not None and prepared.budget is not None:
+        budget_decision_fp = fingerprint_budget_decision(prepared.budget)
+        if budget_decision_fp is not None:
+            budget_fp = budget_decision_fp.digest
+
     return FeatureInvocationEvidence(
+        invocation_id=invocation_id,
         feature_id=context.feature_id,
         intent=context.intent.value,
         mode=context.mode,
@@ -80,6 +131,10 @@ def build_invocation_evidence(
         final_prompt_validated=final_validated,
         validation_errors=all_errors,
         audit_state=audit_state,
+        prepared_context_fingerprint=prepared_context_fingerprint,
+        prompt_fingerprint=prompt_fingerprint,
+        budget_decision_fingerprint=budget_fp,
+        streaming=context.streaming,
     )
 
 

@@ -72,4 +72,5 @@ def build_pipeline_evidence(
         prepared=prepared,
         final_validation=final_validation,
         final_validator_ran=final_validator_ran,
+        prompt=prompt,
     )

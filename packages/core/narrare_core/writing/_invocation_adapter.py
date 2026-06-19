@@ -57,6 +57,8 @@ def _create_minimal_invocation_context(
     Returns:
         A PromptInvocationContext with feature_id derived from the intent.
     """
+    from uuid import uuid4
+
     from narrare_core.ai_invocation.models import PromptInvocationContext
 
     return PromptInvocationContext(
@@ -67,6 +69,7 @@ def _create_minimal_invocation_context(
         project_id=project_id,
         language=prompt_ctx.language,
         output_language=prompt_ctx.writing_language or None,
+        invocation_id=uuid4(),
         streaming=True,
     )
 
@@ -92,7 +95,9 @@ async def build_and_validate_prompt(
           context from ``intent``, ``prompt_ctx``, and optional
           ``user_id``/``project_id``.
         1. ``prepare()`` — validate variables + enrich + resolve budget.
-        2. Build prompt via composer (original ``prompt_ctx``).
+        2. Merge prepared ``dynamic_inputs`` into ``prompt_ctx`` (ADR-045
+           Decision 3) and build the prompt from the *merged* context.
+           Caller-provided fields win over enricher suggestions (RULE-22).
         3. ``finalize()`` — validate final prompt + record evidence.
         4. Return the composed prompt.
 
@@ -137,10 +142,17 @@ async def build_and_validate_prompt(
             code="INVOCATION_VALIDATION_FAILED",
         )
 
-    # Phase 2: Build prompt using ORIGINAL prompt_ctx.
-    # The enriched context is for metadata/evidence, NOT for overriding
-    # prompt assembly.
-    prompt = await composer.build(intent, prompt_ctx)
+    # Phase 2: Merge prepared dynamic_inputs into prompt_ctx (ADR-045
+    # Decision 3) and compose from the merged context. Empty caller fields
+    # are filled by enrichment; non-empty fields are preserved (RULE-22
+    # precedence: caller > enricher). This mirrors the non-writing adapter
+    # (compose_invocation) so both domains apply the same merge contract.
+    from narrare_core.ai_invocation.prompt_context_merge import (
+        merge_prepared_dynamic_inputs,
+    )
+
+    merged_ctx = merge_prepared_dynamic_inputs(prompt_ctx, prepared.context).context
+    prompt = await composer.build(intent, merged_ctx)
 
     # Phase 3: Finalize — validate final prompt + record evidence
     finalized = await invocation_pipeline.finalize(

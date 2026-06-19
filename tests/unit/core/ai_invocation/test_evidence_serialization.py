@@ -6,6 +6,9 @@ Covers:
 3. Validates allowed audit_state values.
 4. JSON roundtrip is stable.
 5. No field can contain raw prompt text or user prose by design.
+
+ADR-045 Phase 3 correlation-field population tests live in
+``test_evidence_correlation_fields.py`` (split per RULE-04).
 """
 
 from __future__ import annotations

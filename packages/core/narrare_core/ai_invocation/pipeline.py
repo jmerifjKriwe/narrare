@@ -215,6 +215,7 @@ class InvocationPipeline:
             prepared=prepared,
             final_validation=final_validation,
             final_validator_ran=final_validator_ran,
+            prompt=prompt,
         )
 
         logger.debug(
@@ -324,6 +325,7 @@ class InvocationPipeline:
         prepared: PreparedInvocation | None,
         final_validation: ValidationResult,
         final_validator_ran: bool,
+        prompt: ComposedPrompt,
     ) -> bool:
         """Build and record evidence. Returns True if recorded successfully."""
         if self._evidence_sink is None:
@@ -334,6 +336,7 @@ class InvocationPipeline:
             prepared,
             final_validation,
             final_validator_ran,
+            prompt,
         )
 
         try:
@@ -353,8 +356,13 @@ class InvocationPipeline:
         prepared: PreparedInvocation | None,
         final_validation: ValidationResult,
         final_validator_ran: bool,
+        prompt: ComposedPrompt,
     ) -> FeatureInvocationEvidence:
-        """Build a privacy-safe evidence record from pipeline state."""
+        """Build a privacy-safe evidence record from pipeline state.
+
+        Threads the composed ``prompt`` through so the ADR-045 prompt
+        fingerprint can be recorded (privacy-safe: lengths/digest only).
+        """
         from narrare_core.ai_invocation._evidence import build_invocation_evidence
 
         return build_invocation_evidence(
@@ -362,6 +370,7 @@ class InvocationPipeline:
             prepared=prepared,
             final_validation=final_validation,
             final_validator_ran=final_validator_ran,
+            prompt=prompt,
         )
 
 
