@@ -105,10 +105,39 @@ class MemoryPrecedenceLevel(StrEnum):
 
 
 class LearningEventKind(StrEnum):
-    """ADT-style variant tag — what triggered this learning event."""
+    """ADT-style variant tag — what triggered this learning event.
+
+    See ADR-045 Decision 8 for the full taxonomy and the precedence/privacy
+    boundaries that apply to each kind. Every kind resolves to
+    ``MemoryPrecedenceLevel.LEARNED_MEMORY``: learned preferences never
+    override current instructions, curated KB, or objective facts. The
+    ``suggestion_accepted``/``suggestion_rejected``/``suggestion_modified``
+    ADR kinds are represented upstream via ``FeedbackAction`` and the
+    ``FeedbackService`` translation path, so they do not appear here.
+    """
 
     SUGGESTION_MODIFIED = "suggestion_modified"
+    """User edited an AI suggestion before accepting it — a style/structure
+    preference extracted from deltas, never raw prose by default."""
+
     REPEATED_STEERING = "repeated_steering"
+    """High-confidence style/process preference repeated across sessions
+    (e.g. 'shorter paragraphs', 'ask before adding lore')."""
+
+    KB_INTERVIEW_STYLE = "kb_interview_style"
+    """Interaction style only; never factual world data.
+
+    Captures how the user prefers KB interview prompts to be framed
+    (e.g. 'prefers concise questions') — a style marker, not world lore.
+    """
+
+    ANALYSIS_CALIBRATION = "analysis_calibration"
+    """Reviewer lens; cannot suppress evidence/confidence gates.
+
+    Captures how the user wants analysis feedback calibrated
+    (e.g. 'prioritizes pacing feedback') — a tone preference that never
+    weakens objective evidence or confidence thresholds.
+    """
 
 
 @dataclass(frozen=True, slots=True)
