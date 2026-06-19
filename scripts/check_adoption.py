@@ -45,6 +45,7 @@ from adoption.scorer import (
     AdoptionReport,
     compute_adoption_report,
 )
+from adoption.script_evidence_repo import ScriptEvidenceRepository
 from prompt_checks_crossfile import discover_prompts
 from scripts.architecture.baselines import (
     DEFAULT_BASELINE_PATH,
@@ -59,6 +60,7 @@ ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = ROOT / "scripts" / "architecture" / "adoption-registry.yaml"
 BUNDLED_DIR = ROOT / "packages" / "core" / "narrare_core" / "prompts" / "_bundled"
 ADOPTION_BASELINE_SECTION = "adoption_debt"
+DEFAULT_EVIDENCE_REPO_FILE = ROOT / ".evidence" / "invocations.jsonl"
 
 
 def adoption_debt_fingerprints(report: AdoptionReport) -> set[str]:
@@ -190,17 +192,14 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.evidence_repo:
-        print(
-            "ERROR: --evidence-repo is not supported by this standalone script until "
-            "a script-side EvidenceRepository adapter is wired. Use --evidence-dir "
-            "or --static-only.",
-            file=sys.stderr,
-        )
-        return 1
-
     if args.static_only and args.evidence_dir is not None:
         print("ERROR: --static-only cannot be combined with --evidence-dir.", file=sys.stderr)
+        return 1
+    if args.static_only and args.evidence_repo:
+        print("ERROR: --static-only cannot be combined with --evidence-repo.", file=sys.stderr)
+        return 1
+    if args.evidence_dir is not None and args.evidence_repo:
+        print("ERROR: --evidence-dir cannot be combined with --evidence-repo.", file=sys.stderr)
         return 1
 
     registry = load_registry(args.registry)
@@ -213,11 +212,15 @@ def main() -> int:
         return 1
 
     prompts = discover_prompts(args.prompts)
+    evidence_repo = (
+        ScriptEvidenceRepository(DEFAULT_EVIDENCE_REPO_FILE) if args.evidence_repo else None
+    )
 
     report = compute_adoption_report(
         registry,
         prompts,
         evidence_dir=str(args.evidence_dir) if args.evidence_dir else None,
+        evidence_repo=evidence_repo,
     )
 
     # ADR-046 D.5 — prompt-path compliance per-intent metric (RULE-02b).

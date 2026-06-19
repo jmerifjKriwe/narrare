@@ -205,23 +205,77 @@ class TestEvidenceRepoCli:
 
         assert check_adoption.main() == 0
 
-    def test_evidence_repo_flag_fails_visibly_until_adapter_exists(
+    def test_evidence_repo_flag_passes_script_adapter_to_scorer(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        captured_kwargs: dict[str, Any] = {}
+
+        class FakeScriptEvidenceRepository:
+            def __init__(self, evidence_file: Path) -> None:
+                self.evidence_file = evidence_file
+
+        def compute_report(*_args: object, **kwargs: Any) -> AdoptionReport:
+            captured_kwargs.update(kwargs)
+            return AdoptionReport(1.0, "PASS", [])
+
+        monkeypatch.setattr(sys, "argv", ["check_adoption.py", "--evidence-repo"])
+        monkeypatch.setattr(check_adoption, "load_registry", lambda _path: _runtime_registry())
+        monkeypatch.setattr(check_adoption, "discover_prompts", lambda _path: [_make_prompt()])
+        monkeypatch.setattr(check_adoption, "compute_adoption_report", compute_report)
+        monkeypatch.setattr(
+            check_adoption,
+            "ScriptEvidenceRepository",
+            FakeScriptEvidenceRepository,
+        )
+        baseline_ok = type("BaselineOK", (), {"ok": True})()
+        monkeypatch.setattr(
+            check_adoption, "compare_section", lambda *_args, **_kwargs: baseline_ok
+        )
+        monkeypatch.setattr(
+            check_adoption, "format_comparison", lambda *_args, **_kwargs: "baseline ok"
+        )
+        monkeypatch.setattr(check_adoption, "check_prompt_path_adoption", lambda _registry: [])
+
+        exit_code = check_adoption.main()
+
+        assert exit_code == 0
+        assert captured_kwargs["evidence_dir"] is None
+        repo = captured_kwargs["evidence_repo"]
+        assert isinstance(repo, FakeScriptEvidenceRepository)
+        assert repo.evidence_file == check_adoption.DEFAULT_EVIDENCE_REPO_FILE
+
+    def test_static_only_cannot_be_combined_with_evidence_repo(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["check_adoption.py", "--evidence-repo"])
-        monkeypatch.setattr(check_adoption, "load_registry", lambda _path: _runtime_registry())
-        monkeypatch.setattr(check_adoption, "discover_prompts", lambda _path: [_make_prompt()])
         monkeypatch.setattr(
-            check_adoption,
-            "compute_adoption_report",
-            lambda *_args, **_kwargs: AdoptionReport(1.0, "PASS", []),
+            sys,
+            "argv",
+            ["check_adoption.py", "--static-only", "--evidence-repo"],
         )
 
         exit_code = check_adoption.main()
         captured = capsys.readouterr()
 
         assert exit_code == 1
-        assert "--evidence-repo" in captured.err
-        assert "not supported" in captured.err
+        assert "--static-only cannot be combined with --evidence-repo" in captured.err
+
+    def test_evidence_dir_cannot_be_combined_with_evidence_repo(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+    ) -> None:
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["check_adoption.py", "--evidence-dir", str(tmp_path), "--evidence-repo"],
+        )
+
+        exit_code = check_adoption.main()
+        captured = capsys.readouterr()
+
+        assert exit_code == 1
+        assert "--evidence-dir cannot be combined with --evidence-repo" in captured.err

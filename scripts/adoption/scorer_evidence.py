@@ -52,6 +52,16 @@ def _is_placeholder_record(record: dict[str, Any]) -> bool:
     return "budget" in record and record.get("budget") is None
 
 
+def feature_mode(record: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Public wrapper for extracting feature/mode from evidence records."""
+    return _feature_mode(record)
+
+
+def is_placeholder_record(record: dict[str, Any]) -> bool:
+    """Public wrapper for placeholder evidence filtering."""
+    return _is_placeholder_record(record)
+
+
 def _records_from_marker(data: dict[str, Any]) -> list[dict[str, Any]]:
     """Return structured records from a marker when present."""
     raw_records: object = data.get("records") or data.get("invocations") or []
