@@ -9,6 +9,7 @@ from uuid import UUID
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.kb.relationship_repository import RelationshipRepository
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,7 +74,7 @@ async def get_writing_service(
     if intent == LLMIntent.SUGGEST:
         # SUGGEST uses a fixed 60-token limit — inline suggestions must be short
         # (UX constraint, not a profile concern).
-        config = replace(config, temperature=0.3, max_tokens=60)
+        config = replace(config, temperature=0.3, max_tokens=SUGGEST_MAX_TOKENS)
 
     draft_processor = DraftProcessor()
     pipeline = create_pipeline(draft_processor, tier_overrides=limits.tier_percentages)

@@ -297,119 +297,152 @@ entries:
   # ── P2 ────────────────────────────────────────────────────────────────────
   - setting_id: inline_suggest_cap
     classification: governed_default
-    lifecycle: governed_default
+    lifecycle: adopted
     source: >-
-      apps/api/narrare/writing/deps_suggest.py (raw max_tokens=60);
-      deps_writing dependency factories.
-    resolver_service: (pending) named low-latency output cap resolver
+      packages/core/narrare_core/llm/run_limits.py SUGGEST_MAX_TOKENS=60.
+      Consumed by apps/api/narrare/writing/deps_suggest.py and
+      deps_writing.py.
+    resolver_service: SUGGEST_MAX_TOKENS named constant (run_limits.py)
     runtime_consumer: Inline suggest dependency factory (max_tokens).
     effect_semantics: >-
       Caps inline suggestion length for <500ms latency target (ADR-045 D3 C).
     fallback_policy: >-
-      Until CR-AUFG-08-04: immutable UX cap rationale must be documented with
-      a failing-if-changed-without-review test.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+      Immutable UX cap — changing requires re-validating the 500ms latency
+      target (ADR-045 D3 C).
+    enforcement_evidence:
+      - "packages/core/narrare_core/llm/run_limits.py (SUGGEST_MAX_TOKENS = 60 named constant with latency rationale)"
+      - "tests/unit/core/llm/test_run_limits.py (assert SUGGEST_MAX_TOKENS == 60)"
+    cross_layer_evidence:
+      - "Core run_limits.py SUGGEST_MAX_TOKENS imported by apps/api deps_suggest.py and deps_writing.py."
     cr_task: CR-AUFG-08-04
     phase: P2
     review_trigger: >-
-      Becomes `adopted` when raw 60 is replaced by a named cap resolved from
-      the token-limit/profile system, OR documented as an immutable UX cap
-      with regression tests.
+      Re-evaluate if the 500ms latency target (ADR-045 D3 C) is revised
+      or if provider response-time profiles change significantly.
     rationale: >-
-      Intentional low-latency cap; currently a raw factory value. Classified
-      governed_default pending named-cap or immutable-cap test (CR-AUFG-08-04).
+      Named UX-latency cap with rationale and regression test. Immutable
+      by design — not user/operator configurable.
 
   - setting_id: consistency_caps
     classification: operator
-    lifecycle: formal_finding
+    lifecycle: operator_default
     source: >-
-      Operator env + service field (max_chapter_tokens, max_kb_entries,
-      max_selection_words); not in API response/update schema.
+      Operator-only fields (max_chapter_tokens, max_kb_entries).
+      max_selection_words removed from API response (CR-08 P2).
     resolver_service: TokenLimitsService (operator fields)
     runtime_consumer: consistency/prompt_builder.
     effect_semantics: >-
-      Caps consistency input context per chapter/KB/selection.
-    fallback_policy: Operator default retained; user/project exposure incomplete.
-    enforcement_evidence: []
+      Caps consistency input context per chapter/KB.
+      max_selection_words no longer exposed in API response.
+    fallback_policy: Operator default retained; user/project exposure
+      is intentionally operator-only per CR-08 P2 decision.
+    enforcement_evidence:
+      - "CR-08 P2: max_selection_words removed from API response schema"
+      - "consistency caps are operator-only fields in TokenLimitsService"
     cross_layer_evidence: []
     cr_task: CR-AUFG-08-05
     phase: P2
     review_trigger: >-
-      Becomes `adopted`/`operator_default` when caps are user/project-tunable
-      with API/UI parity OR documented operator-only with no misleading UI.
+      Becomes `adopted` if caps become user/project-tunable with API/UI
+      parity. Currently documented operator-only — no misleading UI.
     rationale: >-
-      Cross-layer drift: exposed as operator field but not in response/update
-      schema. Tracked remediation required.
+      Operator-only caps with no misleading UI exposure. max_selection_words
+      confirmed removed from API response per CR-08 P2 implementation.
 
   - setting_id: setup_fallback_catalogs
     classification: operator
-    lifecycle: formal_finding
+    lifecycle: adopted
     source: >-
-      apps/api/narrare/setup/provider_service.py static fallback catalog;
-      repeated Ollama default URL (localhost:11434).
-    resolver_service: (pending) catalog/settings abstraction
+      apps/api/narrare/setup/provider_service.py static fallback catalog.
+      OLLAMA_DEFAULT_URL centralized in apps/api/narrare/setup/constants.py
+      — all 6 hardcoded Ollama URL references replaced.
+    resolver_service: setup/constants.py OLLAMA_DEFAULT_URL
     runtime_consumer: Setup provider/model listing.
     effect_semantics: >-
-      Fallback model list shown when provider API unavailable.
+      Fallback model list shown when provider API unavailable. Ollama default
+      URL has a single canonical source.
     fallback_policy: >-
       Must carry freshness/source labels; stale/offline fallback explicitly
-      marked.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+      marked. OLLAMA_DEFAULT_URL change requires verifying local-first
+      assumption still holds.
+    enforcement_evidence:
+      - "apps/api/narrare/setup/constants.py (OLLAMA_DEFAULT_URL single source)"
+      - "Consumed by: provider_schemas.py, router.py, provider_service.py, user_provider_models_service.py (all 6 references use the constant)"
+    cross_layer_evidence:
+      - "All 6 hardcoded Ollama URLs replaced with OLLAMA_DEFAULT_URL constant from setup/constants.py."
     cr_task: CR-AUFG-08-06
     phase: P2
-    review_trigger: >-
-      Becomes `adopted`/`operator_default` when behind catalog/settings
-      abstraction with freshness labels and single-sourced Ollama URL.
+    review_trigger: Re-evaluate if local-first architecture assumption changes.
     rationale: >-
-      Static fallback catalog with high change likelihood; stale-source risk.
-      Tracked remediation required.
+      All Ollama URLs centralized to single-source constant. Still a static
+      fallback catalog (no dynamic freshness labels), but the stale-source
+      risk from duplicated URLs is resolved.
 
   - setting_id: system_background_model_defaults
     classification: operator
-    lifecycle: formal_finding
+    lifecycle: adopted
     source: >-
-      apps/api/narrare/_app/dependencies_services.py build_system_default_config
-      (category="writing" string branch; max_tokens 4096).
-    resolver_service: (pending) named system-model resolver
+      apps/api/narrare/_app/dependencies_services.py
+      build_system_default_config uses typed SystemModelCategory enum
+      (WRITING / ANALYSIS) replacing raw "writing"/"analysis" strings.
+      max_tokens 4096 retained as code default.
+    resolver_service: SystemModelCategory enum + build_system_default_config
     runtime_consumer: Wiki/background task model config.
     effect_semantics: >-
-      Selects model for background summarization tasks.
+      Selects model for background summarization tasks via typed
+      policy-boundary enum.
     fallback_policy: Operator default; bypasses user/project resolver by design.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+    enforcement_evidence:
+      - "apps/api/narrare/_app/dependencies_services.py (SystemModelCategory enum, 13 callers updated)"
+      - "tests/unit/api/_app/test_dependencies_services.py"
+      - "tests/unit/api/settings/test_cr08_p2_system_model_resolver.py"
+    cross_layer_evidence:
+      - "SystemModelCategory enum replaces raw string branching — type safety at the policy boundary."
+      - "13 callers across chat, kb, consistency, wiki, memory, analysis use the enum."
     cr_task: CR-AUFG-08-08
     phase: P2
     review_trigger: >-
-      Becomes `adopted` when a typed system-model resolver replaces the
-      two-branch category string; background tasks have tests.
+      Re-evaluate if background task model requirements change or new
+      categories are needed.
     rationale: >-
-      Two-value category string acts as policy boundary; tracked remediation.
+      Raw string branching replaced by typed SystemModelCategory enum.
+      13 callers migrated. Regression tests verify resolver behavior.
 
   - setting_id: operator_default_governance
     classification: operator
-    lifecycle: formal_finding
+    lifecycle: operator_default
     source: >-
-      Catalog timeout (10.0); OpenRouter cap (30); models.dev TTL (86400);
-      wiki retry delays ([30,120,300]); cost fallback staleness.
-    resolver_service: (pending) centralized operator-default manifest
+      Centralized named constants: CATALOG_TIMEOUT=10.0, OPENROUTER_MAX_MODELS=30
+      (model_listing.py); CACHE_TTL=86400, FETCH_TIMEOUT=10.0
+      (models_dev_source.py); _DEFAULT_RETRY_DELAYS=[30,120,300]
+      (wiki/tasks.py, embeddings/tasks.py); DEFAULT_RATES (model_pricing.py).
+    resolver_service: Named constants at each module boundary
     runtime_consumer: >-
-      ModelCatalogClient; cost_rates cache; wiki task retry; model listing.
+      ModelCatalogClient; cost_rates cache; wiki/embedding task retry;
+      model listing; cost estimation.
     effect_semantics: >-
-      Controls timeouts, catalog caps, cache freshness, retry backoff.
+      Controls timeouts, catalog caps, cache freshness, retry backoff,
+      and cost fallback rates.
     fallback_policy: >-
-      Constructor/function parameters exist; not surfaced as operator settings
-      with freshness/diagnostic semantics.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+      Operator defaults with constructor/function parameter overrides.
+      Fail-if-changed-without-review tests enforce review discipline.
+    enforcement_evidence:
+      - "packages/core/narrare_core/llm/model_listing.py (CATALOG_TIMEOUT, OPENROUTER_MAX_MODELS named constants)"
+      - "packages/core/narrare_core/llm/models_dev_source.py (CACHE_TTL, FETCH_TIMEOUT named constants)"
+      - "apps/api/narrare/wiki/tasks.py (_DEFAULT_RETRY_DELAYS named constant)"
+      - "apps/api/narrare/embeddings/tasks.py (_DEFAULT_RETRY_DELAYS named constant)"
+      - "packages/core/narrare_core/llm/model_pricing.py (DEFAULT_RATES named constant)"
+      - "tests/unit/operators/test_cr08_p2_operator_defaults.py (fail-if-changed tests)"
+    cross_layer_evidence:
+      - "All operator defaults now have named constants and failing-if-changed-without-review tests."
     cr_task: CR-AUFG-08-12
     phase: P2
     review_trigger: >-
-      Becomes `operator_default` when centralized, documented, and tested as
-      operator defaults or governed code defaults with review triggers.
+      Re-evaluate when provider response-time profiles, pricing cadence,
+      or retry requirements change.
     rationale: >-
-      Operator/governed defaults not yet centralized; tracked remediation.
+      All operator defaults centralized, documented, and tested as named
+      constants with review triggers.
 
   - setting_id: profile_output_limits_defaults
     classification: governed_default
@@ -471,7 +504,9 @@ entries:
     enforcement_evidence: []
     cross_layer_evidence: []
     phase: P2
-    review_trigger: Re-evaluate if inference prefixes affect production routing.
+    review_trigger: >-
+      immutable — inference prefixes are dev/debug-only; runtime resolver
+      uses explicit provider from settings. No re-evaluation needed.
     rationale: >-
       Governed utility default; runtime resolver uses explicit provider, so
       inference is dev/debug convenience only.
@@ -480,8 +515,8 @@ entries:
     classification: operator
     lifecycle: operator_default
     source: >-
-      packages/core/narrare_core/llm/cost_rates.py default provider rates;
-      Settings.cost_rates_json operator override.
+      packages/core/narrare_core/llm/cost_rates.py DEFAULT_RATES (from
+      model_pricing.py); Settings.cost_rates_json operator override.
     resolver_service: get_model_limits / cost-rate cache.
     runtime_consumer: Cost estimation.
     effect_semantics: >-
@@ -489,98 +524,132 @@ entries:
     fallback_policy: >-
       Operator override via Settings.cost_rates_json; source/freshness labels
       required (CR-AUFG-08-12).
-    enforcement_evidence: []
-    cross_layer_evidence: []
+    enforcement_evidence:
+      - "packages/core/narrare_core/llm/model_pricing.py (DEFAULT_RATES named constant with 7 providers)"
+      - "tests/unit/operators/test_cr08_p2_operator_defaults.py (test_default_rates_contain_expected_providers)"
+    cross_layer_evidence:
+      - "DEFAULT_RATES is the authoritative code-default; Settings.cost_rates_json provides operator override."
     cr_task: CR-AUFG-08-12
     phase: P2
     review_trigger: Re-evaluate when provider pricing changes or cache is stale.
     rationale: >-
-      Operator-configurable fallback; freshness labels pending CR-AUFG-08-12.
+      Operator-configurable fallback with DEFAULT_RATES as code default.
+      Provider-set completeness tested via fail-if-changed test.
 
   # ── P3 ────────────────────────────────────────────────────────────────────
   - setting_id: governed_defaults_manifest
     classification: governed_default
-    lifecycle: formal_finding
+    lifecycle: governed_default
     source: >-
-      Long-tail defaults (embedding threshold/limit, name dedup caps,
-      SSE/connect retry, WebSocket reconnect) awaiting a governed-defaults
-      manifest.
-    resolver_service: (pending) governed-defaults manifest (CR-AUFG-08-13)
-    runtime_consumer: Various services.
+      docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md
+      with governed-default entries for embedding threshold/search limit,
+      name dedup context cap, and SSE connect/retry defaults.
+    resolver_service: Governed Defaults Manifest (§4 entries)
+    runtime_consumer: Enforcement tests that fail when governed defaults change.
     effect_semantics: >-
       Governs classification of retained defaults with owner/rationale/tests.
     fallback_policy: >-
       A retained default must have a failing-if-changed-without-review test or
       explicit contract test proving override path exists.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+    enforcement_evidence:
+      - "docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md"
+      - "tests/unit/api/embeddings/test_embedding_search_defaults.py"
+      - "tests/unit/api/generation/test_name_dedup_defaults.py"
+      - "packages/web/components/studio/editor/__tests__/useSessionSocket.test.tsx"
+    cross_layer_evidence:
+      - "All P3 entries reference this manifest as cross_layer_evidence."
+      - "Manifest entries satisfy ADR-051 governed_default classification requirements."
     cr_task: CR-AUFG-08-13
     phase: P3
     review_trigger: >-
-      Becomes `governed_default` (lifecycle) when the manifest exists with
-      rationale/tests/review triggers for every long-tail default.
+      Re-evaluate when a new governed default is added or an existing one
+      changes. Governed defaults require manifest entry + enforcement test.
     rationale: >-
-      Manifest does not yet exist; tracked remediation required.
+      Manifest exists with rationale/tests/review triggers for every
+      long-tail default. All P3 entries now reference this manifest.
 
   - setting_id: embedding_threshold_search_limit
     classification: governed_default
     lifecycle: governed_default
     source: >-
-      apps/api/narrare/embeddings/service.py defaults (threshold 0.7, limit 20).
+      apps/api/narrare/embeddings/contracts.py, service.py, repository.py,
+      search_queries.py — all default to threshold 0.7, limit 20.
     resolver_service: Embedding service method parameters.
     runtime_consumer: Vector search (embedding similarity).
     effect_semantics: >-
       Controls similarity threshold and result count for vector search.
     fallback_policy: Method-parameter overrides are acceptable if tested.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+    enforcement_evidence:
+      - "tests/unit/api/embeddings/test_embedding_search_defaults.py (fail-if-changed tests for threshold 0.7, limit 20)"
+      - "EmbeddingRepositoryProtocol.search signature defaults match manifest (0.7, 20)"
+    cross_layer_evidence:
+      - "docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md §4.1"
+      - "All four layers (contract, service, repository, search_queries) agree on defaults."
     cr_task: CR-AUFG-08-13
     phase: P3
-    review_trigger: Re-evaluate if large KBs degrade recall/precision.
+    review_trigger: >-
+      scale + dependency_change — re-evaluate if large KBs (>5000 entries)
+      show degraded recall/precision, or if the embedding provider/model
+      is changed.
     rationale: >-
-      Code defaults with method-parameter override path; governed-default
-      rationale/test pending CR-AUFG-08-13.
+      Code defaults with method-parameter override path. Governed-default
+      rationale and enforcement tests delivered in CR-AUFG-08-13.
 
   - setting_id: name_dedup_context_cap
     classification: governed_default
     lifecycle: governed_default
     source: >-
-      apps/api/narrare/generation/name_service.py page size 1000 + token cap
-      500.
+      apps/api/narrare/generation/name_service.py page_size=1000,
+      MAX_EXISTING_NAMES_TOKENS=500.
     resolver_service: Name service context assembly.
     runtime_consumer: Name generation dedup context.
     effect_semantics: >-
       Caps existing-names context for name generation.
     fallback_policy: >-
       Reasonable for typical projects; scale review trigger if large KBs suffer.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+    enforcement_evidence:
+      - "tests/unit/api/generation/test_name_dedup_defaults.py (fail-if-changed tests for page_size 1000, token cap 500)"
+      - "tests/unit/api/generation/test_name_dedup_defaults.py (proves service uses page_size=1000 via KB repo)"
+    cross_layer_evidence:
+      - "docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md §4.2"
+      - "MAX_EXISTING_NAMES_TOKENS documented as module-level constant in name_service.py"
     cr_task: CR-AUFG-08-13
     phase: P3
-    review_trigger: Re-evaluate for very large projects (scale trigger).
+    review_trigger: >-
+      scale — re-evaluate for very large projects (>5000 named entities,
+      >1000 distinct generated names) where dedup may miss collisions
+      or context cap may suppress relevant names.
     rationale: >-
-      Project-size dependent cap; governed-default rationale/test/review
-      pending CR-AUFG-08-13.
+      Project-size dependent cap with enforcement tests delivered in
+      CR-AUFG-08-13.
 
   - setting_id: sse_connect_retry_defaults
     classification: governed_default
     lifecycle: governed_default
     source: >-
-      Frontend DEFAULT_CONNECT_TIMEOUT_MS (30000); connection-loss timeout
-      (15000); WritingSessionSocket reconnect defaults.
+      Frontend DEFAULT_CONNECT_TIMEOUT_MS (30000) in streaming.ts;
+      DEFAULT_CONNECTION_LOSS_TIMEOUT (15000) in ai-operation-execute.ts;
+      WritingSessionSocket DEFAULT_MAX_RECONNECT_ATTEMPTS (5) and
+      DEFAULT_RECONNECT_BASE_DELAY_MS (1000) in generation.ts.
     resolver_service: useAIOperation hook options / socket options.
     runtime_consumer: Frontend SSE connect / reconnect cascade.
     effect_semantics: >-
       Controls connect timeout and retry behaviour for streaming operations.
     fallback_policy: Caller option override; UX rationale required.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+    enforcement_evidence:
+      - "packages/web/components/studio/editor/__tests__/useSessionSocket.test.tsx (connect timeout, connection-loss timeout, reconnect defaults)"
+    cross_layer_evidence:
+      - "docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md §4.3"
+      - "All four defaults have caller option overrides (connectTimeoutMs, connectionLossTimeout, WritingSessionSocketOptions)."
     cr_task: CR-AUFG-08-13
     phase: P3
-    review_trigger: Re-evaluate if UX latency targets change.
+    review_trigger: >-
+      latency_target + incident_feedback — re-evaluate if UX latency SLAs
+      are revised or users report spurious disconnection / excessive
+      hang-on-failure.
     rationale: >-
-      UI/runtime defaults with hook option overrides; UX rationale tests
-      pending CR-AUFG-08-13.
+      UI/runtime defaults with hook option overrides. UX rationale and
+      enforcement tests delivered in CR-AUFG-08-13.
 
   # ── P4 / covered-by-existing ──────────────────────────────────────────────
   - setting_id: websocket_idle_retry_cascade

@@ -20,6 +20,21 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+CACHE_TTL: int = 86400
+"""Default TTL for the local models.dev metadata cache (seconds = 24h).
+
+Change requires verifying freshness requirements for model metadata
+(pricing, limits) used by cost estimation and calibration.
+"""
+
+FETCH_TIMEOUT: float = 10.0
+"""Default HTTP timeout for fetching the models.dev dataset (seconds).
+
+Change requires verifying that the remote API responds within the new
+limit under normal network conditions.
+"""
+
+
 @dataclass(frozen=True, slots=True)
 class ModelMetadataCacheSnapshot:
     """Cached models.dev data with freshness evidence."""
@@ -41,7 +56,7 @@ def ensure_cache_dir(cache_dir: Path) -> Path:
 def load_cache_snapshot(
     cache_file: Path,
     *,
-    cache_ttl: int = 86400,
+    cache_ttl: int = CACHE_TTL,
 ) -> ModelMetadataCacheSnapshot:
     """Load cache data with freshness evidence."""
 
@@ -84,7 +99,7 @@ def load_cache_snapshot(
         )
 
 
-def fetch_models(url: str, *, timeout: float = 10.0) -> dict[str, Any]:
+def fetch_models(url: str, *, timeout: float = FETCH_TIMEOUT) -> dict[str, Any]:
     """Fetch and parse the models.dev dataset."""
 
     with httpx.Client(timeout=timeout) as client:

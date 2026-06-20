@@ -38,14 +38,17 @@ def get_chat_service(session: SessionDep) -> ChatService:
     Returns:
         Configured ChatService ready for use.
     """
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare.chat.chat_service import ChatService
     from narrare.chat.conversation_store import SQLAlchemyConversationStore
     from narrare_core.llm.run_limits import DefaultRunLimitResolver
 
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config(category="analysis")
+    config = build_system_default_config(category=SystemModelCategory.ANALYSIS)
     store = SQLAlchemyConversationStore(session)
     invocation_pipeline = get_invocation_pipeline()
     run_limit_resolver = DefaultRunLimitResolver()

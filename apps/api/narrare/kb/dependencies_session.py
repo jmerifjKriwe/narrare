@@ -25,7 +25,10 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.embeddings.service import EmbeddingService
     from narrare.kb.assist_service import KBAssistService
@@ -49,7 +52,7 @@ def get_kb_session_service(session: SessionDep) -> KBSessionService:
     # KBAssistService with real ModelRegistry + PromptComposer.
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config("analysis")
+    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     assist_service = KBAssistService(
         registry=registry,

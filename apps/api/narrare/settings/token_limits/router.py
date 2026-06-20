@@ -73,7 +73,6 @@ async def get_resolved_limits(
         ws_timeout=limits.ws_timeout,
         retry_max_attempts=limits.retry_max_attempts,
         retry_base_delay=limits.retry_base_delay,
-        max_selection_words=limits.max_selection_words,
         metadata=build_catalog(),
         calibration=calibration,
         suitability=suitability,

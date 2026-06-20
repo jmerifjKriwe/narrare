@@ -63,6 +63,24 @@ SUPPORTED_CATALOG_PROVIDERS: frozenset[str] = frozenset(
 # OpenRouter returns hundreds of models; cap to keep the UI usable.
 # The default (30) is configured in ModelCatalogClient.__init__.
 
+CATALOG_TIMEOUT: float = 10.0
+"""Default HTTP timeout for provider catalog API calls (seconds).
+
+Affected by:
+  * ``ModelCatalogClient`` — provider catalog queries
+  * ``_fetch_models`` / ``fetch_models`` — models.dev dataset fetch
+
+Change requires verifying that local-network providers (Ollama, local
+OpenAI-compatible proxies) can still respond within the new limit.
+"""
+
+OPENROUTER_MAX_MODELS: int = 30
+"""Default cap on the number of OpenRouter catalog entries returned.
+
+OpenRouter returns hundreds of models. This cap keeps the provider
+model listing UI responsive. Change requires verifying the cap does
+not hide production-relevant models from the UI.
+"""
 
 # ---------------------------------------------------------------------------
 # Client
@@ -85,8 +103,8 @@ class ModelCatalogClient:
     def __init__(
         self,
         *,
-        catalog_timeout: float = 10.0,
-        openrouter_max_models: int = 30,
+        catalog_timeout: float = CATALOG_TIMEOUT,
+        openrouter_max_models: int = OPENROUTER_MAX_MODELS,
     ) -> None:
         self._catalog_timeout = catalog_timeout
         self._openrouter_max_models = openrouter_max_models

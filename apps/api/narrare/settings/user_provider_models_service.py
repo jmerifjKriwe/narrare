@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.setup.constants import OLLAMA_DEFAULT_URL
 from narrare_core.crypto import decrypt
 from narrare_core.shared.errors import ValidationError
 
@@ -85,7 +86,7 @@ class UserProviderModelsService:
             ) from None
 
         provider_service = ProviderService()
-        ollama_url = provider.base_url or "http://localhost:11434"
+        ollama_url = provider.base_url or OLLAMA_DEFAULT_URL
         result = await provider_service.list_models(
             provider=ai_provider,
             api_key=api_key,

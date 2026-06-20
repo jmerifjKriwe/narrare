@@ -26,7 +26,10 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.extraction_service import ExtractionService
     from narrare.kb.relationship_repository import RelationshipRepository
@@ -35,7 +38,7 @@ def get_extraction_service(session: SessionDep) -> ExtractionService:
 
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config("analysis")
+    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     return ExtractionService(
         registry=registry,

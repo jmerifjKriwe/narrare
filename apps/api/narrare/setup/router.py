@@ -10,6 +10,7 @@ from narrare.novels.repository import NovelRepository
 from narrare.settings.repository import ProjectSettingsRepository, UserSettingsRepository
 from narrare.settings.user_ai_settings_repository import UserAiSettingsRepository
 from narrare.settings.user_providers_repository import UserProvidersRepository
+from narrare.setup.constants import OLLAMA_DEFAULT_URL
 from narrare.setup.demo_loader import DemoLoader
 from narrare.setup.provider_service import ProviderService
 from narrare.setup.schemas import (
@@ -105,7 +106,7 @@ async def validate_step4(
 async def list_provider_models(
     provider: AIProvider,
     api_key: str = "",
-    ollama_url: str = "http://localhost:11434",
+    ollama_url: str = OLLAMA_DEFAULT_URL,
 ) -> AvailableModelsResponse:
     """
     Fetch available models for a provider.

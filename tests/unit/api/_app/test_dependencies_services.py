@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from narrare._app.dependencies_services import (
+    SystemModelCategory,
     build_system_default_config,
     get_cascade_resolver,
     get_graph_state_store,
@@ -41,19 +42,23 @@ class _FakeSession:
 
 class TestBuildSystemDefaultConfig:
     def test_writing_category_returns_writing_model(self) -> None:
-        config = build_system_default_config(category="writing")
+        config = build_system_default_config(category=SystemModelCategory.WRITING)
         assert config.provider_name != ""
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
 
     def test_analysis_category_returns_analysis_model(self) -> None:
-        config = build_system_default_config(category="analysis")
+        config = build_system_default_config(category=SystemModelCategory.ANALYSIS)
         assert config.provider_name != ""
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
 
     def test_custom_temperature_and_max_tokens(self) -> None:
-        config = build_system_default_config(category="writing", temperature=0.3, max_tokens=1024)
+        config = build_system_default_config(
+            category=SystemModelCategory.WRITING,
+            temperature=0.3,
+            max_tokens=1024,
+        )
         assert config.temperature == 0.3
         assert config.max_tokens == 1024
 

@@ -10,6 +10,7 @@ from narrare.setup.base_schemas import (
     StoryStructure,
     StoryTone,
 )
+from narrare.setup.constants import OLLAMA_DEFAULT_URL
 
 # ---------------------------------------------------------------------------
 # Step 4: AI Provider
@@ -20,7 +21,7 @@ class Step4ProviderRequest(BaseModel):
     provider: AIProvider
     api_key: str = Field(default="", max_length=200)
     model: str = Field(min_length=1, max_length=200)
-    ollama_url: str = Field(default="http://localhost:11434", max_length=200)
+    ollama_url: str = Field(default=OLLAMA_DEFAULT_URL, max_length=200)
     zai_endpoint: str = Field(default="general", max_length=50)
 
 
@@ -71,7 +72,7 @@ class WizardState(BaseModel):
     provider: AIProvider = AIProvider.ANTHROPIC
     api_key: str = ""
     model: str = ""
-    ollama_url: str = "http://localhost:11434"
+    ollama_url: str = OLLAMA_DEFAULT_URL
     zai_endpoint: str = "general"  # "general" or "coding"
     # Provider skip flag — True when user already has providers configured
     skip_provider: bool = False

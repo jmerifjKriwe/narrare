@@ -9,6 +9,7 @@ from uuid import UUID
 from narrare._app.dependencies import get_composer, get_model_registry
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,7 @@ async def get_suggest_service(
         UUID(user_id),
         project_id,
     )
-    config = replace(resolved.config, temperature=0.3, max_tokens=60)
+    config = replace(resolved.config, temperature=0.3, max_tokens=SUGGEST_MAX_TOKENS)
 
     registry = get_model_registry()
     composer = get_composer()

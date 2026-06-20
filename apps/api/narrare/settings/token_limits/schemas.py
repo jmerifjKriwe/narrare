@@ -133,7 +133,6 @@ class TokenLimitOverridesResponse(BaseModel):
     ws_timeout: int = 1800
     retry_max_attempts: int = 3
     retry_base_delay: float = 1.0
-    max_selection_words: int = 2000
     metadata: TokenLimitsCatalog
     calibration: CalibrationSourceMetadata | None = None
     suitability: SuitabilityMetadata | None = None

@@ -24,6 +24,8 @@ from narrare_core.llm.model_calibration import (
 )
 from narrare_core.llm.model_pricing import DEFAULT_RATES, resolve_model_rates
 from narrare_core.llm.models_dev_source import (
+    CACHE_TTL,
+    FETCH_TIMEOUT,
     ModelMetadataCacheSnapshot,
     fetch_models,
     load_cache_snapshot,
@@ -67,13 +69,13 @@ def _ensure_cache_dir() -> Path:
     return CACHE_DIR
 
 
-def _load_cache_snapshot(cache_ttl: int = 86400) -> ModelMetadataCacheSnapshot:
+def _load_cache_snapshot(cache_ttl: int = CACHE_TTL) -> ModelMetadataCacheSnapshot:
     """Load cache data with freshness evidence."""
 
     return load_cache_snapshot(CACHE_FILE, cache_ttl=cache_ttl)
 
 
-def _load_cache(cache_ttl: int = 86400) -> dict[str, Any] | None:
+def _load_cache(cache_ttl: int = CACHE_TTL) -> dict[str, Any] | None:
     """Load the local models.dev cache if it exists and is still fresh.
 
     Cache is considered valid if the file's mtime is less than
@@ -88,7 +90,7 @@ def _load_cache(cache_ttl: int = 86400) -> dict[str, Any] | None:
     return None
 
 
-def _fetch_models(*, timeout: float = 10.0) -> dict[str, Any]:
+def _fetch_models(*, timeout: float = FETCH_TIMEOUT) -> dict[str, Any]:
     """Fetch the models.dev dataset from the remote API.
 
     Args:

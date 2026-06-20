@@ -24,6 +24,15 @@ if TYPE_CHECKING:
     from narrare_core.llm.cost_rates import ModelLimits
     from narrare_core.llm.model_config import ResolvedModelConfig
 
+SUGGEST_MAX_TOKENS: int = 60
+"""Immutable UX cap for inline suggestions (low-latency constraint).
+
+Inline suggestions must complete in <500ms (ADR-045 D3 C).
+The 60-token limit is a UX-design constraint, not a profile or
+configurable setting. Changing this value requires re-validating
+the latency target.
+"""
+
 
 class ResolvedRunLimits(BaseModel):
     """Provider-safe runtime limits for one AI invocation."""

@@ -43,13 +43,18 @@ async def build_core_wiki_service(
         A configured WikiService instance.
     """
     from narrare._app.dependencies import get_model_registry
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare_core.events.bus import NullEventBus
     from narrare_core.wiki.agent import WikiGenerationAgent
     from narrare_core.wiki.service import WikiService
 
     registry = get_model_registry()
-    config = build_system_default_config("writing", temperature=0.7, max_tokens=4096)
+    config = build_system_default_config(
+        SystemModelCategory.WRITING, temperature=0.7, max_tokens=4096
+    )
     model = await registry.get_model(config)
     agent = WikiGenerationAgent(model=model)
     return WikiService(

@@ -29,7 +29,10 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare.analysis.beta_reader_cache import BetaReaderCache
     from narrare.analysis.beta_reader_service import BetaReaderService
     from narrare.analysis.context_assembler import ContextAssembler
@@ -40,7 +43,7 @@ def get_beta_reader_service(session: SessionDep) -> BetaReaderService:
 
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config("analysis")
+    config = build_system_default_config(SystemModelCategory.ANALYSIS)
     invocation_pipeline = get_invocation_pipeline()
 
     # Repositories
@@ -116,13 +119,16 @@ def get_readability_service(session: SessionDep) -> ReadabilityService:
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare.analysis.services.readability_service import ReadabilityService
     from narrare.chapters.repository import ChapterRepository
     from narrare.novels.repository import NovelRepository
 
     registry = get_model_registry()
-    config = build_system_default_config("analysis")
+    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)
@@ -151,14 +157,17 @@ def get_pov_service(session: SessionDep) -> POVService:
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare.analysis.services.pov_service import POVService
     from narrare.chapters.repository import ChapterRepository
     from narrare.kb.repository import KBRepository
     from narrare.novels.repository import NovelRepository
 
     registry = get_model_registry()
-    config = build_system_default_config("analysis")
+    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     chapter_repo = ChapterRepository(session)
     novel_repo = NovelRepository(session)

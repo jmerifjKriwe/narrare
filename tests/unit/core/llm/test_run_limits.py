@@ -131,3 +131,15 @@ def test_comprehensive_profile_is_recognized_by_gateway_profile_mapping() -> Non
     total = limits.total_tokens_limit
     assert total is not None
     assert total > 128000
+
+
+def test_suggest_max_tokens_is_immutable_ux_cap() -> None:
+    """SUGGEST_MAX_TOKENS is an immutable UX latency constraint.
+
+    Changing this value requires re-validating the <500ms latency
+    target (ADR-045 D3 C). This test exists to force explicit
+    review of any change.
+    """
+    from narrare_core.llm.run_limits import SUGGEST_MAX_TOKENS
+
+    assert SUGGEST_MAX_TOKENS == 60

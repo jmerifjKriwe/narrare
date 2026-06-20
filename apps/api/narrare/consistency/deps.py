@@ -32,7 +32,10 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare.chapters.repository import ChapterRepository
     from narrare.consistency.checker_service import ConsistencyCheckerService
     from narrare.consistency.consistency_orchestrator import ConsistencyOrchestrator
@@ -48,10 +51,12 @@ def get_consistency_service(session: SessionDep) -> ConsistencyCheckerService:
     registry = get_model_registry()
     composer = get_composer()
     invocation_pipeline = get_invocation_pipeline()
-    consistency_config = build_system_default_config("analysis", temperature=0.3)
+    consistency_config = build_system_default_config(SystemModelCategory.ANALYSIS, temperature=0.3)
 
     # Fact extractor config for staged pipeline (ADR-044)
-    fact_extractor_config = build_system_default_config("analysis", temperature=0.2)
+    fact_extractor_config = build_system_default_config(
+        SystemModelCategory.ANALYSIS, temperature=0.2
+    )
 
     # Repositories
     chapter_repo = ChapterRepository(session)

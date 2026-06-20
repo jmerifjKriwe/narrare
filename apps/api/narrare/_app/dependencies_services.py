@@ -7,6 +7,7 @@ and system-default model config.
 
 from __future__ import annotations
 
+import enum
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
@@ -134,12 +135,29 @@ GraphStateStoreDep = Annotated[PostgresGraphStateStore, Depends(get_graph_state_
 
 
 # ---------------------------------------------------------------------------
+# System model category — typed policy-boundary for system default config
+# ---------------------------------------------------------------------------
+
+
+class SystemModelCategory(enum.StrEnum):
+    """Typed category selector for :func:`build_system_default_config`.
+
+    Replaces raw ``"writing"`` / ``"analysis"`` string branching as the
+    policy-boundary between default model lookups. A plain ``str`` is
+    rejected at the boundary for type safety (CR-AUFG-08-08).
+    """
+
+    WRITING = "writing"
+    ANALYSIS = "analysis"
+
+
+# ---------------------------------------------------------------------------
 # System-default model config (no user context)
 # ---------------------------------------------------------------------------
 
 
 def build_system_default_config(
-    category: str = "writing",
+    category: SystemModelCategory = SystemModelCategory.WRITING,
     temperature: float = 0.7,
     max_tokens: int = 4096,
 ) -> ResolvedModelConfig:
@@ -150,7 +168,8 @@ def build_system_default_config(
     and resolves the provider via ``infer_provider()``.
 
     Args:
-        category: "writing" or "analysis" — selects which Settings default to use.
+        category: ``WRITING`` or ``ANALYSIS`` — selects which Settings default
+            to use. A plain string is rejected for type safety.
         temperature: Generation temperature.
         max_tokens: Maximum output tokens.
 
@@ -162,7 +181,9 @@ def build_system_default_config(
 
     settings = get_settings()
     model_id = (
-        settings.default_writing_model if category == "writing" else settings.default_analysis_model
+        settings.default_writing_model
+        if category == SystemModelCategory.WRITING
+        else settings.default_analysis_model
     )
     provider_name = infer_provider(model_id)
 

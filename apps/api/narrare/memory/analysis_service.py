@@ -220,9 +220,12 @@ class PreferenceAnalysisService:
         from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
 
         try:
-            from narrare._app.dependencies_services import build_system_default_config
+            from narrare._app.dependencies_services import (
+                SystemModelCategory,
+                build_system_default_config,
+            )
 
-            config = build_system_default_config("analysis")
+            config = build_system_default_config(SystemModelCategory.ANALYSIS)
             model = await self._registry.get_model(config)
         except Exception:
             logger.warning("agent_model_unavailable", exc_info=True)

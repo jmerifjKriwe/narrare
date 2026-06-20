@@ -26,7 +26,10 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
         get_invocation_pipeline,
         get_model_registry,
     )
-    from narrare._app.dependencies_services import build_system_default_config
+    from narrare._app.dependencies_services import (
+        SystemModelCategory,
+        build_system_default_config,
+    )
     from narrare.embeddings.repository import EmbeddingRepository
     from narrare.embeddings.service import EmbeddingService
     from narrare.kb.dependencies_core import get_kb_service
@@ -40,7 +43,7 @@ def get_kb_improve_service(session: SessionDep) -> KBImproveService:
 
     registry = get_model_registry()
     composer = get_composer()
-    config = build_system_default_config("analysis")
+    config = build_system_default_config(SystemModelCategory.ANALYSIS)
 
     kb_repo = KBRepository(session)
     embedding_service = EmbeddingService(EmbeddingRepository(session))

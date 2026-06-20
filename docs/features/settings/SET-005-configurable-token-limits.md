@@ -38,12 +38,14 @@ percentages, and timeout-related configuration. CR-08 P0/P1 now have runtime-eff
 evidence for the main token limit/profile paths; remaining CR-08 phases still govern
 operator defaults, catalog fallbacks, long-tail defaults, and docs/status taxonomy.
 
-> **CR-08 status note (2026-06-20):** SET-005's storage/API/UI cascade exists, and
-> CR-08 P0/P1 have implementation-on-disk, enforcement, and cross-layer evidence for
-> output-limit enforcement, tier-budget consumption, token-profile parity/FIND-013,
-> model-limit calibration, and model suitability warnings/blocks. Do not claim full
-> SET-005 stability until CR-08 P2/P3/P4 are closed and ADR-051 is accepted or
-> superseded. Remediation is specified in
+> **CR-08 status note (2026-06-20):** SET-005's storage/API/UI cascade exists (✅),
+> and CR-08 P0/P1 have runtime-effect evidence for output-limit enforcement,
+> tier-budget consumption, token-profile parity/FIND-013, model-limit calibration,
+> and model suitability warnings/blocks (P0 runtime: ✅, P1 runtime: ✅).
+> CR-08 P2 has partial implementation (consistency caps governance: 🔧,
+> Ollama URL centralized: ✅, SystemModelCategory resolver: ✅) while P3/P4
+> remain open. Do not claim full SET-005 stability until CR-08 P2/P3/P4 are
+> closed and ADR-051 is accepted or superseded. Remediation is specified in
 > [`docs/features/remediation/cr-08-configuration-effect-drift.md`](../remediation/cr-08-configuration-effect-drift.md).
 
 ## Why it exists
@@ -201,7 +203,7 @@ CR-AUFG-08-02 P0 evidence for `tier_percentages` → `WritingContextAssembler`):
 
 Remaining CR-08 blockers are tracked in
 [`CR-08 Remediation — Configuration/Effect Drift`](../remediation/cr-08-configuration-effect-drift.md).
-P2/P3/P4 remain open; ADR-051 also remains Proposed until accepted or superseded.
+P2 partially implemented (CR-AUFG-08-05/06/08); P3/P4 remain open; ADR-051 also remains Proposed until accepted or superseded.
 
 ## Related Features
 

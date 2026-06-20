@@ -15384,11 +15384,6 @@
             "title": "Retry Base Delay",
             "default": 1.0
           },
-          "max_selection_words": {
-            "type": "integer",
-            "title": "Max Selection Words",
-            "default": 2000
-          },
           "metadata": {
             "$ref": "#/components/schemas/TokenLimitsCatalog"
           },

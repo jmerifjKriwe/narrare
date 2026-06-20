@@ -10,6 +10,7 @@ from __future__ import annotations
 import structlog
 
 from narrare.setup._model_fetchers import fetch_models
+from narrare.setup.constants import OLLAMA_DEFAULT_URL
 from narrare.setup.schemas import (
     AIProvider,
     AvailableModelsResponse,
@@ -19,6 +20,9 @@ from narrare.setup.schemas import (
 logger = structlog.get_logger(__name__)
 
 # Fallback model lists when API is unavailable
+#
+# Source: Provider docs (2025-10)
+# Freshness: Checked 2025-10; update when new models drop
 _FALLBACK_MODELS: dict[AIProvider, list[ProviderModel]] = {
     AIProvider.ANTHROPIC: [
         ProviderModel(id="claude-opus-4-5-20251101", name="Claude Opus 4.5", context_window=200000),
@@ -74,7 +78,7 @@ class ProviderService:
         self,
         provider: AIProvider,
         api_key: str,
-        ollama_url: str = "http://localhost:11434",
+        ollama_url: str = OLLAMA_DEFAULT_URL,
     ) -> AvailableModelsResponse:
         """
         Fetch available models for a provider.
@@ -107,7 +111,7 @@ class ProviderService:
         provider: AIProvider,
         api_key: str,
         model: str,
-        ollama_url: str = "http://localhost:11434",
+        ollama_url: str = OLLAMA_DEFAULT_URL,
         zai_endpoint: str = "general",
     ) -> str | None:
         """
