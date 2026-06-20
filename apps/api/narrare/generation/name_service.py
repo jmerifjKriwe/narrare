@@ -36,6 +36,13 @@ logger = structlog.get_logger(__name__)
 # At ~1.3 tokens/word this allows roughly 350 short entity names.
 MAX_EXISTING_NAMES_TOKENS: int = 500
 
+# Page size used when listing KB entries for name-dedup context — CR-AUFG-08-13.
+# Single definition site (RULE-06): _fetch_existing_names imports this rather
+# than hardcoding the literal, so there is one place to review when the
+# default changes. See the Governed Defaults Manifest §4.2 for rationale and
+# review triggers.
+DEFAULT_NAME_DEDUP_PAGE_SIZE: int = 1000
+
 # Mapping from NameType enum values to KB entity_type values.
 # NameType uses "place"/"organization"/"item" while the KB CHECK constraint
 # uses "location"/"faction"/"object".
@@ -183,7 +190,7 @@ class NameGeneratorService:
         entries, total = await self._kb_repo.list_entries(
             novel_id=project_id,
             entity_type=entity_type,
-            page_size=1000,
+            page_size=DEFAULT_NAME_DEDUP_PAGE_SIZE,
         )
 
         if total > len(entries):

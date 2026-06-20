@@ -16,6 +16,10 @@ from typing import TYPE_CHECKING, cast
 import sqlalchemy
 from sqlalchemy import TextClause
 
+from narrare.embeddings.contracts import (
+    DEFAULT_EMBEDDING_SEARCH_LIMIT,
+    DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
+)
 from narrare.embeddings.models import Embedding
 
 if TYPE_CHECKING:
@@ -106,8 +110,8 @@ def build_search_query(
     *,
     source_type: str | None = None,
     source_ids: set[UUID] | None = None,
-    threshold: float = 0.7,
-    limit: int = 20,
+    threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
+    limit: int = DEFAULT_EMBEDDING_SEARCH_LIMIT,
     model: str | None = None,
 ) -> tuple[TextClause, dict[str, object]]:
     """Build the vector similarity search SQL and parameters.

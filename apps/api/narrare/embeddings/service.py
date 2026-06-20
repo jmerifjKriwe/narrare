@@ -15,6 +15,10 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.embeddings.contracts import (
+    DEFAULT_EMBEDDING_SEARCH_LIMIT,
+    DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
+)
 from narrare_core.embeddings.hash import compute_content_hash
 from narrare_core.embeddings.scoring import ScoredCandidate, ScoringConfig, rank_candidates
 from narrare_core.embeddings.store import EmbeddingStats, SearchResult
@@ -108,8 +112,8 @@ class EmbeddingService:
         *,
         source_type: str | None = None,
         novel_id: UUID | None = None,
-        threshold: float = 0.7,
-        limit: int = 20,
+        threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
+        limit: int = DEFAULT_EMBEDDING_SEARCH_LIMIT,
         model: str | None = None,
         source_ids: set[UUID] | None = None,
         scoring_config: ScoringConfig | None = None,

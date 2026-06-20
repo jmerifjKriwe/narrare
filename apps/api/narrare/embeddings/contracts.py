@@ -15,6 +15,17 @@ if TYPE_CHECKING:
     from narrare.embeddings.search_queries import SearchRow
     from narrare_core.embeddings.store import EmbeddingStats
 
+# ---------------------------------------------------------------------------
+# Governed defaults for embedding vector search — CR-AUFG-08-13.
+#
+# Single definition site (RULE-06). The repository, service, and query
+# builder import these instead of duplicating the literals, so there is one
+# place to review when a default changes. See the Governed Defaults Manifest
+# §4.1 for rationale and review triggers.
+# ---------------------------------------------------------------------------
+DEFAULT_EMBEDDING_SEARCH_THRESHOLD: float = 0.7
+DEFAULT_EMBEDDING_SEARCH_LIMIT: int = 20
+
 
 @runtime_checkable
 class EmbeddingRepositoryProtocol(Protocol):
@@ -57,8 +68,8 @@ class EmbeddingRepositoryProtocol(Protocol):
         *,
         source_type: str | None = None,
         source_ids: set[UUID] | None = None,
-        threshold: float = 0.7,
-        limit: int = 20,
+        threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
+        limit: int = DEFAULT_EMBEDDING_SEARCH_LIMIT,
         model: str | None = None,
     ) -> list[SearchRow]:
         """Search for similar embeddings using cosine distance.

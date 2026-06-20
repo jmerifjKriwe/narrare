@@ -21,6 +21,10 @@ import sqlalchemy
 import structlog
 
 from narrare._app.base_repository import BaseRepository
+from narrare.embeddings.contracts import (
+    DEFAULT_EMBEDDING_SEARCH_LIMIT,
+    DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
+)
 
 if TYPE_CHECKING:
     from narrare.embeddings.models import Embedding
@@ -101,8 +105,8 @@ class EmbeddingRepository(BaseRepository):
         *,
         source_type: str | None = None,
         source_ids: set[UUID] | None = None,
-        threshold: float = 0.7,
-        limit: int = 20,
+        threshold: float = DEFAULT_EMBEDDING_SEARCH_THRESHOLD,
+        limit: int = DEFAULT_EMBEDDING_SEARCH_LIMIT,
         model: str | None = None,
     ) -> list[SearchRow]:
         """Search for similar embeddings using cosine distance.
