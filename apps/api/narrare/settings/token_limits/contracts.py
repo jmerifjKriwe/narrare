@@ -11,8 +11,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from narrare_core.llm.token_profiles import (
+    TokenLimitProfile,
+    resolve_output_limit_for_profile,
+)
+
 if TYPE_CHECKING:
     from narrare.settings.token_limits.models import ProjectTokenLimits, UserTokenLimits
+
+#: The default resolved token profile (CR-08 P1). Derived from Core so the
+#: backend default cannot drift from the authoritative vocabulary.
+DEFAULT_TOKEN_PROFILE: str = TokenLimitProfile.BALANCED.value
 
 
 # ---------------------------------------------------------------------------
@@ -47,9 +56,21 @@ class TokenLimitOverrides:
     """
 
     output_limit: int = 4096
-    """Maximum output tokens for LLM calls."""
-    token_profile: str = "balanced"
-    """Active token profile name (quick, balanced, long, custom)."""
+    """Raw requested maximum output tokens for LLM calls.
+
+    This is the *requested* limit. The :attr:`effective_output_limit`
+    property applies the CR-08 P1 profile semantics: preset profiles use
+    their fixed preset limit; ``custom`` (and explicit-output-limit-without-
+    profile) use this raw value.
+    """
+    token_profile: str = DEFAULT_TOKEN_PROFILE
+    """Resolved token profile name (one of Core's public values).
+
+    After resolution this holds the *resolved* profile: legacy
+    ``conservative`` is normalised to ``balanced`` (CR-08 P1 D2), and an
+    explicit ``output_limit`` override without a profile resolves to
+    ``custom`` (CR-08 P1 D3). Never ``conservative``.
+    """
     tier_percentages: dict[str, float] | None = None
     """Per-tier token-budget distribution override (must sum to 1.0).
 
@@ -78,6 +99,20 @@ class TokenLimitOverrides:
     """Maximum KB entries to include in consistency context."""
     max_selection_words: int = 2000
     """Maximum word count for co-author selection text (SET-005 cascade)."""
+
+    @property
+    def effective_output_limit(self) -> int:
+        """Effective output tokens after applying CR-08 P1 profile semantics.
+
+        Preset profiles resolve to their fixed preset limit; ``custom``
+        resolves to the raw :attr:`output_limit`. Delegates to Core's
+        :func:`~narrare_core.llm.token_profiles.resolve_output_limit_for_profile`
+        so the requested-vs-effective distinction is computable at the
+        resolved-view boundary without re-implementing Core policy.
+        """
+        return resolve_output_limit_for_profile(
+            self.token_profile, raw_output_limit=self.output_limit
+        )
 
 
 # ---------------------------------------------------------------------------

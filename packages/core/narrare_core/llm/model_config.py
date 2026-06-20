@@ -9,30 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# ---------------------------------------------------------------------------
-# Output token limit profiles
-# ---------------------------------------------------------------------------
+from narrare_core.llm.token_profiles import PROFILE_OUTPUT_LIMITS, resolve_output_limit_for_profile
 
-PROFILE_OUTPUT_LIMITS: dict[str, int] = {
-    "quick": 500,
-    "balanced": 2000,
-    "long_texts": 8000,
-    "comprehensive": 16000,
-}
-"""Token limit presets referenced by :meth:`ResolvedModelConfig.resolve_output_limit`.
-
-Four tiers calibrated to intent output requirements:
-
-- ``quick`` (500) — short answers, single names, sentiment labels.
-- ``balanced`` (2000) — chat, summaries, moderate structured output.
-- ``long_texts`` (8000) — chapter prose, analysis, KB extraction, planning.
-- ``comprehensive`` (16000) — cross-chapter consistency checks requiring
-  exhaustive detail.
-
-The final output limit is determined by ``resolve_output_limit(profile)``.
-If a ``token_limit_profile`` is set on the config, it takes precedence
-over ``max_tokens`` when no explicit profile argument is supplied.
-"""
+__all__ = ["PROFILE_OUTPUT_LIMITS", "CacheSettings", "ResolvedModelConfig"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,11 +60,9 @@ class ResolvedModelConfig:
         """Return the output token limit, optionally overridden by *profile*.
 
         Resolution order:
-        1. If *profile* is a known key in ``PROFILE_OUTPUT_LIMITS``,
-           return that limit.
-        2. If ``self.token_limit_profile`` is a known key, return its
-           limit.
-        3. Otherwise return ``self.max_tokens``.
+        1. If *profile* is a preset key in ``PROFILE_OUTPUT_LIMITS``, return that limit.
+        2. If ``self.token_limit_profile`` is a preset key, return its limit.
+        3. If the selected profile is ``custom`` or unknown, return ``self.max_tokens``.
 
         Parameters
         ----------
@@ -98,6 +75,4 @@ class ResolvedModelConfig:
             The resolved output token limit.
         """
         effective = profile or self.token_limit_profile
-        if effective and effective in PROFILE_OUTPUT_LIMITS:
-            return PROFILE_OUTPUT_LIMITS[effective]
-        return self.max_tokens
+        return resolve_output_limit_for_profile(effective, raw_output_limit=self.max_tokens)

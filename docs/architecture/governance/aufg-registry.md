@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-19 (CR-AUFG-07-07 through CR-AUFG-07-13 resolved with implementation + enforcement exit evidence — Phase 6 "CR-07 UX Closure v2")
+> **Last updated:** 2026-06-20 (CR-08 P1 implementation + enforcement + cross-layer evidence recorded; CR-08 remains open for P2/P3/P4 and ADR-051 acceptance/supersession)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -49,12 +49,12 @@ block the immediate runtime remediation once P0/P1 are complete).
 | IDs | CR-AUFG-08-01 through CR-AUFG-08-14 |
 | Title | Configuration/Effect Drift Remediation |
 | Source | CR-08 hardcoded-values audit and candidate ADR-051 Configuration Effect Adoption Contract |
-| Status | `open` |
+| Status | `open` (P0/P1 evidence recorded; P2/P3/P4 and ADR-051 acceptance/supersession remain open) |
 | Priority | P0–P4 by phase |
 | Area | Settings, Core LLM runtime, Writing context assembly, Provider catalogs, Frontend settings UI, Platform governance, Docs |
 | Owner role | Architecture Specialist (contract), Core/Backend/Frontend/Platform/Docs Specialists by phase |
 | Dependencies | ADR-045 run-limit enforcement, SET-005 token-limit cascade, `TokenLimitsService`, `ModelRoutingResolverImpl`, provider catalog/cache paths |
-| Review trigger/date | Re-review after P0/P1 completion, before any claim that SET-005 is stable/runtime-adopted, or by 2026-07-31 if still open. |
+| Review trigger/date | Re-review after P2/P3/P4 completion, before any claim that SET-005 is stable/runtime-adopted, or by 2026-07-31 if still open. |
 
 **Lifecycle decision:**
 
@@ -71,7 +71,9 @@ marked resolved.
   (FIND-012).
 - **P1:** CR-AUFG-08-03 token vocabulary unification; CR-AUFG-08-10 token settings
   UI/API/Core parity (FIND-013); CR-AUFG-08-07 model-limit calibration;
-  CR-AUFG-08-11 model suitability policy.
+  CR-AUFG-08-11 model suitability policy. **Implementation + enforcement +
+  cross-layer evidence recorded 2026-06-20; lifecycle remains under the open
+  CR-08 set until ADR-051 is accepted/superseded and remaining phases close.**
 - **P2:** CR-AUFG-08-04 inline suggest cap; CR-AUFG-08-05 consistency caps layer;
   CR-AUFG-08-06 setup fallback catalogs/Ollama defaults; CR-AUFG-08-08 system model
   resolver; CR-AUFG-08-12 operator/default governance.
@@ -98,8 +100,19 @@ marked resolved.
 - Governance registry entry updated with exit evidence and status `resolved` or with
   any remaining items split into accepted risks/enhancements with owner and review date.
 
-**Exit evidence:** Pending — specification created; implementation not started in this
-architecture-only slice.
+**Exit evidence:** Partial, phase-scoped.
+
+- **P0:** committed as `5769eaf2`.
+- **P1 (2026-06-20):** implementation + enforcement + cross-layer evidence recorded
+  for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11.
+  Evidence paths are listed in
+  `docs/features/remediation/cr-08-configuration-effect-drift.md` §P1 Implementation
+  Evidence and in `docs/architecture/governance/configuration-adoption-matrix.yaml`.
+  Reported validation: Core LLM tests, Backend/settings tests, Frontend targeted
+  tests/type-check/lint/file-size check, matrix check, targeted P1 suite, and full
+  `just check` PASS after security dependency updates.
+- **Remaining:** P2/P3/P4 are open; ADR-051 remains Proposed and must be accepted or
+  superseded before this CR-08 AUFG set can be marked resolved.
 
 ---
 

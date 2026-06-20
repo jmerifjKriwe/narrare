@@ -207,14 +207,16 @@ class TestUpdateUserLimits:
                 {"token_profile": "ultra_fast"},
             )
 
-    @pytest.mark.parametrize("profile", ["comprehensive", "conservative"])
-    async def test_update_user_limits_accepts_new_profiles(
+    @pytest.mark.parametrize("profile", ["comprehensive", "custom"])
+    async def test_update_user_limits_accepts_public_profiles(
         self, store: _FakeStore, service: Any, profile: str
     ) -> None:
-        """The comprehensive and conservative profiles must be accepted.
+        """All five Core public profiles must be accepted on writes.
 
-        Regression test: these profiles were added to Core but the API
-        validator rejected them.
+        CR-08 P1: ``conservative`` is a retired alias and is rejected on
+        writes (normalised to ``balanced`` only at the read boundary).
+        ``comprehensive`` and ``custom`` are exercised here; ``quick``,
+        ``balanced`` and ``long_texts`` are covered elsewhere.
         """
         await service.update_user_limits(
             "new_profile_user",
@@ -222,6 +224,14 @@ class TestUpdateUserLimits:
         )
         entity = await store.get_user_entity("new_profile_user")
         assert entity.overrides.get("token_profile") == profile
+
+    async def test_update_user_limits_rejects_conservative(self, service: Any) -> None:
+        """The retired ``conservative`` alias must be rejected on writes."""
+        with pytest.raises(ValidationError, match="Invalid token profile"):
+            await service.update_user_limits(
+                "legacy_user",
+                {"token_profile": "conservative"},
+            )
 
 
 # ======================================================================

@@ -230,6 +230,18 @@
     "checking": "Checking consistency...",
     "noIssues": "No consistency issues found!"
   },
+  "tokenWarnings": {
+    "calibrated": "Model output limit is calibrated from current metadata.",
+    "calibrationStale": "Model limit metadata is stale; the effective cap may be outdated.",
+    "calibrationUnknown": "Model output limit is unknown; this setting is not calibrated.",
+    "calibrationOffline": "Model metadata is unavailable offline; this setting is unverified.",
+    "calibrationInvalid": "Model metadata is invalid; this setting is uncalibrated.",
+    "providerTooSmall": "The selected model is too small for this intent.",
+    "providerCapBelowRequested": "The selected model may cap output below the requested limit.",
+    "contextTooSmall": "The selected model context window is too small for this intent.",
+    "capabilityUnknown": "Model capability is unknown for this intent.",
+    "capabilityBelowRecommendation": "Model capability is below the recommended tier for this intent."
+  },
   "analysis": {
     "title": "Analysis & Statistics",
     "description": "AI-powered analyses help you improve your story",
@@ -373,7 +385,6 @@
       "tokenProfileQuick": "Quick (max 500 tokens)",
       "tokenProfileBalanced": "Balanced (max 2000 tokens)",
       "tokenProfileLong": "Long Texts (max 8000 tokens)",
-      "tokenProfileConservative": "Conservative (max 2000 tokens)",
       "tokenProfileComprehensive": "Comprehensive (max 16000 tokens)",
       "tokenProfileCustom": "Custom",
       "promptsInfo": "System prompts can be customized per writing intent. This feature will be available through the prompt editor.",
@@ -442,7 +453,10 @@
         "description": "Per-category limits when using custom profile",
         "maxTokens": "Max Tokens",
         "temperature": "Temperature",
-        "maxTokensWarning": "Value of {value} is very high — may exceed model limits"
+        "maxTokensWarning": "Value of {value} is very high — may exceed model limits",
+        "recommendedRangeLabel": "Recommended range up to 16k tokens",
+        "customOutputLimitLabel": "Custom output limit",
+        "customOutputLimitHint": "The slider covers the recommended range ({recommendedMax} tokens). Enter a custom value up to {max} tokens for larger model/API capacity."
       },
       "modelData": {
         "title": "Model Data",
@@ -1674,11 +1688,12 @@
     "profileQuick": "Quick",
     "profileBalanced": "Balanced",
     "profileLong": "Long texts",
-    "profileConservative": "Conservative",
     "profileComprehensive": "Comprehensive",
     "profileCustom": "Custom",
     "outputLimit": "Output limit",
-    "max": "16K"
+    "customOutputLimit": "Custom output limit",
+    "recommendedRange": "Recommended slider range up to {max} tokens",
+    "max": "Max {max}"
   },
   "ghostText": {
     "onboardingHint": "Tab = Accept | → = Word-by-word | Esc = Dismiss",

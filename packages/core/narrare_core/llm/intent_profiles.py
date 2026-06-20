@@ -28,14 +28,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from narrare_core.llm.intents import LLMIntent
+from narrare_core.llm.token_profiles import TOKEN_PRESET_PROFILE_VALUES
 
 # ------------------------------------------------------------------
 # Valid value sets — used by tests to validate the mapping table.
 # ------------------------------------------------------------------
 
-VALID_OUTPUT_PROFILES: frozenset[str] = frozenset(
-    {"quick", "balanced", "long_texts", "comprehensive"}
-)
+VALID_OUTPUT_PROFILES: frozenset[str] = frozenset(TOKEN_PRESET_PROFILE_VALUES)
 """Output profile names recognised by the token-limit system."""
 
 VALID_CAPABILITY_TIERS: frozenset[str] = frozenset({"fast", "balanced", "creative", "reasoning"})

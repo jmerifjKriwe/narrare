@@ -82,16 +82,28 @@ class TestUpdateProjectAiSettingsRequest:
 
 
 class TestTokenLimitProfiles:
+    """CR-08 P1: the profile vocabulary is derived from Core.
+
+    ``conservative`` is a retired alias and must be absent; preset
+    ``max_tokens`` must match Core's ``PROFILE_OUTPUT_LIMITS``.
+    """
+
     def test_all_expected_profiles_exist(self) -> None:
-        expected = {
-            "quick",
-            "balanced",
-            "long_texts",
-            "comprehensive",
-            "conservative",
-            "custom",
-        }
+        from narrare_core.llm.token_profiles import public_token_profile_values
+
+        expected = set(public_token_profile_values())
         assert expected == VALID_TOKEN_LIMIT_PROFILES
+
+    def test_conservative_alias_absent(self) -> None:
+        assert "conservative" not in VALID_TOKEN_LIMIT_PROFILES
+        with pytest.raises(KeyError):
+            TOKEN_LIMIT_PROFILES["conservative"]  # pyright: ignore[reportGeneralTypeIssues]
+
+    def test_preset_profiles_match_core_limits(self) -> None:
+        from narrare_core.llm.token_profiles import PROFILE_OUTPUT_LIMITS
+
+        for profile, preset in PROFILE_OUTPUT_LIMITS.items():
+            assert TOKEN_LIMIT_PROFILES[profile]["default"].max_tokens == preset
 
     def test_quick_profile_has_defaults(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["quick"]
@@ -112,11 +124,6 @@ class TestTokenLimitProfiles:
         profile = TOKEN_LIMIT_PROFILES["comprehensive"]
         assert "default" in profile
         assert profile["default"].max_tokens == 16000
-
-    def test_conservative_profile_has_defaults(self) -> None:
-        profile = TOKEN_LIMIT_PROFILES["conservative"]
-        assert "default" in profile
-        assert profile["default"].max_tokens == 1000
 
     def test_custom_profile_starts_empty(self) -> None:
         profile = TOKEN_LIMIT_PROFILES["custom"]

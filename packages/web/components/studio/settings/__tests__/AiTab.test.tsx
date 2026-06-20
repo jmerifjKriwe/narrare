@@ -67,7 +67,9 @@ const { mockProviders, mockAiSettings, mockModelsData, mockTokenLimits } = vi.ho
   },
 
   mockTokenLimits: {
+    output_limit: 2000,
     token_profile: "balanced",
+    effective_output_limit: 2000,
     tier_percentages: {
       immediate: 0.3,
       recent: 0.2,
@@ -78,6 +80,19 @@ const { mockProviders, mockAiSettings, mockModelsData, mockTokenLimits } = vi.ho
     ws_timeout: 1800,
     retry_max_attempts: 3,
     retry_base_delay: 1.0,
+    metadata: {
+      catalogue: [
+        { value: "quick", preset_output_limit: 500, is_custom: false },
+        { value: "balanced", preset_output_limit: 2000, is_custom: false },
+        { value: "long_texts", preset_output_limit: 8000, is_custom: false },
+        { value: "comprehensive", preset_output_limit: 16000, is_custom: false },
+        { value: "custom", preset_output_limit: null, is_custom: true },
+      ],
+      absolute_max: 131072,
+      ux_recommended_max: 16000,
+    },
+    calibration: null,
+    suitability: null,
   },
 }));
 
@@ -187,7 +202,7 @@ describe("AiTab", () => {
     expect((select as HTMLSelectElement).value).toBe("balanced");
   });
 
-  it("renders all token profile options including comprehensive and conservative", async () => {
+  it("renders exactly the five public token profile options (no conservative)", async () => {
     renderWithProviders(<AiTab />);
 
     await waitFor(() => {
@@ -197,14 +212,88 @@ describe("AiTab", () => {
     const select = screen.getByRole("combobox") as HTMLSelectElement;
     const optionValues = Array.from(select.options).map((o) => o.value);
 
-    expect(optionValues).toEqual([
-      "quick",
-      "balanced",
-      "conservative",
-      "long_texts",
-      "comprehensive",
-      "custom",
-    ]);
+    expect(optionValues).toEqual(["quick", "balanced", "long_texts", "comprehensive", "custom"]);
+    expect(optionValues).not.toContain("conservative");
+  });
+
+  it("populates profile options from the API metadata catalogue", async () => {
+    mockGetResolved.mockResolvedValue({
+      ...mockTokenLimits,
+      metadata: {
+        ...mockTokenLimits.metadata,
+        catalogue: [
+          { value: "custom", preset_output_limit: null, is_custom: true },
+          { value: "comprehensive", preset_output_limit: 16000, is_custom: false },
+          { value: "long_texts", preset_output_limit: 8000, is_custom: false },
+          { value: "balanced", preset_output_limit: 2000, is_custom: false },
+          { value: "quick", preset_output_limit: 500, is_custom: false },
+        ],
+      },
+    });
+
+    renderWithProviders(<AiTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("provider-list")).toBeDefined();
+    });
+
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+
+    // Runtime metadata is the source of truth for option order/availability.
+    expect(optionValues).toEqual(["custom", "comprehensive", "long_texts", "balanced", "quick"]);
+  });
+
+  it("allows custom raw output limits above the 16k recommended slider up to the exposed max", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AiTab />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("provider-list")).toBeDefined();
+    });
+
+    await user.selectOptions(screen.getByRole("combobox"), "custom");
+
+    const customInput = screen.getByLabelText(
+      "settings.ai.tokenLimits.customOutputLimitLabel",
+    ) as HTMLInputElement;
+
+    expect(customInput.max).toBe("131072");
+    expect(screen.getByText("settings.ai.tokenLimits.recommendedRangeLabel")).toBeDefined();
+
+    await user.clear(customInput);
+    await user.type(customInput, "64000");
+    await user.tab();
+
+    await waitFor(() => {
+      const requestPayloads = mockTokenLimitsUpdateUser.mock.calls.map((call) => call[0]);
+      expect(requestPayloads).toContainEqual({ token_profile: "custom", output_limit: 64000 });
+    });
+  });
+
+  it("renders calibration warnings when the API reports stale metadata", async () => {
+    mockGetResolved.mockResolvedValue({
+      ...mockTokenLimits,
+      calibration: {
+        provider: "openai",
+        model_id: "gpt-test",
+        status: "known_stale",
+        source: "models.dev",
+        provider_max_output_tokens: 4096,
+        context_window_tokens: 128000,
+        source_timestamp: 1700000000,
+        cache_age_seconds: 999,
+        detail: null,
+      },
+    });
+
+    renderWithProviders(<AiTab />);
+
+    await waitFor(() => {
+      expect(screen.getByText("tokenWarnings.calibrationStale")).toBeDefined();
+    });
+    // Stale must not look calibrated.
+    expect(screen.queryByTestId("token-calibrated")).toBeNull();
   });
 
   it("token profile change triggers mutation", async () => {

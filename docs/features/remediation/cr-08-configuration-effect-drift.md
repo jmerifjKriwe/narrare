@@ -1,6 +1,6 @@
 # CR-08 Remediation — Configuration/Effect Drift Specification
 
-> **Status:** planned — remediation specification ready; candidate ADR-051 remains proposed
+> **Status:** in progress — P0 committed; P1 implementation evidence recorded; P2/P3/P4 remain open; candidate ADR-051 remains proposed
 > **Date:** 2026-06-18
 > **Author:** Architecture Specialist
 > **Candidate ADR:** [ADR-051](../../architecture/decisions/ADR-051-configuration-effect-adoption-contract.md) (Proposed; must be accepted or superseded before CR-AUFG-08 tasks can be resolved)
@@ -74,6 +74,7 @@ or superseded by an equivalent contract.
 ### P1 — Cross-Layer Vocabulary, UI/API Drift, and Model Suitability
 
 **Owner order:** Architecture → Core → Backend → Frontend → Platform → Docs.
+**Implementation policy:** [`CR-08 P1 Policy — Token Profiles, Model Limits, and Suitability`](../../architecture/governance/cr-08-p1-token-limits-and-suitability-policy.md).
 
 | Task | Owner | Scope | Definition of Done |
 |---|---|---|---|
@@ -81,6 +82,52 @@ or superseded by an equivalent contract.
 | CR-AUFG-08-10 / FIND-013 | Backend + Frontend + Platform | Token Settings UI/API contract parity: slider max, profile visibility, custom semantics. | UI hard caps match backend/core or are explicitly labelled UX-protective; tests compare API schema/profile vocabulary to frontend types/constants. |
 | CR-AUFG-08-07 | Core + Backend + Frontend | Model-limit calibration with `models.dev`/cache metadata. | Known too-high limits cap or reject per policy; too-low/unknown/offline states produce warning labels/evidence; no UI implies calibration when source is stale/offline. |
 | CR-AUFG-08-11 | Architecture + Backend + Frontend | Model suitability policy: advisory vs warning vs hard block. | Policy table exists per intent tier; UI/API expose warnings; hard blocks limited to impossible/unsafe calls; tests cover unknown/offline/provider-too-small cases. |
+
+#### P1 Architecture Decisions
+
+- **Token profile vocabulary:** The public vocabulary is exactly `quick`, `balanced`,
+  `long_texts`, `comprehensive`, `custom`. The authoritative contract lives in Core
+  (`packages/core/narrare_core/llm/token_profiles.py`) and is consumed by Backend;
+  Frontend constants/types must prove parity through contract tests.
+- **`conservative`:** Removed from the public contract. New writes are invalid;
+  existing persisted values are normalized to `balanced` at the Backend compatibility
+  boundary and must never be emitted to clients.
+- **`custom`:** Manual raw `output_limit` mode. It has no preset output limit entry;
+  runtime calibration still caps to known provider ceilings.
+- **Slider/API max:** `131072` is the absolute API hard max. `16000` is only the
+  UX recommended slider range (`comprehensive`) and may remain only with explicit
+  labelling plus a custom input path up to the effective hard/model max.
+- **Calibration:** Known model ceilings cap at runtime and surface effective-limit
+  warnings. Stale/offline/unknown metadata states must be labelled and must not imply
+  calibration.
+- **Suitability:** Advisory/warning/hard-block severity is evaluated per intent
+  profile. Hard blocks are limited to impossible/unsafe calls: unusable provider/model,
+  non-text model, known output ceiling below the minimum viable floor, or insufficient
+  context for required input plus minimum output.
+
+#### P1 Implementation-Ready Handoff
+
+| Layer | Required work | Evidence required before P1 closure |
+|---|---|---|
+| Core | Add `llm/token_profiles.py`; refactor `model_config.py`, `run_limits.py`, and `intent_profiles.py` to consume it; add typed calibration result and suitability evaluator. | Unit tests for exact vocabulary/presets, custom raw semantics, conservative legacy normalization, calibration statuses, suitability severities. |
+| Backend | Derive token-limit schemas from Core vocabulary; reject new `conservative`; normalize persisted legacy values; expose profile/cap/calibration/suitability metadata through service/API responses. | Schema tests, service tests, API integration tests for profile parity, custom semantics, warnings, and provider-too-small cases. |
+| Frontend | Remove `conservative`; consume/prove metadata parity; display custom raw limit controls and calibration/suitability warnings; remove 16k-as-hard-max semantics. | UI tests for exact profile options, >16k custom path, stale/offline/unknown warnings, provider-too-small warning/block display. |
+| Platform | Add cross-layer contract tests comparing Core/Backend/Frontend profile and cap metadata; keep matrix findings open until evidence exists. | CI-blocking tests fail on independent profile/cap drift and on missing warning/block evidence. |
+| Docs | Update user/developer status only after implementation evidence. | P1 tasks are marked resolved only with implementation-on-disk, enforcement tests, and cross-layer evidence. |
+
+#### P1 Implementation Evidence (2026-06-20)
+
+P1 is implementation-evidence complete across Core, Backend, Frontend, and Platform.
+This does **not** close P2/P3/P4 and does **not** imply ADR-051 is accepted or in
+effect; ADR-051 remains a proposed candidate contract until accepted or superseded.
+
+| Task | Status | Evidence |
+|---|---|---|
+| CR-AUFG-08-03 | Implemented + enforced | Core vocabulary in `packages/core/narrare_core/llm/token_profiles.py`; Backend validators derive from Core and reject new `conservative` while normalizing legacy reads; Frontend `packages/web/lib/token-profiles.ts` removes `conservative`. Evidence: `tests/unit/core/llm/test_token_profiles.py`, `tests/unit/api/settings/test_cr08_p1_token_profile_contract.py`, `tests/unit/api/settings/test_cr08_p1_cross_layer_contract.py`, `packages/web/lib/__tests__/token-profiles.test.ts`. |
+| CR-AUFG-08-10 / FIND-013 | Implemented + enforced | Backend metadata exposes public profiles, preset limits, absolute max `131072`, and UX recommended max `16000`; Frontend labels the 16k slider as recommended and supports custom values above 16k. Evidence: `tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py`, `tests/unit/api/settings/test_cr08_p1_cross_layer_contract.py`, `packages/web/components/studio/settings/__tests__/AiTab.test.tsx`, `packages/web/components/studio/editor/__tests__/TokenSettings.test.tsx`. |
+| CR-AUFG-08-07 | Implemented + enforced | Core typed calibration statuses (`known_fresh`, `known_stale`, `unknown_model`, `offline_no_cache`, `invalid_metadata`) feed Backend metadata and Frontend warnings. Evidence: `packages/core/narrare_core/llm/model_calibration.py`, `tests/unit/core/llm/test_model_limit_calibration.py`, `tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py`, `packages/web/components/studio/settings/__tests__/TokenMetadataWarnings.test.tsx`. |
+| CR-AUFG-08-11 | Implemented + enforced | Core suitability evaluator produces advisory/warning/hard-block severities; Backend exposes suitability metadata; Frontend renders the messages. Evidence: `packages/core/narrare_core/llm/model_suitability.py`, `tests/unit/core/llm/test_model_suitability.py`, `tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py`, `packages/web/components/studio/settings/__tests__/TokenMetadataWarnings.test.tsx`. |
+| P1 Platform gate | Implemented + enforced | Configuration matrix P1 rows contain concrete enforcement and cross-layer evidence; Platform parity tests fail on independent vocabulary/cap drift. Evidence: `tests/unit/scripts/governance/test_configuration_matrix_p1.py`; reported gate results: targeted P1 suite PASS and `just check` PASS after security dependency updates. |
 
 ### P2 — Operator Defaults, Catalog Governance, and System Resolvers
 
@@ -188,7 +235,8 @@ must be added to the matrix before the phase can close.
 - **P0:** Matrix/gate baseline exists; FIND-001 and FIND-012 have implementation-on-disk,
   enforcement, and cross-feature evidence; no “resolved” claim without runtime tests.
 - **P1:** Core/backend/frontend token profile contract is single-source and tested;
-  FIND-013 closed with UI/API/core parity evidence; model suitability warnings policy tested.
+  FIND-013 closed with UI/API/core parity evidence; model calibration and suitability
+  warning/block policy tested. Documentation-only policy does not close P1.
 - **P2:** Operator defaults and setup catalogs have resolver/freshness/source labels and
   tests; system/background resolver removes local category-string policy branches.
 - **P3:** Long-tail defaults are all governed defaults with rationale/tests/review triggers

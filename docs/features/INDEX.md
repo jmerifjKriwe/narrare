@@ -274,5 +274,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-18 — SET-005 remains in-progress: storage/API/UI cascade exists, but CR-08 runtime-effect adoption blockers stay open until implementation, enforcement, and cross-layer evidence close CR-AUFG-08-01/02/03/09/10. ADR-051 is proposed/candidate only. ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-20 — SET-005 remains in-progress: storage/API/UI cascade exists, and CR-08 P0/P1 now have implementation, enforcement, and cross-layer evidence for CR-AUFG-08-01/02/03/07/09/10/11 (including FIND-013). Do not promote SET-005 to stable until CR-08 P2/P3/P4 are closed and ADR-051 is accepted or superseded. ADR-051 remains proposed/candidate only. ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

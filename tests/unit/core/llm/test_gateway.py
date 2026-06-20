@@ -139,11 +139,19 @@ class TestTokenLimitProfile:
 
     def test_profile_to_limits_returns_usage_limits(self) -> None:
         """Bekannte Profile geben UsageLimits zurück."""
-        for profile in ("quick", "balanced", "long_texts", "conservative", "custom"):
+        for profile in ("quick", "balanced", "long_texts", "comprehensive", "custom"):
             result = ModelRegistry._profile_to_limits(profile)
             assert result is not None
             assert hasattr(result, "request_limit")
             assert hasattr(result, "total_tokens_limit")
+
+    def test_legacy_conservative_profile_maps_to_balanced_limits(self) -> None:
+        """Compatibility boundary maps retired conservative values to balanced."""
+        result = ModelRegistry._profile_to_limits("conservative")
+
+        assert result is not None
+        assert result.request_limit == 25
+        assert result.total_tokens_limit == 64000
 
     def test_unknown_profile_returns_none(self) -> None:
         """Unbekanntes Profil gibt None zurück."""

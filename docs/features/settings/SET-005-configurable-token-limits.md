@@ -6,22 +6,23 @@ phase: 1
 area: settings
 mvp: false
 
-ui_tooltip: "Review token budget settings; runtime adoption is in progress."
+ui_tooltip: "Review token settings; P0/P1 adopted, CR-08 continues."
 ui_help_short: |
-  View and edit token-limit settings. Some controls are still being
-  wired to runtime behavior under CR-08.
+  View and edit token-limit settings. P0/P1 are enforced; later CR-08
+  governance work remains open.
 ui_help_long: |
   SET-005 gives Narrare a storage/API/UI cascade for output-limit profiles,
   context-budget percentages, and system timeout visibility. Defaults and saved
   overrides live in one place instead of being scattered through code or env files.
 
-  CR-08 found that some saved settings are not yet proven at the runtime boundary.
-  Treat these controls as configuration surfaces until CR-AUFG-08-01/02/03/09/10
-  have implementation-on-disk, enforcement, and cross-layer evidence.
+  CR-08 P0/P1 now prove the main token-limit runtime paths, profile vocabulary,
+  UI/API/Core parity, model-limit calibration, and model suitability warnings.
+  Later CR-08 phases still govern operator defaults, catalog fallbacks, and docs/status
+  taxonomy before SET-005 can return to stable.
 
   The Settings tab shows three groups:
   - **Output Limits** — Stored per-call generation limit profiles and values
-    (quick/balanced/long profiles, or raw token values)
+    (quick/balanced/long_texts/comprehensive presets, or custom raw token values)
   - **Context Budget** — How the total token budget is distributed across
     context tiers (immediate chapter, recent history, KB entities, pinned items)
   - **System Timeouts** — WebSocket idle timeout, API request timeout, retry config
@@ -33,14 +34,16 @@ ui_available_in: [settings]
 ## What it does
 
 Provides a Settings surface and persistence/API cascade for token limits, budget
-percentages, and timeout-related configuration. Runtime-effect adoption remains
-open for the CR-08 items listed below; a control must not be described as effective
-until its source → resolver → runtime consumer → enforcement evidence exists.
+percentages, and timeout-related configuration. CR-08 P0/P1 now have runtime-effect
+evidence for the main token limit/profile paths; remaining CR-08 phases still govern
+operator defaults, catalog fallbacks, long-tail defaults, and docs/status taxonomy.
 
-> **CR-08 status note (2026-06-18):** SET-005's storage/API/UI cascade exists, but
-> CR-08 found runtime-effect gaps. Do not claim that every control changes production
-> behavior until CR-AUFG-08-01/02/03/09/10 have implementation-on-disk, enforcement,
-> and cross-layer evidence. Remediation is specified in
+> **CR-08 status note (2026-06-20):** SET-005's storage/API/UI cascade exists, and
+> CR-08 P0/P1 have implementation-on-disk, enforcement, and cross-layer evidence for
+> output-limit enforcement, tier-budget consumption, token-profile parity/FIND-013,
+> model-limit calibration, and model suitability warnings/blocks. Do not claim full
+> SET-005 stability until CR-08 P2/P3/P4 are closed and ADR-051 is accepted or
+> superseded. Remediation is specified in
 > [`docs/features/remediation/cr-08-configuration-effect-drift.md`](../remediation/cr-08-configuration-effect-drift.md).
 
 ## Why it exists
@@ -60,10 +63,10 @@ makes Narrare adaptable by its users.
 
 1. The user opens **Settings → Token Limits**
 2. They see three collapsible sections: **Output Limits**, **Context Budget**, **System**
-3. **Output Limits** shows a table of features (Draft, Summary, Suggest, Continue, Consistency, etc.) each with a dropdown: *quick* / *balanced* / *long* — or a raw token input for precise control
+3. **Output Limits** shows a table of features (Draft, Summary, Suggest, Continue, Consistency, etc.) each with a dropdown: *quick* / *balanced* / *long_texts* / *comprehensive* — or a *custom* raw token input for precise control
 4. **Context Budget** shows the 5-tier pie chart (immediate/recent/kb_referenced/kb_suggested/pinned) with percentage sliders that automatically adjust to total 100%
 5. **System** shows WebSocket timeout (seconds), retry count, API timeout
-6. Changes save through the Settings cascade; only controls with adoption evidence may be described as taking effect on the next AI call. Open CR-08 controls remain pending runtime-effect adoption.
+6. Changes save through the Settings cascade. P0/P1 token limit/profile controls have runtime-effect evidence; later CR-08 controls remain pending their phase-specific adoption evidence.
 7. A **"Reset to defaults"** button restores all factory values
 
 ## How it works (Technical)
@@ -82,12 +85,13 @@ Operator env var (config.py / .env)
 Code default (hardcoded in core/)
 ```
 
-**Model Data Source:** Model-limit suggestions use [models.dev](https://models.dev) data where available. See [Model Data Reference](../../reference/model-data.md) for details on how model specifications are fetched, cached, and refreshed. CR-AUFG-08-07/11 remain open for calibration and suitability-warning policy.
+**Model Data Source:** Model-limit suggestions use [models.dev](https://models.dev) data where available. See [Model Data Reference](../../reference/model-data.md) for details on how model specifications are fetched, cached, and refreshed. CR-AUFG-08-07/11 are implemented with calibration metadata and suitability-warning/block evidence.
 
 ### Core Changes
 
-Core has budget override mechanics, but the Settings-to-runtime adoption is not fully
-closed until CR-AUFG-08-01/02/03/09/10 provide enforcement evidence.
+Core owns the runtime token contracts and model-boundary enforcement used by P0/P1.
+Settings-to-runtime adoption remains phase-scoped: CR-AUFG-08-01/02/03/07/09/10/11
+have evidence, while later CR-08 operator/default governance remains open.
 
 **`packages/core/narrare_core/writing/budget.py`:**
 - `TokenBudgetManager` constructor accepts optional `tier_overrides` dict
@@ -96,7 +100,7 @@ closed until CR-AUFG-08-01/02/03/09/10 provide enforcement evidence.
 
 **`packages/core/narrare_core/llm/intents.py`:**
 - `ResolvedModelConfig` gains `resolve_output_limit(profile: str) -> int` method
-- Maps token_limit_profile ("quick"/"balanced"/"long") to token values
+- Maps token_limit_profile (`quick`/`balanced`/`long_texts`/`comprehensive`/`custom`) to preset or raw token values
 - Env var override supported via optional `settings` parameter
 
 ### API Changes
@@ -125,9 +129,9 @@ budget_tier_percentages: str = ""  # optional JSON: '{"immediate":30,"recent":20
 ### Backend Resolver Integration
 
 Several writing dependency factories resolve settings through `TokenLimitsService`
-instead of raw `resolve_output_limit()`. These resolver integrations do not by
-themselves prove model-boundary enforcement; CR-AUFG-08-01 remains open until the
-effective limit is enforced at `run()`/`stream()`/agent boundaries with evidence.
+instead of raw `resolve_output_limit()`. CR-AUFG-08-01 now has model-boundary
+enforcement evidence at `run()`/`stream()`/agent boundaries; future changes must keep
+that source → resolver → runtime consumer chain intact.
 
 - `apps/api/narrare/writing/deps.py`: `get_writing_service()`, `get_extend_service()`, `get_rewrite_service()` resolve limits via `TokenLimitsService.get_resolved_limits()`
 - `apps/api/narrare/writing/summary_deps.py`: `get_summary_service()` uses `TokenLimitsService` instead of `resolve_output_limit()`
@@ -179,19 +183,25 @@ runtime-effect closure):
 - Model limits validation via `get_model_limits()`
 - Frontend profile read/write via `TokenLimitsApi`
 
-Historical consistency integration delivered (legacy SET-005 work; not the current
-CR-AUFG-08-02 P0 task for `tier_percentages` → `WritingContextAssembler`):
+CR-08 P1 delivered (2026-06-20; not full CR-08 closure):
+- Core token profile vocabulary: `quick`, `balanced`, `long_texts`, `comprehensive`, `custom`
+- `conservative` removed from the public contract; legacy persisted values normalize to `balanced`
+- `custom` uses raw `output_limit`; known provider ceilings still cap at runtime
+- Backend metadata exposes profile/cap/calibration/suitability information
+- Frontend supports custom limits above 16k and renders calibration/suitability warnings
+- Platform cross-layer contract tests and configuration matrix evidence gate protect parity
+
+Historical consistency integration delivered (legacy SET-005 work; separate from the
+CR-AUFG-08-02 P0 evidence for `tier_percentages` → `WritingContextAssembler`):
 - Consistency module integration: `checker_service.py` resolves limits via `TokenLimitsService`
 - `prompt_builder.py` accepts `max_chapter_tokens` parameter instead of hardcoded `MAX_CONSISTENCY_CONTEXT_TOKENS`
 - `checker_helpers.py` accepts `max_kb_entries` parameter instead of hardcoded `MAX_KB_ENTRIES`
 - `consistency/deps.py` factory wires TokenLimitsService injection
 - New fields: `max_chapter_tokens: int = 2000`, `max_kb_entries: int = 100`
 
-Current CR-08 blockers are tracked in
+Remaining CR-08 blockers are tracked in
 [`CR-08 Remediation — Configuration/Effect Drift`](../remediation/cr-08-configuration-effect-drift.md).
-In particular, CR-AUFG-08-02 remains open until `TokenLimitOverrides.tier_percentages`
-changes `WritingContextAssembler` tier budgets with implementation, enforcement, and
-cross-layer evidence.
+P2/P3/P4 remain open; ADR-051 also remains Proposed until accepted or superseded.
 
 ## Related Features
 
@@ -208,3 +218,4 @@ cross-layer evidence.
 | 2026-05-26 | Storage/API/UI foundation implemented as legacy SET-005 work | In Progress |
 | 2026-06-08 | Historical consistency integration implemented as legacy SET-005 work; not current CR-AUFG-08-02 closure | In Progress |
 | 2026-06-18 | CR-08 reclassified runtime-effect adoption gaps; status remains in-progress until false controls are closed | In Progress |
+| 2026-06-20 | CR-08 P0/P1 runtime-effect evidence recorded for token limit enforcement, tier percentages, profile parity/FIND-013, model calibration, and suitability warnings/blocks; P2/P3/P4 and ADR-051 decision remain open | In Progress |

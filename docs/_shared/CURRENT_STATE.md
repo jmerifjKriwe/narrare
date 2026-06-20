@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-19 (CR-07 UX Closure v2 — CR-AUFG-07-07..13 resolved)
-Session: CR-07 UX Closure v2. CR-AUFG-07-07 through CR-AUFG-07-13 resolved with implementation + enforcement evidence (Design + Implementation + Enforcement per `docs/development/finding-lifecycle.md` §5). 11 platform checks enforced via `scripts/checks/check_ai_interaction_compliance.py`; `just check-ai-ux` reports 0 violations, 3 governed exclusions (all fresh + AUFG-linked); Check 11 validates all 15 resolved AUFG entries. Machine inventory: `scripts/checks/ai_operation_inventory.yaml` (17 operations). ADR-045 adoption and CR-08 follow-up remain tracked separately.
+Date: 2026-06-20 (CR-08 P1 Docs Gate — token profile/parity/calibration/suitability evidence recorded)
+Session: CR-08 P1 Docs Gate. P0 is committed (`5769eaf2`) and P1 is implemented with Core/Backend/Frontend/Platform evidence for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11. `just check` is reported PASS after security dependency updates (`msgpack 1.2.1`, `pydantic-settings 2.14.2`). SET-005 remains in-progress because CR-08 P2/P3/P4 and ADR-051 acceptance/supersession are still open; ADR-051 remains Proposed.
 
 ---
 
@@ -118,7 +118,7 @@ Completed in Phase 6 so far:
 10. ✅ ANAL-001: Beta Reader Simulation — BetaReaderAgent + ScoreRadar + 4-tab panel
 11. ✅ ANAL-002: Sentiment Analysis — LexiconSentimentAnalyzer + arc trajectory graphs
 12. ✅ CONS-001: Consistency Checker — ConsistencyAgent + rule-based pre-check + actions
-13. 🔧 SET-005: Configurable Token Limits — storage/API/UI cascade exists; CR-08 runtime-effect adoption gaps are specified by the candidate ADR-051 contract and `docs/features/remediation/cr-08-configuration-effect-drift.md` before the feature can return to stable status
+13. 🔧 SET-005: Configurable Token Limits — storage/API/UI cascade exists; CR-08 P0 and P1 have implementation + enforcement + cross-layer evidence (P1 covers token profile vocabulary, UI/API/Core parity/FIND-013, model-limit calibration, and suitability warnings/blocks). The feature remains in-progress until CR-08 P2/P3/P4 are closed and ADR-051 is accepted or superseded.
 14. ✅ CR-01 through CR-04: Prompt quality audits + preference wiring + meta-prompt guardrails
 15. ✅ Coverage Uplift: 1,045+ new tests across all layers
 16. ✅ ADR-016: Prompt Caching — Implemented across all 4 phases (Phase 0: AgentRegistry, Phase 1: CacheSettings+ModelSettings, Phase 2: Cache Observability, Phase 3: WritingGraph Backend DI)
@@ -315,4 +315,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-19 (CR-07 UX Closure v2 — CR-AUFG-07-07..13 resolved with implementation + enforcement evidence; 11 platform checks enforced via `just check-ai-ux`)
+> Last content update: 2026-06-20 (CR-08 P1 Docs Gate — P0/P1 evidence recorded; P2/P3/P4 and ADR-051 decision remain open)

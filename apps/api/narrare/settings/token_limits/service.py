@@ -6,6 +6,14 @@ Resolves effective token limits by merging settings from:
 3. Operator-Env (application config)
 4. Code defaults (lowest priority)
 
+CR-08 P1:
+* Legacy persisted ``conservative`` is normalised to ``balanced`` at the read
+  boundary and never re-emitted (D2).
+* An explicit ``output_limit`` override without a ``token_profile`` override
+  resolves the profile to ``custom`` so the raw limit takes effect (D3).
+* Preset profiles resolve their effective limit via
+  :attr:`TokenLimitOverrides.effective_output_limit`.
+
 Usage:
     service = TokenLimitsService(user_repo, project_repo, config)
     limits = await service.get_resolved_limits(user_id="abc", project_id="novel_1")
@@ -13,6 +21,7 @@ Usage:
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, cast
 
 import structlog
@@ -20,6 +29,10 @@ import structlog
 from narrare.settings.token_limits._validators import validate_token_overrides
 from narrare.settings.token_limits.contracts import TokenLimitOverrides
 from narrare_core.llm.cost_rates import ModelLimits, get_model_limits
+from narrare_core.llm.token_profiles import (
+    TokenLimitProfile,
+    normalize_legacy_token_profile,
+)
 
 if TYPE_CHECKING:
     from narrare._app.config import Settings
@@ -63,6 +76,10 @@ class TokenLimitsService:
         3. Project-DB overrides (if project_id provided)
         4. User-DB overrides (highest priority)
 
+        After merging, the resolved profile is finalised: legacy
+        ``conservative`` is normalised to ``balanced`` and an explicit
+        ``output_limit`` without a profile resolves to ``custom``.
+
         Args:
             user_id: The user's ID.
             project_id: Optional project/novel ID for project overrides.
@@ -73,15 +90,25 @@ class TokenLimitsService:
         # Layer 1: Code defaults
         merged = TokenLimitOverrides()
 
-        # Layer 2: Operator-Env (application config)
+        # Layer 2: Operator-Env (application config). Env values are not
+        # "explicit user intent" and must not trigger custom inference.
         merged = self._apply_env_layer(merged)
 
-        # Layer 3: Project-DB overrides
+        # Layers 3 & 4: DB overrides. Track which keys were explicitly set by
+        # user/project intent so the custom-mode inference (D3) can fire.
+        explicit: set[str] = set()
         if project_id is not None:
-            merged = await self._apply_project_layer(merged, project_id)
+            project_overrides = self._overrides_or_empty(await self._project_repo.get(project_id))
+            if project_overrides:
+                merged = self._merge_overrides(merged, project_overrides)
+                explicit.update(project_overrides.keys())
 
-        # Layer 4: User-DB overrides (highest priority)
-        merged = await self._apply_user_layer(merged, user_id)
+        user_overrides = self._overrides_or_empty(await self._user_repo.get(user_id))
+        if user_overrides:
+            merged = self._merge_overrides(merged, user_overrides)
+            explicit.update(user_overrides.keys())
+
+        merged = self._resolve_profile(merged, explicit)
 
         logger.debug(
             "token_limits_resolved",
@@ -182,45 +209,44 @@ class TokenLimitsService:
             max_selection_words=cfg.default_max_selection_words,
         )
 
-    async def _apply_project_layer(
-        self,
-        base: TokenLimitOverrides,
-        project_id: str,
+    @staticmethod
+    def _overrides_or_empty(entity: object) -> dict[str, object]:
+        """Return the entity's overrides dict, or empty if missing/None."""
+
+        return getattr(entity, "overrides", None) or {}
+
+    @staticmethod
+    def _resolve_profile(
+        merged: TokenLimitOverrides,
+        explicit: set[str],
     ) -> TokenLimitOverrides:
-        """Merge project-DB overrides on top of current state.
+        """Finalise the resolved profile (CR-08 P1 D2/D3).
+
+        * Normalise the retired ``conservative`` alias to ``balanced`` at the
+          read boundary so stored legacy values never reach clients.
+        * Infer ``custom`` when ``output_limit`` was explicitly set by a DB
+          override without an explicit ``token_profile`` (raw-limit mode).
 
         Args:
-            base: Current merged state.
-            project_id: The project to load overrides for.
+            merged: The merged overrides state.
+            explicit: Field names explicitly set by user/project DB layers.
 
         Returns:
-            Updated TokenLimitOverrides with project overrides applied.
+            TokenLimitOverrides with the finalised ``token_profile``.
         """
-        project_limits = await self._project_repo.get(project_id)
-        overrides = project_limits.overrides or {}
-        if not overrides:
-            return base
-        return self._merge_overrides(base, overrides)
-
-    async def _apply_user_layer(
-        self,
-        base: TokenLimitOverrides,
-        user_id: str,
-    ) -> TokenLimitOverrides:
-        """Merge user-DB overrides on top of current state (highest priority).
-
-        Args:
-            base: Current merged state.
-            user_id: The user to load overrides for.
-
-        Returns:
-            Updated TokenLimitOverrides with user overrides applied.
-        """
-        user_limits = await self._user_repo.get(user_id)
-        overrides = user_limits.overrides or {}
-        if not overrides:
-            return base
-        return self._merge_overrides(base, overrides)
+        profile = merged.token_profile
+        normalized = normalize_legacy_token_profile(profile)
+        if normalized is not None:
+            profile = normalized
+        if (
+            profile != TokenLimitProfile.CUSTOM.value
+            and "token_profile" not in explicit
+            and "output_limit" in explicit
+        ):
+            profile = TokenLimitProfile.CUSTOM.value
+        if profile == merged.token_profile:
+            return merged
+        return replace(merged, token_profile=profile)
 
     @staticmethod
     def _merge_overrides(

@@ -230,6 +230,18 @@
     "checking": "Vérification de la cohérence…",
     "noIssues": "Aucun problème de cohérence détecté !"
   },
+  "tokenWarnings": {
+    "calibrated": "La limite de sortie du modèle est calibrée à partir des métadonnées actuelles.",
+    "calibrationStale": "Les métadonnées de limite du modèle sont obsolètes ; le plafond effectif peut ne plus être à jour.",
+    "calibrationUnknown": "La limite de sortie du modèle est inconnue ; ce réglage n’est pas calibré.",
+    "calibrationOffline": "Les métadonnées du modèle sont indisponibles hors ligne ; ce réglage n’est pas vérifié.",
+    "calibrationInvalid": "Les métadonnées du modèle sont invalides ; ce réglage n’est pas calibré.",
+    "providerTooSmall": "Le modèle sélectionné est trop limité pour cet intent.",
+    "providerCapBelowRequested": "Le modèle sélectionné peut plafonner la sortie sous la limite demandée.",
+    "contextTooSmall": "La fenêtre de contexte du modèle sélectionné est trop petite pour cet intent.",
+    "capabilityUnknown": "La capacité du modèle est inconnue pour cet intent.",
+    "capabilityBelowRecommendation": "La capacité du modèle est inférieure au niveau recommandé pour cet intent."
+  },
   "analysis": {
     "title": "Analyse et statistiques",
     "description": "Les analyses IA vous aident à améliorer votre histoire",
@@ -373,7 +385,6 @@
       "tokenProfileQuick": "Rapide (max 500 tokens)",
       "tokenProfileBalanced": "Équilibré (max 2000 tokens)",
       "tokenProfileLong": "Textes longs (max 8000 tokens)",
-      "tokenProfileConservative": "Conservateur (max 2000 tokens)",
       "tokenProfileComprehensive": "Complet (max 16000 tokens)",
       "tokenProfileCustom": "Personnalisé",
       "promptsInfo": "Les prompts système peuvent être personnalisés par intention d'écriture. Cette fonctionnalité sera disponible via l'éditeur de prompts.",
@@ -442,7 +453,10 @@
         "description": "Limites par catégorie avec le profil personnalisé",
         "maxTokens": "Max Tokens",
         "temperature": "Température",
-        "maxTokensWarning": "La valeur {value} est très élevée — peut dépasser les limites du modèle"
+        "maxTokensWarning": "La valeur {value} est très élevée — peut dépasser les limites du modèle",
+        "recommendedRangeLabel": "Plage recommandée jusqu’à 16k tokens",
+        "customOutputLimitLabel": "Limite de sortie personnalisée",
+        "customOutputLimitHint": "Le curseur couvre la plage recommandée ({recommendedMax} tokens). Saisissez une valeur personnalisée jusqu’à {max} tokens pour une capacité modèle/API plus élevée."
       },
       "modelData": {
         "title": "Données des modèles",
@@ -1674,11 +1688,12 @@
     "profileQuick": "Rapide",
     "profileBalanced": "Équilibré",
     "profileLong": "Textes longs",
-    "profileConservative": "Conservateur",
     "profileComprehensive": "Complet",
     "profileCustom": "Personnalisé",
     "outputLimit": "Limite de sortie",
-    "max": "16K"
+    "customOutputLimit": "Limite de sortie personnalisée",
+    "recommendedRange": "Plage de curseur recommandée jusqu’à {max} tokens",
+    "max": "Max {max}"
   },
   "ghostText": {
     "onboardingHint": "Tab = Accepter | → = Mot par mot | Esc = Rejeter",

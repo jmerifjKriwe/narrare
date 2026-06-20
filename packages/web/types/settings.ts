@@ -54,13 +54,15 @@ export type IntentCategory =
   | "chat"
   | "research";
 
-export type TokenLimitProfile =
-  | "quick"
-  | "balanced"
-  | "conservative"
-  | "long_texts"
-  | "comprehensive"
-  | "custom";
+/**
+ * Public token-limit profile vocabulary (CR-08 P1 D1).
+ *
+ * `conservative` is intentionally absent: it is a retired legacy alias that
+ * the Backend normalizes to `balanced` at the read boundary and never emits.
+ * Mirrors `packages/core/narrare_core/llm/token_profiles.py` — parity is
+ * enforced by `lib/__tests__/token-profiles.test.ts`.
+ */
+export type TokenLimitProfile = "quick" | "balanced" | "long_texts" | "comprehensive" | "custom";
 
 export interface ModelOverride {
   provider_id: string;
@@ -70,14 +72,94 @@ export interface ModelOverride {
 /** Tier names for context budget allocation. */
 export type ContextTier = "immediate" | "recent" | "kb_referenced" | "kb_suggested" | "pinned";
 
+// ---------------------------------------------------------------------------
+// CR-08 P1 — token-limit metadata, calibration, suitability (D1/D4/D5/D6)
+// ---------------------------------------------------------------------------
+
+/** One public token-limit profile and its preset output limit (if any). */
+export interface TokenProfilePreset {
+  readonly value: TokenLimitProfile;
+  /** Fixed preset output limit; null for the custom raw mode. */
+  readonly preset_output_limit: number | null;
+  /** True for the custom raw mode. */
+  readonly is_custom: boolean;
+}
+
+/** Static token-limit vocabulary and caps, derived from Core by the Backend. */
+export interface TokenLimitsCatalog {
+  readonly catalogue: readonly TokenProfilePreset[];
+  /** Largest raw output limit accepted before provider calibration. */
+  readonly absolute_max: number;
+  /** Recommended UX slider range; not a provider or API hard maximum. */
+  readonly ux_recommended_max: number;
+}
+
+/**
+ * Evidence status for provider/model output-limit metadata (CR-08 P1 D5).
+ * Stale/offline/unknown/invalid must NEVER be displayed as calibrated.
+ */
+export type CalibrationStatus =
+  | "known_fresh"
+  | "known_stale"
+  | "unknown_model"
+  | "offline_no_cache"
+  | "invalid_metadata";
+
+/** Typed provider/model calibration evidence for a limit lookup. */
+export interface CalibrationMetadata {
+  readonly provider: string;
+  readonly model_id: string;
+  readonly status: CalibrationStatus;
+  readonly source: string;
+  readonly provider_max_output_tokens: number | null;
+  readonly context_window_tokens: number | null;
+  readonly source_timestamp: number | null;
+  readonly cache_age_seconds: number | null;
+  readonly detail: string | null;
+}
+
+/** Severity for a single suitability finding (CR-08 P1 D6). */
+export type SuitabilitySeverity = "advisory" | "warning" | "hard_block";
+
+/** One suitability finding (advisory / warning / hard_block). */
+export interface SuitabilityIssue {
+  readonly severity: SuitabilitySeverity;
+  readonly code: string;
+  readonly message: string;
+}
+
+/** Suitability decision for one model/intent/output request. */
+export interface SuitabilityMetadata {
+  readonly intent: string;
+  readonly output_profile: string;
+  readonly requested_output_tokens: number;
+  readonly effective_output_tokens: number;
+  readonly recommended_output_tokens: number;
+  readonly minimum_viable_output_tokens: number;
+  readonly calibration_status: CalibrationStatus;
+  readonly provider_max_output_tokens: number | null;
+  readonly severity: SuitabilitySeverity;
+  readonly is_allowed: boolean;
+  readonly issues: readonly SuitabilityIssue[];
+}
+
 /** Resolved token limits from all layers (user → project → env → code). */
 export interface TokenLimitsResponse {
+  /** Requested raw output limit (before profile/cap resolution). */
   output_limit: number;
   token_profile: TokenLimitProfile;
+  /** Effective output limit after applying profile/cap resolution. */
+  effective_output_limit: number;
   tier_percentages: Record<ContextTier, number>;
   ws_timeout: number;
   retry_max_attempts: number;
   retry_base_delay: number;
+  /** Core-derived profile catalogue + caps (CR-08 P1 D1/D4). */
+  metadata: TokenLimitsCatalog;
+  /** Provider/model calibration evidence, populated when provider/model supplied. */
+  calibration: CalibrationMetadata | null;
+  /** Suitability decision, populated when provider/model/intent supplied. */
+  suitability: SuitabilityMetadata | null;
 }
 
 /** Partial update for token limit overrides. */

@@ -2,8 +2,8 @@
 
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { ContextTier, TokenLimitProfile } from "@/types";
-import { DEFAULT_TIER_PERCENTAGES, TOKEN_PROFILES } from "./aiTabConstants";
+import type { ContextTier } from "@/types";
+import { DEFAULT_TIER_PERCENTAGES } from "./aiTabConstants";
 import { CategoryOverrides } from "./CategoryOverrides";
 import { ContextBudget } from "./ContextBudget";
 import { DefaultModelSection } from "./DefaultModelSection";
@@ -11,6 +11,7 @@ import { IntentOverrides } from "./IntentOverrides";
 import { ModelDataStatus } from "./ModelDataStatus";
 import { ProviderList } from "./ProviderList";
 import { SystemTimeouts } from "./SystemTimeouts";
+import { TokenProfileSection } from "./TokenProfileSection";
 import { useAiTabData } from "./useAiTabData";
 
 export function AiTab() {
@@ -27,11 +28,14 @@ export function AiTab() {
     handleDefaultProviderChange,
     handleDefaultModelChange,
     handleTokenProfileChange,
+    handleCustomOutputLimitChange,
     handleCategoryOverridesChange,
     handleIntentOverridesChange,
     handleTierPercentagesChange,
     handleSystemTimeoutsChange,
   } = useAiTabData();
+
+  const currentProfile = tokenLimitsData?.token_profile ?? "balanced";
 
   if (providersLoading) {
     return (
@@ -40,8 +44,6 @@ export function AiTab() {
       </div>
     );
   }
-
-  const currentProfile = tokenLimitsData?.token_profile ?? "balanced";
 
   return (
     <div>
@@ -67,29 +69,17 @@ export function AiTab() {
         />
 
         {/* Token limit profile */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <span className="text-lg">{"\u26A1"}</span>
-            </div>
-            <div>
-              <h3 className="font-medium">{t("settings.ai.tokenProfile")}</h3>
-            </div>
-          </div>
-          <div className="ml-15">
-            <select
-              value={currentProfile}
-              onChange={(e) => handleTokenProfileChange(e.target.value as TokenLimitProfile)}
-              className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-            >
-              {TOKEN_PROFILES.map(({ value, labelKey }) => (
-                <option key={value} value={value}>
-                  {t(labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <TokenProfileSection
+          currentProfile={currentProfile}
+          outputLimit={
+            tokenLimitsData?.output_limit ?? tokenLimitsData?.effective_output_limit ?? 2000
+          }
+          metadata={tokenLimitsData?.metadata ?? null}
+          calibration={tokenLimitsData?.calibration ?? null}
+          suitability={tokenLimitsData?.suitability ?? null}
+          onProfileChange={handleTokenProfileChange}
+          onCustomOutputLimitChange={handleCustomOutputLimitChange}
+        />
 
         {/* Category Overrides */}
         <div className="bg-card border border-border rounded-lg p-6">

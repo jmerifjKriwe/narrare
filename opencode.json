@@ -9,7 +9,8 @@
     "bash": "ask"
   },
   "plugin": [
-    "./.opencode/plugins/agentmemory-capture.ts"
+    "./.opencode/plugins/agentmemory-capture.ts",
+    "superpowers@git+https://github.com/obra/superpowers.git"
   ],
   "mcp": {
     "code-review-graph": {

@@ -8,7 +8,7 @@
  * every slider tick. The slider only commits on mouseUp/blur.
  *
  * API: tokenLimitsApi.getResolved() → TokenLimitsResponse
- *      tokenLimitsApi.updateUser(data) → persist changes
+ *      tokenLimitsApi.updateUser(data) → 204/no-body persistence
  */
 
 import { useTranslations } from "next-intl";
@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { tokenLimitsApi } from "@/lib/api/client";
 import type { TokenLimitProfile, TokenLimitsResponse } from "@/types";
 import { TOKEN_PROFILE_VALUES } from "../settings/aiTabConstants";
+import { clampOutputLimit, EDITOR_PROFILE_LABELS, getCustomMax } from "./tokenSettingsHelpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,23 +26,6 @@ interface TokenSettingsProps {
   /** Optional callback when output limit changes. */
   onOutputLimitChange?: (limit: number) => void;
 }
-
-/**
- * Label keys for the editor panel's compact profile selector.
- *
- * Uses the `tokenSettings.*` namespace (shorter labels than the settings
- * page's `settings.ai.tokenProfile*`). A `Record<TokenLimitProfile, string>`
- * enforces at compile time that every profile has a label — adding a new
- * profile to the type without adding it here is a type error.
- */
-const EDITOR_PROFILE_LABELS: Record<TokenLimitProfile, string> = {
-  quick: "tokenSettings.profileQuick",
-  balanced: "tokenSettings.profileBalanced",
-  conservative: "tokenSettings.profileConservative",
-  long_texts: "tokenSettings.profileLong",
-  comprehensive: "tokenSettings.profileComprehensive",
-  custom: "tokenSettings.profileCustom",
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -70,16 +54,21 @@ export function TokenSettings({ onOutputLimitChange }: TokenSettingsProps) {
   // Handlers
   // -------------------------------------------------------------------------
 
+  const refreshResolvedSettings = () => {
+    return tokenLimitsApi.getResolved().then((res) => {
+      setSettings(res);
+      setLocalOutputLimit(res.output_limit);
+      return res;
+    });
+  };
+
   const handleProfileChange = (newProfile: string) => {
     const profile = newProfile as TokenLimitProfile;
     tokenLimitsApi
       .updateUser({ token_profile: profile })
-      .then((res) => {
-        setSettings(res);
-        setLocalOutputLimit(res.output_limit);
-      })
+      .then(refreshResolvedSettings)
       .catch(() => {
-        // Silently fail — next fetch will correct state
+        void refreshResolvedSettings();
       });
   };
 
@@ -90,19 +79,18 @@ export function TokenSettings({ onOutputLimitChange }: TokenSettingsProps) {
       debounceRef.current = null;
     }
 
+    const max = settings ? getCustomMax(settings) : 131072;
+    const nextValue = clampOutputLimit(val, max);
+
     tokenLimitsApi
-      .updateUser({ output_limit: val })
-      .then((res) => {
-        setSettings(res);
-        setLocalOutputLimit(res.output_limit);
-        onOutputLimitChange?.(val);
+      .updateUser({ token_profile: "custom", output_limit: nextValue })
+      .then(refreshResolvedSettings)
+      .then(() => {
+        onOutputLimitChange?.(nextValue);
       })
       .catch(() => {
         // Revert to server state on failure
-        tokenLimitsApi.getResolved().then((res) => {
-          setSettings(res);
-          setLocalOutputLimit(res.output_limit);
-        });
+        void refreshResolvedSettings();
       });
   };
 
@@ -133,6 +121,10 @@ export function TokenSettings({ onOutputLimitChange }: TokenSettingsProps) {
   if (loading || !settings) {
     return null;
   }
+
+  const recommendedMax = settings.metadata.ux_recommended_max;
+  const customMax = getCustomMax(settings);
+  const recommendedSliderValue = clampOutputLimit(localOutputLimit, recommendedMax);
 
   return (
     <div className="flex flex-col gap-3">
@@ -165,22 +157,36 @@ export function TokenSettings({ onOutputLimitChange }: TokenSettingsProps) {
         <label htmlFor="output-limit" className="text-xs text-muted-foreground">
           {t("tokenSettings.outputLimit")}: {localOutputLimit}
         </label>
+        <div className="text-xs text-muted-foreground">
+          {t("tokenSettings.recommendedRange", { max: recommendedMax })}
+        </div>
         <input
           id="output-limit"
           type="range"
-          min={500}
-          max={16000}
-          step={500}
-          value={localOutputLimit}
+          min={1}
+          max={recommendedMax}
+          step={100}
+          value={recommendedSliderValue}
           onChange={handleSliderChange}
           onMouseUp={handleSliderCommit}
           onBlur={handleSliderCommit}
           className="w-full accent-primary"
           aria-label={t("tokenSettings.outputLimit")}
         />
+        <input
+          type="number"
+          min={1}
+          max={customMax}
+          step={1}
+          value={localOutputLimit}
+          onChange={(e) => setLocalOutputLimit(Number(e.target.value))}
+          onBlur={handleSliderCommit}
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          aria-label={t("tokenSettings.customOutputLimit")}
+        />
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>500</span>
-          <span>{t("tokenSettings.max")}</span>
+          <span>1</span>
+          <span>{t("tokenSettings.max", { max: customMax })}</span>
         </div>
       </div>
     </div>

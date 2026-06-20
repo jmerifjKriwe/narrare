@@ -22,7 +22,6 @@ import structlog
 # narrare: allow-agent reason="ModelRegistry convenience run()/stream() creates ephemeral Agent"
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import UsageLimitExceeded
-from pydantic_ai.usage import UsageLimits
 
 from narrare_core.llm._model_settings import (
     build_runtime_model_settings,
@@ -32,12 +31,14 @@ from narrare_core.llm._model_settings import (
 )
 from narrare_core.llm._providers.registry import get as get_provider
 from narrare_core.llm.result import StreamChunk, TokenUsage
+from narrare_core.llm.run_limits import profile_to_usage_limits
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from pydantic_ai.models import Model
     from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.usage import UsageLimits
 
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.intents import LLMIntent
@@ -75,25 +76,13 @@ class ModelRegistry:
         as the ``token_limit_profile`` column.
 
         Args:
-            profile: One of "quick", "balanced", "long_texts", "conservative", "custom".
+            profile: Public token profile. Retired legacy aliases are handled
+                by the run-limit compatibility helper.
 
         Returns:
             Configured UsageLimits, or None if the profile is unknown.
         """
-        profiles: dict[str, dict[str, int]] = {
-            "quick": {"request_limit": 10, "total_tokens_limit": 16000},
-            "balanced": {"request_limit": 25, "total_tokens_limit": 64000},
-            "long_texts": {"request_limit": 25, "total_tokens_limit": 128000},
-            "conservative": {"request_limit": 10, "total_tokens_limit": 32000},
-            "custom": {"request_limit": 25, "total_tokens_limit": 64000},  # falls back to balanced
-        }
-        limits = profiles.get(profile)
-        if limits is None:
-            return None
-        return UsageLimits(
-            request_limit=limits["request_limit"],
-            total_tokens_limit=limits["total_tokens_limit"],
-        )
+        return profile_to_usage_limits(profile)
 
     async def get_model(
         self,

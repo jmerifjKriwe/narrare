@@ -16,7 +16,9 @@ if TYPE_CHECKING:
 
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.intents import LLMIntent
+    from narrare_core.llm.model_calibration import ModelLimitCalibration
     from narrare_core.llm.model_listing import ModelCatalogEntry
+    from narrare_core.llm.model_suitability import ModelSuitabilityResult
     from narrare_core.llm.result import StreamChunk
 
 
@@ -152,4 +154,40 @@ class ModelCatalogProtocol(Protocol):
         ModelCatalogError
             If the provider API is unreachable or returns an error.
         """
+        ...
+
+
+@runtime_checkable
+class ModelLimitCalibrationProviderProtocol(Protocol):
+    """Contract for resolving model-limit calibration evidence.
+
+    Implementations may use cache, remote provider metadata, or test fakes, but
+    they must return a typed result that distinguishes fresh/stale/unknown and
+    offline states instead of collapsing them into ``None``.
+    """
+
+    def get_model_limit_calibration(
+        self,
+        provider: str,
+        model_id: str,
+    ) -> ModelLimitCalibration:
+        """Return typed model-limit calibration evidence for provider/model."""
+        ...
+
+
+@runtime_checkable
+class ModelSuitabilityEvaluatorProtocol(Protocol):
+    """Contract for CR-08 model suitability evaluation."""
+
+    def evaluate(
+        self,
+        *,
+        intent: LLMIntent,
+        calibration: ModelLimitCalibration,
+        requested_output_tokens: int,
+        effective_output_tokens: int | None = ...,
+        model_capability_tier: str | None = ...,
+        required_input_tokens: int | None = ...,
+    ) -> ModelSuitabilityResult:
+        """Return advisory/warning/hard-block suitability result."""
         ...

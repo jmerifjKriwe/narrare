@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai.usage import UsageLimits
 
 from narrare_core.llm.cost_rates import get_model_limits
+from narrare_core.llm.token_profiles import get_usage_limit_preset
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -121,26 +122,19 @@ def profile_to_usage_limits(profile: str) -> UsageLimits | None:
     as the ``token_limit_profile`` column.
 
     Args:
-        profile: One of "quick", "balanced", "long_texts", "comprehensive",
-            "conservative", "custom".
+        profile: Public profile name. The retired ``conservative`` alias is
+            accepted here only as a legacy compatibility boundary and maps to
+            ``balanced``.
 
     Returns:
         Configured UsageLimits, or None if the profile is unknown.
     """
-    profiles: dict[str, dict[str, int]] = {
-        "quick": {"request_limit": 10, "total_tokens_limit": 16000},
-        "balanced": {"request_limit": 25, "total_tokens_limit": 64000},
-        "long_texts": {"request_limit": 25, "total_tokens_limit": 128000},
-        "comprehensive": {"request_limit": 25, "total_tokens_limit": 256000},
-        "conservative": {"request_limit": 10, "total_tokens_limit": 32000},
-        "custom": {"request_limit": 25, "total_tokens_limit": 64000},  # falls back to balanced
-    }
-    limits = profiles.get(profile)
-    if limits is None:
+    preset = get_usage_limit_preset(profile, normalize_legacy=True)
+    if preset is None:
         return None
     return UsageLimits(
-        request_limit=limits["request_limit"],
-        total_tokens_limit=limits["total_tokens_limit"],
+        request_limit=preset.request_limit,
+        total_tokens_limit=preset.total_tokens_limit,
     )
 
 

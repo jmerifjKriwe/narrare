@@ -256,19 +256,25 @@ class TestUpdateProjectLimitsEndpoint:
 class TestUpdateTokenLimitsRequestSchema:
     """Schema-level validation for UpdateTokenLimitsRequest.token_profile.
 
-    Regression test: comprehensive and conservative profiles were added to
-    Core (run_limits.py, model_config.py, intent_profiles.py) but the API
-    schema regex rejected them. All 6 profiles must be accepted.
+    CR-08 P1: the public vocabulary is exactly the five Core profiles
+    (``quick``, ``balanced``, ``long_texts``, ``comprehensive``, ``custom``).
+    The retired ``conservative`` alias is rejected on writes and normalised
+    to ``balanced`` only at the read boundary.
     """
 
     @pytest.mark.parametrize(
         "profile",
-        ["quick", "balanced", "long_texts", "comprehensive", "conservative", "custom"],
+        ["quick", "balanced", "long_texts", "comprehensive", "custom"],
     )
-    def test_all_six_profiles_accepted(self, profile: str) -> None:
-        """The schema must accept all 6 token profiles."""
+    def test_all_public_profiles_accepted(self, profile: str) -> None:
+        """The schema must accept exactly the five public token profiles."""
         req = UpdateTokenLimitsRequest(token_profile=profile)
         assert req.token_profile == profile
+
+    def test_conservative_alias_rejected(self) -> None:
+        """The retired ``conservative`` alias must be rejected on writes."""
+        with pytest.raises(ValidationError):
+            UpdateTokenLimitsRequest(token_profile="conservative")
 
     def test_invalid_profile_rejected(self) -> None:
         """Unknown profiles must be rejected by the schema."""

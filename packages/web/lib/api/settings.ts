@@ -33,6 +33,21 @@ export interface ModelRefreshResponse {
   message?: string;
 }
 
+export interface TokenLimitsQuery {
+  readonly provider?: string;
+  readonly modelId?: string;
+  readonly intent?: string;
+}
+
+function buildTokenLimitsPath(query?: TokenLimitsQuery): string {
+  const params = new URLSearchParams();
+  if (query?.provider) params.set("provider", query.provider);
+  if (query?.modelId) params.set("model_id", query.modelId);
+  if (query?.intent) params.set("intent", query.intent);
+  const queryString = params.toString();
+  return queryString ? `/settings/token-limits/?${queryString}` : "/settings/token-limits/";
+}
+
 // --- User & Project Settings ---
 
 export const settingsApi = {
@@ -94,16 +109,17 @@ export const aiSettingsApi = {
 // --- Token Limits ---
 
 export const tokenLimitsApi = {
-  getResolved: () => fetchApi<TokenLimitsResponse>("/settings/token-limits/"),
+  getResolved: (query?: TokenLimitsQuery) =>
+    fetchApi<TokenLimitsResponse>(buildTokenLimitsPath(query)),
 
   updateUser: (data: UpdateTokenLimitsRequest) =>
-    fetchApi<TokenLimitsResponse>("/settings/token-limits/user", {
+    fetchApi<void>("/settings/token-limits/user", {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
   updateProject: (projectId: string, data: UpdateTokenLimitsRequest) =>
-    fetchApi<TokenLimitsResponse>(`/settings/token-limits/project/${projectId}`, {
+    fetchApi<void>(`/settings/token-limits/project/${projectId}`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),

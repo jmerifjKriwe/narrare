@@ -1,25 +1,38 @@
+import { TOKEN_PROFILE_VALUES } from "@/lib/token-profiles";
 import type { ContextTier, TokenLimitProfile } from "@/types";
 
-export const TOKEN_PROFILES: { value: TokenLimitProfile; labelKey: string }[] = [
-  { value: "quick", labelKey: "settings.ai.tokenProfileQuick" },
-  { value: "balanced", labelKey: "settings.ai.tokenProfileBalanced" },
-  { value: "conservative", labelKey: "settings.ai.tokenProfileConservative" },
-  { value: "long_texts", labelKey: "settings.ai.tokenProfileLong" },
-  { value: "comprehensive", labelKey: "settings.ai.tokenProfileComprehensive" },
-  { value: "custom", labelKey: "settings.ai.tokenProfileCustom" },
-];
+/**
+ * Re-exported so existing imports (`TOKEN_PROFILE_VALUES` from this module,
+ * e.g. the editor panel) keep resolving. The canonical definition lives in
+ * `lib/token-profiles` and is parity-tested there.
+ */
+export { TOKEN_PROFILE_VALUES };
 
 /**
- * Canonical ordered list of all token profile values.
+ * i18n label keys for the settings page profile selector, keyed by profile
+ * value. A `Record<TokenLimitProfile, string>` enforces at compile time that
+ * every public profile has a label — adding a profile to the type without a
+ * label here is a type error.
  *
- * Derived from TOKEN_PROFILES so there is a single source of truth for
- * ordering. Components that need different label keys (e.g. the editor
- * panel uses shorter labels) can map over this list with their own
- * `Record<TokenLimitProfile, string>` lookup.
+ * The catalogue itself comes from the API at runtime; this map only labels it.
  */
-export const TOKEN_PROFILE_VALUES: readonly TokenLimitProfile[] = TOKEN_PROFILES.map(
-  (p) => p.value,
-);
+export const PROFILE_LABEL_KEYS: Readonly<Record<TokenLimitProfile, string>> = {
+  quick: "settings.ai.tokenProfileQuick",
+  balanced: "settings.ai.tokenProfileBalanced",
+  long_texts: "settings.ai.tokenProfileLong",
+  comprehensive: "settings.ai.tokenProfileComprehensive",
+  custom: "settings.ai.tokenProfileCustom",
+};
+
+/**
+ * Compile-time fallback option list (value + label key). Runtime UI prefers
+ * the API `metadata.catalogue` payload; this constant is the parity anchor
+ * tested in `lib/__tests__/token-profiles.test.ts`.
+ *
+ * `conservative` is intentionally absent (CR-08 P1 D2).
+ */
+export const TOKEN_PROFILES: { value: TokenLimitProfile; labelKey: string }[] =
+  TOKEN_PROFILE_VALUES.map((value) => ({ value, labelKey: PROFILE_LABEL_KEYS[value] }));
 
 export const DEFAULT_TIER_PERCENTAGES: Record<ContextTier, number> = {
   immediate: 30,

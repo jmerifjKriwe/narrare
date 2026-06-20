@@ -152,11 +152,13 @@ entries:
   # ── P1 ────────────────────────────────────────────────────────────────────
   - setting_id: token_profile_vocabulary
     classification: user
-    lifecycle: formal_finding
+    lifecycle: adopted
     source: >-
-      Core PROFILE_OUTPUT_LIMITS; gateway _profile_to_limits; API schemas;
-      frontend profile enums/types.
-    resolver_service: (pending) unified token-profile contract/enum
+      Core token_profiles.py public vocabulary and preset limits; API schemas
+      and metadata catalogue; frontend token-profiles.ts constants/types.
+    resolver_service: >-
+      packages/core/narrare_core/llm/token_profiles.py::TokenLimitProfile
+      consumed by Backend schemas/validators and Frontend contract constants.
     runtime_consumer: >-
       ModelRegistry profile mapping; API token-limit schemas; frontend
       TokenSettings profile selector.
@@ -164,35 +166,55 @@ entries:
       Selecting a profile (quick/balanced/long_texts/comprehensive/custom)
       should select a single canonical output limit across all layers.
     fallback_policy: >-
-      Until unified: stale `conservative` and missing `comprehensive` produce
-      cross-layer drift; `custom` semantics ambiguous (profile vs raw limit).
-    enforcement_evidence: []
-    cross_layer_evidence: []
+      P1 policy removes `conservative` from the public contract; new writes reject
+      it and existing persisted values normalize to `balanced`. `custom` is raw
+      output_limit mode, not a preset.
+    enforcement_evidence:
+      - "tests/unit/core/llm/test_token_profiles.py"
+      - "tests/unit/api/settings/test_cr08_p1_token_profile_contract.py"
+      - "tests/unit/api/settings/test_cr08_p1_cross_layer_contract.py::test_core_backend_and_frontend_public_profiles_are_identical"
+      - "tests/unit/api/settings/test_cr08_p1_cross_layer_contract.py::test_preset_maps_and_custom_semantics_match_across_layers"
+      - "packages/web/lib/__tests__/token-profiles.test.ts"
+    cross_layer_evidence:
+      - "packages/core/narrare_core/llm/token_profiles.py owns the Python vocabulary and caps."
+      - "apps/api/narrare/settings/token_limits/_validators.py and metadata_service.py derive public profile contracts from Core."
+      - "packages/web/lib/token-profiles.ts mirrors the contract and is checked by Platform parity tests."
     cr_task: CR-AUFG-08-03
     finding: FIND-013
     phase: P1
     review_trigger: >-
-      Becomes `adopted` when a single typed profile contract exists with
-      frontend/backend/core parity tests.
+      Becomes `adopted` when the P1 policy in
+      docs/architecture/governance/cr-08-p1-token-limits-and-suitability-policy.md
+      is implemented with frontend/backend/core parity tests.
     rationale: >-
       Formal cross-layer vocabulary drift; tracked remediation required.
 
   - setting_id: token_settings_ui_api_parity
     classification: user
-    lifecycle: formal_finding
+    lifecycle: adopted
     source: >-
       Frontend TokenSettings slider max (16000); API max_tokens ceiling
       (131072); profile visibility in UI vs API schema.
-    resolver_service: (pending) shared UI/API cap + profile contract
+    resolver_service: >-
+      TokenLimitsMetadataService shared token settings metadata: profile values, preset limits,
+      TOKEN_OUTPUT_ABSOLUTE_MAX=131072, UX recommended max=16000, and model cap.
     runtime_consumer: Frontend TokenSettings; API token-limit validators.
     effect_semantics: >-
       UI hard caps and profile visibility should match backend/core or be
       explicitly labelled UX-protective.
     fallback_policy: >-
-      Until unified: UI may hide larger model capacity; profile parity gaps
-      remain.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+      UI may keep a 16000 slider only as an explicitly labelled UX-recommended
+      range and only if custom input exposes the API/model effective max.
+    enforcement_evidence:
+      - "tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py::TestResponseCatalogueMetadata"
+      - "tests/unit/api/settings/test_cr08_p1_cross_layer_contract.py::test_absolute_and_recommended_caps_match_with_ux_protective_evidence"
+      - "tests/unit/api/settings/test_cr08_p1_cross_layer_contract.py::test_frontend_options_are_anchored_to_the_contract_not_a_stale_literal"
+      - "packages/web/components/studio/settings/__tests__/AiTab.test.tsx"
+      - "packages/web/components/studio/editor/__tests__/TokenSettings.test.tsx"
+    cross_layer_evidence:
+      - "Backend response metadata exposes absolute_max=131072 and ux_recommended_max=16000 from Core."
+      - "Frontend settings UI labels the 16k slider as a recommended range and exposes custom numeric input above 16k."
+      - "Compact editor TokenSettings refetches resolved limits after 204 writes and supports custom >16k paths."
     cr_task: CR-AUFG-08-10
     finding: FIND-013
     phase: P1
@@ -202,22 +224,34 @@ entries:
 
   - setting_id: model_limit_calibration
     classification: operator
-    lifecycle: formal_finding
+    lifecycle: adopted
     source: >-
-      models.dev cache (get_model_limits); TokenLimitsService.get_model_limits;
-      selected provider/model from DB settings.
-    resolver_service: DefaultRunLimitResolver (caps to known provider max)
+      models.dev cache / metadata snapshots; selected provider/model from DB
+      settings; typed calibration source status.
+    resolver_service: >-
+      DefaultRunLimitResolver plus typed ModelLimitCalibration with source
+      status (known_fresh, known_stale, unknown_model, offline_no_cache,
+      invalid_metadata).
     runtime_consumer: >-
-      ModelRegistry run/stream (caps applied); calibration warnings (pending).
+      ModelRegistry run/stream (caps applied); token-limit metadata calibration
+      warnings and labels.
     effect_semantics: >-
       Too-high limits are now capped to known provider max; too-low/unknown/
       offline states should emit warning labels rather than imply calibration.
     fallback_policy: >-
-      Cap to known max when available; warn on unknown/offline. No silent
-      calibrated claim when source is stale.
+      Cap to known fresh/stale max when available; warn on stale metadata; warn
+      and do not claim calibration for unknown/offline/invalid metadata. No silent
+      fake ceiling.
     enforcement_evidence:
       - "tests/unit/core/llm/test_run_limits.py::TestDefaultRunLimitResolver.test_caps_to_known_provider_max_output"
-    cross_layer_evidence: []
+      - "tests/unit/core/llm/test_model_limit_calibration.py"
+      - "tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py::TestCalibrationMetadataExposure"
+      - "packages/web/components/studio/settings/__tests__/AiTab.test.tsx"
+      - "packages/web/components/studio/settings/__tests__/TokenMetadataWarnings.test.tsx"
+    cross_layer_evidence:
+      - "Core model_calibration.py exposes known_fresh/known_stale/unknown_model/offline_no_cache/invalid_metadata statuses."
+      - "Backend TokenLimitsMetadataService maps calibration status into response metadata."
+      - "Frontend TokenMetadataWarnings renders stale/offline/unknown/invalid labels without presenting them as calibrated."
     cr_task: CR-AUFG-08-07
     phase: P1
     review_trigger: >-
@@ -228,11 +262,13 @@ entries:
 
   - setting_id: model_suitability_policy
     classification: operator
-    lifecycle: formal_finding
+    lifecycle: adopted
     source: >-
       Intent profiles (get_intent_profile); ResolvedModel.recommended_tier;
       provider/model capability metadata.
-    resolver_service: (pending) model-suitability policy table
+    resolver_service: >-
+      Core model_suitability evaluator using get_intent_profile(), model
+      limit metadata, requested/effective output limits, and provider usability.
     runtime_consumer: >-
       Advisory only — recommended_tier stored but does not constrain/select
       model.
@@ -240,10 +276,18 @@ entries:
       Selecting a model below recommended tier should surface advisory vs
       warning vs hard block per intent tier.
     fallback_policy: >-
-      Until policy exists: suitability is advisory-only; no hard block except
-      impossible/unsafe calls.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+      Advisory for lower/unknown capability when technically usable; warning for
+      stale/offline/unknown metadata or capped-but-viable output; hard block only
+      unusable provider/model, non-text model, known output below intent minimum
+      viable floor, or insufficient context for required input plus minimum output.
+    enforcement_evidence:
+      - "tests/unit/core/llm/test_model_suitability.py"
+      - "tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py::TestSuitabilityWarningExposure"
+      - "packages/web/components/studio/settings/__tests__/TokenMetadataWarnings.test.tsx"
+    cross_layer_evidence:
+      - "Core model_suitability.py evaluates advisory/warning/hard_block severity from intent profile and calibration."
+      - "Backend TokenLimitsMetadataService exposes suitability metadata for API/UI consumers."
+      - "Frontend TokenMetadataWarnings renders suitability advisory/warning/hard block messages."
     cr_task: CR-AUFG-08-11
     phase: P1
     review_trigger: Becomes `adopted` when policy table + warning/block tests exist.

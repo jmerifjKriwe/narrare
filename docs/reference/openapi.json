@@ -5475,7 +5475,7 @@
           "token-limits"
         ],
         "summary": "Get Resolved Limits",
-        "description": "Get resolved token limits (merged across all layers).\n\nQueries are optional:\n- ``project_id``: Include project-level overrides.",
+        "description": "Get resolved token limits (merged across all layers).\n\nOptional query parameters:\n- ``project_id``: Include project-level overrides.\n- ``provider`` + ``model_id``: Attach model calibration metadata.\n- ``intent`` (with provider/model): Attach suitability metadata.",
         "operationId": "get_resolved_limits_api_v1_settings_settings_token_limits__get",
         "security": [
           {
@@ -5497,6 +5497,54 @@
                 }
               ],
               "title": "Project Id"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "intent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
             }
           }
         ],
@@ -9312,6 +9360,90 @@
         },
         "type": "object",
         "title": "Body_mark_all_stale_api_v1_novels__novel_id__wiki_mark_stale_post"
+      },
+      "CalibrationSourceMetadata": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "provider_max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Max Output Tokens"
+          },
+          "context_window_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window Tokens"
+          },
+          "source_timestamp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Timestamp"
+          },
+          "cache_age_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Age Seconds"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "model_id",
+          "status",
+          "source"
+        ],
+        "title": "CalibrationSourceMetadata",
+        "description": "Typed provider/model calibration evidence for a limit lookup."
       },
       "CascadePathResponse": {
         "properties": {
@@ -14377,6 +14509,104 @@
         "title": "StoryboardStageResponse",
         "description": "A single stage within the storyboard, with its chapters."
       },
+      "SuitabilityIssueMetadata": {
+        "properties": {
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "severity",
+          "code",
+          "message"
+        ],
+        "title": "SuitabilityIssueMetadata",
+        "description": "One suitability finding (advisory / warning / hard_block)."
+      },
+      "SuitabilityMetadata": {
+        "properties": {
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "output_profile": {
+            "type": "string",
+            "title": "Output Profile"
+          },
+          "requested_output_tokens": {
+            "type": "integer",
+            "title": "Requested Output Tokens"
+          },
+          "effective_output_tokens": {
+            "type": "integer",
+            "title": "Effective Output Tokens"
+          },
+          "recommended_output_tokens": {
+            "type": "integer",
+            "title": "Recommended Output Tokens"
+          },
+          "minimum_viable_output_tokens": {
+            "type": "integer",
+            "title": "Minimum Viable Output Tokens"
+          },
+          "calibration_status": {
+            "type": "string",
+            "title": "Calibration Status"
+          },
+          "provider_max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Max Output Tokens"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "is_allowed": {
+            "type": "boolean",
+            "title": "Is Allowed"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/SuitabilityIssueMetadata"
+            },
+            "type": "array",
+            "title": "Issues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "output_profile",
+          "requested_output_tokens",
+          "effective_output_tokens",
+          "recommended_output_tokens",
+          "minimum_viable_output_tokens",
+          "calibration_status",
+          "provider_max_output_tokens",
+          "severity",
+          "is_allowed",
+          "issues"
+        ],
+        "title": "SuitabilityMetadata",
+        "description": "Suitability decision for one model/intent/output request."
+      },
       "SummarizeRequest": {
         "properties": {
           "max_sentences": {
@@ -15127,6 +15357,11 @@
             "title": "Token Profile",
             "default": "balanced"
           },
+          "effective_output_limit": {
+            "type": "integer",
+            "title": "Effective Output Limit",
+            "default": 2000
+          },
           "tier_percentages": {
             "additionalProperties": {
               "type": "number"
@@ -15153,11 +15388,98 @@
             "type": "integer",
             "title": "Max Selection Words",
             "default": 2000
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/TokenLimitsCatalog"
+          },
+          "calibration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalibrationSourceMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "suitability": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuitabilityMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
+        "required": [
+          "metadata"
+        ],
         "title": "TokenLimitOverridesResponse",
-        "description": "Fully resolved token limit configuration.\n\nReturned by the GET endpoint after merging all layers."
+        "description": "Fully resolved token limit configuration plus CR-08 P1 metadata.\n\nReturned by the GET endpoint after merging all layers. ``output_limit``\nis the *requested* raw limit; ``effective_output_limit`` applies the\nresolved profile semantics. ``metadata`` always carries the Core-derived\ncatalogue and caps; ``calibration``/``suitability`` are populated when\nthe caller supplies provider/model/intent query parameters."
+      },
+      "TokenLimitsCatalog": {
+        "properties": {
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/TokenProfilePreset"
+            },
+            "type": "array",
+            "title": "Profiles"
+          },
+          "absolute_max": {
+            "type": "integer",
+            "title": "Absolute Max",
+            "description": "Largest raw output limit accepted before provider calibration."
+          },
+          "ux_recommended_max": {
+            "type": "integer",
+            "title": "Ux Recommended Max",
+            "description": "Recommended UX slider range; not a provider or API hard maximum."
+          }
+        },
+        "type": "object",
+        "required": [
+          "profiles",
+          "absolute_max",
+          "ux_recommended_max"
+        ],
+        "title": "TokenLimitsCatalog",
+        "description": "Static token-limit vocabulary and caps, derived from Core."
+      },
+      "TokenProfilePreset": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "preset_output_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Output Limit",
+            "description": "Fixed preset output limit; None for the custom mode."
+          },
+          "is_custom": {
+            "type": "boolean",
+            "title": "Is Custom",
+            "description": "True for the custom raw mode.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "TokenProfilePreset",
+        "description": "One public token-limit profile and its preset output limit (if any)."
       },
       "TokenResponse": {
         "properties": {
@@ -15538,7 +15860,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^(quick|balanced|long_texts|comprehensive|conservative|custom)$"
+                "pattern": "^(quick|balanced|long_texts|comprehensive|custom)$"
               },
               {
                 "type": "null"
@@ -15602,7 +15924,7 @@
         },
         "type": "object",
         "title": "UpdateTokenLimitsRequest",
-        "description": "Partial update request for token limit overrides.\n\nAll fields are optional — only provided fields are persisted."
+        "description": "Partial update request for token limit overrides.\n\nAll fields are optional — only provided fields are persisted. The\n``token_profile`` pattern is derived from Core's public vocabulary; the\nretired ``conservative`` alias is rejected here."
       },
       "UpdateUserAiSettingsRequest": {
         "properties": {

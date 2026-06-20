@@ -230,6 +230,18 @@
     "checking": "Konsistenz wird geprüft…",
     "noIssues": "Keine Konsistenzprobleme gefunden!"
   },
+  "tokenWarnings": {
+    "calibrated": "Das Ausgabe-Limit des Modells ist mit aktuellen Metadaten kalibriert.",
+    "calibrationStale": "Die Modell-Limit-Metadaten sind veraltet; die effektive Grenze kann überholt sein.",
+    "calibrationUnknown": "Das Ausgabe-Limit des Modells ist unbekannt; diese Einstellung ist nicht kalibriert.",
+    "calibrationOffline": "Modell-Metadaten sind offline nicht verfügbar; diese Einstellung ist ungeprüft.",
+    "calibrationInvalid": "Modell-Metadaten sind ungültig; diese Einstellung ist unkalibriert.",
+    "providerTooSmall": "Das ausgewählte Modell ist für diesen Intent zu klein.",
+    "providerCapBelowRequested": "Das ausgewählte Modell kann die Ausgabe unter das angeforderte Limit begrenzen.",
+    "contextTooSmall": "Das Kontextfenster des ausgewählten Modells ist für diesen Intent zu klein.",
+    "capabilityUnknown": "Die Modellfähigkeit für diesen Intent ist unbekannt.",
+    "capabilityBelowRecommendation": "Die Modellfähigkeit liegt unter der empfohlenen Stufe für diesen Intent."
+  },
   "analysis": {
     "title": "Analyse & Statistiken",
     "description": "KI-gestützte Analysen helfen dir, deine Geschichte zu verbessern",
@@ -373,7 +385,6 @@
       "tokenProfileQuick": "Schnell (max 500 Tokens)",
       "tokenProfileBalanced": "Ausgewogen (max 2000 Tokens)",
       "tokenProfileLong": "Lange Texte (max 8000 Tokens)",
-      "tokenProfileConservative": "Konservativ (max 2000 Tokens)",
       "tokenProfileComprehensive": "Umfassend (max 16000 Tokens)",
       "tokenProfileCustom": "Benutzerdefiniert",
       "promptsInfo": "System-Prompts können pro Schreibabsicht angepasst werden. Diese Funktion wird über den Prompt-Editor verfügbar sein.",
@@ -442,7 +453,10 @@
         "description": "Pro-Kategorie Limits bei benutzerdefiniertem Profil",
         "maxTokens": "Max Tokens",
         "temperature": "Temperatur",
-        "maxTokensWarning": "Wert {value} ist sehr hoch — könnte Modellgrenzen überschreiten"
+        "maxTokensWarning": "Wert {value} ist sehr hoch — könnte Modellgrenzen überschreiten",
+        "recommendedRangeLabel": "Empfohlener Bereich bis 16k Tokens",
+        "customOutputLimitLabel": "Benutzerdefiniertes Ausgabe-Limit",
+        "customOutputLimitHint": "Der Slider deckt den empfohlenen Bereich ({recommendedMax} Tokens) ab. Gib für größere Modell-/API-Kapazität einen Wert bis {max} Tokens ein."
       },
       "modelData": {
         "title": "Modelldaten",
@@ -1674,11 +1688,12 @@
     "profileQuick": "Schnell",
     "profileBalanced": "Ausgeglichen",
     "profileLong": "Lange Texte",
-    "profileConservative": "Konservativ",
     "profileComprehensive": "Umfassend",
     "profileCustom": "Benutzerdefiniert",
     "outputLimit": "Ausgabelimit",
-    "max": "16K"
+    "customOutputLimit": "Benutzerdefiniertes Ausgabelimit",
+    "recommendedRange": "Empfohlener Slider-Bereich bis {max} Tokens",
+    "max": "Max. {max}"
   },
   "ghostText": {
     "onboardingHint": "Tab = Übernehmen | → = Wortweise | Esc = Verwerfen",

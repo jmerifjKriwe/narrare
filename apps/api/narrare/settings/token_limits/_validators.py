@@ -1,19 +1,23 @@
-"""Token limit override validation — field and profile checks."""
+"""Token limit override validation — field and profile checks.
+
+CR-08 P1: the valid profile vocabulary is derived from Core
+(:mod:`narrare_core.llm.token_profiles`) so the backend cannot keep an
+independent string set that drifts. The retired ``conservative`` alias is
+therefore absent here and rejected on writes; legacy persisted values are
+normalised at the read boundary instead.
+"""
 
 from __future__ import annotations
 
+from narrare_core.llm.token_profiles import public_token_profile_values
 from narrare_core.shared.errors import ValidationError
 
-# Valid token profile names — matches narrare.settings.token_profiles
-# and narrare_core.llm.run_limits.profile_to_usage_limits (6 profiles).
-VALID_PROFILES: set[str] = {
-    "quick",
-    "balanced",
-    "long_texts",
-    "comprehensive",
-    "conservative",
-    "custom",
-}
+#: Valid public token profile names — derived from Core (CR-08 P1 D1).
+#:
+#: This is the single backend write-boundary vocabulary. It equals Core's
+#: ``public_token_profile_values()`` and intentionally excludes the retired
+#: ``conservative`` legacy alias.
+VALID_PROFILES: set[str] = set(public_token_profile_values())
 
 # Valid fields that can be overridden
 VALID_OVERRIDE_FIELDS: set[str] = {

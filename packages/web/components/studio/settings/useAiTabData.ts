@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { aiSettingsApi, tokenLimitsApi } from "@/lib/api/client";
 import type { ContextTier, ModelOverride, TokenLimitProfile } from "@/types";
+import { buildTokenLimitsQuery, normalizeTierPercentages } from "./useAiTabDataHelpers";
+import { useProviderModelCache } from "./useProviderModelCache";
 
 /** All data-fetching, mutations, and handler logic for the AI settings tab. */
 export function useAiTabData() {
@@ -27,31 +28,16 @@ export function useAiTabData() {
   });
 
   const { data: tokenLimitsData } = useQuery({
-    queryKey: ["settings", "token-limits"],
-    queryFn: tokenLimitsApi.getResolved,
+    queryKey: [
+      "settings",
+      "token-limits",
+      aiSettings?.default_provider_id,
+      aiSettings?.default_model,
+    ],
+    queryFn: () => tokenLimitsApi.getResolved(buildTokenLimitsQuery(aiSettings)),
   });
 
-  // Dynamic model loading per provider (for overrides)
-  const [providerModelsCache, setProviderModelsCache] = useState<
-    Record<string, { value: string; label: string }[]>
-  >({});
-  const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
-
-  async function loadModelsForProvider(providerId: string) {
-    if (providerModelsCache[providerId] || loadingModels[providerId]) return;
-    setLoadingModels((prev) => ({ ...prev, [providerId]: true }));
-    try {
-      const data = await aiSettingsApi.getProviderModels(providerId);
-      setProviderModelsCache((prev) => ({
-        ...prev,
-        [providerId]: data.models.map((m) => ({ value: m.id, label: m.name })),
-      }));
-    } catch {
-      // Silently fail — the user can still type a model ID manually
-    } finally {
-      setLoadingModels((prev) => ({ ...prev, [providerId]: false }));
-    }
-  }
+  const { providerModelsCache, loadingModels, loadModelsForProvider } = useProviderModelCache();
 
   // Settings mutation
   const updateAiSettingsMutation = useMutation({
@@ -87,6 +73,10 @@ export function useAiTabData() {
     updateTokenLimitsMutation.mutate({ token_profile: profile });
   }
 
+  function handleCustomOutputLimitChange(outputLimit: number) {
+    updateTokenLimitsMutation.mutate({ token_profile: "custom", output_limit: outputLimit });
+  }
+
   function handleCategoryOverridesChange(categoryOverrides: Record<string, ModelOverride>) {
     updateAiSettingsMutation.mutate({ category_overrides: categoryOverrides });
   }
@@ -101,11 +91,9 @@ export function useAiTabData() {
   }
 
   function handleTierPercentagesChange(tierPercentages: Record<ContextTier, number>) {
-    const normalized: Partial<Record<ContextTier, number>> = {};
-    for (const [key, val] of Object.entries(tierPercentages)) {
-      normalized[key as ContextTier] = val / 100;
-    }
-    updateTokenLimitsMutation.mutate({ tier_percentages: normalized });
+    updateTokenLimitsMutation.mutate({
+      tier_percentages: normalizeTierPercentages(tierPercentages),
+    });
   }
 
   function handleSystemTimeoutsChange(values: {
@@ -137,6 +125,7 @@ export function useAiTabData() {
     handleDefaultProviderChange,
     handleDefaultModelChange,
     handleTokenProfileChange,
+    handleCustomOutputLimitChange,
     handleCategoryOverridesChange,
     handleIntentOverridesChange,
     handleTierPercentagesChange,
