@@ -45,6 +45,60 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Exception Baseline — no-growth gate for new exception types
+      - id: exception-baseline
+        name: Exception Baseline (no-growth gate)
+        entry: uv run python scripts/check_exception_baseline.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Python File Size — RULE-04 enforcement
+      - id: python-file-size
+        name: Python File Size (RULE-04)
+        entry: uv run python scripts/check_python_file_size.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Prompt Surface Contract — ADR-037 enforcement
+      - id: prompt-surface-contract
+        name: Prompt Surface Contract (ADR-037)
+        entry: uv run python scripts/check_prompt_surface_contract.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Streaming Compliance — RULE-20 enforcement
+      - id: streaming-compliance
+        name: Streaming Compliance (RULE-20)
+        entry: uv run python scripts/check_streaming_compliance.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Configuration Adoption Matrix — ADR-051 enforcement
+      - id: configuration-matrix
+        name: Configuration Adoption Matrix (ADR-051)
+        entry: uv run python scripts/check_configuration_matrix.py
+        language: system
+        pass_filenames: false
+        files: ^docs/architecture/governance/configuration-adoption-matrix\.yaml$
+        stages: [pre-commit]
+
+      # Locale Sync — i18n drift detection for prompts
+      - id: locale-sync
+        name: Locale Sync (i18n drift)
+        entry: uv run python scripts/check_locale_sync.py
+        language: system
+        pass_filenames: false
+        files: ^packages/core/narrare_core/prompts/
+        stages: [pre-commit]
+
       # OpenAPI spec auto-regeneration — mutates docs/openapi.json when API surface changes
       - id: openapi-regenerate
         name: OpenAPI Spec (auto-regenerate)
