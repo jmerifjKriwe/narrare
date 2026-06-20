@@ -36,6 +36,15 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # AI Interaction Standards (ADR-043) — §16 compliance for frontend AI components
+      - id: ai-interaction-compliance
+        name: AI Interaction Compliance (ADR-043)
+        entry: uv run python scripts/checks/check_ai_interaction_compliance.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # OpenAPI spec auto-regeneration — mutates docs/openapi.json when API surface changes
       - id: openapi-regenerate
         name: OpenAPI Spec (auto-regenerate)

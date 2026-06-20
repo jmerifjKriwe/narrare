@@ -1053,13 +1053,18 @@ testing standards describe the same 80% global status.
 | Area | DX, Governance, SSOT consistency |
 | Review trigger/date | Re-review if CURRENT_STATE.md reintroduces a hard-coded adoption-debt count that drifts from check-adoption. |
 
-**Exit evidence (2026-06-20):** The Say-Do drift is closed. `CURRENT_STATE.md` no
-longer claims "0 adoption debt"; it defers to `just check-adoption` as the
-authoritative source (AUFG-05-11 removed all volatile generated counts).
-`just check-adoption` reports `Feature Adoption Score: 0.97 (PASS)` with consistent
-static/runtime/adopted semantics across CURRENT_STATE.md, the adoption report and the
-health score. The remaining adoption-debt class is the governed inline-fallback
-baseline, tracked explicitly.
+**Exit evidence (2026-06-20):** Say-Do drift is closed. `CURRENT_STATE.md` defers
+to `just check-adoption` as the authoritative source. AUFG-05-11 removed all
+volatile generated counts from CURRENT_STATE.md.
+
+Implementation:
+- `docs/_shared/CURRENT_STATE.md` — defers to authoritative commands, no hardcoded debt counts
+- `scripts/check_adoption.py` — authoritative adoption scoring (static/runtime/adopted semantics)
+- `scripts/check_current_state_facts.py` — SSOT volatility-policy checker
+
+Enforcement:
+- `scripts/check_adoption.py` in pre-commit (always_run) + CI (blocking) — prevents adoption score regression
+- `scripts/check_current_state_facts.py` in CI (CI gate) — detects reintroduction of volatile counts in CURRENT_STATE.md
 
 ---
 
@@ -1074,13 +1079,19 @@ baseline, tracked explicitly.
 | Area | AI, Governance, adoption semantics |
 | Review trigger/date | Re-review if adoption reporting reintroduces a conflation of static-verified and runtime-adopted. |
 
-**Exit evidence (2026-06-20):** Runtime-evidence semantics are clarified and aligned.
-`just check-adoption` reports `static_verified`, `runtime_verified` and `adopted` as
+**Exit evidence (2026-06-20):** Runtime-evidence semantics clarified and aligned.
+`just check-adoption` reports `static_verified`, `runtime_verified`, `adopted` as
 distinct columns; all required modes show `runtime ✅ | adopted ✅` (score 0.97 PASS).
-`CURRENT_STATE.md` records the ADR-045 terminology ("infrastructure complete" ≠ "static
-verified" ≠ "runtime verified" ≠ "runtime adopted") and states runtime adoption gaps
-are closed. A static-only change no longer raises `adopted`. The owner/exit table for
-ratcheted baseline categories lives in INFRA-013.
+`CURRENT_STATE.md` records the ADR-045 terminology. A static-only change no longer
+raises `adopted`.
+
+Implementation:
+- `scripts/check_adoption.py` — runtime semantics columns (`static_verified`, `runtime_verified`, `adopted`)
+- `scripts/check_system_health.py` — aggregates runtime adoption into health score
+
+Enforcement:
+- `scripts/check_adoption.py` in pre-commit (always_run) + CI (blocking) — enforces distinct status columns
+- `tests/unit/scripts/test_check_adoption_runtime_semantics.py` — pytest unit tests validating runtime semantics
 
 ---
 
@@ -1141,8 +1152,14 @@ remains a deferred strategic enhancement (paired with AUFG-01-03).
 **Exit evidence (2026-06-20):** `Dockerfile:53` uses `ARG PNPM_VERSION=11.5.2`,
 matching the root `package.json` `packageManager: pnpm@11.5.2` pin. The release-build
 `pnpm install --frozen-lockfile` stage, Dockerfile, DevContainer Dockerfile and root
-package.json now share one pnpm version. (DevContainer parity is tracked under
-AUFG-04-03.)
+package.json now share one pnpm version. (DevContainer parity tracked under AUFG-04-03.)
+
+Implementation:
+- `Dockerfile` — ARG PNPM_VERSION=11.5.2
+- `package.json` — packageManager: pnpm@11.5.2
+
+Enforcement:
+- `scripts/check_doc_drift.py` — CI-blocking gate (via `scripts/doc_drift/tool_version_checks.py` pnpm checks) validates Dockerfile PNPM_VERSION matches package.json SSOT
 
 ---
 
