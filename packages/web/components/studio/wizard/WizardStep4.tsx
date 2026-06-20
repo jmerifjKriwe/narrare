@@ -1,8 +1,10 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { PROVIDERS } from "@/lib/providers";
 import { useWizardStore } from "@/lib/stores/wizardStore";
+import { FallbackCatalogNotice } from "./FallbackCatalogNotice";
+import { ModelSelector } from "./ModelSelector";
 import { useProviderSetup } from "./useProviderSetup";
 
 interface WizardStep4Props {
@@ -10,26 +12,9 @@ interface WizardStep4Props {
   onBack: () => void;
 }
 
-/**
- * Format an ISO date (`YYYY-MM-DD`) as a locale-aware "Month Year" string.
- * Constructed from parts in local time so the day never shifts across
- * timezones. Falls back to the raw string if it cannot be parsed.
- */
-function formatReviewedDate(isoDate: string, locale: string): string {
-  const parts = isoDate.split("-").map(Number);
-  const [year, month, day] = parts;
-  if (!year || !month || !day || parts.some((n) => Number.isNaN(n))) {
-    return isoDate;
-  }
-  return new Intl.DateTimeFormat(locale, { year: "numeric", month: "long" }).format(
-    new Date(year, month - 1, day),
-  );
-}
-
 export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
   const t = useTranslations("studio");
   const tCommon = useTranslations("common");
-  const locale = useLocale();
   const { updateStep4, state } = useWizardStore();
 
   const {
@@ -138,61 +123,18 @@ export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
           </div>
         )}
 
-        {modelsLoading ? (
-          <p className="text-sm text-muted-foreground p-2">{t("wizard.step4.modelLoading")}</p>
-        ) : models.length > 0 ? (
-          <div>
-            <label htmlFor="model" className="block text-sm font-medium mb-1.5">
-              {t("wizard.step4.model")}
-            </label>
-            <select
-              id="model"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-            >
-              <option value="">{t("wizard.step4.modelPlaceholder")}</option>
-              {models.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <div>
-            <label htmlFor="model_input" className="block text-sm font-medium mb-1.5">
-              {t("wizard.step4.model")}
-            </label>
-            <input
-              id="model_input"
-              type="text"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder={t("wizard.step4.modelPlaceholder")}
-              className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
-            />
-          </div>
-        )}
+        <ModelSelector
+          model={model}
+          models={models}
+          modelsLoading={modelsLoading}
+          setModel={setModel}
+        />
 
         {validating && (
           <p className="text-sm text-blue-600 dark:text-blue-400">{t("wizard.step4.validating")}</p>
         )}
 
-        {provenance?.source === "bundled-fallback" && (
-          <p
-            data-testid="fallback-catalog-notice"
-            className="text-xs text-muted-foreground bg-muted/50 border border-border rounded-md p-2 leading-relaxed"
-          >
-            {t("wizard.step4.fallbackCatalogNotice")}
-            {provenance.last_reviewed && (
-              <span data-testid="fallback-reviewed-date" className="block mt-1">
-                {t("wizard.step4.fallbackCatalogReviewed")}{" "}
-                {formatReviewedDate(provenance.last_reviewed, locale)}
-              </span>
-            )}
-          </p>
-        )}
+        <FallbackCatalogNotice provenance={provenance} />
 
         {error && (
           <p className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">{error}</p>
