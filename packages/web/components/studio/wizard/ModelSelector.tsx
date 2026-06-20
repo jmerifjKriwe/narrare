@@ -12,8 +12,8 @@ interface ModelSelectorProps {
 /**
  * Three-state model picker for wizard step 4:
  * - loading: shows a transient "loading models" hint
- * - models available: a `<select>` populated from the catalog
- * - no models / fetch failed: a free-text `<input>` fallback
+ * - models available: a native select populated from the catalog
+ * - no models / fetch failed: a free-text input fallback
  */
 export function ModelSelector({ model, models, modelsLoading, setModel }: ModelSelectorProps) {
   const t = useTranslations("studio");
@@ -30,6 +30,7 @@ export function ModelSelector({ model, models, modelsLoading, setModel }: ModelS
         </label>
         <select
           id="model"
+          data-testid="model-select"
           value={model}
           onChange={(e) => setModel(e.target.value)}
           className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm"
@@ -53,6 +54,7 @@ export function ModelSelector({ model, models, modelsLoading, setModel }: ModelS
       <input
         id="model_input"
         type="text"
+        data-testid="model-input"
         value={model}
         onChange={(e) => setModel(e.target.value)}
         placeholder={t("wizard.step4.modelPlaceholder")}
