@@ -6,19 +6,19 @@ phase: 1
 area: settings
 mvp: false
 
-ui_tooltip: "Review token settings; P0/P1 adopted, CR-08 continues."
+ui_tooltip: "Review token settings; CR-08 phases are enforced."
 ui_help_short: |
-  View and edit token-limit settings. P0/P1 are enforced; later CR-08
-  governance work remains open.
+  View and edit token-limit settings. CR-08 phases are enforced; ADR-051 remains open.
 ui_help_long: |
   SET-005 gives Narrare a storage/API/UI cascade for output-limit profiles,
   context-budget percentages, and system timeout visibility. Defaults and saved
   overrides live in one place instead of being scattered through code or env files.
 
-  CR-08 P0/P1 now prove the main token-limit runtime paths, profile vocabulary,
-  UI/API/Core parity, model-limit calibration, and model suitability warnings.
-  Later CR-08 phases still govern operator defaults, catalog fallbacks, and docs/status
-  taxonomy before SET-005 can return to stable.
+  CR-08 P0-P4 now prove the main runtime paths, profile vocabulary, UI/API/Core
+  parity, model-limit calibration, model suitability warnings, governed defaults,
+  and future audit-template enforcement. SET-005 remains in-progress only because
+  ADR-051 is still Proposed and must be accepted or superseded before final
+  stable/resolved language is truthful.
 
   The Settings tab shows three groups:
   - **Output Limits** — Stored per-call generation limit profiles and values
@@ -34,18 +34,18 @@ ui_available_in: [settings]
 ## What it does
 
 Provides a Settings surface and persistence/API cascade for token limits, budget
-percentages, and timeout-related configuration. CR-08 P0/P1 now have runtime-effect
-evidence for the main token limit/profile paths; remaining CR-08 phases still govern
-operator defaults, catalog fallbacks, long-tail defaults, and docs/status taxonomy.
+percentages, and timeout-related configuration. CR-08 P0-P4 now have
+implementation/enforcement evidence for the runtime-effect paths, operator defaults,
+long-tail governed defaults, and future audit-template gate. SET-005 remains
+`in-progress` because ADR-051 is still Proposed.
 
 > **CR-08 status note (2026-06-20):** SET-005's storage/API/UI cascade exists (✅),
-> and CR-08 P0/P1 have runtime-effect evidence for output-limit enforcement,
-> tier-budget consumption, token-profile parity/FIND-013, model-limit calibration,
-> and model suitability warnings/blocks (P0 runtime: ✅, P1 runtime: ✅).
-> CR-08 P2 has partial implementation (consistency caps governance: 🔧,
-> Ollama URL centralized: ✅, SystemModelCategory resolver: ✅) while P3/P4
-> remain open. Do not claim full SET-005 stability until CR-08 P2/P3/P4 are
-> closed and ADR-051 is accepted or superseded. Remediation is specified in
+> and CR-08 P0-P4 have phase-scoped implementation/enforcement evidence for
+> output-limit enforcement, tier-budget consumption, token-profile parity/FIND-013,
+> model-limit calibration, model suitability warnings/blocks, operator/default
+> governance, long-tail governed defaults, truthful status taxonomy, and the future
+> audit-template matrix gate. Do not claim full SET-005 stability until ADR-051 is
+> accepted or superseded. Remediation is specified in
 > [`docs/features/remediation/cr-08-configuration-effect-drift.md`](../remediation/cr-08-configuration-effect-drift.md).
 
 ## Why it exists
@@ -68,7 +68,7 @@ makes Narrare adaptable by its users.
 3. **Output Limits** shows a table of features (Draft, Summary, Suggest, Continue, Consistency, etc.) each with a dropdown: *quick* / *balanced* / *long_texts* / *comprehensive* — or a *custom* raw token input for precise control
 4. **Context Budget** shows the 5-tier pie chart (immediate/recent/kb_referenced/kb_suggested/pinned) with percentage sliders that automatically adjust to total 100%
 5. **System** shows WebSocket timeout (seconds), retry count, API timeout
-6. Changes save through the Settings cascade. P0/P1 token limit/profile controls have runtime-effect evidence; later CR-08 controls remain pending their phase-specific adoption evidence.
+6. Changes save through the Settings cascade. CR-08 P0-P4 controls/defaults have phase-specific implementation/enforcement evidence; final stable language still waits for ADR-051 acceptance or supersession.
 7. A **"Reset to defaults"** button restores all factory values
 
 ## How it works (Technical)
@@ -92,8 +92,8 @@ Code default (hardcoded in core/)
 ### Core Changes
 
 Core owns the runtime token contracts and model-boundary enforcement used by P0/P1.
-Settings-to-runtime adoption remains phase-scoped: CR-AUFG-08-01/02/03/07/09/10/11
-have evidence, while later CR-08 operator/default governance remains open.
+Settings-to-runtime adoption remains phase-scoped: CR-AUFG-08-01/02/03/04/05/06/07/08/09/10/11/12/13/14
+have implementation/enforcement evidence, while ADR-051 remains Proposed.
 
 **`packages/core/narrare_core/writing/budget.py`:**
 - `TokenBudgetManager` constructor accepts optional `tier_overrides` dict
@@ -193,6 +193,18 @@ CR-08 P1 delivered (2026-06-20; not full CR-08 closure):
 - Frontend supports custom limits above 16k and renders calibration/suitability warnings
 - Platform cross-layer contract tests and configuration matrix evidence gate protect parity
 
+CR-08 P2/P3/P4 delivered (2026-06-20; still not full CR-08 lifecycle closure):
+- P2 operator/default governance covers inline suggest cap, consistency caps,
+  setup fallback/Ollama defaults, system/background model defaults, and operator
+  defaults; evidence is recorded in the Configuration Adoption Matrix.
+- P3 governed-defaults manifest classifies embedding search defaults, name dedup
+  caps, and SSE/connect/retry defaults with rationale, review triggers, override
+  paths, discovery paths, and concrete test paths.
+- P4 status taxonomy and audit-template hardening distinguish phase-complete
+  implementation/enforcement from ADR-051 final resolution. Future structured
+  material P0/P1 configuration/effect findings fail the matrix gate if not
+  classified.
+
 Historical consistency integration delivered (legacy SET-005 work; separate from the
 CR-AUFG-08-02 P0 evidence for `tier_percentages` → `WritingContextAssembler`):
 - Consistency module integration: `checker_service.py` resolves limits via `TokenLimitsService`
@@ -201,9 +213,9 @@ CR-AUFG-08-02 P0 evidence for `tier_percentages` → `WritingContextAssembler`):
 - `consistency/deps.py` factory wires TokenLimitsService injection
 - New fields: `max_chapter_tokens: int = 2000`, `max_kb_entries: int = 100`
 
-Remaining CR-08 blockers are tracked in
+Remaining CR-08 lifecycle blocker is tracked in
 [`CR-08 Remediation — Configuration/Effect Drift`](../remediation/cr-08-configuration-effect-drift.md).
-P2 partially implemented (CR-AUFG-08-05/06/08); P3/P4 remain open; ADR-051 also remains Proposed until accepted or superseded.
+P0-P4 are implemented/enforced; ADR-051 remains Proposed until accepted or superseded.
 
 ## Related Features
 
@@ -220,4 +232,4 @@ P2 partially implemented (CR-AUFG-08-05/06/08); P3/P4 remain open; ADR-051 also 
 | 2026-05-26 | Storage/API/UI foundation implemented as legacy SET-005 work | In Progress |
 | 2026-06-08 | Historical consistency integration implemented as legacy SET-005 work; not current CR-AUFG-08-02 closure | In Progress |
 | 2026-06-18 | CR-08 reclassified runtime-effect adoption gaps; status remains in-progress until false controls are closed | In Progress |
-| 2026-06-20 | CR-08 P0/P1 runtime-effect evidence recorded for token limit enforcement, tier percentages, profile parity/FIND-013, model calibration, and suitability warnings/blocks; P2/P3/P4 and ADR-051 decision remain open | In Progress |
+| 2026-06-20 | CR-08 P0-P4 implementation/enforcement evidence recorded for token limit enforcement, tier percentages, profile parity/FIND-013, model calibration, suitability warnings/blocks, operator/default governance, long-tail governed defaults, and audit-template matrix hardening; ADR-051 decision remains open | In Progress |

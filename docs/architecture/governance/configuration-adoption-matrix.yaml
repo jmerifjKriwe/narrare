@@ -258,7 +258,8 @@ entries:
       Becomes `adopted` when too-low/unknown/offline calibration warnings are
       tested at settings/runtime boundaries.
     rationale: >-
-      Capping exists; warning/label surface for unknown/offline is pending.
+      Capping and warning/label surfaces for known/stale/unknown/offline/invalid
+      metadata are implemented and enforced across Core, Backend, and Frontend.
 
   - setting_id: model_suitability_policy
     classification: operator
@@ -464,8 +465,8 @@ entries:
     phase: P2
     review_trigger: Re-evaluate when provider ceilings change or profiles are re-tuned.
     rationale: >-
-      Code-default output profiles consumed at the model boundary; calibration
-      pending CR-AUFG-08-07.
+      Code-default output profiles are consumed at the model boundary and covered
+      by CR-AUFG-08-07 calibration evidence.
 
   - setting_id: resolved_model_config_fallback
     classification: operator
@@ -737,23 +738,40 @@ entries:
 
   - setting_id: status_doc_taxonomy
     classification: operator
-    lifecycle: formal_finding
+    lifecycle: adopted
     source: >-
-      docs/_shared/CURRENT_STATE.md, SET-005, testing standards, audit
-      templates.
-    resolver_service: (pending) truthful status taxonomy (CR-AUFG-08-14)
-    runtime_consumer: Documentation / governance health.
+      docs/_shared/CURRENT_STATE.md, docs/features/settings/SET-005-configurable-token-limits.md,
+      docs/features/INDEX.md, docs/development/testing-standards.md, and the
+      CR-08 content-review prompt template.
+    resolver_service: >-
+      Truthful phase-complete/open-decision status taxonomy plus the
+      Configuration Adoption Matrix review-finding coverage gate.
+    runtime_consumer: >-
+      Documentation / governance health via scripts/check_configuration_matrix.py.
     effect_semantics: >-
       Status claims must distinguish cascade/storage from runtime-effect
       adoption.
     fallback_policy: >-
-      Until CR-AUFG-08-14: no "every setting takes effect" wording may remain.
-    enforcement_evidence: []
-    cross_layer_evidence: []
+      No "every setting takes effect" wording may remain unless the matrix row
+      points to source -> resolver -> runtime consumer -> enforcement evidence.
+      CR-08 phase completion remains separate from ADR-051 acceptance/supersession.
+    enforcement_evidence:
+      - "scripts/check_configuration_matrix.py (loads content/technical review findings and merges review coverage with matrix validation)"
+      - "scripts/governance/configuration_matrix.py::validate_review_finding_matrix_coverage"
+      - "scripts/governance/_matrix_review_gate.py"
+      - "tests/unit/scripts/governance/test_configuration_matrix_review_gate.py"
+      - "_audit/review-prompts/content-review-prompts/cr-08-hardcoded-values.md"
+    cross_layer_evidence:
+      - "docs/features/remediation/cr-08-configuration-effect-drift.md distinguishes P0-P4 implementation/enforcement from final ADR-051 lifecycle resolution."
+      - "docs/architecture/governance/aufg-registry.md keeps the CR-08 AUFG set blocked on ADR-051 while recording phase evidence."
+      - "docs/features/settings/SET-005-configurable-token-limits.md and docs/features/INDEX.md keep SET-005 in-progress without implying P2/P3/P4 are open."
+      - "docs/_shared/CURRENT_STATE.md records CR-08 P0-P4 as implemented/enforced while preserving ADR-051 Proposed."
     cr_task: CR-AUFG-08-14
     phase: P4
     review_trigger: >-
-      Becomes `adopted` when SET-005/CURRENT_STATE distinguish cascade from
-      runtime-effect adoption and audit templates require classification.
+      Re-evaluate when status taxonomy wording changes, when ADR-051 is accepted
+      or superseded, or when audit/review prompt conventions change.
     rationale: >-
-      Documentation drift; tracked remediation required (CR-AUFG-08-14).
+      Status/documentation drift is now governed by docs reconciliation plus a
+      structured review-finding coverage gate for future material P0/P1
+      configuration/effect findings.

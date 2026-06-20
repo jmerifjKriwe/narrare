@@ -1,6 +1,6 @@
 # CR-08 P3 — Governed Defaults Manifest
 
-> **Status:** draft (CR-AUFG-08-13)
+> **Status:** implemented + enforced (CR-AUFG-08-13)
 > **Date:** 2026-06-20
 > **Author:** Architecture Specialist
 > **Spec:** `docs/features/remediation/cr-08-configuration-effect-drift.md` §P3
@@ -128,7 +128,7 @@ override_path: >-
   methods. No env var or Settings override (intentionally code-default with
   caller override).
 discovery_path: apps/api/narrare/embeddings/service.py
-test_path: tests/unit/api/embeddings/test_embedding_search_defaults.py (to create)
+test_path: tests/unit/api/embeddings/test_embedding_search_defaults.py
 ```
 
 ### 4.2 Name Dedup Context Cap
@@ -157,7 +157,7 @@ override_path: null
   # Intentionally immutable — method-parameter override would be added if
   # scale trigger fires. Until then, keeping it simple prevents scope creep.
 discovery_path: apps/api/narrare/generation/name_service.py
-test_path: tests/unit/api/generation/test_name_dedup_defaults.py (to create)
+test_path: tests/unit/api/generation/test_name_dedup_defaults.py
 ```
 
 ### 4.3 SSE Connect & Retry Defaults
@@ -171,7 +171,7 @@ description: >-
 current_value:
   connect_timeout_ms: 30000
   connection_loss_timeout_ms: 15000
-  # reconnect: exponential backoff, 3 attempts, 1s base delay
+  # reconnect: exponential backoff, 5 attempts, 1s base delay
 rationale: >-
   30s connect timeout is generous for local-first/single-user deployments
   where AI providers may have cold-start latency. 15s connection-loss timeout
@@ -194,7 +194,7 @@ discovery_path: >-
   packages/web/components/studio/editor/useSessionSocket.ts (reconnect defaults)
 test_path: >-
   packages/web/components/studio/editor/__tests__/useSessionSocket.test.tsx
-  (timeout and reconnect default assertions to be added)
+  (connect timeout, connection-loss timeout, and reconnect default assertions)
 ```
 
 ---
@@ -259,9 +259,12 @@ class TestEmbeddingGovernedDefaults:
 
 ---
 
-## 6. Matrix Update
+## 6. Matrix Status
 
-After this manifest is accepted, update the P3 matrix entries:
+The P3 matrix entries have been updated and now carry concrete enforcement and
+cross-layer evidence. Keep this section synchronized with
+`docs/architecture/governance/configuration-adoption-matrix.yaml` whenever a
+governed default changes.
 
 ### `embedding_threshold_search_limit`
 
@@ -303,9 +306,12 @@ sse_connect_retry_defaults:
 
 ```yaml
 governed_defaults_manifest:
-  lifecycle: governed_default    # was: formal_finding
+  lifecycle: governed_default
   enforcement_evidence:
-    - Manifests directory defined: docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md
+    - "docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md"
+    - "tests/unit/api/embeddings/test_embedding_search_defaults.py"
+    - "tests/unit/api/generation/test_name_dedup_defaults.py"
+    - "packages/web/components/studio/editor/__tests__/useSessionSocket.test.tsx"
   cross_layer_evidence:
     - All P3 entries reference this manifest as cross_layer_evidence
   phase: P3
@@ -315,7 +321,7 @@ governed_defaults_manifest:
 
 ## 7. Future Defaults
 
-Any new code default added after this manifest is accepted MUST:
+Any new code default added after this manifest is implemented MUST:
 
 1. Be classified in the Configuration Adoption Matrix.
 2. Have a corresponding governed-default entry in this manifest (if
@@ -324,7 +330,9 @@ Any new code default added after this manifest is accepted MUST:
 3. Follow the review-trigger taxonomy (§3).
 4. Have a failing-if-changed-without-review test.
 
-The Platform governance checker will reject unclassified defaults.
+The Platform governance checker rejects unclassified matrix entries and, via
+CR-AUFG-08-14, rejects future structured material P0/P1 configuration/effect
+review findings that are not referenced by the matrix.
 
 ---
 

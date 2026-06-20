@@ -30,8 +30,10 @@ index records acceptance or supersession.
 
 ## Implementation Evidence (2026-06-20)
 
-P1 implementation is complete with enforcement and cross-layer evidence. Remaining CR-08
-P2/P3/P4 work is outside this policy and remains open in the remediation spec.
+P1 implementation is complete with enforcement and cross-layer evidence. Later CR-08
+P2/P3/P4 work is outside this policy and is now recorded as implemented/enforced in
+the remediation spec; final CR-08 resolution still waits on ADR-051 acceptance or
+supersession.
 
 | Area | Implemented evidence |
 |---|---|
@@ -39,7 +41,7 @@ P2/P3/P4 work is outside this policy and remains open in the remediation spec.
 | Backend | Token-limit validation derives from Core, rejects new `conservative`, normalizes legacy `conservative`, supports custom raw limits, and exposes profile/cap/calibration/suitability metadata. Reported validation: 2191 Backend/settings tests passed. |
 | Frontend | `conservative` removed from UI types/options, custom limits above 16k supported, and calibration/suitability warnings render in settings/editor token controls. Reported validation: 30 targeted tests plus type-check, lint, and file-size check passed. |
 | Platform | Cross-layer contract tests and matrix evidence gate cover profile vocabulary, cap parity, calibration metadata, and suitability warnings/blocks. Reported validation: matrix check PASS, targeted P1 suite PASS, and `just check` PASS after security dependency updates. |
-| Docs | This policy and the CR-08 remediation spec now distinguish implemented P1 evidence from open P2/P3/P4 work and from proposed-only ADR-051 status. |
+| Docs | This policy and the CR-08 remediation spec distinguish implemented P1 evidence from later P2/P3/P4 evidence and from proposed-only ADR-051 status. |
 
 ---
 

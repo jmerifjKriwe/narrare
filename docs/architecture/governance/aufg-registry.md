@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-20 (CR-08 P1 implementation + enforcement + cross-layer evidence recorded; CR-08 remains open for P2/P3/P4 and ADR-051 acceptance/supersession)
+> **Last updated:** 2026-06-20 (CR-08 P0-P4 implementation + enforcement evidence recorded; CR-08 remains blocked on ADR-051 acceptance/supersession before final resolution)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -49,12 +49,12 @@ block the immediate runtime remediation once P0/P1 are complete).
 | IDs | CR-AUFG-08-01 through CR-AUFG-08-14 |
 | Title | Configuration/Effect Drift Remediation |
 | Source | CR-08 hardcoded-values audit and candidate ADR-051 Configuration Effect Adoption Contract |
-| Status | `open` (P0/P1 evidence recorded; P2/P3/P4 and ADR-051 acceptance/supersession remain open) |
+| Status | `blocked` (P0-P4 implementation/enforcement evidence recorded; final `resolved` status waits on ADR-051 acceptance/supersession) |
 | Priority | P0–P4 by phase |
 | Area | Settings, Core LLM runtime, Writing context assembly, Provider catalogs, Frontend settings UI, Platform governance, Docs |
 | Owner role | Architecture Specialist (contract), Core/Backend/Frontend/Platform/Docs Specialists by phase |
 | Dependencies | ADR-045 run-limit enforcement, SET-005 token-limit cascade, `TokenLimitsService`, `ModelRoutingResolverImpl`, provider catalog/cache paths |
-| Review trigger/date | Re-review after P2/P3/P4 completion, before any claim that SET-005 is stable/runtime-adopted, or by 2026-07-31 if still open. |
+| Review trigger/date | Re-review when ADR-051 is accepted or superseded, before any claim that SET-005 is stable/runtime-adopted, or by 2026-07-31 if still blocked. |
 
 **Lifecycle decision:**
 
@@ -72,13 +72,21 @@ marked resolved.
 - **P1:** CR-AUFG-08-03 token vocabulary unification; CR-AUFG-08-10 token settings
   UI/API/Core parity (FIND-013); CR-AUFG-08-07 model-limit calibration;
   CR-AUFG-08-11 model suitability policy. **Implementation + enforcement +
-  cross-layer evidence recorded 2026-06-20; lifecycle remains under the open
-  CR-08 set until ADR-051 is accepted/superseded and remaining phases close.**
+  cross-layer evidence recorded 2026-06-20; lifecycle remains under the blocked
+  CR-08 set until ADR-051 is accepted or superseded.**
 - **P2:** CR-AUFG-08-04 inline suggest cap; CR-AUFG-08-05 consistency caps layer;
   CR-AUFG-08-06 setup fallback catalogs/Ollama defaults; CR-AUFG-08-08 system model
-  resolver; CR-AUFG-08-12 operator/default governance.
+  resolver; CR-AUFG-08-12 operator/default governance. **Implemented + enforced;
+  evidence is recorded in the Configuration Adoption Matrix and remediation spec.**
 - **P3:** CR-AUFG-08-13 governed defaults manifest for long-tail defaults.
+  **Implemented + enforced; manifest and matrix entries are synchronized.**
 - **P4:** CR-AUFG-08-14 docs/status taxonomy and audit-template/gate hardening.
+  **Implemented + enforced; future structured material P0/P1 configuration/effect
+  findings are matrix-gated.**
+
+**Phase/open-decision split:** P0-P4 are phase-complete with implementation and
+enforcement evidence. The AUFG set remains `blocked`, not `resolved`, because the
+Definition of Done still requires ADR-051 to be accepted or superseded.
 
 **Acceptance criteria:**
 
@@ -111,8 +119,23 @@ marked resolved.
   Reported validation: Core LLM tests, Backend/settings tests, Frontend targeted
   tests/type-check/lint/file-size check, matrix check, targeted P1 suite, and full
   `just check` PASS after security dependency updates.
-- **Remaining:** P2/P3/P4 are open; ADR-051 remains Proposed and must be accepted or
-  superseded before this CR-08 AUFG set can be marked resolved.
+- **P2:** implemented + enforced. Evidence in matrix entries `inline_suggest_cap`,
+  `consistency_caps`, `setup_fallback_catalogs`, `system_background_model_defaults`,
+  and `operator_default_governance`; remediation evidence references commits
+  `138307c7` and `1aafad08`.
+- **P3:** implemented + enforced. Evidence in
+  `docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md` and matrix
+  entries `governed_defaults_manifest`, `embedding_threshold_search_limit`,
+  `name_dedup_context_cap`, and `sse_connect_retry_defaults`; remediation evidence
+  references commits `138307c7` and `1aafad08`.
+- **P4:** implemented + enforced. Evidence in this registry, SET-005, CURRENT_STATE,
+  testing standards, the CR-08 audit prompt template, matrix entry
+  `status_doc_taxonomy`, and the current uncommitted Platform gate files:
+  `scripts/check_configuration_matrix.py`, `scripts/governance/configuration_matrix.py`,
+  `scripts/governance/_matrix_review_gate.py`, and
+  `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py`.
+- **Remaining:** ADR-051 remains Proposed and must be accepted or superseded before
+  this CR-08 AUFG set can be marked `resolved`.
 
 ---
 

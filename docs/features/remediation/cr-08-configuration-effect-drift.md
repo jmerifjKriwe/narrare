@@ -1,6 +1,6 @@
 # CR-08 Remediation — Configuration/Effect Drift Specification
 
-> **Status:** in progress — P0 committed; P1 implementation evidence recorded; P2/P3/P4 remain open; candidate ADR-051 remains proposed
+> **Status:** phase implementation/enforcement complete — P0 committed; P1/P2/P3/P4 evidence recorded; candidate ADR-051 remains proposed, so the CR-08 AUFG set is not fully `resolved`
 > **Date:** 2026-06-18
 > **Author:** Architecture Specialist
 > **Candidate ADR:** [ADR-051](../../architecture/decisions/ADR-051-configuration-effect-adoption-contract.md) (Proposed; must be accepted or superseded before CR-AUFG-08 tasks can be resolved)
@@ -118,8 +118,9 @@ or superseded by an equivalent contract.
 #### P1 Implementation Evidence (2026-06-20)
 
 P1 is implementation-evidence complete across Core, Backend, Frontend, and Platform.
-This does **not** close P2/P3/P4 and does **not** imply ADR-051 is accepted or in
-effect; ADR-051 remains a proposed candidate contract until accepted or superseded.
+This P1 evidence does **not** imply ADR-051 is accepted or in effect; ADR-051
+remains a proposed candidate contract until accepted or superseded. Later P2/P3/P4
+evidence is recorded in the sections below.
 
 | Task | Status | Evidence |
 |---|---|---|
@@ -128,6 +129,13 @@ effect; ADR-051 remains a proposed candidate contract until accepted or supersed
 | CR-AUFG-08-07 | Implemented + enforced | Core typed calibration statuses (`known_fresh`, `known_stale`, `unknown_model`, `offline_no_cache`, `invalid_metadata`) feed Backend metadata and Frontend warnings. Evidence: `packages/core/narrare_core/llm/model_calibration.py`, `tests/unit/core/llm/test_model_limit_calibration.py`, `tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py`, `packages/web/components/studio/settings/__tests__/TokenMetadataWarnings.test.tsx`. |
 | CR-AUFG-08-11 | Implemented + enforced | Core suitability evaluator produces advisory/warning/hard-block severities; Backend exposes suitability metadata; Frontend renders the messages. Evidence: `packages/core/narrare_core/llm/model_suitability.py`, `tests/unit/core/llm/test_model_suitability.py`, `tests/unit/api/settings/test_cr08_p1_token_limit_metadata.py`, `packages/web/components/studio/settings/__tests__/TokenMetadataWarnings.test.tsx`. |
 | P1 Platform gate | Implemented + enforced | Configuration matrix P1 rows contain concrete enforcement and cross-layer evidence; Platform parity tests fail on independent vocabulary/cap drift. Evidence: `tests/unit/scripts/governance/test_configuration_matrix_p1.py`; reported gate results: targeted P1 suite PASS and `just check` PASS after security dependency updates. |
+
+#### P0 Commit Evidence
+
+P0 is committed as `5769eaf2`. That slice delivered the Configuration Adoption
+Matrix baseline plus runtime evidence for FIND-001/CR-AUFG-08-01 and
+FIND-012/CR-AUFG-08-02. Do not use the commit alone as closure proof; the durable
+closure evidence is the matrix row evidence and the tests referenced there.
 
 ### P2 — Operator Defaults, Catalog Governance, and System Resolvers
 
@@ -141,6 +149,20 @@ effect; ADR-051 remains a proposed candidate contract until accepted or supersed
 | CR-AUFG-08-08 | Backend + Core | Named system/background model resolver for wiki/background tasks. | `build_system_default_config` or successor uses typed system-model resolver; no two-branch category string logic as the policy boundary; background tasks have tests. |
 | CR-AUFG-08-12 | Platform + Backend + Core | Operator/default governance for catalog timeout, OpenRouter cap, `models.dev` TTL, wiki retry delays, cost fallback staleness. | Operator defaults are centralized, documented, and tested as operator defaults or governed code defaults with review triggers. |
 
+#### P2 Implementation Evidence (2026-06-20)
+
+P2 is implementation/enforcement complete with evidence recorded in the
+Configuration Adoption Matrix. Evidence landed across commits `138307c7` and
+`1aafad08` and is represented by these matrix entries:
+
+| Task | Status | Evidence |
+|---|---|---|
+| CR-AUFG-08-04 | Implemented + enforced | Inline suggest cap is a named governed default (`SUGGEST_MAX_TOKENS = 60`) with latency rationale and fail-if-changed tests. Matrix entry: `inline_suggest_cap`. |
+| CR-AUFG-08-05 | Implemented + enforced | Consistency caps are classified as operator defaults; `max_selection_words` is removed from the API response so the UI/API no longer implies user control. Matrix entry: `consistency_caps`. |
+| CR-AUFG-08-06 | Implemented + enforced | Ollama default URL is centralized at `apps/api/narrare/setup/constants.py`; setup call sites consume the constant. Matrix entry: `setup_fallback_catalogs`. |
+| CR-AUFG-08-08 | Implemented + enforced | `SystemModelCategory` replaces raw category string branching for background/system defaults, with resolver tests. Matrix entry: `system_background_model_defaults`. |
+| CR-AUFG-08-12 | Implemented + enforced | Operator defaults for catalog timeout, catalog cap, models.dev cache/fetch, retry delays, and cost fallback rates are named and covered by fail-if-changed tests. Matrix entry: `operator_default_governance`. |
+
 ### P3 — Governed Defaults Manifest and Long-Tail Defaults
 
 **Owner order:** Architecture → Core → Backend → Frontend → Platform → Docs.
@@ -150,6 +172,15 @@ effect; ADR-051 remains a proposed candidate contract until accepted or supersed
 | CR-AUFG-08-13 | Architecture + Platform | Governed defaults manifest for long-tail defaults. | Embedding thresholds/limits, name dedup caps, SSE/connect retry defaults, WebSocket reconnect defaults, and test-only defaults are classified with owner, rationale, tests, review trigger. |
 | Long-tail implementation | Layer owners | Add/adjust tests only where defaults are intentionally retained. | A retained default has a failing-if-changed-without-review test or explicit contract test proving override path exists. |
 
+#### P3 Implementation Evidence (2026-06-20)
+
+P3 is implementation/enforcement complete with the governed-defaults manifest and
+matrix rows synchronized. Evidence landed across commits `138307c7` and `1aafad08`:
+
+| Task | Status | Evidence |
+|---|---|---|
+| CR-AUFG-08-13 | Implemented + enforced | `docs/architecture/governance/cr-08-p3-governed-defaults-manifest.md` classifies embedding search defaults, name dedup context caps, and SSE/connect/retry defaults with owners, rationale, review triggers, override paths, discovery paths, and concrete test paths. Matrix entries: `governed_defaults_manifest`, `embedding_threshold_search_limit`, `name_dedup_context_cap`, `sse_connect_retry_defaults`. |
+
 ### P4 — Documentation, Status Taxonomy, and Audit Template Hardening
 
 **Owner order:** Architecture → Platform → Docs.
@@ -158,6 +189,18 @@ effect; ADR-051 remains a proposed candidate contract until accepted or supersed
 |---|---|---|---|
 | CR-AUFG-08-14 | Docs + Platform | Status/doc taxonomy corrections. | SET-005 and CURRENT_STATE distinguish cascade/storage from runtime-effect adoption; no “every setting takes effect” wording remains until evidence exists. |
 | Audit-template gate | Platform + Docs | Update review/audit templates and governance health. | Future content reviews must include classification for every material value; unclassified P0/P1 findings fail governance health once baseline is set. |
+
+#### P4 Implementation Evidence (2026-06-20)
+
+P4 is implementation/enforcement complete for status taxonomy and future-audit
+hardening, but CR-08 remains lifecycle-blocked on ADR-051 acceptance/supersession.
+Evidence includes the current uncommitted Platform gate files plus this docs
+reconciliation:
+
+| Task | Status | Evidence |
+|---|---|---|
+| CR-AUFG-08-14 | Implemented + enforced | SET-005, CURRENT_STATE, the AUFG registry, this remediation spec, testing standards, the CR-08 audit prompt template, and `configuration-adoption-matrix.yaml` now distinguish phase-complete runtime-effect evidence from final ADR-051 lifecycle resolution. |
+| Audit-template gate | Implemented + enforced | `scripts/check_configuration_matrix.py` merges matrix validation with review-finding coverage; `scripts/governance/configuration_matrix.py` exports `validate_review_finding_matrix_coverage`; `scripts/governance/_matrix_review_gate.py` enforces structured material P0/P1 `[category: configuration-effect]` findings; `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py` proves unclassified material P1 findings fail, classified findings pass, P2/non-minimum findings do not block, and future content-review files are loaded. The CR-08 content-review prompt now requires the structured marker format. |
 
 ---
 
@@ -237,9 +280,17 @@ must be added to the matrix before the phase can close.
 - **P1:** Core/backend/frontend token profile contract is single-source and tested;
   FIND-013 closed with UI/API/core parity evidence; model calibration and suitability
   warning/block policy tested. Documentation-only policy does not close P1.
-- **P2:** Operator defaults and setup catalogs have resolver/freshness/source labels and
-  tests; system/background resolver removes local category-string policy branches.
-- **P3:** Long-tail defaults are all governed defaults with rationale/tests/review triggers
-  or implemented settings; no untracked default remains.
-- **P4:** SET-005/CURRENT_STATE/testing/audit docs use truthful status taxonomy; governance
-  health detects future unclassified configuration/effect findings.
+- **P2:** Complete — operator defaults and setup catalogs have named/default governance
+  evidence and tests; system/background resolver removes local category-string policy
+  branches. See matrix P2 entries and commits `138307c7` / `1aafad08`.
+- **P3:** Complete — long-tail defaults are governed defaults with rationale/tests/review
+  triggers or implemented settings; no tracked P3 default remains unclassified. See
+  matrix P3 entries and the governed-defaults manifest.
+- **P4:** Complete — SET-005/CURRENT_STATE/testing/audit docs use truthful status
+  taxonomy; governance health detects future structured, unclassified P0/P1
+  configuration/effect findings.
+
+**Remaining lifecycle blocker:** The CR-08 AUFG set must not be marked fully
+`resolved` until ADR-051 is accepted or superseded by an equivalent contract.
+Phase implementation/enforcement evidence is complete; the architectural decision
+status remains explicitly open.

@@ -15,6 +15,7 @@ ADR:  docs/architecture/decisions/ADR-051-configuration-effect-adoption-contract
 
 from __future__ import annotations
 
+from governance._matrix_review_gate import validate_review_finding_matrix_coverage
 from governance._matrix_types import (
     CLASSIFICATIONS,
     LIFECYCLE_STATES,
@@ -39,6 +40,7 @@ __all__ = [
     "load_matrix",
     "parse_matrix",
     "validate_matrix",
+    "validate_review_finding_matrix_coverage",
 ]
 
 # ---------------------------------------------------------------------------

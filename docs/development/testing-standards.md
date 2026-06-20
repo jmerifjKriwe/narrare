@@ -332,6 +332,53 @@ DI/settings, not hardcoded values.
 
 **Reference:** RULE-18 in `docs/_shared/CONSTRAINTS.md`
 
+#### Configuration Adoption Matrix and Review-Finding Gate — CR-08 / ADR-051
+
+**The problem:** A setting can look fixed because prose, a local implementation, or
+a green layer-specific test exists, while the durable lifecycle docs or runtime
+consumer evidence still say the value is unclassified. CR-08 closed this gap with
+two gates:
+
+1. `scripts/check_configuration_matrix.py` validates
+   `docs/architecture/governance/configuration-adoption-matrix.yaml` so every
+   material setting has a classification and adopted user/project settings carry
+   runtime-consumer and enforcement evidence.
+2. The same checker loads future content-review and technical-review artifacts and
+   fails if a structured material P0/P1 configuration/effect finding is not
+   represented by a matrix row.
+
+**Structured marker required in reviews:**
+
+```markdown
+- [P1] [category: configuration-effect] FIND-099 / CR-AUFG-08-99
+  Short description of the material value and why it changes runtime effect.
+```
+
+Material P0/P1 configuration/effect findings must include:
+
+- `[P0]` or `[P1]`
+- `[category: configuration-effect]`
+- a stable `FIND-...` or `CR-AUFG-...` reference
+- a matching row in `configuration-adoption-matrix.yaml` with classification,
+  lifecycle, and evidence (or an explicitly tracked formal-finding state)
+
+**Regression tests:**
+
+```text
+tests/unit/scripts/governance/test_configuration_matrix_review_gate.py
+```
+
+These tests prove an unclassified material P1 configuration/effect finding fails,
+a classified finding passes, P2/non-minimum findings do not block the minimum gate,
+and future content-review files are loaded.
+
+**When to update:** Any audit/review that introduces a material P0/P1
+configuration/effect finding must update the matrix in the same PR. Any new
+settings/defaults work must keep the matrix row, tests, and lifecycle docs in sync.
+
+**Reference:** CR-08 remediation spec and ADR-051 (Proposed; do not mark accepted
+from checker evidence alone).
+
 ---
 
 ## Mocking Standards — RULE-TEST-01

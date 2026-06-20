@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-20 (CR-07-03 closure + CR-08 P1 Docs Gate — AI-error mapping residual sites fixed; token profile/parity/calibration/suitability evidence recorded)
-Session: CR-08 P1 Docs Gate. P0 is committed (`5769eaf2`) and P1 is implemented with Core/Backend/Frontend/Platform evidence for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11. `just check` is reported PASS after security dependency updates (`msgpack 1.2.1`, `pydantic-settings 2.14.2`). SET-005 remains in-progress because CR-08 P2 is partially implemented (CR-AUFG-08-05/06/08 have test evidence) while P3/P4 and ADR-051 acceptance/supersession remain open; ADR-051 remains Proposed. **CR-07-03 (AI errors/connection-loss inconsistent) is now fully RESOLVED:** the 2 residual raw-`error.message` sites (`KnowledgeGraphView.tsx`, `LearningTab.tsx`) were fixed via `mapSSEError` + retry + connection-lost + i18n; `just check-ai-ux` now reports Violations: 0, 38 passes (exit 0 verified), so the existing "0 violations" / CR-07 UX Closure v2 claims are accurate again. CR-08/SET-005 status is unchanged in this update.
+Date: 2026-06-20 (CR-08 final docs reconciliation — P0-P4 implementation/enforcement evidence recorded; ADR-051 still Proposed)
+Session: CR-08 final documentation reconciliation after the CR-AUFG-08-14 Platform gate. P0 is committed (`5769eaf2`). P1 is implemented with Core/Backend/Frontend/Platform evidence for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11. P2/P3 implementation/enforcement evidence is recorded in the Configuration Adoption Matrix and governed-defaults manifest, with evidence from commits `138307c7` and `1aafad08`. P4 is implemented/enforced by the current uncommitted Platform gate (`scripts/check_configuration_matrix.py`, `scripts/governance/configuration_matrix.py`, `scripts/governance/_matrix_review_gate.py`, `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py`) plus docs/audit-template reconciliation. SET-005 remains in-progress, and the CR-08 AUFG set remains blocked from final `resolved` status, because ADR-051 remains Proposed and must be accepted or superseded before stable/resolved language is truthful.
 
 ---
 
@@ -118,7 +118,7 @@ Completed in Phase 6 so far:
 10. ✅ ANAL-001: Beta Reader Simulation — BetaReaderAgent + ScoreRadar + 4-tab panel
 11. ✅ ANAL-002: Sentiment Analysis — LexiconSentimentAnalyzer + arc trajectory graphs
 12. ✅ CONS-001: Consistency Checker — ConsistencyAgent + rule-based pre-check + actions
-13. 🔧 SET-005: Configurable Token Limits — storage/API/UI cascade exists; CR-08 P0 and P1 have implementation + enforcement + cross-layer evidence (P1 covers token profile vocabulary, UI/API/Core parity/FIND-013, model-limit calibration, and suitability warnings/blocks). P2 has partial implementation (max_selection_words removed from API response, OLLAMA_DEFAULT_URL centralized, SystemModelCategory enum created). The feature remains in-progress until CR-08 P2/P3/P4 are closed and ADR-051 is accepted or superseded.
+13. 🔧 SET-005: Configurable Token Limits — storage/API/UI cascade exists; CR-08 P0-P4 have implementation + enforcement + cross-layer evidence (P0 model-boundary/tier-budget adoption; P1 token profile vocabulary, UI/API/Core parity/FIND-013, model-limit calibration, and suitability warnings/blocks; P2 operator/default governance; P3 governed defaults manifest; P4 status taxonomy + audit-template matrix gate). The feature remains in-progress until ADR-051 is accepted or superseded.
 14. ✅ CR-01 through CR-04: Prompt quality audits + preference wiring + meta-prompt guardrails
 15. ✅ Coverage Uplift: 1,045+ new tests across all layers
 16. ✅ ADR-016: Prompt Caching — Implemented across all 4 phases (Phase 0: AgentRegistry, Phase 1: CacheSettings+ModelSettings, Phase 2: Cache Observability, Phase 3: WritingGraph Backend DI)
@@ -315,4 +315,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-20 (CR-07-03 closure recorded — residual AI-error mapping sites fixed; `just check-ai-ux` → 0 violations verified; CR-08 P1 Docs Gate P0/P1 evidence recorded; P2/P3/P4 and ADR-051 decision remain open)
+> Last content update: 2026-06-20 (CR-08 final docs reconciliation — P0-P4 implementation/enforcement evidence recorded; CR-AUFG-08-14 audit-template matrix gate documented; ADR-051 decision remains Proposed/open)
