@@ -118,4 +118,57 @@ describe("LearningTab", () => {
     fireEvent.click(screen.getByText("learning.confirmReset"));
     expect(mutate).toHaveBeenCalledOnce();
   });
+
+  // Regression (CR-07-03): errors must render the canonical mapped message
+  // (mapSSEError), never the raw underlying error text which can leak backend
+  // details.
+
+  it("renders mapped error message on profile fetch failure, not the raw underlying error", () => {
+    mockUsePreferences.mockReturnValue({
+      ...defaultHookReturn,
+      error: new Error("profile fetch secret 99"),
+    });
+    render(<LearningTab novelId="novel-1" />);
+
+    // mapSSEError maps a generic Error to the connection error message.
+    expect(screen.getByText("Verbindung verloren. Prüfe deine Internetverbindung.")).toBeDefined();
+    expect(screen.queryByText(/profile fetch secret 99/)).toBeNull();
+  });
+
+  it("renders mapped error message on analysis failure, not the raw underlying error", () => {
+    mockUseTriggerAnalysis.mockReturnValue({
+      ...defaultAnalysisReturn,
+      error: new Error("LLM analysis boom secret"),
+    });
+    render(<LearningTab novelId="novel-1" />);
+
+    // The canonical mapped message renders (network error → connection msg).
+    expect(screen.getByText("Verbindung verloren. Prüfe deine Internetverbindung.")).toBeDefined();
+    expect(screen.queryByText(/LLM analysis boom secret/)).toBeNull();
+  });
+
+  it("shows a retry control on analysis failure that re-triggers analysis", () => {
+    const mutate = vi.fn();
+    mockUseTriggerAnalysis.mockReturnValue({
+      ...defaultAnalysisReturn,
+      mutate,
+      // Generic Error → network kind → connectionLostRetry label is shown.
+      error: new Error("analysis failed"),
+    });
+    render(<LearningTab novelId="novel-1" />);
+
+    fireEvent.click(screen.getByText("aiActions.connectionLostRetry"));
+    expect(mutate).toHaveBeenCalledOnce();
+  });
+
+  it("shows a connection-lost indication on analysis network error", () => {
+    mockUseTriggerAnalysis.mockReturnValue({
+      ...defaultAnalysisReturn,
+      error: new Error("network down"),
+    });
+    render(<LearningTab novelId="novel-1" />);
+
+    // Connection-lost is indicated by the connectionLostRetry control.
+    expect(screen.getByText("aiActions.connectionLostRetry")).toBeDefined();
+  });
 });

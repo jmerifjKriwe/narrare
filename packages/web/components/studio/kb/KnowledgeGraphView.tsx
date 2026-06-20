@@ -22,6 +22,7 @@ import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef } from "react";
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { useKnowledgeGraphController } from "./KnowledgeGraphController";
 import { KnowledgeGraphControls } from "./KnowledgeGraphControls";
 import { KnowledgeGraphOverlays } from "./KnowledgeGraphOverlays";
@@ -52,10 +53,11 @@ export function KnowledgeGraphView({ novelId, onSelectEntry }: KnowledgeGraphVie
 
   // --- Render ---
   if (controller.error) {
-    const errorMsg =
-      "userMessage" in controller.error
-        ? (controller.error as { userMessage: string }).userMessage
-        : (controller.error["message"] ?? "Failed to load graph data");
+    // Route the error through the canonical AI/UX error mapper (ADR-043 §16.5)
+    // so we never leak the raw underlying error text. mapSSEError returns null
+    // for aborts; for all real errors it yields a structured, actionable
+    // userMessage.
+    const errorMsg = mapSSEError(controller.error)?.userMessage ?? t("kb.graphLoadFailed");
     return (
       <div className="flex-1 flex items-center justify-center text-destructive">
         <p>{errorMsg}</p>

@@ -103,17 +103,19 @@ const mockGraphData = {
   stats: { node_count: 2, edge_count: 1 },
 };
 
+// Controllable hook mocks so individual tests can drive loading/error states.
+// Names use the `mock*` prefix so vitest's hoisted vi.mock() factory can
+// reference them.
+const mockUseKBGraph = vi.fn();
+const mockUseKBGraphPath = vi.fn(() => ({
+  mutate: vi.fn(),
+  isPending: false,
+  error: null,
+}));
+
 vi.mock("@/lib/hooks/useKBGraph", () => ({
-  useKBGraph: () => ({
-    data: mockGraphData,
-    isLoading: false,
-    error: null,
-  }),
-  useKBGraphPath: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-    error: null,
-  }),
+  useKBGraph: () => mockUseKBGraph(),
+  useKBGraphPath: () => mockUseKBGraphPath(),
 }));
 
 // Mock sub-components
@@ -146,6 +148,12 @@ const defaultProps = {
 describe("KnowledgeGraphView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: successful graph load.
+    mockUseKBGraph.mockReturnValue({
+      data: mockGraphData,
+      isLoading: false,
+      error: null,
+    });
   });
 
   it("renders graph container div", () => {
@@ -213,5 +221,38 @@ describe("KnowledgeGraphView", () => {
     await waitFor(() => {
       expect(mockCyInstance.on).toHaveBeenCalled();
     });
+  });
+
+  // Regression (CR-07-03): graph load errors must render the canonical mapped
+  // message (mapSSEError), never the raw underlying error text which can leak
+  // backend/internal details. A generic fetch Error maps to the connection
+  // error message.
+  it("renders mapped error message on fetch failure, not the raw underlying error", () => {
+    mockUseKBGraph.mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: new Error("Internal backend secret 42"),
+    });
+
+    renderWithProviders(<KnowledgeGraphView {...defaultProps} />);
+
+    // mapSSEError maps a generic Error to the connection error message.
+    expect(screen.getByText("Verbindung verloren. Prüfe deine Internetverbindung.")).toBeDefined();
+    // Raw backend detail must NOT leak to the UI.
+    expect(screen.queryByText(/Internal backend secret 42/)).toBeNull();
+  });
+
+  it("does not leak the raw underlying error when error carries a network message", () => {
+    mockUseKBGraph.mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: new Error("fetch failed: ECONNREFUSED db.internal:5432"),
+    });
+
+    renderWithProviders(<KnowledgeGraphView {...defaultProps} />);
+
+    // The raw internal stack detail must never be rendered.
+    expect(screen.queryByText(/ECONNREFUSED db.internal/)).toBeNull();
+    expect(screen.getByText("Verbindung verloren. Prüfe deine Internetverbindung.")).toBeDefined();
   });
 });

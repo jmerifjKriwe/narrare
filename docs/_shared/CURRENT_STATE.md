@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-20 (CR-08 P1 Docs Gate — token profile/parity/calibration/suitability evidence recorded)
-Session: CR-08 P1 Docs Gate. P0 is committed (`5769eaf2`) and P1 is implemented with Core/Backend/Frontend/Platform evidence for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11. `just check` is reported PASS after security dependency updates (`msgpack 1.2.1`, `pydantic-settings 2.14.2`). SET-005 remains in-progress because CR-08 P2 is partially implemented (CR-AUFG-08-05/06/08 have test evidence) while P3/P4 and ADR-051 acceptance/supersession remain open; ADR-051 remains Proposed.
+Date: 2026-06-20 (CR-07-03 closure + CR-08 P1 Docs Gate — AI-error mapping residual sites fixed; token profile/parity/calibration/suitability evidence recorded)
+Session: CR-08 P1 Docs Gate. P0 is committed (`5769eaf2`) and P1 is implemented with Core/Backend/Frontend/Platform evidence for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11. `just check` is reported PASS after security dependency updates (`msgpack 1.2.1`, `pydantic-settings 2.14.2`). SET-005 remains in-progress because CR-08 P2 is partially implemented (CR-AUFG-08-05/06/08 have test evidence) while P3/P4 and ADR-051 acceptance/supersession remain open; ADR-051 remains Proposed. **CR-07-03 (AI errors/connection-loss inconsistent) is now fully RESOLVED:** the 2 residual raw-`error.message` sites (`KnowledgeGraphView.tsx`, `LearningTab.tsx`) were fixed via `mapSSEError` + retry + connection-lost + i18n; `just check-ai-ux` now reports Violations: 0, 38 passes (exit 0 verified), so the existing "0 violations" / CR-07 UX Closure v2 claims are accurate again. CR-08/SET-005 status is unchanged in this update.
 
 ---
 
@@ -315,4 +315,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-20 (CR-08 P1 Docs Gate — P0/P1 evidence recorded; P2/P3/P4 and ADR-051 decision remain open)
+> Last content update: 2026-06-20 (CR-07-03 closure recorded — residual AI-error mapping sites fixed; `just check-ai-ux` → 0 violations verified; CR-08 P1 Docs Gate P0/P1 evidence recorded; P2/P3/P4 and ADR-051 decision remain open)

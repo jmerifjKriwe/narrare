@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { LearningStatus } from "@/components/studio/learning/LearningStatus";
 import { PreferenceProfile } from "@/components/studio/settings/PreferenceProfile";
+import { mapSSEError } from "@/lib/api/ai-error-mapping";
 import { usePreferences, useResetPreferences, useTriggerAnalysis } from "@/lib/hooks/useMemory";
 
 // ---------------------------------------------------------------------------
@@ -47,16 +48,27 @@ export function LearningTab({ novelId }: LearningTabProps) {
   }
 
   // --- Error state ---
+  // Route the profile-fetch error through the canonical mapper (ADR-043 §16.5)
+  // so the raw underlying error text is never leaked. mapSSEError returns null
+  // for aborts.
   if (error) {
+    const errorMsg = mapSSEError(error)?.userMessage ?? t("learning.loadFailed");
     return (
       <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm" role="alert">
-        {"userMessage" in error ? (error as { userMessage: string }).userMessage : error.message}
+        {errorMsg}
       </div>
     );
   }
 
   // --- No profile yet ---
   const eventCount = profile?.event_count ?? 0;
+
+  // Preference analysis is an AI operation (LLM). Route its error through the
+  // canonical mapper (ADR-043 §16.5) so the raw underlying error never leaks,
+  // and surface retry + connection-lost indication for §16.4 UX parity with
+  // GenerationPanel. mapSSEError returns null for aborts (no banner shown).
+  const analysisError = analysisMutation.error ? mapSSEError(analysisMutation.error) : null;
+  const isAnalysisConnectionLost = analysisError?.kind === "network";
 
   return (
     <div className="space-y-6">
@@ -93,18 +105,42 @@ export function LearningTab({ novelId }: LearningTabProps) {
         )}
       </div>
 
-      {/* Analysis error */}
-      {analysisMutation.error && (
+      {/* Analysis error — mapped message + retry, with connection-lost styling
+           when the failure is a network error (§16.4 parity with GenerationPanel) */}
+      {analysisError && (
         <div
-          className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
+          className={
+            isAnalysisConnectionLost
+              ? "flex items-center justify-between gap-3 p-3 rounded-lg bg-yellow-500/10"
+              : "flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
+          }
           role="alert"
         >
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span>
-            {"userMessage" in analysisMutation.error
-              ? (analysisMutation.error as { userMessage: string }).userMessage
-              : analysisMutation.error.message}
-          </span>
+          <div
+            className={
+              isAnalysisConnectionLost
+                ? "flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400"
+                : "flex items-center gap-2"
+            }
+          >
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{analysisError.userMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleAnalyze}
+            disabled={analysisMutation.isPending}
+            className={
+              isAnalysisConnectionLost
+                ? "flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md bg-yellow-600 text-white hover:bg-yellow-700 transition-colors disabled:opacity-50"
+                : "flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md border border-border text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+            }
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>
+              {isAnalysisConnectionLost ? t("aiActions.connectionLostRetry") : t("aiActions.retry")}
+            </span>
+          </button>
         </div>
       )}
 
