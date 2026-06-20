@@ -1,10 +1,10 @@
 # ADR-051 — Configuration Effect Adoption Contract
 
-> **Status:** 🔄 Proposed
+> **Status:** ✅ Accepted — in effect (2026-06-20)
 > **Date:** 2026-06-18
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —
-> **Related:** ADR-038, ADR-041, ADR-045, ADR-047, SET-005, CR-08, FIND-001, FIND-012, FIND-013, CONSTRAINTS.md RULE-03/RULE-04/RULE-06/RULE-07/RULE-10/RULE-11/RULE-12/RULE-13/RULE-18/RULE-20/RULE-22
+> **Related:** ADR-038, ADR-041, ADR-045, ADR-047, SET-005, CR-08, FIND-001, FIND-012, FIND-013, CONSTRAINTS.md RULE-03/RULE-04/RULE-06/RULE-07/RULE-10/RULE-11/RULE-12/RULE-13/RULE-18/RULE-18b/RULE-20/RULE-22
 
 ---
 
@@ -148,19 +148,24 @@ Each row must record:
 
 ---
 
-## Candidate RULE-18b
+## RULE-18b · Configuration Effect Integrity (Elevated)
 
-Do **not** change `CONSTRAINTS.md` in this specification slice. After ADR-051 is
-accepted and the first enforcement implementation lands, Architecture should propose a
-RULE-18 update or sub-rule:
+On acceptance of this ADR (2026-06-20), the candidate sub-rule was elevated to
+the authoritative constraints as **RULE-18b** in `docs/_shared/CONSTRAINTS.md`:
 
 > **Configuration Effect Integrity.** A configurable value must not be exposed, stored,
 > resolved, or documented as user/project/operator-controllable unless the resolved value
 > is consumed at the runtime boundary it claims to affect and regression evidence proves
 > that changing the value changes the effect or emits the documented warning/error.
 
-Review trigger for elevating this to `CONSTRAINTS.md`: CR-08 P0/P1 complete with a
-blocking gate and no unclassified CR-08 values.
+The elevation review trigger is satisfied: CR-08 P0/P1 are complete, the
+configuration-adoption checker (`scripts/check_configuration_matrix.py`) is a
+CI-blocking gate (`.github/workflows/ci.yml` architecture job,
+`just check-configuration-matrix`, `scripts/run_checks.py`), and no CR-08 value
+is unclassified (25/25 matrix `expected_setting_ids`, 0 violations — verified
+PASS). Derived context (`constraints/rules.md`, `standards/architecture-rules.md`,
+`standards/tier1-compact-rules.md`) was synced to reference RULE-18b without
+reproducing it, per the SSOT hierarchy (CONSTRAINTS.md §8).
 
 ---
 
@@ -201,10 +206,47 @@ Required gates after implementation:
 
 ---
 
+## Acceptance Record
+
+**Accepted: 2026-06-20** — promoted from Proposed based on implementation +
+enforcement evidence on disk, not documentation alone. Per
+`architectural-discipline.md` §7 ("documented ≠ implemented"; a `resolved` /
+`Accepted` claim requires implementation **and** enforcement), acceptance was
+blocked until both existed. They now do.
+
+### Implementation and Enforcement Evidence
+
+| Requirement | Evidence |
+|---|---|
+| Configuration Adoption Matrix | `docs/architecture/governance/configuration-adoption-matrix.yaml` — 25 expected `setting_ids`, 25 entries, 0 violations. |
+| CI-blocking checker | `scripts/check_configuration_matrix.py`, wired in `.github/workflows/ci.yml` (architecture job), `just check-configuration-matrix`, and `scripts/run_checks.py`. Verified PASS (exit 0) on acceptance. |
+| Review-finding coverage gate | `scripts/governance/_matrix_review_gate.py` (`validate_review_finding_matrix_coverage`) — enforces that future structured material P0/P1 `[category: configuration-effect]` findings are referenced by a matrix entry. |
+| P0 evidence | Commit `5769eaf2` — FIND-001 / CR-AUFG-08-01 output-limit enforcement at the model boundary; FIND-012 / CR-AUFG-08-02 `tier_percentages` consumption; matrix baseline CR-AUFG-08-09. |
+| P1 evidence | Core/Backend/Frontend/Platform evidence for CR-AUFG-08-03/07/10/11 (token-profile vocabulary, model-limit calibration, model-suitability policy, UI/API parity — FIND-013). |
+| P2/P3 evidence | Commits `138307c7`, `1aafad08` — operator defaults, setup-catalog/Ollama-URL centralization, typed `SystemModelCategory`, governed-defaults manifest. |
+| P4 evidence | Commit `c49d971f` — review-classification gate + docs/audit-template reconciliation. |
+| RULE-18b elevation | Candidate sub-rule elevated to `CONSTRAINTS.md` RULE-18b on acceptance; derived context synced. |
+
+### Why Accept (not Supersede)
+
+Option C directly addresses the CR-08 root cause (configuration/effect drift: a
+value exposed/resolved without runtime-effect proof). The contract, the matrix,
+and the blocking gate are all implemented and enforced. No architectural flaw in
+the Option C design was found that would warrant a superseding contract;
+supersession is reserved for decisions that prove wrong in practice.
+
+---
+
 ## Review Trigger
 
+> **2026-06-20 — Accepted.** The first trigger fired: CR-08 P0–P4 remediation is
+> complete with implementation/enforcement evidence on disk, and Platform
+> implemented the configuration-adoption checker (`scripts/check_configuration_matrix.py`,
+> CI-blocking). RULE-18b was elevated to `CONSTRAINTS.md` on acceptance. The
+> remaining triggers below stay in force for future re-review.
+
 - When CR-08 P0/P1 remediation is complete and Platform implements the first
-  configuration-adoption checker.
-- When RULE-18 is next amended.
+  configuration-adoption checker. *(fired 2026-06-20 — ADR accepted)*
+- When RULE-18 is next amended. *(RULE-18b sub-rule added 2026-06-20 on acceptance)*
 - When a future audit finds a user-visible setting whose runtime effect is not proven.
 - When new provider/catalog/model-limit sources are added.

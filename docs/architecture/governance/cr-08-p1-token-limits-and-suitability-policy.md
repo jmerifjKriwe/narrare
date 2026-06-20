@@ -1,6 +1,6 @@
 # CR-08 P1 Policy — Token Profiles, Model Limits, and Suitability
 
-> **Status:** implemented evidence recorded for CR-08 P1; ADR-051 remains proposed
+> **Status:** implemented + enforced for CR-08 P1; ADR-051 accepted (2026-06-20)
 > **Applies to:** CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10, CR-AUFG-08-11 / FIND-013
 > **Parent spec:** `docs/features/remediation/cr-08-configuration-effect-drift.md`
 > **Constraint focus:** RULE-03, RULE-07, RULE-10, RULE-11, RULE-17, RULE-20, RULE-22
@@ -22,18 +22,17 @@ freshness. Unknown/offline/stale states therefore look the same as calibrated st
 tests, and explicit warning/blocking policy. No layer may imply that a setting takes effect
 unless runtime enforcement and metadata evidence are present.
 
-This document records the implemented P1 evidence. It does **not** accept ADR-051 or
-make ADR-051 the active constitutional contract; ADR-051 remains proposed until the ADR
-index records acceptance or supersession.
+This document records the implemented P1 evidence. ADR-051 was accepted on 2026-06-20
+and RULE-18b was elevated to CONSTRAINTS.md; this P1 evidence contributes to the
+resolved CR-08 AUFG set.
 
 ---
 
 ## Implementation Evidence (2026-06-20)
 
 P1 implementation is complete with enforcement and cross-layer evidence. Later CR-08
-P2/P3/P4 work is outside this policy and is now recorded as implemented/enforced in
-the remediation spec; final CR-08 resolution still waits on ADR-051 acceptance or
-supersession.
+P2/P3/P4 work is outside this policy and is recorded as implemented/enforced in
+the remediation spec. ADR-051 was accepted 2026-06-20; the CR-08 AUFG set is resolved.
 
 | Area | Implemented evidence |
 |---|---|

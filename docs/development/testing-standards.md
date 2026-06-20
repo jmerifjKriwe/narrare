@@ -376,8 +376,8 @@ and future content-review files are loaded.
 configuration/effect finding must update the matrix in the same PR. Any new
 settings/defaults work must keep the matrix row, tests, and lifecycle docs in sync.
 
-**Reference:** CR-08 remediation spec and ADR-051 (Proposed; do not mark accepted
-from checker evidence alone).
+**Reference:** CR-08 remediation spec and ADR-051 (Accepted 2026-06-20; RULE-18b
+elevated to CONSTRAINTS.md).
 
 ---
 

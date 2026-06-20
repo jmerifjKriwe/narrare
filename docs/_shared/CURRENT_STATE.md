@@ -7,8 +7,8 @@
 
 ## Last Updated
 
-Date: 2026-06-20 (CR-08 final docs reconciliation — P0-P4 implementation/enforcement evidence recorded; ADR-051 still Proposed)
-Session: CR-08 final documentation reconciliation after the CR-AUFG-08-14 Platform gate. P0 is committed (`5769eaf2`). P1 is implemented with Core/Backend/Frontend/Platform evidence for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11. P2/P3 implementation/enforcement evidence is recorded in the Configuration Adoption Matrix and governed-defaults manifest, with evidence from commits `138307c7` and `1aafad08`. P4 is implemented/enforced by the current uncommitted Platform gate (`scripts/check_configuration_matrix.py`, `scripts/governance/configuration_matrix.py`, `scripts/governance/_matrix_review_gate.py`, `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py`) plus docs/audit-template reconciliation. SET-005 remains in-progress, and the CR-08 AUFG set remains blocked from final `resolved` status, because ADR-051 remains Proposed and must be accepted or superseded before stable/resolved language is truthful.
+Date: 2026-06-20 (CR-08 lifecycle resolution — ADR-051 accepted; CR-08 AUFG set resolved; SET-005 promoted to stable)
+Session: CR-08 lifecycle finalization after Architecture accepted ADR-051 (RULE-18b "Configuration Effect Integrity" elevated to CONSTRAINTS.md). P0 is committed (`5769eaf2`). P1 is implemented with Core/Backend/Frontend/Platform evidence for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11. P2/P3 implementation/enforcement evidence is recorded in the Configuration Adoption Matrix and governed-defaults manifest, with evidence from commits `138307c7` and `1aafad08`. P4 is implemented/enforced by the Platform gate (`scripts/check_configuration_matrix.py`, `scripts/governance/configuration_matrix.py`, `scripts/governance/_matrix_review_gate.py`, `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py`) plus docs/audit-template reconciliation. With ADR-051 accepted, the CR-08 AUFG set is marked `resolved` and SET-005 is promoted to `stable`: its configuration cascade, runtime-effect adoption (CR-AUFG-08-01/02), UI/API/Core parity (CR-AUFG-08-03/10, FIND-013), and tests are all verified in the Configuration Adoption Matrix.
 
 ---
 
@@ -68,7 +68,7 @@ Alembic migrations 0001 through 0030 (0028: invocation_evidence table; 0030: evi
 
 - `_shared/`: CONSTRAINTS.md (23 rules), TECH_STACK.md, GLOSSARY.md, CURRENT_STATE.md
 - `development/`: coding-standards, testing-standards, ui-principles, deployment-guide, orchestrator
-- `architecture/decisions/`: ADR-001–ADR-051 plus implementation plans (INDEX.md — ADR-039 gap; ADR-047/ADR-048/ADR-051 Proposed; ADR-046/ADR-049/ADR-050 implemented or accepted as listed there)
+- `architecture/decisions/`: ADR-001–ADR-051 plus implementation plans (INDEX.md — ADR-039 gap; ADR-047/ADR-048 Proposed; ADR-046/ADR-049/ADR-050/ADR-051 implemented or accepted as listed there)
 - `architecture/questions/`: 11 questions in 6 files (3 active, 9 resolved)
 - `features/`: Feature specs with status tracking; see `docs/features/INDEX.md`
 - `features/INDEX.md` → ADAPTER-001/002: MCP and A2A adapters documented as "Planned, Not Implemented" (post-MVP, Q-001/Q-002 blockers)
@@ -118,7 +118,7 @@ Completed in Phase 6 so far:
 10. ✅ ANAL-001: Beta Reader Simulation — BetaReaderAgent + ScoreRadar + 4-tab panel
 11. ✅ ANAL-002: Sentiment Analysis — LexiconSentimentAnalyzer + arc trajectory graphs
 12. ✅ CONS-001: Consistency Checker — ConsistencyAgent + rule-based pre-check + actions
-13. 🔧 SET-005: Configurable Token Limits — storage/API/UI cascade exists; CR-08 P0-P4 have implementation + enforcement + cross-layer evidence (P0 model-boundary/tier-budget adoption; P1 token profile vocabulary, UI/API/Core parity/FIND-013, model-limit calibration, and suitability warnings/blocks; P2 operator/default governance; P3 governed defaults manifest; P4 status taxonomy + audit-template matrix gate). The feature remains in-progress until ADR-051 is accepted or superseded.
+13. ✅ SET-005: Configurable Token Limits — storage/API/UI cascade exists; CR-08 P0-P4 have implementation + enforcement + cross-layer evidence (P0 model-boundary/tier-budget adoption; P1 token profile vocabulary, UI/API/Core parity/FIND-013, model-limit calibration, and suitability warnings/blocks; P2 operator/default governance; P3 governed defaults manifest; P4 status taxonomy + audit-template matrix gate). ADR-051 accepted 2026-06-20; SET-005 promoted to stable (cascade + runtime adoption + UI/API/Core parity + tests verified in the Configuration Adoption Matrix).
 14. ✅ CR-01 through CR-04: Prompt quality audits + preference wiring + meta-prompt guardrails
 15. ✅ Coverage Uplift: 1,045+ new tests across all layers
 16. ✅ ADR-016: Prompt Caching — Implemented across all 4 phases (Phase 0: AgentRegistry, Phase 1: CacheSettings+ModelSettings, Phase 2: Cache Observability, Phase 3: WritingGraph Backend DI)
@@ -273,7 +273,7 @@ These were not marked `resolved` from audit prose, checker green, or ADR existen
 | ADR-048 | Non-Writing Invocation Adapter (Domain-Agnostic Pipeline Composition) | 🔄 Proposed — domain-agnostic invocation-pipeline composition for non-writing domains (ADR-045 Decision 7); not yet accepted or implemented. Listed Proposed in the ADR index; do not treat as in effect until accepted or superseded. |
 | ADR-049 | Prompt-Surface Identity & Path Contract Retrofit (FIND-010 + FIND-011) | ✅ Implemented — Phase C (CHAT routing restored to ADR-024 `writing/chat`; `_bundled/chat/` deleted; `_bundled/planning/en/timeline/system.md` created; `timeline_analysis_service.py` migrated to PromptComposer Mode 1; premature ADR-048 Mode 2 declaration removed) + Phase D checkers (PROMPT-IDENTITY/ROOT-MODE/PATH-DERIVABILITY/FRONTMATTER-MATCH/CONTEXT-MODES/ORPHAN-TEMPLATE/INLINE-FEATURE-PROMPT) CI-blocking. FIND-010 + FIND-011 resolved. ADR-037 latent AST bug (only `ast.Assign` visited, never `ast.AnnAssign`) found and fixed. |
 | ADR-050 | Cross-Feature Context Contracts (KB Envelope, Ref Lifecycle, kb_pinned Governance) | ✅ Accepted + Core contracts implemented — `KBContextEnvelope`/`RenderedKBContext`, `KBEntityLifecycleObserver`/`CrossFeatureRefIndex`/per-consumer Protocols in `core/context/`, `VoiceProfileConsumer` in `core/profiles/`, `kb_pinned`/`kb_timelines`/`kb_systems` registered. Backend wiring (Renderer→RenderedKBContext + KB-Lifecycle-Observer) implemented. FIND-009 split: FIND-009a resolved via ADR-044 (Consistency consumer); FIND-009b closed by ADR-050 P1-A/B. |
-| ADR-051 | Configuration Effect Adoption Contract | 🔄 Proposed — candidate CR-08 remediation contract. A configurable/default value is not implemented until source → resolver → runtime consumer → enforcement evidence exists, or it is explicitly classified as a governed default/operator default with owner, rationale, tests, and review trigger. It proposes the contract used by `docs/features/remediation/cr-08-configuration-effect-drift.md` and FIND-013; task resolution requires ADR-051 acceptance or supersession. |
+| ADR-051 | Configuration Effect Adoption Contract | ✅ Accepted — in effect (2026-06-20). RULE-18b (Configuration Effect Integrity) elevated to CONSTRAINTS.md. CR-08 AUFG set resolved (P0–P4 implementation + enforcement + cross-layer evidence); SET-005 promoted to stable. The contract governs `docs/features/remediation/cr-08-configuration-effect-drift.md` and FIND-013. |
 
 Full details: `docs/architecture/decisions/INDEX.md`
 
@@ -315,4 +315,4 @@ Full details: `docs/architecture/questions/INDEX.md`
 ---
 
 > Maintained by: Coordinator, updated at session end
-> Last content update: 2026-06-20 (CR-08 final docs reconciliation — P0-P4 implementation/enforcement evidence recorded; CR-AUFG-08-14 audit-template matrix gate documented; ADR-051 decision remains Proposed/open)
+> Last content update: 2026-06-20 (CR-08 lifecycle resolution — ADR-051 accepted; RULE-18b elevated to CONSTRAINTS.md; CR-08 AUFG set resolved; SET-005 promoted to stable)

@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-20 (CR-08 P0-P4 implementation + enforcement evidence recorded; CR-08 remains blocked on ADR-051 acceptance/supersession before final resolution)
+> **Last updated:** 2026-06-20 (CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -48,21 +48,22 @@ block the immediate runtime remediation once P0/P1 are complete).
 |-------|-------|
 | IDs | CR-AUFG-08-01 through CR-AUFG-08-14 |
 | Title | Configuration/Effect Drift Remediation |
-| Source | CR-08 hardcoded-values audit and candidate ADR-051 Configuration Effect Adoption Contract |
-| Status | `blocked` (P0-P4 implementation/enforcement evidence recorded; final `resolved` status waits on ADR-051 acceptance/supersession) |
+| Source | CR-08 hardcoded-values audit and ADR-051 Configuration Effect Adoption Contract |
+| Status | `resolved` (ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete; SET-005 promoted to stable) |
 | Priority | P0–P4 by phase |
 | Area | Settings, Core LLM runtime, Writing context assembly, Provider catalogs, Frontend settings UI, Platform governance, Docs |
 | Owner role | Architecture Specialist (contract), Core/Backend/Frontend/Platform/Docs Specialists by phase |
 | Dependencies | ADR-045 run-limit enforcement, SET-005 token-limit cascade, `TokenLimitsService`, `ModelRoutingResolverImpl`, provider catalog/cache paths |
-| Review trigger/date | Re-review when ADR-051 is accepted or superseded, before any claim that SET-005 is stable/runtime-adopted, or by 2026-07-31 if still blocked. |
+| Review trigger/date | Re-review if RULE-18b enforcement is weakened, if the Configuration Adoption Matrix regresses, or before any release-readiness claim that depends on configuration-effect integrity. ADR-051 acceptance review fired 2026-06-20. |
 
 **Lifecycle decision:**
 
 CR-08 findings are not allowed to remain as prose-only audit notes. The durable lifecycle
 surface is the implementation-ready remediation specification at
-`docs/features/remediation/cr-08-configuration-effect-drift.md`, tracked against
-candidate ADR-051. ADR-051 must be accepted or superseded before these tasks can be
-marked resolved.
+`docs/features/remediation/cr-08-configuration-effect-drift.md`, governed by ADR-051
+(accepted 2026-06-20). The AUFG set is resolved: ADR-051 is in effect, RULE-18b is
+elevated to CONSTRAINTS.md, and every CR-AUFG-08 task has implementation + enforcement +
+cross-layer evidence.
 
 **Phase summary:**
 
@@ -72,8 +73,8 @@ marked resolved.
 - **P1:** CR-AUFG-08-03 token vocabulary unification; CR-AUFG-08-10 token settings
   UI/API/Core parity (FIND-013); CR-AUFG-08-07 model-limit calibration;
   CR-AUFG-08-11 model suitability policy. **Implementation + enforcement +
-  cross-layer evidence recorded 2026-06-20; lifecycle remains under the blocked
-  CR-08 set until ADR-051 is accepted or superseded.**
+  cross-layer evidence recorded 2026-06-20; resolved with the CR-08 set on
+  ADR-051 acceptance (2026-06-20).**
 - **P2:** CR-AUFG-08-04 inline suggest cap; CR-AUFG-08-05 consistency caps layer;
   CR-AUFG-08-06 setup fallback catalogs/Ollama defaults; CR-AUFG-08-08 system model
   resolver; CR-AUFG-08-12 operator/default governance. **Implemented + enforced;
@@ -84,9 +85,9 @@ marked resolved.
   **Implemented + enforced; future structured material P0/P1 configuration/effect
   findings are matrix-gated.**
 
-**Phase/open-decision split:** P0-P4 are phase-complete with implementation and
-enforcement evidence. The AUFG set remains `blocked`, not `resolved`, because the
-Definition of Done still requires ADR-051 to be accepted or superseded.
+**Resolution:** P0-P4 are phase-complete with implementation and enforcement
+evidence, and ADR-051 was accepted on 2026-06-20. The Definition of Done is
+satisfied; the AUFG set is `resolved`.
 
 **Acceptance criteria:**
 
@@ -95,21 +96,25 @@ Definition of Done still requires ADR-051 to be accepted or superseded.
   with owner/exit criteria.
 - No exposed/user-facing setting may be marked resolved without source → resolver →
   runtime consumer → enforcement regression evidence.
-- SET-005 status wording remains qualified until runtime-effect adoption evidence exists.
+- SET-005 runtime-effect adoption is proven by matrix evidence (CR-AUFG-08-01/02) and UI/API/Core parity (CR-AUFG-08-03/10, FIND-013); SET-005 is promoted to stable.
 - Platform governance blocks new unclassified P0/P1 configuration/effect findings once
   baseline is established.
 
-**Definition of Done:**
+**Definition of Done:** ✅ Met (2026-06-20).
 
-- ADR-051 accepted or superseded by an equivalent contract.
-- `docs/features/remediation/cr-08-configuration-effect-drift.md` phase DoD complete.
+- ADR-051 accepted 2026-06-20; RULE-18b elevated to CONSTRAINTS.md.
+- `docs/features/remediation/cr-08-configuration-effect-drift.md` phase DoD complete (P0–P4).
 - FIND-001, FIND-012, and FIND-013 have implementation-on-disk, enforcement, and
-  cross-feature integration evidence before being marked resolved.
-- Governance registry entry updated with exit evidence and status `resolved` or with
-  any remaining items split into accepted risks/enhancements with owner and review date.
+  cross-feature integration evidence (see Exit evidence).
+- Governance registry entry updated with exit evidence and status `resolved`.
 
-**Exit evidence:** Partial, phase-scoped.
+No remaining governed-debt or accepted-enhancement items were split out of this set.
 
+**Exit evidence:** Complete (2026-06-20). ADR-051 accepted; CR-08 AUFG set resolved.
+
+- **Architectural decision:** ADR-051 accepted 2026-06-20; RULE-18b (Configuration
+  Effect Integrity) elevated to `docs/_shared/CONSTRAINTS.md` and synced to the
+  extracted context rules files.
 - **P0:** committed as `5769eaf2`.
 - **P1 (2026-06-20):** implementation + enforcement + cross-layer evidence recorded
   for CR-AUFG-08-03, CR-AUFG-08-07, CR-AUFG-08-10/FIND-013, and CR-AUFG-08-11.
@@ -134,8 +139,11 @@ Definition of Done still requires ADR-051 to be accepted or superseded.
   `scripts/check_configuration_matrix.py`, `scripts/governance/configuration_matrix.py`,
   `scripts/governance/_matrix_review_gate.py`, and
   `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py`.
-- **Remaining:** ADR-051 remains Proposed and must be accepted or superseded before
-  this CR-08 AUFG set can be marked `resolved`.
+- **Ongoing enforcement:** `scripts/check_configuration_matrix.py` (PASS, 0
+  violations) validates the matrix; `scripts/governance/_matrix_review_gate.py`
+  blocks future unclassified structured material P0/P1 configuration-effect
+  findings. Versioned audit-prompt markers `[P0|P1] [category: configuration-effect]`
+  are required by the CR-08 content-review template.
 
 ---
 
@@ -947,6 +955,239 @@ in `metrics/router.py` returns `status: obs["severity"]` instead of hardcoded
 configured-failed, configured-ok, content-capture default, package-unavailable).
 RULE-11 silent-failure gap closed: configured-but-broken is now both logged AND
 queryable from `/health`.
+
+---
+
+## Cross-Review AUFG Migration (Reviews 01–04 → Durable Registry)
+
+These entries migrate AUFGs first defined in earlier technical reviews (01–04) into
+the durable lifecycle registry so that consolidated Review-05 findings reference
+machine-checkable lifecycle states rather than prose-only review text. Each status is
+based on current platform evidence verified 2026-06-20 (not the original review date):
+the gates and artefacts named in the exit evidence were re-run or re-inspected. Full
+acceptance criteria remain in the source review files referenced under `Source`.
+
+### AUFG-01-04 — useExtractionPhase RULE-04 und AI-UX-Regression beheben
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-04 |
+| Source | review-01-architektur.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `resolved` |
+| Priority | P1 |
+| Area | Frontend architecture, RULE-04, AI UX |
+| Review trigger/date | Re-review if check-frontend-size or check-ai-ux regresses for extraction hooks. |
+
+**Exit evidence (2026-06-20):** `useExtractionPhase.ts` is within the hook hard limit
+(modularized, not compressed). `just check-frontend-size` reports
+`0 current, 0 baseline, 0 new, 0 resolved`; `just check-ai-ux` reports `Violations: 0`
+with 3 governed exclusions tracked as baseline debt. The callback-based SSE transport
+remains a justified governed exception under CR-AUFG-07-09.
+
+---
+
+### AUFG-01-05 — AI-UX-Test-Harness für NameGenerator bereinigen
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-05 |
+| Source | review-01-architektur.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `resolved` |
+| Priority | P2 |
+| Area | Testing, Frontend quality, AI UX checker |
+| Review trigger/date | Re-review if check-ai-ux flags a raw AbortController in NameGenerator tests. |
+
+**Exit evidence (2026-06-20):** `NameGenerator.test.tsx` no longer triggers a raw
+`AbortController()` violation. `just check-ai-ux` reports `Violations: 0`; no
+production-code workaround was introduced (test-/checker-conformant harness only).
+
+---
+
+### AUFG-02-08 — Aktuelle CI-Blocker aus Review 01 vor Merge bereinigen
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-02-08 |
+| Source | review-02-testing.md §Aufgaben (tracking task for AUFG-01-04/01-05); consolidated in review-05-release.md §5. |
+| Status | `resolved` |
+| Priority | P1 |
+| Area | CI, Frontend quality gates |
+| Review trigger/date | Re-review if the architecture/frontend CI path is blocked by AI-UX or RULE-04 violations. |
+
+**Exit evidence (2026-06-20):** Tracking task for AUFG-01-04 and AUFG-01-05. Both
+underlying gates are green: `just check-ai-ux` → `Violations: 0`;
+`just check-frontend-size` → `0 current, 0 baseline`. No compression-based limit
+evasion; `useExtractionPhase.ts` was modularized.
+
+---
+
+### AUFG-02-02 — Coverage-Gate vom Übergangszustand auf RULE-10-Endzustand heben
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-02-02 |
+| Source | review-02-testing.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `resolved` |
+| Priority | P1 |
+| Area | Testing, CI, RULE-10 coverage governance |
+| Review trigger/date | Re-review if the global cov-fail-under drops below 80% or per-module ratcheted baselines are removed. |
+
+**Exit evidence (2026-06-20):** The transition exception is closed. CI
+(`.github/workflows/ci.yml`) runs `--cov-fail-under=80` as a blocking global gate
+(documented at global 82.51%); `scripts/check_module_coverage.py --fail` enforces
+per-module RULE-10 thresholds via ratcheted baselines in the `test-unit` job; and
+`scripts/check_test_coverage_gaps.py --fail-on-missing` runs in the `architecture`
+job. No `coverage-threshold` architecture exception remains. CI, README badge and
+testing standards describe the same 80% global status.
+
+---
+
+### AUFG-01-07 — Adoption-/Health-Ratchet mit CURRENT_STATE.md synchronisieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-07 |
+| Source | review-01-architektur.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `resolved` |
+| Priority | P2 |
+| Area | DX, Governance, SSOT consistency |
+| Review trigger/date | Re-review if CURRENT_STATE.md reintroduces a hard-coded adoption-debt count that drifts from check-adoption. |
+
+**Exit evidence (2026-06-20):** The Say-Do drift is closed. `CURRENT_STATE.md` no
+longer claims "0 adoption debt"; it defers to `just check-adoption` as the
+authoritative source (AUFG-05-11 removed all volatile generated counts).
+`just check-adoption` reports `Feature Adoption Score: 0.97 (PASS)` with consistent
+static/runtime/adopted semantics across CURRENT_STATE.md, the adoption report and the
+health score. The remaining adoption-debt class is the governed inline-fallback
+baseline, tracked explicitly.
+
+---
+
+### AUFG-03-05 — AI-Adoption-Runtime-Evidence-Semantik klären
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-03-05 |
+| Source | review-03-ai-features.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `resolved` |
+| Priority | P1 |
+| Area | AI, Governance, adoption semantics |
+| Review trigger/date | Re-review if adoption reporting reintroduces a conflation of static-verified and runtime-adopted. |
+
+**Exit evidence (2026-06-20):** Runtime-evidence semantics are clarified and aligned.
+`just check-adoption` reports `static_verified`, `runtime_verified` and `adopted` as
+distinct columns; all required modes show `runtime ✅ | adopted ✅` (score 0.97 PASS).
+`CURRENT_STATE.md` records the ADR-045 terminology ("infrastructure complete" ≠ "static
+verified" ≠ "runtime verified" ≠ "runtime adopted") and states runtime adoption gaps
+are closed. A static-only change no longer raises `adopted`. The owner/exit table for
+ratcheted baseline categories lives in INFRA-013.
+
+---
+
+### AUFG-01-03 — MCP/A2A-Produktstatus und Adapter-Gates klären
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-03 |
+| Source | review-01-architektur.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `accepted_enhancement` |
+| Priority | P3 |
+| Area | Architecture, adapter strategy |
+| Review trigger/date | Re-review when Q-001 (MCP auth) or Q-002 (A2A streaming) is decided, or when a multi-adapter product requirement is approved. |
+
+**Disposition (2026-06-20):** MCP/A2A is deliberately not implemented and is a
+deferred strategic capability, not a quality gap. The documentation/clarification
+acceptance criteria are met: the directory structure, feature index
+(ADAPTER-001/002 note) and open questions Q-001/Q-002 consistently describe MCP/A2A
+as planned-not-implemented, with contract-test gates defined for the first adapter
+(see also AUFG-03-04). No adapter skeleton is created merely to satisfy review.
+Capability implementation remains gated on a Q-001/Q-002 decision and a dedicated
+adapter spec.
+
+---
+
+### AUFG-03-04 — MCP/A2A als geplante Adapter konkretisieren oder aus Review-Scope entfernen
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-03-04 |
+| Source | review-03-ai-features.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `accepted_enhancement` |
+| Priority | P3 |
+| Area | AI, Architecture, adapter strategy |
+| Review trigger/date | Re-review when Q-001/Q-002 is decided, or when an adapter-specific spec is written. |
+
+**Disposition (2026-06-20):** Verified (per review-03) that the INDEX.md
+ADAPTER-001/002 note and Q-001/Q-002 are current and act as SSOT, with contract-test
+gates (service-layer call, auth/identity mapping, streaming/non-streaming parity,
+error mapping, no business logic in adapter) already defined for the first adapter.
+Q-001 and Q-002 remain marked as blockers until an adapter-specific spec is written.
+No `apps/mcp/` or `apps/a2a/` skeleton exists solely to satisfy review. Capability
+remains a deferred strategic enhancement (paired with AUFG-01-03).
+
+---
+
+### AUFG-05-04 — pnpm-Version im Dockerfile aktualisieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-05-04 |
+| Source | review-05-release.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `resolved` |
+| Priority | P2 |
+| Area | Release, DX, build consistency |
+| Review trigger/date | Re-review if the Dockerfile pnpm version drifts from the root packageManager pin again. |
+
+**Exit evidence (2026-06-20):** `Dockerfile:53` uses `ARG PNPM_VERSION=11.5.2`,
+matching the root `package.json` `packageManager: pnpm@11.5.2` pin. The release-build
+`pnpm install --frozen-lockfile` stage, Dockerfile, DevContainer Dockerfile and root
+package.json now share one pnpm version. (DevContainer parity is tracked under
+AUFG-04-03.)
+
+---
+
+### AUFG-02-06 — Pydantic-Evals in CI/Nightly-Governance einbinden
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-02-06 |
+| Source | review-02-testing.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `resolved` |
+| Priority | P2 |
+| Area | AI, CI, evaluation governance |
+| Review trigger/date | Re-review if eval smoke coverage is removed from CI or if check_eval_drift semantics change. |
+
+**Exit evidence (2026-06-20):** Secret-free smoke evals are wired into CI as a
+blocking step: `.github/workflows/ci.yml` runs
+`uv run python -m evals run --suite all --mode smoke` in the `architecture` job, and
+`scripts/check_eval_drift.py` runs warning-only with no-growth semantics. Runtime
+evals with provider secrets remain separated from normal pytest jobs. The residual
+"dedicated nightly runtime workflow" is tracked as ongoing eval-expansion work
+(AUFG-03-07) rather than a blocker for CI integration. Testing standards document
+the smoke/runtime/optional-LLM-judge distinction.
+
+---
+
+### AUFG-03-07 — Pydantic-Evals fachlich verbreitern
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-03-07 |
+| Source | review-03-ai-features.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `in_progress` |
+| Priority | P2 |
+| Area | AI, Testing, evaluation coverage |
+| Owner role | Core/AI Specialist with Platform CI support |
+| Review trigger/date | Re-review when a new eval dataset/suite is added or when the eval-expansion roadmap is revised. |
+
+**Exit evidence (partial, 2026-06-20):** Eval coverage has broadened from the
+original 3 suites (KB Extraction, Rewrite Selection, Preference Analysis) to 6
+datasets under `evals/datasets/` (now also `analysis_feedback`, `chat_generation`,
+`consistency_staged`), with matching evaluators under `evals/evaluators/`. The
+prioritized expansion plan lives at `_audit/results/technical-review/eval-expansion-plan.md`.
+Further broadening across remaining AI surfaces (more analysis agents, planning,
+worldbuilding, names) and a dedicated nightly runtime workflow remain open and are
+tracked here as ongoing work. This is real in-progress lifecycle debt, not closure.
 
 ---
 

@@ -754,7 +754,8 @@ entries:
     fallback_policy: >-
       No "every setting takes effect" wording may remain unless the matrix row
       points to source -> resolver -> runtime consumer -> enforcement evidence.
-      CR-08 phase completion remains separate from ADR-051 acceptance/supersession.
+      ADR-051 is accepted (2026-06-20); CR-08 phase completion and lifecycle
+      resolution are now aligned.
     enforcement_evidence:
       - "scripts/check_configuration_matrix.py (loads content/technical review findings and merges review coverage with matrix validation)"
       - "scripts/governance/configuration_matrix.py::validate_review_finding_matrix_coverage"
@@ -762,15 +763,15 @@ entries:
       - "tests/unit/scripts/governance/test_configuration_matrix_review_gate.py"
       - "_audit/review-prompts/content-review-prompts/cr-08-hardcoded-values.md"
     cross_layer_evidence:
-      - "docs/features/remediation/cr-08-configuration-effect-drift.md distinguishes P0-P4 implementation/enforcement from final ADR-051 lifecycle resolution."
-      - "docs/architecture/governance/aufg-registry.md keeps the CR-08 AUFG set blocked on ADR-051 while recording phase evidence."
-      - "docs/features/settings/SET-005-configurable-token-limits.md and docs/features/INDEX.md keep SET-005 in-progress without implying P2/P3/P4 are open."
-      - "docs/_shared/CURRENT_STATE.md records CR-08 P0-P4 as implemented/enforced while preserving ADR-051 Proposed."
+      - "docs/features/remediation/cr-08-configuration-effect-drift.md records CR-08 as resolved (ADR-051 accepted 2026-06-20) with P0-P4 implementation/enforcement evidence."
+      - "docs/architecture/governance/aufg-registry.md marks the CR-08 AUFG set as resolved with exit evidence."
+      - "docs/features/settings/SET-005-configurable-token-limits.md and docs/features/INDEX.md record SET-005 as stable (ADR-051 accepted; cascade + runtime adoption + parity + tests verified)."
+      - "docs/_shared/CURRENT_STATE.md records ADR-051 as Accepted and CR-08 as resolved."
     cr_task: CR-AUFG-08-14
     phase: P4
     review_trigger: >-
-      Re-evaluate when status taxonomy wording changes, when ADR-051 is accepted
-      or superseded, or when audit/review prompt conventions change.
+      Re-evaluate when status taxonomy wording changes, when ADR-051 is
+      superseded, or when audit/review prompt conventions change.
     rationale: >-
       Status/documentation drift is now governed by docs reconciliation plus a
       structured review-finding coverage gate for future material P0/P1

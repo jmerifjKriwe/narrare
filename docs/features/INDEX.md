@@ -166,7 +166,7 @@
 | [SET-001](settings/SET-001-user-settings.md) | User Settings | ✅ | ✅ |
 | [SET-002](settings/SET-002-project-settings.md) | Project Settings | ✅ | ✅ |
 | [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | ✅ | ✅ |
-| [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | 🔨 | ❌ |
+| [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | ✅ | ❌ |
 | [KEYBOARD-001](keyboard-consistency.md) | Tastatur-Konsistenz | ✅ | ❌ |
 
 ### Analytics & Cost
@@ -274,5 +274,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-20 — SET-005 remains in-progress: storage/API/UI cascade exists, and CR-08 P0-P4 now have implementation, enforcement, and cross-layer evidence (CR-AUFG-08-01 through CR-AUFG-08-14, including FIND-013 and the audit-template matrix gate). Do not promote SET-005 to stable until ADR-051 is accepted or superseded. ADR-051 remains proposed/candidate only. ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-20 — SET-005 promoted to `stable`: ADR-051 accepted (RULE-18b elevated to CONSTRAINTS.md); CR-08 AUFG set resolved (CR-AUFG-08-01 through CR-AUFG-08-14, including FIND-013 and the audit-template matrix gate). SET-005's configuration cascade, runtime-effect adoption, UI/API/Core parity, and tests are all verified in the Configuration Adoption Matrix. ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

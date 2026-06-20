@@ -30,6 +30,7 @@ Which rules are MOST relevant for which specialist layer.
 | RULE-16 (i18n namespace registration) | — | — | ✅ primary | — |
 | RULE-17 (API-Frontend contract) | — | ✅ primary | ✅ primary | ✅ tests |
 | RULE-18 (No hardcoded config) | — | ✅ primary | — | — |
+| RULE-18b (Configuration Effect Integrity) | ✅ primary | ✅ primary | ⚠️ aware | ✅ tests |
 | RULE-19 (SessionDep not AsyncSession) | — | ✅ primary | — | — |
 | RULE-20 (No half-implementations) | ✅ all | ✅ all | ✅ all | ✅ all |
 | RULE-21 (Re-review on material changes) | ✅ all | ✅ all | ✅ all | ✅ all |
@@ -56,6 +57,7 @@ Which rules are MOST relevant for which specialist layer.
 - **RULE-08**: External SDK? There's an adapter for that. Use the adapter, not the SDK directly.
 - **RULE-14**: Touched `models.py`? You need a migration. Same task, same commit.
 - **RULE-18**: Router parameters must come from DI/settings cascade, not hardcoded strings.
+- **RULE-18b**: A setting is not "implemented" until its resolved value is consumed at the runtime boundary it affects, with regression evidence. Every material setting needs a Configuration Adoption Matrix row (lifecycle classification + runtime_consumer + enforcement_evidence for user/project values). See ADR-051 / CONSTRAINTS.md RULE-18b.
 - **RULE-19**: Dependency factories: `SessionDep`, not bare `AsyncSession`. Always.
 
 ### Quality Rules — During Implementation
@@ -87,6 +89,7 @@ Which rules are MOST relevant for which specialist layer.
 | Service without Protocol | Write `contracts.py` FIRST — RULE-03 |
 | Bare `AsyncSession` in deps | Always use `SessionDep` — RULE-19 |
 | Hardcoded provider in router | Use settings cascade — RULE-18 |
+| Exposed setting with no runtime consumer / no regression proof of effect | Add a Configuration Adoption Matrix row (runtime_consumer + enforcement_evidence) — RULE-18b |
 | Missing migration for model change | Check: did I touch `models.py`? → create migration — RULE-14 |
 | `middleware.ts` created | Edit `proxy.ts` instead — RULE-15 |
 | File approaching 400 lines | Plan the split NOW, don't compress — RULE-04 |

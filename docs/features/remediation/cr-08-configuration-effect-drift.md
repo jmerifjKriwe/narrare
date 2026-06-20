@@ -1,9 +1,9 @@
 # CR-08 Remediation — Configuration/Effect Drift Specification
 
-> **Status:** phase implementation/enforcement complete — P0 committed; P1/P2/P3/P4 evidence recorded; candidate ADR-051 remains proposed, so the CR-08 AUFG set is not fully `resolved`
-> **Date:** 2026-06-18
+> **Status:** resolved — P0–P4 implementation/enforcement complete; ADR-051 accepted 2026-06-20; CR-08 AUFG set marked `resolved`
+> **Date:** 2026-06-18 (reconciled 2026-06-20 on ADR-051 acceptance)
 > **Author:** Architecture Specialist
-> **Candidate ADR:** [ADR-051](../../architecture/decisions/ADR-051-configuration-effect-adoption-contract.md) (Proposed; must be accepted or superseded before CR-AUFG-08 tasks can be resolved)
+> **ADR:** [ADR-051](../../architecture/decisions/ADR-051-configuration-effect-adoption-contract.md) (✅ Accepted — in effect 2026-06-20; RULE-18b elevated to CONSTRAINTS.md)
 > **Source Audit:** [`_audit/results/content-review/cr-08-hardcoded-values.md`](../../../_audit/results/content-review/cr-08-hardcoded-values.md)
 > **Formal Findings:** FIND-001, FIND-012, FIND-013
 
@@ -41,11 +41,11 @@ uses it.”
 hardcoding, but not cross-layer configuration adoption. Existing adoption/evidence gates
 tracked AI invocation surfaces, not every setting source → resolver → consumer chain.
 
-**Design:** Use candidate ADR-051 as the proposed contract: every material
+**Design:** ADR-051 (accepted 2026-06-20) is the contract: every material
 configuration value needs a Configuration Adoption Matrix row or an explicit
-governed-default classification with tests and rationale. This spec does not make
-ADR-051 accepted or in effect; task closure still requires ADR-051 to be accepted
-or superseded by an equivalent contract.
+governed-default classification with tests and rationale. ADR-051 is now in effect
+(RULE-18b elevated to CONSTRAINTS.md); the CR-08 AUFG set is resolved with the
+implementation, enforcement, and cross-layer evidence recorded below.
 
 ---
 
@@ -118,9 +118,9 @@ or superseded by an equivalent contract.
 #### P1 Implementation Evidence (2026-06-20)
 
 P1 is implementation-evidence complete across Core, Backend, Frontend, and Platform.
-This P1 evidence does **not** imply ADR-051 is accepted or in effect; ADR-051
-remains a proposed candidate contract until accepted or superseded. Later P2/P3/P4
-evidence is recorded in the sections below.
+ADR-051 was subsequently accepted on 2026-06-20; this P1 evidence now contributes
+to the resolved CR-08 AUFG set. Later P2/P3/P4 evidence is recorded in the
+sections below.
 
 | Task | Status | Evidence |
 |---|---|---|
@@ -193,13 +193,13 @@ matrix rows synchronized. Evidence landed across commits `138307c7` and `1aafad0
 #### P4 Implementation Evidence (2026-06-20)
 
 P4 is implementation/enforcement complete for status taxonomy and future-audit
-hardening, but CR-08 remains lifecycle-blocked on ADR-051 acceptance/supersession.
-Evidence includes the current uncommitted Platform gate files plus this docs
-reconciliation:
+hardening. With ADR-051 accepted (2026-06-20), the CR-08 lifecycle blocker is
+removed and the AUFG set is resolved. Evidence includes the Platform gate files
+plus this docs reconciliation:
 
 | Task | Status | Evidence |
 |---|---|---|
-| CR-AUFG-08-14 | Implemented + enforced | SET-005, CURRENT_STATE, the AUFG registry, this remediation spec, testing standards, the CR-08 audit prompt template, and `configuration-adoption-matrix.yaml` now distinguish phase-complete runtime-effect evidence from final ADR-051 lifecycle resolution. |
+| CR-AUFG-08-14 | Implemented + enforced | SET-005, CURRENT_STATE, the AUFG registry, this remediation spec, testing standards, the CR-08 audit prompt template, and `configuration-adoption-matrix.yaml` record phase-complete runtime-effect evidence and the accepted ADR-051 lifecycle resolution. |
 | Audit-template gate | Implemented + enforced | `scripts/check_configuration_matrix.py` merges matrix validation with review-finding coverage; `scripts/governance/configuration_matrix.py` exports `validate_review_finding_matrix_coverage`; `scripts/governance/_matrix_review_gate.py` enforces structured material P0/P1 `[category: configuration-effect]` findings; `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py` proves unclassified material P1 findings fail, classified findings pass, P2/non-minimum findings do not block, and future content-review files are loaded. The CR-08 content-review prompt now requires the structured marker format. |
 
 ---
@@ -256,7 +256,7 @@ must be added to the matrix before the phase can close.
 |---|---|---|
 | RULE-01b | ✅ | LLM limit enforcement occurs at approved agent/ModelRegistry boundary. |
 | RULE-02/02a/02b | ✅ | No prompt fallback changes in this spec; PromptComposer boundaries remain intact. |
-| RULE-03 | ✅ | Candidate ADR-051 and this spec define proposed contracts before implementation; resolution requires ADR acceptance or supersession. |
+| RULE-03 | ✅ | ADR-051 (accepted) and this spec define the contracts before implementation; resolution is complete with implementation + enforcement + cross-layer evidence. |
 | RULE-04 | ✅ | Gateway/settings/catalog/checker changes must split by responsibility, not compress. |
 | RULE-05/RULE-06 | ✅ | Module boundaries table assigns one responsibility per file/module. |
 | RULE-07 | ✅ | Core has no Backend/Frontend/Platform imports; Platform reads artifacts/evidence. |
@@ -290,7 +290,8 @@ must be added to the matrix before the phase can close.
   taxonomy; governance health detects future structured, unclassified P0/P1
   configuration/effect findings.
 
-**Remaining lifecycle blocker:** The CR-08 AUFG set must not be marked fully
-`resolved` until ADR-051 is accepted or superseded by an equivalent contract.
-Phase implementation/enforcement evidence is complete; the architectural decision
-status remains explicitly open.
+**Lifecycle resolution:** ADR-051 was accepted on 2026-06-20 and RULE-18b
+(Configuration Effect Integrity) was elevated to CONSTRAINTS.md. The CR-08 AUFG
+set is marked `resolved` in the AUFG registry: phase implementation/enforcement
+evidence is complete, the architectural decision is in effect, and the
+Configuration Adoption Matrix plus review-finding gate provide ongoing enforcement.

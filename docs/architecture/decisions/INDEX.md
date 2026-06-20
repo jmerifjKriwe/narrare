@@ -73,7 +73,7 @@
 | [ADR-048](ADR-048-non-writing-invocation-adapter.md) | Non-Writing Invocation Adapter (Domain-Agnostic Pipeline Composition) | 🔄 | 2026-06-14 | `core/ai_invocation/`, `apps/api/`, ADR-045 Decision 7, non-writing domains |
 | [ADR-049](ADR-049-prompt-surface-identity-path-contract.md) | Prompt-Surface Identity & Path Contract Retrofit (FIND-010 + FIND-011) | ✅ | 2026-06-18 | `core/prompts/`, `scripts/architecture/`, `apps/api/narrare/planning/`, ADR-024, ADR-037, RULE-02/02a/02b |
 | [ADR-050](ADR-050-cross-feature-context-contracts.md) | Cross-Feature Context Contracts (KB Envelope, Ref Lifecycle, kb_pinned Governance) | ✅ | 2026-06-18 | `core/context/`, `core/profiles/`, KB, PLAN-004, PLAN-005, CONS-001, FIND-009, CR-AUFG-04 |
-| [ADR-051](ADR-051-configuration-effect-adoption-contract.md) | Configuration Effect Adoption Contract | 🔄 | 2026-06-18 | `settings/`, `core/llm/`, `core/writing/`, provider catalogs, Platform governance, CR-08 |
+| [ADR-051](ADR-051-configuration-effect-adoption-contract.md) | Configuration Effect Adoption Contract | ✅ | 2026-06-20 | `settings/`, `core/llm/`, `core/writing/`, provider catalogs, Platform governance, CR-08, RULE-18b |
 
 ---
 

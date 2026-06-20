@@ -26,6 +26,7 @@
 | RULE-16 | i18n namespace registered in `request.ts` + all locale files | `useTranslations("X")` not in namespaces |
 | RULE-17 | Backend schema fields match frontend types exactly | Backend `id` but frontend reads `prompt_id` |
 | RULE-18 | No hardcoded config in routers — use DI/settings | `provider_name="anthropic"` default |
+| RULE-18b | A setting isn't "implemented" until its resolved value reaches the runtime boundary with regression proof; every material setting needs a Configuration Adoption Matrix row (ADR-051) | UI/DB/API setting that never affects the model/context/catalog call |
 | RULE-19 | Use `SessionDep`, not bare `AsyncSession` | `session: AsyncSession` in dependencies.py |
 | RULE-20 | No half-implementations. Build properly or don't build | REST-only when SSE endpoint exists |
 | RULE-22 | Cross-feature coherence gate before merge | New feature reads KB without integration contract |

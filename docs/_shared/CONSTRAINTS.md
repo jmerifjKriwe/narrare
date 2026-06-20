@@ -543,6 +543,81 @@ defaults — and every user with a different provider gets a runtime crash.
 - Code review: look for string literals in dependency factory functions and
   router default parameter values
 
+#### RULE-18b · Configuration Effect Integrity
+
+**A configurable value must not be exposed, stored, resolved, or documented as
+user/project/operator-controllable unless the resolved value is consumed at the
+runtime boundary it claims to affect, and regression evidence proves that
+changing the value changes the effect (or emits the documented warning/error).**
+
+RULE-18 governs **WHERE configuration is resolved** (routers/dependency
+factories must use the DI/settings cascade, not hardcoded strings). RULE-18b
+governs **WHETHER the resolved value actually takes effect** at the runtime
+boundary and whether that effect is proven by regression evidence. These are
+distinct concerns — RULE-18 can pass while a setting is a false control that
+never reaches its runtime consumer.
+
+| Aspect | Rule | What it prevents |
+|--------|------|-----------------|
+| Resolution SOURCE | RULE-18 | Hardcoded provider/model/config strings in routers or dependency factories |
+| Effect ADOPTION | **RULE-18b** | A value exposed/resolved/documented as configurable that never reaches its runtime consumer, with no regression proof of effect |
+
+RULE-18b makes the configuration-effect requirement explicit and
+machine-checkable. Without it, a checker has no normative basis for requiring
+runtime-consumer and enforcement evidence per setting — it would be flagging
+"gaps" of an unstated rule.
+
+**Every material configuration value must have exactly one lifecycle
+classification** (`adopted`, `governed_default`, `operator_default`,
+`formal_finding`, `covered_by_existing`, `not_applicable`) recorded as a row in
+the Configuration Adoption Matrix:
+
+- `docs/architecture/governance/configuration-adoption-matrix.yaml`
+
+**What constitutes a Configuration-Effect violation (RULE-18b):**
+
+1. **Exposed setting without a runtime consumer** — a user- or project-facing
+   setting (UI control, API field, DB column) that is stored or returned but
+   never reaches the function/class that applies it to a model call, context
+   assembly, catalog fetch, retry, or streaming boundary.
+
+2. **Resolved value not applied at the boundary** — a resolver normalizes a
+   value (e.g. `TokenLimitsService`), but the runtime boundary (e.g.
+   `ModelRegistry.run`/`stream`, `WritingContextAssembler`) still consumes a
+   default, a stale entry, or an uncalibrated fallback.
+
+3. **No regression evidence of effect** — a setting is claimed "implemented"
+   without a test proving that changing the value changes the runtime behavior
+   or emits the documented warning/error. Documentation and diagrams are not
+   adoption evidence.
+
+4. **Unclassified material configuration value** — a user/operator-facing value
+   that does not appear in the Configuration Adoption Matrix and is not a
+   governed default with rationale, owner, tests, and review trigger.
+
+5. **Silent fallback that masquerades as calibration** — stale/offline/unknown
+   metadata states implying calibration without a warning/error label, or a
+   fallback that is the sole enforcement path for a resolved limit.
+
+**Enforcement boundary:**
+
+- `scripts/check_configuration_matrix.py` is CI-blocking (`.github/workflows/ci.yml`
+  architecture job, `just check-configuration-matrix`, `scripts/run_checks.py`).
+  It fails when a `user`/`project` classification lacks `runtime_consumer` +
+  `enforcement_evidence`, when an `adopted` entry lacks `enforcement_evidence`,
+  when lifecycle/classification values are invalid, or when an
+  `expected_setting_ids` value is unclassified or duplicated.
+- `scripts/governance/_matrix_review_gate.py`
+  (`validate_review_finding_matrix_coverage`) fails when a structured material
+  P0/P1 `[category: configuration-effect]` review finding is not referenced by
+  a matrix entry — future audits cannot leave such findings as prose only.
+- Governed code defaults are permitted only with rationale, owner, tests, and a
+  review trigger recorded in the matrix or the governed-defaults manifest.
+
+**See also:** ADR-051 (Configuration Effect Adoption Contract), ADR-045
+(Runtime Adoption Enforcement), CR-08 remediation spec, RULE-20 (No
+half-implementations).
+
 ---
 
 ### RULE-19 · Dependency factories must use `SessionDep`, not bare `AsyncSession`.
@@ -1058,6 +1133,7 @@ same service methods without a parallel non-streaming implementation.
 | RULE-16 i18n namespace registration | `i18n-namespace-registry.test.ts` + `validate-i18n.ts` |
 | RULE-17 API-Frontend contract | `test_prompt_contract.py` + PR review |
 | RULE-18 No hardcoded config in routers | `test_generation_router_contract.py` + PR review |
+| RULE-18b Configuration Effect Integrity | `check_configuration_matrix.py` (CI-blocking: matrix validation + review-finding coverage gate) + PR review |
 | RULE-19 SessionDep in dependency factories | `check_architecture.py` — AST scan for bare AsyncSession |
 | RULE-20 No half-implementations | PR review by Architecture Agent + test coverage audit |
 | RULE-22 Cross-Feature Coherence Gate | Stage 2.5 Semantic Review by Architecture Specialist |
@@ -1210,6 +1286,6 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 ---
 
-> Last updated: 2026-06-17 — RULE-02b Prompt-Resolution-Path Compliance added (ADR-046)
+> Last updated: 2026-06-20 — RULE-18b Configuration Effect Integrity added (ADR-051 Accepted)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone
