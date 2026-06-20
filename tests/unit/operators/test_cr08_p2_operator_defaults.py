@@ -2,15 +2,20 @@
 
 Fail-if-changed-without-review tests for every operator default
 centralized during CR-08 P2. Any value change MUST be accompanied by
-a manifest update and rationale review.
+a matrix update and rationale review.
 
 See: docs/architecture/governance/configuration-adoption-matrix.yaml
-     docs/architecture/governance/operator-defaults-manifest.md
+     (setting_id: operator_default_governance, phase: P2)
 """
 
 from narrare_core.llm.model_listing import CATALOG_TIMEOUT, OPENROUTER_MAX_MODELS
 from narrare_core.llm.model_pricing import DEFAULT_RATES
 from narrare_core.llm.models_dev_source import CACHE_TTL, FETCH_TIMEOUT
+
+# Manifest value — the retry backoff schedule documented in the
+# Configuration Adoption Matrix (setting_id: operator_default_governance).
+# Any change to this value requires a matrix rationale update.
+_MANIFEST_RETRY_DELAYS: list[float] = [30.0, 120.0, 300.0]
 
 
 class TestOperatorDefaultsGovernance:
@@ -100,4 +105,50 @@ class TestOperatorDefaultsGovernance:
         assert set(DEFAULT_RATES.keys()) == expected_providers, (
             f"DEFAULT_RATES providers changed to {set(DEFAULT_RATES.keys())}. "
             "Update operator-defaults manifest and review trigger before adding/removing providers."
+        )
+
+    # ------------------------------------------------------------------
+    # Wiki / embeddings task retry backoff (CR-AUFG-08-12)
+    # ------------------------------------------------------------------
+
+    def test_wiki_tasks_default_retry_delays_match_manifest(self) -> None:
+        """[30.0, 120.0, 300.0] — governed default for wiki background-task retry backoff.
+
+        Rationale: 30s→120s→300s (5min max) exponential backoff balances
+        recovery time against user-perceived staleness for wiki summary
+        generation. Shorter delays hammer transiently-failing providers;
+        longer delays leave wiki content stale for too long after a prompt
+        change. NOT user/operator configurable because these are background-
+        task internal semantics, not creative preferences.
+        Review trigger: incident_feedback — re-evaluate if users report
+        stale wiki content after provider outages, or if providers change
+        rate-limit/retry-after behaviour.
+        Override: retry_delays parameter on _retry_generate().
+        """
+        from narrare.wiki.tasks import _DEFAULT_RETRY_DELAYS as wiki_delays
+
+        assert wiki_delays == _MANIFEST_RETRY_DELAYS, (
+            f"wiki/tasks.py _DEFAULT_RETRY_DELAYS changed to {wiki_delays}. "
+            "Update the Configuration Adoption Matrix rationale "
+            "(setting_id: operator_default_governance) before changing."
+        )
+
+    def test_embeddings_tasks_default_retry_delays_match_manifest(self) -> None:
+        """[30.0, 120.0, 300.0] — governed default for embedding task retry backoff.
+
+        Rationale: Matches the wiki-task backoff schedule for consistency
+        across background generation tasks. Embedding generation is less
+        latency-sensitive than wiki summaries (embeddings feed search, not
+        direct UI), but using the same schedule avoids operator confusion.
+        NOT user/operator configurable.
+        Review trigger: incident_feedback — re-evaluate if embedding
+        providers show different transient-failure profiles.
+        Override: retry_delays parameter on run_embed_source().
+        """
+        from narrare.embeddings.tasks import _DEFAULT_RETRY_DELAYS as emb_delays
+
+        assert emb_delays == _MANIFEST_RETRY_DELAYS, (
+            f"embeddings/tasks.py _DEFAULT_RETRY_DELAYS changed to {emb_delays}. "
+            "Update the Configuration Adoption Matrix rationale "
+            "(setting_id: operator_default_governance) before changing."
         )

@@ -627,7 +627,9 @@
       "validationFailed": "Validation échouée",
       "zaiEndpoint": "Point de terminaison Z.AI",
       "zaiGeneral": "API Générale (api.z.ai/api/paas/v4)",
-      "zaiCoding": "API Coding (api.z.ai/api/coding/paas/v4)"
+      "zaiCoding": "API Coding (api.z.ai/api/coding/paas/v4)",
+      "fallbackCatalogNotice": "Liste de secours hors ligne — connectez-vous à votre fournisseur pour voir les modèles en direct.",
+      "fallbackCatalogReviewed": "Dernière vérification :"
     },
     "step5": {
       "title": "Confirmer",

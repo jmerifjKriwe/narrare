@@ -1,10 +1,16 @@
-"""Unit tests for setup/_model_fetchers.py — delegates to ModelCatalogClient."""
+"""Unit tests for setup/_model_fetchers.py — delegates to ModelCatalogClient.
+
+Updated for CR-AUFG-08-06: ``fetch_models`` now returns ``FetchResult``
+(models + ``used_fallback`` flag) so ``ProviderService.list_models`` can
+label response provenance.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from narrare.setup._model_fetchers import FetchResult
 from narrare.setup.base_schemas import AIProvider
 from narrare.setup.provider_schemas import ProviderModel
 from narrare_core.llm.model_listing import (
@@ -44,11 +50,13 @@ async def test_fetch_models_anthropic() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.ANTHROPIC, "sk-test", "", {})
 
-    assert len(result) == 2
-    assert result[0].id == "claude-3-opus"
-    assert result[0].name == "Claude 3 Opus"
-    assert result[0].context_window == 200000
-    assert result[1].id == "claude-3-sonnet"
+    assert isinstance(result, FetchResult)
+    assert result.used_fallback is False
+    assert len(result.models) == 2
+    assert result.models[0].id == "claude-3-opus"
+    assert result.models[0].name == "Claude 3 Opus"
+    assert result.models[0].context_window == 200000
+    assert result.models[1].id == "claude-3-sonnet"
     mock.list_models.assert_awaited_once_with(
         "anthropic",
         api_key="sk-test",
@@ -66,8 +74,9 @@ async def test_fetch_models_openai() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.OPENAI, "sk-test", "", {})
 
-    assert len(result) == 1
-    assert result[0].id == "gpt-4o"
+    assert result.used_fallback is False
+    assert len(result.models) == 1
+    assert result.models[0].id == "gpt-4o"
     mock.list_models.assert_awaited_once_with(
         "openai",
         api_key="sk-test",
@@ -92,8 +101,9 @@ async def test_fetch_models_ollama_passes_base_url() -> None:
             {},
         )
 
-    assert len(result) == 1
-    assert result[0].context_window == 128000
+    assert result.used_fallback is False
+    assert len(result.models) == 1
+    assert result.models[0].context_window == 128000
     mock.list_models.assert_awaited_once_with(
         "ollama",
         api_key=None,
@@ -111,7 +121,8 @@ async def test_fetch_models_openrouter() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.OPENROUTER, "sk-test", "", {})
 
-    assert len(result) == 1
+    assert result.used_fallback is False
+    assert len(result.models) == 1
     mock.list_models.assert_awaited_once_with(
         "openrouter",
         api_key="sk-test",
@@ -131,9 +142,10 @@ async def test_fetch_models_google() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.GOOGLE, "key", "", {})
 
-    assert len(result) == 1
-    assert result[0].id == "gemini-2.0-flash"
-    assert result[0].context_window == 1000000
+    assert result.used_fallback is False
+    assert len(result.models) == 1
+    assert result.models[0].id == "gemini-2.0-flash"
+    assert result.models[0].context_window == 1000000
 
 
 async def test_fetch_models_groq() -> None:
@@ -148,8 +160,9 @@ async def test_fetch_models_groq() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.GROQ, "gsk_test", "", {})
 
-    assert len(result) == 1
-    assert result[0].id == "llama-3.3-70b-versatile"
+    assert result.used_fallback is False
+    assert len(result.models) == 1
+    assert result.models[0].id == "llama-3.3-70b-versatile"
 
 
 async def test_fetch_models_zai() -> None:
@@ -162,8 +175,9 @@ async def test_fetch_models_zai() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.ZAI, "sk-test", "", {})
 
-    assert len(result) == 1
-    assert result[0].id == "glm-4"
+    assert result.used_fallback is False
+    assert len(result.models) == 1
+    assert result.models[0].id == "glm-4"
 
 
 # ---------------------------------------------------------------------------
@@ -186,8 +200,10 @@ async def test_fetch_models_fallback_on_api_error() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.ANTHROPIC, "key", "", fallback)
 
-    assert result == fallback_models
-    assert result[0].id == "fallback-a"
+    assert isinstance(result, FetchResult)
+    assert result.used_fallback is True
+    assert result.models == fallback_models
+    assert result.models[0].id == "fallback-a"
 
 
 async def test_fetch_models_fallback_on_catalog_error() -> None:
@@ -207,7 +223,8 @@ async def test_fetch_models_fallback_on_catalog_error() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.ANTHROPIC, "key", "", fallback)
 
-    assert result == fallback_models
+    assert result.used_fallback is True
+    assert result.models == fallback_models
 
 
 async def test_fetch_models_fallback_empty_when_no_entry() -> None:
@@ -220,11 +237,12 @@ async def test_fetch_models_fallback_empty_when_no_entry() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.ANTHROPIC, "key", "", {})
 
-    assert result == []
+    assert result.used_fallback is True
+    assert result.models == []
 
 
 async def test_fetch_models_empty_result() -> None:
-    """Returns empty list when provider returns no models."""
+    """Returns empty list (non-fallback) when provider returns no models."""
     from narrare.setup._model_fetchers import fetch_models
 
     mock = _mock_catalog([])
@@ -232,4 +250,5 @@ async def test_fetch_models_empty_result() -> None:
     with patch("narrare.setup._model_fetchers.ModelCatalogClient", return_value=mock):
         result = await fetch_models(AIProvider.GOOGLE, "key", "", {})
 
-    assert result == []
+    assert result.used_fallback is False
+    assert result.models == []

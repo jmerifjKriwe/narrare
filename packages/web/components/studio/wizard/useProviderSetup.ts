@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { setupApi } from "@/lib/api/client";
-import type { AIProvider } from "@/types";
+import type { AIProvider, ModelCatalogProvenance } from "@/types";
 
 interface ProviderSetupState {
   provider: AIProvider;
@@ -14,6 +14,8 @@ interface ProviderSetupState {
   modelsLoading: boolean;
   validating: boolean;
   error: string | null;
+  /** Catalog provenance from the last model-list fetch (null until loaded). */
+  provenance: ModelCatalogProvenance | null;
 }
 
 interface UseProviderSetupReturn extends ProviderSetupState {
@@ -52,6 +54,7 @@ export function useProviderSetup(
   const [modelsLoading, setModelsLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [provenance, setProvenance] = useState<ModelCatalogProvenance | null>(null);
 
   // Load models when provider or key changes
   // biome-ignore lint/correctness/useExhaustiveDependencies: loadModels reads latest closure values; ollamaUrl needed to trigger reload for Ollama
@@ -70,9 +73,11 @@ export function useProviderSetup(
       const result = await setupApi.getProviderModels(provider, apiKey, ollamaUrl);
       const opts = result.models.map((m) => ({ value: m.id, label: m.name }));
       setModels(opts);
+      setProvenance(result.provenance ?? null);
       if (opts.length > 0 && !model) setModel(opts[0].value);
     } catch {
       // Fallback — still show empty list, user can type manually
+      setProvenance(null);
     } finally {
       setModelsLoading(false);
     }
@@ -114,6 +119,7 @@ export function useProviderSetup(
     modelsLoading,
     validating,
     error,
+    provenance,
     setProvider,
     setApiKey,
     setOllamaUrl,

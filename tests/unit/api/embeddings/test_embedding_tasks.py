@@ -250,6 +250,41 @@ class TestRetryBehavior:
 
     @patch("narrare.embeddings.tasks.asyncio.sleep", new_callable=AsyncMock)
     @patch("narrare.embeddings.tasks.embed_texts")
+    async def test_retry_sleeps_match_default_retry_delays_constant(
+        self,
+        mock_embed: AsyncMock,
+        mock_sleep: AsyncMock,
+    ) -> None:
+        """The actual sleep delays equal the imported _DEFAULT_RETRY_DELAYS constant.
+
+        This ties the governed default (asserted in
+        test_cr08_p2_operator_defaults.py against the manifest value) to
+        the runtime behaviour. If someone unwires _DEFAULT_RETRY_DELAYS
+        from run_embed_source and hardcodes different delays, this test
+        fails — even though the constant still has the 'right' value.
+        """
+        from narrare.embeddings.tasks import _DEFAULT_RETRY_DELAYS
+
+        mock_embed.side_effect = Exception("permanent failure")
+        repo = FakeEmbeddingRepo()
+
+        with pytest.raises(EmbeddingError):
+            await run_embed_source(
+                "kb_entry",
+                uuid.uuid4(),
+                "content",
+                repo=repo,
+            )
+
+        sleep_calls = [call.args[0] for call in mock_sleep.call_args_list]
+        assert sleep_calls == _DEFAULT_RETRY_DELAYS, (
+            f"run_embed_source slept for {sleep_calls} but _DEFAULT_RETRY_DELAYS "
+            f"is {_DEFAULT_RETRY_DELAYS}. The constant must be wired into the "
+            "retry loop — do not hardcode separate delays."
+        )
+
+    @patch("narrare.embeddings.tasks.asyncio.sleep", new_callable=AsyncMock)
+    @patch("narrare.embeddings.tasks.embed_texts")
     async def test_retry_on_empty_vectors(
         self,
         mock_embed: AsyncMock,

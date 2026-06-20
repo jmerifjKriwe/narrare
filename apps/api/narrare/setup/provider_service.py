@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import structlog
 
-from narrare.setup._model_fetchers import fetch_models
-from narrare.setup.constants import OLLAMA_DEFAULT_URL
-from narrare.setup.schemas import (
-    AIProvider,
+from narrare.setup._model_fetchers import FetchResult, fetch_models
+from narrare.setup.base_schemas import AIProvider
+from narrare.setup.constants import (
+    FALLBACK_CATALOG_LAST_REVIEWED,
+    FALLBACK_CATALOG_SOURCE,
+    LIVE_CATALOG_SOURCE,
+    OLLAMA_DEFAULT_URL,
+)
+from narrare.setup.provider_schemas import (
     AvailableModelsResponse,
+    ModelCatalogProvenance,
     ProviderModel,
 )
 
@@ -22,7 +28,7 @@ logger = structlog.get_logger(__name__)
 # Fallback model lists when API is unavailable
 #
 # Source: Provider docs (2025-10)
-# Freshness: Checked 2025-10; update when new models drop
+# Freshness: Checked 2025-10; update FALLBACK_CATALOG_LAST_REVIEWED when refreshing
 _FALLBACK_MODELS: dict[AIProvider, list[ProviderModel]] = {
     AIProvider.ANTHROPIC: [
         ProviderModel(id="claude-opus-4-5-20251101", name="Claude Opus 4.5", context_window=200000),
@@ -83,7 +89,9 @@ class ProviderService:
         """
         Fetch available models for a provider.
 
-        Falls back to a hardcoded list if the API is unreachable.
+        Falls back to a hardcoded list if the API is unreachable and
+        labels the response provenance so clients can distinguish
+        live-fetched models from stale bundled fallback (CR-AUFG-08-06).
 
         Args:
             provider: The AI provider.
@@ -91,10 +99,10 @@ class ProviderService:
             ollama_url: Base URL for Ollama (only used when provider==OLLAMA).
 
         Returns:
-            AvailableModelsResponse with model list.
+            AvailableModelsResponse with model list and provenance.
         """
         try:
-            models = await self._fetch_models(provider, api_key, ollama_url)
+            result = await self._fetch_models(provider, api_key, ollama_url)
         except Exception as e:
             logger.warning(
                 "provider_model_fetch_failed",
@@ -102,9 +110,24 @@ class ProviderService:
                 error=str(e),
                 fallback=True,
             )
-            models = _FALLBACK_MODELS.get(provider, [])
+            result = FetchResult(
+                models=_FALLBACK_MODELS.get(provider, []),
+                used_fallback=True,
+            )
 
-        return AvailableModelsResponse(provider=provider, models=models)
+        provenance = (
+            ModelCatalogProvenance(
+                source=FALLBACK_CATALOG_SOURCE,
+                last_reviewed=FALLBACK_CATALOG_LAST_REVIEWED,
+            )
+            if result.used_fallback
+            else ModelCatalogProvenance(source=LIVE_CATALOG_SOURCE)
+        )
+        return AvailableModelsResponse(
+            provider=provider,
+            models=result.models,
+            provenance=provenance,
+        )
 
     async def validate_connection(
         self,
@@ -180,7 +203,7 @@ class ProviderService:
         provider: AIProvider,
         api_key: str,
         ollama_url: str,
-    ) -> list[ProviderModel]:
+    ) -> FetchResult:
         """Delegate to _model_fetchers.fetch_models."""
         return await fetch_models(provider, api_key, ollama_url, _FALLBACK_MODELS)
 

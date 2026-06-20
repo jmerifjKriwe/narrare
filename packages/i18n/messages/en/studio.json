@@ -627,7 +627,9 @@
       "validationFailed": "Validation failed",
       "zaiEndpoint": "Z.AI Endpoint",
       "zaiGeneral": "General API (api.z.ai/api/paas/v4)",
-      "zaiCoding": "Coding API (api.z.ai/api/coding/paas/v4)"
+      "zaiCoding": "Coding API (api.z.ai/api/coding/paas/v4)",
+      "fallbackCatalogNotice": "Offline fallback list — connect to your provider to see live models.",
+      "fallbackCatalogReviewed": "Last reviewed:"
     },
     "step5": {
       "title": "Confirm",

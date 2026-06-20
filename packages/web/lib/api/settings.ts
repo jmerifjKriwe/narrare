@@ -5,6 +5,7 @@
 import type {
   AIProvider,
   CreateProviderRequest,
+  ModelCatalogProvenance,
   ProjectAiSettings,
   ProjectSettings,
   TokenLimitsResponse,
@@ -22,6 +23,7 @@ import { fetchApi } from "./core";
 export interface AvailableModelsResponse {
   provider: AIProvider;
   models: { id: string; name: string; context_window?: number }[];
+  provenance?: ModelCatalogProvenance | null;
 }
 
 export interface ModelRefreshResponse {

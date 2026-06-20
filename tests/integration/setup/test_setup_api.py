@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from sqlalchemy import text
 
+from narrare.setup._model_fetchers import FetchResult
 from narrare.setup.schemas import (
     AIProvider,
     AvailableModelsResponse,
@@ -206,11 +207,11 @@ class TestListProviderModels:
             api_key: str,
             ollama_url: str,
             fallback_models: dict[AIProvider, list[ProviderModel]],
-        ) -> list[ProviderModel]:
+        ) -> FetchResult:
             """Return fallback models immediately without any HTTP calls."""
             from narrare.setup.provider_service import _FALLBACK_MODELS as FB
 
-            return FB.get(provider, [])
+            return FetchResult(models=FB.get(provider, []), used_fallback=True)
 
         patcher = patch(
             "narrare.setup.provider_service.fetch_models",

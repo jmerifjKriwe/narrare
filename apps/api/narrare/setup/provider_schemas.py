@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date  # noqa: TC003
+
 from pydantic import BaseModel, Field
 
 from narrare.setup.base_schemas import (
@@ -41,9 +43,39 @@ class Step4ProviderResponse(BaseModel):
     validation_message: str = ""
 
 
+class ModelCatalogProvenance(BaseModel):
+    """Provenance metadata for a model catalog response — CR-AUFG-08-06.
+
+    Tells clients whether the models in an ``AvailableModelsResponse``
+    came from a live provider API (``source="live"``) or from the
+    bundled static fallback list (``source="bundled-fallback"``).
+
+    When ``source`` is ``"bundled-fallback"``, ``last_reviewed`` carries
+    the date the fallback list was last refreshed, so the UI can render
+    a "stale/offline fallback" label. When ``source`` is ``"live"``,
+    ``last_reviewed`` is ``None`` (the data is real-time, not cached).
+
+    Constants for ``source`` values live in ``setup/constants.py``:
+    ``LIVE_CATALOG_SOURCE``, ``FALLBACK_CATALOG_SOURCE``,
+    ``FALLBACK_CATALOG_LAST_REVIEWED``.
+    """
+
+    source: str = Field(
+        description="Where the model list came from: 'live' or 'bundled-fallback'.",
+    )
+    last_reviewed: date | None = Field(
+        default=None,
+        description=(
+            "When the fallback catalog was last reviewed (only set for "
+            "'bundled-fallback'). None for live-fetched models."
+        ),
+    )
+
+
 class AvailableModelsResponse(BaseModel):
     provider: AIProvider
     models: list[ProviderModel]
+    provenance: ModelCatalogProvenance | None = None
 
 
 # ---------------------------------------------------------------------------

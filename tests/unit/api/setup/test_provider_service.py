@@ -1,4 +1,9 @@
-"""Unit tests for setup/provider_service.py — model fetching and validation."""
+"""Unit tests for setup/provider_service.py — model fetching and validation.
+
+Updated for CR-AUFG-08-06: ``_fetch_models`` returns ``FetchResult``
+(models + ``used_fallback`` flag). Provenance tests live in
+``test_setup_catalog_provenance.py``.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from narrare.setup._model_fetchers import FetchResult
 from narrare.setup.base_schemas import AIProvider
 from narrare.setup.provider_schemas import AvailableModelsResponse, ProviderModel
 from narrare.setup.provider_service import ProviderService
@@ -23,9 +29,12 @@ def service() -> ProviderService:
 
 class TestProviderServiceListModels:
     async def test_returns_fetched_models_on_success(self, service: ProviderService) -> None:
-        mock_models = [ProviderModel(id="claude-3", name="Claude 3")]
+        mock_result = FetchResult(
+            models=[ProviderModel(id="claude-3", name="Claude 3")],
+            used_fallback=False,
+        )
         with patch.object(
-            service, "_fetch_models", new_callable=AsyncMock, return_value=mock_models
+            service, "_fetch_models", new_callable=AsyncMock, return_value=mock_result
         ):
             result = await service.list_models(AIProvider.ANTHROPIC, "sk-test")
 
@@ -54,8 +63,9 @@ class TestProviderServiceListModels:
         assert result.provider == AIProvider.GOOGLE
 
     async def test_passes_ollama_url_to_fetch(self, service: ProviderService) -> None:
+        mock_result = FetchResult(models=[], used_fallback=False)
         with patch.object(
-            service, "_fetch_models", new_callable=AsyncMock, return_value=[]
+            service, "_fetch_models", new_callable=AsyncMock, return_value=mock_result
         ) as mock_fetch:
             await service.list_models(AIProvider.OLLAMA, "", ollama_url="http://custom:11434")
             mock_fetch.assert_called_once_with(AIProvider.OLLAMA, "", "http://custom:11434")
@@ -173,15 +183,20 @@ class TestProviderServiceValidateConnectionTestModel:
 class TestProviderServiceFetchDelegation:
     async def test_delegates_to_model_fetchers(self, service: ProviderService) -> None:
         """_fetch_models should delegate to _model_fetchers.fetch_models."""
-        mock_models = [ProviderModel(id="test-model", name="Test")]
+        mock_result = FetchResult(
+            models=[ProviderModel(id="test-model", name="Test")],
+            used_fallback=False,
+        )
         with patch(
             "narrare.setup.provider_service.fetch_models",
             new_callable=AsyncMock,
-            return_value=mock_models,
+            return_value=mock_result,
         ) as mock_fetch:
             result = await service._fetch_models(AIProvider.OPENAI, "sk-test", "")
 
-        assert result == mock_models
+        assert isinstance(result, FetchResult)
+        assert result.models[0].id == "test-model"
+        assert result.used_fallback is False
         # Verify delegation happened with correct positional args
         call_args = mock_fetch.call_args
         assert call_args[0][0] == AIProvider.OPENAI

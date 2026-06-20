@@ -119,7 +119,7 @@ async function processSSEStream<T>(
 }
 
 /** Default connect timeout — 30 seconds for initial HTTP response. */
-const DEFAULT_CONNECT_TIMEOUT_MS = 30_000;
+export const DEFAULT_CONNECT_TIMEOUT_MS = 30_000;
 
 export async function connectSSE<T>({
   url,

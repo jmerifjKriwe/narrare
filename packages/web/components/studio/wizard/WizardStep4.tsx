@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { PROVIDERS } from "@/lib/providers";
 import { useWizardStore } from "@/lib/stores/wizardStore";
 import { useProviderSetup } from "./useProviderSetup";
@@ -10,9 +10,26 @@ interface WizardStep4Props {
   onBack: () => void;
 }
 
+/**
+ * Format an ISO date (`YYYY-MM-DD`) as a locale-aware "Month Year" string.
+ * Constructed from parts in local time so the day never shifts across
+ * timezones. Falls back to the raw string if it cannot be parsed.
+ */
+function formatReviewedDate(isoDate: string, locale: string): string {
+  const parts = isoDate.split("-").map(Number);
+  const [year, month, day] = parts;
+  if (!year || !month || !day || parts.some((n) => Number.isNaN(n))) {
+    return isoDate;
+  }
+  return new Intl.DateTimeFormat(locale, { year: "numeric", month: "long" }).format(
+    new Date(year, month - 1, day),
+  );
+}
+
 export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
   const t = useTranslations("studio");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const { updateStep4, state } = useWizardStore();
 
   const {
@@ -25,6 +42,7 @@ export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
     modelsLoading,
     validating,
     error,
+    provenance,
     setProvider,
     setApiKey,
     setOllamaUrl,
@@ -159,6 +177,21 @@ export function WizardStep4({ onNext, onBack }: WizardStep4Props) {
 
         {validating && (
           <p className="text-sm text-blue-600 dark:text-blue-400">{t("wizard.step4.validating")}</p>
+        )}
+
+        {provenance?.source === "bundled-fallback" && (
+          <p
+            data-testid="fallback-catalog-notice"
+            className="text-xs text-muted-foreground bg-muted/50 border border-border rounded-md p-2 leading-relaxed"
+          >
+            {t("wizard.step4.fallbackCatalogNotice")}
+            {provenance.last_reviewed && (
+              <span data-testid="fallback-reviewed-date" className="block mt-1">
+                {t("wizard.step4.fallbackCatalogReviewed")}{" "}
+                {formatReviewedDate(provenance.last_reviewed, locale)}
+              </span>
+            )}
+          </p>
         )}
 
         {error && (

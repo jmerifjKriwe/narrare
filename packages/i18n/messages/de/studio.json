@@ -627,7 +627,9 @@
       "validationFailed": "Validierung fehlgeschlagen",
       "zaiEndpoint": "Z.AI-Endpunkt",
       "zaiGeneral": "General API (api.z.ai/api/paas/v4)",
-      "zaiCoding": "Coding API (api.z.ai/api/coding/paas/v4)"
+      "zaiCoding": "Coding API (api.z.ai/api/coding/paas/v4)",
+      "fallbackCatalogNotice": "Offline-Ersatzliste — verbinde dich mit deinem Anbieter, um Live-Modelle zu sehen.",
+      "fallbackCatalogReviewed": "Zuletzt überprüft:"
     },
     "step5": {
       "title": "Bestätigen",

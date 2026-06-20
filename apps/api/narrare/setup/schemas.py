@@ -25,6 +25,7 @@ from .provider_schemas import (
     AvailableModelsResponse,
     CompleteSetupRequest,
     CompleteSetupResponse,
+    ModelCatalogProvenance,
     ProviderModel,
     Step4ProviderRequest,
     Step4ProviderResponse,
@@ -52,6 +53,7 @@ __all__ = [  # noqa: RUF022 (grouped by step for clarity)
     "Step4ProviderRequest",
     "Step4ProviderResponse",
     "ProviderModel",
+    "ModelCatalogProvenance",
     "AvailableModelsResponse",
     # Step 5
     "CompleteSetupRequest",

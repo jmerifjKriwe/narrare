@@ -36,6 +36,27 @@ export interface ProviderModel {
   supports_streaming: boolean;
 }
 
+/**
+ * Where a model catalog list came from — mirrors the backend
+ * `ModelCatalogProvenance.source` (setup/constants.py: LIVE_CATALOG_SOURCE /
+ * FALLBACK_CATALOG_SOURCE). The UI uses this to flag a stale/offline list.
+ */
+export type ModelCatalogSource = "live" | "bundled-fallback";
+
+/**
+ * Provenance metadata for an AvailableModelsResponse — RULE-17 contract match
+ * with the backend `ModelCatalogProvenance` Pydantic model
+ * (apps/api/narrare/setup/provider_schemas.py).
+ *
+ * - `source === "live"`: models fetched in real time, `last_reviewed` is null.
+ * - `source === "bundled-fallback"`: offline static fallback list;
+ *   `last_reviewed` is the ISO date the fallback was last refreshed.
+ */
+export interface ModelCatalogProvenance {
+  source: ModelCatalogSource;
+  last_reviewed: string | null;
+}
+
 export interface DemoProjectInfo {
   id: StarterContent;
   title: string;

@@ -154,8 +154,8 @@ export interface WritingSessionSocketOptions {
 }
 
 /** Default values for socket configuration. */
-const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
-const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
+export const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
+export const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
 
 /**
  * WebSocket wrapper for interactive writing sessions.

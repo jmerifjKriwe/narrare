@@ -36,10 +36,10 @@ def test_all_ollama_files_import_constant_instead_of_hardcoding() -> None:
             f"must use OLLAMA_DEFAULT_URL from narrare.setup.constants"
         )
 
-        # Assert: the file DOES import the constant
-        assert "from narrare.setup.constants import OLLAMA_DEFAULT_URL" in source, (
-            f"{rel_path} does not import OLLAMA_DEFAULT_URL"
-        )
+        # Assert: the file DOES import the constant (single-line or multi-line)
+        assert "from narrare.setup.constants import OLLAMA_DEFAULT_URL" in source or (
+            "from narrare.setup.constants import (" in source and "OLLAMA_DEFAULT_URL" in source
+        ), f"{rel_path} does not import OLLAMA_DEFAULT_URL from narrare.setup.constants"
 
 
 def test_provider_service_list_models_uses_constant() -> None:

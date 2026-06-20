@@ -8928,6 +8928,16 @@
             },
             "type": "array",
             "title": "Models"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelCatalogProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -12486,6 +12496,34 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "ModelCatalogProvenance": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Where the model list came from: 'live' or 'bundled-fallback'."
+          },
+          "last_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reviewed",
+            "description": "When the fallback catalog was last reviewed (only set for 'bundled-fallback'). None for live-fetched models."
+          }
+        },
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "title": "ModelCatalogProvenance",
+        "description": "Provenance metadata for a model catalog response — CR-AUFG-08-06.\n\nTells clients whether the models in an ``AvailableModelsResponse``\ncame from a live provider API (``source=\"live\"``) or from the\nbundled static fallback list (``source=\"bundled-fallback\"``).\n\nWhen ``source`` is ``\"bundled-fallback\"``, ``last_reviewed`` carries\nthe date the fallback list was last refreshed, so the UI can render\na \"stale/offline fallback\" label. When ``source`` is ``\"live\"``,\n``last_reviewed`` is ``None`` (the data is real-time, not cached).\n\nConstants for ``source`` values live in ``setup/constants.py``:\n``LIVE_CATALOG_SOURCE``, ``FALLBACK_CATALOG_SOURCE``,\n``FALLBACK_CATALOG_LAST_REVIEWED``."
       },
       "ModelInfoResponse": {
         "properties": {

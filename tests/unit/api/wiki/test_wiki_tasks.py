@@ -246,3 +246,28 @@ class TestRetryGenerate:
             result = await _retry_generate(always_fail, uuid.uuid4(), uuid.uuid4(), context="test")
 
         assert result is False
+
+    async def test_retry_sleeps_match_default_retry_delays_constant(self) -> None:
+        """The actual sleep delays equal the imported _DEFAULT_RETRY_DELAYS constant.
+
+        This ties the governed default (asserted in
+        test_cr08_p2_operator_defaults.py against the manifest value) to
+        the runtime behaviour. If someone unwires _DEFAULT_RETRY_DELAYS
+        from _retry_generate and hardcodes different delays, this test
+        fails — even though the constant still has the 'right' value.
+        """
+        from narrare.wiki.tasks import _DEFAULT_RETRY_DELAYS, _retry_generate
+
+        async def always_fail(tid: uuid.UUID, nid: uuid.UUID) -> None:
+            msg = "Permanent failure"
+            raise RuntimeError(msg)
+
+        with patch("narrare.wiki.tasks.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+            await _retry_generate(always_fail, uuid.uuid4(), uuid.uuid4(), context="test")
+
+        sleep_calls = [call.args[0] for call in mock_sleep.call_args_list]
+        assert sleep_calls == _DEFAULT_RETRY_DELAYS, (
+            f"_retry_generate slept for {sleep_calls} but _DEFAULT_RETRY_DELAYS "
+            f"is {_DEFAULT_RETRY_DELAYS}. The constant must be wired into the "
+            "retry loop — do not hardcode separate delays."
+        )

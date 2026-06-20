@@ -100,6 +100,8 @@ export type {
 export type {
   AIProvider,
   DemoProjectInfo,
+  ModelCatalogProvenance,
+  ModelCatalogSource,
   ProviderModel,
   StarterContent,
   StoryStructure,

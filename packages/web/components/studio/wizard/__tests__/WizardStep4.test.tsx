@@ -213,4 +213,41 @@ describe("WizardStep4", () => {
       expect(el.tagName).toBe("INPUT");
     });
   });
+
+  it("renders offline fallback notice with reviewed date when provenance is bundled-fallback", async () => {
+    mockGetProviderModels.mockResolvedValue({
+      models: [{ id: "gpt-4", name: "GPT-4" }],
+      provenance: { source: "bundled-fallback", last_reviewed: "2025-10-01" },
+    });
+
+    render(<WizardStep4 onNext={onNext} onBack={onBack} />);
+
+    // Wait for models to load (notice is rendered alongside the loaded list)
+    await waitFor(() => {
+      expect(getNextButton().disabled).toBe(false);
+    });
+
+    const notice = screen.getByTestId("fallback-catalog-notice");
+    expect(notice).toBeDefined();
+
+    // The reviewed date must be visible, locale-formatted ("en" → "October 2025")
+    const reviewed = screen.getByTestId("fallback-reviewed-date");
+    expect(reviewed.textContent).toContain("October 2025");
+  });
+
+  it("does not render offline fallback notice when provenance source is live", async () => {
+    mockGetProviderModels.mockResolvedValue({
+      models: [{ id: "gpt-4", name: "GPT-4" }],
+      provenance: { source: "live", last_reviewed: null },
+    });
+
+    render(<WizardStep4 onNext={onNext} onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(getNextButton().disabled).toBe(false);
+    });
+
+    expect(screen.queryByTestId("fallback-catalog-notice")).toBeNull();
+    expect(screen.queryByTestId("fallback-reviewed-date")).toBeNull();
+  });
 });

@@ -2,7 +2,7 @@
  * Setup Wizard API — validation and completion.
  */
 
-import type { AIProvider, DemoProjectInfo, WizardState } from "@/types";
+import type { AIProvider, DemoProjectInfo, ModelCatalogProvenance, WizardState } from "@/types";
 import { fetchApi } from "./core";
 
 export const setupApi = {
@@ -49,9 +49,11 @@ export const setupApi = {
 
   getProviderModels: (provider: AIProvider, apiKey = "", ollamaUrl = "http://localhost:11434") => {
     const params = new URLSearchParams({ api_key: apiKey, ollama_url: ollamaUrl });
-    return fetchApi<{ provider: AIProvider; models: { id: string; name: string }[] }>(
-      `/setup/providers/${provider}/models?${params.toString()}`,
-    );
+    return fetchApi<{
+      provider: AIProvider;
+      models: { id: string; name: string }[];
+      provenance?: ModelCatalogProvenance | null;
+    }>(`/setup/providers/${provider}/models?${params.toString()}`);
   },
 
   complete: (state: WizardState) =>
