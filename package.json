@@ -9,10 +9,5 @@
   },
   "scripts": {
     "check:i18n": "tsx scripts/validate-i18n.ts"
-  },
-  "pnpm": {
-    "overrides": {
-      "qs": ">=6.15.2"
-    }
   }
 }
