@@ -55,6 +55,10 @@
 | [SETUP-004](setup/SETUP-004-provider-config.md) | AI Provider Configuration | ✅ | ✅ |
 | [ONBOARD-001](onboarding-user-guide.md) | Onboarding & AI-Einführung | ✅ | ❌ |
 
+> **CR-07 v3 follow-up:** ONBOARD-001 stays stable for its implemented base scope.
+> The conceptual KB + Storyboard + AI “aha moment” is tracked separately as
+> CR-AUFG-07-17 in `docs/architecture/governance/cr-07-followup-v3.md`.
+
 ### Writing
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
@@ -152,6 +156,10 @@
 | [PROMPT-001](prompts/PROMPT-001-file-overrides.md) | File-based Prompt Overrides | ✅ | ✅ |
 | [PROMPT-002](prompts/PROMPT-002-db-templates.md) | User DB Prompt Templates | ✅ | ✅ |
 | [PROMPT-003](prompt-customization-ux.md) | Prompt Customization UX | 📋 | ❌ |
+
+> **CR-07 v3 Phase B:** PROMPT-003 remains planned and is the implementation
+> target for CR-AUFG-07-16: provider-free preview, variable provenance,
+> diagnostics, reset semantics, and optional SSE live test.
 
 ### Import / Export
 | ID | Feature | Status | MVP |
@@ -274,5 +282,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-20 — SET-005 promoted to `stable`: ADR-051 accepted (RULE-18b elevated to CONSTRAINTS.md); CR-08 AUFG set resolved (CR-AUFG-08-01 through CR-AUFG-08-14, including FIND-013 and the audit-template matrix gate). SET-005's configuration cascade, runtime-effect adoption, UI/API/Core parity, and tests are all verified in the Configuration Adoption Matrix. ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-21 — CR-07 Follow-up v3 added governance links for PROMPT-003 (CR-AUFG-07-16) and ONBOARD-001 conceptual aha-moment follow-up (CR-AUFG-07-17). SET-005 remains `stable`: ADR-051 accepted (RULE-18b elevated to CONSTRAINTS.md); CR-08 AUFG set resolved (CR-AUFG-08-01 through CR-AUFG-08-14, including FIND-013 and the audit-template matrix gate). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

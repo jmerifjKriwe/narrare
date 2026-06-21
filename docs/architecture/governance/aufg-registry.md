@@ -447,6 +447,55 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 
 ---
 
+### CR-07 Follow-up v3 AUFG Set — Residual AI UX Compliance and Modernization
+
+| Field | Value |
+|-------|-------|
+| IDs | CR-AUFG-07-14 through CR-AUFG-07-24 |
+| Title | CR-07 Follow-up v3: residual §16 compliance, PROMPT-003/ONBOARD-001 gaps, and §8 modern AI-UX enhancements |
+| Source | `docs/architecture/governance/cr-07-followup-v3.md`; CR-07 UX audit residuals after CR-AUFG-07-07 through CR-AUFG-07-13 closure. |
+| Status | `open` |
+| Priority | P1 for Phase A/B hardening; P2/P3 for Phase C enhancements by work item |
+| Area | Frontend AI UX, i18n, prompts, onboarding, writing sessions, KB, analysis, learning/feedback, Platform governance |
+| Owner role | Architecture Specialist (spec/re-review), Frontend/Core/Backend/Platform/Docs Specialists by phase |
+| Dependencies | ADR-043, `ai-ux-compliance-v2.md`, PROMPT-003, ONBOARD-001, LEARN-001, WRITE-005/006/007, KB-002/003, ANAL-001, existing AI Operation Inventory |
+| Review trigger/date | Re-review before any item is marked `resolved`; on material phase boundary or contract changes; by 2026-09-30 if Phase A has not shipped. |
+
+**Lifecycle decision:**
+
+The follow-up set is intentionally `open`. The governing architecture specification is
+`docs/architecture/governance/cr-07-followup-v3.md`. No item in this set may be marked
+`resolved` from documentation alone; each requires implementation + enforcement evidence
+per `docs/development/finding-lifecycle.md`.
+
+**Work items:**
+
+| ID | Phase | Title | Status | Priority | Acceptance summary |
+|----|-------|-------|--------|----------|--------------------|
+| CR-AUFG-07-14 | A | §16 Consistency/i18n fallback hardening | `open` | P1 | Remove hardcoded visible fallbacks such as `t(...) || "..."`; fix Consistency error fallback; add checker preventing reintroduction. |
+| CR-AUFG-07-15 | A | GhostText visible error affordance | `open` | P1 | Decide and implement non-blocking localized GhostText error affordance; inventory and tests cover error/retry semantics. |
+| CR-AUFG-07-16 | B | PROMPT-003 contract-first implementation | `open` | P1 | Provider-free resolved preview, variable metadata/provenance, diagnostics, reset semantics, optional SSE live test, and contract tests across Core/Backend/Frontend. |
+| CR-AUFG-07-17 | B | ONBOARD-001 KB + Storyboard + AI aha moment | `open` | P2 | Add conceptual tour/story explaining how KB and Storyboard shape AI output; do not downgrade ONBOARD-001’s stable base scope. |
+| CR-AUFG-07-18 | C | Standardized diff view across AI outputs | `open` | P2 | Shared diff vocabulary/component contract for Rewrite, Co-Author, KB Enhance, and Beta Reader. |
+| CR-AUFG-07-19 | C | Prompt history | `open` | P2 | Prompt override history/restore/compare semantics after PROMPT-003 contracts exist. |
+| CR-AUFG-07-20 | C | Slash commands for AI actions | `open` | P3 | Command grammar, i18n discoverability, TipTap conflict handling, and routed AI action tests. |
+| CR-AUFG-07-21 | C | SessionPanel server-side stop and WebSocket recovery | `open` | P2 | Stop reaches server-side session state; connection-loss recovery preserves partial state and is tested. |
+| CR-AUFG-07-22 | C | Regenerate with style variants | `open` | P2 | Consistent regenerate/variant UI and request contract across eligible AI output surfaces. |
+| CR-AUFG-07-23 | C | Emotional intensity curve | `open` | P3 | Dedicated spec decides deterministic/LLM/hybrid approach, chart contract, and tests. |
+| CR-AUFG-07-24 | C | AI feedback rating expansion | `open` | P2 | Extend rating to Co-Author, KB flows, and Chat through LEARN-001-compatible persistence/memory contract. |
+
+**Definition of Done for the set:**
+
+- Phase A checker and frontend cleanup are implemented and CI-visible.
+- PROMPT-003 remains `planned` until its Core/Backend/Frontend contracts and enforcement are complete.
+- ONBOARD-001 remains `stable`; the conceptual follow-up has its own AUFG exit evidence.
+- Every Phase C item has a dedicated feature/spec slice before implementation.
+- This registry entry is updated with per-ID exit evidence only after implementation and enforcement exist.
+
+**Exit evidence:** Pending — open.
+
+---
+
 ### AUFG-05-07 — CORS-/Rate-Limiting-Security-Audit
 
 | Field | Value |

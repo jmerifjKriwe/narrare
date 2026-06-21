@@ -139,6 +139,25 @@ Hinweis erforderlich.
 **Contract:** `PromptCustomizationProtocol` in `prompts/contracts_prompt_ux.py`
 **Prompt:** Verwendet bestehende Prompts aus `core/prompts/_bundled/`
 
+### CR-07 Follow-up v3 Architecture Boundary
+
+PROMPT-003 is the Phase-B implementation item for
+`CR-AUFG-07-16` in `docs/architecture/governance/cr-07-followup-v3.md`.
+The feature remains `planned` until the following contract-first boundary is
+implemented and enforced:
+
+- **Core:** provider-free preview contracts/types live under
+  `packages/core/narrare_core/prompts/`; preview resolution uses the existing
+  PromptComposer/variable-engine path and performs no model/provider call.
+- **Backend:** prompt preview/reset/live-test Protocols are defined in
+  `apps/api/narrare/prompts/contracts.py` before service/router implementation.
+- **Frontend:** `PromptEditor` remains an orchestrator; resolved preview,
+  variable metadata, live-test, and reset confirmation are split into focused
+  components. The authoritative preview comes from the API/Core contract, not
+  local hardcoded sample substitution.
+- **Enforcement:** preview contract tests must prove no provider is required;
+  live-test tests must prove SSE/cancel semantics where model output streams.
+
 ### Neue API-Endpunkte
 
 | Endpoint | Methode | Beschreibung |
@@ -285,6 +304,9 @@ Neue Schlüssel in `studio.json` unter `settings.ai.promptCustomization.*`:
 - `2026-06-08` — Added to registry (CR-07 UX Audit §6 Remediation)
 - `2026-06-12` — Review-03 refresh: providerfreie Preview und optionaler,
   provider-/secret-gated Live-Test als getrennte Verträge präzisiert.
+- `2026-06-21` — CR-07 Follow-up v3 linked PROMPT-003 to CR-AUFG-07-16 and
+  clarified Core/Backend/Frontend contract-first boundaries. Status remains
+  `planned`; no implementation or enforcement evidence exists yet.
 
 ## Definition of Done
 

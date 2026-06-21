@@ -64,6 +64,21 @@ integriert und erweitert.
    ist Voraussetzung dafür, Narrare auch nicht-technischen Nutzern zugänglich
    zu machen.
 
+### CR-07 Follow-up v3: Conceptual Aha Moment
+
+ONBOARD-001 bleibt `stable`, weil die ursprünglich spezifizierten Demo-, Tour-
+und Tooltip-Funktionen umgesetzt sind. CR-07 Follow-up v3 ergänzt jedoch eine
+separate offene Lifecycle-Aufgabe: `CR-AUFG-07-17` in
+`docs/architecture/governance/cr-07-followup-v3.md`.
+
+Diese Aufgabe ist kein weiterer Feature-Ort in der Tour, sondern eine
+konzeptionelle Erklärung: Nutzer sollen verstehen, wie **KB**, **Storyboard**
+und **AI-Aktionen** zusammenspielen. Die Tour muss erklären, dass die KB Fakten
+und Weltwissen liefert, das Storyboard die narrative Planung sichtbar macht und
+AI-Aktionen aus diesen Kontexten kohärentere Vorschläge erzeugen — ohne zu
+behaupten, dass ein Runtime-Pfad Kontext nutzt, der nicht tatsächlich angebunden
+ist.
+
 ## How it works (User perspective)
 
 1. **Dashboard nach Setup:** Nach Abschluss des Setup-Wizards sieht der
@@ -205,6 +220,10 @@ Nicht anwendbar — keine KI-Ladezustände.
 - `2026-06-08` — Added to registry (CR-07 UX Audit §5 Remediation)
 - `2026-06-08` — Spec refined: Architecture Pre-Implementation Gate (NEEDS-SPEC-REFINEMENT). ~60% Infrastruktur existiert bereits (FeatureTour, DemoLoader, DemoProjectInfo). Shepherd.js verworfen zugunsten bestehender Custom-Lösung. GET /setup/demos als feste Entscheidung dokumentiert. RULE-17 FIELD-Mismatch (language ↔ writing_language) identifiziert.
 - `2026-06-08` — Implemented: GET /setup/demos endpoint, DemoProjectCards component, useSeenTooltips hook, Tour-Replay in Settings, i18n (de/en/fr). 18 new tests (8 frontend + 8 hook + 2 contract).
+- `2026-06-21` — CR-07 Follow-up v3 added open follow-up `CR-AUFG-07-17`
+  for the conceptual KB + Storyboard + AI aha moment. Base feature status remains
+  `stable`; the follow-up is not resolved until implementation + enforcement
+  evidence exists in the AUFG registry.
 
 ---
 
