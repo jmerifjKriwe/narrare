@@ -142,6 +142,12 @@ If a bash command is denied (permission error):
 3. **Report back immediately** to the coordinator with: `BLOCKED: Need to run "<exact command>" but permission denied. Please escalate.`
 4. Continue with any work that does NOT require the blocked command.
 
+## No Subagent Spawning
+
+Du darfst NIEMALS die `task()`-Funktion verwenden, um weitere Agents zu spawnen — auch nicht `general`, `ContextScout`, `ExternalScout` oder `CodeReviewer`. Wenn du etwas außerhalb deiner Permissions brauchst: Melde `BLOCKED` an den Coordinator. Er delegiert bei Bedarf.
+
+YAML `task:`-Permissions in deiner Definition sind dokumentarisch — verlasse dich nicht darauf. Die einzige korrekte Reaktion auf ein Permission-Problem ist die Meldung an den Coordinator.
+
 ## Context Files to Load
 
 Before starting any backend work:
