@@ -218,6 +218,7 @@
     "success": "Analysis complete",
     "applied": "Applied {count} connections",
     "failed": "Failed to apply connections",
+    "failedWithDetails": "Failed to apply connections: {details}",
     "selectedCount": "{count} of {total} selected",
     "confidence": "confidence",
     "entities": "entities",
@@ -853,6 +854,7 @@
     "entryCount": "{count} entries",
     "deleteEntry": "Delete entry",
     "saveSuccess": "Entry saved",
+    "failedToSaveEntry": "Failed to save entry",
     "deleteSuccess": "Entry deleted",
     "relCreated": "Relationship created",
     "arrow": "→",
@@ -1701,7 +1703,8 @@
   },
   "ghostText": {
     "onboardingHint": "Tab = Accept | → = Word-by-word | Esc = Dismiss",
-    "hint": "Tab accept · Esc dismiss · → word"
+    "hint": "Tab accept · Esc dismiss · → word",
+    "errorUnavailable": "Suggestion unavailable"
   },
   "aiActions": {
     "accept": "Accept",

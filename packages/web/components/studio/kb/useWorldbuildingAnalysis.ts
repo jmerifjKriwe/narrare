@@ -75,22 +75,23 @@ export function useWorldbuildingAnalysis(novelId: string) {
       if (result.success) {
         setApplyMessage({
           type: "success",
-          text:
-            t("worldbuilding.applied", { count: result.created_count }) ||
-            `Applied ${result.created_count} connections`,
+          text: t("worldbuilding.applied", { count: result.created_count }),
         });
         setSelectedConnectionIndices(new Set());
         await runAnalysis(true);
       } else {
+        const details = result.errors.join(", ");
         setApplyMessage({
           type: "error",
-          text: t("worldbuilding.failed") || `Failed: ${result.errors.join(", ")}`,
+          text: details
+            ? t("worldbuilding.failedWithDetails", { details })
+            : t("worldbuilding.failed"),
         });
       }
     } catch (err) {
       setApplyMessage({
         type: "error",
-        text: err instanceof Error ? err.message : t("worldbuilding.failed") || "Apply failed",
+        text: err instanceof Error ? err.message : t("worldbuilding.failed"),
       });
     }
   }, [analysis, selectedConnectionIndices, applyMutation, t, runAnalysis]);

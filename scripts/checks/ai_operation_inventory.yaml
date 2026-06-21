@@ -13,7 +13,7 @@
 
 version: 1
 spec: docs/architecture/governance/ai-ux-compliance-v2.md
-last_updated: 2026-06-19
+last_updated: 2026-06-21
 
 operations:
   # ------------------------------------------------------------------
@@ -331,21 +331,22 @@ operations:
     feature: Ghost Text Inline Suggestion
     entry_points:
       - packages/web/components/studio/editor/extensions/ghost-text-helpers.ts
+      - packages/web/components/studio/editor/extensions/ghost-text-error-status.ts
       - packages/web/components/studio/editor/extensions/GhostText.ts
       - packages/web/lib/api/suggest.ts (createSseSuggestionFetcher)
     transport: non_react_extension
     lifecycle_owner: governed_exception
-    loading_feedback: "Localized status indicator via Extension-Options (no hardcoded ProseMirror DOM strings)"
+    loading_feedback: "Localized status indicator via Extension-options (no hardcoded ProseMirror DOM strings)"
     cancel_ui: "AbortController managed via Extension storage; Tab/Escape to accept/dismiss"
     signal_propagation: "Extension owns AbortController (non-React); governed_exception per ADR-043 non-react-extension category"
-    error_mapping: mapSSEError at suggest.ts:96
-    partial_output: "n/a — suggestion is ephemeral"
-    ai_action_i18n: "studio.aiActions via localized Extension-Options (no hardcoded visible strings)"
+    error_mapping: "mapSSEError at suggest.ts:96; non-AbortError rejections surface a transient localized decoration via options.errorStatusText (ghost-text-error-status.ts showErrorStatus, CR-AUFG-07-15). AbortError stays silent (normal typing cancellation). Visible text is React-injected (TipTapEditorController t('ghostText.errorUnavailable')) — no hardcoded English in ProseMirror DOM."
+    partial_output: "n/a — suggestion is ephemeral; error decoration is also transient (auto-clears after errorStatusDurationMs, default 4000ms)"
+    ai_action_i18n: "studio.aiActions + ghostText.errorUnavailable via localized Extension-Options (no hardcoded visible strings)"
     deprecated_key_usage: "No deprecated aliases in use"
     keyboard: "Tab accept, Escape dismiss, ArrowRight first word (GhostText.ts:137-146)"
     tests:
-      - packages/web/components/studio/editor/extensions/__tests__/ (ghost text tests)
-    aufg_id: CR-AUFG-07-10
+      - packages/web/components/studio/editor/extensions/__tests__/ghost-text-fetching.test.ts
+    aufg_id: CR-AUFG-07-10, CR-AUFG-07-15
     exclude_entry: "packages/web/components/studio/editor/extensions/ghost-text-helpers.ts (check_2_no_raw_abort, non-react-extension)"
     status: governed_exception
 

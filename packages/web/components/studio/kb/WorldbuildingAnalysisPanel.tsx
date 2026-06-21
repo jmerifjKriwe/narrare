@@ -70,9 +70,7 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
             <ArrowLeft className="w-4 h-4" />
           </button>
           <Sparkles className="w-5 h-5 text-purple-500 flex-shrink-0" />
-          <h3 className="font-medium truncate">
-            {t("worldbuilding.analysisTitle") || "Worldbuilding Analysis"}
-          </h3>
+          <h3 className="font-medium truncate">{t("worldbuilding.analysisTitle")}</h3>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {state === "results" && (
@@ -85,7 +83,7 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
               <RefreshCw
                 className={`w-3.5 h-3.5 ${analyzeMutation.isPending ? "animate-spin" : ""}`}
               />
-              {t("worldbuilding.refresh") || "Refresh"}
+              {t("worldbuilding.refresh")}
             </button>
           )}
           <button
@@ -132,13 +130,8 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
               <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
                 <Check className="w-6 h-6 text-green-500" />
               </div>
-              <p className="text-lg font-medium mb-1">
-                {t("worldbuilding.noIssues") || "No issues found!"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t("worldbuilding.noIssuesDesc") ||
-                  "Your worldbuilding looks comprehensive and consistent."}
-              </p>
+              <p className="text-lg font-medium mb-1">{t("worldbuilding.noIssues")}</p>
+              <p className="text-sm text-muted-foreground">{t("worldbuilding.noIssuesDesc")}</p>
             </div>
           )}
           {state === "results" && analysis && !hasNoFindings && (
@@ -169,7 +162,7 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
               className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors text-sm"
             >
               <ArrowLeft className="w-4 h-4" />
-              {t("worldbuilding.close") || "Close"}
+              {t("worldbuilding.close")}
             </button>
             <button
               type="button"
@@ -180,13 +173,12 @@ export function WorldbuildingAnalysisPanel({ novelId, onClose }: WorldbuildingAn
               {applyMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {t("worldbuilding.applying") || "Applying..."}
+                  {t("worldbuilding.applying")}
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  {t("worldbuilding.apply", { count: selectedConnectionIndices.size }) ||
-                    `Apply Selected (${selectedConnectionIndices.size})`}
+                  {t("worldbuilding.apply", { count: selectedConnectionIndices.size })}
                 </>
               )}
             </button>

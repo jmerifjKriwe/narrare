@@ -23,7 +23,7 @@ export function EnhanceReviewBulkActions({
     <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
       <div className="flex items-center gap-3">
         <span className="text-sm text-muted-foreground">
-          {t("kb.enhancementsFound", { count }) || `${count} enhancement(s) found`}
+          {t("kb.enhancementsFound", { count })}
         </span>
       </div>
       <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export function EnhanceReviewBulkActions({
           onClick={onSelectAll}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
-          {t("kb.selectAll") || "Select all"}
+          {t("kb.selectAll")}
         </button>
         <span className="text-muted-foreground">|</span>
         <button
@@ -40,7 +40,7 @@ export function EnhanceReviewBulkActions({
           onClick={onSelectNone}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
-          {t("kb.selectNone") || "Select none"}
+          {t("kb.selectNone")}
         </button>
       </div>
     </div>

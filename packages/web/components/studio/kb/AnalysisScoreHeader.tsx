@@ -22,7 +22,7 @@ export function AnalysisScoreHeader({ analysis }: AnalysisScoreHeaderProps) {
         <div className="text-2xl font-bold text-purple-500">
           {analysis.worldbuilding_score.toFixed(2)}
         </div>
-        <div className="text-xs text-muted-foreground">{t("worldbuilding.score") || "Score"}</div>
+        <div className="text-xs text-muted-foreground">{t("worldbuilding.score")}</div>
       </div>
       <div className="flex-1 min-w-0">
         <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
@@ -33,8 +33,7 @@ export function AnalysisScoreHeader({ analysis }: AnalysisScoreHeaderProps) {
         </div>
         <p className="text-sm text-muted-foreground line-clamp-2">{analysis.overall_assessment}</p>
         <p className="text-xs text-muted-foreground mt-1">
-          {t("worldbuilding.entityCount", { count: analysis.entity_count }) ||
-            `${analysis.entity_count} entities analyzed`}
+          {t("worldbuilding.entityCount", { count: analysis.entity_count })}
         </p>
       </div>
     </div>

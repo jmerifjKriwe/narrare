@@ -28,7 +28,7 @@ export function SidebarActions({ onAnalyze, onConsistencyCheck }: SidebarActions
           className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-sm font-medium"
         >
           <Sparkles className="w-4 h-4" />
-          {t("worldbuilding.analyzeButton") || "Analyze Worldbuilding"}
+          {t("worldbuilding.analyzeButton")}
         </button>
       )}
       {onConsistencyCheck && (
@@ -38,7 +38,7 @@ export function SidebarActions({ onAnalyze, onConsistencyCheck }: SidebarActions
           className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors text-sm font-medium"
         >
           <ShieldCheck className="w-4 h-4" />
-          {t("consistency.checkButton") || "Check Consistency"}
+          {t("consistency.checkButton")}
         </button>
       )}
     </div>

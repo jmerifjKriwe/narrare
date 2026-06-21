@@ -126,7 +126,7 @@ export function KBEntryDetail({ novelId, entry, relationships, onDeleted }: KBEn
             className="px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive"
             role="alert"
           >
-            {updateMutation.error?.message ?? "Failed to save"}
+            {t("kb.failedToSaveEntry")}
           </div>
         )}
 

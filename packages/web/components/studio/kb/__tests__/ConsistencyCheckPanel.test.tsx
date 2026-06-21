@@ -15,7 +15,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ConsistencyCheckPanel } from "@/components/studio/kb/ConsistencyCheckPanel";
-import type { UseAIOperationReturn } from "@/lib/hooks/use-ai-operation";
+import type { AIErrorResponse, UseAIOperationReturn } from "@/lib/hooks/use-ai-operation";
 
 // ---------------------------------------------------------------------------
 // Hoisted mock data factory
@@ -211,6 +211,51 @@ describe("ConsistencyCheckPanel", () => {
 
     expect(screen.getByText("worldbuilding.error")).toBeDefined();
     expect(screen.getByText("Network error")).toBeDefined();
+  });
+
+  it("renders the default localized error when userMessage is absent", () => {
+    resetMockToIdle();
+    const errorWithoutUserMessage = {
+      kind: "http",
+      i18nKey: "aiActions.errorDefault",
+      retryable: true,
+      cause: new Error("Network error"),
+    } as unknown as AIErrorResponse;
+
+    mockAiOpRef.current = {
+      ...mockAiOpRef.current,
+      state: {
+        status: "error",
+        result: null,
+        error: errorWithoutUserMessage,
+        attemptCount: 1,
+      },
+      isError: true,
+      isIdle: false,
+    };
+    mockedUseAIOperation.mockReturnValue(mockAiOpRef.current);
+
+    render(<ConsistencyCheckPanel {...defaultProps} />);
+
+    expect(screen.getByText("aiActions.errorDefault")).toBeDefined();
+    expect(screen.queryByText("Check failed")).toBeNull();
+  });
+
+  it("does not render raw fallback text under the key-returning translation mock", () => {
+    const result = createSuccessResponse({ entity_count: 5 });
+    resetMockToIdle();
+    mockAiOpRef.current = {
+      ...mockAiOpRef.current,
+      state: { status: "complete", result, error: null, attemptCount: 1 },
+      isComplete: true,
+      isIdle: false,
+    };
+    mockedUseAIOperation.mockReturnValue(mockAiOpRef.current);
+
+    render(<ConsistencyCheckPanel {...defaultProps} />);
+
+    expect(screen.queryByText("Consistency Check")).toBeNull();
+    expect(screen.queryByText("5 entities analyzed")).toBeNull();
   });
 
   it("shows retry button in error state", () => {

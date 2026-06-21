@@ -88,9 +88,7 @@ export function EnhanceReviewCard({
       {enhancement.reasoning && (
         <div className="px-4 pb-4">
           <div className="mt-3 pt-3 border-t border-border/50">
-            <div className="text-xs text-muted-foreground mb-1">
-              {t("kb.aiReasoning") || "Why the AI suggests this"}
-            </div>
+            <div className="text-xs text-muted-foreground mb-1">{t("kb.aiReasoning")}</div>
             <div className="text-xs text-muted-foreground italic">{enhancement.reasoning}</div>
           </div>
         </div>

@@ -30,6 +30,13 @@ export interface GhostTextOptions {
    *  the non-React extension never hardcodes a visible locale string
    *  (CR-AUFG-07-10, ADR-043 Note 7). */
   fetchingStatusText?: string;
+  /** Localized transient error text shown after a non-AbortError fetch failure
+   *  (e.g. "Suggestion unavailable"). Injected from React via Extension options
+   *  so no hardcoded English appears in ProseMirror DOM (CR-AUFG-07-15). */
+  errorStatusText?: string;
+  /** How long (ms) the transient error decoration stays visible before
+   *  auto-clearing. Default: 4000. */
+  errorStatusDurationMs?: number;
 }
 
 export interface GhostTextStorage {
@@ -62,6 +69,13 @@ export interface GhostTextStorage {
 
   /** Minimal analytics counters for future use */
   _analytics: { accepted: number; rejected: number; total: number };
+
+  /** Whether the transient fetch-error decoration is currently visible
+   *  (CR-AUFG-07-15). Set by showErrorStatus, auto-cleared after
+   *  errorStatusDurationMs or on new fetch / cache hit / success. */
+  _errorStatusVisible: boolean;
+  /** setTimeout handle for the auto-clear of the error decoration. */
+  _errorTimer: ReturnType<typeof setTimeout> | null;
 
   /** Test hook — programmatically set ghost text at current cursor position */
   setGhostText: (suggestion: string) => void;

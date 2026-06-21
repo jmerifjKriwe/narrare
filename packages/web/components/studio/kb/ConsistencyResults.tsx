@@ -31,13 +31,8 @@ export function ConsistencyResults({ result, onEntityClick }: ConsistencyResults
         <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
           <Check className="w-6 h-6 text-green-500" />
         </div>
-        <p className="text-lg font-medium mb-1">
-          {t("consistency.noIssues") || "No issues found!"}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {t("worldbuilding.noIssuesDesc") ||
-            "Your worldbuilding looks comprehensive and consistent."}
-        </p>
+        <p className="text-lg font-medium mb-1">{t("consistency.noIssues")}</p>
+        <p className="text-sm text-muted-foreground">{t("worldbuilding.noIssuesDesc")}</p>
       </div>
     );
   }

@@ -166,4 +166,18 @@ describe("KBAssistedCreationFooter", () => {
 
     expect(screen.getByText("kb.saving")).toBeDefined();
   });
+
+  // CR-07 §16 regression guards: no hardcoded English visible fallbacks.
+  it("does not render English 'Entry Name' label or placeholder fallbacks", () => {
+    render(<KBAssistedCreationFooter {...defaultProps} />);
+
+    expect(screen.queryByText("Entry Name")).toBeNull();
+    expect(screen.queryByPlaceholderText("Enter a name for your entry")).toBeNull();
+  });
+
+  it("does not render English 'Saving...' fallback when completePending", () => {
+    render(<KBAssistedCreationFooter {...defaultProps} completePending />);
+
+    expect(screen.queryByText("Saving...")).toBeNull();
+  });
 });

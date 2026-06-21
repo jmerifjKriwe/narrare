@@ -45,7 +45,7 @@ export function InterviewQuestionCard({
           <p className="text-sm whitespace-pre-wrap">{question.question}</p>
           {question.target_field && (
             <p className="text-xs text-muted-foreground mt-2">
-              {t("kb.aboutField") || "About:"}{" "}
+              {t("kb.aboutField")}{" "}
               {session.fields.find((f) => f.field_key === question.target_field)?.label ||
                 question.target_field}
             </p>
@@ -57,7 +57,7 @@ export function InterviewQuestionCard({
       <div className="flex gap-3">
         <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
           <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-            {t("kb.youLabel") || "You"}
+            {t("kb.youLabel")}
           </span>
         </div>
         <div className="flex-1 space-y-3">
@@ -65,7 +65,7 @@ export function InterviewQuestionCard({
             ref={answerRef}
             value={answer}
             onChange={(e) => onAnswerChange(e.target.value)}
-            placeholder={t("kb.yourAnswer") || "Type your answer..."}
+            placeholder={t("kb.yourAnswer")}
             className="w-full px-4 py-3 bg-input-background border border-border rounded-lg text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
             disabled={state === "answering"}
             onKeyDown={(e) => {

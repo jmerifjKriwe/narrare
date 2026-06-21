@@ -39,15 +39,15 @@ export function KBAssistedCreationHeader({
             <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <h2 className="font-medium">{t("kb.aiAssistedCreation") || "AI-Assisted Creation"}</h2>
+            <h2 className="font-medium">{t("kb.aiAssistedCreation")}</h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <EntityIcon className="w-3.5 h-3.5" />
-              <span>{t(`kb.${entityType}s`) || entityType}</span>
+              <span>{t(`kb.${entityType}s`)}</span>
               <span className="text-xs px-2 py-0.5 rounded bg-muted">
                 {session.status === "active"
-                  ? t("kb.statusActive") || "Active"
+                  ? t("kb.statusActive")
                   : session.status === "review"
-                    ? t("kb.statusReview") || "Review"
+                    ? t("kb.statusReview")
                     : session.status}
               </span>
             </div>

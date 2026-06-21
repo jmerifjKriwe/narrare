@@ -236,4 +236,53 @@ describe("WorldbuildingAnalysisPanel", () => {
     const xButton = closeButtons[closeButtons.length - 1];
     fireEvent.click(xButton);
   });
+
+  // CR-07 §16: no hardcoded English visible fallbacks in production.
+  // Under the key-returning mock, English literals must never appear.
+  it("does not render English 'Worldbuilding Analysis' fallback title", async () => {
+    mockMutateAsync.mockResolvedValue(createAnalysisResponse());
+
+    renderWithProviders(<WorldbuildingAnalysisPanel {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("worldbuilding.analysisTitle")).toBeDefined();
+    });
+    expect(screen.queryByText("Worldbuilding Analysis")).toBeNull();
+  });
+
+  it("does not render English 'No issues found!' fallback when analysis has no findings", async () => {
+    mockMutateAsync.mockResolvedValue({
+      ...createAnalysisResponse(),
+      gap_findings: [],
+      connection_suggestions: [],
+      consistency_issues: [],
+    });
+
+    renderWithProviders(<WorldbuildingAnalysisPanel {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("worldbuilding.noIssues")).toBeDefined();
+    });
+    expect(screen.queryByText("No issues found!")).toBeNull();
+  });
+
+  it("does not render English 'Analyzing worldbuilding...' fallback while loading", () => {
+    mockMutateAsync.mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(<WorldbuildingAnalysisPanel {...defaultProps} />);
+
+    expect(screen.getByText("worldbuilding.analyzing")).toBeDefined();
+    expect(screen.queryByText("Analyzing worldbuilding...")).toBeNull();
+  });
+
+  it("does not render English 'Analysis failed' fallback in error state", async () => {
+    mockMutateAsync.mockRejectedValue(new Error("boom"));
+
+    renderWithProviders(<WorldbuildingAnalysisPanel {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("worldbuilding.error")).toBeDefined();
+    });
+    expect(screen.queryByText("Analysis failed")).toBeNull();
+  });
 });

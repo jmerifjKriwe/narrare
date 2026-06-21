@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """§16 AI Interaction Standards Compliance Check (ADR-043).
 
-Verifies 11 machine-checkable rules across TSX components and i18n files:
+Verifies 12 machine-checkable rules across TSX components and i18n files:
   Check 1  — Every TSX file importing SSE API values must also import useAIOperation
   Check 2  — No raw new AbortController() in feature code (classified allowed/violation)
   Check 3  — All 7 aiActions.error* i18n keys exist in all 3 locales (de/en/fr)
@@ -13,6 +13,7 @@ Verifies 11 machine-checkable rules across TSX components and i18n files:
   Check 9  — CR-AUFG IDs in audit must exist in registry (§8 lifecycle sync)
   Check 10 — Operation inventory must have required §4 fields and AUFG links
   Check 11 — Resolved AUFG entries need implementation + enforcement evidence
+  Check 12 — No visible i18n fallback strings in KB/editor components (CR-AUFG-07-14)
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ from _ai_interaction_checks import (
     check_signal_propagation,
     check_stale_exclude,
     check_use_ai_operation_usage,
+    check_visible_i18n_fallbacks,
     load_exclude_list,
 )
 
@@ -49,6 +51,7 @@ GATE_CHECK_5 = "check_5_no_use_connection_lost"
 GATE_CHECK_6 = "check_6_deprecated_alias"
 GATE_CHECK_7 = "check_7_signal_propagation"
 GATE_CHECK_8 = "check_8_stale_exclude"
+GATE_CHECK_12 = "check_12_visible_i18n_fallbacks"
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -143,6 +146,10 @@ def main() -> int:
     # -- Check 11 --------------------------------------------------------
     c11_p, c11_v = check_resolution_evidence()
     report.add("Check 11: Resolved AUFG entries have evidence", c11_p, c11_v)
+
+    # -- Check 12 --------------------------------------------------------
+    c12_p, c12_v = check_visible_i18n_fallbacks()
+    report.add("Check 12: No visible i18n fallback strings", c12_p, c12_v)
 
     if args.json:
         print(report.format_json())

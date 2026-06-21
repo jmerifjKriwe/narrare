@@ -25,27 +25,22 @@ export function InterviewCompleteState({
       <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
         <MessageSquare className="w-8 h-8 text-green-600 dark:text-green-400" />
       </div>
-      <h3 className="text-lg font-medium mb-2">
-        {t("kb.interviewComplete") || "Interview Complete"}
-      </h3>
-      <p className="text-sm text-muted-foreground mb-6">
-        {t("kb.interviewCompleteDesc") ||
-          "Great! We've gathered enough information. You can review and refine your answers in the field list."}
-      </p>
+      <h3 className="text-lg font-medium mb-2">{t("kb.interviewComplete")}</h3>
+      <p className="text-sm text-muted-foreground mb-6">{t("kb.interviewCompleteDesc")}</p>
       <div className="flex justify-center gap-3">
         <button
           type="button"
           onClick={onRequestMoreQuestions}
           className="px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors text-sm"
         >
-          {t("kb.askMoreQuestions") || "Ask More Questions"}
+          {t("kb.askMoreQuestions")}
         </button>
         <button
           type="button"
           onClick={onBack}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity text-sm"
         >
-          {t("kb.backToOverview") || "Back to Overview"}
+          {t("kb.backToOverview")}
         </button>
       </div>
     </div>

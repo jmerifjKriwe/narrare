@@ -83,4 +83,12 @@ describe("KBTagInput", () => {
 
     expect(onChange).toHaveBeenCalledWith(["brave", "kind", "curious"]);
   });
+
+  // CR-07 §16: no hardcoded English visible fallbacks in production.
+  it("does not use hardcoded English 'Tags' for listbox aria-label when no placeholder is passed", () => {
+    render(<KBTagInput value={[]} onChange={() => {}} />);
+    // The listbox must use the i18n key (kb.tags) under the key-returning
+    // translation mock, never the literal "Tags" fallback.
+    expect(screen.queryByRole("listbox")).not.toHaveAttribute("aria-label", "Tags");
+  });
 });

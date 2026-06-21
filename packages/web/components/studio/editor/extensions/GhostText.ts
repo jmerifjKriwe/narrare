@@ -63,8 +63,12 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
       suggestionDelay: 800,
       minChars: 5,
       enabled: true,
-      hintText: "Tab accept · Esc dismiss · → word",
+      // Localized via i18n by TipTapEditorController (`t("ghostText.hint")`).
+      // Empty default — no hardcoded English (RULE-16, Check 12).
+      hintText: "",
       fetchingStatusText: "",
+      errorStatusText: "",
+      errorStatusDurationMs: 4000,
     };
   },
 
@@ -90,6 +94,9 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
         rejected: number;
         total: number;
       },
+
+      _errorStatusVisible: false as boolean,
+      _errorTimer: null as ReturnType<typeof setTimeout> | null,
 
       setGhostText: () => {},
       clearGhostText: () => {},
@@ -192,7 +199,8 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
         key: new PluginKey("ghostText"),
         props: {
           decorations(state: EditorState) {
-            const { currentSuggestion, suggestionPos, _isFetching } = extension.storage;
+            const { currentSuggestion, suggestionPos, _isFetching, _errorStatusVisible } =
+              extension.storage;
 
             // ── Fetching status indicator (before suggestion arrives) ──────
             // Shown while a suggestion request is in-flight so the user gets
@@ -220,6 +228,36 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
               }
             }
 
+            // ── Transient error status (after non-AbortError fetch failure) ──
+            // Low-noise, non-blocking decoration shown only when:
+            // - _errorStatusVisible is set (by showErrorStatus helper)
+            // - not currently fetching (no overlap with fetching indicator)
+            // - no current suggestion (no overlap with ghost text)
+            // - cursor remains at the anchor position
+            // (CR-AUFG-07-15). Visible text comes from the React-controlled
+            // `errorStatusText` option — never hardcoded English.
+            if (
+              _errorStatusVisible &&
+              !_isFetching &&
+              !currentSuggestion &&
+              suggestionPos !== null &&
+              state.selection.head === suggestionPos
+            ) {
+              const errorText = extension.options.errorStatusText ?? "";
+              if (errorText) {
+                const errorSpan = document.createElement("span");
+                errorSpan.textContent = errorText;
+                errorSpan.className = "ghost-text-error";
+                errorSpan.setAttribute("aria-hidden", "true");
+                return DecorationSet.create(state.doc, [
+                  Decoration.widget(suggestionPos, errorSpan, {
+                    side: 1,
+                    key: "ghost-error",
+                  }),
+                ]);
+              }
+            }
+
             if (!currentSuggestion || suggestionPos === null) {
               return DecorationSet.empty;
             }
@@ -235,10 +273,11 @@ export const GhostText = Extension.create<GhostTextOptions, GhostTextStorage>({
             ghostSpan.className = "ghost-text-suggestion";
             ghostSpan.setAttribute("aria-hidden", "true");
 
-            // Build the keyboard shortcut hint (fades in via CSS)
+            // Build the keyboard shortcut hint (fades in via CSS).
+            // Text comes from the React-controlled `hintText` option
+            // (ADR-043 Note 7) — never hardcoded English.
             const hintSpan = document.createElement("span");
-            hintSpan.textContent =
-              extension.options.hintText ?? "Tab accept · Esc dismiss · → word";
+            hintSpan.textContent = extension.options.hintText ?? "";
             hintSpan.className = "ghost-text-hint";
             hintSpan.setAttribute("aria-hidden", "true");
 

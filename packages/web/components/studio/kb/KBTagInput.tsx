@@ -9,6 +9,7 @@
  */
 
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 
 interface KBTagInputProps {
@@ -23,6 +24,7 @@ interface KBTagInputProps {
 }
 
 export function KBTagInput({ value, onChange, placeholder, disabled }: KBTagInputProps) {
+  const t = useTranslations("studio");
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +84,7 @@ export function KBTagInput({ value, onChange, placeholder, disabled }: KBTagInpu
         ${disabled ? "opacity-50 cursor-not-allowed" : "hover:border-muted-foreground/30"}
       `}
       role="listbox"
-      aria-label={placeholder ?? "Tags"}
+      aria-label={placeholder ?? t("kb.tags")}
     >
       {value.map((tag, index) => (
         <span

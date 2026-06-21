@@ -12,10 +12,13 @@
 import type { Editor } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { ReplaceStep } from "@tiptap/pm/transform";
+// Import error-status helpers from the dedicated module (RULE-04)
+import { clearErrorStatus, showErrorStatus } from "./ghost-text-error-status";
 import { simulateSuggestion } from "./ghost-text-suggestions";
 import type { GhostTextOptions, GhostTextStorage } from "./ghost-text-types";
 
-// Re-export simulateSuggestion from the dedicated module (RULE-04)
+export { clearErrorStatus, showErrorStatus } from "./ghost-text-error-status";
+// Re-export for external consumers (backwards-compatible API)
 export { simulateSuggestion } from "./ghost-text-suggestions";
 
 // ── Internal Helper Functions ──────────────────────────────────────────────────
@@ -38,12 +41,14 @@ export function cancelPendingAutoTrigger(storage: GhostTextStorage): void {
 
 /**
  * Clears all ghost text state: stops streaming, cancels pending requests
- * and auto-trigger timers, and resets storage values.
+ * and auto-trigger timers, clears any transient error decoration, and resets
+ * storage values.
  * Does NOT clear the suggestion cache (performance-only data).
  */
 export function clearAll(storage: GhostTextStorage, editor: Editor): void {
   stopStreaming(storage);
   cancelPendingAutoTrigger(storage);
+  clearErrorStatus(storage, editor);
 
   if (storage._abortController) {
     storage._abortController.abort();
@@ -228,6 +233,10 @@ export async function fetchAndStreamSuggestion(
     storage._abortController.abort();
   }
 
+  // Clear any previous error decoration when starting a new fetch
+  // (CR-AUFG-07-15: a new request supersedes the old error)
+  clearErrorStatus(storage, editor);
+
   // ── Cache lookup ──────────────────────────────────────────────────────
   const cached = storage._cache.get(textBefore);
   if (cached && Date.now() - cached.timestamp < storage._cacheMaxAge) {
@@ -267,8 +276,8 @@ export async function fetchAndStreamSuggestion(
   } catch (err) {
     // Silently ignore aborted requests (user typed before suggestion arrived)
     if (err instanceof DOMException && err.name === "AbortError") return;
-    // For other unexpected errors, clear state as a safety measure
-    clearAll(storage, editor);
+    // Non-AbortError: show transient localized error decoration (CR-AUFG-07-15)
+    showErrorStatus(storage, editor, options);
   } finally {
     storage._isFetching = false;
     if (storage._abortController === abortController) {
@@ -354,6 +363,7 @@ export function acceptFirstWord(storage: GhostTextStorage, editor: Editor): bool
 export function cleanup(storage: GhostTextStorage): void {
   stopStreaming(storage);
   cancelPendingAutoTrigger(storage);
+  clearErrorStatus(storage);
 
   if (storage._abortController) {
     storage._abortController.abort();

@@ -277,3 +277,32 @@ describe("groupByCategory", () => {
     expect(Object.keys(result)).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// CR-07 §16 regression guards: no hardcoded English visible fallbacks
+// ---------------------------------------------------------------------------
+
+describe("WorldbuildingAnalysisCards CR-07 §16 fallback guards", () => {
+  it("GapCard does not render English 'Related type' fallback", () => {
+    render(<GapCard gap={createGap({ related_entity_type: "location" })} t={t} />);
+
+    expect(screen.queryByText("Related type")).toBeNull();
+    // Key-returning mock: label is "worldbuilding.relatedType"
+    expect(screen.getByText(/worldbuilding\.relatedType/)).toBeDefined();
+  });
+
+  it("ConnectionCard does not render English 'confidence' or 'Will apply' fallbacks", () => {
+    render(<ConnectionCard connection={createConnection()} isSelected onToggle={vi.fn()} t={t} />);
+
+    expect(screen.queryByText("confidence")).toBeNull();
+    expect(screen.queryByText("Will apply")).toBeNull();
+  });
+
+  it("ConsistencyCard does not render English fallback labels", () => {
+    render(<ConsistencyCard issue={createConsistencyIssue()} t={t} />);
+
+    expect(screen.queryByText("confidence")).toBeNull();
+    expect(screen.queryByText("Contradiction")).toBeNull();
+    expect(screen.queryByText("Suggested resolution")).toBeNull();
+  });
+});

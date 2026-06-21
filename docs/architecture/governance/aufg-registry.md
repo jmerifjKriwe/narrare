@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-20 (CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
+> **Last updated:** 2026-06-21 (CR-07 Follow-up v3 Phase A resolved — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -472,8 +472,8 @@ per `docs/development/finding-lifecycle.md`.
 
 | ID | Phase | Title | Status | Priority | Acceptance summary |
 |----|-------|-------|--------|----------|--------------------|
-| CR-AUFG-07-14 | A | §16 Consistency/i18n fallback hardening | `open` | P1 | Remove hardcoded visible fallbacks such as `t(...) || "..."`; fix Consistency error fallback; add checker preventing reintroduction. |
-| CR-AUFG-07-15 | A | GhostText visible error affordance | `open` | P1 | Decide and implement non-blocking localized GhostText error affordance; inventory and tests cover error/retry semantics. |
+| CR-AUFG-07-14 | A | §16 Consistency/i18n fallback hardening | `resolved` | P1 | Remove hardcoded visible fallbacks such as `t(...) || "..."`; fix Consistency error fallback; add checker preventing reintroduction. |
+| CR-AUFG-07-15 | A | GhostText visible error affordance | `resolved` | P1 | Decide and implement non-blocking localized GhostText error affordance; inventory and tests cover error/retry semantics. |
 | CR-AUFG-07-16 | B | PROMPT-003 contract-first implementation | `open` | P1 | Provider-free resolved preview, variable metadata/provenance, diagnostics, reset semantics, optional SSE live test, and contract tests across Core/Backend/Frontend. |
 | CR-AUFG-07-17 | B | ONBOARD-001 KB + Storyboard + AI aha moment | `open` | P2 | Add conceptual tour/story explaining how KB and Storyboard shape AI output; do not downgrade ONBOARD-001’s stable base scope. |
 | CR-AUFG-07-18 | C | Standardized diff view across AI outputs | `open` | P2 | Shared diff vocabulary/component contract for Rewrite, Co-Author, KB Enhance, and Beta Reader. |
@@ -486,13 +486,49 @@ per `docs/development/finding-lifecycle.md`.
 
 **Definition of Done for the set:**
 
-- Phase A checker and frontend cleanup are implemented and CI-visible.
+- Phase A checker and frontend cleanup are implemented and CI-visible. ✅ Met (2026-06-21): CR-AUFG-07-14 and CR-AUFG-07-15 have implementation + enforcement + test evidence.
 - PROMPT-003 remains `planned` until its Core/Backend/Frontend contracts and enforcement are complete.
 - ONBOARD-001 remains `stable`; the conceptual follow-up has its own AUFG exit evidence.
 - Every Phase C item has a dedicated feature/spec slice before implementation.
 - This registry entry is updated with per-ID exit evidence only after implementation and enforcement exist.
 
-**Exit evidence:** Pending — open.
+**Exit evidence:**
+
+Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B/C items remain pending.
+
+#### CR-AUFG-07-14 — §16 Consistency/i18n fallback hardening
+
+**Exit evidence (2026-06-21):** Resolved — implementation + enforcement + tests complete.
+- **Design:** RULE-16 (no visible English fallback strings); ADR-043; `docs/architecture/governance/ai-ux-compliance-v2.md` §4; CR-07 Follow-up v3 Phase A Task 1–5 plan.
+- **Implementation:**
+  - `packages/web/components/studio/kb/ConsistencyCheckPanel.tsx` — removed `t(...) || "Check failed"` and three other visible `|| "..."` fallbacks; error rendering now uses structured i18n-key fallback (`error?.userMessage || t(error?.i18nKey ?? "aiActions.errorDefault")`).
+  - `packages/web/components/studio/kb/WorldbuildingAnalysisPanel.tsx`, `WorldbuildingAnalysisCards.tsx`, `KBAssistedCreationFooter.tsx`, `KBAssistedCreationHeader.tsx`, `KBSessionFieldList.tsx`, `KBTagInput.tsx`, `KBEntryDetail.tsx`, `SidebarActions.tsx`, `AnalysisTabs.tsx`, `AnalysisScoreHeader.tsx`, `AnalysisError.tsx`, `ConsistencyError.tsx`, `ConsistencyLoading.tsx`, `ConsistencyResults.tsx`, `InterviewCompleteState.tsx`, `InterviewHeader.tsx`, `InterviewQuestionCard.tsx`, `_components/EnhanceReviewBulkActions.tsx`, `_components/EnhanceReviewCard.tsx`, `_components/EnhanceReviewHeader.tsx`, `_components/ImproveReviewSection.tsx` — all visible `t(...) || "English"` fallbacks removed; locale keys rely on the i18n registry instead.
+  - `packages/web/components/studio/kb/useWorldbuildingAnalysis.ts` — localized apply-success and apply-error detail strings via two new keys: `worldbuilding.failedWithDetails` and `kb.failedToSaveEntry` (added to `de/en/fr/studio.json`).
+- **Enforcement:**
+  - Check 12 (`scripts/checks/_ai_interaction_checks/check_12_visible_i18n_fallbacks.py`) scans `packages/web/components/studio/kb/**` and `packages/web/components/studio/editor/**` production TS/TSX for `t(...) || "..."`, `t(...) ?? "..."`, and capitalized-literal `|| / ??` fallbacks. Governed allowlist at `scripts/checks/_ai_interaction_checks/visible_i18n_fallback_allowlist.yaml` (currently empty — no justified production-visible fallbacks).
+  - Wired into `just check-ai-ux` via `scripts/checks/check_ai_interaction_compliance.py` (12 checks total).
+  - Inventory entries `analysis.consistency`, `analysis.worldbuilding`, `kb.field_suggest`, `kb.enhance`, `kb.improve` remain `compliant`.
+- **Tests:** `tests/unit/scripts/checks/test_check_12_visible_i18n_fallbacks.py` (23 cases: pattern detection, allowlist honoring, test-file exclusion, scan-directory scope); frontend regression coverage in `ConsistencyCheckPanel.test.tsx`, `WorldbuildingAnalysisPanel.test.tsx`, `WorldbuildingAnalysisCards.test.tsx`, `KBAssistedCreationFooter.test.tsx`, `KBSessionFieldList.test.tsx`, `KBTagInput.test.tsx`, `useWorldbuildingAnalysis.test.tsx`.
+- **Validation:** `just check-ai-ux` reports 12 checks, 0 violations, 0 stale excludes.
+
+#### CR-AUFG-07-15 — GhostText visible error affordance
+
+**Exit evidence (2026-06-21):** Resolved — implementation + enforcement + tests complete.
+- **Design:** ADR-043 non-react-extension structural category; ADR-043 Note 7 (localized strings via Extension options, no hardcoded English in ProseMirror DOM); CR-07 Follow-up v3 Phase A Task 2–3 plan. AbortError stays silent (normal typing cancellation); non-AbortError shows a transient, non-blocking, low-noise decoration that auto-clears.
+- **Implementation:**
+  - `packages/web/components/studio/editor/extensions/ghost-text-error-status.ts` (new, 77 lines, RULE-04 extraction) — `showErrorStatus(storage, editor, options)` sets `_errorStatusVisible`, anchors the decoration at the cursor, and schedules an auto-clear via `setTimeout` after `options.errorStatusDurationMs` (default 4000ms). `clearErrorStatus(storage, editor?)` cancels the timer and dispatches an empty transaction to re-render. Visible text comes from `options.errorStatusText` (React-injected), never hardcoded English.
+  - `packages/web/components/studio/editor/extensions/ghost-text-types.ts` — `GhostTextOptions.errorStatusText` and `errorStatusDurationMs`; `GhostTextStorage._errorStatusVisible` and `_errorTimer`.
+  - `packages/web/components/studio/editor/extensions/GhostText.ts` — decoration plugin renders the `ghost-text-error` widget span only when `_errorStatusVisible && !_isFetching && !currentSuggestion && cursor at anchor`; `hintText` default changed from `"Tab accept · Esc dismiss · → word"` to `""` (no hardcoded English; `TipTapEditorController` injects `t("ghostText.hint")`).
+  - `packages/web/components/studio/editor/extensions/ghost-text-helpers.ts` — `fetchAndStreamSuggestion` catch block: AbortError → silent return; other errors → `showErrorStatus(...)` instead of `clearAll(...)`. `clearErrorStatus` is called on new fetch, cache hit, `clearAll`, and `cleanup` so retry/success/typing-clear all suppress the error.
+  - `packages/web/components/studio/editor/TipTapEditorController.ts` — injects `errorStatusText: t("ghostText.errorUnavailable")` and `errorStatusDurationMs: 4000` via Extension options.
+  - `packages/web/styles/editor.css` — `.ghost-text-error` styling (low-noise, muted).
+  - `packages/i18n/messages/{de,en,fr}/studio.json` — new key `ghostText.errorUnavailable`.
+- **Enforcement:**
+  - Inventory entry `editor.ghost_text` (status `governed_exception`) now documents error/retry semantics: localized error status via Extension options, transient auto-clear after `errorStatusDurationMs`, retry/success/cache-hit clear via `clearErrorStatus`.
+  - Check 12 prevents reintroduction of hardcoded English fallbacks in `packages/web/components/studio/editor/**`.
+  - The pre-existing Check 2 governed exclude for `ghost-text-helpers.ts` (non-react-extension) remains fresh and AUFG-linked (`re_evaluated=2026-06-19`).
+- **Tests:** `packages/web/components/studio/editor/extensions/__tests__/ghost-text-fetching.test.ts` (10 cases: error decoration appears on non-AbortError, AbortError stays silent, transient auto-clear after duration, manual clear on new fetch, clear on cache hit, clear on cleanup, localized text from options, no overlap with fetching indicator, no hardcoded English default).
+- **Validation:** `just check-ai-ux` reports 12 checks, 0 violations, 0 stale excludes; `just check-frontend-size` reports 0 new debt.
 
 ---
 

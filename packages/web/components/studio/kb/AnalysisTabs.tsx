@@ -68,7 +68,7 @@ export function AnalysisTabs({
               {t("worldbuilding.selectedCount", {
                 count: selectedConnectionIndices.size,
                 total: connections.length,
-              }) || `${selectedConnectionIndices.size} of ${connections.length} selected`}
+              })}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -76,7 +76,7 @@ export function AnalysisTabs({
                 onClick={onSelectAll}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                {t("kb.selectAll") || "Select all"}
+                {t("kb.selectAll")}
               </button>
               <span className="text-muted-foreground">|</span>
               <button
@@ -84,7 +84,7 @@ export function AnalysisTabs({
                 onClick={onSelectNone}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                {t("kb.selectNone") || "Select none"}
+                {t("kb.selectNone")}
               </button>
             </div>
           </div>

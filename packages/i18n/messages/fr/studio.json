@@ -218,6 +218,7 @@
     "success": "Analyse terminée",
     "applied": "{count} connexions appliquées",
     "failed": "Impossible d'appliquer les connexions",
+    "failedWithDetails": "Impossible d'appliquer les connexions : {details}",
     "selectedCount": "{count} sur {total} sélectionnées",
     "confidence": "confiance",
     "entities": "entités",
@@ -853,6 +854,7 @@
     "entryCount": "{count} entrées",
     "deleteEntry": "Supprimer l'entrée",
     "saveSuccess": "Entrée enregistrée",
+    "failedToSaveEntry": "Impossible d'enregistrer l'entrée",
     "deleteSuccess": "Entrée supprimée",
     "relCreated": "Relation créée",
     "arrow": "→",
@@ -1701,7 +1703,8 @@
   },
   "ghostText": {
     "onboardingHint": "Tab = Accepter | → = Mot par mot | Esc = Rejeter",
-    "hint": "Tab accepter · Esc rejeter · → mot"
+    "hint": "Tab accepter · Esc rejeter · → mot",
+    "errorUnavailable": "Suggestion indisponible"
   },
   "aiActions": {
     "accept": "Accepter",

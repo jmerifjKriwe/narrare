@@ -42,14 +42,14 @@ export function KBAssistedCreationFooter({
       {session?.status !== "complete" && (
         <div className="p-4 border-b border-border">
           <label htmlFor="entry-name" className="block text-sm font-medium mb-1 text-foreground">
-            {t("kb.entry_name") || "Entry Name"}
+            {t("kb.entry_name")}
           </label>
           <input
             id="entry-name"
             type="text"
             value={entryName}
             onChange={(e) => setEntryName(e.target.value)}
-            placeholder={t("kb.entry_name_placeholder") || "Enter a name for your entry"}
+            placeholder={t("kb.entry_name_placeholder")}
             className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm
                        focus:outline-none focus:ring-2 focus:ring-ring"
           />
@@ -92,7 +92,7 @@ export function KBAssistedCreationFooter({
               disabled={filledFields === 0 || !entryName.trim() || completePending}
               className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 text-sm font-medium"
             >
-              {completePending ? t("kb.saving") || "Saving..." : t("kb.completeAndSave")}
+              {completePending ? t("kb.saving") : t("kb.completeAndSave")}
             </button>
           </div>
         </div>

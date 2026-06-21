@@ -144,6 +144,10 @@ export function useTipTapEditorController({
         // options so no hardcoded English appears in ProseMirror DOM
         // (CR-AUFG-07-10, ADR-043 Note 7).
         fetchingStatusText: t("aiActions.aiThinking"),
+        // Localized transient error text for non-AbortError fetch failures
+        // (CR-AUFG-07-15). Low-noise, non-blocking, auto-clears after 4s.
+        errorStatusText: t("ghostText.errorUnavailable"),
+        errorStatusDurationMs: 4000,
       }) satisfies Partial<import("./extensions/GhostText").GhostTextOptions>,
     [t],
   );

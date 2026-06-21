@@ -49,7 +49,7 @@ export function GapCard({ gap, t }: GapCardProps) {
         <p className="text-sm">{gap.description}</p>
         {gap.related_entity_type && (
           <p className="text-xs text-muted-foreground mt-2">
-            {t("worldbuilding.relatedType") || "Related type"}: {gap.related_entity_type}
+            {t("worldbuilding.relatedType")}: {gap.related_entity_type}
           </p>
         )}
       </div>
@@ -94,14 +94,13 @@ export function ConnectionCard({ connection, isSelected, onToggle, t }: Connecti
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs text-purple-500">{connection.suggested_rel_type}</span>
             <span className="text-xs text-muted-foreground">
-              {Math.round(connection.confidence * 100)}%{" "}
-              {t("worldbuilding.confidence") || "confidence"}
+              {Math.round(connection.confidence * 100)}% {t("worldbuilding.confidence")}
             </span>
           </div>
         </div>
         {isSelected && (
           <span className="text-xs text-green-600 dark:text-green-400 flex-shrink-0">
-            {t("kb.willApply") || "Will apply"}
+            {t("kb.willApply")}
           </span>
         )}
       </button>
@@ -133,7 +132,7 @@ export function ConsistencyCard({ issue, t, onEntityClick }: ConsistencyCardProp
             {issue.severity}
           </span>
           <span className="text-xs text-muted-foreground">
-            {Math.round(issue.confidence * 100)}% {t("worldbuilding.confidence") || "confidence"}
+            {Math.round(issue.confidence * 100)}% {t("worldbuilding.confidence")}
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -165,15 +164,13 @@ export function ConsistencyCard({ issue, t, onEntityClick }: ConsistencyCardProp
       <div className="p-3 space-y-2">
         <p className="text-sm">{issue.description}</p>
         <div className="p-2 bg-muted/20 rounded text-sm text-muted-foreground">
-          <span className="font-medium">
-            {t("worldbuilding.contradiction") || "Contradiction"}:
-          </span>{" "}
+          <span className="font-medium">{t("worldbuilding.contradiction")}:</span>{" "}
           {issue.contradiction}
         </div>
         {issue.suggested_resolution && (
           <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded text-sm">
             <span className="font-medium text-green-700 dark:text-green-400">
-              {t("worldbuilding.resolution") || "Suggested resolution"}:
+              {t("worldbuilding.resolution")}:
             </span>{" "}
             <span className="text-green-600 dark:text-green-400">{issue.suggested_resolution}</span>
           </div>

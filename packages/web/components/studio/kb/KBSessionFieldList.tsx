@@ -97,7 +97,7 @@ export function KBSessionFieldList({
         {/* Empty fields (needs input) */}
         {emptyFields.length > 0 && (
           <FieldGroupSection
-            title={t("kb.toFill") || "To Fill"}
+            title={t("kb.toFill")}
             count={emptyFields.length}
             titleClassName="text-muted-foreground"
           >
@@ -122,7 +122,7 @@ export function KBSessionFieldList({
         {/* AI suggestions pending review */}
         {aiFields.length > 0 && (
           <FieldGroupSection
-            title={t("kb.aiSuggestions") || "AI Suggestions"}
+            title={t("kb.aiSuggestions")}
             count={aiFields.length}
             titleClassName="text-green-600 dark:text-green-400"
           >
@@ -146,7 +146,7 @@ export function KBSessionFieldList({
         {/* User-filled fields */}
         {userFields.length > 0 && (
           <FieldGroupSection
-            title={t("kb.completed") || "Completed"}
+            title={t("kb.completed")}
             count={userFields.length}
             titleClassName="text-blue-600 dark:text-blue-400"
           >
@@ -170,7 +170,7 @@ export function KBSessionFieldList({
         {/* Merged / world-derived fields */}
         {mergedFields.length > 0 && (
           <FieldGroupSection
-            title={t("kb.fromStory") || "From Story"}
+            title={t("kb.fromStory")}
             count={mergedFields.length}
             titleClassName="text-purple-600 dark:text-purple-400"
           >

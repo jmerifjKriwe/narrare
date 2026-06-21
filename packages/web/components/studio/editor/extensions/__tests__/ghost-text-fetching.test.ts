@@ -44,6 +44,8 @@ function makeStorage(): GhostTextStorage {
     _cacheMaxAge: 30_000,
     _cacheMaxSize: 50,
     _analytics: { accepted: 0, rejected: 0, total: 0 },
+    _errorStatusVisible: false,
+    _errorTimer: null,
     setGhostText: vi.fn(),
     clearGhostText: vi.fn(),
     setEnabled: vi.fn(),
@@ -65,6 +67,8 @@ function makeOptions(
     minChars: 5,
     enabled: true,
     fetchingStatusText: "AI is thinking...",
+    errorStatusText: "Suggestion unavailable",
+    errorStatusDurationMs: 4000,
   };
 }
 
@@ -165,5 +169,97 @@ describe("GhostText fetching status (CR-AUFG-07-10)", () => {
 
     // Dispatch called again when fetching ends (re-render to clear indicator)
     expect(dispatch.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ── Error affordance tests (CR-AUFG-07-15) ────────────────────────────────────
+
+describe("GhostText fetch error affordance (CR-AUFG-07-15)", () => {
+  it("sets _errorStatusVisible=true when fetch rejects with non-AbortError", async () => {
+    const storage = makeStorage();
+    const editor = makeEditor();
+    const failingFetch = vi.fn().mockRejectedValue(new Error("Network down"));
+
+    await fetchAndStreamSuggestion(storage, editor, makeOptions(failingFetch), "hello", "");
+
+    expect(storage._errorStatusVisible).toBe(true);
+    expect(storage._errorTimer).not.toBeNull();
+  });
+
+  it("does NOT set _errorStatusVisible when fetch rejects with AbortError", async () => {
+    const storage = makeStorage();
+    const editor = makeEditor();
+    const abortingFetch = vi.fn().mockRejectedValue(new DOMException("Aborted", "AbortError"));
+
+    await fetchAndStreamSuggestion(storage, editor, makeOptions(abortingFetch), "hello", "");
+
+    expect(storage._errorStatusVisible).toBe(false);
+    expect(storage._errorTimer).toBeNull();
+  });
+
+  it("auto-clears _errorStatusVisible after errorStatusDurationMs", async () => {
+    vi.useFakeTimers();
+    try {
+      const storage = makeStorage();
+      const editor = makeEditor();
+      const failingFetch = vi.fn().mockRejectedValue(new Error("Network down"));
+
+      await fetchAndStreamSuggestion(storage, editor, makeOptions(failingFetch), "hello", "");
+
+      expect(storage._errorStatusVisible).toBe(true);
+
+      vi.advanceTimersByTime(4000);
+
+      expect(storage._errorStatusVisible).toBe(false);
+      expect(storage._errorTimer).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears previous error status when a new fetch starts", async () => {
+    const storage = makeStorage();
+    const editor = makeEditor();
+    const failingFetch = vi.fn().mockRejectedValue(new Error("Network down"));
+
+    // First fetch fails → error status visible
+    await fetchAndStreamSuggestion(storage, editor, makeOptions(failingFetch), "hello", "");
+    expect(storage._errorStatusVisible).toBe(true);
+
+    // Second fetch starts (never-resolving) → should clear error status
+    let resolveSecondFetch: ((value: string) => void) | undefined;
+    const slowFetch = () =>
+      new Promise<string>((resolve) => {
+        resolveSecondFetch = resolve;
+      });
+
+    const promise = fetchAndStreamSuggestion(storage, editor, makeOptions(slowFetch), "world", "");
+
+    // Synchronous portion (including clearErrorStatus) runs before first await
+    expect(storage._errorStatusVisible).toBe(false);
+    expect(storage._errorTimer).toBeNull();
+
+    // Cleanup: resolve the pending fetch
+    resolveSecondFetch?.(" resolved text");
+    await promise;
+  });
+
+  it("clears error status on cache hit", async () => {
+    const storage = makeStorage();
+    const editor = makeEditor();
+
+    // First fetch fails → error state
+    const failingFetch = vi.fn().mockRejectedValue(new Error("Network down"));
+    await fetchAndStreamSuggestion(storage, editor, makeOptions(failingFetch), "hello", "");
+    expect(storage._errorStatusVisible).toBe(true);
+
+    // Pre-populate cache for a different prefix
+    storage._cache.set("world", { text: " cached text", timestamp: Date.now() });
+    const neverCalledFetch = vi.fn();
+
+    await fetchAndStreamSuggestion(storage, editor, makeOptions(neverCalledFetch), "world", "");
+
+    expect(storage._errorStatusVisible).toBe(false);
+    expect(neverCalledFetch).not.toHaveBeenCalled();
   });
 });

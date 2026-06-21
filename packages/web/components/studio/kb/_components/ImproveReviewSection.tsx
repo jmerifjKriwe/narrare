@@ -47,9 +47,7 @@ export function ImproveReviewSection({
           <div className="text-2xl font-bold text-purple-500">
             {Math.round(completenessScore * 100)}%
           </div>
-          <div className="text-xs text-muted-foreground">
-            {t("kb.improve.completeness") || "Complete"}
-          </div>
+          <div className="text-xs text-muted-foreground">{t("kb.improve.completeness")}</div>
         </div>
         <div className="flex-1 min-w-0">
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
@@ -66,8 +64,7 @@ export function ImproveReviewSection({
       {suggestions.length > 0 && (
         <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
           <span className="text-sm text-muted-foreground">
-            {t("kb.enhancementsFound", { count: suggestions.length }) ||
-              `${suggestions.length} suggestion(s) found`}
+            {t("kb.enhancementsFound", { count: suggestions.length })}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -75,7 +72,7 @@ export function ImproveReviewSection({
               onClick={onSelectAll}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              {t("kb.selectAll") || "Select all"}
+              {t("kb.selectAll")}
             </button>
             <span className="text-muted-foreground">|</span>
             <button
@@ -83,7 +80,7 @@ export function ImproveReviewSection({
               onClick={onSelectNone}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              {t("kb.selectNone") || "Select none"}
+              {t("kb.selectNone")}
             </button>
           </div>
         </div>
@@ -95,12 +92,8 @@ export function ImproveReviewSection({
           <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
             <Check className="w-6 h-6 text-green-500" />
           </div>
-          <p className="text-lg font-medium mb-1">
-            {t("kb.improve.noSuggestions") || "No improvement suggestions found."}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {t("kb.improve.entryLooksGood") || "The entry looks comprehensive."}
-          </p>
+          <p className="text-lg font-medium mb-1">{t("kb.improve.noSuggestions")}</p>
+          <p className="text-sm text-muted-foreground">{t("kb.improve.entryLooksGood")}</p>
         </div>
       )}
 

@@ -540,4 +540,85 @@ describe("KBSessionFieldList", () => {
     // The * indicator for required fields
     expect(container.querySelector("span.text-red-500")).toBeInTheDocument();
   });
+
+  // -------------------------------------------------------------------------
+  // CR-07 §16 regression guards: no hardcoded English visible fallbacks.
+  // Section titles must come from i18n keys, not literal fallbacks.
+  // FieldGroupSection renders the title inside an <h4> as "{title} ({count})".
+  // -------------------------------------------------------------------------
+
+  it("does not render English 'To Fill' title fallback for empty fields section", () => {
+    const session = makeSession({
+      fields: [
+        makeField({
+          field_key: "backstory",
+          final_value: undefined,
+          user_value: undefined,
+          ai_suggested_value: undefined,
+          source: "user",
+        }),
+      ],
+    });
+
+    render(<KBSessionFieldList session={session} {...defaultCallbacks} />);
+
+    // English literal must never appear; the key-returning mock produces "kb.toFill (1)"
+    expect(screen.queryByText(/^To Fill/)).toBeNull();
+    expect(screen.getByText(/kb\.toFill/)).toBeInTheDocument();
+  });
+
+  it("does not render English 'AI Suggestions' title fallback", () => {
+    const session = makeSession({
+      fields: [
+        makeField({
+          field_key: "backstory",
+          source: "ai",
+          final_value: undefined,
+          user_value: undefined,
+          ai_suggested_value: "A brave warrior",
+        }),
+      ],
+    });
+
+    render(<KBSessionFieldList session={session} {...defaultCallbacks} />);
+
+    expect(screen.queryByText(/^AI Suggestions/)).toBeNull();
+    expect(screen.getByText(/kb\.aiSuggestions/)).toBeInTheDocument();
+  });
+
+  it("does not render English 'Completed' title fallback", () => {
+    const session = makeSession({
+      fields: [
+        makeField({
+          field_key: "name",
+          source: "user",
+          final_value: "Hero",
+          user_value: "Hero",
+        }),
+      ],
+    });
+
+    render(<KBSessionFieldList session={session} {...defaultCallbacks} />);
+
+    expect(screen.queryByText(/^Completed/)).toBeNull();
+    expect(screen.getByText(/kb\.completed/)).toBeInTheDocument();
+  });
+
+  it("does not render English 'From Story' title fallback", () => {
+    const session = makeSession({
+      fields: [
+        makeField({
+          field_key: "region",
+          source: "world_derived",
+          final_value: "North",
+          user_value: undefined,
+        }),
+      ],
+    });
+
+    render(<KBSessionFieldList session={session} {...defaultCallbacks} />);
+
+    expect(screen.queryByText(/^From Story/)).toBeNull();
+    expect(screen.getByText(/kb\.fromStory/)).toBeInTheDocument();
+  });
 });

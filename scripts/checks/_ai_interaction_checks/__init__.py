@@ -17,6 +17,7 @@ from .check_8_stale_exclude import check_stale_exclude
 from .check_9_lifecycle_sync import check_lifecycle_sync
 from .check_10_operation_inventory import check_operation_inventory
 from .check_11_resolution_evidence import check_resolution_evidence
+from .check_12_visible_i18n_fallbacks import check_visible_i18n_fallbacks
 from .compliance_report import ComplianceReport
 
 __all__ = [
@@ -34,6 +35,7 @@ __all__ = [
     "check_signal_propagation",
     "check_stale_exclude",
     "check_use_ai_operation_usage",
+    "check_visible_i18n_fallbacks",
     "display_path",
     "load_exclude_list",
     "rg_files",

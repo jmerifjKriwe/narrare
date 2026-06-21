@@ -218,6 +218,7 @@
     "success": "Analyse abgeschlossen",
     "applied": "{count} Verbindungen angewendet",
     "failed": "Verbindungen konnten nicht angewendet werden",
+    "failedWithDetails": "Verbindungen konnten nicht angewendet werden: {details}",
     "selectedCount": "{count} von {total} ausgewählt",
     "confidence": "Konfidenz",
     "entities": "Entitäten",
@@ -853,6 +854,7 @@
     "entryCount": "{count} Einträge",
     "deleteEntry": "Eintrag löschen",
     "saveSuccess": "Eintrag gespeichert",
+    "failedToSaveEntry": "Eintrag konnte nicht gespeichert werden",
     "deleteSuccess": "Eintrag gelöscht",
     "relCreated": "Beziehung erstellt",
     "arrow": "→",
@@ -1701,7 +1703,8 @@
   },
   "ghostText": {
     "onboardingHint": "Tab = Übernehmen | → = Wortweise | Esc = Verwerfen",
-    "hint": "Tab übernehmen · Esc verwerfen · → Wort"
+    "hint": "Tab übernehmen · Esc verwerfen · → Wort",
+    "errorUnavailable": "Vorschlag nicht verfügbar"
   },
   "aiActions": {
     "accept": "Übernehmen",

@@ -161,6 +161,21 @@
   to { opacity: 0.5; }
 }
 
+/* Ghost Text Error Status — transient, non-blocking error shown after a
+   non-AbortError fetch failure (CR-AUFG-07-15). Small italic amber text.
+   Auto-clears after errorStatusDurationMs. Localized text is injected via
+   extension options. */
+.ghost-text-error {
+  display: inline-block;
+  font-size: 0.75rem;        /* text-xs */
+  color: #d97706;            /* text-amber-600 */
+  font-style: italic;
+  opacity: 0.8;
+  pointer-events: none;
+  user-select: none;
+  margin-left: 2px;
+}
+
 /* AI Annotation — pending AI-generated text highlight */
 .ai-generated-text.ai-generated-pending {
   background-color: rgba(59, 130, 246, 0.08);

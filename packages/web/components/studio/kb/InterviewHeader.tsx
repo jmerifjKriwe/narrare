@@ -29,11 +29,11 @@ export function InterviewHeader({ questionCount, onBack }: InterviewHeaderProps)
         </button>
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-purple-500" />
-          <h3 className="font-medium">{t("kb.interviewMode") || "Interview Mode"}</h3>
+          <h3 className="font-medium">{t("kb.interviewMode")}</h3>
         </div>
       </div>
       <div className="text-sm text-muted-foreground">
-        {t("kb.interviewProgress", { current: questionCount }) || `Question ${questionCount}`}
+        {t("kb.interviewProgress", { current: questionCount })}
       </div>
     </div>
   );

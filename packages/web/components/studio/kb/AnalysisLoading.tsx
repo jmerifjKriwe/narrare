@@ -43,9 +43,7 @@ export function AnalysisLoading({ onCancel }: AnalysisLoadingProps) {
         </div>
       </div>
       <p className="text-lg font-medium mb-2">{tAction("aiThinking")}</p>
-      <p className="text-sm text-muted-foreground">
-        {t("worldbuilding.analyzing") || "Analyzing worldbuilding..."}
-      </p>
+      <p className="text-sm text-muted-foreground">{t("worldbuilding.analyzing")}</p>
       <div className="w-64 h-1.5 bg-muted rounded-full overflow-hidden mt-6">
         <div
           className="h-full bg-purple-500 rounded-full transition-all duration-1000 ease-out"

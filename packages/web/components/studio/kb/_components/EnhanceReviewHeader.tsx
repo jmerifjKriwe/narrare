@@ -27,13 +27,12 @@ export function EnhanceReviewHeader({
         </button>
         <div className="flex items-center gap-2">
           <Wand2 className="w-5 h-5 text-purple-500" />
-          <h3 className="font-medium">{t("kb.enhanceReview") || "Enhance Review"}</h3>
+          <h3 className="font-medium">{t("kb.enhanceReview")}</h3>
         </div>
       </div>
       {state === "review" && (
         <div className="text-sm text-muted-foreground">
-          {t("kb.enhanceSelected", { count: selectedCount, total: totalCount }) ||
-            `${selectedCount} of ${totalCount} selected`}
+          {t("kb.enhanceSelected", { count: selectedCount, total: totalCount })}
         </div>
       )}
     </div>

@@ -24,7 +24,7 @@ export function ConsistencyError({ message, onRetry }: ConsistencyErrorProps) {
       <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
         <AlertTriangle className="w-6 h-6 text-red-500" />
       </div>
-      <p className="text-lg font-medium mb-1">{t("worldbuilding.error") || "Check failed"}</p>
+      <p className="text-lg font-medium mb-1">{t("worldbuilding.error")}</p>
       <p className="text-sm text-muted-foreground mb-4">{message}</p>
       <button
         type="button"

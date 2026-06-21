@@ -44,9 +44,7 @@ export function ConsistencyLoading({ onCancel }: ConsistencyLoadingProps) {
         </div>
       </div>
       <p className="text-lg font-medium mb-2">{tAction("aiThinking")}</p>
-      <p className="text-sm text-muted-foreground">
-        {t("consistency.checking") || "Checking consistency..."}
-      </p>
+      <p className="text-sm text-muted-foreground">{t("consistency.checking")}</p>
       <div className="w-64 h-1.5 bg-muted rounded-full overflow-hidden mt-6">
         <div
           className="h-full bg-amber-500 rounded-full transition-all duration-1000 ease-out"
