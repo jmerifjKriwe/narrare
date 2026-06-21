@@ -1250,12 +1250,12 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 
 | Topic | Authoritative Source | Derived Sources (reference only) |
 |-------|---------------------|----------------------------------|
-| Architecture rules (RULE-XX) | `docs/_shared/CONSTRAINTS.md` (this file) | `AGENTS.md`, `.opencode/context/`, `coding-standards.md`, `.claude/rules/` |
+| Architecture rules (RULE-XX) | `docs/_shared/CONSTRAINTS.md` (this file) | `AGENTS.md`, `.opencode/context/`, `coding-standards.md` |
 | Technology versions | `docs/_shared/TECH_STACK.md` | README, `deployment-guide.md`, devcontainer config |
 | Architecture decisions | `docs/architecture/decisions/ADR-*.md` | `AGENTS.md`, feature specs |
 | Feature specifications | `docs/features/{domain}/{id}.md` | Implementation code |
-| Coding standards | `docs/development/coding-standards.md` | `.opencode/context/examples/`, `.claude/rules/` |
-| Testing standards | `docs/development/testing-standards.md` | `.opencode/context/examples/`, `.claude/rules/` |
+| Coding standards | `docs/development/coding-standards.md` | `.opencode/context/examples/` |
+| Testing standards | `docs/development/testing-standards.md` | `.opencode/context/examples/` |
 | UI principles | `docs/development/ui-principles.md` | `.opencode/context/concepts/` |
 | Glossary | `docs/_shared/GLOSSARY.md` | All other docs |
 | Module structure | `docs/reference/directory-structure.md` | `AGENTS.md`, `.opencode/context/domain/module-map.md` |

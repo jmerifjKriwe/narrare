@@ -102,20 +102,22 @@ den Integration-Contract prüfen, nicht nur Feature-lokale Korrektheit. Eine
 
 ## Rules — Verbindliche Standards
 
-Narrare verwendet `.claude/rules/` für path-scoped, automatisch geladene Regeln.
+Architektur-Regeln sind autoritativ in `docs/_shared/CONSTRAINTS.md` definiert
+(23 RULE-XX Regeln; siehe §8 SSOT-Hierarchy dort). Extrahierter Kontext für
+Agent-Sessions liegt in `.opencode/context/narrare-dev/`. Erzwungen via
+`scripts/check_architecture.py` (pre-commit + CI) sowie `mypy --strict` /
+`pyright` / `pytest`.
 
-| Rule | Scope | Purpose |
-|------|-------|---------|
-| `constraints.md` | Global | Die 23 RULE-XX Architektur-Regeln |
-| `python/code-style.md` | `**/*.py` | Python Syntax, Naming, Imports |
-| `python/async.md` | `apps/api/**/*.py`, `core/**/*.py` | Async-Patterns |
-| `typescript/code-style.md` | `packages/web/**/*.{ts,tsx}` | TS/React Patterns |
-| `ui/principles.md` | `packages/web/**/*.tsx` | UX-Principles |
-| `testing/unit.md` | `tests/unit/**/*.py` | Unit-Test Regeln |
-| `testing/integration.md` | `tests/integration/**/*.py` | Integration-Test Regeln |
+| Thema | Autoritative Quelle | Extrahierter Kontext |
+|-------|--------------------|--------------------|
+| Architektur-Regeln (RULE-XX) | `docs/_shared/CONSTRAINTS.md` | `.opencode/context/narrare-dev/constraints/rules.md` |
+| Coding Standards | `docs/development/coding-standards.md` | `.opencode/context/narrare-dev/standards/`, `examples/` |
+| Testing Standards | `docs/development/testing-standards.md` | `.opencode/context/narrare-dev/standards/`, `examples/` |
+| UI Principles | `docs/development/ui-principles.md` | `.opencode/context/narrare-dev/concepts/` |
 
-**Rules werden automatisch geladen** — kein manuelles Lesen nötig.
-**Docs bleiben die Quelle** — Rules referenzieren docs für Details.
+**Docs bleiben die Quelle (SSOT)** — extrahierter Kontext referenziert die
+Docs, reproduziert sie nicht (siehe CONSTRAINTS.md §8).
+**Erzwingung ist maschinell** — `check_architecture.py` läuft in pre-commit und CI.
 
 ---
 

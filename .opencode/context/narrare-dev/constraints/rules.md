@@ -200,6 +200,17 @@ Approaching limit → extract a new module. NEVER compress code to fit.
      `variable_registry.USER_CONTENT_VARS` and wrapped with approved XML tags
 - Enforced by Architecture Specialist during Stage 2 (Specification) and Stage 2.5 (Semantic Review)
 
+### RULE-23: No undisciplined type suppressions
+- `# type: ignore` is a last resort, not a workaround tool — no naked suppressions, no suppress-and-forget, no silencing instead of fixing
+- **Requirements:**
+  1. Every suppression MUST include a specific error code — bare `# type: ignore` (suppresses ALL errors) is forbidden
+  2. `arg-type` / `call-arg` to silence Mock/fake protocol violations is forbidden — fakes MUST implement the Protocol (see RULE-TEST-01)
+  3. `union-attr` / `assignment` is forbidden — use `isinstance()` narrowing or `cast()` instead
+  4. Every permitted suppression MUST carry an inline reason comment (`# reason: ...`) explaining why + removal condition
+  5. Permitted error codes: `import-untyped` / `reportMissingTypeStubs` (no stubs), `attr-defined` (dynamic third-party attrs); all others require architecture-review exception
+  6. Ratchet principle — suppression count must not increase vs. baseline (`pyproject.toml [tool.narrare.architecture.type_ignore_baseline]`); a PR that increases the count is blocked
+- Enforced by `check_architecture.py` — `# type: ignore` scan + baseline comparison in CI
+
 ---
 
 ## Future-Compatibility
@@ -235,6 +246,7 @@ Approaching limit → extract a new module. NEVER compress code to fit.
 | RULE-19 SessionDep | `check_architecture.py` — AST scan bare AsyncSession |
 | RULE-20 no half-implementations | PR review by Architecture Agent + test coverage audit |
 | RULE-22 coherence gate | Stage 2.5 Semantic Review by Architecture Specialist |
+| RULE-23 type suppressions | `check_architecture.py` — `# type: ignore` scan + baseline comparison |
 | All rules | PR review by Architecture Agent |
 
 ---
@@ -284,12 +296,12 @@ Derived sources MAY reference but MUST NOT reproduce, paraphrase, or contradict 
 
 | Topic | Authoritative Source | Derived Sources (reference only) |
 |-------|---------------------|----------------------------------|
-| Architecture rules (RULE-XX) | `docs/_shared/CONSTRAINTS.md` | `AGENTS.md`, `.opencode/context/`, `coding-standards.md`, `.claude/rules/` |
+| Architecture rules (RULE-XX) | `docs/_shared/CONSTRAINTS.md` | `AGENTS.md`, `.opencode/context/`, `coding-standards.md` |
 | Technology versions | `docs/_shared/TECH_STACK.md` | README, `deployment-guide.md`, devcontainer config |
 | Architecture decisions | `docs/architecture/decisions/ADR-*.md` | `AGENTS.md`, feature specs |
 | Feature specifications | `docs/features/{domain}/{id}.md` | Implementation code |
-| Coding standards | `docs/development/coding-standards.md` | `.opencode/context/examples/`, `.claude/rules/` |
-| Testing standards | `docs/development/testing-standards.md` | `.opencode/context/examples/`, `.claude/rules/` |
+| Coding standards | `docs/development/coding-standards.md` | `.opencode/context/examples/` |
+| Testing standards | `docs/development/testing-standards.md` | `.opencode/context/examples/` |
 | UI principles | `docs/development/ui-principles.md` | `.opencode/context/concepts/` |
 | Glossary | `docs/_shared/GLOSSARY.md` | All other docs |
 | Module structure | `docs/reference/directory-structure.md` | `AGENTS.md`, `.opencode/context/domain/module-map.md` |
