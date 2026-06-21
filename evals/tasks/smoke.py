@@ -25,17 +25,38 @@ SmokeTask = Callable[[object], Awaitable[object]]
 class SmokeTaskFactory:
     """Build deterministic task functions that require no provider secrets."""
 
-    def build(self, suite: str) -> SmokeTask:
-        """Return a smoke task for *suite*."""
+    def _task_map(self) -> dict[str, SmokeTask]:
+        """Single-source mapping of suite name → smoke task.
 
-        tasks: dict[str, SmokeTask] = {
+        Every registered dataset has a smoke task (smoke is the
+        CI-blocking mode). ``available_suites()`` and ``build()`` both
+        derive from this map.
+        """
+
+        return {
             "analysis_feedback": self.analysis_feedback_task,
+            "analysis_metrics": self.analysis_metrics_task,
             "chat_generation": self.chat_generation_task,
             "consistency_staged": self.consistency_staged_task,
             "kb_extraction": self.kb_extraction_task,
+            "kb_operations": self.kb_operations_task,
+            "planning_structure": self.planning_structure_task,
             "preference_analysis": self.preference_analysis_task,
             "rewrite_selection": self.rewrite_selection_task,
         }
+
+    def available_suites(self) -> list[str]:
+        """Return suite names with a smoke task, in stable sorted order."""
+
+        return sorted(self._task_map())
+
+    def build(self, suite: str) -> SmokeTask:
+        """Return a smoke task for *suite*.
+
+        Raises ``ValueError`` if *suite* is not in ``available_suites()``.
+        """
+
+        tasks = self._task_map()
         try:
             return tasks[suite]
         except KeyError as exc:
@@ -149,6 +170,33 @@ class SmokeTaskFactory:
                 f"Deterministic — no model called."
             ),
         )
+
+    # ------------------------------------------------------------------
+    # analysis_metrics
+    # ------------------------------------------------------------------
+
+    async def analysis_metrics_task(self, inputs: object) -> object:
+        from evals.tasks.analysis_metrics_smoke import analysis_metrics_task
+
+        return await analysis_metrics_task(inputs)
+
+    # ------------------------------------------------------------------
+    # planning_structure
+    # ------------------------------------------------------------------
+
+    async def planning_structure_task(self, inputs: object) -> object:
+        from evals.tasks.planning_structure_smoke import planning_structure_task
+
+        return await planning_structure_task(inputs)
+
+    # ------------------------------------------------------------------
+    # kb_operations
+    # ------------------------------------------------------------------
+
+    async def kb_operations_task(self, inputs: object) -> object:
+        from evals.tasks.kb_operations_smoke import kb_operations_task
+
+        return await kb_operations_task(inputs)
 
 
 def _known_names(text: str, existing_names: list[str]) -> list[str]:

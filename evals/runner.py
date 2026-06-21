@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 from pathlib import Path
 from typing import Any
 
 from evals.datasets import DATASET_FACTORIES, available_suites
 from evals.judges import add_optional_llm_judge
 from evals.reports import write_report_json
-from evals.tasks import get_task
+from evals.tasks import available_suites_for_mode, get_task
 
 DEFAULT_RESULTS_DIR = Path("evals/results")
 
@@ -54,9 +55,19 @@ def run_suites(
     minimum_score: float,
     judge_model: str | None = None,
 ) -> int:
-    """Run one or more eval suites and write JSON reports."""
+    """Run one or more eval suites and write JSON reports.
 
-    suites = available_suites() if suite == "all" else [suite]
+    For ``mode="runtime"`` suites without a runtime task (Tier 2/3
+    smoke-only suites per the eval-expansion plan) are reported and
+    skipped rather than crashing. Real runtime failures (provider
+    errors, score regressions) still produce a non-zero exit code.
+    """
+
+    requested = available_suites() if suite == "all" else [suite]
+    suites = _resolve_runnable_suites(requested, mode)
+    if not suites:
+        return 0
+
     failed = False
 
     # Save the current event loop (may be pytest-asyncio session loop).
@@ -82,6 +93,30 @@ def run_suites(
     return 1 if failed else 0
 
 
+def _resolve_runnable_suites(requested: list[str], mode: str) -> list[str]:
+    """Filter *requested* suites against the task registry for *mode*.
+
+    For ``mode="runtime"`` the registry intentionally omits Tier 2/3
+    smoke-only suites. We print a clear notice per skipped suite and
+    return only the suites that actually have a task. For
+    ``mode="smoke"`` every dataset has a task so no filtering occurs.
+    """
+
+    if mode == "smoke":
+        return requested
+
+    capable = set(available_suites_for_mode(mode))
+    runnable: list[str] = []
+    for name in requested:
+        if name in capable:
+            runnable.append(name)
+        else:
+            print(f"[runtime] no runtime task for suite '{name}' (smoke-only) — skipping")
+    if not runnable:
+        print(f"[runtime] no runtime-capable suites among {requested!r}; nothing to run (exit 0).")
+    return runnable
+
+
 def _get_current_loop_safe():
     """Get the current event loop from the policy, or None if not set.
 
@@ -103,7 +138,9 @@ def _get_current_loop_safe():
             return None
 
 
-def _close_pydantic_evals_leaked_event_loop(saved_loop=None) -> None:
+def _close_pydantic_evals_leaked_event_loop(
+    saved_loop: asyncio.AbstractEventLoop | None = None,
+) -> None:
     """Close the event loop leaked by ``pydantic_evals.Dataset.evaluate_sync``.
 
     pydantic-evals' ``_utils.get_event_loop()`` calls
@@ -141,7 +178,6 @@ def _close_pydantic_evals_leaked_event_loop(saved_loop=None) -> None:
     ``filterwarnings = ["error", ...]`` pytest configuration.
     """
 
-    import asyncio
     import warnings
 
     with warnings.catch_warnings():
@@ -172,14 +208,13 @@ def _close_pydantic_evals_leaked_event_loop(saved_loop=None) -> None:
     asyncio.set_event_loop(None)
 
 
-def _restore_loop_safe(saved_loop) -> None:
+def _restore_loop_safe(saved_loop: asyncio.AbstractEventLoop | None) -> None:
     """Restore a previously saved event loop if it's still valid.
 
     Args:
         saved_loop: The event loop to restore, or None. If None, cleans
             up any leaked loop and ensures clean state.
     """
-    import asyncio
     import warnings
 
     if saved_loop is None:

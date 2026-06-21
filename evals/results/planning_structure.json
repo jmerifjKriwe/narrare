@@ -1,0 +1,499 @@
+{
+  "version": 2,
+  "framework": "pydantic-evals",
+  "suite": "planning_structure",
+  "mode": "smoke",
+  "report_name": "planning_structure_task",
+  "created_at": "2026-06-21T06:29:11.026021+00:00",
+  "cases": [
+    {
+      "name": "outline-multi-scene",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": {
+          "chapter_title": "The Hero Enters the Forest",
+          "scenes": [
+            "Mara crosses the threshold into the whispering wood.",
+            "She meets the hedge-witch guide at the standing stone.",
+            "They are ambushed by theriver bandits at the crossing."
+          ],
+          "outline_text": "Mara crosses the threshold into the whispering wood.\n\nShe meets the hedge-witch guide at the standing stone.\n\nThey are ambushed by theriver bandits at the crossing.",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "character_arc": null,
+        "timeline": null,
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "outline-single-scene",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": {
+          "chapter_title": "The Letter Arrives",
+          "scenes": [
+            "A single quiet scene in which the sealed letter reaches the keep."
+          ],
+          "outline_text": "A single quiet scene in which the sealed letter reaches the keep.",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "character_arc": null,
+        "timeline": null,
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "outline-no-body-edge",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": {
+          "chapter_title": "The Quiet Chapter",
+          "scenes": [
+            "The Quiet Chapter"
+          ],
+          "outline_text": "The Quiet Chapter",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "character_arc": null,
+        "timeline": null,
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "character-arc-growth",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": null,
+        "character_arc": {
+          "character_name": "Lyra",
+          "starting_state": "a timid orphan",
+          "ending_state": "a confident leader",
+          "arc_type": "growth",
+          "phases": [
+            {
+              "phase_name": "Inciting shift",
+              "description": "Lyra confronts the initial pressure of the arc.",
+              "emotional_state": "unsettled",
+              "turning_point": "The catalyst event that begins the change.",
+              "chapters_suggested": "Chapters 1-4"
+            },
+            {
+              "phase_name": "Struggle",
+              "description": "Lyra resists or wrestles with the change.",
+              "emotional_state": "conflicted",
+              "turning_point": "The midpoint reversal that raises the stakes.",
+              "chapters_suggested": "Chapters 5-9"
+            },
+            {
+              "phase_name": "Resolution",
+              "description": "Lyra settles into a confident leader.",
+              "emotional_state": "resolved",
+              "turning_point": "The climactic decision that completes the arc.",
+              "chapters_suggested": "Chapters 10-14"
+            }
+          ],
+          "key_relationships": [
+            "Mentored",
+            "Soren"
+          ],
+          "internal_conflict": "The tension between Lyra's starting and ending states.",
+          "resolution": "Lyra reconciles the arc through growth.",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "timeline": null,
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "character-arc-flat",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": null,
+        "character_arc": {
+          "character_name": "Innkeeper",
+          "starting_state": "A tentative starting state.",
+          "ending_state": "A resolved ending state.",
+          "arc_type": "flat",
+          "phases": [
+            {
+              "phase_name": "Inciting shift",
+              "description": "Innkeeper confronts the initial pressure of the arc.",
+              "emotional_state": "unsettled",
+              "turning_point": "The catalyst event that begins the change.",
+              "chapters_suggested": "Chapters 1-4"
+            },
+            {
+              "phase_name": "Struggle",
+              "description": "Innkeeper resists or wrestles with the change.",
+              "emotional_state": "conflicted",
+              "turning_point": "The midpoint reversal that raises the stakes.",
+              "chapters_suggested": "Chapters 5-9"
+            },
+            {
+              "phase_name": "Resolution",
+              "description": "Innkeeper settles into A resolved ending state..",
+              "emotional_state": "resolved",
+              "turning_point": "The climactic decision that completes the arc.",
+              "chapters_suggested": "Chapters 10-14"
+            }
+          ],
+          "key_relationships": [],
+          "internal_conflict": "The tension between Innkeeper's starting and ending states.",
+          "resolution": "Innkeeper reconciles the arc through flat.",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "timeline": null,
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "character-arc-transformation",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": null,
+        "character_arc": {
+          "character_name": "Kael",
+          "starting_state": "A tentative starting state.",
+          "ending_state": "A resolved ending state.",
+          "arc_type": "fall",
+          "phases": [
+            {
+              "phase_name": "Inciting shift",
+              "description": "Kael confronts the initial pressure of the arc.",
+              "emotional_state": "unsettled",
+              "turning_point": "The catalyst event that begins the change.",
+              "chapters_suggested": "Chapters 1-4"
+            },
+            {
+              "phase_name": "Struggle",
+              "description": "Kael resists or wrestles with the change.",
+              "emotional_state": "conflicted",
+              "turning_point": "The midpoint reversal that raises the stakes.",
+              "chapters_suggested": "Chapters 5-9"
+            },
+            {
+              "phase_name": "Resolution",
+              "description": "Kael settles into A resolved ending state..",
+              "emotional_state": "resolved",
+              "turning_point": "The climactic decision that completes the arc.",
+              "chapters_suggested": "Chapters 10-14"
+            }
+          ],
+          "key_relationships": [
+            "His"
+          ],
+          "internal_conflict": "The tension between Kael's starting and ending states.",
+          "resolution": "Kael reconciles the arc through fall.",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "timeline": null,
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "timeline-linear-multi-event",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": null,
+        "character_arc": null,
+        "timeline": {
+          "timeline_events": [
+            {
+              "event_name": "The council meets in the high hall.",
+              "description": "The council meets in the high hall.",
+              "timestamp": "Chapter 1",
+              "chapter_reference": "Chapter 1",
+              "characters_involved": [],
+              "location": "",
+              "causes": [],
+              "consequences": []
+            },
+            {
+              "event_name": "War is declared against the eastern provinces.",
+              "description": "War is declared against the eastern provinces.",
+              "timestamp": "Chapter 2",
+              "chapter_reference": "Chapter 2",
+              "characters_involved": [
+                "War"
+              ],
+              "location": "",
+              "causes": [],
+              "consequences": []
+            },
+            {
+              "event_name": "The siege of the river fortress begins.",
+              "description": "The siege of the river fortress begins.",
+              "timestamp": "Chapter 3",
+              "chapter_reference": "Chapter 3",
+              "characters_involved": [],
+              "location": "",
+              "causes": [],
+              "consequences": []
+            }
+          ],
+          "temporal_conflicts": [],
+          "coverage_gaps": [],
+          "overall_assessment": "Smoke timeline: 3 event(s) ordered across chapters. Deterministic — no model called.",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "timeline-single-event",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": null,
+        "character_arc": null,
+        "timeline": {
+          "timeline_events": [
+            {
+              "event_name": "The bargain with the river witch is struck.",
+              "description": "The bargain with the river witch is struck.",
+              "timestamp": "Chapter 9",
+              "chapter_reference": "Chapter 9",
+              "characters_involved": [],
+              "location": "",
+              "causes": [],
+              "consequences": []
+            }
+          ],
+          "temporal_conflicts": [],
+          "coverage_gaps": [],
+          "overall_assessment": "Smoke timeline: 1 event(s) ordered across chapters. Deterministic — no model called.",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "timeline-with-conflict",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": null,
+        "character_arc": null,
+        "timeline": {
+          "timeline_events": [
+            {
+              "event_name": "The king dies at dawn.",
+              "description": "The king dies at dawn.",
+              "timestamp": "Chapter 1",
+              "chapter_reference": "Chapter 1",
+              "characters_involved": [],
+              "location": "",
+              "causes": [],
+              "consequences": []
+            },
+            {
+              "event_name": "The king is seen alive at the market — an inconsistency.",
+              "description": "The king is seen alive at the market — an inconsistency.",
+              "timestamp": "Chapter 2",
+              "chapter_reference": "Chapter 2",
+              "characters_involved": [],
+              "location": "",
+              "causes": [],
+              "consequences": []
+            },
+            {
+              "event_name": "The succession conflict erupts.",
+              "description": "The succession conflict erupts.",
+              "timestamp": "Chapter 3",
+              "chapter_reference": "Chapter 3",
+              "characters_involved": [],
+              "location": "",
+              "causes": [],
+              "consequences": []
+            }
+          ],
+          "temporal_conflicts": [
+            "Possible temporal conflict flagged in the source brief (deterministic smoke)."
+          ],
+          "coverage_gaps": [],
+          "overall_assessment": "Smoke timeline: 3 event(s) ordered across chapters. Deterministic — no model called.",
+          "metadata": {
+            "smoke": true
+          }
+        },
+        "worldbuilding": null
+      }
+    },
+    {
+      "name": "worldbuilding-gaps-and-connections",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": null,
+        "character_arc": null,
+        "timeline": null,
+        "worldbuilding": {
+          "gaps": [
+            {
+              "entity_id": "ent-1",
+              "entity_name": "Lyra Silvermoon",
+              "entity_type": "character",
+              "gap_type": "missing_connection",
+              "field_key": null,
+              "description": "Lyra Silvermoon has no documented link to Alderaan.",
+              "related_entity_type": "place",
+              "story_relevance": 0.6,
+              "severity": "major"
+            },
+            {
+              "entity_id": "ent-1",
+              "entity_name": "Lyra Silvermoon",
+              "entity_type": "character",
+              "gap_type": "missing_field",
+              "field_key": "description",
+              "description": "Lyra Silvermoon is missing template field 'description' (deterministic smoke).",
+              "related_entity_type": null,
+              "story_relevance": 0.4,
+              "severity": "minor"
+            }
+          ],
+          "connection_suggestions": [
+            {
+              "source_entity_id": "ent-1",
+              "source_entity_name": "Lyra Silvermoon",
+              "target_entity_id": "ent-2",
+              "target_entity_name": "Alderaan",
+              "suggested_rel_type": "related_to",
+              "inverse_rel_type": "related_to",
+              "reasoning": "Two entities share the story world without an explicit link (deterministic smoke).",
+              "confidence": 0.7,
+              "story_relevance": 0.6
+            }
+          ],
+          "assessment": "Smoke worldbuilding: 2 gap(s) and 1 connection(s). Deterministic — no model called.",
+          "worldbuilding_score": 0.7,
+          "candidate_pairs_for_consistency": [
+            [
+              "ent-1",
+              "ent-2"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "worldbuilding-no-entities-edge",
+      "scores": {
+        "OutlineSchemaValidator": 1.0,
+        "CharacterArcSchemaValidator": 1.0,
+        "TimelineSchemaValidator": 1.0,
+        "WorldbuildingSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "outline": null,
+        "character_arc": null,
+        "timeline": null,
+        "worldbuilding": {
+          "gaps": [],
+          "connection_suggestions": [],
+          "assessment": "Smoke worldbuilding: 0 gap(s) and 0 connection(s). Deterministic — no model called.",
+          "worldbuilding_score": 1.0,
+          "candidate_pairs_for_consistency": []
+        }
+      }
+    }
+  ],
+  "failures": [],
+  "rendered": "                  Evaluation Summary: planning_structure_task                   \n┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓\n┃ Case ID        ┃ Inputs        ┃ Outputs        ┃ Scores        ┃ Assertions ┃\n┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩\n│ outline-multi… │ agent_type='o │ outline=Outlin │ OutlineSchema │ ✔          │\n│                │ utline'       │ eSection(chapt │ Validator:    │            │\n│                │ prompt_text=' │ er_title='The  │ 1.00          │            │\n│                │ The Hero      │ Hero Enters    │ CharacterArcS │            │\n│                │ Enters the    │ the Forest',   │ chemaValidato │            │\n│                │ Forest\\nMara  │ scenes=['Mara  │ r: 1.00       │            │\n│                │ crosses the   │ crosses the    │ TimelineSchem │            │\n│                │ threshold     │ threshold into │ aValidator:   │            │\n│                │ into the      │ the whispering │ 1.00          │            │\n│                │ whispering    │ wood.', 'She   │ Worldbuilding │            │\n│                │ wood. She     │ meets the      │ SchemaValidat │            │\n│                │ meets the     │ hedge-witch    │ or: 1.00      │            │\n│                │ hedge-witch   │ guide at the   │               │            │\n│                │ guide at the  │ standing       │               │            │\n│                │ standing      │ stone.', 'They │               │            │\n│                │ stone. They   │ are ambushed   │               │            │\n│                │ are ambushed  │ by theriver    │               │            │\n│                │ by theriver   │ bandits at the │               │            │\n│                │ bandits at    │ crossing.'],   │               │            │\n│                │ the           │ outline_text=' │               │            │\n│                │ crossing.'    │ Mara crosses   │               │            │\n│                │ genre='Fantas │ the threshold  │               │            │\n│                │ y'            │ into the       │               │            │\n│                │ language='en' │ whispering     │               │            │\n│                │               │ wood.\\n\\nShe   │               │            │\n│                │               │ meets the      │               │            │\n│                │               │ hedge-witch    │               │            │\n│                │               │ guide at the   │               │            │\n│                │               │ standing       │               │            │\n│                │               │ stone.\\n\\nThey │               │            │\n│                │               │ are ambushed   │               │            │\n│                │               │ by theriver    │               │            │\n│                │               │ bandits at the │               │            │\n│                │               │ crossing.',    │               │            │\n│                │               │ metadata={'smo │               │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ character_arc= │               │            │\n│                │               │ None           │               │            │\n│                │               │ timeline=None  │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ outline-singl… │ agent_type='o │ outline=Outlin │ OutlineSchema │ ✔          │\n│                │ utline'       │ eSection(chapt │ Validator:    │            │\n│                │ prompt_text=' │ er_title='The  │ 1.00          │            │\n│                │ The Letter    │ Letter         │ CharacterArcS │            │\n│                │ Arrives\\nA    │ Arrives',      │ chemaValidato │            │\n│                │ single quiet  │ scenes=['A     │ r: 1.00       │            │\n│                │ scene in      │ single quiet   │ TimelineSchem │            │\n│                │ which the     │ scene in which │ aValidator:   │            │\n│                │ sealed letter │ the sealed     │ 1.00          │            │\n│                │ reaches the   │ letter reaches │ Worldbuilding │            │\n│                │ keep.'        │ the keep.'],   │ SchemaValidat │            │\n│                │ genre='Fantas │ outline_text=' │ or: 1.00      │            │\n│                │ y'            │ A single quiet │               │            │\n│                │ language='en' │ scene in which │               │            │\n│                │               │ the sealed     │               │            │\n│                │               │ letter reaches │               │            │\n│                │               │ the keep.',    │               │            │\n│                │               │ metadata={'smo │               │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ character_arc= │               │            │\n│                │               │ None           │               │            │\n│                │               │ timeline=None  │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ outline-no-bo… │ agent_type='o │ outline=Outlin │ OutlineSchema │ ✔          │\n│                │ utline'       │ eSection(chapt │ Validator:    │            │\n│                │ prompt_text=' │ er_title='The  │ 1.00          │            │\n│                │ The Quiet     │ Quiet          │ CharacterArcS │            │\n│                │ Chapter'      │ Chapter',      │ chemaValidato │            │\n│                │ genre='Fantas │ scenes=['The   │ r: 1.00       │            │\n│                │ y'            │ Quiet          │ TimelineSchem │            │\n│                │ language='en' │ Chapter'],     │ aValidator:   │            │\n│                │               │ outline_text=' │ 1.00          │            │\n│                │               │ The Quiet      │ Worldbuilding │            │\n│                │               │ Chapter',      │ SchemaValidat │            │\n│                │               │ metadata={'smo │ or: 1.00      │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ character_arc= │               │            │\n│                │               │ None           │               │            │\n│                │               │ timeline=None  │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ character-arc… │ agent_type='c │ outline=None   │ OutlineSchema │ ✔          │\n│                │ haracter_arc' │ character_arc= │ Validator:    │            │\n│                │               │ CharacterArcSe │ 1.00          │            │\n│                │ prompt_text=' │ ction(characte │ CharacterArcS │            │\n│                │ Lyra: from a  │ r_name='Lyra', │ chemaValidato │            │\n│                │ timid orphan  │                │ r: 1.00       │            │\n│                │ to a          │ starting_state │ TimelineSchem │            │\n│                │ confident     │ ='a timid      │ aValidator:   │            │\n│                │ leader.       │ orphan',       │ 1.00          │            │\n│                │ Mentored by   │ ending_state=' │ Worldbuilding │            │\n│                │ Soren along   │ a confident    │ SchemaValidat │            │\n│                │ the way.'     │ leader',       │ or: 1.00      │            │\n│                │ genre='Fantas │ arc_type='grow │               │            │\n│                │ y'            │ th',           │               │            │\n│                │ language='en' │ phases=[Charac │               │            │\n│                │               │ terArcPhaseSec │               │            │\n│                │               │ tion(phase_nam │               │            │\n│                │               │ e='Inciting    │               │            │\n│                │               │ shift',        │               │            │\n│                │               │ description='L │               │            │\n│                │               │ yra confronts  │               │            │\n│                │               │ the initial    │               │            │\n│                │               │ pressure of    │               │            │\n│                │               │ the arc.',     │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='unsettled', │               │            │\n│                │               │                │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The catalyst  │               │            │\n│                │               │ event that     │               │            │\n│                │               │ begins the     │               │            │\n│                │               │ change.',      │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  1-4'),        │               │            │\n│                │               │ CharacterArcPh │               │            │\n│                │               │ aseSection(pha │               │            │\n│                │               │ se_name='Strug │               │            │\n│                │               │ gle',          │               │            │\n│                │               │ description='L │               │            │\n│                │               │ yra resists or │               │            │\n│                │               │ wrestles with  │               │            │\n│                │               │ the change.',  │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='conflicted' │               │            │\n│                │               │ ,              │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The midpoint  │               │            │\n│                │               │ reversal that  │               │            │\n│                │               │ raises the     │               │            │\n│                │               │ stakes.',      │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  5-9'),        │               │            │\n│                │               │ CharacterArcPh │               │            │\n│                │               │ aseSection(pha │               │            │\n│                │               │ se_name='Resol │               │            │\n│                │               │ ution',        │               │            │\n│                │               │ description='L │               │            │\n│                │               │ yra settles    │               │            │\n│                │               │ into a         │               │            │\n│                │               │ confident      │               │            │\n│                │               │ leader.',      │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='resolved',  │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The climactic │               │            │\n│                │               │ decision that  │               │            │\n│                │               │ completes the  │               │            │\n│                │               │ arc.',         │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  10-14')],     │               │            │\n│                │               │ key_relationsh │               │            │\n│                │               │ ips=['Mentored │               │            │\n│                │               │ ', 'Soren'],   │               │            │\n│                │               │ internal_confl │               │            │\n│                │               │ ict=\"The       │               │            │\n│                │               │ tension        │               │            │\n│                │               │ between Lyra's │               │            │\n│                │               │ starting and   │               │            │\n│                │               │ ending         │               │            │\n│                │               │ states.\",      │               │            │\n│                │               │ resolution='Ly │               │            │\n│                │               │ ra reconciles  │               │            │\n│                │               │ the arc        │               │            │\n│                │               │ through        │               │            │\n│                │               │ growth.',      │               │            │\n│                │               │ metadata={'smo │               │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ timeline=None  │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ character-arc… │ agent_type='c │ outline=None   │ OutlineSchema │ ✔          │\n│                │ haracter_arc' │ character_arc= │ Validator:    │            │\n│                │               │ CharacterArcSe │ 1.00          │            │\n│                │ prompt_text=' │ ction(characte │ CharacterArcS │            │\n│                │ The           │ r_name='Innkee │ chemaValidato │            │\n│                │ Innkeeper:    │ per',          │ r: 1.00       │            │\n│                │ steady and    │ starting_state │ TimelineSchem │            │\n│                │ unchanging    │ ='A tentative  │ aValidator:   │            │\n│                │ throughout    │ starting       │ 1.00          │            │\n│                │ the saga. A   │ state.',       │ Worldbuilding │            │\n│                │ flat,         │ ending_state=' │ SchemaValidat │            │\n│                │ reliable      │ A resolved     │ or: 1.00      │            │\n│                │ presence for  │ ending         │               │            │\n│                │ the wandering │ state.',       │               │            │\n│                │ hero.'        │ arc_type='flat │               │            │\n│                │ genre='Fantas │ ',             │               │            │\n│                │ y'            │ phases=[Charac │               │            │\n│                │ language='en' │ terArcPhaseSec │               │            │\n│                │               │ tion(phase_nam │               │            │\n│                │               │ e='Inciting    │               │            │\n│                │               │ shift',        │               │            │\n│                │               │ description='I │               │            │\n│                │               │ nnkeeper       │               │            │\n│                │               │ confronts the  │               │            │\n│                │               │ initial        │               │            │\n│                │               │ pressure of    │               │            │\n│                │               │ the arc.',     │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='unsettled', │               │            │\n│                │               │                │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The catalyst  │               │            │\n│                │               │ event that     │               │            │\n│                │               │ begins the     │               │            │\n│                │               │ change.',      │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  1-4'),        │               │            │\n│                │               │ CharacterArcPh │               │            │\n│                │               │ aseSection(pha │               │            │\n│                │               │ se_name='Strug │               │            │\n│                │               │ gle',          │               │            │\n│                │               │ description='I │               │            │\n│                │               │ nnkeeper       │               │            │\n│                │               │ resists or     │               │            │\n│                │               │ wrestles with  │               │            │\n│                │               │ the change.',  │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='conflicted' │               │            │\n│                │               │ ,              │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The midpoint  │               │            │\n│                │               │ reversal that  │               │            │\n│                │               │ raises the     │               │            │\n│                │               │ stakes.',      │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  5-9'),        │               │            │\n│                │               │ CharacterArcPh │               │            │\n│                │               │ aseSection(pha │               │            │\n│                │               │ se_name='Resol │               │            │\n│                │               │ ution',        │               │            │\n│                │               │ description='I │               │            │\n│                │               │ nnkeeper       │               │            │\n│                │               │ settles into A │               │            │\n│                │               │ resolved       │               │            │\n│                │               │ ending         │               │            │\n│                │               │ state..',      │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='resolved',  │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The climactic │               │            │\n│                │               │ decision that  │               │            │\n│                │               │ completes the  │               │            │\n│                │               │ arc.',         │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  10-14')],     │               │            │\n│                │               │ key_relationsh │               │            │\n│                │               │ ips=[],        │               │            │\n│                │               │ internal_confl │               │            │\n│                │               │ ict=\"The       │               │            │\n│                │               │ tension        │               │            │\n│                │               │ between        │               │            │\n│                │               │ Innkeeper's    │               │            │\n│                │               │ starting and   │               │            │\n│                │               │ ending         │               │            │\n│                │               │ states.\",      │               │            │\n│                │               │ resolution='In │               │            │\n│                │               │ nkeeper        │               │            │\n│                │               │ reconciles the │               │            │\n│                │               │ arc through    │               │            │\n│                │               │ flat.',        │               │            │\n│                │               │ metadata={'smo │               │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ timeline=None  │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ character-arc… │ agent_type='c │ outline=None   │ OutlineSchema │ ✔          │\n│                │ haracter_arc' │ character_arc= │ Validator:    │            │\n│                │               │ CharacterArcSe │ 1.00          │            │\n│                │ prompt_text=' │ ction(characte │ CharacterArcS │            │\n│                │ Kael: a       │ r_name='Kael', │ chemaValidato │            │\n│                │ betrayer      │                │ r: 1.00       │            │\n│                │ seeking       │ starting_state │ TimelineSchem │            │\n│                │ redemption,   │ ='A tentative  │ aValidator:   │            │\n│                │ transformed   │ starting       │ 1.00          │            │\n│                │ by guilt. His │ state.',       │ Worldbuilding │            │\n│                │ fall began    │ ending_state=' │ SchemaValidat │            │\n│                │ the war; his  │ A resolved     │ or: 1.00      │            │\n│                │ transformatio │ ending         │               │            │\n│                │ n may end     │ state.',       │               │            │\n│                │ it.'          │ arc_type='fall │               │            │\n│                │ genre='Fantas │ ',             │               │            │\n│                │ y'            │ phases=[Charac │               │            │\n│                │ language='en' │ terArcPhaseSec │               │            │\n│                │               │ tion(phase_nam │               │            │\n│                │               │ e='Inciting    │               │            │\n│                │               │ shift',        │               │            │\n│                │               │ description='K │               │            │\n│                │               │ ael confronts  │               │            │\n│                │               │ the initial    │               │            │\n│                │               │ pressure of    │               │            │\n│                │               │ the arc.',     │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='unsettled', │               │            │\n│                │               │                │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The catalyst  │               │            │\n│                │               │ event that     │               │            │\n│                │               │ begins the     │               │            │\n│                │               │ change.',      │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  1-4'),        │               │            │\n│                │               │ CharacterArcPh │               │            │\n│                │               │ aseSection(pha │               │            │\n│                │               │ se_name='Strug │               │            │\n│                │               │ gle',          │               │            │\n│                │               │ description='K │               │            │\n│                │               │ ael resists or │               │            │\n│                │               │ wrestles with  │               │            │\n│                │               │ the change.',  │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='conflicted' │               │            │\n│                │               │ ,              │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The midpoint  │               │            │\n│                │               │ reversal that  │               │            │\n│                │               │ raises the     │               │            │\n│                │               │ stakes.',      │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  5-9'),        │               │            │\n│                │               │ CharacterArcPh │               │            │\n│                │               │ aseSection(pha │               │            │\n│                │               │ se_name='Resol │               │            │\n│                │               │ ution',        │               │            │\n│                │               │ description='K │               │            │\n│                │               │ ael settles    │               │            │\n│                │               │ into A         │               │            │\n│                │               │ resolved       │               │            │\n│                │               │ ending         │               │            │\n│                │               │ state..',      │               │            │\n│                │               │ emotional_stat │               │            │\n│                │               │ e='resolved',  │               │            │\n│                │               │ turning_point= │               │            │\n│                │               │ 'The climactic │               │            │\n│                │               │ decision that  │               │            │\n│                │               │ completes the  │               │            │\n│                │               │ arc.',         │               │            │\n│                │               │ chapters_sugge │               │            │\n│                │               │ sted='Chapters │               │            │\n│                │               │  10-14')],     │               │            │\n│                │               │ key_relationsh │               │            │\n│                │               │ ips=['His'],   │               │            │\n│                │               │ internal_confl │               │            │\n│                │               │ ict=\"The       │               │            │\n│                │               │ tension        │               │            │\n│                │               │ between Kael's │               │            │\n│                │               │ starting and   │               │            │\n│                │               │ ending         │               │            │\n│                │               │ states.\",      │               │            │\n│                │               │ resolution='Ka │               │            │\n│                │               │ el reconciles  │               │            │\n│                │               │ the arc        │               │            │\n│                │               │ through        │               │            │\n│                │               │ fall.',        │               │            │\n│                │               │ metadata={'smo │               │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ timeline=None  │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ timeline-line… │ agent_type='t │ outline=None   │ OutlineSchema │ ✔          │\n│                │ imeline'      │ character_arc= │ Validator:    │            │\n│                │ prompt_text=' │ None           │ 1.00          │            │\n│                │ Chapter 1:    │ timeline=Timel │ CharacterArcS │            │\n│                │ The council   │ ineSection(tim │ chemaValidato │            │\n│                │ meets in the  │ eline_events=[ │ r: 1.00       │            │\n│                │ high hall.    │ TimelineEventS │ TimelineSchem │            │\n│                │ Chapter 2:    │ ection(event_n │ aValidator:   │            │\n│                │ War is        │ ame='The       │ 1.00          │            │\n│                │ declared      │ council meets  │ Worldbuilding │            │\n│                │ against the   │ in the high    │ SchemaValidat │            │\n│                │ eastern       │ hall.',        │ or: 1.00      │            │\n│                │ provinces.    │ description='T │               │            │\n│                │ Chapter 3:    │ he council     │               │            │\n│                │ The siege of  │ meets in the   │               │            │\n│                │ the river     │ high hall.',   │               │            │\n│                │ fortress      │ timestamp='Cha │               │            │\n│                │ begins.'      │ pter 1',       │               │            │\n│                │ genre='Fantas │ chapter_refere │               │            │\n│                │ y'            │ nce='Chapter   │               │            │\n│                │ language='en' │ 1',            │               │            │\n│                │               │ characters_inv │               │            │\n│                │               │ olved=[],      │               │            │\n│                │               │ location='',   │               │            │\n│                │               │ causes=[],     │               │            │\n│                │               │ consequences=[ │               │            │\n│                │               │ ]),            │               │            │\n│                │               │ TimelineEventS │               │            │\n│                │               │ ection(event_n │               │            │\n│                │               │ ame='War is    │               │            │\n│                │               │ declared       │               │            │\n│                │               │ against the    │               │            │\n│                │               │ eastern        │               │            │\n│                │               │ provinces.',   │               │            │\n│                │               │ description='W │               │            │\n│                │               │ ar is declared │               │            │\n│                │               │ against the    │               │            │\n│                │               │ eastern        │               │            │\n│                │               │ provinces.',   │               │            │\n│                │               │ timestamp='Cha │               │            │\n│                │               │ pter 2',       │               │            │\n│                │               │ chapter_refere │               │            │\n│                │               │ nce='Chapter   │               │            │\n│                │               │ 2',            │               │            │\n│                │               │ characters_inv │               │            │\n│                │               │ olved=['War'], │               │            │\n│                │               │  location='',  │               │            │\n│                │               │ causes=[],     │               │            │\n│                │               │ consequences=[ │               │            │\n│                │               │ ]),            │               │            │\n│                │               │ TimelineEventS │               │            │\n│                │               │ ection(event_n │               │            │\n│                │               │ ame='The siege │               │            │\n│                │               │ of the river   │               │            │\n│                │               │ fortress       │               │            │\n│                │               │ begins.',      │               │            │\n│                │               │ description='T │               │            │\n│                │               │ he siege of    │               │            │\n│                │               │ the river      │               │            │\n│                │               │ fortress       │               │            │\n│                │               │ begins.',      │               │            │\n│                │               │ timestamp='Cha │               │            │\n│                │               │ pter 3',       │               │            │\n│                │               │ chapter_refere │               │            │\n│                │               │ nce='Chapter   │               │            │\n│                │               │ 3',            │               │            │\n│                │               │ characters_inv │               │            │\n│                │               │ olved=[],      │               │            │\n│                │               │ location='',   │               │            │\n│                │               │ causes=[],     │               │            │\n│                │               │ consequences=[ │               │            │\n│                │               │ ])],           │               │            │\n│                │               │ temporal_confl │               │            │\n│                │               │ icts=[],       │               │            │\n│                │               │ coverage_gaps= │               │            │\n│                │               │ [],            │               │            │\n│                │               │ overall_assess │               │            │\n│                │               │ ment='Smoke    │               │            │\n│                │               │ timeline: 3    │               │            │\n│                │               │ event(s)       │               │            │\n│                │               │ ordered across │               │            │\n│                │               │ chapters.      │               │            │\n│                │               │ Deterministic  │               │            │\n│                │               │ — no model     │               │            │\n│                │               │ called.',      │               │            │\n│                │               │ metadata={'smo │               │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ timeline-sing… │ agent_type='t │ outline=None   │ OutlineSchema │ ✔          │\n│                │ imeline'      │ character_arc= │ Validator:    │            │\n│                │ prompt_text=' │ None           │ 1.00          │            │\n│                │ Chapter 9:    │ timeline=Timel │ CharacterArcS │            │\n│                │ The bargain   │ ineSection(tim │ chemaValidato │            │\n│                │ with the      │ eline_events=[ │ r: 1.00       │            │\n│                │ river witch   │ TimelineEventS │ TimelineSchem │            │\n│                │ is struck.'   │ ection(event_n │ aValidator:   │            │\n│                │ genre='Fantas │ ame='The       │ 1.00          │            │\n│                │ y'            │ bargain with   │ Worldbuilding │            │\n│                │ language='en' │ the river      │ SchemaValidat │            │\n│                │               │ witch is       │ or: 1.00      │            │\n│                │               │ struck.',      │               │            │\n│                │               │ description='T │               │            │\n│                │               │ he bargain     │               │            │\n│                │               │ with the river │               │            │\n│                │               │ witch is       │               │            │\n│                │               │ struck.',      │               │            │\n│                │               │ timestamp='Cha │               │            │\n│                │               │ pter 9',       │               │            │\n│                │               │ chapter_refere │               │            │\n│                │               │ nce='Chapter   │               │            │\n│                │               │ 9',            │               │            │\n│                │               │ characters_inv │               │            │\n│                │               │ olved=[],      │               │            │\n│                │               │ location='',   │               │            │\n│                │               │ causes=[],     │               │            │\n│                │               │ consequences=[ │               │            │\n│                │               │ ])],           │               │            │\n│                │               │ temporal_confl │               │            │\n│                │               │ icts=[],       │               │            │\n│                │               │ coverage_gaps= │               │            │\n│                │               │ [],            │               │            │\n│                │               │ overall_assess │               │            │\n│                │               │ ment='Smoke    │               │            │\n│                │               │ timeline: 1    │               │            │\n│                │               │ event(s)       │               │            │\n│                │               │ ordered across │               │            │\n│                │               │ chapters.      │               │            │\n│                │               │ Deterministic  │               │            │\n│                │               │ — no model     │               │            │\n│                │               │ called.',      │               │            │\n│                │               │ metadata={'smo │               │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ timeline-with… │ agent_type='t │ outline=None   │ OutlineSchema │ ✔          │\n│                │ imeline'      │ character_arc= │ Validator:    │            │\n│                │ prompt_text=' │ None           │ 1.00          │            │\n│                │ Chapter 1:    │ timeline=Timel │ CharacterArcS │            │\n│                │ The king dies │ ineSection(tim │ chemaValidato │            │\n│                │ at dawn.      │ eline_events=[ │ r: 1.00       │            │\n│                │ Chapter 2:    │ TimelineEventS │ TimelineSchem │            │\n│                │ The king is   │ ection(event_n │ aValidator:   │            │\n│                │ seen alive at │ ame='The king  │ 1.00          │            │\n│                │ the market —  │ dies at        │ Worldbuilding │            │\n│                │ an            │ dawn.',        │ SchemaValidat │            │\n│                │ inconsistency │ description='T │ or: 1.00      │            │\n│                │ . Chapter 3:  │ he king dies   │               │            │\n│                │ The           │ at dawn.',     │               │            │\n│                │ succession    │ timestamp='Cha │               │            │\n│                │ conflict      │ pter 1',       │               │            │\n│                │ erupts.'      │ chapter_refere │               │            │\n│                │ genre='Fantas │ nce='Chapter   │               │            │\n│                │ y'            │ 1',            │               │            │\n│                │ language='en' │ characters_inv │               │            │\n│                │               │ olved=[],      │               │            │\n│                │               │ location='',   │               │            │\n│                │               │ causes=[],     │               │            │\n│                │               │ consequences=[ │               │            │\n│                │               │ ]),            │               │            │\n│                │               │ TimelineEventS │               │            │\n│                │               │ ection(event_n │               │            │\n│                │               │ ame='The king  │               │            │\n│                │               │ is seen alive  │               │            │\n│                │               │ at the market  │               │            │\n│                │               │ — an           │               │            │\n│                │               │ inconsistency. │               │            │\n│                │               │ ',             │               │            │\n│                │               │ description='T │               │            │\n│                │               │ he king is     │               │            │\n│                │               │ seen alive at  │               │            │\n│                │               │ the market —   │               │            │\n│                │               │ an             │               │            │\n│                │               │ inconsistency. │               │            │\n│                │               │ ',             │               │            │\n│                │               │ timestamp='Cha │               │            │\n│                │               │ pter 2',       │               │            │\n│                │               │ chapter_refere │               │            │\n│                │               │ nce='Chapter   │               │            │\n│                │               │ 2',            │               │            │\n│                │               │ characters_inv │               │            │\n│                │               │ olved=[],      │               │            │\n│                │               │ location='',   │               │            │\n│                │               │ causes=[],     │               │            │\n│                │               │ consequences=[ │               │            │\n│                │               │ ]),            │               │            │\n│                │               │ TimelineEventS │               │            │\n│                │               │ ection(event_n │               │            │\n│                │               │ ame='The       │               │            │\n│                │               │ succession     │               │            │\n│                │               │ conflict       │               │            │\n│                │               │ erupts.',      │               │            │\n│                │               │ description='T │               │            │\n│                │               │ he succession  │               │            │\n│                │               │ conflict       │               │            │\n│                │               │ erupts.',      │               │            │\n│                │               │ timestamp='Cha │               │            │\n│                │               │ pter 3',       │               │            │\n│                │               │ chapter_refere │               │            │\n│                │               │ nce='Chapter   │               │            │\n│                │               │ 3',            │               │            │\n│                │               │ characters_inv │               │            │\n│                │               │ olved=[],      │               │            │\n│                │               │ location='',   │               │            │\n│                │               │ causes=[],     │               │            │\n│                │               │ consequences=[ │               │            │\n│                │               │ ])],           │               │            │\n│                │               │ temporal_confl │               │            │\n│                │               │ icts=['Possibl │               │            │\n│                │               │ e temporal     │               │            │\n│                │               │ conflict       │               │            │\n│                │               │ flagged in the │               │            │\n│                │               │ source brief   │               │            │\n│                │               │ (deterministic │               │            │\n│                │               │ smoke).'],     │               │            │\n│                │               │ coverage_gaps= │               │            │\n│                │               │ [],            │               │            │\n│                │               │ overall_assess │               │            │\n│                │               │ ment='Smoke    │               │            │\n│                │               │ timeline: 3    │               │            │\n│                │               │ event(s)       │               │            │\n│                │               │ ordered across │               │            │\n│                │               │ chapters.      │               │            │\n│                │               │ Deterministic  │               │            │\n│                │               │ — no model     │               │            │\n│                │               │ called.',      │               │            │\n│                │               │ metadata={'smo │               │            │\n│                │               │ ke': True})    │               │            │\n│                │               │ worldbuilding= │               │            │\n│                │               │ None           │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ worldbuilding… │ agent_type='w │ outline=None   │ OutlineSchema │ ✔          │\n│                │ orldbuilding' │ character_arc= │ Validator:    │            │\n│                │               │ None           │ 1.00          │            │\n│                │ prompt_text=' │ timeline=None  │ CharacterArcS │            │\n│                │ character:    │ worldbuilding= │ chemaValidato │            │\n│                │ Lyra          │ WorldbuildingS │ r: 1.00       │            │\n│                │ Silvermoon\\np │ ection(gaps=[W │ TimelineSchem │            │\n│                │ lace:         │ orldbuildingGa │ aValidator:   │            │\n│                │ Alderaan\\nfac │ pSection(entit │ 1.00          │            │\n│                │ tion: The     │ y_id='ent-1',  │ Worldbuilding │            │\n│                │ Iron Guild'   │ entity_name='L │ SchemaValidat │            │\n│                │ genre='Fantas │ yra            │ or: 1.00      │            │\n│                │ y'            │ Silvermoon',   │               │            │\n│                │ language='en' │ entity_type='c │               │            │\n│                │               │ haracter',     │               │            │\n│                │               │ gap_type='miss │               │            │\n│                │               │ ing_connection │               │            │\n│                │               │ ',             │               │            │\n│                │               │ field_key=None │               │            │\n│                │               │ ,              │               │            │\n│                │               │ description='L │               │            │\n│                │               │ yra Silvermoon │               │            │\n│                │               │ has no         │               │            │\n│                │               │ documented     │               │            │\n│                │               │ link to        │               │            │\n│                │               │ Alderaan.',    │               │            │\n│                │               │ related_entity │               │            │\n│                │               │ _type='place', │               │            │\n│                │               │                │               │            │\n│                │               │ story_relevanc │               │            │\n│                │               │ e=0.6,         │               │            │\n│                │               │ severity='majo │               │            │\n│                │               │ r'),           │               │            │\n│                │               │ WorldbuildingG │               │            │\n│                │               │ apSection(enti │               │            │\n│                │               │ ty_id='ent-1', │               │            │\n│                │               │                │               │            │\n│                │               │ entity_name='L │               │            │\n│                │               │ yra            │               │            │\n│                │               │ Silvermoon',   │               │            │\n│                │               │ entity_type='c │               │            │\n│                │               │ haracter',     │               │            │\n│                │               │ gap_type='miss │               │            │\n│                │               │ ing_field',    │               │            │\n│                │               │ field_key='des │               │            │\n│                │               │ cription',     │               │            │\n│                │               │ description=\"L │               │            │\n│                │               │ yra Silvermoon │               │            │\n│                │               │ is missing     │               │            │\n│                │               │ template field │               │            │\n│                │               │ 'description'  │               │            │\n│                │               │ (deterministic │               │            │\n│                │               │ smoke).\",      │               │            │\n│                │               │ related_entity │               │            │\n│                │               │ _type=None,    │               │            │\n│                │               │ story_relevanc │               │            │\n│                │               │ e=0.4,         │               │            │\n│                │               │ severity='mino │               │            │\n│                │               │ r')],          │               │            │\n│                │               │ connection_sug │               │            │\n│                │               │ gestions=[Worl │               │            │\n│                │               │ dbuildingConne │               │            │\n│                │               │ ctionSection(s │               │            │\n│                │               │ ource_entity_i │               │            │\n│                │               │ d='ent-1',     │               │            │\n│                │               │ source_entity_ │               │            │\n│                │               │ name='Lyra     │               │            │\n│                │               │ Silvermoon',   │               │            │\n│                │               │ target_entity_ │               │            │\n│                │               │ id='ent-2',    │               │            │\n│                │               │ target_entity_ │               │            │\n│                │               │ name='Alderaan │               │            │\n│                │               │ ',             │               │            │\n│                │               │ suggested_rel_ │               │            │\n│                │               │ type='related_ │               │            │\n│                │               │ to',           │               │            │\n│                │               │ inverse_rel_ty │               │            │\n│                │               │ pe='related_to │               │            │\n│                │               │ ',             │               │            │\n│                │               │ reasoning='Two │               │            │\n│                │               │ entities share │               │            │\n│                │               │ the story      │               │            │\n│                │               │ world without  │               │            │\n│                │               │ an explicit    │               │            │\n│                │               │ link           │               │            │\n│                │               │ (deterministic │               │            │\n│                │               │ smoke).',      │               │            │\n│                │               │ confidence=0.7 │               │            │\n│                │               │ ,              │               │            │\n│                │               │ story_relevanc │               │            │\n│                │               │ e=0.6)],       │               │            │\n│                │               │ assessment='Sm │               │            │\n│                │               │ oke            │               │            │\n│                │               │ worldbuilding: │               │            │\n│                │               │ 2 gap(s) and 1 │               │            │\n│                │               │ connection(s). │               │            │\n│                │               │ Deterministic  │               │            │\n│                │               │ — no model     │               │            │\n│                │               │ called.',      │               │            │\n│                │               │ worldbuilding_ │               │            │\n│                │               │ score=0.7,     │               │            │\n│                │               │ candidate_pair │               │            │\n│                │               │ s_for_consiste │               │            │\n│                │               │ ncy=[('ent-1', │               │            │\n│                │               │  'ent-2')])    │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ worldbuilding… │ agent_type='w │ outline=None   │ OutlineSchema │ ✔          │\n│                │ orldbuilding' │ character_arc= │ Validator:    │            │\n│                │               │ None           │ 1.00          │            │\n│                │ prompt_text=' │ timeline=None  │ CharacterArcS │            │\n│                │ No structured │ worldbuilding= │ chemaValidato │            │\n│                │ entities are  │ WorldbuildingS │ r: 1.00       │            │\n│                │ provided in   │ ection(gaps=[] │ TimelineSchem │            │\n│                │ this brief.'  │ ,              │ aValidator:   │            │\n│                │ genre='Fantas │ connection_sug │ 1.00          │            │\n│                │ y'            │ gestions=[],   │ Worldbuilding │            │\n│                │ language='en' │ assessment='Sm │ SchemaValidat │            │\n│                │               │ oke            │ or: 1.00      │            │\n│                │               │ worldbuilding: │               │            │\n│                │               │ 0 gap(s) and 0 │               │            │\n│                │               │ connection(s). │               │            │\n│                │               │ Deterministic  │               │            │\n│                │               │ — no model     │               │            │\n│                │               │ called.',      │               │            │\n│                │               │ worldbuilding_ │               │            │\n│                │               │ score=1.0,     │               │            │\n│                │               │ candidate_pair │               │            │\n│                │               │ s_for_consiste │               │            │\n│                │               │ ncy=[])        │               │            │\n├────────────────┼───────────────┼────────────────┼───────────────┼────────────┤\n│ Averages       │               │                │ OutlineSchema │ 100.0% ✔   │\n│                │               │                │ Validator:    │            │\n│                │               │                │ 1.00          │            │\n│                │               │                │ CharacterArcS │            │\n│                │               │                │ chemaValidato │            │\n│                │               │                │ r: 1.00       │            │\n│                │               │                │ TimelineSchem │            │\n│                │               │                │ aValidator:   │            │\n│                │               │                │ 1.00          │            │\n│                │               │                │ Worldbuilding │            │\n│                │               │                │ SchemaValidat │            │\n│                │               │                │ or: 1.00      │            │\n└────────────────┴───────────────┴────────────────┴───────────────┴────────────┘\n"
+}

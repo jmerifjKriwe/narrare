@@ -1,0 +1,420 @@
+{
+  "version": 2,
+  "framework": "pydantic-evals",
+  "suite": "kb_operations",
+  "mode": "smoke",
+  "report_name": "kb_operations_task",
+  "created_at": "2026-06-21T06:29:10.947743+00:00",
+  "cases": [
+    {
+      "name": "kb-agent-search-intent",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": {
+          "operation": "search_kb",
+          "query": "Iron Guild factions.",
+          "entity_type": "faction",
+          "entity_name": "",
+          "relation_type": null,
+          "formatted_response": "Search results for 'Iron Guild factions.' (deterministic smoke)."
+        },
+        "kb_assist": null,
+        "kb_improve": null,
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-agent-lookup-intent",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": {
+          "operation": "get_entity",
+          "query": "",
+          "entity_type": "character",
+          "entity_name": "Mara Silverwood",
+          "relation_type": null,
+          "formatted_response": "Entity: Mara Silverwood details (deterministic smoke)."
+        },
+        "kb_assist": null,
+        "kb_improve": null,
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-agent-related-intent",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": {
+          "operation": "get_related_entities",
+          "query": "",
+          "entity_type": "faction",
+          "entity_name": "Iron Guild",
+          "relation_type": null,
+          "formatted_response": "Entities related to Iron Guild (deterministic smoke)."
+        },
+        "kb_assist": null,
+        "kb_improve": null,
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-assist-question-mode",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": {
+          "mode": "question",
+          "question": "What value should the 'motivation' field have for this entity?",
+          "field_key": "motivation",
+          "suggestion": null,
+          "reasoning": "Smoke question asks for the next missing field.",
+          "context_used": null,
+          "draft_entry": null,
+          "final_entry": null,
+          "progress": 0.5
+        },
+        "kb_improve": null,
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-assist-suggestion-mode",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": {
+          "mode": "suggestion",
+          "question": null,
+          "field_key": "role",
+          "suggestion": "Suggested value for 'role': a concise, story-driven default.",
+          "reasoning": "Smoke suggestion picks a deterministic placeholder value.",
+          "context_used": null,
+          "draft_entry": null,
+          "final_entry": null,
+          "progress": 0.7
+        },
+        "kb_improve": null,
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-assist-draft-mode",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": {
+          "mode": "draft",
+          "question": null,
+          "field_key": "role",
+          "suggestion": null,
+          "reasoning": "Smoke draft assembles a partial entry dict.",
+          "context_used": null,
+          "draft_entry": {
+            "name": "Mara Silverwood",
+            "role": "Drafted role value (deterministic smoke)."
+          },
+          "final_entry": null,
+          "progress": 0.4
+        },
+        "kb_improve": null,
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-assist-complete-mode",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": {
+          "mode": "complete",
+          "question": null,
+          "field_key": "role",
+          "suggestion": null,
+          "reasoning": "Smoke completion assembles deterministic key/value pairs.",
+          "context_used": null,
+          "draft_entry": null,
+          "final_entry": {
+            "name": "Mara Silverwood",
+            "role": "Completed role value (deterministic smoke)."
+          },
+          "progress": 1.0
+        },
+        "kb_improve": null,
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-improve-missing-field",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": null,
+        "kb_improve": {
+          "suggestions": [
+            {
+              "type": "add_field",
+              "target": "motivation",
+              "description": "Add the missing 'motivation' field to this entry.",
+              "proposed_content": "Suggested motivation content (deterministic smoke).",
+              "related_entity_id": null,
+              "related_entity_name": null,
+              "confidence": 0.8,
+              "reasoning": "Field absent from the source entry."
+            },
+            {
+              "type": "expand",
+              "target": "motivation",
+              "description": "Expand the sparse 'motivation' field with more detail.",
+              "proposed_content": "Expanded motivation content (deterministic smoke).",
+              "related_entity_id": null,
+              "related_entity_name": null,
+              "confidence": 0.75,
+              "reasoning": "Existing field content is too brief."
+            }
+          ],
+          "overall_assessment": "Smoke analysis: 2 suggestion(s) derived from prompt keywords. Deterministic — no model called.",
+          "completeness_score": 0.6000000000000001,
+          "context_used": []
+        },
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-improve-connect-entity",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": null,
+        "kb_improve": {
+          "suggestions": [
+            {
+              "type": "connect",
+              "target": "Iron Guild",
+              "description": "Connect this entry to the Iron Guild faction.",
+              "proposed_content": null,
+              "related_entity_id": null,
+              "related_entity_name": "Iron Guild",
+              "confidence": 0.7,
+              "reasoning": "World context references Iron Guild as a related faction."
+            }
+          ],
+          "overall_assessment": "Smoke analysis: 1 suggestion(s) derived from prompt keywords. Deterministic — no model called.",
+          "completeness_score": 0.75,
+          "context_used": []
+        },
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-improve-reorganize-entry",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": null,
+        "kb_improve": {
+          "suggestions": [
+            {
+              "type": "reorganize",
+              "target": "notes",
+              "description": "Reorganize the scattered notes notes into clearer sections.",
+              "proposed_content": null,
+              "related_entity_id": null,
+              "related_entity_name": null,
+              "confidence": 0.65,
+              "reasoning": "Notes are scattered across the entry without structure."
+            }
+          ],
+          "overall_assessment": "Smoke analysis: 1 suggestion(s) derived from prompt keywords. Deterministic — no model called.",
+          "completeness_score": 0.75,
+          "context_used": []
+        },
+        "kb_merge": null
+      }
+    },
+    {
+      "name": "kb-merge-duplicate-pair",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": null,
+        "kb_improve": null,
+        "kb_merge": {
+          "merge_decisions": [
+            {
+              "pair_id": "pair-1",
+              "decision": "merge",
+              "confidence": 0.9,
+              "reasoning": "Smoke merge analysis derived 'merge' from prompt keywords. Deterministic — no model called.",
+              "merge_strategy": {
+                "keep_name": "Mara Silverwood",
+                "merge_fields": {},
+                "preserve_aliases": [
+                  "Mara"
+                ],
+                "merge_relationships": true
+              }
+            }
+          ],
+          "overall_notes": "Smoke merge: 1 decision emitted (merge). Deterministic — no model called.",
+          "metadata": {
+            "smoke": true
+          }
+        }
+      }
+    },
+    {
+      "name": "kb-merge-distinct-pair",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": null,
+        "kb_improve": null,
+        "kb_merge": {
+          "merge_decisions": [
+            {
+              "pair_id": "pair-1",
+              "decision": "distinct",
+              "confidence": 0.9,
+              "reasoning": "Smoke merge analysis derived 'distinct' from prompt keywords. Deterministic — no model called.",
+              "merge_strategy": null
+            }
+          ],
+          "overall_notes": "Smoke merge: 1 decision emitted (distinct). Deterministic — no model called.",
+          "metadata": {
+            "smoke": true
+          }
+        }
+      }
+    },
+    {
+      "name": "kb-merge-uncertain-pair",
+      "scores": {
+        "KBAgentOperationSchemaValidator": 1.0,
+        "KBAssistSchemaValidator": 1.0,
+        "KBImproveSchemaValidator": 1.0,
+        "KBMergeSchemaValidator": 1.0
+      },
+      "assertions": {
+        "IsInstance": true
+      },
+      "output": {
+        "kb_agent": null,
+        "kb_assist": null,
+        "kb_improve": null,
+        "kb_merge": {
+          "merge_decisions": [
+            {
+              "pair_id": "pair-1",
+              "decision": "uncertain",
+              "confidence": 0.55,
+              "reasoning": "Smoke merge analysis derived 'uncertain' from prompt keywords. Deterministic — no model called.",
+              "merge_strategy": null
+            }
+          ],
+          "overall_notes": "Smoke merge: 1 decision emitted (uncertain). Deterministic — no model called.",
+          "metadata": {
+            "smoke": true
+          }
+        }
+      }
+    }
+  ],
+  "failures": [],
+  "rendered": "                     Evaluation Summary: kb_operations_task                     \n┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓\n┃ Case ID       ┃ Inputs         ┃ Outputs       ┃ Scores         ┃ Assertions ┃\n┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩\n│ kb-agent-sea… │ agent_type='kb │ kb_agent=KBAg │ KBAgentOperati │ ✔          │\n│               │ _agent'        │ entOperationS │ onSchemaValida │            │\n│               │ prompt_text='S │ ection(operat │ tor: 1.00      │            │\n│               │ earch the KB   │ ion='search_k │ KBAssistSchema │            │\n│               │ for Iron Guild │ b',           │ Validator:     │            │\n│               │ factions.'     │ query='Iron   │ 1.00           │            │\n│               │ entity_type='f │ Guild         │ KBImproveSchem │            │\n│               │ action'        │ factions.',   │ aValidator:    │            │\n│               │ field_key='nam │ entity_type=' │ 1.00           │            │\n│               │ e'             │ faction',     │ KBMergeSchemaV │            │\n│               │ language='en'  │ entity_name=' │ alidator: 1.00 │            │\n│               │                │ ',            │                │            │\n│               │                │ relation_type │                │            │\n│               │                │ =None,        │                │            │\n│               │                │ formatted_res │                │            │\n│               │                │ ponse=\"Search │                │            │\n│               │                │  results for  │                │            │\n│               │                │ 'Iron Guild   │                │            │\n│               │                │ factions.'    │                │            │\n│               │                │ (deterministi │                │            │\n│               │                │ c smoke).\")   │                │            │\n│               │                │ kb_assist=Non │                │            │\n│               │                │ e             │                │            │\n│               │                │ kb_improve=No │                │            │\n│               │                │ ne            │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-agent-loo… │ agent_type='kb │ kb_agent=KBAg │ KBAgentOperati │ ✔          │\n│               │ _agent'        │ entOperationS │ onSchemaValida │            │\n│               │ prompt_text='G │ ection(operat │ tor: 1.00      │            │\n│               │ et details for │ ion='get_enti │ KBAssistSchema │            │\n│               │ Mara           │ ty',          │ Validator:     │            │\n│               │ Silverwood     │ query='',     │ 1.00           │            │\n│               │ before the     │ entity_type=' │ KBImproveSchem │            │\n│               │ council        │ character',   │ aValidator:    │            │\n│               │ scene.'        │ entity_name=' │ 1.00           │            │\n│               │ entity_type='c │ Mara          │ KBMergeSchemaV │            │\n│               │ haracter'      │ Silverwood',  │ alidator: 1.00 │            │\n│               │ field_key='nam │ relation_type │                │            │\n│               │ e'             │ =None,        │                │            │\n│               │ language='en'  │ formatted_res │                │            │\n│               │                │ ponse='Entity │                │            │\n│               │                │ : Mara        │                │            │\n│               │                │ Silverwood    │                │            │\n│               │                │ details       │                │            │\n│               │                │ (deterministi │                │            │\n│               │                │ c smoke).')   │                │            │\n│               │                │ kb_assist=Non │                │            │\n│               │                │ e             │                │            │\n│               │                │ kb_improve=No │                │            │\n│               │                │ ne            │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-agent-rel… │ agent_type='kb │ kb_agent=KBAg │ KBAgentOperati │ ✔          │\n│               │ _agent'        │ entOperationS │ onSchemaValida │            │\n│               │ prompt_text='F │ ection(operat │ tor: 1.00      │            │\n│               │ ind related    │ ion='get_rela │ KBAssistSchema │            │\n│               │ entities for   │ ted_entities' │ Validator:     │            │\n│               │ Iron Guild     │ , query='',   │ 1.00           │            │\n│               │ allies.'       │ entity_type=' │ KBImproveSchem │            │\n│               │ entity_type='f │ faction',     │ aValidator:    │            │\n│               │ action'        │ entity_name=' │ 1.00           │            │\n│               │ field_key='nam │ Iron Guild',  │ KBMergeSchemaV │            │\n│               │ e'             │ relation_type │ alidator: 1.00 │            │\n│               │ language='en'  │ =None,        │                │            │\n│               │                │ formatted_res │                │            │\n│               │                │ ponse='Entiti │                │            │\n│               │                │ es related to │                │            │\n│               │                │ Iron Guild    │                │            │\n│               │                │ (deterministi │                │            │\n│               │                │ c smoke).')   │                │            │\n│               │                │ kb_assist=Non │                │            │\n│               │                │ e             │                │            │\n│               │                │ kb_improve=No │                │            │\n│               │                │ ne            │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-assist-qu… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _assist'       │ kb_assist=KBA │ onSchemaValida │            │\n│               │ prompt_text=\"A │ ssistSection( │ tor: 1.00      │            │\n│               │ sk the next    │ mode='questio │ KBAssistSchema │            │\n│               │ question about │ n',           │ Validator:     │            │\n│               │ Mara's         │ question=\"Wha │ 1.00           │            │\n│               │ motivation.\"   │ t value       │ KBImproveSchem │            │\n│               │ entity_type='c │ should the    │ aValidator:    │            │\n│               │ haracter'      │ 'motivation'  │ 1.00           │            │\n│               │ field_key='mot │ field have    │ KBMergeSchemaV │            │\n│               │ ivation'       │ for this      │ alidator: 1.00 │            │\n│               │ language='en'  │ entity?\",     │                │            │\n│               │                │ field_key='mo │                │            │\n│               │                │ tivation',    │                │            │\n│               │                │ suggestion=No │                │            │\n│               │                │ ne,           │                │            │\n│               │                │ reasoning='Sm │                │            │\n│               │                │ oke question  │                │            │\n│               │                │ asks for the  │                │            │\n│               │                │ next missing  │                │            │\n│               │                │ field.',      │                │            │\n│               │                │ context_used= │                │            │\n│               │                │ None,         │                │            │\n│               │                │ draft_entry=N │                │            │\n│               │                │ one,          │                │            │\n│               │                │ final_entry=N │                │            │\n│               │                │ one,          │                │            │\n│               │                │ progress=0.5) │                │            │\n│               │                │ kb_improve=No │                │            │\n│               │                │ ne            │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-assist-su… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _assist'       │ kb_assist=KBA │ onSchemaValida │            │\n│               │ prompt_text='S │ ssistSection( │ tor: 1.00      │            │\n│               │ uggest a value │ mode='suggest │ KBAssistSchema │            │\n│               │ for the role   │ ion',         │ Validator:     │            │\n│               │ field.'        │ question=None │ 1.00           │            │\n│               │ entity_type='c │ ,             │ KBImproveSchem │            │\n│               │ haracter'      │ field_key='ro │ aValidator:    │            │\n│               │ field_key='rol │ le',          │ 1.00           │            │\n│               │ e'             │ suggestion=\"S │ KBMergeSchemaV │            │\n│               │ language='en'  │ uggested      │ alidator: 1.00 │            │\n│               │                │ value for     │                │            │\n│               │                │ 'role': a     │                │            │\n│               │                │ concise,      │                │            │\n│               │                │ story-driven  │                │            │\n│               │                │ default.\",    │                │            │\n│               │                │ reasoning='Sm │                │            │\n│               │                │ oke           │                │            │\n│               │                │ suggestion    │                │            │\n│               │                │ picks a       │                │            │\n│               │                │ deterministic │                │            │\n│               │                │ placeholder   │                │            │\n│               │                │ value.',      │                │            │\n│               │                │ context_used= │                │            │\n│               │                │ None,         │                │            │\n│               │                │ draft_entry=N │                │            │\n│               │                │ one,          │                │            │\n│               │                │ final_entry=N │                │            │\n│               │                │ one,          │                │            │\n│               │                │ progress=0.7) │                │            │\n│               │                │ kb_improve=No │                │            │\n│               │                │ ne            │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-assist-dr… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _assist'       │ kb_assist=KBA │ onSchemaValida │            │\n│               │ prompt_text='D │ ssistSection( │ tor: 1.00      │            │\n│               │ raft a partial │ mode='draft', │ KBAssistSchema │            │\n│               │ entry for Mara │               │ Validator:     │            │\n│               │ Silverwood.'   │ question=None │ 1.00           │            │\n│               │ entity_type='c │ ,             │ KBImproveSchem │            │\n│               │ haracter'      │ field_key='ro │ aValidator:    │            │\n│               │ field_key='rol │ le',          │ 1.00           │            │\n│               │ e'             │ suggestion=No │ KBMergeSchemaV │            │\n│               │ language='en'  │ ne,           │ alidator: 1.00 │            │\n│               │                │ reasoning='Sm │                │            │\n│               │                │ oke draft     │                │            │\n│               │                │ assembles a   │                │            │\n│               │                │ partial entry │                │            │\n│               │                │ dict.',       │                │            │\n│               │                │ context_used= │                │            │\n│               │                │ None,         │                │            │\n│               │                │ draft_entry={ │                │            │\n│               │                │ 'name': 'Mara │                │            │\n│               │                │ Silverwood',  │                │            │\n│               │                │ 'role':       │                │            │\n│               │                │ 'Drafted role │                │            │\n│               │                │ value         │                │            │\n│               │                │ (deterministi │                │            │\n│               │                │ c smoke).'},  │                │            │\n│               │                │ final_entry=N │                │            │\n│               │                │ one,          │                │            │\n│               │                │ progress=0.4) │                │            │\n│               │                │ kb_improve=No │                │            │\n│               │                │ ne            │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-assist-co… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _assist'       │ kb_assist=KBA │ onSchemaValida │            │\n│               │ prompt_text='C │ ssistSection( │ tor: 1.00      │            │\n│               │ omplete the    │ mode='complet │ KBAssistSchema │            │\n│               │ entry for Mara │ e',           │ Validator:     │            │\n│               │ Silverwood.'   │ question=None │ 1.00           │            │\n│               │ entity_type='c │ ,             │ KBImproveSchem │            │\n│               │ haracter'      │ field_key='ro │ aValidator:    │            │\n│               │ field_key='rol │ le',          │ 1.00           │            │\n│               │ e'             │ suggestion=No │ KBMergeSchemaV │            │\n│               │ language='en'  │ ne,           │ alidator: 1.00 │            │\n│               │                │ reasoning='Sm │                │            │\n│               │                │ oke           │                │            │\n│               │                │ completion    │                │            │\n│               │                │ assembles     │                │            │\n│               │                │ deterministic │                │            │\n│               │                │ key/value     │                │            │\n│               │                │ pairs.',      │                │            │\n│               │                │ context_used= │                │            │\n│               │                │ None,         │                │            │\n│               │                │ draft_entry=N │                │            │\n│               │                │ one,          │                │            │\n│               │                │ final_entry={ │                │            │\n│               │                │ 'name': 'Mara │                │            │\n│               │                │ Silverwood',  │                │            │\n│               │                │ 'role':       │                │            │\n│               │                │ 'Completed    │                │            │\n│               │                │ role value    │                │            │\n│               │                │ (deterministi │                │            │\n│               │                │ c smoke).'},  │                │            │\n│               │                │ progress=1.0) │                │            │\n│               │                │ kb_improve=No │                │            │\n│               │                │ ne            │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-improve-m… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _improve'      │ kb_assist=Non │ onSchemaValida │            │\n│               │ prompt_text='I │ e             │ tor: 1.00      │            │\n│               │ mprove a       │ kb_improve=KB │ KBAssistSchema │            │\n│               │ sparse         │ ImproveSectio │ Validator:     │            │\n│               │ character      │ n(suggestions │ 1.00           │            │\n│               │ entry and add  │ =[KBImproveSu │ KBImproveSchem │            │\n│               │ missing        │ ggestionSecti │ aValidator:    │            │\n│               │ motivation.'   │ on(type='add_ │ 1.00           │            │\n│               │ entity_type='c │ field',       │ KBMergeSchemaV │            │\n│               │ haracter'      │ target='motiv │ alidator: 1.00 │            │\n│               │ field_key='mot │ ation',       │                │            │\n│               │ ivation'       │ description=\" │                │            │\n│               │ language='en'  │ Add the       │                │            │\n│               │                │ missing       │                │            │\n│               │                │ 'motivation'  │                │            │\n│               │                │ field to this │                │            │\n│               │                │ entry.\",      │                │            │\n│               │                │ proposed_cont │                │            │\n│               │                │ ent='Suggeste │                │            │\n│               │                │ d motivation  │                │            │\n│               │                │ content       │                │            │\n│               │                │ (deterministi │                │            │\n│               │                │ c smoke).',   │                │            │\n│               │                │ related_entit │                │            │\n│               │                │ y_id=None,    │                │            │\n│               │                │ related_entit │                │            │\n│               │                │ y_name=None,  │                │            │\n│               │                │ confidence=0. │                │            │\n│               │                │ 8,            │                │            │\n│               │                │ reasoning='Fi │                │            │\n│               │                │ eld absent    │                │            │\n│               │                │ from the      │                │            │\n│               │                │ source        │                │            │\n│               │                │ entry.'),     │                │            │\n│               │                │ KBImproveSugg │                │            │\n│               │                │ estionSection │                │            │\n│               │                │ (type='expand │                │            │\n│               │                │ ',            │                │            │\n│               │                │ target='motiv │                │            │\n│               │                │ ation',       │                │            │\n│               │                │ description=\" │                │            │\n│               │                │ Expand the    │                │            │\n│               │                │ sparse        │                │            │\n│               │                │ 'motivation'  │                │            │\n│               │                │ field with    │                │            │\n│               │                │ more          │                │            │\n│               │                │ detail.\",     │                │            │\n│               │                │ proposed_cont │                │            │\n│               │                │ ent='Expanded │                │            │\n│               │                │  motivation   │                │            │\n│               │                │ content       │                │            │\n│               │                │ (deterministi │                │            │\n│               │                │ c smoke).',   │                │            │\n│               │                │ related_entit │                │            │\n│               │                │ y_id=None,    │                │            │\n│               │                │ related_entit │                │            │\n│               │                │ y_name=None,  │                │            │\n│               │                │ confidence=0. │                │            │\n│               │                │ 75,           │                │            │\n│               │                │ reasoning='Ex │                │            │\n│               │                │ isting field  │                │            │\n│               │                │ content is    │                │            │\n│               │                │ too           │                │            │\n│               │                │ brief.')],    │                │            │\n│               │                │ overall_asses │                │            │\n│               │                │ sment='Smoke  │                │            │\n│               │                │ analysis: 2   │                │            │\n│               │                │ suggestion(s) │                │            │\n│               │                │ derived from  │                │            │\n│               │                │ prompt        │                │            │\n│               │                │ keywords.     │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.',     │                │            │\n│               │                │ completeness_ │                │            │\n│               │                │ score=0.60000 │                │            │\n│               │                │ 00000000001,  │                │            │\n│               │                │ context_used= │                │            │\n│               │                │ [])           │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-improve-c… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _improve'      │ kb_assist=Non │ onSchemaValida │            │\n│               │ prompt_text='C │ e             │ tor: 1.00      │            │\n│               │ onnect this    │ kb_improve=KB │ KBAssistSchema │            │\n│               │ entry to Iron  │ ImproveSectio │ Validator:     │            │\n│               │ Guild allies   │ n(suggestions │ 1.00           │            │\n│               │ from world     │ =[KBImproveSu │ KBImproveSchem │            │\n│               │ context.'      │ ggestionSecti │ aValidator:    │            │\n│               │ entity_type='c │ on(type='conn │ 1.00           │            │\n│               │ haracter'      │ ect',         │ KBMergeSchemaV │            │\n│               │ field_key='all │ target='Iron  │ alidator: 1.00 │            │\n│               │ ies'           │ Guild',       │                │            │\n│               │ language='en'  │ description=' │                │            │\n│               │                │ Connect this  │                │            │\n│               │                │ entry to the  │                │            │\n│               │                │ Iron Guild    │                │            │\n│               │                │ faction.',    │                │            │\n│               │                │ proposed_cont │                │            │\n│               │                │ ent=None,     │                │            │\n│               │                │ related_entit │                │            │\n│               │                │ y_id=None,    │                │            │\n│               │                │ related_entit │                │            │\n│               │                │ y_name='Iron  │                │            │\n│               │                │ Guild',       │                │            │\n│               │                │ confidence=0. │                │            │\n│               │                │ 7,            │                │            │\n│               │                │ reasoning='Wo │                │            │\n│               │                │ rld context   │                │            │\n│               │                │ references    │                │            │\n│               │                │ Iron Guild as │                │            │\n│               │                │ a related     │                │            │\n│               │                │ faction.')],  │                │            │\n│               │                │ overall_asses │                │            │\n│               │                │ sment='Smoke  │                │            │\n│               │                │ analysis: 1   │                │            │\n│               │                │ suggestion(s) │                │            │\n│               │                │ derived from  │                │            │\n│               │                │ prompt        │                │            │\n│               │                │ keywords.     │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.',     │                │            │\n│               │                │ completeness_ │                │            │\n│               │                │ score=0.75,   │                │            │\n│               │                │ context_used= │                │            │\n│               │                │ [])           │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-improve-r… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _improve'      │ kb_assist=Non │ onSchemaValida │            │\n│               │ prompt_text='R │ e             │ tor: 1.00      │            │\n│               │ eorganize      │ kb_improve=KB │ KBAssistSchema │            │\n│               │ scattered      │ ImproveSectio │ Validator:     │            │\n│               │ notes into     │ n(suggestions │ 1.00           │            │\n│               │ clearer        │ =[KBImproveSu │ KBImproveSchem │            │\n│               │ character      │ ggestionSecti │ aValidator:    │            │\n│               │ sections.'     │ on(type='reor │ 1.00           │            │\n│               │ entity_type='c │ ganize',      │ KBMergeSchemaV │            │\n│               │ haracter'      │ target='notes │ alidator: 1.00 │            │\n│               │ field_key='not │ ',            │                │            │\n│               │ es'            │ description=' │                │            │\n│               │ language='en'  │ Reorganize    │                │            │\n│               │                │ the scattered │                │            │\n│               │                │ notes notes   │                │            │\n│               │                │ into clearer  │                │            │\n│               │                │ sections.',   │                │            │\n│               │                │ proposed_cont │                │            │\n│               │                │ ent=None,     │                │            │\n│               │                │ related_entit │                │            │\n│               │                │ y_id=None,    │                │            │\n│               │                │ related_entit │                │            │\n│               │                │ y_name=None,  │                │            │\n│               │                │ confidence=0. │                │            │\n│               │                │ 65,           │                │            │\n│               │                │ reasoning='No │                │            │\n│               │                │ tes are       │                │            │\n│               │                │ scattered     │                │            │\n│               │                │ across the    │                │            │\n│               │                │ entry without │                │            │\n│               │                │ structure.')] │                │            │\n│               │                │ ,             │                │            │\n│               │                │ overall_asses │                │            │\n│               │                │ sment='Smoke  │                │            │\n│               │                │ analysis: 1   │                │            │\n│               │                │ suggestion(s) │                │            │\n│               │                │ derived from  │                │            │\n│               │                │ prompt        │                │            │\n│               │                │ keywords.     │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.',     │                │            │\n│               │                │ completeness_ │                │            │\n│               │                │ score=0.75,   │                │            │\n│               │                │ context_used= │                │            │\n│               │                │ [])           │                │            │\n│               │                │ kb_merge=None │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-merge-dup… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _merge'        │ kb_assist=Non │ onSchemaValida │            │\n│               │ prompt_text='M │ e             │ tor: 1.00      │            │\n│               │ ara Silverwood │ kb_improve=No │ KBAssistSchema │            │\n│               │ and Mara of    │ ne            │ Validator:     │            │\n│               │ Silverwood are │ kb_merge=KBMe │ 1.00           │            │\n│               │ the same       │ rgeSection(me │ KBImproveSchem │            │\n│               │ person.'       │ rge_decisions │ aValidator:    │            │\n│               │ entity_type='c │ =[KBMergeDeci │ 1.00           │            │\n│               │ haracter'      │ sionSection(p │ KBMergeSchemaV │            │\n│               │ field_key='nam │ air_id='pair- │ alidator: 1.00 │            │\n│               │ e'             │ 1',           │                │            │\n│               │ language='en'  │ decision='mer │                │            │\n│               │                │ ge',          │                │            │\n│               │                │ confidence=0. │                │            │\n│               │                │ 9,            │                │            │\n│               │                │ reasoning=\"Sm │                │            │\n│               │                │ oke merge     │                │            │\n│               │                │ analysis      │                │            │\n│               │                │ derived       │                │            │\n│               │                │ 'merge' from  │                │            │\n│               │                │ prompt        │                │            │\n│               │                │ keywords.     │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.\",     │                │            │\n│               │                │ merge_strateg │                │            │\n│               │                │ y=KBMergeStra │                │            │\n│               │                │ tegySection(k │                │            │\n│               │                │ eep_name='Mar │                │            │\n│               │                │ a             │                │            │\n│               │                │ Silverwood',  │                │            │\n│               │                │ merge_fields= │                │            │\n│               │                │ {},           │                │            │\n│               │                │ preserve_alia │                │            │\n│               │                │ ses=['Mara'], │                │            │\n│               │                │               │                │            │\n│               │                │ merge_relatio │                │            │\n│               │                │ nships=True)) │                │            │\n│               │                │ ],            │                │            │\n│               │                │ overall_notes │                │            │\n│               │                │ ='Smoke       │                │            │\n│               │                │ merge: 1      │                │            │\n│               │                │ decision      │                │            │\n│               │                │ emitted       │                │            │\n│               │                │ (merge).      │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.',     │                │            │\n│               │                │ metadata={'sm │                │            │\n│               │                │ oke': True})  │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-merge-dis… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _merge'        │ kb_assist=Non │ onSchemaValida │            │\n│               │ prompt_text='M │ e             │ tor: 1.00      │            │\n│               │ ara Silverwood │ kb_improve=No │ KBAssistSchema │            │\n│               │ and Captain    │ ne            │ Validator:     │            │\n│               │ Ilya are not   │ kb_merge=KBMe │ 1.00           │            │\n│               │ duplicate      │ rgeSection(me │ KBImproveSchem │            │\n│               │ people.'       │ rge_decisions │ aValidator:    │            │\n│               │ entity_type='c │ =[KBMergeDeci │ 1.00           │            │\n│               │ haracter'      │ sionSection(p │ KBMergeSchemaV │            │\n│               │ field_key='nam │ air_id='pair- │ alidator: 1.00 │            │\n│               │ e'             │ 1',           │                │            │\n│               │ language='en'  │ decision='dis │                │            │\n│               │                │ tinct',       │                │            │\n│               │                │ confidence=0. │                │            │\n│               │                │ 9,            │                │            │\n│               │                │ reasoning=\"Sm │                │            │\n│               │                │ oke merge     │                │            │\n│               │                │ analysis      │                │            │\n│               │                │ derived       │                │            │\n│               │                │ 'distinct'    │                │            │\n│               │                │ from prompt   │                │            │\n│               │                │ keywords.     │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.\",     │                │            │\n│               │                │ merge_strateg │                │            │\n│               │                │ y=None)],     │                │            │\n│               │                │ overall_notes │                │            │\n│               │                │ ='Smoke       │                │            │\n│               │                │ merge: 1      │                │            │\n│               │                │ decision      │                │            │\n│               │                │ emitted       │                │            │\n│               │                │ (distinct).   │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.',     │                │            │\n│               │                │ metadata={'sm │                │            │\n│               │                │ oke': True})  │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ kb-merge-unc… │ agent_type='kb │ kb_agent=None │ KBAgentOperati │ ✔          │\n│               │ _merge'        │ kb_assist=Non │ onSchemaValida │            │\n│               │ prompt_text='M │ e             │ tor: 1.00      │            │\n│               │ ara and the    │ kb_improve=No │ KBAssistSchema │            │\n│               │ masked captain │ ne            │ Validator:     │            │\n│               │ may overlap    │ kb_merge=KBMe │ 1.00           │            │\n│               │ but evidence   │ rgeSection(me │ KBImproveSchem │            │\n│               │ is unclear.'   │ rge_decisions │ aValidator:    │            │\n│               │ entity_type='c │ =[KBMergeDeci │ 1.00           │            │\n│               │ haracter'      │ sionSection(p │ KBMergeSchemaV │            │\n│               │ field_key='nam │ air_id='pair- │ alidator: 1.00 │            │\n│               │ e'             │ 1',           │                │            │\n│               │ language='en'  │ decision='unc │                │            │\n│               │                │ ertain',      │                │            │\n│               │                │ confidence=0. │                │            │\n│               │                │ 55,           │                │            │\n│               │                │ reasoning=\"Sm │                │            │\n│               │                │ oke merge     │                │            │\n│               │                │ analysis      │                │            │\n│               │                │ derived       │                │            │\n│               │                │ 'uncertain'   │                │            │\n│               │                │ from prompt   │                │            │\n│               │                │ keywords.     │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.\",     │                │            │\n│               │                │ merge_strateg │                │            │\n│               │                │ y=None)],     │                │            │\n│               │                │ overall_notes │                │            │\n│               │                │ ='Smoke       │                │            │\n│               │                │ merge: 1      │                │            │\n│               │                │ decision      │                │            │\n│               │                │ emitted       │                │            │\n│               │                │ (uncertain).  │                │            │\n│               │                │ Deterministic │                │            │\n│               │                │ — no model    │                │            │\n│               │                │ called.',     │                │            │\n│               │                │ metadata={'sm │                │            │\n│               │                │ oke': True})  │                │            │\n├───────────────┼────────────────┼───────────────┼────────────────┼────────────┤\n│ Averages      │                │               │ KBAgentOperati │ 100.0% ✔   │\n│               │                │               │ onSchemaValida │            │\n│               │                │               │ tor: 1.00      │            │\n│               │                │               │ KBAssistSchema │            │\n│               │                │               │ Validator:     │            │\n│               │                │               │ 1.00           │            │\n│               │                │               │ KBImproveSchem │            │\n│               │                │               │ aValidator:    │            │\n│               │                │               │ 1.00           │            │\n│               │                │               │ KBMergeSchemaV │            │\n│               │                │               │ alidator: 1.00 │            │\n└───────────────┴────────────────┴───────────────┴────────────────┴────────────┘\n"
+}

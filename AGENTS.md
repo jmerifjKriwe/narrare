@@ -85,7 +85,7 @@ RULE-06: Eine Verantwortlichkeit pro Datei
          → Router delegiert sofort an Service, kein Business Logic in Routern
 ```
 
-Alle 13 Regeln: `docs/_shared/CONSTRAINTS.md`
+Alle 23 Architektur-Regeln (RULE-01b–RULE-23, plus Sub-Regeln 02a/02b/18b): `docs/_shared/CONSTRAINTS.md`
 Enforcement: `scripts/check_architecture.py` (läuft in pre-commit und CI)
 
 ### Dokumentiert ≠ Implementiert (CR-04-Lektion, verbindlich)
@@ -106,7 +106,7 @@ Narrare verwendet `.claude/rules/` für path-scoped, automatisch geladene Regeln
 
 | Rule | Scope | Purpose |
 |------|-------|---------|
-| `constraints.md` | Global | Die 13 RULE-XX Architektur-Regeln |
+| `constraints.md` | Global | Die 23 RULE-XX Architektur-Regeln |
 | `python/code-style.md` | `**/*.py` | Python Syntax, Naming, Imports |
 | `python/async.md` | `apps/api/**/*.py`, `core/**/*.py` | Async-Patterns |
 | `typescript/code-style.md` | `packages/web/**/*.{ts,tsx}` | TS/React Patterns |

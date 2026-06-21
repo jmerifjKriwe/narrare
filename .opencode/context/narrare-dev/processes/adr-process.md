@@ -152,7 +152,7 @@ Every new or status-changed ADR **must** update the Decision Log table in `docs/
 
 ---
 
-## Current ADR Count: 22
+## Current ADR Count: 50
 
 See `docs/architecture/decisions/INDEX.md` for the full list.
 

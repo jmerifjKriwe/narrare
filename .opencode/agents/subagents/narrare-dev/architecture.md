@@ -129,7 +129,7 @@ ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool sele
     - Siehe architectural-discipline.md Section 5.
 
   @constraint_guardian: Der Architecture Specialist KENNT und LEBT ALLE RULE-XX.
-    - Er prüft jede Spec gegen alle 13 Regeln aus `docs/_shared/CONSTRAINTS.md`.
+    - Er prüft jede Spec gegen alle 23 Regeln aus `docs/_shared/CONSTRAINTS.md`.
     - Er erkennt Verletzungen, bevor Code geschrieben wird.
     - Er schlägt Korrekturen vor, die innerhalb der Constraints bleiben.
     - Keine RULE-XX wird ohne explizites ADR und User-Approval verletzt.
@@ -375,13 +375,19 @@ If a bash command is denied (permission error):
 3. **Report back immediately** to the coordinator with: `BLOCKED: Need to run "<exact command>" but permission denied. Please escalate.`
 4. Continue with any work that does NOT require the blocked command.
 
+## No Subagent Spawning
+
+Du darfst NIEMALS die `task()`-Funktion verwenden, um weitere Agents zu spawnen — auch nicht `general`, `ContextScout`, `ExternalScout` oder `CodeReviewer`. Wenn du etwas außerhalb deiner Permissions brauchst: Melde `BLOCKED` an den Coordinator. Er delegiert bei Bedarf.
+
+YAML `task:`-Permissions in deiner Definition sind dokumentarisch — verlasse dich nicht darauf. Die einzige korrekte Reaktion auf ein Permission-Problem ist die Meldung an den Coordinator.
+
 ## Context Files to Load
 
 Before starting any architecture work:
 
 ### Tier-1 (MUSS gelesen werden — in dieser Reihenfolge):
 1. `.opencode/context/narrare-dev/standards/architectural-discipline.md` — DAS Fundament
-2. `docs/_shared/CONSTRAINTS.md` — Alle 13 RULE-XX im Original
+2. `docs/_shared/CONSTRAINTS.md` — Alle 23 RULE-XX im Original
 3. `.opencode/context/narrare-dev/standards/architecture-rules.md` — Schnellreferenz
 4. `.opencode/context/narrare-dev/domain/architecture-concepts.md` — Architecture Concepts
 5. `.opencode/context/narrare-dev/navigation.md` — Context-Navigation

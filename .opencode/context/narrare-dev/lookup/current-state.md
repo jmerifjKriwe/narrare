@@ -28,8 +28,8 @@
 - Backend tests: 4,273 (3,750 unit + 495 integration) across 396 test files
 - Frontend tests: 1,683 across 186 test files (Vitest + MSW)
 - Total tests: ~5,900+
-- Architecture rules: 22 (RULE-01 through RULE-21 + RULE-01b)
-- ADRs: 37 (ADR-001 through ADR-037)
+- Architecture rules: 23 (RULE-01b through RULE-23, plus sub-rules 02a/02b/18b)
+- ADRs: 50 (ADR-001 through ADR-038, ADR-040 through ADR-051; ADR-039 gap)
 - Feature specs: 75 individual files + INDEX.md
 - Open questions: 11 (Q-001 through Q-011)
 
@@ -42,7 +42,7 @@
 | `packages/core/` | 17 submodules, 18 AI agents (pydantic-ai) |
 | `apps/api/` | 20 domain modules, 38 router files, Alembic 0001-~0023 |
 | `packages/web/` | Next.js 16, TipTap v3, 3 demo novels, 3 locales (en/de/fr) |
-| `docs/` | 22 ADRs + 2 impl plans, 11 open questions in 6 files, 75 feature specs |
+| `docs/` | 50 ADRs + 2 impl plans, 11 open questions in 6 files, 75 feature specs |
 
 ---
 

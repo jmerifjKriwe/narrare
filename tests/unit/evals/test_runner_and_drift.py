@@ -8,7 +8,11 @@ import json
 import warnings
 from typing import TYPE_CHECKING
 
+import pytest
 from evals.runner import run_suites
+from evals.tasks import available_suites_for_mode, get_task
+from evals.tasks.runtime import RuntimeTaskFactory
+from evals.tasks.smoke import SmokeTaskFactory
 from scripts.eval_drift.parser import parse_pydantic_eval_report
 
 if TYPE_CHECKING:
@@ -170,3 +174,170 @@ def test_run_suites_does_not_leak_open_event_loop(tmp_path: Path) -> None:
         # If the loop was left open, gc.collect() finalizes it now and its
         # ``__del__`` emits ``ResourceWarning: unclosed <socket.socket ...>``.
         gc.collect()
+
+
+# ---------------------------------------------------------------------------
+# Graceful runtime skip for smoke-only suites (AUFG-03-07 increment #5d)
+# ---------------------------------------------------------------------------
+#
+# Background: per the eval-expansion plan, three suites (analysis_metrics,
+# kb_operations, planning_structure) are smoke-only — they have no runtime
+# task because their agents are not Tier-1. Previously,
+# ``RuntimeTaskFactory.build()`` raised ``ValueError`` for these suites,
+# which crashed ``--suite all --mode runtime`` (the nightly workflow) on
+# the first smoke-only suite.
+#
+# The fix (increment #5d) introduces ``available_suites()`` on both
+# factories and an ``available_suites_for_mode(mode)`` helper. The runner
+# filters requested suites against the runtime registry up front and prints
+# a clear skip notice per smoke-only suite rather than crashing. Real
+# runtime failures (provider errors, score regressions) still surface.
+
+
+# Suites that are intentionally smoke-only (no runtime task).
+SMOKE_ONLY_SUITES = {"analysis_metrics", "kb_operations", "planning_structure"}
+
+# All registered datasets (must match ``evals.datasets.available_suites()``).
+ALL_SUITES = {
+    "analysis_feedback",
+    "analysis_metrics",
+    "chat_generation",
+    "consistency_staged",
+    "kb_extraction",
+    "kb_operations",
+    "planning_structure",
+    "preference_analysis",
+    "rewrite_selection",
+}
+
+
+def test_smoke_factory_available_suites_includes_all_nine() -> None:
+    """Smoke factory has a task for every registered dataset."""
+
+    available = set(SmokeTaskFactory().available_suites())
+    assert available == ALL_SUITES
+
+
+def test_runtime_factory_available_suites_excludes_smoke_only() -> None:
+    """Runtime factory exposes Tier-1 suites only, not the smoke-only three.
+
+    This is the single-source predicate the runner uses to skip — it must
+    not be hardcoded elsewhere.
+    """
+
+    available = set(RuntimeTaskFactory.from_env().available_suites())
+    assert available == ALL_SUITES - SMOKE_ONLY_SUITES
+    assert SMOKE_ONLY_SUITES.isdisjoint(available)
+
+
+def test_available_suites_for_mode_smoke_includes_all() -> None:
+    assert set(available_suites_for_mode("smoke")) == ALL_SUITES
+
+
+def test_available_suites_for_mode_runtime_excludes_smoke_only() -> None:
+    assert set(available_suites_for_mode("runtime")) == ALL_SUITES - SMOKE_ONLY_SUITES
+
+
+def test_available_suites_for_mode_unknown_raises() -> None:
+    with pytest.raises(ValueError, match="Unsupported eval mode"):
+        available_suites_for_mode("bogus")
+
+
+def test_get_task_smoke_only_suite_in_runtime_mode_still_raises() -> None:
+    """Direct ``get_task()`` for a smoke-only suite is a programmer error.
+
+    The runner is responsible for filtering; calling ``get_task`` directly
+    with a non-runtime suite must surface as ``ValueError`` so silent
+    misconfiguration can't slip through.
+    """
+
+    with pytest.raises(ValueError, match="Unknown eval suite: analysis_metrics"):
+        get_task("analysis_metrics", "runtime")
+
+
+def test_run_suites_runtime_skips_smoke_only_suite_gracefully(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Asking for a smoke-only suite in runtime mode exits 0 with a notice.
+
+    No runtime task is invoked (and thus no provider API key is needed).
+    The skip is logged to stdout for nightly CI visibility.
+    """
+
+    exit_code = _run_suites_safe(
+        suite="analysis_metrics",
+        mode="runtime",
+        results_dir=tmp_path,
+        minimum_score=0.8,
+        judge_model=None,
+    )
+
+    assert exit_code == 0
+    # No report should be written for a skipped suite.
+    assert not (tmp_path / "analysis_metrics.json").exists()
+
+    captured = capsys.readouterr()
+    assert "analysis_metrics" in captured.out
+    assert "smoke-only" in captured.out
+    assert "skipping" in captured.out
+
+
+def test_run_suites_runtime_all_skips_smoke_only_and_reports_each(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """``--suite all --mode runtime`` must not crash on smoke-only suites.
+
+    We can't exercise the real runtime tasks here (no provider secret), so
+    this test monkey-patches ``get_task`` to a stub that records which
+    suites the runner actually tried to invoke. The three smoke-only
+    suites must NOT appear in that record.
+    """
+
+    import evals.runner as runner_mod
+
+    invoked: list[str] = []
+
+    async def _stub_task(_inputs: object) -> object:
+        return {}
+
+    original_get_task = runner_mod.get_task
+
+    def _recording_get_task(suite: str, mode: str) -> object:
+        invoked.append(suite)
+        return _stub_task
+
+    # ``get_task`` is imported into the runner module namespace, so patch
+    # it there (not in evals.tasks).
+    runner_mod.get_task = _recording_get_task  # type: ignore[assignment]
+    try:
+        exit_code = _run_suites_safe(
+            suite="all",
+            mode="runtime",
+            results_dir=tmp_path,
+            minimum_score=0.0,
+            judge_model=None,
+        )
+    finally:
+        runner_mod.get_task = original_get_task  # type: ignore[assignment]
+
+    # Exit code is non-zero only because the stub returns an empty dict
+    # which fails eval assertions — that's fine; we're verifying the
+    # *filtering*, not the stub's output. The key assertions are below.
+    assert exit_code in (0, 1)
+
+    captured = capsys.readouterr()
+    # Each smoke-only suite is mentioned by name in a skip notice.
+    for name in SMOKE_ONLY_SUITES:
+        assert name in captured.out, f"expected skip notice for {name}"
+        assert "smoke-only" in captured.out
+
+    # And critically: the runner never tried to invoke a task for them.
+    for name in SMOKE_ONLY_SUITES:
+        assert name not in invoked, (
+            f"runner should not have invoked get_task for smoke-only suite {name}"
+        )
+    # Runtime-capable suites WERE invoked (proving we didn't over-skip).
+    expected_runtime = ALL_SUITES - SMOKE_ONLY_SUITES
+    assert set(invoked) == expected_runtime

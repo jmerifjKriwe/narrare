@@ -47,10 +47,16 @@ class RuntimeTaskFactory:
             base_url=os.environ.get("NARRARE_EVAL_BASE_URL"),
         )
 
-    def build(self, suite: str) -> RuntimeTask:
-        """Return the runtime task for *suite*."""
+    def _task_map(self) -> dict[str, RuntimeTask]:
+        """Single-source mapping of suite name → runtime task.
 
-        tasks: dict[str, RuntimeTask] = {
+        Tier 2/3 suites (analysis_metrics, kb_operations, planning_structure)
+        are intentionally absent: per the eval-expansion plan they are
+        smoke-only. ``available_suites()`` and ``build()`` both derive from
+        this map so there is exactly one place to register a runtime task.
+        """
+
+        return {
             "analysis_feedback": self.analysis_feedback_task,
             "chat_generation": self.chat_generation_task,
             "consistency_staged": self.consistency_staged_task,
@@ -58,6 +64,26 @@ class RuntimeTaskFactory:
             "preference_analysis": self.preference_analysis_task,
             "rewrite_selection": self.rewrite_selection_task,
         }
+
+    def available_suites(self) -> list[str]:
+        """Return suite names with a runtime task, in stable sorted order.
+
+        The runner uses this to skip smoke-only suites gracefully when
+        invoked with ``--suite all --mode runtime`` instead of crashing
+        with ``ValueError``.
+        """
+
+        return sorted(self._task_map())
+
+    def build(self, suite: str) -> RuntimeTask:
+        """Return the runtime task for *suite*.
+
+        Raises ``ValueError`` if *suite* is not in ``available_suites()``.
+        For smoke-only suites this is a programming error — the runner
+        must filter via ``available_suites()`` before calling ``build()``.
+        """
+
+        tasks = self._task_map()
         try:
             return tasks[suite]
         except KeyError as exc:

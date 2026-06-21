@@ -1,0 +1,94 @@
+name: Eval Nightly (Runtime)
+
+# ---------------------------------------------------------------------------
+# Nightly runtime eval suites + drift baseline check.
+#
+# Per ADR-032 (Pydantic Evals SSOT) and the eval-expansion plan §CI
+# Integration Strategy:
+#   - Smoke runs in ci.yml (architecture job) — CI-blocking, secret-free.
+#   - Runtime runs here, nightly, with NARRARE_EVAL_API_KEY.
+#   - Drift is WARNING-only (ratcheted baseline).
+#
+# This workflow is intentionally NOT triggered on push / pull_request.
+# It runs on a cron schedule and on manual dispatch only. Tier 2/3 suites
+# (analysis_metrics, kb_operations, planning_structure) are smoke-only by
+# plan; the runner skips them gracefully when invoked with
+# `--suite all --mode runtime`.
+# ---------------------------------------------------------------------------
+
+on:
+  schedule:
+    # 03:00 UTC daily — off-peak, gives the daytime CI queue room.
+    - cron: "0 3 * * *"
+  workflow_dispatch: {} # manual trigger for on-demand runtime runs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  runtime-eval:
+    name: Runtime Eval Suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Provider/model are configurable via repository variables so the
+      # nightly can be retargeted (e.g. to a cheaper model) without a
+      # workflow edit. API key is always a secret.
+      NARRARE_EVAL_PROVIDER: ${{ vars.NARRARE_EVAL_PROVIDER || 'openai' }}
+      NARRARE_EVAL_MODEL: ${{ vars.NARRARE_EVAL_MODEL || 'gpt-5-mini' }}
+      NARRARE_EVAL_API_KEY: ${{ secrets.NARRARE_EVAL_API_KEY }}
+      NARRARE_EVAL_BASE_URL: ${{ vars.NARRARE_EVAL_BASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-packages --group dev
+
+      # Fail fast and clearly if the secret wasn't configured — otherwise
+      # every runtime task would fail one-by-one with a confusing provider
+      # auth error and the nightly would be red for the wrong reason.
+      - name: Verify runtime API key is present
+        env:
+          NARRARE_EVAL_API_KEY: ${{ secrets.NARRARE_EVAL_API_KEY }}
+        run: |
+          if [ -z "$NARRARE_EVAL_API_KEY" ]; then
+            echo "::error::NARRARE_EVAL_API_KEY secret is not set. Runtime evals require a provider API key."
+            exit 1
+          fi
+          echo "NARRARE_EVAL_API_KEY is present (length: ${#NARRARE_EVAL_API_KEY})."
+
+      - name: Run runtime eval suites
+        run: |
+          uv run python -m evals run \
+            --suite all \
+            --mode runtime \
+            --results-dir evals/results
+
+      # Drift is WARNING-only by design (ratcheted baseline). A regression
+      # surfaces in the log and via the step conclusion, but does not fail
+      # the nightly — the goal is observability, not gating. Update
+      # baselines deliberately with `--update-baselines` in a follow-up.
+      - name: Check eval drift (WARNING-only, non-blocking)
+        continue-on-error: true
+        run: |
+          uv run python scripts/check_eval_drift.py --results-dir evals/results
+
+      # Always upload results so regressions can be inspected even when
+      # the drift step is green (e.g. new failures that haven't yet been
+      # baselined).
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-results-${{ github.run_id }}
+          path: evals/results/*.json
+          retention-days: 30

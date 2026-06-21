@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "created_at": "2026-06-21T06:15:14.662602+00:00",
+  "source_file": "kb_operations",
+  "test_cases": {
+    "kb-agent-search-intent": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-agent-lookup-intent": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-agent-related-intent": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-assist-question-mode": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-assist-suggestion-mode": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-assist-draft-mode": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-assist-complete-mode": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-improve-missing-field": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-improve-connect-entity": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-improve-reorganize-entry": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-merge-duplicate-pair": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-merge-distinct-pair": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    },
+    "kb-merge-uncertain-pair": {
+      "avg_score": 1.0,
+      "success_rate": 1.0,
+      "run_count": 1
+    }
+  },
+  "summary": {
+    "avg_score": 1.0,
+    "total_test_cases": 13
+  }
+}

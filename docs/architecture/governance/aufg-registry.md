@@ -1191,20 +1191,31 @@ the smoke/runtime/optional-LLM-judge distinction.
 |-------|-------|
 | ID | AUFG-03-07 |
 | Source | review-03-ai-features.md §Aufgaben; consolidated in review-05-release.md §5. |
-| Status | `in_progress` |
+| Status | `resolved` |
 | Priority | P2 |
 | Area | AI, Testing, evaluation coverage |
 | Owner role | Core/AI Specialist with Platform CI support |
 | Review trigger/date | Re-review when a new eval dataset/suite is added or when the eval-expansion roadmap is revised. |
 
-**Exit evidence (partial, 2026-06-20):** Eval coverage has broadened from the
-original 3 suites (KB Extraction, Rewrite Selection, Preference Analysis) to 6
-datasets under `evals/datasets/` (now also `analysis_feedback`, `chat_generation`,
-`consistency_staged`), with matching evaluators under `evals/evaluators/`. The
-prioritized expansion plan lives at `_audit/results/technical-review/eval-expansion-plan.md`.
-Further broadening across remaining AI surfaces (more analysis agents, planning,
-worldbuilding, names) and a dedicated nightly runtime workflow remain open and are
-tracked here as ongoing work. This is real in-progress lifecycle debt, not closure.
+**Exit evidence (2026-06-21):** Eval coverage now spans all 19 AI agents across
+9 datasets under `evals/datasets/` — the original 6 suites (KB Extraction, Rewrite
+Selection, Preference Analysis, Analysis Feedback, Chat Generation, Consistency
+Staged) plus 3 new suites added in this cycle: `analysis_metrics` (Readability,
+POV Detection, Chapter Summary), `planning_structure` (Outline, Character Arc,
+Timeline, Worldbuilding), and `kb_operations` (KB Agent, KB Assist, KB Improve, KB
+Merge). Matching evaluators live under `evals/evaluators/` and drift baselines
+exist for all 9 suites under `evals/baselines/`. All 9 suites are smoke-green in
+CI (`uv run python -m evals run --suite all --mode smoke` runs in the
+`architecture` job). A dedicated nightly runtime workflow
+(`.github/workflows/eval-nightly.yml`) exercises the 6 Tier-1 runtime suites
+against a real provider via the `NARRARE_EVAL_API_KEY` secret. The 3 new
+Tier-2/3 suites (`analysis_metrics`, `planning_structure`, `kb_operations`) are
+smoke-only: they ship dataset + evaluator + structural validators but no runtime
+task yet, so the runner skips them gracefully in `--mode runtime` rather than
+failing. Real runtime validation for these 3 suites requires adding runtime tasks
+plus the `NARRARE_EVAL_API_KEY` secret in CI. Test coverage: 67 eval unit tests
+under `tests/unit/evals/` covering dataset shape, evaluator logic, runner
+behaviour, and drift detection.
 
 ---
 

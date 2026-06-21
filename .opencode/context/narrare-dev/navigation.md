@@ -12,7 +12,7 @@ Extracted context for the Narrare AI writing tool project.
 
 | File | Source | Priority | Description |
 |------|--------|----------|-------------|
-| `rules.md` | CONSTRAINTS.md (766 lines) | critical | 22 machine-enforced rules, enforcement summary, approved exceptions |
+| `rules.md` | CONSTRAINTS.md (766 lines) | critical | 23 machine-enforced rules, enforcement summary, approved exceptions |
 
 ---
 
@@ -85,7 +85,7 @@ Extracted context for the Narrare AI writing tool project.
 | `design-tokens.md` | ui-principles.md (820 lines) | high | Color palette (light/dark), radii, typography, CSS architecture |
 | `tech-stack.md` | TECH_STACK.md (343 lines) | medium | All dependencies with rationale, explicitly NOT used table |
 | `justfile-commands.md` | deployment-guide.md (442 lines) | medium | All `just` commands |
-| `adr-index.md` | architecture/decisions/INDEX.md | medium | 22 ADRs with status and affected modules |
+| `adr-index.md` | architecture/decisions/INDEX.md | medium | 50 ADRs with status and affected modules |
 | `feature-index.md` | features/INDEX.md (234 lines) | medium | Feature registry grouped by status |
 | `mvp-plan.md` | mvp-plan.md (748 lines) | medium | Phases 0-6 summary, definition of done |
 
@@ -96,7 +96,7 @@ Extracted context for the Narrare AI writing tool project.
 | File | Source | Priority | Description |
 |------|--------|----------|-------------|
 | `architectural-discipline.md` | Project conventions | critical | Quality mandate, root cause first, no workarounds, sustainability check, streaming required |
-| `architecture-rules.md` | CONSTRAINTS.md (766 lines) | critical | 22 machine-enforced rules with enforcement summary and approved exceptions |
+| `architecture-rules.md` | CONSTRAINTS.md (766 lines) | critical | 23 machine-enforced rules with enforcement summary and approved exceptions |
 | `code-graph-first.md` | AGENTS.md (MCP Tools) | critical | ALWAYS query graph before Read/Glob/Grep; tool selection guide, workflow, fallback rules |
 | `prompt-standards.md` | prompt-standards.md (641 lines) | high | Prompt quality standards: system prompt consistency, evaluation framework, template patterns, ADR-037 manifest conformance |
 | `python-standards.md` | coding-standards.md (Python) | high | Python 3.14 typing, naming, async, error handling, DI, SQLAlchemy, docstrings |
