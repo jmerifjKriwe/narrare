@@ -475,7 +475,7 @@ per `docs/development/finding-lifecycle.md`.
 | CR-AUFG-07-14 | A | §16 Consistency/i18n fallback hardening | `resolved` | P1 | Remove hardcoded visible fallbacks such as `t(...) || "..."`; fix Consistency error fallback; add checker preventing reintroduction. |
 | CR-AUFG-07-15 | A | GhostText visible error affordance | `resolved` | P1 | Decide and implement non-blocking localized GhostText error affordance; inventory and tests cover error/retry semantics. |
 | CR-AUFG-07-16 | B | PROMPT-003 contract-first implementation | `open` | P1 | Provider-free resolved preview, variable metadata/provenance, diagnostics, reset semantics, optional SSE live test, and contract tests across Core/Backend/Frontend. |
-| CR-AUFG-07-17 | B | ONBOARD-001 KB + Storyboard + AI aha moment | `open` | P2 | Add conceptual tour/story explaining how KB and Storyboard shape AI output; do not downgrade ONBOARD-001’s stable base scope. |
+| CR-AUFG-07-17 | B | ONBOARD-001 KB + Storyboard + AI aha moment | `resolved` | P2 | Implemented: 3 new conceptual tour steps (KB→AI, Storyboard→AI, before/after demo) in `feature-tour-steps.ts`; DE/EN/FR `studio.json` keys; replay path intact. Enforcement: `feature-tour-concept-steps.test.tsx`, `tour-no-overclaim.test.ts` (RULE-22 over-claim guard), `just check-ai-ux`, i18n parity gate. ONBOARD-001’s stable base scope is unchanged. |
 | CR-AUFG-07-18 | C | Standardized diff view across AI outputs | `open` | P2 | Shared diff vocabulary/component contract for Rewrite, Co-Author, KB Enhance, and Beta Reader. |
 | CR-AUFG-07-19 | C | Prompt history | `open` | P2 | Prompt override history/restore/compare semantics after PROMPT-003 contracts exist. |
 | CR-AUFG-07-20 | C | Slash commands for AI actions | `open` | P3 | Command grammar, i18n discoverability, TipTap conflict handling, and routed AI action tests. |
@@ -494,7 +494,7 @@ per `docs/development/finding-lifecycle.md`.
 
 **Exit evidence:**
 
-Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B/C items remain pending.
+Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). CR-AUFG-07-16 and Phase C items remain pending.
 
 #### CR-AUFG-07-14 — §16 Consistency/i18n fallback hardening
 

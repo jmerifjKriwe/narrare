@@ -40,4 +40,19 @@ export const FEATURE_TOUR_STEPS: TourStep[] = [
     titleKey: "tour.step6.title",
     descriptionKey: "tour.step6.description",
   },
+  {
+    // Conceptual: KB → Context → AI (centered tooltip, no DOM target)
+    titleKey: "tour.step7.title",
+    descriptionKey: "tour.step7.description",
+  },
+  {
+    // Conceptual: Storyboard → Chapter → AI
+    titleKey: "tour.step8.title",
+    descriptionKey: "tour.step8.description",
+  },
+  {
+    // Conceptual: before/after demo moment
+    titleKey: "tour.step9.title",
+    descriptionKey: "tour.step9.description",
+  },
 ];

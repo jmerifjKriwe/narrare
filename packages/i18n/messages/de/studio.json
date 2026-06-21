@@ -1764,6 +1764,18 @@
       "title": "Einstellungen",
       "description": "Hier kannst du KI-Einstellungen, Schreibziele und Tastenkürzel anpassen."
     },
+    "step7": {
+      "title": "Wie Narrare denkt — Teil 1: Knowledge Base",
+      "description": "Deine Knowledge Base enthält die Fakten deiner Welt: Figuren, Orte, Fraktionen. Wenn du die KI bittest, ein Kapitel zu schreiben oder fortzusetzen, kann Narrare die relevanten Einträge in den Prompt aufnehmen — sodass die Vorschläge der KI zu deiner Welt passen, anstatt generische Details zu erfinden. Je mehr du in deine KB einträgst, desto kohärenter werden künftige Vorschläge."
+    },
+    "step8": {
+      "title": "Wie Narrare denkt — Teil 2: Storyboard & Kapitel",
+      "description": "Dein Storyboard plant den Erzählbogen, und jedes Kapitel trägt seine eigene Gliederung. Beim Planen und Schreiben macht Narrare diese Struktur der KI sichtbar — sodass Vorschläge respektieren, wo du in der Geschichte stehst, anstatt vom Kurs abzukommen."
+    },
+    "step9": {
+      "title": "Vorher / Nachher — ein kurzes Beispiel",
+      "description": "Ohne KB-Kontext könnte die KI schreiben: 'Eine Frau betrat den Raum.' Mit deinem KB-Eintrag für Anna Müller — einer Lehrerin aus der Stadt — kann die KI schreiben: 'Anna Müller, immer noch dabei, Kreidestaub von ihrem Ärmel zu klopfen, trat in die kerzenbeleuchtete Bibliothek.' Dieser Unterschied entsteht, wenn du deine KB füllst. (Beispiel inspiriert vom Demo-Projekt 'Echoes of the Thornwall'.)"
+    },
     "skip": "Überspringen",
     "back": "Zurück",
     "next": "Weiter",

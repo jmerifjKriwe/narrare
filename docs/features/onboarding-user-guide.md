@@ -67,9 +67,10 @@ integriert und erweitert.
 ### CR-07 Follow-up v3: Conceptual Aha Moment
 
 ONBOARD-001 bleibt `stable`, weil die ursprünglich spezifizierten Demo-, Tour-
-und Tooltip-Funktionen umgesetzt sind. CR-07 Follow-up v3 ergänzt jedoch eine
-separate offene Lifecycle-Aufgabe: `CR-AUFG-07-17` in
-`docs/architecture/governance/cr-07-followup-v3.md`.
+und Tooltip-Funktionen umgesetzt sind. CR-07 Follow-up v3 löst zusätzlich die
+separate Lifecycle-Aufgabe `CR-AUFG-07-17` in
+`docs/architecture/governance/cr-07-followup-v3.md`; nur diese Follow-up-AUFG
+ist damit `resolved`, nicht ein neuer ONBOARD-001-Basisumfang.
 
 Diese Aufgabe ist kein weiterer Feature-Ort in der Tour, sondern eine
 konzeptionelle Erklärung: Nutzer sollen verstehen, wie **KB**, **Storyboard**
@@ -111,7 +112,7 @@ ist.
 |------------|------|-------|
 | `FeatureTour` | `components/ui/feature-tour.tsx` (192 Zeilen) | Custom Tour-Komponente mit Spotlight, Keyboard-Navigation, `localStorage`-Persistenz, i18n |
 | `TourStep` Interface | Exportiert aus `feature-tour.tsx` | `{ target?, titleKey, descriptionKey }` — CSS-Selector oder zentriert |
-| `FEATURE_TOUR_STEPS` | `lib/config/feature-tour-steps.ts` | 6 Steps konfiguriert (Editor, Nav, AI-Toolbar, GhostText, Worldbuilding, Settings) |
+| `FEATURE_TOUR_STEPS` | `lib/config/feature-tour-steps.ts` | 9 Steps konfiguriert: 6 Basis-Steps (Editor, Nav, AI-Toolbar, GhostText, Worldbuilding, Settings) plus 3 konzeptionelle Steps für KB→AI, Storyboard→AI und Before/After-Demo |
 | `requestFeatureTour()` | Helper in `feature-tour.tsx` | Setzt `localStorage`-Flag, das FeatureTour startet |
 | Tour-Trigger | `useQuickStart.ts:48` | Ruft `requestFeatureTour()` nach Quick-Start auf |
 | `GhostTextOnboarding` | `components/editor/GhostTextOnboarding.tsx` (112 Zeilen) | Einmaliges GhostText-Tooltip mit `localStorage`-Tracking |
@@ -224,6 +225,12 @@ Nicht anwendbar — keine KI-Ladezustände.
   for the conceptual KB + Storyboard + AI aha moment. Base feature status remains
   `stable`; the follow-up is not resolved until implementation + enforcement
   evidence exists in the AUFG registry.
+- `2026-06-21` — CR-07 Follow-up v3 Phase B (CR-AUFG-07-17) implemented:
+  three new conceptual tour steps (`tour.step7`, `step8`, `step9`) explaining
+  how KB and Storyboard shape AI output, with a concrete before/after demo
+  moment. ONBOARD-001 base scope is unchanged and remains `stable`; only the
+  follow-up AUFG is `resolved` after `tour-no-overclaim.test.ts`, `just check-ai-ux`,
+  frontend size, targeted Biome/Vitest, and i18n parity gates passed.
 
 ---
 

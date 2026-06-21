@@ -1764,6 +1764,18 @@
       "title": "Settings",
       "description": "Customize AI settings, writing goals, and keyboard shortcuts."
     },
+    "step7": {
+      "title": "How Narrare Thinks — Part 1: Knowledge Base",
+      "description": "Your Knowledge Base holds the facts of your world: characters, locations, factions. When you ask the AI to write or extend a chapter, Narrare can include the relevant entries in the prompt — so the AI's suggestions fit your world instead of inventing generic detail. Add to your KB and future suggestions become more coherent."
+    },
+    "step8": {
+      "title": "How Narrare Thinks — Part 2: Storyboard & Chapters",
+      "description": "Your Storyboard plans the narrative arc, and each chapter carries its own outline. For planning and writing, Narrare makes that structure visible to the AI — so suggestions respect where you are in the story instead of drifting off-course."
+    },
+    "step9": {
+      "title": "Before / After — A Quick Example",
+      "description": "Without KB context, the AI might write: 'A woman entered the room.' With your KB entry for Anna Müller — a teacher from the city — the AI can write: 'Anna Müller, still dusting chalk from her sleeve, stepped into the candlelit archive.' That is the difference filling your KB makes. (Example inspired by the demo project 'Echoes of the Thornwall'.)"
+    },
     "skip": "Skip",
     "back": "Back",
     "next": "Next",

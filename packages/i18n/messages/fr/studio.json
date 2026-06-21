@@ -1764,6 +1764,18 @@
       "title": "Paramètres",
       "description": "Personnalisez les paramètres IA, les objectifs d'écriture et les raccourcis clavier."
     },
+    "step7": {
+      "title": "Comment Narrare pense — Partie 1 : la Knowledge Base",
+      "description": "Votre Knowledge Base contient les faits de votre univers : personnages, lieux, factions. Quand vous demandez à l'IA d'écrire ou de prolonger un chapitre, Narrare peut inclure les entrées pertinentes dans le prompt — pour que les suggestions de l'IA s'intègrent à votre univers au lieu d'inventer des détails génériques. Plus vous enrichissez votre KB, plus vos suggestions deviennent cohérentes."
+    },
+    "step8": {
+      "title": "Comment Narrare pense — Partie 2 : Storyboard & chapitres",
+      "description": "Votre Storyboard planifie l'arc narratif, et chaque chapitre porte son propre plan. Pour la planification et l'écriture, Narrare rend cette structure visible à l'IA — pour que les suggestions respectent où vous en êtes dans l'histoire au lieu de s'égarer."
+    },
+    "step9": {
+      "title": "Avant / Après — un exemple rapide",
+      "description": "Sans contexte KB, l'IA pourrait écrire : « Une femme entra dans la pièce. » Avec votre entrée KB pour Anna Müller — une enseignante de la ville — l'IA peut écrire : « Anna Müller, époussetant encore la craie de sa manche, pénétra dans les archives éclairées aux bougies. » C'est la différence que procure une KB remplie. (Exemple inspiré du projet de démonstration « Echoes of the Thornwall ».)"
+    },
     "skip": "Ignorer",
     "back": "Retour",
     "next": "Suivant",
