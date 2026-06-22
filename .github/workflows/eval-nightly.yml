@@ -53,20 +53,27 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-packages --group dev
 
-      # Fail fast and clearly if the secret wasn't configured — otherwise
-      # every runtime task would fail one-by-one with a confusing provider
-      # auth error and the nightly would be red for the wrong reason.
+      # If the API key isn't configured the runtime evals can't run, but
+      # we skip gracefully instead of failing — the key may be absent in
+      # forks or when the workflow is run from a branch that doesn't have
+      # the secret. Smoke evals in ci.yml cover the deterministic paths.
       - name: Verify runtime API key is present
+        id: verify
         env:
           NARRARE_EVAL_API_KEY: ${{ secrets.NARRARE_EVAL_API_KEY }}
         run: |
           if [ -z "$NARRARE_EVAL_API_KEY" ]; then
-            echo "::error::NARRARE_EVAL_API_KEY secret is not set. Runtime evals require a provider API key."
-            exit 1
+            echo "::warning::NARRARE_EVAL_API_KEY secret is not set. Runtime evals will be skipped. To run, add the secret to repository settings."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           echo "NARRARE_EVAL_API_KEY is present (length: ${#NARRARE_EVAL_API_KEY})."
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
 
       - name: Run runtime eval suites
+        if: steps.verify.outputs.skipped != 'true'
+        env:
+          NARRARE_EVAL_API_KEY: ${{ secrets.NARRARE_EVAL_API_KEY }}
         run: |
           uv run python -m evals run \
             --suite all \
@@ -78,15 +85,16 @@ jobs:
       # the nightly — the goal is observability, not gating. Update
       # baselines deliberately with `--update-baselines` in a follow-up.
       - name: Check eval drift (WARNING-only, non-blocking)
+        if: steps.verify.outputs.skipped != 'true'
         continue-on-error: true
         run: |
           uv run python scripts/check_eval_drift.py --results-dir evals/results
 
-      # Always upload results so regressions can be inspected even when
-      # the drift step is green (e.g. new failures that haven't yet been
-      # baselined).
+      # Upload results when evals actually ran, even if a step failed, so
+      # regressions can be inspected (e.g. new failures that haven't yet
+      # been baselined).
       - name: Upload eval results
-        if: always()
+        if: always() && steps.verify.outputs.skipped != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: eval-results-${{ github.run_id }}
