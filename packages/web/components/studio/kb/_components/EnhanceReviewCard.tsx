@@ -9,6 +9,9 @@
 
 import { Check, X } from "lucide-react";
 
+import { AIDiffView } from "@/components/shared/ai-diff/AIDiffView";
+import { kbEnhanceFieldAdapter } from "@/lib/ai-diff/adapters/kb-enhance";
+import type { AIDiffState } from "@/lib/ai-diff/contracts";
 import type { KBEnhancementResult } from "@/lib/api/kb-sessions";
 
 type TranslationValues = Record<string, string | number | Date>;
@@ -63,25 +66,14 @@ export function EnhanceReviewCard({
         </div>
       </button>
 
-      {/* Before/After comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
-        {/* Original */}
-        <div className="p-4">
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-            {t("kb.original")}
-          </div>
-          <div className="text-sm text-muted-foreground whitespace-pre-wrap line-through opacity-70">
-            {enhancement.original || <span className="italic">{t("kb.empty")}</span>}
-          </div>
-        </div>
-
-        {/* Suggested */}
-        <div className="p-4">
-          <div className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">
-            {t("kb.suggested")}
-          </div>
-          <div className="text-sm whitespace-pre-wrap">{enhancement.suggested}</div>
-        </div>
+      {/* Before/After comparison via shared field-mode AIDiffView (CR-AUFG-07-18).
+          The field label is already shown in the header button above, so it is
+          passed as null here to avoid a duplicate label inside AIDiffView. */}
+      <div className="px-4 py-3">
+        <AIDiffView
+          viewModel={kbEnhanceFieldAdapter(enhancement, null)}
+          state={isSelected ? ("accepted" satisfies AIDiffState) : "suggested"}
+        />
       </div>
 
       {/* Reasoning */}

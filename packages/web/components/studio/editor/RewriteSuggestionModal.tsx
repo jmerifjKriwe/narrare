@@ -3,9 +3,10 @@
 import { AlertTriangle, Check, Loader2, Sparkles } from "lucide-react";
 import type { useTranslations } from "next-intl";
 import { useEffect } from "react";
+import { AIDiffView } from "@/components/shared/ai-diff/AIDiffView";
 import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
+import { rewriteAdapter } from "@/lib/ai-diff/adapters/rewrite";
 import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
-import { InlineDiff } from "./InlineDiff";
 import { RewriteModalFooter } from "./RewriteModalFooter";
 import type { AISuggestion } from "./TipTapEditorController";
 
@@ -96,7 +97,23 @@ export function RewriteSuggestionModal({
                 )}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <InlineDiff original={aiSuggestion.original} alternative={suggestion} />
+                    {/*
+                      CR-AUFG-07-18: shared AIDiffView (text mode). The label
+                      is passed via the adapter so the badge + label grouping is
+                      consistent across Rewrite/Co-Author/KB Enhance. The
+                      standalone label <p> above is kept for visual hierarchy;
+                      the adapter receives null here to avoid a duplicate label
+                      inside AIDiffView's header.
+                    */}
+                    <AIDiffView
+                      viewModel={rewriteAdapter(
+                        aiSuggestion.original,
+                        suggestion,
+                        null,
+                        isRewriteStreaming,
+                      )}
+                      state="suggested"
+                    />
                   </div>
                   {selectedSuggestion === index && (
                     <Check className="w-5 h-5 text-primary flex-shrink-0" />

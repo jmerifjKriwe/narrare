@@ -1713,12 +1713,6 @@
     "errorConnecting": "Erreur de connexion",
     "clearConversation": "Effacer la conversation"
   },
-  "changeReview": {
-    "accepted": "Accepté",
-    "rejected": "Rejeté",
-    "original": "Original",
-    "revised": "Révisé"
-  },
   "tokenSettings": {
     "title": "Paramètres de tokens",
     "profile": "Profil",
@@ -1769,6 +1763,17 @@
     "errorConnection": "Connexion perdue. Vérifiez votre connexion internet.",
     "errorParse": "La réponse de l'IA était malformée. Réessayez.",
     "errorDefault": "Une erreur inattendue s'est produite. Réessayez."
+  },
+  "aiDiff": {
+    "added": "Ajouté",
+    "removed": "Supprimé",
+    "unchanged": "Inchangé",
+    "accepted": "Accepté",
+    "rejected": "Rejeté",
+    "srSummary": "{added} ajout(s) et {removed} suppression(s)",
+    "acceptChange": "Accepter la modification",
+    "rejectChange": "Rejeter la modification",
+    "provisional": "Provisoire"
   },
   "tour": {
     "step1": {

@@ -1713,12 +1713,6 @@
     "errorConnecting": "Connection error",
     "clearConversation": "Clear conversation"
   },
-  "changeReview": {
-    "accepted": "Accepted",
-    "rejected": "Rejected",
-    "original": "Original",
-    "revised": "Revised"
-  },
   "tokenSettings": {
     "title": "Token Settings",
     "profile": "Profile",
@@ -1769,6 +1763,17 @@
     "errorConnection": "Connection lost. Check your internet connection.",
     "errorParse": "The AI response was malformed. Try again.",
     "errorDefault": "An unexpected error occurred. Try again."
+  },
+  "aiDiff": {
+    "added": "Added",
+    "removed": "Removed",
+    "unchanged": "Unchanged",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "srSummary": "{added} addition(s) and {removed} removal(s)",
+    "acceptChange": "Accept change",
+    "rejectChange": "Reject change",
+    "provisional": "Provisional"
   },
   "tour": {
     "step1": {

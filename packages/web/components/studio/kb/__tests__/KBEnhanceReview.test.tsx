@@ -157,6 +157,38 @@ describe("KBEnhanceReview", () => {
     expect(screen.getByText("Sir Aldric the Valiant")).toBeDefined();
   });
 
+  // -------------------------------------------------------------------------
+  // CR-AUFG-07-18 Task 15: field-mode AIDiffView adoption
+  // -------------------------------------------------------------------------
+
+  it("renders the before/after comparison via the shared AIDiffView (field mode)", async () => {
+    const onRequestEnhance = vi.fn().mockResolvedValue(mockEnhancements);
+
+    const { container } = render(
+      <KBEnhanceReview
+        session={mockSession}
+        onRequestEnhance={onRequestEnhance}
+        onAcceptEnhancement={vi.fn()}
+        onApplySelected={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("kb.enhanceReview")).toBeDefined();
+    });
+
+    // Field mode renders whole-value columns via the shared AIDiffView, using
+    // the canonical aiActions.* header keys (NOT kb.original/kb.suggested).
+    expect(screen.getAllByText("aiActions.original").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("aiActions.suggested").length).toBeGreaterThan(0);
+
+    // Field mode must NEVER produce inline <ins>/<del> segments — structured
+    // fields are compared as whole values, not as prose diffs (AC #3).
+    expect(container.querySelector("ins")).toBeNull();
+    expect(container.querySelector("del")).toBeNull();
+  });
+
   it("auto-selects all enhancements by default", async () => {
     const onRequestEnhance = vi.fn().mockResolvedValue(mockEnhancements);
 

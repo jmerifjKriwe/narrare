@@ -53,6 +53,7 @@ operations:
     signal_propagation: "execute: async (signal) passes signal to streamRewrite"
     error_mapping: mapSSEError (ai-error-mapping.ts)
     partial_output: "Streaming alternatives preserved until accept/reject"
+    shared_diff_view: "packages/web/components/shared/ai-diff/AIDiffView via lib/ai-diff/adapters/rewrite.ts (CR-AUFG-07-18)"
     ai_action_i18n: studio.aiActions.accept / .reject / .replace / .insertAsNew
     deprecated_key_usage: "rewrite.cancel and rewrite.replace deprecated aliases absent"
     keyboard: "Ctrl/Cmd+Enter accept via lib/ai-action-shortcuts.ts (CR-AUFG-07-13)"
@@ -95,6 +96,7 @@ operations:
     signal_propagation: "execute: async (signal) passes signal to streamCoAuthor"
     error_mapping: mapSSEError (ai-error-mapping.ts)
     partial_output: "Per-changelist acceptance map preserves partial output"
+    shared_diff_view: "packages/web/components/shared/ai-diff/AIDiffView via lib/ai-diff/adapters/coauthor.ts (CR-AUFG-07-18)"
     ai_action_i18n: studio.aiActions.acceptAll / .rejectAll / .applySelected
     deprecated_key_usage: "coAuthor.acceptAll/rejectAll/applySelected deprecated aliases absent"
     keyboard: "Ctrl/Cmd+Enter accept/apply in Co-Author Review (CR-AUFG-07-13)"
@@ -163,6 +165,7 @@ operations:
     signal_propagation: "execute: (signal) => onRequestEnhance(signal) — signal reaches requestEnhance"
     error_mapping: mapSSEError (ai-error-mapping.ts)
     partial_output: "Before/after comparison preserved per field"
+    shared_diff_view: "packages/web/components/shared/ai-diff/AIDiffView (field mode) via lib/ai-diff/adapters/kb-enhance.ts (CR-AUFG-07-18)"
     ai_action_i18n: studio.aiActions.acceptAll / .rejectAll / .applySelected / .original / .suggested
     deprecated_key_usage: "aiModal.original migrated to aiActions.original (CR-AUFG-07-12)"
     keyboard: "Ctrl/Cmd+Enter apply in KB Enhance Review (CR-AUFG-07-13)"

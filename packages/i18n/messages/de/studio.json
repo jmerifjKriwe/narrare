@@ -1713,12 +1713,6 @@
     "errorConnecting": "Verbindungsfehler",
     "clearConversation": "Gespräch löschen"
   },
-  "changeReview": {
-    "accepted": "Akzeptiert",
-    "rejected": "Abgelehnt",
-    "original": "Original",
-    "revised": "Überarbeitet"
-  },
   "tokenSettings": {
     "title": "Token-Einstellungen",
     "profile": "Profil",
@@ -1769,6 +1763,17 @@
     "errorConnection": "Verbindung verloren. Prüfe deine Internetverbindung.",
     "errorParse": "Die KI-Antwort war fehlerhaft. Versuche es erneut.",
     "errorDefault": "Ein unerwarteter Fehler ist aufgetreten. Versuche es erneut."
+  },
+  "aiDiff": {
+    "added": "Hinzugefügt",
+    "removed": "Entfernt",
+    "unchanged": "Unverändert",
+    "accepted": "Akzeptiert",
+    "rejected": "Abgelehnt",
+    "srSummary": "{added} Ergänzung(en) und {removed} Streichung(en)",
+    "acceptChange": "Änderung übernehmen",
+    "rejectChange": "Änderung verwerfen",
+    "provisional": "Vorläufig"
   },
   "tour": {
     "step1": {

@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-22 (CR-07 Follow-up v3 Phase B PROMPT-003 resolved — CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`. Phase A resolved 2026-06-21 — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
+> **Last updated:** 2026-06-22 (CR-07 Phase C CR-AUFG-07-18 resolved — shared AI-diff vocabulary implementation + enforcement evidence complete; feature spec remains `planned` pending user closure confirmation. CR-07 Follow-up v3 Phase B PROMPT-003 resolved — CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`. Phase A resolved 2026-06-21 — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -476,7 +476,7 @@ per `docs/development/finding-lifecycle.md`.
 | CR-AUFG-07-15 | A | GhostText visible error affordance | `resolved` | P1 | Decide and implement non-blocking localized GhostText error affordance; inventory and tests cover error/retry semantics. |
 | CR-AUFG-07-16 | B | PROMPT-003 contract-first implementation | `resolved` | P1 | Provider-free resolved preview, variable metadata/provenance, diagnostics, reset semantics, optional SSE live test, and contract tests across Core/Backend/Frontend. Exit evidence 2026-06-22 — see sub-section below. |
 | CR-AUFG-07-17 | B | ONBOARD-001 KB + Storyboard + AI aha moment | `resolved` | P2 | Implemented: 3 new conceptual tour steps (KB→AI, Storyboard→AI, before/after demo) in `feature-tour-steps.ts`; DE/EN/FR `studio.json` keys; replay path intact. Enforcement: `feature-tour-concept-steps.test.tsx`, `tour-no-overclaim.test.ts` (RULE-22 over-claim guard), `just check-ai-ux`, i18n parity gate. ONBOARD-001’s stable base scope is unchanged. |
-| CR-AUFG-07-18 | C | Standardized diff view across AI outputs | `open` | P2 | Shared diff vocabulary/component contract for Rewrite, Co-Author, KB Enhance, and Beta Reader. |
+| CR-AUFG-07-18 | C | Standardized diff view across AI outputs | `resolved` | P2 | Shared diff vocabulary/component contract for Rewrite, Co-Author, KB Enhance, and Beta Reader. Exit evidence 2026-06-22 — see sub-section below. |
 | CR-AUFG-07-19 | C | Prompt history | `open` | P2 | Prompt override history/restore/compare semantics after PROMPT-003 contracts exist. |
 | CR-AUFG-07-20 | C | Slash commands for AI actions | `open` | P3 | Command grammar, i18n discoverability, TipTap conflict handling, and routed AI action tests. |
 | CR-AUFG-07-21 | C | SessionPanel server-side stop and WebSocket recovery | `open` | P2 | Stop reaches server-side session state; connection-loss recovery preserves partial state and is tested. |
@@ -494,7 +494,7 @@ per `docs/development/finding-lifecycle.md`.
 
 **Exit evidence:**
 
-Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). Phase B PROMPT-003 (CR-AUFG-07-16) — Resolved (2026-06-22). Phase C items remain pending.
+Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). Phase B PROMPT-003 (CR-AUFG-07-16) — Resolved (2026-06-22). Phase C diff-view standardization (CR-AUFG-07-18) — Resolved (2026-06-22). Remaining Phase C items (CR-AUFG-07-19 through CR-AUFG-07-24) are pending.
 
 #### CR-AUFG-07-14 — §16 Consistency/i18n fallback hardening
 
@@ -545,6 +545,26 @@ Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboar
   - `just check-ai-ux` — inventory entry `settings.prompts.live_test` (status `compliant`); Check 10 validates the §4 inventory fields; Check 7 validates `PromptLiveTestDialog.tsx` execute-signal propagation.
   - `scripts/check_frontend_file_size.py` — enforces the modularized PromptEditor split under file-size limits.
 - **Validation:** `just check-ai-ux` reports 18 operations, 0 violations, 0 stale excludes; live-test signal propagation (Check 7) green; inventory completeness (Check 10) green. PROMPT-003 DoD ticked with evidence references and promoted to `stable` (2026-06-22).
+
+#### CR-AUFG-07-18 — Standardized diff view across AI outputs
+
+**Exit evidence (2026-06-22):** Resolved — implementation + enforcement complete. Shared AI-diff vocabulary adopted across Rewrite, Co-Author, and KB Enhance; Beta Reader adapter is honestly null (RULE-20). Feature spec remains `planned` pending user confirmation of full closure.
+- **Design:** RULE-03 (contract first); RULE-06 (one responsibility per file); RULE-16 (no hardcoded visible English); RULE-20 (no half implementation — Beta Reader null adapter); CR-AUFG-07-18 spec (`docs/features/ai-ux/CR-AUFG-07-18-diff-view-standardization.md`); CR-07 Phase C plan (`docs/superpowers/plans/2026-06-22-cr-07-phase-c-07-18-diff-view.md`). Frontend-only shared view model + domain adapters; no backend change; no new diffing dependency (reuses existing `diff-match-patch`).
+- **Implementation:**
+  - **Shared primitive** (`packages/web/lib/ai-diff/`): `contracts.ts` (`AIDiffState`, `AIDiffSegmentKind`, `AIDiffSegment`, `AIDiffMode`, `AIDiffViewModel` — pure types, no runtime); `segmentize.ts` (pure diff algorithm via `diff-match-patch` — single DRY source); `index.ts` (barrel re-export). RULE-07 direction preserved: `lib/` never imports `components/`.
+  - **Domain adapters** (`packages/web/lib/ai-diff/adapters/`): `rewrite.ts` (text-mode); `coauthor.ts` (text-mode, maps `ChangeDetail`); `kb-enhance.ts` (FIELD-mode — no inline prose diff per AC #3); `beta-reader.ts` (`isBetaReaderGrounded` returns `false`; `betaReaderGroundedAdapter` returns `null` — honest null, RULE-20).
+  - **Accessible component** (`packages/web/components/shared/ai-diff/`): `AIDiffSegmentList.tsx` (semantic `<ins>`/`<del>` + visible `+`/`−` markers + per-segment `aria-label` — NOT color alone); `AIDiffBadge.tsx` (state badge using `aiActions.suggested` + `aiDiff.*`); `AIDiffView.tsx` (composing primitive — `text`/`field` modes, provisional indicator, `role="group"` + sr-summary).
+  - **Adoption (existing flows preserved):** `packages/web/components/studio/editor/InlineDiff.tsx` (refactored — delegates to `segmentize` + `AIDiffSegmentList`, a11y upgraded); `packages/web/components/studio/editor/RewriteSuggestionModal.tsx` (adopts `AIDiffView` via `rewriteAdapter`; CR-AUFG-07-13 keyboard preserved); `packages/web/components/studio/editor/ChangeReview.tsx` (adopts `AIDiffView` via `coAuthorChangeAdapter`; hard-coded English aria-labels replaced with `aiDiff.acceptChange`/`rejectChange`); `packages/web/components/studio/kb/_components/EnhanceReviewCard.tsx` (adopts field-mode `AIDiffView` via `kbEnhanceFieldAdapter`).
+  - **i18n:** 9 new keys × 3 locales under `studio.aiDiff.*` in `packages/web/messages/{de,en,fr}/studio.json`; removed now-unused `studio.changeReview.*` after ChangeReview migration. Reuses canonical `studio.aiActions.{original,suggested}`.
+  - **Beta Reader (no UI change):** `packages/web/components/studio/analysis/BetaReaderPanel.tsx` unchanged — adapter returns `null`, feedback stays feedback (spec out-of-scope: fabricating Beta Reader text spans).
+- **Enforcement:**
+  - Vitest suites: `lib/ai-diff/__tests__/` (contracts, segmentize, barrel, 4 adapter suites — 26 tests); `components/shared/ai-diff/__tests__/` (AIDiffSegmentList, AIDiffBadge, AIDiffView — 14 tests); `components/studio/editor/__tests__/InlineDiff.test.tsx` (3 tests); `components/studio/editor/__tests__/ChangeReview.test.tsx` (6 tests); `components/studio/editor/__tests__/RewriteSuggestionModal.test.tsx` (11 tests, incl. `<ins>`/`<del>` + Ctrl+Enter keyboard); `components/studio/kb/__tests__/KBEnhanceReview.test.tsx` (17 tests, incl. field-mode assertion); `components/studio/analysis/__tests__/beta-reader-diff-honesty.test.tsx` (2 tests — null adapter honesty contract).
+  - `pnpm exec biome check` — 28 files clean.
+  - `npx tsx scripts/validate-i18n.ts` — i18n parity DE/EN/FR green, no fallback strings.
+  - `just check-ai-ux` — 12 checks, 0 violations, 0 stale excludes; Check 10 validates inventory (18 operations with required §4 fields); inventory entries `writing.rewrite`, `writing.co_author`, `kb.enhance` carry optional `shared_diff_view` field.
+  - `scripts/check_frontend_file_size.py` — 0 current violations, 0 new debt (all new files within RULE-04 limits: tsx ≤200, ts ≤400).
+  - `scripts/check_architecture.py` — 1770 files checked, 0 new violations.
+- **Validation:** All gates green. Foundation: 9 files / 34 tests pass. Adoption: 5 files / 41 tests pass. `just check-ai-ux` 0 violations. File-size 0 new debt. Architecture OK. Feature spec status remains `planned` until user confirms full closure — the AUFG is resolved with implementation + enforcement evidence per `docs/development/finding-lifecycle.md`.
 
 ---
 

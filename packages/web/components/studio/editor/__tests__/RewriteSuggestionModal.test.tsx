@@ -8,7 +8,7 @@
  * 4. Legacy Ctrl+Y / Ctrl+N no longer trigger (standardized away)
  */
 
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import { RewriteSuggestionModal } from "../RewriteSuggestionModal";
@@ -170,6 +170,41 @@ describe("RewriteSuggestionModal", () => {
 
       fireEvent.keyDown(window, { key: "Escape" });
       expect(onReject).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // CR-AUFG-07-18 Task 13: Shared AIDiffView adoption
+  // -------------------------------------------------------------------------
+  // The modal must render each alternative through the shared AIDiffView
+  // (badge + accessible diff) while preserving the CR-AUFG-07-13 keyboard
+  // contract. i18n keys are asserted literally (global next-intl mock).
+  // -------------------------------------------------------------------------
+
+  describe("shared AIDiffView adoption (CR-AUFG-07-18)", () => {
+    it("renders each alternative through AIDiffView (badge + accessible ins/del)", () => {
+      const { container } = render(<RewriteSuggestionModal {...defaultProps} />);
+
+      // AIDiffBadge renders the canonical "suggested" state key (one per alternative).
+      expect(screen.getAllByText("aiActions.suggested").length).toBeGreaterThan(0);
+      // Accessible diff segments via the shared renderer.
+      expect(container.querySelector("ins")).not.toBeNull();
+      expect(container.querySelector("del")).not.toBeNull();
+    });
+
+    it("shows the provisional indicator while streaming (AIDiffView provisional flag)", () => {
+      render(<RewriteSuggestionModal {...defaultProps} isRewriteStreaming={true} />);
+
+      expect(screen.getAllByText("aiDiff.provisional").length).toBeGreaterThan(0);
+    });
+
+    it("still triggers onAccept on Ctrl+Enter after adoption (CR-AUFG-07-13 preserved)", () => {
+      const onAccept = vi.fn();
+      render(<RewriteSuggestionModal {...defaultProps} onAccept={onAccept} />);
+
+      fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
+
+      expect(onAccept).toHaveBeenCalledTimes(1);
     });
   });
 });
