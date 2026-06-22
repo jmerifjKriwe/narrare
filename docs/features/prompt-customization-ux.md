@@ -1,7 +1,7 @@
 ---
 id: PROMPT-003
 title: "Prompt Customization UX"
-status: planned
+status: stable
 area: prompts
 mvp: false
 
@@ -307,20 +307,26 @@ Neue Schlüssel in `studio.json` unter `settings.ai.promptCustomization.*`:
 - `2026-06-21` — CR-07 Follow-up v3 linked PROMPT-003 to CR-AUFG-07-16 and
   clarified Core/Backend/Frontend contract-first boundaries. Status remains
   `planned`; no implementation or enforcement evidence exists yet.
+- `2026-06-22` — Phase B implemented; PROMPT-003 → `stable`. Contract-first
+  implementation across Core/Backend/Frontend (provider-free preview,
+  variable metadata/provenance, reset semantics, provider-gated SSE live test).
+  Enforcement: `test_preview_no_provider.py`, `test_prompt_preview_schema_contract.py`,
+  `test_prompt_ux_router.py`, `just check-ai-ux` (0 violations), `check_frontend_file_size.py`.
+  CR-AUFG-07-16 resolved; inventory entry `settings.prompts.live_test` added.
 
 ## Definition of Done
 
-- [ ] Prompt-Variablen-Panel zeigt alle `{{variablen}}` mit Beschreibung + Beispielwert
-- [ ] Providerfreie Preview (Prompt-Auflösung + Provenance + Diagnostics ohne KI) implementiert
-- [ ] Optionaler Live-Test (KI-Anfrage + Streaming-Vorschau) provider-/secret-gated implementiert
-- [ ] Reset-to-Default pro Intent mit Bestätigungsdialog implementiert
-- [ ] Warnhinweis vor Live-Test (Token-Verbrauch + Projektdaten an Provider)
-- [ ] i18n: Alle neuen UI-Texte in studio.json (de/en/fr)
-- [ ] Prompt-Variable-Metadaten (Beschreibung, Datenquelle) in Manifest-Datei gepflegt
-- [ ] Rate-Limiting für Live-Test-Endpoint (max. 5/min oder Settings-Wert)
-- [ ] Tests: Preview- + Test-Endpoint (Integration), Frontend-Komponenten (Vitest)
-- [ ] Bestehende PROMPT-001/PROMPT-002 funktionieren unverändert
-- [ ] Dokumentation: Feature-Spec auf stable gesetzt
+- [x] Prompt-Variablen-Panel zeigt alle `{{variablen}}` mit Beschreibung + Beispielwert — `VariableMetadataPanel.tsx`, `PromptVariablesAside.tsx`, `promptVariables.ts` (evidence: `PromptEditor.test.tsx`).
+- [x] Providerfreie Preview (Prompt-Auflösung + Provenance + Diagnostics ohne KI) implementiert — Core `preview.py`/`preview_types.py`/`contracts.py`, Backend `preview_service.py`/`router_prompt_ux.py` (`/preview`), Frontend `PromptPreviewDialog.tsx`; no-provider invariant enforced by `test_preview_no_provider.py`.
+- [x] Optionaler Live-Test (KI-Anfrage + Streaming-Vorschau) provider-/secret-gated implementiert — Core `agents/prompt_live_test_agent.py`, Backend `live_test_service.py`/`_live_test_sse.py`/`router_prompt_ux.py` (`/live-test`, 503 on missing provider), Frontend `usePromptLiveTest.ts`/`PromptLiveTestDialog.tsx` via `useAIOperation` + `streamPromptLiveTest` SSE.
+- [x] Reset-to-Default pro Intent mit Bestätigungsdialog implementiert — `preview_service.py` (`reset_with_metadata`), `router_prompt_ux.py` (`/reset`), `PromptResetConfirmDialog.tsx` (evidence: `PromptResetConfirmDialog.test.tsx`).
+- [x] Warnhinweis vor Live-Test (Token-Verbrauch + Projektdaten an Provider) — `usePromptLiveTest.ts` (`acknowledged` gate + `acknowledge_token_cost`), `tokenWarning` i18n key.
+- [x] i18n: Alle neuen UI-Texte in studio.json (de/en/fr) — `packages/i18n/messages/{de,en,fr}/studio.json` → `settings.prompts.promptCustomization.*` (3-locale parity).
+- [x] Prompt-Variable-Metadaten (Beschreibung, Datenquelle) gepflegt — `packages/core/narrare_core/prompts/variable_metadata.py` (registry with `VariableMeta`: name/description/source/security/required).
+- [x] Rate-Limiting für Live-Test-Endpoint (max. 5/min oder Settings-Wert) — `AI_PROMPT_LIVE_TEST_LIMITER` = `Rate(5, LONG_WINDOW_MS)` in `apps/api/narrare/_app/rate_limits.py` → 429 on exceed.
+- [x] Tests: Preview- + Test-Endpoint (Integration), Frontend-Komponenten (Vitest) — `test_preview_no_provider.py`, `test_prompt_preview_schema_contract.py` (API↔Frontend schema), `test_prompt_ux_router.py` (integration), `PromptPreviewDialog.test.tsx`, `PromptLiveTestDialog.test.tsx`, `PromptResetConfirmDialog.test.tsx`, `prompts-preview.test.ts`.
+- [x] Bestehende PROMPT-001/PROMPT-002 funktionieren unverändert — `router_prompt_ux.py` uses distinct HTTP methods/paths (`POST /{prompt_id}/{preview|reset|live-test}`); existing GET/PUT/DELETE in `router.py` untouched.
+- [x] Dokumentation: Feature-Spec auf stable gesetzt — this spec; CR-AUFG-07-16 exit evidence in `docs/architecture/governance/aufg-registry.md`; inventory entry `settings.prompts.live_test`.
 
 ---
 

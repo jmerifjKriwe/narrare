@@ -63,8 +63,20 @@ export type {
 export type {
   CascadePath,
   DiffResponse,
+  LiveTestRequest,
+  PreviewRequest,
   PromptDetail,
+  PromptDiagnostic,
+  PromptDiagnosticKind,
   PromptInfo,
+  PromptLiveTestStarted,
+  PromptLiveTestStreamEvent,
+  PromptPreview,
+  PromptPreviewLanguage,
+  PromptProvenance,
+  PromptResetResult,
+  PromptSecurity,
+  PromptVariableMetadata,
   UpdateInfo,
 } from "./prompts";
 export type {

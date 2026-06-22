@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-21 (CR-07 Follow-up v3 Phase A resolved — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
+> **Last updated:** 2026-06-22 (CR-07 Follow-up v3 Phase B PROMPT-003 resolved — CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`. Phase A resolved 2026-06-21 — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -474,7 +474,7 @@ per `docs/development/finding-lifecycle.md`.
 |----|-------|-------|--------|----------|--------------------|
 | CR-AUFG-07-14 | A | §16 Consistency/i18n fallback hardening | `resolved` | P1 | Remove hardcoded visible fallbacks such as `t(...) || "..."`; fix Consistency error fallback; add checker preventing reintroduction. |
 | CR-AUFG-07-15 | A | GhostText visible error affordance | `resolved` | P1 | Decide and implement non-blocking localized GhostText error affordance; inventory and tests cover error/retry semantics. |
-| CR-AUFG-07-16 | B | PROMPT-003 contract-first implementation | `open` | P1 | Provider-free resolved preview, variable metadata/provenance, diagnostics, reset semantics, optional SSE live test, and contract tests across Core/Backend/Frontend. |
+| CR-AUFG-07-16 | B | PROMPT-003 contract-first implementation | `resolved` | P1 | Provider-free resolved preview, variable metadata/provenance, diagnostics, reset semantics, optional SSE live test, and contract tests across Core/Backend/Frontend. Exit evidence 2026-06-22 — see sub-section below. |
 | CR-AUFG-07-17 | B | ONBOARD-001 KB + Storyboard + AI aha moment | `resolved` | P2 | Implemented: 3 new conceptual tour steps (KB→AI, Storyboard→AI, before/after demo) in `feature-tour-steps.ts`; DE/EN/FR `studio.json` keys; replay path intact. Enforcement: `feature-tour-concept-steps.test.tsx`, `tour-no-overclaim.test.ts` (RULE-22 over-claim guard), `just check-ai-ux`, i18n parity gate. ONBOARD-001’s stable base scope is unchanged. |
 | CR-AUFG-07-18 | C | Standardized diff view across AI outputs | `open` | P2 | Shared diff vocabulary/component contract for Rewrite, Co-Author, KB Enhance, and Beta Reader. |
 | CR-AUFG-07-19 | C | Prompt history | `open` | P2 | Prompt override history/restore/compare semantics after PROMPT-003 contracts exist. |
@@ -487,14 +487,14 @@ per `docs/development/finding-lifecycle.md`.
 **Definition of Done for the set:**
 
 - Phase A checker and frontend cleanup are implemented and CI-visible. ✅ Met (2026-06-21): CR-AUFG-07-14 and CR-AUFG-07-15 have implementation + enforcement + test evidence.
-- PROMPT-003 remains `planned` until its Core/Backend/Frontend contracts and enforcement are complete.
+- PROMPT-003 remains `planned` until its Core/Backend/Frontend contracts and enforcement are complete. ✅ Met (2026-06-22): CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`.
 - ONBOARD-001 remains `stable`; the conceptual follow-up has its own AUFG exit evidence.
 - Every Phase C item has a dedicated feature/spec slice before implementation.
 - This registry entry is updated with per-ID exit evidence only after implementation and enforcement exist.
 
 **Exit evidence:**
 
-Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). CR-AUFG-07-16 and Phase C items remain pending.
+Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). Phase B PROMPT-003 (CR-AUFG-07-16) — Resolved (2026-06-22). Phase C items remain pending.
 
 #### CR-AUFG-07-14 — §16 Consistency/i18n fallback hardening
 
@@ -529,6 +529,22 @@ Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboar
   - The pre-existing Check 2 governed exclude for `ghost-text-helpers.ts` (non-react-extension) remains fresh and AUFG-linked (`re_evaluated=2026-06-19`).
 - **Tests:** `packages/web/components/studio/editor/extensions/__tests__/ghost-text-fetching.test.ts` (10 cases: error decoration appears on non-AbortError, AbortError stays silent, transient auto-clear after duration, manual clear on new fetch, clear on cache hit, clear on cleanup, localized text from options, no overlap with fetching indicator, no hardcoded English default).
 - **Validation:** `just check-ai-ux` reports 12 checks, 0 violations, 0 stale excludes; `just check-frontend-size` reports 0 new debt.
+
+#### CR-AUFG-07-16 — PROMPT-003 contract-first implementation
+
+**Exit evidence (2026-06-22):** Resolved — implementation + enforcement + cross-layer evidence complete. PROMPT-003 promoted to `stable`.
+- **Design:** RULE-03 (contract first); RULE-02a/02b (prompt-content categories and resolution path); CR-07 Follow-up v3 Phase B plan (`docs/superpowers/plans/2026-06-21-cr-07-v3-phase-b-prompt-003.md`); provider-free preview vs. provider-gated live-test contract split per PROMPT-003 §Contract-Semantik.
+- **Implementation:**
+  - **Core** (`packages/core/narrare_core/prompts/`): `preview_types.py` (provider-free preview data types — resolved prompt, provenance, security, diagnostics); `contracts.py` (preview/reset Protocol); `preview.py` (preview resolution via existing PromptComposer/variable-engine path — performs no model/provider call); `agents/prompt_live_test_agent.py` + `agents/base.py` (live-test agent with dynamic `@agent.instructions` per RULE-02a; `instructions` kwarg). The preview is provider-free by construction.
+  - **Backend** (`apps/api/narrare/prompts/`): `contracts.py` (Protocol definitions before service); `schemas.py` (`PreviewRequest`/`PreviewResponse`/`LiveTestRequest`/`ResetResponse`); `preview_service.py` (provider-free preview + reset); `live_test_service.py` (provider-/secret-gated live test); `_live_test_sse.py` (SSE frame streaming); `router_prompt_ux.py` (thin routes — preview, reset, live-test); `deps.py` (service factories, RULE-04 split); `AI_PROMPT_LIVE_TEST_LIMITER` (`apps/api/narrare/_app/rate_limits.py` — Rate(5, LONG_WINDOW_MS), the 5/min cap). Live-test endpoint maps: `ValidationError`→400, `ConfigurationError` (no provider)→503, rate-limit→429.
+  - **Frontend** (`packages/web/`): `types/prompts.ts` (API↔Frontend shared types); `lib/api/prompts.ts` (`streamPromptLiveTest` SSE + `promptsApi.preview`); `components/studio/settings/promptVariables.ts` (variable metadata); `components/studio/settings/usePromptEditorState.ts` + `usePromptLiveTest.ts` (useAIOperation lifecycle, signal propagation, structured error mapping); `components/studio/settings/PromptPreviewDialog.tsx` (provider-free preview UI), `PromptLiveTestDialog.tsx` (gated live test — token warning, streaming, cancel), `PromptResetConfirmDialog.tsx` (reset confirmation), `VariableMetadataPanel.tsx`, `PromptEditor.tsx` (modularized orchestrator — `PromptEditorEditMode.tsx`, `PromptEditorViewMode.tsx`, `PromptEditorHeader.tsx`, `PromptDiff.tsx`, `PromptVariablesAside.tsx`, RULE-04 split). DE/EN/FR i18n under `packages/i18n/messages/{de,en,fr}/studio.json` → `settings.prompts.promptCustomization.*`.
+- **Enforcement:**
+  - `tests/unit/core/prompts/test_preview_no_provider.py` (no-provider invariant — preview works without any provider configured).
+  - `tests/unit/api/prompts/test_prompt_preview_schema_contract.py` (API↔Frontend schema contract parity).
+  - `tests/integration/prompts/test_prompt_ux_router.py` (integration — preview/reset/live-test routes).
+  - `just check-ai-ux` — inventory entry `settings.prompts.live_test` (status `compliant`); Check 10 validates the §4 inventory fields; Check 7 validates `PromptLiveTestDialog.tsx` execute-signal propagation.
+  - `scripts/check_frontend_file_size.py` — enforces the modularized PromptEditor split under file-size limits.
+- **Validation:** `just check-ai-ux` reports 18 operations, 0 violations, 0 stale excludes; live-test signal propagation (Check 7) green; inventory completeness (Check 10) green. PROMPT-003 DoD ticked with evidence references and promoted to `stable` (2026-06-22).
 
 ---
 

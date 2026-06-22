@@ -13,7 +13,7 @@
 
 version: 1
 spec: docs/architecture/governance/ai-ux-compliance-v2.md
-last_updated: 2026-06-21
+last_updated: 2026-06-22
 
 operations:
   # ------------------------------------------------------------------
@@ -394,5 +394,33 @@ operations:
     tests:
       - packages/web/lib/__tests__/ (ai-action-shortcuts tests)
     aufg_id: CR-AUFG-07-13
+    exclude_entry: none
+    status: compliant
+
+  # ------------------------------------------------------------------
+  # Settings flows
+  # ------------------------------------------------------------------
+  - operation_id: settings.prompts.live_test
+    feature: Settings — Prompt Live Test
+    entry_points:
+      - packages/web/components/studio/settings/PromptLiveTestDialog.tsx
+      - packages/web/components/studio/settings/usePromptLiveTest.ts
+      - packages/web/lib/api/prompts.ts (streamPromptLiveTest)
+      - apps/api/narrare/prompts/router_prompt_ux.py (start_live_test)
+    transport: sse
+    lifecycle_owner: useAIOperation
+    loading_feedback: "streaming via usePromptLiveTest.ts:102 (liveTestOp.isStreaming || isLoading); progressive onChunk accumulation at :66-69"
+    cancel_ui: "handleCancel at usePromptLiveTest.ts:88 calls liveTestOp.cancel()"
+    signal_propagation: "execute: async (signal) passes signal to streamPromptLiveTest at usePromptLiveTest.ts:77"
+    error_mapping: "structured i18n keys: 403/503 → no_active_provider, other → live_test_failed (usePromptLiveTest.ts:70-73); backend maps ValidationError→400, ConfigurationError→503, rate-limit→429 (router_prompt_ux.py:88-106); non-blocking (user can retry or dismiss without losing edits)"
+    partial_output: "Streamed output preserved in accumulator; connection-loss timeout 15s (usePromptLiveTest.ts:80)"
+    ai_action_i18n: studio.settings.prompts.promptCustomization.tokenWarning / .live_test_failed / .no_active_provider
+    deprecated_key_usage: "No deprecated aliases in use"
+    keyboard: "n/a — confirm/cancel via button controls; token-warning gate must be acknowledged before run (usePromptLiveTest.ts:62 acknowledge_token_cost)"
+    tests:
+      - packages/web/components/studio/settings/__tests__/PromptLiveTestDialog.test.tsx
+      - packages/web/lib/api/__tests__/prompts-preview.test.ts
+      - tests/integration/prompts/test_prompt_ux_router.py
+    aufg_id: CR-AUFG-07-16
     exclude_entry: none
     status: compliant

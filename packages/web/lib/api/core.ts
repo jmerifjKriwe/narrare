@@ -154,3 +154,43 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
+
+/**
+ * Raw API fetch wrapper for streaming endpoints.
+ *
+ * Mirrors ``fetchApi`` for auth headers, credentials, and one 401 refresh retry,
+ * but returns the native ``Response`` so callers can consume ``response.body``.
+ * Non-401 HTTP errors are intentionally returned instead of parsed/thrown because
+ * streaming callers often need the status code to map provider-gate failures.
+ */
+export async function fetchApiRaw(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const url = `/api/v1${endpoint}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options.headers as Record<string, string>) ?? {}),
+  };
+  if (_accessToken) headers.Authorization = `Bearer ${_accessToken}`;
+
+  const response = await fetch(url, { ...options, headers, credentials: "include" });
+  if (response.status !== 401) return response;
+
+  if (endpoint === "/auth/refresh") {
+    clearAccessToken();
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      saveBeforeRedirect();
+      window.location.href = "/login";
+    }
+    throw new Error("Session expired");
+  }
+
+  try {
+    await refreshAccessToken();
+    headers.Authorization = `Bearer ${_accessToken}`;
+    return await fetch(url, { ...options, headers, credentials: "include" });
+  } catch {
+    clearAccessToken();
+    saveBeforeRedirect();
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
+}

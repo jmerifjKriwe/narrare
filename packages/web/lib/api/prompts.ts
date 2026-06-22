@@ -9,11 +9,18 @@ import type {
   KBTemplateDiff,
   KBTemplateInfo,
   KBTemplateUpdateInfo,
+  LiveTestRequest,
+  PreviewRequest,
   PromptDetail,
   PromptInfo,
+  PromptLiveTestStarted,
+  PromptLiveTestStreamEvent,
+  PromptPreview,
+  PromptResetResult,
   UpdateInfo,
 } from "@/types";
-import { fetchApi } from "./core";
+import { fetchApi, fetchApiRaw } from "./core";
+import { connectSSE, SSEStreamError } from "./streaming";
 
 // --- Prompts ---
 
@@ -36,7 +43,105 @@ export const promptsApi = {
   updates: () => fetchApi<UpdateInfo[]>("/prompts/updates"),
 
   diff: (id: string) => fetchApi<DiffResponse>(`/prompts/${id}/diff`),
+
+  /** PROMPT-003: provider-free preview. */
+  preview: (id: string, req: PreviewRequest) =>
+    fetchApi<PromptPreview>(`/prompts/${id}/preview`, {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
+
+  /** PROMPT-003: reset with effective-state metadata response. */
+  resetWithMetadata: (id: string) =>
+    fetchApi<PromptResetResult>(`/prompts/${id}/reset`, { method: "POST" }),
+
+  /** PROMPT-003: start optional live-test and return the raw SSE response. */
+  startLiveTest: (id: string, req: LiveTestRequest) =>
+    fetchApiRaw(`/prompts/${id}/live-test`, {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
 };
+
+// --- PROMPT-003 live-test SSE stream ---
+
+/**
+ * Stream the optional live-test output via SSE.
+ *
+ * Uses the existing ``connectSSE`` transport (RULE-13 SSE contract) so that
+ * the caller's AbortSignal propagates to ``fetch`` and structured errors are
+ * surfaced as :class:`SSEStreamError`. The caller wraps this with
+ * ``useAIOperation`` to get the §16 lifecycle (loading/streaming/error/
+ * connection-lost states, ``mapSSEError`` mapping).
+ *
+ * Event order emitted by the backend:
+ *   1. ``event: meta``  → ``LiveTestStartedResponse``
+ *   2. ``data``         → ``{ text: "..." }`` chunks
+ *   3. ``event: done``  → ``{ is_final: true }``
+ *   4. ``data: [DONE]`` → terminal sentinel
+ */
+export async function streamPromptLiveTest(
+  promptId: string,
+  request: LiveTestRequest,
+  callbacks: {
+    onMeta?: (meta: PromptLiveTestStarted) => void;
+    onChunk: (text: string) => void;
+    onComplete?: () => void;
+    onError?: (error: SSEStreamError) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  let completed = false;
+  const complete = (): void => {
+    if (completed) return;
+    completed = true;
+    callbacks.onComplete?.();
+  };
+
+  await connectSSE<PromptLiveTestStreamEvent>({
+    url: `/prompts/${promptId}/live-test`,
+    method: "POST",
+    body: request,
+    signal,
+    onChunk: (event) => {
+      // meta frame: backend emits an explicit ``event: meta`` line; the
+      // connectSSE transport only surfaces the parsed ``data`` payload, so
+      // we recognise the meta frame by its prompt_id/intent/model_id fields.
+      if (
+        event.prompt_id !== undefined ||
+        event.intent !== undefined ||
+        event.model_id !== undefined
+      ) {
+        callbacks.onMeta?.({
+          prompt_id: event.prompt_id ?? promptId,
+          intent: event.intent ?? "",
+          model_id: event.model_id ?? "",
+          rate_limit_remaining: event.rate_limit_remaining ?? 0,
+        });
+        return;
+      }
+
+      if (event.is_final) {
+        // done frame — connectSSE will call onComplete when it sees [DONE].
+        return;
+      }
+
+      if (typeof event.error === "string") {
+        callbacks.onError?.(new SSEStreamError(event.error, "stream"));
+        completed = true;
+        return;
+      }
+
+      if (event.text !== undefined) {
+        callbacks.onChunk(event.text);
+      }
+    },
+    onComplete: () => complete(),
+    onError: (error) => {
+      if (!completed) callbacks.onError?.(error);
+    },
+  });
+}
 
 // --- KB Templates ---
 

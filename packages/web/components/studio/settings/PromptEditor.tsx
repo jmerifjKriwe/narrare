@@ -1,18 +1,30 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+/**
+ * PromptEditor — render-only orchestration of the prompt customisation view.
+ *
+ * After PROMPT-003 (CR-AUFG-07-16):
+ *   - All state lives in :func:`usePromptEditorState` (RULE-04).
+ *   - The local ``PromptPreview`` (EXAMPLE_VALUES substitution) is deleted;
+ *     preview is API-driven via :component:`PromptPreviewDialog`.
+ *   - The live-test flow is API-driven via :component:`PromptLiveTestDialog`
+ *     (SSE through :func:`usePromptLiveTest`).
+ *   - The reset flow surfaces effective-state metadata via
+ *     :component:`PromptResetConfirmDialog`.
+ */
+
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { promptsApi } from "@/lib/api/client";
 import { PromptDiff } from "./PromptDiff";
 import { PromptEditorEditMode } from "./PromptEditorEditMode";
 import { PromptEditorHeader } from "./PromptEditorHeader";
 import { PromptEditorViewMode } from "./PromptEditorViewMode";
+import { PromptLiveTestDialog } from "./PromptLiveTestDialog";
+import { PromptPreviewDialog } from "./PromptPreviewDialog";
+import { PromptResetConfirmDialog } from "./PromptResetConfirmDialog";
 import { PromptVariablesAside } from "./PromptVariablesAside";
-
-// --- Types ---
+import { usePromptEditorState } from "./usePromptEditorState";
 
 interface PromptEditorProps {
   readonly promptId: string;
@@ -20,95 +32,32 @@ interface PromptEditorProps {
   readonly onBack: () => void;
 }
 
-// --- Component ---
-
 export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps) {
   const t = useTranslations("studio");
   const queryClient = useQueryClient();
-  const [editMode, setEditMode] = useState(false);
-  const [editedContent, setEditedContent] = useState("");
-  const [showDiff, setShowDiff] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const s = usePromptEditorState(promptId);
 
-  const {
-    data: prompt,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["prompt", promptId],
-    queryFn: () => promptsApi.get(promptId),
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: (content: string) => promptsApi.save(promptId, content),
-    onSuccess: () => {
-      setStatusMessage({ type: "success", text: t("settings.prompts.saveSuccess") });
-      setEditMode(false);
-      queryClient.invalidateQueries({ queryKey: ["prompts"] });
-      queryClient.invalidateQueries({ queryKey: ["prompt", promptId] });
-    },
-    onError: () => {
-      setStatusMessage({ type: "error", text: t("settings.prompts.saveFailed") });
-    },
-  });
-
-  const resetMutation = useMutation({
-    mutationFn: () => promptsApi.reset(promptId),
-    onSuccess: () => {
-      setStatusMessage({ type: "success", text: t("settings.prompts.resetSuccess") });
-      setEditMode(false);
-      queryClient.invalidateQueries({ queryKey: ["prompts"] });
-      queryClient.invalidateQueries({ queryKey: ["prompt", promptId] });
-      queryClient.invalidateQueries({ queryKey: ["prompts-updates"] });
-    },
-    onError: () => {
-      setStatusMessage({ type: "error", text: t("settings.prompts.resetFailed") });
-    },
-  });
-
-  const handleStartEdit = () => {
-    if (prompt) {
-      setEditedContent(prompt.content);
-    }
-    setEditMode(true);
-    setPreviewMode(false);
-    setStatusMessage(null);
-  };
-
-  const handleSave = () => {
-    saveMutation.mutate(editedContent);
-  };
-
-  const handleReset = () => {
-    setShowResetConfirm(true);
-  };
-
-  // Diff view
-  if (showDiff) {
+  // --- Diff view (full-screen replacement) ---
+  if (s.showDiff) {
     return (
       <PromptDiff
         promptId={promptId}
-        onBack={() => setShowDiff(false)}
+        onBack={s.closeDiff}
         onResolved={() => {
-          setShowDiff(false);
-          queryClient.invalidateQueries({ queryKey: ["prompts"] });
-          queryClient.invalidateQueries({ queryKey: ["prompt", promptId] });
-          queryClient.invalidateQueries({ queryKey: ["prompts-updates"] });
+          s.closeDiff();
+          void queryClient.invalidateQueries({ queryKey: ["prompts"] });
+          void queryClient.invalidateQueries({ queryKey: ["prompt", promptId] });
+          void queryClient.invalidateQueries({ queryKey: ["prompts-updates"] });
         }}
       />
     );
   }
 
-  // Loading state
-  if (isLoading) {
+  // --- Loading ---
+  if (s.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         <span className="ml-2 text-sm text-muted-foreground">
           {t("settings.prompts.loadingPrompt")}
         </span>
@@ -116,8 +65,8 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
     );
   }
 
-  // Error state
-  if (error || !prompt) {
+  // --- Error ---
+  if (s.error || !s.prompt) {
     return (
       <div className="space-y-4">
         <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm" role="alert">
@@ -134,59 +83,76 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
     );
   }
 
+  // --- Main view ---
   return (
     <div>
       <PromptEditorHeader
         promptId={promptId}
-        isOverridden={prompt.is_overridden}
+        isOverridden={s.prompt.is_overridden}
         hasUpdate={hasUpdate}
-        statusMessage={statusMessage}
+        statusMessage={s.statusMessage}
         onBack={onBack}
-        onShowDiff={() => setShowDiff(true)}
+        onShowDiff={s.openDiff}
       />
 
       <div className="bg-card border border-border rounded-lg p-6">
         <div className="flex gap-6">
-          {/* Main content */}
           <div className="flex-1 space-y-4">
-            {editMode ? (
+            {s.editMode ? (
               <PromptEditorEditMode
-                editedContent={editedContent}
-                onContentChange={setEditedContent}
-                onSave={handleSave}
-                onCancel={() => setEditMode(false)}
-                isSavePending={saveMutation.isPending}
+                editedContent={s.editedContent}
+                onContentChange={s.setEditedContent}
+                onSave={s.handleSave}
+                onCancel={() => s.setEditMode(false)}
+                isSavePending={s.saveMutation.isPending}
               />
             ) : (
               <PromptEditorViewMode
-                content={prompt.content}
-                isOverridden={prompt.is_overridden}
-                variables={prompt.variables}
-                previewMode={previewMode}
-                onSetPreviewMode={setPreviewMode}
-                onStartEdit={handleStartEdit}
-                onReset={handleReset}
-                isResetPending={resetMutation.isPending}
+                content={s.prompt.content}
+                isOverridden={s.prompt.is_overridden}
+                variables={s.prompt.variables}
+                onStartEdit={s.handleStartEdit}
+                onOpenPreview={() => s.setShowPreviewDialog(true)}
+                onOpenLiveTest={() => s.setShowLiveTestDialog(true)}
+                onOpenReset={() => s.setShowResetConfirm(true)}
+                isResetPending={s.resetMutation.isPending}
               />
             )}
           </div>
 
-          {/* Variables sidebar */}
-          {prompt.variables.length > 0 && <PromptVariablesAside variables={prompt.variables} />}
+          {s.prompt.variables.length > 0 && <PromptVariablesAside variables={s.prompt.variables} />}
         </div>
       </div>
 
-      {/* Reset confirmation dialog */}
-      <ConfirmDialog
-        open={showResetConfirm}
-        onOpenChange={setShowResetConfirm}
-        title={t("settings.prompts.resetToDefault")}
-        description={t("settings.prompts.confirmReset")}
-        confirmLabel={t("settings.prompts.resetToDefault")}
-        variant="destructive"
+      {/* PROMPT-003 dialogs */}
+      <PromptPreviewDialog
+        open={s.showPreviewDialog}
+        onOpenChange={s.setShowPreviewDialog}
+        promptId={promptId}
+        preview={s.preview ?? null}
+        loading={s.previewLoading}
+      />
+      <PromptLiveTestDialog
+        open={s.showLiveTestDialog}
+        onOpenChange={s.setShowLiveTestDialog}
+        promptId={promptId}
+        acknowledged={s.liveTestAcknowledged}
+        output={s.liveTestOutput}
+        streaming={s.liveTestStreaming}
+        error={s.liveTestError}
+        onConfirm={s.handleConfirmLiveTest}
+        onCancel={s.handleCancelLiveTest}
+      />
+      <PromptResetConfirmDialog
+        open={s.showResetConfirm}
+        onOpenChange={s.setShowResetConfirm}
+        promptId={promptId}
+        overrideContent={s.prompt.content}
+        bundledContent={s.prompt.base_content}
+        pending={s.resetMutation.isPending}
         onConfirm={() => {
-          resetMutation.mutate();
-          setShowResetConfirm(false);
+          s.resetMutation.mutate();
+          s.setShowResetConfirm(false);
         }}
       />
     </div>

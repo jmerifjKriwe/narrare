@@ -10,6 +10,7 @@ export { chatApi } from "./chat";
 export {
   clearAccessToken,
   fetchApi,
+  fetchApiRaw,
   getAccessToken,
   logoutApi,
   restoreSession,
@@ -39,7 +40,7 @@ export {
   writingApi,
 } from "./generation";
 export { chaptersApi, novelsApi, volumesApi } from "./novels";
-export { promptsApi, templatesApi } from "./prompts";
+export { promptsApi, streamPromptLiveTest, templatesApi } from "./prompts";
 export type { AvailableModelsResponse, ModelRefreshResponse } from "./settings";
 export { aiSettingsApi, settingsApi, tokenLimitsApi } from "./settings";
 export { setupApi } from "./setup";
