@@ -146,6 +146,7 @@ export function KBEnhanceReview({
                   onAccept={handleCardAccept}
                   onReject={handleCardReject}
                   fieldLabel={getFieldLabel(enhancement.field_key)}
+                  projectId={session.novel_id}
                   t={t}
                 />
               ))}

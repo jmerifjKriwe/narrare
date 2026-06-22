@@ -24,6 +24,14 @@ import type {
 } from "@/lib/api/kb-improve";
 import { useKBImproveAnalysis, useKBImproveApply } from "@/lib/hooks/useKBImprove";
 
+vi.mock("@/components/shared/ai-rating/AIRating", () => ({
+  AIRating: () => null,
+}));
+
+vi.mock("@/lib/hooks/useAIRating", () => ({
+  useAIRating: () => ({ state: "idle", submit: () => {}, skip: () => {}, reset: () => {} }),
+}));
+
 // Mock the hooks module — vitest hoists this to the top
 vi.mock("@/lib/hooks/useKBImprove", () => ({
   useKBImproveAnalysis: vi.fn(),

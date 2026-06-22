@@ -26,6 +26,7 @@ interface KBSessionFieldRowProps {
   onAnswer: (fieldKey: string, value: string) => void;
   onAcceptSuggestion: (fieldKey: string, value: string) => void;
   onRejectSuggestion: (fieldKey: string) => void;
+  projectId?: string;
 }
 
 export function KBSessionFieldRow({
@@ -39,6 +40,7 @@ export function KBSessionFieldRow({
   onAnswer,
   onAcceptSuggestion,
   onRejectSuggestion,
+  projectId,
 }: KBSessionFieldRowProps) {
   const t = useTranslations("studio");
   const [isEditing, setIsEditing] = useState(false);
@@ -181,6 +183,7 @@ export function KBSessionFieldRow({
         // AI suggestion pending review
         <FieldSuggestionReview
           field={field}
+          projectId={projectId}
           onAcceptSuggestion={onAcceptSuggestion}
           onRejectSuggestion={onRejectSuggestion}
         />

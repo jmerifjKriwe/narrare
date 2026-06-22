@@ -8,11 +8,14 @@
  */
 
 import { Check, X } from "lucide-react";
-
 import { AIDiffView } from "@/components/shared/ai-diff/AIDiffView";
+import { AIRating } from "@/components/shared/ai-rating/AIRating";
 import { kbEnhanceFieldAdapter } from "@/lib/ai-diff/adapters/kb-enhance";
 import type { AIDiffState } from "@/lib/ai-diff/contracts";
+import { kbEnhanceRatingAdapter } from "@/lib/ai-rating/adapters/kb-enhance";
+import type { AIRatingViewModel } from "@/lib/ai-rating/contracts";
 import type { KBEnhancementResult } from "@/lib/api/kb-sessions";
+import { useAIRating } from "@/lib/hooks/useAIRating";
 
 type TranslationValues = Record<string, string | number | Date>;
 
@@ -23,6 +26,7 @@ interface EnhanceReviewCardProps {
   onAccept: (fieldKey: string) => void;
   onReject: (fieldKey: string) => void;
   fieldLabel: string;
+  projectId?: string;
   t: (key: string, values?: TranslationValues) => string;
 }
 
@@ -33,8 +37,18 @@ export function EnhanceReviewCard({
   onAccept,
   onReject,
   fieldLabel,
+  projectId,
   t,
 }: EnhanceReviewCardProps) {
+  const ratingVm = projectId
+    ? kbEnhanceRatingAdapter({
+        enhancement,
+        projectId,
+        fieldLabel,
+        action: isSelected ? "accept" : "reject",
+      })
+    : null;
+
   return (
     <div
       className={`border rounded-lg overflow-hidden transition-colors ${
@@ -111,6 +125,25 @@ export function EnhanceReviewCard({
           {t("aiActions.accept")}
         </button>
       </div>
+      {ratingVm ? (
+        <div className="px-3 pb-3">
+          <EnhanceRating viewModel={ratingVm} />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function EnhanceRating({ viewModel }: { readonly viewModel: AIRatingViewModel }) {
+  const rating = useAIRating(viewModel);
+
+  return (
+    <AIRating
+      viewModel={viewModel}
+      state={rating.state}
+      onSubmit={rating.submit}
+      onSkip={rating.skip}
+      onRetry={rating.reset}
+    />
   );
 }

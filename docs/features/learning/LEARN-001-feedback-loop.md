@@ -127,6 +127,29 @@ class FeedbackRecord:
 - Per-project profiles: Different preferences per novel
 - Continuous adaptation: Re-weights over time
 
+### Rating expansion (CR-AUFG-07-24)
+
+Writers can rate AI outputs from Co-Author, KB field-suggest, KB enhance,
+KB improve, and Chat. Each rating reuses `POST /memory/feedback` and is
+tagged with a closed `source_type` vocabulary:
+
+- `co_author_change`
+- `kb_field_suggest`
+- `kb_enhance_field`
+- `kb_improve_suggestion`
+- `chat_message`
+
+Ratings never alter the original AI output and never block accept/reject/apply.
+mem0 forwarding remains privacy-safe: only `action`, `intent`, `rating`,
+optional `rating_reason`, and `source_type` reach the memory layer. Raw prose
+is never persisted to mem0 (RULE-22 / INFRA-005).
+
+The backend derives a deterministic UUID from `(source_id`, `source_type)`
+server-side (`apps/api/narrare/memory/suggestion_identity.py`); the raw
+`source_id` never reaches core or mem0 (RULE-22). The frontend sends
+`source_id` + `source_type` and forwards `suggestion_id` only when the surface
+id is itself a valid UUID.
+
 ## Constraints & Edge Cases
 
 - Requires significant feedback (50+ interactions) for noticeable improvement

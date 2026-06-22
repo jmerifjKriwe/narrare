@@ -13,20 +13,37 @@
 
 import { Check, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { AIRating } from "@/components/shared/ai-rating/AIRating";
+import { kbFieldSuggestRatingAdapter } from "@/lib/ai-rating/adapters/kb-field";
+import type { AIRatingViewModel } from "@/lib/ai-rating/contracts";
 import type { KBCreationField } from "@/lib/api/kb-sessions";
+import { useAIRating } from "@/lib/hooks/useAIRating";
+import type { FeedbackAction } from "@/types";
 
 interface FieldSuggestionReviewProps {
   field: KBCreationField;
+  projectId?: string;
   onAcceptSuggestion: (fieldKey: string, value: string) => void;
   onRejectSuggestion: (fieldKey: string) => void;
 }
 
 export function FieldSuggestionReview({
   field,
+  projectId,
   onAcceptSuggestion,
   onRejectSuggestion,
 }: FieldSuggestionReviewProps) {
   const t = useTranslations("studio");
+  const [ratingAction, setRatingAction] = useState<FeedbackAction | null>(null);
+  const ratingVm =
+    projectId && ratingAction
+      ? kbFieldSuggestRatingAdapter({
+          field,
+          projectId,
+          action: ratingAction,
+        })
+      : null;
 
   return (
     <div className="space-y-2">
@@ -39,7 +56,10 @@ export function FieldSuggestionReview({
       <div className="flex justify-end gap-2">
         <button
           type="button"
-          onClick={() => onRejectSuggestion(field.field_key)}
+          onClick={() => {
+            setRatingAction("reject");
+            onRejectSuggestion(field.field_key);
+          }}
           className="flex items-center gap-1 px-3 py-1.5 text-xs border border-border rounded-md hover:bg-muted transition-colors"
         >
           <X className="w-3 h-3" />
@@ -47,13 +67,31 @@ export function FieldSuggestionReview({
         </button>
         <button
           type="button"
-          onClick={() => onAcceptSuggestion(field.field_key, field.ai_suggested_value!)}
+          onClick={() => {
+            setRatingAction("accept");
+            onAcceptSuggestion(field.field_key, field.ai_suggested_value!);
+          }}
           className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
         >
           <Check className="w-3 h-3" />
           {t("aiActions.accept")}
         </button>
       </div>
+      {ratingVm ? <FieldSuggestionRating viewModel={ratingVm} /> : null}
     </div>
+  );
+}
+
+function FieldSuggestionRating({ viewModel }: { readonly viewModel: AIRatingViewModel }) {
+  const rating = useAIRating(viewModel);
+
+  return (
+    <AIRating
+      viewModel={viewModel}
+      state={rating.state}
+      onSubmit={rating.submit}
+      onSkip={rating.skip}
+      onRetry={rating.reset}
+    />
   );
 }

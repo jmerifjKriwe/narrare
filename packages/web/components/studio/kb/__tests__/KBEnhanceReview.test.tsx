@@ -20,6 +20,14 @@ import { describe, expect, it, vi } from "vitest";
 import { KBEnhanceReview } from "@/components/studio/kb/KBEnhanceReview";
 import type { KBCreationSession, KBEnhancementResult } from "@/lib/api/kb-sessions";
 
+vi.mock("@/components/shared/ai-rating/AIRating", () => ({
+  AIRating: () => null,
+}));
+
+vi.mock("@/lib/hooks/useAIRating", () => ({
+  useAIRating: () => ({ state: "idle", submit: () => {}, skip: () => {}, reset: () => {} }),
+}));
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------

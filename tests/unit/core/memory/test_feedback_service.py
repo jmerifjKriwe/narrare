@@ -98,6 +98,68 @@ class TestFeedbackServiceRecord:
         # DB persist happened — NullMemoryClient silently succeeds
         persist_fn.assert_awaited_once_with(event)
 
+    async def test_record_forwards_source_type_to_mem0_metadata(self) -> None:
+        """record() must propagate context['source_type'] to mem0 metadata.
+
+        Enables preference routing by source (CR-AUFG-07-24). Privacy-safe:
+        source_type is a taxonomy tag, never raw prose.
+        """
+        persist_fn = AsyncMock()
+        mem0 = AsyncMock()
+        service = FeedbackService(mem0_client=mem0, persist_fn=persist_fn)
+
+        event = _make_event(context={"source_type": "chat_message"})
+        await service.record(event)
+
+        call_kwargs = mem0.add.call_args[1]
+        assert call_kwargs["metadata"]["source_type"] == "chat_message"
+
+    async def test_record_mem0_metadata_source_type_none_when_absent(self) -> None:
+        """When context has no source_type, metadata carries None explicitly.
+
+        Back-compat: the metadata key is always present so downstream consumers
+        can rely on a stable schema.
+        """
+        persist_fn = AsyncMock()
+        mem0 = AsyncMock()
+        service = FeedbackService(mem0_client=mem0, persist_fn=persist_fn)
+
+        event = _make_event(context={})
+        await service.record(event)
+
+        call_kwargs = mem0.add.call_args[1]
+        assert call_kwargs["metadata"]["source_type"] is None
+
+    async def test_record_does_not_forward_raw_source_id_to_mem0(self) -> None:
+        """record() must not leak raw source_id or raw suggestion text to mem0.
+
+        The API boundary may accept a client-local source_id, but Core's mem0
+        boundary stays privacy-safe: it forwards the resolved suggestion_id and
+        taxonomy source_type only, never the raw source_id or suggestion prose.
+        """
+        persist_fn = AsyncMock()
+        mem0 = AsyncMock()
+        service = FeedbackService(mem0_client=mem0, persist_fn=persist_fn)
+        raw_source_id = "editor-selection-raw-source-id-42"
+        raw_suggestion_text = "Secret draft prose that must not reach mem0."
+
+        event = _make_event(
+            suggestion_text=raw_suggestion_text,
+            context={
+                "source_id": raw_source_id,
+                "source_type": "editor_annotation",
+            },
+        )
+        await service.record(event)
+
+        call_kwargs = mem0.add.call_args[1]
+        assert call_kwargs["metadata"]["suggestion_id"] == str(event.suggestion_id)
+        assert "source_id" not in call_kwargs["metadata"]
+        assert raw_source_id not in str(call_kwargs["metadata"])
+        assert raw_source_id not in call_kwargs["messages"]
+        assert raw_suggestion_text not in str(call_kwargs["metadata"])
+        assert raw_suggestion_text not in call_kwargs["messages"]
+
 
 class TestFeedbackServiceGetHistory:
     """Tests for FeedbackService.get_history()."""

@@ -171,6 +171,7 @@ export function KBImprovePanel({ novelId, entryId, onClose, onApplied }: KBImpro
               onToggleSuggestion={toggleSuggestion}
               onAcceptSuggestion={acceptSuggestion}
               onRejectSuggestion={rejectSuggestion}
+              projectId={novelId}
             />
           )}
         </div>

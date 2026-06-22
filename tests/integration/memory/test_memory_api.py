@@ -5,8 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from sqlalchemy import select
+
+from narrare.memory.models import FeedbackEventModel
+
 if TYPE_CHECKING:
     from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestRecordFeedback:
@@ -104,6 +109,72 @@ class TestRecordFeedback:
         response = await client.post(
             "/api/v1/memory/feedback",
             json={"action": "accept"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    async def test_record_feedback_with_source_id_persists_resolved_uuid(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        db_session: AsyncSession,
+    ) -> None:
+        """POST /memory/feedback accepts source_id and persists UUID suggestion_id."""
+        project_id = uuid4()
+        response = await client.post(
+            "/api/v1/memory/feedback",
+            json={
+                "action": "accept",
+                "source_id": "kb-field:entry-title",
+                "source_type": "kb_field_suggest",
+                "intent": "write",
+                "suggestion_text": "The forest was dark and full of echoes.",
+                "project_id": str(project_id),
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        event_id = response.json()["id"]
+        result = await db_session.execute(
+            select(FeedbackEventModel).where(FeedbackEventModel.id == event_id)
+        )
+        event = result.scalar_one()
+        assert event.suggestion_id.version == 5
+        assert event.context is not None
+        assert event.context["source_type"] == "kb_field_suggest"
+        assert "source_id" not in event.context
+
+    async def test_record_feedback_with_source_id_without_source_type_returns_422(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """POST /memory/feedback with source_id but no source_type returns 422."""
+        response = await client.post(
+            "/api/v1/memory/feedback",
+            json={
+                "action": "accept",
+                "source_id": "kb-field:entry-title",
+                "intent": "write",
+                "suggestion_text": "Some text",
+                "project_id": str(uuid4()),
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    async def test_record_feedback_with_invalid_suggestion_id_returns_422(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """POST /memory/feedback with non-UUID suggestion_id alone returns 422."""
+        response = await client.post(
+            "/api/v1/memory/feedback",
+            json={
+                "action": "accept",
+                "suggestion_id": "not-a-uuid",
+                "intent": "write",
+                "suggestion_text": "Some text",
+                "project_id": str(uuid4()),
+            },
             headers=auth_headers,
         )
         assert response.status_code == 422

@@ -114,6 +114,7 @@ export function KBSessionFieldList({
                 onAnswer={onAnswer}
                 onAcceptSuggestion={onAcceptSuggestion}
                 onRejectSuggestion={onRejectSuggestion}
+                projectId={session.novel_id}
               />
             ))}
           </FieldGroupSection>
@@ -138,6 +139,7 @@ export function KBSessionFieldList({
                 onAnswer={onAnswer}
                 onAcceptSuggestion={onAcceptSuggestion}
                 onRejectSuggestion={onRejectSuggestion}
+                projectId={session.novel_id}
               />
             ))}
           </FieldGroupSection>
@@ -162,6 +164,7 @@ export function KBSessionFieldList({
                 onAnswer={onAnswer}
                 onAcceptSuggestion={onAcceptSuggestion}
                 onRejectSuggestion={onRejectSuggestion}
+                projectId={session.novel_id}
               />
             ))}
           </FieldGroupSection>
@@ -186,6 +189,7 @@ export function KBSessionFieldList({
                 onAnswer={onAnswer}
                 onAcceptSuggestion={onAcceptSuggestion}
                 onRejectSuggestion={onRejectSuggestion}
+                projectId={session.novel_id}
               />
             ))}
           </FieldGroupSection>

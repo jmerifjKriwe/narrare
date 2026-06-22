@@ -144,6 +144,29 @@ Feedback data is stored in two systems:
    avoids purple prose"). These extracted preferences are semantic, searchable,
    and can be injected into prompts.
 
+### Rating expansion (CR-AUFG-07-24)
+
+Writers can rate AI outputs from Co-Author, KB field-suggest, KB enhance,
+KB improve, and Chat. Each rating reuses `POST /memory/feedback` and is
+tagged with a closed `source_type` vocabulary:
+
+- `co_author_change`
+- `kb_field_suggest`
+- `kb_enhance_field`
+- `kb_improve_suggestion`
+- `chat_message`
+
+Ratings never alter the original AI output and never block accept/reject/apply.
+mem0 forwarding remains privacy-safe: only `action`, `intent`, `rating`,
+optional `rating_reason`, and `source_type` reach the memory layer. Raw prose
+is never persisted to mem0 (RULE-22 / LEARN-001).
+
+The API boundary accepts either a canonical `suggestion_id` UUID or a
+`source_id` + `source_type` pair; `apps/api/narrare/memory/suggestion_identity.py`
+derives a deterministic uuid5 server-side and a one-way `source_id_hash`
+prefix, so the raw `source_id` never reaches the core layer, the database, or
+mem0 (RULE-17, RULE-22).
+
 ### mem0 AsyncMemory Integration
 
 ```python

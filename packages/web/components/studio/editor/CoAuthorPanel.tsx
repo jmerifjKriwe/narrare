@@ -114,6 +114,8 @@ export function CoAuthorPanel({
           )}
           {phase === "review" && (
             <CoAuthorReviewPhase
+              projectId={novelId}
+              chapterId={chapterId}
               changes={changes}
               acceptance={acceptance}
               reasoning={reasoning}

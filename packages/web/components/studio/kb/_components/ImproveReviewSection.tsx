@@ -24,6 +24,7 @@ interface ImproveReviewSectionProps {
   onToggleSuggestion: (id: number) => void;
   onAcceptSuggestion: (id: number) => void;
   onRejectSuggestion: (id: number) => void;
+  projectId?: string;
 }
 
 export function ImproveReviewSection({
@@ -36,6 +37,7 @@ export function ImproveReviewSection({
   onToggleSuggestion,
   onAcceptSuggestion,
   onRejectSuggestion,
+  projectId,
 }: ImproveReviewSectionProps) {
   const t = useTranslations("studio");
 
@@ -106,6 +108,7 @@ export function ImproveReviewSection({
           onToggle={onToggleSuggestion}
           onAccept={onAcceptSuggestion}
           onReject={onRejectSuggestion}
+          projectId={projectId}
         />
       ))}
     </div>

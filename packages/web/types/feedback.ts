@@ -2,10 +2,46 @@
 
 export type FeedbackAction = "accept" | "reject" | "modify";
 
+/**
+ * Closed-vocabulary source taxonomy (CR-AUFG-07-24).
+ *
+ * MUST stay in sync with `packages/core/narrare_core/memory/source_types.py`
+ * `FeedbackSourceType` — enforced by
+ * `tests/integration/memory/test_feedback_source_type_parity.py`.
+ *
+ * Mirror of the backend `Literal` in `apps/api/narrare/memory/schemas.py`
+ * (RULE-17: the frontend type is a 1:1 mirror of the backend contract).
+ */
+export type FeedbackSourceType =
+  | "co_author_change"
+  | "kb_field_suggest"
+  | "kb_enhance_field"
+  | "kb_improve_suggestion"
+  | "chat_message";
+
 export interface FeedbackRequest {
   action: FeedbackAction;
-  suggestion_id: string;
+  /**
+   * Server-canonical UUID for the rated suggestion.
+   *
+   * CR-AUFG-07-24: now OPTIONAL client-side. The backend accepts either a
+   * valid `suggestion_id` UUID OR the (`source_id` + `source_type`) pair and
+   * derives the canonical uuid5 server-side. The frontend forwards a value
+   * here ONLY when the surface genuinely owns a UUID; non-UUID surface ids
+   * (change ids, message ids, field keys, numeric ids) MUST travel as
+   * `source_id` instead.
+   */
+  suggestion_id?: string | null;
+  /**
+   * Stable per-surface id (change id, field key, message id, suggestion id,
+   * ...) that the backend resolves to the canonical suggestion UUID.
+   *
+   * CR-AUFG-07-24: sent alongside `source_type`. Mirror of the backend
+   * `FeedbackRequest.source_id` (RULE-17).
+   */
+  source_id?: string | null;
   intent: string;
+  source_type?: FeedbackSourceType | null;
   suggestion_text: string;
   modification?: string | null;
   rating?: number | null;

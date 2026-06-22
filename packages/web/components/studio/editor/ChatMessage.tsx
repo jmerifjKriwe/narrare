@@ -3,6 +3,10 @@
 import { Bot, Check, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo } from "react";
+import { AIRating } from "@/components/shared/ai-rating/AIRating";
+import { chatRatingAdapter } from "@/lib/ai-rating/adapters/chat";
+import type { AIRatingViewModel } from "@/lib/ai-rating/contracts";
+import { useAIRating } from "@/lib/hooks/useAIRating";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,6 +26,8 @@ interface ChatMessageProps {
   readonly aiDraftBadge: string;
   readonly addToDraftLabel: string;
   readonly addedToDraftLabel: string;
+  readonly projectId?: string;
+  readonly isStreaming?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,6 +41,8 @@ export const ChatMessage = memo(function ChatMessage({
   aiDraftBadge,
   addToDraftLabel,
   addedToDraftLabel,
+  projectId,
+  isStreaming = false,
 }: ChatMessageProps): ReactNode {
   if (message.role === "system") {
     return (
@@ -100,9 +108,47 @@ export const ChatMessage = memo(function ChatMessage({
                 )}
               </button>
             </div>
+            {projectId && !isStreaming ? (
+              <ChatRatingControl
+                messageId={message.id}
+                prose={message.prose}
+                projectId={projectId}
+              />
+            ) : null}
           </div>
         )}
       </div>
     </div>
   );
 });
+
+function ChatRatingControl({
+  messageId,
+  prose,
+  projectId,
+}: {
+  readonly messageId: string;
+  readonly prose: string;
+  readonly projectId: string;
+}) {
+  const viewModel = chatRatingAdapter({ messageId, prose, projectId, action: "accept" });
+  if (!viewModel) return null;
+
+  return <ChatRating viewModel={viewModel} />;
+}
+
+function ChatRating({ viewModel }: { readonly viewModel: AIRatingViewModel }) {
+  const rating = useAIRating(viewModel);
+
+  return (
+    <div className="px-3 pb-3">
+      <AIRating
+        viewModel={viewModel}
+        state={rating.state}
+        onSubmit={rating.submit}
+        onSkip={rating.skip}
+        onRetry={rating.reset}
+      />
+    </div>
+  );
+}

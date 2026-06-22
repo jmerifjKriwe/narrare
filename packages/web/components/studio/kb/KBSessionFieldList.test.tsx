@@ -16,6 +16,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { KBCreationField, KBCreationSession } from "@/lib/api/kb-sessions";
 import { KBSessionFieldList } from "./KBSessionFieldList";
 
+vi.mock("@/components/shared/ai-rating/AIRating", () => ({
+  AIRating: () => null,
+}));
+
+vi.mock("@/lib/hooks/useAIRating", () => ({
+  useAIRating: () => ({ state: "idle", submit: () => {}, skip: () => {}, reset: () => {} }),
+}));
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------

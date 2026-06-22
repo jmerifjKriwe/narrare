@@ -352,3 +352,10 @@ file = "apps/api/narrare/metrics/router.py"
 reason = "Health/readiness check must bypass repository layer to verify raw DB connectivity."
 approved_by = "platform-review-01"
 date = "2026-06-11"
+
+[[tool.narrare.architecture.exceptions.entries]]
+rule = "RULE-18"
+file = "apps/api/narrare/memory/suggestion_identity.py"
+reason = "_SOURCE_ID_HASH_PREFIX_LEN is a pinned cryptographic stability constant; runtime configurability would break source_id_hash determinism across feedback events."
+approved_by = "CR-AUFG-07-24"
+date = "2026-06-22"

@@ -97,6 +97,12 @@ operations:
     error_mapping: mapSSEError (ai-error-mapping.ts)
     partial_output: "Per-changelist acceptance map preserves partial output"
     shared_diff_view: "packages/web/components/shared/ai-diff/AIDiffView via lib/ai-diff/adapters/coauthor.ts (CR-AUFG-07-18)"
+    rating_support:
+      enabled: true
+      source_type: co_author_change
+      adapter: packages/web/lib/ai-rating/adapters/coauthor.ts
+      endpoint: POST /api/v1/memory/feedback
+      aufg_id: CR-AUFG-07-24
     ai_action_i18n: studio.aiActions.acceptAll / .rejectAll / .applySelected
     deprecated_key_usage: "coAuthor.acceptAll/rejectAll/applySelected deprecated aliases absent"
     keyboard: "Ctrl/Cmd+Enter accept/apply in Co-Author Review (CR-AUFG-07-13)"
@@ -122,6 +128,12 @@ operations:
     signal_propagation: "execute: (signal) => apiWrapper(signal) — signal reaches suggestField"
     error_mapping: mapSSEError (ai-error-mapping.ts)
     partial_output: "n/a — single suggestion per field"
+    rating_support:
+      enabled: true
+      source_type: kb_field_suggest
+      adapter: packages/web/lib/ai-rating/adapters/kb-field.ts
+      endpoint: POST /api/v1/memory/feedback
+      aufg_id: CR-AUFG-07-24
     ai_action_i18n: studio.aiActions.accept / .reject
     deprecated_key_usage: "kb.sessions.accept/reject deprecated aliases absent"
     keyboard: "n/a — accept/reject via button controls"
@@ -166,6 +178,12 @@ operations:
     error_mapping: mapSSEError (ai-error-mapping.ts)
     partial_output: "Before/after comparison preserved per field"
     shared_diff_view: "packages/web/components/shared/ai-diff/AIDiffView (field mode) via lib/ai-diff/adapters/kb-enhance.ts (CR-AUFG-07-18)"
+    rating_support:
+      enabled: true
+      source_type: kb_enhance_field
+      adapter: packages/web/lib/ai-rating/adapters/kb-enhance.ts
+      endpoint: POST /api/v1/memory/feedback
+      aufg_id: CR-AUFG-07-24
     ai_action_i18n: studio.aiActions.acceptAll / .rejectAll / .applySelected / .original / .suggested
     deprecated_key_usage: "aiModal.original migrated to aiActions.original (CR-AUFG-07-12)"
     keyboard: "Ctrl/Cmd+Enter apply in KB Enhance Review (CR-AUFG-07-13)"
@@ -187,6 +205,12 @@ operations:
     signal_propagation: "execute: (signal) => analyzeMutation.mutateAsync(signal)"
     error_mapping: mapSSEError via KBImprovePanel error handling
     partial_output: "n/a — REST returns complete analysis"
+    rating_support:
+      enabled: true
+      source_type: kb_improve_suggestion
+      adapter: packages/web/lib/ai-rating/adapters/kb-improve.ts
+      endpoint: POST /api/v1/memory/feedback
+      aufg_id: CR-AUFG-07-24
     ai_action_i18n: studio.aiActions.applySelected / .accept / .reject
     deprecated_key_usage: "No deprecated aliases in use"
     keyboard: "n/a — bulk apply via button controls"
@@ -232,6 +256,12 @@ operations:
     signal_propagation: "execute: async (signal) passes signal to transport"
     error_mapping: mapSSEError (ai-error-mapping.ts)
     partial_output: "Chat messages preserved on connection loss"
+    rating_support:
+      enabled: true
+      source_type: chat_message
+      adapter: packages/web/lib/ai-rating/adapters/chat.ts
+      endpoint: POST /api/v1/memory/feedback
+      aufg_id: CR-AUFG-07-24
     ai_action_i18n: studio.aiActions.stop
     deprecated_key_usage: "No deprecated aliases in use"
     keyboard: "Enter to send (chat pattern)"

@@ -10,6 +10,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { KBSessionFieldList } from "@/components/studio/kb/KBSessionFieldList";
 import { defaultProps, emptySession } from "./setup";
 
+vi.mock("@/components/shared/ai-rating/AIRating", () => ({
+  AIRating: () => null,
+}));
+
+vi.mock("@/lib/hooks/useAIRating", () => ({
+  useAIRating: () => ({ state: "idle", submit: () => {}, skip: () => {}, reset: () => {} }),
+}));
+
 describe("KBSessionFieldList — interactions", () => {
   beforeEach(() => {
     vi.clearAllMocks();

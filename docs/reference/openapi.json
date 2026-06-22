@@ -11205,15 +11205,56 @@
             "title": "Action"
           },
           "suggestion_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Suggestion Id"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion Id",
+            "description": "Existing suggestion UUID. Mutually sufficient with source_id."
           },
           "intent": {
             "type": "string",
             "maxLength": 50,
             "minLength": 1,
             "title": "Intent"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "co_author_change",
+                  "kb_field_suggest",
+                  "kb_enhance_field",
+                  "kb_improve_suggestion",
+                  "chat_message"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type",
+            "description": "Where the rated suggestion originated (CR-AUFG-07-24 taxonomy)."
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id",
+            "description": "Canonical frontend suggestion identifier (CR-AUFG-07-24). Requires source_type. Backend derives a UUID; raw value never reaches core or DB."
           },
           "suggestion_text": {
             "type": "string",
@@ -11300,13 +11341,12 @@
         "type": "object",
         "required": [
           "action",
-          "suggestion_id",
           "intent",
           "suggestion_text",
           "project_id"
         ],
         "title": "FeedbackRequest",
-        "description": "Request body for recording user feedback on an AI suggestion."
+        "description": "Request body for recording user feedback on an AI suggestion.\n\nIdentifier policy (CR-AUFG-07-24): callers MUST supply either a valid\n``suggestion_id`` UUID (existing callers) OR a ``source_id`` +\n``source_type`` pair (frontend canonical IDs). The backend derives a\ndeterministic UUID from the pair (see ``suggestion_identity.py``) so the\ncore layer and DB stay UUID-only."
       },
       "FeedbackResponse": {
         "properties": {

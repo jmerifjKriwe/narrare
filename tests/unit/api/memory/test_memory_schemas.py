@@ -93,6 +93,42 @@ class TestFeedbackRequest:
         assert req.context is None
         assert req.genre is None
 
+    def test_source_type_accepts_each_canonical_value(self) -> None:
+        from narrare_core.memory.source_types import FeedbackSourceType
+
+        for member in FeedbackSourceType:
+            req = FeedbackRequest(
+                action="accept",
+                suggestion_id=uuid4(),
+                intent="write",
+                suggestion_text="text",
+                project_id=uuid4(),
+                source_type=member.value,
+            )
+            assert req.source_type == member.value
+
+    def test_source_type_rejects_unknown_value(self) -> None:
+        with pytest.raises(ValidationError):
+            FeedbackRequest(
+                action="accept",
+                suggestion_id=uuid4(),
+                intent="write",
+                suggestion_text="text",
+                project_id=uuid4(),
+                source_type="made_up_source",  # type: ignore[arg-type]  # intentional invalid for validation test
+            )
+
+    def test_source_type_defaults_to_none(self) -> None:
+        """Existing callers without source_type keep working (back-compat)."""
+        req = FeedbackRequest(
+            action="accept",
+            suggestion_id=uuid4(),
+            intent="write",
+            suggestion_text="text",
+            project_id=uuid4(),
+        )
+        assert req.source_type is None
+
 
 class TestFeedbackResponse:
     def test_from_attributes_config(self) -> None:

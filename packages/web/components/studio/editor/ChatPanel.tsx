@@ -114,6 +114,7 @@ export function ChatPanel({ projectId, onClose }: ChatPanelProps) {
             aiDraftBadge={aiDraftBadge}
             addToDraftLabel={addToDraftLabel}
             addedToDraftLabel={addedToDraftLabel}
+            projectId={projectId}
           />
         ))}
 

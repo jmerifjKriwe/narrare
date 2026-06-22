@@ -14,6 +14,8 @@ import { btnPrimary, btnSecondary, btnSm } from "./coauthor-styles";
 // ---------------------------------------------------------------------------
 
 interface CoAuthorReviewPhaseProps {
+  readonly projectId?: string;
+  readonly chapterId?: string | null;
   readonly changes: ChangeDetail[];
   readonly acceptance: Record<string, boolean>;
   readonly reasoning: string;
@@ -30,6 +32,8 @@ interface CoAuthorReviewPhaseProps {
 // ---------------------------------------------------------------------------
 
 export function CoAuthorReviewPhase({
+  projectId,
+  chapterId = null,
   changes,
   acceptance,
   reasoning,
@@ -105,6 +109,8 @@ export function CoAuthorReviewPhase({
             change={c}
             isAccepted={acceptance[c.id] !== false}
             onToggle={onToggleChange}
+            projectId={projectId}
+            chapterId={chapterId}
           />
         ))}
       </div>

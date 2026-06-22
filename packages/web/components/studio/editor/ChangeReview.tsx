@@ -3,9 +3,13 @@
 import { Check, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { AIDiffView } from "@/components/shared/ai-diff/AIDiffView";
+import { AIRating } from "@/components/shared/ai-rating/AIRating";
 import { coAuthorChangeAdapter } from "@/lib/ai-diff/adapters/coauthor";
 import type { AIDiffState } from "@/lib/ai-diff/contracts";
+import { coAuthorRatingAdapter } from "@/lib/ai-rating/adapters/coauthor";
+import type { AIRatingViewModel } from "@/lib/ai-rating/contracts";
 import type { ChangeDetail } from "@/lib/api/coauthor";
+import { useAIRating } from "@/lib/hooks/useAIRating";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,6 +20,8 @@ export interface ChangeReviewProps {
   readonly isAccepted: boolean;
   readonly onToggle?: (changeId: string) => void;
   readonly readOnly?: boolean;
+  readonly projectId?: string;
+  readonly chapterId?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -38,10 +44,20 @@ export function ChangeReview({
   isAccepted,
   onToggle,
   readOnly = false,
+  projectId,
+  chapterId = null,
 }: ChangeReviewProps) {
   const t = useTranslations("studio");
   const viewModel = coAuthorChangeAdapter(change);
   const state: AIDiffState = isAccepted ? "accepted" : "suggested";
+  const ratingVm = projectId
+    ? coAuthorRatingAdapter({
+        change,
+        projectId,
+        chapterId,
+        action: isAccepted ? "accept" : "reject",
+      })
+    : null;
 
   return (
     <div
@@ -81,7 +97,22 @@ export function ChangeReview({
       {/* Diff content via shared AIDiffView (accessible ins/del + badge) */}
       <div className="px-3 py-2.5">
         <AIDiffView viewModel={viewModel} state={state} />
+        {ratingVm ? <ChangeReviewRating viewModel={ratingVm} /> : null}
       </div>
     </div>
+  );
+}
+
+function ChangeReviewRating({ viewModel }: { readonly viewModel: AIRatingViewModel }) {
+  const rating = useAIRating(viewModel);
+
+  return (
+    <AIRating
+      viewModel={viewModel}
+      state={rating.state}
+      onSubmit={rating.submit}
+      onSkip={rating.skip}
+      onRetry={rating.reset}
+    />
   );
 }

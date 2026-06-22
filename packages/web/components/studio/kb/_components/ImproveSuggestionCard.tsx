@@ -10,7 +10,11 @@
 import { Check, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AIRating } from "@/components/shared/ai-rating/AIRating";
+import { kbImproveRatingAdapter } from "@/lib/ai-rating/adapters/kb-improve";
+import type { AIRatingViewModel } from "@/lib/ai-rating/contracts";
 import type { ImproveSuggestion } from "@/lib/api/kb-improve";
+import { useAIRating } from "@/lib/hooks/useAIRating";
 
 import {
   DEFAULT_COLOR_CLASS,
@@ -26,6 +30,7 @@ interface ImproveSuggestionCardProps {
   onToggle: (id: number) => void;
   onAccept: (id: number) => void;
   onReject: (id: number) => void;
+  projectId?: string;
 }
 
 export function ImproveSuggestionCard({
@@ -34,11 +39,19 @@ export function ImproveSuggestionCard({
   onToggle,
   onAccept,
   onReject,
+  projectId,
 }: ImproveSuggestionCardProps) {
   const t = useTranslations("studio");
 
   const IconComponent = TYPE_ICONS[suggestion.type] ?? DEFAULT_ICON;
   const colorClass = TYPE_COLORS[suggestion.type] ?? DEFAULT_COLOR_CLASS;
+  const ratingVm = projectId
+    ? kbImproveRatingAdapter({
+        suggestion,
+        projectId,
+        action: isSelected ? "accept" : "reject",
+      })
+    : null;
 
   return (
     <div
@@ -149,6 +162,25 @@ export function ImproveSuggestionCard({
           {t("aiActions.accept")}
         </button>
       </div>
+      {ratingVm ? (
+        <div className="px-3 pb-3">
+          <ImproveRating viewModel={ratingVm} />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function ImproveRating({ viewModel }: { readonly viewModel: AIRatingViewModel }) {
+  const rating = useAIRating(viewModel);
+
+  return (
+    <AIRating
+      viewModel={viewModel}
+      state={rating.state}
+      onSubmit={rating.submit}
+      onSkip={rating.skip}
+      onRetry={rating.reset}
+    />
   );
 }

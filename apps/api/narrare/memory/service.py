@@ -52,6 +52,12 @@ class MemoryFeedbackService:
         chapter_id, genre, mode) and records it. Optionally publishes
         a ``FeedbackRecorded`` event for TaskIQ async processing.
 
+        Identifier resolution (CR-AUFG-07-24): when the caller supplies a
+        ``source_id`` + ``source_type`` pair instead of a ``suggestion_id``,
+        a deterministic UUID is derived before the event reaches core/DB.
+        The raw ``source_id`` is never forwarded — only a one-way hash is
+        attached to the context (RULE-22 privacy).
+
         Args:
             request: Feedback data from the client.
             user_id: Authenticated user ID from the JWT.
@@ -59,9 +65,29 @@ class MemoryFeedbackService:
         Returns:
             FeedbackResponse with the persisted event ID and timestamp.
         """
+        from narrare.memory.suggestion_identity import (
+            FEEDBACK_SOURCE_VERSION,
+            hash_source_id,
+            resolve_suggestion_id,
+        )
         from narrare_core.memory.models import FeedbackAction, FeedbackEvent
 
         action = FeedbackAction(request.action)
+
+        # Resolve canonical suggestion UUID (schema guarantees one path).
+        if request.suggestion_id is not None:
+            suggestion_id = request.suggestion_id
+        else:
+            # source_id + source_type presence is enforced by the schema
+            # model_validator; narrow for the type checker.
+            assert request.source_id is not None
+            assert request.source_type is not None
+            suggestion_id = resolve_suggestion_id(
+                user_id=user_id,
+                project_id=request.project_id,
+                source_type=request.source_type,
+                source_id=request.source_id,
+            )
 
         # Build enriched context with additional metadata
         context = dict(request.context) if request.context else {}
@@ -71,11 +97,18 @@ class MemoryFeedbackService:
             context["genre"] = request.genre
         if request.mode:
             context["mode"] = request.mode
+        if request.source_type:
+            context["source_type"] = request.source_type
+        if request.source_id is not None:
+            # Privacy: forward only a one-way hash, never the raw source_id
+            # (RULE-22). Version aids future derivation migrations.
+            context["source_id_hash"] = hash_source_id(request.source_id)
+            context["feedback_source_version"] = FEEDBACK_SOURCE_VERSION
 
         event = FeedbackEvent(
             user_id=user_id,
             project_id=request.project_id,
-            suggestion_id=request.suggestion_id,
+            suggestion_id=suggestion_id,
             action=action,
             intent=request.intent,
             suggestion_text=request.suggestion_text,

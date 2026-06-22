@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-22 (CR-07 Phase C CR-AUFG-07-18 resolved — shared AI-diff vocabulary implementation + enforcement evidence complete; feature spec remains `planned` pending user closure confirmation. CR-07 Follow-up v3 Phase B PROMPT-003 resolved — CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`. Phase A resolved 2026-06-21 — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
+> **Last updated:** 2026-06-22 (CR-07 Phase C CR-AUFG-07-24 resolved — AI feedback rating expansion implementation + enforcement evidence complete. CR-AUFG-07-18 resolved — shared AI-diff vocabulary implementation + enforcement evidence complete; feature spec remains `planned` pending user closure confirmation. CR-07 Follow-up v3 Phase B PROMPT-003 resolved — CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`. Phase A resolved 2026-06-21 — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -482,7 +482,7 @@ per `docs/development/finding-lifecycle.md`.
 | CR-AUFG-07-21 | C | SessionPanel server-side stop and WebSocket recovery | `open` | P2 | Stop reaches server-side session state; connection-loss recovery preserves partial state and is tested. |
 | CR-AUFG-07-22 | C | Regenerate with style variants | `open` | P2 | Consistent regenerate/variant UI and request contract across eligible AI output surfaces. |
 | CR-AUFG-07-23 | C | Emotional intensity curve | `open` | P3 | Dedicated spec decides deterministic/LLM/hybrid approach, chart contract, and tests. |
-| CR-AUFG-07-24 | C | AI feedback rating expansion | `open` | P2 | Extend rating to Co-Author, KB flows, and Chat through LEARN-001-compatible persistence/memory contract. |
+| CR-AUFG-07-24 | C | AI feedback rating expansion | `resolved` | P2 | Extend rating to Co-Author, KB flows, and Chat through LEARN-001-compatible persistence/memory contract. Implementation: `packages/core/narrare_core/memory/source_types.py`, `apps/api/narrare/memory/schemas.py` (`source_type` + optional `source_id` identifier policy), `apps/api/narrare/memory/suggestion_identity.py` (uuid5 resolver + `source_id_hash` — raw `source_id` never reaches core/DB/mem0), `packages/web/lib/ai-rating/*`, `packages/web/components/shared/ai-rating/AIRating.tsx`, adoption in `ChangeReview`/`EnhanceReviewCard`/`ImproveSuggestionCard`/`FieldSuggestionReview`/`ChatMessage`. Enforcement: `tests/integration/memory/test_feedback_source_type_parity.py` (source-type taxonomy), `tests/integration/memory/test_feedback_identifier_contract.py` (cross-layer identifier policy across all 5 surfaces) + per-surface vitest tests. See plan `docs/superpowers/plans/2026-06-22-cr-07-phase-c-07-24-feedback-rating.md`. |
 
 **Definition of Done for the set:**
 
@@ -494,7 +494,7 @@ per `docs/development/finding-lifecycle.md`.
 
 **Exit evidence:**
 
-Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). Phase B PROMPT-003 (CR-AUFG-07-16) — Resolved (2026-06-22). Phase C diff-view standardization (CR-AUFG-07-18) — Resolved (2026-06-22). Remaining Phase C items (CR-AUFG-07-19 through CR-AUFG-07-24) are pending.
+Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). Phase B PROMPT-003 (CR-AUFG-07-16) — Resolved (2026-06-22). Phase C diff-view standardization (CR-AUFG-07-18) — Resolved (2026-06-22). Phase C feedback rating expansion (CR-AUFG-07-24) — Resolved (2026-06-22). Remaining Phase C items (CR-AUFG-07-19 through CR-AUFG-07-23) are pending.
 
 #### CR-AUFG-07-14 — §16 Consistency/i18n fallback hardening
 
@@ -565,6 +565,22 @@ Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboar
   - `scripts/check_frontend_file_size.py` — 0 current violations, 0 new debt (all new files within RULE-04 limits: tsx ≤200, ts ≤400).
   - `scripts/check_architecture.py` — 1770 files checked, 0 new violations.
 - **Validation:** All gates green. Foundation: 9 files / 34 tests pass. Adoption: 5 files / 41 tests pass. `just check-ai-ux` 0 violations. File-size 0 new debt. Architecture OK. Feature spec status remains `planned` until user confirms full closure — the AUFG is resolved with implementation + enforcement evidence per `docs/development/finding-lifecycle.md`.
+
+#### CR-AUFG-07-24 — AI feedback rating expansion
+
+**Exit evidence (2026-06-22):** Resolved — implementation + enforcement complete. Ratings are available on Co-Author change review, KB field-suggest/enhance/improve, and Chat assistant prose blocks through the existing LEARN-001-compatible `POST /memory/feedback` path.
+- **Design:** RULE-16 (visible rating strings use `studio.aiActions.*` DE/EN/FR keys); RULE-17 (Core enum ↔ Backend Literal ↔ Frontend union parity); RULE-20 (no parallel learning store — ratings use `/memory/feedback`); RULE-22 (privacy-safe memory metadata, no raw prose to mem0). CR-AUFG-07-24 spec (`docs/features/ai-ux/CR-AUFG-07-24-feedback-rating-expansion.md`) and implementation plan (`docs/superpowers/plans/2026-06-22-cr-07-phase-c-07-24-feedback-rating.md`).
+- **Implementation:**
+  - **Backend/Core:** `packages/core/narrare_core/memory/source_types.py` defines the closed source taxonomy; `apps/api/narrare/memory/schemas.py` validates optional `source_type` and the `source_id` identifier policy (either canonical `suggestion_id` UUID OR `source_id`+`source_type` pair; non-UUID `suggestion_id` rejected; both missing rejected); `apps/api/narrare/memory/suggestion_identity.py` derives a deterministic uuid5 server-side from `(user_id, project_id, source_type, source_id)` and a one-way `source_id_hash` prefix so the raw `source_id` never reaches core/DB/mem0 (RULE-17, RULE-22); `apps/api/narrare/memory/service.py` writes source metadata into feedback context; `packages/core/narrare_core/memory/feedback_service.py` forwards it as mem0 metadata.
+  - **Frontend shared primitive:** `packages/web/lib/ai-rating/` contract, payload builder, adapters (`coauthor`, `kb-field`, `kb-enhance`, `kb-improve`, `chat`), and `packages/web/components/shared/ai-rating/AIRating.tsx` accessible rating control.
+  - **Adoption:** `ChangeReview` (Co-Author), `EnhanceReviewCard`, `ImproveSuggestionCard`, `FieldSuggestionReview`, and `ChatMessage` render rating affordances with stable source IDs and per-surface `source_type` values.
+  - **Governance/docs:** `scripts/checks/ai_operation_inventory.yaml` records `rating_support` blocks for the five adopted operations; LEARN-001 and INFRA-005 docs document rating expansion and privacy semantics.
+- **Enforcement:**
+  - Backend/unit suites cover source taxonomy, schema validation, context propagation, and mem0 metadata.
+  - `tests/integration/memory/test_feedback_source_type_parity.py` prevents Core/API/Frontend source-type drift.
+  - `tests/integration/memory/test_feedback_identifier_contract.py` validates the cross-layer identifier policy: all five rating surfaces' canonical `(source_id, source_type)` payloads pass backend Pydantic validation, non-UUID `suggestion_id` is rejected, and both-missing is rejected.
+  - Vitest suites cover `lib/ai-rating`, `components/shared/ai-rating`, `useAIRating`, and per-surface adoption tests for Co-Author, Chat, KB Enhance, KB Improve, and field suggestion review.
+  - `npx tsx scripts/validate-i18n.ts`, `just check-ai-ux`, `scripts/check_architecture.py`, and `scripts/check_frontend_file_size.py` are the documented gates for i18n parity, AI operation inventory, architecture constraints, and frontend file-size enforcement.
 
 ---
 

@@ -16,6 +16,7 @@ export type {
   FeedbackAction,
   FeedbackRequest,
   FeedbackResponse,
+  FeedbackSourceType,
   PreferenceProfile,
   ResetResponse,
 } from "./feedback";

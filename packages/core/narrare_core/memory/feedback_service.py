@@ -64,6 +64,7 @@ class FeedbackService:
                     "intent": event.intent,
                     "suggestion_id": str(event.suggestion_id),
                     "project_id": str(event.project_id),
+                    "source_type": event.context.get("source_type"),
                 },
             )
         except Exception:
