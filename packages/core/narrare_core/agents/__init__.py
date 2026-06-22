@@ -82,6 +82,11 @@ from narrare_core.agents.preference_analysis_agent import (
     PreferenceAnalysisDeps,
 )
 from narrare_core.agents.preference_analysis_types import PreferenceAnalysisOutput
+from narrare_core.agents.prompt_live_test_agent import (
+    PromptLiveTestAgent,
+    PromptLiveTestDeps,
+    PromptLiveTestResult,
+)
 from narrare_core.agents.readability_agent import ReadabilityAgent, ReadabilityDeps
 from narrare_core.agents.readability_types import (
     ReadabilityAgentOutput,
@@ -205,6 +210,9 @@ __all__ = [
     "PreferenceAnalysisAgent",
     "PreferenceAnalysisDeps",
     "PreferenceAnalysisOutput",
+    "PromptLiveTestAgent",
+    "PromptLiveTestDeps",
+    "PromptLiveTestResult",
     "ReadabilityAgent",
     "ReadabilityAgentOutput",
     "ReadabilityDeps",

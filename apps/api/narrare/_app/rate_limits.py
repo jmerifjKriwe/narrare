@@ -79,6 +79,13 @@ The default ``RateLimiter`` key is client IP, which is the correct
 behaviour for unauthenticated endpoints.
 """
 
+AI_PROMPT_LIVE_TEST_LIMITER = _RateLimiterDep(Limiter(Rate(5, LONG_WINDOW_MS)))
+"""Per-user rate limit for PROMPT-003 prompt live test — 5 requests/minute.
+
+Applies to: ``POST /api/v1/prompts/{prompt_id:path}/live-test``.
+Matches the CR-07 v3 §B.1 spec cap of 5/min for the optional live test.
+"""
+
 
 # -- WebSocket limiter (raw pyrate_limiter, not FastAPI Dep) ----------------
 

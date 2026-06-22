@@ -1,4 +1,11 @@
-"""Prompts routes — thin, delegates immediately to prompt management service."""
+"""Prompts routes — thin, delegates immediately to prompt management service.
+
+PROMPT-003 (CR-AUFG-07-16) preview/reset/live-test routes live in the
+split module ``router_prompt_ux.py`` (RULE-04 — router hard limit 150 lines).
+Both routers share ``prefix="/prompts"`` and ``tags=["prompts"]``; POST
+routes in ``router_prompt_ux.py`` do not conflict with the GET/PUT/DELETE
+routes here (HTTP methods differ).
+"""
 
 from __future__ import annotations
 

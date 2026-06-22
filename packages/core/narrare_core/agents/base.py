@@ -40,8 +40,9 @@ from narrare_core.agents.error_translator import classify_error
 from narrare_core.agents.history_policy import HistoryPolicy
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
+    from pydantic_ai import RunContext
     from pydantic_ai.models import Model
     from pydantic_ai.output import OutputSpec
 
@@ -88,10 +89,38 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
         output_type: OutputSpec[OutputT] | None = None,
         capabilities: list[Any] | None = None,
         system_prompt: str | None = None,
+        instructions: (
+            str
+            | Callable[[RunContext[DepsT]], str | None]
+            | Callable[[RunContext[DepsT]], Awaitable[str | None]]
+            | None
+        ) = None,
         history_policy: HistoryPolicy = HistoryPolicy.NONE,
     ) -> None:
+        """Initialise the NarrareAgent wrapper.
+
+        Args:
+            model: Pydantic-AI model instance supplied by ``ModelRegistry``.
+            deps_type: The dependency type for this agent.
+            output_type: Optional output spec for structured output.
+            capabilities: Additional capabilities beyond the always-injected
+                ``NarrareObservability``, ``NarrareUniversalRules``, and
+                ``NarrareMeta``.
+            system_prompt: Optional static system prompt. Prefer the
+                ``core/prompts/`` cascade via the service layer for
+                user-customisable content (RULE-02a §1).
+            instructions: Optional dynamic per-invocation instructions
+                (RULE-02a §3). Accepts a string or a callable that receives
+                a ``RunContext[DepsT]`` and returns the instructions string
+                for the current run. Use this for content that varies per
+                invocation and depends on Deps (e.g. pre-composed prompts,
+                KB context, style profiles). Passed straight through to
+                ``pydantic_ai.Agent``.
+            history_policy: History policy for this agent (ADR-034).
+        """
         # Build Agent kwargs: pydantic-ai does not accept None for
-        # output_type or system_prompt, so only pass when explicitly set.
+        # output_type, system_prompt, or instructions, so only pass when
+        # explicitly set.
         agent_kwargs: dict[str, Any] = {
             "model": model,
             "deps_type": deps_type,
@@ -106,6 +135,8 @@ class NarrareAgent[DepsT, OutputT](ABC):  # noqa: B024 — abstract methods in P
             agent_kwargs["output_type"] = output_type
         if system_prompt is not None:
             agent_kwargs["system_prompt"] = system_prompt
+        if instructions is not None:
+            agent_kwargs["instructions"] = instructions
 
         self._agent = Agent(**agent_kwargs)
         self._history_policy = history_policy
