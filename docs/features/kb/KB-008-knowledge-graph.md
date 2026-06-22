@@ -58,9 +58,9 @@ ui_help_long: |
   slow to render — use filters to focus on specific areas.*
 ui_available_in: [kb]
 
-service: graph/service.py
-contract: graph/contracts.py#GraphServiceProtocol
-router: graph/router.py
+service: kb/graph_service.py
+contract: kb/graph_contracts.py#GraphServiceProtocol
+router: kb/router_graph.py
 prompt: ~
 requires: [KB-001]
 ---

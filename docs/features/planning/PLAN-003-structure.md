@@ -78,7 +78,7 @@ ui_help_long: |
 ui_available_in: [planning, cli]
 
 service: planning/service.py
-contract: planning/contracts.py#StructureServiceProtocol
+contract: planning/contracts.py#StoryboardServiceProtocol
 router: planning/router.py
 prompt: ~
 requires: [KB-001]

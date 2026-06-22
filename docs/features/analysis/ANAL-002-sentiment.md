@@ -64,8 +64,8 @@ ui_help_long: |
   intentional choices.
 ui_available_in: [analysis]
 
-service: analysis/sentiment_service.py
-contract: analysis/contracts.py#SentimentProtocol
+service: analysis/services/sentiment_service.py
+contract: analysis/contracts.py#SentimentService
 router: analysis/router.py
 prompt: core/prompts/_bundled/analysis/en/sentiment
 requires: [INFRA-001]

@@ -56,7 +56,7 @@ ui_help_long: |
 ui_available_in: [editor]
 
 service: kb/suggest_service.py
-contract: kb/contracts.py#KBSuggestProtocol
+contract: kb/suggest_contracts.py#KBSuggestProtocol
 router: kb/router.py
 prompt: ~
 requires: [KB-001, INFRA-003, INFRA-004]

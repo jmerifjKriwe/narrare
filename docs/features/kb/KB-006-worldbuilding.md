@@ -64,9 +64,9 @@ ui_help_long: |
 ui_available_in: [kb]
 
 service: kb/worldbuilding_service.py
-contract: kb/contracts.py#WorldbuildingProtocol
+contract: kb/worldbuilding_contracts.py#WorldbuildingProtocol
 router: kb/router.py
-prompt: core/prompts/_bundled/kb/en/worldbuild
+prompt: core/prompts/_bundled/kb/en/worldbuilding
 requires: [KB-001]
 ---
 

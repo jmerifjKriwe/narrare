@@ -70,7 +70,7 @@ ui_help_long: |
   - Keep entries updated as story evolves
 ui_available_in: [kb]
 
-service: kb/management_service.py
+service: kb/service.py
 contract: kb/contracts.py#KBServiceProtocol
 router: kb/router.py
 prompt: core/prompts/_bundled/kb

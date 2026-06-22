@@ -76,9 +76,9 @@ ui_help_long: |
   before your readers do.
 ui_available_in: [analysis]
 
-service: analysis/pov_service.py
+service: analysis/services/pov_service.py
 contract: analysis/contracts.py#POVDetector
-agent: core/analysis/pov_agent.py#POVDetectionAgent
+agent: core/agents/pov_agent.py#POVDetectionAgent
 router: analysis/router.py
 prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
 requires: [INFRA-001, INFRA-002, KB-001]

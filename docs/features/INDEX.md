@@ -35,6 +35,11 @@
 | [INFRA-003](infra/INFRA-003-context-assembly.md) | Context Assembly Pipeline | ✅ | ✅ |
 | [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | ✅ | ❌ |
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
+| [INFRA-006](infra/INFRA-006-a2a-integration.md) | A2A Integration | 🔨 | ❌ |
+| [INFRA-007](infra/INFRA-007-background-tasks.md) | Background Tasks | 🔨 | ❌ |
+| [INFRA-008](infra/INFRA-008-mcp-integration.md) | MCP Integration | 📋 | ❌ |
+| [INFRA-009](infra/INFRA-009-proactive-context.md) | Proactive Context Loading | ⛔ | ❌ |
+> **Note:** INFRA-009 was merged into [KB-005](kb/KB-005-kb-suggest.md) (Proactive KB Suggestions) and is deprecated as a standalone feature.
 | [INFRA-010](infra/INFRA-010-prompting-locally.md) | Prompting Locally | ✅ | ❌ |
 | [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | ✅ | ❌ |
 | [INFRA-012](infra/INFRA-012-prompt-governance-hardening.md) | Prompt Governance Hardening | 🔨 | ❌ |
@@ -74,6 +79,7 @@
 | [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | 📋 | ❌ |
 | [WRITE-011](writing/WRITE-011-volume-management.md) | Volume Management | ✅ | ✅ |
 | [WRITE-012](writing/WRITE-012-chapter-summary.md) | Chapter Summary | ✅ | ❌ |
+| [WRITE-013](writing/WRITE-013-workflows.md) | Writing Workflows | 📋 | ❌ |
 | [WRITE-014](writing/WRITE-014-context-inspector.md) | Context Inspector | ✅ | ❌ |
 
 ### Chat
@@ -122,6 +128,8 @@
 | [PLAN-006](planning/PLAN-006-character-arc.md) | Character Arc Analysis | ✅ | ❌ |
 
 > **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 Timeline Management is fully implemented through Phase 4 (AI timeline analysis, extraction, consistency checks, frontend visualization). PLAN-006 is backend-only with no UI yet.
+>
+> **Supplement:** `planning/PLAN-004-architecture.md` is an architecture supplement for PLAN-004 (Timeline Management), not a separate feature entry. It documents the internal architecture of the timeline feature.
 
 ### AI Assist (Standalone Operations)
 | ID | Feature | Status | MVP |
@@ -129,6 +137,7 @@
 | [ASSIST-001](ai_assist/ASSIST-001-plot-check.md) | Plot Consistency Check | 📋 | ❌ |
 | [ASSIST-002](ai_assist/ASSIST-002-title-suggest.md) | Title Suggestions | 📋 | ❌ |
 | ~~ASSIST-003~~ | ~~Story Chat Assistant~~ | ⛔ | ❌ |
+| [ASSIST-004](ai_assist/ASSIST-004-dialogue-coach.md) | Dialogue Coach | 📋 | ❌ |
 
 > **Note:** ASSIST-003 (Story Chat Assistant) has been superseded by [CHAT-001](chat/CHAT-001-free-form-chat.md) with a scoped, architecturally grounded design. See the new spec for details.
 
@@ -174,6 +183,7 @@
 | [SET-001](settings/SET-001-user-settings.md) | User Settings | ✅ | ✅ |
 | [SET-002](settings/SET-002-project-settings.md) | Project Settings | ✅ | ✅ |
 | [SET-003](settings/SET-003-model-config.md) | Per-task Model Configuration | ✅ | ✅ |
+| [SET-004](settings/SET-004-shortcuts.md) | Keyboard Shortcuts | 📋 | ❌ |
 | [SET-005](settings/SET-005-configurable-token-limits.md) | Configurable Token Limits | ✅ | ❌ |
 | [KEYBOARD-001](keyboard-consistency.md) | Tastatur-Konsistenz | ✅ | ❌ |
 
@@ -204,6 +214,20 @@
 > 4. No `apps/mcp/` or `apps/a2a/` skeleton is created only to satisfy a review item;
 >    implementation starts only after Q-001/Q-002 are resolved or explicitly scoped in
 >    an approved adapter spec.
+
+---
+
+### Supplementary Documentation
+
+The following directories contain supplementary docs that are NOT standalone features:
+
+| Location | Type |
+|----------|------|
+| `docs/features/remediation/` | CR-item remediation specifications (linked from governance docs) |
+| `docs/features/ai-ux/` | CR-07 UX follow-up specifications (CR-AUFG-07-18 through CR-AUFG-07-24) |
+| `docs/features/planning/PLAN-004-architecture.md` | Architecture supplement for PLAN-004 (Timeline) |
+
+These are not listed as features in the registry above but are tracked here for discoverability.
 
 ---
 
@@ -282,5 +306,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-21 — CR-07 Follow-up v3 added governance links for PROMPT-003 (CR-AUFG-07-16) and ONBOARD-001 conceptual aha-moment follow-up (CR-AUFG-07-17). SET-005 remains `stable`: ADR-051 accepted (RULE-18b elevated to CONSTRAINTS.md); CR-08 AUFG set resolved (CR-AUFG-08-01 through CR-AUFG-08-14, including FIND-013 and the audit-template matrix gate). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-22 — CR-07 Follow-up v3 added governance links for PROMPT-003 (CR-AUFG-07-16) and ONBOARD-001 conceptual aha-moment follow-up (CR-AUFG-07-17). SET-005 remains `stable`: ADR-051 accepted (RULE-18b elevated to CONSTRAINTS.md); CR-08 AUFG set resolved (CR-AUFG-08-01 through CR-AUFG-08-14, including FIND-013 and the audit-template matrix gate). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

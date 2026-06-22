@@ -24,7 +24,7 @@ ui_help_long: |
   can add, update, or remove providers at any time.
 ui_available_in: [settings]
 
-service: settings/user_service.py
+service: settings/user_ai_settings_service.py
 contract: settings/contracts.py#UserSettingsRepositoryProtocol
 router: settings/router.py
 prompt: ~

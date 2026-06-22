@@ -51,8 +51,8 @@ ui_help_long: |
   **Best practice:** Run after major revisions or before publishing.
 ui_available_in: [kb]
 
-service: kb/analyzer_service.py
-contract: kb/contracts.py#KBAnalyzerProtocol
+service: kb/consistency_service.py
+contract: kb/consistency_contracts.py#KBConsistencyProtocol
 router: kb/router.py
 prompt: core/prompts/_bundled/kb/en/consistency
 requires: [KB-001, KB-007]

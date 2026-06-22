@@ -13,9 +13,9 @@ ui_help_long: |
   Narrare uses a sophisticated prompt cascading system that allows you to tailor the AI's behavior, style, and analysis depth for each individual novel or character without changing the core application. Overrides can be defined at the project or global user level.
 ui_available_in: ["editor", "cli", "api"]
 
-service: packages/core/prompts/prompt_manager.py
+service: packages/core/narrare_core/prompts/management.py
 contract: packages/core/prompts/contracts.py#PromptManager
-router: apps/api/routers/prompts.py
+router: apps/api/narrare/prompts/router.py
 prompt: ""
 requires: []
 ---

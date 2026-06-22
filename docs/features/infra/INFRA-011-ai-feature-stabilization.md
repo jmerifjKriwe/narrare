@@ -16,7 +16,7 @@ ui_help_long: |
   documentation, and turned warning-only checks into explicit quality gates.
 ui_available_in: []
 
-service: scripts/architecture/check_adoption.py
+service: scripts/check_adoption.py
 contract: docs/architecture/decisions/ADR-027-ai-feature-stabilization-gates.md
 router: null
 prompt: packages/core/narrare_core/prompts/_bundled/

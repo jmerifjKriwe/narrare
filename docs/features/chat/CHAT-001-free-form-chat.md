@@ -34,11 +34,12 @@ ui_help_long: |
   The AI stays scoped to writing, storytelling, and worldbuilding topics.
 ui_available_in: [global, cli]
 
-service: chat/service.py
-contract: chat/contracts.py#ChatServiceProtocol
+service: chat/chat_service.py
+contract: packages/core/narrare_core/chat/contracts.py#ChatServiceProtocol
 router: chat/router.py
 prompt: core/prompts/_bundled/writing/en/chat/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003, KB-001, ADR-034]
+adr: [ADR-024, ADR-049]
 ---
 
 # CHAT-001 — Free-Form Chat
@@ -250,4 +251,5 @@ mode is available through the same interface for MCP/CLI clients.
 - `2026-05-31` — Feature spec created (supersedes ASSIST-003). CR-02 identified the gap.
 - `2026-06-05` — Implementation started: `ChatAgent` + `ChatDeps` created, `ProcessHistory` for cross-turn continuity, `HistoryPolicy.CONVERSATIONAL` as first adopter (ADR-034). API backend refactored to use `ChatAgent.run_stream()`.
 - `2026-06-10` — Fully implemented and promoted to stable. ChatAgent + ChatDeps with SSE streaming, ProcessHistory for cross-turn continuity (ADR-034), ChatPanel frontend component, conversation persistence, PromptComposer integration. All RULE-XX compliance verified.
+- `2026-06-22` — ADR-049 confirmed route under writing/chat; ADR-024 authorizes implementation.
 - `project-init` — ASSIST-003 added as planned placeholder (now superseded).

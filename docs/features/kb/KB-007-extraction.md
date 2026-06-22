@@ -59,7 +59,7 @@ ui_help_long: |
 ui_available_in: [editor, kb]
 
 service: kb/extraction_service.py
-contract: kb/contracts.py#ExtractionProtocol
+contract: ""
 router: kb/router.py
 prompt: core/prompts/_bundled/kb/en/extract
 requires: [KB-001, INFRA-001]

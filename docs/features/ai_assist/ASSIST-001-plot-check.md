@@ -61,7 +61,7 @@ ui_available_in: [analysis, cli]
 
 service: analysis/plot_service.py
 contract: analysis/contracts.py#PlotCheckProtocol
-router: analysis/router_novel.py
+router: analysis/router.py
 prompt: core/prompts/_bundled/analysis/en/plot
 requires: [INFRA-001, INFRA-002]
 ---

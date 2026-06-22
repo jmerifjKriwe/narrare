@@ -76,9 +76,9 @@ ui_help_long: |
   complexity for your audience.
 ui_available_in: [editor, analysis]
 
-service: analysis/readability_service.py
+service: analysis/services/readability_service.py
 contract: analysis/contracts.py#ReadabilityAnalyzer
-agent: core/analysis/readability_agent.py#ReadabilityAgent
+agent: core/agents/readability_agent.py#ReadabilityAgent
 router: analysis/router.py
 prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
 requires: [INFRA-001, INFRA-002]
