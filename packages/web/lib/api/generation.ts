@@ -130,6 +130,22 @@ export const writingApi = {
 // ---------------------------------------------------------------------------
 
 /** Server-sent message types during an interactive writing session. */
+export type StreamStatus = "idle" | "streaming" | "stopped" | "completed" | "failed";
+
+export type StopReason = "user_stop" | "already_idle" | "not_found";
+
+export type RecoveryFailureReason =
+  | "session_not_found"
+  | "session_expired"
+  | "ownership_mismatch"
+  | "session_ended";
+
+export interface SessionTranscriptTailItem {
+  readonly role: "user" | "assistant" | "system";
+  readonly content?: string;
+  readonly prose?: string;
+}
+
 export interface SessionResponse {
   type:
     | "greeting"
@@ -138,11 +154,23 @@ export interface SessionResponse {
     | "text_done"
     | "draft_done"
     | "feedback_acknowledged"
+    | "generation_stopped"
+    | "session_recovered"
+    | "recovery_failed"
+    | "connection_lost"
     | "saved"
     | "timeout"
     | "error";
   text?: string;
   message?: string;
+  session_id?: string;
+  invocation_id?: string;
+  partial_prose?: string;
+  sequence?: number;
+  reason?: StopReason | RecoveryFailureReason | "idle_timeout" | "server_shutdown";
+  stream_status?: StreamStatus;
+  transcript_tail?: SessionTranscriptTailItem[];
+  recoverable_until?: number;
 }
 
 /** Configuration options for WritingSessionSocket. */
@@ -170,6 +198,8 @@ export class WritingSessionSocket {
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts: number;
   private readonly reconnectBaseDelayMs: number;
+  private sessionId: string | undefined;
+  private pendingRecover = false;
 
   constructor(
     private readonly chapterId: string,
@@ -179,11 +209,13 @@ export class WritingSessionSocket {
     private readonly novelId?: string,
     private readonly mode?: string,
     socketOptions?: WritingSessionSocketOptions,
+    initialSessionId?: string,
   ) {
     this.maxReconnectAttempts =
       socketOptions?.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
     this.reconnectBaseDelayMs =
       socketOptions?.reconnectBaseDelayMs ?? DEFAULT_RECONNECT_BASE_DELAY_MS;
+    this.sessionId = initialSessionId;
   }
 
   /** Open the WebSocket connection. Safe to call multiple times. */
@@ -198,15 +230,26 @@ export class WritingSessionSocket {
     if (this.userId) params.set("user_id", this.userId);
     if (this.novelId) params.set("project_id", this.novelId);
     if (this.mode) params.set("mode", this.mode);
+    if (this.sessionId) params.set("session_id", this.sessionId);
 
     const url = `${protocol}//${host}/api/v1/writing/sessions/${this.chapterId}?${params.toString()}`;
 
     try {
       this.ws = new WebSocket(url);
 
+      this.ws.onopen = () => {
+        if (!this.pendingRecover || !this.sessionId) return;
+        this.send({ type: "recover_session", session_id: this.sessionId });
+        this.pendingRecover = false;
+      };
+
       this.ws.onmessage = (event: MessageEvent) => {
         try {
-          this.onMessage(JSON.parse(event.data) as SessionResponse);
+          const msg = JSON.parse(event.data) as SessionResponse;
+          if ((msg.type === "greeting" || msg.type === "session_recovered") && msg.session_id) {
+            this.sessionId = msg.session_id;
+          }
+          this.onMessage(msg);
         } catch {
           // Ignore malformed messages
         }
@@ -218,6 +261,7 @@ export class WritingSessionSocket {
 
       this.ws.onclose = () => {
         if (!this.closed && this.reconnectAttempts < this.maxReconnectAttempts) {
+          if (this.sessionId) this.pendingRecover = true;
           this.reconnectAttempts++;
           setTimeout(() => this.connect(), this.reconnectBaseDelayMs * this.reconnectAttempts);
         }

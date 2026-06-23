@@ -10,8 +10,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from uuid import UUID, uuid4
+
+from narrare_core.writing._enums import ConnectionState, StreamStatus
 
 if TYPE_CHECKING:
     from narrare_core.writing._enums import GenerationMode
@@ -53,6 +55,12 @@ class SessionState:
 
     Tracks the conversation history and accumulated prose buffer for a
     single ``interactive_session`` or ``interview_assisted`` writing flow.
+
+    Recovery fields (ADR-052) are populated by the backend control service
+    during streaming/stop/reattach; core treats them as opaque state on
+    the dataclass.  They do not drive any core behaviour directly — they
+    exist so that a serialized session survives a transport reconnect with
+    its active-turn metadata intact.
     """
 
     session_id: UUID
@@ -66,6 +74,68 @@ class SessionState:
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     last_activity: datetime = field(default_factory=lambda: datetime.now(UTC))
     is_active: bool = True
+
+    # --- ADR-052 recovery fields (safe defaults for legacy payloads) ---
+    active_invocation_id: UUID | None = None
+    stream_status: StreamStatus = StreamStatus.IDLE
+    last_sequence: int = 0
+    active_partial_prose: str = ""
+    connection_state: ConnectionState = ConnectionState.CONNECTED
+
+
+# ---------------------------------------------------------------------------
+# Reattach outcome (ADR-052 Phase 2 Core)
+# ---------------------------------------------------------------------------
+
+# The ``kind`` literal field is the discriminator for ``ReattachOutcome``.
+# Each variant is a frozen dataclass so callers can pattern-match on the
+# union and the backend can serialize the ``kind`` straight into a WS
+# ``session_recovered`` / ``recovery_failed`` message payload.
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Reattached:
+    """Successful reattach — the session is live and owned by the caller."""
+
+    session_id: UUID
+    chapter_id: UUID
+    project_id: UUID
+    user_id: UUID
+    stream_status: StreamStatus
+    last_sequence: int
+    active_partial_prose: str
+    active_invocation_id: UUID | None
+    kind: Literal["recovered"] = "recovered"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SessionNotFound:
+    """No cached state exists for the requested session id."""
+
+    session_id: UUID
+    kind: Literal["not_found"] = "not_found"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SessionExpired:
+    """The session cache entry exists but ``is_active`` is False."""
+
+    session_id: UUID
+    kind: Literal["expired"] = "expired"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class OwnershipMismatch:
+    """The session exists and is active but belongs to a different user/project."""
+
+    session_id: UUID
+    user_id: UUID
+    project_id: UUID
+    kind: Literal["ownership_mismatch"] = "ownership_mismatch"
+
+
+#: Discriminated union returned by ``SessionManager.reattach_session``.
+ReattachOutcome = Reattached | SessionNotFound | SessionExpired | OwnershipMismatch
 
 
 # ---------------------------------------------------------------------------

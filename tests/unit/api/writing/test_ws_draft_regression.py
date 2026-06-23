@@ -20,6 +20,10 @@ from tests.unit.api.writing.test_ws_handler import (
     _fake_stream_hello,
     _make_handler,
 )
+from tests.unit.api.writing.ws_test_helpers import (
+    stream_kwargs_for_intent,
+    wait_for_gateway_calls,
+)
 
 if TYPE_CHECKING:
     from fastapi import WebSocket
@@ -46,10 +50,11 @@ class TestGenerateDraftContractRegression:
 
         await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
+        await wait_for_gateway_calls(gateway, 2)
         assert gateway.stream.call_count == 2
-        draft_call = gateway.stream.call_args_list[1]
+        draft_kwargs = stream_kwargs_for_intent(gateway, "write")
         # Usage limits MUST be present — proves budget enforcement.
-        assert draft_call.kwargs["usage_limits"] is not None
+        assert draft_kwargs["usage_limits"] is not None
 
     async def test_generate_draft_threads_identifiers_to_invocation(self) -> None:
         """Regression: draft generation must complete the invocation contract.
@@ -73,6 +78,7 @@ class TestGenerateDraftContractRegression:
         # The draft stream was called — proving the invocation contract
         # (prepare → compose → finalize → resolve limits → stream)
         # completed without raising a validation or context error.
+        await wait_for_gateway_calls(gateway, 2)
         assert gateway.stream.call_count == 2
         draft_done: list[dict[str, Any]] = [m for m in ws.sent if m["type"] == "draft_done"]
         assert len(draft_done) == 1

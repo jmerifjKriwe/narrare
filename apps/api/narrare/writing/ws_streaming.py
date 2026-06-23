@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Mapping
 
     from narrare_core.llm.result import StreamChunk, TokenUsage
+    from narrare_core.writing.session_turn_state import SessionTurnStateStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,3 +89,41 @@ async def send_stream_chunks(
         full_text="".join(accumulated),
         usage=final_usage,
     )
+
+
+class StreamChunkRecorder:
+    """Wraps an ``AsyncIterator[StreamChunk]`` and records chunk text into
+    the :class:`SessionTurnStateStore` (ADR-052).
+
+    The recorder is transparent: it yields each chunk unchanged after
+    recording the text, so the streaming DTO adapter
+    (:func:`send_stream_chunks`) sees the same stream.
+
+    Args:
+        turn_state: The in-process store for active-turn partial prose.
+        session_id: The session id as a string (registry key).
+    """
+
+    def __init__(
+        self,
+        turn_state: SessionTurnStateStore,
+        session_id: str,
+    ) -> None:
+        self._turn_state = turn_state
+        self._session_id = session_id
+
+    def wrap(
+        self,
+        upstream: AsyncIterator[StreamChunk],
+    ) -> AsyncIterator[StreamChunk]:
+        """Return a new async iterator that records chunks before yielding."""
+        return self._record(upstream)
+
+    async def _record(
+        self,
+        upstream: AsyncIterator[StreamChunk],
+    ) -> AsyncIterator[StreamChunk]:
+        async for chunk in upstream:
+            if chunk.text:
+                await self._turn_state.record_chunk(self._session_id, chunk.text)
+            yield chunk

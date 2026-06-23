@@ -9,7 +9,6 @@ See: docs/features/writing-session.md
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID, uuid4
@@ -17,6 +16,17 @@ from uuid import UUID, uuid4
 import structlog
 
 from narrare_core.writing.models import SessionState
+from narrare_core.writing.requests import (
+    OwnershipMismatch,
+    Reattached,
+    ReattachOutcome,
+    SessionExpired,
+    SessionNotFound,
+)
+from narrare_core.writing.session_state_codec import (
+    deserialize_session_state,
+    serialize_session_state,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -174,6 +184,63 @@ class SessionManager:
         await self._cache.delete(key)
         logger.info("session_ended", session_id=str(session_id))
 
+    async def reattach_session(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        project_id: UUID,
+    ) -> ReattachOutcome:
+        """Reattach to an existing session after a transport reconnect (ADR-052).
+
+        Pure-data validation: loads the cached state, checks liveness and
+        ownership, and returns a typed :class:`ReattachOutcome` snapshot.
+        Does NOT mutate the session's ``connection_state`` — the backend
+        transport layer owns that transition.
+        """
+        # ``_load`` (not ``get_session``) so we can distinguish not-found
+        # from inactive-expired: ``get_session`` collapses both to ``None``.
+        state = await self._load(session_id)
+        if state is None:
+            logger.info(
+                "reattach_not_found",
+                session_id=str(session_id),
+            )
+            return SessionNotFound(session_id=session_id)
+        if not state.is_active:
+            logger.info(
+                "reattach_expired",
+                session_id=str(session_id),
+            )
+            return SessionExpired(session_id=session_id)
+        if state.user_id != user_id or state.project_id != project_id:
+            logger.warning(
+                "reattach_ownership_mismatch",
+                session_id=str(session_id),
+                owner_user_id=str(state.user_id),
+                owner_project_id=str(state.project_id),
+            )
+            return OwnershipMismatch(
+                session_id=session_id,
+                user_id=user_id,
+                project_id=project_id,
+            )
+        logger.info(
+            "reattach_recovered",
+            session_id=str(session_id),
+            stream_status=state.stream_status.value,
+            last_sequence=state.last_sequence,
+        )
+        return Reattached(
+            session_id=state.session_id,
+            chapter_id=state.chapter_id,
+            project_id=state.project_id,
+            user_id=state.user_id,
+            stream_status=state.stream_status,
+            last_sequence=state.last_sequence,
+            active_partial_prose=state.active_partial_prose,
+            active_invocation_id=state.active_invocation_id,
+        )
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
@@ -182,32 +249,10 @@ class SessionManager:
         return f"{self.KEY_PREFIX}{session_id}"
 
     def _serialize(self, state: SessionState) -> str:
-        data = {
-            "session_id": str(state.session_id),
-            "chapter_id": str(state.chapter_id),
-            "project_id": str(state.project_id),
-            "user_id": str(state.user_id),
-            "conversation_history": state.conversation_history,
-            "prose_buffer": state.prose_buffer,
-            "started_at": state.started_at.isoformat(),
-            "last_activity": state.last_activity.isoformat(),
-            "is_active": state.is_active,
-        }
-        return json.dumps(data)
+        return serialize_session_state(state)
 
     def _deserialize(self, raw: str) -> SessionState:
-        data = json.loads(raw)
-        return SessionState(
-            session_id=UUID(data["session_id"]),
-            chapter_id=UUID(data["chapter_id"]),
-            project_id=UUID(data["project_id"]),
-            user_id=UUID(data["user_id"]),
-            conversation_history=data["conversation_history"],
-            prose_buffer=data["prose_buffer"],
-            started_at=datetime.fromisoformat(data["started_at"]),
-            last_activity=datetime.fromisoformat(data["last_activity"]),
-            is_active=data["is_active"],
-        )
+        return deserialize_session_state(raw)
 
     async def _persist(self, state: SessionState) -> None:
         """Serialize and write to cache with TTL refresh."""

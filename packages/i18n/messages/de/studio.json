@@ -819,6 +819,13 @@
     "sessionEnded": "Session beendet",
     "errorConnecting": "Verbindung fehlgeschlagen",
     "connecting": "Verbinde...",
+    "reconnecting": "Verbindung wird wiederhergestellt...",
+    "recovered": "Sitzung wiederhergestellt.",
+    "recoveryFailed": "Wiederherstellung fehlgeschlagen.",
+    "connectionLost": "Verbindung verloren.",
+    "generationStopped": "Generierung gestoppt.",
+    "serverStopFailed": "Stopp-Anfrage konnte nicht an den Server gesendet werden.",
+    "preserveLocalCopy": "Dein lokaler Text wurde erhalten.",
     "interviewTitle": "Interview-Modus",
     "generateDraft": "Entwurf generieren",
     "interviewGreetings": [

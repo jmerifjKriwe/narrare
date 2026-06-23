@@ -819,6 +819,13 @@
     "sessionEnded": "Session ended",
     "errorConnecting": "Failed to connect",
     "connecting": "Connecting...",
+    "reconnecting": "Reconnecting...",
+    "recovered": "Session recovered.",
+    "recoveryFailed": "Recovery failed.",
+    "connectionLost": "Connection lost.",
+    "generationStopped": "Generation stopped.",
+    "serverStopFailed": "Could not send stop request to the server.",
+    "preserveLocalCopy": "Your local text has been preserved.",
     "interviewTitle": "Interview Mode",
     "generateDraft": "Generate Draft",
     "interviewGreetings": [

@@ -9,13 +9,14 @@
  */
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import type { Message } from "./ChatMessage";
 import { ChatMessage } from "./ChatMessage";
 import { SessionActions } from "./SessionActions";
 import { SessionHeader } from "./SessionHeader";
+import { SessionReconnectBanner } from "./SessionReconnectBanner";
 import { StreamingBubble } from "./StreamingBubble";
+import { useSessionPanelActions } from "./useSessionPanelActions";
 import { useSessionSocket } from "./useSessionSocket";
 
 interface SessionPanelProps {
@@ -30,6 +31,7 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
   const currentUser = useAuthStore((s) => s.user);
   const [input, setInput] = useState("");
   const [proseBuffer, setProseBuffer] = useState("");
+  const [preservedProse, setPreservedProse] = useState("");
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -38,11 +40,13 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
     setMessages,
     streamingText,
     streamingTextRef,
+    sessionIdRef,
     isConnected,
     isStreaming,
     setIsStreaming,
     setStreamingText,
     saveNotification,
+    recoveryState,
     sendMessage,
     closeSocket,
   } = useSessionSocket({
@@ -53,12 +57,20 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
     sessionEndedLabel: t("sessionPanel.sessionEnded"),
     errorConnectingLabel: t("sessionPanel.errorConnecting"),
     savedLabel: t("sessionPanel.saved"),
+    generationStoppedLabel: t("sessionPanel.generationStopped"),
+    recoveryFailedLabel: t("sessionPanel.recoveryFailed"),
   });
 
   // Auto-scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  useEffect(() => {
+    if (recoveryState === "reconnecting" && streamingTextRef.current) {
+      setPreservedProse(streamingTextRef.current);
+    }
+  }, [recoveryState, streamingTextRef]);
 
   // Interview greetings
   const greetings: string[] = t.raw("sessionPanel.interviewGreetings");
@@ -74,51 +86,30 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
     }
   }, [mode, greetings, greetingIndex, messages.length, setMessages]);
 
-  // --- Actions ---
-
-  const handleSend = useCallback(() => {
-    const text = input.trim();
-    if (!text) return;
-    setMessages((prev: Message[]) => [
-      ...prev,
-      { id: `user-${Date.now()}`, role: "user", content: text },
-    ]);
-    sendMessage("user_direction", text);
-    setInput("");
-  }, [input, sendMessage, setMessages]);
-
-  const handleAddToDraft = useCallback((msgId: string, prose: string) => {
-    setAddedIds((prev) => new Set(prev).add(msgId));
-    setProseBuffer((prev) => (prev ? `${prev}\n\n${prose}` : prose));
-  }, []);
-
-  const handleSaveToChapter = useCallback(() => {
-    if (!proseBuffer) return;
-    sendMessage("save_to_chapter", proseBuffer);
-  }, [proseBuffer, sendMessage]);
-
-  const handleGenerateDraft = useCallback(() => {
-    sendMessage("generate_draft");
-  }, [sendMessage]);
-
-  /** Stop Generation — aborts only current AI stream, session stays active. */
-  const handleStopGeneration = useCallback(() => {
-    const prose = streamingTextRef.current;
-    streamingTextRef.current = "";
-    setStreamingText("");
-    setIsStreaming(false);
-    if (prose) {
-      setMessages((prev: Message[]) => [
-        ...prev,
-        { id: `stop-${Date.now()}`, role: "assistant", content: "", prose },
-      ]);
-    }
-  }, [streamingTextRef, setStreamingText, setIsStreaming, setMessages]);
-
-  const handleEndSession = useCallback(() => {
-    closeSocket();
-    onClose();
-  }, [closeSocket, onClose]);
+  const {
+    handleAddToDraft,
+    handleEndSession,
+    handleGenerateDraft,
+    handleRecoverSession,
+    handleSaveToChapter,
+    handleSend,
+    handleStopGeneration,
+  } = useSessionPanelActions({
+    input,
+    proseBuffer,
+    sendMessage,
+    closeSocket,
+    onClose,
+    setInput,
+    setMessages,
+    setAddedIds,
+    setProseBuffer,
+    setStreamingText,
+    setIsStreaming,
+    streamingTextRef,
+    sessionIdRef,
+    serverStopFailedLabel: t("sessionPanel.serverStopFailed"),
+  });
 
   // Escape-Cancel Handler (KEYBOARD-001)
   useEffect(() => {
@@ -154,6 +145,17 @@ export function SessionPanel({ chapterId, novelId, mode, onClose }: SessionPanel
         onClose={handleEndSession}
       />
       <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+        <SessionReconnectBanner
+          recoveryState={recoveryState}
+          reconnectingLabel={t("sessionPanel.reconnecting")}
+          recoveredLabel={t("sessionPanel.recovered")}
+          recoveryFailedLabel={t("sessionPanel.recoveryFailed")}
+          connectionLostLabel={t("sessionPanel.connectionLost")}
+          preserveLocalCopyLabel={t("sessionPanel.preserveLocalCopy")}
+          retryLabel={t("aiActions.connectionLostRetry")}
+          localProse={preservedProse}
+          onRetry={handleRecoverSession}
+        />
         {messages.map((msg) => (
           <ChatMessage
             key={msg.id}

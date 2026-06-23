@@ -10,14 +10,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WritingSessionSocket } from "@/lib/api/generation";
 import type { Message } from "../editor/ChatMessage";
-import { createSessionMessageHandler } from "./createSessionMessageHandler";
-
-let messageCounter = 0;
-
-export function createMessageId(): string {
-  messageCounter += 1;
-  return `msg-${messageCounter}`;
-}
+import { createSessionMessageHandler, type RecoveryState } from "./createSessionMessageHandler";
+import {
+  buildSessionClientMessage,
+  type SendMessageOptions,
+  type SessionClientMessageType,
+} from "./sessionSocketMessages";
 
 interface UseSessionSocketOptions {
   readonly chapterId: string;
@@ -27,6 +25,8 @@ interface UseSessionSocketOptions {
   readonly sessionEndedLabel: string;
   readonly errorConnectingLabel: string;
   readonly savedLabel: string;
+  readonly generationStoppedLabel?: string;
+  readonly recoveryFailedLabel?: string;
 }
 
 export function useSessionSocket({
@@ -37,15 +37,19 @@ export function useSessionSocket({
   sessionEndedLabel,
   errorConnectingLabel,
   savedLabel,
+  generationStoppedLabel,
+  recoveryFailedLabel,
 }: UseSessionSocketOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [saveNotification, setSaveNotification] = useState<string | null>(null);
+  const [recoveryState, setRecoveryState] = useState<RecoveryState>("idle");
 
   const socketRef = useRef<WritingSessionSocket | null>(null);
   const streamingTextRef = useRef("");
+  const sessionIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!userId) return;
@@ -63,8 +67,17 @@ export function useSessionSocket({
         sessionEndedLabel,
         errorConnectingLabel,
         savedLabel,
+        generationStoppedLabel,
+        recoveryFailedLabel,
+        setRecoveryState,
+        setSessionId: (sessionId) => {
+          sessionIdRef.current = sessionId;
+        },
       }),
-      () => setIsConnected(false),
+      () => {
+        setIsConnected(false);
+        if (sessionIdRef.current) setRecoveryState("reconnecting");
+      },
       userId,
       novelId,
       mode,
@@ -80,26 +93,25 @@ export function useSessionSocket({
       setIsConnected(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterId, userId, novelId, mode, sessionEndedLabel, errorConnectingLabel, savedLabel]);
+  }, [
+    chapterId,
+    userId,
+    novelId,
+    mode,
+    sessionEndedLabel,
+    errorConnectingLabel,
+    savedLabel,
+    generationStoppedLabel,
+    recoveryFailedLabel,
+  ]);
 
   const sendMessage = useCallback(
-    (
-      type:
-        | "user_direction"
-        | "user_feedback"
-        | "save_to_chapter"
-        | "end_session"
-        | "generate_draft",
-      content?: string,
-    ) => {
-      if (!socketRef.current) return;
-      if (type === "user_direction") {
-        socketRef.current.send({ type, content });
-      } else if (type === "save_to_chapter") {
-        socketRef.current.send({ type, text: content });
-      } else {
-        socketRef.current.send({ type });
-      }
+    (type: SessionClientMessageType, content?: string, options?: SendMessageOptions): boolean => {
+      if (!socketRef.current) return false;
+      const message = buildSessionClientMessage(type, content, options, sessionIdRef.current);
+      if (!message) return false;
+      socketRef.current.send(message);
+      return true;
     },
     [],
   );
@@ -116,11 +128,14 @@ export function useSessionSocket({
     setMessages,
     streamingText,
     streamingTextRef,
+    sessionIdRef,
     isConnected,
     isStreaming,
     setIsStreaming,
     setStreamingText,
     saveNotification,
+    recoveryState,
+    setRecoveryState,
     sendMessage,
     closeSocket,
   };

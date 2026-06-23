@@ -21,6 +21,7 @@ if TYPE_CHECKING:
         SessionState,
         WritingContext,
     )
+    from narrare_core.writing.requests import ReattachOutcome
 
 
 class WritingPipelineProtocol(Protocol):
@@ -169,5 +170,30 @@ class SessionManagerProtocol(Protocol):
         """End session and clean up.
 
         Marks the session as inactive and releases any held resources.
+        """
+        ...
+
+    async def reattach_session(
+        self,
+        session_id: UUID,
+        user_id: UUID,
+        project_id: UUID,
+    ) -> ReattachOutcome:
+        """Reattach to an existing session after a transport reconnect (ADR-052).
+
+        A pure-data operation: validates that the session exists, is still
+        active, and belongs to ``(user_id, project_id)``, then returns a
+        snapshot of its live state (including the ADR-052 recovery fields).
+
+        Does NOT mutate the session's ``connection_state`` — the backend
+        transport layer owns that transition.  Returns one of:
+
+        - :class:`Reattached` (``kind="recovered"``) on success;
+        - :class:`SessionNotFound` (``kind="not_found"``) when the cache
+          has no entry for ``session_id``;
+        - :class:`SessionExpired` (``kind="expired"``) when the entry
+          exists but ``is_active`` is False;
+        - :class:`OwnershipMismatch` (``kind="ownership_mismatch"``) when
+          the session belongs to a different user or project.
         """
         ...

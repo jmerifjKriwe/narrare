@@ -149,6 +149,9 @@ class SessionState:
 - Redis-backed via `SessionCacheProtocol` (cache layer abstraction)
 - 30-minute inactivity timeout — sessions auto-expire
 - `_ws_cache.py` — WebSocket connection cache for active sessions
+- ADR-052 uses an injected shared `SessionCacheProtocol`/`SessionManager` for
+  WebSocket sessions (not a per-connection cache) so `?session_id=` reconnects
+  can recover the same live session state until the TTL expires.
 
 **Context management:**
 - Uses `WritingContextAssembler` with 5-tier ranking (shared with other generation modes)
@@ -176,7 +179,13 @@ class SessionState:
 - Context window limits conversation memory
 - Prose in session is temporary — lost if not saved
 - No session history — ending session clears everything
-- Requires stable connection — disconnects lose unsaved prose
+- Disconnect no longer always loses unsaved prose: ADR-052 introduces
+  server-side stop + WebSocket recovery. Partial prose is preserved via
+  `SessionTurnStateStore` on stop, and a `?session_id=` reattach restores the
+  live session when the connection drops. Local unsaved prose is also preserved
+  in the UI (`SessionReconnectBanner`). If recovery is impossible (expired
+  session, nonexistent session, ownership mismatch), the UI surfaces the reason
+  and keeps the local copy.
 - LLM availability required — no offline mode
 
 ## Related Features
@@ -192,3 +201,4 @@ class SessionState:
 - `2026-05-17` — Implementation started (in-progress). WebSocket endpoint with session handler, Redis-backed persistence via SessionCacheProtocol, 30-min inactivity timeout, frontend SessionPanel + ChatMessage components, core SessionManager with cache abstraction.
 - `2026-05-18` — Fully implemented (stable). WebSocket bidirectional messaging operational, session persistence working, frontend session UI complete.
 - `2026-06-14` — Invocation contract integration: `WritingTurnService` wraps the turn flow through `PromptInvocationContext` → `InvocationPipeline` (enrich/validate/budget/evidence) → `ModelRegistry.stream()` with `UsageLimits`. Transport-agnostic design per RULE-12/RULE-13. Runtime evidence recording for audit tracking.
+- `2026-06-22` — ADR-052 adds server-side stop and reconnect recovery: `stop_generation` cancels active streaming turns, `generation_stopped` returns preserved partial prose, and `?session_id=` reattach restores shared cached session state until TTL expiry.

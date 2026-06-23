@@ -11,9 +11,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from narrare.writing.ws_payloads import (
+    build_generation_stopped_payload,
+    build_recovery_failed_payload,
+    build_session_recovered_payload,
+)
+
 if TYPE_CHECKING:
     from fastapi import WebSocket
 
+    from narrare.writing.contracts import WritingSessionControlProtocol
     from narrare.writing.ws_direction_dispatch import WritingDirectionDispatcher
     from narrare.writing.ws_session_context import WritingSessionContext
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -31,6 +38,7 @@ class WritingSessionMessageRouter:
         session_manager: Session state manager for non-LLM operations and
             draft persistence.
         direction_dispatcher: Dispatcher for ``user_direction`` turns.
+        control_service: Session control service for stop/reattach (ADR-052).
         registry: Model registry used by interview draft generation.
         composer: Prompt composer used by interview draft generation.
         config: Resolved model configuration.
@@ -44,6 +52,7 @@ class WritingSessionMessageRouter:
         self,
         session_manager: SessionManager,
         direction_dispatcher: WritingDirectionDispatcher,
+        control_service: WritingSessionControlProtocol,
         registry: ModelRegistry,
         composer: PromptComposer,
         config: ResolvedModelConfig,
@@ -54,6 +63,7 @@ class WritingSessionMessageRouter:
     ) -> None:
         self._session_manager = session_manager
         self._direction_dispatcher = direction_dispatcher
+        self._control_service = control_service
         self._registry = registry
         self._composer = composer
         self._config = config
@@ -79,6 +89,10 @@ class WritingSessionMessageRouter:
 
         if msg_type == "user_direction":
             await self._route_direction(websocket, context, data)
+        elif msg_type == "stop_generation":
+            await self._route_stop_generation(websocket, context, data)
+        elif msg_type == "recover_session":
+            await self._route_recover_session(websocket, context, data)
         elif msg_type == "user_feedback":
             from narrare.writing._ws_session_handlers import handle_feedback
 
@@ -120,6 +134,93 @@ class WritingSessionMessageRouter:
                 "type": "error",
                 "message": "Empty direction provided",
             }
+        )
+
+    async def _route_stop_generation(
+        self,
+        websocket: WebSocket,
+        context: WritingSessionContext,
+        data: dict[str, object],
+    ) -> None:
+        """Route a ``stop_generation`` message to the control service (ADR-052)."""
+        from uuid import UUID
+
+        raw_invocation = data.get("invocation_id")
+        if not isinstance(raw_invocation, str) or not raw_invocation.strip():
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "stop_generation requires an invocation_id",
+                },
+            )
+            return
+
+        try:
+            invocation_id = UUID(raw_invocation)
+        except ValueError:
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "Invalid invocation_id format",
+                },
+            )
+            return
+
+        result = await self._control_service.stop_generation(
+            context.session_id,
+            invocation_id,
+        )
+        await websocket.send_json(
+            build_generation_stopped_payload(
+                result,
+                fallback_invocation_id=raw_invocation,
+            ),
+        )
+
+    async def _route_recover_session(
+        self,
+        websocket: WebSocket,
+        context: WritingSessionContext,
+        data: dict[str, object],
+    ) -> None:
+        """Route a ``recover_session`` message to the control service."""
+        from uuid import UUID
+
+        from narrare.writing.ws_sink import WebSocketSink
+
+        raw_session_id = data.get("session_id")
+        if not isinstance(raw_session_id, str) or not raw_session_id.strip():
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "recover_session requires a session_id",
+                },
+            )
+            return
+        try:
+            session_id = UUID(raw_session_id)
+        except ValueError:
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "Invalid session_id format",
+                },
+            )
+            return
+
+        outcome = await self._control_service.reattach_session(
+            session_id,
+            context.user_id,
+            context.project_id,
+            new_sink=WebSocketSink(websocket),
+        )
+        if outcome.get("kind") == "recovered":
+            await websocket.send_json(
+                build_session_recovered_payload(outcome),
+            )
+            return
+        await websocket.send_json(
+            build_recovery_failed_payload(outcome),
         )
 
     async def _route_generate_draft(

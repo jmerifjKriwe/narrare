@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-22 (CR-07 Phase C CR-AUFG-07-24 resolved — AI feedback rating expansion implementation + enforcement evidence complete. CR-AUFG-07-18 resolved — shared AI-diff vocabulary implementation + enforcement evidence complete; feature spec remains `planned` pending user closure confirmation. CR-07 Follow-up v3 Phase B PROMPT-003 resolved — CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`. Phase A resolved 2026-06-21 — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
+> **Last updated:** 2026-06-22 (CR-07 Phase C CR-AUFG-07-21 resolved — SessionPanel server-side stop + WebSocket recovery implementation/enforcement evidence complete. CR-AUFG-07-24 resolved — AI feedback rating expansion implementation + enforcement evidence complete. CR-AUFG-07-18 resolved — shared AI-diff vocabulary implementation + enforcement evidence complete; feature spec remains `planned` pending user closure confirmation. CR-07 Follow-up v3 Phase B PROMPT-003 resolved — CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`. Phase A resolved 2026-06-21 — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -479,7 +479,7 @@ per `docs/development/finding-lifecycle.md`.
 | CR-AUFG-07-18 | C | Standardized diff view across AI outputs | `resolved` | P2 | Shared diff vocabulary/component contract for Rewrite, Co-Author, KB Enhance, and Beta Reader. Exit evidence 2026-06-22 — see sub-section below. |
 | CR-AUFG-07-19 | C | Prompt history | `open` | P2 | Prompt override history/restore/compare semantics after PROMPT-003 contracts exist. |
 | CR-AUFG-07-20 | C | Slash commands for AI actions | `open` | P3 | Command grammar, i18n discoverability, TipTap conflict handling, and routed AI action tests. |
-| CR-AUFG-07-21 | C | SessionPanel server-side stop and WebSocket recovery | `open` | P2 | Stop reaches server-side session state; connection-loss recovery preserves partial state and is tested. |
+| CR-AUFG-07-21 | C | SessionPanel server-side stop and WebSocket recovery | `resolved` | P2 | Stop reaches server-side session state via `WritingSessionControlService.stop_generation` + `ActiveTurnRegistry` (`Task.cancel`); connection-loss recovery preserves partial state via `SessionTurnStateStore` + shared cache + `?session_id=` reattach (`reattach_session`); ADR-052 accepted; integration + cross-layer tests green. |
 | CR-AUFG-07-22 | C | Regenerate with style variants | `open` | P2 | Consistent regenerate/variant UI and request contract across eligible AI output surfaces. |
 | CR-AUFG-07-23 | C | Emotional intensity curve | `open` | P3 | Dedicated spec decides deterministic/LLM/hybrid approach, chart contract, and tests. |
 | CR-AUFG-07-24 | C | AI feedback rating expansion | `resolved` | P2 | Extend rating to Co-Author, KB flows, and Chat through LEARN-001-compatible persistence/memory contract. Implementation: `packages/core/narrare_core/memory/source_types.py`, `apps/api/narrare/memory/schemas.py` (`source_type` + optional `source_id` identifier policy), `apps/api/narrare/memory/suggestion_identity.py` (uuid5 resolver + `source_id_hash` — raw `source_id` never reaches core/DB/mem0), `packages/web/lib/ai-rating/*`, `packages/web/components/shared/ai-rating/AIRating.tsx`, adoption in `ChangeReview`/`EnhanceReviewCard`/`ImproveSuggestionCard`/`FieldSuggestionReview`/`ChatMessage`. Enforcement: `tests/integration/memory/test_feedback_source_type_parity.py` (source-type taxonomy), `tests/integration/memory/test_feedback_identifier_contract.py` (cross-layer identifier policy across all 5 surfaces) + per-surface vitest tests. See plan `docs/superpowers/plans/2026-06-22-cr-07-phase-c-07-24-feedback-rating.md`. |
@@ -494,7 +494,7 @@ per `docs/development/finding-lifecycle.md`.
 
 **Exit evidence:**
 
-Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). Phase B PROMPT-003 (CR-AUFG-07-16) — Resolved (2026-06-22). Phase C diff-view standardization (CR-AUFG-07-18) — Resolved (2026-06-22). Phase C feedback rating expansion (CR-AUFG-07-24) — Resolved (2026-06-22). Remaining Phase C items (CR-AUFG-07-19 through CR-AUFG-07-23) are pending.
+Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboarding follow-up (CR-AUFG-07-17) — Resolved (2026-06-21). Phase B PROMPT-003 (CR-AUFG-07-16) — Resolved (2026-06-22). Phase C diff-view standardization (CR-AUFG-07-18) — Resolved (2026-06-22). Phase C SessionPanel stop/recovery (CR-AUFG-07-21) — Resolved (2026-06-22). Phase C feedback rating expansion (CR-AUFG-07-24) — Resolved (2026-06-22). Remaining Phase C items (CR-AUFG-07-19, CR-AUFG-07-20, CR-AUFG-07-22, CR-AUFG-07-23) are pending.
 
 #### CR-AUFG-07-14 — §16 Consistency/i18n fallback hardening
 
@@ -565,6 +565,49 @@ Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboar
   - `scripts/check_frontend_file_size.py` — 0 current violations, 0 new debt (all new files within RULE-04 limits: tsx ≤200, ts ≤400).
   - `scripts/check_architecture.py` — 1770 files checked, 0 new violations.
 - **Validation:** All gates green. Foundation: 9 files / 34 tests pass. Adoption: 5 files / 41 tests pass. `just check-ai-ux` 0 violations. File-size 0 new debt. Architecture OK. Feature spec status remains `planned` until user confirms full closure — the AUFG is resolved with implementation + enforcement evidence per `docs/development/finding-lifecycle.md`.
+
+#### CR-AUFG-07-21 — SessionPanel server-side stop and WebSocket recovery
+
+**Exit evidence (2026-06-22):** Resolved — implementation + enforcement complete.
+- **Design:** ADR-052 accepted; CR-AUFG-07-21 feature spec
+  (`docs/features/ai-ux/CR-AUFG-07-21-session-stop-websocket-recovery.md`);
+  RULE-04/RULE-16/RULE-17/RULE-20/RULE-22 constraints explicitly covered.
+- **Implementation:**
+  - **Core:** `packages/core/narrare_core/writing/session_turn_state.py`,
+    `session_state_codec.py`, `session_manager.py`, `_enums.py`, `requests.py`,
+    and `contracts.py` add recoverable session state, active-turn partial prose,
+    typed reattach outcomes, and cache-safe serialization.
+  - **Backend:** `apps/api/narrare/writing/ws_active_turn_registry.py`,
+    `ws_session_control_service.py`, `ws_sink.py`, `ws_payloads.py`,
+    `ws_direction_dispatch.py`, `ws_message_router.py`, `ws_handler.py`,
+    `router_sessions.py`, `deps_ws.py`, `ws_factory.py`, and
+    `apps/api/narrare/_app/lifespan.py` implement shared session singletons,
+    server-side cancellation, transport sink rebinding, and `?session_id=`
+    reattach/recovery failure payloads.
+  - **Frontend:** `packages/web/lib/api/generation.ts`,
+    `components/studio/editor/useSessionSocket.ts`,
+    `createSessionMessageHandler.ts`, `SessionPanel.tsx`,
+    `SessionReconnectBanner.tsx`, `sessionSocketMessages.ts`, and
+    `useSessionPanelActions.ts` implement typed stop/recovery messages,
+    reconnect banner copy, local partial preservation, and retry wiring.
+  - **Governance/docs:** `scripts/checks/ai_operation_inventory.yaml` records
+    `writing.session`; WRITE-005 documents recoverable disconnect semantics.
+- **Enforcement:**
+  - `tests/integration/writing/test_session_stop_and_recovery.py` covers stop
+    mid-stream with partial prose, continued directions after stop,
+    disconnect/reconnect reattach with transcript tail, expired/not-found
+    recovery failure, ownership mismatch, idle `connection_lost`, and the
+    shared-cache invariant.
+  - `tests/integration/writing/test_session_message_schema_parity.py` enforces
+    RULE-17 payload-field parity for ADR-052 stop/recovery messages.
+  - Backend/unit suites cover `ActiveTurnRegistry`, `WritingSessionControlService`,
+    router stop/recover branches, `deps_ws`, shared lifespan singletons, session
+    state codec/reattach, and handler recovery behavior.
+  - Frontend Vitest suites cover `SessionPanel`, `createSessionMessageHandler`,
+    `SessionReconnectBanner`, and `useSessionSocket.recovery`.
+  - `just check-ai-ux`, `scripts/check_architecture.py`, and
+    `scripts/check_frontend_file_size.py` are the documented gates for AI-UX
+    inventory, architecture constraints, and frontend RULE-04.
 
 #### CR-AUFG-07-24 — AI feedback rating expansion
 

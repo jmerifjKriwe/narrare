@@ -32,13 +32,20 @@ from uuid import uuid4
 from fastapi import WebSocketDisconnect
 
 from narrare.writing._ws_cache import InMemorySessionCache
+from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
 from narrare.writing.ws_factory import build_writing_session_handler
+from narrare.writing.ws_session_control_service import WritingSessionControlService
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.llm.run_limits import DefaultRunLimitResolver
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.writing.session_manager import SessionManager
+from narrare_core.writing.session_turn_state import SessionTurnStateStore
+from tests.unit.api.writing.ws_test_helpers import (
+    stream_kwargs_for_intent,
+    wait_for_gateway_calls,
+)
 
 # ---------------------------------------------------------------------------
 # Mock helpers
@@ -135,21 +142,31 @@ def _make_handler(
     """
     cache = InMemorySessionCache()
     session_manager = SessionManager(cache=cache)
-    registry = Mock()
+    active_turn_registry = ActiveTurnRegistry()
+    turn_state = SessionTurnStateStore()
+    control_service = WritingSessionControlService(
+        session_manager=session_manager,
+        turn_state=turn_state,
+        registry=active_turn_registry,
+    )
+    model_registry = Mock()
     # Use Mock (not AsyncMock) for stream — code does `async for` directly
-    registry.stream = Mock(side_effect=_fake_stream_hello)
+    model_registry.stream = Mock(side_effect=_fake_stream_hello)
     composer = _FakeComposer()
     config = _make_config()
     handler = build_writing_session_handler(
         session_manager=session_manager,
-        registry=registry,
+        registry=active_turn_registry,
+        turn_state=turn_state,
+        control_service=control_service,
+        model_registry=model_registry,
         composer=cast("PromptComposer", composer),
         config=config,
         invocation_pipeline=InvocationPipeline(),
         run_limit_resolver=DefaultRunLimitResolver(),
         mode=mode,
     )
-    return handler, session_manager, registry, composer
+    return handler, session_manager, model_registry, composer
 
 
 # ---------------------------------------------------------------------------
@@ -266,6 +283,7 @@ class TestDirectionHandling:
         await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         # Verify gateway.stream was called with WRITE intent
+        await wait_for_gateway_calls(gateway, 1)
         gateway.stream.assert_called_once()
         call_kwargs = gateway.stream.call_args
         assert call_kwargs.kwargs["intent"].value == "write"
@@ -281,6 +299,7 @@ class TestDirectionHandling:
         await handler.handle(cast("WebSocket", ws), uuid4(), str(uuid4()), uuid4())
 
         # Verify gateway.stream was called with CHAT intent
+        await wait_for_gateway_calls(gateway, 1)
         gateway.stream.assert_called_once()
         call_kwargs = gateway.stream.call_args
         assert call_kwargs.kwargs["intent"].value == "chat"
@@ -362,6 +381,7 @@ class TestGenerateDraft:
         # gateway.stream called twice:
         # 1st: CHAT for interview question
         # 2nd: WRITE for draft generation
+        await wait_for_gateway_calls(gateway, 2)
         assert gateway.stream.call_count == 2
-        draft_call = gateway.stream.call_args_list[1]
-        assert draft_call.kwargs["intent"].value == "write"
+        draft_kwargs = stream_kwargs_for_intent(gateway, "write")
+        assert draft_kwargs["intent"].value == "write"

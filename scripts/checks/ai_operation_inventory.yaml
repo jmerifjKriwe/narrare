@@ -84,6 +84,36 @@ operations:
     exclude_entry: none
     status: compliant
 
+  - operation_id: writing.session
+    feature: Writing — Interactive Session (WebSocket)
+    entry_points:
+      - packages/web/components/studio/editor/SessionPanel.tsx
+      - packages/web/components/studio/editor/useSessionSocket.ts
+      - packages/web/lib/api/generation.ts (WritingSessionSocket)
+      - apps/api/narrare/writing/router_sessions.py
+      - apps/api/narrare/writing/ws_session_control_service.py
+    transport: websocket
+    lifecycle_owner: governed_exception
+    loading_feedback: "isStreaming/recoveryState exposed via useSessionSocket and SessionPanel"
+    cancel_ui: "handleStopGeneration sends stop_generation to backend (ADR-052); not UI-only"
+    signal_propagation: "server-side Task.cancel via ActiveTurnRegistry.stop_generation (ADR-052)"
+    error_mapping: "generation_stopped + recovery_failed + connection_lost typed messages mapped to studio.sessionPanel.* i18n"
+    partial_output: "partial_prose preserved on stop and on disconnect (SessionTurnStateStore + optimistic local preservation)"
+    stop_generation: "WebSocket message: {type: 'stop_generation', invocation_id}; server cancels active turn (ADR-052)"
+    recover_session: "WebSocket reconnect includes ?session_id=...; recover_session can reattach to shared cached state (ADR-052)"
+    ai_action_i18n: studio.aiActions.stop / .retry / .connectionLostRetry
+    deprecated_key_usage: "No deprecated aliases in use"
+    keyboard: "Escape stops generation when streaming; Escape ends session otherwise (KEYBOARD-001)"
+    tests:
+      - tests/integration/writing/test_session_stop_and_recovery.py
+      - tests/integration/writing/test_session_message_schema_parity.py
+      - packages/web/components/studio/editor/__tests__/useSessionSocket.recovery.test.tsx
+      - packages/web/components/studio/editor/__tests__/SessionReconnectBanner.test.tsx
+      - packages/web/__tests__/SessionPanel.test.tsx
+    aufg_id: CR-AUFG-07-21
+    exclude_entry: none
+    status: compliant
+
   - operation_id: writing.co_author
     feature: Writing — Co-Author Streaming
     entry_points:

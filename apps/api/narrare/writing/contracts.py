@@ -4,6 +4,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from narrare.writing.session_control_contracts import (
+    ReattachOutcomeKind,
+    ReattachSessionResult,
+    StopGenerationResult,
+    StopGenerationStatus,
+    WritingSessionControlProtocol,
+)
+
+__all__ = [
+    "GenerationRepositoryProtocol",
+    "ReattachOutcomeKind",
+    "ReattachSessionResult",
+    "StopGenerationResult",
+    "StopGenerationStatus",
+    "SuggestServiceProtocol",
+    "WritingServiceProtocol",
+    "WritingSessionControlProtocol",
+]
+
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from uuid import UUID

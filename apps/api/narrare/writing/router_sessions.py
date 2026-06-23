@@ -22,6 +22,7 @@ async def interactive_session(
     user_id: str = "",
     project_id: UUID | None = None,
     mode: str = "interactive_session",
+    session_id: UUID | None = None,
 ) -> None:
     """WebSocket endpoint for interactive writing sessions.
 
@@ -29,9 +30,13 @@ async def interactive_session(
         mode: Session mode — ``interactive_session`` (collaborative writing)
             or ``interview_assisted`` (structured interview → draft).
     """
-    from narrare.writing._ws_cache import InMemorySessionCache
+    from narrare.writing.deps_ws import (
+        get_active_turn_registry,
+        get_session_control_service,
+        get_session_manager,
+        get_turn_state,
+    )
     from narrare.writing.ws_factory import build_writing_session_handler
-    from narrare_core.writing.session_manager import SessionManager
 
     if not user_id or project_id is None:
         await websocket.accept()
@@ -74,9 +79,16 @@ async def interactive_session(
         await websocket.close(code=4003, reason="Rate limited")
         return
 
-    cache = InMemorySessionCache()
-    session_manager = SessionManager(cache=cache)
-    registry = get_model_registry()
+    session_manager = get_session_manager(websocket.app)
+    active_turn_registry = get_active_turn_registry(websocket.app)
+    turn_state = get_turn_state(websocket.app)
+    control_service = get_session_control_service(
+        websocket.app,
+        session_manager=session_manager,
+        registry=active_turn_registry,
+        turn_state=turn_state,
+    )
+    model_registry = get_model_registry()
     composer = get_composer()
 
     # Resolve token limits from DB — replaces hardcoded defaults
@@ -124,7 +136,10 @@ async def interactive_session(
         await _session_gen.aclose()
     handler = build_writing_session_handler(
         session_manager=session_manager,
-        registry=registry,
+        registry=active_turn_registry,
+        turn_state=turn_state,
+        control_service=control_service,
+        model_registry=model_registry,
         composer=composer,
         config=config,
         invocation_pipeline=get_invocation_pipeline(),
@@ -132,4 +147,4 @@ async def interactive_session(
         mode=mode,
         ws_idle_timeout=limits.ws_timeout,
     )
-    await handler.handle(websocket, chapter_id, user_id, project_id)
+    await handler.handle(websocket, chapter_id, user_id, project_id, session_id=session_id)

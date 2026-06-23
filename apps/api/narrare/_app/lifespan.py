@@ -24,6 +24,41 @@ if TYPE_CHECKING:
 logger = structlog.get_logger(__name__)
 
 
+def bind_writing_session_singletons(app: FastAPI) -> None:
+    """Bind ADR-052 writing-session lifecycle singletons on ``app.state``.
+
+    The in-memory implementations are process-local by design. Multi-worker
+    deployments must replace them with Redis-backed metadata plus an
+    in-process live-task map per ADR-052 Review Trigger #1.
+    """
+    try:
+        from narrare.writing._ws_cache import InMemorySessionCache
+        from narrare.writing.ws_active_turn_registry import ActiveTurnRegistry
+        from narrare.writing.ws_session_control_service import WritingSessionControlService
+        from narrare_core.writing.session_manager import SessionManager
+        from narrare_core.writing.session_turn_state import SessionTurnStateStore
+
+        session_cache = InMemorySessionCache()
+        session_manager = SessionManager(cache=session_cache)
+        turn_state = SessionTurnStateStore()
+        active_turn_registry = ActiveTurnRegistry()
+        control_service = WritingSessionControlService(
+            session_manager=session_manager,
+            turn_state=turn_state,
+            registry=active_turn_registry,
+        )
+
+        app.state.session_cache = session_cache
+        app.state.session_manager = session_manager
+        app.state.turn_state = turn_state
+        app.state.active_turn_registry = active_turn_registry
+        app.state.writing_session_control_service = control_service
+        logger.info("writing_session_singletons_bound")
+    except Exception:
+        logger.error("writing_session_singletons_bind_failed", exc_info=True)
+        raise
+
+
 async def _get_db_version(db_url: str) -> str | None:
     """Query the current Alembic revision from the database.
 
@@ -203,6 +238,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         logger.info("wiki_event_listeners_registered")
     except Exception:
         logger.warning("wiki_listeners_init_failed", exc_info=True)
+
+    bind_writing_session_singletons(app)
 
     # Startup cleanup: remove stale generation requests — skip in test
     # environment (no real data to clean, and it uses the module-level engine).

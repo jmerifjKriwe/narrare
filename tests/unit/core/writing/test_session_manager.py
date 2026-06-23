@@ -7,6 +7,9 @@ Covers:
 - Save to chapter: returns prose buffer content
 - Empty buffer save: raises ValueError
 - TTL refresh on each message
+- ADR-052 recovery field defaults on SessionState
+
+Reattach tests live in ``test_session_reattach.py`` (RULE-04 split).
 """
 
 from __future__ import annotations
@@ -346,6 +349,23 @@ class TestSerialization:
         assert isinstance(state.started_at, datetime)
         assert isinstance(state.last_activity, datetime)
         assert state.is_active is True
+
+    async def test_new_recovery_fields_default_correctly(self, manager: SessionManager) -> None:
+        """ADR-052: new SessionState recovery fields have safe defaults."""
+        from narrare_core.writing._enums import ConnectionState, StreamStatus
+
+        chapter_id, project_id, user_id = _uuids()
+        session_id = await manager.create_session(chapter_id, project_id, user_id)
+
+        state = await manager.get_session(session_id)
+        assert state is not None
+        assert state.active_invocation_id is None
+        assert state.stream_status is StreamStatus.IDLE
+        assert state.stream_status.value == "idle"
+        assert state.last_sequence == 0
+        assert state.active_partial_prose == ""
+        assert state.connection_state is ConnectionState.CONNECTED
+        assert state.connection_state.value == "connected"
 
 
 # ---------------------------------------------------------------------------

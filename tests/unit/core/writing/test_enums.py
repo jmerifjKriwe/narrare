@@ -1,14 +1,22 @@
-"""Tests for writing/_enums.py — GenerationMode and GenerationStatus enums.
+"""Tests for writing/_enums.py — GenerationMode, GenerationStatus, StreamStatus,
+ConnectionState enums.
 
 Covers:
 1. All GenerationMode values
 2. All GenerationStatus values
 3. StrEnum behavior (values are strings)
+4. StreamStatus (ADR-052) — single-turn streaming lifecycle
+5. ConnectionState (ADR-052) — transport connection lifecycle for recovery
 """
 
 from __future__ import annotations
 
-from narrare_core.writing._enums import GenerationMode, GenerationStatus
+from narrare_core.writing._enums import (
+    ConnectionState,
+    GenerationMode,
+    GenerationStatus,
+    StreamStatus,
+)
 
 
 class TestGenerationMode:
@@ -64,3 +72,54 @@ class TestGenerationStatus:
     def test_values_are_strings(self) -> None:
         for status in GenerationStatus:
             assert isinstance(status, str)
+
+
+class TestStreamStatus:
+    """StreamStatus (ADR-052) — single-turn streaming lifecycle.
+
+    Transitions: idle -> streaming -> completed | stopped | failed
+    """
+
+    def test_members(self) -> None:
+        assert {m.value for m in StreamStatus} == {
+            "idle",
+            "streaming",
+            "stopped",
+            "completed",
+            "failed",
+        }
+
+    def test_round_trip(self) -> None:
+        for m in StreamStatus:
+            assert StreamStatus(m.value) is m
+
+    def test_values_are_strings(self) -> None:
+        for status in StreamStatus:
+            assert isinstance(status, str)
+
+    def test_idle_is_default_start(self) -> None:
+        assert StreamStatus("idle") is StreamStatus.IDLE
+
+
+class TestConnectionState:
+    """ConnectionState (ADR-052) — transport connection lifecycle.
+
+    A reattach request is only valid when the cached state is ``connected``
+    or ``disconnected`` (not ``expired``).
+    """
+
+    def test_members(self) -> None:
+        assert {m.value for m in ConnectionState} == {
+            "connected",
+            "disconnected",
+            "reattaching",
+            "expired",
+        }
+
+    def test_round_trip(self) -> None:
+        for m in ConnectionState:
+            assert ConnectionState(m.value) is m
+
+    def test_values_are_strings(self) -> None:
+        for state in ConnectionState:
+            assert isinstance(state, str)
