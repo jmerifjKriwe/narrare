@@ -41,6 +41,8 @@ describe("RewriteSuggestionModal", () => {
     showRejectionInput: false,
     isRewriteStreaming: false,
     rewriteError: null,
+    styleVariant: null,
+    onSelectStyleVariant: vi.fn(),
     onReject: vi.fn(),
     onInsertAsNew: vi.fn(),
     onNewSuggestions: vi.fn(),

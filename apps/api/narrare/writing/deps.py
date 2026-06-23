@@ -16,6 +16,9 @@ from narrare.writing.deps_extend import (
 from narrare.writing.deps_rewrite import (
     get_rewrite_service as get_rewrite_service,
 )
+from narrare.writing.deps_style_variants import (
+    get_style_variant_service as get_style_variant_service,
+)
 from narrare.writing.deps_suggest import (
     get_suggest_service as get_suggest_service,
 )
@@ -28,6 +31,7 @@ __all__ = [
     "get_coauthor_service",
     "get_extend_service",
     "get_rewrite_service",
+    "get_style_variant_service",
     "get_suggest_service",
     "get_writing_service",
 ]

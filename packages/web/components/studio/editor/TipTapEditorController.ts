@@ -11,8 +11,7 @@ import {
   writingApi,
 } from "@/lib/api/generation";
 import { createSseSuggestionFetcher } from "@/lib/api/suggest";
-import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
-import { useAIOperation } from "@/lib/hooks/use-ai-operation";
+import { type AIErrorResponse, useAIOperation } from "@/lib/hooks/use-ai-operation";
 import { useRecordFeedback } from "@/lib/hooks/useMemory";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { markdownToHtml } from "@/lib/utils";
@@ -29,6 +28,7 @@ import { GhostText, simulateSuggestion } from "./extensions/GhostText";
 import { NarrareDocument } from "./extensions/NarrareDocument";
 import { SceneBreak } from "./extensions/SceneBreak";
 import { useGhostTextOnboarding } from "./GhostTextOnboarding";
+import { useStyleVariantRegeneration } from "./useStyleVariantRegeneration";
 
 type StudioTranslator = ReturnType<typeof useTranslations>;
 
@@ -39,9 +39,9 @@ export interface AISuggestion {
   position: { from: number; to: number };
 }
 
-type RewritePhase = "idle" | "selecting-mode" | "streaming" | "showing-alternatives";
+export type RewritePhase = "idle" | "selecting-mode" | "streaming" | "showing-alternatives";
 
-interface RewriteSelection {
+export interface RewriteSelection {
   text: string;
   from: number;
   to: number;
@@ -228,7 +228,6 @@ export function useTipTapEditorController({
           language: locale,
         },
         {
-          onRequestInfo: () => {},
           onAlternative: (label, text) => {
             alternatives.push({ label, text });
             setAiSuggestion((prev) =>
@@ -317,7 +316,13 @@ export function useTipTapEditorController({
     [editor, rewriteSelection, chapterId, novelId, rewriteAiOp],
   );
 
+  const variantRegen = useStyleVariantRegeneration({
+    context: { chapterId, locale, novelId, rewriteSelectionRef },
+    setters: { setAiSuggestion, setSelectedSuggestion, setRewriteError, setRewritePhase },
+  });
+
   const resetRewriteState = useCallback(() => {
+    variantRegen.handleVariantCancel();
     setAiSuggestion(null);
     setRewritePhase("idle");
     setRewriteSelection(null);
@@ -325,7 +330,7 @@ export function useTipTapEditorController({
     setRejectionReason("");
     setRewriteError(null);
     rewriteAiOp.reset();
-  }, [rewriteAiOp]);
+  }, [rewriteAiOp, variantRegen]);
   const acceptSuggestion = useCallback(() => {
     if (!editor || !aiSuggestion) return;
     replaceSelectionWithAIContent(
@@ -380,7 +385,10 @@ export function useTipTapEditorController({
       rewritePhase === "streaming" || rewriteAiOp.isLoading || rewriteAiOp.isStreaming,
     handleAIRewrite,
     handleRewriteGenerate,
+    styleVariant: variantRegen.styleVariant,
+    handleStyleVariantRegenerate: variantRegen.handleStyleVariantRegenerate,
     handleRewriteCancel: () => {
+      variantRegen.handleVariantCancel();
       rewriteAiOp.cancel();
       setRewritePhase("idle");
       setRewriteSelection(null);

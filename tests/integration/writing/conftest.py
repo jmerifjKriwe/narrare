@@ -33,6 +33,7 @@ from narrare.writing.extend_service import ExtendService
 from narrare.writing.repository import GenerationRepository
 from narrare.writing.rewrite_service import RewriteService
 from narrare.writing.service import WritingService
+from narrare.writing.style_variant_service import StyleVariantService
 from narrare.writing.suggest_service import InlineSuggestService
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.writing.context_assembler import WritingContextAssembler
@@ -191,6 +192,46 @@ async def _make_suggest_service(
     )
 
 
+async def _make_style_variant_service(
+    session: AsyncSession,
+    user_id: str,
+    project_id: object = None,
+) -> StyleVariantService:
+    """Build a StyleVariantService with real repo + fake pipeline (no LLM calls)."""
+    repo = GenerationRepository(session)
+    fake_registry = FakeModelRegistry()
+    # Queue a default stream response with a single <alternative> tag for
+    # style-variant tests (count=1 per the service contract).
+    fake_registry.returns_stream(
+        [
+            '<alternative label="Variant">',
+            "The night was thick with the scent of rain and old stone, ",
+            "every surface humming with cold.",
+            "</alternative>",
+        ]
+    )
+    config = ResolvedModelConfig(
+        provider_name="test",
+        model_id="test-model",
+        temperature=0.7,
+        max_tokens=4000,
+    )
+
+    pipeline = WritingPipeline(
+        registry=fake_registry,
+        composer=get_composer(),
+        context_assembler=_assembler,
+        draft_processor=_processor,
+    )
+
+    return StyleVariantService(
+        repo=repo,
+        pipeline=pipeline,
+        draft_processor=_processor,
+        config=config,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _patch_writing_service() -> object:  # pyright: ignore[reportUnusedFunction]
     """Patch service factories in all writing router modules."""
@@ -206,6 +247,10 @@ def _patch_writing_service() -> object:  # pyright: ignore[reportUnusedFunction]
         patch(
             "narrare.writing.router_rewrite.get_rewrite_service",
             new=_make_rewrite_service,
+        ),
+        patch(
+            "narrare.writing.router_style_variants.get_style_variant_service",
+            new=_make_style_variant_service,
         ),
         patch(
             "narrare.writing.router_stats.get_writing_service",

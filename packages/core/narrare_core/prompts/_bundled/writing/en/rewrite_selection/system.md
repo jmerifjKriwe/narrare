@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "2.2.0"
+prompt_version: "2.3.0"
 ---
 
 ## System Prompt
@@ -82,6 +82,10 @@ The following is the text selection the author wants rewritten. It is surrounded
 
 Author instructions: <user_instructions>{{author_instructions}}</user_instructions>
 Tone: {{tone_instructions}}
+
+### Style Variant Direction
+
+{{style_variant_instructions}}
 
 ### Output Format
 

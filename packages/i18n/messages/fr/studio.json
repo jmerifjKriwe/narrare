@@ -1778,6 +1778,34 @@
     "errorParse": "La réponse de l'IA était malformée. Réessayez.",
     "errorDefault": "Une erreur inattendue s'est produite. Réessayez."
   },
+  "styleVariants": {
+    "regenerateAs": "Régénérer en…",
+    "regenerate": "Régénérer",
+    "leaner": {
+      "label": "Plus économe",
+      "description": "Couper les adjectives, resserrer les phrases, laisser les verbes forts porter le poids."
+    },
+    "more_lyrical": {
+      "label": "Plus lyrique",
+      "description": "Ajouter du rythme, de l'assonance et des images évocatrices pour une qualité musicale."
+    },
+    "more_tense": {
+      "label": "Plus tendu",
+      "description": "Des phrases plus courtes et percutantes avec une urgence et une immédiateté accrues."
+    },
+    "more_intimate": {
+      "label": "Plus intime",
+      "description": "Plonger le lecteur dans le monde intérieur du personnage avec des détails personnels et vulnérables."
+    },
+    "more_dialogue": {
+      "label": "Plus de dialogue",
+      "description": "Passer aux échanges parlés, laisser les personnages se révéler par la conversation."
+    },
+    "more_sensory": {
+      "label": "Plus sensoriel",
+      "description": "Ancrer le lecteur dans la sensation physique — odeur, texture, son, goût, température."
+    }
+  },
   "aiDiff": {
     "added": "Ajouté",
     "removed": "Supprimé",

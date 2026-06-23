@@ -1,13 +1,14 @@
 "use client";
 
-import { AlertTriangle, Check, Loader2, Sparkles } from "lucide-react";
+import { AlertTriangle, Loader2, Sparkles } from "lucide-react";
 import type { useTranslations } from "next-intl";
 import { useEffect } from "react";
-import { AIDiffView } from "@/components/shared/ai-diff/AIDiffView";
 import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
-import { rewriteAdapter } from "@/lib/ai-diff/adapters/rewrite";
+import type { StyleVariant } from "@/lib/api/generation";
 import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 import { RewriteModalFooter } from "./RewriteModalFooter";
+import { RewriteSuggestionList } from "./RewriteSuggestionList";
+import { StyleVariantPicker } from "./StyleVariantPicker";
 import type { AISuggestion } from "./TipTapEditorController";
 
 type StudioTranslator = ReturnType<typeof useTranslations>;
@@ -21,6 +22,8 @@ interface RewriteSuggestionModalProps {
   showRejectionInput: boolean;
   isRewriteStreaming: boolean;
   rewriteError: AIErrorResponse | null;
+  styleVariant: StyleVariant | null;
+  onSelectStyleVariant: (variant: StyleVariant) => void;
   onReject: () => void;
   onInsertAsNew: () => void;
   onNewSuggestions: () => void;
@@ -37,6 +40,8 @@ export function RewriteSuggestionModal({
   showRejectionInput,
   isRewriteStreaming,
   rewriteError,
+  styleVariant,
+  onSelectStyleVariant,
   onReject,
   onInsertAsNew,
   onNewSuggestions,
@@ -82,46 +87,23 @@ export function RewriteSuggestionModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-3">
-            {aiSuggestion.suggestions.map((suggestion, index) => (
-              <button
-                type="button"
-                key={`suggestion-${suggestion.slice(0, 32)}`}
-                onClick={() => onSelectedSuggestionChange(index)}
-                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${selectedSuggestion === index ? "border-primary bg-accent" : "border-border hover:border-primary/50"}`}
-              >
-                {aiSuggestion.labels[index] && (
-                  <p className="text-xs font-medium text-muted-foreground mb-2">
-                    {aiSuggestion.labels[index]}
-                  </p>
-                )}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    {/*
-                      CR-AUFG-07-18: shared AIDiffView (text mode). The label
-                      is passed via the adapter so the badge + label grouping is
-                      consistent across Rewrite/Co-Author/KB Enhance. The
-                      standalone label <p> above is kept for visual hierarchy;
-                      the adapter receives null here to avoid a duplicate label
-                      inside AIDiffView's header.
-                    */}
-                    <AIDiffView
-                      viewModel={rewriteAdapter(
-                        aiSuggestion.original,
-                        suggestion,
-                        null,
-                        isRewriteStreaming,
-                      )}
-                      state="suggested"
-                    />
-                  </div>
-                  {selectedSuggestion === index && (
-                    <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                  )}
-                </div>
-              </button>
-            ))}
+          <RewriteSuggestionList
+            aiSuggestion={aiSuggestion}
+            selectedSuggestion={selectedSuggestion}
+            onSelectedSuggestionChange={onSelectedSuggestionChange}
+            isRewriteStreaming={isRewriteStreaming}
+          />
+
+          {/* Style-Variant Regeneration (CR-AUFG-07-22) */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <StyleVariantPicker
+              selectedVariant={styleVariant}
+              onSelect={onSelectStyleVariant}
+              isStreaming={isRewriteStreaming}
+              t={t}
+            />
           </div>
+
           {isRewriteStreaming && (
             <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />

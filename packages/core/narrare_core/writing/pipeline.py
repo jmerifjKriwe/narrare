@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from narrare_core.writing.context_models import KBEntity, RecentChapter
     from narrare_core.writing.draft_processor import DraftProcessor
     from narrare_core.writing.models import GenerationRequest, WritingContext
+    from narrare_core.writing.style_variants import StyleVariant
 
 logger = structlog.get_logger(__name__)
 
@@ -97,6 +98,7 @@ class WritingPipeline:
         custom_instructions: str = "",
         rewrite_count: int = 1,
         co_author_focus: list[str] | None = None,
+        style_variant: StyleVariant | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream generated text chunks for the given request.
 
@@ -135,6 +137,11 @@ class WritingPipeline:
             co_author_focus: Focus areas for CO_AUTHOR mode (e.g.
                 ``["dialogue", "description"]``).  ``None`` means no
                 specific focus.
+            style_variant: Optional creative-direction variant for
+                style-variant regeneration (CR-AUFG-07-22).  When set, the
+                variant's instruction text is injected into the rewrite
+                prompt via ``{{style_variant_instructions}}``.  ``None``
+                renders the variable as empty (backward compatible).
         """
         voice_profile_consumer = None
         if self._voice_profile_consumer_factory is not None and kb_entities:
@@ -213,6 +220,7 @@ class WritingPipeline:
                     rewrite_mode=rewrite_mode,
                     custom_instructions=custom_instructions,
                     count=rewrite_count,
+                    style_variant=style_variant,
                 ):
                     yield chunk
 

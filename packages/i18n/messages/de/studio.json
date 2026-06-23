@@ -1778,6 +1778,34 @@
     "errorParse": "Die KI-Antwort war fehlerhaft. Versuche es erneut.",
     "errorDefault": "Ein unerwarteter Fehler ist aufgetreten. Versuche es erneut."
   },
+  "styleVariants": {
+    "regenerateAs": "Regenerieren als…",
+    "regenerate": "Regenerieren",
+    "leaner": {
+      "label": "Knapper",
+      "description": "Adjektive streichen, Sätze straffen und starke Verben wirken lassen."
+    },
+    "more_lyrical": {
+      "label": "Lyrischer",
+      "description": "Rhythmus, Assonanz und bildhafte Sprache für eine musikalische Qualität."
+    },
+    "more_tense": {
+      "label": "Spannender",
+      "description": "Kürzere, knackigere Sätze mit größerer Dringlichkeit und Unmittelbarkeit."
+    },
+    "more_intimate": {
+      "label": "Intimer",
+      "description": "Den Leser in die Innenwelt der Figur holen mit persönlichen, verletzlichen Details."
+    },
+    "more_dialogue": {
+      "label": "Mehr Dialog",
+      "description": "Zu gesprochenem Dialog wechseln, Figuren durch Gespräch offenbaren lassen."
+    },
+    "more_sensory": {
+      "label": "Sinnlicher",
+      "description": "Den Leser in physischer Sinnlichkeit verankern — Geruch, Textur, Klang, Geschmack."
+    }
+  },
   "aiDiff": {
     "added": "Hinzugefügt",
     "removed": "Entfernt",

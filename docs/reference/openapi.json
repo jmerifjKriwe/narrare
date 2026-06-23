@@ -7708,6 +7708,73 @@
         }
       }
     },
+    "/api/v1/writing/chapters/{chapter_id}/style-variants/regenerate": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Regenerate Style Variant",
+        "description": "SSE stream for style-variant regeneration — create + stream in one call.\n\nAccepts an existing AI output (source_text) with a style variant and\nreturns a regenerated version streamed via SSE.  The output is wrapped\nin an ``<alternative>`` tag (count=1).  The final SSE event includes\n``is_final`` for use with accept/reject endpoints.\n\nModel/provider/token settings resolve through the existing REWRITE cascade;\nthe variant never changes providers.",
+        "operationId": "regenerate_style_variant_api_v1_writing_chapters__chapter_id__style_variants_regenerate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          },
+          {
+            "name": "novel_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StyleVariantRegenerateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/writing/generation/{request_id}/scene/next": {
       "post": {
         "tags": [
@@ -14981,6 +15048,83 @@
         ],
         "title": "StoryboardStageResponse",
         "description": "A single stage within the storyboard, with its chapters."
+      },
+      "StyleVariant": {
+        "type": "string",
+        "enum": [
+          "leaner",
+          "more_lyrical",
+          "more_tense",
+          "more_intimate",
+          "more_dialogue",
+          "more_sensory"
+        ],
+        "title": "StyleVariant",
+        "description": "Finite creative-direction taxonomy for style-variant regeneration.\n\nEach value flows from the API schema → pipeline → prompt template as\n``{{style_variant_instructions}}``.  The original output remains visible\nand unchanged until a variant is accepted."
+      },
+      "StyleVariantRegenerateRequest": {
+        "properties": {
+          "source_text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 50,
+            "title": "Source Text",
+            "description": "The existing AI output text to regenerate in the variant style"
+          },
+          "context_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Before",
+            "description": "Text immediately before the source output (up to 500 chars)"
+          },
+          "context_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context After",
+            "description": "Text immediately after the source output (up to 500 chars)"
+          },
+          "style_variant": {
+            "$ref": "#/components/schemas/StyleVariant",
+            "description": "Creative direction: leaner, more_lyrical, more_tense, more_intimate, more_dialogue, more_sensory"
+          },
+          "tone": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Tone",
+            "description": "Tone preference (resolved through the settings cascade)",
+            "default": "balanced"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 2,
+            "title": "Language",
+            "description": "Output language",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_text",
+          "style_variant"
+        ],
+        "title": "StyleVariantRegenerateRequest",
+        "description": "Request to regenerate an AI output in a specific style variant.\n\nThe source text is the existing AI output (or selection) that the writer\nwants regenerated in a controlled creative direction.  Context markers\nprovide surrounding text for register matching.  Model/provider/token\nsettings resolve through the existing cascade — the variant never changes\nproviders."
       },
       "SuitabilityIssueMetadata": {
         "properties": {

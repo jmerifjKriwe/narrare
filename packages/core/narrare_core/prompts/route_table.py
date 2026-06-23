@@ -96,7 +96,18 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         "writing",
         "rewrite_selection",
         required_variables=frozenset({"selection_text"}),
-        optional_variables=_COMMON_OPTIONAL_VARIABLES,
+        optional_variables=_COMMON_OPTIONAL_VARIABLES
+        | frozenset(
+            {
+                # Rewrite-specific injected instructions (always provided at
+                # runtime by stream_rewrite; declared optional so the variable
+                # engine renders them as empty when absent and the ORPHAN /
+                # provenance gates recognise them as route-reachable).
+                "rewrite_mode_instructions",
+                # CR-AUFG-07-22: style-variant creative direction.
+                "style_variant_instructions",
+            }
+        ),
     ),
     LLMIntent.CO_AUTHOR: PromptRouteConfig(
         "writing",

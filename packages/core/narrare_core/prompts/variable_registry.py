@@ -122,6 +122,10 @@ SYSTEM_VARS: frozenset[str] = frozenset(
         "check_types",
         "co_author_focus_instructions",
         "rewrite_mode_instructions",
+        # CR-AUFG-07-22: style-variant creative-direction text injected into
+        # the rewrite_selection template. System-injected (not user content,
+        # not feature-dynamic) — analogous to rewrite_mode_instructions.
+        "style_variant_instructions",
         "deepdive_category",
         "phase1_strengths_summary",
         "phase1_feedback_summary",

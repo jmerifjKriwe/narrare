@@ -1778,6 +1778,34 @@
     "errorParse": "The AI response was malformed. Try again.",
     "errorDefault": "An unexpected error occurred. Try again."
   },
+  "styleVariants": {
+    "regenerateAs": "Regenerate as…",
+    "regenerate": "Regenerate",
+    "leaner": {
+      "label": "Leaner",
+      "description": "Cut adjectives, tighten sentences, and let strong verbs carry the weight."
+    },
+    "more_lyrical": {
+      "label": "More Lyrical",
+      "description": "Add rhythm, assonance, and evocative imagery for a musical quality."
+    },
+    "more_tense": {
+      "label": "More Tense",
+      "description": "Shorter, punchier sentences with increased urgency and immediacy."
+    },
+    "more_intimate": {
+      "label": "More Intimate",
+      "description": "Draw the reader into the character's inner world with personal, vulnerable details."
+    },
+    "more_dialogue": {
+      "label": "More Dialogue",
+      "description": "Shift toward spoken exchanges, letting characters reveal through conversation."
+    },
+    "more_sensory": {
+      "label": "More Sensory",
+      "description": "Ground the reader in physical sensation — smell, texture, sound, taste, temperature."
+    }
+  },
   "aiDiff": {
     "added": "Added",
     "removed": "Removed",

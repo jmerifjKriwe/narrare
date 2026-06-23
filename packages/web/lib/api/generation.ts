@@ -18,6 +18,8 @@ export type {
   RewriteConfig,
   RewriteMode,
   RewriteRequest,
+  StyleVariant,
+  StyleVariantRegenerateRequest,
 } from "./generation-streams";
 // Re-export stream functions and types from the streams module
 export {
@@ -25,6 +27,7 @@ export {
   streamExtend,
   streamGeneration,
   streamRewrite,
+  streamStyleVariantRegeneration,
 } from "./generation-streams";
 
 // ---------------------------------------------------------------------------

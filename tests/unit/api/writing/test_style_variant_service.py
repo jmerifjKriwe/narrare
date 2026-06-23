@@ -1,0 +1,207 @@
+"""Unit tests for StyleVariantService — style-variant regeneration (CR-AUFG-07-22).
+
+The service orchestrates: validate → create request row → stream via pipeline.
+The pipeline is mocked; we assert the service passes ``style_variant`` through
+to ``pipeline.generate()`` and uses the correct rewrite mode/count.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
+
+import pytest
+
+from narrare.writing.contracts_style_variants import StyleVariantRegenerationProtocol
+from narrare.writing.schemas_style_variants import StyleVariantRegenerateRequest
+from narrare.writing.style_variant_service import StyleVariantService
+from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.result import StreamChunk, TokenUsage
+from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
+from narrare_core.writing import StyleVariant
+
+CONFIG = ResolvedModelConfig(provider_name="test", model_id="m", max_tokens=2000)
+
+# The service calls UUID(user_id) internally (mirrors RewriteService), so the
+# test user_id must be a valid UUID string.
+USER_ID = "00000000-0000-0000-0000-000000000001"
+
+
+def _make_request(
+    variant: StyleVariant = StyleVariant.MORE_SENSORY,
+) -> StyleVariantRegenerateRequest:
+    return StyleVariantRegenerateRequest(
+        source_text=(
+            "The forest was dark and full of ancient trees that whispered "
+            "secrets to each other across the centuries."
+        ),
+        style_variant=variant,
+    )
+
+
+def _make_draft_processor() -> Any:
+    """Draft processor mock whose ``process()`` returns the text unchanged."""
+    dp = MagicMock(spec=["process"])
+    dp.process = MagicMock(spec=[], side_effect=lambda text, **_kw: text)
+    return dp
+
+
+def _dummy_pipeline() -> Any:
+    """Pipeline mock with the ``generate`` method spec'd (RULE-TEST-01)."""
+    return MagicMock(spec=["generate"])
+
+
+def _make_service(pipeline: Any, repo: Any) -> StyleVariantService:
+    return StyleVariantService(
+        repo=repo,
+        pipeline=pipeline,
+        draft_processor=_make_draft_processor(),
+        config=CONFIG,
+    )
+
+
+@pytest.fixture()
+def mock_repo() -> Any:
+    repo = MagicMock(
+        spec=["chapter_exists", "get_active_for_chapter", "create_if_no_active", "update_status"]
+    )
+    repo.chapter_exists = AsyncMock(return_value=True)
+    repo.get_active_for_chapter = AsyncMock(return_value=None)
+    repo.create_if_no_active = AsyncMock(return_value=uuid4())
+    repo.update_status = AsyncMock()
+    return repo
+
+
+async def _fake_stream(*_chunks: StreamChunk) -> Any:
+    for c in _chunks:
+        yield c
+
+
+class TestStyleVariantServiceProtocol:
+    def test_implements_protocol(self) -> None:
+        """StyleVariantService satisfies the runtime_checkable Protocol."""
+        svc = _make_service(_dummy_pipeline(), _dummy_pipeline())
+        assert isinstance(svc, StyleVariantRegenerationProtocol)
+
+
+class TestStyleVariantServiceValidate:
+    @pytest.mark.asyncio
+    async def test_validate_raises_on_empty_source(self, mock_repo: Any) -> None:
+        svc = _make_service(_dummy_pipeline(), mock_repo)
+        req = _make_request()
+        req.source_text = "      "  # whitespace only
+        with pytest.raises(ValidationError):
+            await svc.validate_variant(uuid4(), uuid4(), req)
+
+    @pytest.mark.asyncio
+    async def test_validate_raises_when_chapter_missing(self, mock_repo: Any) -> None:
+        mock_repo.chapter_exists = AsyncMock(return_value=False)
+        svc = _make_service(_dummy_pipeline(), mock_repo)
+        with pytest.raises(NotFoundError):
+            await svc.validate_variant(uuid4(), uuid4(), _make_request())
+
+    @pytest.mark.asyncio
+    async def test_validate_raises_on_active_generation(self, mock_repo: Any) -> None:
+        mock_repo.get_active_for_chapter = AsyncMock(return_value=uuid4())
+        svc = _make_service(_dummy_pipeline(), mock_repo)
+        with pytest.raises(ConflictError):
+            await svc.validate_variant(uuid4(), uuid4(), _make_request())
+
+
+class TestStyleVariantServiceStream:
+    @pytest.mark.asyncio
+    async def test_stream_passes_style_variant_to_pipeline(self, mock_repo: Any) -> None:
+        pipeline = MagicMock(spec=["generate"])
+        usage = TokenUsage(prompt_tokens=5, completion_tokens=10, total_tokens=15)
+        pipeline.generate = MagicMock(
+            spec=[],
+            return_value=_fake_stream(
+                StreamChunk(text='<alternative label="Sensory">Immersive text here.</alternative>'),
+                StreamChunk(text="", is_final=True, usage=usage),
+            ),
+        )
+        svc = _make_service(pipeline, mock_repo)
+        chunks = [
+            c
+            async for c in svc.stream_variant(
+                uuid4(), uuid4(), USER_ID, _make_request(StyleVariant.MORE_SENSORY)
+            )
+        ]
+
+        # The pipeline.generate call must include the style_variant kwarg.
+        call_kwargs = pipeline.generate.call_args.kwargs
+        assert call_kwargs["style_variant"] == StyleVariant.MORE_SENSORY
+        assert any(c.is_final for c in chunks)
+
+    @pytest.mark.asyncio
+    async def test_stream_uses_rewrite_mode_style_count_one(self, mock_repo: Any) -> None:
+        """Style-variant regeneration uses rewrite_mode='style' with count=1."""
+        pipeline = MagicMock(spec=["generate"])
+        pipeline.generate = MagicMock(
+            spec=[],
+            return_value=_fake_stream(
+                StreamChunk(text="x", is_final=True, usage=TokenUsage(1, 1, 2)),
+            ),
+        )
+        svc = _make_service(pipeline, mock_repo)
+        async for _ in svc.stream_variant(uuid4(), uuid4(), USER_ID, _make_request()):
+            pass
+
+        call_kwargs = pipeline.generate.call_args.kwargs
+        assert call_kwargs["rewrite_mode"] == "style"
+        assert call_kwargs["rewrite_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_stream_passes_source_text_as_selection(self, mock_repo: Any) -> None:
+        """The source_text is passed as both chapter_content and selection_text."""
+        pipeline = MagicMock(spec=["generate"])
+        pipeline.generate = MagicMock(
+            spec=[],
+            return_value=_fake_stream(
+                StreamChunk(text="x", is_final=True, usage=TokenUsage(1, 1, 2)),
+            ),
+        )
+        svc = _make_service(pipeline, mock_repo)
+        req = _make_request()
+        async for _ in svc.stream_variant(uuid4(), uuid4(), USER_ID, req):
+            pass
+
+        call_kwargs = pipeline.generate.call_args.kwargs
+        assert call_kwargs["selection_text"] == req.source_text
+        assert req.source_text in call_kwargs["chapter_content"]
+
+    @pytest.mark.asyncio
+    async def test_stream_transitions_to_completed_on_final(self, mock_repo: Any) -> None:
+        pipeline = MagicMock(spec=["generate"])
+        pipeline.generate = MagicMock(
+            spec=[],
+            return_value=_fake_stream(
+                StreamChunk(text="done", is_final=True, usage=TokenUsage(2, 3, 5)),
+            ),
+        )
+        svc = _make_service(pipeline, mock_repo)
+        async for _ in svc.stream_variant(uuid4(), uuid4(), USER_ID, _make_request()):
+            pass
+
+        # update_status called with "streaming" then "completed".
+        statuses = [c.args[1] for c in mock_repo.update_status.call_args_list]
+        assert "streaming" in statuses
+        assert "completed" in statuses
+
+    @pytest.mark.asyncio
+    async def test_stream_transitions_to_failed_on_pipeline_error(self, mock_repo: Any) -> None:
+        async def _raising_stream(*_a: Any, **_k: Any) -> Any:
+            yield StreamChunk(text="partial")
+            raise RuntimeError("LLM exploded")
+
+        pipeline = MagicMock(spec=["generate"])
+        pipeline.generate = MagicMock(spec=[], return_value=_raising_stream())
+        svc = _make_service(pipeline, mock_repo)
+
+        with pytest.raises(RuntimeError, match="LLM exploded"):
+            async for _ in svc.stream_variant(uuid4(), uuid4(), USER_ID, _make_request()):
+                pass
+
+        statuses = [c.args[1] for c in mock_repo.update_status.call_args_list]
+        assert "failed" in statuses

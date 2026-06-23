@@ -15,6 +15,7 @@ import structlog
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
+from narrare_core.writing.style_variants import StyleVariant, get_style_variant_instructions
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -100,14 +101,15 @@ async def stream_rewrite(
     rewrite_mode: str = "tone",
     custom_instructions: str = "",
     count: int = 1,
+    style_variant: StyleVariant | None = None,
 ) -> AsyncIterator[StreamChunk]:
     """Generate rewritten alternatives for a text selection.
 
     Constructs the PromptContext directly (not via
     ``_build_prompt_context``) because rewrite has unique variables
     (``selection_text``, ``context_before``, ``context_after``,
-    ``rewrite_mode_instructions``, ``count``) that are not part of the
-    standard context assembly pipeline.
+    ``rewrite_mode_instructions``, ``style_variant_instructions``, ``count``)
+    that are not part of the standard context assembly pipeline.
     """
     mode_instr = get_rewrite_mode_instructions(
         rewrite_mode,
@@ -132,6 +134,9 @@ async def stream_rewrite(
         "context_before": context_before,
         "context_after": context_after,
         "rewrite_mode_instructions": mode_instr,
+        # CR-AUFG-07-22: style-variant creative direction. Empty string when
+        # no variant is requested → template renders nothing (backward compat).
+        "style_variant_instructions": get_style_variant_instructions(style_variant),
         "count": str(count),
         # Backward compatibility: chapter_content maps to selection_text
         "chapter_content": selection_text,

@@ -59,6 +59,30 @@ export interface RewriteConfig {
   customInstructions?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Style variants (CR-AUFG-07-22)
+// ---------------------------------------------------------------------------
+
+export type StyleVariant =
+  | "leaner"
+  | "more_lyrical"
+  | "more_tense"
+  | "more_intimate"
+  | "more_dialogue"
+  | "more_sensory";
+
+export interface StyleVariantRegenerateRequest {
+  // RULE-17 contract parity: mirrors the Python `StyleVariantRegenerateRequest`
+  // in apps/api/narrare/writing/schemas_style_variants.py exactly (field names,
+  // optionality). Backend is the SSOT.
+  source_text: string;
+  context_before?: string;
+  context_after?: string;
+  style_variant: StyleVariant;
+  tone?: string;
+  language?: string;
+}
+
 export type ExtendLength = "short" | "medium" | "long";
 
 export interface ExtendRequest {
@@ -174,6 +198,75 @@ export async function streamRewrite(
 
   await connectSSE<ExtendStreamEvent>({
     url: `/writing/chapters/${chapterId}/rewrite?novel_id=${novelId}`,
+    method: "POST",
+    body: request,
+    signal,
+    onChunk: (event) => {
+      if (event.type === "request_info" && event.request_id) {
+        callbacks.onRequestInfo?.(event.request_id);
+        return;
+      }
+      if (event.text) {
+        pendingText += event.text;
+        emitCompleteAlternatives();
+      }
+      if (event.is_final) complete();
+    },
+    onComplete: complete,
+    onError: (error) => reportStreamError(callbacks, error),
+  });
+}
+
+/**
+ * Stream a style-variant regeneration of an existing AI output (CR-AUFG-07-22).
+ *
+ * POSTs to the dedicated SSE endpoint and parses `<alternative>` tags,
+ * mirroring {@link streamRewrite}. The `source_text` is the existing output;
+ * `style_variant` is the creative direction. Model/provider settings resolve
+ * through the existing cascade — this never changes providers.
+ */
+export async function streamStyleVariantRegeneration(
+  chapterId: string,
+  novelId: string,
+  request: StyleVariantRegenerateRequest,
+  callbacks: {
+    onRequestInfo?: (requestId: string) => void;
+    onAlternative: (label: string, text: string) => void;
+    onAlternativeFinal?: (count: number) => void;
+    onError?: (error: Error) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  let pendingText = "";
+  let emittedCount = 0;
+  let isComplete = false;
+  const closeTag = "</alternative>";
+
+  function emitCompleteAlternatives(): void {
+    while (pendingText.includes(closeTag)) {
+      const closeIdx = pendingText.indexOf(closeTag);
+      const completeText = pendingText.slice(0, closeIdx + closeTag.length);
+      for (const alternative of parseAlternatives(completeText)) {
+        callbacks.onAlternative(alternative.label, alternative.text);
+        emittedCount++;
+      }
+      pendingText = pendingText.slice(closeIdx + closeTag.length);
+    }
+  }
+
+  function complete(): void {
+    if (isComplete) return;
+    isComplete = true;
+    for (const alternative of parseAlternatives(pendingText)) {
+      callbacks.onAlternative(alternative.label, alternative.text);
+      emittedCount++;
+    }
+    pendingText = "";
+    callbacks.onAlternativeFinal?.(emittedCount);
+  }
+
+  await connectSSE<ExtendStreamEvent>({
+    url: `/writing/chapters/${chapterId}/style-variants/regenerate?novel_id=${novelId}`,
     method: "POST",
     body: request,
     signal,

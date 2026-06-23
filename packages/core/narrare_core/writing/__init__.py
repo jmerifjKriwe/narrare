@@ -25,6 +25,10 @@ from narrare_core.writing.models import WritingContext
 from narrare_core.writing.pipeline import WritingPipeline
 from narrare_core.writing.requests import GenerationRequest, SceneState, SessionState
 from narrare_core.writing.session_manager import SessionManager
+from narrare_core.writing.style_variants import (
+    StyleVariant,
+    get_style_variant_instructions,
+)
 
 __all__ = [
     "ContextAssemblerProtocol",
@@ -39,10 +43,12 @@ __all__ = [
     "SessionManager",
     "SessionManagerProtocol",
     "SessionState",
+    "StyleVariant",
     "TokenBudgetManager",
     "WritingContext",
     "WritingContextAssembler",
     "WritingPipeline",
     "WritingPipelineProtocol",
     "cap_to_budget",
+    "get_style_variant_instructions",
 ]
