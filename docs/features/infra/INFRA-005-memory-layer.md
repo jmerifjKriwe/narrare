@@ -70,6 +70,7 @@ contract: apps/api/narrare/memory/contracts.py
 router: apps/api/narrare/memory/router.py
 prompt: ~
 requires: [INFRA-001]
+adr: [ADR-033 (supersedes ADR-017)]
 ---
 
 # INFRA-005 — Memory Layer (Rejection Learning)
@@ -102,6 +103,8 @@ Most users don't need to think about it — it just gets better. Power users can
 - Disable if they don't want learning
 
 ## How it works (Technical)
+
+**Architecture per ADR-033 (supersedes ADR-017):** Local-first memory via mem0 OSS (AsyncMemory) with pgvector backend. No dependency on mem0 Cloud or Platform-only features. `Mem0Client` factory bridges user LLM provider settings to mem0's internal LLM for extraction. Graceful degradation via `NullMemoryClient` when mem0 is unavailable.
 
 **Core modules (`packages/core/narrare_core/memory/`):**
 - `protocols.py` — Protocol definitions: `MemoryClientProtocol`, `FeedbackServiceProtocol`, `PreferenceServiceProtocol`
@@ -247,3 +250,4 @@ returns empty results. This ensures:
 - `2026-05-15` — Core memory module implemented: mem0 AsyncMemory integration, dual storage (PostgreSQL + mem0), FeedbackService, PreferenceService, NullMemoryClient, API endpoints (POST /feedback, GET /preferences, DELETE /preferences), migration 0006
 - `2026-05-21` — **Full implementation complete.** 4-tier embedding cascade (ADR-017) enables mem0 for all users regardless of LLM provider. Rating field added to FeedbackEvent. PreferenceAnalysisAgent for deep pattern analysis. Event-driven mem0 processing (FeedbackRecorded → TaskIQ). POST /memory/analyze endpoint with min-event guard. Frontend: modify-tracking, RatingPrompt, LearningTab preference profile, LearningStatus indicator. See LEARN-001 for full details.
 - `2026-06-14` — Learning event models added: `LearningEvent`, `LearningEventKind` (suggestion_modified, repeated_steering), `MemoryPrecedenceLevel` (learned_memory, detail_memory, core_memory). Learning flow: user interaction → pattern detection → LearningEvent → privacy-safe mem0 storage with precedence-based ranking.
+- `2026-06-22` — ADR-033 applied: documented local-first mem0 OSS architecture (supersedes ADR-017 embedding cascade)

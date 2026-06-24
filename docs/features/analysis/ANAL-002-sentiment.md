@@ -39,7 +39,7 @@ ui_help_long: |
   **How it works:**
   1. Select chapters or entire novel
   2. Click "Sentiment Analysis" in Analysis panel
-  3. AI analyzes emotional content (5-10 seconds per chapter)
+  3. Analyzes emotional content using deterministic lexicon scoring (milliseconds per chapter)
   4. Visualizations appear:
      - Line graph: Emotional arc across chapters
      - Bar chart: Emotion distribution per chapter
@@ -107,9 +107,16 @@ shifts, or ensure the climax has maximum impact.
 ## How it works (Technical)
 
 **Entry point:** `analysis/router.py` → `POST /api/v1/analysis/sentiment`
-**Service:** `SentimentService.analyze()` in `analysis/sentiment_service.py`
-**Contract:** `SentimentProtocol` in `analysis/contracts.py`
-**LLM Intent:** `LLMIntent.SENTIMENT`
+**Service:** `SentimentService.analyze()` in `analysis/services/sentiment_service.py`
+**Contract:** `SentimentService` in `analysis/contracts.py`
+**Architecture per ADR-021:** Deterministic — spaCy NLP pipeline + NRC EmoLex lexicon scoring + algorithmic arc detection. No LLM calls for measurement.
+
+**Pipeline:**
+1. spaCy tokenizes and POS-tags the text (multilingual: DE/EN/FR)
+2. NRC EmoLex lexicon lookup assigns emotion scores per word
+3. VAD scores (Valence, Arousal, Dominance) computed from lexicon aggregates
+4. Structural signals adjust for narrative context (sentence position, dialogue ratio)
+5. Arc detection compares VAD trajectory against classical arc templates
 
 **Analysis per chapter:**
 ```python
@@ -152,7 +159,7 @@ class SentimentVisualization:
 - Cultural/emotional context affects interpretation
 - Arc detection requires 3+ chapters
 - Confidence scores indicate fit, not quality
-- LLM availability required
+- No LLM required — deterministic computation only
 
 ## Related Features
 
@@ -166,3 +173,4 @@ class SentimentVisualization:
 - `2026-05-28` — Moved to `in_progress`. Core NLP module (`core/nlp/`) and analysis module (`core/analysis/`) implemented. LexiconSentimentAnalyzer with deterministic VAD + emotion scoring + narrative arc detection. API and frontend implemented (tests pending).
 - `2026-05-28` — All spec requirements implemented. Cross-chapter arc trajectory line graph added. Word count + arc minimum warnings added to service. Chart export (PNG download) via html-to-image. Hover tooltips on emotion chart + arc graph. LLMIntent.SENTIMENT confirmed in intents.py. 8 warning tests + 30 rule tests added.
 - `2026-06-04` — Coverage uplift: 19% → 99% (40 tests). Status promoted to stable.
+- `2026-06-22` — ADR-021 applied: updated technical section from LLM-based to deterministic spaCy + NRC EmoLex architecture

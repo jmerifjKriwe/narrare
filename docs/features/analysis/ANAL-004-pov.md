@@ -119,9 +119,23 @@ Use during revision to ensure POV consistency before beta readers.
 ## How it works (Technical)
 
 **Entry point:** `analysis/router.py` → `POST /api/v1/analysis/pov`
-**Service:** `POVService.analyze()` in `analysis/pov_service.py`
-**Contract:** `POVProtocol` in `analysis/contracts.py`
-**LLM Intent:** `LLMIntent.ANALYSE`
+**Service:** `POVService.analyze()` in `analysis/services/pov_service.py`
+**Contract:** `POVDetector` in `analysis/contracts.py`
+**Architecture per ADR-021:** Hybrid — pronoun/scene detection is deterministic (spaCy), head-hopping detection requires LLM understanding.
+
+**Deterministic analysis** (spaCy-based, no LLM):
+- Pronoun analysis: spaCy POS tagging identifies he/she/they/I references
+- Scene detection: Splits chapter by section breaks, `***`, or clear shifts
+- POV character identification per scene
+- POV distribution statistics
+
+**LLM-powered analysis:**
+- Head-hopping detection: identifies mid-scene POV switches
+- Knowledge leakage detection: POV knows things they shouldn't
+- Emotional leakage detection: non-POV character feelings described
+- Fix suggestions for each issue
+
+**LLM Intent:** `LLMIntent.ANALYSE` (for head-hopping and leakage detection only)
 
 **Scene detection:**
 - Splits chapter into scenes (by section breaks, `***`, or clear shifts)
@@ -145,10 +159,10 @@ class POVIssue:
 - **Head-hopping**: Flag any mid-scene POV switches
 
 **Detection methods:**
-- Pronoun analysis (he/she/they/I references)
-- Thought attribution (who thinks what)
-- Knowledge boundaries (what POV could know)
-- Emotional attribution (whose feelings are described)
+- Pronoun analysis (he/she/they/I references) — deterministic, spaCy
+- Thought attribution (who thinks what) — LLM
+- Knowledge boundaries (what POV could know) — LLM
+- Emotional attribution (whose feelings are described) — LLM
 
 ## Constraints & Edge Cases
 
@@ -158,7 +172,7 @@ class POVIssue:
 - Dialogue attribution can confuse POV detection
 - Intentional POV shifts must use scene breaks to avoid flags
 - Free indirect discourse may be flagged as head-hopping
-- LLM availability required for AI analysis
+- Pronoun/scene detection works without LLM (deterministic). Head-hopping and leakage detection require LLM availability.
 
 ## Related Features
 
@@ -173,3 +187,4 @@ class POVIssue:
   ``POVServiceProtocol`` (API service protocol).  Types defined:
   ``POVIssueType`` (enum), ``POVIssue``, ``POVScene``, ``POVResult``.
 - 2026-06-01 — Full stack implemented (Core: POVDetectionAgent, Backend: POVService + POST /analysis/pov, Frontend: POVPanel). Contracts split for RULE-04. Status: stable.
+- `2026-06-22` — ADR-021 applied: documented hybrid architecture (deterministic pronoun detection + LLM head-hopping analysis)

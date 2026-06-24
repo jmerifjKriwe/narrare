@@ -66,7 +66,7 @@ service: analytics/service.py
 contract: analytics/contracts.py#AnalyticsServiceProtocol
 router: analytics/router.py
 prompt: ~
-requires: []
+requires: [ADR-021]
 ---
 
 # STATS-001 — Writing Statistics
@@ -101,6 +101,8 @@ Writers want to know their progress. Am I writing enough? What's my average pace
 5. Export data for external tools
 
 ## How it works (Technical)
+
+**Architecture per ADR-021:** Pure Python computation — word counts, sentence counts, paragraph counts, character counts. No NLP library needed, no LLM calls. Exact deterministic results.
 
 **Entry point:** `analytics/router.py` → GET endpoints at `/api/v1/analytics/stats`
 **Service:** `AnalyticsService` in `analytics/service.py`
@@ -153,3 +155,4 @@ class WritingSession:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-06-22` — ADR-021 applied: specified as pure Python deterministic computation (no LLM dependency)

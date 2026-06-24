@@ -73,7 +73,7 @@ service: apps/api/narrare/consistency/checker_service.py
 contract: apps/api/narrare/consistency/contracts.py#ConsistencyCheckerProtocol
 router: apps/api/narrare/consistency/router.py
 prompt: core/prompts/_bundled/analysis/en/consistency/system.md
-requires: [INFRA-001, INFRA-002, KB-001, KB-007, ADR-044]
+requires: [INFRA-001, INFRA-002, KB-001, KB-007, ADR-044, ADR-050]
 ---
 
 # CONS-001 — Consistency Checker
@@ -110,6 +110,8 @@ Readers notice inconsistencies. Characters change personality between chapters, 
 ## How it works (Technical)
 
 **Architecture per ADR-044:** Two-stage pipeline — 1) `FactExtractorAgent` extracts claims from chapters and KB entities, 2) `ConsistencyAgent` cross-references extracted facts against the Knowledge Base for contradictions. Deterministic pre-filtering via spaCy NER before the LLM stage reduces noise and improves extraction recall.
+
+**Cross-feature ref integrity per ADR-050:** Consistency checking uses `CrossFeatureRefIndex` (`packages/core/narrare_core/context/integration_contracts.py`) for KB entity ref lifecycle resolution. The index resolves `active/deprecated/unknown/deleted` status for entity references in Timeline, Storyboard, and Chapter frontmatter. `KBEntityLifecycleObserver` provides write-side hooks for rename/deprecate/delete events.
 
 ### Architecture: Staged Multi-Agent Pipeline (ADR-044)
 
@@ -276,6 +278,7 @@ The `FactExtractorAgent` (Stage 1) is designed for reuse beyond CONS-001:
 - `2026-06-12` — ADR-044 proposed: staged multi-agent pipeline (FactExtractorAgent → ConsistencyAgent). FIND-009 integration contract with TimelineEventEnvelope. SSE stage events. Spec updated to reflect staged flow, new types, and cross-feature reuse.
 - `2026-06-13` — ADR-044 implemented: core FactExtractor types/agent/prompt and `FACT_EXTRACT` route, backend staged orchestrator + enriched timeline envelopes + SSE endpoint, and Pydantic Evals `consistency_staged` smoke/runtime suite. Validation reported: 57 core tests, 77 backend consistency tests, 9 eval tests; Ruff, Pyright, architecture, prompt checks, and smoke evals passed.
 - `2026-06-18` — ADR-050 clarified FIND-009 status: FIND-009a (this consumer) is resolved by ADR-044; FIND-009b (cross-feature ref lifecycle) is open and closed by ADR-050 P1-B `CrossFeatureRefIndex`. The Consistency consumer will surface `RefIntegrityIssue` records from the read-side index once Phase C of ADR-050 lands.
+- `2026-06-22` — ADR-050 applied: CrossFeatureRefIndex and KBEntityLifecycleObserver documented for ref integrity
 
 ## RULE-XX Compliance
 

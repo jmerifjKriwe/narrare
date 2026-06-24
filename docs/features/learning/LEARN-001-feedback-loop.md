@@ -63,7 +63,7 @@ service: memory/service.py
 contract: memory/contracts.py#FeedbackServiceProtocol
 router: memory/router.py
 prompt: ~
-requires: [INFRA-005]
+requires: [INFRA-005, ADR-033]
 ---
 
 # LEARN-001 — Feedback & Learning Loop
@@ -101,6 +101,8 @@ Generic AI suggestions don't match every writer's style. Writers have unique pre
 **Entry point:** Implicit on all AI interactions via `memory/service.py`
 **Service:** `FeedbackService.record()` and `LearningService.apply()` in `memory/service.py`
 **Contract:** `FeedbackServiceProtocol` in `memory/contracts.py`
+
+**Architecture per ADR-033:** Feedback events are stored in two systems: PostgreSQL `feedback_events` table for structured audit, and mem0 AsyncMemory (OSS, local-first, pgvector) for semantic preference extraction. mem0 supersedes the earlier 4-tier embedding cascade (ADR-017 → ADR-033).
 
 **Feedback record:**
 ```python
@@ -172,3 +174,4 @@ id is itself a valid UUID.
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-21` — **Implemented.** Full feedback loop wired: 4-tier embedding cascade (OpenAI → provider-native → sentence-transformers → disabled) ensures all users get memory regardless of LLM provider. FeedbackEvent extended with rating + enriched context. mem0 AsyncMemory replaces NullMemoryClient for configured users. PreferenceAnalysisAgent performs periodic deep analysis persisted to preference_profiles table. Frontend adds modify-tracking in GenerationDraft, RatingPrompt inline UI, preference profile page (LearningTab), and LearningStatus progress indicator. Event-driven processing via FeedbackRecorded/PreferenceAnalysisTriggered events → TaskIQ tasks. 55 tasks, 3 migrations.
+- `2026-06-22` — ADR-033 applied: mem0 OSS documented as preference extraction backend (supersedes ADR-017 embedding cascade)

@@ -58,7 +58,7 @@ ui_help_long: |
   1. Select passage or chapter
   2. Click "Readability" in Analysis panel
   3. Metrics appear instantly (formula-based)
-  4. AI analysis completes in 5-15 seconds
+  4. AI-powered rewrite suggestions appear in 5-15 seconds
   5. See:
      - Overall scores
      - Genre comparison
@@ -120,11 +120,11 @@ Use during revision to ensure your prose matches your genre and audience.
 ## How it works (Technical)
 
 **Entry point:** `analysis/router.py` → `POST /api/v1/analysis/readability`
-**Service:** `ReadabilityService.analyze()` in `analysis/readability_service.py`
-**Contract:** `ReadabilityProtocol` in `analysis/contracts.py`
-**LLM Intent:** `LLMIntent.ANALYSE` (for sentence-level analysis)
+**Service:** `ReadabilityService.analyze()` in `analysis/services/readability_service.py`
+**Contract:** `ReadabilityAnalyzer` in `analysis/contracts.py`
+**Architecture per ADR-021:** Hybrid — metrics are deterministic (pure Python formulas + spaCy for syllables), LLM only for sentence-level rewrite suggestions.
 
-**Formula-based metrics** (instant):
+**Formula-based metrics** (deterministic, instant, no LLM):
 ```python
 class ReadabilityMetrics:
     flesch_reading_ease: float  # 0-100
@@ -135,7 +135,7 @@ class ReadabilityMetrics:
     complex_word_ratio: float
 ```
 
-**AI sentence analysis:**
+**AI sentence analysis** (LLM-powered — only this part needs LLM):
 ```python
 class SentenceAnalysis:
     sentence: str
@@ -144,6 +144,7 @@ class SentenceAnalysis:
     readability_score: float  # 0-1, lower = harder
     suggestions: list[str]  # 2-3 rewrite alternatives
 ```
+**LLM Intent:** `LLMIntent.ANALYSE` (for sentence-level analysis only — metrics are deterministic)
 
 **Genre benchmarks:**
 - Middle Grade: Flesch 80-90, Grade 4-6
@@ -166,6 +167,7 @@ class SentenceAnalysis:
 - Genre benchmarks are generalizations, not rules
 - AI suggestions require LLM availability
 - Very long sentences (>50 words) always flagged
+- Metrics are deterministic — no LLM required for Flesch/Kincaid/Fog scores
 
 ## Related Features
 
@@ -182,3 +184,4 @@ class SentenceAnalysis:
   (API service protocol).  Types defined: ``ReadabilityMetrics``,
   ``SentenceAnalysis``, ``ReadabilityResult``.
 - 2026-06-01 — Full stack implemented (Core: FormulaReadabilityAnalyzer + ReadabilityAgent, Backend: ReadabilityService + POST /analysis/readability, Frontend: ReadabilityPanel). Contracts split for RULE-04. Status: stable.
+- `2026-06-22` — ADR-021 clarified: metrics section explicitly documented as deterministic (pure Python + spaCy), LLM scope limited to rewrite suggestions

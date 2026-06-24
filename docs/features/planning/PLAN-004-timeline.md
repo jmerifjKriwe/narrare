@@ -90,7 +90,7 @@ service: planning/timeline_service.py
 contract: planning/contracts.py#TimelineServiceProtocol
 router: planning/router.py → GET /planning/timeline/{novel_id}
 prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
-requires: [KB-001, INFRA-001, INFRA-002]
+requires: [KB-001, INFRA-001, INFRA-002, ADR-050]
 
 core_agent: agents/timeline_agent.py (TimelineAgent)
 ---
@@ -176,6 +176,8 @@ class TimelineEvent(BaseModel):
 - Coverage gaps: missing causal links, unexplained time jumps
 - Overall assessment: 1-2 sentence evaluation of timeline quality
 
+**Ref lifecycle per ADR-050:** Timeline entity references use `TimelineRefConsumer` (`packages/core/narrare_core/context/integration_contracts.py`) for KB entity lifecycle tracking. `CrossFeatureRefIndex` resolves `active/deprecated/unknown/deleted` status. `kb_timelines` is registered in the variable registry per ADR-050 P1-D governance.
+
 ## Constraints & Edge Cases
 
 - Requires consistent date format in frontmatter
@@ -238,3 +240,4 @@ engine (deterministic core + LLM backend).
 - `2026-06-01` — PLAN-004 Phase 2: TemporalExtractionAgent (core agent + 3-locale prompts), deterministic consistency checks (TemporalOrderingCheck, DuplicateEventCheck), extraction + consistency endpoints, frontend review UI (TimelineExtractionReview + TimelineConsistencyPanel). 75 backend + 50 frontend tests.
 - `2026-06-01` — PLAN-004 Phase 1: TimelineEvent DB model + Alembic migration, CRUD endpoints, frontend (TimelinePanel, EventList, EventCard, EventForm, AnalysisView), PlanningPanel tab in EditorView. 28 unit + 11 integration + 23 frontend tests.
 - `2026-06-01` — Full architecture spec created (`PLAN-004-architecture.md`). Status changed to `architecture-review`. Covers all 6 sub-features across 3 phases. Key decisions: hybrid `timeline_events` table in planning module, separate `TemporalExtractionAgent`, KB `metadata_` for character birth dates, deterministic+LLM consistency engine following ADR-021.
+- `2026-06-22` — ADR-050 applied: TimelineRefConsumer and CrossFeatureRefIndex documented for KB entity ref lifecycle

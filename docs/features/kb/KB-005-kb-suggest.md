@@ -59,7 +59,7 @@ service: kb/suggest_service.py
 contract: kb/suggest_contracts.py#KBSuggestProtocol
 router: kb/router.py
 prompt: ~
-requires: [KB-001, INFRA-003, INFRA-004]
+requires: [KB-001, INFRA-003, INFRA-004, ADR-050]
 ---
 
 # KB-005 — Proactive KB Suggestions
@@ -104,6 +104,8 @@ Dismissed entries won't be suggested again for this chapter.
 - Extract entity names from chapter text and frontmatter
 - Detect themes and topics (battle, romance, mystery)
 - Parse frontmatter: POV character, location, timeline
+
+**Cross-feature context per ADR-050:** KB suggestions use `KBContextEnvelope` Protocol (`packages/core/narrare_core/context/contracts.py`) for provenance-preserving rendering. Each suggestion carries `ProvenanceField` metadata (source, confidence, review_status) and explicitly documents any omitted fields via `OmissionReason`.
 
 **2. KB Search**
 - Embedding search: chapter content → similar KB entries
@@ -179,3 +181,4 @@ When no embeddings exist, falls back to name + graph traversal (not keyword sear
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Designed. Merged with INFRA-009. Full embedding store required. Hybrid search with learning.
 - `2026-05-25` — Implemented. ProactiveContextService (core) + KBSuggestService (api) + 54 tests.
+- `2026-06-22` — ADR-050 applied: KBContextEnvelope Protocol documented for provenance-preserving KB context rendering
