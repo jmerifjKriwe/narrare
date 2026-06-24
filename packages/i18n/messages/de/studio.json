@@ -1936,5 +1936,37 @@
     "acceptAll": "Alle übernehmen",
     "rejectAll": "Alle verwerfen",
     "applySelected": "Auswahl übernehmen"
+  },
+  "slashCommands": {
+    "menuLabel": "Slash-Befehle",
+    "empty": "Keine passenden Befehle",
+    "disabledReasons": {
+      "noSelection": "Markiere zuerst Text",
+      "unavailable": "Hier nicht verfügbar"
+    },
+    "continue": {
+      "label": "Weiter schreiben",
+      "description": "An der Cursorposition weiterschreiben"
+    },
+    "draft": {
+      "label": "Entwurf",
+      "description": "Vollständigen Entwurf generieren"
+    },
+    "rewrite": {
+      "label": "Umschreiben",
+      "description": "Den markierten Text umschreiben"
+    },
+    "coauthor": {
+      "label": "Co-Autor",
+      "description": "Co-Autor-Verbesserungen für die Auswahl"
+    },
+    "chat": {
+      "label": "Chat",
+      "description": "Der KI eine Frage stellen"
+    },
+    "explain": {
+      "label": "Erklären",
+      "description": "Die KI um Erklärung der Auswahl bitten"
+    }
   }
 }

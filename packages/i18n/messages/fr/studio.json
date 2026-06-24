@@ -1936,5 +1936,37 @@
     "acceptAll": "Tout accepter",
     "rejectAll": "Tout rejeter",
     "applySelected": "Appliquer la sélection"
+  },
+  "slashCommands": {
+    "menuLabel": "Commandes slash",
+    "empty": "Aucune commande correspondante",
+    "disabledReasons": {
+      "noSelection": "Sélectionnez d'abord du texte",
+      "unavailable": "Indisponible ici"
+    },
+    "continue": {
+      "label": "Continuer",
+      "description": "Continuer à écrire depuis le curseur"
+    },
+    "draft": {
+      "label": "Brouillon",
+      "description": "Générer un brouillon complet"
+    },
+    "rewrite": {
+      "label": "Réécrire",
+      "description": "Réécrire le texte sélectionné"
+    },
+    "coauthor": {
+      "label": "Co-auteur",
+      "description": "Co-auteur des améliorations sur la sélection"
+    },
+    "chat": {
+      "label": "Discussion",
+      "description": "Poser une question à l'assistant"
+    },
+    "explain": {
+      "label": "Expliquer",
+      "description": "Demander à l'assistant d'expliquer la sélection"
+    }
   }
 }

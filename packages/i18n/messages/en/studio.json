@@ -1936,5 +1936,37 @@
     "acceptAll": "Accept All",
     "rejectAll": "Reject All",
     "applySelected": "Apply Selected"
+  },
+  "slashCommands": {
+    "menuLabel": "Slash commands",
+    "empty": "No matching commands",
+    "disabledReasons": {
+      "noSelection": "Select text first",
+      "unavailable": "Not available here"
+    },
+    "continue": {
+      "label": "Continue",
+      "description": "Keep writing from where the cursor is"
+    },
+    "draft": {
+      "label": "Draft",
+      "description": "Generate a full draft"
+    },
+    "rewrite": {
+      "label": "Rewrite",
+      "description": "Rewrite the selected text"
+    },
+    "coauthor": {
+      "label": "Co-Author",
+      "description": "Co-author improvements on the selection"
+    },
+    "chat": {
+      "label": "Chat",
+      "description": "Ask the assistant a question"
+    },
+    "explain": {
+      "label": "Explain",
+      "description": "Ask the assistant to explain the selection"
+    }
   }
 }
