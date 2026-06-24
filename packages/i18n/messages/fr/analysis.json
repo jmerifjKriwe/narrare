@@ -88,6 +88,27 @@
     "exportChart": "Exporter",
     "warnings": "Avertissements"
   },
+  "emotionalIntensity": {
+    "title": "Courbe d'intensité émotionnelle",
+    "disclaimer": "Intensité estimée · Basée sur les données de sentiment existantes",
+    "axisX": "Chapitres",
+    "axisY": "Intensité estimée (0\u2013100)",
+    "scoreExplanation": "L'intensité est estimée à partir du score d'éveil de l'analyse de sentiment. Des valeurs plus élevées indiquent un ton plus énergique. Cela reflète les caractéristiques du texte, et non l'émotion prédite du lecteur.",
+    "empty": "Pas encore de données de sentiment. Lancez l'analyse de sentiment pour voir la courbe d'intensité.",
+    "insufficientData": "Sélectionnez au moins deux chapitres pour voir comment l'intensité estimée évolue dans l'histoire.",
+    "chapterLabel": "Chapitre {number}",
+    "estimatedLabel": "Intensité estimée",
+    "pointAriaLabel": "Chapitre {chapter} : intensité estimée {intensity}",
+    "tableSummary": "Intensité estimée par chapitre, sous forme de tableau alternatif au graphique",
+    "tableHeaderChapter": "Chapitre",
+    "tableHeaderIntensity": "Intensité estimée",
+    "tableHeaderArousal": "Éveil",
+    "tableHeaderWarnings": "Notes",
+    "warnings": {
+      "insufficientSentences": "Peu de phrases analysées \u2014 l'estimation peut être peu fiable"
+    },
+    "exportChart": "Exporter"
+  },
   "consistency": {
     "title": "Vérification de cohérence",
     "trigger": "Cohérence",

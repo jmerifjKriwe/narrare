@@ -88,6 +88,27 @@
     "exportChart": "Export",
     "warnings": "Warnings"
   },
+  "emotionalIntensity": {
+    "title": "Emotional Intensity Curve",
+    "disclaimer": "Estimated intensity · Based on existing sentiment data",
+    "axisX": "Chapters",
+    "axisY": "Estimated intensity (0\u2013100)",
+    "scoreExplanation": "Intensity is estimated from the arousal score of the sentiment analysis. Higher values indicate a more energized tone. This reflects text characteristics, not predicted reader emotion.",
+    "empty": "No sentiment data yet. Run Sentiment Analysis to see the intensity curve.",
+    "insufficientData": "Select at least two chapters to see how estimated intensity changes across the story.",
+    "chapterLabel": "Chapter {number}",
+    "estimatedLabel": "Estimated intensity",
+    "pointAriaLabel": "Chapter {chapter}: estimated intensity {intensity}",
+    "tableSummary": "Estimated intensity per chapter, as a table alternative to the chart",
+    "tableHeaderChapter": "Chapter",
+    "tableHeaderIntensity": "Estimated intensity",
+    "tableHeaderArousal": "Arousal",
+    "tableHeaderWarnings": "Notes",
+    "warnings": {
+      "insufficientSentences": "Few analyzed sentences \u2014 estimate may be unreliable"
+    },
+    "exportChart": "Export"
+  },
   "consistency": {
     "title": "Consistency Check",
     "trigger": "Consistency",

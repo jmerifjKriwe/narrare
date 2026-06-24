@@ -88,6 +88,27 @@
     "exportChart": "Exportieren",
     "warnings": "Hinweise"
   },
+  "emotionalIntensity": {
+    "title": "Kurve der emotionalen Intensität",
+    "disclaimer": "Geschätzte Intensität · Basiert auf vorhandenen Stimmungsdaten",
+    "axisX": "Kapitel",
+    "axisY": "Geschätzte Intensität (0\u2013100)",
+    "scoreExplanation": "Die Intensität wird aus dem Aktivierungs-Score der Stimmungsanalyse geschätzt. Höhere Werte bedeuten einen energiegeladeneren Ton. Dies beschreibt Textmerkmale, keine vorhergesagte Lesereremotion.",
+    "empty": "Noch keine Stimmungsdaten. Führe die Stimmungsanalyse aus, um die Intensitätskurve zu sehen.",
+    "insufficientData": "Wähle mindestens zwei Kapitel, um zu sehen, wie sich die geschätzte Intensität über die Geschichte ändert.",
+    "chapterLabel": "Kapitel {number}",
+    "estimatedLabel": "Geschätzte Intensität",
+    "pointAriaLabel": "Kapitel {chapter}: geschätzte Intensität {intensity}",
+    "tableSummary": "Geschätzte Intensität pro Kapitel als Tabellen-Alternative zum Diagramm",
+    "tableHeaderChapter": "Kapitel",
+    "tableHeaderIntensity": "Geschätzte Intensität",
+    "tableHeaderArousal": "Aktivierung",
+    "tableHeaderWarnings": "Hinweise",
+    "warnings": {
+      "insufficientSentences": "Wenig analysierte Sätze \u2014 Schätzung kann unzuverlässig sein"
+    },
+    "exportChart": "Exportieren"
+  },
   "consistency": {
     "title": "Konsistenzprüfung",
     "trigger": "Konsistenz",

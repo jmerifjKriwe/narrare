@@ -12,6 +12,7 @@ import { Download } from "lucide-react";
 import { useCallback, useRef } from "react";
 
 import type { SentimentOverview } from "@/lib/api/analysis";
+import { EmotionalIntensityCurve } from "../EmotionalIntensityCurve";
 import { SentimentArcGraph } from "../SentimentArcGraph";
 import { SentimentChart } from "../SentimentChart";
 import { SentenceRow } from "./SentimentSentenceRow";
@@ -72,6 +73,11 @@ export function SentimentResults({
 
       {/* Cross-chapter arc trajectory (ANAL-002 #1) */}
       {results.length >= 2 && <SentimentArcGraph results={results} />}
+
+      {/* Cross-chapter emotional intensity curve (CR-AUFG-07-23) */}
+      {results.length >= 2 && (
+        <EmotionalIntensityCurve results={results} onPointClick={onChapterSelect} />
+      )}
 
       {/* Average VAD */}
       <section>
