@@ -75,6 +75,7 @@
 | [ADR-050](ADR-050-cross-feature-context-contracts.md) | Cross-Feature Context Contracts (KB Envelope, Ref Lifecycle, kb_pinned Governance) | ✅ | 2026-06-18 | `core/context/`, `core/profiles/`, KB, PLAN-004, PLAN-005, CONS-001, FIND-009, CR-AUFG-04 |
 | [ADR-051](ADR-051-configuration-effect-adoption-contract.md) | Configuration Effect Adoption Contract | ✅ | 2026-06-20 | `settings/`, `core/llm/`, `core/writing/`, provider catalogs, Platform governance, CR-08, RULE-18b |
 | [ADR-052](052-session-stop-recovery.md) | Session Stop and WebSocket Recovery | ✅ | 2026-06-22 | `apps/api/narrare/writing/` (ws_handler, ws_direction_dispatch, ws_streaming, _ws_cache, router_sessions), WebSocket session lifecycle, CR-AUFG-07-21, ADR-043, ADR-045 |
+| [ADR-053](053-ai-session-lifecycle.md) | AI Session Lifecycle Pattern (WebSocket) — keep `useSessionSocket`, no separate `useAISession` hook | ✅ | 2026-06-24 | `packages/web/components/studio/editor/` (useSessionSocket, SessionReconnectBanner, SessionPanel), §16 AI-Interaction, ADR-043 (Review-Trigger #1 closed), ADR-052 |
 
 ---
 

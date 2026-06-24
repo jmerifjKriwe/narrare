@@ -7,12 +7,14 @@
  * `?session_id=` and sends `recover_session` first, and the hook surfaces
  * the recovery-state transitions (idle -> reconnecting -> recovered |
  * failed). This is a deliberately separate lifecycle from the SSE
- * operation path (ADR-043 Review-Trigger #1); see the Check 1 governance
- * entry in `scripts/checks/.ai_interaction_exclude`.
+ * operation path (ADR-043 Review-Trigger #1); WritingSessionSocket lives in
+ * its own non-SSE module (`@/lib/api/writing-session-socket`, RULE-06), so
+ * importing the class no longer trips the `check_1_use_ai_operation`
+ * SSE-module pattern and no governance entry is required.
  */
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { WritingSessionSocket } from "@/lib/api/generation";
+import { WritingSessionSocket } from "@/lib/api/writing-session-socket";
 import { useSessionSocket } from "../useSessionSocket";
 
 interface MockWebSocketInstance {

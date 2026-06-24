@@ -1,6 +1,6 @@
 "use client";
 
-import type { SessionResponse } from "@/lib/api/generation";
+import type { SessionResponse } from "@/lib/api/writing-session-socket";
 import type { Message } from "../editor/ChatMessage";
 import { createMessageId } from "./sessionSocketMessages";
 

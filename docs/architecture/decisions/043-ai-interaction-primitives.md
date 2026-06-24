@@ -717,7 +717,7 @@ const { state, start, notifyData, isError } = useAIOperation({
 
 | Flow | Reason |
 |------|--------|
-| Writing Session (WebSocket) | Not SSE — uses `WritingSessionSocket` class. Needs a `useAISession` hook for WebSocket lifecycle. Separate ADR. |
+| Writing Session (WebSocket) | Not SSE — uses `WritingSessionSocket` class. Needs a `useAISession` hook for WebSocket lifecycle. Separate ADR. **→ Resolved by [ADR-053](053-ai-session-lifecycle.md): keep `useSessionSocket` with a documented §16 state mapping; no separate `useAISession` hook.** |
 | Analysis (BetaReader, Worldbuilding, etc.) | Uses TanStack Query mutations, not raw SSE. May benefit from `useAIOperation` but requires investigation of mutation compatibility. |
 
 ### Phase 3: Deprecate `useConnectionLost`
@@ -908,7 +908,7 @@ rg "useConnectionLost" packages/web/ --type ts -l
 
 This decision should be revisited:
 
-- [ ] When a WebSocket-based AI flow needs lifecycle management (→ new `useAISession` ADR)
+- [x] ~~When a WebSocket-based AI flow needs lifecycle management (→ new `useAISession` ADR)~~ — **Closed by [ADR-053](053-ai-session-lifecycle.md)**: keep `useSessionSocket` as the WebSocket-session specialist with a documented §16 state mapping to `useAIOperation`; no separate `useAISession` hook (transport paradigms differ in lifecycle ownership).
 - [ ] When TanStack Query integration is needed for AI operations that also need caching
 - [ ] When more than 3 concurrent AI operations need coordination (→ Context/coordination layer)
 - [ ] After 3 months — verify the hook has been adopted by all flows
