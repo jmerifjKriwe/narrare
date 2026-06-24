@@ -3,7 +3,9 @@
 Covers: provider exceptions, protocol conformance, KBSuggestedProvider protocol,
 immutability, and evidence integration.
 
-See: ADR-038, ADR-039, INFRA-013, CONSTRAINTS.md RULE-10.
+Updated for ADR-048 Q3: provider returns KBSuggestionResult (structured).
+
+See: ADR-038, ADR-039, ADR-048 Q3, INFRA-013, CONSTRAINTS.md RULE-10.
 """
 
 from __future__ import annotations
@@ -17,7 +19,9 @@ from narrare_core.ai_invocation._enums import KBSuggestedRequirement
 from narrare_core.ai_invocation.enrichers.kb_suggested import (
     KB_SOURCE_KEY,
     KBSuggestedContextEnricher,
+    KBSuggestedEntity,
     KBSuggestedProvider,
+    KBSuggestionResult,
 )
 from narrare_core.ai_invocation.models import AdoptionPolicy, PromptInvocationContext
 from narrare_core.llm.intents import LLMIntent
@@ -28,6 +32,33 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _make_entity(**overrides: object) -> KBSuggestedEntity:
+    """Create a valid KBSuggestedEntity with sensible defaults."""
+    defaults: dict[str, object] = {
+        "entity_id": "char-001",
+        "name": "John Doe",
+        "entity_type": "character",
+        "summary": "A mysterious wanderer.",
+        "relevance_score": 0.85,
+        "token_count": 120,
+        "provenance": "kb_repository",
+    }
+    defaults.update(overrides)
+    return KBSuggestedEntity(**defaults)  # type: ignore[arg-type]
+
+
+def _make_result(entities: tuple[KBSuggestedEntity, ...] | None = None) -> KBSuggestionResult:
+    """Create a KBSuggestionResult with sensible defaults."""
+    if entities is None:
+        entities = (_make_entity(),)
+    total = sum(e.token_count for e in entities)
+    return KBSuggestionResult(
+        entities=entities,
+        total_token_count=total,
+        source="kb_repository",
+    )
 
 
 def _make_context(
@@ -67,18 +98,19 @@ def _make_context(
 class FakeKBSuggestedProvider:
     """Async fake KBSuggestedProvider for testing.
 
-    Uses a real async method to avoid the ``AsyncMock(spec=...)`` pitfall
-    where spec'd attributes become plain ``MagicMock`` objects that cannot
-    be awaited. The ``calls`` list records invocations for assertions.
+    Returns structured KBSuggestionResult (ADR-048 Q3). Uses a real async
+    method to avoid the ``AsyncMock(spec=...)`` pitfall where spec'd
+    attributes become plain ``MagicMock`` objects that cannot be awaited.
+    The ``calls`` list records invocations for assertions.
     """
 
     def __init__(
         self,
-        suggested_text: str = "Suggested character: John Doe, a mysterious wanderer.",
+        result: KBSuggestionResult | None = None,
         *,
         raises: Exception | None = None,
     ) -> None:
-        self._suggested_text = suggested_text
+        self._result = result if result is not None else _make_result()
         self._raises = raises
         self.calls: list[dict[str, object]] = []
 
@@ -89,7 +121,7 @@ class FakeKBSuggestedProvider:
         project_id: object | None = None,
         intent: str | None = None,
         mode: str | None = None,
-    ) -> str:
+    ) -> KBSuggestionResult:
         self.calls.append(
             {
                 "user_id": user_id,
@@ -100,7 +132,7 @@ class FakeKBSuggestedProvider:
         )
         if self._raises is not None:
             raise self._raises
-        return self._suggested_text
+        return self._result
 
 
 # ---------------------------------------------------------------------------
@@ -324,10 +356,15 @@ class TestEvidenceIntegration:
 
     @pytest.mark.asyncio
     async def test_missing_status_when_provider_returns_empty(self) -> None:
-        """When provider returns empty string, evidence shows MISSING."""
+        """When provider returns empty result (no entities), evidence shows MISSING."""
         from narrare_core.ai_invocation._evidence import _determine_kb_suggested_status
 
-        provider = FakeKBSuggestedProvider(suggested_text="")
+        empty_result = KBSuggestionResult(
+            entities=(),
+            total_token_count=0,
+            source="kb_repository",
+        )
+        provider = FakeKBSuggestedProvider(result=empty_result)
         enricher = KBSuggestedContextEnricher(kb_provider=provider)
         ctx = _make_context()
 

@@ -54,6 +54,13 @@
       "additionalProperties": {
         "$ref": "#/$defs/feature_template"
       }
+    },
+    "manual_injection_declarations": {
+      "type": "object",
+      "description": "ADR-048 Mode 2 declarations — modes that compose prompts agent-internally (manual_injection=). Keys are '{category}/{mode}'.",
+      "additionalProperties": {
+        "$ref": "#/$defs/manual_injection_declaration"
+      }
     }
   },
   "$defs": {
@@ -235,6 +242,34 @@
         "checklist": {
           "type": "array",
           "items": { "type": "string" }
+        }
+      }
+    },
+    "manual_injection_declaration": {
+      "type": "object",
+      "description": "ADR-048 Mode 2 declaration — a mode that composes prompts agent-internally.",
+      "required": ["reason", "variables", "injection_mechanism"],
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Human-readable explanation of why composition is agent-internal."
+        },
+        "variables": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Dynamic-input variable names the agent consumes internally."
+        },
+        "injection_mechanism": {
+          "type": "string",
+          "description": "How variables reach the agent: 'agent_deps', 'capability_dynamic_instructions', 'agent_instructions_decorator'."
+        },
+        "precedence_level": {
+          "type": "string",
+          "default": "generated_suggestion",
+          "description": "RULE-22 precedence: where this data ranks in conflict resolution."
         }
       }
     }

@@ -473,7 +473,7 @@ check-health:
     @echo "🏥 Checking system health..."
     uv run python scripts/check_system_health.py
 
-# Check governance health — review-finding coverage vs AUFG lifecycle (ADR-047 Phase 2, warning-only)
+# Check governance health — SSOT/gate aggregation + review-finding coverage (ADR-047 Phase 3+4, blocking)
 check-governance:
     @echo "🏛️ Checking governance health..."
     uv run python scripts/check_governance_health.py
@@ -602,6 +602,6 @@ hooks-update:
 #
 # check-ssot is warn-only: it reports discrepancies but does not block the merge.
 # The `|| true` prevents its non-zero exit code from failing the entire recipe.
-check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-configuration-matrix check-models check-health
+check-full: check check-python-size check-streaming check-ai-ux check-secrets check-prompts-strict check-locale-sync check-prompts-de check-adoption check-configuration-matrix check-models check-governance check-health
     -uv run python scripts/check_current_state_facts.py || true
     @echo "✅ All checks passed — ready to merge"

@@ -227,6 +227,14 @@ def main() -> int:
     pp_findings = check_prompt_path_adoption(registry)
     pp_critical = [f for f in pp_findings if f.severity == "critical"]
 
+    # ADR-048 — Mode 2 declaration validation + placeholder evidence rejection.
+    from adoption.mode2_validation import validate_adoption_mode2
+
+    mode2_report = validate_adoption_mode2(
+        registry,
+        evidence_dir=args.evidence_dir,
+    )
+
     if args.json:
         print(_format_json(report, pp_findings))
     else:
@@ -238,6 +246,14 @@ def main() -> int:
                 print(f"  {icon} {f.mode_key}: {f.message}")
         else:
             print("\n✅ ADR-046 prompt-path compliance: all intents compliant")
+
+        if mode2_report.findings:
+            print("\nADR-048 Mode 2 validation + placeholder evidence:")
+            for f in mode2_report.findings:
+                icon = "❌" if f.severity == "critical" else "⚠️ "
+                print(f"  {icon} [{f.code}] {f.message}")
+        else:
+            print("\n✅ ADR-048 Mode 2 validation: no issues")
 
     exit_code = _exit_code(report.status)
     # Prompt-path-compliance violations are hard failures (C.2 root cause).
@@ -256,6 +272,10 @@ def main() -> int:
             exit_code = 0
 
     if pp_critical and exit_code == 0:
+        exit_code = 1
+
+    # ADR-048 — Mode 2 critical findings are hard failures.
+    if mode2_report.has_critical and exit_code == 0:
         exit_code = 1
 
     if args.audit:

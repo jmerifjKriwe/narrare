@@ -3,7 +3,14 @@
 Covers: happy path with and without provider, not_applicable modes,
 no adoption policy, and already populated.
 
-See: ADR-038, ADR-039, INFRA-013, CONSTRAINTS.md RULE-10.
+Updated for ADR-048 Q3: provider returns KBSuggestionResult (structured),
+enricher formats it into text and injects both kb_suggested (text) and
+kb_suggested_structured (structured result).
+
+Formatting and structured-data injection tests are in
+``test_kb_suggested_formatting.py`` (split per RULE-04).
+
+See: ADR-038, ADR-039, ADR-048 Q3, INFRA-013, CONSTRAINTS.md RULE-10.
 """
 
 from __future__ import annotations
@@ -15,7 +22,10 @@ import pytest
 from narrare_core.ai_invocation._enums import KBSuggestedRequirement
 from narrare_core.ai_invocation.enrichers.kb_suggested import (
     KB_SOURCE_KEY,
+    KB_STRUCTURED_KEY,
     KBSuggestedContextEnricher,
+    KBSuggestedEntity,
+    KBSuggestionResult,
 )
 from narrare_core.ai_invocation.models import AdoptionPolicy, PromptInvocationContext
 from narrare_core.llm.intents import LLMIntent
@@ -23,6 +33,38 @@ from narrare_core.llm.intents import LLMIntent
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _make_entity(**overrides: object) -> KBSuggestedEntity:
+    """Create a valid KBSuggestedEntity with sensible defaults."""
+    defaults: dict[str, object] = {
+        "entity_id": "char-001",
+        "name": "John Doe",
+        "entity_type": "character",
+        "summary": "A mysterious wanderer.",
+        "relevance_score": 0.85,
+        "token_count": 120,
+        "provenance": "kb_repository",
+    }
+    defaults.update(overrides)
+    return KBSuggestedEntity(**defaults)  # type: ignore[arg-type]
+
+
+def _make_result(
+    entities: tuple[KBSuggestedEntity, ...] | None = None,
+    **overrides: object,
+) -> KBSuggestionResult:
+    """Create a KBSuggestionResult with sensible defaults."""
+    if entities is None:
+        entities = (_make_entity(),)
+    total = sum(e.token_count for e in entities)
+    defaults: dict[str, object] = {
+        "entities": entities,
+        "total_token_count": total,
+        "source": "kb_repository",
+    }
+    defaults.update(overrides)
+    return KBSuggestionResult(**defaults)  # type: ignore[arg-type]
 
 
 def _make_context(
@@ -62,18 +104,19 @@ def _make_context(
 class FakeKBSuggestedProvider:
     """Async fake KBSuggestedProvider for testing.
 
-    Uses a real async method to avoid the ``AsyncMock(spec=...)`` pitfall
-    where spec'd attributes become plain ``MagicMock`` objects that cannot
-    be awaited. The ``calls`` list records invocations for assertions.
+    Returns structured KBSuggestionResult (ADR-048 Q3). Uses a real async
+    method to avoid the ``AsyncMock(spec=...)`` pitfall where spec'd
+    attributes become plain ``MagicMock`` objects that cannot be awaited.
+    The ``calls`` list records invocations for assertions.
     """
 
     def __init__(
         self,
-        suggested_text: str = "Suggested character: John Doe, a mysterious wanderer.",
+        result: KBSuggestionResult | None = None,
         *,
         raises: Exception | None = None,
     ) -> None:
-        self._suggested_text = suggested_text
+        self._result = result if result is not None else _make_result()
         self._raises = raises
         self.calls: list[dict[str, object]] = []
 
@@ -84,7 +127,7 @@ class FakeKBSuggestedProvider:
         project_id: object | None = None,
         intent: str | None = None,
         mode: str | None = None,
-    ) -> str:
+    ) -> KBSuggestionResult:
         self.calls.append(
             {
                 "user_id": user_id,
@@ -95,7 +138,7 @@ class FakeKBSuggestedProvider:
         )
         if self._raises is not None:
             raise self._raises
-        return self._suggested_text
+        return self._result
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +151,7 @@ class TestHappyPathWithProvider:
 
     @pytest.mark.asyncio
     async def test_writes_kb_suggested_text(self) -> None:
-        """Provider returns text, enricher writes to dynamic_inputs."""
+        """Provider returns structured result, enricher writes formatted text."""
         provider = FakeKBSuggestedProvider()
         enricher = KBSuggestedContextEnricher(kb_provider=provider)
         ctx = _make_context()
@@ -116,7 +159,8 @@ class TestHappyPathWithProvider:
         result = await enricher.enrich(ctx)
 
         assert KB_SOURCE_KEY in result.dynamic_inputs
-        assert result.dynamic_inputs[KB_SOURCE_KEY] == provider._suggested_text
+        # Formatted text should contain entity name and type
+        assert "John Doe (character)" in result.dynamic_inputs[KB_SOURCE_KEY]
 
     @pytest.mark.asyncio
     async def test_preserves_existing_dynamic_inputs(self) -> None:
@@ -129,6 +173,7 @@ class TestHappyPathWithProvider:
 
         assert result.dynamic_inputs["existing_key"] == "existing_value"
         assert KB_SOURCE_KEY in result.dynamic_inputs
+        assert KB_STRUCTURED_KEY in result.dynamic_inputs
 
     @pytest.mark.asyncio
     async def test_provider_called_with_correct_ids(self) -> None:
@@ -158,7 +203,7 @@ class TestHappyPathWithProvider:
         result = await enricher.enrich(ctx)
 
         assert KB_SOURCE_KEY in result.dynamic_inputs
-        assert result.dynamic_inputs[KB_SOURCE_KEY] == provider._suggested_text
+        assert KB_STRUCTURED_KEY in result.dynamic_inputs
 
 
 # ---------------------------------------------------------------------------
@@ -206,17 +251,22 @@ class TestNoProviderConfigured:
 
 
 # ---------------------------------------------------------------------------
-# 2b. Provider returns empty content — enrichment skipped
+# 2b. Provider returns empty result — enrichment skipped
 # ---------------------------------------------------------------------------
 
 
 class TestProviderReturnsEmpty:
-    """Enricher skips enrichment when provider returns empty string."""
+    """Enricher skips enrichment when provider returns empty result (no entities)."""
 
     @pytest.mark.asyncio
-    async def test_empty_string_skips_enrichment(self) -> None:
-        """When provider returns empty string, enricher skips enrichment."""
-        provider = FakeKBSuggestedProvider(suggested_text="")
+    async def test_empty_result_skips_enrichment(self) -> None:
+        """When provider returns result with no entities, enricher skips."""
+        empty_result = KBSuggestionResult(
+            entities=(),
+            total_token_count=0,
+            source="kb_repository",
+        )
+        provider = FakeKBSuggestedProvider(result=empty_result)
         enricher = KBSuggestedContextEnricher(kb_provider=provider)
         ctx = _make_context()
 
@@ -224,11 +274,17 @@ class TestProviderReturnsEmpty:
 
         assert result is ctx
         assert KB_SOURCE_KEY not in result.dynamic_inputs
+        assert KB_STRUCTURED_KEY not in result.dynamic_inputs
 
     @pytest.mark.asyncio
     async def test_provider_was_called(self) -> None:
         """Provider is still called even when it returns empty — caller sees the call."""
-        provider = FakeKBSuggestedProvider(suggested_text="")
+        empty_result = KBSuggestionResult(
+            entities=(),
+            total_token_count=0,
+            source="kb_repository",
+        )
+        provider = FakeKBSuggestedProvider(result=empty_result)
         enricher = KBSuggestedContextEnricher(kb_provider=provider)
         ctx = _make_context()
 

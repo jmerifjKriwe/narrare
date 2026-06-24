@@ -1281,11 +1281,14 @@ RULE-02") but MUST NOT reproduce, paraphrase, or contradict its rules.
 ### Enforcement
 
 - Manual: Architecture Specialist reviews documentation changes for SSOT compliance.
-- CI (future): Automated drift detection between authoritative and derived sources
-  (planned as AUFG-NEW-01 in Wave 3).
+- CI: Automated drift detection between authoritative and derived sources —
+  implemented via the Governance Health Checker. The vague AUFG-NEW-01 follow-up
+  was **concretized by ADR-047** (Phases 1–4). `scripts/check_governance_health.py`
+  aggregates SSOT/gate drift and review-finding coverage, and is CI-blocking
+  (`just check-governance`, with a `GOVERNED_DEBT` baseline).
 
 ---
 
-> Last updated: 2026-06-20 — RULE-18b Configuration Effect Integrity added (ADR-051 Accepted)
+> Last updated: 2026-06-24 — §8 Enforcement updated: AUFG-NEW-01 concretized by ADR-047 (Governance Health Checker implemented, CI-blocking). (Prior: 2026-06-20 — RULE-18b Configuration Effect Integrity added, ADR-051 Accepted)
 > Maintained by: Architecture Agent
 > Review cycle: every major milestone

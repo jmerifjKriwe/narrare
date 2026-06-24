@@ -1,20 +1,28 @@
 """Concrete KBSuggestedProvider backed by the KB repository.
 
 Provides KB-suggested context for the invocation pipeline by querying
-KB entries for the given project and formatting the top entities by
-usage count as relevance-weighted lines.
+KB entries for the given project and returning the top entities by
+usage count as structured :class:`KBSuggestionResult` (ADR-048 Q3).
 
 This provider is a lightweight, read-only query — it creates a fresh
 database session per call to avoid tying the singleton pipeline to a
 request-scoped session.
 
+Separation of concerns (ADR-048 Q3, RULE-06):
+    - This provider = data provision (queries KB + builds KBSuggestionResult).
+    - The enricher = formatting (``_format_entities``) + injection into
+      ``dynamic_inputs``.
+
 Graceful degradation:
-    - Returns ``""`` (empty string) when the project has no KB entries.
-    - Returns ``""`` when project_id is ``None`` or not resolvable to a UUID.
-    - Returns ``""`` and logs a warning when the DB query raises.
+    - Returns an empty :class:`KBSuggestionResult` (no entities) when the
+      project has no KB entries.
+    - Returns an empty result when project_id is ``None`` or not resolvable
+      to a UUID.
+    - Returns an empty result and logs a warning when the DB query raises.
 
 See:
-    ADR-038, ADR-039, ADR-045, CONSTRAINTS.md RULE-03/RULE-06/RULE-11.
+    ADR-038, ADR-039, ADR-045, ADR-048 Q3,
+    CONSTRAINTS.md RULE-03/RULE-06/RULE-11.
 """
 
 from __future__ import annotations
@@ -23,6 +31,11 @@ import uuid
 from typing import TYPE_CHECKING
 
 import structlog
+
+from narrare_core.ai_invocation.enrichers.kb_suggested import (
+    KBSuggestedEntity,
+    KBSuggestionResult,
+)
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -38,6 +51,12 @@ _MAX_SUGGESTED_ENTRIES: int = 5
 
 #: Number of entries to fetch from the DB for in-memory relevance sorting.
 _FETCH_SIZE: int = 20
+
+#: Heuristic: approximately 4 characters per token for English text.
+_CHARS_PER_TOKEN: int = 4
+
+#: Provenance identifier for entities sourced from the KB repository.
+_PROVENANCE: str = "kb_repository"
 
 
 def _resolve_novel_id(project_id: object | None) -> uuid.UUID | None:
@@ -72,12 +91,16 @@ class KBSuggestedProviderImpl:
 
     Creates a database session per call via the injected session factory.
     Queries KB entries for the project, sorts by usage count descending,
-    and returns the top :data:`_MAX_SUGGESTED_ENTRIES` formatted as
-    relevance-weighted suggestions.
+    and returns the top :data:`_MAX_SUGGESTED_ENTRIES` as structured
+    :class:`KBSuggestionResult` with per-entity token counts and provenance.
+
+    The provider only provides data; the enricher formats it into prompt
+    text (ADR-048 Q3, RULE-06).
 
     Graceful degradation:
-        Returns ``""`` if the project has no KB entries, the project_id
-        is ``None``/unresolvable, or the DB query raises.
+        Returns an empty :class:`KBSuggestionResult` (no entities) if the
+        project has no KB entries, the project_id is ``None``/unresolvable,
+        or the DB query raises.
 
     Args:
         session_factory: Factory that creates async DB sessions (production).
@@ -122,21 +145,24 @@ class KBSuggestedProviderImpl:
         project_id: object | None = None,
         intent: str | None = None,
         mode: str | None = None,
-    ) -> str:
-        """Return KB-suggested context text for the given parameters.
+    ) -> KBSuggestionResult:
+        """Return structured KB-suggested context for the given parameters.
 
         Queries the top KB entities for the project sorted by usage count,
-        formats them as relevance-weighted lines.
+        builds :class:`KBSuggestedEntity` objects with relevance scores
+        (normalized against max usage count), per-entity token counts
+        (heuristic: ``len(summary) // 4``), and provenance.
 
         Args:
             user_id: Ignored in this implementation (reserved for future use).
             project_id: The project/novel UUID to query KB entries for.
-            intent: Ignored in this implementation (reserved for future use).
+            intent: Included in ``query_metadata`` for observability.
             mode: Ignored in this implementation (reserved for future use).
 
         Returns:
-            Formatted KB context text, or ``""`` if no entries found or
-            ``project_id`` is not resolvable.
+            :class:`KBSuggestionResult` with entities sorted by relevance
+            (descending), or an empty result (no entities) when no entries
+            are found or ``project_id`` is not resolvable.
         """
         novel_id = _resolve_novel_id(project_id)
         if novel_id is None:
@@ -144,7 +170,11 @@ class KBSuggestedProviderImpl:
                 "kb_suggested_provider_unresolvable_project",
                 project_id_type=type(project_id).__name__ if project_id is not None else "None",
             )
-            return ""
+            return KBSuggestionResult(
+                entities=(),
+                total_token_count=0,
+                source=_PROVENANCE,
+            )
 
         try:
             entries, total = await self._get_kb_entries(novel_id)
@@ -154,14 +184,22 @@ class KBSuggestedProviderImpl:
                 novel_id=str(novel_id),
                 exc_info=True,
             )
-            return ""
+            return KBSuggestionResult(
+                entities=(),
+                total_token_count=0,
+                source=_PROVENANCE,
+            )
 
         if not entries:
             logger.debug(
                 "kb_suggested_provider_no_entries",
                 novel_id=str(novel_id),
             )
-            return ""
+            return KBSuggestionResult(
+                entities=(),
+                total_token_count=0,
+                source=_PROVENANCE,
+            )
 
         # Sort by usage_count descending, take top N
         sorted_entries = sorted(
@@ -172,21 +210,49 @@ class KBSuggestedProviderImpl:
         top_entries = sorted_entries[:_MAX_SUGGESTED_ENTRIES]
 
         max_usage = max(e.usage_count or 0 for e in top_entries)
-        if max_usage == 0:
-            # All entries have equal (zero) usage — treat relevance as equal
-            lines = [f"{e.name} ({e.entity_type}), relevance: 1.00" for e in top_entries]
-        else:
-            lines = [
-                f"{e.name} ({e.entity_type}), relevance: {(e.usage_count or 0) / max_usage:.2f}"
-                for e in top_entries
-            ]
 
-        result = "\n".join(lines)
+        entities: list[KBSuggestedEntity] = []
+        for entry in top_entries:
+            usage = entry.usage_count or 0
+            # All entries have equal (zero) usage — treat relevance as equal
+            relevance = 1.0 if max_usage == 0 else usage / max_usage
+
+            summary = entry.body or ""
+            # Heuristic: ~4 chars per token. Enables per-entity budget decisions.
+            token_count = len(summary) // _CHARS_PER_TOKEN
+
+            entities.append(
+                KBSuggestedEntity(
+                    entity_id=str(entry.id),
+                    name=entry.name,
+                    entity_type=entry.entity_type,
+                    summary=summary,
+                    relevance_score=relevance,
+                    token_count=token_count,
+                    provenance=_PROVENANCE,
+                )
+            )
+
+        # Entities are already sorted by usage_count desc, which maps to
+        # relevance_score desc (KBSuggestionResult contract: "ordered by
+        # relevance (descending)").
+        total_token_count = sum(e.token_count for e in entities)
+
+        result = KBSuggestionResult(
+            entities=tuple(entities),
+            total_token_count=total_token_count,
+            source=_PROVENANCE,
+            query_metadata={
+                "total_entries_found": str(total),
+                "query_intent": intent or "unknown",
+            },
+        )
+
         logger.debug(
             "kb_suggested_provider_success",
             novel_id=str(novel_id),
-            entry_count=len(top_entries),
+            entry_count=len(entities),
             total_entries=total,
-            result_length=len(result),
+            total_token_count=total_token_count,
         )
         return result

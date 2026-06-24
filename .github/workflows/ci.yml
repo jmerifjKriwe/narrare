@@ -39,6 +39,7 @@ name: CI
 # | --   | check_test_performance.py              | ⚠️ Warning   | frontend Job (WARNING-only)        |
 # | --   | check_pytest_collection_performance.py  | ⚠️ Warning   | test-unit Job (WARNING-only)       |
 # | --   | check_current_state_facts.py (SSOT)    | ⚠️ Warning   | architecture Job (WARNING-only)    |
+# | --   | check_governance_health.py (ADR-047)   | ✅ Blocking  | architecture Job (Phase 3+4 aggregation) |
 # ---------------------------------------------------------------------------
 
 on:
@@ -146,6 +147,9 @@ jobs:
 
       - name: Check gate drift (docs vs CI)
         run: uv run python scripts/check_gate_drift.py
+
+      - name: Check governance health (ADR-047)
+        run: uv run python scripts/check_governance_health.py
 
       - name: Check streaming compliance (RULE-20)
         run: |

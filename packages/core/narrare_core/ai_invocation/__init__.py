@@ -38,6 +38,10 @@ from narrare_core.ai_invocation.contracts import (
     ProfileProvider,
     RuntimeVariableValidator,
 )
+from narrare_core.ai_invocation.enrichers.kb_suggested import (
+    KBSuggestedEntity,
+    KBSuggestionResult,
+)
 from narrare_core.ai_invocation.evidence import LoggingEvidenceSink
 from narrare_core.ai_invocation.manual_injection import ManualInjectionDeclaration
 from narrare_core.ai_invocation.models import (
@@ -82,8 +86,10 @@ __all__ = [
     "InvocationWarning",
     "KBConsistencyCheck",
     "KBConsistencyResult",
+    "KBSuggestedEntity",
     "KBSuggestedRequirement",
     "KBSuggestedStatus",
+    "KBSuggestionResult",
     "LoggingEvidenceSink",
     "ManualInjectionDeclaration",
     "OutputBudget",

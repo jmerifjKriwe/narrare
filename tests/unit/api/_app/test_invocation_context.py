@@ -1,22 +1,25 @@
 """Unit tests for ``narrare._app.invocation_context``.
 
-Tests the three public helpers:
+Tests the public helpers:
 - :func:`build_invocation_context` — creates a ``PromptInvocationContext``
-- :func:`record_invocation_evidence` — runs prepare + finalize on a pipeline
-- :func:`safe_record_evidence` — null-safe wrapper that swallows errors
+- :func:`safe_compose_invocation` — null-safe wrapper that composes
+  invocations through the pipeline (Mode 2) and swallows errors
+
+The deprecated ``record_invocation_evidence()`` and
+``safe_record_evidence()`` functions were removed in ADR-048 Slice F.
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from narrare._app.invocation_context import (
     build_invocation_context,
-    record_invocation_evidence,
-    safe_record_evidence,
+    safe_compose_invocation,
 )
+from narrare_core.ai_invocation.manual_injection import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 
 # ---------------------------------------------------------------------------
@@ -55,89 +58,74 @@ def test_build_invocation_context_defaults() -> None:
 
 
 # ---------------------------------------------------------------------------
-# record_invocation_evidence
+# safe_compose_invocation
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.anyio
-async def test_record_invocation_evidence_calls_prepare_and_finalize() -> None:
-    """record_invocation_evidence runs both pipeline phases."""
-    mock_prepared = MagicMock(spec=object, name="PreparedInvocation")
-    mock_finalized = MagicMock(spec=object, name="FinalizedInvocation")
-    mock_finalized.evidence_recorded = True
-
-    mock_pipeline = MagicMock(spec=object, name="InvocationPipeline")
-    mock_pipeline.prepare = AsyncMock(return_value=mock_prepared)
-    mock_pipeline.finalize = AsyncMock(return_value=mock_finalized)
-
-    ctx = build_invocation_context(
-        feature_id="test_feature",
-        intent=LLMIntent.ANALYSE,
+def _make_manual_injection() -> ManualInjectionDeclaration:
+    """Create a valid ManualInjectionDeclaration for tests."""
+    return ManualInjectionDeclaration(
+        reason="Agent composes prompt internally from deps.",
+        variables=("chapter_text",),
+        injection_mechanism="agent_deps",
     )
 
-    with pytest.deprecated_call():
-        result = await record_invocation_evidence(mock_pipeline, ctx)
-
-    mock_pipeline.prepare.assert_awaited_once_with(ctx)
-    mock_pipeline.finalize.assert_awaited_once()
-    assert result is mock_finalized
-
-
-# ---------------------------------------------------------------------------
-# safe_record_evidence
-# ---------------------------------------------------------------------------
-
 
 @pytest.mark.anyio
-async def test_safe_record_evidence_noop_when_pipeline_none() -> None:
-    """safe_record_evidence returns None silently when pipeline is None."""
-    with pytest.deprecated_call():
-        result = await safe_record_evidence(
-            None,
-            feature_id="test_feature",
-            intent=LLMIntent.ANALYSE,
-            user_id="u1",
-            project_id="p1",
-        )
+async def test_safe_compose_invocation_noop_when_pipeline_none() -> None:
+    """safe_compose_invocation returns None silently when pipeline is None."""
+    result = await safe_compose_invocation(
+        None,
+        feature_id="test_feature",
+        intent=LLMIntent.ANALYSE,
+        user_id="u1",
+        project_id="p1",
+        manual_injection=_make_manual_injection(),
+    )
 
     assert result is None
 
 
 @pytest.mark.anyio
-async def test_safe_record_evidence_records_when_pipeline_provided() -> None:
-    """safe_record_evidence delegates to record_invocation_evidence when pipeline exists."""
-    mock_prepared = MagicMock(spec=object, name="PreparedInvocation")
-    mock_finalized = MagicMock(spec=object, name="FinalizedInvocation")
-    mock_finalized.evidence_recorded = False
-
+async def test_safe_compose_invocation_calls_compose_when_pipeline_provided() -> None:
+    """safe_compose_invocation delegates to compose_invocation when pipeline exists."""
     mock_pipeline = MagicMock(spec=object, name="InvocationPipeline")
-    mock_pipeline.prepare = AsyncMock(return_value=mock_prepared)
-    mock_pipeline.finalize = AsyncMock(return_value=mock_finalized)
 
-    with pytest.deprecated_call():
-        await safe_record_evidence(
+    with patch(
+        "narrare_core.ai_invocation.compose_invocation",
+        new_callable=AsyncMock,
+    ) as mock_compose:
+        await safe_compose_invocation(
             mock_pipeline,
             feature_id="kb_extract",
             intent=LLMIntent.KB_EXTRACT,
             user_id="u1",
             project_id="p1",
             language="en",
+            manual_injection=_make_manual_injection(),
         )
 
-    mock_pipeline.prepare.assert_awaited_once()
-    mock_pipeline.finalize.assert_awaited_once()
+    mock_compose.assert_awaited_once()
+    # Verify the pipeline was passed through
+    call_kwargs = mock_compose.call_args.kwargs
+    assert call_kwargs["invocation_pipeline"] is mock_pipeline
+    assert call_kwargs["manual_injection"] is not None
 
 
 @pytest.mark.anyio
-async def test_safe_record_evidence_handles_pipeline_errors() -> None:
-    """safe_record_evidence swallows exceptions and logs a warning."""
+async def test_safe_compose_invocation_handles_composition_errors() -> None:
+    """safe_compose_invocation swallows exceptions and logs a warning."""
     mock_pipeline = MagicMock(spec=object, name="InvocationPipeline")
-    mock_pipeline.prepare = AsyncMock(side_effect=RuntimeError("boom"))
 
-    # Should NOT raise — the error is caught and logged
-    with pytest.deprecated_call():
-        await safe_record_evidence(
+    with patch(
+        "narrare_core.ai_invocation.compose_invocation",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("boom"),
+    ):
+        # Should NOT raise — the error is caught and logged
+        await safe_compose_invocation(
             mock_pipeline,
             feature_id="failing_feature",
             intent=LLMIntent.CONSISTENCY,
+            manual_injection=_make_manual_injection(),
         )

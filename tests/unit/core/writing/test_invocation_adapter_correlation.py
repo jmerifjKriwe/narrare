@@ -20,7 +20,7 @@ from narrare_core.ai_invocation.models import (
     PromptInvocationContext,
     ValidationResult,
 )
-from narrare_core.ai_invocation.pipeline import PreparedInvocation
+from narrare_core.ai_invocation.pipeline import FinalizedInvocation, PreparedInvocation
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.composer import ComposedPrompt
 from narrare_core.prompts.context import PromptContext
@@ -48,10 +48,10 @@ def _passing_prepared(context: PromptInvocationContext | None = None) -> Prepare
     )
 
 
-def _passing_finalized() -> MagicMock:
-    m = MagicMock(spec=["validation"])
-    m.validation = ValidationResult(status=ValidationStatus.PASS)
-    return m
+def _passing_finalized() -> FinalizedInvocation:
+    return FinalizedInvocation(
+        validation=ValidationResult(status=ValidationStatus.PASS),
+    )
 
 
 # ---------------------------------------------------------------------------

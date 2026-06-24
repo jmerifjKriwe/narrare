@@ -1,8 +1,8 @@
 # ADR-047 — Governance Drift Automation for Review Findings and AUFG Lifecycle
 
-> **Status:** 🔄 Proposed
-> **Date:** 2026-06-13
-> **Deciders:** Architecture Specialist
+> **Status:** ✅ Accepted
+> **Date:** 2026-06-24 (accepted; originally proposed 2026-06-13)
+> **Deciders:** Architecture Specialist, User
 > **Supersedes:** —
 > **Related:** ADR-028, ADR-041, ADR-045, CONSTRAINTS.md §8, AUFG-02-14, AUFG-03-11, AUFG-05-07..10
 
@@ -339,11 +339,29 @@ risk decisions. Therefore it belongs under `docs/architecture/governance/`.
 
 ---
 
+## Acceptance and Implementation Status (2026-06-24)
+
+This ADR was accepted on 2026-06-24 after user approval. The implementation
+is partially complete:
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1 — Registry and Baseline | ✅ Implemented | `docs/architecture/governance/aufg-registry.md` exists, seeded from Review 01–05 |
+| Phase 2 — Review-Finding Coverage Checker | ✅ Implemented | `scripts/governance/` (aufg_registry.py, review_findings.py, governance_health.py), `scripts/check_governance_health.py`, `just check-governance` — warning-only |
+| Phase 3 — SSOT/Gate Aggregation | ✅ Implemented | `scripts/governance/ssot_aggregation.py` aggregates doc-drift, gate-drift, current-state-facts, registry-drift, and review-finding coverage into a unified PASS/GOVERNED_DEBT/FAIL report |
+| Phase 4 — CI Ratchet and Documentation Gate | ✅ Implemented | `scripts/check_governance_health.py` is blocking (exit 1 on FAIL); CI workflow includes it as a blocking step; baseline is GOVERNED_DEBT (clean) |
+
+**Tracked as follow-up work:** Phases 3–4 are pending implementation. The ADR
+is accepted as the governing architecture for these phases; the implementation
+gap is governed debt, not an open architectural question.
+
+---
+
 ## Compliance Checklist
 
-- [x] Root cause documented with at least two “Why” steps.
+- [x] Root cause documented with at least two "Why" steps.
 - [x] Minimum three options evaluated.
-- [x] No workaround or “track later” without lifecycle state.
+- [x] No workaround or "track later" without lifecycle state.
 - [x] RULE-04/RULE-06 considered for checker modularization.
 - [x] RULE-07 preserved: governance scripts read files/reports, not runtime internals.
 - [x] CONSTRAINTS.md §8 remains SSOT; this ADR does not redefine the hierarchy.

@@ -1,28 +1,32 @@
-"""Invocation adapter — wraps PromptComposer.build() with pipeline prepare/finalize.
+"""Invocation adapter — delegates pipeline orchestration to compose_invocation().
 
 Extracts the invocation pipeline integration logic from WritingPipeline to
-respect RULE-04 (file size limit).  When ``invocation_pipeline`` is ``None``,
-falls back to ``composer.build()`` directly — backward compatible with callers
-that have not yet been wired to the invocation contract.
+respect RULE-04 (file size limit). Delegates the full prepare → merge →
+compose → finalize cycle to
+:func:`~narrare_core.ai_invocation.non_writing_adapter.compose_invocation`
+(ADR-048 Q2), keeping only writing-specific conveniences:
 
-When ``invocation_pipeline`` is provided but ``invocation_context`` is ``None``,
-a minimal PromptInvocationContext is auto-created from the available
-``intent`` and ``prompt_ctx`` data so the pipeline always runs when wired.
+- Auto-create :class:`PromptInvocationContext` when not provided.
+- Wrap :class:`InvocationValidationError` as :class:`WritingError`
+  (writing-domain error contract).
+
+When ``invocation_pipeline`` is ``None``, ``compose_invocation()`` falls back
+to ``composer.build()`` directly — backward compatible with callers that have
+not yet been wired to the invocation contract.
 
 This module is internal to the writing subsystem — not part of the
 public API.
 
 See:
-    ADR-038, INFRA-013, CONSTRAINTS.md RULE-02/RULE-04/RULE-11.
+    ADR-038, ADR-048 Q2, INFRA-013, CONSTRAINTS.md RULE-02/RULE-04/RULE-11.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import structlog
-
-from narrare_core.shared.errors import WritingError
+from narrare_core.ai_invocation.non_writing_adapter import compose_invocation
+from narrare_core.shared.errors import InvocationValidationError, WritingError
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.models import PromptInvocationContext
@@ -30,8 +34,6 @@ if TYPE_CHECKING:
     from narrare_core.llm.intents import LLMIntent
     from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
     from narrare_core.prompts.context import PromptContext
-
-logger = structlog.get_logger(__name__)
 
 
 def _create_minimal_invocation_context(
@@ -84,28 +86,26 @@ async def build_and_validate_prompt(
     user_id: object | None = None,
     project_id: object | None = None,
 ) -> ComposedPrompt:
-    """Build a prompt, optionally wrapping with invocation pipeline steps.
+    """Build a writing prompt, delegating pipeline orchestration to compose_invocation().
 
-    When ``invocation_pipeline`` is ``None``, falls back to
-    ``composer.build()`` directly (backward compatible).
+    Writing-specific responsibilities:
+    - Auto-create PromptInvocationContext when not provided (writing convenience).
+    - Wrap InvocationValidationError as WritingError (writing error contract).
 
-    When ``invocation_pipeline`` is provided:
-        - If ``invocation_context`` is also provided, uses it directly.
-        - If ``invocation_context`` is ``None``, auto-creates a minimal
-          context from ``intent``, ``prompt_ctx``, and optional
-          ``user_id``/``project_id``.
-        1. ``prepare()`` — validate variables + enrich + resolve budget.
-        2. Merge prepared ``dynamic_inputs`` into ``prompt_ctx`` (ADR-045
-           Decision 3) and build the prompt from the *merged* context.
-           Caller-provided fields win over enricher suggestions (RULE-22).
-        3. ``finalize()`` — validate final prompt + record evidence.
-        4. Return the composed prompt.
+    Delegated to compose_invocation() (ADR-048):
+    - prepare → merge → compose → finalize cycle.
+    - Enrichment (preferences, kb_suggested, budget resolution).
+    - Evidence recording with real prompt fingerprint.
+
+    The WritingContextAssembler KB-tiering happens BEFORE this function is called
+    (in the WritingPipeline / caller). The assembled KB context is already in
+    prompt_ctx. This function does NOT own KB-tiering.
 
     Args:
         composer: PromptComposer instance for building prompts.
-        invocation_pipeline: Optional InvocationPipeline for validation.
+        invocation_pipeline: Optional InvocationPipeline for validation/evidence.
         intent: LLM intent determining the prompt template.
-        prompt_ctx: Prompt context with template variables.
+        prompt_ctx: Prompt context with template variables (KB context already assembled).
         invocation_context: Optional typed context for the invocation.
         user_id: Optional user identifier for the invocation context.
         project_id: Optional project identifier for the invocation context.
@@ -114,11 +114,9 @@ async def build_and_validate_prompt(
         ComposedPrompt ready for LLM consumption.
 
     Raises:
-        WritingError: If pre-composition or final validation fails.
+        WritingError: If pre-composition or final validation fails (wraps
+            InvocationValidationError from compose_invocation).
     """
-    if invocation_pipeline is None:
-        return await composer.build(intent, prompt_ctx)
-
     # Auto-create context when pipeline is wired but context was not provided.
     ctx = invocation_context or _create_minimal_invocation_context(
         intent,
@@ -127,50 +125,21 @@ async def build_and_validate_prompt(
         project_id=project_id,
     )
 
-    # Phase 1: Prepare — validate + enrich + resolve budget
-    prepared = await invocation_pipeline.prepare(ctx)
-
-    if not prepared.validation.is_valid:
-        errors = ", ".join(prepared.validation.errors)
-        logger.warning(
-            "invocation_pre_composition_validation_failed",
-            feature_id=ctx.feature_id,
-            errors=errors,
+    try:
+        result = await compose_invocation(
+            invocation_pipeline=invocation_pipeline,
+            invocation_context=ctx,
+            composer=composer,
+            prompt_context=prompt_ctx,
+            intent=intent,
         )
+    except InvocationValidationError as exc:
         raise WritingError(
-            f"Pre-composition validation failed: {errors}",
-            code="INVOCATION_VALIDATION_FAILED",
-        )
+            str(exc),
+            code=exc.code if exc.code else "INVOCATION_VALIDATION_FAILED",
+        ) from exc
 
-    # Phase 2: Merge prepared dynamic_inputs into prompt_ctx (ADR-045
-    # Decision 3) and compose from the merged context. Empty caller fields
-    # are filled by enrichment; non-empty fields are preserved (RULE-22
-    # precedence: caller > enricher). This mirrors the non-writing adapter
-    # (compose_invocation) so both domains apply the same merge contract.
-    from narrare_core.ai_invocation.prompt_context_merge import (
-        merge_prepared_dynamic_inputs,
-    )
-
-    merged_ctx = merge_prepared_dynamic_inputs(prompt_ctx, prepared.context).context
-    prompt = await composer.build(intent, merged_ctx)
-
-    # Phase 3: Finalize — validate final prompt + record evidence
-    finalized = await invocation_pipeline.finalize(
-        prompt,
-        ctx,
-        prepared=prepared,
-    )
-
-    if not finalized.validation.is_valid:
-        errors = ", ".join(finalized.validation.errors)
-        logger.warning(
-            "invocation_final_validation_failed",
-            feature_id=ctx.feature_id,
-            errors=errors,
-        )
-        raise WritingError(
-            f"Final prompt validation failed: {errors}",
-            code="INVOCATION_FINAL_VALIDATION_FAILED",
-        )
-
-    return prompt
+    # Mode 1 (composer-driven) always sets composed_prompt; assert narrows
+    # the Optional[ComposedPrompt] to ComposedPrompt for the type checker.
+    assert result.composed_prompt is not None
+    return result.composed_prompt
