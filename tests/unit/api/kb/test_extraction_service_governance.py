@@ -8,7 +8,7 @@ Tests:
 - Real composer integration with runtime context
 - PromptNotFoundError propagation (no silent fallback)
 - KB repo error graceful degradation (empty dedup list, extraction continues)
-- Invocation composition via compose_invocation (ADR-048 Mode 2)
+- Invocation composition via compose_invocation (ADR-048 Mode 1)
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ from uuid import uuid4
 
 import pytest
 
-from narrare.kb.extraction_service import _EXTRACTION_MANUAL_INJECTION
 from narrare_core.llm import ResolvedModelConfig
 from narrare_core.prompts import PromptComposer, PromptRegistry
 from narrare_core.shared.errors import PromptNotFoundError
@@ -66,64 +65,60 @@ def mock_kb_repo() -> FakeKBRepo:
 
 
 # ---------------------------------------------------------------------------
-# PromptComposer resolution — no inline fallbacks
+# PromptContext construction — no inline fallbacks
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_build_system_prompt_uses_composer(
+async def test_build_prompt_context_includes_chapter_title(
     mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
     mock_chapter_repo: FakeChapterRepo,
     mock_kb_repo: FakeKBRepo,
     mock_composer: FakeComposer,
 ) -> None:
-    """_build_system_prompt returns PromptComposer output, not fallback."""
-    mock_composer.build = AsyncMock(
-        return_value=MagicMock(spec=object, system="Bundled extraction prompt"),
-    )
+    """_build_prompt_context returns PromptContext with chapter title and entities."""
     service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
 
-    result = await service._build_system_prompt(
+    result = service._build_prompt_context(
         chapter_title="Chapter 1",
         existing_entity_names=["Anna"],
     )
 
-    assert result == "Bundled extraction prompt"
-    mock_composer.build.assert_awaited_once()
+    assert result.chapter_title == "Chapter 1"
+    assert "Anna" in result.extra["existing_entity_names"]
 
 
 @pytest.mark.asyncio
-async def test_build_system_prompt_correct_intent(
+async def test_build_prompt_context_uses_extract_mode(
     mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
     mock_chapter_repo: FakeChapterRepo,
     mock_kb_repo: FakeKBRepo,
     mock_composer: FakeComposer,
 ) -> None:
-    """_build_system_prompt calls composer.build with KB_EXTRACT intent."""
-    mock_composer.build = AsyncMock(
-        return_value=MagicMock(spec=object, system="prompt"),
-    )
+    """_build_prompt_context uses the extract mode for prompt routing."""
     service = make_service(mock_registry, config, mock_chapter_repo, mock_kb_repo, mock_composer)
 
-    await service._build_system_prompt(
+    result = service._build_prompt_context(
         chapter_title="Chapter 1",
         existing_entity_names=["Anna"],
     )
 
-    intent_arg = mock_composer.build.call_args[0][0]
-    assert intent_arg.name == "KB_EXTRACT"
+    assert result.mode == "extract"
 
 
 @pytest.mark.asyncio
-async def test_build_system_prompt_with_real_composer_routes_runtime_context(
+async def test_extract_routes_runtime_context_through_composer(
     mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
     mock_chapter_repo: FakeChapterRepo,
     mock_kb_repo: FakeKBRepo,
 ) -> None:
     """Production path routes extraction data through bundled templates."""
+    chapter = make_chapter(title="Into the Forest")
+    mock_chapter_repo.get_by_id.return_value = chapter
+
     service = make_service(
         mock_registry,
         config,
@@ -132,15 +127,20 @@ async def test_build_system_prompt_with_real_composer_routes_runtime_context(
         PromptComposer(PromptRegistry()),
     )
 
-    result = await service._build_system_prompt(
-        chapter_title="Into the Forest",
-        existing_entity_names=["Anna", "Dark Forest"],
-    )
+    with patch("narrare.kb.extraction_service.ExtractionAgent") as MockAgent:
+        mock_agent = MagicMock(spec=["run"])
+        mock_agent.run = AsyncMock(return_value=make_extraction_output())
+        MockAgent.return_value = mock_agent
 
-    assert "Knowledge Base extraction agent" in result
-    assert "Into the Forest" in result
-    assert "Anna" in result
-    assert "Dark Forest" in result
+        await service.extract_from_chapter(
+            novel_id=uuid4(),
+            chapter_id=chapter.id,
+            user_id=uuid4(),
+        )
+
+    system_prompt = MockAgent.call_args.kwargs["system_prompt"]
+    assert "Knowledge Base extraction agent" in system_prompt
+    assert "Into the Forest" in system_prompt
 
 
 # ---------------------------------------------------------------------------
@@ -210,23 +210,23 @@ async def test_extract_when_existing_entities_lookup_fails_degrades_gracefully(
 
 
 # ---------------------------------------------------------------------------
-# Invocation composition — ADR-048 Mode 2 (agent-internal)
+# Invocation composition — ADR-048 Mode 1 (composer-driven)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_extract_from_chapter_calls_compose_invocation_mode2(
+async def test_extract_from_chapter_calls_compose_invocation_mode1(
     mock_registry: FakeModelRegistry,
     config: ResolvedModelConfig,
     mock_chapter_repo: FakeChapterRepo,
     mock_kb_repo: FakeKBRepo,
     mock_composer: FakeComposer,
 ) -> None:
-    """extract_from_chapter routes through compose_invocation (Mode 2) per ADR-048.
+    """extract_from_chapter routes through compose_invocation (Mode 1) per ADR-048.
 
-    Replaces the deprecated safe_record_evidence() placeholder path. The
-    service must call compose_invocation with the ExtractionAgent's
-    ManualInjectionDeclaration and the kb_extract feature_id.
+    Enrichment flows through the composer into the system prompt. The
+    service must call compose_invocation with the composer (not
+    manual_injection) and the kb_extract feature_id.
     """
     chapter = make_chapter()
     mock_chapter_repo.get_by_id.return_value = chapter
@@ -250,5 +250,6 @@ async def test_extract_from_chapter_calls_compose_invocation_mode2(
 
     mock_compose.assert_awaited_once()
     kwargs = mock_compose.call_args.kwargs
-    assert kwargs["manual_injection"] is _EXTRACTION_MANUAL_INJECTION
+    assert kwargs.get("composer") is not None  # Mode 1 — composer-driven
+    assert "manual_injection" not in kwargs  # Not Mode 2
     assert kwargs["invocation_context"].feature_id == "kb_extract"

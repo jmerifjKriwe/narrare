@@ -81,12 +81,17 @@ class TestExtractionInvocationWiring:
         mock_registry = MagicMock(spec=["get_model"])
         mock_registry.get_model = AsyncMock(return_value=MagicMock(spec=["run"]))
 
+        from narrare_core.prompts.composer import ComposedPrompt
+
+        mock_composer = MagicMock(spec=["build"])
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
+
         service = ExtractionService(
             registry=mock_registry,
             config=MagicMock(spec=["model_id", "provider_name"]),
             chapter_repo=mock_chapter_repo,
             kb_repo=mock_kb_repo,
-            composer=MagicMock(spec=["build"]),
+            composer=mock_composer,
             invocation_pipeline=pipeline,
         )
 
@@ -96,7 +101,6 @@ class TestExtractionInvocationWiring:
 
         with (
             patch("narrare.kb.extraction_service.ExtractionAgent") as mock_agent_cls,
-            patch.object(service, "_build_system_prompt", AsyncMock(return_value="sys")),
             patch.object(service, "_get_existing_entity_names", AsyncMock(return_value=[])),
         ):
             mock_agent = AsyncMock()
@@ -171,13 +175,10 @@ class TestConsistencyInvocationWiring:
 
 
 class TestImproveInvocationWiring:
-    """KBImproveService records evidence when invocation_pipeline is wired."""
+    """KBImproveService delegates to analyzer (evidence recorded there)."""
 
     @pytest.mark.asyncio
-    async def test_analyze_produces_evidence_with_pipeline(self) -> None:
-        sink = FakeEvidenceSink()
-        pipeline = _pipeline_with_sink(sink)
-
+    async def test_analyze_delegates_to_analyzer(self) -> None:
         from narrare.kb.improve_service import KBImproveService
 
         mock_analyzer = MagicMock(spec=["analyze"])
@@ -188,12 +189,13 @@ class TestImproveInvocationWiring:
             kb_repo=MagicMock(spec=["get_by_id"]),
             kb_service=MagicMock(spec=["get"]),
             rel_repo=MagicMock(spec=["get_by_id"]),
-            invocation_pipeline=pipeline,
         )
 
         await service.analyze(novel_id=uuid4(), entry_id=uuid4())
 
-        assert len(sink.records) >= 1
+        # Evidence recording has moved to the analyzer (ADR-048 Mode 1).
+        # The service is now a thin delegation layer.
+        mock_analyzer.analyze.assert_awaited_once()
 
 
 # ===========================================================================
@@ -202,13 +204,11 @@ class TestImproveInvocationWiring:
 
 
 class TestWorldbuildingInvocationWiring:
-    """WorldbuildingService records evidence when invocation_pipeline is wired."""
+    """WorldbuildingService delegates to analyzer (evidence recorded there)."""
 
     @pytest.mark.asyncio
-    async def test_analyze_produces_evidence_with_pipeline(self) -> None:
-        sink = FakeEvidenceSink()
-        pipeline = _pipeline_with_sink(sink)
-
+    async def test_analyze_delegates_to_analyzer(self) -> None:
+        from narrare.kb.worldbuilding_contracts import WorldbuildingAnalysisRequest
         from narrare.kb.worldbuilding_service import WorldbuildingService
 
         mock_analyzer = MagicMock(spec=["analyze"])
@@ -218,15 +218,14 @@ class TestWorldbuildingInvocationWiring:
             analyzer=mock_analyzer,
             rel_repo=MagicMock(spec=["get_by_id"]),
             cache=MagicMock(spec=["get", "set"]),
-            invocation_pipeline=pipeline,
         )
-
-        from narrare.kb.worldbuilding_contracts import WorldbuildingAnalysisRequest
 
         request = WorldbuildingAnalysisRequest()
         await service.analyze(novel_id=uuid4(), request=request)
 
-        assert len(sink.records) >= 1
+        # Evidence recording has moved to the analyzer (ADR-048 Mode 1).
+        # The service is now a thin delegation layer.
+        mock_analyzer.analyze.assert_awaited_once()
 
 
 # ===========================================================================
@@ -235,7 +234,7 @@ class TestWorldbuildingInvocationWiring:
 
 
 class TestAssistInvocationWiring:
-    """KBAssistService records evidence when invocation_pipeline is wired."""
+    """KBAssistService records evidence via compose_invocation (Mode 1)."""
 
     @pytest.mark.asyncio
     async def test_run_agent_produces_evidence(self) -> None:
@@ -243,15 +242,20 @@ class TestAssistInvocationWiring:
         pipeline = _pipeline_with_sink(sink)
 
         from narrare.kb.assist_service import KBAssistService
+        from narrare_core.llm.intents import LLMIntent
+        from narrare_core.prompts.composer import ComposedPrompt
 
         mock_proactive = MagicMock(spec=["suggest"])
         mock_proactive.suggest = AsyncMock(return_value=[])
+
+        mock_composer = MagicMock(spec=["build"])
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
 
         service = KBAssistService(
             registry=MagicMock(spec=["get_model"]),
             config=MagicMock(spec=["model_id", "provider_name"]),
             proactive_context=mock_proactive,
-            prompt_composer=MagicMock(spec=["build"]),
+            prompt_composer=mock_composer,
             invocation_pipeline=pipeline,
         )
 
@@ -267,7 +271,9 @@ class TestAssistInvocationWiring:
             _result = await service._run_agent(
                 user_prompt="Test prompt",
                 deps=MagicMock(spec=["language", "genre"]),
-                system_prompt="System",
+                intent=LLMIntent.KB_INTERVIEW,
+                entity_type="character",
+                existing_fields={},
             )
 
         assert len(sink.records) >= 1

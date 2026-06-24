@@ -16,13 +16,13 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.planning._timeline_consistency_helpers import run_llm_consistency_checks
 from narrare.planning._timeline_event_utils import events_to_dicts
 from narrare.planning.timeline_schemas import (
     CharacterAgeReport,
     TemporalConsistencyResponse,
     TemporalIssueResponse,
 )
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.analysis.temporal import run_deterministic_checks
 from narrare_core.shared.errors import NotFoundError
 
@@ -39,17 +39,6 @@ if TYPE_CHECKING:
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: TimelineAgent composes its consistency-check
-# prompt internally from TimelineDeps and the bundled temporal prompt.
-_TEMPORAL_CONSISTENCY_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "TimelineAgent composes its consistency-check prompt internally from "
-        "TimelineDeps (genre, language) and the bundled temporal prompt."
-    ),
-    variables=("genre", "language"),
-    injection_mechanism="agent_deps",
-)
 
 
 class TimelineConsistencyService:
@@ -207,11 +196,8 @@ class TimelineConsistencyService:
     ) -> list[TemporalIssueResponse]:
         """Run LLM-based consistency checks via TimelineAgent.
 
-        Resolves the system prompt through ``PromptComposer.build()`` with
-        ``mode="temporal_consistency"`` (RULE-02b / ADR-046). The cascade
-        handles language fallback, user overrides, and governed variable
-        substitution. Event context is passed as the user prompt (dynamic
-        data) — it is NOT baked into the system prompt.
+        Delegates prompt composition, agent execution, and conflict mapping
+        to ``_timeline_consistency_helpers.run_llm_consistency_checks``.
 
         Returns an empty list when LLM is not configured or when no
         events exist to check. LLM checks are supplementary — they
@@ -224,76 +210,12 @@ class TimelineConsistencyService:
         if not events:
             return []
 
-        try:
-            from narrare_core.agents.timeline_agent import TimelineAgent, TimelineDeps
-            from narrare_core.llm.intents import LLMIntent
-            from narrare_core.prompts.context import PromptContext
-
-            model = await self._registry.get_model(self._config)
-
-            # Build a compact event context for the LLM (user prompt — dynamic data).
-            # Per AC-2 (CR-AUFG-02-06): event data goes in the user channel,
-            # NOT in the system prompt.
-            event_context = "\n".join(
-                f"- {e.event_name} (order: {e.temporal_order}, timestamp: {e.timestamp_raw})"
-                for e in events[:50]  # Limit context size
-            )
-
-            novel_title = getattr(novel, "title", "Unknown")
-            genre = getattr(novel, "genre", "") or ""
-            language = getattr(novel, "writing_language", "") or "en"
-
-            # Resolve system prompt via PromptComposer (RULE-02b — ADR-046).
-            # The temporal_consistency template carries instructions and project
-            # metadata only; event data is delivered as the user prompt below.
-            ctx = PromptContext(
-                language=language,
-                writing_language=language,
-                project_title=novel_title,
-                genre=genre,
-                mode="temporal_consistency",
-            )
-            composed = await self._composer.build(LLMIntent.PLAN, ctx)
-            system_prompt_text = composed.system
-
-            deps = TimelineDeps(
-                genre=genre,
-                language=language,
-            )
-
-            agent = TimelineAgent(model=model)
-            from narrare._app.invocation_context import safe_compose_invocation
-
-            await safe_compose_invocation(
-                self._invocation_pipeline,
-                feature_id="planning_timeline_consistency",
-                intent=LLMIntent.PLAN,
-                project_id=novel_id,
-                manual_injection=_TEMPORAL_CONSISTENCY_INJECTION,
-            )
-            result = await agent.run(
-                prompt=event_context,
-                system_prompt=system_prompt_text,
-                deps=deps,
-            )
-
-            # Convert LLM-identified conflicts to TemporalIssueResponse
-            llm_issues: list[TemporalIssueResponse] = []
-            for conflict in getattr(result, "temporal_conflicts", []):
-                if isinstance(conflict, str):
-                    llm_issues.append(
-                        TemporalIssueResponse(
-                            severity="warning",
-                            rule_id="llm_temporal_conflict",
-                            event_ids=[],
-                            description=conflict,
-                            suggestion="Review this temporal conflict manually.",
-                            source="llm",
-                        )
-                    )
-            return llm_issues
-
-        except Exception:
-            logger.warning("llm_consistency_checks_failed", exc_info=True)
-            # LLM checks are supplementary — don't fail the whole request
-            return []
+        return await run_llm_consistency_checks(
+            events=events,
+            novel=novel,
+            novel_id=novel_id,
+            registry=self._registry,
+            config=self._config,
+            composer=self._composer,
+            invocation_pipeline=self._invocation_pipeline,
+        )

@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.agents.extraction_agent import ExtractionAgent, ExtractionDeps
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -35,19 +34,9 @@ if TYPE_CHECKING:
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
+    from narrare_core.prompts.context import PromptContext
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: ExtractionAgent composes its prompt internally
-# from ExtractionDeps (chapter content, existing entity names, chapter title).
-_EXTRACTION_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "ExtractionAgent composes its prompt internally from ExtractionDeps "
-        "(chapter content, existing entity names, chapter title, genre)."
-    ),
-    variables=("existing_entity_names", "chapter_title", "genre"),
-    injection_mechanism="agent_deps",
-)
 
 
 class ExtractionService:
@@ -115,21 +104,17 @@ class ExtractionService:
         # 2. Get existing entity names for dedup (graceful on repo failure).
         existing_names = await self._get_existing_entity_names_graceful(novel_id, user_id)
 
-        # 3. Build system prompt via PromptComposer.
-        system_prompt = await self._build_system_prompt(
-            chapter_title=chapter.title or "",
-            existing_entity_names=existing_names,
-        )
-
-        # 4. Get model from registry.
-        model = await self._registry.get_model(self._config)
-
-        # 4a. Compose invocation (Mode 2 — agent-internal) and record evidence
-        # (ADR-048). Replaces the former placeholder-evidence path.
+        # 3. Compose prompt via compose_invocation (Mode 1 — composer-driven,
+        #    ADR-048). Enrichment flows through the composer into the system
+        #    prompt.
         from narrare._app.invocation_context import build_invocation_context
         from narrare_core.ai_invocation import compose_invocation
         from narrare_core.llm.intents import LLMIntent
 
+        prompt_context = self._build_prompt_context(
+            chapter_title=chapter.title or "",
+            existing_entity_names=existing_names,
+        )
         invocation_context = build_invocation_context(
             feature_id="kb_extract",
             intent=LLMIntent.KB_EXTRACT,
@@ -137,17 +122,26 @@ class ExtractionService:
             project_id=novel_id,
         )
         try:
-            await compose_invocation(
+            invocation_result = await compose_invocation(
                 invocation_pipeline=self._invocation_pipeline,
                 invocation_context=invocation_context,
-                manual_injection=_EXTRACTION_MANUAL_INJECTION,
+                composer=self._composer,
+                prompt_context=prompt_context,
+                intent=LLMIntent.KB_EXTRACT,
             )
+            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+            system_prompt = invocation_result.composed_prompt.system
         except Exception:
             logger.warning(
                 "invocation_composition_failed",
                 feature_id="kb_extract",
                 exc_info=True,
             )
+            composed = await self._composer.build(LLMIntent.KB_EXTRACT, prompt_context)
+            system_prompt = composed.system
+
+        # 4. Get model from registry.
+        model = await self._registry.get_model(self._config)
 
         # 5. Run ExtractionAgent over the chapter text.
         agent = ExtractionAgent(model=model, system_prompt=system_prompt)
@@ -251,25 +245,23 @@ class ExtractionService:
             )
             return []
 
-    async def _build_system_prompt(
+    def _build_prompt_context(
         self,
         *,
         chapter_title: str,
         existing_entity_names: list[str],
-    ) -> str:
-        """Build system prompt via PromptComposer.
+    ) -> PromptContext:
+        """Build PromptContext for the extraction prompt (RULE-02).
 
-        The Narrare meta-prompt is injected automatically by NarrareMeta
-        Capability (ADR-026) — no manual meta-prepending needed.
+        Prompt construction is retained here; composition happens via
+        ``compose_invocation`` in the caller. The Narrare meta-prompt is
+        injected automatically by NarrareMeta Capability (ADR-026).
         """
-        from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
 
-        ctx = PromptContext(
+        return PromptContext(
             language="en",
             mode="extract",
             chapter_title=chapter_title,
             extra={"existing_entity_names": "\n".join(existing_entity_names)},
         )
-        composed = await self._composer.build(LLMIntent.KB_EXTRACT, ctx)
-        return composed.system

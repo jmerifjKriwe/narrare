@@ -20,7 +20,6 @@ from narrare_core.agents.fact_extractor_types import (
     FactExtractorDeps,
     TimelineEventEnvelope,
 )
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 
 if TYPE_CHECKING:
     import uuid
@@ -34,19 +33,6 @@ if TYPE_CHECKING:
     from narrare_core.prompts import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: FactExtractorAgent composes its prompt internally
-# from FactExtractorDeps (chapter texts, KB entity names/summaries, timeline
-# envelopes, language). Evidence is recorded at the orchestrator layer.
-_FACT_EXTRACTION_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "FactExtractorAgent composes its prompt internally from "
-        "FactExtractorDeps (chapter texts, KB entity names/summaries, "
-        "timeline envelopes, language)."
-    ),
-    variables=("chapter_text", "language"),
-    injection_mechanism="agent_deps",
-)
 
 
 class ConsistencyOrchestrator:
@@ -230,8 +216,9 @@ class ConsistencyOrchestrator:
         Returns:
             Structured fact extraction output with provenance-traced facts.
         """
-        from narrare._app.invocation_context import safe_compose_invocation
+        from narrare._app.invocation_context import build_invocation_context
         from narrare_core.agents.fact_extractor_agent import FactExtractorAgent
+        from narrare_core.ai_invocation import compose_invocation
         from narrare_core.llm.intents import LLMIntent
         from narrare_core.prompts.context import PromptContext
 
@@ -252,14 +239,32 @@ class ConsistencyOrchestrator:
             mode="fact_extraction",
             project_title="",
         )
-        composed = await self._composer.build(LLMIntent.FACT_EXTRACT, prompt_context)
-        model = await self._registry.get_model(self._fact_extractor_config)
-        agent = FactExtractorAgent(model=model, system_prompt=composed.system)
-        await safe_compose_invocation(
-            self._invocation_pipeline,
+        invocation_context = build_invocation_context(
             feature_id="consistency_fact_extraction",
             intent=LLMIntent.FACT_EXTRACT,
             project_id=deps.novel_id,
-            manual_injection=_FACT_EXTRACTION_INJECTION,
         )
-        return await agent.run(prompt=composed.user, deps=extractor_deps)
+        try:
+            invocation_result = await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                composer=self._composer,
+                prompt_context=prompt_context,
+                intent=LLMIntent.FACT_EXTRACT,
+            )
+            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+            system_prompt = invocation_result.composed_prompt.system
+            user_prompt = invocation_result.composed_prompt.user
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="consistency_fact_extraction",
+                exc_info=True,
+            )
+            composed = await self._composer.build(LLMIntent.FACT_EXTRACT, prompt_context)
+            system_prompt = composed.system
+            user_prompt = composed.user
+
+        model = await self._registry.get_model(self._fact_extractor_config)
+        agent = FactExtractorAgent(model=model, system_prompt=system_prompt)
+        return await agent.run(prompt=user_prompt, deps=extractor_deps)

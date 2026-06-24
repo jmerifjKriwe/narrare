@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, cast
 import structlog
 
 from narrare.memory.schemas import AnalyzeResponse
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 
@@ -33,18 +32,6 @@ logger = structlog.get_logger(__name__)
 
 # Minimum feedback events required before analysis can run
 MIN_EVENTS_FOR_ANALYSIS = 5
-
-# ADR-048 Mode 2 declaration: PreferenceAnalysisAgent composes its prompt
-# internally from PreferenceAnalysisDeps (language, genre, event_count,
-# feedback_text). Evidence is recorded at the service layer.
-_PREFERENCE_ANALYSIS_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "PreferenceAnalysisAgent composes its prompt internally from "
-        "PreferenceAnalysisDeps (language, genre, event_count, feedback_text)."
-    ),
-    variables=("conversation_text", "user_id"),
-    injection_mechanism="agent_deps",
-)
 
 
 class PreferenceAnalysisService:
@@ -234,20 +221,44 @@ class PreferenceAnalysisService:
                 confidence=0.0,
             )
 
-        # Compose prompt via PromptComposer (RULE-02)
+        # Compose prompt via compose_invocation (Mode 1 — composer-driven,
+        # ADR-048). Enrichment flows through the composer; feedback text is
+        # passed as the user prompt at agent.run.
+        from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.ai_invocation import compose_invocation
+
         context = PromptContext(
             language="en",
             genre="",
             mode="preferences",
             extra={"event_count": str(event_count)},
         )
-        composed = await self._composer.build(
-            LLMIntent.EXTRACT,
-            context,
-            user_prompt=feedback_text,
+        invocation_context = build_invocation_context(
+            feature_id="memory_preference_analysis",
+            intent=LLMIntent.EXTRACT,
+            user_id=user_id,
+            project_id=project_id,
         )
+        try:
+            invocation_result = await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                composer=self._composer,
+                prompt_context=context,
+                intent=LLMIntent.EXTRACT,
+            )
+            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+            system_prompt = invocation_result.composed_prompt.system
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="memory_preference_analysis",
+                exc_info=True,
+            )
+            composed = await self._composer.build(LLMIntent.EXTRACT, context)
+            system_prompt = composed.system
 
-        agent = PreferenceAnalysisAgent(model=model, system_prompt=composed.system)
+        agent = PreferenceAnalysisAgent(model=model, system_prompt=system_prompt)
         deps = PreferenceAnalysisDeps(
             language="en",
             genre="",
@@ -255,19 +266,9 @@ class PreferenceAnalysisService:
             feedback_text=feedback_text,
         )
 
-        from narrare._app.invocation_context import safe_compose_invocation
-
-        await safe_compose_invocation(
-            self._invocation_pipeline,
-            feature_id="memory_preference_analysis",
-            intent=LLMIntent.EXTRACT,
-            user_id=user_id,
-            project_id=project_id,
-            manual_injection=_PREFERENCE_ANALYSIS_INJECTION,
-        )
         try:
             return await agent.run(
-                prompt=composed.user,
+                prompt=feedback_text,
                 deps=deps,
             )
         except Exception:

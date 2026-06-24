@@ -96,8 +96,8 @@ class FakeCache:
 
 
 class FakeComposer:
-    async def build(self, intent: object, ctx: object) -> object:
-        return MagicMock(spec=ComposedPrompt, system="fake system prompt")
+    async def build(self, intent: object, ctx: object) -> ComposedPrompt:
+        return ComposedPrompt(system="fake system prompt", user="user prompt")
 
 
 # ---------------------------------------------------------------------------

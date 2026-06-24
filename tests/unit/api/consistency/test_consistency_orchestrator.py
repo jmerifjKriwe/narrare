@@ -25,6 +25,7 @@ from narrare_core.agents.fact_extractor_types import (
     FactExtractorOutput,
     TimelineEventEnvelope,
 )
+from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
@@ -90,14 +91,8 @@ class FakeConsistencyAgent:
 class FakeComposer:
     """Fake PromptComposer returning simple prompts."""
 
-    async def build(self, intent: object, context: object) -> _FakeComposed:
-        return _FakeComposed("System prompt.", "User prompt.")
-
-
-class _FakeComposed:
-    def __init__(self, system: str, user: str) -> None:
-        self.system = system
-        self.user = user
+    async def build(self, intent: object, context: object) -> ComposedPrompt:
+        return ComposedPrompt(system="System prompt.", user="User prompt.")
 
 
 class FakeRegistry:

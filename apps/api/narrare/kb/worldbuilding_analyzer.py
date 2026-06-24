@@ -45,7 +45,6 @@ from narrare.kb.worldbuilding_prompt_formatting import (
 )
 from narrare_core.agents.worldbuilding_agent import WorldbuildingAgent
 from narrare_core.agents.worldbuilding_types import WorldbuildingDeps
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 
@@ -57,27 +56,6 @@ if TYPE_CHECKING:
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declarations: WorldbuildingAnalyzer composes its prompts
-# internally from WorldbuildingDeps across both phases. Per-phase evidence
-# is recorded at the analyzer layer (closer to the actual LLM calls).
-_WORLDBUILDING_PHASE1_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "WorldbuildingAnalyzer Phase 1 composes its prompt internally from "
-        "WorldbuildingDeps (entity summaries, template structures, relationships)."
-    ),
-    variables=("entity_summaries", "template_structures", "existing_relationships"),
-    injection_mechanism="agent_deps",
-)
-
-_WORLDBUILDING_PHASE2_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "WorldbuildingAnalyzer Phase 2 composes its consistency-check prompt "
-        "internally from phase2 deps (candidate pairs, entity details)."
-    ),
-    variables=("candidate_pairs", "entity_details"),
-    injection_mechanism="agent_deps",
-)
 
 
 class WorldbuildingAnalyzer:
@@ -199,7 +177,8 @@ class WorldbuildingAnalyzer:
         novel_id: UUID,
     ) -> tuple[list[GapFinding], list[ConnectionSuggestion], list[tuple[str, str]], float, str]:
         """Execute Phase 1: gap detection + connection suggestions."""
-        from narrare._app.invocation_context import safe_compose_invocation
+        from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.ai_invocation import compose_invocation
 
         ctx = PromptContext(
             language="en",
@@ -209,17 +188,32 @@ class WorldbuildingAnalyzer:
                 "entity_types": ", ".join(sorted(deps.template_structures.keys())),
             },
         )
-        composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
-
-        model = await self._registry.get_model(self._config)
-        agent = WorldbuildingAgent(model=model, system_prompt=composed.system)
-        await safe_compose_invocation(
-            self._invocation_pipeline,
+        invocation_context = build_invocation_context(
             feature_id="kb_worldbuilding_phase1",
             intent=LLMIntent.KB_WORLDBUILD,
             project_id=novel_id,
-            manual_injection=_WORLDBUILDING_PHASE1_INJECTION,
         )
+        try:
+            invocation_result = await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                composer=self._composer,
+                prompt_context=ctx,
+                intent=LLMIntent.KB_WORLDBUILD,
+            )
+            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+            system_prompt = invocation_result.composed_prompt.system
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="kb_worldbuilding_phase1",
+                exc_info=True,
+            )
+            composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
+            system_prompt = composed.system
+
+        model = await self._registry.get_model(self._config)
+        agent = WorldbuildingAgent(model=model, system_prompt=system_prompt)
         result = await agent.run_phase1(
             prompt=(
                 f"Analyze worldbuilding for {len(deps.entity_summaries)} entities. "
@@ -261,8 +255,6 @@ class WorldbuildingAnalyzer:
         novel_id: UUID,
     ) -> list[ConsistencyIssue]:
         """Execute Phase 2: consistency checking on candidate pairs."""
-        from narrare._app.invocation_context import safe_compose_invocation
-
         pairs = candidate_pairs[: self._max_phase2_pairs]
 
         # Load full entity details for pair entities
@@ -289,10 +281,12 @@ class WorldbuildingAnalyzer:
             candidate_pairs=pairs,
         )
 
-        # Compose Phase 2 prompt via PromptComposer (ADR-046).
-        # "worldbuilding/phase2" is a governed route for KB_WORLDBUILD (see
-        # route_table.py allowed_context_modes). Phase2 mirrors Phase1's
-        # pattern: build a PromptContext and call composer.build().
+        # Compose Phase 2 prompt via compose_invocation (Mode 1 — composer-driven,
+        # ADR-046/048). "worldbuilding/phase2" is a governed route for
+        # KB_WORLDBUILD (see route_table.py allowed_context_modes).
+        from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.ai_invocation import compose_invocation
+
         ctx = PromptContext(
             language="en",
             mode="worldbuilding/phase2",
@@ -304,28 +298,38 @@ class WorldbuildingAnalyzer:
                 ),
             },
         )
-        # Fail fast on a missing/invalid route — no inline fallback (RULE-11).
-        # A missing route raises PromptRouteNotConfiguredError (typed PromptError).
-        composed = await self._composer.build(
-            LLMIntent.KB_WORLDBUILD,
-            ctx,
-            user_prompt=f"Check consistency for {len(pairs)} entity pairs.",
-        )
-
-        model = await self._registry.get_model(self._config)
-        agent = WorldbuildingAgent(model=model)
-        await safe_compose_invocation(
-            self._invocation_pipeline,
+        invocation_context = build_invocation_context(
             feature_id="kb_worldbuilding_phase2",
             intent=LLMIntent.KB_WORLDBUILD,
             project_id=novel_id,
-            manual_injection=_WORLDBUILDING_PHASE2_INJECTION,
         )
+        phase2_user_prompt = f"Check consistency for {len(pairs)} entity pairs."
+        try:
+            invocation_result = await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                composer=self._composer,
+                prompt_context=ctx,
+                intent=LLMIntent.KB_WORLDBUILD,
+            )
+            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+            system_prompt = invocation_result.composed_prompt.system
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="kb_worldbuilding_phase2",
+                exc_info=True,
+            )
+            composed = await self._composer.build(LLMIntent.KB_WORLDBUILD, ctx)
+            system_prompt = composed.system
+
+        model = await self._registry.get_model(self._config)
+        agent = WorldbuildingAgent(model=model)
         result = await agent.run_phase2(
-            prompt=composed.user,
+            prompt=phase2_user_prompt,
             deps=phase2_deps,
             model=model,
-            system_prompt=composed.system,
+            system_prompt=system_prompt,
         )
 
         return [

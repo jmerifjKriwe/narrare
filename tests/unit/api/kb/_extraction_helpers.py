@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from narrare.kb.extraction_service import ExtractionService
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
+from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
     from narrare_core.llm import ResolvedModelConfig
@@ -32,7 +33,9 @@ class FakeComposer:
     """Fake PromptComposer returning configurable system prompt."""
 
     def __init__(self) -> None:
-        self.build = AsyncMock(return_value=MagicMock(spec=object, system="Test system prompt."))
+        self.build = AsyncMock(
+            return_value=ComposedPrompt(system="Test system prompt.", user="Test user.")
+        )
 
 
 class FakeChapterRepo:

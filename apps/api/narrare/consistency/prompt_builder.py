@@ -16,7 +16,7 @@ if TYPE_CHECKING:
         ConsistencyCheckType,
         ConsistencyDeps,
     )
-    from narrare_core.prompts import PromptComposer
+    from narrare_core.prompts.context import PromptContext
 
 
 def build_consistency_prompt_variables(
@@ -45,26 +45,26 @@ def build_consistency_prompt_variables(
     }
 
 
-async def compose_consistency_prompt(
-    composer: PromptComposer,
+def build_consistency_prompt_context(
     language: str,
     deps: ConsistencyDeps,
     check_types: list[ConsistencyCheckType],
     max_chapter_tokens: int = 2000,
-) -> tuple[str, str]:
-    """Compose the governed consistency prompt with runtime variables.
+) -> PromptContext:
+    """Build the governed PromptContext for the consistency prompt.
+
+    Prompt construction (variable formatting) is retained here; composition
+    happens via ``compose_invocation`` in the caller (ADR-048 Mode 1).
 
     Args:
-        composer: Injected PromptComposer for cascade resolution.
         language: Output language for prompt resolution.
         deps: Dynamic consistency-analysis data.
         check_types: Check types requested by the caller.
         max_chapter_tokens: Maximum tokens per chapter preview.
 
     Returns:
-        Tuple of ``(system_prompt, user_prompt)`` from PromptComposer.
+        PromptContext with consistency variables ready for compose_invocation.
     """
-    from narrare_core.llm.intents import LLMIntent
     from narrare_core.prompts.context import PromptContext
 
     variables = build_consistency_prompt_variables(
@@ -72,14 +72,12 @@ async def compose_consistency_prompt(
         check_types,
         max_chapter_tokens=max_chapter_tokens,
     )
-    ctx = PromptContext(
+    return PromptContext(
         language=language,
         mode="consistency",
         project_title="",
         extra=variables,
     )
-    composed = await composer.build(LLMIntent.CONSISTENCY, ctx)
-    return composed.system, composed.user
 
 
 def _format_chapter_texts(

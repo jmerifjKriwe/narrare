@@ -16,9 +16,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import structlog
+
 from narrare.consistency.schemas import ConsistencyResponse
 from narrare_core.agents.consistency_agent import ConsistencyAgent
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 
 if TYPE_CHECKING:
     import uuid
@@ -28,17 +29,7 @@ if TYPE_CHECKING:
     from narrare_core.llm import ModelRegistry, ResolvedModelConfig
     from narrare_core.prompts import PromptComposer
 
-# ADR-048 Mode 2 declaration: ConsistencyAgent composes its prompt internally
-# from ConsistencyDeps (chapter texts, KB entity summaries, language, check
-# types). Evidence is recorded here at the legacy-runner layer.
-_LEGACY_CHECK_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "ConsistencyAgent composes its prompt internally from ConsistencyDeps "
-        "(chapter texts, KB entity summaries, language, check types)."
-    ),
-    variables=("chapter_text", "kb_context", "language"),
-    injection_mechanism="agent_deps",
-)
+logger = structlog.get_logger(__name__)
 
 
 async def run_legacy_check(
@@ -65,28 +56,46 @@ async def run_legacy_check(
     """
     from datetime import UTC, datetime
 
-    from narrare._app.invocation_context import safe_compose_invocation
-    from narrare.consistency.prompt_builder import compose_consistency_prompt
+    from narrare._app.invocation_context import build_invocation_context
+    from narrare.consistency.prompt_builder import build_consistency_prompt_context
     from narrare.consistency.rule_helpers import deduplicate_issues
+    from narrare_core.ai_invocation import compose_invocation
     from narrare_core.llm.intents import LLMIntent
 
-    system_prompt, user_prompt = await compose_consistency_prompt(
-        composer,
+    prompt_context = build_consistency_prompt_context(
         context.language,
         context.deps,
         context.deps.check_types,
         max_chapter_tokens=context.max_chapter_tokens,
     )
-
-    model = await registry.get_model(config)
-    agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
-    await safe_compose_invocation(
-        invocation_pipeline,
+    invocation_context = build_invocation_context(
         feature_id="consistency_check",
         intent=LLMIntent.CONSISTENCY,
         project_id=novel_id,
-        manual_injection=_LEGACY_CHECK_INJECTION,
     )
+    try:
+        invocation_result = await compose_invocation(
+            invocation_pipeline=invocation_pipeline,
+            invocation_context=invocation_context,
+            composer=composer,
+            prompt_context=prompt_context,
+            intent=LLMIntent.CONSISTENCY,
+        )
+        assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+        system_prompt = invocation_result.composed_prompt.system
+        user_prompt = invocation_result.composed_prompt.user
+    except Exception:
+        logger.warning(
+            "invocation_composition_failed",
+            feature_id="consistency_check",
+            exc_info=True,
+        )
+        composed = await composer.build(LLMIntent.CONSISTENCY, prompt_context)
+        system_prompt = composed.system
+        user_prompt = composed.user
+
+    model = await registry.get_model(config)
+    agent = ConsistencyAgent(model=model, system_prompt=system_prompt)
     result = await agent.run(prompt=user_prompt, deps=context.deps)
 
     all_issues = context.rule_issues + result.issues

@@ -16,6 +16,7 @@ import pytest
 from narrare.kb.extraction_service import ExtractionService
 from narrare_core.agents.extraction_types import ExtractionItem, ExtractionOutput
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
+from narrare_core.prompts.composer import ComposedPrompt
 
 # ---------------------------------------------------------------------------
 # Fake dependency classes (avoid bare MagicMock — RULE-TEST-01)
@@ -33,7 +34,9 @@ class _FakeComposer:
     """Fake PromptComposer returning configurable system prompt."""
 
     def __init__(self) -> None:
-        self.build = AsyncMock(return_value=MagicMock(spec=object, system="Test system prompt."))
+        self.build = AsyncMock(
+            return_value=ComposedPrompt(system="Test system prompt.", user="Test user.")
+        )
 
 
 class _FakeChapterRepo:

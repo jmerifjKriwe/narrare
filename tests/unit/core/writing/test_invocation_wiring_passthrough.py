@@ -17,7 +17,7 @@ import pytest
 
 from narrare_core.ai_invocation._enums import ValidationStatus
 from narrare_core.ai_invocation.models import ValidationResult
-from narrare_core.ai_invocation.pipeline import PreparedInvocation
+from narrare_core.ai_invocation.pipeline import FinalizedInvocation, PreparedInvocation
 from narrare_core.prompts.composer import ComposedPrompt, PromptComposer
 from narrare_core.writing import GenerationMode
 from narrare_core.writing.context_assembler import WritingContextAssembler
@@ -88,10 +88,12 @@ class TestUserIdProjectIdPassThrough:
 
         mock = MagicMock(spec=["prepare", "finalize"])
         mock.prepare = AsyncMock(side_effect=capture_prepare)
+        # finalize() must return a real FinalizedInvocation — ComposedInvocation
+        # validates the field strictly (pydantic v2), so a bare MagicMock is
+        # rejected. This is the production contract of InvocationPipeline.finalize.
         mock.finalize = AsyncMock(
-            return_value=MagicMock(
-                spec=["validation", "evidence_recorded"],
-                validation=MagicMock(spec=["is_valid"], is_valid=True),
+            return_value=FinalizedInvocation(
+                validation=ValidationResult(status=ValidationStatus.PASS),
                 evidence_recorded=True,
             ),
         )

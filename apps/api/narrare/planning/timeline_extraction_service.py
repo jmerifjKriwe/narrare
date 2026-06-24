@@ -132,16 +132,27 @@ class TimelineExtractionService:
             existing_events=existing_event_names,
         )
 
-        from narrare._app.invocation_context import safe_compose_invocation
+        from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.ai_invocation import compose_invocation
         from narrare_core.llm.intents import LLMIntent
 
-        await safe_compose_invocation(
-            self._invocation_pipeline,
+        invocation_context = build_invocation_context(
             feature_id="planning_timeline_extraction",
             intent=LLMIntent.PLAN,
             project_id=novel_id,
-            manual_injection=_TIMELINE_EXTRACTION_INJECTION,
         )
+        try:
+            await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                manual_injection=_TIMELINE_EXTRACTION_INJECTION,
+            )
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="planning_timeline_extraction",
+                exc_info=True,
+            )
 
         for chapter in chapters:
             content = getattr(chapter, "summary", "") or ""

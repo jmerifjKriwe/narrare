@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 import structlog
 
 from narrare_core.agents.kb_assist_agent import KBAssistAgent, KBAssistDeps
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 
 from .assist_contracts import (
@@ -35,20 +34,9 @@ if TYPE_CHECKING:
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
+    from narrare_core.prompts.context import PromptContext
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: KBAssistAgent composes its prompt internally
-# from KBAssistDeps (entity type, template structure, existing answers,
-# world context). The system prompt is composed separately via PromptComposer.
-_ASSIST_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "KBAssistAgent composes its prompt internally from KBAssistDeps "
-        "(entity type, template structure, existing answers, world context)."
-    ),
-    variables=("entity_type", "template_structure", "existing_answers", "world_context"),
-    injection_mechanism="agent_deps",
-)
 
 # Intent mapping for each assist mode.
 _INTENT_MAP = {
@@ -139,17 +127,21 @@ class KBAssistService:
             world_context=world_context or None,
         )
 
-    async def _build_system_prompt(
+    def _build_prompt_context(
         self,
         intent: LLMIntent,
         entity_type: str,
         existing_fields: dict[str, str],
-    ) -> str:
-        """Build system prompt via PromptComposer (RULE-02)."""
+    ) -> PromptContext:
+        """Build PromptContext for the assist prompt (RULE-02).
+
+        Prompt construction is retained here; composition happens via
+        ``compose_invocation`` in ``_run_agent``.
+        """
         from narrare_core.prompts.context import PromptContext
 
         intent_mode = _INTENT_MAP.get(intent, LLMIntent.KB_INTERVIEW)
-        ctx = PromptContext(
+        return PromptContext(
             language="en",
             genre="",
             project_title="",
@@ -159,8 +151,6 @@ class KBAssistService:
                 "existing_answers": str(existing_fields),
             },
         )
-        composed = await self._prompt_composer.build(intent, ctx)
-        return composed.system
 
     async def _get_model(self) -> Model:
         """Resolve the LLM model lazily from the registry.
@@ -175,34 +165,41 @@ class KBAssistService:
         self,
         user_prompt: str,
         deps: KBAssistDeps,
-        system_prompt: str,
+        intent: LLMIntent,
+        entity_type: str,
+        existing_fields: dict[str, str],
     ) -> KBAssistOutput:
-        """Run KBAssistAgent with composed system prompt and user prompt.
+        """Run KBAssistAgent with composer-driven system prompt (Mode 1).
 
-        Composes the invocation (Mode 2 — agent-internal) and records
-        evidence when the pipeline is wired (ADR-048).
+        Composes the invocation through the pipeline (ADR-048 Mode 1) so
+        enrichment flows through the composer into the system prompt.
         """
-        # Compose invocation (Mode 2 — agent-internal) and record evidence
-        # (ADR-048). Replaces the former placeholder-evidence path.
         from narrare._app.invocation_context import build_invocation_context
         from narrare_core.ai_invocation import compose_invocation
 
+        prompt_context = self._build_prompt_context(intent, entity_type, existing_fields)
         invocation_context = build_invocation_context(
             feature_id="kb_assist",
-            intent=LLMIntent.KB_CREATE,
+            intent=intent,
         )
         try:
-            await compose_invocation(
+            invocation_result = await compose_invocation(
                 invocation_pipeline=self._invocation_pipeline,
                 invocation_context=invocation_context,
-                manual_injection=_ASSIST_MANUAL_INJECTION,
+                composer=self._prompt_composer,
+                prompt_context=prompt_context,
+                intent=intent,
             )
+            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+            system_prompt = invocation_result.composed_prompt.system
         except Exception:
             logger.warning(
                 "invocation_composition_failed",
                 feature_id="kb_assist",
                 exc_info=True,
             )
+            composed = await self._prompt_composer.build(intent, prompt_context)
+            system_prompt = composed.system
 
         model = await self._get_model()
         agent = KBAssistAgent(
@@ -222,13 +219,14 @@ class KBAssistService:
     ) -> KBAssistQuestionResponse:
         """Get next interview question from KBAssistAgent."""
         deps = await self._build_deps(novel_id, entity_type, existing_fields)
-        system_prompt = await self._build_system_prompt(
-            LLMIntent.KB_INTERVIEW,
-            entity_type,
-            existing_fields,
-        )
         user_prompt = "Ask the next most important question."
-        result = await self._run_agent(user_prompt, deps, system_prompt)
+        result = await self._run_agent(
+            user_prompt=user_prompt,
+            deps=deps,
+            intent=LLMIntent.KB_INTERVIEW,
+            entity_type=entity_type,
+            existing_fields=existing_fields,
+        )
 
         return KBAssistQuestionResponse(
             field_key=result.field_key or "general",
@@ -246,13 +244,14 @@ class KBAssistService:
     ) -> KBAssistSuggestionResponse:
         """Get AI suggestion for a specific field."""
         deps = await self._build_deps(novel_id, entity_type, existing_fields)
-        system_prompt = await self._build_system_prompt(
-            LLMIntent.KB_SUGGEST,
-            entity_type,
-            existing_fields,
-        )
         user_prompt = "Suggest a value for the '" + field_key + "' field."
-        result = await self._run_agent(user_prompt, deps, system_prompt)
+        result = await self._run_agent(
+            user_prompt=user_prompt,
+            deps=deps,
+            intent=LLMIntent.KB_SUGGEST,
+            entity_type=entity_type,
+            existing_fields=existing_fields,
+        )
 
         return KBAssistSuggestionResponse(
             field_key=result.field_key or field_key,
@@ -270,13 +269,14 @@ class KBAssistService:
     ) -> KBAssistEnhancementResponse:
         """Get AI-enhanced draft of multiple fields."""
         deps = await self._build_deps(novel_id, entity_type, existing_fields)
-        system_prompt = await self._build_system_prompt(
-            LLMIntent.KB_ENHANCE,
-            entity_type,
-            existing_fields,
-        )
         user_prompt = "Generate a draft entry based on the provided information."
-        result = await self._run_agent(user_prompt, deps, system_prompt)
+        result = await self._run_agent(
+            user_prompt=user_prompt,
+            deps=deps,
+            intent=LLMIntent.KB_ENHANCE,
+            entity_type=entity_type,
+            existing_fields=existing_fields,
+        )
 
         return KBAssistEnhancementResponse(
             draft_entry=result.draft_entry or {},

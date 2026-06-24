@@ -17,7 +17,6 @@ import structlog
 
 from narrare_core.agents.kb_improve_agent import KBImproveAgent
 from narrare_core.agents.kb_improve_types import KBImproveDeps, KBImproveOutput
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.llm.intents import LLMIntent
 
 from .improve_contracts import (
@@ -39,20 +38,9 @@ if TYPE_CHECKING:
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
     from narrare_core.prompts.composer import PromptComposer
+    from narrare_core.prompts.context import PromptContext
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: KBImproveAnalyzer composes its prompt internally
-# from KBImproveDeps (entry content, template structure, world context,
-# adjacency map). Evidence is recorded at the analyzer layer.
-_IMPROVE_ANALYZER_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "KBImproveAnalyzer composes its prompt internally from KBImproveDeps "
-        "(entry content, template structure, world context, adjacency map)."
-    ),
-    variables=("entity_type", "entry_content", "template_structure", "world_context"),
-    injection_mechanism="agent_deps",
-)
 
 
 class KBImproveAnalyzer:
@@ -167,15 +155,19 @@ class KBImproveAnalyzer:
             adjacency_map=adjacency_map,
         )
 
-    async def _build_system_prompt(
+    def _build_prompt_context(
         self,
         entity_type: str,
         entry_content: dict[str, object],
-    ) -> str:
-        """Build system prompt via PromptComposer (RULE-02)."""
+    ) -> PromptContext:
+        """Build PromptContext for the improve prompt (RULE-02).
+
+        Prompt construction is retained here; composition happens via
+        ``compose_invocation`` in ``analyze``.
+        """
         from narrare_core.prompts.context import PromptContext
 
-        ctx = PromptContext(
+        return PromptContext(
             language="en",
             genre="",
             project_title="",
@@ -185,8 +177,6 @@ class KBImproveAnalyzer:
                 "entry_content": str(entry_content),
             },
         )
-        composed = await self._prompt_composer.build(LLMIntent.KB_IMPROVE, ctx)
-        return composed.system
 
     async def _get_model(self) -> Model:
         """Resolve the LLM model lazily from the registry."""
@@ -240,10 +230,39 @@ class KBImproveAnalyzer:
                 return KBImproveAnalysisResponse.model_validate_json(cached)
 
         deps = await self._build_deps(novel_id=novel_id, entry_id=entry_id)
-        system_prompt = await self._build_system_prompt(
+        prompt_context = self._build_prompt_context(
             entity_type=deps.entity_type,
             entry_content=deps.entry_content or {},
         )
+
+        # Compose prompt via compose_invocation (Mode 1 — composer-driven,
+        # ADR-048). Enrichment flows through the composer into the system prompt.
+        from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.ai_invocation import compose_invocation
+
+        invocation_context = build_invocation_context(
+            feature_id="kb_improve",
+            intent=LLMIntent.KB_IMPROVE,
+            project_id=novel_id,
+        )
+        try:
+            invocation_result = await compose_invocation(
+                invocation_pipeline=self._invocation_pipeline,
+                invocation_context=invocation_context,
+                composer=self._prompt_composer,
+                prompt_context=prompt_context,
+                intent=LLMIntent.KB_IMPROVE,
+            )
+            assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+            system_prompt = invocation_result.composed_prompt.system
+        except Exception:
+            logger.warning(
+                "invocation_composition_failed",
+                feature_id="kb_improve",
+                exc_info=True,
+            )
+            composed = await self._prompt_composer.build(LLMIntent.KB_IMPROVE, prompt_context)
+            system_prompt = composed.system
 
         model = await self._get_model()
         agent = KBImproveAgent(
@@ -257,15 +276,6 @@ class KBImproveAnalyzer:
             "Analyze the " + str(deps.entity_type) + " entry "
             "'" + str(entry_name) + "' "
             "and identify improvement opportunities."
-        )
-        from narrare._app.invocation_context import safe_compose_invocation
-
-        await safe_compose_invocation(
-            self._invocation_pipeline,
-            feature_id="kb_improve",
-            intent=LLMIntent.KB_IMPROVE,
-            project_id=novel_id,
-            manual_injection=_IMPROVE_ANALYZER_INJECTION,
         )
         result: KBImproveOutput = await agent.run(prompt=user_prompt, deps=deps)
 

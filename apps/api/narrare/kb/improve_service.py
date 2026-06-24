@@ -12,8 +12,6 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare_core.ai_invocation import ManualInjectionDeclaration
-
 from .improve_contracts import KBImproveAnalysisResponse, KBImproveApplyResponse
 
 if TYPE_CHECKING:
@@ -26,18 +24,6 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: KBImproveAnalyzer composes its prompt internally
-# from KBImproveDeps (entry content, template structure, world context,
-# adjacency map). Evidence is recorded at the parent service layer.
-_IMPROVE_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "KBImproveAnalyzer composes its prompt internally from KBImproveDeps "
-        "(entry content, template structure, world context, adjacency map)."
-    ),
-    variables=("entity_type", "entry_content", "template_structure", "world_context"),
-    injection_mechanism="agent_deps",
-)
 
 
 class KBImproveService:
@@ -71,30 +57,8 @@ class KBImproveService:
 
         Delegates to :class:`KBImproveAnalyzer` which handles caching,
         deps building, prompt composition, and agent execution.
-        Composes the invocation (Mode 2 — agent-internal) and records
-        evidence via the pipeline (ADR-048).
+        Evidence recording happens in the analyzer (ADR-048 Mode 1).
         """
-        from narrare._app.invocation_context import build_invocation_context
-        from narrare_core.ai_invocation import compose_invocation
-        from narrare_core.llm.intents import LLMIntent
-
-        invocation_context = build_invocation_context(
-            feature_id="kb_improve",
-            intent=LLMIntent.KB_IMPROVE,
-            project_id=novel_id,
-        )
-        try:
-            await compose_invocation(
-                invocation_pipeline=self._invocation_pipeline,
-                invocation_context=invocation_context,
-                manual_injection=_IMPROVE_MANUAL_INJECTION,
-            )
-        except Exception:
-            logger.warning(
-                "invocation_composition_failed",
-                feature_id="kb_improve",
-                exc_info=True,
-            )
         return await self._analyzer.analyze(novel_id=novel_id, entry_id=entry_id)
 
     async def apply(

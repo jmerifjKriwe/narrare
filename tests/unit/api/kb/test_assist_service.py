@@ -1,8 +1,8 @@
-"""Unit tests for KBAssistService — invocation composition (ADR-048 Mode 2).
+"""Unit tests for KBAssistService — invocation composition (ADR-048 Mode 1).
 
 Verifies that ``_run_agent`` routes through ``compose_invocation`` with the
-correct Mode 2 (agent-internal) declaration, replacing the deprecated
-``safe_record_evidence()`` placeholder path.
+correct Mode 1 (composer-driven) parameters, so enrichment flows through
+the composer into the system prompt.
 
 See:
     ADR-048, ADR-045 Decision 7,
@@ -15,10 +15,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from narrare.kb.assist_service import _ASSIST_MANUAL_INJECTION, KBAssistService
+from narrare.kb.assist_service import KBAssistService
 from narrare_core.agents.kb_assist_agent import KBAssistDeps
 from narrare_core.agents.kb_assist_types import KBAssistOutput
 from narrare_core.llm import ResolvedModelConfig
+from narrare_core.llm.intents import LLMIntent
+from narrare_core.prompts.composer import ComposedPrompt
 
 # ---------------------------------------------------------------------------
 # Fake dependency classes (avoid bare MagicMock for domain contracts — RULE-TEST-01)
@@ -44,7 +46,7 @@ class FakeComposer:
 
     def __init__(self) -> None:
         self.build: AsyncMock = AsyncMock(
-            return_value=MagicMock(spec=object, system="Test system prompt.")
+            return_value=ComposedPrompt(system="Test system prompt.", user="Test user.")
         )
 
 
@@ -99,7 +101,7 @@ def agent_output() -> KBAssistOutput:
 
 
 @pytest.mark.asyncio
-async def test_run_agent_calls_compose_invocation_mode2(
+async def test_run_agent_calls_compose_invocation_mode1(
     config: ResolvedModelConfig,
     registry: FakeModelRegistry,
     proactive_context: FakeProactiveContext,
@@ -107,11 +109,11 @@ async def test_run_agent_calls_compose_invocation_mode2(
     deps: KBAssistDeps,
     agent_output: KBAssistOutput,
 ) -> None:
-    """_run_agent routes through compose_invocation (Mode 2) per ADR-048.
+    """_run_agent routes through compose_invocation (Mode 1) per ADR-048.
 
-    Replaces the deprecated safe_record_evidence() placeholder path. The
-    service must call compose_invocation with the KBAssistAgent's
-    ManualInjectionDeclaration and the kb_assist feature_id.
+    Enrichment flows through the composer into the system prompt. The
+    service must call compose_invocation with the composer (not
+    manual_injection) and the kb_assist feature_id.
     """
     service = KBAssistService(
         registry=registry,  # type: ignore[arg-type]
@@ -131,12 +133,15 @@ async def test_run_agent_calls_compose_invocation_mode2(
         result = await service._run_agent(
             user_prompt="Ask the next question.",
             deps=deps,
-            system_prompt="System prompt.",
+            intent=LLMIntent.KB_INTERVIEW,
+            entity_type="character",
+            existing_fields={},
         )
 
     mock_compose.assert_awaited_once()
     kwargs = mock_compose.call_args.kwargs
-    assert kwargs["manual_injection"] is _ASSIST_MANUAL_INJECTION
+    assert kwargs.get("composer") is not None  # Mode 1 — composer-driven
+    assert "manual_injection" not in kwargs  # Not Mode 2
     assert kwargs["invocation_context"].feature_id == "kb_assist"
     assert result is agent_output
 
@@ -173,7 +178,9 @@ async def test_run_agent_compose_invocation_failure_is_graceful(
         result = await service._run_agent(
             user_prompt="Ask the next question.",
             deps=deps,
-            system_prompt="System prompt.",
+            intent=LLMIntent.KB_INTERVIEW,
+            entity_type="character",
+            existing_fields={},
         )
 
     assert result is agent_output

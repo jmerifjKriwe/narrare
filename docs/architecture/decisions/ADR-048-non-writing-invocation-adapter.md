@@ -1721,3 +1721,201 @@ needed. The refactoring is internal to the function body.
 **Currently-untested paths gaining coverage:**
 - Error wrapping behavior (`InvocationValidationError` → `WritingError`).
 - Delegation verification (compose_invocation is the canonical path).
+
+---
+
+## ADR-048 Amendment — Q1 Follow-up: Mode 2 Audit (2026-06-24)
+
+> **Amendment Date:** 2026-06-24
+> **Follows up on:** Open Question Q1 — "Should Mode 2 (agent-internal) services eventually migrate to Mode 1?"
+> **Trigger:** Review Trigger — "When more than 5 Mode 2 declarations exist — audit whether they are legitimate exceptions or missed Mode 1 opportunities."
+
+### Audit Trigger
+
+The Q1 Review Trigger fired: **>5 Mode 2 declarations existed (22 total)** across
+the codebase. Per the trigger, an audit was performed to categorize every Mode 2
+declaration as either a legitimate agent-internal exception or a missed Mode 1
+opportunity. The Architecture specialist read and categorized all 22 declarations.
+
+### Root Cause
+
+`safe_compose_invocation()` (in `apps/api/narrare/_app/invocation_context.py`,
+lines 75-116) was used as a **blanket Mode 2 wrapper**. Services that were
+already performing composer-driven (Mode 1) behavior — they composed a real
+prompt and passed it to the agent — nonetheless wrapped their invocation in
+`safe_compose_invocation(manual_injection=...)` for evidence recording. The
+function did not check whether the service already performed Mode 1 composition;
+it blanket-recorded a Mode 2 manual-injection marker regardless of actual
+behavior. The result was that legitimate Mode 1 fidelity was masked as Mode 2.
+
+### Audit Results
+
+The audit read all 22 Mode 2 declarations and categorized them into three buckets:
+
+| Category | Count | Nature | Action |
+|----------|-------|--------|--------|
+| **A — Mislabeled Mode 1** | 11 | Service already performs composer-driven composition; evidence was mislabeled as Mode 2 via the blanket wrapper | **Migrate to Mode 1** — call `compose_invocation(composer=..., prompt_context=..., intent=...)` directly and *use* the returned `ComposedInvocation` |
+| **B — True Mode 2** | 10 | Legitimate agent-internal composition (multi-step agents, capability/instructions-driven prompts that compose different prompts per step from deps) | **Keep** — these are the genuine exceptions ADR-045 Decision 3 Option C anticipated |
+| **C — Redundant parent wrappers** | 2 | A parent service wraps an analyzer that already records the invocation, causing double-recording (e.g., a `*_service.py` parent around a `*_analyzer.py` that calls `safe_compose_invocation()` itself) | **Remove** the redundant parent wrapper |
+
+> The full per-service categorization table is in the Architecture analysis
+> report. This ADR records the condensed summary and the actions.
+
+### Post-Migration State
+
+After migration: **10 Mode 2 declarations remain, all legitimate** (Category B).
+This is within the ADR-045 Decision 3 Option C expectation that Mode 2 is an
+*exception*, not a default. The `>5` Review Trigger no longer indicates
+unreviewed debt — every remaining declaration has been audited and justified.
+
+### Fire-and-Forget Finding
+
+The audit surfaced a latent bug independent of categorization:
+`safe_compose_invocation()` discards the `ComposedInvocation` returned by
+`compose_invocation()`. The function signature is `-> None` (lines 75-84); the
+`await compose_invocation(...)` call (lines 106-110) never captures its return
+value. Consequently, enrichment (preferences, `kb_suggested`, resolved budget)
+is computed during `prepare()`, packaged into the `ComposedInvocation`, and then
+dropped — it never reaches the calling service or the agent.
+
+This is fixed by the Category A migration: services that migrate to Mode 1 call
+`compose_invocation()` directly and consume `result.composed_prompt`,
+`result.merged_context`, and `result.budget`. For Category B (true Mode 2) sites
+that retain a helper, the enrichment must be read from the returned
+`ComposedInvocation` (`merged_context` / `prepared.context.dynamic_inputs`)
+rather than discarded.
+
+### Migration Pattern (Category A)
+
+```python
+# BEFORE — blanket Mode 2 wrapper, enrichment discarded:
+await safe_compose_invocation(
+    self._invocation_pipeline,
+    feature_id="...",
+    intent=LLMIntent.SOME_INTENT,
+    manual_injection=_SOME_INJECTION,
+)
+composed = await self._composer.build(LLMIntent.SOME_INTENT, ctx)
+agent = SomeAgent(model=model, system_prompt=composed.system)
+
+# AFTER — Mode 1, enrichment captured and used:
+from narrare_core.ai_invocation import compose_invocation
+
+result = await compose_invocation(
+    invocation_pipeline=self._invocation_pipeline,
+    invocation_context=build_invocation_context(...),
+    composer=self._composer,
+    prompt_context=ctx,
+    intent=LLMIntent.SOME_INTENT,
+)
+# Enrichment now reaches the agent via result.merged_context / result.composed_prompt
+agent = SomeAgent(model=model, system_prompt=result.composed_prompt.system)
+```
+
+### Compliance Note
+
+This amendment resolves the Q1 Review Trigger condition (>5 Mode 2
+declarations). The trigger remains in force: if unaudited Mode 2 declarations
+exceed 5 in the future, a new audit is required. The 10 remaining declarations
+are documented as audited-legitimate and do not re-trigger the audit unless new
+unaudited declarations appear.
+
+---
+
+## ADR-048 Amendment — Q3 Follow-up: Budget Resolver Integration Decision (2026-06-24)
+
+> **Amendment Date:** 2026-06-24
+> **Follows up on:** Q3 — `KBSuggestedProvider` Structured Return (`KBSuggestionResult`)
+> **Question:** Now that `KBSuggestionResult` carries per-entity `token_count` and
+> `total_token_count`, how should this structured data feed budget decisions?
+
+### Question
+
+The Q3 amendment changed `KBSuggestedProvider.get_suggested_context()` to return
+`KBSuggestionResult` (structured entity list with per-entity token counts) instead
+of `str`. This raised a follow-up: should the `IntentOutputBudgetResolver`
+consume `kb_suggested_structured` (the structured result in `dynamic_inputs`) to
+make per-entity budget decisions — selecting the top-N entities by relevance that
+fit within a token budget, rather than truncating a flat string?
+
+### Options Considered
+
+| Option | Description |
+|--------|-------------|
+| **A — Extend the Budget Resolver** | Resolver reads `kb_suggested_structured`, selects entities by relevance within a token budget, and writes the truncated selection back into `dynamic_inputs["kb_suggested"]`. |
+| **B — KB Context Selector** | A dedicated selector component (separate from the resolver) owns KB-entity budgeting, sitting between the enricher and the resolver. The resolver stays intent/mode-focused. |
+| **C — Generalize WritingContextAssembler** | Promote the writing-domain `WritingContextAssembler` KB-tiering pattern into a shared selector usable by non-writing domains. |
+| **D — Evidence/Quality Only** | Keep `KBSuggestionResult` for evidence provenance and log observability only. Do NOT integrate per-entity token counts into budget resolution now. Revisit when trigger conditions are met. |
+
+### Decision: Option D — Evidence/Quality Only (no budget integration now)
+
+**We choose Option D.** The structured `KBSuggestionResult` is used for evidence
+provenance and observability (token counts in logs, entity-level correlation) but
+is **not** wired into the `IntentOutputBudgetResolver` at this time.
+
+### Rationale (3 reasons)
+
+1. **Non-writing KB contexts are small (<1000 tokens).** The non-writing domains
+   (analysis, kb, planning, chat) inject modest KB context. Per-entity budget
+   selection yields negligible savings when the total context is already small.
+   The cost of building and maintaining a budget-aware selector exceeds the token
+   savings it would produce for these domains.
+
+2. **Enrichment is fire-and-forget (being fixed by the Q1 Mode 2 migration).**
+   Until the Q1 Category A migration completes, enrichment computed by
+   `prepare()` — including `kb_suggested_structured` — is discarded by
+   `safe_compose_invocation()` (see Q1 Follow-up: Fire-and-Forget Finding).
+   Wiring the resolver to consume structured enrichment would build on a path
+   that currently throws the data away. The Q1 migration is the prerequisite;
+   budget integration must come after it, not in parallel.
+
+3. **Pipeline ordering blocker.** Budget resolution runs during `prepare()`, but
+   context enrichers (including `KBSuggestedContextEnricher`) also run during
+   `prepare()`. The resolver cannot consume `kb_suggested_structured` because the
+   enricher that produces it runs in the same phase — the data is not yet
+   available when the resolver runs. Integrating would require reordering the
+   enricher-before-resolver sequence, which is a deeper pipeline change not
+   justified by current token savings (see reason 1).
+
+### What Is Already Realized
+
+Although budget integration is deferred, Option D does **not** discard the value
+of the structured return. The following are already implemented and provide
+ongoing benefit:
+
+- **Structured provenance in evidence:** `kb_suggested_structured` in
+  `dynamic_inputs` gives entity-level correlation ("which KB entities influenced
+  this prompt?") — a direct improvement to evidence auditability.
+- **Token counts in logs/observability:** `total_token_count` and per-entity
+  `token_count` are available for observability and diagnostics without resolver
+  integration.
+- **RULE-06 separation preserved:** The provider owns *data* (structured
+  entities); the enricher owns *formatting* (str→text). This clean separation is
+  the foundation Option B would build on — deferring integration keeps the
+  foundation without coupling the resolver prematurely.
+
+### Future Path: Option B (KB Context Selector)
+
+If and when the following trigger conditions are met, revisit Option B (a
+dedicated KB Context Selector) rather than Option A (resolver extension):
+
+- **Trigger 1:** Non-writing KB context routinely exceeds 1000 tokens, making
+  per-entity selection materially beneficial.
+- **Trigger 2:** The Q1 Category A migration is complete, so enrichment reliably
+  reaches services (no more fire-and-forget).
+- **Trigger 3:** The pipeline enricher/resolver ordering is addressed (enricher
+  output available before budget resolution), OR a dedicated selector is placed
+  after enrichers as a post-prepare step.
+
+Option B is preferred over Option A because a dedicated selector keeps the
+`IntentOutputBudgetResolver` focused on intent/mode budgets (RULE-06 — one
+responsibility per module), while KB-entity selection is a separable concern
+owned by the selector.
+
+### Compliance Note
+
+This decision does **not** relax the Q3 amendment: `KBSuggestedProvider` still
+returns `KBSuggestionResult`. The structured data is produced and stored; it is
+simply not yet consumed for budget decisions. When the trigger conditions fire,
+the data is ready and Option B can be implemented without another Protocol
+change.

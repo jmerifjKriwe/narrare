@@ -13,7 +13,7 @@ import structlog
 
 from narrare.writing.summary_contracts import SummaryResult
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
-from narrare_core.ai_invocation import ManualInjectionDeclaration
+from narrare_core.ai_invocation import compose_invocation
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.context import PromptContext
 from narrare_core.shared.errors import NotFoundError, WritingError
@@ -28,19 +28,6 @@ if TYPE_CHECKING:
     from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: ChapterSummaryAgent composes its prompt internally
-# from SummaryDeps (language, genre, chapter title, max_sentences). The chapter
-# text is passed as the user prompt. Evidence is recorded at the service layer.
-_SUMMARY_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "ChapterSummaryAgent composes its prompt internally from SummaryDeps "
-        "(language, genre, chapter title, max_sentences). Chapter text is "
-        "passed as the user prompt."
-    ),
-    variables=("chapter_text", "chapter_title", "language"),
-    injection_mechanism="agent_deps",
-)
 
 
 class ChapterSummaryService:
@@ -120,8 +107,12 @@ class ChapterSummaryService:
             logger.info("summary_skipped_empty", chapter_id=str(chapter_id))
             return SummaryResult(summary="", word_count=0)
 
-        # 2. Compose prompt via PromptComposer (RULE-02)
+        # 2. Compose prompt via compose_invocation (Mode 1 — composer-driven,
+        #    ADR-048). Enrichment flows through the composer into the system
+        #    prompt; chapter content is passed as the user prompt at agent.run.
         try:
+            from narrare._app.invocation_context import build_invocation_context
+
             context = PromptContext(
                 language=language,
                 genre="",
@@ -129,11 +120,30 @@ class ChapterSummaryService:
                 mode="summarize",
                 extra={"max_sentences": str(max_sentences)},
             )
-            composed = await self._composer.build(
-                LLMIntent.SUMMARIZE,
-                context,
-                user_prompt=content[:3000],
+            invocation_context = build_invocation_context(
+                feature_id="writing_summary",
+                intent=LLMIntent.SUMMARIZE,
+                project_id=chapter.novel_id,
+                language=language,
             )
+            try:
+                invocation_result = await compose_invocation(
+                    invocation_pipeline=self._invocation_pipeline,
+                    invocation_context=invocation_context,
+                    composer=self._composer,
+                    prompt_context=context,
+                    intent=LLMIntent.SUMMARIZE,
+                )
+                assert invocation_result.composed_prompt is not None  # Mode 1 always composes
+                system_prompt = invocation_result.composed_prompt.system
+            except Exception:
+                logger.warning(
+                    "invocation_composition_failed",
+                    feature_id="writing_summary",
+                    exc_info=True,
+                )
+                composed = await self._composer.build(LLMIntent.SUMMARIZE, context)
+                system_prompt = composed.system
 
             # 3. Run the summary agent
             model = await self._registry.get_model(
@@ -141,7 +151,7 @@ class ChapterSummaryService:
                 api_key=self._api_key,
                 base_url=self._base_url,
             )
-            agent = ChapterSummaryAgent(model=model, system_prompt=composed.system)
+            agent = ChapterSummaryAgent(model=model, system_prompt=system_prompt)
 
             deps = SummaryDeps(
                 language=language,
@@ -150,16 +160,7 @@ class ChapterSummaryService:
                 max_sentences=max_sentences,
             )
 
-            from narrare._app.invocation_context import safe_compose_invocation
-
-            await safe_compose_invocation(
-                self._invocation_pipeline,
-                feature_id="writing_summary",
-                intent=LLMIntent.SUMMARIZE,
-                project_id=chapter.novel_id,
-                manual_injection=_SUMMARY_INJECTION,
-            )
-            result = await agent.run(prompt=composed.user, deps=deps)
+            result = await agent.run(prompt=content[:3000], deps=deps)
 
             # 4. Persist summary to chapter
             await self._chapter_repo.update_summary(chapter, result.summary)

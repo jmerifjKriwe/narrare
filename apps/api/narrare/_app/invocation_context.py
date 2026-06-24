@@ -1,9 +1,9 @@
-"""Shared invocation context builders for non-writing services.
+"""Shared invocation context builder for non-writing services.
 
-Provides :func:`build_invocation_context` and
-:func:`safe_compose_invocation` — lightweight helpers for analysis and
-KB services that need to create :class:`PromptInvocationContext` instances
-for the :class:`InvocationPipeline` and compose invocations through it.
+Provides :func:`build_invocation_context` — a lightweight helper for
+analysis, KB, and planning services that need to create
+:class:`PromptInvocationContext` instances for the
+:class:`InvocationPipeline` and :func:`compose_invocation`.
 
 This module is the non-writing counterpart to
 ``narrare_core.writing._invocation_adapter``. That adapter wraps
@@ -11,29 +11,28 @@ This module is the non-writing counterpart to
 simpler API for services that call agents directly (not through
 ``WritingPipeline``).
 
-The deprecated ``record_invocation_evidence()`` and
-``safe_record_evidence()`` functions were removed in ADR-048 Slice F
-(Phase 3 cleanup). Use :func:`safe_compose_invocation` instead, which
-correlates evidence with the real composed prompt via
-:func:`compose_invocation`.
+History:
+    The deprecated ``record_invocation_evidence()`` and
+    ``safe_record_evidence()`` functions were removed in ADR-048 Slice F
+    (Phase 3 cleanup). The former fire-and-forget compose wrapper was
+    removed after all callers migrated to direct :func:`compose_invocation`
+    calls (ADR-048 Q1 follow-up): it discarded the composed result
+    (RULE-20) and masked the real Mode 2 contract behind a single-
+    responsibility-violating convenience function (RULE-06). Services now
+    call :func:`compose_invocation` explicitly with ``manual_injection=``
+    (Mode 2) or ``composer=`` (Mode 1).
 
 See:
-    ADR-040, ADR-048, INFRA-013, CONSTRAINTS.md RULE-03/RULE-06.
+    ADR-040, ADR-048, INFRA-013, CONSTRAINTS.md RULE-03/RULE-06/RULE-20.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import structlog
-
 if TYPE_CHECKING:
-    from narrare_core.ai_invocation.manual_injection import ManualInjectionDeclaration
     from narrare_core.ai_invocation.models import PromptInvocationContext
-    from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm.intents import LLMIntent
-
-logger = structlog.get_logger(__name__)
 
 
 def build_invocation_context(
@@ -59,7 +58,7 @@ def build_invocation_context(
         language: Language code. Defaults to ``"en"``.
 
     Returns:
-        A :class:`PromptInvocationContext` ready for ``pipeline.prepare()``.
+        A :class:`PromptInvocationContext` ready for ``compose_invocation``.
     """
     from narrare_core.ai_invocation.models import PromptInvocationContext
 
@@ -70,47 +69,3 @@ def build_invocation_context(
         project_id=project_id,
         language=language,
     )
-
-
-async def safe_compose_invocation(
-    pipeline: InvocationPipeline | None,
-    *,
-    feature_id: str,
-    intent: LLMIntent,
-    user_id: object | None = None,
-    project_id: object | None = None,
-    language: str = "en",
-    manual_injection: ManualInjectionDeclaration,
-) -> None:
-    """Compose invocation (Mode 2) for evidence recording. Silently no-ops when pipeline is None.
-
-    Non-deprecated replacement for safe_record_evidence() per ADR-048.
-    Uses compose_invocation() with ManualInjectionDeclaration (Mode 2 -- agent-internal).
-
-    Failures are logged and swallowed -- the service proceeds with the agent call
-    regardless of evidence recording issues.
-    """
-    if pipeline is None:
-        return
-
-    from narrare_core.ai_invocation import compose_invocation
-
-    context = build_invocation_context(
-        feature_id=feature_id,
-        intent=intent,
-        user_id=user_id,
-        project_id=project_id,
-        language=language,
-    )
-    try:
-        await compose_invocation(
-            invocation_pipeline=pipeline,
-            invocation_context=context,
-            manual_injection=manual_injection,
-        )
-    except Exception:
-        logger.warning(
-            "invocation_composition_failed",
-            feature_id=feature_id,
-            exc_info=True,
-        )

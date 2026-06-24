@@ -22,7 +22,6 @@ from narrare.kb.worldbuilding_contracts import (
     WorldbuildingApplyRequest,
     WorldbuildingApplyResponse,
 )
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 
 if TYPE_CHECKING:
     from narrare.kb.contracts import RelationshipRepositoryProtocol
@@ -31,20 +30,6 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: WorldbuildingAnalyzer composes its prompts
-# internally from WorldbuildingDeps (entity summaries, template structures,
-# existing relationships) across both Phase 1 and Phase 2. Evidence is
-# recorded at the parent service layer.
-_WORLDBUILDING_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "WorldbuildingAnalyzer composes its prompts internally from "
-        "WorldbuildingDeps (entity summaries, template structures, "
-        "existing relationships) across both Phase 1 and Phase 2."
-    ),
-    variables=("entity_summaries", "template_structures", "existing_relationships"),
-    injection_mechanism="agent_deps",
-)
 
 
 class WorldbuildingService:
@@ -87,30 +72,8 @@ class WorldbuildingService:
         """
         logger.info("worldbuilding_analyze_start", novel_id=str(novel_id))
 
-        # Compose invocation (Mode 2 — agent-internal) and record evidence
-        # (ADR-048). Replaces the former placeholder-evidence path.
-        from narrare._app.invocation_context import build_invocation_context
-        from narrare_core.ai_invocation import compose_invocation
-        from narrare_core.llm.intents import LLMIntent
-
-        invocation_context = build_invocation_context(
-            feature_id="kb_worldbuilding",
-            intent=LLMIntent.KB_WORLDBUILD,
-            project_id=novel_id,
-        )
-        try:
-            await compose_invocation(
-                invocation_pipeline=self._invocation_pipeline,
-                invocation_context=invocation_context,
-                manual_injection=_WORLDBUILDING_MANUAL_INJECTION,
-            )
-        except Exception:
-            logger.warning(
-                "invocation_composition_failed",
-                feature_id="kb_worldbuilding",
-                exc_info=True,
-            )
-
+        # Evidence recording has moved to WorldbuildingAnalyzer (ADR-048 Mode 1).
+        # The analyzer records per-phase evidence closer to the actual LLM calls.
         return await self._analyzer.analyze(novel_id, request)
 
     async def apply_connections(

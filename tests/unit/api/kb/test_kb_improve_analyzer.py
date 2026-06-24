@@ -60,8 +60,8 @@ class _FakeProactiveContext:
 
 
 class _FakeComposer:
-    async def build(self, intent: object, ctx: object) -> object:
-        return MagicMock(spec=ComposedPrompt, system="improve system prompt")
+    async def build(self, intent: object, ctx: object) -> ComposedPrompt:
+        return ComposedPrompt(system="improve system prompt", user="user prompt")
 
 
 class _FakeImproveCache:

@@ -87,8 +87,12 @@ _RULE = "INLINE-FEATURE-PROMPT"
 # Cleanup: migrate each service to PromptComposer.build() like FIND-011.
 _BASELINE_VIOLATIONS: frozenset[tuple[str, int]] = frozenset(
     {
-        ("apps/api/narrare/planning/character_arc_service.py", 128),
-        ("apps/api/narrare/planning/timeline_extraction_service.py", 153),
+        # NOTE: lineno must track the exact source line of ``agent.run(prompt=...)``.
+        # Edits that insert/remove lines above these calls will shift them out of
+        # the baseline and surface them as NEW blocking violations — update the
+        # numbers here to re-anchor the ratchet (the violation count must not grow).
+        ("apps/api/narrare/planning/character_arc_service.py", 139),
+        ("apps/api/narrare/planning/timeline_extraction_service.py", 164),
         ("apps/api/narrare/kb/merge_service.py", 145),
     }
 )
