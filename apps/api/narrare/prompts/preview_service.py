@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, cast, get_args, runtime_che
 
 import structlog
 
-from narrare.prompts.schemas import (
+from narrare.prompts.schemas_prompt_ux import (
     PreviewDiagnosticResponse,
     PreviewRequest,
     PreviewResponse,

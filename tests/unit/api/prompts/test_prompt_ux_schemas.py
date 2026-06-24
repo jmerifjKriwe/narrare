@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from narrare.prompts.schemas import (
+from narrare.prompts.schemas_prompt_ux import (
     LiveTestRequest,
     PreviewDiagnosticResponse,
     PreviewRequest,

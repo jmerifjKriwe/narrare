@@ -172,3 +172,98 @@ export interface PromptLiveTestStreamEvent {
   readonly model_id?: string;
   readonly rate_limit_remaining?: number;
 }
+
+// ---------------------------------------------------------------------------
+// CR-AUFG-07-19 — Prompt History types.
+//
+// These types mirror the Pydantic schemas in
+// ``apps/api/narrare/prompts/schemas_prompt_history.py`` 1:1 (RULE-17). Field
+// names use snake_case to match the wire format; the backend never camelCases.
+//
+// IMPORTANT (RULE-17 reconciliation): ``scope`` is NOT a query parameter on the
+// REST endpoints — the backend resolves it deterministically to ``PROJECT``
+// (see ``router_prompt_history.py`` ``_DEFAULT_SCOPE``). It still appears in
+// the RESPONSE shapes below because the backend echoes it. The TypeScript API
+// client therefore does NOT send ``scope``; it is typed here for responses only.
+// ---------------------------------------------------------------------------
+
+/** Override scope for a prompt revision. Mirrors backend ``PromptHistoryScope`` StrEnum. */
+export type PromptHistoryScope = "project" | "user";
+
+/**
+ * Literal token accepted by the compare endpoint for "the current active
+ * override". Mirrors ``ACTIVE_TOKEN`` in ``history_mapping.py``.
+ */
+export const PROMPT_HISTORY_ACTIVE_TOKEN = "active" as const;
+
+/**
+ * A single recorded prompt override revision.
+ *
+ * ``is_active`` is DERIVED server-side (sha256 of the current active override
+ * file vs. ``content_hash``); it is never persisted.
+ *
+ * Mirrors ``PromptRevisionResponse``. The revision's primary key is ``id``
+ * (a UUID string), not ``revision_id``.
+ */
+export interface PromptRevision {
+  readonly id: string;
+  readonly prompt_id: string;
+  readonly scope: PromptHistoryScope;
+  readonly content: string;
+  readonly content_hash: string;
+  readonly actor_id: string | null;
+  readonly source: string;
+  readonly change_reason: string | null;
+  readonly restored_from_id: string | null;
+  readonly created_at: string;
+  readonly is_active: boolean;
+}
+
+/**
+ * Paginated list of recorded revisions for a prompt. Mirrors
+ * ``PromptHistoryListResponse``. The revision array is ``revisions``
+ * (NOT ``items``).
+ */
+export interface PromptHistoryListResponse {
+  readonly prompt_id: string;
+  readonly scope: PromptHistoryScope;
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly revisions: readonly PromptRevision[];
+}
+
+/**
+ * Side-by-side content for comparing two revisions (or either against the
+ * active override). Mirrors ``PromptRevisionCompareResponse``.
+ */
+export interface PromptRevisionCompareResponse {
+  readonly prompt_id: string;
+  readonly from_id: string;
+  readonly to_id: string;
+  readonly from_source: string;
+  readonly to_source: string;
+  readonly from_content: string;
+  readonly to_content: string;
+}
+
+/**
+ * Result of an append-only restore. Mirrors ``PromptRevisionRestoredResponse``.
+ *
+ * ``restored_revision`` is the NEW revision recorded for the restore action
+ * (``source="restore"``, ``restored_from_id`` → the original revision).
+ * ``active_content`` is the content now written to the active override file.
+ */
+export interface PromptRevisionRestoredResponse {
+  readonly prompt_id: string;
+  readonly restored_revision: PromptRevision;
+  readonly active_content: string;
+  readonly previous_active_hash: string | null;
+}
+
+/** Result of clearing history (active override file untouched). Mirrors ``PromptHistoryClearedResponse``. */
+export interface PromptHistoryClearedResponse {
+  readonly prompt_id: string;
+  readonly scope: PromptHistoryScope;
+  readonly deleted_count: number;
+}

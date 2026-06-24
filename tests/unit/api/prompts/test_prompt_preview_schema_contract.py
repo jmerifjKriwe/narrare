@@ -28,7 +28,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from narrare.prompts.schemas import (
+from narrare.prompts.schemas_prompt_ux import (
     LiveTestStartedResponse,
     PreviewResponse,
     ResetResponse,

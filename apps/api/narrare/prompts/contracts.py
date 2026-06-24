@@ -11,19 +11,29 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+    from uuid import UUID
 
     from narrare.prompts.schemas import (
         CascadePathResponse,
         DiffResponse,
+        PromptDetailResponse,
+        PromptInfoResponse,
+        SaveOverrideRequest,
+        UpdateInfoResponse,
+    )
+    from narrare.prompts.schemas_prompt_history import (
+        PromptHistoryClearedResponse,
+        PromptHistoryListResponse,
+        PromptHistoryScope,
+        PromptRevisionCompareResponse,
+        PromptRevisionRestoredResponse,
+    )
+    from narrare.prompts.schemas_prompt_ux import (
         LiveTestRequest,
         LiveTestStartedResponse,
         PreviewRequest,
         PreviewResponse,
-        PromptDetailResponse,
-        PromptInfoResponse,
         ResetResponse,
-        SaveOverrideRequest,
-        UpdateInfoResponse,
     )
 
 
@@ -104,3 +114,75 @@ class PromptLiveTestApiProtocol(Protocol):
         user_id: str,
         metadata: LiveTestStartedResponse,
     ) -> AsyncIterator[str]: ...
+
+
+@runtime_checkable
+class PromptHistoryServiceProtocol(Protocol):
+    """Prompt History service Protocol (CR-AUFG-07-19).
+
+    Composes the core file-based ``PromptManagementService`` with a DB-backed
+    revision repository.  The active override remains a FILE (authoritative
+    cascade source); revisions are a secondary, append-only record.  This is
+    the RULE-03 gate: the Protocol exists before the service implementation.
+
+    Recording-on-save is best-effort: the file write is authoritative; if the
+    DB revision row cannot be persisted the failure is logged but does NOT
+    block the override save.
+    """
+
+    async def save_override_recorded(
+        self,
+        prompt_id: str,
+        request: SaveOverrideRequest,
+        *,
+        actor_id: UUID,
+        scope: PromptHistoryScope = ...,
+    ) -> None:
+        """Write the active override file, then record a revision row.
+
+        Order: file-first (authoritative), then DB row.  Dedup: skip the row
+        when the content hash matches the most recent recorded revision.
+        """
+        ...
+
+    async def list_history(
+        self,
+        prompt_id: str,
+        *,
+        scope: PromptHistoryScope = ...,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> PromptHistoryListResponse:
+        """List recorded revisions, newest first, with derived ``is_active``."""
+        ...
+
+    async def compare_revisions(
+        self,
+        prompt_id: str,
+        *,
+        from_id: str,
+        to_id: str,
+        scope: PromptHistoryScope = ...,
+    ) -> PromptRevisionCompareResponse:
+        """Compare two revisions (or the literal ``"active"``) by content."""
+        ...
+
+    async def restore_revision(
+        self,
+        prompt_id: str,
+        revision_id: UUID,
+        *,
+        actor_id: UUID,
+        scope: PromptHistoryScope = ...,
+    ) -> PromptRevisionRestoredResponse:
+        """Append-only restore: write active file + record a NEW revision."""
+        ...
+
+    async def clear_history(
+        self,
+        prompt_id: str,
+        *,
+        scope: PromptHistoryScope = ...,
+    ) -> PromptHistoryClearedResponse:
+        """Delete all history rows; the active override file is untouched."""
+        ...

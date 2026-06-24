@@ -6029,6 +6029,251 @@
         ]
       }
     },
+    "/api/v1/prompts/{prompt_id}/history": {
+      "get": {
+        "tags": [
+          "prompts"
+        ],
+        "summary": "List History",
+        "description": "List recorded prompt override revisions, newest first.",
+        "operationId": "list_history_api_v1_prompts__prompt_id__history_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prompt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Prompt Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptHistoryListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "prompts"
+        ],
+        "summary": "Clear History",
+        "description": "Delete all history revisions; the active override file is untouched.",
+        "operationId": "clear_history_api_v1_prompts__prompt_id__history_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prompt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Prompt Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptHistoryClearedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prompts/{prompt_id}/history/compare": {
+      "get": {
+        "tags": [
+          "prompts"
+        ],
+        "summary": "Compare Revisions",
+        "description": "Compare two revisions (or either against the active override).",
+        "operationId": "compare_revisions_api_v1_prompts__prompt_id__history_compare_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prompt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Prompt Id"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Revision UUID or 'active'.",
+              "title": "From"
+            },
+            "description": "Revision UUID or 'active'."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Revision UUID or 'active'.",
+              "title": "To"
+            },
+            "description": "Revision UUID or 'active'."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptRevisionCompareResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prompts/{prompt_id}/history/{revision_id}/restore": {
+      "post": {
+        "tags": [
+          "prompts"
+        ],
+        "summary": "Restore Revision",
+        "description": "Append-only restore: write the active file + record a NEW revision.",
+        "operationId": "restore_revision_api_v1_prompts__prompt_id__history__revision_id__restore_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prompt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Prompt Id"
+            }
+          },
+          {
+            "name": "revision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Revision Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromptRevisionRestoredResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/prompts/updates": {
       "get": {
         "tags": [
@@ -6279,7 +6524,7 @@
           "prompts"
         ],
         "summary": "Save Override",
-        "description": "Save a prompt override.",
+        "description": "Save a prompt override and record a history revision (CR-AUFG-07-19).\n\nDelegates to ``PromptHistoryApiService.save_override_recorded``: the\nactive override FILE is written via the core service (authoritative),\nthen a revision row is recorded (best-effort, deduplicated).",
         "operationId": "save_override_api_v1_prompts__prompt_id__put",
         "security": [
           {
@@ -6461,7 +6706,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/narrare__prompts__schemas__ResetResponse"
+                  "$ref": "#/components/schemas/narrare__prompts__schemas_prompt_ux__ResetResponse"
                 }
               }
             }
@@ -13778,6 +14023,79 @@
         "title": "PromptDetailResponse",
         "description": "Full prompt content with metadata and variable info."
       },
+      "PromptHistoryClearedResponse": {
+        "properties": {
+          "prompt_id": {
+            "type": "string",
+            "title": "Prompt Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/PromptHistoryScope"
+          },
+          "deleted_count": {
+            "type": "integer",
+            "title": "Deleted Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt_id",
+          "scope",
+          "deleted_count"
+        ],
+        "title": "PromptHistoryClearedResponse",
+        "description": "Result of clearing history.  The active override file is untouched."
+      },
+      "PromptHistoryListResponse": {
+        "properties": {
+          "prompt_id": {
+            "type": "string",
+            "title": "Prompt Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/PromptHistoryScope"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/PromptRevisionResponse"
+            },
+            "type": "array",
+            "title": "Revisions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt_id",
+          "scope",
+          "total",
+          "limit",
+          "offset",
+          "revisions"
+        ],
+        "title": "PromptHistoryListResponse",
+        "description": "Paginated list of recorded revisions for a prompt + scope."
+      },
+      "PromptHistoryScope": {
+        "type": "string",
+        "enum": [
+          "project",
+          "user"
+        ],
+        "title": "PromptHistoryScope",
+        "description": "Override scope for a prompt revision.\n\nFor CR-AUFG-07-19 scope is resolved deterministically to ``PROJECT``\n(explicit user-vs-project override switching is deferred).  The column\nand enum exist for forward-compatibility."
+      },
       "PromptInfoResponse": {
         "properties": {
           "prompt_id": {
@@ -13822,6 +14140,169 @@
         ],
         "title": "PromptInfoResponse",
         "description": "Metadata summary for a single prompt."
+      },
+      "PromptRevisionCompareResponse": {
+        "properties": {
+          "prompt_id": {
+            "type": "string",
+            "title": "Prompt Id"
+          },
+          "from_id": {
+            "type": "string",
+            "title": "From Id"
+          },
+          "to_id": {
+            "type": "string",
+            "title": "To Id"
+          },
+          "from_source": {
+            "type": "string",
+            "title": "From Source"
+          },
+          "to_source": {
+            "type": "string",
+            "title": "To Source"
+          },
+          "from_content": {
+            "type": "string",
+            "title": "From Content"
+          },
+          "to_content": {
+            "type": "string",
+            "title": "To Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt_id",
+          "from_id",
+          "to_id",
+          "from_source",
+          "to_source",
+          "from_content",
+          "to_content"
+        ],
+        "title": "PromptRevisionCompareResponse",
+        "description": "Side-by-side content for comparing two revisions (or vs active)."
+      },
+      "PromptRevisionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "prompt_id": {
+            "type": "string",
+            "title": "Prompt Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/PromptHistoryScope"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "content_hash": {
+            "type": "string",
+            "title": "Content Hash"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "change_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Reason"
+          },
+          "restored_from_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restored From Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "prompt_id",
+          "scope",
+          "content",
+          "content_hash",
+          "source",
+          "created_at"
+        ],
+        "title": "PromptRevisionResponse",
+        "description": "A single recorded prompt override revision.\n\n``is_active`` is derived: it is ``True`` when this revision's\n``content_hash`` equals the sha256 of the current active override file\n(resolved at read time, never persisted)."
+      },
+      "PromptRevisionRestoredResponse": {
+        "properties": {
+          "prompt_id": {
+            "type": "string",
+            "title": "Prompt Id"
+          },
+          "restored_revision": {
+            "$ref": "#/components/schemas/PromptRevisionResponse"
+          },
+          "active_content": {
+            "type": "string",
+            "title": "Active Content"
+          },
+          "previous_active_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Active Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt_id",
+          "restored_revision",
+          "active_content"
+        ],
+        "title": "PromptRevisionRestoredResponse",
+        "description": "Result of an append-only restore.\n\n``restored_revision`` is the NEW revision recorded for the restore action\n(``source=\"restore\"``, ``restored_from_id`` → the original revision).\n``active_content`` is the content now written to the active override file."
       },
       "ProviderModel": {
         "properties": {
@@ -17773,30 +18254,6 @@
         "title": "DiffResponse",
         "description": "Side-by-side content for diff comparison."
       },
-      "narrare__prompts__schemas__ResetResponse": {
-        "properties": {
-          "reset": {
-            "type": "boolean",
-            "title": "Reset"
-          },
-          "effective_source": {
-            "type": "string",
-            "title": "Effective Source"
-          },
-          "effective_content": {
-            "type": "string",
-            "title": "Effective Content"
-          }
-        },
-        "type": "object",
-        "required": [
-          "reset",
-          "effective_source",
-          "effective_content"
-        ],
-        "title": "ResetResponse",
-        "description": "Response from ``POST /prompts/{prompt_id}/reset`` — metadata, not bool.\n\n``effective_source``/``effective_content`` describe the post-reset state\nso the UI can render the restored prompt without a follow-up GET."
-      },
       "narrare__prompts__schemas__SaveOverrideRequest": {
         "properties": {
           "content": {
@@ -17804,6 +18261,19 @@
             "minLength": 1,
             "title": "Content",
             "description": "Override prompt content"
+          },
+          "change_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Reason",
+            "description": "Optional human-readable reason recorded with the revision."
           }
         },
         "type": "object",
@@ -17811,7 +18281,7 @@
           "content"
         ],
         "title": "SaveOverrideRequest",
-        "description": "Request body for saving a prompt override."
+        "description": "Request body for saving a prompt override.\n\n``change_reason`` is optional metadata forwarded to the prompt history\nrecord (CR-AUFG-07-19).  It is ignored when prompt history is disabled."
       },
       "narrare__prompts__schemas__UpdateInfoResponse": {
         "properties": {
@@ -17836,6 +18306,30 @@
         ],
         "title": "UpdateInfoResponse",
         "description": "Information about a prompt with available bundled updates."
+      },
+      "narrare__prompts__schemas_prompt_ux__ResetResponse": {
+        "properties": {
+          "reset": {
+            "type": "boolean",
+            "title": "Reset"
+          },
+          "effective_source": {
+            "type": "string",
+            "title": "Effective Source"
+          },
+          "effective_content": {
+            "type": "string",
+            "title": "Effective Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reset",
+          "effective_source",
+          "effective_content"
+        ],
+        "title": "ResetResponse",
+        "description": "Response from ``POST /prompts/{prompt_id}/reset`` — metadata, not bool.\n\n``effective_source``/``effective_content`` describe the post-reset state\nso the UI can render the restored prompt without a follow-up GET."
       },
       "narrare__templates__schemas__DiffResponse": {
         "properties": {

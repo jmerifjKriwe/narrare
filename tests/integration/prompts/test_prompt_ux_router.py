@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from narrare.prompts.schemas import LiveTestStartedResponse
+from narrare.prompts.schemas_prompt_ux import LiveTestStartedResponse
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

@@ -11,6 +11,10 @@
  *     (SSE through :func:`usePromptLiveTest`).
  *   - The reset flow surfaces effective-state metadata via
  *     :component:`PromptResetConfirmDialog`.
+ *
+ * CR-AUFG-07-19:
+ *   - Revision history is exposed via :component:`PromptHistoryPanel`
+ *     (collapsible; restore invalidates the prompt-detail query above).
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,6 +28,7 @@ import { PromptLiveTestDialog } from "./PromptLiveTestDialog";
 import { PromptPreviewDialog } from "./PromptPreviewDialog";
 import { PromptResetConfirmDialog } from "./PromptResetConfirmDialog";
 import { PromptVariablesAside } from "./PromptVariablesAside";
+import { PromptHistoryPanel } from "./prompt-history/PromptHistoryPanel";
 import { usePromptEditorState } from "./usePromptEditorState";
 
 interface PromptEditorProps {
@@ -123,6 +128,16 @@ export function PromptEditor({ promptId, hasUpdate, onBack }: PromptEditorProps)
           {s.prompt.variables.length > 0 && <PromptVariablesAside variables={s.prompt.variables} />}
         </div>
       </div>
+
+      {/* CR-AUFG-07-19: revision history (collapsible). onRestored invalidates
+          the prompt-detail query so the editor reflects restored content. */}
+      <PromptHistoryPanel
+        promptId={promptId}
+        onRestored={() => {
+          void queryClient.invalidateQueries({ queryKey: ["prompt", promptId] });
+          void queryClient.invalidateQueries({ queryKey: ["prompts"] });
+        }}
+      />
 
       {/* PROMPT-003 dialogs */}
       <PromptPreviewDialog

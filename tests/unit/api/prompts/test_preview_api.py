@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from narrare.prompts.preview_service import PromptPreviewApiService
-from narrare.prompts.schemas import PreviewRequest
+from narrare.prompts.schemas_prompt_ux import PreviewRequest
 from narrare_core.prompts.preview_types import (
     PreviewDiagnostic,
     PreviewDiagnosticKind,

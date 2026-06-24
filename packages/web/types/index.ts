@@ -69,6 +69,9 @@ export type {
   PromptDetail,
   PromptDiagnostic,
   PromptDiagnosticKind,
+  PromptHistoryClearedResponse,
+  PromptHistoryListResponse,
+  PromptHistoryScope,
   PromptInfo,
   PromptLiveTestStarted,
   PromptLiveTestStreamEvent,
@@ -76,10 +79,14 @@ export type {
   PromptPreviewLanguage,
   PromptProvenance,
   PromptResetResult,
+  PromptRevision,
+  PromptRevisionCompareResponse,
+  PromptRevisionRestoredResponse,
   PromptSecurity,
   PromptVariableMetadata,
   UpdateInfo,
 } from "./prompts";
+export { PROMPT_HISTORY_ACTIVE_TOKEN } from "./prompts";
 export type {
   CalibrationMetadata,
   CalibrationStatus,

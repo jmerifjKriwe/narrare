@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 import structlog
 
 from narrare.prompts._live_test_sse import live_test_event_stream
-from narrare.prompts.schemas import LiveTestRequest, LiveTestStartedResponse
+from narrare.prompts.schemas_prompt_ux import LiveTestRequest, LiveTestStartedResponse
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.prompts.contracts import ContextSnapshot
 from narrare_core.shared.errors import ValidationError

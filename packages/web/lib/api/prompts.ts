@@ -12,11 +12,15 @@ import type {
   LiveTestRequest,
   PreviewRequest,
   PromptDetail,
+  PromptHistoryClearedResponse,
+  PromptHistoryListResponse,
   PromptInfo,
   PromptLiveTestStarted,
   PromptLiveTestStreamEvent,
   PromptPreview,
   PromptResetResult,
+  PromptRevisionCompareResponse,
+  PromptRevisionRestoredResponse,
   UpdateInfo,
 } from "@/types";
 import { fetchApi, fetchApiRaw } from "./core";
@@ -61,7 +65,46 @@ export const promptsApi = {
       method: "POST",
       body: JSON.stringify(req),
     }),
+
+  // --- CR-AUFG-07-19: prompt history (revision list / compare / restore / clear) ---
+  //
+  // NOTE (RULE-17): ``scope`` is resolved to PROJECT server-side
+  // (``_DEFAULT_SCOPE`` in ``router_prompt_history.py``). The client never
+  // sends it. ``from`` / ``to`` use the backend query aliases; either may be
+  // the literal ``PROMPT_HISTORY_ACTIVE_TOKEN`` ("active").
+
+  /** List recorded override revisions, newest first. */
+  listHistory: (id: string, limit?: number, offset?: number) =>
+    fetchApi<PromptHistoryListResponse>(`/prompts/${id}/history${historyListQuery(limit, offset)}`),
+
+  /** Compare two revisions (or either against the active override). */
+  compareRevisions: (id: string, fromId: string, toId: string) =>
+    fetchApi<PromptRevisionCompareResponse>(
+      `/prompts/${id}/history/compare?from=${encodeURIComponent(fromId)}&to=${encodeURIComponent(toId)}`,
+    ),
+
+  /** Append-only restore: writes the active file + records a NEW revision. */
+  restoreRevision: (id: string, revisionId: string) =>
+    fetchApi<PromptRevisionRestoredResponse>(
+      `/prompts/${id}/history/${encodeURIComponent(revisionId)}/restore`,
+      { method: "POST" },
+    ),
+
+  /** Delete all history revisions (active override file untouched). */
+  clearHistory: (id: string) =>
+    fetchApi<PromptHistoryClearedResponse>(`/prompts/${id}/history`, {
+      method: "DELETE",
+    }),
 };
+
+/** Build the optional limit/offset query string for listHistory (no scope). */
+function historyListQuery(limit?: number, offset?: number): string {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (offset !== undefined) params.set("offset", String(offset));
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
 
 // --- PROMPT-003 live-test SSE stream ---
 

@@ -3,6 +3,7 @@
 export { betaReaderGroundedAdapter, isBetaReaderGrounded } from "./adapters/beta-reader";
 export { coAuthorChangeAdapter } from "./adapters/coauthor";
 export { kbEnhanceFieldAdapter } from "./adapters/kb-enhance";
+export { promptHistoryDiffAdapter } from "./adapters/prompt-history";
 export { rewriteAdapter } from "./adapters/rewrite";
 export type {
   AIDiffMode,

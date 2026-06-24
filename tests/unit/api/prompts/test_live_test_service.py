@@ -19,7 +19,7 @@ import json
 
 import pytest
 
-from narrare.prompts.schemas import LiveTestRequest, LiveTestStartedResponse
+from narrare.prompts.schemas_prompt_ux import LiveTestRequest, LiveTestStartedResponse
 from narrare_core.shared.errors import ConfigurationError, ValidationError
 from tests.unit.api.prompts.live_test_service_fakes import (
     FailingAgent,

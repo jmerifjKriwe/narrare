@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from narrare.prompts.history_service import PromptHistoryApiService
     from narrare.prompts.live_test_service import PromptLiveTestApiService
     from narrare.prompts.preview_service import (
         PromptPreviewApiService,
@@ -69,4 +70,30 @@ async def get_live_test_service(session: AsyncSession) -> PromptLiveTestApiServi
         registry=model_registry,
         preview=preview,
         agent_factory=agent_factory,
+    )
+
+
+async def get_prompt_history_service(session: AsyncSession) -> PromptHistoryApiService:
+    """Wire ``PromptHistoryApiService`` (CR-AUFG-07-19).
+
+    Composes the core file-based ``PromptManagementService`` (authoritative
+    cascade source) with the DB-backed ``PromptHistoryRepository`` bound to
+    the request session.  The active override stays a FILE; revisions are a
+    secondary record.  Retention is driven by
+    ``Settings.prompt_history_retention_limit`` (RULE-18 operator-config).
+    """
+    from narrare._app.config import get_settings
+    from narrare._app.dependencies import get_registry
+    from narrare.prompts.history_service import PromptHistoryApiService
+    from narrare.prompts.repository import PromptHistoryRepository
+    from narrare_core.prompts.management import PromptManagementService
+
+    prompt_registry = get_registry()  # pyright: ignore[reportPrivateUsage]
+    core = PromptManagementService(registry=prompt_registry)
+    repo = PromptHistoryRepository(session)
+    settings = get_settings()
+    return PromptHistoryApiService(
+        core=core,
+        repo=repo,
+        retention_limit=settings.prompt_history_retention_limit,
     )

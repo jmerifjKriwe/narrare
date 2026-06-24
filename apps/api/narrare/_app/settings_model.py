@@ -163,6 +163,16 @@ class Settings(BaseSettings):
     """Default maximum word count for co-author selection text."""
 
     # ---------------------------------------------------------------------------
+    # Prompt History Retention (Operator-Config) — CR-AUFG-07-19
+    # ---------------------------------------------------------------------------
+    prompt_history_retention_limit: int = Field(
+        default=100,
+        ge=1,
+        alias="NARRARE_PROMPT_HISTORY_RETENTION_LIMIT",
+    )
+    """Maximum prompt override revisions kept per (prompt_id, scope)."""
+
+    # ---------------------------------------------------------------------------
     # Cost Estimation (optional override)
     # ---------------------------------------------------------------------------
     cost_rates_json: str = Field(

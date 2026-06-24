@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
     from typing import Any
 
-    from narrare.prompts.schemas import LiveTestStartedResponse
+    from narrare.prompts.schemas_prompt_ux import LiveTestStartedResponse
 
 logger = structlog.get_logger(__name__)
 

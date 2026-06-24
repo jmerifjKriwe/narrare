@@ -9,11 +9,13 @@ routes here (HTTP methods differ).
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from narrare._app.dependencies import CurrentUserIdDep
+from narrare._app.dependencies import CurrentUserIdDep, SessionDep
+from narrare.prompts.deps import get_prompt_history_service
 from narrare.prompts.schemas import (
     CascadePathResponse,
     DiffResponse,
@@ -106,10 +108,20 @@ async def save_override(
     prompt_id: str,
     request: SaveOverrideRequest,
     user_id: CurrentUserIdDep,
-    service: PromptManagementApiService = Depends(_get_service),
+    session: SessionDep,
 ) -> None:
-    """Save a prompt override."""
-    await service.save_override(prompt_id, request)
+    """Save a prompt override and record a history revision (CR-AUFG-07-19).
+
+    Delegates to ``PromptHistoryApiService.save_override_recorded``: the
+    active override FILE is written via the core service (authoritative),
+    then a revision row is recorded (best-effort, deduplicated).
+    """
+    service = await get_prompt_history_service(session)
+    await service.save_override_recorded(
+        prompt_id,
+        request,
+        actor_id=uuid.UUID(user_id),
+    )
 
 
 @router.delete("/{prompt_id:path}/override", response_model=bool)

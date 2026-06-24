@@ -25,7 +25,7 @@ from narrare.prompts.deps import (
     get_preview_service,
     get_reset_service,
 )
-from narrare.prompts.schemas import (
+from narrare.prompts.schemas_prompt_ux import (
     LiveTestRequest,
     PreviewRequest,
     PreviewResponse,
