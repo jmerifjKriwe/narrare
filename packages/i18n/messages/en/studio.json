@@ -1773,6 +1773,30 @@
     "hint": "Tab accept · Esc dismiss · → word",
     "errorUnavailable": "Suggestion unavailable"
   },
+  "characterArc": {
+    "title": "Character Arc",
+    "characterName": "Character name",
+    "currentState": "Current state",
+    "goalState": "Goal state",
+    "generate": "Generate Arc",
+    "loading": "Generating arc...",
+    "error": "Error",
+    "phases": "Development phases",
+    "keyRelationships": "Key relationships",
+    "internalConflict": "Internal conflict",
+    "resolution": "Resolution",
+    "phaseName": "Phase",
+    "description": "Description",
+    "emotionalState": "Emotional state",
+    "turningPoint": "Turning point",
+    "chaptersSuggested": "Suggested chapters",
+    "arcType": {
+      "growth": "Growth",
+      "fall": "Fall",
+      "transformation": "Transformation",
+      "flat": "Flat"
+    }
+  },
   "aiActions": {
     "accept": "Accept",
     "acceptAll": "Accept All",

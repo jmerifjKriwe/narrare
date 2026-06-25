@@ -1773,6 +1773,30 @@
     "hint": "Tab accepter · Esc rejeter · → mot",
     "errorUnavailable": "Suggestion indisponible"
   },
+  "characterArc": {
+    "title": "Arc de personnage",
+    "characterName": "Nom du personnage",
+    "currentState": "État actuel",
+    "goalState": "État cible",
+    "generate": "Générer l'arc",
+    "loading": "Génération de l'arc...",
+    "error": "Erreur",
+    "phases": "Phases de développement",
+    "keyRelationships": "Relations clés",
+    "internalConflict": "Conflit interne",
+    "resolution": "Résolution",
+    "phaseName": "Phase",
+    "description": "Description",
+    "emotionalState": "État émotionnel",
+    "turningPoint": "Tournant",
+    "chaptersSuggested": "Chapitres suggérés",
+    "arcType": {
+      "growth": "Croissance",
+      "fall": "Déclin",
+      "transformation": "Transformation",
+      "flat": "Plat"
+    }
+  },
   "aiActions": {
     "accept": "Accepter",
     "acceptAll": "Tout accepter",

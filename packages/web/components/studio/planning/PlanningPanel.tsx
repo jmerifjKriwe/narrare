@@ -1,14 +1,15 @@
 "use client";
 
-import { Clock, LayoutGrid } from "lucide-react";
+import { Clock, LayoutGrid, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useEditorStore } from "@/lib/stores/editorStore";
 import { cn } from "@/lib/utils";
+import { CharacterArcPanel } from "./CharacterArcPanel";
 import { StoryboardPanel } from "./StoryboardPanel";
 import { TimelinePanel } from "./timeline/TimelinePanel";
 
-type PlanningTab = "storyboard" | "timeline";
+type PlanningTab = "storyboard" | "timeline" | "characterArc";
 
 interface PlanningPanelProps {
   novelId: string;
@@ -66,11 +67,25 @@ export function PlanningPanel({ novelId }: PlanningPanelProps) {
           <Clock className="w-3.5 h-3.5" />
           {tTimeline("title")}
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("characterArc")}
+          className={cn(
+            "flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors",
+            activeTab === "characterArc"
+              ? "bg-[var(--color-accent)] text-white"
+              : "text-muted-foreground hover:bg-[var(--color-bg-secondary)]",
+          )}
+        >
+          <Users className="w-3.5 h-3.5" />
+          {t("characterArc.title")}
+        </button>
       </div>
 
       {/* Tab content */}
       {activeTab === "storyboard" && <StoryboardPanel novelId={novelId} hideHeader />}
       {activeTab === "timeline" && <TimelinePanel novelId={novelId} />}
+      {activeTab === "characterArc" && <CharacterArcPanel novelId={novelId} />}
     </div>
   );
 }

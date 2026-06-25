@@ -1773,6 +1773,30 @@
     "hint": "Tab übernehmen · Esc verwerfen · → Wort",
     "errorUnavailable": "Vorschlag nicht verfügbar"
   },
+  "characterArc": {
+    "title": "Charakterbogen",
+    "characterName": "Charaktername",
+    "currentState": "Aktueller Zustand",
+    "goalState": "Zielzustand",
+    "generate": "Bogen generieren",
+    "loading": "Bogen wird generiert...",
+    "error": "Fehler",
+    "phases": "Entwicklungsphasen",
+    "keyRelationships": "Schlüsselbeziehungen",
+    "internalConflict": "Innerer Konflikt",
+    "resolution": "Auflösung",
+    "phaseName": "Phase",
+    "description": "Beschreibung",
+    "emotionalState": "Emotionaler Zustand",
+    "turningPoint": "Wendepunkt",
+    "chaptersSuggested": "Vorgeschlagene Kapitel",
+    "arcType": {
+      "growth": "Wachstum",
+      "fall": "Abstieg",
+      "transformation": "Verwandlung",
+      "flat": "Flach"
+    }
+  },
   "aiActions": {
     "accept": "Übernehmen",
     "acceptAll": "Alle übernehmen",
