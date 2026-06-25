@@ -7540,6 +7540,28 @@
         }
       }
     },
+    "/tasks/status": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Get Task Status",
+        "description": "Return the background task queue status (read-only).\n\nReports the registered task names and the broker's process role. TaskIQ's\n``ListQueueBroker`` has no queue depth API, so queue length is unavailable.",
+        "operationId": "get_task_status_tasks_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/writing/chapters/{chapter_id}/generate": {
       "post": {
         "tags": [
@@ -15879,6 +15901,38 @@
         ],
         "title": "SyncStatusResponse",
         "description": "Sync status for a single chapter."
+      },
+      "TaskStatusResponse": {
+        "properties": {
+          "broker_started": {
+            "type": "boolean",
+            "title": "Broker Started"
+          },
+          "is_worker_process": {
+            "type": "boolean",
+            "title": "Is Worker Process"
+          },
+          "registered_task_count": {
+            "type": "integer",
+            "title": "Registered Task Count"
+          },
+          "registered_tasks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Registered Tasks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "broker_started",
+          "is_worker_process",
+          "registered_task_count",
+          "registered_tasks"
+        ],
+        "title": "TaskStatusResponse",
+        "description": "Shape of the ``GET /tasks/status`` response.\n\nAttributes:\n    broker_started: Operational proxy for \"is the task infrastructure up\".\n        TaskIQ exposes no explicit started flag; in the API server process\n        the broker is started by the application lifespan, so\n        ``not is_worker_process`` is used. It is ``False`` only inside a\n        dedicated taskiq worker process.\n    is_worker_process: Whether this process is the taskiq worker.\n    registered_task_count: Number of registered background tasks.\n    registered_tasks: Sorted list of registered ``task_name`` labels."
       },
       "TemplateDetailResponse": {
         "properties": {

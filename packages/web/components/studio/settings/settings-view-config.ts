@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   BookOpen,
   Brain,
   FileText,
@@ -18,6 +19,7 @@ export type SettingsCategory =
   | "prompts"
   | "kb-templates"
   | "learning"
+  | "background-tasks"
   | "shortcuts"
   | "about";
 
@@ -49,6 +51,7 @@ export const SETTINGS_CATEGORIES: CategoryConfig[] = [
   { id: "prompts", icon: FileText, labelKey: "settings.promptsTab" },
   { id: "kb-templates", icon: BookOpen, labelKey: "settings.kbTemplates" },
   { id: "learning", icon: Brain, labelKey: "settings.learning" },
+  { id: "background-tasks", icon: Activity, labelKey: "settings.backgroundTasks" },
   { id: "shortcuts", icon: Keyboard, labelKey: "settings.shortcuts" },
   { id: "about", icon: Info, labelKey: "settings.about" },
 ];

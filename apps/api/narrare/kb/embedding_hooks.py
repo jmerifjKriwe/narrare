@@ -5,8 +5,8 @@ KB entry create/update.  Non-blocking: failures are logged but
 never prevent saves from completing (RULE-11).
 
 Extracted from ``service.py`` to stay under RULE-04 file-size limits.
-When the TaskIQ broker is fully wired up, the ``_dispatch_task`` method
-will call ``run_embed_source`` via the broker instead of just logging.
+The ``_dispatch_task`` method enqueues the registered ``embed_source``
+task on the shared TaskIQ broker (INFRA-007).
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.tasks.broker import broker
 from narrare_core.embeddings.hash import compute_content_hash
 from narrare_core.events.types import DomainEvent, EventType
 
@@ -59,14 +60,14 @@ class EmbeddingHookManager:
     async def on_entry_created(self, entry: KBEntry) -> None:
         """Queue embedding generation and publish wiki sync event after creation.
 
-        Computes content hash, dispatches embedding task, and publishes
-        ``wiki.sync.requested`` for WikiSummary generation.
+        Forwards the entry body to the embedding task dispatcher and
+        publishes ``wiki.sync.requested`` for WikiSummary generation.
 
         Non-blocking: logs warning on failure (RULE-11).
         """
         try:
-            content_hash = compute_content_hash(entry.body or "")
-            await self._dispatch_task(entry.id, content_hash, trigger="create")
+            content = entry.body or ""
+            await self._dispatch_task(entry.id, content, trigger="create")
             await self._publish_wiki_sync_event(entry.id, entry.novel_id)
         except Exception:
             logger.warning(
@@ -93,9 +94,12 @@ class EmbeddingHookManager:
             if not content_changed:
                 return
 
-            content_hash = compute_content_hash(entry.body or "")
+            content = entry.body or ""
+            content_hash = compute_content_hash(content)
 
-            # Check hash comparison if embedding repo is available
+            # Skip dispatch when content hash is unchanged (when a repo is
+            # available for comparison). The embed_source task also performs
+            # this idempotency check internally.
             if self._repo is not None:
                 existing = await self._repo.get_by_source(
                     "kb_entry",
@@ -108,7 +112,7 @@ class EmbeddingHookManager:
                     )
                     return
 
-            await self._dispatch_task(entry.id, content_hash, trigger="update")
+            await self._dispatch_task(entry.id, content, trigger="update")
             await self._publish_wiki_sync_event(entry.id, entry.novel_id)
         except Exception:
             logger.warning(
@@ -160,19 +164,37 @@ class EmbeddingHookManager:
     async def _dispatch_task(
         self,
         source_id: UUID,
-        content_hash: str,
+        content: str,
         *,
         trigger: str,
     ) -> None:
-        """Dispatch an embedding generation task.
+        """Enqueue the ``embed_source`` task via the TaskIQ broker.
 
-        Currently logs the task. When TaskIQ is wired up, this will
-        call ``run_embed_source`` via the broker.
+        Looks up the registered ``embed_source`` task on the shared broker and
+        enqueues it with JSON-serializable arguments (the UUID is passed as a
+        string, as required across the TaskIQ process boundary). The task
+        worker owns its own DB session and recomputes the content hash
+        internally for idempotency, so only the raw content is forwarded.
+
+        Non-blocking: a missing task registration is logged, not raised.
         """
+        source_type = "kb_entry"
+        task = broker.find_task("embed_source")
+        if task is None:
+            logger.warning(
+                "embed_source_task_not_registered",
+                source_type=source_type,
+                source_id=str(source_id),
+            )
+            return
+        await task.kiq(
+            source_type=source_type,
+            source_id=str(source_id),
+            content=content,
+        )
         logger.info(
             "embedding_task_queued",
             entry_id=str(source_id),
-            source_type="kb_entry",
-            content_hash=content_hash,
+            source_type=source_type,
             trigger=trigger,
         )

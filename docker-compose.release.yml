@@ -56,6 +56,30 @@ services:
       retries: 5
       start_period: 30s
 
+  # ── Background Worker (INFRA-007) ───────────────────────────────────────
+  # TaskIQ worker process. Consumes the background task queue (embedding
+  # generation, wiki summary generation, feedback/preference stubs) from Redis
+  # and executes it against the database. Reuses the narrare image with a
+  # taskiq entrypoint instead of the combined api+frontend entrypoint.
+  # Task registration happens at import time via narrare.tasks.__init__, so the
+  # bare broker target `narrare.tasks.broker:broker` discovers all 7 tasks.
+  worker:
+    image: ${NARRARE_IMAGE:-ghcr.io/jmerifjkriwe/narrare}:${NARRARE_VERSION:-latest}
+    entrypoint: ["/app/.venv/bin/taskiq", "worker", "narrare.tasks.broker:broker"]
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # taskiq workers expose no HTTP health endpoint; process-level restart
+    # (above) covers liveness.
+    healthcheck:
+      disable: true
+
   # ── PostgreSQL + pgvector ───────────────────────────────────────────────
   # Primary database. The pgvector extension is required for AI features.
   postgres:

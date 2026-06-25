@@ -70,7 +70,11 @@ def _wire_listener(
     monkeypatch: pytest.MonkeyPatch,
     messages: list[Any] | None = None,
 ) -> tuple[EventListener, _FakePubSub]:
-    """Create an EventListener with a wired-up fake Redis stack."""
+    """Create an EventListener with a wired-up fake Redis stack.
+
+    A no-op fake broker is injected so dispatch never touches the real TaskIQ
+    broker or Redis (these tests cover message parsing, not real enqueueing).
+    """
     pubsub = _FakePubSub(messages=messages)
     fake_redis = _FakeRedis(pubsub)
 
@@ -78,7 +82,7 @@ def _wire_listener(
 
     monkeypatch.setattr(mod, "aioredis", _FakeAioRedis(fake_redis))
 
-    listener = EventListener("redis://test:6379")
+    listener = EventListener("redis://test:6379", broker=_FakeBroker(task=None))
     return listener, pubsub
 
 
@@ -240,3 +244,86 @@ class TestEventListenerStop:
         listener = EventListener("redis://test:6379")
         # Should not raise
         await listener.stop()
+
+
+# ---------------------------------------------------------------------------
+# _dispatch() — event → TaskIQ task enqueueing
+# ---------------------------------------------------------------------------
+
+
+class _FakeEnqueuedTask:
+    """Fake object returned by ``task.kiq()`` carrying a ``task_id``."""
+
+    def __init__(self, task_id: str = "fake-task-id") -> None:
+        self.task_id = task_id
+
+
+class _FakeTaskiqTask:
+    """Fake registered TaskIQ task that records its ``kiq()`` arguments."""
+
+    def __init__(self) -> None:
+        self.kiq_args: tuple[Any, ...] | None = None
+        self.kiq_kwargs: dict[str, Any] | None = None
+
+    async def kiq(self, *args: Any, **kwargs: Any) -> _FakeEnqueuedTask:
+        self.kiq_args = args
+        self.kiq_kwargs = kwargs
+        return _FakeEnqueuedTask()
+
+
+class _FakeBroker:
+    """Fake broker resolving a configurable task by name."""
+
+    def __init__(self, task: _FakeTaskiqTask | None) -> None:
+        self._task = task
+        self.find_task_calls: list[str] = []
+
+    def find_task(self, name: str) -> _FakeTaskiqTask | None:
+        self.find_task_calls.append(name)
+        return self._task
+
+
+class TestEventListenerDispatch:
+    async def test_dispatch_enqueues_registered_task(self) -> None:
+        """When the mapped task is registered, it is enqueued with the payload."""
+        task = _FakeTaskiqTask()
+        broker = _FakeBroker(task=task)
+        listener = EventListener("redis://test:6379", broker=broker)
+
+        payload = {"aggregate_id": "kb-1", "content": "hello"}
+        await listener._dispatch(EventType.KB_ENTRY_UPDATED, payload)
+
+        assert task.kiq_args == (payload,)
+        assert broker.find_task_calls  # a lookup happened
+
+    async def test_dispatch_unknown_event_does_not_enqueue(self) -> None:
+        """Events without a mapped task name are skipped without error."""
+        task = _FakeTaskiqTask()
+        broker = _FakeBroker(task=task)
+        listener = EventListener("redis://test:6379", broker=broker)
+
+        # Should not raise; no task lookup for unmapped events.
+        await listener._dispatch("UNKNOWN_EVENT", {"x": 1})
+
+        assert task.kiq_args is None
+        assert broker.find_task_calls == []
+
+    async def test_dispatch_task_not_registered_does_not_raise(self) -> None:
+        """A mapped-but-unregistered task logs and continues without raising."""
+        broker = _FakeBroker(task=None)
+        listener = EventListener("redis://test:6379", broker=broker)
+
+        # KB_ENTRY_UPDATED is mapped to "embed_source"; simulate the task not
+        # being registered yet (find_task returns None).
+        await listener._dispatch(EventType.KB_ENTRY_UPDATED, {"aggregate_id": "kb-1"})
+
+        # A lookup was attempted (graceful miss).
+        assert broker.find_task_calls
+
+    async def test_dispatch_uses_injected_broker(self) -> None:
+        """The injected broker is used directly, not a lazily-imported one."""
+        task = _FakeTaskiqTask()
+        broker = _FakeBroker(task=task)
+        listener = EventListener("redis://test:6379", broker=broker)
+
+        assert listener._get_broker() is broker

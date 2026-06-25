@@ -298,6 +298,7 @@
     "aiSetup": "KI-Setup",
     "shortcuts": "Tastenkombinationen",
     "about": "Über",
+    "backgroundTasks": "Hintergrundaufgaben",
     "generalSection": {
       "title": "Allgemeine Einstellungen",
       "description": "Passe die Grundeinstellungen der Anwendung an",
@@ -2007,6 +2008,30 @@
     "explain": {
       "label": "Erklären",
       "description": "Die KI um Erklärung der Auswahl bitten"
+    }
+  },
+  "backgroundTasks": {
+    "title": "Hintergrundaufgaben",
+    "description": "Überwache die Warteschlange der Hintergrundaufgaben für Embeddings, Wiki und Lernprozesse.",
+    "refreshInterval": "Aktualisiert automatisch alle 10 Sekunden.",
+    "registeredTasks": "Registrierte Aufgaben",
+    "taskCount": "{count} Aufgaben",
+    "noTasks": "Keine Hintergrundaufgaben registriert.",
+    "loadFailed": "Status der Aufgaben konnte nicht geladen werden.",
+    "brokerStatus": {
+      "title": "Broker-Status",
+      "description": "Ob die Warteschlange der Hintergrundaufgaben läuft",
+      "started": "Läuft",
+      "stopped": "Gestoppt"
+    },
+    "taskName": {
+      "embed_source": "Quelle einbetten",
+      "process_feedback_memory": "Feedback-Speicher verarbeiten",
+      "run_preference_analysis": "Präferenzanalyse ausführen",
+      "wiki_generate_chapter": "Wiki: Kapitel erstellen",
+      "wiki_generate_entity": "Wiki: Entität erstellen",
+      "wiki_mark_all_stale": "Wiki: alle als veraltet markieren",
+      "wiki_refresh_summary": "Wiki: Zusammenfassung aktualisieren"
     }
   }
 }

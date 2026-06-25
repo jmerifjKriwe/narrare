@@ -97,8 +97,8 @@ class TestOnEntryCreated:
     """``on_entry_created`` dispatches embedding task."""
 
     @pytest.mark.asyncio
-    async def test_dispatches_task_with_content_hash(self) -> None:
-        """on_entry_created computes hash and dispatches embedding task."""
+    async def test_dispatches_task_with_content(self) -> None:
+        """on_entry_created forwards the entry body as content to dispatch."""
         manager = EmbeddingHookManager()
         entry = FakeKBEntry(body="A brave warrior")
 
@@ -110,13 +110,12 @@ class TestOnEntryCreated:
         manager._dispatch_task.assert_awaited_once()
         call_args = manager._dispatch_task.call_args
         assert call_args[0][0] == entry.id  # source_id
-        expected_hash = _make_hash("A brave warrior")
-        assert call_args[0][1] == expected_hash  # content_hash
+        assert call_args[0][1] == "A brave warrior"  # content (body)
         assert call_args[1]["trigger"] == "create"
 
     @pytest.mark.asyncio
     async def test_handles_empty_body(self) -> None:
-        """on_entry_created handles empty body string."""
+        """on_entry_created forwards empty body as empty content."""
         manager = EmbeddingHookManager()
         entry = FakeKBEntry(body="")
         manager._dispatch_task = AsyncMock()
@@ -124,12 +123,11 @@ class TestOnEntryCreated:
         await manager.on_entry_created(cast("KBEntry", entry))
 
         manager._dispatch_task.assert_awaited_once()
-        expected_hash = _make_hash("")
-        assert manager._dispatch_task.call_args[0][1] == expected_hash
+        assert manager._dispatch_task.call_args[0][1] == ""
 
     @pytest.mark.asyncio
     async def test_handles_none_body(self) -> None:
-        """on_entry_created treats None body as empty string."""
+        """on_entry_created treats None body as empty content."""
         manager = EmbeddingHookManager()
         entry = FakeKBEntry()
         cast("Any", entry).body = None
@@ -138,8 +136,7 @@ class TestOnEntryCreated:
         await manager.on_entry_created(cast("KBEntry", entry))
 
         manager._dispatch_task.assert_awaited_once()
-        expected_hash = _make_hash("")
-        assert manager._dispatch_task.call_args[0][1] == expected_hash
+        assert manager._dispatch_task.call_args[0][1] == ""
 
     @pytest.mark.asyncio
     async def test_exception_caught_silently(self) -> None:
@@ -147,13 +144,11 @@ class TestOnEntryCreated:
         manager = EmbeddingHookManager()
         entry = FakeKBEntry(body="content")
 
-        # Make compute_content_hash raise
-        with patch(
-            "narrare.kb.embedding_hooks.compute_content_hash",
-            side_effect=RuntimeError("hash failed"),
-        ):
-            # Should NOT raise
-            await manager.on_entry_created(cast("KBEntry", entry))
+        # Make _dispatch_task raise to exercise the exception guard.
+        manager._dispatch_task = AsyncMock(side_effect=RuntimeError("dispatch failed"))
+
+        # Should NOT raise
+        await manager.on_entry_created(cast("KBEntry", entry))
 
 
 # ---------------------------------------------------------------------------
@@ -344,19 +339,47 @@ class TestWikiSyncEventPublishing:
 
 
 # ---------------------------------------------------------------------------
-# _dispatch_task — logging task dispatch
+# _dispatch_task — enqueues embed_source via the broker
 # ---------------------------------------------------------------------------
 
 
 class TestDispatchTask:
-    """``_dispatch_task`` logs the embedding task details."""
+    """``_dispatch_task`` enqueues the embed_source task on the broker."""
 
     @pytest.mark.asyncio
-    async def test_dispatch_task_succeeds(self) -> None:
-        """_dispatch_task completes without error (currently logs only)."""
-        manager = EmbeddingHookManager()
-        source_id = uuid4()
-        content_hash = "abc123"
+    async def test_dispatch_task_enqueues(self) -> None:
+        """_dispatch_task looks up and enqueues embed_source with content."""
+        from narrare.tasks.broker import broker
 
-        # Should not raise
-        await manager._dispatch_task(source_id, content_hash, trigger="create")
+        source_id = uuid4()
+        real_task = broker.find_task("embed_source")
+        fake_task = MagicMock(spec=type(real_task))
+        fake_task.kiq = AsyncMock()
+        fake_broker = MagicMock(spec=type(broker))
+        fake_broker.find_task.return_value = fake_task
+
+        manager = EmbeddingHookManager()
+        with patch("narrare.kb.embedding_hooks.broker", fake_broker):
+            await manager._dispatch_task(source_id, "content", trigger="create")
+
+        fake_broker.find_task.assert_called_once_with("embed_source")
+        fake_task.kiq.assert_awaited_once_with(
+            source_type="kb_entry",
+            source_id=str(source_id),
+            content="content",
+        )
+
+    @pytest.mark.asyncio
+    async def test_dispatch_task_missing_task_does_not_raise(self) -> None:
+        """_dispatch_task logs and skips when embed_source is not registered."""
+        from narrare.tasks.broker import broker
+
+        fake_broker = MagicMock(spec=type(broker))
+        fake_broker.find_task.return_value = None
+
+        manager = EmbeddingHookManager()
+        with patch("narrare.kb.embedding_hooks.broker", fake_broker):
+            # Should not raise.
+            await manager._dispatch_task(uuid4(), "content", trigger="create")
+
+        fake_broker.find_task.assert_called_once_with("embed_source")

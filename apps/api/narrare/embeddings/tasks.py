@@ -142,18 +142,43 @@ async def run_embed_source(
     return False  # unreachable, but satisfies type checker
 
 
-# NOTE: TaskIQ integration pending. When the broker is wired up, add:
-#
-# from taskiq import TaskiqDepends
-# from narrare._app.tasks import broker
-#
-# @broker.task(task_name="embed_source", max_retries=3)
-# async def embed_source(
-#     source_type: str,
-#     source_id: UUID,
-#     content: str,
-#     priority: int = 0,
-#     repo: EmbeddingRepositoryProtocol = TaskiqDepends(get_embedding_repository),
-# ) -> bool:
-#     """TaskIQ task wrapper for distributed embedding generation."""
-#     return await run_embed_source(source_type, source_id, content, repo=repo)
+# NOTE: TaskIQ integration. The ``embed_source_task`` wrapper below bridges
+# the serializable TaskIQ call boundary to the standalone ``run_embed_source``
+# function. Arguments are JSON-serializable (UUIDs as strings) because TaskIQ
+# serializes task arguments across processes.
+
+from narrare.tasks.broker import broker  # noqa: E402
+
+
+@broker.task(task_name="embed_source", max_retries=3)
+async def embed_source_task(source_type: str, source_id: str, content: str) -> bool:
+    """TaskIQ wrapper for distributed embedding generation.
+
+    Mirrors :func:`run_embed_source` but accepts JSON-serializable arguments
+    (``source_id`` as a string) so the task can be enqueued by a worker in a
+    separate process. The worker owns its own database session and commits
+    on success / rolls back on failure.
+
+    Args:
+        source_type: Content type label (e.g. "kb_entry").
+        source_id: UUID of the source entity, as a string.
+        content: Text content to embed.
+
+    Returns:
+        True if an embedding was generated, False if skipped (unchanged).
+    """
+    from uuid import UUID
+
+    from narrare._app.database import get_session_factory
+    from narrare.embeddings.repository import EmbeddingRepository
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        repo = EmbeddingRepository(session)
+        try:
+            ok = await run_embed_source(source_type, UUID(source_id), content, repo=repo)
+            await session.commit()
+            return ok
+        except Exception:
+            await session.rollback()
+            raise

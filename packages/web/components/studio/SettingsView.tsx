@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AboutTab } from "@/components/studio/settings/AboutTab";
 import { AiTab } from "@/components/studio/settings/AiTab";
+import { BackgroundTasksPanel } from "@/components/studio/settings/BackgroundTasksPanel";
 import { GeneralTab } from "@/components/studio/settings/GeneralTab";
 import { KBTemplatesTab } from "@/components/studio/settings/KBTemplatesTab";
 import { LearningTab } from "@/components/studio/settings/LearningTab";
@@ -68,6 +69,8 @@ export function SettingsView({ novelId }: SettingsViewProps) {
         return <KBTemplatesTab novelId={novelId} />;
       case "learning":
         return <LearningTab novelId={novelId} />;
+      case "background-tasks":
+        return <BackgroundTasksPanel />;
       case "shortcuts":
         return <ShortcutsTab />;
       case "about":

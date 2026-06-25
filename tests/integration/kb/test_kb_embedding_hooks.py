@@ -17,7 +17,6 @@ from narrare.kb.models import KBEntry
 from narrare.kb.repository import KBRepository
 from narrare.kb.schemas import KBEntryCreate, KBEntryUpdate
 from narrare.kb.service import KBService
-from narrare_core.embeddings.hash import compute_content_hash
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,8 +105,8 @@ class TestKBEntryCreateTriggersEmbedding:
         assert call_args[0][0] == entry.id
         assert call_args[1]["trigger"] == "create"
 
-    async def test_create_computes_content_hash(self, db_session: AsyncSession) -> None:
-        """When a KB entry is created, content hash is computed correctly."""
+    async def test_create_forwards_body_content(self, db_session: AsyncSession) -> None:
+        """When a KB entry is created, its body is forwarded as content."""
         novel_id, user_id = await _seed_novel(db_session)
 
         hook_manager = EmbeddingHookManager()
@@ -120,7 +119,6 @@ class TestKBEntryCreateTriggersEmbedding:
         )
 
         body = "A mysterious guardian of the ancient woods."
-        expected_hash = compute_content_hash(body)
 
         data = KBEntryCreate(
             entity_type="character",
@@ -131,7 +129,7 @@ class TestKBEntryCreateTriggersEmbedding:
         await service.create(novel_id, user_id, data)
 
         call_args = hook_manager._dispatch_task.call_args
-        assert call_args[0][1] == expected_hash
+        assert call_args[0][1] == body  # content forwarded for embedding
 
 
 class TestKBEntryUpdateTriggersReembedding:
@@ -187,10 +185,13 @@ class TestEmbeddingHookNonBlocking:
     """Embedding task queue failure does not block save."""
 
     async def test_hook_failure_does_not_block_create(self, db_session: AsyncSession) -> None:
-        """When hash computation fails, entry is still created."""
+        """When task dispatch fails, the entry is still created."""
         novel_id, user_id = await _seed_novel(db_session)
 
         hook_manager = EmbeddingHookManager()
+        hook_manager._dispatch_task = AsyncMock(  # type: ignore[assignment]
+            side_effect=RuntimeError("dispatch failed"),
+        )
 
         service = KBService(
             repo=KBRepository(db_session),
@@ -204,12 +205,7 @@ class TestEmbeddingHookNonBlocking:
             body="Should be saved despite hook failure.",
         )
 
-        # Simulate hash computation failure — hook catches internally
-        with patch(
-            "narrare.kb.embedding_hooks.compute_content_hash",
-            side_effect=RuntimeError("Hash computation failed"),
-        ):
-            entry = await service.create(novel_id, user_id, data)
+        entry = await service.create(novel_id, user_id, data)
 
         assert entry.id is not None
         assert entry.name == "Resilient Entry"
