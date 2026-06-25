@@ -143,7 +143,16 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         optional_variables=frozenset({"world_context", "user_preferences", "avoidance_patterns"}),
         allowed_context_modes=frozenset({"worldbuilding/phase1", "worldbuilding/phase2"}),
     ),
-    LLMIntent.KB_CONSISTENCY: PromptRouteConfig("kb", "consistency"),
+    LLMIntent.KB_CONSISTENCY: PromptRouteConfig(
+        "kb",
+        "consistency",
+        # ADR-054 D5: "merge" added for KB merge analysis (KBMergeService);
+        # "consistency" is the default template mode and is now also declared
+        # as an explicit context-mode. MODE_REQUIRED_VARS["kb"]["merge"]
+        # requires world_context / entity_type / candidate_pairs in the
+        # kb/<lang>/merge/system.md template.
+        allowed_context_modes=frozenset({"consistency", "merge"}),
+    ),
     LLMIntent.ANALYSE: PromptRouteConfig("analysis", "review"),
     LLMIntent.CONSISTENCY: PromptRouteConfig(
         "analysis",
@@ -164,7 +173,21 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         # ADR-049 D7: "timeline" added for timeline-analysis (FIND-011).
         # "temporal_consistency" remains for conflict-detection on existing
         # events (separate use-case; governed template already exists).
-        allowed_context_modes=frozenset({"outline", "temporal_consistency", "timeline"}),
+        # ADR-054 D4: "character_arc" (CharacterArcService) and
+        # "timeline_extraction" (TemporalExtractionService) added as the final
+        # two inline-feature-prompt debt migrations. Note: "timeline_extraction"
+        # *extracts* temporal expressions per chapter (TemporalExtractionAgent),
+        # while "timeline" *generates* a chronological timeline from summaries
+        # (TimelineAgent) — different agent/task/service, no semantic overlap.
+        allowed_context_modes=frozenset(
+            {
+                "outline",
+                "temporal_consistency",
+                "timeline",
+                "character_arc",
+                "timeline_extraction",
+            }
+        ),
     ),
     LLMIntent.SUMMARIZE: PromptRouteConfig("analysis", "summarize"),
     LLMIntent.NAME_GENERATE: PromptRouteConfig("generation", "names"),

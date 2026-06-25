@@ -4,7 +4,19 @@ Extracted from ``timeline_analysis_service.py`` to keep service files under
 the 300-line limit (RULE-04). Handles the per-chapter extraction of temporal
 expressions via ``TemporalExtractionAgent``.
 
-Pattern: Service → Core Agent (RULE-01b).
+Prompt resolution is Mode 1 (composer-driven) per ADR-054 D2/D7/D8: the
+service resolves its system prompt ONCE via
+``compose_invocation(composer=..., prompt_context=PromptContext(mode="timeline_extraction"),
+intent=LLMIntent.PLAN)``
+before the per-chapter loop (the framing does not vary per chapter), then
+reuses ``composed_prompt.system`` for each chapter's agent. The per-chapter
+content is runtime data (RULE-02a category 3) and flows as the run prompt.
+
+The previous inline f-string feature prompt and the false ADR-048 Mode 2
+``_TIMELINE_EXTRACTION_INJECTION`` declaration were removed.
+Invocation-composition errors now propagate (RULE-11).
+
+Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 """
 
 from __future__ import annotations
@@ -18,7 +30,6 @@ if TYPE_CHECKING:
 import structlog
 
 from narrare.planning.timeline_schemas import ExtractedEventResponse
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
@@ -31,20 +42,9 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: TemporalExtractionAgent composes its prompt
-# internally from TemporalExtractionDeps (genre, language, existing events)
-# and chapter content passed as the user prompt.
-_TIMELINE_EXTRACTION_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "TemporalExtractionAgent composes its prompt internally from "
-        "TemporalExtractionDeps (genre, language, existing events)."
-    ),
-    variables=("genre", "language", "existing_events"),
-    injection_mechanism="agent_deps",
-)
 
 
 class TimelineExtractionService:
@@ -52,14 +52,19 @@ class TimelineExtractionService:
 
     Supports both REST (collect all results) and SSE (stream per-chapter)
     access patterns. Each chapter is processed independently through the
-    ``TemporalExtractionAgent``.
+    ``TemporalExtractionAgent`` using the single composed timeline-extraction
+    system prompt (Mode 1, ADR-054 D2).
 
     Args:
         novel_repo: For novel metadata (genre, language).
         chapter_repo: For listing chapters and their summaries.
         model_registry: Shared LLM model registry.
         model_config: Resolved model config (provider + model ID).
+        composer: PromptComposer for resolving the governed timeline-extraction
+            system prompt via the cascade (RULE-02b / ADR-054 D2). Required for
+            ``stream_extraction``.
         event_repo: Optional — for loading existing event names to avoid duplicates.
+        invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
     def __init__(
@@ -68,6 +73,7 @@ class TimelineExtractionService:
         chapter_repo: ChapterRepository,
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
+        composer: PromptComposer | None = None,
         event_repo: TimelineEventRepository | None = None,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
@@ -75,6 +81,7 @@ class TimelineExtractionService:
         self._chapter_repo = chapter_repo
         self._registry = model_registry
         self._config = model_config
+        self._composer = composer
         self._event_repo = event_repo
         self._invocation_pipeline = invocation_pipeline
 
@@ -100,7 +107,7 @@ class TimelineExtractionService:
 
         Raises:
             NotFoundError: If the novel does not exist.
-            ConfigurationError: If no AI provider is configured.
+            ConfigurationError: If no AI provider or PromptComposer is configured.
         """
         from narrare_core.agents.temporal_extraction_agent import (
             TemporalExtractionAgent,
@@ -117,6 +124,14 @@ class TimelineExtractionService:
                 code="NO_AI_PROVIDER",
             )
 
+        if self._composer is None:
+            # Defensive: the factory always wires a composer, but fail loudly
+            # (RULE-11) rather than silently falling back to inline assembly.
+            raise ConfigurationError(
+                "PromptComposer is not configured for timeline extraction.",
+                code="NO_COMPOSER",
+            )
+
         chapters = await self._get_chapters(novel_id, chapter_ids)
 
         # Get existing event names to avoid duplicates
@@ -125,34 +140,57 @@ class TimelineExtractionService:
             existing_events = await self._event_repo.list_by_novel(novel_id)
             existing_event_names = [e.event_name for e in existing_events]
 
-        model = await self._registry.get_model(self._config)
-        deps = TemporalExtractionDeps(
-            genre=novel.genre or "",
-            language=novel.writing_language or "en",
-            existing_events=existing_event_names,
-        )
+        language = novel.writing_language or "en"
 
+        # Resolve the governed timeline-extraction system prompt ONCE before the
+        # per-chapter loop (RULE-02 / ADR-054 D2). The framing does not vary per
+        # chapter; only the chapter content (runtime data) does.
         from narrare._app.invocation_context import build_invocation_context
         from narrare_core.ai_invocation import compose_invocation
         from narrare_core.llm.intents import LLMIntent
+        from narrare_core.prompts.context import PromptContext
+
+        ctx = PromptContext(
+            language=language,
+            writing_language=language,
+            project_title=novel.title,
+            genre=novel.genre or "",
+            mode="timeline_extraction",
+            extra={
+                "existing_events": (
+                    "\n".join(existing_event_names) if existing_event_names else ""
+                ),
+                "culture_guidelines": "",
+            },
+        )
 
         invocation_context = build_invocation_context(
             feature_id="planning_timeline_extraction",
             intent=LLMIntent.PLAN,
             project_id=novel_id,
         )
-        try:
-            await compose_invocation(
-                invocation_pipeline=self._invocation_pipeline,
-                invocation_context=invocation_context,
-                manual_injection=_TIMELINE_EXTRACTION_INJECTION,
+        invocation = await compose_invocation(
+            invocation_pipeline=self._invocation_pipeline,
+            invocation_context=invocation_context,
+            composer=self._composer,
+            prompt_context=ctx,
+            intent=LLMIntent.PLAN,
+        )
+        composed_prompt = invocation.composed_prompt
+        # Mode 1 guarantees composed_prompt is set; the guard documents the
+        # invariant and satisfies the type-checker (RULE-11: no silent None).
+        if composed_prompt is None:  # pragma: no cover - Mode 1 invariant
+            raise ConfigurationError(
+                "Prompt composition produced no system prompt for timeline extraction.",
+                code="COMPOSITION_EMPTY",
             )
-        except Exception:
-            logger.warning(
-                "invocation_composition_failed",
-                feature_id="planning_timeline_extraction",
-                exc_info=True,
-            )
+
+        model = await self._registry.get_model(self._config)
+        deps = TemporalExtractionDeps(
+            genre=novel.genre or "",
+            language=language,
+            existing_events=existing_event_names,
+        )
 
         for chapter in chapters:
             content = getattr(chapter, "summary", "") or ""
@@ -160,15 +198,16 @@ class TimelineExtractionService:
                 continue
 
             try:
-                agent = TemporalExtractionAgent(model=model)
+                # Reuse the single composed system prompt for every chapter;
+                # only the per-chapter content varies (runtime data, user channel).
+                agent = TemporalExtractionAgent(model=model, system_prompt=composed_prompt.system)
+                chapter_run_prompt = (
+                    f"Chapter {getattr(chapter, 'position', 0) + 1}: "
+                    f"{getattr(chapter, 'title', '')}\n"
+                    f"Content: {content}"
+                )
                 result = await agent.run(
-                    prompt=(
-                        f"Extract temporal expressions from the following "
-                        f"chapter of '{novel.title}':\n\n"
-                        f"Chapter {getattr(chapter, 'position', 0) + 1}: "
-                        f"{getattr(chapter, 'title', '')}\n"
-                        f"Content: {content}"
-                    ),
+                    prompt=composed_prompt.user or chapter_run_prompt,
                     deps=deps,
                 )
 
@@ -190,6 +229,10 @@ class TimelineExtractionService:
                 await asyncio.sleep(0)
 
             except Exception:
+                # Per-chapter agent failure is logged and skipped so one bad
+                # chapter does not abort the stream. This is NOT the RULE-11
+                # violation (which was swallowing invocation-COMPOSITION errors
+                # above); composition errors now propagate.
                 logger.warning(
                     "chapter_extraction_failed",
                     chapter_id=str(getattr(chapter, "id", "unknown")),

@@ -7,6 +7,18 @@
 > **Resolves:** FIND-010 (Chat Prompt Surface Drift), FIND-011 (Timeline Analysis Inline-Prompt Bypass)
 > **Related:** ADR-024, ADR-037, ADR-026, ADR-044, ADR-046, ADR-048, CONSTRAINTS.md RULE-02/02a/02b/03/22
 
+> **Status note (updated 2026-06-25):** When this ADR was written (2026-06-18),
+> ADR-048 was `🔄 Proposed`. ADR-048 is now `✅ Accepted` (2026-06-24). The
+> §7 principle invoked throughout this ADR — *production code must not rely on a
+> not-yet-accepted ADR's contract* — remains valid and was correctly applied to
+> FIND-011 (Step 4 removed the Mode 2 reference regardless of ADR-048's later
+> acceptance). The inline ADR-048 references below have been updated to reflect
+> its current ✅ Accepted status; the original decision (remove the false Mode 2
+> declaration — the agent owns no composition) stands regardless. ADR-049 itself
+> is now `✅ Implemented` (FIND-010 + FIND-011 resolved). The three FIND-011
+> *clone* services that fell outside FIND-011's scope are migrated separately by
+> ADR-054.
+
 ---
 
 ## Context
@@ -96,8 +108,10 @@ RULE-02a category 1 (user-customisable feature content must flow through the
 PromptComposer cascade), and RULE-02b violation 3 (feature system content
 delivered through the user channel). The service also declares
 `_TIMELINE_ANALYSIS_INJECTION` as an "ADR-048 Mode 2 declaration"
-(`timeline_analysis_service.py:38-47`) — but ADR-048 is `🔄 Proposed`, not
-Accepted, so production code cannot rely on its Mode 2 contract yet.
+(`timeline_analysis_service.py:38-47`) — a premature invocation of ADR-048's
+Mode 2 contract (ADR-048 was `🔄 Proposed` when written; it is now ✅ Accepted).
+Step 4 removes the reference regardless, because the agent owns no composition
+and Mode 2 never applied (see status note).
 
 **Root-cause chain.**
 
@@ -107,7 +121,9 @@ Accepted, so production code cannot rely on its Mode 2 contract yet.
 2. **Why was a ManualInjectionDeclaration added instead of a template?** Because
    ADR-048 Mode 2 was treated as if it were already in effect, and Mode 2 lets a
    service skip PromptComposer composition by declaring that the agent composes
-   internally. ADR-048 is Proposed; the declaration is therefore premature.
+   internally. At the time ADR-048 was `🔄 Proposed`, so the declaration was
+   premature (ADR-048 is now ✅ Accepted, 2026-06-24; the declaration remains
+   false — the agent composes nothing — and is removed by Step 4).
 3. **Why does the PLAN intent not cover this use-case?** Because PLAN's
    `default_mode="outline"` routes to `_bundled/planning/en/outline/system.md`,
    which is for outline/scene-structure generation — a different task than
@@ -154,9 +170,12 @@ reuse of an existing one.
   `prompt_type: <category>` where `<category>` is one of
   `writing | kb | analysis | planning | meta | generation | wiki | universal`.
   "chat" is **not** a valid category, which independently confirms the drift.
-- **ADR-048 status discipline.** Production code must not depend on a Proposed
-  ADR's contract. The `_TIMELINE_ANALYSIS_INJECTION` reference to "ADR-048 Mode
-  2" is premature and must be removed or the service must migrate to Mode 1.
+- **ADR-048 status discipline.** Production code must not depend on a
+  not-yet-accepted ADR's contract (a general principle; ADR-048 was `🔄
+  Proposed` when this ADR was written and is now ✅ Accepted, 2026-06-24). The
+  `_TIMELINE_ANALYSIS_INJECTION` reference to "ADR-048 Mode 2" is removed in
+  Step 4 regardless, because the agent owns no composition — Mode 2 never
+  applied.
 - **ADR-044 status note.** The task brief instructs that ADR-044 be treated as
   Proposed. The ADR file and INDEX mark it "✅ Implemented" with a Gate-12
   checklist dated 2026-06-13. This ADR makes no assumption about ADR-044's
@@ -379,12 +398,13 @@ and passes `composed.system` as the agent's system prompt and `composed.user`
 (or the chapter summaries) as the run prompt. The f-string feature framing is
 removed from the service.
 
-**D10. Remove the premature ADR-048 Mode 2 reference.**
+**D10. Remove the false ADR-048 Mode 2 reference.**
 `_TIMELINE_ANALYSIS_INJECTION` and its `manual_injection=` kwarg are deleted
-from the service. ADR-048 remains Proposed; no production code may reference
-its Mode 2 contract until it is Accepted. If ADR-048 is later Accepted and a
-service legitimately needs Mode 2, it must register a declaration at that
-time — not retroactively justify an existing bypass.
+from the service. (ADR-048 was `🔄 Proposed` when this was written; it is now
+✅ Accepted, 2026-06-24.) The removal stands regardless: the declaration was
+false — the agent composes nothing, so Mode 2 never applied. A service that
+genuinely needs Mode 2 must register a *truthful* declaration at that time;
+no declaration may retroactively justify a RULE-02 bypass.
 
 **D11. Manifest schema extension: optional `context_modes` list.** ADR-037's
 manifest schema is extended with an optional `context_modes:` list per entry.
@@ -797,13 +817,15 @@ confirm Implemented and update the task brief, or investigate the Gate-12
 claims and downgrade if warranted). This is a documentation-governance issue,
 not an architecture-decision issue.
 
-### ADR-048 premature reference (flagged for coordinator)
+### ADR-048 Mode 2 reference (resolved)
 
-`timeline_analysis_service.py:38` references "ADR-048 Mode 2" for
-`_TIMELINE_ANALYSIS_INJECTION`, but ADR-048 is `🔄 Proposed`. Step 4 of the
-Retrofit Plan removes this reference. Any other production code that
-references ADR-048 Mode 2 should be audited as part of the coordinator's
-ADR-048 reconciliation — out of scope for this ADR.
+`timeline_analysis_service.py:38` referenced "ADR-048 Mode 2" for
+`_TIMELINE_ANALYSIS_INJECTION`. (ADR-048 was `🔄 Proposed` when this ADR was
+written; it is now ✅ Accepted, 2026-06-24.) Step 4 of the Retrofit Plan
+removed the reference regardless, because the declaration was false — the
+agent owns no composition, so Mode 2 never applied. Three further clone
+services with the same false declaration (character_arc, timeline_extraction,
+kb/merge) are migrated to Mode 1 by ADR-054.
 
 ---
 
@@ -854,9 +876,12 @@ ADR-048 reconciliation — out of scope for this ADR.
 - [ ] When a second intent needs the `context_modes` manifest pattern beyond
       PLAN and KB_WORLDBUILD — audit whether the schema scales or needs
       generalisation.
-- [ ] When ADR-048 is Accepted — audit all services that removed
-  `ManualInjectionDeclaration` references (this ADR's Step 4) to decide
-  whether any should re-adopt Mode 2 legitimately.
+- [x] **(Triggered 2026-06-24 — ADR-048 ✅ Accepted.)** Audited services that
+  removed `ManualInjectionDeclaration` references (this ADR's Step 4): the
+  timeline service correctly stays Mode 1 (the agent composes nothing). The
+  three FIND-011 clones (character_arc, timeline_extraction, kb/merge) are
+  migrated to Mode 1 by ADR-054 — none re-adopts Mode 2, because none of their
+  agents owns composition.
 - [ ] When ADR-024 is next amended — ensure the CHAT routing decision (D1)
       is carried forward or explicitly superseded.
 - [ ] When a new `prompt_type` value is proposed — update

@@ -12,6 +12,7 @@ from fastapi import APIRouter
 from narrare._app.dependencies import (
     CurrentUserIdDep,
     SessionDep,
+    get_composer,
     get_invocation_pipeline,
     get_model_registry,
 )
@@ -59,6 +60,7 @@ async def analyze_merge_candidates(
         novel_repo=novel_repo,
         model_registry=registry,
         model_config=resolved.config,
+        composer=get_composer(),
         api_key=resolved.api_key,
         base_url=resolved.base_url,
         invocation_pipeline=get_invocation_pipeline(),

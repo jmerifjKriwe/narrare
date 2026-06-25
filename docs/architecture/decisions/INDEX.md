@@ -76,6 +76,7 @@
 | [ADR-051](ADR-051-configuration-effect-adoption-contract.md) | Configuration Effect Adoption Contract | ✅ | 2026-06-20 | `settings/`, `core/llm/`, `core/writing/`, provider catalogs, Platform governance, CR-08, RULE-18b |
 | [ADR-052](052-session-stop-recovery.md) | Session Stop and WebSocket Recovery | ✅ | 2026-06-22 | `apps/api/narrare/writing/` (ws_handler, ws_direction_dispatch, ws_streaming, _ws_cache, router_sessions), WebSocket session lifecycle, CR-AUFG-07-21, ADR-043, ADR-045 |
 | [ADR-053](053-ai-session-lifecycle.md) | AI Session Lifecycle Pattern (WebSocket) — keep `useSessionSocket`, no separate `useAISession` hook | ✅ | 2026-06-24 | `packages/web/components/studio/editor/` (useSessionSocket, SessionReconnectBanner, SessionPanel), §16 AI-Interaction, ADR-043 (Review-Trigger #1 closed), ADR-052 |
+| [ADR-054](054-inline-feature-prompt-debt-migration.md) | Inline Feature-Prompt Debt Migration (FIND-011 clones) — character_arc / timeline_extraction / merge services → PromptComposer Mode 1 | ✅ | 2026-06-25 | `core/prompts/` (route_table, _bundled planning/kb templates, manifest), `apps/api/narrare/planning/`, `apps/api/narrare/kb/merge_service.py`, `scripts/architecture/_checkers/_check_inline_feature_prompt.py`, ADR-049, ADR-048, RULE-02/02a/02b/11 |
 
 ---
 

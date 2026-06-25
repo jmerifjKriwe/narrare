@@ -78,24 +78,19 @@ _RULE = "INLINE-FEATURE-PROMPT"
 # checker was introduced (ADR-049 Phase D).  These are RULE-02 violations
 # that existed before Phase D but were not detected by any prior checker.
 #
-# Phase C migrated ``timeline_analysis_service.py`` (FIND-011) but these
-# three services were not part of FIND-011's scope.  They are baselined
-# here as known debt: they may shrink (when migrated to PromptComposer) but
-# must not grow (new violations block CI).
+# ADR-054 retired the last three ratcheted entries (CharacterArcService,
+# TimelineExtractionService, KBMergeService) by migrating them to
+# PromptComposer Mode 1.  The ratchet floor is now **zero**: any new
+# inline feature-prompt is blocking, and there is no approved debt
+# baseline left to hide behind.
+#
+# The ``is_approved_exception`` baseline path remains in the checker for
+# future temporary ratchets (e.g. a newly-discovered clone migrated under
+# a follow-up ADR); add entries here only with an ADR that discloses the
+# deferral, and empty them again once the migration ships.
 #
 # Each entry: (relative_path, lineno) — must match exactly.
-# Cleanup: migrate each service to PromptComposer.build() like FIND-011.
-_BASELINE_VIOLATIONS: frozenset[tuple[str, int]] = frozenset(
-    {
-        # NOTE: lineno must track the exact source line of ``agent.run(prompt=...)``.
-        # Edits that insert/remove lines above these calls will shift them out of
-        # the baseline and surface them as NEW blocking violations — update the
-        # numbers here to re-anchor the ratchet (the violation count must not grow).
-        ("apps/api/narrare/planning/character_arc_service.py", 139),
-        ("apps/api/narrare/planning/timeline_extraction_service.py", 164),
-        ("apps/api/narrare/kb/merge_service.py", 145),
-    }
-)
+_BASELINE_VIOLATIONS: frozenset[tuple[str, int]] = frozenset()
 
 
 # ── Helpers ────────────────────────────────────────────────────────

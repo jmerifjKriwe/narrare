@@ -1,7 +1,20 @@
 """KB merge service — calls KBMergeAgent for entity deduplication.
 
-Pattern: Service → Core Agent (RULE-01b). Gathers novel context and
-candidate pairs, then runs the KBMergeAgent to produce merge decisions.
+Prompt resolution is Mode 1 (composer-driven) per ADR-054 D3/D7/D8: the
+service resolves its system prompt via
+``compose_invocation(composer=..., prompt_context=PromptContext(mode="merge"),
+intent=LLMIntent.KB_CONSISTENCY)``
+and passes the composed system prompt to the ``KBMergeAgent`` constructor.
+
+The candidate pairs and curated world context are runtime data but, per the
+``MODE_REQUIRED_VARS["kb"]["merge"]`` gate, they are supplied as prompt
+variables in the system template (system channel) — matching the
+worldbuilding phase2 precedent — not inlined as the run prompt. The previous
+inline f-string feature prompt and the false ADR-048 Mode 2
+``_MERGE_MANUAL_INJECTION`` declaration were removed. Invocation-composition
+errors now propagate (RULE-11).
+
+Pattern: Service → PromptComposer (RULE-02) → Core Agent (RULE-01b).
 """
 
 from __future__ import annotations
@@ -16,8 +29,7 @@ from narrare.kb.schemas_merge import (
     MergeResponse,
     MergeStrategyRequest,
 )
-from narrare_core.ai_invocation import ManualInjectionDeclaration
-from narrare_core.shared.errors import NotFoundError
+from narrare_core.shared.errors import ConfigurationError, NotFoundError
 
 if TYPE_CHECKING:
     import uuid
@@ -26,19 +38,9 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ResolvedModelConfig
     from narrare_core.llm.gateway import ModelRegistry
+    from narrare_core.prompts.composer import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: KBMergeAgent composes its prompt internally
-# from KBMergeDeps (entity type, genre, language, candidate pairs).
-_MERGE_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "KBMergeAgent composes its prompt internally from KBMergeDeps "
-        "(entity type, genre, language) and the candidate-pairs user prompt."
-    ),
-    variables=("entity_type", "genre", "candidate_pairs"),
-    injection_mechanism="agent_deps",
-)
 
 
 class KBMergeService:
@@ -47,10 +49,19 @@ class KBMergeService:
     Evaluates candidate duplicate pairs and recommends merge strategies
     by running the KBMergeAgent.
 
+    The merge prompt is resolved through ``PromptComposer`` in Mode 1
+    (ADR-054 D3): the governed ``_bundled/kb/en/merge/system.md`` template
+    carries the task framing, project metadata, entity type, world context,
+    and candidate pairs. No inline f-string feature prompt is assembled in
+    the service (RULE-02 / RULE-02a).
+
     Args:
         novel_repo: For novel metadata (genre, language).
         model_registry: Shared LLM model registry.
         model_config: Resolved model config (provider + model ID).
+        composer: PromptComposer for resolving the governed merge system
+            prompt via the cascade (RULE-02b / ADR-054 D3). Required for
+            ``analyze_merge_candidates``.
         api_key: Optional API key override.
         base_url: Optional base URL override.
         invocation_pipeline: Optional pipeline for invocation evidence.
@@ -61,6 +72,7 @@ class KBMergeService:
         novel_repo: NovelRepository,
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig | None = None,
+        composer: PromptComposer | None = None,
         *,
         api_key: str | None = None,
         base_url: str | None = None,
@@ -69,6 +81,7 @@ class KBMergeService:
         self._novel_repo = novel_repo
         self._registry = model_registry
         self._config = model_config
+        self._composer = composer
         self._api_key = api_key
         self._base_url = base_url
         self._invocation_pipeline = invocation_pipeline
@@ -91,24 +104,57 @@ class KBMergeService:
 
         Raises:
             NotFoundError: If the novel does not exist.
+            ConfigurationError: If no PromptComposer is configured.
         """
         novel = await self._novel_repo.get_by_id(novel_id, user_id)
         if novel is None:
             raise NotFoundError("Novel", identifier=str(novel_id))
 
-        # Get model from registry — None config falls back to default
-        from narrare_core.agents.merge_agent import KBMergeAgent, KBMergeDeps
-
         if self._config is None:
             raise NotFoundError("Model config", identifier="no_model_config")
 
-        model = await self._registry.get_model(self._config)
+        if self._composer is None:
+            # Defensive: the factory always wires a composer, but fail loudly
+            # (RULE-11) rather than silently falling back to inline assembly.
+            raise ConfigurationError(
+                "PromptComposer is not configured for KB merge analysis.",
+                code="NO_COMPOSER",
+            )
 
-        # Compose invocation (Mode 2 — agent-internal) and record evidence
-        # (ADR-048). Replaces the former placeholder-evidence path.
+        # Format candidate pairs as the governed template expects them
+        # (runtime data supplied as a system-channel variable per the
+        # MODE_REQUIRED_VARS["kb"]["merge"] gate, ADR-054 D3).
+        pairs_text = "\n".join(
+            f"  Pair {i + 1}: {pair}" for i, pair in enumerate(request.candidate_pairs)
+        )
+
+        language = novel.writing_language or "en"
+
+        # Resolve the governed merge system prompt via PromptComposer
+        # (RULE-02 / ADR-054 D3). The ``_bundled/kb/en/merge/system.md``
+        # template carries the task framing, project metadata, entity type,
+        # world context, and candidate pairs.
         from narrare._app.invocation_context import build_invocation_context
+        from narrare_core.agents.merge_agent import KBMergeAgent, KBMergeDeps
         from narrare_core.ai_invocation import compose_invocation
         from narrare_core.llm.intents import LLMIntent
+        from narrare_core.prompts.context import PromptContext
+
+        ctx = PromptContext(
+            language=language,
+            writing_language=language,
+            project_title=novel.title,
+            genre=novel.genre or "",
+            entity_type=request.entity_type,
+            mode="merge",
+            extra={
+                "candidate_pairs": pairs_text,
+                # No KB world-context assembler wired for this call path yet;
+                # declared explicitly (not silently omitted) so the template's
+                # variable substitution succeeds (precedent: timeline_analysis).
+                "world_context": "",
+            },
+        )
 
         invocation_context = build_invocation_context(
             feature_id="kb_merge",
@@ -116,38 +162,38 @@ class KBMergeService:
             project_id=novel_id,
             user_id=user_id,
         )
-        try:
-            await compose_invocation(
-                invocation_pipeline=self._invocation_pipeline,
-                invocation_context=invocation_context,
-                manual_injection=_MERGE_MANUAL_INJECTION,
+        invocation = await compose_invocation(
+            invocation_pipeline=self._invocation_pipeline,
+            invocation_context=invocation_context,
+            composer=self._composer,
+            prompt_context=ctx,
+            intent=LLMIntent.KB_CONSISTENCY,
+        )
+        composed_prompt = invocation.composed_prompt
+        # Mode 1 guarantees composed_prompt is set; the guard documents the
+        # invariant and satisfies the type-checker (RULE-11: no silent None).
+        if composed_prompt is None:  # pragma: no cover - Mode 1 invariant
+            raise ConfigurationError(
+                "Prompt composition produced no system prompt for KB merge.",
+                code="COMPOSITION_EMPTY",
             )
-        except Exception:
-            logger.warning(
-                "invocation_composition_failed",
-                feature_id="kb_merge",
-                exc_info=True,
-            )
+
+        model = await self._registry.get_model(self._config)
 
         # Build deps
         deps = KBMergeDeps(
             entity_type=request.entity_type,
             genre=novel.genre or "",
-            language=novel.writing_language or "en",
+            language=language,
         )
 
-        # Format candidate pairs for the agent prompt
-        pairs_text = "\n".join(
-            f"  Pair {i + 1}: {pair}" for i, pair in enumerate(request.candidate_pairs)
-        )
-
-        agent = KBMergeAgent(model=model)
+        # pydantic-ai binds ``system_prompt`` at agent construction, so the
+        # composed system prompt is supplied to the constructor (not to
+        # ``run()``). All task framing + candidate data live in the governed
+        # template; the run prompt carries no feature framing (RULE-02a).
+        agent = KBMergeAgent(model=model, system_prompt=composed_prompt.system)
         result = await agent.run(
-            prompt=(
-                f"Analyze merge candidates for '{novel.title}'.\n"
-                f"Entity type: {request.entity_type}\n"
-                f"Candidate pairs:\n{pairs_text}"
-            ),
+            prompt=composed_prompt.user or "",
             deps=deps,
         )
 

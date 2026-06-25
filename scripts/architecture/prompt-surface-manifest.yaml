@@ -214,6 +214,26 @@ routes:
       xml_required: []
       generated_suggestions_must_be_labelled: []
     fallback_policy: fail_loudly_if_bundled_missing
+    # ADR-054 D5/D9 — KB_CONSISTENCY gains a context_modes list, consistent
+    # with KB_WORLDBUILD's multi-mode shape. The default mode `consistency`
+    # preserves the existing single-template behaviour; `merge` is the
+    # KBMergeService Mode 1 migration (candidate-pairs text is category-3
+    # runtime data supplied as the run prompt, not baked into the template).
+    context_modes:
+      - mode: consistency
+        template: packages/core/narrare_core/prompts/_bundled/kb/en/consistency/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: []
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      - mode: merge
+        template: packages/core/narrare_core/prompts/_bundled/kb/en/merge/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, entity_type, genre, writing_language, world_context, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
 
   # ── Analysis operations ────────────────────────────────────────────
 
@@ -347,6 +367,29 @@ routes:
         content_type: customizable_feature_prompt
         required_variables: [chapter_summaries]
         optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, entity_events, culture_guidelines, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      # ADR-054 D4/D9 — character_arc: CharacterArcService Mode 1 migration.
+      # Designs a multi-phase character development arc from a current state
+      # to a goal state. Distinct from `timeline` (generates a chronological
+      # timeline from chapter summaries) and `timeline_extraction` (extracts
+      # temporal expressions from individual chapters) — no semantic overlap.
+      - mode: character_arc
+        template: packages/core/narrare_core/prompts/_bundled/planning/en/character_arc/system.md
+        content_type: customizable_feature_prompt
+        required_variables: [character_name, character_current_state, character_goal_state]
+        optional_variables: [project_title, genre, writing_language, existing_plot_points, culture_guidelines, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      # ADR-054 D4/D9 — timeline_extraction: TemporalExtractionService Mode 1
+      # migration. Extracts temporal expressions from a single chapter supplied
+      # as the run prompt (category-3 runtime data). Distinct from `timeline`
+      # (generates a timeline from chapter summaries) — see ADR-054 D2 note.
+      - mode: timeline_extraction
+        template: packages/core/narrare_core/prompts/_bundled/planning/en/timeline_extraction/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language, existing_events, culture_guidelines, user_preferences, avoidance_patterns]
         security: {xml_required: [], generated_suggestions_must_be_labelled: []}
         fallback_policy: fail_loudly_if_bundled_missing
 

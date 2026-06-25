@@ -124,10 +124,14 @@ def test_a5_allows_fstring_without_feature_framing() -> None:
 
 
 def test_a5_real_repo_baseline_count() -> None:
-    """The real repo has exactly 3 baseline A5 violations (ratcheted).
+    """The real repo has zero A5 violations after ADR-054 debt retirement.
 
-    This count must not INCREASE. If it decreases, update the baseline
-    constant in ``_check_inline_feature_prompt.py``.
+    ADR-054 migrated the last three ratcheted services (CharacterArcService,
+    TimelineExtractionService, KBMergeService) to PromptComposer Mode 1 and
+    emptied ``_BASELINE_VIOLATIONS``. The ratchet floor is now zero: any new
+    inline feature-prompt is blocking, with no approved debt baseline to
+    hide behind. This test guards both halves of that invariant — no
+    blocking violations AND no approved baseline violations.
     """
     from scripts.architecture.helpers import ROOT, relative_to_root
 
@@ -151,10 +155,43 @@ def test_a5_real_repo_baseline_count() -> None:
 
     assert total_blocking == 0, (
         f"New (non-baselined) A5 violations found: {total_blocking}. "
-        "Either fix them or add to the baseline."
+        "Either fix them or add to the baseline (with a disclosing ADR)."
     )
-    assert total_approved == 3, (
-        f"Expected 3 baseline A5 violations, got {total_approved}. "
-        "If violations were fixed, reduce the baseline in "
-        "_check_inline_feature_prompt.py."
+    assert total_approved == 0, (
+        f"Expected 0 baseline A5 violations (ADR-054 retired the floor), "
+        f"got {total_approved}. If violations were re-baselined, update "
+        "this assertion and _check_inline_feature_prompt.py."
+    )
+
+
+def test_a5_baseline_constant_is_empty() -> None:
+    """ADR-054 D10: ``_BASELINE_VIOLATIONS`` is empty (zero ratchet floor)."""
+    from scripts.architecture._checkers._check_inline_feature_prompt import (
+        _BASELINE_VIOLATIONS,
+    )
+
+    assert frozenset() == _BASELINE_VIOLATIONS, (
+        "ADR-054 retired the three baseline entries; the ratchet floor must "
+        "be zero. Re-baselining requires a disclosing ADR."
+    )
+
+
+def test_a5_synthetic_violation_is_blocking() -> None:
+    """ADR-054 D10: with an empty baseline, a synthetic inline feature-prompt
+    is flagged as a BLOCKING (non-approved) violation — proving the gate
+    still catches new debt now that no ratchet floor hides it.
+    """
+    source = (
+        "async def call(agent, novel):\n"
+        "    result = await agent.run(\n"
+        '        prompt=f"Generate a character arc for {novel.title}",\n'
+        "    )\n"
+        "    return result\n"
+    )
+    violations = _check_source("apps/api/narrare/planning/character_arc_service.py", source)
+    assert len(violations) == 1
+    assert violations[0].rule == "INLINE-FEATURE-PROMPT"
+    assert violations[0].approved is False, (
+        "With an empty baseline (ADR-054 D10), a new inline feature-prompt "
+        "must be blocking, not an approved exception."
     )

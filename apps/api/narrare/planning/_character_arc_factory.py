@@ -12,7 +12,11 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare._app.dependencies import get_invocation_pipeline, get_model_registry
+from narrare._app.dependencies import (
+    get_composer,
+    get_invocation_pipeline,
+    get_model_registry,
+)
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.novels.repository import NovelRepository
 from narrare.planning.character_arc_service import CharacterArcService
@@ -61,6 +65,9 @@ async def get_character_arc_service(
 
     # Resolve model config — gracefully handle missing AI provider.
     registry = get_model_registry()
+    # PromptComposer for governed character-arc system-prompt resolution
+    # (RULE-02 / ADR-054 D1). Same source as the timeline-analysis factory.
+    composer = get_composer()
     model_config = None
     api_key = None
     base_url = None
@@ -77,6 +84,7 @@ async def get_character_arc_service(
         novel_repo=novel_repo,
         model_registry=registry,
         model_config=model_config,
+        composer=composer,
         api_key=api_key,
         base_url=base_url,
         invocation_pipeline=get_invocation_pipeline(),

@@ -304,10 +304,16 @@ class TestMergeInvocationWiring:
         mock_registry = MagicMock(spec=["get_model"])
         mock_registry.get_model = AsyncMock(return_value=MagicMock(spec=["run"]))
 
+        from narrare_core.prompts.composer import ComposedPrompt
+
+        mock_composer = MagicMock(spec=["build"])
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="sys", user="usr"))
+
         service = KBMergeService(
             novel_repo=mock_novel_repo,
             model_registry=mock_registry,
             model_config=MagicMock(spec=["model_id", "provider_name"]),
+            composer=mock_composer,
             invocation_pipeline=pipeline,
         )
 

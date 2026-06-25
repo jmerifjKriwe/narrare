@@ -15,7 +15,11 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from narrare._app.dependencies import get_invocation_pipeline, get_model_registry
+from narrare._app.dependencies import (
+    get_composer,
+    get_invocation_pipeline,
+    get_model_registry,
+)
 from narrare._app.dependencies_services import get_model_routing_resolver
 from narrare.chapters.repository import ChapterRepository
 from narrare.novels.repository import NovelRepository
@@ -66,6 +70,9 @@ async def get_timeline_extraction_service(
 
     # Resolve model config — gracefully handle missing AI provider.
     registry = get_model_registry()
+    # PromptComposer for governed timeline-extraction system-prompt resolution
+    # (RULE-02 / ADR-054 D2). Same source as the timeline-analysis factory.
+    composer = get_composer()
     model_config = None
     try:
         resolver = get_model_routing_resolver(session)
@@ -79,6 +86,7 @@ async def get_timeline_extraction_service(
         chapter_repo=ChapterRepository(session),
         model_registry=registry,
         model_config=model_config,
+        composer=composer,
         event_repo=TimelineEventRepository(session),
         invocation_pipeline=get_invocation_pipeline(),
     )

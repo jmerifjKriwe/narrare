@@ -55,7 +55,7 @@ ui_available_in: [planning]
 service: planning/character_arc_service.py
 contract: planning/contracts.py#CharacterArcServiceProtocol
 router: planning/router.py → POST /planning/character-arc/{novel_id}
-prompt: ADR-048 Mode 2 (agent-internal — no bundled cascade prompt)
+prompt: ADR-054 Mode 1 (PromptComposer governed template via PLAN context_mode `character_arc` — user-overridable)
 requires: [INFRA-001, INFRA-002, INFRA-003]
 ---
 
@@ -105,7 +105,7 @@ planning that catches flat or inconsistent character development early.
 - Output types: `ArcPhase` (phase_name, description, emotional_state, turning_point, chapters_suggested)
 - Uses Output Function pattern (`_process_output`) for structured generation
 
-**Prompts:** ADR-048 Mode 2 — `CharacterArcAgent` composes its prompt internally from `CharacterArcDeps`. No bundled cascade prompt; user cannot override via PromptComposer.
+**Prompts:** ADR-054 Mode 1 — `CharacterArcService` builds the feature prompt through `PromptComposer` (`PLAN` intent, `context_mode="character_arc"`), backed by the governed `_bundled/planning/<lang>/character_arc/system.md` template. `CharacterArcAgent` relays the composed prompt (it composes nothing itself — no `@agent.instructions`). The user *can* override the template via the cascade (project/user/bundled). (Previously mis-declared as ADR-048 Mode 2 "agent-internal"; that declaration was factually false — the agent owns no composition — and is removed by ADR-054 along with the inline f-string that preceded it.)
 
 **Variables:**
 - `{{character_name}}` — Character being analysed
