@@ -96,6 +96,13 @@ from narrare_core.agents.readability_types import (
 from narrare_core.agents.registry import AgentRegistry
 from narrare_core.agents.review_agent import ReviewAgent, ReviewDeps
 from narrare_core.agents.review_types import ReviewOutput
+from narrare_core.agents.story_suggest_agent import StorySuggestAgent
+from narrare_core.agents.story_suggest_types import (
+    StorySuggestDeps,
+    StorySuggestion,
+    StorySuggestionType,
+    StorySuggestOutput,
+)
 from narrare_core.agents.summary_agent import ChapterSummaryAgent, SummaryDeps
 from narrare_core.agents.summary_types import SummaryOutput
 from narrare_core.agents.temporal_extraction_agent import (
@@ -221,6 +228,11 @@ __all__ = [
     "ReviewOutput",
     "SentenceIssue",
     "SentenceSuggestion",
+    "StorySuggestAgent",
+    "StorySuggestDeps",
+    "StorySuggestOutput",
+    "StorySuggestion",
+    "StorySuggestionType",
     "SuggestionType",
     "SummaryDeps",
     "SummaryOutput",

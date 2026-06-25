@@ -1,7 +1,7 @@
 ---
 id: WRITE-009
 title: "Writer's Unblock Tools"
-status: planned
+status: in-progress
 area: writing
 mvp: false
 
@@ -69,10 +69,10 @@ ui_help_long: |
   `narrare writing unblock --chapter <id> --tones "tense,humorous,mysterious"`
 ui_available_in: [editor, cli]
 
-service: writing/unblock_service.py
-contract: writing/contracts.py#UnblockProtocol
-router: writing/router.py
-prompt: core/prompts/_bundled/writing/en/unblock
+service: apps/api/narrare/writing/story_suggest_service.py
+contract: apps/api/narrare/writing/contracts_story_suggest.py
+router: apps/api/narrare/writing/router_story_suggest.py
+prompt: core/prompts/_bundled/writing/en/story_suggest/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003]
 ---
 
@@ -110,40 +110,40 @@ Custom tones available via advanced options.
 
 ## How it works (Technical)
 
-**Entry point:** `writing/router.py` → `POST /api/v1/writing/unblock/{chapter_id}`
-**Service:** `UnblockService.suggest()` in `writing/unblock_service.py`
-**Contract:** `UnblockProtocol` in `writing/contracts.py`
-**LLM Intent:** `LLMIntent.SUGGEST`
+**Entry point:** `apps/api/narrare/writing/router_story_suggest.py` → `POST /api/v1/writing/story-suggest/{novel_id}` (SSE)
+**Service:** `StorySuggestService.suggest()` in `apps/api/narrare/writing/story_suggest_service.py`
+**Contract:** `StorySuggestServiceProtocol` in `apps/api/narrare/writing/contracts_story_suggest.py`
+**Schemas:** `StorySuggestRequest` / `StorySuggestionResponse` / `StorySuggestStreamEvent` in `apps/api/narrare/writing/schemas_story_suggest.py`
+**Factory:** `get_story_suggest_service()` in `apps/api/narrare/writing/deps_story_suggest.py`
+**LLM Intent:** `LLMIntent.SUGGEST` with `context_mode="story_suggest"` (the SUGGEST intent is a multi-mode intent — `inline_suggest` is the existing ghost-text mode; `story_suggest` is the WRITE-009 direction-suggestions mode)
 
-**Analysis phase:**
-- Extract last 500-1000 tokens before cursor
-- Identify scene state: characters present, location, tension level
-- Detect block type: don't know what happens, don't know how to write it, scene feels wrong
-- Generate tone-appropriate continuations
+**Prompt resolution (ADR-054 D1 / Mode 1):**
+- The governed `core/prompts/_bundled/writing/{locale}/story_suggest/system.md` template (v1.3.0) carries the task framing and project-metadata variables.
+- The service resolves it through `PromptComposer` via `compose_invocation(intent=LLMIntent.SUGGEST, prompt_context=PromptContext(mode="story_suggest", ...))`. No inline f-string feature prompt is assembled in the service (RULE-02 / RULE-02a / RULE-02b).
+- pydantic-ai binds `system_prompt` at agent construction, so the composed system prompt is passed to the `StorySuggestAgent` constructor.
+
+**Core layer:**
+- `StorySuggestAgent` (`packages/core/narrare_core/agents/story_suggest_agent.py`) — a `NarrareAgent` with `output_type=StorySuggestOutput` (structured JSON output) and `SYSTEM_PROMPT_KEY = "story_suggest"`.
+- Types (`packages/core/narrare_core/agents/story_suggest_types.py`): `StorySuggestDeps` (project-level runtime data: title, genre, writing language), `StorySuggestOutput`, `StorySuggestion`, `StorySuggestionType` (`plot_development`, `character_moment`, `dialogue_option`, `world_detail`, `stylistic_alternative`).
 
 **Suggestion generation:**
-- Three parallel LLM calls (one per tone)
-- Each call gets scene analysis + tone instruction
-- Continuation limited to 100-300 words
-- Self-assessment: model estimates confidence score
+- A single agent run produces 3–5 distinct story direction suggestions (plot developments, character moments, dialogue options, world details, stylistic alternatives).
+- Each suggestion carries a `title`, a one-paragraph `description`, and a `connection` explaining how it ties to established plot threads.
 
-**Response format:**
+**Response / streaming format:**
+- The SSE stream emits a single `"suggestions"` event carrying the full structured list, followed by a `"done"` termination event (`is_final=True`), and finally a `data: [DONE]` signal. Unlike the streaming-text writing services, there are no incremental text chunks — the structured output is returned atomically.
+- Non-streaming schema `StorySuggestResponse` exists for callers that want the full list at once.
+
 ```python
-class UnblockSuggestion:
-    tone: str  # "dramatic", "quiet", "surprising", etc.
-    continuation: str
-    confidence: float  # 0-1
-    reasoning: str  # why this direction makes sense
-    word_count: int
+class StorySuggestionResponse:
+    type: str            # "plot_development", "character_moment", "dialogue_option",
+                         #   "world_detail", "stylistic_alternative"
+    title: str           # brief descriptive title
+    description: str     # one-paragraph description of the suggestion
+    connection: str      # how this connects to established plot threads
 ```
 
-**Tone definitions:**
-- **Dramatic**: Increase conflict, raise stakes, intensify emotions
-- **Quiet**: Focus on internal state, sensory details, reflection
-- **Surprising**: Introduce unexpected element, shift direction
-- **Tense**: Build anticipation, impending threat
-- **Humorous**: Lighten mood, introduce comedy
-- **Custom**: User-specified tone
+**Reconciliation note:** WRITE-009 uses the existing `story_suggest` template (story direction suggestions) rather than the original spec's tone-based continuations concept. This closes [AUFG-04-01](../../architecture/governance/aufg-registry.md) — the previously orphan `("writing", "story_suggest")` template now has a production consumer and is reachable via the SUGGEST route. The orphan exemption was removed from `scripts/architecture/_checkers/_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`.
 
 ## Constraints & Edge Cases
 
@@ -164,3 +164,4 @@ class UnblockSuggestion:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- 2026-06-25 — Implemented: `StorySuggestAgent` (Core), `StorySuggestService` + contract + schemas + SSE router + DI factory (Backend), `UnblockPanel` + `UnblockSuggestionCard` + `useUnblockStream` hook + SSE client (Frontend), i18n (en/de/fr), AI Operation Inventory registered (`writing.story_suggest`). Closes AUFG-04-01. Status `in-progress` pending user-facing refinement.

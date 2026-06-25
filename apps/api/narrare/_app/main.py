@@ -180,6 +180,9 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.writing.router_rewrite import router as writing_rewrite_router
     from narrare.writing.router_sessions import router as writing_sessions_router
     from narrare.writing.router_stats import router as writing_stats_router
+    from narrare.writing.router_story_suggest import (
+        router as writing_story_suggest_router,
+    )
     from narrare.writing.router_style_variants import (
         router as writing_style_variants_router,
     )
@@ -229,6 +232,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(writing_sessions_router, prefix=prefix)
     app.include_router(writing_stats_router, prefix=prefix)
     app.include_router(writing_suggest_router, prefix=prefix)
+    app.include_router(writing_story_suggest_router, prefix=prefix)
     app.include_router(coauthor_router, prefix=prefix)
     app.include_router(summary_router, prefix=prefix)
     app.include_router(wiki_router, prefix=prefix)

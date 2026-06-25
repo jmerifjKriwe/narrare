@@ -55,14 +55,10 @@ from scripts.architecture._checkers._check_prompt_identity import (
 # - A concrete cleanup action
 # - An owner (which layer is responsible)
 _ORPHAN_EXEMPTIONS: dict[tuple[str, str], str] = {
-    # story_suggest: a writing sub-mode template with no Python consumer
-    # (no service or agent loads it).  Likely a remnant from an earlier
-    # writing-suggestions feature that was redesigned.  Cleanup: either
-    # rewire to a consumer or delete the template.  Tracked for Phase E.
-    ("writing", "story_suggest"): (
-        "Orphan template with no Python consumer — "
-        "cleanup: rewire or delete (ADR-049 Phase D baseline, tracked for Phase E)"
-    ),
+    # WRITE-009: the ("writing", "story_suggest") exemption was removed —
+    # the template is now reachable via the SUGGEST route with
+    # context_mode="story_suggest" (manifest context_modes + route_table
+    # allowed_context_modes).  No known orphan exemptions remain.
 }
 
 

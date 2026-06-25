@@ -1937,6 +1937,22 @@
     "rejectAll": "Tout rejeter",
     "applySelected": "Appliquer la sélection"
   },
+  "unblock": {
+    "button": "Débloquer l'écriture",
+    "title": "Débloquer l'écriture",
+    "stuckLabel": "Bloqué ?",
+    "getSuggestions": "Obtenir des suggestions",
+    "loading": "Génération des suggestions…",
+    "error": "Échec de la génération des suggestions",
+    "empty": "Aucune suggestion disponible. Ajustez vos instructions.",
+    "suggestionType": {
+      "plot_development": "Développement de l'intrigue",
+      "character_moment": "Moment de personnage",
+      "dialogue_option": "Option de dialogue",
+      "world_detail": "Détail de l'univers",
+      "stylistic_alternative": "Alternative stylistique"
+    }
+  },
   "slashCommands": {
     "menuLabel": "Commandes slash",
     "empty": "Aucune commande correspondante",

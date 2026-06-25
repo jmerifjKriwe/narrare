@@ -1937,6 +1937,22 @@
     "rejectAll": "Alle verwerfen",
     "applySelected": "Auswahl übernehmen"
   },
+  "unblock": {
+    "button": "Schreibblockade lösen",
+    "title": "Schreibblockade lösen",
+    "stuckLabel": "Festgefahren?",
+    "getSuggestions": "Vorschläge holen",
+    "loading": "Vorschläge werden generiert…",
+    "error": "Vorschläge konnten nicht generiert werden",
+    "empty": "Keine Vorschläge verfügbar. Passe deine Anweisungen an.",
+    "suggestionType": {
+      "plot_development": "Handlungsentwicklung",
+      "character_moment": "Charaktermoment",
+      "dialogue_option": "Dialogoption",
+      "world_detail": "Weltendetail",
+      "stylistic_alternative": "Stilistische Alternative"
+    }
+  },
   "slashCommands": {
     "menuLabel": "Slash-Befehle",
     "empty": "Keine passenden Befehle",

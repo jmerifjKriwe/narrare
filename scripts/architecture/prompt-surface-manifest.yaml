@@ -75,12 +75,35 @@ routes:
     template: packages/core/narrare_core/prompts/_bundled/writing/en/inline_suggest/system.md
     content_type: customizable_feature_prompt
     output_language_variable: writing_language
-    required_variables: [text_before]
+    # WRITE-009: SUGGEST is now a multi-mode intent. Required variables are
+    # context-mode-dependent, so the intent-level list is empty; each
+    # context_mode declares its own requirements.
+    required_variables: []
     optional_variables: [text_after, chapter_context, kb_suggested, kb_characters, character_voice_profiles, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, writing_language, timeline_position, story_structure, world_context]
     security:
       xml_required: [text_before, text_after]
       generated_suggestions_must_be_labelled: [kb_suggested]
     fallback_policy: fail_loudly_if_bundled_missing
+    # WRITE-009: context_modes for the Writer's Unblock feature. The default
+    # mode (inline_suggest) is ghost-text completion; story_suggest generates
+    # 3-5 story direction suggestions. The PROMPT-SURFACE checker does not
+    # yet validate context_modes sub-entries (ADR-049 A3/A6); these are
+    # governance-only declarations.
+    context_modes:
+      - mode: inline_suggest
+        template: packages/core/narrare_core/prompts/_bundled/writing/en/inline_suggest/system.md
+        content_type: customizable_feature_prompt
+        required_variables: [text_before]
+        optional_variables: [text_after, chapter_context, kb_suggested, kb_characters, character_voice_profiles, user_preferences, avoidance_patterns, culture_guidelines, project_title, genre, writing_language, timeline_position, story_structure, world_context]
+        security: {xml_required: [text_before, text_after], generated_suggestions_must_be_labelled: [kb_suggested]}
+        fallback_policy: fail_loudly_if_bundled_missing
+      - mode: story_suggest
+        template: packages/core/narrare_core/prompts/_bundled/writing/en/story_suggest/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [chapter_outline, story_structure, project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, kb_suggested, recent_chapters, novel_synopsis, character_voice_profiles, timeline_position, tone_instructions, user_preferences, avoidance_patterns, culture_guidelines, world_context]
+        security: {xml_required: [author_instructions], generated_suggestions_must_be_labelled: [kb_suggested]}
+        fallback_policy: fail_loudly_if_bundled_missing
 
   - intent: CHAT
     routeable: true

@@ -75,7 +75,7 @@
 | [WRITE-006](writing/WRITE-006-co-author.md) | Co-Author Mode | ✅ | ❌ |
 | [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | ✅ | ❌ |
 | [WRITE-008](writing/WRITE-008-multi-draft.md) | Multi-Draft Generation | 📋 | ❌ |
-| [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Block Tools | 📋 | ❌ |
+| [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Block Tools | 🔨 | ❌ |
 | [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | 📋 | ❌ |
 | [WRITE-011](writing/WRITE-011-volume-management.md) | Volume Management | ✅ | ✅ |
 | [WRITE-012](writing/WRITE-012-chapter-summary.md) | Chapter Summary | ✅ | ❌ |

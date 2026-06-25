@@ -1937,6 +1937,22 @@
     "rejectAll": "Reject All",
     "applySelected": "Apply Selected"
   },
+  "unblock": {
+    "button": "Writer's Unblock",
+    "title": "Writer's Unblock",
+    "stuckLabel": "Stuck?",
+    "getSuggestions": "Get Suggestions",
+    "loading": "Generating suggestions…",
+    "error": "Failed to generate suggestions",
+    "empty": "No suggestions available. Try adjusting your instructions.",
+    "suggestionType": {
+      "plot_development": "Plot Development",
+      "character_moment": "Character Moment",
+      "dialogue_option": "Dialogue Option",
+      "world_detail": "World Detail",
+      "stylistic_alternative": "Stylistic Alternative"
+    }
+  },
   "slashCommands": {
     "menuLabel": "Slash commands",
     "empty": "No matching commands",

@@ -45,6 +45,9 @@ MODE_REQUIRED_VARS: dict[str, dict[str, set[str]]] = {
         "extend": {"existing_content"},
         "rewrite_selection": {"selection_text", "context_before", "context_after"},
         "inline_suggest": {"kb_characters"},
+        # WRITE-009: story_suggest needs story-level context (structure +
+        # outline) to generate meaningful direction suggestions.
+        "story_suggest": {"story_structure", "chapter_outline"},
     },
     "planning": {
         "outline": {"variant_count"},

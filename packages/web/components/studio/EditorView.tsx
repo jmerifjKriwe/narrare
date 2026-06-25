@@ -2,8 +2,10 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocale } from "next-intl";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import type { StorySuggestion } from "@/lib/api/story-suggest-stream";
 import { useEditorStore } from "@/lib/stores/editorStore";
+import { UnblockPanel } from "./editor/UnblockPanel";
 import { EditorHeader } from "./editor-view/EditorHeader";
 import { EditorOverlays } from "./editor-view/EditorOverlays";
 import { EditorSidePanels } from "./editor-view/EditorSidePanels";
@@ -68,6 +70,18 @@ export function EditorView({ novelId }: EditorViewProps) {
   });
   const panelVisibility = useEditorPanelVisibility(activeChapterId);
 
+  // Writer's Unblock (WRITE-009): insert the accepted story-direction title into
+  // the manuscript at the cursor and persist — mirrors handleDraftAccepted.
+  const handleUnblockAccept = useCallback(
+    (suggestion: StorySuggestion) => {
+      if (editor) {
+        editor.commands.insertContent(suggestion.title);
+      }
+      void persistence.handleAutosave(editor?.getHTML() ?? chapterData.content);
+    },
+    [editor, chapterData.content, persistence.handleAutosave],
+  );
+
   if (!activeChapterId) {
     return <EditorEmptyState />;
   }
@@ -103,6 +117,13 @@ export function EditorView({ novelId }: EditorViewProps) {
           setContent={chapterData.setContent}
           handleAutosave={persistence.handleAutosave}
         />
+        <div className="flex items-center">
+          <UnblockPanel
+            novelId={novelId}
+            chapterId={activeChapterId}
+            onAccept={handleUnblockAccept}
+          />
+        </div>
         <EditorSidePanels
           visibility={panelVisibility}
           novelId={novelId}

@@ -170,6 +170,31 @@ operations:
     exclude_entry: "packages/web/components/studio/editor/TipTapEditorController.ts (check_2_no_raw_abort — sub-operation-lifecycle)"
     status: governed_exception
 
+  - operation_id: writing.story_suggest
+    feature: Writing — Writer's Unblock (Story Suggestions)
+    entry_points:
+      - packages/web/components/studio/editor/UnblockPanel.tsx
+      - packages/web/components/studio/editor/useUnblockStream.ts
+      - packages/web/lib/api/story-suggest-stream.ts (streamStorySuggestions)
+      - apps/api/narrare/writing/router_story_suggest.py
+    transport: sse
+    lifecycle_owner: useAIOperation
+    loading_feedback: "isLoading/isStreaming/isConnectionLost via useUnblockStream.ts:106-118; Loader2 spinner + localized status in UnblockPanel.tsx:190-204"
+    cancel_ui: "handleClose → cancelSuggestions() at UnblockPanel.tsx:72-75; visible Stop button calls cancelSuggestions() at :198; AbortError rejection in execute (useUnblockStream.ts:57-62)"
+    signal_propagation: "execute: (signal) passes signal to streamStorySuggestions (useUnblockStream.ts:65-92); abort → AbortError rejection"
+    error_mapping: "mapSSEError (ai-error-mapping.ts) — applied by useAIOperation default errorMapper; surfaced as structured AIErrorResponse.i18nKey in UnblockPanel.tsx:64-66"
+    partial_output: "n/a — single 'suggestions' event carries the full list; no incremental text to preserve (story-suggest-stream.ts:7-10)"
+    contract_parity: "RULE-17 — request body mirrors Python StorySuggestRequest (chapter_id?, author_instructions?); StorySuggestionResponse fields (type, title, description, connection) and StorySuggestionType union mirrored client-side; novel_id supplied via URL path param"
+    ai_action_i18n: "studio.unblock.* (button/title/stuckLabel/getSuggestions/loading/error/empty/suggestionType.*) + reuses studio.aiActions.accept / .reject / .stop / .retry / .newSuggestions / .connectionLostRetry"
+    deprecated_key_usage: "No deprecated aliases in use"
+    keyboard: "Escape closes the panel (UnblockPanel.tsx:89-99); suggestion accept/regenerate via button controls"
+    tests:
+      - packages/web/components/studio/editor/__tests__/UnblockPanel.test.tsx
+      - packages/web/lib/hooks/__tests__/useAIOperation/execution.test.ts
+    aufg_id: n/a
+    exclude_entry: none
+    status: compliant
+
   # ------------------------------------------------------------------
   # KB flows
   # ------------------------------------------------------------------

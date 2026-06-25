@@ -118,9 +118,13 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
     LLMIntent.SUGGEST: PromptRouteConfig(
         "writing",
         "inline_suggest",
-        required_variables=frozenset({"text_before"}),
+        # WRITE-009: SUGGEST is now a multi-mode intent. Required variables are
+        # context-mode-dependent (text_before for inline_suggest; story context
+        # for story_suggest), so they are not declared at intent level. The
+        # inline_suggest service validates text_before at runtime.
         optional_variables=_COMMON_OPTIONAL_VARIABLES
         | frozenset({"chapter_context", "text_after"}),
+        allowed_context_modes=frozenset({"inline_suggest", "story_suggest"}),
     ),
     LLMIntent.KB_CREATE: PromptRouteConfig(
         "kb",
