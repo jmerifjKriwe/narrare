@@ -1,7 +1,7 @@
 ---
 prompt_type: writing
 prompt_language: en
-prompt_version: "1.3.0"
+prompt_version: "1.4.0"
 ---
 
 ## System Prompt
@@ -77,6 +77,10 @@ Focus ONLY on these improvement types (the author selected these):
 {{co_author_focus_instructions}}
 
 Do NOT suggest changes outside these focus areas.
+
+### Style Variant Direction
+
+{{style_variant_instructions}}
 
 ### Guidelines
 

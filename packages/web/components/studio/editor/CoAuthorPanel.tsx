@@ -1,6 +1,7 @@
 "use client";
 
 import { RotateCcw, Sparkles, X } from "lucide-react";
+import { useLocale } from "next-intl";
 import { useEffect } from "react";
 
 import {
@@ -11,6 +12,7 @@ import {
 } from "./_components";
 import { btnPrimary, btnSecondary } from "./_components/coauthor-styles";
 import { useCoAuthorPanel } from "./_components/useCoAuthorPanel";
+import { useCoAuthorStyleVariant } from "./_components/useCoAuthorStyleVariant";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,6 +73,12 @@ export function CoAuthorPanel({
     onClose,
   });
 
+  // Style-Variant Regeneration on the Co-Author output (CR-AUFG-07-22 Increment B).
+  // The Co-Author's full revised passage (`streamedText`) becomes the variant
+  // source_text; source_mode="co_author" is sent on every regeneration.
+  const locale = useLocale();
+  const variant = useCoAuthorStyleVariant({ novelId, chapterId, locale, streamedText });
+
   // Global Escape handler: cancel / close
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -125,6 +133,11 @@ export function CoAuthorPanel({
               onApply={handleApply}
               submitting={submitting}
               onClose={handleCancel}
+              styleVariant={variant.selectedVariant}
+              onSelectStyleVariant={variant.handleVariantSelect}
+              variantText={variant.variantText}
+              isVariantStreaming={variant.isVariantStreaming}
+              variantError={variant.variantError}
             />
           )}
           {phase === "done" && <CoAuthorDonePhase onClose={onClose} />}

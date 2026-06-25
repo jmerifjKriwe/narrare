@@ -20,6 +20,7 @@ from narrare_core.llm import ResolvedModelConfig
 from narrare_core.llm.result import StreamChunk, TokenUsage
 from narrare_core.shared.errors import ConflictError, NotFoundError, ValidationError
 from narrare_core.writing import StyleVariant
+from narrare_core.writing._enums import GenerationMode
 
 CONFIG = ResolvedModelConfig(provider_name="test", model_id="m", max_tokens=2000)
 
@@ -136,7 +137,7 @@ class TestStyleVariantServiceStream:
 
     @pytest.mark.asyncio
     async def test_stream_uses_rewrite_mode_style_count_one(self, mock_repo: Any) -> None:
-        """Style-variant regeneration uses rewrite_mode='style' with count=1."""
+        """Default source_mode='rewrite' uses rewrite_mode='style' with count=1."""
         pipeline = MagicMock(spec=["generate"])
         pipeline.generate = MagicMock(
             spec=[],
@@ -145,12 +146,55 @@ class TestStyleVariantServiceStream:
             ),
         )
         svc = _make_service(pipeline, mock_repo)
-        async for _ in svc.stream_variant(uuid4(), uuid4(), USER_ID, _make_request()):
+        req = _make_request()
+        async for _ in svc.stream_variant(uuid4(), uuid4(), USER_ID, req):
             pass
+
+        # Default source_mode is "rewrite" -> request row + pipeline REWRITE mode.
+        assert mock_repo.create_if_no_active.call_args.kwargs["mode"] == "rewrite"
+        pipeline_request = pipeline.generate.call_args.args[0]
+        assert pipeline_request.mode == GenerationMode.REWRITE
 
         call_kwargs = pipeline.generate.call_args.kwargs
         assert call_kwargs["rewrite_mode"] == "style"
         assert call_kwargs["rewrite_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_stream_co_author_mode_routes_to_co_author_pipeline(self, mock_repo: Any) -> None:
+        """source_mode='co_author' -> CO_AUTHOR mode + co_author_focus, no rewrite kwargs.
+
+        Verifies the Increment B branch: the request row uses the 'co_author'
+        mode string, the pipeline request carries ``GenerationMode.CO_AUTHOR``,
+        and ``rewrite_mode``/``rewrite_count`` are NOT forwarded (the variant
+        direction is the sole creative signal).
+        """
+        pipeline = MagicMock(spec=["generate"])
+        pipeline.generate = MagicMock(
+            spec=[],
+            return_value=_fake_stream(
+                StreamChunk(text="x", is_final=True, usage=TokenUsage(1, 1, 2)),
+            ),
+        )
+        svc = _make_service(pipeline, mock_repo)
+        req = _make_request()
+        req.source_mode = "co_author"
+        async for _ in svc.stream_variant(uuid4(), uuid4(), USER_ID, req):
+            pass
+
+        # Request row created with the co_author mode string.
+        assert mock_repo.create_if_no_active.call_args.kwargs["mode"] == "co_author"
+
+        # Pipeline request mode is CO_AUTHOR.
+        pipeline_request = pipeline.generate.call_args.args[0]
+        assert pipeline_request.mode == GenerationMode.CO_AUTHOR
+
+        # Mode-specific kwargs: co_author_focus passed, style_variant preserved,
+        # and rewrite-specific kwargs absent.
+        call_kwargs = pipeline.generate.call_args.kwargs
+        assert call_kwargs["co_author_focus"] == []
+        assert call_kwargs["style_variant"] == req.style_variant
+        assert "rewrite_mode" not in call_kwargs
+        assert "rewrite_count" not in call_kwargs
 
     @pytest.mark.asyncio
     async def test_stream_passes_source_text_as_selection(self, mock_repo: Any) -> None:

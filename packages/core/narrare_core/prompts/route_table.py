@@ -113,7 +113,14 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         "writing",
         "co_author",
         required_variables=frozenset({"selection_text"}),
-        optional_variables=_COMMON_OPTIONAL_VARIABLES,
+        optional_variables=_COMMON_OPTIONAL_VARIABLES
+        | frozenset(
+            {
+                # CR-AUFG-07-22: style-variant creative direction (mirrors
+                # REWRITE; the co-author pipeline follows the rewrite pattern).
+                "style_variant_instructions",
+            }
+        ),
     ),
     LLMIntent.SUGGEST: PromptRouteConfig(
         "writing",

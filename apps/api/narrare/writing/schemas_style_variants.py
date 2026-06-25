@@ -10,11 +10,16 @@ variant never changes providers.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from narrare_core.writing.style_variants import (
     StyleVariant,  # noqa: TC001 — needed at runtime for Pydantic model resolution
 )
+
+#: The source operation a style-variant regeneration builds on.
+SourceMode = Literal["rewrite", "co_author"]
 
 
 class StyleVariantRegenerateRequest(BaseModel):
@@ -59,4 +64,12 @@ class StyleVariantRegenerateRequest(BaseModel):
         min_length=2,
         max_length=5,
         description="Output language",
+    )
+    source_mode: SourceMode = Field(
+        default="rewrite",
+        description=(
+            "Source operation mode the variant builds on: "
+            "'rewrite' (REWRITE pipeline, rewrite_mode='style') or "
+            "'co_author' (CO_AUTHOR pipeline with co_author_focus)."
+        ),
     )

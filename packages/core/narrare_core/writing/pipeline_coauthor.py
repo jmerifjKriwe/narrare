@@ -20,6 +20,7 @@ import structlog
 from narrare_core.llm.intents import LLMIntent
 from narrare_core.llm.result import StreamChunk
 from narrare_core.prompts.context import PromptContext
+from narrare_core.writing.style_variants import StyleVariant, get_style_variant_instructions
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -91,6 +92,7 @@ async def stream_coauthor(
     context_before: str = "",
     context_after: str = "",
     focus: list[str] | None = None,
+    style_variant: StyleVariant | None = None,
     language: str = "en",
 ) -> AsyncIterator[StreamChunk]:
     """Generate co-author revision with server-side diff computation.
@@ -98,8 +100,8 @@ async def stream_coauthor(
     Constructs the PromptContext directly (not via
     ``_build_prompt_context``) because co-author has unique variables
     (``selection_text``, ``context_before``, ``context_after``,
-    ``co_author_focus_instructions``) that are not part of the standard
-    context assembly pipeline.
+    ``co_author_focus_instructions``, ``style_variant_instructions``) that
+    are not part of the standard context assembly pipeline.
 
     Args:
         pipeline: The writing pipeline instance.
@@ -113,6 +115,11 @@ async def stream_coauthor(
         context_after: Text immediately after the selection.
         focus: User-selected focus areas (word_choice, sentence,
             dialogue, description).
+        style_variant: Optional creative-direction variant for style-variant
+            regeneration (CR-AUFG-07-22).  When set, the variant's
+            instruction text is injected into the co-author prompt via
+            ``{{style_variant_instructions}}``.  ``None`` renders the variable
+            as empty (backward compatible).
         language: Output language code.
 
     Yields:
@@ -141,6 +148,9 @@ async def stream_coauthor(
         "context_before": context_before,
         "context_after": context_after,
         "co_author_focus_instructions": focus_instr,
+        # CR-AUFG-07-22: style-variant creative direction. Empty string when
+        # no variant is requested → template renders nothing (backward compat).
+        "style_variant_instructions": get_style_variant_instructions(style_variant),
         # Backward compatibility: chapter_content maps to selection_text
         "chapter_content": selection_text,
     }

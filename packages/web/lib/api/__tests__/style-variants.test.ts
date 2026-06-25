@@ -93,7 +93,8 @@ describe("streamStyleVariantRegeneration", () => {
 
     // RULE-17 contract parity: only the fields the backend
     // StyleVariantRegenerateRequest accepts are sent (source_text,
-    // context_before, context_after, style_variant, tone, language).
+    // context_before, context_after, style_variant, tone, language,
+    // source_mode).
     await streamStyleVariantRegeneration(
       "ch-2",
       "novel-1",
@@ -104,6 +105,7 @@ describe("streamStyleVariantRegeneration", () => {
         context_before: "Text before the selection",
         context_after: "Text after the selection",
         language: "de",
+        source_mode: "co_author",
       },
       { onAlternative: () => {}, onAlternativeFinal: () => {} },
     );
@@ -117,6 +119,7 @@ describe("streamStyleVariantRegeneration", () => {
     expect(receivedBody!.context_before).toBe("Text before the selection");
     expect(receivedBody!.context_after).toBe("Text after the selection");
     expect(receivedBody!.language).toBe("de");
+    expect(receivedBody!.source_mode).toBe("co_author");
     // No out-of-contract fields are sent (RULE-17 parity with backend schema).
     expect(receivedBody!.author_instruction).toBeUndefined();
     expect(receivedBody!.source_generation_id).toBeUndefined();

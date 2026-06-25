@@ -5,8 +5,11 @@ import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { isApplyShortcut } from "@/lib/ai-action-shortcuts";
 import type { ChangeDetail } from "@/lib/api/coauthor";
+import type { StyleVariant } from "@/lib/api/generation";
+import type { AIErrorResponse } from "@/lib/hooks/use-ai-operation";
 
 import { ChangeReview } from "../ChangeReview";
+import { CoAuthorStyleVariantSection } from "./CoAuthorStyleVariantSection";
 import { btnPrimary, btnSecondary, btnSm } from "./coauthor-styles";
 
 // ---------------------------------------------------------------------------
@@ -25,6 +28,16 @@ interface CoAuthorReviewPhaseProps {
   readonly onApply: () => void;
   readonly submitting: boolean;
   readonly onClose: () => void;
+  /** Currently selected style variant (CR-AUFG-07-22 Increment B). */
+  readonly styleVariant: StyleVariant | null;
+  /** Fire when the writer picks a variant to regenerate the output as. */
+  readonly onSelectStyleVariant: (variant: StyleVariant) => void;
+  /** Regenerated passage text (empty until the variant stream completes). */
+  readonly variantText: string;
+  /** True while a style-variant regeneration is streaming. */
+  readonly isVariantStreaming: boolean;
+  /** Structured error from the last variant stream (null when none). */
+  readonly variantError: AIErrorResponse | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,6 +56,11 @@ export function CoAuthorReviewPhase({
   onApply,
   submitting,
   onClose,
+  styleVariant,
+  onSelectStyleVariant,
+  variantText,
+  isVariantStreaming,
+  variantError,
 }: CoAuthorReviewPhaseProps) {
   const t = useTranslations("studio");
 
@@ -114,6 +132,20 @@ export function CoAuthorReviewPhase({
           />
         ))}
       </div>
+
+      {/* Style-Variant Regeneration on the Co-Author output (CR-AUFG-07-22 Increment B).
+          The original output above stays visible and unchanged; the regenerated
+          variant is surfaced below for comparison (spec: "original remains
+          visible until a variant is accepted"). Lives in its own component per
+          RULE-04 (component hard limit). */}
+      <CoAuthorStyleVariantSection
+        selectedVariant={styleVariant}
+        onSelectVariant={onSelectStyleVariant}
+        variantText={variantText}
+        isVariantStreaming={isVariantStreaming}
+        variantError={variantError}
+        disabled={submitting}
+      />
 
       <div className="flex items-center gap-2 pt-2">
         <button

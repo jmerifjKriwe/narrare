@@ -7,26 +7,31 @@
  * suggestions. The user may describe what they are stuck on, request 3-5
  * suggestions via SSE, then accept, dismiss, or regenerate them.
  *
- * Lifecycle (loading / streaming / error / cancel / connection-lost) is managed
- * by {@link useAIOperation} (ADR-043) via the {@link useUnblockStream} hook — no
- * manual AbortController. §16 compliance: `studio.unblock.*` /
- * `studio.aiActions.*` labels, actionable error messages, connection-loss
- * banner.
+ * State and lifecycle are extracted: {@link useUnblockPanel} owns the open/close
+ * + interaction state and effects; {@link useUnblockStream} (via
+ * {@link useAIOperation}, ADR-043) owns the SSE lifecycle — no manual
+ * AbortController. §16 compliance: `studio.unblock.*` / `studio.aiActions.*`
+ * labels, actionable error messages, connection-loss banner.
  *
  * `studio.unblock.*` does not define dedicated dismiss/regenerate keys, so
  * those reuse the shared `studio.aiActions.*` labels (reject / newSuggestions)
  * per the shared-label convention used across AI review surfaces.
  *
+ * The render sub-sections (header, input form, results) are extracted into
+ * {@link UnblockPanelHeader}, {@link UnblockInputForm} and {@link UnblockResults}
+ * to keep this module under the file-size limit (RULE-04 / RULE-06).
+ *
  * @module UnblockPanel
  */
 
-import { AlertTriangle, Lightbulb, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Loader2, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionLostBanner } from "@/components/ui/connection-lost-banner";
 import type { StorySuggestion } from "@/lib/api/story-suggest-stream";
-import { UnblockSuggestionCard } from "./UnblockSuggestionCard";
-import { useUnblockStream } from "./useUnblockStream";
+import { UnblockInputForm } from "./UnblockInputForm";
+import { UnblockPanelHeader } from "./UnblockPanelHeader";
+import { UnblockResults } from "./UnblockResults";
+import { useUnblockPanel } from "./useUnblockPanel";
 
 interface UnblockPanelProps {
   /** Novel to generate suggestions for (SSE URL path parameter). */
@@ -40,75 +45,29 @@ interface UnblockPanelProps {
 export function UnblockPanel({ novelId, chapterId, onAccept }: UnblockPanelProps) {
   const t = useTranslations("studio");
 
-  const [isOpen, setIsOpen] = useState(false);
-  const [stuckText, setStuckText] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
   const {
-    state: aiState,
-    cancel: cancelSuggestions,
-    retry: retrySuggestions,
-    reset: resetSuggestions,
-    request: requestSuggestions,
+    isOpen,
+    textareaRef,
+    stuckText,
+    setStuckText,
+    handleOpen,
+    handleClose,
+    handleGetSuggestions,
+    handleDismiss,
+    suggestions,
+    error,
+    isBusy,
+    isConnectionLost,
+    cancelSuggestions,
+    retrySuggestions,
     isIdle,
-    isLoading,
-    isStreaming,
     isComplete,
     isError,
-    isConnectionLost,
-  } = useUnblockStream(novelId, chapterId);
+  } = useUnblockPanel(novelId, chapterId);
 
-  const suggestions = aiState.result;
-  const error = aiState.error;
-  const isBusy = isLoading || isStreaming;
   const errorMessage = error
     ? t((error.i18nKey ?? "unblock.error") as Parameters<typeof t>[0])
     : "";
-
-  // -- Handlers --
-
-  const handleOpen = useCallback(() => setIsOpen(true), []);
-
-  const handleClose = useCallback(() => {
-    cancelSuggestions();
-    setIsOpen(false);
-  }, [cancelSuggestions]);
-
-  const handleGetSuggestions = useCallback(() => {
-    requestSuggestions(stuckText);
-  }, [requestSuggestions, stuckText]);
-
-  const handleDismiss = useCallback(() => {
-    // Clear results, return to the input form.
-    resetSuggestions();
-    setStuckText("");
-    textareaRef.current?.focus();
-  }, [resetSuggestions]);
-
-  // Escape closes the panel (only while open).
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, handleClose]);
-
-  // Focus the textarea when the panel opens.
-  useEffect(() => {
-    if (!isOpen) return;
-    const id = window.setTimeout(() => textareaRef.current?.focus(), 0);
-    return () => window.clearTimeout(id);
-  }, [isOpen]);
-
-  // Cancel any in-flight stream on unmount.
-  useEffect(() => {
-    return () => cancelSuggestions();
-  }, [cancelSuggestions]);
 
   // -- Render: closed (trigger button) --
 
@@ -135,23 +94,7 @@ export function UnblockPanel({ novelId, chapterId, onAccept }: UnblockPanelProps
       aria-busy={isBusy}
       className="flex h-full w-[400px] min-w-[400px] flex-col border-l border-border bg-background"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-card p-4">
-        <div className="flex items-center gap-2">
-          <Lightbulb className="h-5 w-5 text-primary" />
-          <h3 id="unblock-panel-title" className="font-medium">
-            {t("unblock.title")}
-          </h3>
-        </div>
-        <button
-          type="button"
-          onClick={handleClose}
-          aria-label={t("unblock.button")}
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+      <UnblockPanelHeader onClose={handleClose} t={t} />
 
       {isConnectionLost ? (
         <div className="p-4 pb-0">
@@ -163,27 +106,13 @@ export function UnblockPanel({ novelId, chapterId, onAccept }: UnblockPanelProps
         <div className="mx-auto max-w-3xl space-y-4 p-6">
           {/* Input form — idle only (also re-shown after Dismiss). */}
           {isIdle ? (
-            <div className="space-y-3">
-              <label htmlFor="unblock-stuck" className="block text-sm">
-                {t("unblock.stuckLabel")}
-              </label>
-              <textarea
-                ref={textareaRef}
-                id="unblock-stuck"
-                value={stuckText}
-                onChange={(e) => setStuckText(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm"
-              />
-              <button
-                type="button"
-                onClick={handleGetSuggestions}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                <Sparkles className="h-4 w-4" />
-                {t("unblock.getSuggestions")}
-              </button>
-            </div>
+            <UnblockInputForm
+              textareaRef={textareaRef}
+              stuckText={stuckText}
+              onStuckTextChange={setStuckText}
+              onGetSuggestions={handleGetSuggestions}
+              t={t}
+            />
           ) : null}
 
           {/* Loading / streaming */}
@@ -225,42 +154,13 @@ export function UnblockPanel({ novelId, chapterId, onAccept }: UnblockPanelProps
 
           {/* Results */}
           {isComplete && suggestions ? (
-            suggestions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("unblock.empty")}</p>
-            ) : (
-              <div className="space-y-4">
-                <ul className="space-y-3">
-                  {suggestions.map((suggestion, index) => (
-                    <li key={`${suggestion.type}-${suggestion.title}`}>
-                      <UnblockSuggestionCard
-                        suggestion={suggestion}
-                        index={index}
-                        onAccept={onAccept}
-                        t={t}
-                      />
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="flex items-center gap-2 border-t border-border pt-3">
-                  <button
-                    type="button"
-                    onClick={handleDismiss}
-                    className="rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
-                  >
-                    {t("aiActions.reject")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleGetSuggestions}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    {t("aiActions.newSuggestions")}
-                  </button>
-                </div>
-              </div>
-            )
+            <UnblockResults
+              suggestions={suggestions}
+              onAccept={onAccept}
+              onDismiss={handleDismiss}
+              onRegenerate={handleGetSuggestions}
+              t={t}
+            />
           ) : null}
         </div>
       </div>

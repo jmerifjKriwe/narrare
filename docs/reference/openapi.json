@@ -15696,6 +15696,16 @@
             "title": "Language",
             "description": "Output language",
             "default": "en"
+          },
+          "source_mode": {
+            "type": "string",
+            "enum": [
+              "rewrite",
+              "co_author"
+            ],
+            "title": "Source Mode",
+            "description": "Source operation mode the variant builds on: 'rewrite' (REWRITE pipeline, rewrite_mode='style') or 'co_author' (CO_AUTHOR pipeline with co_author_focus).",
+            "default": "rewrite"
           }
         },
         "type": "object",

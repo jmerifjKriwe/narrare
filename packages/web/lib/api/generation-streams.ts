@@ -81,6 +81,8 @@ export interface StyleVariantRegenerateRequest {
   style_variant: StyleVariant;
   tone?: string;
   language?: string;
+  /** Source operation the variant builds on. Backend defaults to "rewrite". */
+  source_mode?: "rewrite" | "co_author";
 }
 
 export type ExtendLength = "short" | "medium" | "long";

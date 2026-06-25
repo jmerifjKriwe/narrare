@@ -267,6 +267,7 @@ class WritingPipeline:
                     context_before=context_before,
                     context_after=context_after,
                     focus=co_author_focus,
+                    style_variant=style_variant,
                 ):
                     yield chunk
 

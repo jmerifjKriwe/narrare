@@ -55,9 +55,13 @@ class StyleVariantRegenerationProtocol(Protocol):
     ) -> AsyncIterator[StreamChunk]:
         """Create request row AND stream the style-variant generation (SSE-direct).
 
-        Internally creates a ``generation_request`` row (mode="rewrite"),
-        transitions to streaming, calls ``pipeline.generate()`` with the
-        ``style_variant`` parameter, and yields ``StreamChunk`` instances.
+        Internally creates a ``generation_request`` row, transitions to
+        streaming, calls ``pipeline.generate()`` with the ``style_variant``
+        parameter, and yields ``StreamChunk`` instances.
+
+        The request row ``mode`` follows ``request.source_mode``: ``"rewrite"``
+        routes through the REWRITE pipeline (Increment A); ``"co_author"``
+        routes through the CO_AUTHOR pipeline (Increment B).
 
         Args:
             chapter_id: Chapter the source output belongs to.
@@ -66,7 +70,7 @@ class StyleVariantRegenerationProtocol(Protocol):
             request: Variant request with source_text + style_variant.
 
         Yields:
-            StreamChunk instances with incremental text.  The final chunk
-            has ``is_final=True`` and populated ``usage``.
+            StreamChunk instances with incremental text.  The final
+            chunk has ``is_final=True`` and populated ``usage``.
         """
         ...

@@ -23,7 +23,7 @@ from narrare_core.writing.style_variants import StyleVariant
 # TypeScript interface; keep these two declarations in lock-step.
 _REQUIRED_FIELDS: frozenset[str] = frozenset({"source_text", "style_variant"})
 _OPTIONAL_FIELDS: frozenset[str] = frozenset(
-    {"context_before", "context_after", "tone", "language"}
+    {"context_before", "context_after", "tone", "language", "source_mode"}
 )
 _EXPECTED_VARIANT_VALUES: frozenset[str] = frozenset(
     {

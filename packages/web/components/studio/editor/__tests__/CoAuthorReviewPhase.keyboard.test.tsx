@@ -46,6 +46,12 @@ const defaultProps = {
   onApply: vi.fn(),
   submitting: false,
   onClose: vi.fn(),
+  // CR-AUFG-07-22 Increment B: style-variant picker props (no-op defaults).
+  styleVariant: null,
+  onSelectStyleVariant: vi.fn(),
+  variantText: "",
+  isVariantStreaming: false,
+  variantError: null,
 };
 
 // ---------------------------------------------------------------------------
