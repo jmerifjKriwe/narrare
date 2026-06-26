@@ -36,13 +36,13 @@
 | [INFRA-004](infra/INFRA-004-embedding-store.md) | Embedding Store | ✅ | ❌ |
 | [INFRA-005](infra/INFRA-005-memory-layer.md) | Memory Layer (mem0) | ✅ | ✅ |
 | [INFRA-006](infra/INFRA-006-a2a-integration.md) | A2A Integration | 🔨 | ❌ |
-| [INFRA-007](infra/INFRA-007-background-tasks.md) | Background Tasks | 🔨 | ❌ |
+| [INFRA-007](infra/INFRA-007-background-tasks.md) | Background Tasks | ✅ | ❌ |
 | [INFRA-008](infra/INFRA-008-mcp-integration.md) | MCP Integration | 📋 | ❌ |
 | [INFRA-009](infra/INFRA-009-proactive-context.md) | Proactive Context Loading | ⛔ | ❌ |
 > **Note:** INFRA-009 was merged into [KB-005](kb/KB-005-kb-suggest.md) (Proactive KB Suggestions) and is deprecated as a standalone feature.
 | [INFRA-010](infra/INFRA-010-prompting-locally.md) | Prompting Locally | ✅ | ❌ |
 | [INFRA-011](infra/INFRA-011-ai-feature-stabilization.md) | AI Feature Stabilization Program | ✅ | ❌ |
-| [INFRA-012](infra/INFRA-012-prompt-governance-hardening.md) | Prompt Governance Hardening | 🔨 | ❌ |
+| [INFRA-012](infra/INFRA-012-prompt-governance-hardening.md) | Prompt Governance Hardening | ✅ | ❌ |
 | [INFRA-013](infra/INFRA-013-ai-invocation-adoption-contract.md) | AI Invocation Adoption Contract | ✅ | ❌ |
 
 > **AI feature freeze lifted:** INFRA-011 gates passed and the ADR-027 freeze-lift
@@ -75,7 +75,7 @@
 | [WRITE-006](writing/WRITE-006-co-author.md) | Co-Author Mode | ✅ | ❌ |
 | [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | ✅ | ❌ |
 | [WRITE-008](writing/WRITE-008-multi-draft.md) | Multi-Draft Generation | 📋 | ❌ |
-| [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Block Tools | 🔨 | ❌ |
+| [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Unblock Tools | ✅ | ❌ |
 | [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | 📋 | ❌ |
 | [WRITE-011](writing/WRITE-011-volume-management.md) | Volume Management | ✅ | ✅ |
 | [WRITE-012](writing/WRITE-012-chapter-summary.md) | Chapter Summary | ✅ | ❌ |
@@ -109,7 +109,7 @@
 | [ANAL-002](analysis/ANAL-002-sentiment.md) | Sentiment Analysis | ✅ | ❌ |
 | [ANAL-003](analysis/ANAL-003-readability.md) | Readability Analysis | ✅ | ❌ |
 | [ANAL-004](analysis/ANAL-004-pov.md) | POV Analysis | ✅ | ❌ |
-| [ANAL-005](analysis/ANAL-005-coreference.md) | Coreference Analysis | 📋 | ❌ |
+| [ANAL-005](analysis/ANAL-005-coreference.md) | Coreference Analysis | 🔨 | ❌ |
 | [ANAL-006](analysis/ANAL-006-sensitivity.md) | Sensitivity Review | 📋 | ❌ |
 | [ANAL-007](analysis/ANAL-007-voice-author.md) | Author Voice Profiling | 📋 | ❌ |
 | [ANAL-008](analysis/ANAL-008-voice-character.md) | Character Voice Profiling | 📋 | ❌ |
@@ -127,7 +127,7 @@
 | [PLAN-005](planning/PLAN-005-storyboard.md) | Storyboard View | ✅ | ✅ |
 | [PLAN-006](planning/PLAN-006-character-arc.md) | Character Arc Analysis | ✅ | ❌ |
 
-> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 Timeline Management is fully implemented through Phase 4 (AI timeline analysis, extraction, consistency checks, frontend visualization). PLAN-006 is backend-only with no UI yet.
+> **Note:** PLAN-003 (Structure) and PLAN-005 (Storyboard) were implemented together as a merged feature. PLAN-003's structure adapters power PLAN-005's stage layout. PLAN-004 Timeline Management is fully implemented through Phase 4 (AI timeline analysis, extraction, consistency checks, frontend visualization). PLAN-006 Character Arc Analysis is fully implemented (backend service + frontend `CharacterArcPanel` UI).
 >
 > **Supplement:** `planning/PLAN-004-architecture.md` is an architecture supplement for PLAN-004 (Timeline Management), not a separate feature entry. It documents the internal architecture of the timeline feature.
 
@@ -164,11 +164,12 @@
 |----|---------|--------|-----|
 | [PROMPT-001](prompts/PROMPT-001-file-overrides.md) | File-based Prompt Overrides | ✅ | ✅ |
 | [PROMPT-002](prompts/PROMPT-002-db-templates.md) | User DB Prompt Templates | ✅ | ✅ |
-| [PROMPT-003](prompt-customization-ux.md) | Prompt Customization UX | 📋 | ❌ |
+| [PROMPT-003](prompt-customization-ux.md) | Prompt Customization UX | ✅ | ❌ |
 
-> **CR-07 v3 Phase B:** PROMPT-003 remains planned and is the implementation
-> target for CR-AUFG-07-16: provider-free preview, variable provenance,
-> diagnostics, reset semantics, and optional SSE live test.
+> **CR-07 v3 Phase B (complete):** PROMPT-003 was implemented (CR-AUFG-07-16) and
+> promoted to `stable` (2026-06-22): provider-free preview, variable
+> provenance/metadata, reset-to-default, provider-gated SSE live test. See
+> `docs/architecture/governance/cr-07-followup-v3.md`.
 
 ### Import / Export
 | ID | Feature | Status | MVP |
@@ -306,5 +307,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-22 — CR-07 Follow-up v3 added governance links for PROMPT-003 (CR-AUFG-07-16) and ONBOARD-001 conceptual aha-moment follow-up (CR-AUFG-07-17). SET-005 remains `stable`: ADR-051 accepted (RULE-18b elevated to CONSTRAINTS.md); CR-08 AUFG set resolved (CR-AUFG-08-01 through CR-AUFG-08-14, including FIND-013 and the audit-template matrix gate). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-26 — INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `in-progress`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

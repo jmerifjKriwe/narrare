@@ -88,12 +88,15 @@ export function NameGenerator({ novelId }: NameGeneratorProps) {
     aiOp.cancel();
   }, [aiOp]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount. aiOp.cancel is a stable ref (created once by the hook's
+  // lifecycleRef), so this effect runs a single time — cancelling only when the
+  // component unmounts, not on every state transition (which would abort the
+  // operation the moment it enters "loading"). See CharacterArcPanel for the
+  // same pattern.
+  const cancelOp = aiOp.cancel;
   useEffect(() => {
-    return () => {
-      aiOp.cancel();
-    };
-  }, [aiOp]);
+    return () => cancelOp();
+  }, [cancelOp]);
 
   const isPending = aiOp.isLoading || aiOp.isStreaming;
 

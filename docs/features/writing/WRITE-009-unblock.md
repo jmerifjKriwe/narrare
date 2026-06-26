@@ -1,73 +1,58 @@
 ---
 id: WRITE-009
 title: "Writer's Unblock Tools"
-status: in-progress
+status: stable
 area: writing
 mvp: false
 
-ui_tooltip: "Get unstuck with AI-generated continuation suggestions in different tones."
+ui_tooltip: "Get unstuck with AI-generated story direction suggestions."
 ui_help_short: |
-  Stuck on what to write next? Writer's Unblock analyzes your last paragraphs
-  and generates 3 different continuations with varying tones. Choose one to
-  continue, or use them as inspiration for your own direction.
+  Stuck on what to write next? Writer's Unblock suggests several possible
+  story directions — plot developments, character moments, dialogue options,
+  world details, or stylistic alternatives — each tied to your established
+  threads. Use one as inspiration, or take the idea and write it your way.
 ui_help_long: |
   ## Writer's Unblock Tools
 
-  When you're stuck, Writer's Unblock provides multiple paths forward.
+  When you're stuck, Writer's Unblock suggests several possible paths forward.
 
   **How it works:**
 
-  1. Place your cursor where you're stuck
-  2. Click "Unblock" in toolbar
-  3. AI analyzes your last 500-1000 tokens:
-     - What's happening in the scene
-     - Where the scene could go
-     - What feels stuck or unclear
-  4. Three continuations appear, each with different tone:
-     - **Dramatic**: Raises stakes, intensifies emotions
-     - **Quiet**: Focuses on reflection, sensory details
-     - **Surprising**: Introduces unexpected twist
-  5. Each continuation labeled with confidence score
-  6. Choose one to:
-     - Accept and continue writing
-     - Use as inspiration for your own direction
-     - Dismiss and try again
-
-  **Custom tones:**
-
-  Don't like the default options? Specify your own:
-  - "tense, humorous, mysterious"
-  - "romantic, action-packed, ominous"
-  - Any three tones you want to explore
-
-  **Confidence scores:**
-
-  Each suggestion shows how confident the AI is that this continuation fits:
-  - 🟢 High confidence (80-100%): Very likely direction
-  - 🟡 Medium confidence (50-79%): Possible but risky
-  - 🔵 Low confidence (<50%): Experimental direction
-
-  Low confidence isn't bad — it means the suggestion is unexpected or
-  creative. Sometimes the best path is the surprising one.
+  1. Open the "Writer's Unblock" panel in the editor
+  2. Optionally describe what you're stuck on (e.g. "the scene feels flat,
+     I don't know what the antagonist should do next")
+  3. Click "Get Suggestions"
+  4. The AI analyses your story context and returns 3–5 story direction
+     suggestions, each labelled by category:
+     - **Plot Development** — move the plot forward
+     - **Character Moment** — reveal or develop a character
+     - **Dialogue Option** — a line or exchange to try
+     - **World Detail** — expand the setting/lore
+     - **Stylistic Alternative** — a different way to write the scene
+  5. Each suggestion shows a title, a one-paragraph description, and how it
+     connects to your established plot threads
+  6. For each suggestion you can:
+     - **Accept** — insert it and keep writing
+     - **Dismiss** — go back to the form
+     - **Regenerate** — ask for fresh suggestions
 
   **When to use:**
-  - Scene feels stuck or stagnant
-  - Don't know what happens next
-  - Want to explore different directions
-  - Scene isn't working and unsure why
+  - A scene feels stuck or stagnant
+  - You don't know what happens next
+  - You want to explore different directions
+  - A scene isn't working and you're unsure why
 
   **How to use suggestions:**
   - Accept one as-is and continue
   - Take the idea but write it your way
   - Combine elements from multiple suggestions
-  - Use as springboard for your own direction
+  - Use them as a springboard for your own direction
 
-  Writer's Unblock is about possibilities, not prescriptions. The AI suggests
-  — you decide.
+  Writer's Unblock is about possibilities, not prescriptions. The AI
+  suggests — you decide.
 
-  Available in Editor → "Unblock" or via CLI:
-  `narrare writing unblock --chapter <id> --tones "tense,humorous,mysterious"`
-ui_available_in: [editor, cli]
+  Available in the Editor → "Writer's Unblock".
+ui_available_in: [editor]
 
 service: apps/api/narrare/writing/story_suggest_service.py
 contract: apps/api/narrare/writing/contracts_story_suggest.py
@@ -80,9 +65,11 @@ requires: [INFRA-001, INFRA-002, INFRA-003]
 
 ## What it does
 
-Analyzes recent text and generates 3 alternative continuations with different
-tones/intentions. Each suggestion includes confidence score and rationale.
-Designed to break writer's block by offering multiple paths forward.
+Generates 3–5 story direction suggestions (plot developments, character
+moments, dialogue options, world details, or stylistic alternatives) to help
+you get unstuck. Each suggestion carries a title, a one-paragraph description,
+and an explanation of how it connects to your established plot threads.
+Designed to break writer's block by offering several paths forward.
 
 ## Why it exists
 
@@ -92,21 +79,22 @@ ideas and getting words flowing again.
 
 ## How it works (User perspective)
 
-1. Place cursor where you're stuck (or end of chapter)
-2. Click "Unblock" in toolbar
-3. AI analyzes your last paragraph(s)
-4. Three suggestions appear with:
-   - Tone label (Dramatic, Quiet, Surprising, or custom)
-   - Confidence score percentage
-   - 100-300 words of continuation
+1. Open the "Writer's Unblock" panel in the editor
+2. Optionally describe what you're stuck on in the "Stuck?" field
+3. Click "Get Suggestions"
+4. The AI returns 3–5 story direction suggestions, each with:
+   - A category (Plot Development, Character Moment, Dialogue Option,
+     World Detail, or Stylistic Alternative)
+   - A short title
+   - A one-paragraph description
+   - A note on how it connects to your established plot threads
 5. For each suggestion:
-   - Read the continuation
-   - See AI's reasoning for this direction
-   - Click "Accept" to add to chapter
-   - Or click "Regenerate" for new options
+   - Read the description and connection
+   - Click "Accept" to insert the suggestion into your chapter
+6. Use "Dismiss" to return to the form, or "New suggestions" to regenerate
 
-Default tones: Dramatic (raise stakes), Quiet (reflection), Surprising (twist).
-Custom tones available via advanced options.
+Suggestions are advisory — accept one, take the idea and write it your way,
+or combine elements from several.
 
 ## How it works (Technical)
 
@@ -147,11 +135,12 @@ class StorySuggestionResponse:
 
 ## Constraints & Edge Cases
 
-- Minimum 100 words of existing text for analysis
-- Maximum 3 suggestions per call (UI limit)
-- Confidence scores are self-assessed (may be inaccurate)
-- Suggestions may contradict plot intentions
-- Very short recent text = poor analysis quality
+- Returns 3–5 suggestions per call (the exact count is AI-determined within that range)
+- Optional `author_instructions` ("Stuck?" field) is capped at 2000 characters
+- There are no confidence scores — use your own judgement on whether a direction fits
+- Suggestions are AI-generated and may contradict your plot intentions — review before accepting
+- Scoping to a chapter is optional; without a `chapter_id`, suggestions use the wider novel context
+- Accepting a suggestion inserts AI-generated text — edit it as you would any draft
 - LLM availability required
 
 ## Related Features
@@ -164,4 +153,5 @@ class StorySuggestionResponse:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
-- 2026-06-25 — Implemented: `StorySuggestAgent` (Core), `StorySuggestService` + contract + schemas + SSE router + DI factory (Backend), `UnblockPanel` + `UnblockSuggestionCard` + `useUnblockStream` hook + SSE client (Frontend), i18n (en/de/fr), AI Operation Inventory registered (`writing.story_suggest`). Closes AUFG-04-01. Status `in-progress` pending user-facing refinement.
+- 2026-06-25 — Implemented: `StorySuggestAgent` (Core), `StorySuggestService` + contract + schemas + SSE router + DI factory (Backend), `UnblockPanel` + `UnblockSuggestionCard` + `useUnblockStream` hook + SSE client (Frontend), i18n (en/de/fr), AI Operation Inventory registered (`writing.story_suggest`). Closes AUFG-04-01.
+- 2026-06-26 — User-facing spec sections rewritten to match the implemented story-direction-suggestions behaviour (the original tone-based-continuations concept was superseded by the `story_suggest` template design). UnblockPanel split for RULE-04 (269→169 lines). Status → `stable`.

@@ -3,7 +3,7 @@
 ---
 id: INFRA-012
 title: "Prompt Governance Hardening"
-status: in-progress
+status: stable
 area: infra
 mvp: false
 
@@ -30,6 +30,15 @@ requires: [INFRA-002, INFRA-003, INFRA-011, PROMPT-001, PROMPT-002]
 
 ## Status and Decision Summary
 
+- **Status assessment (2026-06-26): complete.** The P0 blocker gates (prompt
+  surface manifest, intent-to-template completeness, variable taxonomy,
+  XML/security preflight, fallback prohibition, strict prompt preflight) and the
+  P1 quality fixes (context producer/consumer matrix, `world_context`/
+  `kb_suggested` adoption, inline-suggest labels, consistency false-positive
+  control) are all implemented and enforced via the ADR-037 / ADR-046 / ADR-049
+  checker suite. Feature status → `stable`. Strategic deferrals remain out of
+  scope: SET-006 (Project Writing Profile), and the multi-step workflow specs
+  CONS-003, KB-011, and WRITE-013.
 - **CR-02 hardening:** implemented on 2026-06-05 and retained as part of this
   feature's governance baseline.
 - **CR-01 hardening:** specified here for implementation after Architecture
@@ -517,3 +526,7 @@ Docs Definition of Done:
 - 2026-06-05 — CR-01 prompt-quality architecture specified; ADR-037 added for the
   Prompt Surface Contract manifest; feature status set to `in-progress` until
   Core/Backend/Platform/Docs implementation and validation complete.
+- 2026-06-26 — Status assessment: P0 blocker gates and P1 quality fixes are all
+  implemented and enforced (ADR-037 / ADR-046 / ADR-049 checker suite). Strategic
+  deferrals (SET-006 Project Writing Profile; CONS-003 / KB-011 / WRITE-013
+  multi-step workflows) remain out of scope. Feature status → `stable`.

@@ -1,7 +1,7 @@
 ---
 id: ANAL-005
 title: "Coreference Analysis"
-status: planned
+status: in-progress
 area: analysis
 mvp: false
 
@@ -163,3 +163,13 @@ class CharacterMention:
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- 2026-06-26 — Implemented (status → `in-progress`): `CoreferenceAgent` (Core,
+  `NarrareAgent` with structured output; ANALYSE intent gains the `coreference`
+  context_mode; bundled `analysis/en/coreference` template). Backend:
+  `CoreferenceService` (Mode 1 PromptComposer), `contracts_coreference.py`,
+  `schemas_coreference.py`, SSE `router_coreference.py`
+  (`POST /analysis/coreference/{chapter_id}`), `dependencies_coreference.py`.
+  Frontend: `CoreferencePanel` + `CoreferenceTrigger` + `useCoreference` hook +
+  SSE client (`coreference-stream.ts`), wired into the editor analysis panels;
+  i18n (en/de/fr). Tests: 31 Core + 12 Backend + 22 Frontend. May require
+  refinement (e.g. result-accuracy tuning) before promotion to `stable`.
