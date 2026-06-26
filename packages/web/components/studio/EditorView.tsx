@@ -42,6 +42,7 @@ export function EditorView({ novelId }: EditorViewProps) {
   const toggleConsistencyPanel = useEditorStore((s) => s.toggleConsistencyPanel);
   const toggleReadabilityPanel = useEditorStore((s) => s.toggleReadabilityPanel);
   const togglePovPanel = useEditorStore((s) => s.togglePovPanel);
+  const toggleCoreferencePanel = useEditorStore((s) => s.toggleCoreferencePanel);
   const [nameGeneratorOpen, setNameGeneratorOpen] = useState(false);
 
   const writingSteps = useWritingGraphSteps(isGenerating, activeChapterId);
@@ -144,6 +145,7 @@ export function EditorView({ novelId }: EditorViewProps) {
           toggleBetaReaderPanel={toggleBetaReaderPanel}
           toggleReadabilityPanel={toggleReadabilityPanel}
           togglePovPanel={togglePovPanel}
+          toggleCoreferencePanel={toggleCoreferencePanel}
           toggleSentimentPanel={toggleSentimentPanel}
           toggleConsistencyPanel={toggleConsistencyPanel}
         />

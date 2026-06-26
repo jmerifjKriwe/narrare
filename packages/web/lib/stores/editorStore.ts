@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   toggleBetaReaderPanel,
   toggleConsistencyPanel,
+  toggleCoreferencePanel,
   togglePovPanel,
   toggleReadabilityPanel,
   toggleSentimentPanel,
@@ -37,6 +38,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   consistencyLoading: false,
   readabilityPanelOpen: false,
   povPanelOpen: false,
+  coreferencePanelOpen: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
   setActiveVolumeId: (id) => set({ activeVolumeId: id }),
@@ -80,4 +82,5 @@ export const useEditorStore = create<EditorState>((set) => ({
   setConsistencyLoading: (consistencyLoading) => set({ consistencyLoading }),
   toggleReadabilityPanel: () => set(toggleReadabilityPanel),
   togglePovPanel: () => set(togglePovPanel),
+  toggleCoreferencePanel: () => set(toggleCoreferencePanel),
 }));

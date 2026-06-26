@@ -164,7 +164,13 @@ ROUTE_CONFIGS: dict[LLMIntent, PromptRouteConfig] = {
         # kb/<lang>/merge/system.md template.
         allowed_context_modes=frozenset({"consistency", "merge"}),
     ),
-    LLMIntent.ANALYSE: PromptRouteConfig("analysis", "review"),
+    # ANAL-005: "coreference" added for coreference resolution analysis
+    # (CoreferenceAgent). "review" remains the default general-review mode.
+    LLMIntent.ANALYSE: PromptRouteConfig(
+        "analysis",
+        "review",
+        allowed_context_modes=frozenset({"review", "coreference"}),
+    ),
     LLMIntent.CONSISTENCY: PromptRouteConfig(
         "analysis",
         "consistency",

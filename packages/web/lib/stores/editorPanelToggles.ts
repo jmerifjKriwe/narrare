@@ -10,6 +10,7 @@ const closeRightPanels: PanelPatch = {
   consistencyPanelOpen: false,
   readabilityPanelOpen: false,
   povPanelOpen: false,
+  coreferencePanelOpen: false,
 };
 
 export function toggleBetaReaderPanel(s: EditorState): PanelPatch {
@@ -38,4 +39,10 @@ export function toggleReadabilityPanel(s: EditorState): PanelPatch {
 
 export function togglePovPanel(s: EditorState): PanelPatch {
   return s.povPanelOpen ? { povPanelOpen: false } : { ...closeRightPanels, povPanelOpen: true };
+}
+
+export function toggleCoreferencePanel(s: EditorState): PanelPatch {
+  return s.coreferencePanelOpen
+    ? { coreferencePanelOpen: false }
+    : { ...closeRightPanels, coreferencePanelOpen: true };
 }

@@ -35,6 +35,7 @@ export interface EditorState {
   consistencyLoading: boolean;
   readabilityPanelOpen: boolean;
   povPanelOpen: boolean;
+  coreferencePanelOpen: boolean;
 
   setActiveChapterId: (id: string | null) => void;
   setActiveVolumeId: (id: string | null) => void;
@@ -68,4 +69,5 @@ export interface EditorState {
   setConsistencyLoading: (loading: boolean) => void;
   toggleReadabilityPanel: () => void;
   togglePovPanel: () => void;
+  toggleCoreferencePanel: () => void;
 }

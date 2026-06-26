@@ -3,6 +3,7 @@ import { Database, Sparkles, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { BetaReaderTrigger } from "../analysis/BetaReaderTrigger";
 import { ConsistencyTrigger } from "../analysis/ConsistencyTrigger";
+import { CoreferenceTrigger } from "../analysis/CoreferenceTrigger";
 import { POVTrigger } from "../analysis/POVTrigger";
 import { ReadabilityTrigger } from "../analysis/ReadabilityTrigger";
 import { SentimentTrigger } from "../analysis/SentimentTrigger";
@@ -123,6 +124,7 @@ export function EditorToolbar({
       <ConsistencyTrigger />
       <ReadabilityTrigger />
       <POVTrigger />
+      <CoreferenceTrigger />
       <ToolbarSeparator />
       <GhostTextConfig editor={editor} />
     </div>

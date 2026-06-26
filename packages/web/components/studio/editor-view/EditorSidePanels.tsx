@@ -1,6 +1,7 @@
 import type { Chapter, ChapterSummary, VolumeStats } from "@/types";
 import { BetaReaderPanel } from "../analysis/BetaReaderPanel";
 import { ConsistencyPanel } from "../analysis/ConsistencyPanel";
+import { CoreferencePanel } from "../analysis/CoreferencePanel";
 import { POVPanel } from "../analysis/POVPanel";
 import { ReadabilityPanel } from "../analysis/ReadabilityPanel";
 import { SentimentPanel } from "../analysis/SentimentPanel";
@@ -30,6 +31,7 @@ interface EditorSidePanelsProps {
   toggleBetaReaderPanel: () => void;
   toggleReadabilityPanel: () => void;
   togglePovPanel: () => void;
+  toggleCoreferencePanel: () => void;
   toggleSentimentPanel: () => void;
   toggleConsistencyPanel: () => void;
 }
@@ -54,6 +56,7 @@ export function EditorSidePanels({
   toggleBetaReaderPanel,
   toggleReadabilityPanel,
   togglePovPanel,
+  toggleCoreferencePanel,
   toggleSentimentPanel,
   toggleConsistencyPanel,
 }: EditorSidePanelsProps) {
@@ -113,6 +116,13 @@ export function EditorSidePanels({
       )}
       {visibility.showPOVPanel && (
         <POVPanel novelId={novelId} chapterIds={[activeChapterId]} onClose={togglePovPanel} />
+      )}
+      {visibility.showCoreferencePanel && (
+        <CoreferencePanel
+          novelId={novelId}
+          chapterIds={[activeChapterId]}
+          onClose={toggleCoreferencePanel}
+        />
       )}
       {visibility.showSentimentPanel && (
         <SentimentPanel

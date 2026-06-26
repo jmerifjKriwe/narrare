@@ -212,5 +212,23 @@
     "suggestion": "Suggestion",
     "explanation": "Explication",
     "quotedExcerpt": "\u00ab\u00a0{text}\u00a0\u00bb"
+  },
+  "coreference": {
+    "trigger": "Coréférence",
+    "triggerTooltip": "Analyser la clarté des pronoms et résoudre les références aux personnages",
+    "title": "Analyse de coréférence",
+    "description": "Résoudre les pronoms vers les personnages et vérifier la clarté référentielle",
+    "analyzing": "Analyse de la coréférence...",
+    "analyzingSubtext": "Résolution des pronoms et suivi des mentions de personnages",
+    "analysisFailed": "Échec de l'analyse de coréférence",
+    "clarityScore": "Clarté référentielle",
+    "summary": "Résumé",
+    "resolutions": "Résolutions de pronoms",
+    "noResults": "Aucune résolution de pronom détectée.",
+    "ambiguous": "Ambigu",
+    "characterMentions": "Mentions de personnages",
+    "noMentions": "Aucune mention de personnage détectée.",
+    "pov": "POV",
+    "mentions": "{count} mentions"
   }
 }

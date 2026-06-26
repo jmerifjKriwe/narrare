@@ -29,6 +29,13 @@ from narrare_core.agents.consistency_types import (
     ConsistencySeverity,
 )
 from narrare_core.agents.contracts import AgentRegistryProtocol
+from narrare_core.agents.coreference_agent import CoreferenceAgent
+from narrare_core.agents.coreference_types import (
+    CharacterMention,
+    CoreferenceDeps,
+    CoreferenceOutput,
+    PronounResolution,
+)
 from narrare_core.agents.draft_agent import DraftAgent
 from narrare_core.agents.draft_types import DraftConfig, DraftDeps, DraftOutput
 from narrare_core.agents.errors import (
@@ -159,12 +166,16 @@ __all__ = [
     "CharacterArcAgent",
     "CharacterArcDeps",
     "CharacterArcOutput",
+    "CharacterMention",
     "ConsistencyAgent",
     "ConsistencyCheckType",
     "ConsistencyDeps",
     "ConsistencyIssue",
     "ConsistencyOutput",
     "ConsistencySeverity",
+    "CoreferenceAgent",
+    "CoreferenceDeps",
+    "CoreferenceOutput",
     "DraftAgent",
     "DraftConfig",
     "DraftDeps",
@@ -220,6 +231,7 @@ __all__ = [
     "PromptLiveTestAgent",
     "PromptLiveTestDeps",
     "PromptLiveTestResult",
+    "PronounResolution",
     "ReadabilityAgent",
     "ReadabilityAgentOutput",
     "ReadabilityDeps",

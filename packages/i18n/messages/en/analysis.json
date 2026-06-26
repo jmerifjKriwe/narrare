@@ -212,5 +212,23 @@
     "suggestion": "Suggestion",
     "explanation": "Explanation",
     "quotedExcerpt": "\u201c{text}\u201d"
+  },
+  "coreference": {
+    "trigger": "Coreference",
+    "triggerTooltip": "Analyze pronoun clarity and resolve character references",
+    "title": "Coreference Analysis",
+    "description": "Resolve pronouns to characters and check referential clarity",
+    "analyzing": "Analyzing coreference...",
+    "analyzingSubtext": "Resolving pronouns and tracking character mentions",
+    "analysisFailed": "Failed to analyze coreference",
+    "clarityScore": "Referential Clarity",
+    "summary": "Summary",
+    "resolutions": "Pronoun Resolutions",
+    "noResults": "No pronoun resolutions identified.",
+    "ambiguous": "Ambiguous",
+    "characterMentions": "Character Mentions",
+    "noMentions": "No character mentions detected.",
+    "pov": "POV",
+    "mentions": "{count} mentions"
   }
 }

@@ -273,6 +273,24 @@ routes:
       xml_required: []
       generated_suggestions_must_be_labelled: []
     fallback_policy: fail_loudly_if_bundled_missing
+    # ANAL-005 — ANALYSE is now a multi-mode intent. The default mode `review`
+    # is the general writing critique; `coreference` performs pronoun
+    # coreference resolution and clarity scoring (CoreferenceAgent).
+    context_modes:
+      - mode: review
+        template: packages/core/narrare_core/prompts/_bundled/analysis/en/review/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: []
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      - mode: coreference
+        template: packages/core/narrare_core/prompts/_bundled/analysis/en/coreference/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language, chapter_title, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
 
   - intent: CONSISTENCY
     routeable: true

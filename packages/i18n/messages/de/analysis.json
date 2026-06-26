@@ -212,5 +212,23 @@
     "suggestion": "Vorschlag",
     "explanation": "Erklärung",
     "quotedExcerpt": "\u201e{text}\u201c"
+  },
+  "coreference": {
+    "trigger": "Koreferenz",
+    "triggerTooltip": "Pronomen-Klarheit analysieren und Charakter-Referenzen auflösen",
+    "title": "Koreferenzanalyse",
+    "description": "Pronomen zu Charakteren auflösen und Referenz-Klarheit prüfen",
+    "analyzing": "Analysiere Koreferenz...",
+    "analyzingSubtext": "Löse Pronomen auf und verfolge Charakter-Erwähnungen",
+    "analysisFailed": "Koreferenzanalyse fehlgeschlagen",
+    "clarityScore": "Referenzielle Klarheit",
+    "summary": "Zusammenfassung",
+    "resolutions": "Pronomen-Auflösungen",
+    "noResults": "Keine Pronomen-Auflösungen erkannt.",
+    "ambiguous": "Mehrdeutig",
+    "characterMentions": "Charakter-Erwähnungen",
+    "noMentions": "Keine Charakter-Erwähnungen erkannt.",
+    "pov": "POV",
+    "mentions": "{count} Erwähnungen"
   }
 }
