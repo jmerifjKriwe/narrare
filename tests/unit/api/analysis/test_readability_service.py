@@ -18,7 +18,11 @@ from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeModelRegistry, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
-from tests.unit.api.analysis._fakes import FakeReadabilityAgent, SpyInvocationPipeline
+from tests.unit.api.analysis._fakes import (
+    FakeComposer,
+    FakeReadabilityAgent,
+    SpyInvocationPipeline,
+)
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -34,6 +38,7 @@ def _make_service(
     content: str = "The cat sat on the mat. The dog ran to the park.",
     writing_language: str = "en",
     invocation_pipeline: InvocationPipeline | None = None,
+    composer: FakeComposer | None = None,
 ) -> tuple[Any, Any, ReadabilityService]:
     novel = make_novel(writing_language=writing_language)
     ch = make_chapter(novel_id=novel.id, content=content)
@@ -44,13 +49,14 @@ def _make_service(
         novel_repo=nr,
         model_registry=FakeModelRegistry(),
         model_config=_CONFIG,
+        composer=composer or FakeComposer(),
         invocation_pipeline=invocation_pipeline,
     )
     return novel, ch, svc
 
 
 def _inject(svc: ReadabilityService, agent: FakeReadabilityAgent) -> None:
-    svc._get_agent = lambda: agent  # type: ignore[method-assign]
+    svc._get_agent = lambda system_prompt=None: agent  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +115,11 @@ class TestReadabilityAnalyzeHappyPath:
         nr, cr = FakeNovelRepository(), FakeChapterRepository()
         seed_repos(novel, ch1, ch2, novel_repo=nr, chapter_repo=cr)
         svc = ReadabilityService(
-            chapter_repo=cr, novel_repo=nr, model_registry=FakeModelRegistry(), model_config=_CONFIG
+            chapter_repo=cr,
+            novel_repo=nr,
+            model_registry=FakeModelRegistry(),
+            model_config=_CONFIG,
+            composer=FakeComposer(),
         )
         _inject(svc, FakeReadabilityAgent())
         results = await svc.analyze(
@@ -174,12 +184,12 @@ class TestReadabilityEmptyContent:
 
 
 # ---------------------------------------------------------------------------
-# D. Invocation composition — verifies compose_invocation (ADR-048 Mode 2)
+# D. Invocation composition — verifies compose_invocation (ADR-048 Mode 1)
 # ---------------------------------------------------------------------------
 
 
 class TestInvocationComposition:
-    """Verify the service routes through compose_invocation, not safe_record_evidence."""
+    """Verify the service routes through compose_invocation (Mode 1, composer-driven)."""
 
     @pytest.mark.asyncio
     async def test_compose_invocation_called_with_readability_feature_id(self) -> None:
@@ -193,3 +203,49 @@ class TestInvocationComposition:
         assert spy.prepare_calls[0].feature_id == "analysis_readability"
         assert len(spy.finalize_calls) == 1
         assert spy.finalize_calls[0].feature_id == "analysis_readability"
+
+
+# ---------------------------------------------------------------------------
+# E. Mode 1 prompt composition — composer-driven system prompt (ADR-048)
+# ---------------------------------------------------------------------------
+
+
+class TestMode1PromptComposition:
+    """Mode 1: the composer-built system prompt reaches the agent."""
+
+    @pytest.mark.asyncio
+    async def test_composed_system_prompt_passed_to_agent(self) -> None:
+        """The composer-built system prompt is handed to the agent constructor."""
+        composer = FakeComposer(system="READABILITY-SYSTEM-PROMPT")
+        novel, ch, svc = _make_service(composer=composer)
+        captured: dict[str, object] = {}
+
+        def spy_get_agent(system_prompt: str | None = None) -> FakeReadabilityAgent:
+            captured["system_prompt"] = system_prompt
+            return FakeReadabilityAgent()
+
+        svc._get_agent = spy_get_agent  # type: ignore[method-assign]
+        await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
+
+        assert captured["system_prompt"] == "READABILITY-SYSTEM-PROMPT"
+
+    @pytest.mark.asyncio
+    async def test_fallback_composes_directly_when_pipeline_none(self) -> None:
+        """Without a pipeline, compose_invocation falls back to composer.build()."""
+        composer = FakeComposer(system="FALLBACK-READABILITY")
+        novel, ch, svc = _make_service(composer=composer)
+        _inject(svc, FakeReadabilityAgent())
+        await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
+
+        assert len(composer.build_calls) >= 1
+
+    @pytest.mark.asyncio
+    async def test_no_manual_injection_used(self) -> None:
+        """Mode 1 never uses ManualInjectionDeclaration — composer drives the prompt."""
+        import inspect
+
+        from narrare.analysis.services import readability_service
+
+        source = inspect.getsource(readability_service)
+        assert "ManualInjectionDeclaration" not in source
+        assert "manual_injection=" not in source

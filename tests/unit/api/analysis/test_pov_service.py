@@ -17,7 +17,12 @@ from narrare_core.llm.model_config import ResolvedModelConfig
 from narrare_core.shared.errors import NotFoundError
 from tests.fakes import FakeChapterRepository, FakeModelRegistry, FakeNovelRepository
 from tests.unit.api._test_helpers import make_chapter, make_novel, seed_repos
-from tests.unit.api.analysis._fakes import FakePOVAgent, SeededKBRepository, SpyInvocationPipeline
+from tests.unit.api.analysis._fakes import (
+    FakeComposer,
+    FakePOVAgent,
+    SeededKBRepository,
+    SpyInvocationPipeline,
+)
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -46,6 +51,7 @@ def _make_service(
     kb_names: list[str] | None = None,
     writing_language: str = "en",
     invocation_pipeline: InvocationPipeline | None = None,
+    composer: FakeComposer | None = None,
 ) -> tuple[Any, Any, POVService]:
     novel = make_novel(writing_language=writing_language)
     ch = make_chapter(novel_id=novel.id, content=content)
@@ -58,13 +64,14 @@ def _make_service(
         kb_repo=kb,
         model_registry=FakeModelRegistry(),
         model_config=_CONFIG,
+        composer=composer or FakeComposer(),
         invocation_pipeline=invocation_pipeline,
     )
     return novel, ch, svc
 
 
 def _inject(svc: POVService, agent: FakePOVAgent) -> None:
-    svc._get_agent = lambda: agent  # type: ignore[method-assign]
+    svc._get_agent = lambda system_prompt=None: agent  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -209,6 +216,7 @@ class TestMultipleChapters:
             kb_repo=SeededKBRepository([]),
             model_registry=FakeModelRegistry(),
             model_config=_CONFIG,
+            composer=FakeComposer(),
         )
         fake = FakePOVAgent(output=_pov_output())
         _inject(svc, fake)
@@ -218,12 +226,12 @@ class TestMultipleChapters:
 
 
 # ---------------------------------------------------------------------------
-# E. Invocation composition — verifies compose_invocation (ADR-048 Mode 2)
+# E. Invocation composition — verifies compose_invocation (ADR-048 Mode 1)
 # ---------------------------------------------------------------------------
 
 
 class TestInvocationComposition:
-    """Verify the service routes through compose_invocation, not safe_record_evidence."""
+    """Verify the service routes through compose_invocation (Mode 1, composer-driven)."""
 
     @pytest.mark.asyncio
     async def test_compose_invocation_called_with_pov_feature_id(self) -> None:
@@ -237,3 +245,54 @@ class TestInvocationComposition:
         assert spy.prepare_calls[0].feature_id == "analysis_pov"
         assert len(spy.finalize_calls) == 1
         assert spy.finalize_calls[0].feature_id == "analysis_pov"
+
+
+# ---------------------------------------------------------------------------
+# F. Mode 1 prompt composition — composer-driven system prompt (ADR-048)
+# ---------------------------------------------------------------------------
+
+
+class TestMode1PromptComposition:
+    """Mode 1: the composer-built system prompt reaches the agent."""
+
+    @pytest.mark.asyncio
+    async def test_composed_system_prompt_passed_to_agent(self) -> None:
+        """The composer-built system prompt is handed to the agent constructor."""
+        composer = FakeComposer(system="POV-SYSTEM-PROMPT")
+        novel, ch, svc = _make_service(composer=composer)
+        captured: dict[str, object] = {}
+
+        def spy_get_agent(system_prompt: str | None = None) -> FakePOVAgent:
+            captured["system_prompt"] = system_prompt
+            return FakePOVAgent(output=_pov_output())
+
+        svc._get_agent = spy_get_agent  # type: ignore[method-assign]
+        await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
+
+        assert captured["system_prompt"] == "POV-SYSTEM-PROMPT"
+
+    @pytest.mark.asyncio
+    async def test_fallback_composes_directly_when_pipeline_none(self) -> None:
+        """Without a pipeline, compose_invocation falls back to composer.build()."""
+        composer = FakeComposer(system="FALLBACK-POV")
+        novel, ch, svc = _make_service(composer=composer)
+        _inject(svc, FakePOVAgent(output=_pov_output()))
+        await svc.analyze(novel_id=novel.id, chapter_ids=[ch.id], user_id=novel.user_id)
+
+        assert len(composer.build_calls) >= 1
+
+    @pytest.mark.asyncio
+    async def test_no_manual_injection_used(self) -> None:
+        """Mode 1 never uses ManualInjectionDeclaration — composer drives the prompt.
+
+        Regression guard: the service must not re-introduce a ``manual_injection``
+        constant. ``POVService.__init__`` requires a ``composer`` (Mode 1), which
+        is asserted by construction in ``_make_service``.
+        """
+        import inspect
+
+        from narrare.analysis.services import pov_service
+
+        source = inspect.getsource(pov_service)
+        assert "ManualInjectionDeclaration" not in source
+        assert "manual_injection=" not in source

@@ -24,6 +24,7 @@ from uuid import uuid4
 import pytest
 
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
+from narrare_core.prompts.composer import ComposedPrompt
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.models import FeatureInvocationEvidence
@@ -70,8 +71,9 @@ class TestBetaReaderInvocationWiring:
         mock_assembler = AsyncMock()
 
         mock_composer = AsyncMock(spec=["build"])
-        mock_composed = MagicMock(spec=["system"])
-        mock_composed.system = "System prompt"
+        # Use a real ComposedPrompt (not a spec'd MagicMock) so the pipeline's
+        # fingerprint_prompt can read both .system and .user when recording evidence.
+        mock_composed = ComposedPrompt(system="System prompt", user="")
         mock_composer.build = AsyncMock(return_value=mock_composed)
 
         mock_registry = MagicMock(spec=["get_model"])
@@ -94,9 +96,10 @@ class TestBetaReaderInvocationWiring:
 
         # Patch the internal methods to avoid full agent execution.
         # Must patch _assemble_context so the flow reaches _record_evidence.
+        # (_compose_prompt fallback is in the shared helper now; the pipeline
+        # path succeeds via the ComposedPrompt mock above, so no fallback patch.)
         with (
             patch.object(service, "_assemble_context", AsyncMock(return_value=mock_deps)),
-            patch.object(service, "_compose_prompt", AsyncMock(return_value=mock_composed)),
             patch("narrare.analysis.beta_reader_service.validate_word_count"),
             patch(
                 "narrare.analysis.beta_reader_service.run_phase1",
@@ -139,12 +142,16 @@ class TestBetaReaderInvocationWiring:
 
         from narrare.analysis.beta_reader_service import BetaReaderService
 
+        # No pipeline → compose_invocation falls back to composer.build() directly.
+        mock_composer = AsyncMock(spec=["build"])
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user=""))
+
         service = BetaReaderService(
             context_assembler=AsyncMock(),
             cache=mock_cache,
             registry=MagicMock(spec=["get_model"]),
             config=MagicMock(spec=["model_id", "provider_name"]),
-            composer=MagicMock(spec=["build"]),
+            composer=mock_composer,
             invocation_pipeline=None,
         )
 
@@ -161,11 +168,6 @@ class TestBetaReaderInvocationWiring:
                         focus_categories=[],
                     )
                 ),
-            ),
-            patch.object(
-                service,
-                "_compose_prompt",
-                AsyncMock(return_value=MagicMock(spec=["system"], system="s")),
             ),
             patch("narrare.analysis.beta_reader_service.validate_word_count"),
             patch(
@@ -225,11 +227,15 @@ class TestReadabilityInvocationWiring:
         mock_chapter_repo = MagicMock(spec=["get_by_id"])
         mock_chapter_repo.get_by_id = AsyncMock(return_value=mock_chapter)
 
+        mock_composer = AsyncMock(spec=["build"])
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user=""))
+
         service = ReadabilityService(
             chapter_repo=mock_chapter_repo,
             novel_repo=mock_novel_repo,
             model_registry=MagicMock(spec=["get_model"]),
             model_config=MagicMock(spec=["model_id", "provider_name"]),
+            composer=mock_composer,
             invocation_pipeline=pipeline,
         )
 
@@ -298,12 +304,16 @@ class TestPOVInvocationWiring:
         mock_kb_repo = MagicMock(spec=["list_entries"])
         mock_kb_repo.list_entries = AsyncMock(return_value=([], 0))
 
+        mock_composer = AsyncMock(spec=["build"])
+        mock_composer.build = AsyncMock(return_value=ComposedPrompt(system="s", user=""))
+
         service = POVService(
             chapter_repo=mock_chapter_repo,
             novel_repo=mock_novel_repo,
             kb_repo=mock_kb_repo,
             model_registry=MagicMock(spec=["get_model"]),
             model_config=MagicMock(spec=["model_id", "provider_name"]),
+            composer=mock_composer,
             invocation_pipeline=pipeline,
         )
 

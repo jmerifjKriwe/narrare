@@ -8,9 +8,9 @@ dependencies:
 - ``get_sentiment_service`` — ChapterSentimentService with SpacyNLPProvider
   (deterministic analysis, no LLM).
 - ``get_readability_service`` — ReadabilityService with ModelRegistry,
-  InvocationPipeline.
+  PromptComposer, InvocationPipeline.
 - ``get_pov_service`` — POVService with ModelRegistry, KBRepository,
-  InvocationPipeline.
+  PromptComposer, InvocationPipeline.
 
 Each factory uses **lazy imports** inside the function body (FastAPI DI
 pattern), so tests mock at the module attribute level before calling.
@@ -181,14 +181,16 @@ class TestGetReadabilityService:
     """get_readability_service(session) — ReadabilityService factory."""
 
     def test_returns_readability_service_with_model_registry(self) -> None:
-        """Returns ReadabilityService with ModelRegistry, config, and pipeline."""
+        """Returns ReadabilityService with ModelRegistry, config, composer, and pipeline."""
         session = AsyncMock(spec=AsyncSession)
         mock_registry = MagicMock(spec=["get_model", "register_model"])
+        mock_composer = MagicMock(spec=["compose", "build"])
         mock_config = MagicMock(spec=["model_id", "provider_name", "temperature", "max_tokens"])
         mock_pipeline = MagicMock(spec=["generate"])
 
         with (
             patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
+            patch("narrare._app.dependencies.get_composer", return_value=mock_composer),
             patch(
                 "narrare._app.dependencies_services.build_system_default_config",
                 return_value=mock_config,
@@ -214,12 +216,13 @@ class TestGetReadabilityService:
             mock_chapter_repo_cls.assert_called_once_with(session)
             mock_novel_repo_cls.assert_called_once_with(session)
 
-            # -- verify ReadabilityService receives all deps
+            # -- verify ReadabilityService receives all deps (Mode 1: composer)
             mock_svc_cls.assert_called_once_with(
                 chapter_repo=mock_chapter_repo_cls.return_value,
                 novel_repo=mock_novel_repo_cls.return_value,
                 model_registry=mock_registry,
                 model_config=mock_config,
+                composer=mock_composer,
                 invocation_pipeline=mock_pipeline,
             )
 
@@ -236,11 +239,13 @@ class TestGetPOVService:
         """Returns POVService with KB repository for character name resolution."""
         session = AsyncMock(spec=AsyncSession)
         mock_registry = MagicMock(spec=["get_model", "register_model"])
+        mock_composer = MagicMock(spec=["compose", "build"])
         mock_config = MagicMock(spec=["model_id", "provider_name", "temperature", "max_tokens"])
         mock_pipeline = MagicMock(spec=["generate"])
 
         with (
             patch("narrare._app.dependencies.get_model_registry", return_value=mock_registry),
+            patch("narrare._app.dependencies.get_composer", return_value=mock_composer),
             patch(
                 "narrare._app.dependencies_services.build_system_default_config",
                 return_value=mock_config,
@@ -268,12 +273,13 @@ class TestGetPOVService:
             mock_novel_repo_cls.assert_called_once_with(session)
             mock_kb_repo_cls.assert_called_once_with(session)
 
-            # -- verify POVService receives all deps including kb_repo
+            # -- verify POVService receives all deps incl. kb_repo + composer (Mode 1)
             mock_svc_cls.assert_called_once_with(
                 chapter_repo=mock_chapter_repo_cls.return_value,
                 novel_repo=mock_novel_repo_cls.return_value,
                 kb_repo=mock_kb_repo_cls.return_value,
                 model_registry=mock_registry,
                 model_config=mock_config,
+                composer=mock_composer,
                 invocation_pipeline=mock_pipeline,
             )

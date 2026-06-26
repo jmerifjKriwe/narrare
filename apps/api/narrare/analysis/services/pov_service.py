@@ -14,9 +14,10 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.analysis._invocation_compose import compose_analysis_invocation_prompt
 from narrare.analysis.services.pov_mapper import build_deps, map_output_to_result
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.analysis.types import POVResult
+from narrare_core.llm.intents import LLMIntent
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -29,19 +30,9 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry
     from narrare_core.llm.model_config import ResolvedModelConfig
+    from narrare_core.prompts import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: POVDetectionAgent composes its prompt internally
-# from deps (combined text, known characters, POV type hint, language).
-_POV_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "POVDetectionAgent composes its prompt internally from deps "
-        "(combined chapter text, known characters, POV type hint, language)."
-    ),
-    variables=("text", "known_characters", "pov_type"),
-    injection_mechanism="agent_deps",
-)
 
 
 class POVService:
@@ -59,6 +50,9 @@ class POVService:
             ``POVDetectionAgent``.
         model_config: Resolved model configuration (provider, model_id,
             temperature, max_tokens).
+        composer: PromptComposer for Mode 1 (composer-driven) system prompt
+            assembly (ADR-048). Builds the feature-specific POV system prompt
+            from the bundled ``analysis/{lang}/pov`` template.
         invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
@@ -70,6 +64,7 @@ class POVService:
         kb_repo: KBRepository,
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig,
+        composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
@@ -77,6 +72,7 @@ class POVService:
         self._kb_repo = kb_repo
         self._model_registry = model_registry
         self._model_config = model_config
+        self._composer = composer
         self._invocation_pipeline = invocation_pipeline
 
     # -------------------------------------------------------------------
@@ -152,35 +148,24 @@ class POVService:
         # 3. Fetch known character names from KB
         known_characters = await self._resolve_characters(novel_id)
 
-        # 4. Run POVDetectionAgent
+        # 4. Compose prompt via Mode 1 (composer-driven, ADR-048) with
+        # correlated evidence + enrichment. Falls back to direct composition
+        # on pipeline failure so analysis proceeds regardless of
+        # evidence/enrichment issues.
+        composed = await compose_analysis_invocation_prompt(
+            composer=self._composer,
+            invocation_pipeline=self._invocation_pipeline,
+            feature_id="analysis_pov",
+            intent=LLMIntent.ANALYSE,
+            novel_id=novel_id,
+            user_id=user_id,
+            language=effective_language,
+            mode="pov",
+        )
+
+        # 5. Run POVDetectionAgent with the composed feature-specific prompt
         try:
-            # 4a. Compose invocation (Mode 2 — agent-internal) and record
-            # evidence (ADR-048). Replaces the former placeholder path.
-            from narrare._app.invocation_context import build_invocation_context
-            from narrare_core.ai_invocation import compose_invocation
-            from narrare_core.llm.intents import LLMIntent
-
-            invocation_context = build_invocation_context(
-                feature_id="analysis_pov",
-                intent=LLMIntent.ANALYSE,
-                user_id=user_id,
-                project_id=novel_id,
-                language=effective_language,
-            )
-            try:
-                await compose_invocation(
-                    invocation_pipeline=self._invocation_pipeline,
-                    invocation_context=invocation_context,
-                    manual_injection=_POV_MANUAL_INJECTION,
-                )
-            except Exception:
-                logger.warning(
-                    "invocation_composition_failed",
-                    feature_id="analysis_pov",
-                    exc_info=True,
-                )
-
-            agent = self._get_agent()
+            agent = self._get_agent(system_prompt=composed.system)
             deps = build_deps(
                 text=combined_text,
                 language=effective_language,
@@ -201,7 +186,7 @@ class POVService:
             )
             raise
 
-        # 5. Map POVDetectionOutput → POVResult
+        # 6. Map POVDetectionOutput → POVResult
         result = map_output_to_result(output)
 
         logger.info(
@@ -235,13 +220,18 @@ class POVService:
         )
         return [e.name for e in entries]
 
-    def _get_agent(self) -> POVDetectionAgent:
+    def _get_agent(self, system_prompt: str | None = None) -> POVDetectionAgent:
         """Construct a ``POVDetectionAgent`` from the model registry.
 
-        Returns a fresh agent per call — agents are lightweight wrappers
-        around the model.
+        Args:
+            system_prompt: Composed feature-specific system prompt (Mode 1,
+                ADR-048). When ``None`` the agent falls back to Capabilities only.
+
+        Returns:
+            A fresh agent per call — agents are lightweight wrappers
+            around the model.
         """
         from narrare_core.agents.pov_agent import POVDetectionAgent
 
         model = self._model_registry.get_model(self._model_config)
-        return POVDetectionAgent(model=model)
+        return POVDetectionAgent(model=model, system_prompt=system_prompt)

@@ -9,7 +9,7 @@ LLM-identified conflicts to :class:`TemporalIssueResponse`.
 Extracted to keep ``timeline_consistency_service.py`` under the 300-line
 file size limit (RULE-04). The helpers take their dependencies (registry,
 config, composer, invocation pipeline) as explicit parameters rather than
-as instance state — see ``_beta_reader_helpers.py`` for the same pattern.
+as instance state.
 """
 
 from __future__ import annotations

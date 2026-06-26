@@ -109,6 +109,7 @@ def get_readability_service(session: SessionDep) -> ReadabilityService:
     - NovelRepository for novel access control + language resolution.
     - ModelRegistry + ResolvedModelConfig for the ReadabilityAgent
       (AI-powered sentence analysis).
+    - PromptComposer for Mode 1 (composer-driven) system prompt assembly (ADR-048).
     - InvocationPipeline for invocation evidence (ADR-040).
 
     Phase 1 (deterministic metrics) requires no LLM calls.
@@ -116,6 +117,7 @@ def get_readability_service(session: SessionDep) -> ReadabilityService:
     ModelRegistry.
     """
     from narrare._app.dependencies import (
+        get_composer,
         get_invocation_pipeline,
         get_model_registry,
     )
@@ -138,6 +140,7 @@ def get_readability_service(session: SessionDep) -> ReadabilityService:
         novel_repo=novel_repo,
         model_registry=registry,
         model_config=config,
+        composer=get_composer(),
         invocation_pipeline=get_invocation_pipeline(),
     )
 
@@ -151,9 +154,11 @@ def get_pov_service(session: SessionDep) -> POVService:
     - KBRepository for resolving known character names from KB.
     - ModelRegistry + ResolvedModelConfig for the POVDetectionAgent
       (AI-powered scene detection + violation analysis).
+    - PromptComposer for Mode 1 (composer-driven) system prompt assembly (ADR-048).
     - InvocationPipeline for invocation evidence (ADR-040).
     """
     from narrare._app.dependencies import (
+        get_composer,
         get_invocation_pipeline,
         get_model_registry,
     )
@@ -179,5 +184,6 @@ def get_pov_service(session: SessionDep) -> POVService:
         kb_repo=kb_repo,
         model_registry=registry,
         model_config=config,
+        composer=get_composer(),
         invocation_pipeline=get_invocation_pipeline(),
     )

@@ -15,10 +15,7 @@ from uuid import UUID
 
 import structlog
 
-from narrare.analysis._beta_reader_helpers import (
-    compose_phase1_invocation,
-    compose_phase2_invocation,
-)
+from narrare.analysis._invocation_compose import compose_analysis_invocation_prompt
 from narrare.analysis.beta_reader_agent_run import run_phase1, run_phase2
 from narrare.analysis.beta_reader_cache import BetaReaderCache
 from narrare.analysis.beta_reader_mapper import (
@@ -37,7 +34,6 @@ from narrare.analysis.validation import validate_word_count
 from narrare_core.agents.beta_reader_agent import BetaReaderAgent
 from narrare_core.analysis.assembler import AnalysisContextAssembler
 from narrare_core.llm import LLMIntent, ResolvedModelConfig
-from narrare_core.prompts.context import PromptContext
 
 if TYPE_CHECKING:
     from narrare.analysis.context_assembler import ContextAssembler
@@ -45,7 +41,6 @@ if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
     from narrare_core.llm import ModelRegistry
     from narrare_core.prompts import PromptComposer
-    from narrare_core.prompts.composer import ComposedPrompt
 
 logger = structlog.get_logger(__name__)
 
@@ -136,18 +131,20 @@ class BetaReaderService:
         if request.categories:
             deps.focus_categories = [c.value for c in request.categories]
 
-        # 6. Compose prompt and run agent
-        composed = await self._compose_prompt(deps.language, "beta_reader")
-        model = await self._registry.get_model(self._config)
-
-        # 6a. Compose invocation (Mode 2 — agent-internal) and record evidence
-        # (ADR-048). Replaces the former placeholder-evidence path.
-        await compose_phase1_invocation(
-            self._invocation_pipeline,
+        # 6. Compose prompt via Mode 1 (composer-driven, ADR-048) with
+        # correlated evidence + enrichment. Falls back to direct composition
+        # on pipeline failure.
+        composed = await compose_analysis_invocation_prompt(
+            composer=self._composer,
+            invocation_pipeline=self._invocation_pipeline,
+            feature_id="analysis_beta_read",
+            intent=LLMIntent.BETA_READ,
             novel_id=novel_id,
             user_id=user_id,
             language=deps.language,
+            mode="beta_reader",
         )
+        model = await self._registry.get_model(self._config)
 
         agent = BetaReaderAgent(model=model, system_prompt=composed.system)
         user_prompt = await build_budgeted_prompt(deps, self._budget_assembler)
@@ -215,18 +212,20 @@ class BetaReaderService:
         deps.phase1_strengths_summary = "; ".join(s.title for s in phase1.strengths)
         deps.phase1_feedback_summary = "; ".join(f.title for f in phase1.feedback[:10])
 
-        # 3. Compose Phase 2 prompt and run agent
-        composed = await self._compose_prompt(deps.language, "beta_reader_deepdive")
-        model = await self._registry.get_model(self._config)
-
-        # 3a. Compose invocation (Mode 2 — agent-internal) and record evidence
-        # for deep-dive (ADR-048). Replaces the former placeholder-evidence path.
-        await compose_phase2_invocation(
-            self._invocation_pipeline,
+        # 3. Compose Phase 2 prompt via Mode 1 (composer-driven, ADR-048)
+        # with correlated evidence + enrichment. Falls back to direct
+        # composition on pipeline failure.
+        composed = await compose_analysis_invocation_prompt(
+            composer=self._composer,
+            invocation_pipeline=self._invocation_pipeline,
+            feature_id="analysis_beta_read_deepdive",
+            intent=LLMIntent.BETA_READ,
             novel_id=novel_id,
             user_id=user_id,
             language=deps.language,
+            mode="beta_reader_deepdive",
         )
+        model = await self._registry.get_model(self._config)
 
         agent = BetaReaderAgent(model=model, system_prompt=composed.system)
         result = await run_phase2(agent, deps, model)
@@ -268,16 +267,3 @@ class BetaReaderService:
                 error=str(exc),
             )
             raise AnalysisError("Failed to assemble analysis context") from exc
-
-    async def _compose_prompt(self, language: str, mode: str) -> ComposedPrompt:
-        """Compose system prompt via PromptComposer.
-
-        Raises:
-            AnalysisError: If prompt composition fails.
-        """
-        ctx = PromptContext(language=language, mode=mode, project_title="")
-        try:
-            return await self._composer.build(LLMIntent.BETA_READ, ctx)
-        except Exception as exc:
-            logger.error("prompt_composition_failed", mode=mode, error=str(exc))
-            raise AnalysisError("Failed to compose analysis prompt") from exc

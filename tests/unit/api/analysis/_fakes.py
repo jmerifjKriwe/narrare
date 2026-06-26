@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from narrare_core.agents.pov_types import POVDetectionOutput
 from narrare_core.agents.readability_types import ReadabilityAgentOutput
 from narrare_core.ai_invocation.pipeline import InvocationPipeline
+from narrare_core.prompts.composer import ComposedPrompt
 from tests.fakes._shared import CallRecord
 
 if TYPE_CHECKING:
@@ -21,7 +22,27 @@ if TYPE_CHECKING:
         FinalizedInvocation,
         PreparedInvocation,
     )
-    from narrare_core.prompts.composer import ComposedPrompt
+    from narrare_core.llm.intents import LLMIntent
+    from narrare_core.prompts.context import PromptContext
+
+
+class FakeComposer:
+    """Fake PromptComposer for Mode 1 DI wiring (ADR-048).
+
+    Returns a fixed :class:`ComposedPrompt` so the service can construct its
+    agent with a feature-specific system prompt. Records every ``build`` call
+    so tests can assert the intent/mode that was composed.
+
+    Mirrors the pattern in ``_coreference_test_helpers.py``.
+    """
+
+    def __init__(self, system: str = "COMPOSED-ANALYSIS-SYSTEM") -> None:
+        self._system = system
+        self.build_calls: list[tuple[LLMIntent, PromptContext]] = []
+
+    async def build(self, intent: LLMIntent, context: PromptContext) -> ComposedPrompt:
+        self.build_calls.append((intent, context))
+        return ComposedPrompt(system=self._system, user="")
 
 
 class FakePOVAgent:
@@ -99,7 +120,7 @@ class SpyInvocationPipeline(InvocationPipeline):
     results and ``compose_invocation`` proceeds without error.
 
     Used to verify that analysis services route through ``compose_invocation``
-    (ADR-048 Mode 2) with the expected ``feature_id``, rather than the
+    (ADR-048 Mode 1) with the expected ``feature_id``, rather than the
     deprecated ``safe_record_evidence`` placeholder-evidence path.
     """
 

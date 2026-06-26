@@ -28,7 +28,7 @@ from narrare_core.agents.beta_reader_types import (
     BetaReaderPhase1Output,
     BetaReaderPhase2Output,
 )
-from tests.unit.api.analysis._fakes import SpyInvocationPipeline
+from narrare_core.llm.intents import LLMIntent
 
 if TYPE_CHECKING:
     from narrare_core.ai_invocation.pipeline import InvocationPipeline
@@ -42,6 +42,10 @@ class _ModelRegistryProto(Protocol):
 
 class _ComposedPromptProto(Protocol):
     system: str
+
+
+class _ComposedInvocationProto(Protocol):
+    composed_prompt: _ComposedPromptProto
 
 
 # ---------------------------------------------------------------------------
@@ -286,18 +290,17 @@ class TestResponseMapping:
 
 
 # ---------------------------------------------------------------------------
-# Invocation composition — verifies compose_invocation (ADR-048 Mode 2)
+# Invocation composition — verifies compose_invocation (ADR-048 Mode 1)
 # ---------------------------------------------------------------------------
 
 
 class TestInvocationComposition:
-    """Verify Phase 1 routes through compose_invocation, not safe_record_evidence."""
+    """Verify Phase 1 routes through compose_invocation in Mode 1 (composer-driven)."""
 
     @pytest.mark.asyncio
     async def test_phase1_compose_invocation_called(self) -> None:
-        """Phase 1 analysis invokes compose_invocation with feature_id analysis_beta_read."""
-        spy = SpyInvocationPipeline()
-        service = _make_service(cache_hit=None, word_count=3000, invocation_pipeline=spy)
+        """Phase 1 invokes compose_invocation with composer= (Mode 1), not manual_injection=."""
+        service = _make_service(cache_hit=None, word_count=3000)
 
         phase1_output = BetaReaderPhase1Output(
             strengths=[],
@@ -316,9 +319,19 @@ class TestInvocationComposition:
         mock_agent_instance = AsyncMock()
         mock_agent_instance.run_phase1 = AsyncMock(return_value=phase1_output)
 
-        with patch(
-            "narrare.analysis.beta_reader_service.BetaReaderAgent",
-            return_value=mock_agent_instance,
+        fake_invocation = MagicMock(spec=_ComposedInvocationProto)
+        fake_invocation.composed_prompt = MagicMock(spec=_ComposedPromptProto)
+        fake_invocation.composed_prompt.system = "System prompt"
+
+        with (
+            patch(
+                "narrare.analysis.beta_reader_service.BetaReaderAgent",
+                return_value=mock_agent_instance,
+            ),
+            patch(
+                "narrare_core.ai_invocation.compose_invocation",
+                new=AsyncMock(return_value=fake_invocation),
+            ) as mock_compose,
         ):
             await service.analyze(
                 novel_id=uuid4(),
@@ -326,6 +339,23 @@ class TestInvocationComposition:
                 request=BetaReaderRequest(chapter_ids=[str(uuid4())]),
             )
 
-        assert len(spy.prepare_calls) == 1
-        assert spy.prepare_calls[0].feature_id == "analysis_beta_read"
-        assert len(spy.finalize_calls) == 1
+        mock_compose.assert_awaited_once()
+        kwargs = mock_compose.call_args.kwargs
+        # Mode 1: composer-driven (composer= + prompt_context= + intent=)
+        assert kwargs.get("composer") is not None, (
+            "compose_invocation must be called with composer= (Mode 1, "
+            "composer-driven), not manual_injection= (Mode 2)."
+        )
+        assert kwargs.get("prompt_context") is not None, (
+            "compose_invocation must be called with prompt_context= (Mode 1)."
+        )
+        assert kwargs.get("intent") == LLMIntent.BETA_READ, (
+            f"Expected intent=LLMIntent.BETA_READ, got {kwargs.get('intent')!r}."
+        )
+        # Mode 2 contract must NOT be used
+        assert "manual_injection" not in kwargs, (
+            "manual_injection= kwarg must not be passed — the service is Mode 1."
+        )
+        invocation_ctx = kwargs.get("invocation_context")
+        assert invocation_ctx is not None
+        assert invocation_ctx.feature_id == "analysis_beta_read"

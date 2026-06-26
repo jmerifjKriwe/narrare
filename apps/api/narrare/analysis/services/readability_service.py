@@ -14,9 +14,10 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from narrare.analysis._invocation_compose import compose_analysis_invocation_prompt
 from narrare.analysis.services._readability_helpers import build_deps
-from narrare_core.ai_invocation import ManualInjectionDeclaration
 from narrare_core.analysis.readability import FormulaReadabilityAnalyzer
+from narrare_core.llm.intents import LLMIntent
 from narrare_core.shared.errors import NotFoundError
 
 if TYPE_CHECKING:
@@ -29,19 +30,9 @@ if TYPE_CHECKING:
     from narrare_core.analysis.types import ReadabilityResult
     from narrare_core.llm import ModelRegistry
     from narrare_core.llm.model_config import ResolvedModelConfig
+    from narrare_core.prompts import PromptComposer
 
 logger = structlog.get_logger(__name__)
-
-# ADR-048 Mode 2 declaration: ReadabilityAgent composes its prompt internally
-# from ReadabilityDeps (chapter text, language).
-_READABILITY_MANUAL_INJECTION = ManualInjectionDeclaration(
-    reason=(
-        "ReadabilityAgent composes its prompt internally from ReadabilityDeps "
-        "(chapter text, language) and the runtime user prompt."
-    ),
-    variables=("text", "language"),
-    injection_mechanism="agent_deps",
-)
 
 
 class ReadabilityService:
@@ -58,6 +49,10 @@ class ReadabilityService:
             ``ReadabilityAgent``.
         model_config: Resolved model configuration (provider, model_id,
             temperature, max_tokens).
+        composer: PromptComposer for Mode 1 (composer-driven) system prompt
+            assembly (ADR-048). Builds the feature-specific readability
+            system prompt from the bundled ``analysis/{lang}/readability``
+            template.
         invocation_pipeline: Optional pipeline for invocation evidence.
     """
 
@@ -68,12 +63,14 @@ class ReadabilityService:
         novel_repo: NovelRepository,
         model_registry: ModelRegistry,
         model_config: ResolvedModelConfig,
+        composer: PromptComposer,
         invocation_pipeline: InvocationPipeline | None = None,
     ) -> None:
         self._chapter_repo = chapter_repo
         self._novel_repo = novel_repo
         self._model_registry = model_registry
         self._model_config = model_config
+        self._composer = composer
         self._formula_analyzer = FormulaReadabilityAnalyzer()
         self._invocation_pipeline = invocation_pipeline
 
@@ -127,6 +124,7 @@ class ReadabilityService:
             result = await self._analyze_chapter(
                 novel_id=novel_id,
                 chapter_id=chapter_id,
+                user_id=user_id,
                 language=effective_language,
             )
             results.append(result)
@@ -149,13 +147,15 @@ class ReadabilityService:
         *,
         novel_id: UUID,
         chapter_id: UUID,
+        user_id: UUID,
         language: str,
     ) -> ReadabilityResult:
         """Run both deterministic + AI analysis for a single chapter.
 
         Args:
-            novel_id: The novel (for logging / context).
+            novel_id: The novel (for invocation enrichment context).
             chapter_id: The chapter to analyze.
+            user_id: The user requesting analysis (for enrichment).
             language: Resolved language code.
 
         Returns:
@@ -177,31 +177,21 @@ class ReadabilityService:
         # 3. Phase 2: AI sentence analysis (skip for empty content)
         if content.strip():
             try:
-                # 3a. Compose invocation (Mode 2 — agent-internal) and record
-                # evidence (ADR-048). Replaces the former placeholder path.
-                from narrare._app.invocation_context import build_invocation_context
-                from narrare_core.ai_invocation import compose_invocation
-                from narrare_core.llm.intents import LLMIntent
-
-                invocation_context = build_invocation_context(
+                # 3a. Compose prompt via Mode 1 (composer-driven, ADR-048)
+                # with correlated evidence + enrichment. Falls back to direct
+                # composition on pipeline failure.
+                composed = await compose_analysis_invocation_prompt(
+                    composer=self._composer,
+                    invocation_pipeline=self._invocation_pipeline,
                     feature_id="analysis_readability",
                     intent=LLMIntent.ANALYSE,
+                    novel_id=novel_id,
+                    user_id=user_id,
                     language=language,
+                    mode="readability",
                 )
-                try:
-                    await compose_invocation(
-                        invocation_pipeline=self._invocation_pipeline,
-                        invocation_context=invocation_context,
-                        manual_injection=_READABILITY_MANUAL_INJECTION,
-                    )
-                except Exception:
-                    logger.warning(
-                        "invocation_composition_failed",
-                        feature_id="analysis_readability",
-                        exc_info=True,
-                    )
 
-                agent = self._get_agent()
+                agent = self._get_agent(system_prompt=composed.system)
                 agent_result = await agent.run(
                     prompt="Analyze readability of this text.",
                     deps=build_deps(content, language),
@@ -234,16 +224,21 @@ class ReadabilityService:
 
         return result
 
-    def _get_agent(self) -> ReadabilityAgent:
+    def _get_agent(self, system_prompt: str | None = None) -> ReadabilityAgent:
         """Construct a ``ReadabilityAgent`` from the model registry.
 
-        Returns a fresh agent per call — agents are lightweight wrappers
-        around the model.
+        Args:
+            system_prompt: Composed feature-specific system prompt (Mode 1,
+                ADR-048). When ``None`` the agent falls back to Capabilities only.
+
+        Returns:
+            A fresh agent per call — agents are lightweight wrappers
+            around the model.
         """
         from narrare_core.agents.readability_agent import ReadabilityAgent
 
         model = self._model_registry.get_model(self._model_config)
-        return ReadabilityAgent(model=model)
+        return ReadabilityAgent(model=model, system_prompt=system_prompt)
 
     @staticmethod
     def _merge_agent_result(
