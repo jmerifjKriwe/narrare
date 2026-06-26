@@ -117,6 +117,14 @@
 | [ANAL-010](analysis/ANAL-010-literary-suite.md) | Literary Analysis Suite | 📋 | ❌ |
 | [ANAL-011](analysis/ANAL-011-plot-analysis.md) | Plot Analysis | 📋 | ❌ |
 
+> **ANAL-008 (Character Voice Profiling):** Spec authored (2026-06-26) against
+> [ADR-055](../architecture/decisions/ADR-055-character-voice-contract.md) — the
+> character-voice storage contract (nested `voice_analysis` extension to the live
+> `SpeechPatterns` schema, hybrid metrics per ADR-021, self-contained dialogue
+> attribution) and the VOICE prompt-surface route. Status remains `planned`: spec
+> is authored and proposed, implementation is pending user approval of ADR-055.
+> The earlier lossy field-mapping (quotes in `body_language` etc.) was removed.
+
 ### Planning
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
