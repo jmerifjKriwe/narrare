@@ -150,7 +150,7 @@ class TestEventListenerListen:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Channel as string (not bytes) is handled correctly."""
-        channel = f"{_CHANNEL_PREFIX}{EventType.KB_ENTRY_UPDATED}"
+        channel = f"{_CHANNEL_PREFIX}some_event"
         messages = [
             {"type": "message", "channel": channel, "data": "{}"},
         ]
@@ -284,14 +284,20 @@ class _FakeBroker:
 
 
 class TestEventListenerDispatch:
-    async def test_dispatch_enqueues_registered_task(self) -> None:
+    async def test_dispatch_enqueues_registered_task(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When the mapped task is registered, it is enqueued with the payload."""
+        # Inject a temporary mapping — _EVENT_TASK_MAP is empty by default
+        # (KB embedding is handled by EmbeddingHookManager, not the listener).
+        monkeypatch.setattr(
+            "narrare._app.event_listener._EVENT_TASK_MAP",
+            {"TEST_EVENT": "embed_source"},
+        )
         task = _FakeTaskiqTask()
         broker = _FakeBroker(task=task)
         listener = EventListener("redis://test:6379", broker=broker)
 
         payload = {"aggregate_id": "kb-1", "content": "hello"}
-        await listener._dispatch(EventType.KB_ENTRY_UPDATED, payload)
+        await listener._dispatch("TEST_EVENT", payload)
 
         assert task.kiq_args == (payload,)
         assert broker.find_task_calls  # a lookup happened
@@ -308,14 +314,20 @@ class TestEventListenerDispatch:
         assert task.kiq_args is None
         assert broker.find_task_calls == []
 
-    async def test_dispatch_task_not_registered_does_not_raise(self) -> None:
+    async def test_dispatch_task_not_registered_does_not_raise(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A mapped-but-unregistered task logs and continues without raising."""
+        monkeypatch.setattr(
+            "narrare._app.event_listener._EVENT_TASK_MAP",
+            {"TEST_EVENT": "embed_source"},
+        )
         broker = _FakeBroker(task=None)
         listener = EventListener("redis://test:6379", broker=broker)
 
-        # KB_ENTRY_UPDATED is mapped to "embed_source"; simulate the task not
+        # TEST_EVENT is mapped to "embed_source"; simulate the task not
         # being registered yet (find_task returns None).
-        await listener._dispatch(EventType.KB_ENTRY_UPDATED, {"aggregate_id": "kb-1"})
+        await listener._dispatch("TEST_EVENT", {"aggregate_id": "kb-1"})
 
         # A lookup was attempted (graceful miss).
         assert broker.find_task_calls

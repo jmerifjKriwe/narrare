@@ -13,8 +13,6 @@ from typing import Any, cast
 aioredis: Any = __import__("redis.asyncio", fromlist=["asyncio"])
 import structlog  # noqa: E402
 
-from narrare_core.events.types import EventType  # noqa: E402
-
 logger = structlog.get_logger(__name__)
 
 _CHANNEL_PREFIX = "narrare:events:"
@@ -27,9 +25,14 @@ _CHANNEL_PREFIX = "narrare:events:"
 # — see ``_app/lifespan.py``); ``_dispatch`` enqueues a single payload via
 # ``task.kiq(payload)``, so when this listener is wired the dispatcher will
 # need to adapt each event payload to its target task's signature.
+#
+# KB entry embedding is NOT routed here: the Redis Pub/Sub event payload
+# lacks the entry content, while ``embed_source`` requires ``source_type``,
+# ``source_id``, and ``content`` as kwargs. KB embedding is handled directly
+# by ``EmbeddingHookManager._dispatch_task`` (kb/embedding_hooks.py), which
+# has access to the entry content. This listener is infrastructure for
+# future events whose payloads are self-contained.
 _EVENT_TASK_MAP: dict[str, str] = {
-    # KB entry updates route to the generic ``embed_source`` worker.
-    EventType.KB_ENTRY_UPDATED: "embed_source",
     # CHAPTER_CONTENT_UPDATED → pending: no registered chapter-embedding task.
     # CHAPTER_DELETED → pending: no registered cleanup task.
 }

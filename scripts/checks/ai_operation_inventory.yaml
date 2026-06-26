@@ -146,16 +146,17 @@ operations:
   - operation_id: writing.style_variant
     feature: Writing — Style-Variant Regeneration
     entry_points:
+      - packages/web/components/studio/editor/useStyleVariantRegeneration.ts
       - packages/web/components/studio/editor/TipTapEditorController.ts (handleStyleVariantRegenerate)
       - packages/web/components/studio/editor/StyleVariantPicker.tsx
       - packages/web/lib/api/generation-streams.ts (streamStyleVariantRegeneration)
       - apps/api/narrare/writing/router_style_variants.py
     transport: sse
-    lifecycle_owner: governed_exception
-    loading_feedback: "Sub-flow of the rewrite modal — rides on isRewriteStreaming / rewritePhase (TipTapEditorController.ts). Variant selection sets rewritePhase='streaming'."
-    cancel_ui: "handleRewriteCancel (TipTapEditorController.ts) aborts the variant AbortController ref AND rewriteAiOp.cancel(); visible stop control in the rewrite modal"
-    signal_propagation: "handleStyleVariantRegenerate owns a manual AbortController (variantAbortRef) passed to streamStyleVariantRegeneration — governed_exception: the parent rewrite flow already owns the useAIOperation hook (rewriteAiOp), so the variant sub-flow cannot host a second useAIOperation hook without conflicting state ownership. Structurally analogous to the callback/sub-flow SSE governed exceptions (timeline, ghost-text)."
-    error_mapping: mapSSEError (ai-error-mapping.ts) — onError maps to rewriteError structured AIErrorResponse
+    lifecycle_owner: useAIOperation
+    loading_feedback: "Sub-flow of the rewrite modal — rides on isRewriteStreaming / rewritePhase (TipTapEditorController.ts). Variant selection sets rewritePhase='streaming'. useAIOperation manages the variant stream lifecycle; parent setters drive the rewrite state-machine."
+    cancel_ui: "handleVariantCancel (useStyleVariantRegeneration.ts) calls useAIOperation cancel(); handleRewriteCancel (TipTapEditorController.ts) calls handleVariantCancel + rewriteAiOp.cancel(); visible stop control in the rewrite modal"
+    signal_propagation: "execute: (signal) bridges streamStyleVariantRegeneration SSE to useAIOperation's Promise contract — signal passed to streamStyleVariantRegeneration; abort → AbortError rejection (swallowed → idle)"
+    error_mapping: mapSSEError (ai-error-mapping.ts) — useAIOperation errorMapper maps errors; onError callback drives setRewriteError structured AIErrorResponse
     partial_output: "Variant alternatives accumulate into the shared aiSuggestion state (original preserved until a variant is accepted)"
     contract_parity: "RULE-17 — request body mirrors Python StyleVariantRegenerateRequest exactly (source_text, context_before?, context_after?, style_variant, tone?, language?); 6-value StyleVariant enum parity enforced by tests/unit/api/writing/test_style_variant_schema_contract.py"
     ai_action_i18n: studio.styleVariants.* (DE/EN/FR) + reuses studio.aiActions.accept / .reject from parent modal
@@ -164,11 +165,12 @@ operations:
     tests:
       - packages/web/lib/api/__tests__/style-variants.test.ts
       - packages/web/components/studio/editor/__tests__/StyleVariantPicker.test.tsx
+      - packages/web/components/studio/editor/__tests__/useStyleVariantRegeneration.test.tsx
       - tests/unit/api/writing/test_style_variant_schema_contract.py
       - tests/integration/writing/test_style_variant_streaming.py
     aufg_id: CR-AUFG-07-22
-    exclude_entry: "packages/web/components/studio/editor/TipTapEditorController.ts (check_2_no_raw_abort — sub-operation-lifecycle)"
-    status: governed_exception
+    exclude_entry: none
+    status: compliant
 
   - operation_id: writing.story_suggest
     feature: Writing — Writer's Unblock (Story Suggestions)
