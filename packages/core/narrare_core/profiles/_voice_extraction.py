@@ -45,6 +45,44 @@ def _add_list_field(
             parts.append(f"{label}: {', '.join(str_items)}")
 
 
+def _formality_descriptor(formality: float) -> str:
+    """Map a 0.0-1.0 formality score to a prompt-friendly register word.
+
+    Used by the voice_analysis consumer (ADR-055). The numeric value itself
+    is never rendered into generation — only this descriptor.
+    """
+    if formality < 0.34:
+        return "casual"
+    if formality < 0.67:
+        return "balanced"
+    return "formal"
+
+
+def _add_voice_analysis_parts(  # pyright: ignore[reportUnknownParameterType]
+    voice_analysis_raw: dict[str, object],
+    parts: list[str],
+) -> None:
+    """Render the machine-derived ``voice_analysis`` DESCRIPTIVE group.
+
+    ADR-055 constraint: this renders ONLY the descriptive fields (formality,
+    vocabulary_level, sentence_profile, emotional_range,
+    cultural_regional_markers, voice_examples). The metric block
+    (``voice_metrics``) is NEVER rendered — raw deterministic metrics never
+    reach generation (they are comparison-only for ANAL-009/WRITE-010).
+    """
+    # Formality (float 0.0-1.0) → register descriptor (number not rendered).
+    # bool is a subclass of int, so exclude it explicitly.
+    formality = voice_analysis_raw.get("formality")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+    if not isinstance(formality, bool) and isinstance(formality, (int, float)):
+        parts.append(f"voice: {_formality_descriptor(float(formality))}")
+
+    _add_str_field(voice_analysis_raw, "vocabulary_level", "vocabulary level", parts)  # pyright: ignore[reportUnknownArgumentType]
+    _add_str_field(voice_analysis_raw, "sentence_profile", "sentence profile", parts)  # pyright: ignore[reportUnknownArgumentType]
+    _add_str_field(voice_analysis_raw, "emotional_range", "emotional range", parts)  # pyright: ignore[reportUnknownArgumentType]
+    _add_str_field(voice_analysis_raw, "cultural_regional_markers", "markers", parts)  # pyright: ignore[reportUnknownArgumentType]
+    _add_list_field(voice_analysis_raw, "voice_examples", "voice examples", parts)  # pyright: ignore[reportUnknownArgumentType]
+
+
 def _extract_speech_parts(  # pyright: ignore[reportUnknownParameterType]
     metadata: object,
 ) -> list[str]:
@@ -65,6 +103,10 @@ def _extract_speech_parts(  # pyright: ignore[reportUnknownParameterType]
         _add_str_field(speech_raw, "vocabulary_quirks", "vocabulary", parts)  # pyright: ignore[reportUnknownArgumentType]
         _add_list_field(speech_raw, "typical_phrases", "typical phrases", parts)  # pyright: ignore[reportUnknownArgumentType]
         _add_str_field(speech_raw, "body_language", "body language", parts)  # pyright: ignore[reportUnknownArgumentType]
+        # Machine-derived descriptive group (ADR-055). Metrics excluded.
+        voice_analysis_raw = speech_raw.get("voice_analysis")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        if isinstance(voice_analysis_raw, dict):
+            _add_voice_analysis_parts(voice_analysis_raw, parts)  # pyright: ignore[reportUnknownArgumentType]
 
     # Personality metadata block
     personality_raw = metadata.get("personality")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]

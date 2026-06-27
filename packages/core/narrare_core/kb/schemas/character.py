@@ -51,15 +51,59 @@ class BackgroundFields(BaseModel):
     formative_experiences: str | None = None
 
 
+class VoiceMetrics(BaseModel):
+    """Deterministic numeric metrics — for ANAL-009 drift / WRITE-010 checking.
+
+    NOT rendered into generation. Populated by the deterministic
+    ``VoiceMetricsAnalyzer`` (ADR-021/ADR-055), never by the LLM agent.
+    ``extra="allow"`` lets the metric block grow without a migration.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    avg_sentence_length: float | None = None
+    sentence_length_std: float | None = None
+    type_token_ratio: float | None = None
+    avg_syllables_per_word: float | None = None
+    contraction_rate: float | None = None
+    verbal_tic_frequency: dict[str, float] | None = None  # n-gram -> rate
+    punctuation_profile: dict[str, float] | None = None  # habit -> rate
+
+
+class VoiceAnalysis(BaseModel):
+    """Machine-derived character voice profile (ADR-055 Decision 1).
+
+    ANAL-008 writes this; the extended ``get_speech_data`` consumer renders
+    the descriptive group into ``{{character_voice_profiles}}``. The metric
+    group is comparison-only and NEVER reaches generation.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    # Descriptive group (rendered into generation by the extended consumer)
+    formality: float | None = None  # 0.0 casual - 1.0 formal
+    vocabulary_level: str | None = None  # simple | moderate | complex
+    sentence_profile: str | None = None  # short | medium | long | varied
+    emotional_range: str | None = None  # restricted | moderate | expressive
+    cultural_regional_markers: str | None = None  # intrinsic markers aiding generation
+    voice_examples: list[str] | None = None  # curated representative quotes
+
+    # Metric group (comparison ONLY — never rendered into generation)
+    voice_metrics: VoiceMetrics | None = None
+
+
 class SpeechPatterns(BaseModel):
     """Speech patterns and mannerisms."""
 
     model_config = ConfigDict(extra="allow")
 
+    # Human-authored (unchanged):
     typical_phrases: list[str] | None = None
     dialect: str | None = None
     vocabulary_quirks: str | None = None
     body_language: str | None = None
+    # Machine-derived (ANAL-008 / ADR-055):
+    voice_analysis: VoiceAnalysis | None = None
 
 
 class RelationshipFields(BaseModel):

@@ -14,6 +14,8 @@ Public exports:
     PersonalityFields — Character personality traits
     BackgroundFields — Character background
     SpeechPatterns — Character speech patterns
+    VoiceAnalysis — Machine-derived character voice profile (ANAL-008/ADR-055)
+    VoiceMetrics — Deterministic numeric voice metrics (ADR-021/ADR-055)
     RelationshipFields — Character relationships
     DevelopmentFields — Character development arc
     LocationFeatures — Geographic/architectural features
@@ -49,6 +51,8 @@ from .character import (
     PersonalityFields,
     RelationshipFields,
     SpeechPatterns,
+    VoiceAnalysis,
+    VoiceMetrics,
 )
 from .concept import ConceptDefinition, ConceptHistory, ConceptMetadata
 from .faction import FactionHistory, FactionIdeology, FactionMetadata, FactionStructure
@@ -107,5 +111,7 @@ __all__ = [
     "TimelineEvents",
     "TimelineMetadata",
     "TimelinePeriod",
+    "VoiceAnalysis",
+    "VoiceMetrics",
     "get_schema",
 ]

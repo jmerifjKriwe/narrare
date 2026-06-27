@@ -5,6 +5,8 @@ Covers:
 2. _extract_speech_parts — non-dict, speech dict, personality dict
 3. build_character_voice_profile — all paths
 4. _add_str_field, _add_list_field — edge cases
+
+Voice-analysis rendering tests live in ``test_voice_analysis_rendering.py``.
 """
 
 from __future__ import annotations
