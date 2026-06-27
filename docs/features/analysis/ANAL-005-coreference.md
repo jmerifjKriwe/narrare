@@ -68,8 +68,8 @@ ui_help_long: |
 ui_available_in: [analysis]
 
 service: analysis/coreference_service.py
-contract: analysis/contracts.py#CoreferenceProtocol
-router: analysis/router.py
+contract: analysis/contracts_coreference.py#CoreferenceServiceProtocol
+router: analysis/router_coreference.py
 prompt: core/prompts/_bundled/analysis/en/coreference
 requires: [INFRA-001, KB-001]
 ---
@@ -107,9 +107,9 @@ Use during revision to ensure readers always know who is being referred to.
 
 ## How it works (Technical)
 
-**Entry point:** `analysis/router.py` → `POST /api/v1/analysis/coreference`
+**Entry point:** `analysis/router_coreference.py` → `POST /analysis/coreference/{chapter_id}`
 **Service:** `CoreferenceService.analyze()` in `analysis/coreference_service.py`
-**Contract:** `CoreferenceProtocol` in `analysis/contracts.py`
+**Contract:** `CoreferenceServiceProtocol` in `analysis/contracts_coreference.py`
 **LLM Intent:** `LLMIntent.ANALYSE`
 
 **Coreference resolution:**
