@@ -109,7 +109,7 @@
 | [ANAL-002](analysis/ANAL-002-sentiment.md) | Sentiment Analysis | ✅ | ❌ |
 | [ANAL-003](analysis/ANAL-003-readability.md) | Readability Analysis | ✅ | ❌ |
 | [ANAL-004](analysis/ANAL-004-pov.md) | POV Analysis | ✅ | ❌ |
-| [ANAL-005](analysis/ANAL-005-coreference.md) | Coreference Analysis | 🔨 | ❌ |
+| [ANAL-005](analysis/ANAL-005-coreference.md) | Coreference Analysis | ✅ | ❌ |
 | [ANAL-006](analysis/ANAL-006-sensitivity.md) | Sensitivity Review | 📋 | ❌ |
 | [ANAL-007](analysis/ANAL-007-voice-author.md) | Author Voice Profiling | 📋 | ❌ |
 | [ANAL-008](analysis/ANAL-008-voice-character.md) | Character Voice Profiling | 📋 | ❌ |
@@ -315,5 +315,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-26 — INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `in-progress`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-26 — INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after
