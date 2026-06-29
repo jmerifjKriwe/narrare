@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { Database, Sparkles, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { BetaReaderTrigger } from "../analysis/BetaReaderTrigger";
+import { CharacterVoiceTrigger } from "../analysis/CharacterVoiceTrigger";
 import { ConsistencyTrigger } from "../analysis/ConsistencyTrigger";
 import { CoreferenceTrigger } from "../analysis/CoreferenceTrigger";
 import { POVTrigger } from "../analysis/POVTrigger";
@@ -125,6 +126,7 @@ export function EditorToolbar({
       <ReadabilityTrigger />
       <POVTrigger />
       <CoreferenceTrigger />
+      <CharacterVoiceTrigger />
       <ToolbarSeparator />
       <GhostTextConfig editor={editor} />
     </div>

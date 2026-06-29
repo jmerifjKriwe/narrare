@@ -230,5 +230,26 @@
     "noMentions": "Aucune mention de personnage détectée.",
     "pov": "POV",
     "mentions": "{count} mentions"
+  },
+  "characterVoice": {
+    "trigger": "Voix des personnages",
+    "triggerTooltip": "Analyser les dialogues pour créer des profils de voix cohérents",
+    "title": "Analyse des voix des personnages",
+    "description": "Capturer la façon dont chaque personnage parle \u2014 vocabulaire, structure des phrases et registre émotionnel",
+    "analyzing": "Analyse des voix des personnages...",
+    "analyzingSubtext": "Extraction des schémas de parole et des dialogues pour chaque personnage",
+    "analysisFailed": "Échec de l'analyse des voix des personnages",
+    "noResults": "Aucun profil de voix de personnage identifié.",
+    "noVoiceProfile": "Aucun profil de voix disponible pour ce personnage.",
+    "formality": "Formalité",
+    "formalityCasual": "Familier",
+    "formalityFormal": "Soutenu",
+    "vocabularyLevel": "Niveau de vocabulaire",
+    "sentenceProfile": "Profil des phrases",
+    "emotionalRange": "Registre émotionnel",
+    "culturalRegionalMarkers": "Marqueurs culturels / régionaux",
+    "voiceExamples": "Dialogues d'exemple",
+    "distinctivenessNotes": "Distinctivité",
+    "distinctivenessCaveat": "Comparaison par exécution \u2014 non stockée dans la base de connaissances."
   }
 }

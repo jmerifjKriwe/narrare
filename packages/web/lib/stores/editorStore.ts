@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   toggleBetaReaderPanel,
+  toggleCharacterVoicePanel,
   toggleConsistencyPanel,
   toggleCoreferencePanel,
   togglePovPanel,
@@ -39,6 +40,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   readabilityPanelOpen: false,
   povPanelOpen: false,
   coreferencePanelOpen: false,
+  characterVoicePanelOpen: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
   setActiveVolumeId: (id) => set({ activeVolumeId: id }),
@@ -83,4 +85,5 @@ export const useEditorStore = create<EditorState>((set) => ({
   toggleReadabilityPanel: () => set(toggleReadabilityPanel),
   togglePovPanel: () => set(togglePovPanel),
   toggleCoreferencePanel: () => set(toggleCoreferencePanel),
+  toggleCharacterVoicePanel: () => set(toggleCharacterVoicePanel),
 }));

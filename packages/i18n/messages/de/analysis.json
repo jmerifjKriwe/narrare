@@ -230,5 +230,26 @@
     "noMentions": "Keine Charakter-Erwähnungen erkannt.",
     "pov": "POV",
     "mentions": "{count} Erwähnungen"
+  },
+  "characterVoice": {
+    "trigger": "Charakterstimmen",
+    "triggerTooltip": "Charakter-Dialoge analysieren, um Stimmprofile für Konsistenz zu erstellen",
+    "title": "Charakterstimmen-Analyse",
+    "description": "Erfassen, wie jeder Charakter spricht \u2014 Wortschatz, Satzmuster und emotionaler Ausdruck",
+    "analyzing": "Analysiere Charakterstimmen...",
+    "analyzingSubtext": "Extrahiere Sprachmuster und Dialoge für jeden Charakter",
+    "analysisFailed": "Charakterstimmen-Analyse fehlgeschlagen",
+    "noResults": "Keine Charakterstimmen-Profile erkannt.",
+    "noVoiceProfile": "Für diesen Charakter ist kein Stimmprofil verfügbar.",
+    "formality": "Formalität",
+    "formalityCasual": "Locker",
+    "formalityFormal": "Formal",
+    "vocabularyLevel": "Wortschatzniveau",
+    "sentenceProfile": "Satzprofil",
+    "emotionalRange": "Emotionaler Ausdruck",
+    "culturalRegionalMarkers": "Kulturelle / Regionale Merkmale",
+    "voiceExamples": "Beispieldialoge",
+    "distinctivenessNotes": "Eigenständigkeit",
+    "distinctivenessCaveat": "Vergleich pro Durchlauf \u2014 nicht in der Wissensbasis gespeichert."
   }
 }

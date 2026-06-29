@@ -230,5 +230,26 @@
     "noMentions": "No character mentions detected.",
     "pov": "POV",
     "mentions": "{count} mentions"
+  },
+  "characterVoice": {
+    "trigger": "Character Voices",
+    "triggerTooltip": "Analyze character dialogue to create voice profiles for consistency",
+    "title": "Character Voice Analysis",
+    "description": "Capture how each character speaks \u2014 vocabulary, sentence patterns, and emotional register",
+    "analyzing": "Analyzing character voices...",
+    "analyzingSubtext": "Extracting speech patterns and dialogue for each character",
+    "analysisFailed": "Failed to analyze character voices",
+    "noResults": "No character voice profiles identified.",
+    "noVoiceProfile": "No voice profile available for this character.",
+    "formality": "Formality",
+    "formalityCasual": "Casual",
+    "formalityFormal": "Formal",
+    "vocabularyLevel": "Vocabulary Level",
+    "sentenceProfile": "Sentence Profile",
+    "emotionalRange": "Emotional Range",
+    "culturalRegionalMarkers": "Cultural / Regional Markers",
+    "voiceExamples": "Example Dialogue",
+    "distinctivenessNotes": "Distinctiveness",
+    "distinctivenessCaveat": "Per-run comparison \u2014 not stored in the Knowledge Base."
   }
 }

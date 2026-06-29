@@ -376,6 +376,29 @@ operations:
     exclude_entry: none
     status: compliant
 
+  - operation_id: analysis.character_voice
+    feature: Character Voice Profiling (ANAL-008)
+    entry_points:
+      - packages/web/lib/hooks/useCharacterVoice.ts
+      - packages/web/lib/api/character-voice-stream.ts (streamCharacterVoice)
+    transport: sse
+    lifecycle_owner: useAIOperation
+    loading_feedback: "isLoading/isStreaming via useCharacterVoice.ts; connection-loss watchdog 15s"
+    cancel_ui: "cancel() via hook (no manual AbortController — ADR-043)"
+    signal_propagation: "execute: (signal) bridges streamCharacterVoice SSE to useAIOperation's Promise contract; abort → AbortError rejection"
+    error_mapping: mapSSEError (ai-error-mapping.ts)
+    partial_output: "Per-character results accumulated across the run and surfaced once on completion"
+    ai_action_i18n: analysis.characterVoice.* (DE/EN/FR) + analysis.retry / .refresh
+    deprecated_key_usage: "No deprecated aliases in use"
+    keyboard: "n/a — results displayed after completion"
+    tests:
+      - packages/web/components/studio/analysis/CharacterVoicePanel.test.tsx
+      - packages/web/components/studio/analysis/__tests__/CharacterVoiceTrigger.test.tsx
+      - packages/web/lib/hooks/__tests__/useAIOperation/execution.test.ts
+    aufg_id: n/a
+    exclude_entry: none
+    status: compliant
+
   # ------------------------------------------------------------------
   # Chat & Extraction
   # ------------------------------------------------------------------
