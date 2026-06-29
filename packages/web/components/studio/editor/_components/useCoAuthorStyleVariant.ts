@@ -8,18 +8,6 @@
  * variant regenerates the Co-Author's full revised output (`streamedText`) in
  * the chosen creative direction.
  *
- * ADR-043 compliance: the streaming lifecycle (AbortController management,
- * loading/streaming/error state, connection-loss detection, retry) runs through
- * {@link useAIOperation} — no manual AbortController. The callback-based SSE
- * transport ({@link streamStyleVariantRegeneration}) is bridged to the hook's
- * `execute(signal) => Promise<T>` contract the same way `useUnblockStream`
- * bridges `streamStorySuggestions` and `useContinueStream` bridges `streamExtend`:
- *
- *   - `onAlternative` notifies the hook (loading → streaming) and stores text
- *   - stream completion resolves the promise (status → complete)
- *   - `onError` rejects the promise; errors map via {@link mapSSEError}
- *   - cancel/abort is translated to an AbortError rejection (swallowed → idle)
- *
  * Why a dedicated hook and not a `source_mode` flag on
  * `useStyleVariantRegeneration`? The rewrite hook is coupled to the Rewrite
  * state machine (`AISuggestion`, `RewritePhase`, the editor's
@@ -35,43 +23,28 @@
  * Per the spec, the original Co-Author output remains visible and unchanged; the
  * variant result is surfaced alongside it for comparison.
  *
+ * ADR-043 streaming lifecycle (AbortController management, loading/streaming/
+ * error state, connection-loss detection, retry) runs through
+ * {@link useAIOperation} — no manual AbortController. The SSE→Promise bridge
+ * (transport callbacks settled into execute()'s contract) lives in
+ * {@link runCoAuthorVariantStream} (see coauthor-style-variant-stream.ts).
+ *
  * @module useCoAuthorStyleVariant
  */
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
-import { type StyleVariant, streamStyleVariantRegeneration } from "@/lib/api/generation";
-import { type AIErrorResponse, useAIOperation } from "@/lib/hooks/use-ai-operation";
+import type { StyleVariant } from "@/lib/api/generation";
+import { useAIOperation } from "@/lib/hooks/use-ai-operation";
+import {
+  runCoAuthorVariantStream,
+  type UseCoAuthorStyleVariantParams,
+  type UseCoAuthorStyleVariantResult,
+} from "./coauthor-style-variant-stream";
 
-/** Inputs the hook reads from the Co-Author panel. */
-interface UseCoAuthorStyleVariantParams {
-  readonly novelId: string | undefined;
-  readonly chapterId: string | undefined;
-  readonly locale: string;
-  /**
-   * The Co-Author's full revised output — becomes `source_text` for the
-   * variant regeneration. Empty until the Co-Author stream completes.
-   */
-  readonly streamedText: string;
-}
-
-/** Memoized return — stable references for panel callbacks that depend on it. */
-export interface UseCoAuthorStyleVariantResult {
-  /** Currently selected variant, or null when nothing chosen yet. */
-  readonly selectedVariant: StyleVariant | null;
-  /** Regenerated passage text (empty until the variant stream completes). */
-  readonly variantText: string;
-  /** True while a variant regeneration is loading or streaming. */
-  readonly isVariantStreaming: boolean;
-  /** Structured error from the last variant stream (null when none). */
-  readonly variantError: AIErrorResponse | null;
-  /** Fire when the writer picks a variant from the dropdown. */
-  readonly handleVariantSelect: (variant: StyleVariant) => void;
-  /** Abort any in-flight variant stream (RULE-20 visible cancel). */
-  readonly cancel: () => void;
-  /** Reset the whole variant surface: cancel, clear text/variant/error. */
-  readonly reset: () => void;
-}
+// Re-export the public contract so existing imports of the result type from
+// this module keep resolving (public API preserved during the RULE-04 split).
+export type { UseCoAuthorStyleVariantResult };
 
 export function useCoAuthorStyleVariant({
   novelId,
@@ -100,69 +73,19 @@ export function useCoAuthorStyleVariant({
     errorMapper: mapSSEError,
     connectionLossTimeout: 15_000,
     execute: (signal) =>
-      new Promise<string>((resolve, reject) => {
-        const variant = pendingVariantRef.current;
-        // Defensive: a start() without a staged request resolves immediately.
-        if (!variant || !chapterId || !novelId) {
-          resolve("");
-          return;
-        }
-
-        let settled = false;
-
-        const onAbort = () => {
-          if (!settled) {
-            settled = true;
-            reject(new DOMException("Aborted", "AbortError"));
-          }
-        };
-        signal.addEventListener("abort", onAbort, { once: true });
-
-        // Bridge the callback-based SSE stream to execute()'s Promise
-        // contract. Variant regeneration yields a single alternative; the
-        // text arrives when the closing tag is parsed (onAlternative), and
-        // the stream resolves once complete (same semantics as the rewrite
-        // surface — alternatives appear when complete, not chunk-streamed).
-        streamStyleVariantRegeneration(
-          chapterId,
-          novelId,
-          {
-            source_text: streamedText,
-            style_variant: variant,
-            language: locale,
-            // Increment B: the source is a Co-Author output, not a rewrite selection.
-            source_mode: "co_author",
-          },
-          {
-            onAlternative: (_label, text) => {
-              notifyData();
-              setVariantText(text);
-            },
-            onError: (error: Error) => {
-              if (!settled) {
-                settled = true;
-                signal.removeEventListener("abort", onAbort);
-                reject(error);
-              }
-            },
-          },
-          signal,
-        ).then(
-          () => {
-            if (!settled) {
-              settled = true;
-              signal.removeEventListener("abort", onAbort);
-              resolve("");
-            }
-          },
-          (error: unknown) => {
-            if (!settled) {
-              settled = true;
-              signal.removeEventListener("abort", onAbort);
-              reject(error instanceof Error ? error : new Error(String(error)));
-            }
-          },
-        );
+      // The SSE→Promise bridge (transport callbacks, abort/settling) runs in
+      // runCoAuthorVariantStream; the hook keeps the reactive state wiring.
+      runCoAuthorVariantStream({
+        signal,
+        chapterId,
+        novelId,
+        locale,
+        streamedText,
+        variant: pendingVariantRef.current,
+        onAlternativeText: (text) => {
+          notifyData();
+          setVariantText(text);
+        },
       }),
   });
 

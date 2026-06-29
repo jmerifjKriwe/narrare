@@ -1,12 +1,9 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { mapSSEError } from "@/lib/api/ai-error-mapping";
-import {
-  type RewriteAlternative,
-  type StyleVariant,
-  streamStyleVariantRegeneration,
-} from "@/lib/api/generation";
+import type { StyleVariant } from "@/lib/api/generation";
 import { type AIErrorResponse, useAIOperation } from "@/lib/hooks/use-ai-operation";
+import { runRewriteVariantStream } from "./styleVariantRegenerationStream";
 import type { AISuggestion, RewritePhase, RewriteSelection } from "./TipTapEditorController";
 
 /** Stream inputs for variant regeneration — what to generate from. */
@@ -38,22 +35,6 @@ interface UseStyleVariantRegenerationParams {
  * current selection text as source_text. The original output remains visible
  * in aiSuggestion.original until a variant is accepted.
  *
- * ADR-043 compliance: the streaming lifecycle (AbortController management,
- * loading/streaming/error state, connection-loss detection) runs through
- * {@link useAIOperation} — no manual AbortController. The callback-based SSE
- * transport ({@link streamStyleVariantRegeneration}) is bridged to the hook's
- * `execute(signal) => Promise<T>` contract the same way `useUnblockStream`
- * bridges `streamStorySuggestions` and `useCoAuthorStyleVariant` bridges the
- * Co-Author variant stream:
- *
- *   - `onAlternative` notifies the hook (loading → streaming) and drives the
- *     parent setters (aiSuggestion, selectedSuggestion, rewritePhase)
- *   - `onAlternativeFinal` drives the parent rewritePhase on stream completion
- *   - stream completion resolves the promise
- *   - `onError` rejects the promise; errors map via {@link mapSSEError} and the
- *     hook's `onError` callback drives setRewriteError + setRewritePhase
- *   - cancel/abort is translated to an AbortError rejection (swallowed → idle)
- *
  * The hook owns the variant lifecycle (selected variant + in-flight operation)
  * via `useAIOperation`. The shared rewrite state-machine (phase, suggestion,
  * error) stays in the controller and is driven via `setters`, so the rewrite
@@ -62,6 +43,10 @@ interface UseStyleVariantRegenerationParams {
  * (AISuggestion, RewritePhase) — these are separate concerns, no conflict.
  * The return value is memoized so controller callbacks depending on it stay
  * referentially stable across renders.
+ *
+ * ADR-043 streaming lifecycle runs through {@link useAIOperation}; the SSE→Promise
+ * bridge (transport callbacks settled into execute()'s contract) lives in
+ * {@link runRewriteVariantStream} (see styleVariantRegenerationStream.ts).
  */
 export function useStyleVariantRegeneration({
   context,
@@ -86,91 +71,23 @@ export function useStyleVariantRegeneration({
       setRewritePhase((prev) => (prev === "streaming" ? "showing-alternatives" : prev));
     },
     execute: (signal) =>
-      new Promise<void>((resolve, reject) => {
-        const variant = pendingVariantRef.current;
-        const sel = rewriteSelectionRef.current;
-        // Defensive: a start() without a staged request resolves immediately.
-        if (!variant || !sel || !chapterId || !novelId) {
-          resolve();
-          return;
-        }
-
-        let settled = false;
-
-        const onAbort = () => {
-          if (!settled) {
-            settled = true;
-            reject(new DOMException("Aborted", "AbortError"));
-          }
-        };
-        signal.addEventListener("abort", onAbort, { once: true });
-
-        // Bridge the callback-based SSE stream to execute()'s Promise
-        // contract. Variant regeneration yields alternatives that accumulate
-        // into the shared aiSuggestion state; the stream resolves once
-        // complete (same semantics as the rewrite surface — alternatives
-        // appear when complete, not chunk-streamed).
-        const alternatives: RewriteAlternative[] = [];
-
-        streamStyleVariantRegeneration(
-          chapterId,
-          novelId,
-          {
-            source_text: sel.text,
-            context_before: sel.contextBefore,
-            context_after: sel.contextAfter,
-            style_variant: variant,
-            language: locale,
-          },
-          {
-            onAlternative: (label, text) => {
-              notifyData();
-              alternatives.push({ label, text });
-              setAiSuggestion((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      suggestions: alternatives.map((a) => a.text),
-                      labels: alternatives.map((a) => a.label),
-                    }
-                  : {
-                      original: sel.text,
-                      suggestions: alternatives.map((a) => a.text),
-                      labels: alternatives.map((a) => a.label),
-                      position: { from: sel.from, to: sel.to },
-                    },
-              );
-              if (alternatives.length === 1) setSelectedSuggestion(0);
-              setRewritePhase("showing-alternatives");
-            },
-            onAlternativeFinal: () => {
-              setRewritePhase((prev) => (prev === "streaming" ? "showing-alternatives" : prev));
-            },
-            onError: (error: Error) => {
-              if (!settled) {
-                settled = true;
-                signal.removeEventListener("abort", onAbort);
-                reject(error);
-              }
-            },
-          },
-          signal,
-        ).then(
-          () => {
-            if (!settled) {
-              settled = true;
-              signal.removeEventListener("abort", onAbort);
-              resolve();
-            }
-          },
-          (error: unknown) => {
-            if (!settled) {
-              settled = true;
-              signal.removeEventListener("abort", onAbort);
-              reject(error instanceof Error ? error : new Error(String(error)));
-            }
-          },
-        );
+      // The SSE→Promise bridge (transport callbacks, abort/settling, setter
+      // driving) runs in runRewriteVariantStream; the hook keeps the lifecycle.
+      runRewriteVariantStream({
+        signal,
+        chapterId,
+        novelId,
+        locale,
+        variant: pendingVariantRef.current,
+        selection: rewriteSelectionRef.current,
+        // Wrap notifyData in an arrow so the reference is deferred (matches the
+        // coauthor sibling). A bare shorthand `notifyData,` makes TS treat it
+        // as referenced in its own initializer (circular via useAIOperation's
+        // return type inference) → TS7022/TS7023. Behavior is unchanged.
+        notifyData: () => notifyData(),
+        setAiSuggestion,
+        setSelectedSuggestion,
+        setRewritePhase,
       }),
   });
 
