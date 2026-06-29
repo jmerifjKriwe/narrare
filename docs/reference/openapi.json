@@ -2309,6 +2309,63 @@
         }
       }
     },
+    "/api/v1/analysis/character-voice/{novel_id}": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Analyze Character Voice",
+        "description": "SSE stream for character-voice analysis of a novel's chapters (ANAL-008).\n\nProfiles each speaking character's voice (deterministic metrics + LLM\nqualitative judgement), writes the result to each character's KB\n``speech.voice_analysis``, and streams per-character results.\n\n**SSE Event Stream:**\n\n1. ``\"progress\"`` event (character count / status).\n2. One ``\"result\"`` event per profiled character (carrying that\n   character's ``CharacterVoiceResult``).\n3. ``\"done\"`` event (``is_final=True``).\n4. ``data: [DONE]`` termination signal.\n\nOn failure, an ``\"error\"`` event (``is_final=True``) precedes the\n``[DONE]`` sentinel.",
+        "operationId": "analyze_character_voice_api_v1_analysis_character_voice__novel_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "novel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Novel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterVoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/embeddings/status/{novel_id}": {
       "get": {
         "tags": [
@@ -10519,6 +10576,28 @@
         "type": "object",
         "title": "CharacterArcResponse",
         "description": "Response with full character arc analysis."
+      },
+      "CharacterVoiceRequest": {
+        "properties": {
+          "chapter_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Ids",
+            "description": "Specific chapter IDs to analyse, or null/empty for all chapters."
+          }
+        },
+        "type": "object",
+        "title": "CharacterVoiceRequest",
+        "description": "Request body for ``POST /analysis/character-voice/{novel_id}``.\n\nAttributes:\n    chapter_ids: Specific chapters to analyse. ``None`` or an empty list\n        means \"analyse every chapter in the novel\" (the service resolves\n        the full chapter list via the novel repository)."
       },
       "ChatDeleteResponse": {
         "properties": {
