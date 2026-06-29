@@ -5,7 +5,7 @@ status: active
 area: architecture
 mvp: false
 date_created: 2026-06-10
-last_updated: 2026-06-10
+last_updated: 2026-06-29
 ---
 
 # Incomplete Features, Stubs, and TODO Markers
@@ -20,25 +20,26 @@ last_updated: 2026-06-10
 
 | ID | Priority | Area | Description | Status | Blocking |
 |----|----------|------|-------------|--------|----------|
-| IF-01 | High | Tasks / Memory | TaskIQ task stubs (`process_feedback_memory`, `run_preference_analysis`) | Open | Yes -- Phase 7 |
-| IF-02 | High | Events / Embeddings | Event listener logs but does not dispatch tasks | Open | Yes -- depends on IF-01 |
-| ~~IF-03~~ | ~~High~~ | ~~Settings / Writing~~ | ~~Co-author word limit uses hardcoded default~~ | **RESOLVED** | Resolved 2026-06-10 |
-| ~~IF-04~~ | ~~Medium~~ | ~~Embeddings / Search~~ | ~~`ScoredCandidate` missing metadata~~ | **RESOLVED** | Resolved 2026-06-10 |
-| ~~IF-05~~ | ~~Medium~~ | ~~KB / Provenance~~ | ~~Auto-extracted KB entries lack origin metadata~~ | **RESOLVED** | Resolved 2026-06-10 |
-| ~~IF-06~~ | ~~Medium~~ | ~~KB / AI Invocation~~ | ~~KB suggested context uses placeholder text~~ | **RESOLVED** | Resolved 2026-06-10 |
-| IF-07 | Medium | Wiki / Core | Core-layer `get_summaries()` returns empty dict | Open | No |
-| ~~IF-08~~ | ~~Medium~~ | ~~Chat / API~~ | ~~Chat history response uses `UUID(int=0)` placeholder~~ | **RESOLVED** | Resolved 2026-06-10 |
-| IF-09 | Low | Analysis / Types | Narrative arc segments untyped (`list[dict]`) | Open | No |
-| IF-10 | Low | NLP / Emotions | Full NRC EmoLex loader raises `NotImplementedError` | Open | No |
-| IF-11 | Low | Memory / Embeddings | Embedding cascade Tier 2 (provider-native) not implemented | Open | No |
-| ~~IF-12~~ | ~~Low~~ | ~~Generation / Frontend~~ | ~~Name generator save-to-KB button is a console log~~ | **RESOLVED** | Resolved 2026-06-10 |
-| ~~IF-13~~ | ~~Doc~~ | ~~Feature Specs~~ | ~~4 feature specs with `n:` placeholder markers (36 total)~~ | **RESOLVED** | Resolved 2026-06-10 |
+| IF-01 | High | Tasks / Memory | TaskIQ task stubs (`process_feedback_memory`, `run_preference_analysis`) — tasks registered with `@broker.task` and retries, but bodies only log (TODO Phase 7) | **Open** | Yes — task logic not implemented (infrastructure complete via INFRA-007) |
+| IF-02 | High | Events / Embeddings | Event listener `_dispatch` code exists but `_EVENT_TASK_MAP` is empty, listener is not wired into application lifespan | **Open** | Yes — depends on IF-01 real task implementation |
+| ~~IF-03~~ | ~~High~~ | ~~Settings / Writing~~ | ~~Co-author word limit uses hardcoded default~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
+| ~~IF-04~~ | ~~Medium~~ | ~~Embeddings / Search~~ | ~~`ScoredCandidate` missing metadata~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
+| ~~IF-05~~ | ~~Medium~~ | ~~KB / Provenance~~ | ~~Auto-extracted KB entries lack origin metadata~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
+| ~~IF-06~~ | ~~Medium~~ | ~~KB / AI Invocation~~ | ~~KB suggested context uses placeholder text~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
+| IF-07 | Medium | Wiki / Core | Core-layer `get_summaries()` returns empty dict | **Open** | No |
+| ~~IF-08~~ | ~~Medium~~ | ~~Chat / API~~ | ~~Chat history response uses `UUID(int=0)` placeholder~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
+| IF-09 | Low | Analysis / Types | Narrative arc segments untyped (`list[dict]`) | **Open** | No |
+| IF-10 | Low | NLP / Emotions | Full NRC EmoLex loader raises `NotImplementedError` | **Open** | No |
+| IF-11 | Low | Memory / Embeddings | Embedding cascade Tier 2 (provider-native) not implemented | **Open** | No |
+| ~~IF-12~~ | ~~Low~~ | ~~Generation / Frontend~~ | ~~Name generator save-to-KB button is a console log~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
+| ~~IF-13~~ | ~~Doc~~ | ~~Feature Specs~~ | ~~4 feature specs with `n:` placeholder markers (36 total)~~ | **RESOLVED** | ~~Resolved 2026-06-10~~ |
 
 ---
 
 ## Resolved Items
 
-> Items resolved during Wave A + B remediation (2026-06-10). Kept for audit trail.
+> Items resolved during Wave A + B remediation (2026-06-10) and INFRA-007 (2026-06-29).
+> Kept for audit trail.
 
 ### ~~IF-03: Settings Cascade -- Hardcoded Default~~ (RESOLVED 2026-06-10)
 
@@ -101,32 +102,49 @@ last_updated: 2026-06-10
 
 ## Section 1: High Priority -- Blocking Stubs with Defined Interfaces
 
-### IF-01: TaskIQ Task Stubs (Phase 7 Dependency)
+### IF-01: TaskIQ Task Stubs (Task Logic Not Implemented)
 
 - **File:** `apps/api/narrare/tasks/__init__.py`
-- **Lines:** 23--46, 49--72
-- **Marker:** `# TODO (Phase 7)` at lines 43 and 69
-- **Description:** Two async task functions are stubs that only log events rather than
-  performing actual work:
-  1. `process_feedback_memory` -- Must load `FeedbackEvent` from DB, translate to memory
+- **Lines:** 36--81
+- **Marker:** `# TODO (Phase 7)` at lines 54 and 78; `status="stub"` in log calls
+- **Description:** Two async task functions are decorated with `@broker.task` (TaskIQ),
+  have `max_retries=3`, and accept typed events — but their bodies only log and skip
+  actual work:
+  1. `process_feedback_memory` — Must load `FeedbackEvent` from DB, translate to memory
      text, and call `mem0.add()`.
-  2. `run_preference_analysis` -- Must create `PreferenceAnalysisService` with DI and call
+  2. `run_preference_analysis` — Must create `PreferenceAnalysisService` with DI and call
      `service.analyze()`.
-- **Blocker:** TaskIQ worker integration not yet complete.
+- **Infrastructure status:** TaskIQ broker + worker are deployed via Docker Compose
+  as part of INFRA-007 (2026-06-29). Redis transport + result backend, monitoring API,
+  and Docker worker service all exist. The blocker is no longer infrastructure — it is
+  the **task logic implementation**.
+- **Blocker:** Task logic not implemented — neither function calls `mem0.add()` nor
+  `PreferenceAnalysisService.analyze()`. Requires DI access to repos/services and a
+  `mem0` client instance.
 - **Affects:** Memory/learning pipeline, preference extraction.
-- **References:** ADR-007 (TaskIQ), Phase 7 milestone.
+- **References:** ADR-007 (TaskIQ), INFRA-007 (Background Tasks deployed), Phase 7
+  milestone (task logic).
 
-### IF-02: Event Listener -- No Task Dispatch (Phase 5+)
+### IF-02: Event Listener -- Empty Event Map + Inactive Listener
 
 - **File:** `apps/api/narrare/_app/event_listener.py`
-- **Line:** 22
-- **Marker:** `# Tasks will be implemented in Phase 5+ -- for now we log the routing.`
-- **Description:** The event-to-task mapping exists in `_EVENT_TASK_MAP` but events are
-  only logged, not dispatched to TaskIQ workers. The routing logic is in place; the
-  dispatch call is missing.
-- **Blocker:** Depends on IF-01 (TaskIQ integration).
-- **Affects:** Embedding updates on content change, KB entry re-indexing, wiki stale-marking.
-- **References:** ADR-012 (Event-Driven Architecture).
+- **Lines:** 35--38 (event map), 99--107 (start method)
+- **Marker:** `# pending: no registered chapter-embedding task` and `# pending: no registered cleanup task` — commented-out map entries
+- **Description:** The `_EVENT_TASK_MAP` is empty (only commented-out entries). The
+  `EventListener` class is fully implemented with `_dispatch()` that can enqueue via
+  `broker.kiq()`, but:
+  1. No event types are mapped to task names in `_EVENT_TASK_MAP`
+  2. The listener is not wired into the application lifespan (`_app/lifespan.py`)
+- **Infrastructure note:** Since INFRA-007 (2026-06-29), the TaskIQ broker + worker
+  exist and tasks like `process_feedback_memory` and `run_preference_analysis` are
+  registered (though stubs). The listener could dispatch to these if the map were
+  populated and the listener activated.
+- **Blocker:** (a) Depends on IF-01 being implemented first (tasks must have real
+  logic before they are dispatched); (b) event-to-task mapping must be populated;
+  (c) listener must be wired into the application lifespan.
+- **Affects:** Embedding updates on content change, KB entry re-indexing, wiki
+  stale-marking, feedback memory processing.
+- **References:** ADR-012 (Event-Driven Architecture), INFRA-007 (Background Tasks).
 
 ---
 
@@ -229,7 +247,7 @@ last_updated: 2026-06-10
 
 | Status | Count |
 |--------|-------|
-| Blocking (depends on external infrastructure) | 2 |
+| Blocking (depends on task implementation) | 2 |
 | Non-blocking (quality gap) | 4 |
 
 ---
@@ -243,8 +261,10 @@ This document should be updated:
 2. When a new TODO/stub is discovered during code review -- add an entry following the
    same format.
 3. At each phase transition -- review all entries for relevance and priority changes.
+4. When IF-01 is resolved (task logic implemented) -- update IF-02 blocking status and
+   re-evaluate priority.
 
 ---
 
-> **Last reviewed:** 2026-06-10
-> **Next review:** Before Phase 7 planning
+> **Last reviewed:** 2026-06-29
+> **Next review:** Before Phase 7 planning, or when IF-01 implementation begins

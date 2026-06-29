@@ -25,7 +25,7 @@ narrare/
 │
 ├── docs/
 │   ├── _shared/                ← Constraints, Glossary, Tech Stack
-│   ├── architecture/           ← ADRs, open questions
+│   ├── architecture/           ← ADRs, open questions, governance
 │   ├── development/            ← Coding standards, testing, UI, deployment
 │   ├── features/               ← Feature specifications
 │   ├── mvp/                    ← MVP plan
@@ -41,13 +41,18 @@ narrare/
 ├── scripts/
 │   ├── check_architecture.py   ← Hard constraint enforcement
 │   ├── export_openapi.py       ← OpenAPI spec static export + CI drift check
-│   └── ...
+│   ├── architecture/           ← Adoption probes, manifest, checkers, governance
+│   ├── checks/                 ← AI UX compliance, streaming compliance, governance health
+│   ├── governance/             ← SSOT aggregation, health checks
+│   └── probes/                 ← Adoption probes per domain
 │
 ├── tests/
 │   ├── unit/                   ← Unit tests (mirror source structure)
 │   ├── integration/            ← Integration tests (API-level)
 │   └── e2e/                    ← End-to-end tests
 │
+├── .agents/                    ← Agent skills, memory, and session configurations
+├── .opencode/                  ← OpenCode IDE configuration, context, skills
 ├── .github/
 │   └── workflows/              ← CI/CD pipelines
 │
@@ -826,6 +831,6 @@ When a file needs to grow beyond its limit, **split into a new module** — neve
 
 ---
 
-> Last updated: project initialization
+> Last updated: 2026-06-29 — Added `.agents/`, `.opencode/`, expanded `scripts/` subdirectories
 > Maintained by: Architecture Agent
 > Changes require a DECISIONS.md entry

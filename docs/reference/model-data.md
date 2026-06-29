@@ -7,6 +7,7 @@
 > API: <https://models.dev/api.json>
 >
 > Maintained by: Documentation Agent
+> Last verified: 2026-06-29 — All code paths confirmed present. Content verified.
 
 ---
 

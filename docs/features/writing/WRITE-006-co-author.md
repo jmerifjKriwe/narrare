@@ -109,6 +109,21 @@ with AI suggestions, maintaining author sovereignty.
 
 Changes are applied immediately. Undo available to revert.
 
+### Style Variants (CR-AUFG-07-22 Increment B)
+
+The Co-Author output review surface supports style-variant regeneration. After
+receiving an AI suggestion, you can select a style variant (e.g., more concise,
+more descriptive, more formal) to regenerate the same suggestion in that style.
+
+- Click the style variant selector in the Co-Author review panel
+- The variant re-runs the `CO_AUTHOR` intent against the **same source text**
+- A new suggestion is generated with the style variant applied
+- You review it just like the original suggestion (diff view, accept/reject)
+
+This does not change your original text — it only affects the AI suggestion.
+The variant operates as a governed sub-operation of the rewrite modal, routed
+through the same `useAIOperation` primitives.
+
 ## How it works (Technical)
 
 **Entry point:** `writing/router.py` → `POST /api/v1/writing/co-author`
@@ -151,6 +166,28 @@ class CoAuthorSuggestion:
 - Undo reverts to pre-Co-Author state
 - No intermediate saves (one revision operation)
 
+### Style Variants (Technical)
+
+**Core:** `stream_coauthor()` akzeptiert jetzt einen `style_variant` Parameter.
+Der CO_AUTHOR Intent + Template haben die Variable `style_variant_instructions`,
+die bei der Prompt-Komposition injiziert wird. Die Pipeline leitet `style_variant`
+an den Co-Author-Branch weiter.
+
+**Backend:** `StyleVariantRegenerateRequest` (in `writing/schemas_style_variants.py`)
+hat ein `source_mode` Feld (`Literal["rewrite","co_author"]`), das die Quell-Operation
+bestimmt. Der `style_variant_service` (`writing/style_variant_service.py`) brancht
+auf `source_mode` und routed zur entsprechenden Service-Implementierung. Vertrag:
+`writing/contracts_style_variants.py`.
+
+**Frontend:** Dedizierter `useCoAuthorStyleVariant` Hook (nutzt `useAIOperation`)
+und `CoAuthorStyleVariantSection` Komponente. Der SSE-Client
+(`coauthor-style-variant-stream.ts`) streamt die regenerierte Antwort. RULE-17 TS
+Parity für `source_mode` eingehalten.
+
+**Tests:** 5 Core + 10 Backend + 4 Frontend Tests validieren den Style-Variant-Flow.
+
+**Siehe:** CR-AUFG-07-22 (Increment B) im AUFG-Registry.
+
 ## Constraints & Edge Cases
 
 - Selection minimum 50 words, maximum 5000 words
@@ -171,3 +208,4 @@ class CoAuthorSuggestion:
 
 - `project-init` — Added to registry as planned feature
 - `2026-06-10` — Fully implemented and promoted to stable. Co-Author mode with diff-based suggestions, selective acceptance, CoAuthorService in `writing/coauthor_service.py`, CoAuthorServiceProtocol contract, dedicated router (`writing/router_coauthor.py`), Co-Author prompts. Integrates with LEARN-001 feedback loop for personalization.
+- `2026-06-22` — Style Variants (CR-AUFG-07-22 Increment B): `stream_coauthor()` accepts `style_variant`, `StyleVariantRegenerateRequest` with `source_mode`, `useCoAuthorStyleVariant` hook, `CoAuthorStyleVariantSection` frontend component. 5 Core + 10 Backend + 4 Frontend tests.

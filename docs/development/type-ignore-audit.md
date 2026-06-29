@@ -1,8 +1,8 @@
 # Type-Ignore Audit — Findings & Action Plan
 
-> **Status:** ✅ Completed
+> **Status:** ✅ Completed (revalidated 2026-06-29)
 > **Audit-Datum:** 2026-06-10
-> **Letzte Aktualisierung:** 2026-06-11 (Phase 3–5)
+> **Letzte Aktualisierung:** 2026-06-29 (Revalidierung)
 > **Scope:** Python `# type: ignore` und TypeScript `@ts-ignore` / `@ts-expect-error`
 > **Ziel:** Systematische Reduktion auf 0 in Production-Code, strengere Agent-Vorgaben
 
@@ -11,20 +11,25 @@
 ## Executive Summary
 
 Das Narrare-Projekt hatte **887 `# type: ignore`** Einträge in Python-Dateien (Stand 2026-06-10).
-Nach der vollständigen Sanierung (Phasen 1–5):
+Nach der vollständigen Sanierung (Phasen 1–5) und anschließender Feature-Arbeit:
 
-| Bereich | Vorher | Nachher | Veränderung |
-|---------|--------|---------|-------------|
-| Production (`apps/api/narrare/` + `packages/core/`) | ~180 | **16** | ✅ −164 |
-| Tests (`tests/`) | ~700 | **176** | ✅ −524 |
-| Other (Scripts, fakes) | ~7 | **11** | (Baseline-neu) |
-| TypeScript (`@ts-ignore`/`@ts-expect-error`) | ~1 | **0** | ✅ −1 |
-| **Total** | **~887** | **203** | **✅ −684** |
+| Bereich | Vorher | Nachher (2026-06-11) | Aktuell (2026-06-29) | Veränderung |
+|---------|--------|----------------------|---------------------|-------------|
+| Production (`apps/api/narrare/` + `packages/core/`) | ~180 | **16** | **25** | −155 seit Baseline, +9 durch neue Features |
+| Tests (`tests/`) | ~700 | **176** | **~488** | −212 seit Baseline, +312 durch neue Tests |
+| Other (Scripts, fakes) | ~7 | **11** | **~11** | stabil |
+| TypeScript (`@ts-ignore`/`@ts-expect-error`) | ~1 | **0** | **0** | ✅ unverändert |
+| **Total** | **~887** | **203** | **~524** | **✅ −363 seit Baseline** |
 
 **Kernerkenntnis:** `# type: ignore` wurde zu oft als "Quick Fix" von AI Agents vergeben,
-anstatt die Root Cause zu beheben. Alle verbleibenden 203 Einträge sind:
-- **16 Production:** legitimate Drittanbieter ohne Type-Stubs (mem0, pgvector, opentelemetry)
-- **176 Tests:** `cast()`-Pattern oder Reason-Kommentare
+anstatt die Root Cause zu beheben. Die aktuellen 25 Production-Einträge sind:
+- **25 Production:** überwiegend Drittanbieter ohne Type-Stubs (mem0, pgvector, opentelemetry,
+  taskiq, redis, structlog) plus wenige defensive Runtime-Checks. Neue Einträge seit der
+  Baseline stammen aus ANAL-008 (character_voice_service), CR-AUFG-07-22 (style_variant_service),
+  ADR-054 (writing/ws_draft_dispatch) und weiteren Feature-Arbeiten — alle mit Error-Code und
+  Reason-Kommentar (RULE-23 konform).
+- **~488 Tests:** mit `cast()`-Pattern oder Reason-Kommentar. Anstieg durch neue Testdateien
+  für Phase-6-Features (ANAL-005, ANAL-008, WRITE-009, PLAN-006, INFRA-007, u.a.).
 - **11 Other:** Baseline-Scripts
 - **0 naked ignores:** alle mit Error-Code und Reason-Kommentar
 
@@ -206,7 +211,7 @@ konkrete Typen statt Protocols als Parameter erwarten.
 
 ### Phase 5: Monitoring ✅
 
-- [x] **P5-A:** Baseline via `scripts/check_type_ignores.py --update` erzeugt (203 Suppressions)
+- [x] **P5-A:** Baseline via `scripts/check_type_ignores.py --update` erzeugt (203 Suppressions, Stand 2026-06-11)
 - [x] **P5-B:** CI-Gate integriert — schlägt fehl bei nackten `type:ignore` oder unkommentierten Production-Einträgen
 - [x] **P5-C:** RULE-23 verlangt Reason-Kommentar-Pflicht; Budget 0 für neue Module
 
@@ -258,24 +263,30 @@ Vor dem Setzen einer Suppression MÜSSEN mindestens 2 dieser Alternativen versuc
 
 ---
 
-## Baseline-Count pro Datei (Stand 2026-06-11)
+## Baseline-Count pro Datei (Stand 2026-06-29)
 
-### Production — Alle verbleibenden 16 Suppressions (nur legitime third-party)
+### Production — 25 Suppressions (legitime third-party + defensive checks)
 
 | Datei | Ignore Count | Dependency |
 |-------|-------------|------------|
-| `apps/api/narrare/_app/dependencies.py` | 1 | structlog |
 | `apps/api/narrare/_app/events.py` | 1 | structlog |
+| `apps/api/narrare/_app/middleware.py` | 2 | FastAPI duck-typing |
 | `apps/api/narrare/_app/telemetry.py` | 3 | opentelemetry |
-| `apps/api/narrare/auth/security.py` | 2 | python-jose |
+| `apps/api/narrare/analysis/character_voice_service.py` | 1 | pyright narrowing (ANAL-008) |
+| `apps/api/narrare/auth/security.py` | 2 | python-jose/bcrypt |
 | `apps/api/narrare/embeddings/models.py` | 2 | pgvector |
 | `apps/api/narrare/generation/graph_store.py` | 2 | networkx |
+| `apps/api/narrare/prompts/deps.py` | 1 | pyright DI narrowing |
 | `apps/api/narrare/settings/user_ai_settings_service.py` | 1 | structlog |
+| `apps/api/narrare/tasks/broker.py` | 1 | taskiq |
 | `apps/api/narrare/wiki/tasks.py` | 1 | taskiq |
+| `apps/api/narrare/writing/_ws_draft_dispatch.py` | 3 | ADR-054 pipeline DI |
 | `packages/core/narrare_core/ai_invocation/validators/runtime.py` | 1 | defensiver Check |
 | `packages/core/narrare_core/memory/mem0_client.py` | 2 | mem0 |
+| `packages/core/narrare_core/memory/availability.py` | 1 | mem0 |
+| `packages/core/narrare_core/writing/session_state_codec.py` | 1 | pyright narrowing |
 
-### Tests — Top 10 (maximal 8 pro Datei, überwiegend `import-untyped`)
+### Tests — Top 10 (Stand 2026-06-29)
 
 | Datei | Ignore Count |
 |-------|-------------|

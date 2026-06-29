@@ -39,6 +39,15 @@ services. The future adapter will live in `apps/a2a/` and call the existing
 Service Layer. The Service Layer does not change to accommodate A2A — only the
 transport adapter changes. Q-002 remains open until the adapter spec is written.
 
+**AUFG (Architecture UX Finding Gate)**
+Ein governance-Mechanismus aus CR-07 für AI-UX-Compliance-Findings. Findings
+werden im AUFG-Registry (`docs/architecture/governance/aufg-registry.md`) als
+Lebenszyklus-Einträge geführt. Jeder AUFG-Eintrag trägt Design-, Implementation-
+und Enforcement-Evidence gemäß `docs/development/finding-lifecycle.md`. Der
+Lifecycle wird via `scripts/checks/check_ai_interaction_compliance.py` (Check 11)
+und `scripts/check_governance_health.py` CI-blockend überwacht. Siehe ADR-043,
+ADR-047.
+
 ---
 
 ## B
@@ -95,6 +104,12 @@ for writing craft discussion. Uses `HistoryPolicy.CONVERSATIONAL` for cross-turn
 continuity (ADR-034). Invoked via `run_stream()` which yields `StreamEvent` objects.
 Defined in `core/chat/chat_agent.py`. Part of CHAT-001.
 
+**character_voice**
+Der `context_mode` für `LLMIntent.VOICE`. Nutzt ein governed EN Prompt-Template
+in `core/prompts/_bundled/analysis/en/character_voice/system.md`. Wird durch
+`PromptComposer` Mode 1 (`composer.build(intent=LLMIntent.VOICE, context=...,
+context_mode="character_voice")`) aufgelöst. Siehe ANAL-008, ADR-055.
+
 **ChatDeps**
 A dependency container for `ChatAgent`, providing the prompt composition infrastructure
 needed for each chat turn. Contains `prompt_composer: PromptComposer`, `context: PromptContext`,
@@ -115,6 +130,15 @@ A typed result from the `ReviewDraft` graph node that determines branching in th
 WritingGraph. Two variants: `Approved` (routes to `Finalize`) and `NeedsRevision`
 (routes to `ReviseDraft` → loop back to `WriteDraft`). Max 3 revision attempts before
 force-finalize. Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
+
+**DialogueParser**
+Eine deterministische Analysekomponente in `core/analysis/dialogue_parser.py`,
+die Dialogue (wörtliche Rede) aus Text extrahiert und Attributions-Informationen
+(wer spricht) mit Confidence-Signal ergänzt. Nutzt tag-basierte (said, whispered),
+action-beat und em-dash Attributionsmuster. Quotes ohne deterministische Attribution
+lösen auf `speaker=None` bei niedriger Confidence auf — die LLM `CharacterVoiceAgent`
+löst diese inline auf (ADR-055 Decision 3 — self-contained hybrid, keine Coreference-
+Kopplung zur Laufzeit). Siehe ADR-021, ANAL-008.
 
 **Domain Module**
 A self-contained directory within `apps/api/narrare/` that owns one business
@@ -200,10 +224,12 @@ Used to build the `WritingGraph` with nodes, edges, decisions, and forks.
 Preferred over the deprecated `Graph()` constructor. Factory function:
 `create_writing_graph()` in `core/agents/writing_graph.py`. Part of ADR-015 Phase 4.
 
-**Governed Adoption Debt**
-Known adoption debt that is explicitly baselined, owned, and ratcheted. It may remain
-temporarily without hiding the debt, but any new or unapproved adoption gap fails the
-gate. Governed debt is not the same as `PASS`.
+**Governed Adoption Debt / Governed Debt**
+Architektur- oder Adoption-Schulden, die explizit registriert, owned und durch
+CI-Checks überwacht werden. Anders als "tolerierte" Schulden haben governed debts
+eine Ratchet-Baseline und dürfen nicht wachsen — jeder neue oder unapproved Gap
+fails the gate. Governed debt ≠ `PASS`. Beispiele: `INLINE-FEATURE-PROMPT`-Baseline,
+character_voice runtime adoption (static-verified, runtime evidence pending CI).
 
 **Gateway (LLM Gateway)**
 The single entry point for all LLM calls in the system.
@@ -226,6 +252,14 @@ modifiers.
 The contracts, probes, checkers, registry entries, and evidence sinks for a feature or
 adoption layer exist. This does not by itself mean static checks pass or that runtime
 production paths are adopted. See ADR-045.
+
+**INLINE-FEATURE-PROMPT**
+(Veraltet) Ein Pattern, bei dem Prompt-Texte als Python-f-Strings in Service-Dateien
+standen — ein RULE-02-Verstoß. Wurde durch ADR-049 (FIND-011 Gate A5) als ratchet-
+baseline erfasst und durch ADR-054 auf 0 reduziert. Die drei betroffenen Services
+(CharacterArcService, TimelineExtractionService, KBMergeService) wurden auf
+PromptComposer Mode 1 migriert. Der CI-Checker `_check_inline_feature_prompt.py`
+überwacht das Zero-Baseline.
 
 **Invocation Evidence Correlation**
 Privacy-safe linkage proving that preparation, prompt composition, budget resolution,
@@ -307,6 +341,33 @@ Capability (ADR-026). Universal fiction, conflict, and injection-defense rules
 come from `NarrareUniversalRules`; customizable feature prompts remain in the
 PromptComposer cascade under `core/prompts/_bundled/`.
 
+**Mode 1 / Mode 2 (Invocation Modes)**
+Zwei Invocations-Modi für die Prompt-Auflösung (ADR-048):
+- **Mode 1:** Nutzt `PromptComposer` mit `intent` + `context_mode` + governed EN Template.
+  Der Standard-Pfad für alle Feature-Prompts seit ADR-054. Aufruf:
+  `composer.build(intent=..., context=..., context_mode=...)`.
+- **Mode 2:** Nutzt `compose_invocation()` für nicht-Standard-Pfade, bei denen ein Agent
+  die Prompt-Komposition selbst übernimmt. Nur für legitime Fälle (z. B. ChatAgent,
+  DraftAgent) vorgesehen. Falsche Mode-2-Deklarationen wurden durch ADR-054/049 auf
+  Mode 1 migriert.
+
+**Mode (Writing Mode / Prompt Mode)**
+The type of operation that determines which prompt file is selected and how
+context is assembled. Two related concepts:
+- **Writing mode**: The type of writing operation: `new_chapter`, `extend`,
+  `rewrite`, `interactive`, `co_author`. Affects prompt selection, generation
+  parameters, and context assembly.
+- **Prompt mode**: The mode key used in the prompt cascade path
+  `prompts/_bundled/{category}/{lang}/{mode}/system.md`. Includes writing modes
+  plus planning modes (`outline`, `character_arc`, `timeline`), KB modes
+  (`interview`, `improve`, `suggest`, `merge`, etc.), and analysis modes.
+
+**Modifier (Prompt Modifier)**
+Guaranteed Narrare identity and role guidance injected by the `NarrareMeta`
+Capability (ADR-026). Universal fiction, conflict, and injection-defense rules
+come from `NarrareUniversalRules`; customizable feature prompts remain in the
+PromptComposer cascade under `core/prompts/_bundled/`.
+
 **Mode (Writing Mode / Prompt Mode)**
 The type of operation that determines which prompt file is selected and how
 context is assembled. Two related concepts:
@@ -381,6 +442,14 @@ A lightweight dataclass for storing pydantic-ai message history across conversat
 turns. Used by agents with `HistoryPolicy.CONVERSATIONAL`. Provides `add()`, `clear()`,
 and `is_empty` operations. Defined in `core/agents/process_history.py`. Part of ADR-034.
 
+**PromptComposer Mode 1**
+Konkrete Implementierung des Mode 1 Invocation-Patterns (ADR-048/054):
+`composer.build(intent=..., context=..., context_mode=...)` mit governed Template.
+Der Service injected `PromptComposer`, erstellt ein `PromptContext`, und resolved
+den Prompt über `composer.build()`. Mode 1 ist der Standard für alle Feature-Prompts
+seit ADR-054, die f-String-Baseline (`INLINE-FEATURE-PROMPT`) ist auf 0 gesetzt.
+Siehe *Mode 1 / Mode 2*.
+
 **Prompt Context (`PromptContext`)**
 A typed dataclass carrying all variables needed to render a prompt:
 project metadata, language, mode, KB context bundle, style profile, etc.
@@ -411,11 +480,13 @@ Lives in `*/repository.py` within each domain module.
 from the cascade for a given category, language, and mode.
 Previously: three competing implementations. Now: one.
 
-**Runtime Adopted**
-An adoption state where static checks pass and correlated runtime evidence proves the
-required production invocation path used the intended context enrichment, prompt merge,
-budget enforcement, model/agent call, and evidence recording. Static adoption alone is
-not runtime adoption.
+**Runtime Adopted / Runtime Adoption**
+An adoption state (Status in der Adoption-Registry, ADR-045) where static checks pass
+and correlated runtime evidence proves the required production invocation path used the
+intended context enrichment, prompt merge, budget enforcement, model/agent call, and
+evidence recording. Static adoption alone is not runtime adoption. In der Registry:
+"Infrastructure complete" ≠ "Static verified" ≠ "Runtime verified" ≠ "Runtime adopted."
+Der Status wird durch `just check-adoption` überwacht.
 
 ---
 
@@ -509,6 +580,14 @@ and *Prompt Language* (the language of prompt template files).
 An optional grouping of chapters within a Novel (e.g., Part 1, Book 1).
 Chapters belong to at most one volume.
 
+**voice_analysis**
+Ein Sub-Modell auf `SpeechPatterns` (in `kb/schemas/character.py`), das deskriptive
+und Metrik-Daten zur Charakter-Stimme enthält. Die deskriptive Gruppe (formality,
+vocabulary_level, sentence_profile, emotional_range, cultural_regional_markers,
+voice_examples) wird durch den erweiterten `get_speech_data()`-Consumer in die
+Generierung gerendert. Die Metrik-Gruppe (`voice_metrics`) ist comparison-only und
+erreicht niemals die Generierung. Siehe ADR-055, ANAL-008.
+
 **Voice Check**
 An analysis that compares a newly written chapter against the author's established
 style profile, flagging deviations in tone, sentence structure, vocabulary, etc.
@@ -557,6 +636,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-06-19 — Added ADR-045 runtime adoption terminology
+> Last updated: 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

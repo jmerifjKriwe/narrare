@@ -147,12 +147,19 @@ See ADR-033 for full rationale.
 **Why:** Async-native task queue with FastAPI DI integration via TaskiqDepends.
 Redis broker is already in our stack. See ADR-007 for full rationale.
 **Role:** Long-running tasks: batch embedding, consistency checks, chapter summarization,
-fact extraction, timeline analysis.
-**Location:** Task definitions in `*/tasks.py`. Broker in `core/tasks/broker.py`.
+fact extraction, timeline analysis, wiki generation.
+**Architecture (INFRA-007, stable):**
+- `ListQueueBroker` über Redis + `RedisAsyncResultBackend`
+- 7 registrierte Tasks in `kb/embedding_hooks.py` + `wiki/tasks.py`: embed_source,
+  wiki_generate_entity, wiki_generate_chapter, wiki_mark_all_stale, wiki_refresh_summary,
+  process_feedback_memory, run_preference_analysis
+- Event-Listener-Task-Map (`_EVENT_TASK_MAP`) routed via Redis Pub/Sub (ADR-012)
+- KB embedding-hook enqueueing bei Entity-Änderungen
+- Read-only Monitoring API: `GET /tasks/status` + Settings-Panel
+- Docker Worker Service im Release-Deployment
+**Location:** Task definitions in `*/tasks.py`. Broker in `apps/api/narrare/tasks/broker.py`.
 **Not:** Celery (async impedance mismatch, needs asyncio.run wrapper), arq (maintenance-only),
 asyncio background tasks (no persistence, no retry, no visibility).
-**Note:** TaskIQ tasks are triggered by the event system (ADR-012) — domain events
-are published via Redis Pub/Sub and routed to TaskIQ workers by `event_listener.py`.
 
 ---
 
@@ -364,6 +371,6 @@ Dependencies are audited quarterly for:
 
 ---
 
-> Last updated: 2026-06-04 — AI runtime modernization Phase 0: OTel-only observability (ADR-031), Pydantic Evals SSOT (ADR-032), mem0 2.0.x (ADR-033 implemented)
+> Last updated: 2026-06-29 — INFRA-007 stable with TaskIQ broker, result backend, 7 tasks, monitoring API, Docker worker. Updated TaskIQ architecture details. prometheus-client verified correct in "Do Not Use".
 > Maintained by: Architecture Agent
 > Changes require ADR
