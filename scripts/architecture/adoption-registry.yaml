@@ -82,6 +82,11 @@ prompt_path_compliance:
   analysis/remap: true
   analysis/consistency: true
   analysis/fact_extraction: true
+  # ADR-055 D4: character_voice (ANAL-008) prompt surface is governed Mode 1.
+  # Runtime adoption evidence lands with the agent+service in Layer 2/3; until
+  # then the mode tracks as governed adoption debt (static-verified, runtime
+  # pending) — see features.analysis.modes.character_voice.
+  analysis/character_voice: true
   # kb
   kb/consistency: true
   kb/worldbuilding/phase1: true
@@ -197,6 +202,12 @@ features:
       consistency:
         requires_runtime_evidence: true
       fact_extraction:
+        requires_runtime_evidence: true
+      # ADR-055 D4: character_voice prompt surface is registered at the
+      # prompt-surface layer (Layer 1). Runtime evidence (agent + service
+      # probes) is produced in Layer 2/3; until then the mode is
+      # static-verified but not yet runtime-verified (governed adoption debt).
+      character_voice:
         requires_runtime_evidence: true
     required_infrastructure:
       token_budget: required

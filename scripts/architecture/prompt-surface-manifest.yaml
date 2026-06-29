@@ -364,6 +364,38 @@ routes:
     fallback_policy: fail_loudly_if_bundled_missing
     note: "ADR-049 Phase D: manifest entry added — the governed template existed but had no manifest coverage (governance gap exposed by the Phase D PROMPT-IDENTITY checker)."
 
+  # ── Voice operations ───────────────────────────────────────────────
+  # ADR-055 D4: VOICE promoted from non-routeable to a multi-mode analysis
+  # intent. character_voice (ANAL-008) is the first governed context_mode;
+  # author_voice (ANAL-007) and voice_drift (ANAL-009) are deferred and will
+  # be appended to context_modes later. Mirrors how PLAN serves several
+  # planning context_modes. The analysed dialogue + deterministic voice
+  # metrics are category-3 runtime data supplied as the run prompt (user
+  # channel), exactly as coreference/readability receive the analysed passage
+  # as runtime input — hence required_variables is [] and xml_required is [].
+
+  - intent: VOICE
+    routeable: true
+    category: analysis
+    mode: character_voice
+    template: packages/core/narrare_core/prompts/_bundled/analysis/en/character_voice/system.md
+    content_type: customizable_feature_prompt
+    output_language_variable: writing_language
+    required_variables: []
+    optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
+    security:
+      xml_required: []
+      generated_suggestions_must_be_labelled: []
+    fallback_policy: fail_loudly_if_bundled_missing
+    context_modes:
+      - mode: character_voice
+        template: packages/core/narrare_core/prompts/_bundled/analysis/en/character_voice/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+
   # ── Planning operations ────────────────────────────────────────────
 
   - intent: PLAN
@@ -457,10 +489,8 @@ routes:
     rationale: "Sentiment analysis is handled by deterministic NLP analyzers."
     fallback_policy: raise_route_not_configured
 
-  - intent: VOICE
-    routeable: false
-    rationale: "Voice analysis has no dedicated bundled PromptComposer template yet."
-    fallback_policy: raise_route_not_configured
+  # ADR-055 D4: VOICE removed from non-routeable — it is now a routeable
+  # analysis intent (see the Voice operations section above).
 
   - intent: GENERATE
     routeable: false

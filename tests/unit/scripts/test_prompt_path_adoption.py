@@ -150,7 +150,7 @@ class TestRealRegistry:
             + "; ".join(f"{f.mode_key}: {f.message}" for f in findings)
         )
 
-    def test_real_registry_covers_29_modes(self) -> None:
+    def test_real_registry_covers_30_modes(self) -> None:
         import yaml
 
         registry_path = Path(_ROOT) / "scripts" / "architecture" / "adoption-registry.yaml"
@@ -165,6 +165,7 @@ class TestRealRegistry:
         )
         # Ratchet: the registry must cover all implemented feature modes.
         # When adding a mode, update this count. As of the CR-02 prompt-path
-        # retrofit (ADR-046) the registry covers 29 modes (analysis gained
-        # fact_extraction; planning gained temporal_consistency).
-        assert mode_count == 29, f"expected 29 feature modes, got {mode_count}"
+        # retrofit (ADR-046) the registry covered 29 modes (analysis gained
+        # fact_extraction; planning gained temporal_consistency). ADR-055 D4
+        # added analysis/character_voice (ANAL-008) → 30 modes.
+        assert mode_count == 30, f"expected 30 feature modes, got {mode_count}"
