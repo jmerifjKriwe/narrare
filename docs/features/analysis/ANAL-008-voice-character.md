@@ -1,7 +1,7 @@
 ---
 id: ANAL-008
 title: "Character Voice Profiling"
-status: planned
+status: stable
 area: analysis
 mvp: false
 
@@ -76,7 +76,8 @@ requires: [INFRA-001, INFRA-002, KB-001]
 
 > **Architecture authority:** [ADR-055](../../architecture/decisions/ADR-055-character-voice-contract.md)
 > (Character Voice Storage Contract & VOICE Prompt Surface). The technical sections
-> below implement that ADR. This spec is `planned` (spec authored, implementation pending).
+> below implement that ADR. This spec is `stable` (implemented and validated across
+> all layers — Core + Backend + Frontend).
 
 ## What it does
 
@@ -318,3 +319,17 @@ suitable for ANAL-009 drift comparison and WRITE-010 consistency checking.
   self-contained attribution (no Coreference coupling), and Foundation
   (`DialogueParser` / `VoiceMetricsAnalyzer`) specified. Status remains `planned`
   (implementation pending user approval of ADR-055).
+- `2026-06-29` — **Implemented (all layers: Core Foundation + agent, Backend
+  service+SSE, Frontend panel+hook+i18n).** Hybrid metrics (ADR-021),
+  self-contained dialogue attribution, nested `voice_analysis` contract
+  (ADR-055), VOICE promoted to routeable. Validated: `just check` 9/9, 8341
+  backend + 2287 frontend tests green, 0 architecture/AI-UX violations.
+  `character_voice` runtime adoption = governed debt (static-verified; runtime
+  evidence pending CI/integration).
+  Commits: `e12f6539` (Layer 0 — `SpeechPatterns` `voice_analysis`),
+  `ee0c148f` (Layer 1 — VOICE routeable + `character_voice` template),
+  `96fca8e1` (Layer 2 — `DialogueParser` + `VoiceMetricsAnalyzer` +
+  `CharacterVoiceAgent` + consumer merge),
+  `74b7c83a` (Layer 3 — Backend `CharacterVoiceService` + SSE),
+  `ce392ac4` (Layer 4 — Frontend panel + hook + i18n).
+  Status → `stable`.

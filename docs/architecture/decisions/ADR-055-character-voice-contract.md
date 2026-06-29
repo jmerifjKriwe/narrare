@@ -1,6 +1,6 @@
 # ADR-055 — Character Voice Storage Contract & VOICE Prompt Surface
 
-> **Status:** 🔄 Proposed (spec authored; implementation pending user approval)
+> **Status:** ✅ Accepted + Implemented (2026-06-29)
 > **Date:** 2026-06-26
 > **Deciders:** Architecture Specialist
 > **Supersedes:** —
@@ -8,6 +8,16 @@
 > ADR-037/046/049 (prompt-surface manifest + path compliance), ADR-040 (voice SSOT
 > module), ADR-050 (voice consumer contract), ADR-054 (Mode-1 PromptComposer mandate),
 > CONSTRAINTS.md RULE-02/02b/03/04/05/06/07/08/11/13/22, CR-04 (cross-feature coherence)
+
+> **Implementation note (2026-06-29):** This contract is implemented across all
+> layers — Layer 0 (`e12f6539`, `SpeechPatterns` `voice_analysis`), Layer 1
+> (`ee0c148f`, VOICE routeable + `character_voice` template), Layer 2 (`96fca8e1`,
+> `DialogueParser` + `VoiceMetricsAnalyzer` + `CharacterVoiceAgent` + consumer
+> merge), Layer 3 (`74b7c83a`, Backend `CharacterVoiceService` + SSE), Layer 4
+> (`ce392ac4`, Frontend panel + hook + i18n). Validated green: `just check` 9/9,
+> 8341 backend + 2287 frontend tests, 0 architecture/AI-UX violations. The
+> `character_voice` route is static-verified; runtime-adoption evidence through
+> the real `InvocationPipeline` is pending CI/integration (governed debt).
 
 ---
 

@@ -112,18 +112,20 @@
 | [ANAL-005](analysis/ANAL-005-coreference.md) | Coreference Analysis | ✅ | ❌ |
 | [ANAL-006](analysis/ANAL-006-sensitivity.md) | Sensitivity Review | 📋 | ❌ |
 | [ANAL-007](analysis/ANAL-007-voice-author.md) | Author Voice Profiling | 📋 | ❌ |
-| [ANAL-008](analysis/ANAL-008-voice-character.md) | Character Voice Profiling | 📋 | ❌ |
+| [ANAL-008](analysis/ANAL-008-voice-character.md) | Character Voice Profiling | ✅ | ❌ |
 | [ANAL-009](analysis/ANAL-009-voice-drift.md) | Voice Drift Detection | 📋 | ❌ |
 | [ANAL-010](analysis/ANAL-010-literary-suite.md) | Literary Analysis Suite | 📋 | ❌ |
 | [ANAL-011](analysis/ANAL-011-plot-analysis.md) | Plot Analysis | 📋 | ❌ |
 
-> **ANAL-008 (Character Voice Profiling):** Spec authored (2026-06-26) against
-> [ADR-055](../architecture/decisions/ADR-055-character-voice-contract.md) — the
-> character-voice storage contract (nested `voice_analysis` extension to the live
-> `SpeechPatterns` schema, hybrid metrics per ADR-021, self-contained dialogue
-> attribution) and the VOICE prompt-surface route. Status remains `planned`: spec
-> is authored and proposed, implementation is pending user approval of ADR-055.
-> The earlier lossy field-mapping (quotes in `body_language` etc.) was removed.
+> **ANAL-008 (Character Voice Profiling):** Implemented (2026-06-29) across all
+> layers against [ADR-055](../architecture/decisions/ADR-055-character-voice-contract.md)
+> — the character-voice storage contract (nested `voice_analysis` extension to the
+> live `SpeechPatterns` schema, hybrid metrics per ADR-021, self-contained dialogue
+> attribution) and the VOICE prompt-surface route (makes `LLMIntent.VOICE`
+> routeable). Status → `stable` (validated: `just check` 9/9, 8341 backend + 2287
+> frontend tests green). `character_voice` runtime adoption = governed debt
+> (static-verified; runtime evidence pending CI/integration). The earlier lossy
+> field-mapping (quotes in `body_language` etc.) was removed.
 
 ### Planning
 | ID | Feature | Status | MVP |
@@ -315,5 +317,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-26 — INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after
