@@ -43,7 +43,7 @@ ProbeFn = Callable[[Path], Coroutine[Any, Any, int]]
 PROBES: list[tuple[str, ProbeFn]] = [
     ("writing/chat", chat_probe),
     ("writing/* (9 modes)", writing_probe),
-    ("analysis/* (7 modes)", analysis_probe),
+    ("analysis/* (9 modes)", analysis_probe),
     ("kb/* (8 modes)", kb_probe),
     ("planning/outline", outline_probe),
     ("generation/names", names_probe),

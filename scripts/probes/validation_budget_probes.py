@@ -47,8 +47,11 @@ from narrare_core.llm.intents import LLMIntent  # noqa: E402
 _VALIDATION_MODES: list[tuple[str, str, LLMIntent]] = [
     ("writing", "new_chapter", LLMIntent.WRITE),
     ("analysis", "beta_reader", LLMIntent.BETA_READ),
+    ("analysis", "character_voice", LLMIntent.VOICE),
+    ("analysis", "fact_extraction", LLMIntent.FACT_EXTRACT),
     ("kb", "consistency", LLMIntent.KB_CONSISTENCY),
     ("planning", "outline", LLMIntent.PLAN),
+    ("planning", "temporal_consistency", LLMIntent.PLAN),
 ]
 
 #: All modes per feature that have ``final_validation: required``.
@@ -69,9 +72,11 @@ _VALIDATION_FEATURES: dict[str, list[str]] = {
         "beta_reader_deepdive",
         "review",
         "preferences",
+        "character_voice",
         "summarize",
         "remap",
         "consistency",
+        "fact_extraction",
     ],
     "kb": [
         "consistency",
@@ -83,7 +88,7 @@ _VALIDATION_FEATURES: dict[str, list[str]] = {
         "extract",
         "enhance",
     ],
-    "planning": ["outline"],
+    "planning": ["outline", "temporal_consistency"],
 }
 
 

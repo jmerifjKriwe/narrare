@@ -68,6 +68,14 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
     ),
     (
         "analysis",
+        "character_voice",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "She spoke with a quiet, measured cadence.",
+        },
+    ),
+    (
+        "analysis",
         "summarize",
         LLMIntent.SUMMARIZE,
         {
@@ -91,6 +99,14 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
         {
             "chapter_texts": "Chapter 1: Arrival\nChapter 2: Discovery",
             "check_types": "character,timeline",
+        },
+    ),
+    (
+        "analysis",
+        "fact_extraction",
+        LLMIntent.FACT_EXTRACT,
+        {
+            "chapter_text": "Elena walked to the gate at dawn.",
         },
     ),
 ]

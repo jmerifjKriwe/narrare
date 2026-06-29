@@ -137,6 +137,14 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
     ),
     (
         "analysis",
+        "character_voice",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "Character voice analysis sample text.",
+        },
+    ),
+    (
+        "analysis",
         "summarize",
         LLMIntent.SUMMARIZE,
         {
@@ -157,6 +165,14 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
         LLMIntent.CONSISTENCY,
         {
             "chapter_text": "Consistency check text.",
+        },
+    ),
+    (
+        "analysis",
+        "fact_extraction",
+        LLMIntent.FACT_EXTRACT,
+        {
+            "chapter_text": "Fact extraction sample text.",
         },
     ),
     # ── KB modes ───────────────────────────────────────────────────
@@ -240,6 +256,14 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "project_title": "Test Story",
             "genre": "Fantasy",
             "tone": "dark",
+        },
+    ),
+    (
+        "planning",
+        "temporal_consistency",
+        LLMIntent.PLAN,
+        {
+            "chapter_texts": "Chapter 1: dawn. Chapter 2: noon.",
         },
     ),
     # ── Generation modes ───────────────────────────────────────────
