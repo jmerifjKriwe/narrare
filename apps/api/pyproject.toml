@@ -11,8 +11,6 @@ dependencies = [
   "python-multipart==0.0.32",
 
   # Data validation
-  "pydantic==2.13.4",
-  "pydantic-settings==2.14.2",
   "email-validator==2.3.0",
 
   # Database
@@ -20,9 +18,6 @@ dependencies = [
   "asyncpg==0.31.0",
   "alembic==1.18.4",
   "pgvector==0.4.2",
-
-  # LLM
-  "pydantic-ai-slim[openai,anthropic,google,groq]==1.107.0",
 
   # Background tasks
   "taskiq==0.12.4",
@@ -39,14 +34,11 @@ dependencies = [
   "PyJWT==2.13.0",
   "argon2-cffi>=25.1.0",
 
-  # HTTP client
-  "httpx==0.28.1",
-
   # Observability
   "structlog==26.1.0",
-  "opentelemetry-api>=1.39.0,<1.44.0",
-  "opentelemetry-sdk>=1.39.0,<1.44.0",
-  "opentelemetry-instrumentation-fastapi>=0.60b0,<0.65",
+  "opentelemetry-api>=1.39.0,<1.43.0",
+  "opentelemetry-sdk>=1.39.0,<1.43.0",
+  "opentelemetry-instrumentation-fastapi>=0.60b0,<0.63",
   "opentelemetry-exporter-otlp>=1.39.0,<1.43.0",
 
   # Rate limiting
@@ -60,19 +52,13 @@ dependencies = [
 
   # File operations
   "filelock==3.29.4",
-  "aiofiles==25.1.0",
-
-  # YAML
-  "pyyaml==6.0.3",
 
   # Workspace packages
   "narrare-core",
-  "narrare-i18n",
 ]
 
 [tool.uv.sources]
 narrare-core = { workspace = true }
-narrare-i18n = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
