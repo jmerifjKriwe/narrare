@@ -130,7 +130,19 @@ def _build_steps() -> list[Step]:
             "Prompts",
             [
                 (["uv", "run", "python", "scripts/check_prompt_structure.py"], None),
-                (["uv", "run", "python", "scripts/check_adoption.py"], None),
+                # ADR-056 — runtime-evidence-aware adoption gate (matches
+                # `just check-adoption` and CI). Reads committed .evidence markers.
+                (
+                    [
+                        "uv",
+                        "run",
+                        "python",
+                        "scripts/check_adoption.py",
+                        "--evidence-dir",
+                        ".evidence",
+                    ],
+                    None,
+                ),
                 (["uv", "run", "python", "scripts/check_streaming_compliance.py"], None),
             ],
         ),

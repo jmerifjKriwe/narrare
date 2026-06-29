@@ -35,6 +35,10 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
+        # ADR-056 — runtime-evidence-aware: reads committed .evidence/*.json markers,
+        # consistent with `just check-adoption` and CI. CI remains the authoritative
+        # regenerator (run_all_probes.py → markers → check); the hook only reads.
+        args: ["--evidence-dir", ".evidence"]
 
       # AI Interaction Standards (ADR-043) — §16 compliance for frontend AI components
       - id: ai-interaction-compliance
