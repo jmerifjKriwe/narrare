@@ -324,8 +324,9 @@ suitable for ANAL-009 drift comparison and WRITE-010 consistency checking.
   self-contained dialogue attribution, nested `voice_analysis` contract
   (ADR-055), VOICE promoted to routeable. Validated: `just check` 9/9, 8341
   backend + 2287 frontend tests green, 0 architecture/AI-UX violations.
-  `character_voice` runtime adoption = governed debt (static-verified; runtime
-  evidence pending CI/integration).
+  `character_voice` runtime adoption is **runtime-verified** (probes landed in
+  `ee1cfc50`; the local commit-gate is runtime-evidence-aware via ADR-056, so it
+  witnesses the committed markers).
   Commits: `e12f6539` (Layer 0 — `SpeechPatterns` `voice_analysis`),
   `ee0c148f` (Layer 1 — VOICE routeable + `character_voice` template),
   `96fca8e1` (Layer 2 — `DialogueParser` + `VoiceMetricsAnalyzer` +

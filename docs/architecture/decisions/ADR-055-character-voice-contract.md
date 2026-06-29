@@ -16,8 +16,9 @@
 > merge), Layer 3 (`74b7c83a`, Backend `CharacterVoiceService` + SSE), Layer 4
 > (`ce392ac4`, Frontend panel + hook + i18n). Validated green: `just check` 9/9,
 > 8341 backend + 2287 frontend tests, 0 architecture/AI-UX violations. The
-> `character_voice` route is static-verified; runtime-adoption evidence through
-> the real `InvocationPipeline` is pending CI/integration (governed debt).
+> `character_voice` route is **runtime-verified** — probes landed in `ee1cfc50`,
+> and ADR-056 made the local commit-gate runtime-evidence-aware, so it witnesses
+> the committed markers.
 
 ---
 
