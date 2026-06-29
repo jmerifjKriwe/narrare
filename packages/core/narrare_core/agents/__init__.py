@@ -20,6 +20,12 @@ from narrare_core.agents.character_arc_types import (
     ArcPhase,
     CharacterArcOutput,
 )
+from narrare_core.agents.character_voice_agent import CharacterVoiceAgent
+from narrare_core.agents.character_voice_types import (
+    CharacterVoiceDeps,
+    CharacterVoiceEntry,
+    CharacterVoiceOutput,
+)
 from narrare_core.agents.consistency_agent import ConsistencyAgent
 from narrare_core.agents.consistency_types import (
     ConsistencyCheckType,
@@ -167,6 +173,10 @@ __all__ = [
     "CharacterArcDeps",
     "CharacterArcOutput",
     "CharacterMention",
+    "CharacterVoiceAgent",
+    "CharacterVoiceDeps",
+    "CharacterVoiceEntry",
+    "CharacterVoiceOutput",
     "ConsistencyAgent",
     "ConsistencyCheckType",
     "ConsistencyDeps",

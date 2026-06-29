@@ -49,11 +49,15 @@ from narrare_core.analysis.types import (
     SentimentOverview,
     VADScores,
 )
+from narrare_core.analysis.voice_merge import merge_character_voice
+from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
+from narrare_core.analysis.voice_types import AttributedUtterance
 
 __all__ = [
     "AnalysisAssemblerProtocol",
     "AnalysisBudgetManager",
     "AnalysisContextAssembler",
+    "AttributedUtterance",
     "CharacterAgeCheck",
     "DuplicateEventCheck",
     "DurationImpossibilityCheck",
@@ -80,5 +84,7 @@ __all__ = [
     "TemporalIssueSeverity",
     "TemporalOrderingCheck",
     "VADScores",
+    "VoiceMetricsAnalyzer",
+    "merge_character_voice",
     "run_deterministic_checks",
 ]
