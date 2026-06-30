@@ -3,7 +3,7 @@
 > **Status:** Active registry
 > **Introduced by:** [ADR-047](../decisions/ADR-047-governance-drift-automation.md) (Proposed; registry is the active lifecycle surface while ADR acceptance remains open)
 > **Maintained by:** Architecture Specialist
-> **Last updated:** 2026-06-25 (AUFG-04-01 resolved — `writing/story_suggest` orphan template rewired as the WRITE-009 Writer's Unblock Tools prompt surface via `SUGGEST` intent + `context_mode="story_suggest"`; orphan exemption removed from `_check_prompt_orphan.py`; template is now runtime-loaded via `PromptComposer`. CR-07 Follow-up v3 set FULLY RESOLVED — all 11 work items (CR-AUFG-07-14 through CR-AUFG-07-24) now carry implementation + enforcement evidence; Phases A, B, and C complete. CR-AUFG-07-22 resolved — regenerate-with-style-variants implementation + enforcement evidence complete; governed sub-operation lifecycle over the existing rewrite modal, RULE-17 request/enum contract parity, AI Operation Inventory entry `writing.style_variant`, and schema-contract + streaming integration tests. CR-07 Phase C CR-AUFG-07-23 resolved — Emotional intensity curve implementation + enforcement evidence complete; frontend-only deterministic derivation of existing ANAL-002 sentiment `arousal` onto a 0..100 display scale, "estimated intensity" grounding with accessible chart + table alternative. CR-07 Phase C CR-AUFG-07-20 resolved — slash commands for AI actions implementation + enforcement evidence complete; frontend-only discovery layer over existing AI operations. CR-07 Phase C CR-AUFG-07-19 resolved — Prompt history implementation + enforcement evidence complete; DB-backed append-only history with list/compare/restore/clear and retention. CR-07 Phase C CR-AUFG-07-21 resolved — SessionPanel server-side stop + WebSocket recovery implementation/enforcement evidence complete. CR-AUFG-07-24 resolved — AI feedback rating expansion implementation + enforcement evidence complete. CR-AUFG-07-18 resolved — shared AI-diff vocabulary implementation + enforcement evidence complete; feature spec remains `planned` pending user closure confirmation. CR-07 Follow-up v3 Phase B PROMPT-003 resolved — CR-AUFG-07-16 implementation + enforcement + cross-layer evidence complete; PROMPT-003 promoted to `stable`. Phase A resolved 2026-06-21 — CR-AUFG-07-14 and CR-AUFG-07-15 implementation + enforcement + cross-layer evidence complete; CR-08 AUFG set resolved — ADR-051 accepted 2026-06-20; P0–P4 implementation + enforcement + cross-layer evidence complete)
+> **Last updated:** 2026-06-30 — 29 resolved items consolidated into dedicated section below
 
 This registry is the durable, tracked lifecycle surface for AUFGs, accepted risks,
 accepted enhancements, and coverage pointers that originate from architecture reviews.
@@ -41,6 +41,210 @@ block the immediate runtime remediation once P0/P1 are complete).
 ---
 
 ## Active AUFGs
+
+### AUFG-01-03 — MCP/A2A-Produktstatus und Adapter-Gates klären
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-03 |
+| Source | review-01-architektur.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `accepted_enhancement` |
+| Priority | P3 |
+| Area | Architecture, adapter strategy |
+| Review trigger/date | Re-review when Q-001 (MCP auth) or Q-002 (A2A streaming) is decided, or when a multi-adapter product requirement is approved. |
+
+**Disposition (2026-06-20):** MCP/A2A is deliberately not implemented and is a
+deferred strategic capability, not a quality gap. The documentation/clarification
+acceptance criteria are met: the directory structure, feature index
+(ADAPTER-001/002 note) and open questions Q-001/Q-002 consistently describe MCP/A2A
+as planned-not-implemented, with contract-test gates defined for the first adapter
+(see also AUFG-03-04). No adapter skeleton is created merely to satisfy review.
+Capability implementation remains gated on a Q-001/Q-002 decision and a dedicated
+adapter spec.
+
+---
+
+### AUFG-03-04 — MCP/A2A als geplante Adapter konkretisieren oder aus Review-Scope entfernen
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-03-04 |
+| Source | review-03-ai-features.md §Aufgaben; consolidated in review-05-release.md §5. |
+| Status | `accepted_enhancement` |
+| Priority | P3 |
+| Area | AI, Architecture, adapter strategy |
+| Review trigger/date | Re-review when Q-001/Q-002 is decided, or when an adapter-specific spec is written. |
+
+**Disposition (2026-06-20):** Verified (per review-03) that the INDEX.md
+ADAPTER-001/002 note and Q-001/Q-002 are current and act as SSOT, with contract-test
+gates (service-layer call, auth/identity mapping, streaming/non-streaming parity,
+error mapping, no business logic in adapter) already defined for the first adapter.
+Q-001 and Q-002 remain marked as blockers until an adapter-specific spec is written.
+No `apps/mcp/` or `apps/a2a/` skeleton exists solely to satisfy review. Capability
+remains a deferred strategic enhancement (paired with AUFG-01-03).
+
+---
+
+## Accepted Enhancements
+
+Accepted enhancements are non-blocking by default. They become blocking only if a
+later ADR/spec/release gate promotes them to `open` AUFG scope.
+
+### AE-05-01 — Cosign/SLSA Release Provenance Hardening
+
+| Field | Value |
+|-------|-------|
+| ID | AE-05-01 |
+| Title | Cosign/SLSA Release Provenance Hardening |
+| Source | `docs/development/deployment-guide.md` §Cosign Signing (Future) and provenance trust model. |
+| Status | `accepted_enhancement` |
+| Priority | P2 |
+| Area | Platform, release engineering, supply-chain security |
+| Owner role | Platform Specialist |
+| Dependencies | Release workflow, GHCR publishing, SBOM generation, GitHub OIDC permissions, secret-scanning gate AUFG-05-09. |
+| Review trigger/date | Review before first public release artifact, or by 2026-09-30 if release hardening has not been revisited. |
+
+**Acceptance criteria:**
+
+- Platform decides whether to implement Cosign keyless signing, SLSA provenance, or
+  both, with rationale and verification commands.
+- Release documentation explains how users verify image signatures/provenance.
+- CI/release workflow evidence demonstrates signed/provenance-bearing artifacts if promoted.
+
+**Definition of Done:**
+
+- If promoted: workflow, docs, and verification evidence are added in one coherent change.
+- If deferred: registry remains `accepted_enhancement` with renewed review date and rationale.
+
+**Exit evidence:** Non-blocking enhancement accepted; implementation evidence pending only
+if promoted by Platform/release planning.
+
+---
+
+### AE-05-02 — Managed Hosting Strategy Exploration
+
+| Field | Value |
+|-------|-------|
+| ID | AE-05-02 |
+| Title | Managed Hosting Strategy Exploration |
+| Source | `docs/architecture/questions/Q-011-distribution-strategy.md` Option C / Variant C2 and recommendation. |
+| Status | `accepted_enhancement` |
+| Priority | P3 |
+| Area | Product architecture, distribution strategy, platform operations |
+| Owner role | Architecture Specialist with Product/Coordinator decision from user |
+| Dependencies | Q-011 distribution strategy; local-first product vision; auth/multi-tenancy, billing, GDPR, rate limiting, and operational support decisions. |
+| Review trigger/date | Review at Post-MVP Phase 4 or when active non-developer onboarding begins, whichever comes first. |
+
+**Acceptance criteria:**
+
+- Managed hosting remains an exploration/enhancement, not an implementation decision.
+- Any move toward hosted/SaaS delivery requires a new ADR covering local-first impact,
+  multi-tenancy, data isolation, billing, rate limiting, and GDPR/compliance.
+- Q-011 remains the strategy question until the user explicitly selects a distribution path.
+
+**Definition of Done:**
+
+- No production code is added for managed hosting under this enhancement entry alone.
+- If promoted, Architecture creates a dedicated ADR/spec before implementation.
+- If rejected, status changes to `not_applicable` or `accepted_risk` with rationale.
+
+**Exit evidence:** Non-blocking strategic enhancement accepted for future review; no
+implementation evidence required until user-approved promotion.
+
+---
+
+### AE-05-03 — CORS Origins als Settings-Feld
+
+| Field | Value |
+|-------|-------|
+| ID | AE-05-03 |
+| Title | CORS Origins als Settings-Feld |
+| Source | AUFG-05-07 security audit §2.4 — CORS origins hardcoded in app factory. |
+| Status | `accepted_enhancement` |
+| Priority | P3 |
+| Area | Backend, configuration, deployment |
+| Owner role | Backend Specialist |
+| Dependencies | `apps/api/narrare/_app/settings_model.py`; `apps/api/narrare/_app/main.py` CORS middleware. |
+| Review trigger/date | Re-review when a deployment scenario requires custom CORS origins, or by 2027-06-14. |
+
+**Acceptance criteria:**
+
+- `Settings.cors_origins` field added so operators configure CORS via env var.
+- Default remains `["http://localhost:3000"]` for dev, `[]` for production.
+- No behavior change for existing deployments.
+
+**Definition of Done:**
+
+- If promoted: Settings field + tests in one coherent change.
+- If deferred: registry remains `accepted_enhancement` with renewed review date.
+
+**Exit evidence:** Non-blocking enhancement accepted; implementation evidence pending
+only if promoted.
+
+---
+
+## Accepted Risks
+
+Accepted risks are knowingly accepted with owner, rationale, controls, and review
+date. They become blocking only if a later ADR/spec/release gate promotes them to
+`open` AUFG scope.
+
+### AR-05-02 — Rate-Limiting Backend Discrepanz (In-Memory vs Redis)
+
+| Field | Value |
+|-------|-------|
+| ID | AR-05-02 |
+| Type | `accepted_risk` |
+| Risk | Rate limits are process-local in-memory (`pyrate_limiter`), not Redis-based as specified in TECH_STACK.md / ADR-009. Multi-instance deployments would have independent counters per instance. |
+| Owner | Backend/Security Specialist |
+| Rationale | Current deployment model is single-instance local-first. In-memory rate limiting is functionally equivalent for single-instance. `pyrate-limiter` is a transitive dependency of `fastapi-limiter`; the combination works in practice (e2e tests confirm HTTP 429 responses on auth endpoints). |
+| Controls | (1) TECH_STACK.md documents the intended Redis-based approach. (2) AUFG-05-12 implementation should evaluate whether to align with TECH_STACK.md (call `FastAPILimiter.init(redis)`) or update TECH_STACK.md/ADR-009 to reflect the in-memory approach. |
+| Review trigger/date | Re-review when AE-05-02 (managed hosting) is promoted to implementation, or when multi-instance API deployment is configured. No fixed date — gated by deployment topology change. |
+| Source | AUFG-05-07 security audit §3.3 |
+
+### AR-05-03 — Auth-Non-Brute-Force Endpoints ohne Rate Limit
+
+| Field | Value |
+|-------|-------|
+| ID | AR-05-03 |
+| Type | `accepted_risk` |
+| Risk | `/auth/refresh`, `/auth/logout`, `GET /auth/me` have no rate limits. |
+| Owner | Backend/Security Specialist |
+| Rationale | Refresh: cookie-scoped (`samesite=lax`, `path=/api/v1/auth`), token rotation on every call, invalid tokens clear the cookie. Logout: no-op (clears cookie). Me: read-only, auth-protected. None present a meaningful brute-force or cost-abuse surface. |
+| Controls | `sameSite=lax` prevents CSRF-based abuse. Token rotation invalidates stolen refresh tokens on use. Auth-protected endpoints require valid JWT. |
+| Review trigger/date | Re-review if refresh token flow changes, or if `sameSite` is weakened. By 2027-06-14 if no change. |
+| Source | AUFG-05-07 security audit §4.2 |
+
+### AR-05-04 — State-Changing CRUD ohne Rate Limit (Local-First)
+
+| Field | Value |
+|-------|-------|
+| ID | AR-05-04 |
+| Type | `accepted_risk` |
+| Risk | State-changing CRUD endpoints (novels, chapters, volumes, KB, settings, embeddings, prompts, templates, wiki), setup validation/complete have no rate limits. |
+| Owner | Backend/Security Specialist |
+| Rationale | All endpoints are auth-protected (require valid JWT). Deployment model is local-first, single-user self-hosted. No multi-tenant or public-facing surface. Rate-limiting CRUD on a single-user local instance adds complexity without security benefit. |
+| Controls | JWT authentication on all endpoints. `ENVIRONMENT` defaults to `development`. Production requires explicit operator configuration. Setup complete requires authentication. |
+| Review trigger/date | Re-review when AE-05-02 (managed hosting) is promoted, or when multi-user/multi-tenant features are added. No fixed date — gated by product evolution. |
+| Source | AUFG-05-07 security audit §4.2 |
+
+### AR-05-05 — No Double-Submit-CSRF-Token
+
+| Field | Value |
+|-------|-------|
+| ID | AR-05-05 |
+| Type | `accepted_risk` |
+| Risk | No Double-Submit-CSRF-Token is used. CSRF defense relies on (1) Bearer-token authentication for all state-changing endpoints, (2) SameSite=Lax for cookie-authenticated auth endpoints, and (3) Origin/Referer validation (to be implemented per AUFG-05-13). |
+| Owner | Architecture Specialist |
+| Rationale | The backend authenticates state-changing endpoints via `Authorization: Bearer` headers (`HTTPBearer` in `get_current_user_id`), not cookies. CSRF is structurally inapplicable because the browser cannot auto-attach `Authorization` headers cross-origin. The only cookie-authenticated endpoints (`/auth/refresh`, `/auth/logout`) are protected by SameSite=Lax + path-restriction (`/api/v1/auth`) and have no data-integrity impact (token rotation, logout). A Double-Submit-Token would protect against a vector that does not exist in the current architecture, adding complexity (token generation, storage, client-server coordination, contract, test surface) without proportional security benefit. |
+| Controls | (1) Bearer-token auth via `HTTPBearer` (`apps/api/narrare/_app/dependencies_auth.py`). (2) SameSite=Lax + path-restriction on `narrare_refresh` cookie (`apps/api/narrare/auth/cookie_helpers.py`). (3) JSON-only API (Pydantic rejects non-JSON bodies). (4) CORS disabled in production (same-origin proxy). (5) Origin/Referer validation per AUFG-05-13 (pending implementation). (6) Architectural invariant INV-1 through INV-5 (see `docs/architecture/governance/csrf-strategy.md` §12): backend must never add cookie-based auth for state-changing endpoints. |
+| Review trigger/date | Re-review if: (a) cookie-based authentication is added to any state-changing endpoint, (b) AE-05-02 (managed hosting) is promoted introducing subdomains, (c) WebSocket auth model changes, or (d) by 2027-06-14 if no change. |
+| Release trigger | Origin/Referer validation (AUFG-05-13) should be implemented before public release or managed hosting promotion. Until then, the current posture (Bearer auth + SameSite=Lax) is safe for local-first single-user deployment. |
+| Source | AUFG-05-08 CSRF strategy decision (`docs/architecture/governance/csrf-strategy.md` §8) |
+
+---
+
+## Resolved AUFGs
 
 ### CR-08 Configuration/Effect Drift AUFG Set
 
@@ -144,66 +348,6 @@ No remaining governed-debt or accepted-enhancement items were split out of this 
   blocks future unclassified structured material P0/P1 configuration-effect
   findings. Versioned audit-prompt markers `[P0|P1] [category: configuration-effect]`
   are required by the CR-08 content-review template.
-
----
-
-### AUFG-04-01 — writing/story_suggest Orphan Template Disposition
-
-| Field | Value |
-|-------|-------|
-| ID | AUFG-04-01 |
-| Title | writing/story_suggest Orphan Template Disposition |
-| Source | CR-04 Phase D ORPHAN-TEMPLATE gate (ADR-049 A6). The `writing/story_suggest` template has no production Python consumer; acknowledged as documented ratcheted debt in `scripts/architecture/_checkers/_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`. |
-| Status | `resolved` |
-| Priority | P2 |
-| Area | Prompts, Writing features, Prompt-surface governance |
-| Owner role | Architecture Specialist (disposition decision) + Implementation Specialist (rewire or delete) |
-| Dependencies | WRITE-009 (Writer's Block Tools) feature planning; ADR-049 ORPHAN-TEMPLATE gate; `writing/story_suggest/system.md` (v1.3.0, 113 lines). |
-| Review trigger/date | Re-review when WRITE-009 (or a dedicated story-suggestions feature) enters implementation, or by 2026-09-30 if no consumer is planned. |
-
-**Background:**
-
-`packages/core/narrare_core/prompts/_bundled/writing/en/story_suggest/system.md`
-exists at v1.3.0 (113 lines, well-developed) but no service or agent loads it.
-It is a `writing` sub-mode template that generates 3–5 distinct story
-suggestions (plot developments, character moments, dialogue options, stylistic
-alternatives). It appears to be a remnant of an earlier or redesigned
-story-suggestions feature. Three probe scripts reference it
-(`writing_probes.py`, `mode_data.py`, `validation_budget_probes.py`) but those
-are test/probe harnesses, not production consumers.
-
-**Disposition decision (Architecture, 2026-06-18):**
-
-**Do NOT delete now.** The template is substantial, well-structured, and maps
-plausibly to [WRITE-009 (Writer's Block Tools)](../../features/writing/WRITE-009-unblock.md),
-which is `📋 planned`. Deleting it would discard meaningful work for a feature
-that may still be implemented. The ORPHAN-TEMPLATE gate already acknowledges it
-as documented ratcheted debt, so it is not silently suppressing CI.
-
-**Acceptance criteria (one of):**
-
-- **Rewire** — when WRITE-009 (or a dedicated story-suggestions feature) is
-  implemented, route a `story_suggest` context-mode under an existing writing
-  intent through PromptComposer so the template becomes runtime-loaded. Update
-  the manifest and route-table; remove the `_ORPHAN_EXEMPTIONS` entry.
-- **Delete** — if WRITE-009 is permanently descoped or redesigned to not use
-  this prompt shape, delete the template and remove the `_ORPHAN_EXEMPTIONS`
-  entry. Record the descoping rationale here.
-
-**Definition of Done:**
-
-- The `("writing", "story_suggest")` entry is removed from
-  `_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS` because it is either reachable
-  by a manifest/route entry OR deleted.
-- `just check-architecture` remains green with one fewer orphan exemption.
-- This registry entry is updated with exit evidence and status `resolved`.
-
-**Exit evidence:** Resolved 2026-06-25 — story_suggest template rewired as WRITE-009 (Writer's Unblock Tools) via SUGGEST intent + `context_mode='story_suggest'`. Orphan exemption removed from `_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`. Template is now runtime-loaded via `PromptComposer`.
-
-- **Rewire path chosen** (per the acceptance criteria): the `SUGGEST` intent's `ROUTE_CONFIGS` entry gained `allowed_context_modes={inline_suggest, story_suggest}` (`packages/core/narrare_core/prompts/route_table.py`); `MODE_REQUIRED_VARS["writing"]["story_suggest"]` declares `{story_structure, chapter_outline}` (`scripts/prompt_vars.py`); the `prompt-surface-manifest.yaml` SUGGEST route declares a `story_suggest` context-mode entry; the `("writing", "story_suggest")` entry was removed from `_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`.
-- **Runtime consumer:** `apps/api/narrare/writing/story_suggest_service.py` (Mode 1 `PromptComposer` per ADR-054 D1) resolves the governed `core/prompts/_bundled/writing/{locale}/story_suggest/system.md` template via `compose_invocation(intent=LLMIntent.SUGGEST, prompt_context=PromptContext(mode="story_suggest", ...))` and runs the `StorySuggestAgent` (`packages/core/narrare_core/agents/story_suggest_agent.py`).
-- **Endpoint:** `POST /api/v1/writing/story-suggest/{novel_id}` (SSE). OpenAPI regenerated via `scripts/export_openapi.py`.
-- **Definition of Done:** ✅ Met — `("writing", "story_suggest")` removed from `_ORPHAN_EXEMPTIONS`; `just check-architecture` remains green with one fewer orphan exemption; this registry entry carries exit evidence and status `resolved`.
 
 ---
 
@@ -452,6 +596,66 @@ as documented ratcheted debt, so it is not silently suppressing CI.
 
 ---
 
+### AUFG-04-01 — writing/story_suggest Orphan Template Disposition
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-01 |
+| Title | writing/story_suggest Orphan Template Disposition |
+| Source | CR-04 Phase D ORPHAN-TEMPLATE gate (ADR-049 A6). The `writing/story_suggest` template has no production Python consumer; acknowledged as documented ratcheted debt in `scripts/architecture/_checkers/_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`. |
+| Status | `resolved` |
+| Priority | P2 |
+| Area | Prompts, Writing features, Prompt-surface governance |
+| Owner role | Architecture Specialist (disposition decision) + Implementation Specialist (rewire or delete) |
+| Dependencies | WRITE-009 (Writer's Block Tools) feature planning; ADR-049 ORPHAN-TEMPLATE gate; `writing/story_suggest/system.md` (v1.3.0, 113 lines). |
+| Review trigger/date | Re-review when WRITE-009 (or a dedicated story-suggestions feature) enters implementation, or by 2026-09-30 if no consumer is planned. |
+
+**Background:**
+
+`packages/core/narrare_core/prompts/_bundled/writing/en/story_suggest/system.md`
+exists at v1.3.0 (113 lines, well-developed) but no service or agent loads it.
+It is a `writing` sub-mode template that generates 3–5 distinct story
+suggestions (plot developments, character moments, dialogue options, stylistic
+alternatives). It appears to be a remnant of an earlier or redesigned
+story-suggestions feature. Three probe scripts reference it
+(`writing_probes.py`, `mode_data.py`, `validation_budget_probes.py`) but those
+are test/probe harnesses, not production consumers.
+
+**Disposition decision (Architecture, 2026-06-18):**
+
+**Do NOT delete now.** The template is substantial, well-structured, and maps
+plausibly to [WRITE-009 (Writer's Block Tools)](../../features/writing/WRITE-009-unblock.md),
+which is `📋 planned`. Deleting it would discard meaningful work for a feature
+that may still be implemented. The ORPHAN-TEMPLATE gate already acknowledges it
+as documented ratcheted debt, so it is not silently suppressing CI.
+
+**Acceptance criteria (one of):**
+
+- **Rewire** — when WRITE-009 (or a dedicated story-suggestions feature) is
+  implemented, route a `story_suggest` context-mode under an existing writing
+  intent through PromptComposer so the template becomes runtime-loaded. Update
+  the manifest and route-table; remove the `_ORPHAN_EXEMPTIONS` entry.
+- **Delete** — if WRITE-009 is permanently descoped or redesigned to not use
+  this prompt shape, delete the template and remove the `_ORPHAN_EXEMPTIONS`
+  entry. Record the descoping rationale here.
+
+**Definition of Done:**
+
+- The `("writing", "story_suggest")` entry is removed from
+  `_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS` because it is either reachable
+  by a manifest/route entry OR deleted.
+- `just check-architecture` remains green with one fewer orphan exemption.
+- This registry entry is updated with exit evidence and status `resolved`.
+
+**Exit evidence:** Resolved 2026-06-25 — story_suggest template rewired as WRITE-009 (Writer's Unblock Tools) via SUGGEST intent + `context_mode='story_suggest'`. Orphan exemption removed from `_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`. Template is now runtime-loaded via `PromptComposer`.
+
+- **Rewire path chosen** (per the acceptance criteria): the `SUGGEST` intent's `ROUTE_CONFIGS` entry gained `allowed_context_modes={inline_suggest, story_suggest}` (`packages/core/narrare_core/prompts/route_table.py`); `MODE_REQUIRED_VARS["writing"]["story_suggest"]` declares `{story_structure, chapter_outline}` (`scripts/prompt_vars.py`); the `prompt-surface-manifest.yaml` SUGGEST route declares a `story_suggest` context-mode entry; the `("writing", "story_suggest")` entry was removed from `_check_prompt_orphan.py::_ORPHAN_EXEMPTIONS`.
+- **Runtime consumer:** `apps/api/narrare/writing/story_suggest_service.py` (Mode 1 `PromptComposer` per ADR-054 D1) resolves the governed `core/prompts/_bundled/writing/{locale}/story_suggest/system.md` template via `compose_invocation(intent=LLMIntent.SUGGEST, prompt_context=PromptContext(mode="story_suggest", ...))` and runs the `StorySuggestAgent` (`packages/core/narrare_core/agents/story_suggest_agent.py`).
+- **Endpoint:** `POST /api/v1/writing/story-suggest/{novel_id}` (SSE). OpenAPI regenerated via `scripts/export_openapi.py`.
+- **Definition of Done:** ✅ Met — `("writing", "story_suggest")` removed from `_ORPHAN_EXEMPTIONS`; `just check-architecture` remains green with one fewer orphan exemption; this registry entry carries exit evidence and status `resolved`.
+
+---
+
 ### CR-07 Follow-up v3 AUFG Set — Residual AI UX Compliance and Modernization
 
 | Field | Value |
@@ -483,7 +687,7 @@ finds the implementation/enforcement evidence is no longer accurate.
 | CR-AUFG-07-14 | A | §16 Consistency/i18n fallback hardening | `resolved` | P1 | Remove hardcoded visible fallbacks such as `t(...) || "..."`; fix Consistency error fallback; add checker preventing reintroduction. |
 | CR-AUFG-07-15 | A | GhostText visible error affordance | `resolved` | P1 | Decide and implement non-blocking localized GhostText error affordance; inventory and tests cover error/retry semantics. |
 | CR-AUFG-07-16 | B | PROMPT-003 contract-first implementation | `resolved` | P1 | Provider-free resolved preview, variable metadata/provenance, diagnostics, reset semantics, optional SSE live test, and contract tests across Core/Backend/Frontend. Exit evidence 2026-06-22 — see sub-section below. |
-| CR-AUFG-07-17 | B | ONBOARD-001 KB + Storyboard + AI aha moment | `resolved` | P2 | Implemented: 3 new conceptual tour steps (KB→AI, Storyboard→AI, before/after demo) in `feature-tour-steps.ts`; DE/EN/FR `studio.json` keys; replay path intact. Enforcement: `feature-tour-concept-steps.test.tsx`, `tour-no-overclaim.test.ts` (RULE-22 over-claim guard), `just check-ai-ux`, i18n parity gate. ONBOARD-001’s stable base scope is unchanged. |
+| CR-AUFG-07-17 | B | ONBOARD-001 KB + Storyboard + AI aha moment | `resolved` | P2 | Implemented: 3 new conceptual tour steps (KB→AI, Storyboard→AI, before/after demo) in `feature-tour-steps.ts`; DE/EN/FR `studio.json` keys; replay path intact. Enforcement: `feature-tour-concept-steps.test.tsx`, `tour-no-overclaim.test.ts` (RULE-22 over-claim guard), `just check-ai-ux`, i18n parity gate. ONBOARD-001's stable base scope is unchanged. |
 | CR-AUFG-07-18 | C | Standardized diff view across AI outputs | `resolved` | P2 | Shared diff vocabulary/component contract for Rewrite, Co-Author, KB Enhance, and Beta Reader. Exit evidence 2026-06-22 — see sub-section below. |
 | CR-AUFG-07-19 | C | Prompt history | `resolved` | P2 | DB-backed append-only prompt override history with list/compare/restore/clear; file-first best-effort record, dedup, derived is_active, append-only restore, retention via Settings. Exit evidence 2026-06-24 — see sub-section below. |
 | CR-AUFG-07-20 | C | Slash commands for AI actions | `resolved` | P3 | Frontend-only slash-command discovery layer over existing AI operations (grammar/parser/registry/menu/hook) with routed dispatch, i18n discoverability, TipTap conflict handling, and unit/integration tests. Exit evidence 2026-06-24 — see sub-section below. |
@@ -592,45 +796,18 @@ Phase A (CR-AUFG-07-14, CR-AUFG-07-15) — Resolved (2026-06-21). Phase B onboar
 #### CR-AUFG-07-21 — SessionPanel server-side stop and WebSocket recovery
 
 **Exit evidence (2026-06-22):** Resolved — implementation + enforcement complete.
-- **Design:** ADR-052 accepted; CR-AUFG-07-21 feature spec
-  (`docs/features/ai-ux/CR-AUFG-07-21-session-stop-websocket-recovery.md`);
-  RULE-04/RULE-16/RULE-17/RULE-20/RULE-22 constraints explicitly covered.
+- **Design:** ADR-052 accepted; CR-AUFG-07-21 feature spec (`docs/features/ai-ux/CR-AUFG-07-21-session-stop-websocket-recovery.md`); RULE-04/RULE-16/RULE-17/RULE-20/RULE-22 constraints explicitly covered.
 - **Implementation:**
-  - **Core:** `packages/core/narrare_core/writing/session_turn_state.py`,
-    `session_state_codec.py`, `session_manager.py`, `_enums.py`, `requests.py`,
-    and `contracts.py` add recoverable session state, active-turn partial prose,
-    typed reattach outcomes, and cache-safe serialization.
-  - **Backend:** `apps/api/narrare/writing/ws_active_turn_registry.py`,
-    `ws_session_control_service.py`, `ws_sink.py`, `ws_payloads.py`,
-    `ws_direction_dispatch.py`, `ws_message_router.py`, `ws_handler.py`,
-    `router_sessions.py`, `deps_ws.py`, `ws_factory.py`, and
-    `apps/api/narrare/_app/lifespan.py` implement shared session singletons,
-    server-side cancellation, transport sink rebinding, and `?session_id=`
-    reattach/recovery failure payloads.
-  - **Frontend:** `packages/web/lib/api/generation.ts`,
-    `components/studio/editor/useSessionSocket.ts`,
-    `createSessionMessageHandler.ts`, `SessionPanel.tsx`,
-    `SessionReconnectBanner.tsx`, `sessionSocketMessages.ts`, and
-    `useSessionPanelActions.ts` implement typed stop/recovery messages,
-    reconnect banner copy, local partial preservation, and retry wiring.
-  - **Governance/docs:** `scripts/checks/ai_operation_inventory.yaml` records
-    `writing.session`; WRITE-005 documents recoverable disconnect semantics.
+  - **Core:** `packages/core/narrare_core/writing/session_turn_state.py`, `session_state_codec.py`, `session_manager.py`, `_enums.py`, `requests.py`, and `contracts.py` add recoverable session state, active-turn partial prose, typed reattach outcomes, and cache-safe serialization.
+  - **Backend:** `apps/api/narrare/writing/ws_active_turn_registry.py`, `ws_session_control_service.py`, `ws_sink.py`, `ws_payloads.py`, `ws_direction_dispatch.py`, `ws_message_router.py`, `ws_handler.py`, `router_sessions.py`, `deps_ws.py`, `ws_factory.py`, and `apps/api/narrare/_app/lifespan.py` implement shared session singletons, server-side cancellation, transport sink rebinding, and `?session_id=` reattach/recovery failure payloads.
+  - **Frontend:** `packages/web/lib/api/generation.ts`, `components/studio/editor/useSessionSocket.ts`, `createSessionMessageHandler.ts`, `SessionPanel.tsx`, `SessionReconnectBanner.tsx`, `sessionSocketMessages.ts`, and `useSessionPanelActions.ts` implement typed stop/recovery messages, reconnect banner copy, local partial preservation, and retry wiring.
+  - **Governance/docs:** `scripts/checks/ai_operation_inventory.yaml` records `writing.session`; WRITE-005 documents recoverable disconnect semantics.
 - **Enforcement:**
-  - `tests/integration/writing/test_session_stop_and_recovery.py` covers stop
-    mid-stream with partial prose, continued directions after stop,
-    disconnect/reconnect reattach with transcript tail, expired/not-found
-    recovery failure, ownership mismatch, idle `connection_lost`, and the
-    shared-cache invariant.
-  - `tests/integration/writing/test_session_message_schema_parity.py` enforces
-    RULE-17 payload-field parity for ADR-052 stop/recovery messages.
-  - Backend/unit suites cover `ActiveTurnRegistry`, `WritingSessionControlService`,
-    router stop/recover branches, `deps_ws`, shared lifespan singletons, session
-    state codec/reattach, and handler recovery behavior.
-  - Frontend Vitest suites cover `SessionPanel`, `createSessionMessageHandler`,
-    `SessionReconnectBanner`, and `useSessionSocket.recovery`.
-  - `just check-ai-ux`, `scripts/check_architecture.py`, and
-    `scripts/check_frontend_file_size.py` are the documented gates for AI-UX
-    inventory, architecture constraints, and frontend RULE-04.
+  - `tests/integration/writing/test_session_stop_and_recovery.py` covers stop mid-stream with partial prose, continued directions after stop, disconnect/reconnect reattach with transcript tail, expired/not-found recovery failure, ownership mismatch, idle `connection_lost`, and the shared-cache invariant.
+  - `tests/integration/writing/test_session_message_schema_parity.py` enforces RULE-17 payload-field parity for ADR-052 stop/recovery messages.
+  - Backend/unit suites cover `ActiveTurnRegistry`, `WritingSessionControlService`, router stop/recover branches, `deps_ws`, shared lifespan singletons, session state codec/reattach, and handler recovery behavior.
+  - Frontend Vitest suites cover `SessionPanel`, `createSessionMessageHandler`, `SessionReconnectBanner`, and `useSessionSocket.recovery`.
+  - `just check-ai-ux`, `scripts/check_architecture.py`, and `scripts/check_frontend_file_size.py` are the documented gates for AI-UX inventory, architecture constraints, and frontend RULE-04.
 
 #### CR-AUFG-07-24 — AI feedback rating expansion
 
@@ -1207,15 +1384,6 @@ queryable from `/health`.
 
 ---
 
-## Cross-Review AUFG Migration (Reviews 01–04 → Durable Registry)
-
-These entries migrate AUFGs first defined in earlier technical reviews (01–04) into
-the durable lifecycle registry so that consolidated Review-05 findings reference
-machine-checkable lifecycle states rather than prose-only review text. Each status is
-based on current platform evidence verified 2026-06-20 (not the original review date):
-the gates and artefacts named in the exit evidence were re-run or re-inspected. Full
-acceptance criteria remain in the source review files referenced under `Source`.
-
 ### AUFG-01-04 — useExtractionPhase RULE-04 und AI-UX-Regression beheben
 
 | Field | Value |
@@ -1344,49 +1512,6 @@ Enforcement:
 
 ---
 
-### AUFG-01-03 — MCP/A2A-Produktstatus und Adapter-Gates klären
-
-| Field | Value |
-|-------|-------|
-| ID | AUFG-01-03 |
-| Source | review-01-architektur.md §Aufgaben; consolidated in review-05-release.md §5. |
-| Status | `accepted_enhancement` |
-| Priority | P3 |
-| Area | Architecture, adapter strategy |
-| Review trigger/date | Re-review when Q-001 (MCP auth) or Q-002 (A2A streaming) is decided, or when a multi-adapter product requirement is approved. |
-
-**Disposition (2026-06-20):** MCP/A2A is deliberately not implemented and is a
-deferred strategic capability, not a quality gap. The documentation/clarification
-acceptance criteria are met: the directory structure, feature index
-(ADAPTER-001/002 note) and open questions Q-001/Q-002 consistently describe MCP/A2A
-as planned-not-implemented, with contract-test gates defined for the first adapter
-(see also AUFG-03-04). No adapter skeleton is created merely to satisfy review.
-Capability implementation remains gated on a Q-001/Q-002 decision and a dedicated
-adapter spec.
-
----
-
-### AUFG-03-04 — MCP/A2A als geplante Adapter konkretisieren oder aus Review-Scope entfernen
-
-| Field | Value |
-|-------|-------|
-| ID | AUFG-03-04 |
-| Source | review-03-ai-features.md §Aufgaben; consolidated in review-05-release.md §5. |
-| Status | `accepted_enhancement` |
-| Priority | P3 |
-| Area | AI, Architecture, adapter strategy |
-| Review trigger/date | Re-review when Q-001/Q-002 is decided, or when an adapter-specific spec is written. |
-
-**Disposition (2026-06-20):** Verified (per review-03) that the INDEX.md
-ADAPTER-001/002 note and Q-001/Q-002 are current and act as SSOT, with contract-test
-gates (service-layer call, auth/identity mapping, streaming/non-streaming parity,
-error mapping, no business logic in adapter) already defined for the first adapter.
-Q-001 and Q-002 remain marked as blockers until an adapter-specific spec is written.
-No `apps/mcp/` or `apps/a2a/` skeleton exists solely to satisfy review. Capability
-remains a deferred strategic enhancement (paired with AUFG-01-03).
-
----
-
 ### AUFG-05-04 — pnpm-Version im Dockerfile aktualisieren
 
 | Field | Value |
@@ -1468,8 +1593,6 @@ behaviour, and drift detection.
 
 ---
 
-## Coverage Pointers
-
 ### AUFG-05-03 — Memory/Embedding-Spans and Metrics-Exporter Decision/Extension
 
 | Field | Value |
@@ -1477,12 +1600,12 @@ behaviour, and drift detection.
 | ID | AUFG-05-03 |
 | Title | Memory/Embedding-Spans and Metrics-Exporter Decision/Extension |
 | Source | Review-05 observability scope referenced by ADR-047-related handoff; durable coverage pointer created here to avoid duplicate AUFGs. |
-| Status | `covered_by_existing_aufg` |
+| Status | `resolved` (coverage pointer — scope delegated to ADR-031, AUFG-05-10, AUFG-05-14; see evidence below) |
 | Priority | P1 |
 | Area | Observability, Memory, Embeddings, metrics export |
 | Owner role | Platform Specialist with Core Specialist for memory/embedding instrumentation |
 | Dependencies | ADR-031 OpenTelemetry standard; ADR-033 mem0 memory architecture; existing memory/embedding clients and metrics/exporter decisions. |
-| Review trigger/date | Re-review whenever AUFG-05-03 is closed, or if AUFG-05-10 changes health semantics for telemetry/exporter failures. |
+| Review trigger/date | Re-review whenever a new OTel span category is added for memory/embedding paths, or if the metrics-exporter architecture changes. |
 
 **Acceptance criteria:**
 
@@ -1499,163 +1622,7 @@ behaviour, and drift detection.
   decision coverage.
 - This pointer remains `covered_by_existing_aufg` only while that evidence exists.
 
-**Exit evidence:** Pending AUFG-05-03 closure evidence.
-
----
-
-## Accepted Enhancements
-
-Accepted enhancements are non-blocking by default. They become blocking only if a
-later ADR/spec/release gate promotes them to `open` AUFG scope.
-
-### AE-05-01 — Cosign/SLSA Release Provenance Hardening
-
-| Field | Value |
-|-------|-------|
-| ID | AE-05-01 |
-| Title | Cosign/SLSA Release Provenance Hardening |
-| Source | `docs/development/deployment-guide.md` §Cosign Signing (Future) and provenance trust model. |
-| Status | `accepted_enhancement` |
-| Priority | P2 |
-| Area | Platform, release engineering, supply-chain security |
-| Owner role | Platform Specialist |
-| Dependencies | Release workflow, GHCR publishing, SBOM generation, GitHub OIDC permissions, secret-scanning gate AUFG-05-09. |
-| Review trigger/date | Review before first public release artifact, or by 2026-09-30 if release hardening has not been revisited. |
-
-**Acceptance criteria:**
-
-- Platform decides whether to implement Cosign keyless signing, SLSA provenance, or
-  both, with rationale and verification commands.
-- Release documentation explains how users verify image signatures/provenance.
-- CI/release workflow evidence demonstrates signed/provenance-bearing artifacts if promoted.
-
-**Definition of Done:**
-
-- If promoted: workflow, docs, and verification evidence are added in one coherent change.
-- If deferred: registry remains `accepted_enhancement` with renewed review date and rationale.
-
-**Exit evidence:** Non-blocking enhancement accepted; implementation evidence pending only
-if promoted by Platform/release planning.
-
----
-
-### AE-05-02 — Managed Hosting Strategy Exploration
-
-| Field | Value |
-|-------|-------|
-| ID | AE-05-02 |
-| Title | Managed Hosting Strategy Exploration |
-| Source | `docs/architecture/questions/Q-011-distribution-strategy.md` Option C / Variant C2 and recommendation. |
-| Status | `accepted_enhancement` |
-| Priority | P3 |
-| Area | Product architecture, distribution strategy, platform operations |
-| Owner role | Architecture Specialist with Product/Coordinator decision from user |
-| Dependencies | Q-011 distribution strategy; local-first product vision; auth/multi-tenancy, billing, GDPR, rate limiting, and operational support decisions. |
-| Review trigger/date | Review at Post-MVP Phase 4 or when active non-developer onboarding begins, whichever comes first. |
-
-**Acceptance criteria:**
-
-- Managed hosting remains an exploration/enhancement, not an implementation decision.
-- Any move toward hosted/SaaS delivery requires a new ADR covering local-first impact,
-  multi-tenancy, data isolation, billing, rate limiting, and GDPR/compliance.
-- Q-011 remains the strategy question until the user explicitly selects a distribution path.
-
-**Definition of Done:**
-
-- No production code is added for managed hosting under this enhancement entry alone.
-- If promoted, Architecture creates a dedicated ADR/spec before implementation.
-- If rejected, status changes to `not_applicable` or `accepted_risk` with rationale.
-
-**Exit evidence:** Non-blocking strategic enhancement accepted for future review; no
-implementation evidence required until user-approved promotion.
-
----
-
-### AE-05-03 — CORS Origins als Settings-Feld
-
-| Field | Value |
-|-------|-------|
-| ID | AE-05-03 |
-| Title | CORS Origins als Settings-Feld |
-| Source | AUFG-05-07 security audit §2.4 — CORS origins hardcoded in app factory. |
-| Status | `accepted_enhancement` |
-| Priority | P3 |
-| Area | Backend, configuration, deployment |
-| Owner role | Backend Specialist |
-| Dependencies | `apps/api/narrare/_app/settings_model.py`; `apps/api/narrare/_app/main.py` CORS middleware. |
-| Review trigger/date | Re-review when a deployment scenario requires custom CORS origins, or by 2027-06-14. |
-
-**Acceptance criteria:**
-
-- `Settings.cors_origins` field added so operators configure CORS via env var.
-- Default remains `["http://localhost:3000"]` for dev, `[]` for production.
-- No behavior change for existing deployments.
-
-**Definition of Done:**
-
-- If promoted: Settings field + tests in one coherent change.
-- If deferred: registry remains `accepted_enhancement` with renewed review date.
-
-**Exit evidence:** Non-blocking enhancement accepted; implementation evidence pending
-only if promoted.
-
----
-
-## Accepted Risks
-
-Accepted risks are knowingly accepted with owner, rationale, controls, and review
-date. They become blocking only if a later ADR/spec/release gate promotes them to
-`open` AUFG scope.
-
-### AR-05-02 — Rate-Limiting Backend Discrepanz (In-Memory vs Redis)
-
-| Field | Value |
-|-------|-------|
-| ID | AR-05-02 |
-| Type | `accepted_risk` |
-| Risk | Rate limits are process-local in-memory (`pyrate_limiter`), not Redis-based as specified in TECH_STACK.md / ADR-009. Multi-instance deployments would have independent counters per instance. |
-| Owner | Backend/Security Specialist |
-| Rationale | Current deployment model is single-instance local-first. In-memory rate limiting is functionally equivalent for single-instance. `pyrate-limiter` is a transitive dependency of `fastapi-limiter`; the combination works in practice (e2e tests confirm HTTP 429 responses on auth endpoints). |
-| Controls | (1) TECH_STACK.md documents the intended Redis-based approach. (2) AUFG-05-12 implementation should evaluate whether to align with TECH_STACK.md (call `FastAPILimiter.init(redis)`) or update TECH_STACK.md/ADR-009 to reflect the in-memory approach. |
-| Review trigger/date | Re-review when AE-05-02 (managed hosting) is promoted to implementation, or when multi-instance API deployment is configured. No fixed date — gated by deployment topology change. |
-| Source | AUFG-05-07 security audit §3.3 |
-
-### AR-05-03 — Auth-Non-Brute-Force Endpoints ohne Rate Limit
-
-| Field | Value |
-|-------|-------|
-| ID | AR-05-03 |
-| Type | `accepted_risk` |
-| Risk | `/auth/refresh`, `/auth/logout`, `GET /auth/me` have no rate limits. |
-| Owner | Backend/Security Specialist |
-| Rationale | Refresh: cookie-scoped (`samesite=lax`, `path=/api/v1/auth`), token rotation on every call, invalid tokens clear the cookie. Logout: no-op (clears cookie). Me: read-only, auth-protected. None present a meaningful brute-force or cost-abuse surface. |
-| Controls | `sameSite=lax` prevents CSRF-based abuse. Token rotation invalidates stolen refresh tokens on use. Auth-protected endpoints require valid JWT. |
-| Review trigger/date | Re-review if refresh token flow changes, or if `sameSite` is weakened. By 2027-06-14 if no change. |
-| Source | AUFG-05-07 security audit §4.2 |
-
-### AR-05-04 — State-Changing CRUD ohne Rate Limit (Local-First)
-
-| Field | Value |
-|-------|-------|
-| ID | AR-05-04 |
-| Type | `accepted_risk` |
-| Risk | State-changing CRUD endpoints (novels, chapters, volumes, KB, settings, embeddings, prompts, templates, wiki), setup validation/complete have no rate limits. |
-| Owner | Backend/Security Specialist |
-| Rationale | All endpoints are auth-protected (require valid JWT). Deployment model is local-first, single-user self-hosted. No multi-tenant or public-facing surface. Rate-limiting CRUD on a single-user local instance adds complexity without security benefit. |
-| Controls | JWT authentication on all endpoints. `ENVIRONMENT` defaults to `development`. Production requires explicit operator configuration. Setup complete requires authentication. |
-| Review trigger/date | Re-review when AE-05-02 (managed hosting) is promoted, or when multi-user/multi-tenant features are added. No fixed date — gated by product evolution. |
-| Source | AUFG-05-07 security audit §4.2 |
-
-### AR-05-05 — No Double-Submit-CSRF-Token
-
-| Field | Value |
-|-------|-------|
-| ID | AR-05-05 |
-| Type | `accepted_risk` |
-| Risk | No Double-Submit-CSRF-Token is used. CSRF defense relies on (1) Bearer-token authentication for all state-changing endpoints, (2) SameSite=Lax for cookie-authenticated auth endpoints, and (3) Origin/Referer validation (to be implemented per AUFG-05-13). |
-| Owner | Architecture Specialist |
-| Rationale | The backend authenticates state-changing endpoints via `Authorization: Bearer` headers (`HTTPBearer` in `get_current_user_id`), not cookies. CSRF is structurally inapplicable because the browser cannot auto-attach `Authorization` headers cross-origin. The only cookie-authenticated endpoints (`/auth/refresh`, `/auth/logout`) are protected by SameSite=Lax + path-restriction (`/api/v1/auth`) and have no data-integrity impact (token rotation, logout). A Double-Submit-Token would protect against a vector that does not exist in the current architecture, adding complexity (token generation, storage, client-server coordination, contract, test surface) without proportional security benefit. |
-| Controls | (1) Bearer-token auth via `HTTPBearer` (`apps/api/narrare/_app/dependencies_auth.py`). (2) SameSite=Lax + path-restriction on `narrare_refresh` cookie (`apps/api/narrare/auth/cookie_helpers.py`). (3) JSON-only API (Pydantic rejects non-JSON bodies). (4) CORS disabled in production (same-origin proxy). (5) Origin/Referer validation per AUFG-05-13 (pending implementation). (6) Architectural invariant INV-1 through INV-5 (see `docs/architecture/governance/csrf-strategy.md` §12): backend must never add cookie-based auth for state-changing endpoints. |
-| Review trigger/date | Re-review if: (a) cookie-based authentication is added to any state-changing endpoint, (b) AE-05-02 (managed hosting) is promoted introducing subdomains, (c) WebSocket auth model changes, or (d) by 2027-06-14 if no change. |
-| Release trigger | Origin/Referer validation (AUFG-05-13) should be implemented before public release or managed hosting promotion. Until then, the current posture (Bearer auth + SameSite=Lax) is safe for local-first single-user deployment. |
-| Source | AUFG-05-08 CSRF strategy decision (`docs/architecture/governance/csrf-strategy.md` §8) |
+**Exit evidence:** Resolved 2026-06-30 — coverage consolidated into existing AUFGs.
+- Memory/embedding spans are tracked under **AUFG-05-10** (OTel Health-Severity Policy §7 contract specifies that OTel setup failure is queryable; the policy scope includes memory/embedding instrumentation as part of the OTel surface).
+- Metrics-exporter behavior is governed by **ADR-031** (OpenTelemetry standard) and the local-first design decision that OTel export is optional. The health-severity policy (AUFG-05-10/AUFG-05-14) covers exporter failure detection.
+- No separate AUFG is required at this scope level. If a dedicated memory/embedding OTel instrumentation task is later identified (e.g. tracing individual embedding calls), it should be created as a new AUFG with a fresh ID, not revived under AUFG-05-03.
