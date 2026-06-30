@@ -13,6 +13,7 @@ from typing import Any, cast
 
 import pytest
 
+from narrare_core.kb.schemas.character import VoiceMetrics
 from narrare_core.profiles.models import CharacterVoiceProfile, ProjectWritingProfile
 
 # ---------------------------------------------------------------------------
@@ -67,6 +68,38 @@ class TestCharacterVoiceProfile:
             speech_summary="dialect: Southern",
         )
         assert vp1 == vp2
+
+    # ------------------------------------------------------------------
+    # voice_metrics (ADR-057 Decision 1 — checking-path only)
+    # ------------------------------------------------------------------
+
+    def test_voice_metrics_defaults_to_none(self) -> None:
+        """Constructing without voice_metrics yields None (additive, optional)."""
+        vp = CharacterVoiceProfile(
+            character_id="char-1",
+            name="Alice",
+            speech_summary="dialect: Southern",
+        )
+        assert vp.voice_metrics is None
+
+    def test_voice_metrics_round_trip(self) -> None:
+        """A VoiceMetrics supplied at construction is preserved verbatim."""
+        metrics = VoiceMetrics(
+            avg_sentence_length=18.5,
+            type_token_ratio=0.72,
+            verbal_tic_frequency={"indeed": 0.12},
+        )
+        vp = CharacterVoiceProfile(
+            character_id="char-1",
+            name="Alice",
+            speech_summary="dialect: Southern",
+            voice_metrics=metrics,
+        )
+        vm = vp.voice_metrics
+        assert vm is metrics
+        assert vm is not None
+        assert vm.avg_sentence_length == 18.5
+        assert vm.verbal_tic_frequency == {"indeed": 0.12}
 
 
 # ---------------------------------------------------------------------------
@@ -173,3 +206,33 @@ class TestProjectWritingProfile:
         assert len(lines) == 2
         assert "\u26a0\ufe0f" not in lines[0]
         assert "\u26a0\ufe0f" in lines[1]
+
+    def test_formatted_voice_profiles_identical_with_or_without_voice_metrics(self) -> None:
+        """CR-04 guard (ADR-057): generation NEVER reads voice_metrics.
+
+        Two profiles identical except one carries voice_metrics; the generation
+        projection (formatted_voice_profiles) must be byte-identical, and no
+        metric number may leak into the rendered string. This is the regression
+        guard proving ADR-055's "metrics never reach generation" constraint.
+        """
+        metrics = VoiceMetrics(avg_sentence_length=18.5, type_token_ratio=0.72)
+        without = CharacterVoiceProfile("c1", "Alice", "dialect: Southern")
+        with_metrics = CharacterVoiceProfile(
+            "c1", "Alice", "dialect: Southern", voice_metrics=metrics
+        )
+        assert without.voice_metrics is None
+        assert with_metrics.voice_metrics is metrics
+
+        formatted_without = ProjectWritingProfile(
+            character_voice_profiles=(without,)
+        ).formatted_voice_profiles
+        formatted_with = ProjectWritingProfile(
+            character_voice_profiles=(with_metrics,)
+        ).formatted_voice_profiles
+
+        # Byte-identical generation output regardless of metrics presence.
+        assert formatted_without == formatted_with
+        # Sanity: metric numbers never leak into the generation string.
+        assert "18.5" not in formatted_with
+        assert "0.72" not in formatted_with
+        assert "voice_metrics" not in formatted_with

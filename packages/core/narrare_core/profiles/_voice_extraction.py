@@ -8,8 +8,14 @@ The extraction function accepts generic primitives, not KBEntity directly.
 
 from __future__ import annotations
 
+import structlog
+from pydantic import ValidationError
+
+from narrare_core.kb.schemas.character import VoiceMetrics
 from narrare_core.profiles._freshness import is_stale
 from narrare_core.profiles.models import CharacterVoiceProfile
+
+logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Helpers (module-level to avoid pyright strict-mode noise with dict access)
@@ -116,6 +122,41 @@ def _extract_speech_parts(  # pyright: ignore[reportUnknownParameterType]
     return parts
 
 
+def _extract_voice_metrics(  # pyright: ignore[reportUnknownParameterType]
+    metadata: object,
+) -> VoiceMetrics | None:
+    """Extract the structured ``voice_metrics`` block for the checking path.
+
+    ADR-057 Decision 1: the checking consumer reads deterministic metrics via
+    this path. Reads ``speech.voice_analysis.voice_metrics`` and constructs a
+    :class:`VoiceMetrics` when that block is a non-empty dict. Returns
+    ``None`` when the block is absent, empty, not a dict, or malformed
+    (RULE-11 graceful — never raises).
+
+    This does NOT participate in generation rendering; the descriptive
+    ``speech_summary`` is produced independently by :func:`get_speech_data`
+    (which intentionally excludes the metric block, ADR-055).
+    """
+    if not isinstance(metadata, dict):
+        return None
+    speech_raw = metadata.get("speech")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+    if not isinstance(speech_raw, dict):
+        return None
+    voice_analysis_raw = speech_raw.get("voice_analysis")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+    if not isinstance(voice_analysis_raw, dict):
+        return None
+    metrics_raw = voice_analysis_raw.get("voice_metrics")  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+    if not isinstance(metrics_raw, dict) or not metrics_raw:  # pyright: ignore[reportUnknownArgumentType]
+        return None
+    try:
+        return VoiceMetrics.model_validate(metrics_raw)  # pyright: ignore[reportUnknownArgumentType]
+    except ValidationError:
+        # Malformed metric block → graceful None (RULE-11). The descriptive
+        # speech_summary is built independently and is unaffected.
+        logger.debug("voice_metrics_malformed_ignored", exc_info=True)
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -172,6 +213,10 @@ def build_character_voice_profile(
     if not speech_summary:
         return None
 
+    # ADR-057 Decision 1: surface structured metrics on the checking path.
+    # Parsed independently of the descriptive summary; None when absent/
+    # malformed. Never rendered into generation (see formatted_voice_profiles).
+    voice_metrics = _extract_voice_metrics(metadata)
     fresh = not is_stale(updated_at, max_age_days)
     return CharacterVoiceProfile(
         character_id=entity_id,
@@ -179,4 +224,5 @@ def build_character_voice_profile(
         speech_summary=speech_summary,
         updated_at=updated_at,
         is_fresh=fresh,
+        voice_metrics=voice_metrics,
     )

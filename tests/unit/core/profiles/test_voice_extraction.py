@@ -254,3 +254,124 @@ class TestBuildCharacterVoiceProfile:
         )
         assert result is not None
         assert result.is_fresh is True
+
+
+# ---------------------------------------------------------------------------
+# build_character_voice_profile — voice_metrics surfacing (ADR-057 Decision 1)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildCharacterVoiceProfileVoiceMetrics:
+    """ADR-057: the builder surfaces structured voice_metrics on the checking
+    path, parsed from ``speech.voice_analysis.voice_metrics``. Graceful
+    (RULE-11): absent/empty/malformed → None, never a crash. The descriptive
+    ``speech_summary`` is unchanged (CR-04)."""
+
+    def test_voice_metrics_populated_when_present(self) -> None:
+        metadata: dict[str, Any] = {
+            "speech": {
+                "dialect": "Southern",
+                "voice_analysis": {
+                    "formality": 0.9,
+                    "voice_metrics": {
+                        "avg_sentence_length": 18.5,
+                        "type_token_ratio": 0.72,
+                        "verbal_tic_frequency": {"indeed": 0.12},
+                        "punctuation_profile": {";": 0.3},
+                    },
+                },
+            },
+        }
+        result = build_character_voice_profile(entity_id="c1", name="Alice", metadata=metadata)
+        assert result is not None
+        assert result.voice_metrics is not None
+        assert result.voice_metrics.avg_sentence_length == 18.5
+        assert result.voice_metrics.type_token_ratio == 0.72
+        assert result.voice_metrics.verbal_tic_frequency == {"indeed": 0.12}
+        assert result.voice_metrics.punctuation_profile == {";": 0.3}
+
+    def test_voice_metrics_none_when_no_voice_analysis(self) -> None:
+        metadata: dict[str, Any] = {"speech": {"dialect": "Southern"}}
+        result = build_character_voice_profile(entity_id="c1", name="Alice", metadata=metadata)
+        assert result is not None
+        assert result.voice_metrics is None
+
+    def test_voice_metrics_none_when_no_metrics_key(self) -> None:
+        metadata: dict[str, Any] = {
+            "speech": {"dialect": "Southern", "voice_analysis": {"formality": 0.5}},
+        }
+        result = build_character_voice_profile(entity_id="c1", name="Alice", metadata=metadata)
+        assert result is not None
+        assert result.voice_metrics is None
+
+    def test_voice_metrics_none_when_empty_dict(self) -> None:
+        metadata: dict[str, Any] = {
+            "speech": {
+                "dialect": "Southern",
+                "voice_analysis": {"formality": 0.5, "voice_metrics": {}},
+            },
+        }
+        result = build_character_voice_profile(entity_id="c1", name="Alice", metadata=metadata)
+        assert result is not None
+        assert result.voice_metrics is None
+
+    def test_voice_metrics_none_when_not_a_dict(self) -> None:
+        metadata: dict[str, Any] = {
+            "speech": {
+                "dialect": "Southern",
+                "voice_analysis": {"formality": 0.5, "voice_metrics": "oops"},
+            },
+        }
+        result = build_character_voice_profile(entity_id="c1", name="Alice", metadata=metadata)
+        assert result is not None
+        assert result.voice_metrics is None
+
+    def test_voice_metrics_none_when_malformed(self) -> None:
+        """RULE-11: malformed metric block → graceful None, no crash."""
+        metadata: dict[str, Any] = {
+            "speech": {
+                "dialect": "Southern",
+                "voice_analysis": {
+                    "formality": 0.5,
+                    "voice_metrics": {"avg_sentence_length": "not-a-number"},
+                },
+            },
+        }
+        result = build_character_voice_profile(entity_id="c1", name="Alice", metadata=metadata)
+        assert result is not None
+        assert result.voice_metrics is None
+
+    def test_speech_summary_unaffected_by_metrics(self) -> None:
+        """CR-04: metrics presence does not change the descriptive summary."""
+        base: dict[str, Any] = {"speech": {"dialect": "Southern"}}
+        with_metrics: dict[str, Any] = {
+            "speech": {
+                "dialect": "Southern",
+                "voice_analysis": {
+                    "formality": 0.9,
+                    "voice_metrics": {"avg_sentence_length": 18.5},
+                },
+            },
+        }
+        r_base = build_character_voice_profile(entity_id="c1", name="Alice", metadata=base)
+        r_metrics = build_character_voice_profile(
+            entity_id="c1", name="Alice", metadata=with_metrics
+        )
+        assert r_base is not None and r_metrics is not None
+        # The shared descriptive part renders identically.
+        assert "dialect: Southern" in r_metrics.speech_summary
+        # Metric numbers/keys never leak into the descriptive summary.
+        assert "18.5" not in r_metrics.speech_summary
+        assert "voice_metrics" not in r_metrics.speech_summary
+
+    def test_existing_flows_unaffected_when_no_metrics(self) -> None:
+        """A plain speech block (no voice_analysis) yields a profile identical
+        to the pre-ADR-057 shape: voice_metrics is None, everything else equal."""
+        metadata: dict[str, Any] = {"speech": {"dialect": "Southern"}}
+        result = build_character_voice_profile(entity_id="c1", name="Alice", metadata=metadata)
+        assert result is not None
+        assert result.voice_metrics is None
+        assert result.character_id == "c1"
+        assert result.name == "Alice"
+        assert result.speech_summary == "dialect: Southern"
+        assert result.is_fresh is True

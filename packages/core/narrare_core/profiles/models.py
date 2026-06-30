@@ -8,6 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+# Runtime import (not TYPE_CHECKING): the frozen dataclass holds VoiceMetrics
+# instances at runtime (ADR-057 Risk #1), and keeps the type resolvable via
+# introspection. Verified acyclic — kb.schemas.character imports only .base +
+# pydantic, never profiles (RULE-07 read-direction).
+from narrare_core.kb.schemas.character import VoiceMetrics  # noqa: TC001
+
 
 @dataclass(frozen=True)
 class CharacterVoiceProfile:
@@ -18,6 +24,12 @@ class CharacterVoiceProfile:
     speech_summary: str  # Formatted speech/personality text
     updated_at: str | None = None
     is_fresh: bool = True
+    # ADR-057 Decision 1: surfaced on the checking path only. ``None`` unless
+    # the character's ``speech.voice_analysis.voice_metrics`` exists (written by
+    # ANAL-008). NEVER rendered into generation —
+    # ``ProjectWritingProfile.formatted_voice_profiles`` does not read it
+    # (preserves the ADR-055 "metrics never reach generation" constraint).
+    voice_metrics: VoiceMetrics | None = None
 
 
 @dataclass(frozen=True)

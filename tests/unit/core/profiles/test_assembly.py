@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from narrare_core.kb.schemas.character import VoiceMetrics
 from narrare_core.profiles.assembly import ProfileAssembler
 from narrare_core.profiles.models import CharacterVoiceProfile, ProjectWritingProfile
 
@@ -185,3 +186,32 @@ class TestProfileAssemblerWithProvider:
         assert profile.genre == "mystery"
         assert profile.tone == "suspenseful"
         assert profile.has_voice_profiles is True
+
+
+# ---------------------------------------------------------------------------
+# Tests: assemble_for_checking surfaces voice_metrics (ADR-057 Decision 1)
+# ---------------------------------------------------------------------------
+
+
+class TestProfileAssemblerCheckingSurfacesVoiceMetrics:
+    """ADR-057: the Core checking path (assemble_for_checking) carries
+    voice_metrics through unchanged from the provider. The contract signature
+    (-> list[CharacterVoiceProfile]) is unchanged; instances are richer."""
+
+    @pytest.mark.asyncio
+    async def test_assemble_for_checking_surfaces_voice_metrics(self) -> None:
+        metrics = VoiceMetrics(avg_sentence_length=18.5, type_token_ratio=0.72)
+        voice = CharacterVoiceProfile("c1", "Alice", "dialect: Southern", voice_metrics=metrics)
+        provider = FakeVoiceProfileProvider(voices=[voice])
+        assembler = ProfileAssembler(provider=provider)
+
+        result = await assembler.assemble_for_checking(project_id=uuid4())
+
+        assert len(result) == 1
+        assert result[0].voice_metrics is metrics
+
+    @pytest.mark.asyncio
+    async def test_assemble_for_checking_returns_empty_without_provider(self) -> None:
+        assembler = ProfileAssembler(provider=None)
+        result = await assembler.assemble_for_checking(project_id=uuid4())
+        assert result == []
