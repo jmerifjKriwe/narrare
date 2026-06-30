@@ -247,6 +247,18 @@ Our theme is intentionally warmer and softer than the default shadcn theme:
 
 Always use `theme.css` values, never the shadcn defaults.
 
+### Live Design Token Reference (`/dev/design-tokens`)
+
+A development-only route at `/dev/design-tokens` (inside the `(studio)` layout) provides a live reference for all CSS custom properties, theme values, and Tailwind utility mappings. Accessible only when `NODE_ENV=development`.
+
+**Sections:**
+1. **Color Palette** — all `--color-*` tokens with visual swatches, hex/oklch values, Tailwind class labels
+2. **Radii & Typography** — `--radius-{sm,md,lg,xl}` preview boxes, h1-h4 type scale, editor token cards
+3. **Theme Comparison** — default (neutral) vs `data-theme="narrare"` side-by-side in isolated context panels
+4. **Tailwind Mapping** — 37-row mapping table (utility → CSS variable → current value → description)
+
+This reference is always current because it reads CSS variable values at runtime via `getComputedStyle()`. See ADR-059.
+
 ---
 
 ## 4. Component Conventions

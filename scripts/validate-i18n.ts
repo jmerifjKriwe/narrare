@@ -82,6 +82,7 @@ function checkFrontend(files?: string[]) {
     "__snapshots__",
     "global-error.tsx",      // Runs outside React context — no providers available
     "ErrorBoundary.tsx",     // Class component — cannot use hooks
+    "/dev/",                 // Dev-only tooling routes (gated by NODE_ENV check) — not user-facing
   ];
 
   let sourceFiles;

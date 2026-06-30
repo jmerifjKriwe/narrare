@@ -999,6 +999,24 @@ it("applies variant-specific Tailwind classes", () => {
 - **CSS styling** — visual appearance is verified manually or via E2E screenshots
 - **Server components** — they have no client-side logic (`loading.tsx`, `page.tsx` wrappers)
 
+### Visual Regression Testing (VRT)
+
+VISUAL REGRESSION TESTING (VRT) is handled via Playwright's `toHaveScreenshot()` — NOT via Storybook. See ADR-059.
+
+VRT test files live in `packages/web/tests/screenshots/` and are executed via the `vrt` Playwright project (configured in `playwright.config.ts`). Each test mocks API authentication via `page.route()` and captures full-page or section-specific screenshots in light and dark modes.
+
+Run VRT tests locally:
+```bash
+pnpm playwright test --project=vrt
+```
+
+Update snapshots:
+```bash
+pnpm playwright test --project=vrt --update-snapshots
+```
+
+Currently screenshots target the `/dev/design-tokens` dev page. Add new screenshot tests for other pages by creating `.spec.ts` files in `tests/screenshots/` with appropriate auth mocks.
+
 ### Snapshot Testing Rules — RULE-TEST-04
 
 Snapshot tests capture component render output and compare against a stored baseline.

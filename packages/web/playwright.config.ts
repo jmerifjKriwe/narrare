@@ -49,6 +49,15 @@ export default defineConfig({
         channel: "chromium",
       },
     },
+    {
+      name: "vrt",
+      testDir: "./tests/screenshots",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chromium",
+        screenshot: "on",
+      },
+    },
   ],
 
   // Web server - starts automatically for tests

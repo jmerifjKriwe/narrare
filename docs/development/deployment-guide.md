@@ -303,6 +303,7 @@ All developer commands via `just`:
 | | `test-unit` | Run unit tests only (fast) |
 | | `test-integration` | Run integration tests (needs Docker) |
 | | `test-cov` | Run with coverage report |
+| | `test-vrt` | Run Playwright VRT screenshot tests |
 | **Quality** | `check` | Run all checks (architecture + lint + typecheck + security) |
 | | `check-frontend` | Run non-mutating frontend file-size, lint/format, type, and test checks |
 | | `lint` | Run ruff lint + fix |
