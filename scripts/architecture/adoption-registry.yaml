@@ -83,9 +83,9 @@ prompt_path_compliance:
   analysis/consistency: true
   analysis/fact_extraction: true
   # ADR-055 D4: character_voice (ANAL-008) prompt surface is governed Mode 1.
-  # Runtime adoption evidence lands with the agent+service in Layer 2/3; until
-  # then the mode tracks as governed adoption debt (static-verified, runtime
-  # pending) — see features.analysis.modes.character_voice.
+  # The mode is now runtime-verified via DB-less probes (final_validation +
+  # preference_enrichment markers) — see .evidence/{final_validation,
+  # preference_enrichment}.json and features.analysis.modes.character_voice.
   analysis/character_voice: true
   # ADR-057 D3: voice_check (WRITE-010) prompt surface is governed Mode 1
   # (a flag+score checker, distinct from the character_voice profiler). The mode
@@ -210,10 +210,12 @@ features:
         requires_runtime_evidence: true
       fact_extraction:
         requires_runtime_evidence: true
-      # ADR-055 D4: character_voice prompt surface is registered at the
-      # prompt-surface layer (Layer 1). Runtime evidence (agent + service
-      # probes) is produced in Layer 2/3; until then the mode is
-      # static-verified but not yet runtime-verified (governed adoption debt).
+      # ADR-055 D4: character_voice prompt surface (ANAL-008 profiler).
+      # Runtime-verified via DB-less probes (final_validation +
+      # preference_enrichment markers) — see scripts/probes/{mode_data,
+      # analysis_probes,validation_budget_probes}.py. Runtime path:
+      # LLMIntent.VOICE + context_mode "character_voice" → CharacterVoiceAgent
+      # via Mode-1 resolution + InvocationPipeline + the SSE service.
       character_voice:
         requires_runtime_evidence: true
       # ADR-057 D3: voice_check prompt surface (a flag+score checker for

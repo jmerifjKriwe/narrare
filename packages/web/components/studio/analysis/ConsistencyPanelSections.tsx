@@ -1,6 +1,7 @@
 import { AlertTriangle, Loader2, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import type { useTranslations } from "next-intl";
 import type { ConsistencyResponse } from "@/lib/api/analysis";
+import type { ConsistencyStagePayload } from "@/lib/hooks/useConsistencyStream";
 import { ConsistencyIssueList } from "./ConsistencyIssueList";
 
 type Scope = "current" | "selected" | "all";
@@ -47,10 +48,13 @@ export function ConsistencyScopeSelector({ scope, onScopeChange, t }: ScopeSelec
 export function ConsistencyLoadingState({
   elapsed,
   loadingStep,
+  progress,
   t,
 }: {
   elapsed: number;
   loadingStep: string;
+  /** Stage snapshot from the SSE stream, null when not yet available. */
+  progress: ConsistencyStagePayload | null;
   t: (key: string, params?: Record<string, unknown>) => string;
 }) {
   return (
@@ -63,7 +67,16 @@ export function ConsistencyLoadingState({
       <p className="text-lg font-medium mb-2">
         {t("consistency.loadingElapsed", { seconds: elapsed })}
       </p>
-      <p className="text-sm text-muted-foreground">{t(`consistency.progress.${loadingStep}`)}</p>
+      {progress?.message ? (
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">{progress.message}</p>
+          {progress.progress > 0 && (
+            <p className="text-xs text-muted-foreground">{Math.round(progress.progress * 100)}%</p>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">{t(`consistency.progress.${loadingStep}`)}</p>
+      )}
     </div>
   );
 }

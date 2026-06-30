@@ -210,3 +210,70 @@ def build_effective_router_prefixes(
         return cache[router_file]
 
     return {router_file: effective_prefixes(router_file) for router_file in own_prefixes}
+
+
+# ---------------------------------------------------------------------------
+# AST-based route decorator extraction
+# ---------------------------------------------------------------------------
+
+HTTP_METHODS = frozenset({"get", "post", "put", "delete", "patch"})
+
+
+@dataclass
+class RouteDecorator:
+    """A ``@router.<method>`` decorator extracted via AST.
+
+    Carries the source-line range so callers can inspect the function body
+    for ``StreamingResponse`` or other markers.
+    """
+
+    http_method: str  # e.g. "POST"
+    path: str  # e.g. "/chapters/{chapter_id}/extend"
+    decorator_lineno: int  # 1-based line of the first decorator
+    func_lineno: int  # 1-based line of the ``def`` / ``async def``
+    func_end_lineno: int  # 1-based last line of the function
+
+
+def extract_route_decorators(source: str) -> list[RouteDecorator]:
+    """Extract ``@router.<method>`` decorators from a router file via AST.
+
+    Handles both single-line and multi-line decorators, unlike line-based
+    regex approaches. Returns one ``RouteDecorator`` per function decorated
+    with a router HTTP-method decorator.
+    """
+    decorators: list[RouteDecorator] = []
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return decorators
+
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+
+        for d in node.decorator_list:
+            if not isinstance(d, ast.Call):
+                continue
+            func = d.func
+            if not isinstance(func, ast.Attribute):
+                continue
+            if func.attr.lower() not in HTTP_METHODS:
+                continue
+            if not isinstance(func.value, ast.Name) or func.value.id != "router":
+                continue
+
+            # First positional argument is the route path
+            if d.args and isinstance(d.args[0], ast.Constant):
+                decorators.append(
+                    RouteDecorator(
+                        http_method=func.attr.upper(),
+                        path=str(d.args[0].value),
+                        decorator_lineno=d.lineno,
+                        func_lineno=node.lineno,
+                        func_end_lineno=node.end_lineno or node.lineno,
+                    )
+                )
+                break  # first matching router decorator per function
+
+    return decorators

@@ -34,6 +34,7 @@ from scripts.architecture.streaming_compliance import (  # noqa: E402
     ComplianceResult,
     FrontendConsumer,
     SSEEndpoint,
+    extract_route_decorators,
     url_patterns_match,
 )
 from scripts.architecture.streaming_compliance import (  # noqa: E402
@@ -84,31 +85,32 @@ def _extract_router_prefix(source: str) -> str:
 
 
 def _extract_sse_routes(source: str, prefix: str, filepath: Path) -> list[SSEEndpoint]:
-    """Extract StreamingResponse endpoint routes from a router file."""
-    endpoints: list[SSEEndpoint] = []
-    current_route: str | None = None
-    current_method: str | None = None
+    """Extract StreamingResponse endpoint routes using AST-based decorator extraction.
 
-    for line in source.split("\n"):
-        m = re.match(r'\s*@router\.(get|post|put|delete|patch)\s*\(\s*["\']([^"\']*)["\']', line)
-        if m:
-            current_method = m.group(1).upper()
-            current_route = m.group(2)
+    Delegates to ``extract_route_decorators()`` for the AST parsing, then
+    filters to functions whose body contains ``StreamingResponse``.
+    """
+    endpoints: list[SSEEndpoint] = []
+    lines = source.split("\n")
+
+    parts = Path(_display_path(filepath, API_DIR)).parts
+    name = f"{parts[0]}/{filepath.stem}" if len(parts) > 1 else filepath.stem
+
+    for rd in extract_route_decorators(source):
+        # Source range from first decorator to end of function body
+        body = "\n".join(lines[rd.decorator_lineno - 1 : rd.func_end_lineno])
+        if "StreamingResponse" not in body:
             continue
-        if current_route is not None and "StreamingResponse" in line:
-            parts = Path(_display_path(filepath, API_DIR)).parts
-            name = f"{parts[0]}/{filepath.stem}" if len(parts) > 1 else filepath.stem
-            endpoints.append(
-                SSEEndpoint(
-                    file=filepath,
-                    route=f"/api/v1{prefix}{current_route}",
-                    method=current_method or "GET",
-                    prefix=prefix,
-                    name=name,
-                )
+
+        endpoints.append(
+            SSEEndpoint(
+                file=filepath,
+                route=f"/api/v1{prefix}{rd.path}",
+                method=rd.http_method,
+                prefix=prefix,
+                name=name,
             )
-            current_route = None
-            current_method = None
+        )
 
     return endpoints
 

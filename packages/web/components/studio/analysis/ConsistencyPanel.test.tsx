@@ -5,7 +5,7 @@
  * error with retry, elapsed timer during loading.
  *
  * Mocking strategy:
- * - useConsistencyCheck: controlled mutateAsync
+ * - useConsistencyStream: controlled mock for all lifecycle states
  * - useEditorStore: mock selectors
  * - ConsistencyIssueList: mock as stub (tested separately)
  *
@@ -14,20 +14,37 @@
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConsistencyResponse } from "@/lib/api/analysis";
 import { ConsistencyPanel } from "./ConsistencyPanel";
 
 // ---------------------------------------------------------------------------
-// Mocks
+// Mock state — shared variable that the mock hook factory reads on each call
 // ---------------------------------------------------------------------------
 
-let mockApiCall: Mock;
+let mockHook: Record<string, unknown> = {};
 
-vi.mock("@/lib/api/analysis", () => ({
-  analysisApi: {
-    consistencyCheck: (...args: unknown[]) => mockApiCall(...args),
-  },
+vi.mock("@/lib/hooks/useConsistencyStream", () => ({
+  useConsistencyStream: () => ({
+    // Default idle state
+    run: vi.fn(),
+    cancel: vi.fn(),
+    retry: vi.fn(),
+    reset: vi.fn(),
+    progress: null,
+    issues: [],
+    result: null,
+    error: null,
+    isIdle: true,
+    isLoading: false,
+    isStreaming: false,
+    isComplete: false,
+    isError: false,
+    isConnectionLost: false,
+    state: { status: "idle", result: null, error: null, attemptCount: 0 },
+    // Per-test overrides
+    ...mockHook,
+  }),
 }));
 
 const mockSetConsistencyResult = vi.fn();
@@ -111,6 +128,7 @@ const defaultProps = {
 describe("ConsistencyPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHook = {};
   });
 
   // -------------------------------------------------------------------------
@@ -118,7 +136,13 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("renders loading state on mount", () => {
-    mockApiCall = vi.fn(() => new Promise(() => {}));
+    // Simulate loading: the hook returns isLoading=true on first render
+    mockHook = {
+      isIdle: false,
+      isLoading: true,
+      isComplete: false,
+      isError: false,
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -127,11 +151,37 @@ describe("ConsistencyPanel", () => {
   });
 
   it("calls setConsistencyLoading(true) during loading", () => {
-    mockApiCall = vi.fn(() => new Promise(() => {}));
+    mockHook = {
+      isIdle: false,
+      isLoading: true,
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
     expect(mockSetConsistencyLoading).toHaveBeenCalledWith(true);
+  });
+
+  it("calls run on mount", () => {
+    // The run function is called via runCheck on mount when idle
+    // We need to capture the run mock to verify it was called
+    const runMock = vi.fn();
+    mockHook = {
+      isIdle: true,
+      isLoading: false,
+      run: runMock,
+    };
+
+    render(<ConsistencyPanel {...defaultProps} />);
+
+    expect(runMock).toHaveBeenCalledTimes(1);
+    expect(runMock).toHaveBeenCalledWith(
+      "novel-1",
+      expect.objectContaining({
+        chapter_ids: ["ch-1", "ch-2"],
+        check_types: ["character", "timeline", "world", "plot"],
+        include_kb: true,
+      }),
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -141,7 +191,10 @@ describe("ConsistencyPanel", () => {
   it("calls onClose when close button is clicked", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    mockApiCall = vi.fn(() => new Promise(() => {}));
+    mockHook = {
+      isIdle: false,
+      isLoading: true,
+    };
 
     render(<ConsistencyPanel {...defaultProps} onClose={onClose} />);
 
@@ -157,7 +210,12 @@ describe("ConsistencyPanel", () => {
 
   it("renders severity badges with correct counts in results", async () => {
     const result = makeConsistencyResponse();
-    mockApiCall = vi.fn().mockResolvedValue(result);
+    mockHook = {
+      isIdle: false,
+      isComplete: true,
+      result,
+      state: { status: "complete", result, error: null, attemptCount: 1 },
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -174,7 +232,12 @@ describe("ConsistencyPanel", () => {
 
   it("renders overall assessment in results", async () => {
     const result = makeConsistencyResponse();
-    mockApiCall = vi.fn().mockResolvedValue(result);
+    mockHook = {
+      isIdle: false,
+      isComplete: true,
+      result,
+      state: { status: "complete", result, error: null, attemptCount: 1 },
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -185,7 +248,12 @@ describe("ConsistencyPanel", () => {
 
   it("stores result in editor store on success", async () => {
     const result = makeConsistencyResponse();
-    mockApiCall = vi.fn().mockResolvedValue(result);
+    mockHook = {
+      isIdle: false,
+      isComplete: true,
+      result,
+      state: { status: "complete", result, error: null, attemptCount: 1 },
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -200,7 +268,12 @@ describe("ConsistencyPanel", () => {
 
   it("renders scope selector with three options when not loading", async () => {
     const result = makeConsistencyResponse();
-    mockApiCall = vi.fn().mockResolvedValue(result);
+    mockHook = {
+      isIdle: false,
+      isComplete: true,
+      result,
+      state: { status: "complete", result, error: null, attemptCount: 1 },
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -218,7 +291,12 @@ describe("ConsistencyPanel", () => {
 
   it("scope selector default is 'selected' (aria-pressed)", async () => {
     const result = makeConsistencyResponse();
-    mockApiCall = vi.fn().mockResolvedValue(result);
+    mockHook = {
+      isIdle: false,
+      isComplete: true,
+      result,
+      state: { status: "complete", result, error: null, attemptCount: 1 },
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -238,13 +316,18 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("renders error state with retry button when check fails", async () => {
-    mockApiCall = vi.fn().mockRejectedValue(new Error("Server error"));
+    const error = new Error("Server error");
+    mockHook = {
+      isIdle: false,
+      isError: true,
+      error,
+      state: { status: "error", result: null, error, attemptCount: 1 },
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
     await waitFor(() => {
-      // Structured AIErrorResponse with i18n key
-      expect(screen.getByText("aiActions.errorConnection")).toBeInTheDocument();
+      expect(screen.getByText("Server error")).toBeInTheDocument();
     });
     expect(screen.getByText("error")).toBeInTheDocument();
     expect(screen.getByText("aiActions.retry")).toBeInTheDocument();
@@ -252,10 +335,15 @@ describe("ConsistencyPanel", () => {
 
   it("retry button triggers re-check", async () => {
     const user = userEvent.setup();
-    mockApiCall = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("fail"))
-      .mockResolvedValueOnce(makeConsistencyResponse());
+    const runMock = vi.fn();
+    const error = new Error("fail");
+    mockHook = {
+      isIdle: false,
+      isError: true,
+      error,
+      run: runMock,
+      state: { status: "error", result: null, error, attemptCount: 1 },
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -265,7 +353,8 @@ describe("ConsistencyPanel", () => {
 
     await user.click(screen.getByText("aiActions.retry"));
 
-    expect(mockApiCall).toHaveBeenCalledTimes(2);
+    // Retry calls runCheck, which calls run
+    expect(runMock).toHaveBeenCalledTimes(1);
   });
 
   // -------------------------------------------------------------------------
@@ -273,7 +362,10 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("loading state shows elapsed timer text", () => {
-    mockApiCall = vi.fn(() => new Promise(() => {}));
+    mockHook = {
+      isIdle: false,
+      isLoading: true,
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -289,8 +381,15 @@ describe("ConsistencyPanel", () => {
 
   it("refresh button triggers re-check in results state", async () => {
     const user = userEvent.setup();
+    const runMock = vi.fn();
     const result = makeConsistencyResponse();
-    mockApiCall = vi.fn().mockResolvedValue(result);
+    mockHook = {
+      isIdle: false,
+      isComplete: true,
+      result,
+      run: runMock,
+      state: { status: "complete", result, error: null, attemptCount: 1 },
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
@@ -304,7 +403,8 @@ describe("ConsistencyPanel", () => {
     const refreshButtons = screen.getAllByText("refresh");
     await user.click(refreshButtons[0]);
 
-    expect(mockApiCall).toHaveBeenCalledTimes(2);
+    // Refresh triggers runCheck, which calls run
+    expect(runMock).toHaveBeenCalledTimes(1);
   });
 
   // -------------------------------------------------------------------------
@@ -312,11 +412,52 @@ describe("ConsistencyPanel", () => {
   // -------------------------------------------------------------------------
 
   it("hides scope selector during loading state", () => {
-    mockApiCall = vi.fn(() => new Promise(() => {}));
+    mockHook = {
+      isIdle: false,
+      isLoading: true,
+    };
 
     render(<ConsistencyPanel {...defaultProps} />);
 
     // The scope label should NOT be present during loading
     expect(screen.queryByText("consistency.scope.label")).not.toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
+  // Progress display (streaming)
+  // -------------------------------------------------------------------------
+
+  it("shows progress message during loading when available", () => {
+    mockHook = {
+      isIdle: false,
+      isLoading: true,
+      progress: {
+        stage: "checking_consistency",
+        status: "progress",
+        progress: 0.5,
+        message: "Checking timeline consistency…",
+        factsExtracted: null,
+        issuesFound: 2,
+      },
+    };
+
+    render(<ConsistencyPanel {...defaultProps} />);
+
+    expect(screen.getByText("Checking timeline consistency…")).toBeInTheDocument();
+    // Progress percentage should be shown
+    expect(screen.getByText("50%")).toBeInTheDocument();
+  });
+
+  it("shows cancel button during loading", () => {
+    const cancelMock = vi.fn();
+    mockHook = {
+      isIdle: false,
+      isLoading: true,
+      cancel: cancelMock,
+    };
+
+    render(<ConsistencyPanel {...defaultProps} />);
+
+    expect(screen.getByText("aiActions.stop")).toBeInTheDocument();
   });
 });
