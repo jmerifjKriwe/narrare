@@ -74,6 +74,16 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "She spoke with a quiet, measured cadence.",
         },
     ),
+    # ADR-057 D3 / WRITE-010: voice_check (flag+score checker) shares the
+    # VOICE intent and exercises the same invocation pipeline as character_voice.
+    (
+        "analysis",
+        "voice_check",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "He spoke in a clipped, formal register throughout.",
+        },
+    ),
     (
         "analysis",
         "summarize",

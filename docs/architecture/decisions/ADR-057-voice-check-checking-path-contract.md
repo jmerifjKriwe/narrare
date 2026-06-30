@@ -1,8 +1,8 @@
 # ADR-057 — Voice-Check Checking-Path Contract & `voice_check` Prompt Surface (WRITE-010)
 
-> **Status:** 🔄 Proposed (spec/ADR authored; implementation gated on user review)
+> **Status:** ✅ Implemented (decision approved by user; implemented end-to-end + runtime-verified — see History)
 > **Date:** 2026-06-30
-> **Deciders:** Architecture Specialist
+> **Deciders:** Architecture Specialist; User (approved the design + layer-by-layer implementation)
 > **Supersedes:** —
 > **Related:** ADR-021 (deterministic analysis), ADR-035 (agent output validation),
 > ADR-050 Decision 3 (VoiceProfileConsumer — the contract this ADR satisfies on the
@@ -11,10 +11,53 @@
 > ADR-056 (runtime-aware adoption gate), CONSTRAINTS.md
 > RULE-02/02b/03/04/05/06/07/11/13/22, CR-04 (cross-feature coherence)
 
-> **Scope of this ADR:** contracts + decisions only. It does NOT implement code,
-> tests, or the governed template file. Implementation is gated on user review of
-> this ADR + the WRITE-010 spec rewrite. The manifest/route-table/model file edits
-> land at implementation; this ADR defines the contract they must satisfy.
+> **Scope of this ADR:** contracts + decisions only. This document records the
+> checking-path contract the WRITE-010 implementation must satisfy; the code,
+> tests, and governed template live in the modules named in the Retrofit-Plan and
+> Cross-References, not in this ADR.
+
+## History
+
+- **2026-06-30 — 🔄 Proposed.** Spec/ADR authored (contracts + five decisions; no code).
+- **2026-06-30 — ✅ Accepted.** The user reviewed the design and approved
+  layer-by-layer implementation. The five checking-path decisions (§Decision 1–5)
+  are in effect, and production code across Core + Backend now depends on this
+  contract — so the ADR is no longer a "premature reference" (architectural-
+  discipline §7 / ADR-048 lesson).
+- **2026-06-30 — ✅ Implemented.** All layers implemented end-to-end and
+  validated; `voice_check` is static ✅, runtime ✅, and adopted ✅ (Doc Gate
+  passed — frontend Layer 4 landed + ADR-056 runtime-evidence gate satisfied).
+  The five Decisions (§Decision 1–5) are **unchanged**.
+
+### Implementation status — ✅ Implemented (runtime-verified)
+
+The decision is implemented across all layers and runtime-verified. Per
+architectural-discipline §7 ("documented ≠ implemented") and ADR-056, the
+`✅ Implemented` Doc Gate now passes: the frontend (Layer 4) has landed and the
+ADR-056 runtime adoption evidence is satisfied. **Decisions 1–5 are unchanged.**
+
+Verified on disk (2026-06-30):
+
+| Layer | Artifact(s) | On-disk status |
+|-------|-------------|----------------|
+| Core 0 | `CharacterVoiceProfile.voice_metrics` (`profiles/models.py`) + builder (`_voice_extraction.py`) | ✅ present |
+| Core 1 | `LLMIntent.VOICE` routeable + `voice_check` context_mode (`prompts/route_table.py`) | ✅ present |
+| Core 2 | `voice_check_scoring`, `CharacterVoiceCheckerAgent` (+ unit tests) | ✅ present |
+| Backend 3a/3b | `voice_check_service`, `contracts_voice_check`, `schemas_voice_check`, `dependencies_voice_check` (+ RULE-04 split helpers: `_prompt`, `_agent_runner`, `_results`, `_runtime_content`) | ✅ present |
+| Backend 3c | `router_voice_check.py` — SSE endpoint + DI factory + app registration (`_app/main.py`) | ✅ present |
+| Frontend 4 | `VoiceCheckPanel` / `Trigger` / `Results` / `ResultCard` + `useCharacterVoiceCheck` hook + SSE client (`connectSSE`, §5.1) + editor wiring (store toggle + mutual-exclusion + toolbar + AI-op inventory) + i18n (en/de/fr, 29–30 keys) | ✅ present |
+| Runtime evidence | ADR-056 adoption-gate probes (agent + service) | ✅ verified & adopted |
+
+**Validation:** architecture OK (1941 files); pyright 0 errors; backend unit
+2534 + core 4814 passed; frontend 2339 tests; AI-UX 44/44; i18n parity; streaming
+ratchet 0 new; prompt-structure 49/49. `voice_check` adoption_debt 5 → 1 (true
+debt only).
+
+**Env caveat (honest disclosure — do not overstate):** integration tests
+(`tests/integration/analysis/test_voice_check_api.py`) exist but were SKIPPED
+locally (test Postgres not running in this environment); CI runs them. The
+validation figures above come from the unit / core / frontend suites that run
+without a live database.
 
 ---
 

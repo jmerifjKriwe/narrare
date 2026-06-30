@@ -12,6 +12,7 @@ const closeRightPanels: PanelPatch = {
   povPanelOpen: false,
   coreferencePanelOpen: false,
   characterVoicePanelOpen: false,
+  voiceCheckPanelOpen: false,
 };
 
 export function toggleBetaReaderPanel(s: EditorState): PanelPatch {
@@ -52,4 +53,10 @@ export function toggleCharacterVoicePanel(s: EditorState): PanelPatch {
   return s.characterVoicePanelOpen
     ? { characterVoicePanelOpen: false }
     : { ...closeRightPanels, characterVoicePanelOpen: true };
+}
+
+export function toggleVoiceCheckPanel(s: EditorState): PanelPatch {
+  return s.voiceCheckPanelOpen
+    ? { voiceCheckPanelOpen: false }
+    : { ...closeRightPanels, voiceCheckPanelOpen: true };
 }

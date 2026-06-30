@@ -1,7 +1,7 @@
 ---
 id: WRITE-010
 title: "Voice Consistency Checker"
-status: planned
+status: stable
 area: writing
 mvp: false
 
@@ -80,9 +80,10 @@ requires: [INFRA-001, INFRA-002, KB-001, ANAL-008]
 # WRITE-010 — Voice Consistency Checker
 
 > **Architecture authority:** [ADR-057](../../architecture/decisions/ADR-057-voice-check-checking-path-contract.md)
-> (Voice-Check Checking-Path Contract & `voice_check` Prompt Surface). The
-> technical sections below implement that ADR. Status is `planned` — spec
-> authored, implementation gated on user review of ADR-057.
+> (Voice-Check Checking-Path Contract & `voice_check` Prompt Surface) — ✅
+> Implemented. The technical sections below implement that ADR. Status is
+> `stable`: implemented across all layers (Core 0/1/2a/2b + Backend 3a/3b/3c +
+> Frontend 4) and validated; ADR-056 runtime adoption evidence satisfied.
 
 ## What it does
 
@@ -141,6 +142,42 @@ vs character_voice's novel-scoped `/analysis/character-voice/{novel_id}`)
 > `WRITE-010` and its "Writing" placement in the registry (user-facing
 > taxonomy: a revision-time aid run from the editor); the implementation lives
 > in `analysis/` for module cohesion. See ADR-057 Decision 4.
+
+### Implementation status (2026-06-30)
+
+ADR-057 is ✅ **Implemented** (runtime-verified). WRITE-010 is **stable** —
+implemented & validated end-to-end:
+
+- ✅ **Core (layers 0/1/2a/2b)** — `CharacterVoiceProfile.voice_metrics` extension
+  + builder (`core/profiles/models.py`, `_voice_extraction.py`); `voice_check`
+  context_mode on the routeable `LLMIntent.VOICE` (`core/prompts/route_table.py`);
+  governed EN template (`core/prompts/_bundled/analysis/en/voice_check/system.md`);
+  deterministic scoring module `core/analysis/voice_check_scoring.py`;
+  `CharacterVoiceCheckerAgent` (`core/agents/character_voice_checker_agent.py`).
+- ✅ **Backend (3a/3b/3c)** — 3a: `contracts_voice_check.py` + `schemas_voice_check.py`
+  + voice_profile_adapter fix (voice_metrics surfaced on the checking path); 3b:
+  `voice_check_service.py` modularised (RULE-04 split) with the helper modules
+  `voice_check_prompt.py`, `voice_check_runtime_content.py`,
+  `voice_check_agent_runner.py`, `voice_check_results.py`; 3c: SSE router
+  `router_voice_check.py` — `POST /api/v1/analysis/voice-check/{chapter_id}`
+  (mounted in `_app/main.py`) + DI factory (`dependencies_voice_check.py`).
+- ✅ **Frontend (Layer 4)** — `VoiceCheckPanel` / `Trigger` / `Results` /
+  `ResultCard` + `useCharacterVoiceCheck` hook + SSE stream client (`connectSSE`,
+  §5.1) + editor wiring (store toggle + mutual-exclusion + toolbar + AI-operation
+  inventory) + i18n (en/de/fr, 29–30 keys).
+- ✅ **Runtime adoption evidence** — ADR-056 commit-gate probes (agent + service)
+  satisfied. `voice_check` is static ✅, runtime ✅, and adopted ✅
+  (adoption_debt 5 → 1 — true debt only).
+
+**Validation:** architecture OK (1941 files); pyright 0 errors; backend unit
+2534 + core 4814 passed; frontend 2339 tests; AI-UX 44/44; i18n parity; streaming
+ratchet 0 new; prompt-structure 49/49.
+
+> **Env caveat (honest disclosure):** integration tests
+> (`tests/integration/analysis/test_voice_check_api.py`) exist but were SKIPPED
+> locally (test Postgres not running in this environment); CI runs them. The
+> validation figures above come from the unit / core / frontend suites that run
+> without a live database.
 
 ### Checking-path data contract (ADR-057 Decision 1 — closes ADR-055 Risk #1)
 
@@ -294,5 +331,24 @@ checking layer that reads the same source via the consumer contract.
   checker reusing the ANAL-008 Foundation; read-only; checking path through
   the ADR-050 consumer contract via the `CharacterVoiceProfile.voice_metrics`
   extension (closes ADR-055 Risk #1); `voice_check` context_mode; module home
-  `analysis/`. Status remains `planned` (implementation gated on user review
-  of ADR-057).
+  `analysis/`.
+- `2026-06-30` — **ADR-057 → ✅ Accepted** (user approved layer-by-layer
+  implementation). Status → `in-progress`. Core layers (0/1/2a/2b) + Backend
+  layers (3a contracts/schemas + voice_profile_adapter fix; 3b service
+  modularised with the RULE-04 helper split — `voice_check_prompt.py`,
+  `voice_check_runtime_content.py`, `voice_check_agent_runner.py`,
+  `voice_check_results.py`; 3c SSE router `POST /api/v1/analysis/voice-check/{chapter_id}`
+  + DI + app registration) implemented and green (176 analysis unit tests pass;
+  integration tests skipped only where no test DB is available). Frontend
+  Layer 4 + ADR-056 runtime adoption evidence remain before `stable`. ADR-057
+  is Accepted, not yet "✅ Implemented".
+- `2026-06-30` — **Status → `stable`** (final Doc Gate). ADR-057 → ✅
+  **Implemented**. Frontend Layer 4 landed (`VoiceCheckPanel` / `Trigger` /
+  `Results` / `ResultCard` + `useCharacterVoiceCheck` hook + SSE stream client
+  + editor wiring + i18n en/de/fr) and the ADR-056 runtime-evidence gate is
+  satisfied: `voice_check` is static ✅, runtime ✅, and adopted ✅
+  (adoption_debt 5 → 1 — true debt only). Validated: architecture OK (1941
+  files), pyright 0 errors, 2534 backend + 4814 core + 2339 frontend tests,
+  AI-UX 44/44, i18n parity, streaming ratchet 0 new, prompt-structure 49/49.
+  Env caveat: integration tests exist but were skipped locally (no test
+  Postgres); CI runs them.

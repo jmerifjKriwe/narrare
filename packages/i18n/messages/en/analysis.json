@@ -251,5 +251,39 @@
     "voiceExamples": "Example Dialogue",
     "distinctivenessNotes": "Distinctiveness",
     "distinctivenessCaveat": "Per-run comparison \u2014 not stored in the Knowledge Base."
+  },
+  "voiceCheck": {
+    "trigger": "Check Voice",
+    "triggerTooltip": "Check if dialogue matches each character's established voice profile",
+    "triggerAriaLabel": "Check character voices",
+    "title": "Voice Consistency Check",
+    "description": "Check your chapter's dialogue against each character's stored voice profile",
+    "analyzing": "Checking character voices...",
+    "analyzingSubtext": "Comparing dialogue against stored voice profiles",
+    "aiDisclaimer": "Hybrid check \u00b7 Deterministic metrics + AI judgment",
+    "analysisFailed": "Failed to check character voices",
+    "noResults": "No speaking characters detected in this chapter.",
+    "noVoiceProfile": "No voice profile available for this character.",
+    "matchScore": "Match Score",
+    "matchScoreValue": "{score}%",
+    "noScore": "Not scored",
+    "nComparableMetrics": "{count} comparable metrics",
+    "qualitativeSubScore": "Qualitative match",
+    "metricDeltaSubScore": "Metric delta",
+    "band": {
+      "green": "Excellent match",
+      "yellow": "Good match",
+      "fair": "Fair match",
+      "red": "Poor match"
+    },
+    "judgment": {
+      "consistent": "Consistent",
+      "mostly_consistent": "Mostly consistent",
+      "notable_drift": "Notable drift",
+      "off": "Off voice"
+    },
+    "flaggedLines": "Flagged lines ({count})",
+    "flaggedLineReason": "Reason",
+    "retry": "Retry"
   }
 }

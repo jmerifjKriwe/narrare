@@ -51,6 +51,7 @@ const mockSetDraftText = vi.fn();
 const mockSetSessionActive = vi.fn();
 const mockToggleGenerationPanel = vi.fn();
 const mockToggleExtractionPanel = vi.fn();
+const mockToggleVoiceCheckPanel = vi.fn();
 const mockSetEditor = vi.fn();
 
 let editorStoreState: Record<string, unknown> = {};
@@ -86,6 +87,7 @@ vi.mock("@/lib/stores/editorStore", () => ({
       setSessionActive: mockSetSessionActive,
       toggleGenerationPanel: mockToggleGenerationPanel,
       toggleExtractionPanel: mockToggleExtractionPanel,
+      toggleVoiceCheckPanel: mockToggleVoiceCheckPanel,
       setEditor: mockSetEditor,
       ...editorStoreState,
     };
@@ -182,6 +184,18 @@ vi.mock("@/components/studio/editor/CommandPalette", () => ({
 
 vi.mock("@/components/studio/editor/GenerationPanel", () => ({
   GenerationPanel: vi.fn(() => <div data-testid="generation-panel">Generation Panel</div>),
+}));
+
+vi.mock("@/components/studio/analysis/VoiceCheckPanel", () => ({
+  VoiceCheckPanel: vi.fn(({ chapterId, onClose }) => (
+    <div data-testid="voice-check-panel">
+      VoiceCheckPanel
+      <span data-testid="voice-check-panel-chapter">{chapterId}</span>
+      <button type="button" data-testid="voice-check-panel-close" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  )),
 }));
 
 vi.mock("@/components/studio/editor/MetadataSidebar", () => ({
@@ -432,6 +446,35 @@ describe("EditorView", () => {
     await waitFor(() => {
       expect(screen.getByTestId("generation-panel")).toBeDefined();
     });
+  });
+
+  it("shows voice-check panel when voiceCheckPanelOpen is true", async () => {
+    editorStoreState = {
+      activeChapterId: "chapter-1",
+      sessionActive: false,
+      generationPanelOpen: false,
+      voiceCheckPanelOpen: true,
+    };
+    renderWithProviders(<EditorView novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("voice-check-panel")).toBeDefined();
+    });
+    // The panel receives the active chapter id.
+    expect(screen.getByTestId("voice-check-panel-chapter").textContent).toBe("chapter-1");
+  });
+
+  it("does not show voice-check panel when voiceCheckPanelOpen is false", async () => {
+    editorStoreState = {
+      activeChapterId: "chapter-1",
+      voiceCheckPanelOpen: false,
+    };
+    renderWithProviders(<EditorView novelId="novel-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test Chapter")).toBeDefined();
+    });
+    expect(screen.queryByTestId("voice-check-panel")).toBeNull();
   });
 
   it("title input updates on change", async () => {

@@ -48,6 +48,10 @@ _VALIDATION_MODES: list[tuple[str, str, LLMIntent]] = [
     ("writing", "new_chapter", LLMIntent.WRITE),
     ("analysis", "beta_reader", LLMIntent.BETA_READ),
     ("analysis", "character_voice", LLMIntent.VOICE),
+    # ADR-057 D3 / WRITE-010: voice_check shares the VOICE intent and runs the
+    # same final-validation path (RuntimeVariableValidatorImpl +
+    # FinalPromptValidatorImpl) as character_voice.
+    ("analysis", "voice_check", LLMIntent.VOICE),
     ("analysis", "fact_extraction", LLMIntent.FACT_EXTRACT),
     ("kb", "consistency", LLMIntent.KB_CONSISTENCY),
     ("planning", "outline", LLMIntent.PLAN),
@@ -73,6 +77,7 @@ _VALIDATION_FEATURES: dict[str, list[str]] = {
         "review",
         "preferences",
         "character_voice",
+        "voice_check",
         "summarize",
         "remap",
         "consistency",

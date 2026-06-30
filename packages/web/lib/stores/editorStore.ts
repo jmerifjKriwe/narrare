@@ -7,6 +7,7 @@ import {
   togglePovPanel,
   toggleReadabilityPanel,
   toggleSentimentPanel,
+  toggleVoiceCheckPanel,
 } from "./editorPanelToggles";
 import type { EditorState } from "./editorStoreTypes";
 
@@ -41,6 +42,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   povPanelOpen: false,
   coreferencePanelOpen: false,
   characterVoicePanelOpen: false,
+  voiceCheckPanelOpen: false,
 
   setActiveChapterId: (id) => set({ activeChapterId: id }),
   setActiveVolumeId: (id) => set({ activeVolumeId: id }),
@@ -86,4 +88,5 @@ export const useEditorStore = create<EditorState>((set) => ({
   togglePovPanel: () => set(togglePovPanel),
   toggleCoreferencePanel: () => set(toggleCoreferencePanel),
   toggleCharacterVoicePanel: () => set(toggleCharacterVoicePanel),
+  toggleVoiceCheckPanel: () => set(toggleVoiceCheckPanel),
 }));

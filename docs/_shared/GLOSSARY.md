@@ -589,8 +589,14 @@ Generierung gerendert. Die Metrik-Gruppe (`voice_metrics`) ist comparison-only u
 erreicht niemals die Generierung. Siehe ADR-055, ANAL-008.
 
 **Voice Check**
-An analysis that compares a newly written chapter against the author's established
-style profile, flagging deviations in tone, sentence structure, vocabulary, etc.
+An analysis (WRITE-010) that checks a chapter's **character dialogue** against
+each speaking character's stored **per-character voice profile** (produced by
+Character Voice Profiling, ANAL-008), reporting a per-character match score and
+flagging specific dialogue lines whose voice deviates from the established
+profile. Read-only (it checks; it does not profile or rewrite) and flag+score
+only (no rewrite suggestions — rewrite reuse of WRITE-004 is a separate step).
+See ADR-057, WRITE-010. *Not* a check against the author's own style profile
+(that is a separate, author-voice concern; see ANAL-007/ANAL-009).
 
 ---
 
@@ -636,6 +642,6 @@ Defined in `core/agents/writing_graph_types.py`. Part of ADR-015 Phase 4.
 
 ---
 
-> Last updated: 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
+> Last updated: 2026-06-30 — Corrected "Voice Check" definition to match ADR-057/WRITE-010 (character dialogue checked against stored per-character voice profiles, not the author's style profile). 2026-06-29 — Added terms: AUFG, character_voice, DialogueParser, governed debt, INLINE-FEATURE-PROMPT, Mode 1/Mode 2, PromptComposer Mode 1, Runtime Adoption cross-ref, voice_analysis. Updated existing: Governed Adoption Debt, Runtime Adopted, InvocationPipeline verified.
 > Maintained by: Architecture Agent
 > Add terms as they emerge — do not let ambiguous vocabulary persist

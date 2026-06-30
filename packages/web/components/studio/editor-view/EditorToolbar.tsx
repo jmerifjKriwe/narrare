@@ -8,6 +8,7 @@ import { CoreferenceTrigger } from "../analysis/CoreferenceTrigger";
 import { POVTrigger } from "../analysis/POVTrigger";
 import { ReadabilityTrigger } from "../analysis/ReadabilityTrigger";
 import { SentimentTrigger } from "../analysis/SentimentTrigger";
+import { VoiceCheckTrigger } from "../analysis/VoiceCheckTrigger";
 import { GhostTextConfig } from "../editor/GhostTextConfig";
 
 interface EditorToolbarProps {
@@ -16,6 +17,7 @@ interface EditorToolbarProps {
   extractionPanelOpen: boolean;
   toggleGenerationPanel: () => void;
   toggleExtractionPanel: () => void;
+  toggleVoiceCheckPanel: () => void;
   openNameGenerator: () => void;
 }
 
@@ -25,6 +27,7 @@ export function EditorToolbar({
   extractionPanelOpen,
   toggleGenerationPanel,
   toggleExtractionPanel,
+  toggleVoiceCheckPanel,
   openNameGenerator,
 }: EditorToolbarProps) {
   const t = useTranslations("studio");
@@ -127,6 +130,7 @@ export function EditorToolbar({
       <POVTrigger />
       <CoreferenceTrigger />
       <CharacterVoiceTrigger />
+      <VoiceCheckTrigger onClick={toggleVoiceCheckPanel} />
       <ToolbarSeparator />
       <GhostTextConfig editor={editor} />
     </div>

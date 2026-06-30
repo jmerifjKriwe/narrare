@@ -44,6 +44,7 @@ export function EditorView({ novelId }: EditorViewProps) {
   const togglePovPanel = useEditorStore((s) => s.togglePovPanel);
   const toggleCoreferencePanel = useEditorStore((s) => s.toggleCoreferencePanel);
   const toggleCharacterVoicePanel = useEditorStore((s) => s.toggleCharacterVoicePanel);
+  const toggleVoiceCheckPanel = useEditorStore((s) => s.toggleVoiceCheckPanel);
   const [nameGeneratorOpen, setNameGeneratorOpen] = useState(false);
 
   const writingSteps = useWritingGraphSteps(isGenerating, activeChapterId);
@@ -108,6 +109,7 @@ export function EditorView({ novelId }: EditorViewProps) {
         extractionPanelOpen={extractionPanelOpen}
         toggleGenerationPanel={toggleGenerationPanel}
         toggleExtractionPanel={toggleExtractionPanel}
+        toggleVoiceCheckPanel={toggleVoiceCheckPanel}
         openNameGenerator={() => setNameGeneratorOpen(true)}
       />
       <div className="flex-1 flex min-h-0">
@@ -148,6 +150,7 @@ export function EditorView({ novelId }: EditorViewProps) {
           togglePovPanel={togglePovPanel}
           toggleCoreferencePanel={toggleCoreferencePanel}
           toggleCharacterVoicePanel={toggleCharacterVoicePanel}
+          toggleVoiceCheckPanel={toggleVoiceCheckPanel}
           toggleSentimentPanel={toggleSentimentPanel}
           toggleConsistencyPanel={toggleConsistencyPanel}
         />

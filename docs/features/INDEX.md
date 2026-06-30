@@ -76,7 +76,7 @@
 | [WRITE-007](writing/WRITE-007-inline-suggestions.md) | Inline AI Suggestions | ✅ | ❌ |
 | [WRITE-008](writing/WRITE-008-multi-draft.md) | Multi-Draft Generation | 📋 | ❌ |
 | [WRITE-009](writing/WRITE-009-unblock.md) | Writer's Unblock Tools | ✅ | ❌ |
-| [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | 📋 | ❌ |
+| [WRITE-010](writing/WRITE-010-voice-checker.md) | Voice Consistency Checker | ✅ | ❌ |
 | [WRITE-011](writing/WRITE-011-volume-management.md) | Volume Management | ✅ | ✅ |
 | [WRITE-012](writing/WRITE-012-chapter-summary.md) | Chapter Summary | ✅ | ❌ |
 | [WRITE-013](writing/WRITE-013-workflows.md) | Writing Workflows | 📋 | ❌ |
@@ -127,14 +127,17 @@
 > (static-verified; runtime evidence pending CI/integration). The earlier lossy
 > field-mapping (quotes in `body_language` etc.) was removed.
 
-> **WRITE-010 (Voice Consistency Checker):** Spec authored (2026-06-30) against
+> **WRITE-010 (Voice Consistency Checker):** Implemented + runtime-verified
+> (2026-06-30) across all layers against
 > [ADR-057](../architecture/decisions/ADR-057-voice-check-checking-path-contract.md)
-> — the voice-check checking-path contract (extends `CharacterVoiceProfile` with
-> `voice_metrics`, surfaced via `VoiceProfileConsumer.assemble_for_checking` — no
-> KB bypass; closes ADR-055 Risk #1), hybrid deterministic-delta + LLM scoring
-> (ADR-021), new `voice_check` context_mode on the routeable `LLMIntent.VOICE`,
-> module home `analysis/`, flag+score scope (no rewrites). Status remains `planned`
-> — implementation gated on user review of ADR-057.
+> (✅ Implemented) — the voice-check checking-path contract (extends
+> `CharacterVoiceProfile` with `voice_metrics`, surfaced via
+> `VoiceProfileConsumer.assemble_for_checking` — no KB bypass; closes ADR-055
+> Risk #1), hybrid deterministic-delta + LLM scoring (ADR-021), new `voice_check`
+> context_mode on the routeable `LLMIntent.VOICE`, module home `analysis/`,
+> flag+score scope (no rewrites). All layers (Core 0/1/2a/2b + Backend 3a/3b/3c +
+> Frontend 4) implemented and validated; `voice_check` is static ✅, runtime ✅,
+> and adopted ✅ (adoption_debt 5 → 1 — true debt only). Status → `stable`.
 
 ### Planning
 | ID | Feature | Status | MVP |
@@ -326,5 +329,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-30 — WRITE-010 (Voice Consistency Checker) spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1); status remains `planned`. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-30 — WRITE-010 (Voice Consistency Checker) → `stable` (ADR-057 ✅ Implemented; implemented across all layers + runtime-verified; `voice_check` static/runtime/adopted, adoption_debt 5 → 1 — true debt). Earlier 2026-06-30 — WRITE-010 spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1), promoted to `stable` after all layers + runtime evidence landed. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after

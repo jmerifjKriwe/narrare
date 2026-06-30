@@ -251,5 +251,39 @@
     "voiceExamples": "Beispieldialoge",
     "distinctivenessNotes": "Eigenständigkeit",
     "distinctivenessCaveat": "Vergleich pro Durchlauf \u2014 nicht in der Wissensbasis gespeichert."
+  },
+  "voiceCheck": {
+    "trigger": "Stimme prüfen",
+    "triggerTooltip": "Prüfen, ob der Dialog zum gespeicherten Stimmprofil jedes Charakters passt",
+    "triggerAriaLabel": "Charakterstimmen prüfen",
+    "title": "Stimmkonsistenzprüfung",
+    "description": "Prüfe den Dialog deines Kapitels gegen das gespeicherte Stimmprofil jedes Charakters",
+    "analyzing": "Prüfe Charakterstimmen...",
+    "analyzingSubtext": "Vergleiche Dialoge mit gespeicherten Stimmprofilen",
+    "aiDisclaimer": "Hybridprüfung \u00b7 Deterministische Metriken + KI-Urteil",
+    "analysisFailed": "Stimmprüfung fehlgeschlagen",
+    "noResults": "In diesem Kapitel wurden keine sprechenden Charaktere erkannt.",
+    "noVoiceProfile": "Für diesen Charakter ist kein Stimmprofil verfügbar.",
+    "matchScore": "Übereinstimmung",
+    "matchScoreValue": "{score}%",
+    "noScore": "Nicht bewertet",
+    "nComparableMetrics": "{count} vergleichbare Metriken",
+    "qualitativeSubScore": "Qualitative Übereinstimmung",
+    "metricDeltaSubScore": "Metrik-Delta",
+    "band": {
+      "green": "Ausgezeichnete Übereinstimmung",
+      "yellow": "Gute Übereinstimmung",
+      "fair": "Mittlere Übereinstimmung",
+      "red": "Schlechte Übereinstimmung"
+    },
+    "judgment": {
+      "consistent": "Konsistent",
+      "mostly_consistent": "Größtenteils konsistent",
+      "notable_drift": "Deutliche Abweichung",
+      "off": "Falsche Stimme"
+    },
+    "flaggedLines": "Markierte Zeilen ({count})",
+    "flaggedLineReason": "Grund",
+    "retry": "Erneut versuchen"
   }
 }

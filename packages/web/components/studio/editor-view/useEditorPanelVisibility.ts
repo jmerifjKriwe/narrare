@@ -8,6 +8,7 @@ export interface EditorPanelVisibility {
   showPOVPanel: boolean;
   showCoreferencePanel: boolean;
   showCharacterVoicePanel: boolean;
+  showVoiceCheckPanel: boolean;
   showSentimentPanel: boolean;
   showConsistencyPanel: boolean;
   showMetadataSidebar: boolean;
@@ -24,6 +25,7 @@ export function useEditorPanelVisibility(activeChapterId: string | null): Editor
   const povPanelOpen = useEditorStore((s) => s.povPanelOpen);
   const coreferencePanelOpen = useEditorStore((s) => s.coreferencePanelOpen);
   const characterVoicePanelOpen = useEditorStore((s) => s.characterVoicePanelOpen);
+  const voiceCheckPanelOpen = useEditorStore((s) => s.voiceCheckPanelOpen);
   const hasActiveChapter = !!activeChapterId;
 
   const showSessionPanel = sessionActive && hasActiveChapter;
@@ -60,6 +62,16 @@ export function useEditorPanelVisibility(activeChapterId: string | null): Editor
     !showReadabilityPanel &&
     !showPOVPanel &&
     !showCoreferencePanel;
+  const showVoiceCheckPanel =
+    voiceCheckPanelOpen &&
+    hasActiveChapter &&
+    !showSessionPanel &&
+    !showGenerationPanel &&
+    !showBetaReaderPanel &&
+    !showReadabilityPanel &&
+    !showPOVPanel &&
+    !showCoreferencePanel &&
+    !showCharacterVoicePanel;
   const showSentimentPanel =
     sentimentPanelOpen &&
     hasActiveChapter &&
@@ -69,7 +81,8 @@ export function useEditorPanelVisibility(activeChapterId: string | null): Editor
     !showReadabilityPanel &&
     !showPOVPanel &&
     !showCoreferencePanel &&
-    !showCharacterVoicePanel;
+    !showCharacterVoicePanel &&
+    !showVoiceCheckPanel;
   const showConsistencyPanel =
     consistencyPanelOpen &&
     hasActiveChapter &&
@@ -80,6 +93,7 @@ export function useEditorPanelVisibility(activeChapterId: string | null): Editor
     !showPOVPanel &&
     !showCoreferencePanel &&
     !showCharacterVoicePanel &&
+    !showVoiceCheckPanel &&
     !showSentimentPanel;
   const showMetadataSidebar =
     contextPanelOpen &&
@@ -90,6 +104,7 @@ export function useEditorPanelVisibility(activeChapterId: string | null): Editor
     !showPOVPanel &&
     !showCoreferencePanel &&
     !showCharacterVoicePanel &&
+    !showVoiceCheckPanel &&
     !showSentimentPanel &&
     !showConsistencyPanel;
 
@@ -101,6 +116,7 @@ export function useEditorPanelVisibility(activeChapterId: string | null): Editor
     showPOVPanel,
     showCoreferencePanel,
     showCharacterVoicePanel,
+    showVoiceCheckPanel,
     showSentimentPanel,
     showConsistencyPanel,
     showMetadataSidebar,

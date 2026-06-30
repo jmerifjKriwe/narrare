@@ -76,6 +76,7 @@ class KBEntityVoiceProfileProvider:
                     speech_summary=f"{profile.speech_summary}; confidence: {entity.confidence:.2f}",
                     updated_at=profile.updated_at,
                     is_fresh=profile.is_fresh,
+                    voice_metrics=profile.voice_metrics,
                 )
             if not profile.is_fresh:
                 logger.warning(

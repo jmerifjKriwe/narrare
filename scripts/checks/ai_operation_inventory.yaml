@@ -399,6 +399,32 @@ operations:
     exclude_entry: none
     status: compliant
 
+  - operation_id: analysis.voice_check
+    feature: Voice Consistency Checker (WRITE-010)
+    entry_points:
+      - packages/web/lib/hooks/useCharacterVoiceCheck.ts
+      - packages/web/lib/api/voice-check-stream.ts (streamVoiceCheck)
+    transport: sse
+    lifecycle_owner: useAIOperation
+    loading_feedback: "isLoading/isStreaming via useCharacterVoiceCheck.ts; connection-loss watchdog 15s"
+    cancel_ui: "cancel() via hook (no manual AbortController — ADR-043)"
+    signal_propagation: "execute: (signal) bridges streamVoiceCheck SSE to useAIOperation's Promise contract; abort → AbortError rejection"
+    error_mapping: mapSSEError (ai-error-mapping.ts)
+    partial_output: "Per-character results accumulated across the run and surfaced once on completion"
+    ai_action_i18n: analysis.voiceCheck.* (DE/EN/FR) + analysis.retry / .refresh
+    deprecated_key_usage: "No deprecated aliases in use"
+    keyboard: "n/a — on-demand run from the panel/toolbar; results displayed after completion"
+    tests:
+      - packages/web/components/studio/analysis/VoiceCheckPanel.test.tsx
+      - packages/web/components/studio/analysis/__tests__/VoiceCheckTrigger.test.tsx
+      - packages/web/lib/hooks/__tests__/useCharacterVoiceCheck.test.tsx
+      - packages/web/lib/hooks/__tests__/useAIOperation/execution.test.ts
+      - packages/web/lib/stores/__tests__/editorStore.test.ts
+      - packages/web/components/studio/__tests__/EditorView.test.tsx
+    aufg_id: n/a
+    exclude_entry: none
+    status: compliant
+
   # ------------------------------------------------------------------
   # Chat & Extraction
   # ------------------------------------------------------------------

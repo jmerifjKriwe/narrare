@@ -251,5 +251,39 @@
     "voiceExamples": "Dialogues d'exemple",
     "distinctivenessNotes": "Distinctivité",
     "distinctivenessCaveat": "Comparaison par exécution \u2014 non stockée dans la base de connaissances."
+  },
+  "voiceCheck": {
+    "trigger": "Vérifier la voix",
+    "triggerTooltip": "Vérifier si les dialogues correspondent au profil de voix enregistré de chaque personnage",
+    "triggerAriaLabel": "Vérifier les voix des personnages",
+    "title": "Vérification de cohérence des voix",
+    "description": "Vérifiez les dialogues du chapitre par rapport au profil de voix enregistré de chaque personnage",
+    "analyzing": "Vérification des voix des personnages...",
+    "analyzingSubtext": "Comparaison des dialogues avec les profils de voix enregistrés",
+    "aiDisclaimer": "Vérification hybride \u00b7 Métriques déterministes + jugement IA",
+    "analysisFailed": "Échec de la vérification des voix",
+    "noResults": "Aucun personnage parlant détecté dans ce chapitre.",
+    "noVoiceProfile": "Aucun profil de voix disponible pour ce personnage.",
+    "matchScore": "Score de correspondance",
+    "matchScoreValue": "{score}%",
+    "noScore": "Non noté",
+    "nComparableMetrics": "{count} métriques comparables",
+    "qualitativeSubScore": "Correspondance qualitative",
+    "metricDeltaSubScore": "Delta des métriques",
+    "band": {
+      "green": "Excellente correspondance",
+      "yellow": "Bonne correspondance",
+      "fair": "Correspondance moyenne",
+      "red": "Mauvaise correspondance"
+    },
+    "judgment": {
+      "consistent": "Cohérent",
+      "mostly_consistent": "Plutôt cohérent",
+      "notable_drift": "Dérive notable",
+      "off": "Hors voix"
+    },
+    "flaggedLines": "Lignes signalées ({count})",
+    "flaggedLineReason": "Raison",
+    "retry": "Réessayer"
   }
 }

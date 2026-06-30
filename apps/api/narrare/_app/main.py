@@ -146,6 +146,7 @@ def _register_routers(app: FastAPI) -> None:
     from narrare.analysis.router_coreference import router as analysis_coreference_router
     from narrare.analysis.router_pov import router as analysis_pov_router
     from narrare.analysis.router_readability import router as analysis_readability_router
+    from narrare.analysis.router_voice_check import router as analysis_voice_check_router
     from narrare.auth.router import router as auth_router
     from narrare.auth.router_me import router as auth_me_router
     from narrare.chapters.router import router as chapters_router
@@ -207,6 +208,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(analysis_pov_router, prefix=prefix)
     app.include_router(analysis_coreference_router, prefix=prefix)
     app.include_router(analysis_character_voice_router, prefix=prefix)
+    app.include_router(analysis_voice_check_router, prefix=prefix)
     app.include_router(embeddings_router)  # Full paths already include /api/v1/admin/embeddings/
     app.include_router(volumes_router, prefix=prefix)
     app.include_router(kb_router, prefix=prefix)

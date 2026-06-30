@@ -6,6 +6,7 @@ import { CoreferencePanel } from "../analysis/CoreferencePanel";
 import { POVPanel } from "../analysis/POVPanel";
 import { ReadabilityPanel } from "../analysis/ReadabilityPanel";
 import { SentimentPanel } from "../analysis/SentimentPanel";
+import { VoiceCheckPanel } from "../analysis/VoiceCheckPanel";
 import { GenerationPanel } from "../editor/GenerationPanel";
 import { MetadataSidebar } from "../editor/MetadataSidebar";
 import { SessionPanel } from "../editor/SessionPanel";
@@ -34,6 +35,7 @@ interface EditorSidePanelsProps {
   togglePovPanel: () => void;
   toggleCoreferencePanel: () => void;
   toggleCharacterVoicePanel: () => void;
+  toggleVoiceCheckPanel: () => void;
   toggleSentimentPanel: () => void;
   toggleConsistencyPanel: () => void;
 }
@@ -60,6 +62,7 @@ export function EditorSidePanels({
   togglePovPanel,
   toggleCoreferencePanel,
   toggleCharacterVoicePanel,
+  toggleVoiceCheckPanel,
   toggleSentimentPanel,
   toggleConsistencyPanel,
 }: EditorSidePanelsProps) {
@@ -133,6 +136,9 @@ export function EditorSidePanels({
           chapterIds={[activeChapterId]}
           onClose={toggleCharacterVoicePanel}
         />
+      )}
+      {visibility.showVoiceCheckPanel && (
+        <VoiceCheckPanel chapterId={activeChapterId} onClose={toggleVoiceCheckPanel} />
       )}
       {visibility.showSentimentPanel && (
         <SentimentPanel

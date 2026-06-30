@@ -6,7 +6,10 @@ from uuid import uuid4
 
 import pytest
 
-from narrare.writing.voice_profile_adapter import make_voice_profile_consumer
+from narrare.writing.voice_profile_adapter import (
+    KBEntityVoiceProfileProvider,
+    make_voice_profile_consumer,
+)
 from narrare_core.profiles.contracts import VoiceProfileConsumer
 from narrare_core.writing.context_models import KBEntity
 
@@ -76,3 +79,45 @@ class TestBackendVoiceProfileAdapter:
 
         assert "confidence: 0.42" in generation.formatted_voice_profiles
         assert checking[0].speech_summary.endswith("confidence: 0.42")
+
+    @pytest.mark.asyncio
+    async def test_low_confidence_character_voice_preserves_voice_metrics(self) -> None:
+        """Low-confidence profile reconstruction must keep WRITE-010 metrics."""
+        provider = KBEntityVoiceProfileProvider(
+            entities=[
+                KBEntity(
+                    entity_id="char-elena",
+                    entity_type="character",
+                    name="Elena",
+                    content="Elena is a precise scholar.",
+                    confidence=0.42,
+                    metadata={
+                        "speech": {
+                            "dialect": "formal academic",
+                            "voice_analysis": {
+                                "formality": 0.8,
+                                "voice_metrics": {
+                                    "avg_sentence_length": 14.5,
+                                    "sentence_length_std": 2.0,
+                                    "type_token_ratio": 0.72,
+                                    "avg_syllables_per_word": 1.9,
+                                    "contraction_rate": 0.05,
+                                    "verbal_tic_frequency": {"indeed": 0.2},
+                                    "punctuation_profile": {"semicolon": 0.3},
+                                },
+                            },
+                        },
+                    },
+                ),
+            ],
+        )
+
+        profiles = await provider.get_character_voices(uuid4())
+
+        assert len(profiles) == 1
+        profile = profiles[0]
+        assert "confidence: 0.42" in profile.speech_summary
+        assert profile.voice_metrics is not None
+        assert profile.voice_metrics.avg_sentence_length == 14.5
+        assert profile.voice_metrics.verbal_tic_frequency == {"indeed": 0.2}
+        assert profile.voice_metrics.punctuation_profile == {"semicolon": 0.3}

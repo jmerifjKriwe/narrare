@@ -143,6 +143,18 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "Character voice analysis sample text.",
         },
     ),
+    # ADR-057 D3 / WRITE-010: voice_check is the second VOICE context_mode
+    # (a flag+score checker, distinct from the character_voice profiler). It
+    # shares LLMIntent.VOICE; the runtime path resolves the governed
+    # analysis/voice_check template via Mode 1 + CharacterVoiceCheckerAgent.
+    (
+        "analysis",
+        "voice_check",
+        LLMIntent.VOICE,
+        {
+            "chapter_text": "Voice check dialogue sample text.",
+        },
+    ),
     (
         "analysis",
         "summarize",

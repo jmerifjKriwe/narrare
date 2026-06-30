@@ -137,6 +137,25 @@ describe("editorStore", () => {
     expect(useEditorStore.getState().generationPanelOpen).toBe(true);
   });
 
+  // --- Voice Check panel (WRITE-010) — mirrors the CharacterVoice toggle ---
+
+  it("toggles voice-check panel open/closed", () => {
+    useEditorStore.setState({ voiceCheckPanelOpen: false });
+    expect(useEditorStore.getState().voiceCheckPanelOpen).toBe(false);
+    useEditorStore.getState().toggleVoiceCheckPanel();
+    expect(useEditorStore.getState().voiceCheckPanelOpen).toBe(true);
+    useEditorStore.getState().toggleVoiceCheckPanel();
+    expect(useEditorStore.getState().voiceCheckPanelOpen).toBe(false);
+  });
+
+  it("opening voice-check panel closes the other right panels (mutual exclusion)", () => {
+    useEditorStore.setState({ characterVoicePanelOpen: true, voiceCheckPanelOpen: false });
+    useEditorStore.getState().toggleVoiceCheckPanel();
+    expect(useEditorStore.getState().voiceCheckPanelOpen).toBe(true);
+    // closeRightPanels must clear the sibling voice analysis panel.
+    expect(useEditorStore.getState().characterVoicePanelOpen).toBe(false);
+  });
+
   it("updateChapterWordCount updates the specified chapter", () => {
     const chapters: ChapterSummary[] = [
       {

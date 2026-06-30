@@ -2366,6 +2366,53 @@
         }
       }
     },
+    "/api/v1/analysis/voice-check/{chapter_id}": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Analyze Voice Check",
+        "description": "SSE stream for checking a chapter's dialogue against voice profiles.\n\n**SSE Event Stream:**\n\n1. ``\"progress\"`` event with pipeline status.\n2. One ``\"result\"`` event per speaking character.\n3. ``\"done\"`` event (``is_final=True``).\n4. ``data: [DONE]`` termination signal.\n\nOn failure, an ``\"error\"`` event (``is_final=True``) precedes the\n``[DONE]`` sentinel.",
+        "operationId": "analyze_voice_check_api_v1_analysis_voice_check__chapter_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/embeddings/status/{novel_id}": {
       "get": {
         "tags": [

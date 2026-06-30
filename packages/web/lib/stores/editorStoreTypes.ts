@@ -37,6 +37,7 @@ export interface EditorState {
   povPanelOpen: boolean;
   coreferencePanelOpen: boolean;
   characterVoicePanelOpen: boolean;
+  voiceCheckPanelOpen: boolean;
 
   setActiveChapterId: (id: string | null) => void;
   setActiveVolumeId: (id: string | null) => void;
@@ -72,4 +73,5 @@ export interface EditorState {
   togglePovPanel: () => void;
   toggleCoreferencePanel: () => void;
   toggleCharacterVoicePanel: () => void;
+  toggleVoiceCheckPanel: () => void;
 }

@@ -3,11 +3,7 @@
   "description": "Ratcheted baseline for Review-03 AI stabilization gates + INFRA-012 prompt governance. Existing debt may decrease; growth requires ADR/user-approved baseline update.",
   "prompt_structure_warnings": [],
   "adoption_debt": [
-    "writing | inline_fallback_count | 1",
-    "analysis | voice_check | not_adopted",
-    "analysis | voice_check | runtime | final_validation | missing",
-    "analysis | voice_check | runtime | kb_suggested | not_applicable",
-    "analysis | voice_check | runtime | preference_enrichment | missing"
+    "writing | inline_fallback_count | 1"
   ],
   "prompt_integrity_findings": [
     "PROMPT-VARS | packages/core/narrare_core/prompts/variable_registry.py | Dead variable(s) in SYSTEM_VARS \u2014 registered but never used in any prompt template: feedback_text, mode, style_constraints"
