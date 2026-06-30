@@ -24,7 +24,7 @@ jump directly into implementation — you always analyse, discover, and validate
 
 ### Core Principles (non-negotiable)
 
-1. **Code Knowledge Graph FIRST** — Always query the graph before Read/Glob/Grep
+1. **Graph-assisted code exploration FIRST** — Always query available graph tools before Read/Glob/Grep
 2. **Spec-first** — No code before an approved spec, ADR, or contract
 3. **Layer ordering** — Core → Backend → Frontend → Platform → Docs
 4. **Approval gates** — Each stage gate must pass before the next can start
@@ -41,7 +41,7 @@ These constraints govern every session. Violations are process violations.
 
 | # | Constraint | Source |
 |---|-----------|--------|
-| 1 | Query code graph BEFORE Read/Glob/Grep | AGENTS.md |
+| 1 | Query available code graphs BEFORE Read/Glob/Grep | AGENTS.md |
 | 2 | Spec/ADR/Contract must exist BEFORE implementation | architectural-discipline.md §0 |
 | 3 | No workarounds — build proper or don't build | architectural-discipline.md §4 |
 | 4 | Root cause analysis before any fix (2× "Why?") | architectural-discipline.md §1 |
@@ -73,7 +73,7 @@ SessionOpening → Analyze → Discover → Propose → Execute → Validate →
 **Entrance check before any work begins:**
 1. Read `CURRENT_STATE.md` — verify freshness
 2. Read `questions/INDEX.md` — any 🔴 blocking questions?
-3. Query `code-review-graph_get_minimal_context_tool` — graph health check
+3. Query available graph tools — health check (try `list_graph_stats_tool` or `search_graph`)
 4. Check `git status` — clean working tree?
 5. Ask: "What are we working on today?"
 
@@ -93,8 +93,8 @@ If no → stay in Analyze. If yes → proceed to Discover.
 
 **Goal:** Gather all relevant context. Map the affected code.
 
-1. Query code graph for all affected files, functions, and classes
-2. Use `semantic_search_nodes_tool` / `query_graph_tool` — NOT grep/glob first
+1. Query available code graphs for all affected files, functions, and classes
+2. Use available graph tools — NOT grep/glob first
 3. Identify community boundaries, bridge nodes, impact radius
 4. Read only the specific sections needed (graph output first)
 5. Check existing tests for coverage patterns
@@ -260,22 +260,22 @@ If a bash command is denied:
 
 ## Code Knowledge Graph Discipline
 
-**This is the PRIMARY way to understand code.**
+**Graph tools are preferred over raw file scanning.**
 
-| Need | Tool | NOT |
-|------|------|-----|
-| Find code | `semantic_search_nodes_tool` | Grep |
-| Who calls X? | `query_graph_tool callers_of` | Read + scan |
-| Impact analysis | `get_impact_radius_tool` | Manual tracing |
-| Architecture | `get_architecture_overview_tool` | Directory listing |
-| Review changes | `detect_changes_tool` | Reading full files |
-| Tests for X | `query_graph_tool tests_for` | Glob |
-| Quick context | `get_minimal_context_tool` | Multiple reads |
+| Need | code-review-graph | codebase-memory-mcp | NOT |
+|------|-------------------|---------------------|-----|
+| Find code | `semantic_search_nodes_tool` | `search_graph(query=...)` | Grep |
+| Who calls X? | `query_graph_tool callers_of` | `trace_path(direction="inbound")` | Read + scan |
+| Impact analysis | `get_impact_radius_tool` | `trace_path()` / `detect_changes()` | Manual tracing |
+| Architecture | `get_architecture_overview_tool` | `get_architecture()` | Directory listing |
+| Review changes | `detect_changes_tool` | `detect_changes()` | Reading full files |
+| Tests for X | `query_graph_tool tests_for` | `search_graph(label="Test")` | Glob |
+| Quick context | `get_minimal_context_tool` | `search_graph()` | Multiple reads |
 
 **Fallback to Read/Glob/Grep ONLY when:**
-- The graph returns no results for the query
-- The graph MCP server is unavailable (known risk — documented)
-- You need to read specific file content (after graph has identified the file)
+- Neither graph system returns results for the query
+- Both graph MCP servers are unavailable (known risk — documented)
+- You need to read specific file content (after graph tools have identified the file)
 
 ---
 
@@ -366,4 +366,4 @@ Coordinator: Stage 1 (Analyze)
 
 > **Maintained by:** Architecture Specialist
 > **Updates:** When the coordinator workflow changes or new stages are added
-> **Source docs:** `AGENTS.md`, `CONSTRAINTS.md`, `architectural-discipline.md`, `code-graph-first.md`
+> **Source docs:** `AGENTS.md`, `CONSTRAINTS.md`, `architectural-discipline.md`, `graph-exploration.md`

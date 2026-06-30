@@ -97,7 +97,7 @@ Extracted context for the Narrare AI writing tool project.
 |------|--------|----------|-------------|
 | `architectural-discipline.md` | Project conventions | critical | Quality mandate, root cause first, no workarounds, sustainability check, streaming required |
 | `architecture-rules.md` | CONSTRAINTS.md (766 lines) | critical | 23 machine-enforced rules with enforcement summary and approved exceptions |
-| `code-graph-first.md` | AGENTS.md (MCP Tools) | critical | ALWAYS query graph before Read/Glob/Grep; tool selection guide, workflow, fallback rules |
+| `graph-exploration.md` | AGENTS.md (MCP Tools) | critical | Choose the right graph tool; Decision Matrix; fallback rules |
 | `prompt-standards.md` | prompt-standards.md (641 lines) | high | Prompt quality standards: system prompt consistency, evaluation framework, template patterns, ADR-037 manifest conformance |
 | `python-standards.md` | coding-standards.md (Python) | high | Python 3.14 typing, naming, async, error handling, DI, SQLAlchemy, docstrings |
 | `typescript-standards.md` | coding-standards.md (TypeScript) | high | React conventions, Tailwind v4, API client, i18n, RULE-15 (no middleware.ts) |
@@ -107,7 +107,7 @@ Extracted context for the Narrare AI writing tool project.
 ## Priority Reading Order
 
 1. `constraints/rules.md` + `lookup/current-state.md` — every session
-2. `standards/architectural-discipline.md` + `standards/architecture-rules.md` + `standards/code-graph-first.md` — architectural quality & graph discipline
+2. `standards/architectural-discipline.md` + `standards/architecture-rules.md` + `standards/graph-exploration.md` — architectural quality & graph discipline
 3. `concepts/glossary.md` — when unclear on terminology
 4. `domain/architecture-concepts.md` + `domain/module-map.md` — before creating files or understanding architecture
 5. `standards/python-standards.md` / `standards/typescript-standards.md` — before writing code

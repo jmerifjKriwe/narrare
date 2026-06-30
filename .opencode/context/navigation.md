@@ -36,7 +36,7 @@ New here? → `.opencode/context/narrare-dev/navigation.md`
 ## Priority Reading Order
 
 1. `narrare-dev/lookup/current-state.md` + `narrare-dev/constraints/rules.md` — every session
-2. `narrare-dev/standards/architectural-discipline.md` + `narrare-dev/standards/code-graph-first.md` — quality gates
+2. `narrare-dev/standards/architectural-discipline.md` + `narrare-dev/standards/graph-exploration.md` — quality gates
 3. `narrare-dev/domain/architecture-concepts.md` + `narrare-dev/domain/module-map.md` — before creating files
 4. `narrare-dev/standards/python-standards.md` or `narrare-dev/standards/typescript-standards.md` — before writing code
 

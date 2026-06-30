@@ -5,24 +5,26 @@
 > only — if any summary contradicts CONSTRAINTS.md, the CONSTRAINTS rule wins.
 > See CONSTRAINTS.md §8 for the full SSOT hierarchy.
 
-## Code Knowledge Graph — MANDATORY
+## Code Knowledge Graphs
 
-This project has a code knowledge graph via code-review-graph MCP tools.
-**ALWAYS query the graph BEFORE using Read/Glob/Grep.**
+This project uses up to two code knowledge graph systems — `code-review-graph` MCP tools
+and `codebase-memory-mcp` — depending on what's available in your environment.
+**Always query available graph tools BEFORE using Read/Glob/Grep**, and choose the
+right tool for each task using the Decision Matrix in the full standard.
 
-| Need | Use | NOT |
-|------|-----|-----|
-| Find code | `code-review-graph_semantic_search_nodes_tool` | Grep |
-| Who calls X? | `code-review-graph_query_graph_tool callers_of` | Read + scan |
-| Impact analysis | `code-review-graph_get_impact_radius_tool` | Manual tracing |
-| Architecture | `code-review-graph_get_architecture_overview_tool` | Directory listing |
-| Review changes | `code-review-graph_detect_changes_tool` | Reading full files |
-| Tests for X | `code-review-graph_query_graph_tool tests_for` | Glob |
-| Quick context | `code-review-graph_get_minimal_context_tool` | Multiple reads |
+| Need | Use (code-review-graph) | Use (codebase-memory-mcp) | NOT |
+|------|------------------------|---------------------------|-----|
+| Find code | `semantic_search_nodes_tool` | `search_graph(query=...)` | Grep |
+| Who calls X? | `query_graph_tool callers_of` | `trace_path(direction="inbound")` | Read + scan |
+| Impact analysis | `get_impact_radius_tool` | `trace_path()` / `detect_changes()` | Manual tracing |
+| Architecture | `get_architecture_overview_tool` | `get_architecture()` | Directory listing |
+| Review changes | `detect_changes_tool` | `detect_changes()` | Reading full files |
+| Tests for X | `query_graph_tool tests_for` | `search_graph(label="Test")` | Glob |
+| Quick context | `get_minimal_context_tool` | `search_graph()` | Multiple reads |
 
-Read/Glob/Grep are LAST RESORTS — only when the graph lacks the data.
+Read/Glob/Grep are LAST RESORTS — only when neither graph tool has the needed data.
 
-Full standard: `.opencode/context/narrare-dev/standards/code-graph-first.md`
+Full standard: `.opencode/context/narrare-dev/standards/graph-exploration.md`
 
 ---
 
@@ -272,25 +274,26 @@ Für spezifische Arbeiten — lies die passende AGENTS.md:
 | Project Vision | `docs/reference/project-vision.md` |
 
 <!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
+## MCP Tools: Graph Exploration (code-review-graph + codebase-memory-mcp)
 
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
+**IMPORTANT: This project uses up to two code knowledge graph systems depending on
+your environment. ALWAYS check which graph tools are available and use them BEFORE
+using Grep/Glob/Read to explore the codebase.** Graph tools are faster, cheaper
+(fewer tokens), and give you structural context (callers, dependents, test coverage)
+that file scanning cannot. When one graph system lacks the data you need, try the
+other before falling back to file tools. See the Decision Matrix in the full standard.
 
 ### When to use graph tools FIRST
 
-- **Exploring code**: `code-review-graph_semantic_search_nodes_tool` or `code-review-graph_query_graph_tool` instead of Grep
-- **Understanding impact**: `code-review-graph_get_impact_radius_tool` instead of manually tracing imports
-- **Code review**: `code-review-graph_detect_changes_tool` + `code-review-graph_get_review_context_tool` instead of reading entire files
-- **Finding relationships**: `code-review-graph_query_graph_tool` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `code-review-graph_get_architecture_overview_tool` + `code-review-graph_list_communities_tool`
+- **Exploring code**: `code-review-graph_semantic_search_nodes_tool` / `codebase-memory-mcp_search_graph(query=...)` — NOT Grep
+- **Understanding impact**: `code-review-graph_get_impact_radius_tool` / `codebase-memory-mcp_trace_path()` — NOT manual tracing
+- **Code review**: `code-review-graph_detect_changes_tool` / `codebase-memory-mcp_detect_changes()` — NOT reading entire files
+- **Finding relationships**: `code-review-graph_query_graph_tool` / `codebase-memory-mcp_query_graph` — NOT grep
+- **Architecture questions**: `code-review-graph_get_architecture_overview_tool` / `codebase-memory-mcp_get_architecture()`
 
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
+Fall back to the **other** graph tool first, then Grep/Glob/Read **only** when neither graph tool covers what you need.
 
-### Key Tools
+### Key Tools (code-review-graph)
 
 | Tool | Use when |
 | ------ | ---------- |
@@ -303,10 +306,22 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 | `code-review-graph_get_architecture_overview_tool` | Understanding high-level codebase structure |
 | `code-review-graph_refactor_tool` | Planning renames, finding dead code |
 
+### Key Tools (codebase-memory-mcp)
+
+| Tool | Use when |
+| ------ | ---------- |
+| `codebase-memory-mcp_search_graph(query=...)` | Finding functions/classes by name or semantic search |
+| `codebase-memory-mcp_trace_path()` | Tracing callers, callees, data flow |
+| `codebase-memory-mcp_query_graph()` | Complex Cypher queries for multi-hop patterns |
+| `codebase-memory-mcp_get_architecture()` | High-level project structure and clusters |
+| `codebase-memory-mcp_detect_changes()` | Detecting code changes and their impact |
+| `codebase-memory-mcp_get_code_snippet()` | Reading source for a specific function/class |
+| `codebase-memory-mcp_search_code()` | Graph-augmented search with structural enrichment |
+
 ### Workflow
 
-1. The graph does NOT auto-updates on file changes. You MUST run `code-review-graph_build_or_update_graph_tool` or
+1. The code-review-graph does NOT auto-update on file changes. You MUST run `code-review-graph_build_or_update_graph_tool` or
 `code-review-graph_detect_changes_tool` to update the graph with recent edits before querying it.
-2. Use `code-review-graph_detect_changes_tool` for code review.
-3. Use `code-review-graph_get_affected_flows_tool` to understand impact.
-4. Use `code-review-graph_query_graph_tool` pattern="tests_for" to check coverage.
+2. Use `code-review-graph_detect_changes_tool` / `codebase-memory-mcp_detect_changes()` for code review.
+3. Use `code-review-graph_get_affected_flows_tool` / `codebase-memory-mcp_trace_path()` to understand impact.
+4. Use `code-review-graph_query_graph_tool` pattern="tests_for" / `codebase-memory-mcp_search_graph(label="Test")` to check coverage.

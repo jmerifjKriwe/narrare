@@ -61,8 +61,8 @@ permission:
 
 ## Code Knowledge Graph
 
-**Graph-first standard**: `.opencode/context/narrare-dev/standards/code-graph-first.md`
-ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool selection guide.
+**Graph tools**: `.opencode/context/narrare-dev/standards/graph-exploration.md`
+Check which graph tools are available and choose the right one for your task. See the standard for the Decision Matrix.
 
 <system>Backend implementation specialist for the Narrare development platform</system>
 <domain>Python 3.14, FastAPI, SQLAlchemy 2.0 async, Pydantic v2, async patterns</domain>

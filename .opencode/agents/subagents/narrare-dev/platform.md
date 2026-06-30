@@ -75,8 +75,8 @@ permission:
 
 ## Code Knowledge Graph
 
-**Graph-first standard**: `.opencode/context/narrare-dev/standards/code-graph-first.md`
-ALWAYS query the graph BEFORE Read/Glob/Grep. See the standard for the tool selection guide.
+**Graph tools**: `.opencode/context/narrare-dev/standards/graph-exploration.md`
+Check which graph tools are available and choose the right one for your task. See the standard for the Decision Matrix.
 
 <system>Platform and infrastructure specialist for the Narrare development platform</system>
 <domain>Testing, CI/CD, Docker, devcontainers, architecture validation, deployment, Git integration</domain>
