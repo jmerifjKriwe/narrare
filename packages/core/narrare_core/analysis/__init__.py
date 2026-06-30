@@ -49,6 +49,15 @@ from narrare_core.analysis.types import (
     SentimentOverview,
     VADScores,
 )
+from narrare_core.analysis.voice_check_scoring import (
+    VoiceCheckBand,
+    VoiceCheckScore,
+    VoiceCheckScorer,
+    band_for_score,
+    blend_scores,
+    metric_delta_subscore,
+    voice_metric_distances,
+)
 from narrare_core.analysis.voice_merge import merge_character_voice
 from narrare_core.analysis.voice_metrics import VoiceMetricsAnalyzer
 from narrare_core.analysis.voice_types import AttributedUtterance
@@ -84,7 +93,14 @@ __all__ = [
     "TemporalIssueSeverity",
     "TemporalOrderingCheck",
     "VADScores",
+    "VoiceCheckBand",
+    "VoiceCheckScore",
+    "VoiceCheckScorer",
     "VoiceMetricsAnalyzer",
+    "band_for_score",
+    "blend_scores",
     "merge_character_voice",
+    "metric_delta_subscore",
     "run_deterministic_checks",
+    "voice_metric_distances",
 ]
