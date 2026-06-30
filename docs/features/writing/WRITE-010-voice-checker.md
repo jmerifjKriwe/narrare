@@ -8,178 +8,291 @@ mvp: false
 ui_tooltip: "Check if dialogue matches each character's established voice."
 ui_help_short: \
   |   Ensure characters sound like themselves. The Voice Checker analyzes
-  |   dialogue against character profiles from your Knowledge Base, flagging
-  |   inconsistencies and suggesting improvements to match each character's
-  |   unique speech patterns.
+  |   dialogue against character voice profiles from your Knowledge Base,
+  |   flagging inconsistencies and scoring how well each character matches
+  |   their established speech patterns.
 ui_help_long: |
   ## Voice Consistency Checker
 
   Characters should sound like themselves — every time they speak. The Voice
-  Checker ensures dialogue matches each character's established voice.
+  Checker ensures the dialogue in a chapter matches each character's
+  established voice.
 
   **What it checks:**
 
-  **Voice profile elements:**
-  - Formal vs casual language
+  For each speaking character in the chapter, it compares their dialogue
+  against their stored voice profile (from Character Voice Profiling,
+  ANAL-008):
+
+  - Formal vs casual language (register)
   - Vocabulary level and complexity
   - Sentence structure preferences
-  - Verbal tics and catchphrases
+  - Verbal tics and catchphrases (present where expected, absent where not)
+  - Punctuation and formatting habits
   - Emotional register and expression
-  - Cultural/regional markers
 
   **How it works:**
-  1. Open a chapter with dialogue
-  2. Click "Check Voice" in toolbar
-  3. For each speaking character:
-     - AI analyzes their dialogue in the chapter
-     - Compares against their KB voice profile
-     - Flags inconsistencies and problematic passages
-  4. Results show:
-     - Overall match score (0-100%)
-     - Specific lines that don't match
-     - Suggestions for improvement
-  5. Click any flagged line to see:
-     - Why it doesn't match
-     - How to fix it
-     - Suggested rewrite
+  1. Open a chapter with dialogue in the Editor
+  2. Click "Check Voice" in the analysis toolbar
+  3. Analysis runs (5–15 seconds)
+  4. Results panel shows, per speaking character:
+     - Overall match score (0–100%)
+     - Color coding: green (good), yellow (fair), red (poor)
+     - Specific dialogue lines flagged as inconsistent
+     - A short reason for each flag
+  5. Click any flagged line to see why it doesn't match
+
+  The checker **flags and scores** — it does not rewrite dialogue. To fix a
+  flagged line, select it and use Rewrite (WRITE-004), which can align the
+  line to the character's voice profile.
 
   **Voice profiles:**
 
-  Characters need voice profiles in the Knowledge Base. The more complete the
-  profile, the better the checking:
-  - Speech examples (what they say)
-  - Vocabulary (words they use/avoid)
-  - Verbal tics ("You know?", "Like", etc.)
-  - Formality level (how they speak)
-  - Background influences (education, region, culture)
+  Characters need a voice profile produced by Character Voice Profiling
+  (ANAL-008). The more complete the profile, the better the checking. A
+  character without a profile is skipped with a "no profile" note (not an
+  error).
 
   **Scores explained:**
-  - 90-100%: Excellent match — character sounds consistent
-  - 70-89%: Good match — minor inconsistencies
-  - 50-69%: Fair match — several problematic lines
+  - 90–100%: Excellent match — character sounds consistent
+  - 70–89%: Good match — minor inconsistencies
+  - 50–69%: Fair match — several flagged lines
   - <50%: Poor match — character doesn't sound like themselves
 
   **Best practices:**
-  - Create detailed voice profiles in KB first
+  - Profile characters with Character Voice Profiling first (ANAL-008)
   - Use during revision, not first draft
   - Low scores don't mean bad writing — intentional voice changes are valid
-  - Update voice profiles as characters evolve
+  - Re-profile after major dialogue revisions, then re-check
 
   The Voice Checker helps consistency, not creativity. If a character
   intentionally speaks differently in a scene (emotional, disguised, etc.),
   that's your call as the author.
 ui_available_in: [editor]
 
-service: writing/voice_checker_service.py
-contract: writing/contracts.py#VoiceCheckerProtocol
-router: writing/router.py
-prompt: core/prompts/_bundled/analysis/en/voice
-requires: [INFRA-001, KB-001, ANAL-008]
+service: analysis/voice_check_service.py
+contract: analysis/contracts_voice_check.py#CharacterVoiceCheckerServiceProtocol
+router: analysis/router_voice_check.py
+prompt: core/prompts/_bundled/analysis/en/voice_check/system.md
+requires: [INFRA-001, INFRA-002, KB-001, ANAL-008]
 ---
 
 # WRITE-010 — Voice Consistency Checker
 
+> **Architecture authority:** [ADR-057](../../architecture/decisions/ADR-057-voice-check-checking-path-contract.md)
+> (Voice-Check Checking-Path Contract & `voice_check` Prompt Surface). The
+> technical sections below implement that ADR. Status is `planned` — spec
+> authored, implementation gated on user review of ADR-057.
+
 ## What it does
 
-Analyzes chapter dialogue against character voice profiles from Knowledge Base.
-Flags inconsistencies, provides match scores, and suggests rewrites to align
-dialogue with each character's established speech patterns.
+Checks a chapter's dialogue against each speaking character's stored voice
+profile (produced by ANAL-008) and reports a per-character match score plus
+specific flagged lines with reasons. It is **read-only** — it checks; it does
+not profile and does not write to the Knowledge Base. It **flags and scores**;
+it does not generate rewrite suggestions (rewrite reuse of WRITE-004 on a
+flagged line is a separate, composable step — ADR-057 Decision 5).
 
 ## Why it exists
 
 Readers notice when characters don't sound like themselves. A formal professor
-suddenly using slang, a teenager talking like a Victorian — these breaks
-pull readers out of the story. Voice checking catches these inconsistencies
-before readers do.
+suddenly using slang, a teenager talking like a Victorian — these breaks pull
+readers out of the story. Voice checking catches these inconsistencies before
+readers do, using the deterministic metrics + qualitative profile ANAL-008
+already computed and stored.
 
 ## How it works (User perspective)
 
-1. Ensure characters have voice profiles in Knowledge Base
-2. Open chapter with dialogue in Editor
-3. Click "Check Voice" in toolbar
-4. Analysis runs (5-15 seconds)
-5. Results panel shows:
-   - List of speaking characters
-   - Match score percentage for each
-   - Color coding: green (good), yellow (fair), red (poor)
-6. Click any character to see:
-   - Flagged dialogue lines
-   - Why each line doesn't match
-   - Suggested rewrites
-7. Apply suggestions or edit manually
+1. Profile characters with Character Voice Profiling (ANAL-008) first
+2. Open a chapter with dialogue in the Editor
+3. Click "Check Voice" in the analysis toolbar
+4. Analysis runs (5–15 seconds)
+5. Results panel shows, per speaking character:
+   - Match score percentage + color (green/yellow/red)
+   - Flagged dialogue lines with a short reason each
+6. Click any flagged line to see why it doesn't match
+7. To fix a flagged line, select it and run Rewrite (WRITE-004)
 
-Low scores don't always mean errors — intentional voice changes are valid.
-Use your judgment as the author.
+Characters without a stored profile are listed as "no profile" (skipped, not
+an error). Low scores don't always mean errors — intentional voice changes
+are valid. Use your judgment as the author.
 
 ## How it works (Technical)
 
-**Entry point:** `writing/router.py` → `POST /api/v1/writing/voice-check/{chapter_id}`
-**Service:** `VoiceCheckerService.check()` in `writing/voice_checker_service.py`
-**Contract:** `VoiceCheckerProtocol` in `writing/contracts.py`
-**LLM Intent:** `LLMIntent.VOICE`
+> Mirrors the established analysis pattern (ANAL-003/004/005/008):
+> deterministic measurement + `NarrareAgent` structured output + governed EN
+> template + SSE router + panel. Per ADR-021 + ADR-055 + ADR-057.
 
-**Voice profile structure** (from KB-001):
+**Entry point:** `analysis/router_voice_check.py` → `POST /api/v1/analysis/voice-check/{chapter_id}`
+(chapter-scoped; mirrors coreference's `/analysis/coreference/{chapter_id}`,
+vs character_voice's novel-scoped `/analysis/character-voice/{novel_id}`)
+**Service:** `CharacterVoiceCheckerService.check()` in `analysis/voice_check_service.py`
+**Contract:** `CharacterVoiceCheckerServiceProtocol` in `analysis/contracts_voice_check.py`
+**Agent:** `CharacterVoiceCheckerAgent` (`core/agents/character_voice_checker_agent.py`, `NarrareAgent` with structured output, ONE LLM call)
+**Scoring:** pure Core module `core/analysis/voice_check_scoring.py` (deterministic delta + blend)
+**LLM Intent:** `LLMIntent.VOICE` (context_mode `voice_check`; ADR-057 adds it to the VOICE route)
+**Prompt:** PromptComposer Mode 1 — `_bundled/analysis/en/voice_check/system.md` (governed EN template; ADR-054)
+
+> **Module home: `analysis/`, not `writing/`.** WRITE-010 is a read-only check
+> (deterministic delta + LLM qualitative judgment; zero chapter mutation) that
+> reuses the analysis Foundation (`DialogueParser`, `VoiceMetricsAnalyzer`).
+> It is the same shape as the ANAL-008 sibling. `writing/` is reserved for
+> generation/transform operations (WRITE-001..009). The feature keeps its ID
+> `WRITE-010` and its "Writing" placement in the registry (user-facing
+> taxonomy: a revision-time aid run from the editor); the implementation lives
+> in `analysis/` for module cohesion. See ADR-057 Decision 4.
+
+### Checking-path data contract (ADR-057 Decision 1 — closes ADR-055 Risk #1)
+
+The checker reads each character's stored metrics **through the ADR-050
+consumer contract**, not via direct KB access. `CharacterVoiceProfile` is
+extended with one optional field that the consumer surfaces on the checking
+path:
+
 ```python
-class VoiceProfile:
-    character_id: UUID
-    formality: float  # 0-1, casual to formal
-    vocabulary_level: str  # simple, moderate, complex
-    sentence_structure: str  # short, medium, long, varied
-    verbal_tics: list[str]  # "You know?", etc.
-    emotional_range: str  # restricted, moderate, expressive
-    cultural_markers: list[str]  # regional, social
-    examples: list[str]  # speech samples
+# packages/core/narrare_core/profiles/models.py  (ADR-057)
+from dataclasses import dataclass
+from narrare_core.kb.schemas.character import VoiceMetrics
+
+@dataclass(frozen=True)
+class CharacterVoiceProfile:
+    character_id: str
+    name: str
+    speech_summary: str                       # unchanged — rendered into generation
+    updated_at: str | None = None
+    is_fresh: bool = True
+    # ADR-057: surfaced on the checking path only. None unless the character's
+    # speech.voice_analysis exists (ANAL-008). NEVER rendered into generation.
+    voice_metrics: VoiceMetrics | None = None
 ```
 
-**Analysis pipeline:**
-1. **Extract dialogue** from chapter text
-2. **Assign to characters** (by name, context, or attribution)
-3. **Compare each line** to character's voice profile:
-   - Formality match
-   - Vocabulary appropriateness
-   - Sentence structure consistency
-   - Verbal tic presence/absence
-   - Cultural marker alignment
-4. **Calculate match score** (weighted average of elements)
-5. **Flag outliers** (lines with low individual scores)
-6. **Generate suggestions** for flagged lines
+- `VoiceProfileConsumer.assemble_for_checking()` (ADR-050) returns
+  `list[CharacterVoiceProfile]` where each profile now carries `voice_metrics`
+  when ANAL-008 has profiled the character. The signature is unchanged.
+- `build_character_voice_profile()` (in `core/profiles/_voice_extraction.py`)
+  parses `speech.voice_analysis.voice_metrics` and populates the field.
+- The generation path (`assemble_for_generation` →
+  `ProjectWritingProfile.formatted_voice_profiles`) is **unchanged** — it
+  renders `speech_summary` and never reads `voice_metrics` (the ADR-055
+  "metrics never reach generation" constraint is preserved).
 
-**Scoring:**
-- Overall score: 0-100% per character
-- Line-level scores: individual dialogue passages
-- Thresholds: >90% excellent, 70-89% good, 50-69% fair, <50% poor
+This is the implementation that makes ADR-055 Risk #1's tracked deferral and
+the ANAL-008 spec's checking-path claim actually true.
 
-**Suggestion generation:**
-For flagged lines, AI generates rewrite that:
-- Preserves meaning/intent
-- Aligns with voice profile
-- Maintains scene context
-- Provides explanation for changes
+### Scoring: hybrid deterministic-delta + LLM qualitative (ADR-057 Decision 2, ADR-021)
+
+```python
+# Deterministic delta — pure Core (core/analysis/voice_check_scoring.py)
+#   current metrics (VoiceMetricsAnalyzer on this chapter's dialogue)
+#   vs. stored metrics (CharacterVoiceProfile.voice_metrics via the consumer)
+# → normalized per-metric distance + aggregate metric-delta sub-score
+
+# LLM qualitative judgment (CharacterVoiceCheckerAgent — ONE call)
+#   consumes: chapter dialogue + stored DESCRIPTIVE profile + metric-delta
+#   produces: per-character qualitative sub-score + flagged lines + reasons
+
+# Overall per-character match score (0–100%) = deterministic BLEND
+#   of the metric-delta sub-score + agent qualitative sub-score
+#   (the blend is pure logic — reproducible, fully unit-testable)
+```
+
+Line-level flags (specific dialogue lines + reasons) come from the agent.
+Thresholds: green ≥90%, yellow 70–89%, fair 50–69%, red <50%. A character
+without a stored profile yields a graceful "no profile" result (RULE-11).
+
+### Pipeline
+
+```
+chapter
+  → DialogueParser              (utterances + tag attribution + confidence)
+                                [Core: core/analysis/dialogue_parser.py — REUSED from ANAL-008]
+  → VoiceMetricsAnalyzer        (current per-character deterministic metrics)
+                                [Core: core/analysis/voice_metrics.py — REUSED, ADR-021]
+  → VoiceProfileConsumer.       (stored per-character profiles incl. voice_metrics)
+    assemble_for_checking()     [Core contract: core/profiles/contracts.py — ADR-050, enriched ADR-057]
+  → voice_check_scoring         (deterministic delta: current vs stored, normalized)
+                                [Core: core/analysis/voice_check_scoring.py — NEW]
+  → CharacterVoiceCheckerAgent  (qualitative judgment + flagged lines + reasons,
+                                 consuming dialogue + stored DESCRIPTIVE profile
+                                 + metric-delta — ONE LLM call)
+                                [Core: core/agents/character_voice_checker_agent.py — NEW]
+  → voice_check_scoring (blend) (deterministic overall score per character)
+  → per-character result        (match score + flagged lines + reasons)
+```
+
+### Foundation (reused, not duplicated)
+
+WRITE-010 reuses the Layer-2 Foundation built for ANAL-008 — justified reuse,
+not duplication:
+
+| Component | Location | Reused from |
+|-----------|----------|-------------|
+| `DialogueParser` | `core/analysis/dialogue_parser.py` | ANAL-008 (ADR-055) |
+| `VoiceMetricsAnalyzer` | `core/analysis/voice_metrics.py` | ANAL-008 / ADR-021 |
+| `VoiceProfileConsumer` | `core/profiles/contracts.py` | ADR-050 (enriched ADR-057) |
+
+NEW for WRITE-010: `voice_check_scoring.py` (delta + blend),
+`character_voice_checker_agent.py` + `character_voice_checker_types.py`
+(checker agent).
+
+### Scope boundary (ADR-057 Decision 5)
+
+The checker **flags + scores** only. It does NOT produce rewrite suggestions
+(rewrite reuse of WRITE-004 on a flagged line is a separate, composable step).
+The checker agent's output type carries `flagged_lines` + `reasons` + `score`
+— never `suggested_rewrite`.
 
 ### Prerequisites
 
-The generation pipeline already injects `{{character_voice_profiles}}` into
-writing prompts as a preventive measure. This feature (WRITE-010) adds an
-active checking layer — it should read the same `KBEntity.metadata["speech"]`
-data and `_voice_profiles.py` extraction patterns.
+Requires ANAL-008 voice profiles (`speech.voice_analysis`) in the Knowledge
+Base. The generation pipeline already injects `{{character_voice_profiles}}`
+into writing prompts as a preventive measure; WRITE-010 adds an active
+checking layer that reads the same source via the consumer contract.
+
+## RULE-XX Compliance
+
+| Rule | Status | Evidence |
+|------|--------|----------|
+| RULE-02/02b | ✅ | `voice_check` prompt = PromptComposer Mode 1 (governed EN template); no inline f-string, no production fallback. |
+| RULE-03 | ✅ | `CharacterVoiceCheckerServiceProtocol` + agent Protocol + the `voice_metrics` model extension defined before implementation (ADR-057). |
+| RULE-04/06 | ✅ | Modularised: scoring ≠ agent ≠ service ≠ router; one responsibility per file. |
+| RULE-07 | ✅ | `analysis → profiles (consumer) → kb.schemas` read-direction only; checker reads via consumer contract, not KB directly. |
+| RULE-11 | ✅ | Character without `voice_analysis` → graceful "no profile"; stale profile surfaced with reduced confidence. |
+| RULE-13 | ✅ | SSE + non-streaming share the service interface. |
+| RULE-22 | ✅ | Cross-feature coherent: producer (ANAL-008) + generation consumer (unchanged) + checking consumer (enriched) defined together (CR-04). |
+| ADR-021 | ✅ | Deterministic metric-delta; LLM qualitative only. |
+| ADR-050 | ✅ | Reads via `VoiceProfileConsumer.assemble_for_checking()`. |
+| ADR-055 | ✅ | Closes Risk #1; reuses routeable VOICE + Foundation; metrics never reach generation. |
 
 ## Constraints & Edge Cases
 
-- Requires voice profile in KB (create via KB-002 or KB-001)
+- Requires an ANAL-008 voice profile in KB (create via Character Voice Profiling)
+- Character without a profile → graceful "no profile" result (not an error)
 - Poor profiles = poor checking (garbage in, garbage out)
 - Intentional voice changes may be flagged (author discretion)
-- Dialogue attribution errors affect accuracy
+- Dialogue attribution errors affect accuracy (the agent resolves ambiguity inline)
 - Very short dialogue (<10 lines) = unreliable scores
-- Sarcasm, irony, lies not detected (taken literally)
-- LLM availability required
+- Sarcasm, irony, lies not detected by metrics (the agent may surface these)
+- LLM availability required (metrics + delta are deterministic; the qualitative
+  judgment is not)
 
 ## Related Features
 
-- [KB-001](../kb/KB-001-entity-management.md) — Voice profiles in KB
-- [KB-002](../kb/KB-002-kb-session.md) — Create voice profiles via interview
-- [ANAL-008](../analysis/ANAL-008-voice-character.md) — Character voice analysis
-- [WRITE-006](WRITE-006-co-author.md) — Rewrite for voice consistency
+- [ANAL-008](../analysis/ANAL-008-voice-character.md) — Produces the voice profiles + metrics this checker reads
+- [ANAL-009](../analysis/ANAL-009-voice-drift.md) — Voice drift (will reuse the scoring delta primitive; its stale "map to SpeechPatterns" note is superseded by ADR-055/057)
+- [WRITE-004](WRITE-004-rewrite.md) — Rewrite a flagged line to align with the voice profile (composable, separate step)
+- [KB-001](../kb/KB-001-entity-management.md) — Stores the voice profiles (`speech.voice_analysis`)
+- [ADR-057](../../architecture/decisions/ADR-057-voice-check-checking-path-contract.md) — Checking-path + prompt-surface contract authority
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
+- `2026-06-30` — Spec rewritten against **ADR-057** (voice-check checking-path
+  contract + `voice_check` prompt surface). Replaced the earlier stale design
+  (writing/ paths, suggested-rewrites scope, hypothetical `VoiceProfile` that
+  did not match the live `SpeechPatterns` contract) with: hybrid flag+score
+  checker reusing the ANAL-008 Foundation; read-only; checking path through
+  the ADR-050 consumer contract via the `CharacterVoiceProfile.voice_metrics`
+  extension (closes ADR-055 Risk #1); `voice_check` context_mode; module home
+  `analysis/`. Status remains `planned` (implementation gated on user review
+  of ADR-057).

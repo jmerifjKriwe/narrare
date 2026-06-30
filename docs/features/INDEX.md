@@ -127,6 +127,15 @@
 > (static-verified; runtime evidence pending CI/integration). The earlier lossy
 > field-mapping (quotes in `body_language` etc.) was removed.
 
+> **WRITE-010 (Voice Consistency Checker):** Spec authored (2026-06-30) against
+> [ADR-057](../architecture/decisions/ADR-057-voice-check-checking-path-contract.md)
+> — the voice-check checking-path contract (extends `CharacterVoiceProfile` with
+> `voice_metrics`, surfaced via `VoiceProfileConsumer.assemble_for_checking` — no
+> KB bypass; closes ADR-055 Risk #1), hybrid deterministic-delta + LLM scoring
+> (ADR-021), new `voice_check` context_mode on the routeable `LLMIntent.VOICE`,
+> module home `analysis/`, flag+score scope (no rewrites). Status remains `planned`
+> — implementation gated on user review of ADR-057.
+
 ### Planning
 | ID | Feature | Status | MVP |
 |----|---------|--------|-----|
@@ -317,5 +326,5 @@ requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 
 ---
 
-> Last updated: 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
+> Last updated: 2026-06-30 — WRITE-010 (Voice Consistency Checker) spec authored against ADR-057 (checking-path contract + `voice_check` prompt surface; closes ADR-055 Risk #1); status remains `planned`. 2026-06-29 — ANAL-008 (Character Voice Profiling) → `stable` (implemented all layers; ADR-055 implemented); INFRA-007 (Background Tasks) and INFRA-012 (Prompt Governance Hardening) promoted to `stable`; WRITE-009 (Writer's Unblock Tools) → `stable`; ANAL-005 (Coreference Analysis) → `stable`; PROMPT-003 INDEX status corrected to `stable` (spec was already stable since 2026-06-22); PLAN-006 note updated (now has a frontend UI). CR-07 Follow-up v3 governance links (PROMPT-003/CR-AUFG-07-16, ONBOARD-001/CR-AUFG-07-17) retained. SET-005 remains `stable` (ADR-051). ADAPTER-001/002 remain planned, not implemented; Q-001/Q-002 stay adapter-spec blockers.
 > Features are specified before they are implemented — never after
