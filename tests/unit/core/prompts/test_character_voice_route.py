@@ -58,9 +58,11 @@ class TestVoiceIntentRouteability:
         config = ROUTE_CONFIGS[LLMIntent.VOICE]
         assert config.category == "analysis"
         assert config.default_mode == "character_voice"
-        # character_voice is the only governed mode now; author_voice /
-        # voice_drift are added by ANAL-007 / ANAL-009 later.
-        assert config.allowed_context_modes == frozenset({"character_voice"})
+        # character_voice is the default governed mode. ADR-057 D3 added a
+        # second governed context_mode, voice_check (a flag+score checker for
+        # WRITE-010); author_voice / voice_drift are added by ANAL-007 /
+        # ANAL-009 later. See test_voice_check_route.py for voice_check coverage.
+        assert config.allowed_context_modes == frozenset({"character_voice", "voice_check"})
 
 
 class TestVoiceRouteResolution:

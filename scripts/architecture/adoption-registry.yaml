@@ -87,6 +87,12 @@ prompt_path_compliance:
   # then the mode tracks as governed adoption debt (static-verified, runtime
   # pending) — see features.analysis.modes.character_voice.
   analysis/character_voice: true
+  # ADR-057 D3: voice_check (WRITE-010) prompt surface is governed Mode 1
+  # (a flag+score checker, distinct from the character_voice profiler). Runtime
+  # adoption evidence lands with the checker agent+service in Layer 2/3; until
+  # then the mode tracks as governed adoption debt (static-verified, runtime
+  # pending) — see features.analysis.modes.voice_check.
+  analysis/voice_check: true
   # kb
   kb/consistency: true
   kb/worldbuilding/phase1: true
@@ -208,6 +214,13 @@ features:
       # probes) is produced in Layer 2/3; until then the mode is
       # static-verified but not yet runtime-verified (governed adoption debt).
       character_voice:
+        requires_runtime_evidence: true
+      # ADR-057 D3: voice_check prompt surface registered at Layer 1 (a
+      # flag+score checker for WRITE-010, distinct from the character_voice
+      # profiler). Runtime evidence (checker agent + service probes) is produced
+      # in Layer 2/3; until then the mode is static-verified but not yet
+      # runtime-verified (governed adoption debt).
+      voice_check:
         requires_runtime_evidence: true
     required_infrastructure:
       token_budget: required

@@ -365,14 +365,18 @@ routes:
     note: "ADR-049 Phase D: manifest entry added — the governed template existed but had no manifest coverage (governance gap exposed by the Phase D PROMPT-IDENTITY checker)."
 
   # ── Voice operations ───────────────────────────────────────────────
-  # ADR-055 D4: VOICE promoted from non-routeable to a multi-mode analysis
-  # intent. character_voice (ANAL-008) is the first governed context_mode;
-  # author_voice (ANAL-007) and voice_drift (ANAL-009) are deferred and will
-  # be appended to context_modes later. Mirrors how PLAN serves several
-  # planning context_modes. The analysed dialogue + deterministic voice
-  # metrics are category-3 runtime data supplied as the run prompt (user
-  # channel), exactly as coreference/readability receive the analysed passage
-  # as runtime input — hence required_variables is [] and xml_required is [].
+  # ADR-055 D4 / ADR-057 D3: VOICE is a multi-mode analysis intent.
+  # character_voice (ANAL-008) is the first governed context_mode — a *profiler*
+  # that builds a descriptive + metric voice profile per character. voice_check
+  # (WRITE-010, ADR-057 D3) is the second — a flag+score *checker* that compares
+  # chapter dialogue against the stored profile (distinct intent, own governed
+  # template). author_voice (ANAL-007) and voice_drift (ANAL-009) are deferred
+  # and will be appended to context_modes later. Mirrors how PLAN serves several
+  # planning context_modes. The analysed dialogue + deterministic voice metrics
+  # (profiler) / chapter dialogue + stored profile + metric-delta (checker) are
+  # category-3 runtime data supplied as the run prompt (user channel), exactly as
+  # coreference/readability receive the analysed passage as runtime input — hence
+  # required_variables is [] and xml_required is [].
 
   - intent: VOICE
     routeable: true
@@ -390,6 +394,17 @@ routes:
     context_modes:
       - mode: character_voice
         template: packages/core/narrare_core/prompts/_bundled/analysis/en/character_voice/system.md
+        content_type: customizable_feature_prompt
+        required_variables: []
+        optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
+        security: {xml_required: [], generated_suggestions_must_be_labelled: []}
+        fallback_policy: fail_loudly_if_bundled_missing
+      # ADR-057 D3: voice_check is a flag+score CHECKER (WRITE-010) — distinct
+      # intent from the character_voice profiler. Same variable surface (the KB
+      # world-context + preference variables are optional; the chapter dialogue,
+      # stored profile, and metric-delta are runtime user-channel data).
+      - mode: voice_check
+        template: packages/core/narrare_core/prompts/_bundled/analysis/en/voice_check/system.md
         content_type: customizable_feature_prompt
         required_variables: []
         optional_variables: [project_title, genre, writing_language, kb_characters, kb_locations, kb_factions, kb_relationships, user_preferences, avoidance_patterns]
