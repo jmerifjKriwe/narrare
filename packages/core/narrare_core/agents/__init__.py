@@ -21,6 +21,13 @@ from narrare_core.agents.character_arc_types import (
     CharacterArcOutput,
 )
 from narrare_core.agents.character_voice_agent import CharacterVoiceAgent
+from narrare_core.agents.character_voice_checker_agent import CharacterVoiceCheckerAgent
+from narrare_core.agents.character_voice_checker_types import (
+    CharacterVoiceCheckerDeps,
+    CharacterVoiceCheckerEntry,
+    CharacterVoiceCheckerOutput,
+    FlaggedLine,
+)
 from narrare_core.agents.character_voice_types import (
     CharacterVoiceDeps,
     CharacterVoiceEntry,
@@ -174,6 +181,10 @@ __all__ = [
     "CharacterArcOutput",
     "CharacterMention",
     "CharacterVoiceAgent",
+    "CharacterVoiceCheckerAgent",
+    "CharacterVoiceCheckerDeps",
+    "CharacterVoiceCheckerEntry",
+    "CharacterVoiceCheckerOutput",
     "CharacterVoiceDeps",
     "CharacterVoiceEntry",
     "CharacterVoiceOutput",
@@ -200,6 +211,7 @@ __all__ = [
     "FactExtractorDeps",
     "FactExtractorOutput",
     "FactExtractorProtocol",
+    "FlaggedLine",
     "GraphStateStore",
     "HistoryPolicy",
     "ImprovementSuggestion",
