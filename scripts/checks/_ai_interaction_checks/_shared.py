@@ -1,3 +1,5 @@
+import fnmatch
+import os
 import re
 import subprocess  # nosec
 from pathlib import Path
@@ -170,6 +172,185 @@ def display_path(path: Path, base: Path = REPO_ROOT) -> str:
         return path.as_posix()
 
 
+# ---------------------------------------------------------------------------
+# Pure-Python fallback (used when the ``rg`` binary is unavailable)
+# ---------------------------------------------------------------------------
+#
+# ``rg`` (ripgrep) is an optional performance optimisation for scanning large
+# trees.  Some CI runners do not ship it; without a fallback every file-based
+# check (1, 4, 5, 6, 7, 12) would silently return zero results — checks pass
+# for the wrong reason.  These helpers replicate rg's behaviour for the option
+# shapes the checkers actually use (``-g``/``--glob`` and ``--type``) so the
+# checks keep working regardless of whether ``rg`` is installed.
+
+# Directories rg skips by default (build artefacts + VCS/tool caches).  Pruning
+# these in the fallback avoids huge scans (e.g. ``node_modules``) and false
+# matches from vendored code.
+_IGNORED_DIRS = frozenset(
+    {
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+        ".venv",
+        "venv",
+        "env",
+        "dist",
+        "build",
+        ".next",
+        ".turbo",
+        ".cache",
+        "coverage",
+        "site-packages",
+    }
+)
+
+# rg ``--type`` names mapped to the filename suffixes they cover.
+_TYPE_SUFFIXES: dict[str, tuple[str, ...]] = {
+    "ts": (".ts", ".tsx", ".mts", ".cts"),
+    "js": (".js", ".jsx", ".mjs", ".cjs"),
+    "py": (".py",),
+}
+
+
+def _parse_scan_args(
+    extra_args: tuple[str, ...],
+) -> tuple[list[str], list[str], list[str]]:
+    """Split ``rg`` extra args into ``(includes, excludes, types)``.
+
+    Supports the two option families used by the checkers:
+
+    * ``-g``/``--glob GLOB`` — a leading ``!`` marks an exclude glob.
+    * ``--type NAME`` — restrict to a file-type (mapped to suffixes).
+    """
+    includes: list[str] = []
+    excludes: list[str] = []
+    types: list[str] = []
+    args = list(extra_args)
+    i = 0
+    while i < len(args):
+        token = args[i]
+        if token in ("--type", "-t") and i + 1 < len(args):
+            types.append(args[i + 1])
+            i += 2
+        elif token in ("-g", "--glob") and i + 1 < len(args):
+            glob = args[i + 1]
+            if glob.startswith("!"):
+                excludes.append(glob[1:])
+            else:
+                includes.append(glob)
+            i += 2
+        else:
+            # Unknown / unsupported option — skip defensively (best effort).
+            i += 1
+    return includes, excludes, types
+
+
+def _glob_matches(rel_posix: str, basename: str, glob: str) -> bool:
+    """Match an rg-style glob against a file.
+
+    Globs without a slash match the basename (any depth); globs with a slash
+    are anchored relative to the search root and also accepted one level deeper
+    (``*/`` prefix) so patterns like ``__tests__/*`` exclude nested dirs.
+    """
+    if "/" in glob:
+        if fnmatch.fnmatch(rel_posix, glob):
+            return True
+        return fnmatch.fnmatch(rel_posix, "*/" + glob)
+    return fnmatch.fnmatch(basename, glob)
+
+
+def _file_passes_filters(
+    rel_posix: str,
+    includes: list[str],
+    excludes: list[str],
+    types: list[str],
+) -> bool:
+    """Decide whether a file survives the rg glob/type filters."""
+    basename = rel_posix.rsplit("/", 1)[-1]
+    if basename.startswith("."):
+        return False
+    if types:
+        suffixes = tuple(s for t in types for s in _TYPE_SUFFIXES.get(t, ()))
+        if suffixes and not basename.endswith(suffixes):
+            return False
+    if includes and not any(_glob_matches(rel_posix, basename, g) for g in includes):
+        return False
+    return not any(_glob_matches(rel_posix, basename, g) for g in excludes)
+
+
+def _iter_scan_files(root: Path):
+    """Yield candidate files under *root*, pruning ignored/hidden dirs.
+
+    Mirrors rg's defaults: hidden files/dirs and the ``_IGNORED_DIRS`` set are
+    skipped, so vendored/build trees are never read.
+    """
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in _IGNORED_DIRS and not d.startswith(".")]
+        for name in filenames:
+            if name.startswith("."):
+                continue
+            yield Path(dirpath) / name
+
+
+def _python_search_files(
+    pattern: str,
+    extra_args: tuple[str, ...],
+    path: str | Path,
+) -> list[str]:
+    """Fallback for :func:`rg_files` when ``rg`` is unavailable.
+
+    Walks *path* with the same glob/type semantics and returns the sorted list
+    of files whose content matches *pattern*.
+    """
+    includes, excludes, types = _parse_scan_args(extra_args)
+    root = Path(path) if path else REPO_ROOT
+    try:
+        regex = re.compile(pattern)
+    except re.error:
+        return []
+    base = root if root.is_dir() else root.parent
+    matches: set[str] = set()
+    for fp in _iter_scan_files(root):
+        try:
+            rel_posix = fp.relative_to(base).as_posix()
+        except ValueError:
+            rel_posix = fp.as_posix()
+        if not _file_passes_filters(rel_posix, includes, excludes, types):
+            continue
+        try:
+            content = fp.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if regex.search(content):
+            matches.add(str(fp))
+    return sorted(matches)
+
+
+def _python_search_lines(pattern: str, filepath: str | Path) -> list[str]:
+    """Fallback for :func:`rg_lines` when ``rg`` is unavailable.
+
+    Returns matching lines in rg's ``-n`` format (``"lineno:content"``).
+    """
+    fp = Path(filepath)
+    try:
+        regex = re.compile(pattern)
+    except re.error:
+        return []
+    try:
+        content = fp.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    return [
+        f"{lineno}:{line}".strip()
+        for lineno, line in enumerate(content.splitlines(), start=1)
+        if regex.search(line)
+    ]
+
+
 def rg_files(pattern: str, *extra_args: str, path: str | Path = "") -> list[str]:
     cmd = ["rg", "--no-heading", "-l", pattern]
     if extra_args:
@@ -183,7 +364,11 @@ def rg_files(pattern: str, *extra_args: str, path: str | Path = "") -> list[str]
             text=True,
             timeout=30,
         )
-    except subprocess.TimeoutExpired, FileNotFoundError:
+    except FileNotFoundError:
+        # rg not installed (e.g. some CI runners) — degrade gracefully.
+        print("  [warn] 'rg' not available — using Python fallback (file scan)")
+        return _python_search_files(pattern, extra_args, path)
+    except subprocess.TimeoutExpired:
         return []
     if result.returncode not in (0, 1):
         return []
@@ -199,7 +384,10 @@ def rg_lines(pattern: str, filepath: str | Path) -> list[str]:
             text=True,
             timeout=10,
         )
-    except subprocess.TimeoutExpired, FileNotFoundError:
+    except FileNotFoundError:
+        print("  [warn] 'rg' not available — using Python fallback (line scan)")
+        return _python_search_lines(pattern, filepath)
+    except subprocess.TimeoutExpired:
         return []
     if result.returncode not in (0, 1):
         return []
