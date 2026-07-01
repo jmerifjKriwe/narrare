@@ -1,7 +1,7 @@
 import { AlertTriangle, Loader2, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import type { useTranslations } from "next-intl";
 import type { ConsistencyResponse } from "@/lib/api/analysis";
-import type { ConsistencyStagePayload } from "@/lib/hooks/useConsistencyStream";
+import type { ConsistencyStagePayload } from "@/lib/hooks/useConsistencyStream.types";
 import { ConsistencyIssueList } from "./ConsistencyIssueList";
 
 type Scope = "current" | "selected" | "all";
