@@ -80,6 +80,7 @@ coverage.*.xml
 *,cover
 
 # local stuff
+.worktrees/
 .devcontainer/post-create.local.sh
 scripts/local/
 # Added by code-review-graph
