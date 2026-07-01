@@ -13,7 +13,16 @@
     "newChapterTitle": "Neues Kapitel",
     "words": "{count} Wörter",
     "allNovels": "Alle Romane",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "openMenu": "Navigation öffnen",
+    "closeMenu": "Navigation schließen",
+    "navigation": "Workspace-Navigation"
+  },
+  "shell": {
+    "workspaceMain": "Workspace-Inhalt",
+    "editorRightPanel": "Editor-Seitenpanel",
+    "panelOpened": "Panel geöffnet",
+    "panelClosed": "Panel geschlossen"
   },
   "dashboard": {
     "title": "Meine Romane",

@@ -13,7 +13,16 @@
     "newChapterTitle": "New Chapter",
     "words": "{count} words",
     "allNovels": "All Novels",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "openMenu": "Open navigation",
+    "closeMenu": "Close navigation",
+    "navigation": "Workspace navigation"
+  },
+  "shell": {
+    "workspaceMain": "Workspace content",
+    "editorRightPanel": "Editor side panel",
+    "panelOpened": "Panel opened",
+    "panelClosed": "Panel closed"
   },
   "dashboard": {
     "title": "My Novels",
