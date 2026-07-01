@@ -174,11 +174,14 @@ class ModuleCoverage:
 
     @property
     def status(self) -> str:
+        # Ratchet first: coverage below the highest-achieved baseline is ALWAYS
+        # a regression, even when the RULE-10 target is met. The baseline may
+        # only go UP. Checking the target first made the ratchet advisory only.
+        if self.coverage_pct < self.baseline:
+            return STATUS_REGRESSION
         if self.coverage_pct >= self.target:
             return STATUS_MEETS_TARGET
-        if self.coverage_pct >= self.baseline:
-            return STATUS_BELOW_TARGET
-        return STATUS_REGRESSION
+        return STATUS_BELOW_TARGET
 
     @property
     def meets_target(self) -> bool:
