@@ -106,6 +106,18 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "existing_answers": '{"name": "Rivendell"}',
         },
     ),
+    (
+        "kb",
+        "merge",
+        LLMIntent.KB_CONSISTENCY,
+        {
+            "entity_type": "character",
+            "candidate_pairs": (
+                '[{"id_A": "h", "id_B": "p", "name_A": "Hero", "name_B": "Protagonist"}]'
+            ),
+            "world_context": "A fantasy novel about a hero's journey.",
+        },
+    ),
 ]
 
 

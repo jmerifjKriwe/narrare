@@ -119,6 +119,38 @@ MODE_INPUTS: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "Elena walked to the gate at dawn.",
         },
     ),
+    (
+        "analysis",
+        "readability",
+        LLMIntent.ANALYSE,
+        {
+            "chapter_text": (
+                "Convoluted nested subordinate clauses made comprehension unnecessarily difficult."
+            ),
+        },
+    ),
+    (
+        "analysis",
+        "pov",
+        LLMIntent.ANALYSE,
+        {
+            "chapter_text": (
+                "She walked through the door and saw him standing there. "
+                "He looked older, wearier — she couldn't tell what he was thinking."
+            ),
+        },
+    ),
+    (
+        "analysis",
+        "coreference",
+        LLMIntent.ANALYSE,
+        {
+            "chapter_text": (
+                "Alice handed Bob the letter. She watched him read it carefully. "
+                "His expression darkened as he reached the end."
+            ),
+        },
+    ),
 ]
 
 

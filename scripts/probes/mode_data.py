@@ -12,6 +12,9 @@ from __future__ import annotations
 from narrare_core.llm.intents import LLMIntent
 
 #: All modes across all categories with their required dynamic inputs.
+#: SSOT for which modes need probe coverage (preference_enrichment, etc.).
+#: When adding new modes with ``requires_runtime_evidence: true`` in the
+#: adoption registry, add them here AND in validation_budget_probes.py.
 ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
     # ── Writing modes ──────────────────────────────────────────────
     (
@@ -187,6 +190,30 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "chapter_text": "Fact extraction sample text.",
         },
     ),
+    (
+        "analysis",
+        "readability",
+        LLMIntent.ANALYSE,
+        {
+            "chapter_text": "Readability analysis sample passage with complex sentence structures.",
+        },
+    ),
+    (
+        "analysis",
+        "pov",
+        LLMIntent.ANALYSE,
+        {
+            "chapter_text": "POV detection analysis sample passage.",
+        },
+    ),
+    (
+        "analysis",
+        "coreference",
+        LLMIntent.ANALYSE,
+        {
+            "chapter_text": "Coreference resolution sample passage with pronouns.",
+        },
+    ),
     # ── KB modes ───────────────────────────────────────────────────
     (
         "kb",
@@ -259,6 +286,18 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
             "existing_answers": '{"name": "Mirkwood"}',
         },
     ),
+    (
+        "kb",
+        "merge",
+        LLMIntent.KB_CONSISTENCY,
+        {
+            "entity_type": "character",
+            "candidate_pairs": (
+                '[{"id_A": "h", "id_B": "p", "name_A": "Hero", "name_B": "Protagonist"}]'
+            ),
+            "world_context": "A fantasy novel about a hero's journey.",
+        },
+    ),
     # ── Planning modes ─────────────────────────────────────────────
     (
         "planning",
@@ -276,6 +315,34 @@ ALL_MODES: list[tuple[str, str, LLMIntent, dict[str, str]]] = [
         LLMIntent.PLAN,
         {
             "chapter_texts": "Chapter 1: dawn. Chapter 2: noon.",
+        },
+    ),
+    (
+        "planning",
+        "character_arc",
+        LLMIntent.PLAN,
+        {
+            "project_title": "Test Story",
+            "genre": "Fantasy",
+            "character_name": "Hero",
+        },
+    ),
+    (
+        "planning",
+        "timeline_extraction",
+        LLMIntent.PLAN,
+        {
+            "project_title": "Test Story",
+            "genre": "Fantasy",
+        },
+    ),
+    (
+        "planning",
+        "timeline",
+        LLMIntent.PLAN,
+        {
+            "project_title": "Test Story",
+            "genre": "Fantasy",
         },
     ),
     # ── Generation modes ───────────────────────────────────────────

@@ -43,7 +43,7 @@ from narrare_core.llm.intents import LLMIntent  # noqa: E402
 
 # ── Validation probe ─────────────────────────────────────────────────────
 
-#: Modes with ``final_validation: required`` — one representative per category.
+#: Modes with ``final_validation: required`` — one representative per intent.
 _VALIDATION_MODES: list[tuple[str, str, LLMIntent]] = [
     ("writing", "new_chapter", LLMIntent.WRITE),
     ("analysis", "beta_reader", LLMIntent.BETA_READ),
@@ -53,6 +53,9 @@ _VALIDATION_MODES: list[tuple[str, str, LLMIntent]] = [
     # FinalPromptValidatorImpl) as character_voice.
     ("analysis", "voice_check", LLMIntent.VOICE),
     ("analysis", "fact_extraction", LLMIntent.FACT_EXTRACT),
+    # ANALYSE intent representative — covers readability, pov, coreference
+    # (all use LLMIntent.ANALYSE; review is the default context_mode).
+    ("analysis", "review", LLMIntent.ANALYSE),
     ("kb", "consistency", LLMIntent.KB_CONSISTENCY),
     ("planning", "outline", LLMIntent.PLAN),
     ("planning", "temporal_consistency", LLMIntent.PLAN),
@@ -82,6 +85,9 @@ _VALIDATION_FEATURES: dict[str, list[str]] = {
         "remap",
         "consistency",
         "fact_extraction",
+        "readability",
+        "pov",
+        "coreference",
     ],
     "kb": [
         "consistency",
@@ -92,8 +98,15 @@ _VALIDATION_FEATURES: dict[str, list[str]] = {
         "interview",
         "extract",
         "enhance",
+        "merge",
     ],
-    "planning": ["outline", "temporal_consistency"],
+    "planning": [
+        "outline",
+        "temporal_consistency",
+        "character_arc",
+        "timeline_extraction",
+        "timeline",
+    ],
 }
 
 
