@@ -124,15 +124,15 @@ are valid. Use your judgment as the author.
 > deterministic measurement + `NarrareAgent` structured output + governed EN
 > template + SSE router + panel. Per ADR-021 + ADR-055 + ADR-057.
 
-**Entry point:** `analysis/router_voice_check.py` → `POST /api/v1/analysis/voice-check/{chapter_id}`
+**Entry point:** `apps/api/narrare/analysis/router_voice_check.py` → `POST /api/v1/analysis/voice-check/{chapter_id}`
 (chapter-scoped; mirrors coreference's `/analysis/coreference/{chapter_id}`,
 vs character_voice's novel-scoped `/analysis/character-voice/{novel_id}`)
-**Service:** `CharacterVoiceCheckerService.check()` in `analysis/voice_check_service.py`
-**Contract:** `CharacterVoiceCheckerServiceProtocol` in `analysis/contracts_voice_check.py`
-**Agent:** `CharacterVoiceCheckerAgent` (`core/agents/character_voice_checker_agent.py`, `NarrareAgent` with structured output, ONE LLM call)
-**Scoring:** pure Core module `core/analysis/voice_check_scoring.py` (deterministic delta + blend)
+**Service:** `CharacterVoiceCheckerService.check()` in `apps/api/narrare/analysis/voice_check_service.py`
+**Contract:** `CharacterVoiceCheckerServiceProtocol` in `apps/api/narrare/analysis/contracts_voice_check.py`
+**Agent:** `CharacterVoiceCheckerAgent` (`packages/core/narrare_core/agents/character_voice_checker_agent.py`, `NarrareAgent` with structured output, ONE LLM call)
+**Scoring:** pure Core module `packages/core/narrare_core/analysis/voice_check_scoring.py` (deterministic delta + blend)
 **LLM Intent:** `LLMIntent.VOICE` (context_mode `voice_check`; ADR-057 adds it to the VOICE route)
-**Prompt:** PromptComposer Mode 1 — `_bundled/analysis/en/voice_check/system.md` (governed EN template; ADR-054)
+**Prompt:** PromptComposer Mode 1 — `packages/core/narrare_core/prompts/_bundled/analysis/en/voice_check/system.md` (governed EN template; ADR-054)
 
 > **Module home: `analysis/`, not `writing/`.** WRITE-010 is a read-only check
 > (deterministic delta + LLM qualitative judgment; zero chapter mutation) that
@@ -149,18 +149,18 @@ ADR-057 is ✅ **Implemented** (runtime-verified). WRITE-010 is **stable** —
 implemented & validated end-to-end:
 
 - ✅ **Core (layers 0/1/2a/2b)** — `CharacterVoiceProfile.voice_metrics` extension
-  + builder (`core/profiles/models.py`, `_voice_extraction.py`); `voice_check`
-  context_mode on the routeable `LLMIntent.VOICE` (`core/prompts/route_table.py`);
-  governed EN template (`core/prompts/_bundled/analysis/en/voice_check/system.md`);
-  deterministic scoring module `core/analysis/voice_check_scoring.py`;
-  `CharacterVoiceCheckerAgent` (`core/agents/character_voice_checker_agent.py`).
-- ✅ **Backend (3a/3b/3c)** — 3a: `contracts_voice_check.py` + `schemas_voice_check.py`
+  + builder (`packages/core/narrare_core/profiles/models.py`, `packages/core/narrare_core/profiles/_voice_extraction.py`); `voice_check`
+  context_mode on the routeable `LLMIntent.VOICE` (`packages/core/narrare_core/prompts/route_table.py`);
+  governed EN template (`packages/core/narrare_core/prompts/_bundled/analysis/en/voice_check/system.md`);
+  deterministic scoring module `packages/core/narrare_core/analysis/voice_check_scoring.py`;
+  `CharacterVoiceCheckerAgent` (`packages/core/narrare_core/agents/character_voice_checker_agent.py`).
+- ✅ **Backend (3a/3b/3c)** — 3a: `apps/api/narrare/analysis/contracts_voice_check.py` + `apps/api/narrare/analysis/schemas_voice_check.py`
   + voice_profile_adapter fix (voice_metrics surfaced on the checking path); 3b:
-  `voice_check_service.py` modularised (RULE-04 split) with the helper modules
-  `voice_check_prompt.py`, `voice_check_runtime_content.py`,
-  `voice_check_agent_runner.py`, `voice_check_results.py`; 3c: SSE router
-  `router_voice_check.py` — `POST /api/v1/analysis/voice-check/{chapter_id}`
-  (mounted in `_app/main.py`) + DI factory (`dependencies_voice_check.py`).
+  `apps/api/narrare/analysis/voice_check_service.py` modularised (RULE-04 split) with the helper modules
+  `apps/api/narrare/analysis/voice_check_prompt.py`, `apps/api/narrare/analysis/voice_check_runtime_content.py`,
+  `apps/api/narrare/analysis/voice_check_agent_runner.py`, `apps/api/narrare/analysis/voice_check_results.py`; 3c: SSE router
+  `apps/api/narrare/analysis/router_voice_check.py` — `POST /api/v1/analysis/voice-check/{chapter_id}`
+  (mounted in `apps/api/narrare/_app/main.py`) + DI factory (`apps/api/narrare/analysis/dependencies_voice_check.py`).
 - ✅ **Frontend (Layer 4)** — `VoiceCheckPanel` / `Trigger` / `Results` /
   `ResultCard` + `useCharacterVoiceCheck` hook + SSE stream client (`connectSSE`,
   §5.1) + editor wiring (store toggle + mutual-exclusion + toolbar + AI-operation
@@ -206,7 +206,7 @@ class CharacterVoiceProfile:
 - `VoiceProfileConsumer.assemble_for_checking()` (ADR-050) returns
   `list[CharacterVoiceProfile]` where each profile now carries `voice_metrics`
   when ANAL-008 has profiled the character. The signature is unchanged.
-- `build_character_voice_profile()` (in `core/profiles/_voice_extraction.py`)
+- `build_character_voice_profile()` (in `packages/core/narrare_core/profiles/_voice_extraction.py`)
   parses `speech.voice_analysis.voice_metrics` and populates the field.
 - The generation path (`assemble_for_generation` →
   `ProjectWritingProfile.formatted_voice_profiles`) is **unchanged** — it
@@ -264,12 +264,12 @@ not duplication:
 
 | Component | Location | Reused from |
 |-----------|----------|-------------|
-| `DialogueParser` | `core/analysis/dialogue_parser.py` | ANAL-008 (ADR-055) |
-| `VoiceMetricsAnalyzer` | `core/analysis/voice_metrics.py` | ANAL-008 / ADR-021 |
-| `VoiceProfileConsumer` | `core/profiles/contracts.py` | ADR-050 (enriched ADR-057) |
+| `DialogueParser` | `packages/core/narrare_core/analysis/dialogue_parser.py` | ANAL-008 (ADR-055) |
+| `VoiceMetricsAnalyzer` | `packages/core/narrare_core/analysis/voice_metrics.py` | ANAL-008 / ADR-021 |
+| `VoiceProfileConsumer` | `packages/core/narrare_core/profiles/contracts.py` | ADR-050 (enriched ADR-057) |
 
-NEW for WRITE-010: `voice_check_scoring.py` (delta + blend),
-`character_voice_checker_agent.py` + `character_voice_checker_types.py`
+NEW for WRITE-010: `packages/core/narrare_core/analysis/voice_check_scoring.py` (delta + blend),
+`packages/core/narrare_core/agents/character_voice_checker_agent.py` + `packages/core/narrare_core/agents/character_voice_checker_types.py`
 (checker agent).
 
 ### Scope boundary (ADR-057 Decision 5)
@@ -335,9 +335,9 @@ checking layer that reads the same source via the consumer contract.
 - `2026-06-30` — **ADR-057 → ✅ Accepted** (user approved layer-by-layer
   implementation). Status → `in-progress`. Core layers (0/1/2a/2b) + Backend
   layers (3a contracts/schemas + voice_profile_adapter fix; 3b service
-  modularised with the RULE-04 helper split — `voice_check_prompt.py`,
-  `voice_check_runtime_content.py`, `voice_check_agent_runner.py`,
-  `voice_check_results.py`; 3c SSE router `POST /api/v1/analysis/voice-check/{chapter_id}`
+  modularised with the RULE-04 helper split — `apps/api/narrare/analysis/voice_check_prompt.py`,
+  `apps/api/narrare/analysis/voice_check_runtime_content.py`, `apps/api/narrare/analysis/voice_check_agent_runner.py`,
+  `apps/api/narrare/analysis/voice_check_results.py`; 3c SSE router `POST /api/v1/analysis/voice-check/{chapter_id}`
   + DI + app registration) implemented and green (176 analysis unit tests pass;
   integration tests skipped only where no test DB is available). Frontend
   Layer 4 + ADR-056 runtime adoption evidence remain before `stable`. ADR-057

@@ -94,9 +94,9 @@ or could be expanded.
 
 ## How it works (Technical)
 
-**Entry point:** `kb/router.py` → `POST /api/v1/kb/sessions`
-**Service:** `KBSessionService` in `kb/session_service.py`
-**Contract:** `KBSessionProtocol` in `kb/contracts.py`
+**Entry point:** `apps/api/narrare/kb/router.py` → `POST /api/v1/kb/sessions`
+**Service:** `KBSessionService` in `apps/api/narrare/kb/session_service.py`
+**Contract:** `KBSessionProtocol` in `apps/api/narrare/kb/contracts.py`
 **LLM Intent:** `LLMIntent.KB_CREATE`, `LLMIntent.KB_IMPROVE`
 **Streaming:** Yes — questions stream in real-time
 

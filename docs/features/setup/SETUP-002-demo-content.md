@@ -262,8 +262,8 @@ status: planned
 ## How it works (Technical)
 
 **Entry point:** Demo loading is triggered automatically via `POST /api/v1/setup/complete` when `starter` is `demo_fantasy`, `demo_scifi`, or `demo_german`. No separate endpoint.
-**Service:** `DemoLoader.load()` in `setup/demo_loader.py` — called by `SetupService.complete()`
-**Contract:** `SetupServiceProtocol` in `setup/contracts.py`
+**Service:** `DemoLoader.load()` in `apps/api/narrare/setup/demo_loader.py` — called by `SetupService.complete()`
+**Contract:** `SetupServiceProtocol` in `apps/api/narrare/setup/contracts.py`
 **Prompt:** ~ (no LLM calls)
 
 ### Loading Implementation
@@ -293,7 +293,7 @@ All three demo projects are **complete** and ready for use:
 | **Dead Signal** (Sci-Fi) | 3 | 8 | ✅ Complete |
 
 ### German Demo: Im stillen Wald ✅
-- **Chapters:** `ch-de-001-fluestern.md`, `ch-de-002-grenze-welten.md`
+- **Chapters:** ch-de-001-fluestern.md, ch-de-002-grenze-welten.md
 - **KB Entries:**
   - Characters: Anna Müller, Johann Bauer, Der Waldgeist
   - Locations: Der stille Wald, Das Försterhaus, Das Dorf

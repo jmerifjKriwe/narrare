@@ -77,8 +77,8 @@ not a tool that only works with content created inside it.
 
 ## How it works (Technical)
 
-**Service:** `ImportService` in `setup/analyze_service.py`
-**Contract:** `ImportProtocol` in `setup/contracts.py` (to be defined)
+**Service:** `ImportService` in `apps/api/narrare/setup/analyze_service.py`
+**Contract:** `ImportProtocol` in `apps/api/narrare/setup/contracts.py` (to be defined)
 **Entry points:** Setup Wizard Step 3 and `POST /api/v1/import`
 
 **File parsing pipeline:**

@@ -110,18 +110,18 @@ ist.
 
 | Komponente | Pfad | Zweck |
 |------------|------|-------|
-| `FeatureTour` | `components/ui/feature-tour.tsx` (192 Zeilen) | Custom Tour-Komponente mit Spotlight, Keyboard-Navigation, `localStorage`-Persistenz, i18n |
-| `TourStep` Interface | Exportiert aus `feature-tour.tsx` | `{ target?, titleKey, descriptionKey }` — CSS-Selector oder zentriert |
-| `FEATURE_TOUR_STEPS` | `lib/config/feature-tour-steps.ts` | 9 Steps konfiguriert: 6 Basis-Steps (Editor, Nav, AI-Toolbar, GhostText, Worldbuilding, Settings) plus 3 konzeptionelle Steps für KB→AI, Storyboard→AI und Before/After-Demo |
-| `requestFeatureTour()` | Helper in `feature-tour.tsx` | Setzt `localStorage`-Flag, das FeatureTour startet |
+| `FeatureTour` | `packages/web/components/ui/feature-tour.tsx` (192 Zeilen) | Custom Tour-Komponente mit Spotlight, Keyboard-Navigation, `localStorage`-Persistenz, i18n |
+| `TourStep` Interface | Exportiert aus `packages/web/components/ui/feature-tour.tsx` | `{ target?, titleKey, descriptionKey }` — CSS-Selector oder zentriert |
+| `FEATURE_TOUR_STEPS` | `packages/web/lib/config/feature-tour-steps.ts` | 9 Steps konfiguriert: 6 Basis-Steps (Editor, Nav, AI-Toolbar, GhostText, Worldbuilding, Settings) plus 3 konzeptionelle Steps für KB→AI, Storyboard→AI und Before/After-Demo |
+| `requestFeatureTour()` | Helper in `packages/web/components/ui/feature-tour.tsx` | Setzt `localStorage`-Flag, das FeatureTour startet |
 | Tour-Trigger | `useQuickStart.ts:48` | Ruft `requestFeatureTour()` nach Quick-Start auf |
-| `GhostTextOnboarding` | `components/editor/GhostTextOnboarding.tsx` (112 Zeilen) | Einmaliges GhostText-Tooltip mit `localStorage`-Tracking |
-| `DashboardView` | `components/studio/DashboardView.tsx` (~127 Zeilen) | Rendert NovelCardGrid, wird um Demo-Sektion erweitert |
+| `GhostTextOnboarding` | `packages/web/components/studio/editor/GhostTextOnboarding.tsx` (112 Zeilen) | Einmaliges GhostText-Tooltip mit `localStorage`-Tracking |
+| `DashboardView` | `packages/web/components/studio/DashboardView.tsx` (~127 Zeilen) | Rendert NovelCardGrid, wird um Demo-Sektion erweitert |
 | `DemoProjectInfo` (FE) | `types/wizard.ts:39` | TypeScript-Interface für Demo-Metadaten |
 | `DemoProjectInfo` (BE) | `setup/base_schemas.py:114` | Pydantic-Model für Demo-Metadaten |
 | `DemoLoader.all_demo_info()` | `setup/demo_loader.py:132` | Liefert `list[DemoProjectInfo]` für alle 3 Demos |
-| `setupApi` | `lib/api/setup.ts` | Frontend API Client (hat noch kein `listDemos()`) |
-| `<FeatureTour>` | `app/(studio)/layout.tsx` | Rendert Tour im Studio-Layout |
+| `setupApi` | `packages/web/lib/api/setup.ts` | Frontend API Client (hat noch kein `listDemos()`) |
+| `<FeatureTour>` | `packages/web/app/(studio)/layout.tsx` | Rendert Tour im Studio-Layout |
 
 ### Neu zu implementieren
 
@@ -133,26 +133,26 @@ ist.
 - **⚠️ RULE-17 Issue:** BE-Schema hat `language: str`, FE-Interface hat `writing_language: string`. Feld-Must vor Implementierung klären (Entweder BE-Feld umbenennen oder FE-Mapping im API-Client).
 
 **2. `setupApi.listDemos()` (Frontend API Client)**
-- Datei: `lib/api/setup.ts` — neue Methode
+- Datei: `packages/web/lib/api/setup.ts` — neue Methode
 - Ruft `GET /setup/demos` auf, mappt Response auf `DemoProjectInfo[]`
 - Berücksichtigt FIELD-Mismatch `language` ↔ `writing_language`
 
 **3. `DemoProjectCards` Komponente (Frontend)**
-- Neue Datei: `components/studio/DemoProjectCards.tsx`
+- Neue Datei: `packages/web/components/studio/DemoProjectCards.tsx`
 - Kacheln für Demo-Projekte (Cover-Platzhalter, Titel, Genre-Tag, Word Count, Kurzbeschreibung)
 - Klick löst bestehenden Demo-Load-Flow aus (SETUP-002)
 - Wird als Sektion in `DashboardView` integriert
 - Extrahiert aus DashboardView (RULE-04: DashboardView ~127 Zeilen → Demo-Sektion in eigener Datei)
 
 **4. `useSeenTooltips` Hook (Frontend)**
-- Neue Datei: `lib/hooks/useSeenTooltips.ts`
+- Neue Datei: `packages/web/lib/hooks/useSeenTooltips.ts`
 - Pattern analog zu `GhostTextOnboarding`: `localStorage`-basiert
 - Interface: `{ seenTooltips: Set<string>; markSeen(id: string): void; isSeen(id: string): boolean }`
 - Pro KI-Funktion ein Tooltip (GhostText, Prompt, Accept/Reject, Session/Chat)
 - Koexistiert mit GhostTextOnboarding ohne Konflikt (unterschiedliche localStorage Keys)
 
 **5. FEATURE_TOUR_STEPS aktualisieren (falls erforderlich)**
-- Datei: `lib/config/feature-tour-steps.ts`
+- Datei: `packages/web/lib/config/feature-tour-steps.ts`
 - Prüfung: Decken die aktuellen 6 Steps den ONBOARD-001-Inhalt ab?
 - Falls nicht: Steps aktualisieren und entsprechende i18n-Keys im studio-Namespace ergänzen
 
@@ -200,7 +200,7 @@ Nicht anwendbar — keine KI-Ladezustände.
 ## Constraints & Edge Cases
 
 - **FeatureTour existiert bereits:** Keine neue Tour-Library erforderlich. Die bestehende Custom `FeatureTour`-Komponente (192 Zeilen, 12 Tests) wird unverändert genutzt. Shepherd.js oder andere Libraries werden NICHT eingeführt.
-- **GhostTextOnboarding koexistiert:** Das bestehende `GhostTextOnboarding` (`components/editor/GhostTextOnboarding.tsx`, 112 Zeilen) bleibt bestehen und koexistiert mit dem neuen `useSeenTooltips`-System. Beide nutzen `localStorage` mit unterschiedlichen Keys — kein Konflikt.
+- **GhostTextOnboarding koexistiert:** Das bestehende `GhostTextOnboarding` (`packages/web/components/studio/editor/GhostTextOnboarding.tsx`, 112 Zeilen) bleibt bestehen und koexistiert mit dem neuen `useSeenTooltips`-System. Beide nutzen `localStorage` mit unterschiedlichen Keys — kein Konflikt.
 - **Demo-Discovery nur nach erstem Setup:** Nutzer, die bereits ein eigenes Projekt haben, müssen die Demos nicht sehen. Steuerung via Query-Parameter oder UI-Logik (Post-MVP-Entscheidung).
 - **Tour nicht aufdringlich:** Die Tour kann jederzeit mit Escape oder „Skip" abgebrochen werden. Das bestehende „Nicht mehr anzeigen"-Verhalten via `localStorage` (`TOUR_STORAGE_KEY`) bleibt erhalten.
 - **Keine erneute Tour bei Projektwechsel:** `onboardingTourCompleted` ist benutzerweit gespeichert, nicht projektbezogen.
@@ -229,7 +229,7 @@ Nicht anwendbar — keine KI-Ladezustände.
   three new conceptual tour steps (`tour.step7`, `step8`, `step9`) explaining
   how KB and Storyboard shape AI output, with a concrete before/after demo
   moment. ONBOARD-001 base scope is unchanged and remains `stable`; only the
-  follow-up AUFG is `resolved` after `tour-no-overclaim.test.ts`, `just check-ai-ux`,
+  follow-up AUFG is `resolved` after `packages/web/__tests__/tour-no-overclaim.test.ts`, `just check-ai-ux`,
   frontend size, targeted Biome/Vitest, and i18n parity gates passed.
 
 ---
@@ -240,8 +240,8 @@ Nicht anwendbar — keine KI-Ladezustände.
 |-------|----------|--------|
 | RULE-01b: Agents via ModelRegistry | Nicht anwendbar — kein LLM-Aufruf | ✅ k.A. |
 | RULE-02: Prompts nur in core/prompts/ | Nicht anwendbar — keine Prompts | ✅ k.A. |
-| RULE-03: Contract vor Implementation | Backend: `DemoListResponse` Schema in `setup/schemas.py`. Frontend: `TooltipState` Interface in `useSeenTooltips.ts` | 📋 Zu erstellen |
-| RULE-04: Modularisieren statt komprimieren | DashboardView ~127 Zeilen → Demo-Sektion extrahieren in `DemoProjectCards.tsx`. FeatureTour unverändert (192 Zeilen, getestet) | 📋 Zu prüfen |
+| RULE-03: Contract vor Implementation | Backend: `DemoListResponse` Schema in `apps/api/narrare/setup/schemas.py`. Frontend: `TooltipState` Interface in `packages/web/lib/hooks/useSeenTooltips.ts` | 📋 Zu erstellen |
+| RULE-04: Modularisieren statt komprimieren | DashboardView ~127 Zeilen → Demo-Sektion extrahieren in `packages/web/components/studio/DemoProjectCards.tsx`. FeatureTour unverändert (192 Zeilen, getestet) | 📋 Zu prüfen |
 | RULE-06: Eine Verantwortlichkeit pro Datei | `DemoProjectCards`, `useSeenTooltips`, Tour-Replay Trigger jeweils eigenständig | ✅ Design |
 | RULE-11: No Silent Failures | Demo-Load-Fehler werden angezeigt. Tour-Fallback: clientseitig, kein Fehlerfall | ✅ Design |
 | RULE-12: Service Layer als öffentliche API | Demo-Metadaten SSOT im Backend (`DemoLoader`). Kein Frontend-Hardcode von Demo-Daten | 📋 Zu prüfen |

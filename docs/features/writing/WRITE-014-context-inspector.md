@@ -97,32 +97,32 @@ WritingContext.to_metadata() → ContextMetadata → StreamChunk.context_meta
 
 ### Core layer
 
-- **`ContextMetadata` dataclass** in `writing/context_models.py` — lightweight
+- **`ContextMetadata` dataclass** in `packages/core/narrare_core/writing/context_models.py` — lightweight
   summary with entity counts, names, flags, tone, and budget.
-- **`WritingContext.to_metadata()`** in `writing/models.py` — extracts metadata
+- **`WritingContext.to_metadata()`** in `packages/core/narrare_core/writing/models.py` — extracts metadata
   from the full writing context. Counts entities by scanning `### ` markers;
   forwards names from assembler-populated lists.
-- **`StreamChunk.context_meta`** in `llm/result.py` — optional dict field
+- **`StreamChunk.context_meta`** in `packages/core/narrare_core/llm/result.py` — optional dict field
   (default `None`) carrying context metadata on the first chunk only.
 
 ### Backend layer
 
-- **SSE emission** in `writing/router.py` — `event_stream()` generator checks
+- **SSE emission** in `apps/api/narrare/writing/router.py` — `event_stream()` generator checks
   `chunk.context_meta` and emits `{"type": "context_meta", ...}` as the first
   SSE event before any text chunks.
-- **`ContextMetaResponse`** in `writing/schemas.py` — Pydantic schema with all
+- **`ContextMetaResponse`** in `apps/api/narrare/writing/schemas.py` — Pydantic schema with all
   15 fields matching `ContextMetadata.to_dict()`.
-- **Pipeline integration** in `writing/pipeline.py` — after context assembly,
+- **Pipeline integration** in `packages/core/narrare_core/writing/pipeline.py` — after context assembly,
   yields `StreamChunk(text="", context_meta=meta_dict)` as the first chunk.
 
 ### Frontend layer
 
-- **`ContextMeta` interface** in `lib/api/generation.ts` — TypeScript type
+- **`ContextMeta` interface** in `packages/web/lib/api/generation.ts` — TypeScript type
   matching the backend schema exactly (RULE-17).
-- **`streamGeneration`** in `lib/api/generation.ts` — SSE client with
+- **`streamGeneration`** in `packages/web/lib/api/generation.ts` — SSE client with
   `onContextMeta` callback. Parses `context_meta` events and routes them
   to the callback before processing text chunks.
-- **`ContextInspector`** component in `components/studio/editor/ContextInspector.tsx`
+- **`ContextInspector`** component in `packages/web/components/studio/editor/ContextInspector.tsx`
   — expandable panel with compact info bar (entity counts) and detail panel
   (entity name chips, tone, budget, flags).
 - **`GenerationPanel`** integration — holds `contextMeta` state, resets on new
@@ -140,7 +140,8 @@ data: [DONE]
 ### i18n
 
 All user-facing strings extracted to `contextInspector.*` keys in
-`packages/i18n/messages/{en,de,fr}/studio.json` (12 keys per language).
+`packages/i18n/messages/en/studio.json`, `packages/i18n/messages/de/studio.json`, and
+`packages/i18n/messages/fr/studio.json` (12 keys per language).
 
 ### Tests
 
@@ -149,8 +150,8 @@ All user-facing strings extracted to `contextInspector.*` keys in
 | Core | `tests/unit/core/writing/test_context_metadata.py` | 13 |
 | Backend unit | `tests/unit/api/writing/test_writing_service_meta.py` | 4 |
 | Integration | `tests/integration/writing/test_writing_sse_meta.py` | 3 |
-| Component | `components/studio/editor/__tests__/ContextInspector.test.tsx` | 6 |
-| Panel | `components/studio/editor/__tests__/GenerationPanel.test.tsx` (meta portion) | 3 |
+| Component | `packages/web/components/studio/editor/__tests__/ContextInspector.test.tsx` | 6 |
+| Panel | `packages/web/components/studio/editor/__tests__/GenerationPanel.test.tsx` (meta portion) | 3 |
 
 ## Constraints & Edge Cases
 

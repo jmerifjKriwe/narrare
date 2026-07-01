@@ -88,9 +88,9 @@ Run anytime after making significant changes to your KB.
 
 ## How it works (Technical)
 
-**Entry point:** `kb/router.py` → `POST /api/v1/kb/consistency-check`
-**Service:** `KBAnalyzerService.check_consistency()` in `kb/analyzer_service.py`
-**Contract:** `KBAnalyzerProtocol` in `kb/contracts.py`
+**Entry point:** `apps/api/narrare/kb/router.py` → `POST /api/v1/kb/consistency-check`
+**Service:** `KBAnalyzerService.check_consistency()` in apps/api/narrare/kb/analyzer_service.py
+**Contract:** `KBAnalyzerProtocol` in `apps/api/narrare/kb/contracts.py`
 **LLM Intent:** `LLMIntent.CONSISTENCY`
 
 **Analysis pipeline:**

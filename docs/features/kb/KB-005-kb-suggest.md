@@ -93,9 +93,9 @@ Dismissed entries won't be suggested again for this chapter.
 
 ## How it works (Technical)
 
-**Entry point:** `kb/router.py` → `GET /api/v1/kb/suggestions/{chapter_id}`
-**Service:** `KBSuggestService.get_suggestions()` in `kb/suggest_service.py`
-**Contract:** `KBSuggestProtocol` in `kb/contracts.py`
+**Entry point:** `apps/api/narrare/kb/router.py` → `GET /api/v1/kb/suggestions/{chapter_id}`
+**Service:** `KBSuggestService.get_suggestions()` in `apps/api/narrare/kb/suggest_service.py`
+**Contract:** `KBSuggestProtocol` in `apps/api/narrare/kb/contracts.py`
 **Triggered:** Chapter open, content change (debounced 5s)
 
 **Three-stage pipeline:**
@@ -153,9 +153,9 @@ KB-005 is the KB-surface view, INFRA-009 is the infrastructure view. They share
 the identical 3-stage pipeline and scoring formula. Merged into a single
 implementation:
 
-- **Core layer:** `ProactiveContextService` in `core/context/proactive_service.py`
+- **Core layer:** `ProactiveContextService` in `packages/core/narrare_core/context/proactive_service.py`
   — platform-independent, no HTTP/DB dependencies
-- **API layer:** `KBSuggestService` in `kb/suggest_service.py` — thin wrapper
+- **API layer:** `KBSuggestService` in `apps/api/narrare/kb/suggest_service.py` — thin wrapper
   that delegates to ProactiveContextService and returns API response
 - **Endpoint:** `GET /api/v1/kb/suggestions/{chapter_id}`
 

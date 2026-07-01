@@ -118,9 +118,9 @@ Use during revision to ensure POV consistency before beta readers.
 
 ## How it works (Technical)
 
-**Entry point:** `analysis/router.py` → `POST /api/v1/analysis/pov`
-**Service:** `POVService.analyze()` in `analysis/services/pov_service.py`
-**Contract:** `POVDetector` in `analysis/contracts.py`
+**Entry point:** `apps/api/narrare/analysis/router_pov.py` → `POST /api/v1/analysis/pov`
+**Service:** `POVService.analyze()` in `apps/api/narrare/analysis/services/pov_service.py`
+**Contract:** `POVDetector` in `apps/api/narrare/analysis/contracts_pov.py`
 **Architecture per ADR-021:** Hybrid — pronoun/scene detection is deterministic (spaCy), head-hopping detection requires LLM understanding.
 
 **Deterministic analysis** (spaCy-based, no LLM):

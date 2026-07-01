@@ -51,7 +51,7 @@ code.
 ## How it works (Technical)
 
 Provider configuration is part of the setup/settings layer and feeds the shared
-model-resolution path. AI calls still go through `core/llm/gateway.py`; feature
+model-resolution path. AI calls still go through `packages/core/narrare_core/llm/gateway.py`; feature
 services do not import provider SDKs directly. This feature has no prompt of its
 own.
 

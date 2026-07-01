@@ -107,8 +107,8 @@ Most users don't need to think about it — it just gets better. Power users can
 **Architecture per ADR-033 (supersedes ADR-017):** Local-first memory via mem0 OSS (AsyncMemory) with pgvector backend. No dependency on mem0 Cloud or Platform-only features. `Mem0Client` factory bridges user LLM provider settings to mem0's internal LLM for extraction. Graceful degradation via `NullMemoryClient` when mem0 is unavailable.
 
 **Core modules (`packages/core/narrare_core/memory/`):**
-- `protocols.py` — Protocol definitions: `MemoryClientProtocol`, `FeedbackServiceProtocol`, `PreferenceServiceProtocol`
-- `models.py` — Data models: `FeedbackEvent`, `Preference`, `FeedbackAction` enum, `LearningEvent`, `LearningEventKind`, `MemoryPrecedenceLevel`
+- `packages/core/narrare_core/memory/protocols.py` — Protocol definitions: `MemoryClientProtocol`, `FeedbackServiceProtocol`, `PreferenceServiceProtocol`
+- `packages/core/narrare_core/memory/models.py` — Data models: `FeedbackEvent`, `Preference`, `FeedbackAction` enum, `LearningEvent`, `LearningEventKind`, `MemoryPrecedenceLevel`
   - `LearningEvent` — captures learned preferences from user interaction patterns. Privacy-safe: only `preference_summary` is stored in mem0, `raw_excerpt` is never included in memory text.
   - `LearningEventKind` — ADT variant: `suggestion_modified` (user edited an AI suggestion before accepting), `repeated_steering` (user repeatedly corrected the same pattern).
   - `MemoryPrecedenceLevel` — source precedence enum: `learned_memory` (inferred by learning system), `detail_memory` (explicit user detail), `core_memory` (foundational user info).
@@ -122,17 +122,17 @@ User interaction → LearningEvent → mem0 storage:
 3. **Privacy-safe transformation**: `LearningEvent.to_memory_text()` produces a privacy-safe string that excludes `raw_excerpt`. Only the summary is persisted.
 4. **mem0 storage**: `LearningEvent.to_mem0_metadata()` packages kind, precedence level, and confidence for mem0's metadata system.
 5. **Preference extraction**: `PreferenceService` queries mem0 for learned preferences alongside explicit feedback, using `MemoryPrecedenceLevel` to rank sources (learned memory has lower precedence than detail/core memory).
-- `mem0_client.py` — `Mem0Client` factory and `NullMemoryClient` for graceful degradation (approved RULE-01b exception)
-- `feedback_service.py` — `FeedbackService` — records feedback events to both `feedback_events` table and mem0
-- `preference_service.py` — `PreferenceService` — extracts preferences from mem0, formats for prompt injection
+- `packages/core/narrare_core/memory/mem0_client.py` — `Mem0Client` factory and `NullMemoryClient` for graceful degradation (approved RULE-01b exception)
+- `packages/core/narrare_core/memory/feedback_service.py` — `FeedbackService` — records feedback events to both `feedback_events` table and mem0
+- `packages/core/narrare_core/memory/preference_service.py` — `PreferenceService` — extracts preferences from mem0, formats for prompt injection
 
 **API module (`apps/api/narrare/memory/`):**
-- `contracts.py` — Protocol definitions
-- `schemas.py` — Request/response Pydantic models
-- `models.py` — SQLAlchemy `feedback_events` table model
-- `repository.py` — Database queries for feedback events
-- `service.py` — Business logic orchestrating core services
-- `router.py` — REST endpoints
+- `apps/api/narrare/memory/contracts.py` — Protocol definitions
+- `apps/api/narrare/memory/schemas.py` — Request/response Pydantic models
+- `apps/api/narrare/memory/models.py` — SQLAlchemy `feedback_events` table model
+- `apps/api/narrare/memory/repository.py` — Database queries for feedback events
+- `apps/api/narrare/memory/service.py` — Business logic orchestrating core services
+- `apps/api/narrare/memory/router.py` — REST endpoints
 
 ### Dual Storage Architecture
 
@@ -222,7 +222,7 @@ returns empty results. This ensures:
 
 ### Migration
 
-- `0006_feedback_events.py` — Creates `feedback_events` table with columns:
+- `apps/api/alembic/versions/0006_feedback_events.py` — Creates `feedback_events` table with columns:
   `id`, `user_id`, `suggestion_id`, `action` (enum), `context` (JSONB),
   `modification` (text, nullable), `created_at`
 

@@ -135,20 +135,20 @@ timeline entries.
 
 ## How it works (Technical)
 
-**Entry point:** `planning/router.py` → `GET /planning/timeline/{novel_id}`
-**Service:** `TimelineService` in `planning/timeline_service.py`
-**Contract:** `TimelineServiceProtocol` in `planning/contracts.py`
-**Core Agent:** `TimelineAgent` in `core/agents/timeline_agent.py`
+**Entry point:** `apps/api/narrare/planning/router.py` → `GET /planning/timeline/{novel_id}`
+**Service:** `TimelineService` in `apps/api/narrare/planning/timeline_service.py`
+**Contract:** `TimelineServiceProtocol` in `apps/api/narrare/planning/contracts.py`
+**Core Agent:** `TimelineAgent` in `packages/core/narrare_core/agents/timeline_agent.py`
 **Prompts:** ADR-048 Mode 2 — `TimelineAgent` composes its prompt internally from `TimelineDeps`. No bundled cascade prompt; user cannot override via PromptComposer.
 **Storage:** KB timeline entries + chapter frontmatter + chapter summaries
 
 **Flow:**
 1. Router validates novel existence via `NovelRepository`
 2. Resolves model config via `ModelRoutingResolver` using `LLMIntent.PLAN`
-3. Instantiates `TimelineService` (in `planning/timeline_service.py`)
+3. Instantiates `TimelineService` (in `apps/api/narrare/planning/timeline_service.py`)
 4. Service gathers chapters with summaries from `ChapterRepository`
 5. Builds `TimelineDeps` with novel metadata (genre, language)
-6. Runs `TimelineAgent` (in `core/agents/timeline_agent.py`)
+6. Runs `TimelineAgent` (in `packages/core/narrare_core/agents/timeline_agent.py`)
 7. Agent returns `TimelineOutput` with events, conflicts, and gaps
 8. Service maps output to `TimelineResponse` schema
 
@@ -210,7 +210,7 @@ optional temporal metadata that future timeline features can build on.
 **Phase 4 implemented (AI timeline analysis):**
 - ✅ AI-powered timeline analysis via `TimelineAgent` — chronological ordering, temporal conflict detection, coverage gap analysis
 - ✅ Timeline prompt: ADR-048 Mode 2 (agent-internal from `TimelineDeps`)
-- ✅ `GET /planning/timeline/{novel_id}` endpoint in `planning/router.py`
+- ✅ `GET /planning/timeline/{novel_id}` endpoint in `apps/api/narrare/planning/router.py`
 - ✅ TimelineService with chapter summary gathering + TimelineAgent invocation
 
 **All phases implemented ✅** — See [PLAN-004-architecture.md](PLAN-004-architecture.md) for full details of the 3-phase implementation.
@@ -239,5 +239,5 @@ engine (deterministic core + LLM backend).
 - `2026-06-01` — PLAN-004 Phase 3: Character age reading from KB metadata (JSONB, no migration), CharacterAgeCheck (deterministic), CSS timeline visualization with 3 views (chronological, by chapter, by character) with cause→consequence links. TimelineVisualization component + character ages panel. 59 tests.
 - `2026-06-01` — PLAN-004 Phase 2: TemporalExtractionAgent (core agent + 3-locale prompts), deterministic consistency checks (TemporalOrderingCheck, DuplicateEventCheck), extraction + consistency endpoints, frontend review UI (TimelineExtractionReview + TimelineConsistencyPanel). 75 backend + 50 frontend tests.
 - `2026-06-01` — PLAN-004 Phase 1: TimelineEvent DB model + Alembic migration, CRUD endpoints, frontend (TimelinePanel, EventList, EventCard, EventForm, AnalysisView), PlanningPanel tab in EditorView. 28 unit + 11 integration + 23 frontend tests.
-- `2026-06-01` — Full architecture spec created (`PLAN-004-architecture.md`). Status changed to `architecture-review`. Covers all 6 sub-features across 3 phases. Key decisions: hybrid `timeline_events` table in planning module, separate `TemporalExtractionAgent`, KB `metadata_` for character birth dates, deterministic+LLM consistency engine following ADR-021.
+- `2026-06-01` — Full architecture spec created (`docs/features/planning/PLAN-004-architecture.md`). Status changed to `architecture-review`. Covers all 6 sub-features across 3 phases. Key decisions: hybrid `timeline_events` table in planning module, separate `TemporalExtractionAgent`, KB `metadata_` for character birth dates, deterministic+LLM consistency engine following ADR-021.
 - `2026-06-22` — ADR-050 applied: TimelineRefConsumer and CrossFeatureRefIndex documented for KB entity ref lifecycle

@@ -117,16 +117,16 @@ The BetaReader operates in two phases:
   detailed explanation and concrete rewrite suggestions.
 
 **Architecture:**
-- **Entry point:** `analysis/router.py` → `POST /api/v1/analysis/beta-reader` (Phase 1)
+- **Entry point:** `apps/api/narrare/analysis/router.py` → `POST /api/v1/analysis/beta-reader` (Phase 1)
   and `POST /api/v1/analysis/beta-reader/deep-dive` (Phase 2)
-- **Service:** `BetaReaderService` in `analysis/beta_reader_service.py`
-- **Contract:** `BetaReaderProtocol` in `analysis/contracts.py`
+- **Service:** `BetaReaderService` in `apps/api/narrare/analysis/beta_reader_service.py`
+- **Contract:** `BetaReaderProtocol` in `apps/api/narrare/analysis/contracts.py`
 - **LLM Intent:** `LLMIntent.BETA_READ` (intent_profile: `"long_texts"`, `"reasoning"`)
-- **Prompt:** `core/prompts/_bundled/analysis/en/beta_reader/system.md`
+- **Prompt:** `packages/core/narrare_core/prompts/_bundled/analysis/en/beta_reader/system.md`
 
 **Invocation (Mode 1 PromptComposer — ADR-048/054):**
 The service uses `compose_analysis_invocation_prompt()` from
-`analysis/_invocation_compose.py` — a shared Mode 1 helper for analysis services.
+`apps/api/narrare/analysis/_invocation_compose.py` — a shared Mode 1 helper for analysis services.
 This resolves via `PromptComposer.build(intent=LLMIntent.BETA_READ, context=...,
 context_mode="beta_reader")`. Auf Pipeline-Failure (Enrichment, Validation,
 Evidence-Recording) fällt es auf direktes `composer.build()` zurück, damit die
@@ -135,15 +135,15 @@ Analyse nicht blockiert wird (RULE-11: logged, nicht silent).
 **RULE-04 Modularisierung:**
 Das BetaReader-Modul ist aus Gründen der Dateigrößen-Limits auf mehrere Dateien
 verteilt:
-- `beta_reader_mapper.py` — Response-Mapping
-- `beta_reader_prompt.py` — Budget-aware Prompt-Konstruktion
-- `beta_reader_agent_run.py` — Agent-Ausführung (Phase 1 + 2)
-- `beta_reader_cache.py` — Redis-basierter Analyse-Cache
+- `apps/api/narrare/analysis/beta_reader_mapper.py` — Response-Mapping
+- `apps/api/narrare/analysis/beta_reader_prompt.py` — Budget-aware Prompt-Konstruktion
+- `apps/api/narrare/analysis/beta_reader_agent_run.py` — Agent-Ausführung (Phase 1 + 2)
+- `apps/api/narrare/analysis/beta_reader_cache.py` — Redis-basierter Analyse-Cache
 
 **Frontend:**
-- `BetaReaderPanel.tsx` + `BetaReaderPanelContent.tsx` — 4-Tab-Ergebnisansicht
+- `packages/web/components/studio/analysis/BetaReaderPanel.tsx` + `packages/web/components/studio/analysis/BetaReaderPanelContent.tsx` — 4-Tab-Ergebnisansicht
   (Strengths, Issues, Questions, Suggestions)
-- `BetaReaderTrigger.tsx` — Toolbar-Button im Editor
+- `packages/web/components/studio/analysis/BetaReaderTrigger.tsx` — Toolbar-Button im Editor
 - `useBetaReaderAnalyze` / `useBetaReaderDeepDive` Hooks — nutzen `useAIOperation` (ADR-043)
 - `ScoreRadar` — Recharts-basierte Radar-Chart-Visualisierung
 - i18n in 3 Sprachen (en/de/fr)

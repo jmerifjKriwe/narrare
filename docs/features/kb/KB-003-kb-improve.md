@@ -92,10 +92,10 @@ You can run Improve multiple times as your story evolves.
 
 ## How it works (Technical)
 
-**Service:** `KBImproveService.analyze()` + `KBImproveService.apply()` in `kb/improve_service.py`
-**Contract:** `KBImproveProtocol` in `kb/improve_contracts.py`
-**Router:** `POST /novels/{novel_id}/kb/entities/{entry_id}/improve` + `/improve/apply` in `kb/router_improve.py`
-**Agent:** `KBImproveAgent` in `core/agents/kb_improve_agent.py`
+**Service:** `KBImproveService.analyze()` + `KBImproveService.apply()` in `apps/api/narrare/kb/improve_service.py`
+**Contract:** `KBImproveProtocol` in `apps/api/narrare/kb/improve_contracts.py`
+**Router:** `POST /novels/{novel_id}/kb/entities/{entry_id}/improve` + `/improve/apply` in `apps/api/narrare/kb/router_improve.py`
+**Agent:** `KBImproveAgent` in `packages/core/narrare_core/agents/kb_improve_agent.py`
 **Frontend:** `KBImprovePanel` + "Improve with AI" button in `KBEntryDetail`
 
 **Analysis process:**

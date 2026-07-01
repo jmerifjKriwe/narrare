@@ -98,9 +98,9 @@ Can also run automatically on chapter save (configurable in Settings).
 
 ## How it works (Technical)
 
-**Entry point:** `kb/router.py` → `POST /api/v1/kb/extract/{chapter_id}`
-**Service:** `ExtractionService.extract()` in `kb/extraction_service.py`
-**Contract:** `ExtractionProtocol` in `kb/contracts.py`
+**Entry point:** `apps/api/narrare/kb/router.py` → `POST /api/v1/kb/extract/{chapter_id}`
+**Service:** `ExtractionService.extract()` in `apps/api/narrare/kb/extraction_service.py`
+**Contract:** `ExtractionProtocol` in `apps/api/narrare/kb/contracts.py`
 **LLM Intent:** `LLMIntent.KB_EXTRACT`
 
 **Three-stage extraction:**

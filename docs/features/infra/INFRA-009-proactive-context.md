@@ -40,7 +40,7 @@ Writers shouldn't have to manually search for and pin relevant character profile
 
 ## How it works (Technical)
 
-**Entry point:** `apps/api/routers/context/proactive.py` → `POST /api/v1/context/proactive/{chapter_id}`
+**Entry point:** apps/api/routers/context/proactive.py → `POST /api/v1/context/proactive/{chapter_id}`
 **Service:** `ProactiveContextService.suggest()`
 **Contract:** `ProactiveContextServiceProtocol`
 **Streaming:** no
@@ -69,8 +69,8 @@ INFRA-009 and KB-005 describe the same feature with identical 3-stage pipelines
 and scoring formulas. INFRA-009 is the infrastructure layer, KB-005 is the
 KB-surface layer. Merged into a single implementation:
 
-- **Core:** `ProactiveContextService` in `core/context/proactive_service.py`
-- **API:** `KBSuggestService` in `kb/suggest_service.py` (thin wrapper)
+- **Core:** `ProactiveContextService` in `packages/core/narrare_core/context/proactive_service.py`
+- **API:** `KBSuggestService` in `apps/api/narrare/kb/suggest_service.py` (thin wrapper)
 - **Also feeds:** `WritingContextAssembler` (KB Suggested tier) and `KBCreationContextAssembly` (world context for KB-002)
 
 No separate INFRA-009 implementation. See KB-005 for full architecture.

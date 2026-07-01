@@ -122,12 +122,12 @@ Demo projects are bundled Markdown files in `scripts/demo_data/`.
 creates DB records. KB stubs are created as empty entities with names only.
 
 **Provider extensibility:**
-The provider list is driven by `core/llm/_providers/registry.py`. Adding a
+The provider list is driven by `packages/core/narrare_core/llm/_providers/registry.py`. Adding a
 new provider to the registry automatically makes it available in the wizard.
 No wizard code changes needed for new providers.
 
 **Story structure / tone extensibility:**
-Both lists are defined in `packages/core/narrare_core/schemas/novels.py` as
+Both lists are defined in packages/core/narrare_core/schemas/novels.py as
 enums with a display name map. Adding a new value requires only a schema change
 and an i18n string — no wizard logic changes.
 

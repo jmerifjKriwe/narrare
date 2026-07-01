@@ -205,11 +205,21 @@ def _check_category_alignment(
     checker_scripts: list[Path],
     registry_categories: set[str],
 ) -> list[DocDriftFinding]:
-    """Check: category names in checkers match registry."""
+    """Check: category names in checkers match registry.
+
+    Only checks .md files — Python scripts use string literals for argparse,
+    variable names, path components, etc. that falsely trigger this check.
+    See: terminology_checks.py _extract_category_refs.
+    """
     findings: list[DocDriftFinding] = []
 
     for script_path in checker_scripts:
         if not script_path.exists():
+            continue
+
+        # Skip Python files: _extract_category_refs is too greedy for code
+        # (catches argparse store_true, __main__, path components, etc.)
+        if script_path.suffix in {".py"}:
             continue
 
         # Get category-like strings from checker

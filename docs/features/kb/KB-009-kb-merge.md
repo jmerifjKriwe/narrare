@@ -93,14 +93,14 @@ and decision-making process while keeping the author in control.
 
 ## How it works (Technical)
 
-**Entry point:** `kb/router_merge.py` → `POST /novels/{novel_id}/kb/merge`
+**Entry point:** `apps/api/narrare/kb/router_merge.py` → `POST /novels/{novel_id}/kb/merge`
 
 **Flow:**
 1. Router validates novel existence via `NovelRepository`
 2. Resolves model config via `ModelRoutingResolver` using `LLMIntent.KB_CONSISTENCY`
-3. Instantiates `KBMergeService` (in `kb/merge_service.py`)
+3. Instantiates `KBMergeService` (in `apps/api/narrare/kb/merge_service.py`)
 4. Service builds `KBMergeDeps` with entity type + novel metadata
-5. Runs `KBMergeAgent` (in `core/agents/merge_agent.py`)
+5. Runs `KBMergeAgent` (in `packages/core/narrare_core/agents/merge_agent.py`)
 6. Agent returns `MergeOutput` with structured decisions
 7. Service maps output to `MergeResponse` schema
 

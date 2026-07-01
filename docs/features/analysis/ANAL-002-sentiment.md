@@ -106,9 +106,9 @@ shifts, or ensure the climax has maximum impact.
 
 ## How it works (Technical)
 
-**Entry point:** `analysis/router.py` → `POST /api/v1/analysis/sentiment`
-**Service:** `SentimentService.analyze()` in `analysis/services/sentiment_service.py`
-**Contract:** `SentimentService` in `analysis/contracts.py`
+**Entry point:** `apps/api/narrare/analysis/router.py` → `POST /api/v1/analysis/sentiment`
+**Service:** `SentimentService.analyze()` in `apps/api/narrare/analysis/services/sentiment_service.py`
+**Contract:** `SentimentService` in `apps/api/narrare/analysis/contracts.py`
 **Architecture per ADR-021:** Deterministic — spaCy NLP pipeline + NRC EmoLex lexicon scoring + algorithmic arc detection. No LLM calls for measurement.
 
 **Pipeline:**

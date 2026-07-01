@@ -34,13 +34,13 @@ To allow external, third-party, or personalized AI agents to natively access and
 ## How it works (User perspective)
 
 1. The writer or developer starts the A2A server.
-2. An external AI agent discovers Narrare via its Agent Card at `/.well-known/agent-card.json`.
+2. An external AI agent discovers Narrare via its Agent Card at /.well-known/agent-card.json.
 3. The agent sends a task with a `skill_id` in the metadata.
 4. Narrare processes the task and returns results as artifacts, supporting multi-turn interactions.
 
 ## How it works (Technical)
 
-**Entry point:** `apps/api/routers/a2a.py`
+**Entry point:** apps/api/routers/a2a.py
 **Service:** A2A integration server handling standardized requests.
 **Streaming:** yes (for stateful interactions)
 

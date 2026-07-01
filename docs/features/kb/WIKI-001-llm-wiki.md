@@ -50,10 +50,10 @@ ui_help_long: |
   - Doesn't auto-finalize chapters — only finalized chapters get WikiChapterSummaries
 ui_available_in: [kb, editor]
 
-service: core/wiki/service.py
-contract: core/wiki/contracts.py#WikiServiceProtocol
+service: packages/core/narrare_core/wiki/service.py
+contract: packages/core/narrare_core/wiki/contracts.py#WikiServiceProtocol
 router: apps/api/narrare/wiki/router.py
-prompt: core/prompts/_bundled/wiki/en/entity_summary/system.md
+prompt: packages/core/narrare_core/prompts/_bundled/wiki/en/entity_summary/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003, INFRA-005, KB-001, ADR-007, ADR-012, WRITE-012]
 ---
 
@@ -118,24 +118,24 @@ Write-Call:
 
 ### Modules
 
-**New: `core/wiki/` Module:**
+**New: `packages/core/narrare_core/wiki/` Module:**
 
 | File | Responsibility |
 |------|---------------|
-| `contracts.py` | `WikiServiceProtocol`, `WikiAgentProtocol` |
-| `types.py` | `WikiSummary`, `WikiChapterSummary`, `WikiSummaryStatus` enums |
-| `service.py` | `WikiService` — orchestriert Generation + Lookup |
-| `agent.py` | `WikiGenerationAgent` — LLM-Call für Summary-Generierung |
-| `repository.py` | DB-Zugriff für WikiSummaries (API-Layer) |
+| `packages/core/narrare_core/wiki/contracts.py` | `WikiServiceProtocol`, `WikiAgentProtocol` |
+| `packages/core/narrare_core/wiki/types.py` | `WikiSummary`, `WikiChapterSummary`, `WikiSummaryStatus` enums |
+| `packages/core/narrare_core/wiki/service.py` | `WikiService` — orchestriert Generation + Lookup |
+| `packages/core/narrare_core/wiki/agent.py` | `WikiGenerationAgent` — LLM-Call für Summary-Generierung |
+| repository.py | DB-Zugriff für WikiSummaries (API-Layer) |
 
 **New: `apps/api/narrare/wiki/` Module:**
 
 | File | Responsibility |
 |------|---------------|
-| `router.py` | REST-Endpoints für Wiki-Daten (GET summaries, POST refresh) |
-| `schemas.py` | Pydantic-Request/Response-Schemas |
-| `tasks.py` | TaskIQ-Tasks für Background-Generierung |
-| `listeners.py` | Event-Listener für Trigger |
+| `apps/api/narrare/wiki/router.py` | REST-Endpoints für Wiki-Daten (GET summaries, POST refresh) |
+| `apps/api/narrare/wiki/schemas.py` | Pydantic-Request/Response-Schemas |
+| `apps/api/narrare/wiki/tasks.py` | TaskIQ-Tasks für Background-Generierung |
+| `apps/api/narrare/wiki/listeners.py` | Event-Listener für Trigger |
 
 ### Data Flow
 
@@ -274,19 +274,19 @@ N Kapiteln referenzierten Entities vorgeladen.
 ## Definition of Done
 
 - [x] ADR-022 approved and documented
-- [x] `core/wiki/contracts.py` definiert WikiServiceProtocol, WikiGenerationAgentProtocol
-- [x] `core/wiki/types.py` definiert WikiSummary, WikiChapterSummary, WikiSummaryStatus
-- [x] `core/wiki/agent.py` implementiert WikiGenerationAgent (Entity + Chapter)
-- [x] `core/wiki/service.py` implementiert WikiService (generate, get, refresh, mark_stale)
+- [x] `packages/core/narrare_core/wiki/contracts.py` definiert WikiServiceProtocol, WikiGenerationAgentProtocol
+- [x] `packages/core/narrare_core/wiki/types.py` definiert WikiSummary, WikiChapterSummary, WikiSummaryStatus
+- [x] `packages/core/narrare_core/wiki/agent.py` implementiert WikiGenerationAgent (Entity + Chapter)
+- [x] `packages/core/narrare_core/wiki/service.py` implementiert WikiService (generate, get, refresh, mark_stale)
 - [x] `apps/api/narrare/wiki/repository.py` implementiert WikiRepository
 - [x] `apps/api/narrare/wiki/tasks.py` TaskIQ-Tasks: wiki_generate_entity, wiki_generate_chapter, wiki_mark_all_stale
 - [x] `apps/api/narrare/wiki/listeners.py` Event-Listener: kb.entry.updated, chapter.finalized, wiki.prompt.changed
 - [x] `apps/api/narrare/kb/embedding_hooks.py` erweitert: Event-Publishing fuer Wiki-Trigger
-- [x] `core/writing/context_assembler.py` erweitert: WikiSummary-Lookup + Fallback in Tier 3
-- [x] Wiki-Prompts in `core/prompts/_bundled/wiki/` (en, de, fr)
+- [x] `packages/core/narrare_core/writing/context_assembler.py` erweitert: WikiSummary-Lookup + Fallback in Tier 3
+- [x] Wiki-Prompts in `packages/core/narrare_core/prompts/_bundled/wiki/` (en, de, fr)
 - [x] Migration: `wiki_summaries` + `wiki_chapter_summaries` Tabellen
-- [x] Event-Typ `WIKI_PROMPT_CHANGED` in `core/events/types.py` registriert
-- [x] Event-Listener in `apps/api/narrare/events/listeners.py` registriert
+- [x] Event-Typ `WIKI_PROMPT_CHANGED` in `packages/core/narrare_core/events/types.py` registriert
+- [x] Event-Listener in `apps/api/narrare/_app/lifespan.py` registriert
 - [x] Prompt-Versionierung in Wiki-Prompt-Frontmatter
 - [x] Wiki-UI: Entity-Detail-Ansicht zeigt WikiSummary ("How the AI sees this character")
 - [x] Wiki-UI: Manueller Refresh-Button im Entity-Detail
@@ -298,9 +298,9 @@ N Kapiteln referenzierten Entities vorgeladen.
 
 | Rule | Status | Nachweis |
 |------|--------|----------|
-| RULE-01b | ✅ | WikiGenerationAgent in `core/wiki/agent.py` via NarrareAgent-Basis + ModelRegistry |
-| RULE-02 | ✅ | Wiki-Prompts in `core/prompts/_bundled/wiki/` |
-| RULE-03 | ✅ | Contract in `core/wiki/contracts.py` vor Implementation |
+| RULE-01b | ✅ | WikiGenerationAgent in `packages/core/narrare_core/wiki/agent.py` via NarrareAgent-Basis + ModelRegistry |
+| RULE-02 | ✅ | Wiki-Prompts in `packages/core/narrare_core/prompts/_bundled/wiki/` |
+| RULE-03 | ✅ | Contract in `packages/core/narrare_core/wiki/contracts.py` vor Implementation |
 | RULE-04 | ✅ | Modul-Aufteilung: agent.py max 200, service.py max 300, types.py max 150 Zeilen |
 | RULE-05 | ✅ | Neues Modul `core/wiki/` — eigene Contracts, Service, Agent |
 | RULE-06 | ✅ | Router delegiert an Service, Service orchestriert Agent + Repository |

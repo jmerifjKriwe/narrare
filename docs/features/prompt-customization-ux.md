@@ -72,7 +72,7 @@ Test und ermöglicht Reset-to-Default pro Intent.
    durch manuelles Löschen.
 
 4. **Entdeckung im Audit:** Die Settings AI-Komponenten
-   (`IntentOverrides.tsx`) wurden vom Audit-Prompt als existent,
+   (`packages/web/components/studio/settings/IntentOverrides.tsx`) wurden vom Audit-Prompt als existent,
    aber nicht vollständig auditiert markiert. Dieses Feature spec
    schließt diese Lücke.
 
@@ -133,11 +133,11 @@ Hinweis erforderlich.
 
 ## How it works (Technical)
 
-**Entry point:** Settings AI tab → `IntentOverrides.tsx` (erweitert)
+**Entry point:** Settings AI tab → `packages/web/components/studio/settings/IntentOverrides.tsx` (erweitert)
 **Backend:** Bestehende Routen + providerfreie Preview und optionaler Live-Test
 **Service:** `PromptPreviewService` in `apps/api/narrare/prompts/`
-**Contract:** `PromptCustomizationProtocol` in `prompts/contracts_prompt_ux.py`
-**Prompt:** Verwendet bestehende Prompts aus `core/prompts/_bundled/`
+**Contract:** Prompt UX API protocols (`PromptPreviewApiProtocol`, `PromptResetApiProtocol`, `PromptLiveTestApiProtocol`) in `apps/api/narrare/prompts/contracts.py`; core protocols in `packages/core/narrare_core/prompts/contracts.py`
+**Prompt:** Verwendet bestehende Prompts aus `packages/core/narrare_core/prompts/_bundled/`
 
 ### CR-07 Follow-up v3 Architecture Boundary
 
@@ -180,10 +180,10 @@ gezählt werden. Runtime-/Eval-Claims benötigen separate Evidence gemäß INFRA
 
 | Komponente | Neu/Erweitert | Beschreibung |
 |------------|---------------|-------------|
-| `IntentOverrides.tsx` | Erweitert | Detail-Ansicht mit Variable-Info + Reset + Preview |
-| `PromptPreviewDialog.tsx` | Neu | Modal/Sheet mit vollständig aufgelöstem Prompt |
-| `PromptTestDialog.tsx` | Neu | Modal mit KI-Testlauf (Streaming-Preview) |
-| `VariableExplanationTable.tsx` | Neu | Tabelle mit Variablen-Name, Beschreibung, Beispielwert |
+| `packages/web/components/studio/settings/IntentOverrides.tsx` | Erweitert | Detail-Ansicht mit Variable-Info + Reset + Preview |
+| `packages/web/components/studio/settings/PromptPreviewDialog.tsx` | Neu | Modal/Sheet mit vollständig aufgelöstem Prompt |
+| `packages/web/components/studio/settings/PromptLiveTestDialog.tsx` | Neu | Modal mit KI-Testlauf (Streaming-Preview) |
+| `packages/web/components/studio/settings/VariableMetadataPanel.tsx` | Neu | Tabelle mit Variablen-Name, Beschreibung, Beispielwert |
 
 ### Prompt-Variable Metadata
 
@@ -191,7 +191,7 @@ Die Variablen-Metadaten (Name, Beschreibung, Datenquelle) müssen in den
 Prompt-Dateien oder einem separaten Manifest gepflegt werden:
 
 ```yaml
-# core/prompts/_bundled/writing/en/extend/variables.yaml
+# packages/core/narrare_core/prompts/variable_metadata.py
 - name: "kb_context"
   description: "Relevant knowledge base context for the current chapter"
   source: "KBService.get_relevant_context()"
@@ -200,7 +200,7 @@ Prompt-Dateien oder einem separaten Manifest gepflegt werden:
 
 ### i18n
 
-Neue Schlüssel in `studio.json` unter `settings.ai.promptCustomization.*`:
+Neue Schlüssel in `packages/i18n/messages/en/studio.json` unter `settings.ai.promptCustomization.*`:
 
 | Key | DE | EN | FR |
 |-----|----|----|----|
@@ -283,7 +283,7 @@ Neue Schlüssel in `studio.json` unter `settings.ai.promptCustomization.*`:
 - **Kein unbegrenztes Testen:** Rate-Limiting für den Live-Test-Endpoint (max. 5
   Tests pro Minute oder projektweiter Settings-Wert).
 - **Reset ist immer möglich:** Der Original-Prompt ist im Code definiert
-  (`core/prompts/_bundled/`) und kann nicht überschrieben werden. Reset
+  (`packages/core/narrare_core/prompts/_bundled/`) und kann nicht überschrieben werden. Reset
   löscht nur den User-Override.
 - **Komplexe Prompts:** Prompts mit Conditional Logic (@if/endif) werden
   im Preview nur annotiert, nicht interpretiert — der Nutzer sieht die
@@ -310,22 +310,22 @@ Neue Schlüssel in `studio.json` unter `settings.ai.promptCustomization.*`:
 - `2026-06-22` — Phase B implemented; PROMPT-003 → `stable`. Contract-first
   implementation across Core/Backend/Frontend (provider-free preview,
   variable metadata/provenance, reset semantics, provider-gated SSE live test).
-  Enforcement: `test_preview_no_provider.py`, `test_prompt_preview_schema_contract.py`,
-  `test_prompt_ux_router.py`, `just check-ai-ux` (0 violations), `check_frontend_file_size.py`.
+  Enforcement: `tests/unit/core/prompts/test_preview_no_provider.py`, `tests/unit/api/prompts/test_prompt_preview_schema_contract.py`,
+  `tests/integration/prompts/test_prompt_ux_router.py`, `just check-ai-ux` (0 violations), `scripts/check_frontend_file_size.py`.
   CR-AUFG-07-16 resolved; inventory entry `settings.prompts.live_test` added.
 
 ## Definition of Done
 
-- [x] Prompt-Variablen-Panel zeigt alle `{{variablen}}` mit Beschreibung + Beispielwert — `VariableMetadataPanel.tsx`, `PromptVariablesAside.tsx`, `promptVariables.ts` (evidence: `PromptEditor.test.tsx`).
-- [x] Providerfreie Preview (Prompt-Auflösung + Provenance + Diagnostics ohne KI) implementiert — Core `preview.py`/`preview_types.py`/`contracts.py`, Backend `preview_service.py`/`router_prompt_ux.py` (`/preview`), Frontend `PromptPreviewDialog.tsx`; no-provider invariant enforced by `test_preview_no_provider.py`.
-- [x] Optionaler Live-Test (KI-Anfrage + Streaming-Vorschau) provider-/secret-gated implementiert — Core `agents/prompt_live_test_agent.py`, Backend `live_test_service.py`/`_live_test_sse.py`/`router_prompt_ux.py` (`/live-test`, 503 on missing provider), Frontend `usePromptLiveTest.ts`/`PromptLiveTestDialog.tsx` via `useAIOperation` + `streamPromptLiveTest` SSE.
-- [x] Reset-to-Default pro Intent mit Bestätigungsdialog implementiert — `preview_service.py` (`reset_with_metadata`), `router_prompt_ux.py` (`/reset`), `PromptResetConfirmDialog.tsx` (evidence: `PromptResetConfirmDialog.test.tsx`).
-- [x] Warnhinweis vor Live-Test (Token-Verbrauch + Projektdaten an Provider) — `usePromptLiveTest.ts` (`acknowledged` gate + `acknowledge_token_cost`), `tokenWarning` i18n key.
-- [x] i18n: Alle neuen UI-Texte in studio.json (de/en/fr) — `packages/i18n/messages/{de,en,fr}/studio.json` → `settings.prompts.promptCustomization.*` (3-locale parity).
+- [x] Prompt-Variablen-Panel zeigt alle `{{variablen}}` mit Beschreibung + Beispielwert — `packages/web/components/studio/settings/VariableMetadataPanel.tsx`, `packages/web/components/studio/settings/PromptVariablesAside.tsx`, `packages/web/components/studio/settings/promptVariables.ts` (evidence: `packages/web/components/studio/settings/__tests__/PromptEditor.test.tsx`).
+- [x] Providerfreie Preview (Prompt-Auflösung + Provenance + Diagnostics ohne KI) implementiert — Core `packages/core/narrare_core/prompts/preview.py` / `packages/core/narrare_core/prompts/preview_types.py` / `packages/core/narrare_core/prompts/contracts.py`, Backend `apps/api/narrare/prompts/preview_service.py` / `apps/api/narrare/prompts/router_prompt_ux.py` (`/preview`), Frontend `packages/web/components/studio/settings/PromptPreviewDialog.tsx`; no-provider invariant enforced by `tests/unit/core/prompts/test_preview_no_provider.py`.
+- [x] Optionaler Live-Test (KI-Anfrage + Streaming-Vorschau) provider-/secret-gated implementiert — Core `packages/core/narrare_core/agents/prompt_live_test_agent.py`, Backend `apps/api/narrare/prompts/live_test_service.py` / `apps/api/narrare/prompts/_live_test_sse.py` / `apps/api/narrare/prompts/router_prompt_ux.py` (`/live-test`, 503 on missing provider), Frontend `packages/web/components/studio/settings/usePromptLiveTest.ts` / `packages/web/components/studio/settings/PromptLiveTestDialog.tsx` via `useAIOperation` + `streamPromptLiveTest` SSE.
+- [x] Reset-to-Default pro Intent mit Bestätigungsdialog implementiert — `apps/api/narrare/prompts/preview_service.py` (`reset_with_metadata`), `apps/api/narrare/prompts/router_prompt_ux.py` (`/reset`), `packages/web/components/studio/settings/PromptResetConfirmDialog.tsx` (evidence: `packages/web/components/studio/settings/__tests__/PromptResetConfirmDialog.test.tsx`).
+- [x] Warnhinweis vor Live-Test (Token-Verbrauch + Projektdaten an Provider) — `packages/web/components/studio/settings/usePromptLiveTest.ts` (`acknowledged` gate + `acknowledge_token_cost`), `tokenWarning` i18n key.
+- [x] i18n: Alle neuen UI-Texte in studio.json (de/en/fr) — `packages/i18n/messages/de/studio.json`, `packages/i18n/messages/en/studio.json`, `packages/i18n/messages/fr/studio.json` → `settings.prompts.promptCustomization.*` (3-locale parity).
 - [x] Prompt-Variable-Metadaten (Beschreibung, Datenquelle) gepflegt — `packages/core/narrare_core/prompts/variable_metadata.py` (registry with `VariableMeta`: name/description/source/security/required).
 - [x] Rate-Limiting für Live-Test-Endpoint (max. 5/min oder Settings-Wert) — `AI_PROMPT_LIVE_TEST_LIMITER` = `Rate(5, LONG_WINDOW_MS)` in `apps/api/narrare/_app/rate_limits.py` → 429 on exceed.
-- [x] Tests: Preview- + Test-Endpoint (Integration), Frontend-Komponenten (Vitest) — `test_preview_no_provider.py`, `test_prompt_preview_schema_contract.py` (API↔Frontend schema), `test_prompt_ux_router.py` (integration), `PromptPreviewDialog.test.tsx`, `PromptLiveTestDialog.test.tsx`, `PromptResetConfirmDialog.test.tsx`, `prompts-preview.test.ts`.
-- [x] Bestehende PROMPT-001/PROMPT-002 funktionieren unverändert — `router_prompt_ux.py` uses distinct HTTP methods/paths (`POST /{prompt_id}/{preview|reset|live-test}`); existing GET/PUT/DELETE in `router.py` untouched.
+- [x] Tests: Preview- + Test-Endpoint (Integration), Frontend-Komponenten (Vitest) — `tests/unit/core/prompts/test_preview_no_provider.py`, `tests/unit/api/prompts/test_prompt_preview_schema_contract.py` (API↔Frontend schema), `tests/integration/prompts/test_prompt_ux_router.py` (integration), `packages/web/components/studio/settings/__tests__/PromptPreviewDialog.test.tsx`, `packages/web/components/studio/settings/__tests__/PromptLiveTestDialog.test.tsx`, `packages/web/components/studio/settings/__tests__/PromptResetConfirmDialog.test.tsx`, `packages/web/lib/api/__tests__/prompts-preview.test.ts`.
+- [x] Bestehende PROMPT-001/PROMPT-002 funktionieren unverändert — `apps/api/narrare/prompts/router_prompt_ux.py` uses distinct HTTP methods/paths (`POST /{prompt_id}/{preview|reset|live-test}`); existing GET/PUT/DELETE in `apps/api/narrare/prompts/router.py` untouched.
 - [x] Dokumentation: Feature-Spec auf stable gesetzt — this spec; CR-AUFG-07-16 exit evidence in `docs/architecture/governance/aufg-registry.md`; inventory entry `settings.prompts.live_test`.
 
 ---

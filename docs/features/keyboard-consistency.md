@@ -51,17 +51,17 @@ möglich ist, und dokumentiert alle Shortcuts in den Einstellungen.
 
 **CR-07 §7 Bewertung: ⭐⭐☆☆☆** — Das UX-Audit hat identifiziert:
 
-1. **Ctrl/Cmd+Enter** für KB-Textareas (`KBSessionFieldList.tsx:191-199`,
-   `KBInterviewView.tsx:230-234`) — konsistent und gut.
+1. **Ctrl/Cmd+Enter** für KB-Textareas (`packages/web/components/studio/kb/KBSessionFieldList.tsx:191-199`,
+   `packages/web/components/studio/kb/KBInterviewView.tsx:230-234`) — konsistent und gut.
 
-2. **Enter** für Session Chat (`SessionActions.tsx:47-52`) — Enter sendet
+2. **Enter** für Session Chat (`packages/web/components/studio/editor/SessionActions.tsx:47-52`) — Enter sendet
    die Nachricht, aber Shift+Enter für Newline existiert nicht
    konsistent. Nutzer erwarten Ctrl+Enter zum Senden in Multi-Line-Inputs.
 
 3. **Click-only** für die meisten AI-Output-Actions — Accept, Reject, Retry
    sind nur per Mausklick erreichbar. Keine Tastaturkürzel.
 
-4. **Tab für GhostText** existiert bereits (`TipTapEditor.tsx:520-523`
+4. **Tab für GhostText** existiert bereits (`packages/web/components/studio/TipTapEditor.tsx:520-523`
    GhostText-Extension) — muss erhalten bleiben.
 
 5. **Escape für Cancel** fehlt für die meisten SSE-Streams — nur
@@ -110,14 +110,14 @@ möglich ist, und dokumentiert alle Shortcuts in den Einstellungen.
 
 | Datei | Änderung |
 |-------|----------|
-| `SessionActions.tsx:47-52` | Enter → Shift+Enter=Newline, Ctrl+Enter=Send |
-| `GenerationPanel.tsx` | Ctrl+Enter-Handler für Prompt-Textarea |
-| `TipTapEditor.tsx` | Escape-Handler für Cancel bei aktiver SSE-Operation |
-| `KBInterviewView.tsx` | Escape-Cancel (bestehenden Stop-Button ergänzen) |
-| `KBSessionFieldList.tsx` | Escape-Cancel (bestehenden Stop-Button ergänzen) |
-| `useSessionSocket.ts` | Escape → send cancel message |
-| `SettingsView.tsx` | Shortcuts-Liste um KS-Aktionen erweitern |
-| `studio.json` | Neue i18n-Keys für Shortcut-Beschreibungen |
+| `packages/web/components/studio/editor/SessionActions.tsx:47-52` | Enter → Shift+Enter=Newline, Ctrl+Enter=Send |
+| `packages/web/components/studio/editor/GenerationPanel.tsx` | Ctrl+Enter-Handler für Prompt-Textarea |
+| `packages/web/components/studio/TipTapEditor.tsx` | Escape-Handler für Cancel bei aktiver SSE-Operation |
+| `packages/web/components/studio/kb/KBInterviewView.tsx` | Escape-Cancel (bestehenden Stop-Button ergänzen) |
+| `packages/web/components/studio/kb/KBSessionFieldList.tsx` | Escape-Cancel (bestehenden Stop-Button ergänzen) |
+| `packages/web/components/studio/editor/useSessionSocket.ts` | Escape → send cancel message |
+| `packages/web/components/studio/SettingsView.tsx` | Shortcuts-Liste um KS-Aktionen erweitern |
+| `packages/i18n/messages/en/studio.json` | Neue i18n-Keys für Shortcut-Beschreibungen |
 
 ### Keyboard-Handler-Pattern
 

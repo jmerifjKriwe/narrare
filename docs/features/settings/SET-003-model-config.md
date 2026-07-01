@@ -47,7 +47,7 @@ Per-task Model Configuration replaces Narrare's hardcoded model routing with a r
 
 ## Why it exists
 
-Previously, the model-to-intent mapping was hardcoded in `core/llm/intents.py` — a Python dictionary mapping every intent to specific Anthropic models. Changing the model for any task required a code change and redeploy. Writers who used OpenRouter, Ollama, or any non-Anthropic provider could not use their chosen provider for AI features. This feature puts model selection in the writer's hands.
+Previously, the model-to-intent mapping was hardcoded in `packages/core/narrare_core/llm/intents.py` — a Python dictionary mapping every intent to specific Anthropic models. Changing the model for any task required a code change and redeploy. Writers who used OpenRouter, Ollama, or any non-Anthropic provider could not use their chosen provider for AI features. This feature puts model selection in the writer's hands.
 
 ## How it works (User perspective)
 
@@ -62,7 +62,7 @@ Previously, the model-to-intent mapping was hardcoded in `core/llm/intents.py` �
 
 ## How it works (Technical)
 
-**Core resolution:** `ModelRoutingResolver` protocol in `core/llm/model_routing.py`
+**Core resolution:** `ModelRoutingResolver` protocol in `packages/core/narrare_core/llm/model_routing.py`
 **Cascade priority:**
 ```
 Project-level intent override → Project-level category override

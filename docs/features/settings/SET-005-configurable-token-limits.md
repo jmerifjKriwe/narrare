@@ -122,12 +122,12 @@ budget_tier_percentages: str = ""  # optional JSON: '{"immediate":30,"recent":20
 
 | File | Purpose |
 |------|---------|
-| `token_limits/models.py` | `UserTokenLimits` + `ProjectTokenLimits` SQLAlchemy models |
-| `token_limits/schemas.py` | Pydantic request/response schemas |
-| `token_limits/contracts.py` | `TokenLimitsServiceProtocol`, `TokenLimitsRepositoryProtocol` |
-| `token_limits/repository.py` | CRUD for token limits overrides |
-| `token_limits/service.py` | Cascade resolution logic + merge with env/code defaults |
-| `token_limits/router.py` | REST endpoints under `/api/v1/settings/token-limits` |
+| `apps/api/narrare/settings/token_limits/models.py` | `UserTokenLimits` + `ProjectTokenLimits` SQLAlchemy models |
+| `apps/api/narrare/settings/token_limits/schemas.py` | Pydantic request/response schemas |
+| `apps/api/narrare/settings/token_limits/contracts.py` | `TokenLimitsServiceProtocol`, `TokenLimitsRepositoryProtocol` |
+| `apps/api/narrare/settings/token_limits/repository.py` | CRUD for token limits overrides |
+| `apps/api/narrare/settings/token_limits/service.py` | Cascade resolution logic + merge with env/code defaults |
+| `apps/api/narrare/settings/token_limits/router.py` | REST endpoints under `/api/v1/settings/token-limits` |
 
 ### Backend Resolver Integration
 
@@ -147,17 +147,17 @@ The old columns (`user_ai_settings.token_limit_overrides`, `project_ai_settings.
 
 ### Frontend
 
-- `ContextBudget.tsx` — Token budget distribution across 5 context tiers with auto-summing percentage sliders
-- `SystemTimeouts.tsx` — WebSocket idle timeout, API request timeout, retry configuration
-- `DefaultModelSection.tsx` — Model selection with token limit display from `get_model_limits()`
-- All components under `components/settings/`
-- Profile selector in `AiTab.tsx` reads/writes via `TokenLimitsApi`
+- `packages/web/components/studio/settings/ContextBudget.tsx` — Token budget distribution across 5 context tiers with auto-summing percentage sliders
+- `packages/web/components/studio/settings/SystemTimeouts.tsx` — WebSocket idle timeout, API request timeout, retry configuration
+- `packages/web/components/studio/settings/DefaultModelSection.tsx` — Model selection with token limit display from `get_model_limits()`
+- All components under `packages/web/components/studio/settings/`
+- Profile selector in `packages/web/components/studio/settings/AiTab.tsx` reads/writes via `TokenLimitsApi`
 - Save-on-change with debounce
 - "Reset to defaults" button per section
 
 ### mem0 Integration
 
-- `apps/api/narrare/writing/memory_deps.py` (new): Creates `create_memory_client()` with settings
+- `apps/api/narrare/memory/dependencies.py` (new): Creates `create_memory_client()` with settings
 - Reads `config.memory_llm_model` and `config.memory_embedding_model`
 - Memory router starts using real client instead of `NullMemoryClient()`
 
@@ -208,10 +208,10 @@ CR-08 P2/P3/P4 delivered (2026-06-20):
 
 Historical consistency integration delivered (legacy SET-005 work; separate from the
 CR-AUFG-08-02 P0 evidence for `tier_percentages` → `WritingContextAssembler`):
-- Consistency module integration: `checker_service.py` resolves limits via `TokenLimitsService`
-- `prompt_builder.py` accepts `max_chapter_tokens` parameter instead of hardcoded `MAX_CONSISTENCY_CONTEXT_TOKENS`
-- `checker_helpers.py` accepts `max_kb_entries` parameter instead of hardcoded `MAX_KB_ENTRIES`
-- `consistency/deps.py` factory wires TokenLimitsService injection
+- Consistency module integration: `apps/api/narrare/consistency/checker_service.py` resolves limits via `TokenLimitsService`
+- `apps/api/narrare/consistency/prompt_builder.py` accepts `max_chapter_tokens` parameter instead of hardcoded `MAX_CONSISTENCY_CONTEXT_TOKENS`
+- `apps/api/narrare/consistency/checker_helpers.py` accepts `max_kb_entries` parameter instead of hardcoded `MAX_KB_ENTRIES`
+- `apps/api/narrare/consistency/deps.py` factory wires TokenLimitsService injection
 - New fields: `max_chapter_tokens: int = 2000`, `max_kb_entries: int = 100`
 
 CR-08 lifecycle is resolved — see

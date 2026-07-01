@@ -78,15 +78,15 @@ earlier planned feature with a scoped, architecturally grounded design.
 
 ## How it works (Technical)
 
-**Entry point:** `chat/router.py` → `POST /api/v1/chat/message` (SSE streaming)
-**Service:** `ChatService.handle_message()` in `chat/service.py`
-**Contract:** `ChatServiceProtocol` in `chat/contracts.py`
-**Agent:** `ChatAgent[ChatDeps, str]` in `core/chat/chat_agent.py` — conversational agent with `HistoryPolicy.CONVERSATIONAL`
-**Dependencies:** `ChatDeps` in `core/chat/chat_deps.py` — prompt composition infrastructure per turn
-**History:** `ProcessHistory` in `core/agents/process_history.py` — cross-turn message continuity (ADR-034)
+**Entry point:** `apps/api/narrare/chat/router.py` → `POST /api/v1/chat/message` (SSE streaming)
+**Service:** `ChatService.handle_message()` in `apps/api/narrare/chat/chat_service.py`
+**Contract:** `ChatServiceProtocol` in `packages/core/narrare_core/chat/contracts.py`
+**Agent:** `ChatAgent[ChatDeps, str]` in `packages/core/narrare_core/chat/chat_agent.py` — conversational agent with `HistoryPolicy.CONVERSATIONAL`
+**Dependencies:** `ChatDeps` in `packages/core/narrare_core/chat/chat_deps.py` — prompt composition infrastructure per turn
+**History:** `ProcessHistory` in `packages/core/narrare_core/agents/process_history.py` — cross-turn message continuity (ADR-034)
 **LLM Intent:** `LLMIntent.CHAT`
 **Intent Category:** `IntentCategory.CHAT`
-**Prompt:** `core/prompts/_bundled/writing/{lang}/chat/system.md`
+**Prompt:** packages/core/narrare_core/prompts/_bundled/writing/{lang}/chat/system.md (template variable: `{lang}`)
 **Context assembled by:** `PromptComposer` with `PromptContext`
 
 ### PromptComposer Integration
@@ -97,7 +97,7 @@ The PromptComposer maps intents to prompt file locations:
 LLMIntent.CHAT → category: "writing" → mode: "chat"
 ```
 
-Resolution path: `_bundled/writing/{language}/chat/system.md`
+Resolution path: packages/core/narrare_core/prompts/_bundled/writing/{language}/chat/system.md (template variable: `{language}`)
 
 > **Path identity (ADR-049):** The canonical CHAT template lives under
 > `writing/` because CHAT is a writing-craft assistant (ADR-024 §Decision 3).
@@ -126,7 +126,7 @@ packages/core/narrare_core/chat/
 └── schemas.py          ← Pydantic schemas
 ```
 
-History persistence is provided by `ProcessHistory` in `core/agents/process_history.py`
+History persistence is provided by `ProcessHistory` in `packages/core/narrare_core/agents/process_history.py`
 (ADR-034). The `ChatAgent` passes `message_history=history.messages` to
 `NarrareAgent.run_stream()` for cross-turn continuity.
 
@@ -191,7 +191,7 @@ async for event in agent.run_stream(prompt, deps,
 ```
 
 History is scoped per conversation session. The backend persists messages in
-the database (via `conversation_store.py`) for cross-page-load continuity.
+the database (via `apps/api/narrare/chat/conversation_store.py`) for cross-page-load continuity.
 `ProcessHistory` handles the in-memory pydantic-ai message list for each turn.
 
 ### Streaming
@@ -205,7 +205,7 @@ mode is available through the same interface for MCP/CLI clients.
 - **Scoped to writing topics**: The AI redirects non-writing questions. This is
   a writing companion, not a general chatbot.
 - **Conversation persistence**: History is persisted in the database via
-  `conversation_store.py`. Conversations survive page reloads. Max 50 messages
+  `apps/api/narrare/chat/conversation_store.py`. Conversations survive page reloads. Max 50 messages
   per conversation; older messages are auto-archived.
 - **KB dependency**: If the Knowledge Base is empty, the AI operates without
   project-specific context. Responses are still useful for general writing
@@ -233,7 +233,7 @@ mode is available through the same interface for MCP/CLI clients.
 |------|--------|----------|
 | RULE-01b | ✅ | Chat uses `ChatAgent` (`NarrareAgent` subclass) — no direct LLM imports |
 | RULE-02 | ✅ | Prompt built exclusively by `PromptComposer` via `ChatDeps` — no f-string prompts |
-| RULE-03 | ✅ | `ChatServiceProtocol` in `contracts.py` before implementation |
+| RULE-03 | ✅ | `ChatServiceProtocol` in `packages/core/narrare_core/chat/contracts.py` before implementation |
 | RULE-04 | ✅ | Module split: contracts, schemas, service, router, agent, deps — each under limits |
 | RULE-05 | ✅ | Module boundaries: `chat/` owns its schemas, service, contract, router, agent, deps |
 | RULE-06 | ✅ | Router delegates to service. Service delegates to `ChatAgent`. Agent handles LLM calls. |

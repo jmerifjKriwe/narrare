@@ -85,6 +85,174 @@ remains a deferred strategic enhancement (paired with AUFG-01-03).
 
 ---
 
+### AUFG-01-01 — Retry-Settings Runtime-Wirkung prüfen und governance-sicher klassifizieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-01-01 |
+| Title | Retry-Settings Runtime-Wirkung prüfen und governance-sicher klassifizieren |
+| Source | review-05-release.md §5 Schwächen item 2, review-05-release.md §6 Roadmap |
+| Status | `open` |
+| Priority | P1 |
+| Area | Core, Configuration, Governance (RULE-18b Effect Integrity) |
+| Owner role | Core Specialist |
+| Dependencies | `packages/core/narrare_core/llm/_retry.py` (`with_retry`); Config-Matrix retry entries; RULE-18b |
+| Review trigger/date | Re-review before the next release-readiness claim or when retry configuration changes |
+
+**Acceptance criteria:**
+
+- `with_retry` has at least one production caller (service or agent) with runtime-effect evidence.
+- If `retry_max_attempts` / `retry_base_delay` are confirmed as false controls (no production consumer), they are reclassified in the Config-Matrix as `governed_debt` or `accepted_risk` with documented rationale.
+- RULE-18b Effect-Integrity is satisfied for all retry material settings.
+
+**Definition of Done:**
+
+- Production caller identified or settings reclassified with governance documentation.
+- Config-Matrix updated to reflect the actual runtime effect.
+- This registry entry updated with exit evidence and status `resolved`, `accepted_risk`, or `governed_debt`.
+
+---
+
+### AUFG-02-03 — Frontend-Test-Laufzeit und React-Warnings reduzieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-02-03 |
+| Title | Frontend-Test-Laufzeit und React-Warnings reduzieren |
+| Source | review-05-release.md §5 Schwächen item 7, review-05-release.md §6 Roadmap |
+| Status | `open` |
+| Priority | P2 |
+| Area | Frontend, Testing, CI |
+| Owner role | Frontend Specialist |
+| Dependencies | `pnpm test` CI pipeline; Vitest configuration; React Testing Library |
+| Review trigger/date | Re-review when CI warning threshold for frontend test duration is exceeded or after 2026-09-30 |
+
+**Acceptance criteria:**
+
+- `pnpm test` CI runtime is below the 130s warning threshold (currently 181.98s).
+- React `act(...)` and controlled-input warnings are eliminated or reduced to a governed baseline.
+- No functional test coverage is reduced as part of the optimization.
+
+**Definition of Done:**
+
+- Frontend test runtime measured and confirmed below threshold in CI.
+- Warning baseline established and governed.
+- This registry entry updated with exit evidence.
+
+---
+
+### AUFG-02-04 — Testing-/Deployment-Dokumentation gegen aktuelle CI synchronisieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-02-04 |
+| Title | Testing-/Deployment-Dokumentation gegen aktuelle CI synchronisieren |
+| Source | review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
+| Status | `open` |
+| Priority | P2 |
+| Area | Documentation, Testing, CI |
+| Owner role | Docs Specialist |
+| Dependencies | `docs/development/testing-standards.md`; `docs/development/deployment-guide.md`; CI workflow `.github/workflows/ci.yml` |
+| Review trigger/date | Re-review when CI workflow topology changes or after 2026-09-30 |
+
+**Acceptance criteria:**
+
+- Testing standards document reflects current CI reality: Vitest 4 (not 3), coverage 80% global (not 60%), 9 CI jobs (not 7).
+- Deployment guide reflects current CI gates and workflow structure.
+- No prose-only CI description in docs that contradicts the actual workflow.
+
+**Definition of Done:**
+
+- Docs updated to match CI implementation.
+- `check_doc_drift` or equivalent gate does not flag CI-vs-docs inconsistencies.
+- This registry entry updated with exit evidence.
+
+---
+
+### AUFG-04-08 — TECH_STACK.md SSOT-Versionen mit pyproject.toml synchronisieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-08 |
+| Title | TECH_STACK.md SSOT-Versionen mit pyproject.toml synchronisieren |
+| Source | review-05-release.md §5 Schwächen item 3, review-05-release.md §6 Roadmap |
+| Status | `open` |
+| Priority | P1 |
+| Area | Documentation, Governance, Developer Experience |
+| Owner role | Docs Specialist |
+| Dependencies | `docs/_shared/TECH_STACK.md`; `pyproject.toml`; `scripts/check_doc_drift.py` |
+| Review trigger/date | Re-review at the next release-readiness claim or when pyproject.toml version dependencies change materially |
+
+**Acceptance criteria:**
+
+- All technology versions in TECH_STACK.md match the actual versions in `pyproject.toml`, `package.json`, and CI configuration.
+- Key discrepancies identified in review-05 are resolved: pydantic-ai (1.93→2.0.0), mem0 (1.0→2.0.10), fastapi-limiter vs pyrate-limiter, pre-commit hooks (9→27), GLM (5.1→5.2).
+- An automated gate (or manual sync step documented in CI) prevents future SSOT drift.
+
+**Definition of Done:**
+
+- TECH_STACK.md updated to reflect current state.
+- Doc-drift gate passes cleanly for TECH_STACK.md.
+- This registry entry updated with exit evidence.
+
+---
+
+### AUFG-04-09 — Layer-AGENTS.md mit aktueller Architektur synchronisieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-09 |
+| Title | Layer-AGENTS.md mit aktueller Architektur synchronisieren |
+| Source | review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
+| Status | `open` |
+| Priority | P2 |
+| Area | Documentation, Developer Experience |
+| Owner role | Docs Specialist |
+| Dependencies | `apps/api/AGENTS.md`; `packages/core/AGENTS.md`; `packages/web/AGENTS.md`; current agent architecture |
+| Review trigger/date | Re-review when agent architecture changes materially or after 2026-09-30 |
+
+**Acceptance criteria:**
+
+- Layer-specific AGENTS.md files reflect the current agent architecture (26 NarrareAgents, not 6).
+- References to testing patterns use current conventions (Fake pattern, not MagicMock).
+- Removed references to deprecated patterns (`Base.metadata.create_all`, etc.).
+
+**Definition of Done:**
+
+- AGENTS.md files updated per layer.
+- Doc-drift gate passes cleanly.
+- This registry entry updated with exit evidence.
+
+---
+
+### AUFG-04-11 — Lookup-Kontextdateien synchronisieren oder automatisch aus SSOT generieren
+
+| Field | Value |
+|-------|-------|
+| ID | AUFG-04-11 |
+| Title | Lookup-Kontextdateien synchronisieren oder automatisch aus SSOT generieren |
+| Source | review-05-release.md §5 Schwächen item 8, review-05-release.md §6 Roadmap |
+| Status | `open` |
+| Priority | P2 |
+| Area | Documentation, Developer Experience, Governance |
+| Owner role | Docs Specialist |
+| Dependencies | `.opencode/context/narrare-dev/lookup/*`; `.opencode/context/narrare-dev/guides/deployment.md`; `.opencode/context/narrare-dev/processes/quality-gates.md`; SSOT docs |
+| Review trigger/date | Re-review when the doc-drift warning count changes materially or after 2026-09-30 |
+
+**Acceptance criteria:**
+
+- Extracted context files (`lookup/*`, `guides/deployment.md`, `processes/quality-gates.md`) are synchronized with their SSOT sources.
+- Either automated generation from SSOT is implemented, or a documented manual sync process with CI enforcement is established.
+- 507 doc-drift warnings are reduced to a governed baseline or eliminated.
+
+**Definition of Done:**
+
+- Context files updated or auto-generation mechanism implemented.
+- Doc-drift gate reports a governed/reduced warning count.
+- This registry entry updated with exit evidence.
+
+---
+
 ## Accepted Enhancements
 
 Accepted enhancements are non-blocking by default. They become blocking only if a
@@ -180,6 +348,36 @@ implementation evidence required until user-approved promotion.
 
 **Exit evidence:** Non-blocking enhancement accepted; implementation evidence pending
 only if promoted.
+
+---
+
+### AE-05-04 — Metriken-Exporter operationalisieren
+
+| Field | Value |
+|-------|-------|
+| ID | AE-05-04 |
+| Title | Metriken-Exporter operationalisieren |
+| Source | review-05-release.md §4 Offene Punkte, review-05-release.md §6 Roadmap |
+| Status | `accepted_enhancement` |
+| Priority | P3 |
+| Area | Observability, Platform |
+| Owner role | Platform Specialist |
+| Dependencies | ADR-031 OpenTelemetry standard; `core/llm/metrics.py` (existing Counter/Histogram); OTel exporter configuration in `telemetry.py` |
+| Review trigger/date | Re-review when AE-05-02 (managed hosting) is promoted, or when multi-instance deployment is configured. No fixed date — gated by deployment topology change or explicit operator requirement. |
+
+**Acceptance criteria:**
+
+- Prometheus-compatible LLM metrics (requests, tokens, cache, duration, retries, cost estimates) in `core/llm/metrics.py` are exportable via OTLP or a dedicated metrics endpoint.
+- Decision is made whether to (a) extend the existing OTLP exporter to include metrics, (b) add a Prometheus `/metrics` endpoint, or (c) keep metrics in-process only and document the rationale.
+- No change to the local-first default: metrics export remains opt-in.
+
+**Definition of Done:**
+
+- Platform decides which metrics-export path to implement (OTLP extension, Prometheus endpoint, or deferred), with rationale.
+- If promoted: implementation + tests + docs evidence in one coherent change.
+- If deferred: registry remains `accepted_enhancement` with renewed review date.
+
+**Exit evidence:** Non-blocking enhancement accepted; implementation evidence pending only if promoted by Platform/observability planning.
 
 ---
 

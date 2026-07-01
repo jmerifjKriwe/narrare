@@ -148,7 +148,7 @@ context precedence machine-checkable.
 - **Runtime conformance:** `packages/core/narrare_core/prompts/routes.py`,
   `packages/core/narrare_core/prompts/composer.py`, bundled templates.
 - **CI enforcement:** `scripts/architecture/_checkers/_check_prompt_surface.py`
-  integrated through `prompt_integrity.py` / `check_prompt_structure.py`.
+  integrated through `scripts/architecture/_checkers/prompt_integrity.py` / `scripts/check_prompt_structure.py`.
 - **Architecture authority:** ADR-037 and this spec.
 
 The manifest is a governance contract, not a runtime prompt builder. Core must not
@@ -270,8 +270,8 @@ Production prompt fallback policy:
 
 | Context variable / group | Producer | Required consumers in this cycle | Security/precedence note |
 |--------------------------|----------|----------------------------------|--------------------------|
-| `world_context` | KB/context assembly from curated KB/world state | `packages/core/narrare_core/prompts/_bundled/kb/en/extract/system.md`; `.../kb/en/worldbuilding/phase2/system.md` | Curated KB; XML section wrapper required; conflicts surfaced, not silently resolved |
-| `kb_suggested` | `WritingContextAssembler` Tier 4 suggested entities | Safe writing templates: `writing/en/new_chapter`, `writing/en/extend_chapter`, `writing/en/co_author`, and `writing/en/inline_suggest` if kept lightweight | Generated suggestion; label as optional/lower-priority; never force into prose |
+| `world_context` | KB/context assembly from curated KB/world state | `packages/core/narrare_core/prompts/_bundled/kb/en/extract/system.md`; .../kb/en/worldbuilding/phase2/system.md | Curated KB; XML section wrapper required; conflicts surfaced, not silently resolved |
+| `kb_suggested` | `WritingContextAssembler` Tier 4 suggested entities | Safe writing templates: `packages/core/narrare_core/prompts/_bundled/writing/en/new_chapter`, `packages/core/narrare_core/prompts/_bundled/writing/en/extend_chapter`, `packages/core/narrare_core/prompts/_bundled/writing/en/co_author`, and `packages/core/narrare_core/prompts/_bundled/writing/en/inline_suggest` if kept lightweight | Generated suggestion; label as optional/lower-priority; never force into prose |
 | `writing_language` / `language` / `explanation_language` | project/user settings, request context, feature deps | All user-facing generation and explanation templates referenced by manifest | Output-language control; required for EN-only feature prompts |
 | `style_profile` | Existing `PromptContext` field; future Project Writing Profile | Writing templates where style continuity matters; analysis/chat/planning only after SET-006 | Free-text profile prose requires label/XML; strategic durable producer deferred |
 | `genre`, `tone`, `story_structure`, `timeline_position` | Existing request/context assembly; future Project Writing Profile / planning features | Writing/planning templates that already route through PromptComposer | Scene/story plan outranks curated KB only for current-scene execution; conflicts surfaced |
@@ -295,7 +295,7 @@ Production prompt fallback policy:
 Project Writing Profile is **architecture-deferred**, not partially implemented in
 this cycle.
 
-Follow-up feature spec to create before code: `docs/features/settings/SET-006-project-writing-profile.md`.
+Follow-up feature spec to create before code: docs/features/settings/SET-006-project-writing-profile.md.
 
 Contract outline for the follow-up:
 
@@ -360,7 +360,7 @@ multi-agent chains.
 - `tests/unit/core/prompts/test_composer.py`: routeability and typed route errors.
 - `tests/unit/core/prompts/test_variable_engine.py`: strict preflight and variable
   classification interactions.
-- `tests/unit/core/prompts/test_prompt_surface_manifest.py` (new): manifest schema,
+- tests/unit/core/prompts/test_prompt_surface_manifest.py (new): manifest schema,
   route/template/variable conformance.
 - `tests/unit/architecture/test_prompt_surface_checker.py` (new or equivalent):
   checker blocker vs warning behavior.
@@ -412,7 +412,7 @@ Backend has no required storage/router work for P0 manifest governance. Backend 
 is required only where current services still expose fallback or output-schema drift:
 
 - `apps/api/narrare/consistency/checker_service.py`
-- `apps/api/narrare/consistency/dependencies.py`
+- apps/api/narrare/consistency/dependencies.py
 - `apps/api/narrare/consistency/router.py` / schemas if consistency issue output
   changes.
 - `apps/api/narrare/kb/**extraction**` service/schema files if extraction
@@ -453,9 +453,9 @@ Likely files affected:
 
 - `docs/development/prompt-standards.md`
 - `docs/development/prompt-content-standards.md`
-- `.opencode/context/narrare-dev/standards/prompt-standards.md`
-- `.opencode/context/narrare-dev/processes/feature-pipeline.md`
-- `.opencode/context/narrare-dev/processes/quality-gates.md`
+- .opencode/context/narrare-dev/standards/prompt-standards.md
+- .opencode/context/narrare-dev/processes/feature-pipeline.md
+- .opencode/context/narrare-dev/processes/quality-gates.md
 - Feature docs for any prompt whose output schema/UX semantics change.
 
 Docs Definition of Done:

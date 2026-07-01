@@ -100,8 +100,8 @@ edit or delete it.
 
 ## How it works (Technical)
 
-**Entry point:** `graph/router.py` → `GET /api/v1/graph/nodes`, `GET /api/v1/graph/edges`
-**Service:** `GraphService` in `graph/service.py`
+**Entry point:** `apps/api/narrare/kb/router_graph.py` → `GET /api/v1/graph/nodes`, `GET /api/v1/graph/edges`
+**Service:** `GraphService` in `apps/api/narrare/kb/graph_service.py`
 **Frontend:** Cytoscape.js for rendering
 **Data source:** KB entries and relationships from KB-001
 

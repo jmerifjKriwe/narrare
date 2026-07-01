@@ -88,14 +88,14 @@ planning that catches flat or inconsistent character development early.
 
 ## How it works (Technical)
 
-**Entry point:** `planning/router.py` → `POST /planning/character-arc/{novel_id}`
+**Entry point:** `apps/api/narrare/planning/router.py` → `POST /planning/character-arc/{novel_id}`
 
 **Flow:**
-1. Router validates novel existence via `NovelRepository`
-2. Resolves model config via `ModelRoutingResolver` using `LLMIntent.PLAN`
-3. Instantiates `CharacterArcService` (in `planning/character_arc_service.py`)
-4. Service builds `CharacterArcDeps` with character info + novel metadata
-5. Runs `CharacterArcAgent` (in `core/agents/character_arc_agent.py`)
+1. Router validates novel existence
+2. Resolves model via `ModelRoutingResolver` using `LLMIntent.PLAN`
+3. Instantiates `CharacterArcService` (in `apps/api/narrare/planning/character_arc_service.py`)
+4. Service builds deps with novel + character metadata
+5. Runs `CharacterArcAgent` (in `packages/core/narrare_core/agents/character_arc_agent.py`)
 6. Agent returns `CharacterArcOutput` with structured phases
 7. Service maps output to `CharacterArcResponse` schema
 
@@ -105,7 +105,7 @@ planning that catches flat or inconsistent character development early.
 - Output types: `ArcPhase` (phase_name, description, emotional_state, turning_point, chapters_suggested)
 - Uses Output Function pattern (`_process_output`) for structured generation
 
-**Prompts:** ADR-054 Mode 1 — `CharacterArcService` builds the feature prompt through `PromptComposer` (`PLAN` intent, `context_mode="character_arc"`), backed by the governed `_bundled/planning/<lang>/character_arc/system.md` template. `CharacterArcAgent` relays the composed prompt (it composes nothing itself — no `@agent.instructions`). The user *can* override the template via the cascade (project/user/bundled). (Previously mis-declared as ADR-048 Mode 2 "agent-internal"; that declaration was factually false — the agent owns no composition — and is removed by ADR-054 along with the inline f-string that preceded it.)
+**Prompts:** ADR-054 Mode 1 — `CharacterArcService` builds the feature prompt through `PromptComposer` (`PLAN` intent, `context_mode="character_arc"`), backed by the governed _bundled/planning/&lt;lang&gt;/character_arc/system.md template. `CharacterArcAgent` relays the composed prompt (it composes nothing itself — no `@agent.instructions`). The user *can* override the template via the cascade (project/user/bundled). (Previously mis-declared as ADR-048 Mode 2 "agent-internal"; that declaration was factually false — the agent owns no composition — and is removed by ADR-054 along with the inline f-string that preceded it.)
 
 **Variables:**
 - `{{character_name}}` — Character being analysed

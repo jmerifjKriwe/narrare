@@ -108,11 +108,11 @@ tags, or content. Link entities together for rich relationship graphs.
 
 ## How it works (Technical)
 
-**Entry point:** `kb/router.py` → `POST /api/v1/kb/entities`
-**Service:** `KBService` in `kb/management_service.py`
-**Contract:** `KBServiceProtocol` in `kb/contracts.py`
-**Models:** SQLAlchemy models in `kb/models.py`
-**Repository:** `KBRepository` in `kb/repository.py`
+**Entry point:** `apps/api/narrare/kb/router.py` → `POST /api/v1/kb/entities`
+**Service:** `KBService` in `apps/api/narrare/kb/service.py`
+**Contract:** `KBServiceProtocol` in `apps/api/narrare/kb/contracts.py`
+**Models:** SQLAlchemy models in `apps/api/narrare/kb/models.py`
+**Repository:** `KBRepository` in `apps/api/narrare/kb/repository.py`
 **LLM Intent:** `LLMIntent.KB_CREATE`, `LLMIntent.KB_IMPROVE`
 
 **Entity schema (common fields):**

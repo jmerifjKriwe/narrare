@@ -58,12 +58,12 @@ Narrare's AI features are useless without a configured provider. Writers need to
 
 ## How it works (Technical)
 
-**Entry point:** `settings/router.py` → `/settings/ai/providers`, `/settings/ai`
+**Entry point:** `apps/api/narrare/settings/router.py` → `/settings/ai/providers`, `/settings/ai`
 **Services:**
 - `UserProvidersService` — CRUD for provider entries, credential validation, encryption
 - `UserAiSettingsService` — default model, category/intent overrides, token limit profiles
-**Contracts:** `UserProvidersRepositoryProtocol`, `UserAiSettingsRepositoryProtocol` in `settings/contracts.py`
-**Encryption:** `core/shared/crypto.py` — Fernet symmetric encryption via `NARRARE_ENCRYPTION_KEY`
+**Contracts:** `UserProvidersRepositoryProtocol`, `UserAiSettingsRepositoryProtocol` in `apps/api/narrare/settings/contracts.py`
+**Encryption:** packages/core/narrare_core/shared/crypto.py — Fernet symmetric encryption via `NARRARE_ENCRYPTION_KEY`
 **Database:** `user_providers` table (encrypted keys), `user_ai_settings` table (JSONB overrides)
 **REST API:**
 - `GET/POST /settings/ai/providers` — list/add providers

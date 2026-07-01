@@ -86,7 +86,7 @@ fine-tune context for complex scenes.
 
 ## How it works (Technical)
 
-**Entry point:** `core/context/assembler.py` (general), `core/writing/context_assembler.py` (writing specialization)
+**Entry point:** `packages/core/narrare_core/context/assembler.py` (general), `packages/core/narrare_core/writing/context_assembler.py` (writing specialization)
 **Primary class:** `ContextAssembler` (general), `WritingContextAssembler` (writing)
 **Input:** `PromptContext` with chapter_id, mode, language
 **Output:** Structured context with ranked KB entries and recent chapters
@@ -116,9 +116,9 @@ fine-tune context for complex scenes.
 
 ### Writing Specialization
 
-The writing pipeline uses `WritingContextAssembler` (`core/writing/context_assembler.py`) with a specialized 5-tier ranking tuned for creative writing:
+The writing pipeline uses `WritingContextAssembler` (`packages/core/narrare_core/writing/context_assembler.py`) with a specialized 5-tier ranking tuned for creative writing:
 
-**Tier allocation (token budget enforced by `TokenBudgetManager` in `budget.py`):**
+**Tier allocation (token budget enforced by `TokenBudgetManager` in `packages/core/narrare_core/writing/budget.py`):**
 
 | Tier | Budget | Description |
 |------|--------|-------------|
@@ -167,7 +167,7 @@ The writing pipeline uses `WritingContextAssembler` (`core/writing/context_assem
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
-- `2026-05-17` — Writing specialization implemented. `WritingContextAssembler` with 5-tier ranking (30/20/25/15/10 split), `TokenBudgetManager` for tier allocation with overflow handling, KB entity relevance ranking (50% similarity, 30% frequency, 20% recency). Core data models in `context_models.py` (`KBEntity`, `RecentChapter`).
+- `2026-05-17` — Writing specialization implemented. `WritingContextAssembler` with 5-tier ranking (30/20/25/15/10 split), `TokenBudgetManager` for tier allocation with overflow handling, KB entity relevance ranking (50% similarity, 30% frequency, 20% recency). Core data models in `packages/core/narrare_core/writing/context_models.py` (`KBEntity`, `RecentChapter`).
 - `2026-05-23` — CR-03 audit: `cap_to_budget()` lightweight token utility for non-tier contexts. `entity_connections` parameter on `assemble()` promotes first-degree KB connections from suggested → referenced tier. `RelationshipRepository.get_adjacency_map()` provides adjacency data from KB relationships.
 - `2026-05-24` — Tier 4 (KB Suggested) will be populated by `ProactiveContextService` (merged KB-005/INFRA-009) once INFRA-004 (Embedding Store) is implemented. Currently uses name + graph traversal fallback. Full hybrid search (embedding + usage + recency) replaces heuristic ranking when embeddings are available.
 - `2026-05-26` — Status updated to stable. All 5 tiers implemented, entity_connections promotion active, ProactiveContextService populating Tier 4.

@@ -105,18 +105,18 @@ when the session ends. Save important prose to your chapter.
 **Core module:** `packages/core/narrare_core/writing/session_manager.py`
 **API module:** `apps/api/narrare/writing/`
 
-**Entry point:** `writing/router_sessions.py` → WebSocket `WS /api/v1/writing/sessions/{chapter_id}`
-**WebSocket turn orchestrator:** `ws_turn_service.py` → `WritingTurnService` — transport-agnostic turn orchestration that flows through the invocation contract (RULE-12/RULE-13)
-**WebSocket handler:** `ws_handler.py` — delegates to `WritingTurnService` for each turn
-**Service:** `WritingService` in `writing/service.py` (orchestrates session + pipeline + feedback)
-**Session manager:** `SessionManager` in `core/writing/session_manager.py` — cache-backed persistence via `SessionCacheProtocol`
-**Contract:** `SessionManagerProtocol` in `core/writing/contracts.py`
+**Entry point:** `apps/api/narrare/writing/router_sessions.py` → WebSocket `WS /api/v1/writing/sessions/{chapter_id}`
+**WebSocket turn orchestrator:** `apps/api/narrare/writing/ws_turn_service.py` → `WritingTurnService` — transport-agnostic turn orchestration that flows through the invocation contract (RULE-12/RULE-13)
+**WebSocket handler:** `apps/api/narrare/writing/ws_handler.py` — delegates to `WritingTurnService` for each turn
+**Service:** `WritingService` in `apps/api/narrare/writing/service.py` (orchestrates session + pipeline + feedback)
+**Session manager:** `SessionManager` in `packages/core/narrare_core/writing/session_manager.py` — cache-backed persistence via `SessionCacheProtocol`
+**Contract:** `SessionManagerProtocol` in `packages/core/narrare_core/writing/contracts.py`
 **LLM Intent:** `LLMIntent.GENERATE`
 **Protocol:** WebSocket for real-time bidirectional messaging
 **Invocation contract:** `WritingTurnService.stream_turn()` builds a `PromptInvocationContext` with user/project/chapter/session identifiers, then runs the `InvocationPipeline` (prepare → merge → compose → finalize), resolves run limits, and streams via `ModelRegistry.stream()` with `UsageLimits` enforcement. This design is transport-agnostic — any transport adapter (WebSocket, SSE, MCP) can consume the same service.
 
 **Turn flow (via WritingTurnService — invocation contract integration):**
-1. `ws_handler.py` receives a `user_direction` message
+1. `apps/api/narrare/writing/ws_handler.py` receives a `user_direction` message
 2. Delegates to `WritingTurnService.stream_turn()` which:
    - Builds `PromptInvocationContext` with identifiers + `invocation_id`
    - Invokes `InvocationPipeline.prepare()` — enrich/validate/resolve budgets
@@ -148,7 +148,7 @@ class SessionState:
 **Session persistence:**
 - Redis-backed via `SessionCacheProtocol` (cache layer abstraction)
 - 30-minute inactivity timeout — sessions auto-expire
-- `_ws_cache.py` — WebSocket connection cache for active sessions
+- `apps/api/narrare/writing/_ws_cache.py` — WebSocket connection cache for active sessions
 - ADR-052 uses an injected shared `SessionCacheProtocol`/`SessionManager` for
   WebSocket sessions (not a per-connection cache) so `?session_id=` reconnects
   can recover the same live session state until the TTL expires.
@@ -167,9 +167,9 @@ class SessionState:
 - "Save to chapter" commits buffer to chapter storage
 
 **Frontend components:**
-- `components/studio/editor/SessionPanel.tsx` — Interactive session chat UI
-- `components/studio/editor/ChatMessage.tsx` — Chat message bubble component
-- `lib/api/generation.ts` — WebSocket client for session messaging
+- `packages/web/components/studio/editor/SessionPanel.tsx` — Interactive session chat UI
+- `packages/web/components/studio/editor/ChatMessage.tsx` — Chat message bubble component
+- `packages/web/lib/api/generation.ts` — WebSocket client for session messaging
 - Session commands registered in CommandPalette
 
 ## Constraints & Edge Cases

@@ -70,11 +70,11 @@ interface that all features can rely on.
 
 ## How it works (Technical)
 
-**Entry point:** `core/llm/gateway.py`
+**Entry point:** `packages/core/narrare_core/llm/gateway.py`
 **Primary class:** `ModelRegistry` (v2, seit ADR-015); `LLMGateway` als Legacy-Re-Export (Phase-2-Removal-Target)
 **Providers:** `core/llm/_providers/` — one adapter per provider
-**Intents:** `core/llm/intents.py` — defines task types and model routing
-**Errors:** `shared/errors.py` — classified error types (auth, rate limit, timeout, etc.)
+**Intents:** `packages/core/narrare_core/llm/intents.py` — defines task types and model routing
+**Errors:** `packages/core/narrare_core/shared/errors.py` — classified error types (auth, rate limit, timeout, etc.)
 
 **Flow:**
 1. Service calls `gateway.run(intent=LLMIntent.WRITE, ...)`

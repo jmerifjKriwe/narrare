@@ -128,10 +128,10 @@ Stage 2: ConsistencyAgent (enhanced)
   Output: ConsistencyOutput (issues with enriched conflicting_facts)
 ```
 
-**Entry points:** `consistency/router.py` → `POST /consistency/check`, `POST /consistency/check/stream`
-**Service:** `ConsistencyCheckerService.check()` in `consistency/checker_service.py`
-**Orchestrator:** `ConsistencyOrchestrator` in `consistency/consistency_orchestrator.py`
-**Contract:** `ConsistencyCheckerProtocol` in `consistency/contracts.py` (external interface unchanged)
+**Entry points:** `apps/api/narrare/consistency/router.py` → `POST /consistency/check`, `POST /consistency/check/stream`
+**Service:** `ConsistencyCheckerService.check()` in `apps/api/narrare/consistency/checker_service.py`
+**Orchestrator:** `ConsistencyOrchestrator` in `apps/api/narrare/consistency/consistency_orchestrator.py`
+**Contract:** `ConsistencyCheckerProtocol` in `apps/api/narrare/consistency/contracts.py` (external interface unchanged)
 **LLM Intent:** `LLMIntent.CONSISTENCY` (Stage 2), `LLMIntent.FACT_EXTRACT` (Stage 1)
 
 ### Key Types
@@ -287,7 +287,7 @@ The `FactExtractorAgent` (Stage 1) is designed for reuse beyond CONS-001:
 | RULE-01b | ✅ | Both agents are `NarrareAgent` subclasses in `core/agents/` |
 | RULE-02 | ✅ | Prompts in `core/prompts/_bundled/analysis/en/` (fact_extraction + consistency) |
 | RULE-03 | ✅ | Contracts: `ConsistencyCheckerProtocol` (unchanged), `FactExtractorProtocol` (new) |
-| RULE-04 | ✅ | Agent definitions ≤ 200 lines. Service orchestration modularized into `consistency_orchestrator.py` |
+| RULE-04 | ✅ | Agent definitions ≤ 200 lines. Service orchestration modularized into `apps/api/narrare/consistency/consistency_orchestrator.py` |
 | RULE-06 | ✅ | Router delegates to service → orchestrator → agents |
 | RULE-07 | ✅ | router → service → orchestrator → agents/core. No upward imports |
 | RULE-12 | ✅ | `ConsistencyCheckerProtocol` unchanged — all clients work |

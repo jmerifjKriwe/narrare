@@ -86,7 +86,7 @@ Most of this happens invisibly. You'll notice it in:
 
 ## How it works (Technical)
 
-**Entry point:** `core/embeddings/store.py`
+**Entry point:** `packages/core/narrare_core/embeddings/store.py`
 **Primary class:** `EmbeddingStore`
 **Database:** PostgreSQL with pgvector extension
 **Models:** Configurable (defaults to text-embedding-3-small via OpenAI or similar)
@@ -187,4 +187,4 @@ code — references `kg_nodes` table which no longer exists.
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Designed. Generic embeddings table. Hybrid search. TaskIQ background generation. Two-phase model migration. 7 regression scenarios defined.
-- `2026-05-25` — RULE-04 test file splits: `test_embedding_migration.py` (349→2 files: coexistence 180, reembed 222). All original files replaced by focused companions.
+- `2026-05-25` — RULE-04 test file splits: test_embedding_migration.py (349→2 files: coexistence 180, reembed 222). All original files replaced by focused companions.

@@ -126,9 +126,9 @@ through the same `useAIOperation` primitives.
 
 ## How it works (Technical)
 
-**Entry point:** `writing/router.py` → `POST /api/v1/writing/co-author`
-**Service:** `CoAuthorService.suggest()` in `writing/co_author_service.py`
-**Contract:** `CoAuthorProtocol` in `writing/contracts.py`
+**Entry point:** `apps/api/narrare/writing/router.py` → `POST /api/v1/writing/co-author`
+**Service:** `CoAuthorService.suggest()` in `apps/api/narrare/writing/coauthor_service.py`
+**Contract:** `CoAuthorProtocol` in `apps/api/narrare/writing/contracts.py`
 **LLM Intent:** `LLMIntent.CO_AUTHOR`
 
 **Request:**
@@ -173,15 +173,15 @@ Der CO_AUTHOR Intent + Template haben die Variable `style_variant_instructions`,
 die bei der Prompt-Komposition injiziert wird. Die Pipeline leitet `style_variant`
 an den Co-Author-Branch weiter.
 
-**Backend:** `StyleVariantRegenerateRequest` (in `writing/schemas_style_variants.py`)
+**Backend:** `StyleVariantRegenerateRequest` (in `apps/api/narrare/writing/schemas_style_variants.py`)
 hat ein `source_mode` Feld (`Literal["rewrite","co_author"]`), das die Quell-Operation
-bestimmt. Der `style_variant_service` (`writing/style_variant_service.py`) brancht
+bestimmt. Der `style_variant_service` (`apps/api/narrare/writing/style_variant_service.py`) brancht
 auf `source_mode` und routed zur entsprechenden Service-Implementierung. Vertrag:
-`writing/contracts_style_variants.py`.
+`apps/api/narrare/writing/contracts_style_variants.py`.
 
 **Frontend:** Dedizierter `useCoAuthorStyleVariant` Hook (nutzt `useAIOperation`)
 und `CoAuthorStyleVariantSection` Komponente. Der SSE-Client
-(`coauthor-style-variant-stream.ts`) streamt die regenerierte Antwort. RULE-17 TS
+(`packages/web/components/studio/editor/_components/coauthor-style-variant-stream.ts`) streamt die regenerierte Antwort. RULE-17 TS
 Parity für `source_mode` eingehalten.
 
 **Tests:** 5 Core + 10 Backend + 4 Frontend Tests validieren den Style-Variant-Flow.
@@ -207,5 +207,5 @@ Parity für `source_mode` eingehalten.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
-- `2026-06-10` — Fully implemented and promoted to stable. Co-Author mode with diff-based suggestions, selective acceptance, CoAuthorService in `writing/coauthor_service.py`, CoAuthorServiceProtocol contract, dedicated router (`writing/router_coauthor.py`), Co-Author prompts. Integrates with LEARN-001 feedback loop for personalization.
+- `2026-06-10` — Fully implemented and promoted to stable. Co-Author mode with diff-based suggestions, selective acceptance, CoAuthorService in `apps/api/narrare/writing/coauthor_service.py`, CoAuthorServiceProtocol contract, dedicated router (`apps/api/narrare/writing/router_coauthor.py`), Co-Author prompts. Integrates with LEARN-001 feedback loop for personalization.
 - `2026-06-22` — Style Variants (CR-AUFG-07-22 Increment B): `stream_coauthor()` accepts `style_variant`, `StyleVariantRegenerateRequest` with `source_mode`, `useCoAuthorStyleVariant` hook, `CoAuthorStyleVariantSection` frontend component. 5 Core + 10 Backend + 4 Frontend tests.

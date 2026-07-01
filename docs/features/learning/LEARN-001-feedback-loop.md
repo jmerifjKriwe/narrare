@@ -98,9 +98,9 @@ Generic AI suggestions don't match every writer's style. Writers have unique pre
 
 ## How it works (Technical)
 
-**Entry point:** Implicit on all AI interactions via `memory/service.py`
-**Service:** `FeedbackService.record()` and `LearningService.apply()` in `memory/service.py`
-**Contract:** `FeedbackServiceProtocol` in `memory/contracts.py`
+**Entry point:** Implicit on all AI interactions via `apps/api/narrare/memory/service.py`
+**Service:** `FeedbackService.record()` and `LearningService.apply()` in `apps/api/narrare/memory/service.py`
+**Contract:** `FeedbackServiceProtocol` in `apps/api/narrare/memory/contracts.py`
 
 **Architecture per ADR-033:** Feedback events are stored in two systems: PostgreSQL `feedback_events` table for structured audit, and mem0 AsyncMemory (OSS, local-first, pgvector) for semantic preference extraction. mem0 supersedes the earlier 4-tier embedding cascade (ADR-017 → ADR-033).
 

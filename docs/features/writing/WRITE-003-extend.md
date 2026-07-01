@@ -90,8 +90,8 @@ The continuation appears exactly where your cursor was, ready to edit.
 ## How it works (Technical)
 
 **Entry point:** `POST /api/v1/writing/chapters/{chapter_id}/extend` (SSE-direct — same endpoint starts and streams)
-**Service:** `ExtendService` in `writing/extend_service.py` (separate from DraftService per RULE-04)
-**Contract:** `ExtendServiceProtocol` in `writing/contracts_extend.py`
+**Service:** `ExtendService` in `apps/api/narrare/writing/extend_service.py` (separate from DraftService per RULE-04)
+**Contract:** `ExtendServiceProtocol` in `apps/api/narrare/writing/contracts_extend.py`
 **LLM Intent:** `LLMIntent.EXTEND`
 **Streaming:** SSE-direct — no two-step start/stream; the endpoint returns an SSE stream immediately
 **Schema:** `ExtendRequest` with `text_before` (required, max 10000), `text_after` (optional, max 2000), `length` (ExtendLength enum: short/medium/long), `tone`, `language`
@@ -150,4 +150,4 @@ The continuation appears exactly where your cursor was, ready to edit.
 
 - `project-init` — Added to registry as planned feature
 - `2026-05-24` — Implementation started: Core pipeline (`_extend()`), extend prompts (en/de/fr), extend-specific context budget, Backend API (`ExtendService`, SSE-direct endpoint), Frontend AIAnnotation infrastructure (Mark + Tracker Plugin, ContinueButton, AIAnnotationActions, Clean Save integration)
-- `2026-05-25` — **Complete.** 23 new unit tests (12 validation + 11 streaming). Promptfoo eval baseline: `evals/extend-chapter.yaml` (356 lines, 9 test cases). Architecture validation clean.
+- `2026-05-25` — **Complete.** 23 new unit tests (12 validation + 11 streaming). Promptfoo eval baseline: evals/extend-chapter.yaml (356 lines, 9 test cases). Architecture validation clean.

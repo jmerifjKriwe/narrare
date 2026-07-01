@@ -96,9 +96,9 @@ Generic AI text sounds generic. Writers have unique voices developed over years 
 
 ## How it works (Technical)
 
-**Entry point:** `learning/router.py` → `POST /api/v1/learning/style/analyze`
-**Service:** `StyleService.analyze()` and `generate_with_style()` in `learning/style_service.py`
-**Contract:** `StyleServiceProtocol` in `learning/contracts.py`
+**Entry point:** `apps/api/narrare/learning/router.py` → `POST /api/v1/learning/style/analyze`
+**Service:** `StyleService.analyze()` and `generate_with_style()` in `apps/api/narrare/learning/style_service.py`
+**Contract:** `StyleServiceProtocol` in `apps/api/narrare/learning/contracts.py`
 **LLM Intent:** `LLMIntent.ANALYZE` (for analysis), `LLMIntent.GENERATE` (for generation)
 
 **Style profile:**

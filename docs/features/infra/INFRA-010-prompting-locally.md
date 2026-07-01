@@ -33,13 +33,13 @@ Different novels require different AI tones, guidelines, and constraints. A hard
 ## How it works (User perspective)
 
 1. The writer creates a `.narrare/prompts/` directory in their project root.
-2. The writer creates a file matching the bundled prompt path (e.g., `analysis/beta_reader/system.md`).
+2. The writer creates a file matching the bundled prompt path (e.g., analysis/beta_reader/system.md).
 3. The writer writes their custom system prompt instructions.
 4. Narrare automatically detects the override and uses it for all future beta reader requests in that project.
 
 ## How it works (Technical)
 
-**Entry point:** `packages/core/prompts/prompt_manager.py`
+**Entry point:** `packages/core/narrare_core/prompts/management.py`
 **Service:** `PromptManager.get_prompt()`
 **Contract:** `PromptManagerProtocol`
 **Streaming:** no

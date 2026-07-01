@@ -107,9 +107,9 @@ Use during revision to ensure readers always know who is being referred to.
 
 ## How it works (Technical)
 
-**Entry point:** `analysis/router_coreference.py` → `POST /analysis/coreference/{chapter_id}`
-**Service:** `CoreferenceService.analyze()` in `analysis/coreference_service.py`
-**Contract:** `CoreferenceServiceProtocol` in `analysis/contracts_coreference.py`
+**Entry point:** `apps/api/narrare/analysis/router_coreference.py` → `POST /analysis/coreference/{chapter_id}`
+**Service:** `CoreferenceService.analyze()` in `apps/api/narrare/analysis/coreference_service.py`
+**Contract:** `CoreferenceServiceProtocol` in `apps/api/narrare/analysis/contracts_coreference.py`
 **LLM Intent:** `LLMIntent.ANALYSE`
 
 **Coreference resolution:**
@@ -166,11 +166,11 @@ class CharacterMention:
 - 2026-06-26 — Implemented (status → `stable`): `CoreferenceAgent` (Core,
   `NarrareAgent` with structured output; ANALYSE intent gains the `coreference`
   context_mode; bundled `analysis/en/coreference` template). Backend:
-  `CoreferenceService` (Mode 1 PromptComposer), `contracts_coreference.py`,
-  `schemas_coreference.py`, SSE `router_coreference.py`
-  (`POST /analysis/coreference/{chapter_id}`), `dependencies_coreference.py`.
+   `CoreferenceService` (Mode 1 PromptComposer), `apps/api/narrare/analysis/contracts_coreference.py`,
+   `apps/api/narrare/analysis/schemas_coreference.py`, SSE `apps/api/narrare/analysis/router_coreference.py`
+   (`POST /analysis/coreference/{chapter_id}`), `apps/api/narrare/analysis/dependencies_coreference.py`.
   Frontend: `CoreferencePanel` + `CoreferenceTrigger` + `useCoreference` hook +
-  SSE client (`coreference-stream.ts`), wired into the editor analysis panels;
+   SSE client (`packages/web/lib/api/coreference-stream.ts`), wired into the editor analysis panels;
   i18n (en/de/fr). Tests: 31 Core + 12 Backend + 22 Frontend (verified — no
   skips/TODOs). Implementation, tests, OpenAPI docs, and i18n complete. LLM
   result-accuracy may be iteratively tuned in future releases.

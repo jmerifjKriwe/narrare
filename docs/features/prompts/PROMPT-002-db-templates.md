@@ -135,7 +135,7 @@ class PromptOverride(BaseModel):
 
 ### Variable Registry
 
-`core/prompts/variable_metadata.py` provides a registry of all available
+`packages/core/narrare_core/prompts/variable_metadata.py` provides a registry of all available
 `{{variables}}` with human-readable descriptions. This powers the variables
 sidebar in the editor UI, showing users what they can insert.
 
@@ -146,7 +146,7 @@ sidebar in the editor UI, showing users what they can insert.
 - Saving a DB template when a file override exists: DB template wins (higher priority)
 - Deleting a DB template when a file override exists: falls back to file override, not bundled
 - Update detection is informational — no forced migration
-- Variable registry must be kept in sync with `variable_engine.py`
+- Variable registry must be kept in sync with `packages/core/narrare_core/prompts/variable_engine.py`
 
 ## Related Features
 

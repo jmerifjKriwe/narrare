@@ -68,10 +68,10 @@ ui_help_long: |
   `narrare writing generate --chapter <id> --outline <file>`
 ui_available_in: [editor, cli]
 
-service: writing/service.py
-contract: writing/contracts.py#WritingServiceProtocol, core/writing/contracts.py#WritingPipelineProtocol
-router: writing/router.py, writing/router_stats.py
-prompt: core/prompts/_bundled/writing/{en,de,fr}/{new_chapter,scene_by_scene,interview}/system.md
+service: apps/api/narrare/writing/service.py
+contract: apps/api/narrare/writing/contracts.py#WritingServiceProtocol, packages/core/narrare_core/writing/contracts.py#WritingPipelineProtocol
+router: apps/api/narrare/writing/router.py, apps/api/narrare/writing/router_stats.py
+prompt: packages/core/narrare_core/prompts/_bundled/writing/{en,de,fr}/{new_chapter,scene_by_scene,interview}/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003, KB-001]
 ---
 
@@ -114,68 +114,68 @@ Generated text is fully editable — treat it as your rough draft.
 **Core module:** `packages/core/narrare_core/writing/`
 **API module:** `apps/api/narrare/writing/`
 
-**Entry point:** `writing/router.py` → `POST /api/v1/writing/chapters/{id}/generate`
+**Entry point:** `apps/api/narrare/writing/router.py` → `POST /api/v1/writing/chapters/{id}/generate`
 **Streaming:** `GET /api/v1/writing/generation/{id}/stream` (SSE)
-**Stats:** `writing/router_stats.py` → generation analytics endpoints
-**Service:** `WritingService` in `writing/service.py` (orchestrates pipeline + repo + feedback)
-**Contract:** `WritingServiceProtocol` in `writing/contracts.py`, `WritingPipelineProtocol` in `core/writing/contracts.py`
+**Stats:** `apps/api/narrare/writing/router_stats.py` → generation analytics endpoints
+**Service:** `WritingService` in `apps/api/narrare/writing/service.py` (orchestrates pipeline + repo + feedback)
+**Contract:** `WritingServiceProtocol` in `apps/api/narrare/writing/contracts.py`, `WritingPipelineProtocol` in `packages/core/narrare_core/writing/contracts.py`
 **LLM Intent:** `LLMIntent.GENERATE`
 **Streaming:** Yes — Server-Sent Events (SSE)
 
 **Backend files (in `apps/api/narrare/writing/`):**
-- `ws_handler.py` — WebSocket session handler
-- `_ws_cache.py` — In-memory session cache
-- `_interview_draft.py` — Interview draft handling
-- `tone_resolver.py` — Tone resolution logic (bundled vs custom)
-- `_helpers.py` — Shared helpers (validation, feedback)
+- `apps/api/narrare/writing/ws_handler.py` — WebSocket session handler
+- `apps/api/narrare/writing/_ws_cache.py` — In-memory session cache
+- `apps/api/narrare/writing/_interview_draft.py` — Interview draft handling
+- `apps/api/narrare/writing/tone_resolver.py` — Tone resolution logic (bundled vs custom)
+- `apps/api/narrare/writing/_helpers.py` — Shared helpers (validation, feedback)
 
 **Core files (in `packages/core/narrare_core/writing/`):**
-- `pipeline_graph.py` — WritingGraph-based full draft generation (ADR-015)
+- `packages/core/narrare_core/writing/pipeline_graph.py` — WritingGraph-based full draft generation (ADR-015)
 
 **4 Generation modes (dispatch via WritingPipeline):**
-1. **full_draft** — Complete chapter from start to finish via `pipeline.py`
-2. **scene_by_scene** — Generate one scene at a time with review between scenes via `pipeline_scene.py` (see `scene_service.py` on API side)
-3. **interview_assisted** — Guided Q&A to build context, then generate via `pipeline_interview.py`
+1. **full_draft** — Complete chapter from start to finish via `packages/core/narrare_core/writing/pipeline.py`
+2. **scene_by_scene** — Generate one scene at a time with review between scenes via `packages/core/narrare_core/writing/pipeline_scene.py` (see `apps/api/narrare/writing/scene_service.py` on API side)
+3. **interview_assisted** — Guided Q&A to build context, then generate via `packages/core/narrare_core/writing/pipeline_interview.py`
 4. **interactive_session** — Real-time collaborative writing via WebSocket (see WRITE-005)
 
 **Generation pipeline:**
 1. **Context assembly** (INFRA-003): `WritingContextAssembler` with 5-tier ranking + token budgets
    - Immediate context (30%), Recent chapters (20%), KB referenced (25%), KB suggested (15%), Pinned (10%)
-   - Token budget enforcement via `budget.py` (`TokenBudgetManager`)
+   - Token budget enforcement via `packages/core/narrare_core/writing/budget.py` (`TokenBudgetManager`)
     - Lightweight `cap_to_budget()` utility for non-tier token enforcement (e.g., 4000-token cap on interview transcripts, 500-token cap on existing names)
     - KB entity relevance: 50% similarity, 30% frequency, 20% recency
  2. **Prompt building** (INFRA-002): Assemble system + user prompts from `_bundled/writing/{lang}/{mode}/`
     - 12 system prompts (4 modes × 3 languages: en, de, fr)
-    - 9 bundled tones (defined in `pipeline.py` `_TONE_INSTRUCTIONS`): balanced, dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous, quiet
-    - Custom tones: user-defined instructions stored in `user_settings.custom_tones`, resolved by `tone_resolver.py` and passed as `custom_tone_instructions` to `WritingPipeline.generate()`
-     - Prompt cascade overrides: 9 tone files in `prompts/_bundled/writing/tones/` (balanced, dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous, quiet)
-    - `is_bundled_tone()` public function in `pipeline.py` distinguishes bundled vs custom tones
+    - 9 bundled tones (defined in `packages/core/narrare_core/writing/pipeline.py` `_TONE_INSTRUCTIONS`): balanced, dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous, quiet
+    - Custom tones: user-defined instructions stored in `user_settings.custom_tones`, resolved by `apps/api/narrare/writing/tone_resolver.py` and passed as `custom_tone_instructions` to `WritingPipeline.generate()`
+     - Prompt cascade overrides: 9 tone files in `packages/core/narrare_core/prompts/_bundled/writing/tones/` (balanced, dramatic, humorous, suspenseful, contemplative, romantic, dark, adventurous, quiet)
+    - `is_bundled_tone()` public function in `packages/core/narrare_core/writing/pipeline.py` distinguishes bundled vs custom tones
 3. **LLM call**: Stream generation via LLM Gateway
 4. **Post-processing**: `DraftProcessor` (legacy path) or `DraftAgent` Output Function (Phase 2 ADR-015, via `use_draft_agent` feature flag) — artifact removal + markdown normalization + word-target enforcement
 5. **Persistence**: `GenerationRepository` — status transitions, concurrent generation prevention
 
 **API models:**
 - SQLAlchemy model: `generation_requests` table (migration 0008, tone column added in migration 0020) with FK to `chapter_versions`
-- 11 Pydantic schemas in `writing/schemas.py`
+- 11 Pydantic schemas in `apps/api/narrare/writing/schemas.py`
 - Status lifecycle: pending → generating → completed/failed
 - `tone` column stores the selected tone (bundled name or custom tone ID)
 
 **User controls during generation:**
 - Stop/Resume generation
-- Mode selection via `GenerationConfig.tsx`
-- Draft review via `GenerationDraft.tsx`
-- Real-time streaming display via `GenerationPanel.tsx`
+- Mode selection via `packages/web/components/studio/editor/GenerationConfig.tsx`
+- Draft review via `packages/web/components/studio/editor/GenerationDraft.tsx`
+- Real-time streaming display via `packages/web/components/studio/editor/GenerationPanel.tsx`
 
 **Frontend components (in `packages/web/`):**
-- `lib/api/generation.ts` — API client with SSE streaming + WebSocket client
-- `components/studio/editor/GenerationPanel.tsx` — Generation trigger + streaming display
-- `components/studio/editor/GenerationConfig.tsx` — Mode selection + options (tone selector shows 9 bundled + custom tones with visual separator)
-- `components/studio/editor/GenerationDraft.tsx` — Draft zone + controls
-- `components/studio/editor/SessionPanel.tsx` — Interactive session chat UI
-- `components/studio/editor/ChatMessage.tsx` — Chat message bubble
-- `components/studio/editor/commands.ts` — Command palette with generation commands
-- `components/studio/writing/WritingGraphStatus.tsx` — Pipeline step status display
-- `lib/constants/tones.ts` — Bundled tone definitions (frontend-side)
+- `packages/web/lib/api/generation.ts` — API client with SSE streaming + WebSocket client
+- `packages/web/components/studio/editor/GenerationPanel.tsx` — Generation trigger + streaming display
+- `packages/web/components/studio/editor/GenerationConfig.tsx` — Mode selection + options (tone selector shows 9 bundled + custom tones with visual separator)
+- `packages/web/components/studio/editor/GenerationDraft.tsx` — Draft zone + controls
+- `packages/web/components/studio/editor/SessionPanel.tsx` — Interactive session chat UI
+- `packages/web/components/studio/editor/ChatMessage.tsx` — Chat message bubble
+- `packages/web/components/studio/editor/commands.ts` — Command palette with generation commands
+- `packages/web/components/studio/writing/WritingGraphStatus.tsx` — Pipeline step status display
+- `packages/web/lib/constants/tones.ts` — Bundled tone definitions (frontend-side)
 - Generation commands registered in CommandPalette
 
 ## Constraints & Edge Cases

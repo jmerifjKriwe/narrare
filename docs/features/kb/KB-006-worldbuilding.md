@@ -105,9 +105,9 @@ system affects politics, how geography influences trade routes, etc.
 
 ## How it works (Technical)
 
-**Entry point:** `kb/router.py` → Worldbuilding-specific routes
-**Service:** `WorldbuildingService` in `kb/worldbuilding_service.py`
-**Contract:** `WorldbuildingProtocol` in `kb/contracts.py`
+**Entry point:** `apps/api/narrare/kb/router.py` → Worldbuilding-specific routes
+**Service:** `WorldbuildingService` in `apps/api/narrare/kb/worldbuilding_service.py`
+**Contract:** `WorldbuildingProtocol` in `apps/api/narrare/kb/contracts.py`
 **LLM Intents:** `LLMIntent.KB_CREATE`, `LLMIntent.KB_IMPROVE`
 
 **Worldbuilding-specific features:**

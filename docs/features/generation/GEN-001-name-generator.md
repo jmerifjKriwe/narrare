@@ -110,10 +110,10 @@ Naming is hard. Generic names feel flat, invented names lack consistency, and du
 ## How it works (Technical)
 
 **API module (`apps/api/narrare/generation/`):**
-- `contracts.py` — `NameGeneratorProtocol` definition
-- `schemas.py` — Request/response Pydantic models
-- `name_service.py` — `NameGeneratorService.generate()` — orchestrates name generation
-- `router.py` — REST endpoint
+- `apps/api/narrare/generation/contracts.py` — `NameGeneratorProtocol` definition
+- `apps/api/narrare/generation/schemas.py` — Request/response Pydantic models
+- `apps/api/narrare/generation/name_service.py` — `NameGeneratorService.generate()` — orchestrates name generation
+- `apps/api/narrare/generation/router.py` — REST endpoint
 
 **Core dependencies:**
 - `LLMIntent.NAME_GENERATE` — Intent routed through LLM Gateway
@@ -157,8 +157,8 @@ class GeneratedName:
 ```
 
 **Frontend (`packages/web/`):**
-- `components/generation/NameGenerator.tsx` — Form with type, culture, count, gender selectors
-- `components/generation/NameResults.tsx` — Results grid with pronunciation, meaning, duplicate badges
+- `packages/web/components/studio/generation/NameGenerator.tsx` — Form with type, culture, count, gender selectors
+- `packages/web/components/studio/generation/NameResults.tsx` — Results grid with pronunciation, meaning, duplicate badges
 - `generationApi` — API client method for name generation
 
 **i18n:**

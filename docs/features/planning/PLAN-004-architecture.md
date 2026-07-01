@@ -58,7 +58,7 @@ character/location references to KB entities via UUID.
 - RULE-05: Planning module owns timeline data (just like it owns `ChapterOutline`)
 - Characters/locations are KB entities (worldbuilding) — timeline events reference them, not own them
 - Integration Contract with KB is explicit: planning reads KB entity names, never writes to KB
-- The planning module already has its own `models.py` with `ChapterOutline` — this follows the established pattern
+- The planning module already has its own `apps/api/narrare/planning/models.py` with `ChapterOutline` — this follows the established pattern
 
 ### AD-2: Auto-Extraction — Separate TemporalExtractionAgent
 
@@ -108,7 +108,7 @@ existing `TimelineAgent`.
 
 ### AD-4: Consistency Engine — Split by Determinism Tier
 
-**Decision:** Deterministic rules in `core/analysis/temporal.py`, DB-dependent
+**Decision:** Deterministic rules in `packages/core/narrare_core/analysis/temporal.py`, DB-dependent
 and LLM checks in backend service. Follows ADR-021 tiered approach.
 
 **Alternatives considered:**
@@ -119,7 +119,7 @@ and LLM checks in backend service. Follows ADR-021 tiered approach.
 | B. All in core | Core fetches data via contracts | Rejected | Core has no DB access (RULE-07). Injecting a repository into core violates the dependency direction. |
 | C. Split: deterministic in core, DB+LLM in backend (CHOSEN) | Pure rules in `core/analysis/`, orchestration in backend | Accepted | Follows ADR-021: deterministic where possible, LLM where not. Core rules are testable in isolation. Backend orchestrates data flow. |
 
-**Deterministic tier** (core/analysis/temporal.py):
+**Deterministic tier** (`packages/core/narrare_core/analysis/temporal.py`):
 - Date parsing and normalization
 - Temporal ordering violations
 - Duration impossibilities
@@ -137,10 +137,10 @@ and LLM checks in backend service. Follows ADR-021 tiered approach.
 
 | Service | File | Responsibility | Est. Lines |
 |---------|------|---------------|------------|
-| `TimelineService` | `timeline_service.py` | CRUD operations (create, list, get, update, delete events) | ~150 |
-| `TimelineAnalysisService` | `timeline_analysis_service.py` | AI analysis + extraction orchestration (extracted from current code) | ~120 |
+| `TimelineService` | `apps/api/narrare/planning/timeline_service.py` | CRUD operations (create, list, get, update, delete events) | ~150 |
+| `TimelineAnalysisService` | `apps/api/narrare/planning/timeline_analysis_service.py` | AI analysis + extraction orchestration (extracted from current code) | ~120 |
 
-**Rationale:** The existing `timeline_service.py` (126 lines) only does AI
+**Rationale:** The existing `apps/api/narrare/planning/timeline_service.py` (126 lines) only does AI
 analysis. Adding CRUD operations (~100 lines) would push it past the 200-line
 soft target. Splitting upfront avoids a later refactor.
 
@@ -308,15 +308,15 @@ packages/i18n/messages/{en,de,fr}/
 
 | File | Current | After Phase 1 | Soft Target | Hard Limit | Action |
 |------|---------|----------------|-------------|------------|--------|
-| `models.py` | 58 lines | ~110 lines | 250 | 400 | Safe |
-| `schemas.py` | 185 lines | 185 lines (unchanged) | 150 | 200 | Over soft — new schemas go in `timeline_schemas.py` |
-| `contracts.py` | 107 lines | ~160 lines | 250 | 400 | Safe |
-| `router.py` | 127 lines | 127 lines (unchanged) | 80 | 150 | Near hard limit — new routes go in `router_timeline.py` |
-| `timeline_service.py` | 126 lines | ~150 lines (CRUD) | 200 | 300 | Safe |
-| `timeline_analysis_service.py` | NEW | ~120 lines | 200 | 300 | Safe |
-| `timeline_repository.py` | NEW | ~100 lines | 250 | 400 | Safe |
-| `timeline_schemas.py` | NEW | ~100 lines | 150 | 200 | Safe |
-| `router_timeline.py` | NEW | ~100 lines | 80 | 150 | Over soft but under hard — monitor |
+| `apps/api/narrare/planning/models.py` | 58 lines | ~110 lines | 250 | 400 | Safe |
+| `apps/api/narrare/planning/schemas.py` | 185 lines | 185 lines (unchanged) | 150 | 200 | Over soft — new schemas go in `apps/api/narrare/planning/timeline_schemas.py` |
+| `apps/api/narrare/planning/contracts.py` | 107 lines | ~160 lines | 250 | 400 | Safe |
+| `apps/api/narrare/planning/router.py` | 127 lines | 127 lines (unchanged) | 80 | 150 | Near hard limit — new routes go in `apps/api/narrare/planning/router_timeline.py` |
+| `apps/api/narrare/planning/timeline_service.py` | 126 lines | ~150 lines (CRUD) | 200 | 300 | Safe |
+| `apps/api/narrare/planning/timeline_analysis_service.py` | NEW | ~120 lines | 200 | 300 | Safe |
+| `apps/api/narrare/planning/timeline_repository.py` | NEW | ~100 lines | 250 | 400 | Safe |
+| `apps/api/narrare/planning/timeline_schemas.py` | NEW | ~100 lines | 150 | 200 | Safe |
+| `apps/api/narrare/planning/router_timeline.py` | NEW | ~100 lines | 80 | 150 | Over soft but under hard — monitor |
 
 ### Dependency Direction (RULE-07)
 
@@ -347,38 +347,38 @@ entities via their public exports.
 existing AI analysis is preserved and refactored into a separate service.
 
 **Pre-implementation requirements:**
-- [x] Contracts defined in `contracts.py` before any service code
-- [x] Alembic migration created alongside `models.py` changes (RULE-14)
-- [x] `timeline_schemas.py` created before `timeline_service.py`
-- [x] `router_timeline.py` created with all CRUD endpoints
-- [x] Frontend types in `types/timeline.ts` match backend schemas (RULE-17)
+- [x] Contracts defined in `apps/api/narrare/planning/contracts.py` before any service code
+- [x] Alembic migration created alongside `apps/api/narrare/planning/models.py` changes (RULE-14)
+- [x] `apps/api/narrare/planning/timeline_schemas.py` created before `apps/api/narrare/planning/timeline_service.py`
+- [x] `apps/api/narrare/planning/router_timeline.py` created with all CRUD endpoints
+- [x] Frontend types in `packages/web/types/timeline.ts` match backend schemas (RULE-17)
 
 **Backend tasks:**
 
-1. **Model** — Add `TimelineEvent` to `planning/models.py`
+1. **Model** — Add `TimelineEvent` to `apps/api/narrare/planning/models.py`
 2. **Migration** — Alembic migration for `timeline_events` table
-3. **Schemas** — Create `timeline_schemas.py` with request/response models
-4. **Repository** — Create `timeline_repository.py` with CRUD queries
-5. **Contracts** — Update `contracts.py` with new protocols
-6. **Service refactor** — Extract CRUD service to `timeline_service.py`,
-   move AI analysis to `timeline_analysis_service.py`
-7. **Factory** — Update `_timeline_factory.py`, create `_timeline_analysis_factory.py`
-8. **Router** — Create `router_timeline.py` with CRUD + existing analysis route
+3. **Schemas** — Create `apps/api/narrare/planning/timeline_schemas.py` with request/response models
+4. **Repository** — Create `apps/api/narrare/planning/timeline_repository.py` with CRUD queries
+5. **Contracts** — Update `apps/api/narrare/planning/contracts.py` with new protocols
+6. **Service refactor** — Extract CRUD service to `apps/api/narrare/planning/timeline_service.py`,
+   move AI analysis to `apps/api/narrare/planning/timeline_analysis_service.py`
+7. **Factory** — Update `apps/api/narrare/planning/_timeline_factory.py`, create `apps/api/narrare/planning/_timeline_analysis_factory.py`
+8. **Router** — Create `apps/api/narrare/planning/router_timeline.py` with CRUD + existing analysis route
 
 **Frontend tasks:**
 
-9. **Types** — Create `types/timeline.ts` matching backend schemas
-10. **API client** — Create `lib/api/timeline.ts`
-11. **Hooks** — Create `useTimelineEvents.ts`, `useTimelineAnalysis.ts`
+9. **Types** — Create `packages/web/types/timeline.ts` matching backend schemas
+10. **API client** — Create `packages/web/lib/api/timeline.ts`
+11. **Hooks** — Create `packages/web/lib/hooks/useTimeline.ts` (combined events + analysis)
 12. **Components** — `TimelinePanel`, `TimelineEventList`, `TimelineEventCard`,
     `TimelineEventForm`, `TimelineAnalysisView`
-13. **i18n** — `timeline.json` in all 3 locales, register namespace (RULE-16)
+13. **i18n** — `packages/i18n/messages/en/timeline.json` (and `de/`, `fr/`), register namespace (RULE-16)
 14. **Tests** — Component tests, hook tests, API client tests
 
 **Tests:**
 
 - Unit: `TimelineEventRepository`, `TimelineService` (CRUD), `TimelineAnalysisService`
-- Integration: `router_timeline.py` endpoints
+- Integration: `apps/api/narrare/planning/router_timeline.py` endpoints
 - Frontend: component rendering, hook behavior, API contract
 
 **Definition of Done — Phase 1:**
@@ -400,33 +400,33 @@ existing AI analysis is preserved and refactored into a separate service.
 and accept/reject. Deterministic + LLM consistency checks flag issues.
 
 **Pre-implementation requirements:**
-- [x] `TemporalExtractionAgent` types in `temporal_extraction_types.py`
-- [x] `TemporalExtractionAgent` in `temporal_extraction_agent.py`
-- [x] Extraction prompts in 3 locales
-- [x] `core/analysis/temporal.py` deterministic rules with types
-- [x] Consistency contracts in `contracts.py`
+- [x] `TemporalExtractionAgent` types in `packages/core/narrare_core/agents/temporal_extraction_types.py`
+- [x] `TemporalExtractionAgent` in `packages/core/narrare_core/agents/temporal_extraction_agent.py`
+- [x] Extraction prompts in `packages/core/narrare_core/prompts/_bundled/planning/en/timeline_extraction/system.md`
+- [x] `packages/core/narrare_core/analysis/temporal.py` deterministic rules with types
+- [x] Consistency contracts in `apps/api/narrare/planning/contracts.py`
 
 **Backend tasks:**
 
-1. **Core agent** — `temporal_extraction_agent.py` + `temporal_extraction_types.py`
-2. **Core prompts** — `planning/{en,de,fr}/temporal_extraction/system.md` (3 locales)
-3. **Core analysis** — `core/analysis/temporal.py` + `temporal_types.py`
-4. **Consistency service** — `timeline_consistency_service.py`
-5. **Extraction service** — Add `extract_temporal_expressions()` to `timeline_analysis_service.py`
-6. **Factory** — `_timeline_consistency_factory.py`
-7. **Router** — Add extraction + consistency endpoints to `router_timeline.py`
+1. **Core agent** — `packages/core/narrare_core/agents/temporal_extraction_agent.py` + `packages/core/narrare_core/agents/temporal_extraction_types.py`
+2. **Core prompts** — `packages/core/narrare_core/prompts/_bundled/planning/en/timeline_extraction/system.md`
+3. **Core analysis** — `packages/core/narrare_core/analysis/temporal.py` + `packages/core/narrare_core/analysis/temporal_types.py`
+4. **Consistency service** — `apps/api/narrare/planning/timeline_consistency_service.py`
+5. **Extraction service** — Add `extract_temporal_expressions()` to `apps/api/narrare/planning/timeline_analysis_service.py`
+6. **Factory** — `apps/api/narrare/planning/_timeline_consistency_factory.py`
+7. **Router** — Add extraction + consistency endpoints to `apps/api/narrare/planning/router_timeline.py`
 
 **Frontend tasks:**
 
-8. **Extraction UI** — `TimelineExtractionReview.tsx` (accept/reject extracted events)
-9. **Consistency UI** — `TimelineConsistencyPanel.tsx` (issues list with explanations)
-10. **Hooks** — `useTimelineExtraction.ts`, `useTimelineConsistency.ts`
+8. **Extraction UI** — `packages/web/components/studio/planning/timeline/TimelineExtractionReview.tsx` (accept/reject extracted events)
+9. **Consistency UI** — `packages/web/components/studio/planning/timeline/TimelineConsistencyPanel.tsx` (issues list with explanations)
+10. **Hooks** — `packages/web/lib/hooks/useTimelineExtraction.ts`, `packages/web/lib/hooks/useConsistency.ts`
 11. **SSE streaming** — Extraction uses SSE via `connectSSE()` (RULE-20)
 12. **Tests** — Component tests, SSE integration tests
 
 **Tests:**
 
-- Unit: `TemporalExtractionAgent` (TestModel), deterministic rules in `temporal.py`
+- Unit: `TemporalExtractionAgent` (TestModel), deterministic rules in `packages/core/narrare_core/analysis/temporal.py`
 - Integration: extraction endpoint, consistency endpoint
 - Frontend: extraction review flow, consistency display
 
@@ -454,14 +454,14 @@ points; interactive timeline visualization.
 
 **Backend tasks:**
 
-1. **Age service** — Age calculation functions in `timeline_consistency_service.py`
+1. **Age service** — Age calculation functions in `apps/api/narrare/planning/timeline_consistency_service.py`
 2. **KB integration** — Read `metadata_.birth_date` from KB character entities
 3. **Age endpoint** — `GET /planning/timeline/{novel_id}/character-ages`
 4. **Consistency integration** — Age checks added to consistency engine
 
 **Frontend tasks:**
 
-5. **Visualization** — `TimelineVisualization.tsx` (interactive timeline)
+5. **Visualization** — `packages/web/components/studio/planning/timeline/TimelineVisualization.tsx` (interactive timeline)
 6. **Character ages** — Age display per character at each event point
 7. **Multiple views** — Chronological, per-character, by-chapter
 8. **Event connections** — Visual cause → consequence links
@@ -642,7 +642,7 @@ class TemporalExtractionOutput(BaseModel):
 ```
 
 **Prompt location:**
-`prompts/_bundled/planning/{en,de,fr}/temporal_extraction/system.md`
+`packages/core/narrare_core/prompts/_bundled/planning/en/timeline_extraction/system.md`
 
 **Testing:** `TestModel` with deterministic responses. Verify extraction
 output structure matches `TemporalExtractionOutput`.
@@ -813,7 +813,7 @@ analysis). Phase 2 may add an SSE variant for real-time analysis streaming.
 
 New namespace: `timeline`
 
-Registration in `lib/i18n/request.ts`:
+Registration in `packages/web/lib/i18n/request.ts`:
 ```typescript
 export const namespaces = [
   "common",
@@ -885,14 +885,14 @@ users re-run analysis to populate events. Future work could add a
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Router at 127/150 lines — adding timeline routes pushes past limit | Certain | Build failure | Preemptive split: `router_timeline.py` for all timeline routes. Existing routes stay in `router.py`. |
-| `schemas.py` at 185/200 lines — adding timeline schemas pushes past limit | Certain | Build failure | Preemptive split: `timeline_schemas.py` for all timeline schemas. Existing schemas stay in `schemas.py`. |
+| Router at 127/150 lines — adding timeline routes pushes past limit | Certain | Build failure | Preemptive split: `apps/api/narrare/planning/router_timeline.py` for all timeline routes. Existing routes stay in `apps/api/narrare/planning/router.py`. |
+| `apps/api/narrare/planning/schemas.py` at 185/200 lines — adding timeline schemas pushes past limit | Certain | Build failure | Preemptive split: `apps/api/narrare/planning/timeline_schemas.py` for all timeline schemas. Existing schemas stay in `apps/api/narrare/planning/schemas.py`. |
 | KB entity deletion leaves dangling references in `character_refs` | Medium | UI shows stale data | Graceful degradation: display "(deleted)" for unresolvable UUIDs. No cascade delete. |
 | AI extraction quality varies by language | Medium | Poor DE/FR extraction | Extraction prompts in all 3 locales. Confidence scoring allows users to filter low-confidence results. |
 | Temporal expression normalization is culturally complex | Medium | Incorrect ordering | `timestamp_normalized` stores best-effort normalized form. Users can manually override `temporal_order`. |
 | Timeline visualization performance with >100 events | Low | Slow rendering | Phase 3 starts with CSS-based layout. Evaluate `react-window` virtualization if events exceed 100. |
 | Deterministic temporal rules produce false positives | Medium | User frustration | All issues show explanation + suggestion. Users can dismiss individual issues. Severity levels (error/warning/info) distinguish certainty. |
-| Service split introduces wiring complexity | Low | More files to maintain | Each service has its own factory file following established pattern (`_timeline_factory.py`, `_timeline_analysis_factory.py`). |
+| Service split introduces wiring complexity | Low | More files to maintain | Each service has its own factory file following established pattern (`apps/api/narrare/planning/_timeline_factory.py`, `apps/api/narrare/planning/_timeline_analysis_factory.py`). |
 
 ---
 
@@ -901,9 +901,9 @@ users re-run analysis to populate events. Future work could add a
 | Rule | Status | Evidence |
 |------|--------|----------|
 | RULE-01b | ✅ | All LLM calls via `TemporalExtractionAgent` / `TimelineAgent` (core/agents/). No direct LLM imports in services. |
-| RULE-02 | ✅ | Extraction prompts in `prompts/_bundled/planning/{lang}/temporal_extraction/system.md`. No f-string prompts in services. |
-| RULE-03 | ✅ | Contracts in `contracts.py` defined before implementation: `TimelineEventServiceProtocol`, `TimelineEventRepositoryProtocol`, `TimelineAnalysisServiceProtocol`, `TemporalConsistencyServiceProtocol`. |
-| RULE-04 | ✅ | Preemptive splits: `timeline_schemas.py`, `timeline_repository.py`, `timeline_analysis_service.py`, `router_timeline.py`. All files under soft targets. |
+| RULE-02 | ✅ | Extraction prompts in `packages/core/narrare_core/prompts/_bundled/planning/en/timeline_extraction/system.md`. No f-string prompts in services. |
+| RULE-03 | ✅ | Contracts in `apps/api/narrare/planning/contracts.py` defined before implementation: `TimelineEventServiceProtocol`, `TimelineEventRepositoryProtocol`, `TimelineAnalysisServiceProtocol`, `TemporalConsistencyServiceProtocol`. |
+| RULE-04 | ✅ | Preemptive splits: `apps/api/narrare/planning/timeline_schemas.py`, `apps/api/narrare/planning/timeline_repository.py`, `apps/api/narrare/planning/timeline_analysis_service.py`, `apps/api/narrare/planning/router_timeline.py`. All files under soft targets. |
 | RULE-05 | ✅ | Planning module owns `timeline_events` table, timeline services, timeline routes. KB owns entity data (read via Integration Contract). |
 | RULE-06 | ✅ | Router delegates to service. Service delegates DB to repository. Analysis service delegates LLM to agent. One responsibility per file. |
 | RULE-07 | ✅ | `router_timeline → timeline_service → timeline_repository → DB`. Core never imports from apps. Analysis module has no external deps. |
@@ -914,7 +914,7 @@ users re-run analysis to populate events. Future work could add a
 | RULE-12 | ✅ | Service Layer is the only public API. All clients (WebUI, MCP, A2A, CLI) call same service protocols. |
 | RULE-13 | ✅ | Extraction supports both SSE (`stream=True`) and REST (`stream=False`) through same service method. |
 | RULE-14 | ✅ | Alembic migration created alongside `TimelineEvent` model. Up/down tested. |
-| RULE-16 | ✅ | `timeline` namespace registered in `request.ts`. Translation files in all 3 locales. |
+| RULE-16 | ✅ | `timeline` namespace registered in `packages/web/lib/i18n/request.ts`. Translation files in all 3 locales. |
 | RULE-17 | ✅ | Backend `TimelineEventResponse` fields match frontend `TimelineEvent` interface. Contract validated in tests. |
 | RULE-20 | ✅ | No half-implementations. Each phase delivers complete, working features. SSE used for extraction (not deferred). |
 | RULE-22 | ✅ | Cross-Feature Coherence: Integration Contract with KB defined. Shared data behaviour documented. |
@@ -929,7 +929,7 @@ users re-run analysis to populate events. Future work could add a
 
 3. **Simplest correct solution?** Yes. Separate `timeline_events` table is the minimum needed for CRUD. KB `metadata_` for birth dates avoids a migration. Deterministic rules in core are pure functions.
 
-4. **Next developer understands intent?** Yes. File naming follows established patterns (`timeline_service.py`, `timeline_repository.py`, `router_timeline.py`). Module map updated. Architecture doc provides context.
+4. **Next developer understands intent?** Yes. File naming follows established patterns (`apps/api/narrare/planning/timeline_service.py`, `apps/api/narrare/planning/timeline_repository.py`, `apps/api/narrare/planning/router_timeline.py`). Module map updated. Architecture doc provides context.
 
 ---
 
@@ -940,4 +940,4 @@ users re-run analysis to populate events. Future work could add a
 - ADR-021: Deterministic Analysis Strategy
 - Integration Contract: Planning Timeline ↔ KB Entities (this document)
 - Architecture rules: `docs/_shared/CONSTRAINTS.md`
-- Module map: `.opencode/context/narrare-dev/domain/module-map.md`
+- Module map: .opencode/context/narrare-dev/domain/module-map.md

@@ -20,7 +20,7 @@ ui_help_long: |
 
   **How it works:**
 
-  1. Create `.narrare/prompts/{category}/{language}/{mode}/system.md`
+  1. Create .narrare/prompts/{category}/{language}/{mode}/system.md
   2. The file must be valid Markdown with YAML frontmatter
   3. Use `{{variables}}` from the variable registry (shown in UI sidebar)
   4. Include `override_of_version` in frontmatter to track which bundled version you modified
@@ -46,10 +46,10 @@ ui_help_long: |
   to share custom prompts with collaborators.
 ui_available_in: [settings]
 
-service: core/prompts/registry.py
+service: packages/core/narrare_core/prompts/registry.py
 contract: ~
 router: apps/api/narrare/prompts/router.py
-prompt: core/prompts/_bundled
+prompt: packages/core/narrare_core/prompts/_bundled
 requires: [INFRA-002]
 ---
 
@@ -69,8 +69,8 @@ File-based overrides give writers direct, version-control-friendly control
 over AI behavior without needing the UI.
 
 ## How it works (User perspective)
+1. Create .narrare/prompts/{category}/{language}/{mode}/system.md
 
-1. Create `.narrare/prompts/{category}/{language}/{mode}/system.md`
 2. Write your custom prompt (Markdown with YAML frontmatter)
 3. Optionally add `override_of_version` to track the source version
 4. The override is detected automatically on next prompt resolution
@@ -82,9 +82,9 @@ over AI behavior without needing the UI.
 
 **Resolution order in cascade:**
 1. DB templates (highest priority, saved via API)
-2. **Project file**: `{project}/.narrare/prompts/{category}/{lang}/{mode}/system.md` ← this feature
-3. Global user file: `{user}/.narrare/prompts/{category}/{lang}/{mode}/system.md`
-4. Bundled: `prompts/_bundled/{category}/{lang}/{mode}/system.md`
+2. **Project file**: {project}/.narrare/prompts/{category}/{lang}/{mode}/system.md ← this feature
+3. Global user file: {user}/.narrare/prompts/{category}/{lang}/{mode}/system.md
+4. Bundled: packages/core/narrare_core/prompts/_bundled/{category}/{lang}/{mode}/system.md
 
 **Override detection:**
 `PromptRegistry` scans for override files during resolution. If a file exists
@@ -112,9 +112,9 @@ content vs. the current bundled content, allowing users to review and merge
 changes from Narrare updates.
 
 **Frontend UI:**
-- `PromptsTab.tsx` — Shows all prompts with source indicators (bundled, file override, DB override)
-- `PromptEditor.tsx` — Edit mode with variables sidebar showing available `{{variables}}`
-- `PromptDiff.tsx` — Side-by-side diff comparison between override and bundled version
+- `packages/web/components/studio/settings/PromptsTab.tsx` — Shows all prompts with source indicators (bundled, file override, DB override)
+- `packages/web/components/studio/settings/PromptEditor.tsx` — Edit mode with variables sidebar showing available `{{variables}}`
+- `packages/web/components/studio/settings/PromptDiff.tsx` — Side-by-side diff comparison between override and bundled version
 
 ## Constraints & Edge Cases
 

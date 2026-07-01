@@ -129,11 +129,11 @@ Visualize to understand, reorganize to improve.
 
 | Adapter | Stages | File |
 |---------|--------|------|
-| Three-Act Structure | 3 (act-1, act-2, act-3) | `adapters/three_act.py` |
-| Five-Act Structure | 5 (act-1 through act-5) | `adapters/five_act.py` |
-| Hero's Journey | 12 stages condensed to visual layout | `adapters/heros_journey.py` |
-| Save the Cat | 15 beats in 3 acts | `adapters/save_the_cat.py` |
-| Seven-Point Structure | 7 turning points | `adapters/seven_point.py` |
+| Three-Act Structure | 3 (act-1, act-2, act-3) | `packages/core/narrare_core/planning/adapters/three_act.py` |
+| Five-Act Structure | 5 (act-1 through act-5) | `packages/core/narrare_core/planning/adapters/five_act.py` |
+| Hero's Journey | 12 stages condensed to visual layout | `packages/core/narrare_core/planning/adapters/heros_journey.py` |
+| Save the Cat | 15 beats in 3 acts | `packages/core/narrare_core/planning/adapters/save_the_cat.py` |
+| Seven-Point Structure | 7 turning points | `packages/core/narrare_core/planning/adapters/seven_point.py` |
 
 Each adapter implements the `StructureAdapter` Protocol:
 - `stages` — list of `StageDef` with id, name, description, position
@@ -169,5 +169,5 @@ reassigns chapters to new stages.
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
-- `2026-05-20` — Core structure adapters implemented (5 adapters + registry in `core/planning/adapters/`). Merged with PLAN-005 storyboard — structure visualization is now part of the storyboard panel, not a separate view.
+- `2026-05-20` — Core structure adapters implemented (5 adapters + registry in `packages/core/narrare_core/planning/adapters/`). Merged with PLAN-005 storyboard — structure visualization is now part of the storyboard panel, not a separate view.
 - **2026-05-26:** Status updated to stable. Feature fully implemented as part of merged storyboard feature.

@@ -101,7 +101,7 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 - Fix prompt-integrity regressions for Meta, Universal, and Lite prompts.
 - Remove or migrate inline prompt fallbacks in KB/writing according to RULE-02/RULE-02a.
-- Ensure prompt variables match `prompt-standards.md`: `{{user_preferences}}`, `{{avoidance_patterns}}`, category-specific variables, XML wrapping for user content. Bundled feature prompts are EN-only (ADR-026 Phase 5); declared localized families (meta, universal) require locale parity.
+- Ensure prompt variables match `docs/development/prompt-standards.md`: `{{user_preferences}}`, `{{avoidance_patterns}}`, category-specific variables, XML wrapping for user content. Bundled feature prompts are EN-only (ADR-026 Phase 5); declared localized families (meta, universal) require locale parity.
 - Classify any remaining EN-only prompt as either non-user-facing transitional content with explicit rationale or convert to de/fr.
 
 **Module boundaries**
@@ -113,7 +113,7 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 
 **Acceptance criteria**
 
-- `check_prompt_structure.py` has no unclassified WARNs for touched categories.
+- `scripts/check_prompt_structure.py` has no unclassified WARNs for touched categories.
 - Meta/Universal/Lite prompt regression tests pass.
 - KB adoption score is `>= 0.85`.
 - No new inline prompt fallback appears outside approved, shrinking exception list.
@@ -126,12 +126,12 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 - Support both GET and POST SSE requests, AbortSignal, typed events, error normalization, retry affordance, and partial-output preservation.
 - Keep feature-specific accumulation in small wrappers; the parser/transport belongs in shared API infrastructure.
 - Add privacy-safe KB Interview Resume handling: TTL, explicit user notice, opt-out, and minimized persisted payload.
-- Modularize frontend hubs identified by graph/line-count analysis: `generation.ts`, `client.ts`, `EditorView.tsx`, `TipTapEditor.tsx`, `GhostText.ts`, `CoAuthorPanel.tsx`, and mocks/types where touched.
+- Modularize frontend hubs identified by graph/line-count analysis: `packages/web/lib/api/generation.ts`, `packages/web/lib/api/client.ts`, `packages/web/components/studio/EditorView.tsx`, `packages/web/components/studio/TipTapEditor.tsx`, `packages/web/components/studio/editor/extensions/GhostText.ts`, `packages/web/components/studio/editor/CoAuthorPanel.tsx`, and mocks/types where touched.
 
 **Module boundaries**
 
-- Shared transport/parser: `packages/web/lib/api/streaming.ts` plus focused sibling modules if needed, e.g. `streaming-events.ts`, `streaming-errors.ts`, `streaming-types.ts`.
-- Feature wrappers: `packages/web/lib/api/generation*.ts`, `kb-sessions.ts`, `suggest.ts`, `timeline.ts`.
+- Shared transport/parser: `packages/web/lib/api/streaming.ts` plus focused sibling modules if needed, e.g. streaming-events.ts, streaming-errors.ts, streaming-types.ts.
+- Feature wrappers: `packages/web/lib/api/generation.ts`, `packages/web/lib/api/kb-sessions.ts`, `packages/web/lib/api/suggest.ts`, `packages/web/lib/api/timeline.ts`.
 - Interview resume state: `packages/web/lib/hooks/use-kb-interview-resume.ts` and UI disclosure in the KB session components.
 - Editor modularization: extract cohesive hooks/components under `packages/web/components/studio/editor/**` without changing backend contracts.
 
@@ -228,8 +228,8 @@ The governing architecture decision is [ADR-027 — AI Feature Stabilization Gat
 ### Current Implementation Evidence (2026-06-03)
 
 - **Platform:** Ratchet/no-growth/frontend-size/streaming-compliance gates implemented; focused validation passed (37 tests).
-- **Core:** Meta/Universal/Lite prompt regressions fixed; KB adoption is PASS (`0.85`), overall adoption `0.90`; `check_prompt_structure.py` passes with classified legacy WARN debt and ratchet evidence (`0` new / `21` resolved).
-- **Frontend:** Shared `connectSSE` supports GET/POST with normalized errors; Generation/Rewrite/Extend/CoAuthor streams use shared transport; `generation.ts` split via `generation-streams.ts`; KB Interview Resume has 24h TTL, opt-out, privacy notice, and en/de/fr parity; focused Vitest passed (57 tests).
+- **Core:** Meta/Universal/Lite prompt regressions fixed; KB adoption is PASS (`0.85`), overall adoption `0.90`; `scripts/check_prompt_structure.py` passes with classified legacy WARN debt and ratchet evidence (`0` new / `21` resolved).
+- **Frontend:** Shared `connectSSE` supports GET/POST with normalized errors; Generation/Rewrite/Extend/CoAuthor streams use shared transport; `packages/web/lib/api/generation.ts` split via `packages/web/lib/api/generation-streams.ts`; KB Interview Resume has 24h TTL, opt-out, privacy notice, and en/de/fr parity; focused Vitest passed (57 tests).
 - **Docs/Governance:** AGENTS/context docs, MCP/A2A planned-scope wording, roadmap freeze language, and gate-command documentation are harmonized. Freeze-lift documentation records post-freeze governance.
 
 ### Program Gate

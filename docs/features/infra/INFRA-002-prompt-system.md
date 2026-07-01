@@ -49,10 +49,10 @@ ui_help_long: |
   If something goes wrong, you can reset to defaults at any time.
 ui_available_in: [settings]
 
-service: core/prompts/composer.py
+service: packages/core/narrare_core/prompts/composer.py
 contract: ~
 router: apps/api/narrare/prompts/router.py
-prompt: core/prompts/_bundled
+prompt: packages/core/narrare_core/prompts/_bundled
 requires: []
 ---
 
@@ -83,26 +83,26 @@ Advanced users can view and edit all prompts in Settings → Prompts.
 
 ## How it works (Technical)
 
-**Entry point:** `core/prompts/composer.py`
+**Entry point:** `packages/core/narrare_core/prompts/composer.py`
 **Primary class:** `PromptComposer`
 **Registry:** `PromptRegistry` — discovers and loads all prompt files
 **Management:** `PromptManagementService` — CRUD for overrides, update detection, diff comparison
 **Variable engine:** Substitutes `{{project_title}}`, `{{language}}`, etc.
-**Variable metadata:** `variable_metadata.py` — registry of variable descriptions for the UI
-**Meta prompts:** Persona prompts in `prompts/_bundled/meta/{lang}/system.md`
+**Variable metadata:** `packages/core/narrare_core/prompts/variable_metadata.py` — registry of variable descriptions for the UI
+**Meta prompts:** Persona prompts in packages/core/narrare_core/prompts/_bundled/meta/{lang}/system.md
 
 ### Culture Injection
 
 The prompt system supports culture-aware generation via the `{{culture_guidelines}}`
-placeholder. Culture definition files live in `prompts/_bundled/generation/{culture}/{lang}/`
+placeholder. Culture definition files live in `packages/core/narrare_core/prompts/_bundled/generation/{culture}/{lang}/`
 and define naming conventions, phonetic rules, and style guidelines for each culture.
 
 **Supported cultures:** `fantasy`, `modern`, `scifi`
 **Supported languages:** `en`, `de`, `fr` (9 culture files total)
 
 Culture resolution follows the standard cascade:
-1. Project override: `{project}/.narrare/prompts/generation/{culture}/{lang}/culture.md`
-2. Bundled default: `prompts/_bundled/generation/{culture}/{lang}/culture.md`
+1. Project override: {project}/.narrare/prompts/generation/{culture}/{lang}/culture.md
+2. Bundled default: packages/core/narrare_core/prompts/_bundled/generation/{culture}/{lang}/culture.md
 3. Fallback: EN version if the requested language isn't available
 
 `PromptRegistry.resolve_culture()` handles the EN fallback automatically.
@@ -117,7 +117,7 @@ The prompt system now supports generation intents:
 | `NAME_GENERATE` | `IntentCategory.GENERATION` | Character/place name generation |
 | `TITLE_GENERATE` | `IntentCategory.GENERATION` | Title suggestion generation |
 
-Generation prompts are stored in `prompts/_bundled/generation/{lang}/` and follow
+Generation prompts are stored in `packages/core/narrare_core/prompts/_bundled/generation/{lang}/` and follow
 the same cascade resolution as other prompt categories.
 
 ### Preference Auto-Injection
@@ -169,9 +169,9 @@ Each `LLMIntent` maps to:
 - Language: `en`, `de`, `fr`
 
 **Resolution order:**
-1. `{project}/.narrare/prompts/{category}/{lang}/{mode}/system.md`
-2. `{user}/.narrare/prompts/{category}/{lang}/{mode}/system.md`
-3. `{bundled}/prompts/_bundled/{category}/{lang}/{mode}/system.md`
+1. {project}/.narrare/prompts/{category}/{lang}/{mode}/system.md
+2. {user}/.narrare/prompts/{category}/{lang}/{mode}/system.md
+3. {bundled}/prompts/_bundled/{category}/{lang}/{mode}/system.md
 
 **Variable substitution:**
 Supported variables include: `{{project_title}}`, `{{genre}}`, `{{language}}`,

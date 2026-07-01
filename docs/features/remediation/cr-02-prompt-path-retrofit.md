@@ -41,7 +41,7 @@ are already correct). Changes to chat template content (CR-01 handles template t
 full_prompt = f"{composed.system}\n\n{composed.user}" if composed.system else composed.user
 ```
 
-This concatenates the feature system prompt (`chat/en/system.md`, resolved by
+This concatenates the feature system prompt (`packages/core/narrare_core/prompts/_bundled/writing/en/chat/system.md`, resolved by
 PromptComposer) with the user message. The LLM receives feature instructions as
 user-channel text, not as system instructions. This means:
 1. The feature prompt has lower instruction priority (user channel vs. system channel)
@@ -83,13 +83,13 @@ guaranteed identity/rules layer.
 | # | Criterion | Verification |
 |---|-----------|--------------|
 | 1 | `LLMIntent.CHAT` still resolves through PromptComposer/Cascade | Unit test: mock PromptComposer, assert `.build()` called with `LLMIntent.CHAT` |
-| 2 | `chat/en/system.md` content is passed as agent system/instructions | Unit test: inspect agent call, verify `system_prompt` parameter contains template body |
+| 2 | `packages/core/narrare_core/prompts/_bundled/writing/en/chat/system.md` content is passed as agent system/instructions | Unit test: inspect agent call, verify `system_prompt` parameter contains template body |
 | 3 | User prompt does NOT contain the system template body | Unit test: inspect agent call, verify `prompt` parameter does not contain `"project-aware writing chat mode"` or similar template markers |
 | 4 | NarrareMeta and NarrareUniversalRules remain capabilities | Existing test: `test_all_production_agent_classes_inherit_adr026_capabilities` (ChatAgent is covered) |
 | 5 | **NEW:** Prompt-Path-Compliance test exists for ChatService | Test file: `tests/unit/api/chat/test_chat_prompt_path_compliance.py` with ≥2 assertions |
-| 6 | **NEW:** No f-string concatenation of `composed.system + composed.user` | Checker: `prompt_channel.py` reports 0 violations for chat_service.py |
+| 6 | **NEW:** No f-string concatenation of `composed.system + composed.user` | Checker: `scripts/architecture/_checkers/prompt_channel.py` reports 0 violations for `apps/api/narrare/chat/chat_service.py` |
 | 7 | **NEW:** Uses standardized XML template tags per CR-01 | If chat template is modified, variables are wrapped in XML tags |
-| 8 | **NEW:** ChatService has >0 prompt-path-compliance tests | Currently 0 tests for chat_service.py path compliance |
+| 8 | **NEW:** ChatService has >0 prompt-path-compliance tests | Currently 0 tests for `apps/api/narrare/chat/chat_service.py` path compliance |
 
 ### Files to Modify
 
@@ -181,7 +181,7 @@ WorldbuildingAnalyzer.analyze()
 | 2 | Template variables substituted via governed variable engine (PromptContext) | Unit test: verify PromptContext.extra carries entity_details, candidate_pairs |
 | 3 | No production inline fallback system prompt remains | Code review + checker: no string literal matching prompt patterns in phase2 path |
 | 4 | Tests cover phase2 composed prompt resolution | Unit test: composed prompt is non-empty, contains expected template structure |
-| 5 | **NEW:** `PromptRegistry` is NOT imported in `worldbuilding_analyzer.py` | Checker: `prompt_path.py` reports 0 violations for this file |
+| 5 | **NEW:** `PromptRegistry` is NOT imported in `apps/api/narrare/kb/worldbuilding_analyzer.py` | Checker: `scripts/architecture/_checkers/prompt_path.py` reports 0 violations for this file |
 | 6 | **NEW:** Missing prompt route raises typed configuration error, not bare `except Exception` | Unit test: when composer raises, service raises typed error |
 | 7 | **NEW:** Uses standardized XML template tags per CR-01 | If phase2 template is modified, user-content variables are wrapped |
 | 8 | **NEW:** Phase2 path has Prompt-Path-Compliance test | Test asserts `.build()` is called, not `.resolve()` |
@@ -206,7 +206,7 @@ WorldbuildingAnalyzer.analyze()
 
 ### Scope
 
-**In scope:** Remove `_prompt_loader.py`. Replace with PromptComposer route for
+**In scope:** Remove apps/api/narrare/planning/_prompt_loader.py (was deleted — logic absorbed into PromptComposer route). Replace with PromptComposer route for
 temporal consistency. Pass event context as user-channel data.
 
 **Out of scope:** TimelineAgent construction (already uses NarrareAgent).
@@ -217,7 +217,7 @@ Timeline deterministic checks (not prompt-related).
 `_prompt_loader.py::load_temporal_consistency_prompt()` reimplements cascade
 resolution and variable substitution in the app layer:
 
-1. Uses `importlib.resources.files()` to load `_bundled/planning/en/temporal_consistency/system.md`
+1. Uses `importlib.resources.files()` to load `packages/core/narrare_core/prompts/_bundled/planning/en/temporal_consistency/system.md`
 2. Performs manual `.replace("{{project_title}}", novel_title)` for each variable
 3. Does NOT support user overrides (no cascade)
 4. Does NOT use the governed variable engine (bypasses validation)
@@ -249,7 +249,7 @@ Two sub-decisions:
 `LLMIntent.PLAN` (since it is a planning concern and PLAN already routes to
 `planning/outline`). Alternatively, if the architecture specialist determines
 temporal consistency warrants its own intent, add `LLMIntent.TEMPORAL_CHECK`
-to `intents.py`.
+to `packages/core/narrare_core/llm/intents.py`.
 
 **Recommendation:** Use context mode under existing `LLMIntent.PLAN`:
 ```python
@@ -280,20 +280,20 @@ TimelineConsistencyService._run_llm_checks()
 | 1 | Temporal consistency instructions resolve through PromptComposer | Unit test: mock PromptComposer, assert `.build()` called with `LLMIntent.PLAN` and `mode="temporal_consistency"` |
 | 2 | Dynamic event context is in user prompt, NOT baked into system prompt | Unit test: event_context string in `prompt` parameter, not in `system_prompt` |
 | 3 | Capabilities continue to supply guaranteed persona/rules | Existing NarrareAgent test covers TimelineAgent |
-| 4 | Architecture checker reports no app-layer prompt-loader violations | Checker: extended `prompts.py` reports 0 for planning module |
-| 5 | **NEW:** `_prompt_loader.py` is REMOVED from `apps/api/` | File does not exist; `git rm` verified |
+| 4 | Architecture checker reports no app-layer prompt-loader violations | Checker: extended `scripts/architecture/_checkers/prompts.py` reports 0 for planning module |
+| 5 | **NEW:** apps/api/narrare/planning/_prompt_loader.py is REMOVED | File does not exist; `git rm` verified |
 | 6 | **NEW:** Uses standardized XML template tags per CR-01 | If temporal_consistency template is modified, variables wrapped |
 | 7 | **NEW:** Temporal consistency prompt path has >0 tests (currently 0) | Test file exists with path-compliance + content assertions |
-| 8 | **NEW:** No `importlib.resources` import in `timeline_consistency_service.py` for prompt loading | Code review + checker |
+| 8 | **NEW:** No `importlib.resources` import in `apps/api/narrare/planning/timeline_consistency_service.py` for prompt loading | Code review + checker |
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `apps/api/narrare/planning/_prompt_loader.py` | **DELETE** — entire file removed |
+| apps/api/narrare/planning/_prompt_loader.py | **DELETE** — entire file removed |
 | `apps/api/narrare/planning/timeline_consistency_service.py` | Replace `load_temporal_consistency_prompt()` call with `PromptComposer.build()`; add PromptComposer to constructor DI |
 | `packages/core/narrare_core/prompts/route_table.py` | Add `"temporal_consistency"` to `LLMIntent.PLAN` allowed_context_modes |
-| `apps/api/narrare/planning/dependencies.py` | Wire PromptComposer into TimelineConsistencyService DI |
+| `apps/api/narrare/planning/_timeline_consistency_factory.py` | Wire PromptComposer into TimelineConsistencyService DI |
 | `tests/unit/api/planning/test_timeline_prompt_path_compliance.py` | **NEW** — Prompt-Path-Compliance tests |
 
 ### Impact Radius
@@ -309,7 +309,7 @@ TimelineConsistencyService._run_llm_checks()
 ### Scope
 
 **In scope:** Remove `composer is None` fallback branches in
-`writing_graph_prompts.py`. Remove `_get_fallback_meta()` and its
+`packages/core/narrare_core/agents/writing_graph_prompts.py`. Remove `_get_fallback_meta()` and its
 `MetaPromptLoader` usage. Evaluate `MetaPromptLoader` for removal.
 
 **Out of scope:** Writing graph node logic (unchanged). WritingDeps fields
@@ -317,7 +317,7 @@ TimelineConsistencyService._run_llm_checks()
 
 ### Root Cause
 
-`writing_graph_prompts.py` has 5 prompt-builder functions that each contain:
+`packages/core/narrare_core/agents/writing_graph_prompts.py` has 5 prompt-builder functions that each contain:
 
 ```python
 async def get_outline_prompt(composer, deps, state):
@@ -372,7 +372,7 @@ _get_fallback_meta() → MetaPromptLoader().load()  ← bypasses NarrareMeta Cap
 
 4. **Remove or deprecate `MetaPromptLoader`:**
    - Check all callers of `MetaPromptLoader` (graph: `_get_fallback_meta` is the only production caller)
-   - If no remaining callers: remove `MetaPromptLoader` from `meta.py`
+   - If no remaining callers: remove `MetaPromptLoader` from `packages/core/narrare_core/prompts/meta.py`
    - If test-only callers remain: mark `@deprecated("Removed per ADR-046. Use NarrareMeta Capability.")`
 
 ### Acceptance Criteria
@@ -381,8 +381,8 @@ _get_fallback_meta() → MetaPromptLoader().load()  ← bypasses NarrareMeta Cap
 |---|-----------|--------------|
 | 1 | `composer is None` paths replaced with fail-fast `ConfigurationError` | Unit test: passing `composer=None` raises `ConfigurationError` |
 | 2 | No overridable meta/user task prompts loaded as degraded production path | Code review: no `_get_fallback_meta` calls in production code |
-| 3 | **NEW:** `MetaPromptLoader` is removed from `meta.py` OR marked `@deprecated` with removal date | Code review: `grep MetaPromptLoader packages/core/` shows 0 production callers |
-| 4 | **NEW:** `writing_graph_prompts.py` does not import `MetaPromptLoader` | Checker + code review |
+| 3 | **NEW:** `MetaPromptLoader` is removed from `packages/core/narrare_core/prompts/meta.py` OR marked `@deprecated` with removal date | Code review: `grep MetaPromptLoader packages/core/narrare_core/` shows 0 production callers |
+| 4 | **NEW:** `packages/core/narrare_core/agents/writing_graph_prompts.py` does not import `MetaPromptLoader` | Checker + code review |
 | 5 | **NEW:** `_get_fallback_meta()` is removed | Code review: function does not exist |
 | 6 | **NEW:** Any test-only fallback is documented as intentionally non-production | Test docstring asserts it cannot be reached by production DI |
 | 7 | **NEW:** `WritingDeps.composer` is typed as `PromptComposer` (not `PromptComposer | None`) | mypy/pyright: field is non-Optional |
@@ -393,7 +393,7 @@ _get_fallback_meta() → MetaPromptLoader().load()  ← bypasses NarrareMeta Cap
 | File | Change |
 |------|--------|
 | `packages/core/narrare_core/agents/writing_graph_prompts.py` | Remove `_get_fallback_meta()`; remove all `composer is None` branches; add fail-fast error; remove MetaPromptLoader import |
-| `packages/core/narrare_core/agents/writing_graph_deps.py` (or wherever WritingDeps is defined) | Make `composer` field required (non-Optional) |
+| `packages/core/narrare_core/agents/writing_graph_types.py` | Make `composer` field required (non-Optional) |
 | `packages/core/narrare_core/prompts/meta.py` | Remove `MetaPromptLoader` class (if no remaining callers) OR add `@deprecated` decorator |
 | All WritingDeps construction sites | Ensure `composer` is always provided |
 | `tests/unit/core/agents/test_writing_graph_prompts.py` | Update tests: remove `composer=None` test cases or convert to "raises ConfigurationError" tests |
@@ -418,14 +418,14 @@ _get_fallback_meta() → MetaPromptLoader().load()  ← bypasses NarrareMeta Cap
 **Task:** Create `tests/unit/core/prompts/test_prompt_path_compliance.py` as a
 convention/documentation test that:
 1. Scans all services that resolve prompts
-2. Asserts each has a corresponding `test_*_prompt_path_compliance.py` file
+2. Asserts each has a corresponding test_*_prompt_path_compliance.py file
 3. Documents the convention for future services
 
 **Per-service test files to create (as part of retrofit tasks):**
 - `tests/unit/api/chat/test_chat_prompt_path_compliance.py`
 - `tests/unit/api/kb/test_worldbuilding_prompt_path_compliance.py`
 - `tests/unit/api/planning/test_timeline_prompt_path_compliance.py`
-- `tests/unit/core/agents/test_writing_graph_prompt_path_compliance.py`
+- tests/unit/core/agents/test_writing_graph_prompt_path_compliance.py (planned — test never written per assessment)
 
 ### D.2 — check_architecture.py Extension
 
@@ -448,12 +448,12 @@ convention/documentation test that:
 
 ### D.3 — No additional script needed
 
-The D.2 modules run within the existing `check_architecture.py` pipeline. No
-separate `check_prompt_path_compliance.py` script.
+The D.2 modules run within the existing `scripts/check_architecture.py` pipeline — no
+separate check-prompt-path-compliance script is needed.
 
 ### D.4 — ADR-Retrofit-Plan Requirement
 
-**Task:** Update `.opencode/context/narrare-dev/processes/adr-process.md` to
+**Task:** Update .opencode/context/narrare-dev/processes/adr-process.md to
 require a Retrofit-Plan section for any ADR that changes prompt mechanics.
 
 ### D.5 — Adoption Metric Extension

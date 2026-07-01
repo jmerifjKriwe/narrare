@@ -98,9 +98,9 @@ on Elena's internal reaction."
 
 ## How it works (Technical)
 
-**Entry point:** `writing/router.py` → `POST /api/v1/writing/rewrite`
-**Service:** `DraftService.rewrite()` in `writing/draft_service.py`
-**Contract:** `DraftServiceProtocol` in `writing/contracts.py`
+**Entry point:** `apps/api/narrare/writing/router.py` → `POST /api/v1/writing/rewrite`
+**Service:** `DraftService.rewrite()` in apps/api/narrare/writing/draft_service.py
+**Contract:** `DraftServiceProtocol` in `apps/api/narrare/writing/contracts.py`
 **LLM Intent:** `LLMIntent.REWRITE`
 
 **Rewrite request:**
@@ -153,7 +153,7 @@ class RewriteRequest:
 
 **SSE-direct endpoint:** `POST /api/v1/writing/chapters/{chapter_id}/rewrite` — same endpoint starts and streams. No two-step start/stream; the endpoint returns an SSE stream immediately.
 
-**Service:** `RewriteService` in `writing/rewrite_service.py` (separate from DraftService per RULE-04). Orchestrates prompt composition, LLM call via Gateway, and streaming response.
+**Service:** `RewriteService` in `apps/api/narrare/writing/rewrite_service.py` (separate from DraftService per RULE-04). Orchestrates prompt composition, LLM call via Gateway, and streaming response.
 
 **Token budget (`_REWRITE_PERCENTAGES`):** 40/15/25/10/10 — 40% immediate context (selection + surrounding text), 15% recent chapters, 25% KB referenced entities, 10% KB suggested entities, 10% pinned KB entries.
 
@@ -165,11 +165,11 @@ class RewriteRequest:
 - `InlineDiff` component — uses `diff-match-patch` for inline diff highlighting between original selection and proposed alternative
 - `replaceSelectionWithAIContent()` — atomic selection replacement function that swaps the editor selection with the chosen alternative content in a single transaction, preserving undo history
 
-**Voice mode:** Uses `_voice_profiles.py` from existing KB infrastructure (character_voice_profiles from KBEntity metadata) — same voice extraction pipeline shared with WRITE-003 extend and WRITE-002 draft.
+**Voice mode:** Uses `packages/core/narrare_core/writing/_voice_profiles.py` from existing KB infrastructure (character_voice_profiles from KBEntity metadata) — same voice extraction pipeline shared with WRITE-003 extend and WRITE-002 draft.
 
 ## Status & History
 
 - `project-init` — Added to registry as planned feature
 - `cr-01-audit` — Dedicated rewrite prompt template created with CoT, negative examples, and scratchpad pattern
 - `2026-05-25` — Implementation: RewriteService, SSE-direct endpoint, AlternativeParser, RewriteModeSelector, InlineDiff, replaceSelectionWithAIContent()
-- `2026-05-25` — **Complete.** 7 integration tests (SSE protocol, mode variations, stream errors). Promptfoo eval baseline: `evals/rewrite-selection.yaml` (279 lines, 7 test cases). Spec frontmatter corrected (service, contract, router paths).
+- `2026-05-25` — **Complete.** 7 integration tests (SSE protocol, mode variations, stream errors). Promptfoo eval baseline: evals/rewrite-selection.yaml (279 lines, 7 test cases). Spec frontmatter corrected (service, contract, router paths).

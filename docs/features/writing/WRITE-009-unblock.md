@@ -106,7 +106,7 @@ or combine elements from several.
 **LLM Intent:** `LLMIntent.SUGGEST` with `context_mode="story_suggest"` (the SUGGEST intent is a multi-mode intent — `inline_suggest` is the existing ghost-text mode; `story_suggest` is the WRITE-009 direction-suggestions mode)
 
 **Prompt resolution (ADR-054 D1 / Mode 1):**
-- The governed `core/prompts/_bundled/writing/{locale}/story_suggest/system.md` template (v1.3.0) carries the task framing and project-metadata variables.
+- The governed packages/core/narrare_core/prompts/_bundled/writing/{locale}/story_suggest/system.md template (v1.3.0) carries the task framing and project-metadata variables.
 - The service resolves it through `PromptComposer` via `compose_invocation(intent=LLMIntent.SUGGEST, prompt_context=PromptContext(mode="story_suggest", ...))`. No inline f-string feature prompt is assembled in the service (RULE-02 / RULE-02a / RULE-02b).
 - pydantic-ai binds `system_prompt` at agent construction, so the composed system prompt is passed to the `StorySuggestAgent` constructor.
 

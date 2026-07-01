@@ -109,7 +109,7 @@ implementation, enforcement, and cross-layer evidence recorded below.
 
 | Layer | Required work | Evidence required before P1 closure |
 |---|---|---|
-| Core | Add `llm/token_profiles.py`; refactor `model_config.py`, `run_limits.py`, and `intent_profiles.py` to consume it; add typed calibration result and suitability evaluator. | Unit tests for exact vocabulary/presets, custom raw semantics, conservative legacy normalization, calibration statuses, suitability severities. |
+| Core | Add `packages/core/narrare_core/llm/token_profiles.py`; refactor `packages/core/narrare_core/llm/model_config.py`, `packages/core/narrare_core/llm/run_limits.py`, and `packages/core/narrare_core/llm/intent_profiles.py` to consume it; add typed calibration result and suitability evaluator. | Unit tests for exact vocabulary/presets, custom raw semantics, conservative legacy normalization, calibration statuses, suitability severities. |
 | Backend | Derive token-limit schemas from Core vocabulary; reject new `conservative`; normalize persisted legacy values; expose profile/cap/calibration/suitability metadata through service/API responses. | Schema tests, service tests, API integration tests for profile parity, custom semantics, warnings, and provider-too-small cases. |
 | Frontend | Remove `conservative`; consume/prove metadata parity; display custom raw limit controls and calibration/suitability warnings; remove 16k-as-hard-max semantics. | UI tests for exact profile options, >16k custom path, stale/offline/unknown warnings, provider-too-small warning/block display. |
 | Platform | Add cross-layer contract tests comparing Core/Backend/Frontend profile and cap metadata; keep matrix findings open until evidence exists. | CI-blocking tests fail on independent profile/cap drift and on missing warning/block evidence. |
@@ -199,7 +199,7 @@ plus this docs reconciliation:
 
 | Task | Status | Evidence |
 |---|---|---|
-| CR-AUFG-08-14 | Implemented + enforced | SET-005, CURRENT_STATE, the AUFG registry, this remediation spec, testing standards, the CR-08 audit prompt template, and `configuration-adoption-matrix.yaml` record phase-complete runtime-effect evidence and the accepted ADR-051 lifecycle resolution. |
+| CR-AUFG-08-14 | Implemented + enforced | SET-005, CURRENT_STATE, the AUFG registry, this remediation spec, testing standards, the CR-08 audit prompt template, and `docs/architecture/governance/configuration-adoption-matrix.yaml` record phase-complete runtime-effect evidence and the accepted ADR-051 lifecycle resolution. |
 | Audit-template gate | Implemented + enforced | `scripts/check_configuration_matrix.py` merges matrix validation with review-finding coverage; `scripts/governance/configuration_matrix.py` exports `validate_review_finding_matrix_coverage`; `scripts/governance/_matrix_review_gate.py` enforces structured material P0/P1 `[category: configuration-effect]` findings; `tests/unit/scripts/governance/test_configuration_matrix_review_gate.py` proves unclassified material P1 findings fail, classified findings pass, P2/non-minimum findings do not block, and future content-review files are loaded. The CR-08 content-review prompt now requires the structured marker format. |
 
 ---
@@ -242,8 +242,8 @@ must be added to the matrix before the phase can close.
 | Layer | Files / modules | Responsibility |
 |---|---|---|
 | Architecture | Candidate ADR-051; this spec; `docs/architecture/governance/aufg-registry.md` | Policy, lifecycle, classification, handoff. |
-| Core | `packages/core/narrare_core/llm/`, `ai_invocation/`, `writing/context_assembler.py`, `context/budget.py` | Runtime limit enforcement, output/profile types, tier budget application; no app imports. |
-| Backend | `apps/api/narrare/settings/`, `writing/`, `consistency/`, `setup/`, `_app/settings_model.py` | Settings persistence/resolution, DI wiring, API schemas, system resolver, setup catalog abstraction. |
+| Core | `packages/core/narrare_core/llm/`, `packages/core/narrare_core/ai_invocation/`, `packages/core/narrare_core/writing/context_assembler.py`, `packages/core/narrare_core/context/budget.py` | Runtime limit enforcement, output/profile types, tier budget application; no app imports. |
+| Backend | `apps/api/narrare/settings/`, `apps/api/narrare/writing/`, `apps/api/narrare/consistency/`, `apps/api/narrare/setup/`, `apps/api/narrare/_app/settings_model.py` | Settings persistence/resolution, DI wiring, API schemas, system resolver, setup catalog abstraction. |
 | Frontend | `packages/web/components/studio/settings/`, settings API types/constants | User controls, labels, warnings, profile/cap parity; no independent config vocabulary. |
 | Platform | `scripts/architecture/`, `scripts/governance/`, tests | Matrix/checker, contract tests, governance health integration. |
 | Docs | `docs/_shared/CURRENT_STATE.md`, SET-005, testing standards, audit templates | Truthful status and future audit coverage. |

@@ -66,26 +66,26 @@ framework. The shared broker is a `ListQueueBroker` over Redis with a matching
 
 - **Broker & result backend** — `ListQueueBroker(url=REDIS_URL)` combined with
   `RedisAsyncResultBackend(redis_url=REDIS_URL)`. The broker is started by the
-  application lifespan (`_app/lifespan.py`) in the API process and is
+  application lifespan (`apps/api/narrare/_app/lifespan.py`) in the API process and is
   self-managed inside the dedicated worker process (`broker.is_worker_process`).
 - **7 registered tasks** (registered at import time via
   `narrare.tasks.__init__`, which imports the embeddings and wiki task modules):
   | Task name | Module | Purpose |
   |-----------|--------|---------|
-  | `embed_source` | `embeddings/tasks.py` | Generate / refresh an embedding (idempotent via content hash) |
-  | `wiki_generate_entity` | `wiki/tasks.py` | Generate an entity wiki summary |
-  | `wiki_generate_chapter` | `wiki/tasks.py` | Generate a chapter wiki summary |
-  | `wiki_mark_all_stale` | `wiki/tasks.py` | Invalidate summaries after a prompt change |
-  | `wiki_refresh_summary` | `wiki/tasks.py` | Force-refresh a single entity summary |
-  | `process_feedback_memory` | `tasks/__init__.py` | Forward feedback to mem0 (stub) |
-  | `run_preference_analysis` | `tasks/__init__.py` | Run preference analysis (stub) |
+  | `embed_source` | `apps/api/narrare/embeddings/tasks.py` | Generate / refresh an embedding (idempotent via content hash) |
+  | `wiki_generate_entity` | `apps/api/narrare/wiki/tasks.py` | Generate an entity wiki summary |
+  | `wiki_generate_chapter` | `apps/api/narrare/wiki/tasks.py` | Generate a chapter wiki summary |
+  | `wiki_mark_all_stale` | `apps/api/narrare/wiki/tasks.py` | Invalidate summaries after a prompt change |
+  | `wiki_refresh_summary` | `apps/api/narrare/wiki/tasks.py` | Force-refresh a single entity summary |
+  | `process_feedback_memory` | `apps/api/narrare/tasks/__init__.py` | Forward feedback to mem0 (stub) |
+  | `run_preference_analysis` | `apps/api/narrare/tasks/__init__.py` | Run preference analysis (stub) |
 - **Serialization boundary** — TaskIQ serializes arguments across processes, so
   task wrappers take JSON-serializable args (UUIDs as strings) and build their
   own database session / wiki-service factory inside the task body. Each task
   has a matching standalone `run_*` function for direct in-process invocation.
-- **KB embedding hooks** — `kb/embedding_hooks.py` enqueues `embed_source`
+- **KB embedding hooks** — `apps/api/narrare/kb/embedding_hooks.py` enqueues `embed_source`
   through the broker when KB content changes, instead of embedding inline.
-- **Event listener dispatch** — `_app/event_listener.py` subscribes to Redis
+- **Event listener dispatch** — `apps/api/narrare/_app/event_listener.py` subscribes to Redis
   Pub/Sub event channels and routes events to registered tasks via
   `_EVENT_TASK_MAP` (`KB_ENTRY_UPDATED → embed_source`). The listener is
   currently dormant infrastructure (not started by the lifespan); when wired,

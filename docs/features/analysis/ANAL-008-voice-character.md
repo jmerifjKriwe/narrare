@@ -115,12 +115,12 @@ Profiles are used by Voice Checker (WRITE-010) to flag inconsistent dialogue.
 > analyzer + `NarrareAgent` structured output + governed EN template + SSE
 > router + panel. Per ADR-021 + ADR-055.
 
-**Entry point:** `analysis/router_character_voice.py` → `POST /api/v1/analysis/character-voice`
-**Service:** `CharacterVoiceService.analyze()` in `analysis/character_voice_service.py`
-**Contract:** `CharacterVoiceServiceProtocol` in `analysis/contracts_character_voice.py`
-**Agent:** `CharacterVoiceAgent` (`core/agents/character_voice_agent.py`, `NarrareAgent` with structured output)
+**Entry point:** `apps/api/narrare/analysis/router_character_voice.py` → `POST /api/v1/analysis/character-voice`
+**Service:** `CharacterVoiceService.analyze()` in `apps/api/narrare/analysis/character_voice_service.py`
+**Contract:** `CharacterVoiceServiceProtocol` in `apps/api/narrare/analysis/contracts_character_voice.py`
+**Agent:** `CharacterVoiceAgent` (`packages/core/narrare_core/agents/character_voice_agent.py`, `NarrareAgent` with structured output)
 **LLM Intent:** `LLMIntent.VOICE` (context_mode `character_voice`; ADR-055 makes VOICE routeable)
-**Prompt:** PromptComposer Mode 1 — `_bundled/analysis/en/character_voice/system.md` (governed EN template; ADR-054)
+**Prompt:** PromptComposer Mode 1 — `packages/core/narrare_core/prompts/_bundled/analysis/en/character_voice/system.md` (governed EN template; ADR-054)
 
 ### Architecture: hybrid metrics (ADR-021, mirrors ANAL-003)
 
@@ -259,8 +259,8 @@ features, so they do NOT get a `docs/features/INDEX.md` entry — they are docum
 
 | Component | Location | Consumed by |
 |-----------|----------|-------------|
-| `DialogueParser` | `core/analysis/dialogue_parser.py` | ANAL-008 (now); WRITE-010 (future) |
-| `VoiceMetricsAnalyzer` | `core/analysis/voice_metrics.py` (ADR-021) | ANAL-008 (now); ANAL-009 + WRITE-010 (future) |
+| `DialogueParser` | `packages/core/narrare_core/analysis/dialogue_parser.py` | ANAL-008 (now); WRITE-010 (future) |
+| `VoiceMetricsAnalyzer` | `packages/core/narrare_core/analysis/voice_metrics.py` (ADR-021) | ANAL-008 (now); ANAL-009 + WRITE-010 (future) |
 
 `DialogueParser`/`VoiceMetricsAnalyzer` may consume `core/nlp/` primitives
 (`NLPProvider`, ADR-021) respecting RULE-07 (`analysis → nlp`).

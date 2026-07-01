@@ -62,10 +62,10 @@ ui_help_long: |
   Note: Requires internet connection for AI inference.
 ui_available_in: [editor]
 
-service: writing/suggest_service.py
-contract: writing/contracts.py#SuggestServiceProtocol
-router: writing/router_suggest.py
-prompt: core/prompts/_bundled/writing/en/inline_suggest/system.md
+service: apps/api/narrare/writing/suggest_service.py
+contract: apps/api/narrare/writing/contracts.py#SuggestServiceProtocol
+router: apps/api/narrare/writing/router_suggest.py
+prompt: packages/core/narrare_core/prompts/_bundled/writing/en/inline_suggest/system.md
 requires: [INFRA-001, INFRA-002, INFRA-003]
 ---
 
@@ -101,16 +101,16 @@ writing style.
 **Core layer:**
 - **Agent:** `InlineSuggestAgent` (NarrareAgent subclass) in `packages/core/narrare_core/agents/inline_suggest_agent.py`
 - **Deps:** `InlineSuggestDeps` in `packages/core/narrare_core/agents/inline_suggest_types.py`
-- **Prompts:** 3 locale templates (en/de/fr) in `core/prompts/_bundled/writing/{locale}/inline_suggest/system.md`
+- **Prompts:** 3 locale templates (en/de/fr) in packages/core/narrare_core/prompts/_bundled/writing/{locale}/inline_suggest/system.md
 - **Variable engine:** `text_before`, `text_after`, `chapter_context` variables
 - **LLM Intent:** `LLMIntent.SUGGEST`
 
 **Backend layer:**
 - **Entry point:** `POST /api/v1/writing/chapters/{chapter_id}/suggest` (SSE endpoint)
-- **Service:** `InlineSuggestService` in `writing/suggest_service.py` — chapter validation, rate limiting, minimal context assembly
-- **Contract:** `SuggestServiceProtocol` in `writing/contracts.py`
-- **Router:** `writing/router_suggest.py` (dedicated per RULE-04)
-- **Dependencies:** `writing/deps.py` → `get_suggest_service()`
+- **Service:** `InlineSuggestService` in `apps/api/narrare/writing/suggest_service.py` — chapter validation, rate limiting, minimal context assembly
+- **Contract:** `SuggestServiceProtocol` in `apps/api/narrare/writing/contracts.py`
+- **Router:** `apps/api/narrare/writing/router_suggest.py` (dedicated per RULE-04)
+- **Dependencies:** `apps/api/narrare/writing/deps.py` → `get_suggest_service()`
 - **Protocol:** Server-Sent Events (SSE) for low-latency streaming
 
 **Triggering:**
@@ -131,10 +131,10 @@ writing style.
 - Maximum 3 sentences per suggestion
 
 **Frontend layer:**
-- **Extension:** `GhostText.ts` TipTap extension (ProseMirror Decoration.widget) — streaming, accept/reject/word-accept, prefix cache, analytics
-- **Settings:** `GhostTextConfig.tsx` — enable/disable toggle + delay slider
-- **API client:** `createSseSuggestionFetcher()` in `lib/api/suggest.ts` — real SSE integration
-- **Styles:** CSS in `styles/editor.css`
+- **Extension:** `packages/web/components/studio/editor/extensions/GhostText.ts` TipTap extension (ProseMirror Decoration.widget) — streaming, accept/reject/word-accept, prefix cache, analytics
+- **Settings:** `packages/web/components/studio/editor/GhostTextConfig.tsx` — enable/disable toggle + delay slider
+- **API client:** `createSseSuggestionFetcher()` in `packages/web/lib/api/suggest.ts` — real SSE integration
+- **Styles:** CSS in `packages/web/styles/editor.css`
 - Ghost text rendered as ProseMirror Decoration.widget
 - Disappears if user types a character not matching suggestion
 - Tab key accepts entire suggestion

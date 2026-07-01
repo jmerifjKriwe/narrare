@@ -52,9 +52,9 @@ Different writing projects benefit from different AI behavior. A literary novel 
 
 ## How it works (Technical)
 
-**Entry point:** `settings/router.py` → `/settings/ai/novels/{novel_id}`
+**Entry point:** `apps/api/narrare/settings/router.py` → `/settings/ai/novels/{novel_id}`
 **Service:** `ProjectAiSettingsService` — project-level overrides, effective settings resolution with source metadata
-**Contract:** `ProjectAiSettingsRepositoryProtocol` in `settings/contracts.py`
+**Contract:** `ProjectAiSettingsRepositoryProtocol` in `apps/api/narrare/settings/contracts.py`
 **Database:** JSONB columns on `project_settings` — `category_overrides`, `intent_overrides`, `token_limit_overrides`
 **REST API:**
 - `GET /settings/ai/novels/{novel_id}` — get project AI settings with source metadata

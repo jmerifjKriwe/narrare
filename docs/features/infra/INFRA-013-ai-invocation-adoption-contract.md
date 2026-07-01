@@ -239,7 +239,7 @@ not be labelled adopted unless runtime evidence is present.
 | Core | `packages/core/narrare_core/ai_invocation/budgets/resolver.py` | `IntentOutputBudgetResolver` — intent/mode output budget resolver. |
 | Core | `packages/core/narrare_core/ai_invocation/budgets/_types.py` | `OutputBudget`, `OutputBudgetDecision` types. |
 | Backend | `apps/api/narrare/_app/dependencies.py` | DI wiring only; no business logic. |
-| Backend feature modules | `apps/api/narrare/{domain}/dependencies.py` / services | Supply request IDs/settings and use service-layer contracts. |
+| Backend feature modules | apps/api/narrare/{domain}/dependencies.py / services | Supply request IDs/settings and use service-layer contracts. |
 | Platform | `scripts/architecture/adoption-registry.yaml` | Mode-specific static/runtime requirements. |
 | Platform | `scripts/adoption/` and checker tests | Static-vs-runtime score/evidence gates. |
 | Docs | ADR-038, INFRA-013, audit docs | SSOT links and lifecycle state documentation. |
@@ -589,7 +589,7 @@ suggestions. High-impact conflicts are surfaced rather than silently resolved.
   CR-03 AI Invocation Adoption Contract. No production implementation completed.
 - 2026-06-06 — P0 implemented: Core `ai_invocation/` module with contracts,
   enrichers, validators, budget resolver, `InvocationPipeline` orchestrator,
-  WritingPipeline integration (`_invocation_adapter.py`), and backend DI.
+  WritingPipeline integration (`packages/core/narrare_core/writing/_invocation_adapter.py`), and backend DI.
   Module path changed from spec `core/invocation/` to `core/ai_invocation/`.
   P1–P3 remain outstanding.
 - 2026-06-06 — P0.3e (LoggingEvidenceSink) and P1 partial (User/Project IDs in
@@ -616,7 +616,7 @@ suggestions. High-impact conflicts are surfaced rather than silently resolved.
 - 2026-06-12 — Review-03 semantics refresh: static wiring is not full runtime
   adoption. Current baseline remains 109 real ratcheted items; docs must distinguish
   `static_verified`, `runtime_verified`, and `adopted`.
-- 2026-06-14 — `evidence_recording.py` extracted from `pipeline.py` (RULE-04 compliance — keeps pipeline orchestration under module size limits). `invocation_id` field (`UUID | None`) added to `PromptInvocationContext` for per-invocation correlation across evidence records.
+- 2026-06-14 — `packages/core/narrare_core/ai_invocation/evidence_recording.py` extracted from `packages/core/narrare_core/ai_invocation/pipeline.py` (RULE-04 compliance — keeps pipeline orchestration under module size limits). `invocation_id` field (`UUID | None`) added to `PromptInvocationContext` for per-invocation correlation across evidence records.
 - 2026-06-19 — ADR-045 runtime adoption enforcement completed: evidence markers,
   `--evidence-repo`, invocation correlation fields, prompt-context merge, run-limit
   enforcement coverage, WebSocket modularization, and learning event taxonomy are in

@@ -119,9 +119,9 @@ Use during revision to ensure your prose matches your genre and audience.
 
 ## How it works (Technical)
 
-**Entry point:** `analysis/router.py` → `POST /api/v1/analysis/readability`
-**Service:** `ReadabilityService.analyze()` in `analysis/services/readability_service.py`
-**Contract:** `ReadabilityAnalyzer` in `analysis/contracts.py`
+**Entry point:** `apps/api/narrare/analysis/router_readability.py` → `POST /api/v1/analysis/readability`
+**Service:** `ReadabilityService.analyze()` in `apps/api/narrare/analysis/services/readability_service.py`
+**Contract:** `ReadabilityAnalyzer` in `apps/api/narrare/analysis/contracts_readability.py`
 **Architecture per ADR-021:** Hybrid — metrics are deterministic (pure Python formulas + spaCy for syllables), LLM only for sentence-level rewrite suggestions.
 
 **Formula-based metrics** (deterministic, instant, no LLM):
