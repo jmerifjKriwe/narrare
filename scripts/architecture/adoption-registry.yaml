@@ -94,6 +94,9 @@ prompt_path_compliance:
   # .evidence/{final_validation,preference_enrichment}.json and
   # features.analysis.modes.voice_check.
   analysis/voice_check: true
+  analysis/readability: true
+  analysis/pov: true
+  analysis/coreference: true
   # kb
   kb/consistency: true
   kb/worldbuilding/phase1: true
@@ -103,9 +106,13 @@ prompt_path_compliance:
   kb/interview: true
   kb/extract: true
   kb/enhance: true
+  kb/merge: true
   # planning
   planning/outline: true
   planning/temporal_consistency: true
+  planning/character_arc: true
+  planning/timeline_extraction: true
+  planning/timeline: true
   # generation
   generation/names: true
 
@@ -227,6 +234,12 @@ features:
       # via Mode-1 resolution + InvocationPipeline + the SSE service.
       voice_check:
         requires_runtime_evidence: true
+      readability:
+        requires_runtime_evidence: true
+      pov:
+        requires_runtime_evidence: true
+      coreference:
+        requires_runtime_evidence: true
     required_infrastructure:
       token_budget: required
       prompt_composer: required
@@ -264,6 +277,8 @@ features:
         requires_runtime_evidence: true
       enhance:
         requires_runtime_evidence: true
+      merge:
+        requires_runtime_evidence: true
     required_infrastructure:
       token_budget: partial         # extract/interview need it, simple CRUD doesn't
       prompt_composer: required
@@ -284,6 +299,12 @@ features:
       outline:
         requires_runtime_evidence: true  # P3 probes active
       temporal_consistency:
+        requires_runtime_evidence: true
+      character_arc:
+        requires_runtime_evidence: true
+      timeline_extraction:
+        requires_runtime_evidence: true
+      timeline:
         requires_runtime_evidence: true
     required_infrastructure:
       token_budget: partial

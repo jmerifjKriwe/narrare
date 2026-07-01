@@ -26,7 +26,10 @@
       "summarize",
       "remap",
       "consistency",
-      "fact_extraction"
+      "fact_extraction",
+      "readability",
+      "pov",
+      "coreference"
     ],
     "kb": [
       "consistency",
@@ -36,11 +39,15 @@
       "suggest",
       "interview",
       "extract",
-      "enhance"
+      "enhance",
+      "merge"
     ],
     "planning": [
       "outline",
-      "temporal_consistency"
+      "temporal_consistency",
+      "character_arc",
+      "timeline_extraction",
+      "timeline"
     ]
   }
 }
